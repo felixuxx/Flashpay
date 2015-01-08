@@ -1,0 +1,995 @@
+\documentclass{llncs}
+%\usepackage[margin=1in,a4paper]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{palatino}
+\usepackage{xspace}
+\usepackage{microtype}
+\usepackage{tikz}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usetikzlibrary{shapes,arrows}
+\usetikzlibrary{positioning}
+\usetikzlibrary{calc}
+
+
+
+% Terminology:
+% - SEPA-transfer -- avoid 'SEPA transaction' as we use
+%       'transaction' already when we talk about taxable
+%        transfers of Taler coins and database 'transactions'.
+% - wallet = coins at customer
+% - reserve = currency entrusted to mint waiting for withdrawl
+% - deposit = SEPA to mint
+% - withdrawl = mint to customer
+% - spending = customer to merchant
+% - redeeming = merchant to mint (and then mint SEPA to merchant)
+% - refreshing = customer-mint-customer
+% - dirty coin = coin with exposed public key
+% - fresh coin = coin that was refreshed or is new
+% - coin signing key = mint's online key used to (blindly) sign coin
+% - message signing key = mint's online key to sign mint messages
+% - mint master key = mint's key used to sign other mint keys
+% - owner = entity that knows coin private key
+% - transaction = coin ownership transfer that should be taxed
+% - sharing = coin copying that should not be taxed
+
+
+\title{Taler: Taxable Anonymous Libre Electronic Reserves}
+
+\begin{document}
+\mainmatter
+
+%\author{Florian Dold \and Sree Harsha Totakura \and Benedikt M\"uller \and Christian Grothoff}
+%\institute{The GNUnet Project}
+
+
+\maketitle
+
+\begin{abstract}
+This paper introduces Taler, a Chaum-style digital currency using
+blind signatures that enables anonymous payments while ensuring that
+entities that receive payments are auditable and thus taxable.  Taler
+differs from Chaum's original proposal in that customers can never defraud anyone,
+merchants can only fail to deliver the merchandise to the customer,
+and mints can be fully audited. Consequently, enforcement of honest
+behavior is better and more timely than with Chaum, and is at least as
+strict as with legacy credit card payment systems that do not provide
+for privacy.  Furthermore, Taler allows fractional and incremental
+payments, and even in this case is still able to guarantee
+unlinkability of transactions via a new coin refreshing protocol.
+Finally, Taler also supports microdonations using probabilistic
+transactions.  We argue that Taler provides a secure digital currency
+for modern liberal societies as it is a flexible, libre and efficient
+protocol and adequately balances the state's need for monetary control
+with the citizen's needs for private economic activity.
+\end{abstract}
+
+\section{Introduction}
+
+The design of payment systems shapes economies and societies.  Strong,
+developed nation states are evolving towards fully transparent payment
+systems, such as the MasterCard and VisaCard credit card schemes and
+computerized bank transactions such as SWIFT.  Such systems enable
+mass surveillance and thus extensive government control over the
+economy, from taxation to intrusion into private lives.  Bribery and
+corruption are limited to elites that can afford to escape the
+dragnet.  The other extreme are economies of developing, weak nation
+states where economic activity is based largely on coins, paper money
+or even barter.  Here, the state is often unable to effectively
+monitor or tax economic activity, and this limits the ability of the
+state to shape the society.  As bribery is virtually impossible to
+detect, it is widespread and not limited to social elites.
+ZeroCoin~\cite{miers2013zerocoin} is an example for translating such
+an economy into the digital realm.
+
+Taler is supposed to offer a middleground between an authoritarian
+state in total control of the population and weak states with almost
+anarchistic economies.  Specifically, we believe that a liberal
+democracy needs a payment system with the following properties:
+
+\begin{description}
+  \item[Customer Anonymity] It must be impossible for mints, merchants
+    and even a global active adversary, to trace the spending behavior
+    of a customer.
+  \item[Unlinkability] Merchants must not be able to tell if two
+    transactions were performed by the same customer.  It must be
+    infeasible to link a set of transactions to the same (anonymous)
+    customer. %, even when taking aborted transactions into account.
+  \item[Taxability] In many current legal systems, it is the
+    responsibility of the merchant to deduct (sales) taxes from
+    purchases made by customers, or to pay (income) taxes for payments
+    received for work.
+    %Taxation is neccessary for the state to
+    %provide legitimate social functions, such as education.  Thus, a payment
+    %system must facilitate sales, income and transaction taxes.
+    This specifically means that it must be able to audit merchants (or
+    generally anybody receiving money), and thus the receiver of
+    electronic cash must be easily identifiable.
+    %non-anonymous, as this would enable tax fraud.
+  \item[Verifiability] The payment system should try to minimize the
+    trust necessary between the participants.  In particular, digital
+    signatures should be used extensively in order to be able to
+    resolve disputes between the involved parties.  Nevertheless,
+    customers must never be able to defraud anyone, and merchants must
+    at best be able to defraud their customers by not delivering the
+    on the agreed contract.  Neither merchants nor customers must ever
+    be able to commit fraud against the mint.  Both customers and
+    merchants must receive cryptographic proofs of bad behavior in
+    case of protocol violations by the mint.  Thus, only the mint will
+    have to be tightly audited and regulated.  The design must make it
+    easy to audit the finances of the mint.
+  \item[Ease of Deployment] %The system should be easy to deploy for
+ %   real-world applications.  In order to lower the entry barrier and
+ %   acceptance of the system, a gateway to the existing financial
+ %   system should be provided, i.e. by integrating internet-banking
+ %   protocols such as HBCI/FinTAN.
+    The digital currency should be
+    tied 1:1 to existing currencies (such as EUR or USD) to avoid
+    exposing users to unnecessary risks from currency fluctuations.
+    Moreover, the system must have a free software reference
+    implementation and an open protocol standard.
+%    The protocol should
+%    be able to run easily over HTTP(S).
+  \item[Low resource consumption] In order to minimize the operating
+    costs and environmental impact of the payment system, it must
+    avoid the reliance on expensive and ``wasteful'' computations
+    such as proof-of-work.
+  \item[Large Payments and Microdonations] The payment system needs to
+    handle large payments in a reliable manner.  Furthermore, for
+    microdonations the system should allow sacrificing reliability to
+    achieve economic viability.
+\end{description}
+
+Taler builds on ideas from Chaum~\cite{chaum1983blind}, who proposed a
+digital currency system that would provide (some) customer anonymity
+while disclosing the identity of the merchants.  Chaum's digital cash
+system had some limitations and ultimately failed to be widely
+adopted.  In our assessment, key reasons include:
+
+\begin{itemize}
+ \item The use of patents to protect the technology; a payment system
+   must be libre --- free software --- to have a chance for widespread
+   adoption.
+ \item The use of off-line payments and thus deferred detection of
+   double-spending, which could require the mint to attempt to recover
+   funds from customers via the legal system.  This creates a
+   significant business risk for the mint, as the system is not
+   self-enforcing from the perspective of the mint.  In 1983 off-line
+   payments might have been a necessary feature.  However, today
+   requiring network connectivity is feasible and avoids the business
+   risks associated with deferred fraud detection.
+ \item % In addition to the risk of legal disputes with fradulent
+   % merchants and customers,
+   Chaum's published design does not clearly
+   limit the financial damage a mint might suffer from the
+   disclosure of its private online signing key.
+% \item Chaum did not support fractional payments, and Brand's
+%   extensions for fractional payments broke unlinkability and thus
+%   limited anonymity.  Chaum also did not support microdonations,
+%   leaving an opportunity for expanding payments into additional areas
+%   unexplored.
+% \item Chaum's system was implemented at a time where the US market
+%   was still dominated by paper checks and the European market was
+%   fragmented into dozens of currencies.  Today, SEPA provides a
+%   unified currency and currency transfer method for most of Europe,
+%   significantly lowering the barrier to entry into this domain for
+%   a larger market.
+\end{itemize}
+
+This paper describes Taler, a simple and practical payment with the
+above goals in mind.  The basic idea is to use Chaum's model of
+customer, merchant and mint (Figure~\ref{fig:cmm}) where the customer
+withdraws digital currency from the mint with unlinkability provided
+via blind signatures.  In contrast to Chaum, Taler uses online
+detection of double-spending, thus ensuring the merchant instantly
+that a transaction is valid.  Instead of using cryptographic methods
+to enable fractional payments, the customer can simply include
+the fraction of a coin's value that is to be paid to the merchant in
+his message to the merchant.
+
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+
+
+\tikzstyle{def} = [node distance= 7em and 10em, inner sep=1em, outer sep=.3em];
+\node (origin) at (0,0) {};
+\node (mint) [def,above=of origin,draw]{Mint};
+\node (customer) [def, draw, below left=of origin] {Customer};
+\node (merchant) [def, draw, below right=of origin] {Merchant};
+
+\tikzstyle{C} = [color=black, line width=1pt]
+\draw [<-, C] (customer) -- (mint) node [midway, above, sloped] (TextNode) {withdraw coins};
+\draw [<-, C] (mint) -- (merchant) node [midway, above, sloped] (TextNode) {deposit coins};
+\draw [<-, C] (merchant) -- (customer) node [midway, above, sloped] (TextNode) {spend coins};
+\end{tikzpicture}
+\caption{Taler's system model for the payment system is based on Chaum~\cite{chaum1983blind}.}
+\label{fig:cmm}
+\end{figure}
+
+Online fraud detection can create problems if the network fails during
+the initial steps of a transaction.  For example, a law enforcement
+agency might try to entrap a customer by offering illicit goods and
+then aborting the transaction after learning the public key of the
+coin.  If the customer were to then later spend that coin on a
+purchase with shipping, the law enforcement agency could link the two
+transactions and might be able to use the shipping to deanonymize the
+customer.  Similarly, fractional payments also lead to the
+possibility of customers wanting to legitimately use the same coin
+twice.  Taler addresses this problem by allowing customers to {\em
+  refresh} coins.  Refreshing means that a customer is able to
+exchange one coin for a fresh coin, with the old and the new coin
+being unlinkable (except for the customer himself).  Taler ensures
+that the {\em entity} of the user owning the new coin is the same as the
+entity of the user owning the old coin, thus making sure that the
+refreshing protocol cannot be abused for money laundering or other
+illicit transactions.
+
+
+\section{Related Work}
+
+\subsection{Blockchain-based currencies}
+
+In recent years, a class of decentralized electronic payment systems,
+based on collectively recorded and verified append-only public
+ledgers, have gained immense popularity.  The most well-known protocol
+in this class is Bitcoin~\cite{nakamoto2008bitcoin}.  An initial
+concern with Bitcoin was the lack of anonymity, as all Bitcoin
+transactions are recorded for eternity, which can enable
+identification of users.  In theory, this concern has been addressed
+with the Zerocoin extension to the protocol~\cite{miers2013zerocoin}.
+
+While these protocols dispense with the need for a central, trusted
+authority and provide anonymity, we argue there are some major,
+irredeemable problems inherent in these systems:
+
+\begin{itemize}
+  \item Bitcoins are not (easily) taxable.  The legality and legitimacy of
+    this aspect is questionable.  The Zerocoin extension would only make
+    this worse.
+  \item Bitcoins can not be bound to any fiat currency, and are subject to
+    significant value fluctuations.  While such fluctuations may be
+    acceptable for high-risk investments, they make Bitcoin unsuitable as
+    a medium of exchange.
+  \item The computational puzzles solved by Bitcoin nodes with the purpose
+    of securing the block chain
+    consume a considerable amount of computational resources and thus
+    energy.  Thus, Bitcoin does not represent an environmentally responsible
+    design.
+  \item Anyone can easily start an alternative Bitcoin transaction chain
+    (a so-called AltCoin) and, if successful, reap the benefits of the low
+    cost to initially create coins via computation.  As a result, dozens of
+    AltCoins have been created, often without any significant changes to the
+    technology.  A large number of AltCoins creates additional overheads for
+    currency exchange and exascerbates the problems with currency fluctuations.
+\end{itemize}
+
+\subsection{Chaum-style electronic cash}
+
+Chaum's original digital cash system~\cite{chaum1983blind} was
+extended by Brands~\cite{brands1993efficient} with the ability to
+perform fractional payments; however, the transactions performed with
+the same coin then become linkable.
+%
+%Some argue that the focus on technically perfect but overwhelmingly
+%complex protocols, as well as the the lack of usable, practical
+%solutions lead to an abandonment of these ideas by
+%practitioners~\cite{selby2004analyzing}.
+%
+To our knowledge, the only publicly available effort to implement
+Chaum's idea is
+Opencoin~\cite{dent2008extensions}.  However,
+Opencoin seems to be neither actively developed nor used, and it is
+not clear to what degree the implementation is even complete.  Only a
+partial description of the Opencoin protocol is available to date.
+
+\subsection{Peppercoin}
+
+Peppercoin~\cite{rivest2004peppercoin} is a microdonation protocol.
+The main idea of the protocol is to reduce transaction costs by
+minimizing the number of transactions that are processed directly by
+the mint.  Instead of always paying, the customer ``gambles'' with the
+merchant for each microdonation.  Only if the merchant wins, the
+microdonation is upgraded to a macropayment to be deposited at the
+mint.  Peppercoin does not provide customer-anonymity.  The proposed
+statistical method for mints detecting fraudulent cooperation between
+customers and merchants at the expense of the mint not only creates
+legal risks for the mint (who has to make a statistical argument), but
+also would require the mint to learn about microdonations where the
+merchant did not get upgraded to a macropayment.  Thus, it is unclear
+how much Peppercoin would actually do to reduce the computational
+burden on the mint.
+
+
+\section{Design}
+
+The payment system we propose is built on the blind signature
+primitive proposed by Chaum, but extended with additional
+constructions to provide unlinkability, online fraud detection and
+taxability.
+
+As with Chaum, the Taler system comprises three principal types of
+actors: The \emph{customer} is interested in receiving goods or
+services from the \emph{merchant} in exchange for payment.  When
+making a transaction, both the customer and the merchant must agree on
+the same \emph{mint}, which serves as an intermediary for the
+financial transaction between the two.  The mint is responsible for
+allowing the customer to obtain the anonymous digital currency and for
+enabling the merchant to convert the anonymous digital currency back
+to some traditional currency.
+
+\subsection{Security model}
+
+Taler's security model assumes that cryptographic primitives are
+secure and that each participant is under full control of his system.
+The contact information of the mint is known to both customer and
+merchant from the start.  Furthermore, the merchant is known to the
+customer and we assume that an anonymous, reliable bi-directional
+communication channel can be established by the customer to both the
+mint and the merchant.
+
+The mint is trusted to hold funds of its customers and to forward them
+when receiving the respective deposit instructions from the merchants.
+Customer and merchant can have some assurances about the mint's
+liquidity and operation, as the mint has proven reserves, is subject
+to the law, and can have its business is regularly audited (for
+example, by the government or a trusted third party auditor).
+Audits of the mint's accounts must reveal any possible fraud.
+%
+The merchant is trusted to deliver the service or goods to the
+customer upon receiving payment.  The customer can seek legal relief
+to achieve this, as he must get cryptographic proofs of the contract
+and that he paid his obligations.
+%
+Neither the merchant nor the customer may have any ability to {\em
+  effectively} defraud the mint or the state collecting taxes.  Here,
+``effectively'' means that the expected return for fraud is negative.
+%
+Note that customers do not need to be trusted in any way, and that in
+particular it is never necessary for anyone to try to recover funds
+from customers using legal means.
+
+
+\subsection{Taxability and Entities}
+
+Electronic coins are trivially copied between machines.  Thus, we must
+clarify what kinds of operations can even be expected to be taxed.
+After all, without instrusive measures to take away control of the
+computing platform from its users, copying an electronic wallet from
+one computer to another can hardly be prevented by a payment system.
+Furthermore, it would also hardly be appropriate to tax the moving of
+funds between two computers owned by the same individual.  We thus
+need to clarify which kinds of transfers we expect to tax.
+
+Taler is supposed to ensure that the state can tax {\em transactions}.
+We define a transaction as the transfer of funds between {\em mutually
+  distrustful} entities.  Two entities are assumed to be mutually
+distrustful if they are unwilling to share control over assets.  If a
+private key is shared between two entities, then both entities have
+equal access to the credentials represented by the private key.  In a
+payment system this means that either entity could spent the
+associated funds.  Assuming the payment system has effective
+double-spending detection, this means that either entity has to
+constantly fear that the funds might no longer be available to it.
+Thus, ``transfering'' funds by sharing a private key implies that
+receiving party must trust the sender.  In Taler, making funds
+available by sharing a private key and thus sharing control is {\bf
+  not} considered a {\em transaction} and thus {\bf not} recorded for
+taxation.
+
+A {\em transaction} is a transfer where it is assured that one entity
+gains control over funds while at the same time another entity looses
+control over those funds.  Taler ensures taxability only when some
+entity acquires exclusive control over digital coins.  For
+transactions, the state can obtain information from the mint (or the
+bank) that identifies the entity that received the digital coins as
+well as the exact value of those coins.  Taler also allows the mint
+(and thus the state) to learn the value of digital coins withdrawn by
+a customer --- but not how, where or when they were spent.  Finally,
+to enable audits, the current balance and profits of the mint are also
+easily determined.
+
+\subsection{Anonymity}
+
+An anonymous communication channel (e.g. via Tor~\cite{tor-design}) is
+used for all communication between the customer and the merchant.
+Thus, the customer can remain anonymous; however, the system does reveal
+that the customer is one of the patrons of the mint.  Naturally, the
+customer-merchant operation might leak other information about the
+customer, such as a shipping address.  Such purchase-specific
+information leakage is outside of the scope of this work.
+
+The customer may use an anonymous communication channel for the
+communication with the mint to avoid leaking IP address information;
+however, the mint will anyway be able to determine the customer's
+identity from the (SEPA) transfer that the customer initiates to
+obtain anonymous digital cash.  The scheme is anonymous
+because the mint will be unable to link the known identity of the
+customer that withdrew anonymous digital currency to the {\em
+  purchase} performed later at the merchant.
+%  All the mint will be
+%able to confirm is that the customer is {\em one} of its patrons who
+%previously obtained the anonymous digital currency --- and of course
+%that the coin was not spent before.
+
+While the customer thus has anonymity for his purchase, the mint will
+always learn the merchant's identity (which is necessary for
+taxation), and thus the merchant has no reason to anonymize his
+communication with the mint.
+% Technically, the merchant could still
+%use an anonymous communication channel to communicate with the mint.
+%However, in order to receive the traditional currency the mint will
+%require (SEPA) account details for the deposit.
+
+%As both the initial transaction between the customer and the mint as
+%well as the transactions between the merchant and the mint do not have
+%to be done anonymously, there might be a formal business contract
+%between the customer and the mint and the merchant and the mint.  Such
+%a contract may provide customers and merchants some assurance that
+%they will actually receive the traditional currency from the mint
+%given cryptographic proof about the validity of the transaction(s).
+%However, given the business overheads for establishing such contracts
+%and the natural goal for the mint to establish a reputation and to
+%minimize cost, it is more likely that the mint will advertise its
+%external auditors and proven reserves and thereby try to convince
+%customers and merchants to trust it without a formal contract.
+
+
+\subsection{Coins}
+
+A \emph{coin} is a digital token which derives its financial value
+from a signature on the coin's identifier by a mint.  The mint is
+expected to have multiple {\em coin signing key} pairs available for
+signing, each representing a different coin denomination.
+
+The coin signing keys have an expiration date (typically measured in
+years), and coins signed with a coin signing key must be spent (or
+exchanged for new coins) before that expiration date.  This allows the
+mint to limit the amount of state it needs to keep to detect
+double spending attempts.  Furthermore, the mint is expected to use each coin
+signing key only for a limited number of coins, for example by
+limiting its use to sign coins to a week or a month.  That way, if the
+private coin signing key were to be compromised, the mint can detect
+this once more coins are redeemed than the total that was signed into
+existence using the respective coin signing key.  In this case, the
+mint can allow the original set of customers to exchange the coins
+that were signed with the compromised private key, while refusing
+further transactions from merchants if they involve those coins.  As a
+result, the financial damage of loosing a private signing key can be
+limited to at most twice the amount originally signed with that key.
+To ensure that the mint does not enable deanonymization of users by
+signing each coin with a fresh coin signing key, the mint must
+publicly announce the coin signing keys in advance.  Those
+announcements are expected to be signed with an off-line long-term
+private {\em master signing key} of the mint and possibly the auditor.
+
+Before a customer can withdraw a coin from the mint, he has to pay the
+mint the value of the coin, as well as processing fees.  This is done
+using other means of payments, such as SEPA transfers~\cite{sepa}.
+The subject line of the transfer must contains {\em withdrawal
+  authorization key}, a public key for digital signatures generated by
+the customer.  When the mint receives a transfer with a public key in
+the subject, it adds the funds to a {\em reserve} identified by the
+withdrawl authorization key.  By signing the withdrawl messages using
+the withdrawl authorization key, the customer can prove to the mint
+that he is authorized to withdraw anonymous digital coins from the
+reserve.  The mint will record the withdrawl messages with the reserve
+record as proof that the anonymous digital coin was created for the
+correct customer.
+
+After a coin is minted, the customer is the only entity that knows the
+private key of the coin, making him the \emph{owner} of the coin.  The
+coin can be identified by the mint by its public key; however, due to
+the use of blind signatures, the mint does not learn the public key
+during the minting process.  Knowledge of the private key of the coin
+enables the owner to spent the coin.  If the private key is shared
+with others, they also become owners of the coin.
+
+\subsection{Coin spending}
+
+To spent a coin, the coin's owner needs to sign a {\em deposit
+  request} specifying the amount, the merchant's account information
+and a {\em business transaction-specific hash} using the coin's
+private key.  A merchant can then transfer this permission of the
+coin's owner to the mint to obtain the amount in traditional currency.
+If the customer is cheating and the coin was already spent, the mint
+provides cryptographic proof of the fraud to the merchant, who will
+then refuse the transaction.
+%  The mint is typically expected
+%to transfer the funds to the merchant using a SEPA transfer or similar
+%methods appropriate to the domain of the traditional currency.
+
+%The mint needs to ensure that a coin can only be spent once.  This is
+%done by storing the public keys of all deposited coins (together with
+%the deposit request and the owner's signature confirming the
+%transaction).  The mint's state can be limited as coins signed with
+%expired coin sigining keys do not have to be retained.
+
+\paragraph{Partial spending.}
+
+To allow exact payments without requiring the customer to keep a large
+amount of ``change'' in stock, the payment systems allows partial
+spending of coins.  Consequently, the mint the must not only store the
+identifiers of spent coins, but also the fraction of the coin that has
+been spent.
+
+%\paragraph{Online checks.}
+%
+%For secure transactions (non-microdonations), the merchant is expected
+%to perform an online check to detect double-spending. In the simplest
+%case, the merchant simply directly confirms the validity of the
+%deposit permission signed by the coin's owner with the mint, and then
+%proceeds with the contract.
+
+\paragraph{Incremental payments.}
+
+For services that include pay-as-you-go billing, customers can over
+time sign deposit permissions for an increasing fraction of the value
+of a coin to be paid to a particular merchant.  As checking with the
+mint for each increment might be expensive, the coin's owner can
+instead sign a {\em lock permission}, which allows the merchant to get
+an exclusive right to redeem deposit permissions for the coin for a
+limited duration.  The merchant uses the lock permission to determine
+if the coin has already been spent and to ensure that it cannot be
+spent by another merchant for the {\em duration} of the lock as
+specified in the lock permission.  If the coin has been spent or is
+already locked, the mint provides the owner's deposit or locking
+request and signature to prove the attempted fraud by the customer.
+Otherwise, the mint locks the coin for the expected duration of the
+transaction (and remembers the lock permission).  The merchant and the
+customer can then finalize the business transaction, possibly
+exchanging a series of incremental payment permissions for services.
+Finally, the merchant then redeems the coin at the mint before the
+lock permission expires to ensure that no other merchant spends the
+coin first.
+
+
+\paragraph{Probabilistic spending.}
+
+Similar to Peppercoin, Taler supports probabilistic spending of coins to
+support cost-effective transactions for small amounts.  Here, an
+ordinary transaction is performed based on the result of a biased coin
+flip with a probability related to the desired transaction amount in
+relation to the value of the coin.  Unlike Peppercoin, in Taler either
+the merchant wins and the customer looses the coin, or the merchant
+looses and the customer keeps the coin.  Thus, there is no opportunity
+for the merchant and the customer to conspire against the mint.  To
+determine if the coin is to be transferred, merchant and customer
+execute a secure coin flipping protocol~\cite{blum1981}.  The commit
+values are included in the business contract and are revealed after
+the contract has been signed using the private key of the coin.  If
+the coin flip is decided in favor of the merchant, the merchant can
+redeem the coin at the mint.
+
+One issue in this protocol is that the customer may use a worthless
+coin by offering a coin that has already been spent.  This kind of
+fraud would only be detected if the customer actually lost the coin
+flip, and at this point the merchant might not be able to recover from
+the loss.  A fradulent anonymous customer may run the protocol using
+already spent coins until the coin flip is in his favor.  As with
+incremental spending, lock permissions could be used to ensure that
+the customer cannot defraud the merchant by offering a coin that has
+already been spent.  However, as this means involving the mint even if
+the merchant looses the coin flip, such a scheme is unsuitable for
+microdonations as the transaction costs from involving the mint might
+be disproportionate to the value of the transaction, and thus with
+locking the probabilistic scheme has no advantage over simply using
+fractional payments.
+
+Hence, Taler uses probabilistic transactions {\em without} the online
+double-spending detection.  This enables the customer to defraud the
+merchant by paying with a coin that was already spent.  However, as,
+by definition, such microdonations are for tiny amounts, the incentive
+for customers to pursue this kind of fraud is limited.
+
+
+\subsection{Refreshing Coins}
+
+In the payment scenarios there are several cases where a customer will
+reveal the public key of a coin to a merchant, but not ultimately sign
+over the full value of the coin.  If the customer then continues to
+use the remainder of the value of the coin in other transactions,
+merchants and the mint could link the various transactions as they all
+share the same public key for the coin.
+
+Thus, the owner might want to exchange such a {\em dirty} coin for a
+{\em fresh} coin to ensure unlinkability of future transactions with
+the previous operation.  Even if a coin is not dirty, the owner of a
+coin may want to exchange a coin if the respective coin signing key is
+about to expire.  All of these operations are supported with the {\em
+  coin refreshing protocol}, which allows the owner of a coin to
+exchange existing coins (or their remaining value) for fresh coins
+with a new public-private key pairs.  Refreshing does not use the
+ordinary spending operation as the owner of a coin should not have to
+pay taxes on this operation.  Because of this, the refreshing protocol
+must assure that owner stays the same.  After all, the coin refreshing
+protocol must not be usable for transactions, as transactions in Taler
+must be taxable.
+
+Thus, one main goal of the refreshing protocol is that the mint must
+not be able to link the fresh coin's public key to the public key of
+the dirty coin.  The second main goal is to enable the mint to ensure
+that the owner of the dirty coin can determine the private key of the
+fresh coin.  This way, refreshing cannot be used to construct a
+transaction --- the owner of the dirty coin remains in control of the
+fresh coin.
+
+As with other operations, the refreshing protocol must also protect
+the mint from double-spending; similarly, the customer has to have
+cryptographic evidence if there is any misbehaviour by the mint.
+Finally, the mint may choose to charge a transaction fee for
+refreshing by reducing the value of the generated fresh coins
+in relation to the value of the melted coins.
+%Naturally, all such transaction fees should be clearly stated as part
+%of the business contract offered by the mint to customers and
+%merchants.
+
+
+\section{Taler's Cryptographic Protocols}
+
+% In this section, we describe the protocols for Taler in detail.
+
+For the sake of brevity, we do not specifically state that the
+recipient of a signed message always first checks that the signature
+is valid.  Also, whenever a signed message is transmitted, it is
+assumed that the receiver is told the public key (or knows it from the
+context) and that the signature contains additional identification as
+to the purpose of the signature (such that it is not possible to
+use a signature from one protocol step in a different context).
+
+When the mint signs messages (not coins), an {\em online message
+  signing key} of the mint is used.  The mint's long-term offline key
+is used to certify both the coin signing keys as well as the online
+message signing key of the mint.  The mint's long-term offline key is
+assumed to be well-known to both customers and merchants, for example
+because it is certified by the auditors.
+
+As we are dealing with financial transactions, we explicitly state
+whenever entities need to safely commit data to persistent storage.
+As long as those commitments persist, the protocol can be safely
+resumed at any step.  Commitments to disk are cummulative, that is an
+additional commitment does not erase the previously committed
+information.  Keys and thus coins always have a well-known expiration
+date; information committed to disk can be discarded after the
+expiration date of the respective public key.  Customers can also
+discard information once the respective coins have been fully spent,
+and merchants may discard information once payments from the mint have
+been received (assuming records are also no longer needed for tax
+authorities).  The mint's bank transfers dealing in traditional
+currency are expected to be recorded for tax authorities to ensure
+taxability.
+
+\subsection{Withdrawal}
+
+To withdraw anonymous digital coins, the customer performs the
+following interaction with the mint:
+
+\begin{enumerate}
+  \item The customer identifies a mint with an auditor-approved
+        coin signing public-private key pair $K := (K_s, K_p)$
+        and randomly generates:
+        \begin{itemize}
+           \item withdrawal key $W := (W_s,W_p)$ with private key $W_s$ and public key $W_p$,
+           \item coin key $C := (C_s,C_p)$ with private key $C_s$ and public key $C_p$,
+           \item blinding factor $b$,
+        \end{itemize}
+        and commits $\langle W, C, b \rangle$ to disk.
+  \item The customer transfers an amount of money corresponding to (at least) $K_p$ to the mint, with $W_p$ in the subject line of the transaction.
+  \item The mint receives the transaction and credits the $W_p$ reserve with the respective amount in its database.
+  \item The customer sends $S_W(E_b(C_p))$ to the mint to request withdrawl of $C$; here, $E_b$ denotes Chaum-style blinding with blinding factor $b$.
+  \item The mint checks if the same withdrawl request was issued before; in this case, it sends $S_{K}(E_b(C_p))$ to the customer.\footnote{Here $S_K$
+        denotes a Chaum-style blind signature with private key $K_s$.}
+        If this is a fresh withdrawl request, the mint performs the following transaction:
+        \begin{enumerate}
+           \item checks if the reserve $W_p$ has sufficient funds for a coin of value corresponding to $K_p$
+           \item stores the withdrawl request $\langle S_W(E_b(C_p)), S_K(E_b(C_p)) \rangle$ in its database for future reference,
+           \item deducts the amount corresponding to $K_p$ from the reserve,
+           \item and sends $S_{K}(E_b(C_p))$ to the customer.
+        \end{enumerate}
+        If the guards for the transaction fail, the mint sends an descriptive error back to the customer,
+        with proof that it operated correctly (i.e. by showing the transaction history for the reserve).
+  \item The customer computes (and verifies) the unblind signature $S_K(C_p) = D_b(S_K(E_b(C_p)))$.
+        The customer writes $\langle S_K(C_p), C_s \rangle$ to disk (effectively adding the coin to the
+        local wallet) for future use.
+\end{enumerate}
+
+\subsection{Exact, partial and incremental spending}
+
+A customer can spend coins at a merchant, under the condition that the
+merchant trusts the mint that minted the coin.  Merchants are
+identified by their public key $M := (M_s, M_p)$, which must be known
+to the customer apriori.
+
+The following steps describe the protocol between customer, merchant and mint
+for a transaction involving a coin $C := (C_s, C_p)$ which is previously signed
+by a mint's denomination key $K$, i.e. the customer posses
+$\widetilde{C} := S_K(C_p)$:
+
+\begin{enumerate}
+\item\label{offer} The merchant sends an \emph{offer:} $\langle S_M(m, f),
+  \vec{D} \rangle$ containing the price of the offer $f$, a transaction
+  ID $m$ and the list of mints $D_1, \ldots, D_n$ accepted by the merchant
+  where each $D_i$ is a mint's public key.
+\item\label{lock} The customer must possess or acquire a coin minted by a mint that is
+  accepted by the merchant, i.e. $K$ should be publicly signed by some $D_i
+  \in \{D_1, D_2, \ldots, D_n\}$, and has a value $\geq f$.
+
+  Customer then generates a \emph{lock-permission} $\mathcal{L} :=
+  S_c(\widetilde{C}, t, m, f, M_p)$ where $t$ specifies the time until which the
+  lock is valid and sends $\langle \mathcal{L}, D_i\rangle$ to the merchant,
+  where $D_i$ is the mint which signed $K$.
+\item The merchant asks the mint to apply the lock by sending $\langle
+  \mathcal{L} \rangle$ to the mint.
+\item The mint validates $\widetilde{C}$ and detects double spending if there is
+  a lock-permission record $S_c(\widetilde{C}, t', m', f', M_p')$ where $(t',
+  m', f', M_p') \neq (t, m, f, M_p)$ or a \emph{deposit-permission} record for
+  $C$ and sends it to the merchant, who can then use it prove to the customer
+  and subsequently ask the customer to issue a new lock-permission.
+
+  If double spending is not found, the mint commits $\langle \mathcal{L} \rangle$ to disk
+  and notifies the merchant that locking was successful.
+\item\label{contract} The merchant creates a digitally signed contract
+  $\mathcal{A} := S_M(m, f, a, H(p, r))$ where $a$ is data relevant to the contract
+  indicating which services or goods the merchant will deliver to the customer, and $p$ is the
+  merchant's payment information (e.g. his IBAN number) and $r$ is an random nounce.
+  The merchant commits $\langle \mathcal{A} \rangle$ to disk and sends it to the customer.
+\item The customer creates a
+  \emph{deposit-permission} $\mathcal{D} := S_c(\widetilde{C}, f, m, M_p, H(a), H(p, r))$, commits
+  $\langle \mathcal{A}, \mathcal{D} \rangle$ to disk and sends $\mathcal{D}$ to the merchant.
+\item\label{invoice_paid} The merchant commits the received $\langle \mathcal{D} \rangle$ to disk.
+\item The merchant gives $(\mathcal{D}, p, r)$ to the mint, revealing his
+  payment information.
+\item The mint verifies $(\mathcal{D}, p, r)$ for its validity.  A
+  \emph{deposit-permission} for a coin $C$ is valid if:
+  \begin{itemize}
+  \item $C$ is not refreshed already
+  \item there exists no other \emph{deposit-permission} on disk for \\
+    $\mathcal{D'} := S_c(\widetilde{C}, f', m', M_p', H(a'), H(p', r'))$ for $C$
+    such that \\ $(f', m',M_p', H(a')) \neq (f, m, M_p, H(a))$
+  \item  $H(p, r) := H(p', r')$
+  \end{itemize}
+  If $C$ is valid and no other \emph{deposit-permission} for $C$ exists on disk, the
+  mint does the following:
+  \begin{enumerate}
+    \item if a \emph{lock-permission} exists for $C$, it is deleted from disk
+    \item\label{transfer} transfers an amount of $f$ to the merchant's bank account
+      given in $p$.  The subject line of the transaction to $p$ must contain
+      $H(\mathcal{D})$.
+    \item $\langle \mathcal{D}, p, r \rangle$ is commited to disk.
+  \end{enumerate}
+  If the deposit record $\langle \mathcal{D}, p, r \rangle$ already exists,
+  the mint sends it to the merchant, but does not transfer money to $p$ again.
+\end{enumerate}
+
+To facilitate incremental spending of a coin $C$ in a single transaction, the
+merchant makes an offer in Step~\ref{offer} with a maximum amount $f_{max}$ he
+is willing to charge in this transaction from the coin $C$.  After obtaining the
+lock on $C$ for $f_{max}$, the merchant makes a contract in Step~\ref{contract}
+with an amount $f \leq f_{max}$.  The protocol follows with the following steps
+repeated after Step~\ref{invoice_paid} whenever the merchant wants to charge an
+incremental amount up to $f_{max}$:
+
+\begin{enumerate}
+  \setcounter{enumi}{4}
+\item The merchant generates a new contract $ \mathcal{A}' := S_M(m, f', a', H(p,
+  r)) $ after obtaining the deposit-permission for a previous contract.  Here
+  $f'$ is the accumulated sum the merchant is charging the customer, of which
+  the merchant has received a deposit-permission for $f$ from the previous
+  contract \textit{i.e.}~$f <f' \leq f_{max}$.  Similarly $a'$ is the new
+  contract data appended to older contract data $a$.
+  The merchant commits $\langle \mathcal{A}' \rangle$ to disk and sends it to the customer.
+\item Customer commits $\langle \mathcal{A}' \rangle$ to disk, creates
+  $\mathcal{D}' := S_c(\widetilde{C}, f', m, M_p, H(a'), H(p, r))$, commits
+  $\langle \mathcal{D'} \rangle$ and sends it to the merchant.
+\item The merchant commits the received $\langle \mathcal{D'} \rangle$ and
+  deletes the older $\mathcal{D}$
+\end{enumerate}
+
+%Figure~\ref{fig:spending_protocol_interactions} summarizes the interactions of the
+%coin spending protocol.
+
+For transactions with multiple coins, the steps of the protocol are executed in
+parallel for each coin.
+
+During the time a coin is locked, it may not be spent at a
+different merchant.  To make the storage costs of the mint more predictable,
+only one lock per coin can be active at any time, even if the lock only covers a
+fraction of the coin's denomination.  The mint will delete the locks when they
+expire.  Thus the coins can be reused once their locks expire.  However, doing
+so may link the new transaction to older transaction.
+
+Similarly, if a transaction is aborted after Step 2, subsequent transactions
+with the same coin can be linked to the coin, but not directly to the coin's
+owner.  The same applies to partially spent coins.  To unlink subsequent
+transactions from a coin, the customer has to execute the coin refreshing
+protocol with the mint.
+
+%\begin{figure}[h]
+%\centering
+%\begin{tikzpicture}
+%
+%\tikzstyle{def} = [node distance= 1em, inner sep=.5em, outer sep=.3em];
+%\node (origin) at (0,0) {};
+%\node (offer) [def,below=of origin]{make offer (merchant $\rightarrow$ customer)};
+%\node (A) [def,below=of offer]{permit lock (customer $\rightarrow$ merchant)};
+%\node (B) [def,below=of A]{apply lock (merchant $\rightarrow$ mint)};
+%\node (C) [def,below=of B]{confirm (or refuse) lock (mint $\rightarrow$ merchant)};
+%\node (D) [def,below=of C]{sign contract (merchant $\rightarrow$ customer)};
+%\node (E) [def,below=of D]{permit deposit (customer $\rightarrow$ merchant)};
+%\node (F) [def,below=of E]{make deposit (merchant $\rightarrow$ mint)};
+%\node (G) [def,below=of F]{transfer confirmation (mint $\rightarrow$ merchant)};
+%
+%\tikzstyle{C} = [color=black, line width=1pt]
+%\draw [->,C](offer) -- (A);
+%\draw [->,C](A) -- (B);
+%\draw [->,C](B) -- (C);
+%\draw [->,C](C) -- (D);
+%\draw [->,C](D) -- (E);
+%\draw [->,C](E) -- (F);
+%\draw [->,C](F) -- (G);
+%
+%\draw [->,C, bend right, shorten <=2mm] (E.east)
+%      to[out=-135,in=-45,distance=3.8cm] node[left] {aggregate} (D.east);
+%\end{tikzpicture}
+%\caption{Interactions between a customer, merchant and mint in the coin spending
+%  protocol}
+%\label{fig:spending_protocol_interactions}
+%\end{figure}
+
+
+\subsection{Probabilistic spending}
+
+The following steps are executed for microdonations with upgrade probability $p$:
+\begin{enumerate}
+  \item The merchant sends an offer to the customer.
+  \item The customer sends a commitment $H(r_c)$ to a random
+    value $r_c \in [0,2^R)$, where $R$ is a system parameter.
+  \item The merchant sends random $r_m \in [0,2^R)$ to the customer.
+    \item The customer computes $p' := (|r_c - r_m|) / (2^R)$.
+    If $p' < p$, the customer sends a coin with deposit-permission to the merchant.
+    Otherwise, the customer sends $r_c$ to the merchant.
+  \item The merchant deposits the coin, or checks if $r_c$ is consistent
+    with $H(r_c)$.
+\end{enumerate}
+
+\subsection{Refreshing}
+
+The following protocol is executed in order to refresh a coin $C'$ of denomination $K$ to
+a fresh coin $\widetilde{C}$ with the same denomination. In the protocol, $\kappa \ge 3$ is a security parameter.
+
+\begin{enumerate}
+  \item For each $i = 1,\ldots,\kappa$, the customer
+    \begin{itemize}
+      \item randomly generates transfer key $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$ where $T^{(i)}_p := t^{(i)}_s \cdot G$,
+      \item randomly generates coin key pair $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$ where $C^{(i)}_p := c^{(i)}_s \cdot G$,
+      \item randomly generates blinding factors $b_i$,
+      \item computes $E_i := E_{K_i}\left(c_s^{(i)}, b_i\right)$ where $K_i := c'_s \cdot T_p^{(i)}$ (The encryption key $K_i$ is
+            computed by multiplying the private key $c'_s$ of the original coin with the point on the curve
+            that represents the public key of the transfer key $T^{(i)}$.),
+    \end{itemize}
+    and commits $\langle C', \vec{T}, \vec{C}, \vec{b} \rangle$ to disk.
+  \item The customer computes $B_i := E_{b_i}(C^{(i)}_p)$ and sends commitments
+    $S_{C'}(\vec{E}, \vec{B}, \vec{T}))$ for $i=1,\ldots,\kappa$ to the mint;
+    here $E_{b_i}$ denotes Chaum-style blinding with blinding factor $b_i$.
+  \item The mint generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
+    marks $C'_p$ as spent by committing
+    $\langle C', \gamma, S_{C'}(\vec{E}, \vec{B}, \vec{T}) \rangle$ to disk
+  \item The mint sends $S_K(C'_p, \gamma)$ to the customer.\footnote{Instead of $K$, it is also
+    possible to use any equivalent mint signing key known to the customer here, as $K$ merely 
+    serves as proof to the customer that the mint selected this particular $\gamma$.}
+  \item The customer commits $\langle C', S_K(C'_p, \gamma) \rangle$ to disk.
+  \item The customer computes $\mathfrak{R} := \left(t_s^{(i)}, C_p^{(i)}, b_i\right)_{i \ne \gamma}$
+        and sends $S_{C'}(\mathfrak{R})$ to the mint.
+  \item \label{step:refresh-ccheck} The mint checks whether $\mathfrak{R}$ is consistent with the commitments;
+        specifically, it computes for $i \not= \gamma$:
+    \begin{itemize}
+      \item $\overline{K}_i := t_s^{(i)} \cdot C_p'$,
+      \item $(\overline{c}_s^{(i)}, \overline{b}_i) := D_{\overline{K}_i}(E_i)$,
+      \item $\overline{C}^{(i)}_p := \overline{c}_s^{(i)} \cdot G$,
+      \item $\overline{B}_i := E_{b_i}(C_p^{(i)})$,
+      \item $\overline{T}_i := t_s^{(i)} G$,
+    \end{itemize}
+    and checks if $\overline{C}^{(i)}_p = C^{(i)}_p$ and $H(E_i, \overline{B}_i, \overline{T}^{(i)}_p) = H(E_i, B_i, T^{(i)}_p)$
+    and $\overline{T}_i = T_i$.
+
+  \item \label{step:refresh-done} If the commitments were consistent, the mint sends the blind signature
+    $\widetilde{C} := S_{K}(B_\gamma)$ to the customer.
+    Otherwise, the mint responds with an error and confiscates the value of $C'$,
+    committing $\langle C', \gamma, S_{C'}(\mathfrak{R}) \rangle$ to disk as proof for the attempted fraud.
+\end{enumerate}
+
+%\subsection{N-to-M Refreshing}
+%
+%TODO: Explain, especially subtleties regarding session key / the spoofing attack that requires signature.
+
+\subsection{Linking}
+
+For a coin that was successfully refreshed, the mint responds to
+a request $S_{C'}(\mathtt{link})$ with $(T^{(\gamma)}_p$, $E_{\gamma}, \widetilde{C})$.
+
+This allows the owner of the old coin to also obtain the private key
+of the new coin, even if the refreshing protocol was illicitly
+executed by another party who learned $C'_s$ from the old owner.
+
+
+\section{Discussion}
+
+\subsection{Offline Payments}
+
+Chaum's original proposals for anonymous digital cash avoided the
+locking and online spending steps detailed in this proposal by
+providing a means to deanonymize customers involved in
+double-spending.  We believe that this is problematic as the mint or
+the merchant will then still need out-of-band means to recover funds
+from the customer, which may be impossible in practice.  In contrast,
+in our design only the mint may try to defraud the other participants
+and disappear.  While this is still a risk, this is likely manageable,
+especially compared to recovering funds via the court system from
+customers.
+
+
+\subsection{Bona-fide microdonations}
+
+Evidently the customer can ``cheat'' by aborting the transaction in
+Step 3 of the microdonation protocol if the outcome is unfavourable ---
+and repeat until he wins.  This is why Taler is suitable for
+microdonations --- where the customer voluntarily contributes ---
+and not for micropayments.
+
+Naturally, if the donations requested are small, the incentive to
+cheat for minimal gain should be quite low.  Payment software could
+embrace this fact by providing an appeal to conscience in form of an
+option labeled ``I am unethical and want to cheat'', which executes
+the dishonest version of the payment protocol.
+
+If an organization detects that it cannot support itself with
+microdonations, it can always choose to switch to the macropayment
+system with slightly higher transaction costs to remain in business.
+
+\subsection{Merchant Tax Audits}
+
+For a tax audit on the merchant, the mint includes the business
+transaction-specific hash in the transfer of the traditional
+currency.  A tax auditor can then request the merchant to reveal
+(meaningful) details about the business transaction ($\mathcal{D}$,
+$a$, $p$, $r$), including proof that applicable taxes were paid.
+
+If a merchant is not able to provide theses values, he can be punished
+in relation to the amount transferred by the traditional currency
+transfer.
+
+
+\section{Future Work}
+
+%The legal status of the system needs to be investigated in the various
+%legal systems of the world.  However, given that the system enables
+%taxation and is able to impose withdrawl limits and thus is not
+%suitable for money laundering, we are optimistic that states will find
+%the design desirable.
+
+We did not yet perform performance measurements for the various
+operations.  However, we are pretty sure that the computational and
+bandwidth cost for transactions described in this paper is likely
+small compared to other business costs for the mint.  We expect costs
+within the system to be dominated by the (replicated, transactional)
+database.  However, these expenses are again likely small in relation
+to the business cost of currency transfers using traditional banking.
+Here, mint operators should be able to reduce their expenses by
+aggregating multiple transfers to the same merchant.
+
+
+\section{Conclusion}
+
+We have presented an efficient electronic payment system that
+simultaneously addresses the conflicting objectives created by the
+citizen's need for privacy and the state's need for taxation.  The
+coin refreshing protocol makes the design flexible and enables a
+variety of payment methods.  The libre implementation and open
+protocol may finally enable modern society to upgrade to proper
+electronic wallets with efficient, secure and privacy-preserving
+transactions.
+
+\bibliographystyle{alpha}
+\bibliography{taler}
+\end{document}

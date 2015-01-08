@@ -1,0 +1,131 @@
+AM_CPPFLAGS = -I$(top_srcdir)/src/include $(POSTGRESQL_CPPFLAGS)
+
+lib_LTLIBRARIES = \
+  libtalermint.la \
+  libtalermintapi.la
+
+libtalermint_la_SOURCES = \
+  mint_common.c \
+  mint_db.c
+
+libtalermint_la_LIBADD = \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil \
+  -lpq
+
+libtalermint_la_LDFLAGS = \
+  $(POSTGRESQL_LDFLAGS) \
+  -version-info 0:0:0 \
+  -no-undefined
+
+libtalermintapi_la_SOURCES = \
+  mint_api.c
+
+libtalermintapi_la_LIBADD = \
+  -lgnunetutil \
+  -ljansson \
+  -lcurl
+
+libtalermintapi_la_LDFLAGS = \
+  -version-info 0:0:0 \
+  -no-undefined
+
+
+bin_PROGRAMS = \
+  taler-mint-keyup \
+  taler-mint-keycheck \
+  taler-mint-reservemod \
+  taler-mint-httpd \
+  taler-mint-dbinit
+
+taler_mint_keyup_SOURCES = \
+  taler-mint-keyup.c
+
+taler_mint_keyup_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/mint/libtalermint.la \
+  -lpq \
+  -lgnunetutil
+taler_mint_keyup_LDFLAGS = $(POSTGRESQL_LDFLAGS)
+
+
+taler_mint_keycheck_SOURCES = \
+  taler-mint-keycheck.c
+
+taler_mint_keycheck_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/mint/libtalermint.la \
+  -lgnunetutil \
+  -lpq
+taler_mint_keycheck_LDFLAGS = $(POSTGRESQL_LDFLAGS)
+
+taler_mint_reservemod_SOURCES = \
+  taler-mint-reservemod.c
+taler_mint_reservemod_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/mint/libtalermint.la \
+  -lpq \
+  -lgnunetutil
+taler_mint_reservemod_LDFLAGS = \
+  $(POSTGRESQL_LDFLAGS)
+
+taler_mint_httpd_SOURCES = \
+  taler-mint-httpd.c \
+  taler-mint-httpd_mhd.c \
+  taler-mint-httpd_keys.c \
+  taler-mint-httpd_deposit.c \
+  taler-mint-httpd_withdraw.c \
+  taler-mint-httpd_refresh.c
+taler_mint_httpd_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/mint/libtalermint.la \
+  -lpq \
+  -lmicrohttpd \
+  -ljansson \
+  -lgnunetutil \
+  -lpthread
+taler_mint_httpd_LDFLAGS = \
+  $(POSTGRESQL_LDFLAGS)
+
+
+taler_mint_dbinit_SOURCES = \
+  taler-mint-dbinit.c
+taler_mint_dbinit_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/mint/libtalermint.la \
+  -lpq \
+  -lgnunetutil
+taler_mint_dbinit_LDFLAGS = $(POSTGRESQL_LDFLAGS)
+
+check_PROGRAMS = \
+  test-mint-api \
+  test-mint-deposits \
+  test-mint-common
+
+test_mint_api_SOURCES = test_mint_api.c
+test_mint_api_LDADD = \
+  libtalermintapi.la \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil \
+  -ljansson
+
+test_mint_deposits_SOURCES = \
+  test_mint_deposits.c
+test_mint_deposits_LDADD = \
+  libtalermint.la \
+  $(top_srcdir)/src/util/libtalerutil.la \
+  -lgnunetutil \
+  -lpq
+
+test_mint_common_SOURCES = \
+  test_mint_common.c
+test_mint_common_LDADD = \
+  libtalermint.la \
+  $(top_srcdir)/src/util/libtalerutil.la \
+  -lgnunetutil

@@ -1,0 +1,12 @@
+*.aux
+*.dvi
+*.log
+*.pdf
+*.out
+*.snm
+*.toc
+*.vrb
+*.nav
+*/auto
+api-sphinx/_build
+api-sphinx/*.html
