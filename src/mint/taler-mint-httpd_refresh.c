@@ -118,7 +118,7 @@ refresh_accept_denoms (struct MHD_Connection *connection,
                        const struct MintKeyState *key_state,
                        const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
                        const json_t *root,
-                       struct TALER_HashContext *hash_context,
+                       struct GNUNET_HashContext *hash_context,
                        struct TALER_Amount *r_amount)
 {
   unsigned i;
@@ -154,7 +154,7 @@ refresh_accept_denoms (struct MHD_Connection *connection,
 
     dki = TALER_MINT_get_denom_key (key_state, &denom_pub);
 
-    TALER_hash_context_read (hash_context,
+    GNUNET_CRYPTO_hash_context_read (hash_context,
                              &denom_pub, sizeof (struct TALER_RSA_PublicKeyBinaryEncoded));
 
     cost = TALER_amount_add (TALER_amount_ntoh (dki->value),
@@ -307,7 +307,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
                       const struct MintKeyState *key_state,
                       const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
                       json_t *root,
-                      struct TALER_HashContext *hash_context,
+                      struct GNUNET_HashContext *hash_context,
                       struct TALER_Amount *r_melt_balance)
 {
   size_t i;
@@ -350,7 +350,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
       return res;
     }
 
-    TALER_hash_context_read (hash_context,
+    GNUNET_CRYPTO_hash_context_read (hash_context,
                              &coin_public_info.coin_pub, sizeof (struct GNUNET_CRYPTO_EddsaPublicKey));
 
     dki = TALER_MINT_get_denom_key (key_state, &coin_public_info.denom_pub);
@@ -442,7 +442,7 @@ helper_refresh_send_melt_response (struct MHD_Connection *connection,
   int res;
   json_t *root;
   json_t *list;
-  struct TALER_HashContext hash_context;
+  struct GNUNET_HashContext *hash_context;
 
   if (GNUNET_OK !=
       (res = TALER_MINT_DB_get_refresh_session (db_conn,
@@ -458,7 +458,7 @@ helper_refresh_send_melt_response (struct MHD_Connection *connection,
   list = json_array ();
   json_object_set_new (root, "blind_session_pubs", list);
 
-  TALER_hash_context_start (&hash_context);
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
 
   {
     struct RefreshMeltResponseSignatureBody body;
@@ -466,7 +466,7 @@ helper_refresh_send_melt_response (struct MHD_Connection *connection,
 
     body.purpose.size = htonl (sizeof (struct RefreshMeltResponseSignatureBody));
     body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_RESPONSE);
-    TALER_hash_context_finish (&hash_context, &body.melt_response_hash);
+    GNUNET_CRYPTO_hash_context_finish (hash_context, &body.melt_response_hash);
     sig_json = sign_as_json (&body.purpose);
     GNUNET_assert (NULL != sig_json);
     json_object_set (root, "signature", sig_json);
@@ -588,7 +588,7 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   struct MintKeyState *key_state;
   struct TALER_Amount requested_cost;
   struct TALER_Amount melt_balance;
-  struct TALER_HashContext hash_context;
+  struct GNUNET_HashContext *hash_context;
   struct GNUNET_HashCode melt_hash;
 
   res = process_post_json (connection,
@@ -666,16 +666,16 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   /* Write requested denominations to the DB,
    * and sum the costs (value plus fees) */
 
-  TALER_hash_context_start (&hash_context);
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
 
   if (GNUNET_OK != (res = refresh_accept_denoms (connection, db_conn, key_state,
                                                  &refresh_session_pub, root,
-                                                 &hash_context,
+                                                 hash_context,
                                                  &requested_cost)))
   {
     TALER_MINT_key_state_release (key_state);
     TALER_MINT_DB_rollback (db_conn);
-    // FIXME: hash_context_end?
+    GNUNET_CRYPTO_hash_context_abort (hash_context);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
 
@@ -683,15 +683,16 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
 
   if (GNUNET_OK != (res = refresh_accept_melts (connection, db_conn, key_state,
                                                 &refresh_session_pub, root,
-                                                &hash_context,
+                                                hash_context,
                                                 &melt_balance)))
   {
     TALER_MINT_key_state_release (key_state);
     GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+    GNUNET_CRYPTO_hash_context_abort (hash_context);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
 
-  TALER_hash_context_finish (&hash_context, &melt_hash);
+  GNUNET_CRYPTO_hash_context_finish (hash_context, &melt_hash);
 
   TALER_MINT_key_state_release (key_state);
 
@@ -800,7 +801,7 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
   struct RefreshSession refresh_session;
   int i;
   struct GNUNET_HashCode commit_hash;
-  struct TALER_HashContext hash_context;
+  struct GNUNET_HashContext *hash_context;
   json_t *root;
 
   res = process_post_json (connection,
@@ -880,7 +881,7 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
     return MHD_NO;
   }
 
-  TALER_hash_context_start (&hash_context);
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
 
   for (i = 0; i < refresh_session.kappa; i++)
   {
@@ -903,10 +904,11 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
         // FIXME: return 'internal error'?
         GNUNET_break (0);
         GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+        GNUNET_CRYPTO_hash_context_abort (hash_context);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
 
-      TALER_hash_context_read (&hash_context,
+      GNUNET_CRYPTO_hash_context_read (hash_context,
                                &commit_coin.coin_ev,
                                sizeof (struct TALER_RSA_BlindedSignaturePurpose));
 
@@ -922,10 +924,11 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
         // FIXME: return 'internal error'?
         GNUNET_break (0);
         GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+        GNUNET_CRYPTO_hash_context_abort (hash_context);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
 
-      TALER_hash_context_read (&hash_context,
+      GNUNET_CRYPTO_hash_context_read (hash_context,
                                commit_coin.link_enc,
                                TALER_REFRESH_LINK_LENGTH);
 
@@ -940,6 +943,7 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
         // FIXME: return 'internal error'?
         GNUNET_break (0);
         GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+        GNUNET_CRYPTO_hash_context_abort (hash_context);
         return MHD_NO;
       }
     }
@@ -964,10 +968,11 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
       {
         GNUNET_break (GNUNET_SYSERR != res);
         GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+        GNUNET_CRYPTO_hash_context_abort (hash_context);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
 
-      TALER_hash_context_read (&hash_context,
+      GNUNET_CRYPTO_hash_context_read (hash_context,
                                &commit_link.transfer_pub,
                                sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey));
 
@@ -983,10 +988,11 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
       {
         GNUNET_break (GNUNET_SYSERR != res);
         GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+        GNUNET_CRYPTO_hash_context_abort (hash_context);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
 
-      TALER_hash_context_read (&hash_context,
+      GNUNET_CRYPTO_hash_context_read (hash_context,
                                commit_link.shared_secret_enc,
                                TALER_REFRESH_SHARED_SECRET_LENGTH);
 
@@ -999,12 +1005,14 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
         // FIXME: return 'internal error'?
         GNUNET_break (0);
         GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+        GNUNET_CRYPTO_hash_context_abort (hash_context);
+
         return MHD_NO;
       }
     }
   }
 
-  TALER_hash_context_finish (&hash_context, &commit_hash);
+  GNUNET_CRYPTO_hash_context_finish (hash_context, &commit_hash);
 
   {
     struct RefreshCommitSignatureBody body;

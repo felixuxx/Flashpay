@@ -31,13 +31,13 @@ int main()
   char data[1234];
   struct GNUNET_HashCode hc1;
   struct GNUNET_HashCode hc2;
-  struct TALER_HashContext hctx;
+  struct GNUNET_HashContext hctx;
 
   memset (data, 42, LEN);
 
-  TALER_hash_context_start (&hctx);
-  TALER_hash_context_read (&hctx, data, LEN);
-  TALER_hash_context_finish (&hctx, &hc1);
+  GNUNET_CRYPTO_hash_context_start (&hctx);
+  GNUNET_CRYPTO_hash_context_read (&hctx, data, LEN);
+  GNUNET_CRYPTO_hash_context_finish (&hctx, &hc1);
 
   GNUNET_CRYPTO_hash (data, LEN, &hc2);
 

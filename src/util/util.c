@@ -462,30 +462,6 @@ TALER_refresh_encrypt (const void *input, size_t input_size, const struct GNUNET
 }
 
 
-void
-TALER_hash_context_start (struct TALER_HashContext *hc)
-{
-  GNUNET_assert (0 == gcry_md_open (&hc->hd, GCRY_MD_SHA512, 0));
-}
-
-
-void
-TALER_hash_context_read (struct TALER_HashContext *hc, void *buf, size_t size)
-{
-  gcry_md_write (hc->hd, buf, size);
-}
-
-
-void
-TALER_hash_context_finish (struct TALER_HashContext *hc,
-                           struct GNUNET_HashCode *r_hash)
-{
-  void *res = gcry_md_read (hc->hd, 0);
-  GNUNET_assert (NULL != res);
-  if (NULL != r_hash)
-    memcpy (r_hash, res, sizeof (struct GNUNET_HashCode));
-  gcry_md_close (hc->hd);
-}
 
 
 /* end of util.c */

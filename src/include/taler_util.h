@@ -79,11 +79,6 @@ struct TALER_AmountNBO
 
 GNUNET_NETWORK_STRUCT_END
 
-struct TALER_HashContext
-{
-  gcry_md_hd_t hd;
-};
-
 
 
 /**
@@ -230,16 +225,5 @@ TALER_refresh_encrypt (const void *input, size_t input_size, const struct GNUNET
 
 
 
-void
-TALER_hash_context_start (struct TALER_HashContext *hc);
-
-
-void
-TALER_hash_context_read (struct TALER_HashContext *hc, void *buf, size_t size);
-
-
-void
-TALER_hash_context_finish (struct TALER_HashContext *hc,
-                           struct GNUNET_HashCode *r_hash);
 
 #endif
