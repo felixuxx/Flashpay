@@ -1,6 +1,6 @@
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
-#include "taler_microhttpd_lib.h"
+#include "taler-mint-httpd_json.h"
 
 
 

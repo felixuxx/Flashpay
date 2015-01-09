@@ -27,7 +27,7 @@
 #include <microhttpd.h>
 #include <libpq-fe.h>
 #include <pthread.h>
-#include "taler_microhttpd_lib.h"
+#include "taler-mint-httpd_json.h"
 #include "taler-mint-httpd.h"
 #include "taler-mint-httpd_mhd.h"
 

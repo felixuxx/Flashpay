@@ -7,7 +7,6 @@ libtalerutil_la_SOURCES = \
   util.c \
   json.c \
   db.c \
-  microhttpd.c \
   rsa.c
 
 libtalerutil_la_LIBADD = \

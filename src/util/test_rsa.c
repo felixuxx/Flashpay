@@ -1,3 +1,7 @@
+/* NOTE: this is obsolete logic, we should migrate to the
+   GNUNET_CRYPTO_rsa-API as soon as possible */
+
+
 /*
   This file is part of TALER
   (C) 2014 Christian Grothoff (and other contributing authors)

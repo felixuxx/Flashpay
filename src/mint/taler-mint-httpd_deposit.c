@@ -32,7 +32,7 @@
 #include "taler_signatures.h"
 #include "taler_rsa.h"
 #include "taler_json_lib.h"
-#include "taler_microhttpd_lib.h"
+#include "taler-mint-httpd_json.h"
 #include "taler-mint-httpd_keys.h"
 #include "taler-mint-httpd_deposit.h"
 
