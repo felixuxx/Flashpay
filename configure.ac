@@ -152,5 +152,6 @@ AC_CONFIG_FILES([Makefile
                  src/include/Makefile
                  src/util/Makefile
                  src/mint/Makefile
+                 src/lib/Makefile
                  ])
 AC_OUTPUT

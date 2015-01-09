@@ -28,7 +28,6 @@
 #include <pthread.h>
 #include "mint.h"
 #include "mint_db.h"
-#include "taler_types.h"
 #include "taler_signatures.h"
 #include "taler_rsa.h"
 #include "taler_json_lib.h"
@@ -152,10 +151,11 @@ refresh_accept_denoms (struct MHD_Connection *connection,
     if (GNUNET_OK != res)
       return res;
 
-    dki = TALER_MINT_get_denom_key (key_state, &denom_pub);
+    dki = &(TALER_MINT_get_denom_key (key_state, &denom_pub)->issue);
 
     GNUNET_CRYPTO_hash_context_read (hash_context,
-                             &denom_pub, sizeof (struct TALER_RSA_PublicKeyBinaryEncoded));
+                                     &denom_pub,
+                                     sizeof (struct TALER_RSA_PublicKeyBinaryEncoded));
 
     cost = TALER_amount_add (TALER_amount_ntoh (dki->value),
                              TALER_amount_ntoh (dki->fee_withdraw));
@@ -353,7 +353,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
     GNUNET_CRYPTO_hash_context_read (hash_context,
                              &coin_public_info.coin_pub, sizeof (struct GNUNET_CRYPTO_EddsaPublicKey));
 
-    dki = TALER_MINT_get_denom_key (key_state, &coin_public_info.denom_pub);
+    dki = &(TALER_MINT_get_denom_key (key_state, &coin_public_info.denom_pub)->issue);
 
     if (NULL == dki)
       return (MHD_YES == request_send_json_pack (connection, MHD_HTTP_NOT_FOUND,
@@ -1344,7 +1344,7 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
   {
     struct RefreshCommitCoin commit_coin;
     struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
-    struct TALER_MINT_DenomKeyIssue *dki;
+    struct TALER_MINT_DenomKeyIssuePriv *dki;
     struct TALER_RSA_Signature ev_sig;
 
     res = TALER_MINT_DB_get_refresh_commit_coin (db_conn,

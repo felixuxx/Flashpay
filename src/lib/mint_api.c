@@ -20,14 +20,13 @@
  * @brief Implementation of the client interface to mint's HTTP API
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
-
 #include "platform.h"
 #include <curl/curl.h>
 #include <jansson.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_mint_service.h"
 #include "taler_signatures.h"
-#include "mint.h"
+
 
 #define CURL_STRERROR(TYPE, FUNCTION, CODE)      \
  GNUNET_log (TYPE, "cURL function `%s' has failed at `%s:%d' with error: %s", \

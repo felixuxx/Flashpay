@@ -7,5 +7,4 @@ talerinclude_HEADERS = \
   taler_mint_service.h \
   taler_rsa.h \
   taler_signatures.h \
-  taler_types.h \
   taler_util.h

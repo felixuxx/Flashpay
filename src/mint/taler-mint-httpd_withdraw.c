@@ -28,7 +28,6 @@
 #include <pthread.h>
 #include "mint.h"
 #include "mint_db.h"
-#include "taler_types.h"
 #include "taler_signatures.h"
 #include "taler_rsa.h"
 #include "taler_json_lib.h"
@@ -79,7 +78,7 @@ static void
 sign_reserve (struct Reserve *reserve,
               struct MintKeyState *key_state)
 {
-  reserve->status_sign_pub = key_state->current_sign_key_issue.signkey_pub;
+  reserve->status_sign_pub = key_state->current_sign_key_issue.issue.signkey_pub;
   reserve->status_sig_purpose.purpose = htonl (TALER_SIGNATURE_RESERVE_STATUS);
   reserve->status_sig_purpose.size = htonl (sizeof (struct Reserve) -
                                           offsetof (struct Reserve, status_sig_purpose));
@@ -151,7 +150,7 @@ TALER_MINT_handler_withdraw_status (struct RequestHandler *rh,
     return MHD_NO;
   }
   key_state = TALER_MINT_key_state_acquire ();
-  if (0 != memcmp (&key_state->current_sign_key_issue.signkey_pub,
+  if (0 != memcmp (&key_state->current_sign_key_issue.issue.signkey_pub,
                    &reserve.status_sign_pub,
                    sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
   {
@@ -230,7 +229,7 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
   struct Reserve reserve;
   struct MintKeyState *key_state;
   struct CollectableBlindcoin collectable;
-  struct TALER_MINT_DenomKeyIssue *dki;
+  struct TALER_MINT_DenomKeyIssuePriv *dki;
   struct TALER_RSA_Signature ev_sig;
   struct TALER_Amount amount_required;
 
@@ -342,16 +341,16 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
 
   key_state = TALER_MINT_key_state_acquire ();
   dki = TALER_MINT_get_denom_key (key_state,
-                       &wsrd.denomination_pub);
+                                  &wsrd.denomination_pub);
   TALER_MINT_key_state_release (key_state);
   if (NULL == dki)
     return request_send_json_pack (connection, MHD_HTTP_NOT_FOUND,
                                    "{s:s}",
                                    "error", "Denomination not found");
 
-  amount_required = TALER_amount_ntoh (dki->value);
+  amount_required = TALER_amount_ntoh (dki->issue.value);
   amount_required = TALER_amount_add (amount_required,
-                                      TALER_amount_ntoh (dki->fee_withdraw));
+                                      TALER_amount_ntoh (dki->issue.fee_withdraw));
 
   if (0 < TALER_amount_cmp (amount_required,
                             TALER_amount_ntoh (reserve.balance)))

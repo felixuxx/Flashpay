@@ -33,9 +33,9 @@
 int
 main (int argc, const char *const argv[])
 {
-  struct TALER_MINT_DenomKeyIssue dki;
+  struct TALER_MINT_DenomKeyIssuePriv dki;
   struct TALER_RSA_PrivateKeyBinaryEncoded *enc;
-  struct TALER_MINT_DenomKeyIssue dki_read;
+  struct TALER_MINT_DenomKeyIssuePriv dki_read;
   struct TALER_RSA_PrivateKeyBinaryEncoded *enc_read;
   char *tmpfile;
 
@@ -48,7 +48,7 @@ main (int argc, const char *const argv[])
   dki.denom_priv = NULL;
   dki_read.denom_priv = NULL;
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                              &dki.signature,
+                              &dki.issue.signature,
                               sizeof (dki) - offsetof (struct TALER_MINT_DenomKeyIssue,
                                                        signature));
   dki.denom_priv = TALER_RSA_key_create ();
@@ -61,8 +61,8 @@ main (int argc, const char *const argv[])
   EXITIF (0 != memcmp (enc,
                        enc_read,
                        ntohs(enc->len)));
-  EXITIF (0 != memcmp (&dki.signature,
-                       &dki_read.signature,
+  EXITIF (0 != memcmp (&dki.issue.signature,
+                       &dki_read.issue.signature,
                        sizeof (dki) - offsetof (struct TALER_MINT_DenomKeyIssue,
                                                 signature)));
   ret = 0;

@@ -32,19 +32,20 @@ static struct GNUNET_CONFIGURATION_Handle *kcfg;
 
 
 static int
-signkeys_iter (void *cls, const struct TALER_MINT_SignKeyIssue *ski)
+signkeys_iter (void *cls, const struct TALER_MINT_SignKeyIssuePriv *ski)
 {
   struct GNUNET_TIME_Absolute start;
 
   printf ("iterating over key for start time %s\n",
-          GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (ski->start)));
+          GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (ski->issue.start)));
 
-  start = GNUNET_TIME_absolute_ntoh (ski->start);
+  start = GNUNET_TIME_absolute_ntoh (ski->issue.start);
 
-  if (ntohl (ski->purpose.size) !=
+  if (ntohl (ski->issue.purpose.size) !=
       (sizeof (struct TALER_MINT_SignKeyIssue) - offsetof (struct TALER_MINT_SignKeyIssue, purpose)))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Signkey with start %s has invalid purpose field (timestamp: %llu)\n",
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Signkey with start %s has invalid purpose field (timestamp: %llu)\n",
                 GNUNET_STRINGS_absolute_time_to_string (start),
                 (long long) start.abs_value_us);
     return GNUNET_SYSERR;
@@ -52,15 +53,16 @@ signkeys_iter (void *cls, const struct TALER_MINT_SignKeyIssue *ski)
 
 
   if (GNUNET_OK != GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNKEY,
-                                               &ski->purpose,
-                                               &ski->signature,
-                                               &ski->master_pub))
+                                               &ski->issue.purpose,
+                                               &ski->issue.signature,
+                                               &ski->issue.master_pub))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Signkey with start %s has invalid signature (timestamp: %llu)\n",
                 GNUNET_STRINGS_absolute_time_to_string (start),
                 (long long) start.abs_value_us);
     return GNUNET_SYSERR;
   }
+  /* FIXME: what about private key matching the public key? */
   printf ("key valid\n");
   return GNUNET_OK;
 }
@@ -75,16 +77,17 @@ mint_signkeys_check ()
 }
 
 
-static int denomkeys_iter (void *cls,
-                           const char *alias,
-                           const struct TALER_MINT_DenomKeyIssue *dki)
+static int
+denomkeys_iter (void *cls,
+                const char *alias,
+                const struct TALER_MINT_DenomKeyIssuePriv *dki)
 {
   struct GNUNET_TIME_Absolute start;
 
-  start = GNUNET_TIME_absolute_ntoh (dki->start);
+  start = GNUNET_TIME_absolute_ntoh (dki->issue.start);
 
-  if (ntohl (dki->purpose.size) !=
-      (sizeof (struct TALER_MINT_DenomKeyIssue) - offsetof (struct TALER_MINT_DenomKeyIssue, purpose)))
+  if (ntohl (dki->issue.purpose.size) !=
+      (sizeof (struct TALER_MINT_DenomKeyIssuePriv) - offsetof (struct TALER_MINT_DenomKeyIssuePriv, issue.purpose)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Denomkey for '%s' with start %s has invalid purpose field (timestamp: %llu)\n",
                 alias,
@@ -93,12 +96,14 @@ static int denomkeys_iter (void *cls,
     return GNUNET_SYSERR;
   }
 
-  if (GNUNET_OK != GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOM,
-                                               &dki->purpose,
-                                               &dki->signature,
-                                               &dki->master))
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOM,
+                                  &dki->issue.purpose,
+                                  &dki->issue.signature,
+                                  &dki->issue.master))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Denomkey for '%s'with start %s has invalid signature (timestamp: %llu)\n",
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Denomkey for '%s'with start %s has invalid signature (timestamp: %llu)\n",
                 alias,
                 GNUNET_STRINGS_absolute_time_to_string (start),
                 (long long) start.abs_value_us);
@@ -113,7 +118,8 @@ static int denomkeys_iter (void *cls,
 static int
 mint_denomkeys_check ()
 {
-  if (0 > TALER_MINT_denomkeys_iterate (mintdir, denomkeys_iter, NULL))
+  if (0 > TALER_MINT_denomkeys_iterate (mintdir,
+                                        &denomkeys_iter, NULL))
     return GNUNET_NO;
   return GNUNET_OK;
 }
@@ -148,11 +154,11 @@ main (int argc, char *const *argv)
 
   GNUNET_assert (GNUNET_OK == GNUNET_log_setup ("taler-mint-keycheck", "WARNING", NULL));
 
-  if (GNUNET_GETOPT_run ("taler-mint-keyup", options, argc, argv) < 0) 
+  if (GNUNET_GETOPT_run ("taler-mint-keyup", options, argc, argv) < 0)
     return 1;
   if (NULL == mintdir)
   {
-    fprintf (stderr, "mint directory not given\n"); 
+    fprintf (stderr, "mint directory not given\n");
     return 1;
   }
 

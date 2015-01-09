@@ -3,23 +3,21 @@
   (C) 2014 Christian Grothoff (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
+  terms of the GNU Affero General Public License as published by the Free Software
   Foundation; either version 3, or (at your option) any later version.
 
   TALER is distributed in the hope that it will be useful, but WITHOUT ANY
   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+  A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
+  You should have received a copy of the GNU Affero General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file include/taler_mint_service.h
- * @brief C interface to the mint's HTTP API
- * @author Sree Harsha Totakura <sreeharsha@totakura.in> 
+ * @brief C interface of libtalermint, a C library to use mint's HTTP API
+ * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
-
 #ifndef _TALER_MINT_SERVICE_H
 #define _TALER_MINT_SERVICE_H
 
@@ -166,8 +164,9 @@ struct TALER_MINT_KeysGetHandle;
  * @param emsg if the asynchronous call could not be completed due to an error,
  *        this parameter contains a human readable error message
  */
-typedef void (*TALER_MINT_ContinuationCallback) (void *cls,
-                                                 const char *emsg);
+typedef void
+(*TALER_MINT_ContinuationCallback) (void *cls,
+                                    const char *emsg);
 
 /**
  * Functions of this type are called to provide the retrieved signing and
@@ -180,9 +179,10 @@ typedef void (*TALER_MINT_ContinuationCallback) (void *cls,
  * @param denom_keys NULL-terminated array of pointers to the mint's
  *          denomination keys; will be NULL if no signing keys are retrieved.
  */
-typedef void (*TALER_MINT_KeysGetCallback) (void *cls,
-                                           struct TALER_MINT_SigningPublicKey **sign_keys,
-                                           struct TALER_MINT_DenomPublicKey **denom_keys);
+typedef void
+(*TALER_MINT_KeysGetCallback) (void *cls,
+                               struct TALER_MINT_SigningPublicKey **sign_keys,
+                               struct TALER_MINT_DenomPublicKey **denom_keys);
 
 
 /**
@@ -190,15 +190,18 @@ typedef void (*TALER_MINT_KeysGetCallback) (void *cls,
  *
  * @param mint handle to the mint
  * @param cb the callback to call with the keys
- * @param cls closure for the above callback
+ * @param cb_cls closure for the @a cb callback
  * @param cont_cb the callback to call after completing this asynchronous call
- * @param cont_cls the closure for the continuation callback
+ * @param cont_cls the closure for the @a cont_cb callback
  * @return a handle to this asynchronous call; NULL upon eror
  */
 struct TALER_MINT_KeysGetHandle *
 TALER_MINT_keys_get (struct TALER_MINT_Handle *mint,
-                     TALER_MINT_KeysGetCallback cb, void *cls,
-                     TALER_MINT_ContinuationCallback cont_cb, void *cont_cls);
+                     TALER_MINT_KeysGetCallback cb,
+                     void *cb_cls,
+                     TALER_MINT_ContinuationCallback cont_cb,
+                     void *cont_cls);
+
 
 /**
  * Cancel the asynchronous call initiated by TALER_MINT_keys_get().  This should
@@ -229,10 +232,12 @@ struct TALER_MINT_DepositHandle;
  * @param emsg in case of unsuccessful deposit, this contains a human readable
  *        explanation.
  */
-typedef void (*TALER_MINT_DepositResultCallback) (void *cls,
-                                                  int status,
-                                                  json_t *obj,
-                                                  char *emsg);
+typedef void
+(*TALER_MINT_DepositResultCallback) (void *cls,
+                                     int status,
+                                     json_t *obj,
+                                     char *emsg);
+
 
 /**
  * Submit a deposit permission to the mint and get the mint's response

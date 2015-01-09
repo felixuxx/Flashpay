@@ -28,7 +28,6 @@
 #include <pthread.h>
 #include "mint.h"
 #include "mint_db.h"
-#include "taler_types.h"
 #include "taler_signatures.h"
 #include "taler_rsa.h"
 #include "taler_json_lib.h"
@@ -145,7 +144,7 @@ TALER_MINT_conf_duration_provide ()
 static int
 reload_keys_denom_iter (void *cls,
                         const char *alias,
-                        const struct TALER_MINT_DenomKeyIssue *dki)
+                        const struct TALER_MINT_DenomKeyIssuePriv *dki)
 {
   struct MintKeyState *ctx = cls;
   struct GNUNET_TIME_Absolute stamp_provide;
@@ -155,28 +154,30 @@ reload_keys_denom_iter (void *cls,
   stamp_provide = GNUNET_TIME_absolute_add (ctx->reload_time,
                                             TALER_MINT_conf_duration_provide ());
 
-  if (GNUNET_TIME_absolute_ntoh (dki->expire_spend).abs_value_us < ctx->reload_time.abs_value_us)
+  if (GNUNET_TIME_absolute_ntoh (dki->issue.expire_spend).abs_value_us < ctx->reload_time.abs_value_us)
   {
     // this key is expired
     return GNUNET_OK;
   }
-  if (GNUNET_TIME_absolute_ntoh (dki->start).abs_value_us > stamp_provide.abs_value_us)
+  if (GNUNET_TIME_absolute_ntoh (dki->issue.start).abs_value_us > stamp_provide.abs_value_us)
   {
     // we are to early for this key
     return GNUNET_OK;
   }
 
-  GNUNET_CRYPTO_hash (&dki->denom_pub, sizeof (struct GNUNET_CRYPTO_EddsaPublicKey), &denom_key_hash);
+  GNUNET_CRYPTO_hash (&dki->issue.denom_pub,
+                      sizeof (struct GNUNET_CRYPTO_EddsaPublicKey),
+                      &denom_key_hash);
 
   res = GNUNET_CONTAINER_multihashmap_put (ctx->denomkey_map,
                                            &denom_key_hash,
-                                           GNUNET_memdup (dki, sizeof (struct TALER_MINT_DenomKeyIssue)),
+                                           GNUNET_memdup (dki, sizeof (struct TALER_MINT_DenomKeyIssuePriv)),
                                            GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY);
   if (GNUNET_OK != res)
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING, "Duplicate denomination key\n");
 
   json_array_append_new (ctx->denom_keys_array,
-                         denom_key_issue_to_json (dki));
+                         denom_key_issue_to_json (&dki->issue));
 
   return GNUNET_OK;
 }
@@ -193,20 +194,20 @@ reload_keys_denom_iter (void *cls,
  */
 static int
 reload_keys_sign_iter (void *cls,
-                       const struct TALER_MINT_SignKeyIssue *ski)
+                       const struct TALER_MINT_SignKeyIssuePriv *ski)
 {
   struct MintKeyState *ctx = cls;
   struct GNUNET_TIME_Absolute stamp_provide;
 
   stamp_provide = GNUNET_TIME_absolute_add (ctx->reload_time, TALER_MINT_conf_duration_provide (cfg));
 
-  if (GNUNET_TIME_absolute_ntoh (ski->expire).abs_value_us < ctx->reload_time.abs_value_us)
+  if (GNUNET_TIME_absolute_ntoh (ski->issue.expire).abs_value_us < ctx->reload_time.abs_value_us)
   {
     // this key is expired
     return GNUNET_OK;
   }
 
-  if (GNUNET_TIME_absolute_ntoh (ski->start).abs_value_us > stamp_provide.abs_value_us)
+  if (GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us > stamp_provide.abs_value_us)
   {
     // we are to early for this key
     return GNUNET_OK;
@@ -214,16 +215,16 @@ reload_keys_sign_iter (void *cls,
 
   // the signkey is valid for now, check
   // if it's more recent than the current one!
-  if (GNUNET_TIME_absolute_ntoh (ctx->current_sign_key_issue.start).abs_value_us >
-      GNUNET_TIME_absolute_ntoh (ski->start).abs_value_us)
+  if (GNUNET_TIME_absolute_ntoh (ctx->current_sign_key_issue.issue.start).abs_value_us >
+      GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us)
     ctx->current_sign_key_issue = *ski;
 
 
   ctx->next_reload = GNUNET_TIME_absolute_min (ctx->next_reload,
-                                               GNUNET_TIME_absolute_ntoh (ski->expire));
+                                               GNUNET_TIME_absolute_ntoh (ski->issue.expire));
 
   json_array_append_new (ctx->sign_keys_array,
-                         sign_key_issue_to_json (ski));
+                         sign_key_issue_to_json (&ski->issue));
 
   return GNUNET_OK;
 }
@@ -334,14 +335,16 @@ TALER_MINT_key_state_acquire (void)
  * @return the denomination key issue,
  *         or NULL if denom_pub could not be found
  */
-struct TALER_MINT_DenomKeyIssue *
+struct TALER_MINT_DenomKeyIssuePriv *
 TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
                           const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pub)
 {
-  struct TALER_MINT_DenomKeyIssue *issue;
+  struct TALER_MINT_DenomKeyIssuePriv *issue;
   struct GNUNET_HashCode hash;
 
-  GNUNET_CRYPTO_hash (denom_pub, sizeof (struct TALER_RSA_PublicKeyBinaryEncoded), &hash);
+  GNUNET_CRYPTO_hash (denom_pub,
+                      sizeof (struct TALER_RSA_PublicKeyBinaryEncoded),
+                      &hash);
   issue = GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map, &hash);
   return issue;
 }
@@ -361,7 +364,7 @@ int
 TALER_MINT_test_coin_valid (const struct MintKeyState *key_state,
                             struct TALER_CoinPublicInfo *coin_public_info)
 {
-  struct TALER_MINT_DenomKeyIssue *dki;
+  struct TALER_MINT_DenomKeyIssuePriv *dki;
 
   dki = TALER_MINT_get_denom_key (key_state, &coin_public_info->denom_pub);
   if (NULL == dki)
@@ -369,7 +372,7 @@ TALER_MINT_test_coin_valid (const struct MintKeyState *key_state,
   if (GNUNET_OK != TALER_RSA_verify (&coin_public_info->coin_pub,
                                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
                                      &coin_public_info->denom_sig,
-                                     &dki->denom_pub))
+                                     &dki->issue.denom_pub))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "coin signature is invalid\n");

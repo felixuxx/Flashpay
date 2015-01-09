@@ -47,11 +47,12 @@ signkeys_iterate_dir_iter (void *cls,
 
   struct SignkeysIterateContext *skc = cls;
   ssize_t nread;
-  struct TALER_MINT_SignKeyIssue issue;
+  struct TALER_MINT_SignKeyIssuePriv issue;
+
   nread = GNUNET_DISK_fn_read (filename,
                                &issue,
-                               sizeof (struct TALER_MINT_SignKeyIssue));
-  if (nread != sizeof (struct TALER_MINT_SignKeyIssue))
+                               sizeof (struct TALER_MINT_SignKeyIssuePriv));
+  if (nread != sizeof (struct TALER_MINT_SignKeyIssuePriv))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING, "Invalid signkey file: '%s'\n", filename);
     return GNUNET_OK;
@@ -87,7 +88,7 @@ TALER_MINT_signkeys_iterate (const char *mint_base_dir,
  */
 int
 TALER_MINT_read_denom_key (const char *filename,
-                           struct TALER_MINT_DenomKeyIssue *dki)
+                           struct TALER_MINT_DenomKeyIssuePriv *dki)
 {
   uint64_t size;
   size_t offset;
@@ -97,8 +98,8 @@ TALER_MINT_read_denom_key (const char *filename,
 
   ret = GNUNET_SYSERR;
   data = NULL;
-  offset = sizeof (struct TALER_MINT_DenomKeyIssue)
-      - offsetof (struct TALER_MINT_DenomKeyIssue, signature);
+  offset = sizeof (struct TALER_MINT_DenomKeyIssuePriv)
+      - offsetof (struct TALER_MINT_DenomKeyIssuePriv, issue.signature);
   if (GNUNET_OK != GNUNET_DISK_file_size (filename,
                                           &size,
                                           GNUNET_YES,
@@ -117,7 +118,7 @@ TALER_MINT_read_denom_key (const char *filename,
   if (NULL == (priv = TALER_RSA_decode_key (data + offset, size - offset)))
     goto cleanup;
   dki->denom_priv = priv;
-  (void) memcpy (&dki->signature, data, offset);
+  memcpy (&dki->issue.signature, data, offset);
   ret = GNUNET_OK;
 
  cleanup:
@@ -135,7 +136,7 @@ TALER_MINT_read_denom_key (const char *filename,
  */
 int
 TALER_MINT_write_denom_key (const char *filename,
-                            const struct TALER_MINT_DenomKeyIssue *dki)
+                            const struct TALER_MINT_DenomKeyIssuePriv *dki)
 {
   struct TALER_RSA_PrivateKeyBinaryEncoded *priv_enc;
   struct GNUNET_DISK_FileHandle *fh;
@@ -153,10 +154,10 @@ TALER_MINT_write_denom_key (const char *filename,
     goto cleanup;
   if (NULL == (priv_enc = TALER_RSA_encode_key (dki->denom_priv)))
     goto cleanup;
-  wsize = sizeof (struct TALER_MINT_DenomKeyIssue)
-      - offsetof (struct TALER_MINT_DenomKeyIssue, signature);
+  wsize = sizeof (struct TALER_MINT_DenomKeyIssuePriv)
+      - offsetof (struct TALER_MINT_DenomKeyIssuePriv, issue.signature);
   if (GNUNET_SYSERR == (wrote = GNUNET_DISK_file_write (fh,
-                                                        &dki->signature,
+                                                        &dki->issue.signature,
                                                         wsize)))
     goto cleanup;
   if (wrote != wsize)
@@ -183,11 +184,13 @@ denomkeys_iterate_keydir_iter (void *cls,
 {
 
   struct DenomkeysIterateContext *dic = cls;
-  struct TALER_MINT_DenomKeyIssue issue;
+  struct TALER_MINT_DenomKeyIssuePriv issue;
 
   if (GNUNET_OK != TALER_MINT_read_denom_key (filename, &issue))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING, "Invalid denomkey file: '%s'\n", filename);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Invalid denomkey file: '%s'\n",
+                filename);
     return GNUNET_OK;
   }
   return dic->it (dic->it_cls, dic->alias, &issue);

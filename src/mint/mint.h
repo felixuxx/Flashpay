@@ -29,81 +29,37 @@
 #include <libpq-fe.h>
 #include "taler_util.h"
 #include "taler_rsa.h"
+#include "taler_signatures.h"
 
 #define DIR_SIGNKEYS "signkeys"
 #define DIR_DENOMKEYS "denomkeys"
 
 
-GNUNET_NETWORK_STRUCT_BEGIN
-
-
 /**
- * FIXME
+ * On disk format used for a mint signing key.
+ * Includes the private key followed by the signed
+ * issue message.
  */
-struct TALER_MINT_SignKeyIssue
+struct TALER_MINT_SignKeyIssuePriv
 {
   struct GNUNET_CRYPTO_EddsaPrivateKey signkey_priv;
-  struct GNUNET_CRYPTO_EddsaSignature signature;
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-  struct GNUNET_CRYPTO_EddsaPublicKey master_pub;
-  struct GNUNET_TIME_AbsoluteNBO start;
-  struct GNUNET_TIME_AbsoluteNBO expire;
-  struct GNUNET_CRYPTO_EddsaPublicKey signkey_pub;
+  struct TALER_MINT_SignKeyIssue issue;
 };
 
-struct TALER_MINT_DenomKeyIssue
+
+
+struct TALER_MINT_DenomKeyIssuePriv
 {
   /**
    * The private key of the denomination.  Will be NULL if the private key is
    * not available.
    */
   struct TALER_RSA_PrivateKey *denom_priv;
-  struct GNUNET_CRYPTO_EddsaSignature signature;
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-  struct GNUNET_CRYPTO_EddsaPublicKey master;
-  struct GNUNET_TIME_AbsoluteNBO start;
-  struct GNUNET_TIME_AbsoluteNBO expire_withdraw;
-  struct GNUNET_TIME_AbsoluteNBO expire_spend;
-  struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
-  struct TALER_AmountNBO value;
-  struct TALER_AmountNBO fee_withdraw;
-  struct TALER_AmountNBO fee_deposit;
-  struct TALER_AmountNBO fee_refresh;
-};
-
-struct RefreshMeltSignatureBody
-{
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-  struct GNUNET_HashCode melt_hash;
-};
-
-struct RefreshCommitSignatureBody
-{
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-  struct GNUNET_HashCode commit_hash;
-};
-
-struct RefreshCommitResponseSignatureBody
-{
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-  uint16_t noreveal_index;
-};
-
-struct RefreshMeltResponseSignatureBody
-{
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-  struct GNUNET_HashCode melt_response_hash;
+  struct TALER_MINT_DenomKeyIssue issue;
 };
 
 
-struct RefreshMeltConfirmSignRequestBody
-{
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-  struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
-};
 
-
-GNUNET_NETWORK_STRUCT_END
 
 
 
@@ -116,8 +72,9 @@ GNUNET_NETWORK_STRUCT_END
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
  */
-typedef int (*TALER_MINT_SignkeyIterator)(void *cls,
-                                          const struct TALER_MINT_SignKeyIssue *ski);
+typedef int
+(*TALER_MINT_SignkeyIterator)(void *cls,
+                              const struct TALER_MINT_SignKeyIssuePriv *ski);
 
 /**
  * Iterator for denomination keys.
@@ -129,9 +86,10 @@ typedef int (*TALER_MINT_SignkeyIterator)(void *cls,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
  */
-typedef int (*TALER_MINT_DenomkeyIterator)(void *cls,
-                                           const char *alias,
-                                           const struct TALER_MINT_DenomKeyIssue *dki);
+typedef int
+(*TALER_MINT_DenomkeyIterator)(void *cls,
+                               const char *alias,
+                               const struct TALER_MINT_DenomKeyIssuePriv *dki);
 
 
 
@@ -160,7 +118,7 @@ TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
  */
 int
 TALER_MINT_write_denom_key (const char *filename,
-                            const struct TALER_MINT_DenomKeyIssue *dki);
+                            const struct TALER_MINT_DenomKeyIssuePriv *dki);
 
 
 /**
@@ -172,7 +130,7 @@ TALER_MINT_write_denom_key (const char *filename,
  */
 int
 TALER_MINT_read_denom_key (const char *filename,
-                           struct TALER_MINT_DenomKeyIssue *dki);
+                           struct TALER_MINT_DenomKeyIssuePriv *dki);
 
 
 /**

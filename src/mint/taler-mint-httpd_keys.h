@@ -62,7 +62,7 @@ struct MintKeyState
   /**
    * Mint signing key that should be used currently.
    */
-  struct TALER_MINT_SignKeyIssue current_sign_key_issue;
+  struct TALER_MINT_SignKeyIssuePriv current_sign_key_issue;
 
   /**
    * Cached JSON text that the mint will send for
@@ -105,7 +105,7 @@ TALER_MINT_key_state_acquire (void);
  * @return the denomination key issue,
  *         or NULL if denom_pub could not be found
  */
-struct TALER_MINT_DenomKeyIssue *
+struct TALER_MINT_DenomKeyIssuePriv *
 TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
                           const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pub);
 

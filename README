@@ -1,0 +1,14 @@
+Project structure is currently as follows:
+
+src/include/
+  -- installed headers for public APIs
+
+src/util/
+  -- common utility functions (to be ideally eliminated)
+
+src/mint/
+  -- taler mint server and helper binaries
+
+src/lib/
+  -- libtalermint: C API to issue HTTP requests to mint, including testcases
+

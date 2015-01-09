@@ -292,26 +292,27 @@ get_anchor (const char *dir,
 }
 
 static void
-create_signkey_issue (struct GNUNET_TIME_Absolute start,
-                      struct GNUNET_TIME_Relative duration,
-                      struct TALER_MINT_SignKeyIssue *issue)
+create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
+                           struct GNUNET_TIME_Relative duration,
+                           struct TALER_MINT_SignKeyIssuePriv *pi)
 {
   struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
+  struct TALER_MINT_SignKeyIssue *issue = &pi->issue;
 
   priv = GNUNET_CRYPTO_eddsa_key_create ();
   GNUNET_assert (NULL != priv);
-  issue->signkey_priv = *priv;
+  pi->signkey_priv = *priv;
   GNUNET_free (priv);
   issue->master_pub = *master_pub;
   issue->start = GNUNET_TIME_absolute_hton (start);
   issue->expire = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (start, duration));
 
-  GNUNET_CRYPTO_eddsa_key_get_public (&issue->signkey_priv, &issue->signkey_pub);
+  GNUNET_CRYPTO_eddsa_key_get_public (&pi->signkey_priv, &issue->signkey_pub);
 
   issue->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNKEY);
   issue->purpose.size = htonl (sizeof (struct TALER_MINT_SignKeyIssue) - offsetof (struct TALER_MINT_SignKeyIssue, purpose));
 
-  if (GNUNET_OK != GNUNET_CRYPTO_eddsa_sign (master_priv, &issue->purpose, &issue->signature)) 
+  if (GNUNET_OK != GNUNET_CRYPTO_eddsa_sign (master_priv, &issue->purpose, &issue->signature))
   {
     GNUNET_abort ();
   }
@@ -354,10 +355,10 @@ mint_keys_update_signkeys ()
     skf = get_signkey_file (anchor);
     if (GNUNET_YES != GNUNET_DISK_file_test (skf))
     {
-      struct TALER_MINT_SignKeyIssue signkey_issue;
+      struct TALER_MINT_SignKeyIssuePriv signkey_issue;
       ssize_t nwrite;
       printf ("Generating signing key for %s.\n", GNUNET_STRINGS_absolute_time_to_string (anchor));
-      create_signkey_issue (anchor, signkey_duration, &signkey_issue);
+      create_signkey_issue_priv (anchor, signkey_duration, &signkey_issue);
       nwrite = GNUNET_DISK_fn_write (skf, &signkey_issue, sizeof (struct TALER_MINT_SignKeyIssue),
                                      (GNUNET_DISK_PERM_USER_WRITE | GNUNET_DISK_PERM_USER_READ));
       if (nwrite != sizeof (struct TALER_MINT_SignKeyIssue))
@@ -430,28 +431,32 @@ get_cointype_params (const char *ct, struct CoinTypeParams *params)
 
 
 static void
-create_denomkey_issue (struct CoinTypeParams *params, struct TALER_MINT_DenomKeyIssue *dki)
+create_denomkey_issue (struct CoinTypeParams *params,
+                       struct TALER_MINT_DenomKeyIssuePriv *dki)
 {
   GNUNET_assert (NULL != (dki->denom_priv = TALER_RSA_key_create ()));
-  TALER_RSA_key_get_public (dki->denom_priv, &dki->denom_pub);
-  dki->master = *master_pub;
-  dki->start = GNUNET_TIME_absolute_hton (params->anchor);
-  dki->expire_withdraw = 
-      GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor, 
+  TALER_RSA_key_get_public (dki->denom_priv, &dki->issue.denom_pub);
+  dki->issue.master = *master_pub;
+  dki->issue.start = GNUNET_TIME_absolute_hton (params->anchor);
+  dki->issue.expire_withdraw =
+      GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
                                                            params->duration_withdraw));
-  dki->expire_spend = 
-      GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor, 
+  dki->issue.expire_spend =
+    GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
                                                            params->duration_spend));
-  dki->value = TALER_amount_hton (params->value);
-  dki->fee_withdraw = TALER_amount_hton (params->fee_withdraw);
-  dki->fee_deposit = TALER_amount_hton (params->fee_deposit);
-  dki->fee_refresh = TALER_amount_hton (params->fee_refresh);
+  dki->issue.value = TALER_amount_hton (params->value);
+  dki->issue.fee_withdraw = TALER_amount_hton (params->fee_withdraw);
+  dki->issue.fee_deposit = TALER_amount_hton (params->fee_deposit);
+  dki->issue.fee_refresh = TALER_amount_hton (params->fee_refresh);
 
-  dki->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOM);
-  dki->purpose.size = htonl (sizeof (struct TALER_MINT_DenomKeyIssue) - offsetof (struct TALER_MINT_DenomKeyIssue, purpose));
+  dki->issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOM);
+  dki->issue.purpose.size = htonl (sizeof (struct TALER_MINT_DenomKeyIssuePriv) - offsetof (struct TALER_MINT_DenomKeyIssuePriv, issue.purpose));
 
-  if (GNUNET_OK != GNUNET_CRYPTO_eddsa_sign (master_priv, &dki->purpose, &dki->signature)) 
-  {
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_sign (master_priv,
+                                &dki->issue.purpose,
+                                &dki->issue.signature))
+    {
     GNUNET_abort ();
   }
 }
@@ -484,7 +489,7 @@ mint_keys_update_cointype (const char *coin_alias)
 
     if (GNUNET_YES != GNUNET_DISK_file_test (dkf))
     {
-      struct TALER_MINT_DenomKeyIssue denomkey_issue;
+      struct TALER_MINT_DenomKeyIssuePriv denomkey_issue;
       int ret;
       printf ("Generating denomination key for type '%s', start %s.\n",
               coin_alias, GNUNET_STRINGS_absolute_time_to_string (p.anchor));
@@ -589,11 +594,11 @@ main (int argc, char *const *argv)
 
   GNUNET_assert (GNUNET_OK == GNUNET_log_setup ("taler-mint-keyup", "WARNING", NULL));
 
-  if (GNUNET_GETOPT_run ("taler-mint-keyup", options, argc, argv) < 0) 
+  if (GNUNET_GETOPT_run ("taler-mint-keyup", options, argc, argv) < 0)
     return 1;
   if (NULL == mintdir)
   {
-    fprintf (stderr, "mint directory not given\n"); 
+    fprintf (stderr, "mint directory not given\n");
     return 1;
   }
 
@@ -601,7 +606,7 @@ main (int argc, char *const *argv)
   {
     if (GNUNET_OK != GNUNET_STRINGS_fancy_time_to_absolute (pretend_time_str, &now))
     {
-      fprintf (stderr, "timestamp invalid\n"); 
+      fprintf (stderr, "timestamp invalid\n");
       return 1;
     }
   }

@@ -28,7 +28,6 @@
 #include <pthread.h>
 #include "mint.h"
 #include "mint_db.h"
-#include "taler_types.h"
 #include "taler_signatures.h"
 #include "taler_rsa.h"
 #include "taler_json_lib.h"

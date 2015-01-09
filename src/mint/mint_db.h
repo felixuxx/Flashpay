@@ -26,8 +26,33 @@
 #include <libpq-fe.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
-#include "taler_types.h"
 #include "taler_rsa.h"
+
+
+/**
+ * Public information about a coin.
+ */
+struct TALER_CoinPublicInfo
+{
+  /**
+   * The coin's public key.
+   */
+  struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+
+  /*
+   * The public key signifying the coin's denomination.
+   */
+  struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
+
+  /**
+   * Signature over coin_pub by denom_pub.
+   */
+  struct TALER_RSA_Signature denom_sig;
+};
+
+
+
+
 
 
 /**
