@@ -110,17 +110,7 @@ struct TALER_Amount
  * Initialize Gcrypt library.
  */
 void
-TALER_gcrypt_init();
-
-
-/**
- * Generate a ECC private key.
- *
- * @return the s-expression representing the generated ECC private key; NULL
- *           upon error
- */
-gcry_sexp_t
-TALER_genkey ();
+TALER_gcrypt_init (void);
 
 
 /**

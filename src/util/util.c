@@ -17,7 +17,7 @@
 /**
  * @file util.c
  * @brief Common utility functions
- * @author Sree Harsha Totakura <sreeharsha@totakura.in> 
+ * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Florian Dold
  * @author Benedikt Mueller
  */
@@ -59,43 +59,6 @@ TALER_gcrypt_init()
 
 
 /**
- * Generate a ECC private key.
- *
- * @return the s-expression representing the generated ECC private key; NULL
- *           upon error
- */
-gcry_sexp_t
-TALER_genkey ()
-{
-  gcry_sexp_t priv_sexp;
-  gcry_sexp_t s_keyparam;
-  int rc;
-  
-  if (0 != (rc = gcry_sexp_build (&s_keyparam, NULL,
-                                  "(genkey(ecc(curve \"" CURVE "\")"
-                                  "(flags eddsa)))")))
-  {
-    LOG_GCRY_ERROR ("gcry_sexp_build", rc);
-    return NULL;
-  }
-  if (0 != (rc = gcry_pk_genkey (&priv_sexp, s_keyparam)))
-  {
-    LOG_GCRY_ERROR ("gcry_pk_genkey", rc);
-    gcry_sexp_release (s_keyparam);
-    return NULL;
-  }
-  gcry_sexp_release (s_keyparam);
-  if (0 != (rc = gcry_pk_testkey (priv_sexp)))
-  {
-    LOG_GCRY_ERROR("gcry_pk_testkey", rc);
-    gcry_sexp_release (priv_sexp);
-    return NULL;
-  }
-  return priv_sexp;
-}
-
-
-/**
  * Parse money amount description, in the format "A:B.C".
  *
  * @param str amount description
@@ -123,7 +86,7 @@ TALER_string_to_amount (const char *str, struct TALER_Amount *denom)
     printf("null before currency\n");
     return GNUNET_SYSERR;
   }
-  
+
   while (str[i] != ':')
   {
     if (0 == str[i])
@@ -197,7 +160,7 @@ TALER_string_to_amount (const char *str, struct TALER_Amount *denom)
 /**
  * FIXME
  */
-struct TALER_AmountNBO 
+struct TALER_AmountNBO
 TALER_amount_hton (struct TALER_Amount d)
 {
   struct TALER_AmountNBO dn;
@@ -462,7 +425,7 @@ derive_refresh_key (const struct GNUNET_HashCode *secret,
   static const char ctx_key[] = "taler-key-skey";
   static const char ctx_iv[] = "taler-key-iv";
 
-  GNUNET_assert (GNUNET_YES == 
+  GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (skey, sizeof (struct GNUNET_CRYPTO_SymmetricSessionKey),
                                     ctx_key, strlen (ctx_key),
                                     secret, sizeof (struct GNUNET_HashCode),
