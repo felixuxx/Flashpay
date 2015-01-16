@@ -285,7 +285,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
 
   path = json_array ();
   va_start (argp, root);
-  ret = 2;
+  ret = 2; /* just not any of the valid return values */
   while (2 == ret)
   {
     enum TALER_MINT_JsonNavigationCommand command
@@ -307,9 +307,11 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
             ret = (MHD_YES ==
                    TALER_MINT_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
-                                               "{s:s,s:o}",
+                                               "{s:s, s:s, s:o}",
                                                "error",
                                                "missing field in JSON",
+                                               "field",
+                                               fname,
                                                "path",
                                                path))
               ? GNUNET_NO : GNUNET_SYSERR;
@@ -367,7 +369,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
             ret = (MHD_YES ==
                    TALER_MINT_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
-                                               "{s:s,s:o}",
+                                               "{s:s, s:o}",
                                                "error",
                                                "malformed binary data in JSON",
                                                "path",
@@ -432,7 +434,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
             ret = (MHD_YES ==
                    TALER_MINT_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
-                                               "{s:s, s:i, s:i s:o}",
+                                               "{s:s, s:i, s:i, s:o}",
                                                "error", "wrong JSON field type",
                                                "type_expected", typ,
                                                "type_actual", json_typeof (root),
