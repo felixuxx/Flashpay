@@ -44,6 +44,7 @@
  * @param deposit deposit request to confirm
  * @return MHD result code
  */
+// FIXME: this should be in taler-mint-httpd_responses.c
 static int
 helper_deposit_send_response_success (struct MHD_Connection *connection,
                                       struct Deposit *deposit)
@@ -108,7 +109,7 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
   wire = NULL;
   resp = NULL;
   if (-1 == json_unpack (json,
-                         "{s:s s:o}",
+                         "{s:s, s:o}",
                          "type", &deposit_type,
                          "wire", &wire))
   {
@@ -117,7 +118,7 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
     resp_code = MHD_HTTP_BAD_REQUEST;
     goto EXITIF_exit;
   }
-  if (NULL == (wire_enc = json_dumps (wire, JSON_COMPACT|JSON_SORT_KEYS)))
+  if (NULL == (wire_enc = json_dumps (wire, JSON_COMPACT | JSON_SORT_KEYS)))
   {
     GNUNET_break_op (0);
     resp = json_pack ("{s:s}", "error", "Bad format");
@@ -130,6 +131,8 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
   do {                                                            \
     if (cond) { GNUNET_break (0); goto EXITIF_exit; }             \
   } while (0)
+  // FIXME: need to distinguish between _OK and _NO return values here,
+  // and never try to queue our own!
 #define PARSE_DATA(field, addr)                                         \
   EXITIF (GNUNET_OK !=                                                  \
           GNUNET_MINT_parse_navigate_json                                      \

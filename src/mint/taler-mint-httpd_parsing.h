@@ -122,14 +122,15 @@ enum TALER_MINT_JsonNavigationCommand
  *
  * @param connection the connection to send an error response to
  * @param root the JSON node to start the navigation at.
- * @param ... navigation specification (see JNAV_*)
+ * @param ... navigation specification (see `enum TALER_MINT_JsonNavigationCommand`)
  * @return GNUNET_YES if navigation was successful
  *         GNUNET_NO if json is malformed, error response was generated
  *         GNUNET_SYSERR on internal error
  */
 int
 GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
-                          const json_t *root, ...);
+                                 const json_t *root,
+                                 ...);
 
 
 
@@ -143,7 +144,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
  * @param connection the MHD connection
  * @param param_name the name of the parameter with the key
  * @param[out] out_data pointer to store the result
- * @param out_size expected size of data
+ * @param out_size expected size of @a out_data
  * @return
  *   GNUNET_YES if the the argument is present
  *   GNUNET_NO if the argument is absent or malformed
@@ -151,9 +152,9 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_mhd_request_arg_data (struct MHD_Connection *connection,
-                          const char *param_name,
-                          void *out_data,
-                          size_t out_size);
+                                 const char *param_name,
+                                 void *out_data,
+                                 size_t out_size);
 
 
 

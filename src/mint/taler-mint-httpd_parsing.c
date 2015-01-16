@@ -268,7 +268,7 @@ TALER_MINT_parse_post_cleanup_callback (void *con_cls)
  *
  * @param connection the connection to send an error response to
  * @param root the JSON node to start the navigation at.
- * @param ... navigation specification (see JNAV_*)
+ * @param ... navigation specification (see `enum TALER_MINT_JsonNavigationCommand`)
  * @return GNUNET_YES if navigation was successful
  *         GNUNET_NO if json is malformed, error response was generated
  *         GNUNET_SYSERR on internal error (no response was generated,
@@ -276,8 +276,8 @@ TALER_MINT_parse_post_cleanup_callback (void *con_cls)
  */
 int
 GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
-                          const json_t *root,
-                          ...)
+                                 const json_t *root,
+                                 ...)
 {
   va_list argp;
   int ret;
