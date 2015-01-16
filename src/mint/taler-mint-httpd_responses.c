@@ -138,6 +138,71 @@ TALER_MINT_reply_arg_missing (struct MHD_Connection *connection,
 }
 
 
+/**
+ * Send a response indicating an internal error.
+ *
+ * @param connection the MHD connection to use
+ * @param hint hint about the internal error's nature
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_internal_error (struct MHD_Connection *connection,
+                                 const char *hint)
+{
+  json_t *json;
+
+  json = json_pack ("{ s:s, s:s }",
+                    "error",
+                    "internal error",
+                    "hint",
+                    hint);
+  return TALER_MINT_reply_json (connection,
+                                json,
+                                MHD_HTTP_BAD_REQUEST);
+}
+
+
+/**
+ * Send a response indicating that the request was too big.
+ *
+ * @param connection the MHD connection to use
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_request_too_large (struct MHD_Connection *connection)
+{
+  struct MHD_Response *resp;
+  int ret;
+
+  resp = MHD_create_response_from_buffer (0,
+                                          NULL,
+                                          MHD_RESPMEM_PERSISTENT);
+  if (NULL == resp)
+    return MHD_NO;
+  ret = MHD_queue_response (connection,
+                            MHD_HTTP_REQUEST_ENTITY_TOO_LARGE,
+                            resp);
+  MHD_destroy_response (resp);
+  return ret;
+}
+
+
+/**
+ * Send a response indicating that the JSON was malformed.
+ *
+ * @param connection the MHD connection to use
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_invalid_json (struct MHD_Connection *connection)
+{
+  return TALER_MINT_reply_json_pack (connection,
+                                     MHD_HTTP_BAD_REQUEST,
+                                     "{s:s}",
+                                     "error",
+                                     "invalid json");
+}
+
 
 
 

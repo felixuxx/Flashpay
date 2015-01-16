@@ -89,21 +89,19 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
   int res;
 
   res = TALER_MINT_parse_post_json (connection,
-                           connection_cls,
-                           upload_data, upload_data_size,
-                           &json);
+                                    connection_cls,
+                                    upload_data,
+                                    upload_data_size,
+                                    &json);
   if (GNUNET_SYSERR == res)
-  {
-    // FIXME: return 'internal error'
-    GNUNET_break (0);
     return MHD_NO;
-  }
-  if (GNUNET_NO == res)
+  if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
+    /* FIXME: return error message to client via MHD! */
     GNUNET_break (0);
-    return GNUNET_SYSERR;
+    return MHD_NO;
   }
 
   deposit = NULL;
@@ -213,7 +211,8 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
     if (GNUNET_SYSERR == res)
     {
       GNUNET_break (0);
-      return GNUNET_SYSERR;
+    /* FIXME: return error message to client via MHD! */
+      return MHD_NO;
     }
   }
 
@@ -235,7 +234,8 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
     if (GNUNET_SYSERR == res)
     {
       GNUNET_break (0);
-      return GNUNET_SYSERR;
+    /* FIXME: return error message to client via MHD! */
+      return MHD_NO;
     }
 
     /* coin valid but not known => insert into DB */
@@ -246,14 +246,16 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
     if (GNUNET_OK != TALER_MINT_DB_insert_known_coin (db_conn, &known_coin))
     {
       GNUNET_break (0);
-      return GNUNET_SYSERR;
+    /* FIXME: return error message to client via MHD! */
+      return MHD_NO;
     }
   }
 
   if (GNUNET_OK != TALER_MINT_DB_insert_deposit (db_conn, deposit))
   {
     GNUNET_break (0);
-    return GNUNET_SYSERR;
+    /* FIXME: return error message to client via MHD! */
+    return MHD_NO;
   }
   return helper_deposit_send_response_success (connection, deposit);
 

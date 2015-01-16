@@ -112,7 +112,6 @@ buffer_deinit (struct Buffer *buf)
  * @param max_size maximum size that the buffer can grow to
  * @return GNUNET_OK on success,
  *         GNUNET_NO if the buffer can't accomodate for the new data
- *         GNUNET_SYSERR on fatal error (out of memory?)
  */
 static int
 buffer_append (struct Buffer *buf,
@@ -142,18 +141,28 @@ buffer_append (struct Buffer *buf,
 
 
 /**
- * Process a POST request containing a JSON object.
+ * Process a POST request containing a JSON object.  This
+ * function realizes an MHD POST processor that will
+ * (incrementally) process JSON data uploaded to the HTTP
+ * server.  It will store the required state in the
+ * "connection_cls", which must be cleaned up using
+ * #TALER_MINT_parse_post_cleanup_callback().
  *
  * @param connection the MHD connection
- * @param con_cs the closure (contains a 'struct Buffer *')
+ * @param con_cs the closure (points to a `struct Buffer *`)
  * @param upload_data the POST data
- * @param upload_data_size the POST data size
+ * @param upload_data_size number of bytes in @a upload_data
  * @param json the JSON object for a completed request
- *
  * @returns
- *    GNUNET_YES if json object was parsed
+ *    GNUNET_YES if json object was parsed or at least
+ *               may be parsed in the future (call again);
+ *               `*json` will be NULL if we need to be called again,
+ *                and non-NULL if we are done.
  *    GNUNET_NO is request incomplete or invalid
+ *               (error message was generated)
  *    GNUNET_SYSERR on internal error
+ *               (we could not even queue an error message,
+ *                close HTTP session with MHD_NO)
  */
 int
 TALER_MINT_parse_post_json (struct MHD_Connection *connection,
@@ -164,10 +173,10 @@ TALER_MINT_parse_post_json (struct MHD_Connection *connection,
 {
   struct Buffer *r = *con_cls;
 
+  *json = NULL;
   if (NULL == *con_cls)
   {
     /* We are seeing a fresh POST request. */
-
     r = GNUNET_new (struct Buffer);
     if (GNUNET_OK !=
         buffer_init (r,
@@ -179,11 +188,15 @@ TALER_MINT_parse_post_json (struct MHD_Connection *connection,
       *con_cls = NULL;
       buffer_deinit (r);
       GNUNET_free (r);
-      return GNUNET_SYSERR;
+      return (MHD_NO ==
+              TALER_MINT_reply_internal_error (connection,
+                                               "out of memory"))
+        ? GNUNET_SYSERR : GNUNET_NO;
     }
+    /* everything OK, wait for more POST data */
     *upload_data_size = 0;
     *con_cls = r;
-    return GNUNET_NO;
+    return GNUNET_YES;
   }
   if (0 != *upload_data_size)
   {
@@ -195,31 +208,33 @@ TALER_MINT_parse_post_json (struct MHD_Connection *connection,
                        *upload_data_size,
                        REQUEST_BUFFER_MAX))
     {
-      /* Request too long or we're out of memory. */
-
+      /* Request too long */
       *con_cls = NULL;
       buffer_deinit (r);
       GNUNET_free (r);
-      return GNUNET_SYSERR;
+      return (MHD_NO ==
+              TALER_MINT_reply_request_too_large (connection))
+        ? GNUNET_SYSERR : GNUNET_NO;
     }
+    /* everything OK, wait for more POST data */
     *upload_data_size = 0;
-    return GNUNET_NO;
+    return GNUNET_YES;
   }
 
   /* We have seen the whole request. */
 
-  *json = json_loadb (r->data, r->fill, 0, NULL);
+  *json = json_loadb (r->data,
+                      r->fill,
+                      0,
+                      NULL);
   buffer_deinit (r);
   GNUNET_free (r);
   if (NULL == *json)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Can't parse JSON request body\n");
+                "Failed to parse JSON request body\n");
     return (MHD_YES ==
-            TALER_MINT_reply_json_pack (connection,
-                                        MHD_HTTP_BAD_REQUEST,
-                                        "{s:s}",
-                                        "error", "invalid json"))
+            TALER_MINT_reply_invalid_json (connection))
       ? GNUNET_NO : GNUNET_SYSERR;
   }
   *con_cls = NULL;

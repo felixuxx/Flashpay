@@ -607,20 +607,20 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   struct GNUNET_HashCode melt_hash;
 
   res = TALER_MINT_parse_post_json (connection,
-                           connection_cls,
-                           upload_data,
-                           upload_data_size, &root);
+                                    connection_cls,
+                                    upload_data,
+                                    upload_data_size,
+                                    &root);
   if (GNUNET_SYSERR == res)
-  {
-    // FIXME: return 'internal error'?
-    GNUNET_break (0);
     return MHD_NO;
-  }
-  if (GNUNET_NO == res)
+  if ( (GNUNET_NO == res) || (NULL == root) )
     return MHD_YES;
 
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
-    return GNUNET_SYSERR;
+  {
+    /* FIXME: return error code to MHD! */
+    return MHD_NO;
+  }
 
   /* session_pub field must always be present */
   res = request_json_require_nav (connection, root,
@@ -824,18 +824,14 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
   json_t *root;
 
   res = TALER_MINT_parse_post_json (connection,
-                           connection_cls,
-                           upload_data,
-                           upload_data_size, &root);
+                                    connection_cls,
+                                    upload_data,
+                                    upload_data_size,
+                                    &root);
   if (GNUNET_SYSERR == res)
-  {
-    // FIXME: return 'internal error'?
-    GNUNET_break (0);
     return MHD_NO;
-  }
-  if (GNUNET_NO == res)
+  if ( (GNUNET_NO == res) || (NULL == root) )
     return MHD_YES;
-
 
   res = request_json_require_nav (connection, root,
                                   JNAV_FIELD, "session_pub",
@@ -1160,16 +1156,13 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
   json_t *root;
 
   res = TALER_MINT_parse_post_json (connection,
-                           connection_cls,
-                           upload_data, upload_data_size,
-                           &root);
+                                    connection_cls,
+                                    upload_data,
+                                    upload_data_size,
+                                    &root);
   if (GNUNET_SYSERR == res)
-  {
-    // FIXME: return 'internal error'?
-    GNUNET_break (0);
     return MHD_NO;
-  }
-  if (GNUNET_NO == res)
+  if ( (GNUNET_NO == res) || (NULL == root) )
     return MHD_YES;
 
   res = request_json_require_nav (connection, root,
@@ -1186,6 +1179,7 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
     GNUNET_break (0);
+    // FIXME: return 'internal error'?
     return MHD_NO;
   }
 
@@ -1199,6 +1193,7 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
   if (GNUNET_SYSERR == res)
   {
     GNUNET_break (0);
+    // FIXME: return 'internal error'?
     return MHD_NO;
   }
 
@@ -1242,14 +1237,16 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
       if (GNUNET_OK != res)
       {
         GNUNET_break (0);
-        return GNUNET_SYSERR;
+            // FIXME: return 'internal error'?
+        return MHD_NO;
       }
 
       res = TALER_MINT_DB_get_refresh_melt (db_conn, &refresh_session_pub, j, &coin_pub);
       if (GNUNET_OK != res)
       {
         GNUNET_break (0);
-        return GNUNET_SYSERR;
+        // FIXME: return 'internal error'?
+        return MHD_NO;
       }
 
       /* We're converting key types here, which is not very nice
@@ -1259,14 +1256,16 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
                                                &transfer_secret))
       {
         GNUNET_break (0);
-        return GNUNET_SYSERR;
+        // FIXME: return 'internal error'?
+        return MHD_NO;
       }
 
       if (0 >= TALER_refresh_decrypt (commit_link.shared_secret_enc, TALER_REFRESH_SHARED_SECRET_LENGTH,
                                       &transfer_secret, &shared_secret))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "decryption failed\n");
-        return GNUNET_SYSERR;
+        // FIXME: return 'internal error'?
+        return MHD_NO;
       }
 
       if (GNUNET_NO == secret_initialized)
@@ -1277,7 +1276,8 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
       else if (0 != memcmp (&shared_secret, &last_shared_secret, sizeof (struct GNUNET_HashCode)))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "shared secrets do not match\n");
-        return GNUNET_SYSERR;
+        // FIXME: return error code!
+        return MHD_NO;
       }
 
       {
@@ -1286,7 +1286,8 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
         if (0 != memcmp (&transfer_pub_check, &commit_link.transfer_pub, sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey)))
         {
           GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "transfer keys do not match\n");
-          return GNUNET_SYSERR;
+        // FIXME: return error code!
+          return MHD_NO;
         }
       }
     }
@@ -1310,7 +1311,8 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
       if (GNUNET_OK != res)
       {
         GNUNET_break (0);
-        return GNUNET_SYSERR;
+                // FIXME: return error code!
+        return MHD_NO;
       }
 
 
@@ -1318,20 +1320,23 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
                                       &last_shared_secret, &link_data))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "decryption failed\n");
-        return GNUNET_SYSERR;
+                // FIXME: return error code!
+        return MHD_NO;
       }
 
       GNUNET_CRYPTO_ecdsa_key_get_public (&link_data.coin_priv, &coin_pub);
       if (NULL == (bkey = TALER_RSA_blinding_key_decode (&link_data.bkey_enc)))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Invalid blinding key\n");
-        return GNUNET_SYSERR;
+                        // FIXME: return error code!
+        return MHD_NO;
       }
       res = TALER_MINT_DB_get_refresh_order (db_conn, j, &refresh_session_pub, &denom_pub);
       if (GNUNET_OK != res)
       {
         GNUNET_break (0);
-        return GNUNET_SYSERR;
+          // FIXME: return error code!
+        return MHD_NO;
       }
       if (NULL == (coin_ev_check =
                    TALER_RSA_message_blind (&coin_pub,
@@ -1340,7 +1345,8 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
                                             &denom_pub)))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "blind failed\n");
-        return GNUNET_SYSERR;
+          // FIXME: return error code!
+        return MHD_NO;
       }
 
       if (0 != memcmp (&coin_ev_check,
@@ -1349,7 +1355,8 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "blind envelope does not match for kappa=%d, old=%d\n",
                     (int) i, (int) j);
-        return GNUNET_SYSERR;
+        // FIXME: return error code!
+        return MHD_NO;
       }
     }
   }
@@ -1358,6 +1365,7 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
   if (GNUNET_OK != TALER_MINT_DB_transaction (db_conn))
   {
     GNUNET_break (0);
+            // FIXME: return error code!
     return MHD_NO;
   }
 
@@ -1376,13 +1384,15 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
     if (GNUNET_OK != res)
     {
       GNUNET_break (0);
-      return GNUNET_SYSERR;
+              // FIXME: return error code!
+      return MHD_NO;
     }
     res = TALER_MINT_DB_get_refresh_order (db_conn, j, &refresh_session_pub, &denom_pub);
     if (GNUNET_OK != res)
     {
       GNUNET_break (0);
-      return GNUNET_SYSERR;
+                    // FIXME: return error code!
+      return MHD_NO;
     }
 
 
@@ -1392,7 +1402,8 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
     if (NULL == dki)
     {
       GNUNET_break (0);
-      return GNUNET_SYSERR;
+                    // FIXME: return error code!
+      return MHD_NO;
     }
     if (GNUNET_OK !=
         TALER_RSA_sign (dki->denom_priv,
@@ -1401,7 +1412,8 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
                         &ev_sig))
     {
       GNUNET_break (0);
-      return GNUNET_SYSERR;
+                    // FIXME: return error code!
+      return MHD_NO;
     }
 
     res = TALER_MINT_DB_insert_refresh_collectable (db_conn,
@@ -1411,7 +1423,8 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
     if (GNUNET_OK != res)
     {
       GNUNET_break (0);
-      return GNUNET_SYSERR;
+                          // FIXME: return error code!
+      return MHD_NO;
     }
   }
   /* mark that reveal was successful */
@@ -1420,7 +1433,8 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
   if (GNUNET_OK != res)
   {
     GNUNET_break (0);
-    return GNUNET_SYSERR;
+    // FIXME: return error code!
+    return MHD_NO;
   }
 
   if (GNUNET_OK != TALER_MINT_DB_commit (db_conn))
@@ -1459,9 +1473,9 @@ TALER_MINT_handler_refresh_link (struct RequestHandler *rh,
   struct SharedSecretEnc shared_secret_enc;
 
   res = TALER_MINT_mhd_request_arg_data (connection,
-                                  "coin_pub",
-                                  &coin_pub,
-                                  sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey));
+                                         "coin_pub",
+                                         &coin_pub,
+                                         sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey));
   if (GNUNET_SYSERR == res)
   {
     // FIXME: return 'internal error'
@@ -1474,7 +1488,8 @@ TALER_MINT_handler_refresh_link (struct RequestHandler *rh,
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
     GNUNET_break (0);
-    return GNUNET_SYSERR;
+    // FIXME: return error code!
+    return MHD_NO;
   }
 
   list = json_array ();
@@ -1488,6 +1503,7 @@ TALER_MINT_handler_refresh_link (struct RequestHandler *rh,
   if (GNUNET_SYSERR == res)
   {
     GNUNET_break (0);
+        // FIXME: return error code!
     return MHD_NO;
   }
   if (GNUNET_NO == res)
@@ -1504,6 +1520,7 @@ TALER_MINT_handler_refresh_link (struct RequestHandler *rh,
   if (GNUNET_SYSERR == res)
   {
     GNUNET_break (0);
+        // FIXME: return error code!
     return MHD_NO;
   }
   if (GNUNET_NO == res)

@@ -90,6 +90,39 @@ TALER_MINT_reply_arg_missing (struct MHD_Connection *connection,
                               const char *param_name);
 
 
+/**
+ * Send a response indicating an internal error.
+ *
+ * @param connection the MHD connection to use
+ * @param hint hint about the internal error's nature
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_internal_error (struct MHD_Connection *connection,
+                                 const char *hint);
+
+
+/**
+ * Send a response indicating that the request was too big.
+ *
+ * @param connection the MHD connection to use
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_request_too_large (struct MHD_Connection *connection);
+
+
+/**
+ * Send a response indicating that the JSON was malformed.
+ *
+ * @param connection the MHD connection to use
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_invalid_json (struct MHD_Connection *connection);
+
+
+
 
 
 #endif
