@@ -606,7 +606,7 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   struct GNUNET_HashContext *hash_context;
   struct GNUNET_HashCode melt_hash;
 
-  res = process_post_json (connection,
+  res = TALER_MINT_parse_post_json (connection,
                            connection_cls,
                            upload_data,
                            upload_data_size, &root);
@@ -823,7 +823,7 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
   struct GNUNET_HashContext *hash_context;
   json_t *root;
 
-  res = process_post_json (connection,
+  res = TALER_MINT_parse_post_json (connection,
                            connection_cls,
                            upload_data,
                            upload_data_size, &root);
@@ -1159,7 +1159,7 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
   int j;
   json_t *root;
 
-  res = process_post_json (connection,
+  res = TALER_MINT_parse_post_json (connection,
                            connection_cls,
                            upload_data, upload_data_size,
                            &root);

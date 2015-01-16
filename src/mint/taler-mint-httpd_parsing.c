@@ -156,11 +156,11 @@ buffer_append (struct Buffer *buf,
  *    GNUNET_SYSERR on internal error
  */
 int
-process_post_json (struct MHD_Connection *connection,
-                   void **con_cls,
-                   const char *upload_data,
-                   size_t *upload_data_size,
-                   json_t **json)
+TALER_MINT_parse_post_json (struct MHD_Connection *connection,
+                            void **con_cls,
+                            const char *upload_data,
+                            size_t *upload_data_size,
+                            json_t **json)
 {
   struct Buffer *r = *con_cls;
 
@@ -225,6 +225,23 @@ process_post_json (struct MHD_Connection *connection,
   *con_cls = NULL;
 
   return GNUNET_YES;
+}
+
+
+/**
+ * Function called whenever we are done with a request
+ * to clean up our state.
+ *
+ * @param con_cls value as it was left by
+ *        #TALER_MINT_parse_post_json(), to be cleaned up
+ */
+void
+TALER_MINT_parse_post_cleanup_callback (void *con_cls)
+{
+  struct Buffer *r = con_cls;
+
+  if (NULL != r)
+    buffer_deinit (r);
 }
 
 
@@ -451,3 +468,5 @@ TALER_MINT_mhd_request_arg_data (struct MHD_Connection *connection,
       ? GNUNET_SYSERR : GNUNET_NO;
   return GNUNET_OK;
 }
+
+/* end of taler-mint-httpd_parsing.c */

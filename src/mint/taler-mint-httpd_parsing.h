@@ -68,25 +68,45 @@ enum
 
 
 /**
- * Process a POST request containing a JSON object.
+ * Process a POST request containing a JSON object.  This
+ * function realizes an MHD POST processor that will
+ * (incrementally) process JSON data uploaded to the HTTP
+ * server.  It will store the required state in the
+ * "connection_cls", which must be cleaned up using
+ * #TALER_MINT_parse_post_cleanup_callback().
  *
  * @param connection the MHD connection
- * @param con_cs the closure (contains a 'struct Buffer *')
+ * @param con_cs the closure (points to a `struct Buffer *`)
  * @param upload_data the POST data
- * @param upload_data_size the POST data size
+ * @param upload_data_size number of bytes in @a upload_data
  * @param json the JSON object for a completed request
  *
  * @returns
- *    GNUNET_YES if json object was parsed
+ *    GNUNET_YES if json object was parsed or at least
+ *               may be parsed in the future (call again)
  *    GNUNET_NO is request incomplete or invalid
+ *               (error message was generated)
  *    GNUNET_SYSERR on internal error
+ *               (we could not even queue an error message,
+ *                close HTTP session with MHD_NO)
  */
 int
-process_post_json (struct MHD_Connection *connection,
-                   void **con_cls,
-                   const char *upload_data,
-                   size_t *upload_data_size,
-                   json_t **json);
+TALER_MINT_parse_post_json (struct MHD_Connection *connection,
+                            void **con_cls,
+                            const char *upload_data,
+                            size_t *upload_data_size,
+                            json_t **json);
+
+
+/**
+ * Function called whenever we are done with a request
+ * to clean up our state.
+ *
+ * @param con_cls value as it was left by
+ *        #TALER_MINT_parse_post_json(), to be cleaned up
+ */
+void
+TALER_MINT_parse_post_cleanup_callback (void *con_cls);
 
 
 /**

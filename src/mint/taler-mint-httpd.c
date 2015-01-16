@@ -73,35 +73,29 @@ static uint16_t serve_port;
 
 
 /**
- * Convert a string representing an EdDSA signature to an EdDSA
- * signature.
+ * Function called whenever MHD is done with a request.  If the
+ * request was a POST, we may have stored a `struct Buffer *` in the
+ * @a con_cls that might still need to be cleaned up.  Call the
+ * respective function to free the memory.
  *
- * FIXME: this should be in GNUnet.
- * FIXME: why? this code is dead, even here!
- *
- * @param enc encoded EdDSA signature
- * @param enclen number of bytes in @a enc (without 0-terminator)
- * @param pub where to store the EdDSA signature
- * @return #GNUNET_OK on success
+ * @param cls client-defined closure
+ * @param connection connection handle
+ * @param con_cls value as set by the last call to
+ *        the #MHD_AccessHandlerCallback
+ * @param toe reason for request termination
+ * @see #MHD_OPTION_NOTIFY_COMPLETED
+ * @ingroup request
  */
-int
-TALER_eddsa_signature_from_string (const char *enc,
-                                   size_t enclen,
-                                   struct GNUNET_CRYPTO_EddsaSignature *sig)
+static void
+handle_mhd_completion_callback (void *cls,
+                                struct MHD_Connection *connection,
+                                void **con_cls,
+                                enum MHD_RequestTerminationCode toe)
 {
-  size_t keylen = (sizeof (struct GNUNET_CRYPTO_EddsaSignature)) * 8;
-
-  if (keylen % 5 > 0)
-    keylen += 5 - keylen % 5;
-  keylen /= 5;
-  if (enclen != keylen)
-    return GNUNET_SYSERR;
-
-  if (GNUNET_OK != GNUNET_STRINGS_string_to_data (enc, enclen,
-						  sig,
-						  sizeof (struct GNUNET_CRYPTO_EddsaSignature)))
-    return GNUNET_SYSERR;
-  return GNUNET_OK;
+  if (NULL == *con_cls)
+    return;
+  TALER_MINT_parse_post_cleanup_callback (*con_cls);
+  *con_cls = NULL;
 }
 
 
@@ -223,7 +217,6 @@ handle_mhd_request (void *cls,
                                              upload_data,
                                              upload_data_size);
 }
-
 
 
 /**
@@ -359,6 +352,7 @@ main (int argc, char *const *argv)
                                serve_port,
                                NULL, NULL,
                                &handle_mhd_request, NULL,
+                               MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback,
                                MHD_OPTION_END);
 
   if (NULL == mydaemon)

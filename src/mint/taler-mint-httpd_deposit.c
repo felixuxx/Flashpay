@@ -88,7 +88,7 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
   PGconn *db_conn;
   int res;
 
-  res = process_post_json (connection,
+  res = TALER_MINT_parse_post_json (connection,
                            connection_cls,
                            upload_data, upload_data_size,
                            &json);
