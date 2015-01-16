@@ -16,7 +16,7 @@
 
 /**
  * @file taler-mint-httpd_mhd.h
- * @brief helpers for MHD interaction
+ * @brief helpers for MHD interaction, used to generate simple responses
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
@@ -107,26 +107,5 @@ TALER_MINT_handler_send_json_pack_error (struct RequestHandler *rh,
                                          const char *upload_data,
                                          size_t *upload_data_size);
 
-
-/**
- * Extraxt base32crockford encoded data from request.
- *
- * Queues an error response to the connection if the parameter is missing or
- * invalid.
- *
- * @param connection the MHD connection
- * @param param_name the name of the parameter with the key
- * @param[out] out_data pointer to store the result
- * @param out_size expected size of data
- * @return
- *   GNUNET_YES if the the argument is present
- *   GNUNET_NO if the argument is absent or malformed
- *   GNUNET_SYSERR on internal error (error response could not be sent)
- */
-int
-TALER_MINT_mhd_request_arg_data (struct MHD_Connection *connection,
-                          const char *param_name,
-                          void *out_data,
-                          size_t out_size);
 
 #endif

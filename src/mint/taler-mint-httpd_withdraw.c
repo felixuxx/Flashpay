@@ -31,10 +31,11 @@
 #include "taler_signatures.h"
 #include "taler_rsa.h"
 #include "taler_json_lib.h"
-#include "taler-mint-httpd_json.h"
+#include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_keys.h"
 #include "taler-mint-httpd_mhd.h"
 #include "taler-mint-httpd_withdraw.h"
+#include "taler-mint-httpd_responses.h"
 
 
 /**
@@ -135,14 +136,11 @@ TALER_MINT_handler_withdraw_status (struct RequestHandler *rh,
                                    &reserve_pub,
                                    &reserve);
   if (GNUNET_SYSERR == res)
-    return TALER_MINT_helper_send_json_pack (rh,
-                                  connection,
-                                  connection_cls,
-                                  0 /* no caching */,
-                                  MHD_HTTP_NOT_FOUND,
-                                  "{s:s}",
-                                  "error",
-                                  "Reserve not found");
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       "{s:s}",
+                                       "error",
+                                       "Reserve not found");
   if (GNUNET_OK != res)
   {
     // FIXME: return 'internal error'?
@@ -178,9 +176,9 @@ TALER_MINT_handler_withdraw_status (struct RequestHandler *rh,
                        sig_to_json (&reserve.status_sig_purpose,
                                     &reserve.status_sig));
 
-  return send_response_json (connection,
-                             json,
-                             MHD_HTTP_OK);
+  return TALER_MINT_reply_json (connection,
+                                json,
+                                MHD_HTTP_OK);
 }
 
 
@@ -200,9 +198,9 @@ helper_withdraw_sign_send_reply (struct MHD_Connection *connection,
   json_object_set_new (root, "ev_sig",
                        TALER_JSON_from_data (&collectable->ev_sig,
                                              sizeof (struct TALER_RSA_Signature)));
-  return send_response_json (connection,
-                             root,
-                             MHD_HTTP_OK);
+  return TALER_MINT_reply_json (connection,
+                                root,
+                                MHD_HTTP_OK);
 }
 
 
@@ -317,10 +315,11 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
     return MHD_NO;
   }
   if (GNUNET_NO == res)
-    return request_send_json_pack (connection,
-                                   MHD_HTTP_NOT_FOUND,
-                                   "{s:s}",
-                                   "error", "Reserve not found");
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       "{s:s}",
+                                       "error",
+                                       "Reserve not found");
 
   // fill out all the missing info in the request before
   // we can check the signature on the request
@@ -334,19 +333,21 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
                                   &wsrd.purpose,
                                   &wsrd.sig,
                                   &wsrd.reserve_pub))
-    return request_send_json_pack (connection,
-                                   MHD_HTTP_UNAUTHORIZED,
-                                   "{s:s}",
-                                   "error", "Invalid Signature");
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_UNAUTHORIZED,
+                                       "{s:s}",
+                                       "error", "Invalid Signature");
 
   key_state = TALER_MINT_key_state_acquire ();
   dki = TALER_MINT_get_denom_key (key_state,
                                   &wsrd.denomination_pub);
   TALER_MINT_key_state_release (key_state);
   if (NULL == dki)
-    return request_send_json_pack (connection, MHD_HTTP_NOT_FOUND,
-                                   "{s:s}",
-                                   "error", "Denomination not found");
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       "{s:s}",
+                                       "error",
+                                       "Denomination not found");
 
   amount_required = TALER_amount_ntoh (dki->issue.value);
   amount_required = TALER_amount_add (amount_required,
@@ -354,14 +355,16 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
 
   if (0 < TALER_amount_cmp (amount_required,
                             TALER_amount_ntoh (reserve.balance)))
-    return request_send_json_pack (connection,
-                                   MHD_HTTP_PAYMENT_REQUIRED,
-                                   "{s:s}",
-                                   "error", "Insufficient funds");
-  if (GNUNET_OK != TALER_RSA_sign (dki->denom_priv,
-                                   &wsrd.coin_envelope,
-                                   sizeof (struct TALER_RSA_BlindedSignaturePurpose),
-                                   &ev_sig))
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_PAYMENT_REQUIRED,
+                                       "{s:s}",
+                                       "error",
+                                       "Insufficient funds");
+  if (GNUNET_OK !=
+      TALER_RSA_sign (dki->denom_priv,
+                      &wsrd.coin_envelope,
+                      sizeof (struct TALER_RSA_BlindedSignaturePurpose),
+                      &ev_sig))
   {
     // FIXME: return 'internal error'
     GNUNET_break (0);

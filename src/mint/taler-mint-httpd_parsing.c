@@ -1,7 +1,31 @@
+/*
+  This file is part of TALER
+  (C) 2014 GNUnet e.V.
+
+  TALER is free software; you can redistribute it and/or modify it under the
+  terms of the GNU Affero General Public License as published by the Free Software
+  Foundation; either version 3, or (at your option) any later version.
+
+  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+  A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License along with
+  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
+*/
+
+/**
+ * @file taler-mint-httpd_parsing.c
+ * @brief functions to parse incoming requests (MHD arguments and JSON snippets)
+ * @author Florian Dold
+ * @author Benedikt Mueller
+ * @author Christian Grothoff
+ */
+
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
-#include "taler-mint-httpd_json.h"
-
+#include "taler-mint-httpd_parsing.h"
+#include "taler-mint-httpd_responses.h"
 
 
 /**
@@ -49,7 +73,11 @@ struct Buffer
  * @return a GNUnet result code
  */
 static int
-buffer_init (struct Buffer *buf, const void *data, size_t data_size, size_t alloc_size, size_t max_size)
+buffer_init (struct Buffer *buf,
+             const void *data,
+             size_t data_size,
+             size_t alloc_size,
+             size_t max_size)
 {
   if (data_size > max_size || alloc_size > max_size)
     return GNUNET_SYSERR;
@@ -87,7 +115,10 @@ buffer_deinit (struct Buffer *buf)
  *         GNUNET_SYSERR on fatal error (out of memory?)
  */
 static int
-buffer_append (struct Buffer *buf, const void *data, size_t data_size, size_t max_size)
+buffer_append (struct Buffer *buf,
+               const void *data,
+               size_t data_size,
+               size_t max_size)
 {
   if (buf->fill + data_size > max_size)
     return GNUNET_NO;
@@ -107,63 +138,6 @@ buffer_append (struct Buffer *buf, const void *data, size_t data_size, size_t ma
   memcpy (buf->data + buf->fill, data, data_size);
   buf->fill += data_size;
   return GNUNET_OK;
-}
-
-
-/**
- * Send JSON object as response.  Decreases the reference count of the
- * JSON object.
- *
- * @param connection the MHD connection
- * @param json the json object
- * @param status_code the http status code
- * @return MHD result code
- */
-int
-send_response_json (struct MHD_Connection *connection,
-                    json_t *json,
-                    unsigned int status_code)
-{
-  struct MHD_Response *resp;
-  char *json_str;
-
-  json_str = json_dumps (json, JSON_INDENT(2));
-  json_decref (json);
-  resp = MHD_create_response_from_buffer (strlen (json_str), json_str,
-                                          MHD_RESPMEM_MUST_FREE);
-  if (NULL == resp)
-    return MHD_NO;
-  return MHD_queue_response (connection, status_code, resp);
-}
-
-
-/**
- * Send a JSON object via an MHD connection,
- * specified with the JANSSON pack syntax (see json_pack).
- *
- * @param connection connection to send the JSON over
- * @param http_code HTTP status for the response
- * @param fmt format string for pack
- * @param ... varargs
- * @return MHD_YES on success or MHD_NO on error
- */
-int
-request_send_json_pack (struct MHD_Connection *connection,
-                        unsigned int http_code,
-                        const char *fmt, ...)
-{
-  json_t *msg;
-  va_list argp;
-  int ret;
-
-  va_start(argp, fmt);
-  msg = json_vpack_ex (NULL, 0, fmt, argp);
-  va_end(argp);
-  if (NULL == msg)
-    return MHD_NO;
-  ret = send_response_json (connection, msg, http_code);
-  json_decref (msg);
-  return ret;
 }
 
 
@@ -195,8 +169,12 @@ process_post_json (struct MHD_Connection *connection,
     /* We are seeing a fresh POST request. */
 
     r = GNUNET_new (struct Buffer);
-    if (GNUNET_OK != buffer_init (r, upload_data, *upload_data_size,
-                 REQUEST_BUFFER_INITIAL, REQUEST_BUFFER_MAX))
+    if (GNUNET_OK !=
+        buffer_init (r,
+                     upload_data,
+                     *upload_data_size,
+                     REQUEST_BUFFER_INITIAL,
+                     REQUEST_BUFFER_MAX))
     {
       *con_cls = NULL;
       buffer_deinit (r);
@@ -211,8 +189,11 @@ process_post_json (struct MHD_Connection *connection,
   {
     /* We are seeing an old request with more data available. */
 
-    if (GNUNET_OK != buffer_append (r, upload_data, *upload_data_size,
-                                    REQUEST_BUFFER_MAX))
+    if (GNUNET_OK !=
+        buffer_append (r,
+                       upload_data,
+                       *upload_data_size,
+                       REQUEST_BUFFER_MAX))
     {
       /* Request too long or we're out of memory. */
 
@@ -232,11 +213,14 @@ process_post_json (struct MHD_Connection *connection,
   GNUNET_free (r);
   if (NULL == *json)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING, "Can't parse JSON request body\n");
-    return request_send_json_pack (connection, MHD_HTTP_BAD_REQUEST,
-                                   GNUNET_NO, GNUNET_SYSERR,
-                                   "{s:s}",
-                                   "error", "invalid json");
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Can't parse JSON request body\n");
+    return (MHD_YES ==
+            TALER_MINT_reply_json_pack (connection,
+                                        MHD_HTTP_BAD_REQUEST,
+                                        "{s:s}",
+                                        "error", "invalid json"))
+      ? GNUNET_NO : GNUNET_SYSERR;
   }
   *con_cls = NULL;
 
@@ -284,12 +268,14 @@ request_json_require_nav (struct MHD_Connection *connection,
           root = json_object_get (root, fname);
           if (NULL == root)
           {
-
-            (void) request_send_json_pack (connection, MHD_HTTP_BAD_REQUEST,
-                                           0, 0,
-                                           "{s:s,s:o}",
-                                           "error", "missing field in JSON",
-                                           "path", path);
+            /* FIXME: can't IGNORE this return value! */
+            (void) TALER_MINT_reply_json_pack (connection,
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s,s:o}",
+                                               "error",
+                                               "missing field in JSON",
+                                               "path",
+                                               path);
             ignore = GNUNET_YES;
             break;
           }
@@ -304,11 +290,12 @@ request_json_require_nav (struct MHD_Connection *connection,
           root = json_array_get (root, fnum);
           if (NULL == root)
           {
-            (void) request_send_json_pack (connection, MHD_HTTP_BAD_REQUEST,
-                                           0, 0,
-                                           "{s:s, s:o}",
-                                           "error", "missing index in JSON",
-                                           "path", path);
+            /* FIXME: can't IGNORE this return value! */
+            (void) TALER_MINT_reply_json_pack (connection,
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:o}",
+                                               "error", "missing index in JSON",
+                                               "path", path);
             ignore = GNUNET_YES;
             break;
           }
@@ -327,22 +314,27 @@ request_json_require_nav (struct MHD_Connection *connection,
           str = json_string_value (root);
           if (NULL == str)
           {
-            (void) request_send_json_pack (connection, MHD_HTTP_BAD_REQUEST,
-                                           0, 0,
-                                           "{s:s, s:o}",
-                                           "error", "string expected",
-                                           "path", path);
+            /* FIXME: can't IGNORE this return value! */
+            (void) TALER_MINT_reply_json_pack (connection,
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:o}",
+                                               "error",
+                                               "string expected",
+                                               "path",
+                                               path);
             return GNUNET_NO;
           }
           res = GNUNET_STRINGS_string_to_data (str, strlen (str),
                                                 where, len);
           if (GNUNET_OK != res)
           {
-            (void) request_send_json_pack (connection, MHD_HTTP_BAD_REQUEST,
-                                           0, 0,
-                                           "{s:s,s:o}",
-                                           "error", "malformed binary data in JSON",
-                                           "path", path);
+            /* FIXME: can't IGNORE this return value! */
+            (void) TALER_MINT_reply_json_pack (connection,
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s,s:o}",
+                                               "error",
+                                               "malformed binary data in JSON",
+                                               "path", path);
             return GNUNET_NO;
           }
           return GNUNET_YES;
@@ -372,11 +364,13 @@ request_json_require_nav (struct MHD_Connection *connection,
                                                   *where, *len);
             if (GNUNET_OK != res)
             {
-              (void) request_send_json_pack (connection, MHD_HTTP_BAD_REQUEST,
-                                             0, 0,
-                                             "{s:s, s:o}",
-                                             "error", "malformed binary data in JSON",
-                                             "path", path);
+              /* FIXME: can't IGNORE this return value! */
+              (void) TALER_MINT_reply_json_pack (connection,
+                                                 MHD_HTTP_BAD_REQUEST,
+                                                 "{s:s, s:o}",
+                                                 "error",
+                                                 "malformed binary data in JSON",
+                                                 "path", path);
               return GNUNET_NO;
             }
           }
@@ -393,13 +387,14 @@ request_json_require_nav (struct MHD_Connection *connection,
             return GNUNET_NO;
           if (typ != -1 && json_typeof (root) != typ)
           {
-              (void) request_send_json_pack (connection, MHD_HTTP_BAD_REQUEST,
-                                             0, 0,
-                                             "{s:s, s:i, s:i s:o}",
-                                             "error", "wrong JSON field type",
-                                             "type_expected", typ,
-                                             "type_actual", json_typeof (root),
-                                             "path", path);
+            /* FIXME: can't IGNORE this return value! */
+              (void) TALER_MINT_reply_json_pack (connection,
+                                                 MHD_HTTP_BAD_REQUEST,
+                                                 "{s:s, s:i, s:i s:o}",
+                                                 "error", "wrong JSON field type",
+                                                 "type_expected", typ,
+                                                 "type_actual", json_typeof (root),
+                                                 "path", path);
             return GNUNET_NO;
           }
           *r_json = root;
@@ -414,4 +409,45 @@ request_json_require_nav (struct MHD_Connection *connection,
 }
 
 
+/**
+ * Extract base32crockford encoded data from request.
+ *
+ * Queues an error response to the connection if the parameter is missing or
+ * invalid.
+ *
+ * @param connection the MHD connection
+ * @param param_name the name of the parameter with the key
+ * @param[out] out_data pointer to store the result
+ * @param out_size expected size of data
+ * @return
+ *   GNUNET_YES if the the argument is present
+ *   GNUNET_NO if the argument is absent or malformed
+ *   GNUNET_SYSERR on internal error (error response could not be sent)
+ */
+int
+TALER_MINT_mhd_request_arg_data (struct MHD_Connection *connection,
+                                 const char *param_name,
+                                 void *out_data,
+                                 size_t out_size)
+{
+  const char *str;
 
+  str = MHD_lookup_connection_value (connection,
+                                     MHD_GET_ARGUMENT_KIND,
+                                     param_name);
+  if (NULL == str)
+  {
+    return (MHD_NO ==
+            TALER_MINT_reply_arg_missing (connection, param_name))
+      ? GNUNET_SYSERR : GNUNET_NO;
+  }
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (str,
+                                     strlen (str),
+                                     out_data,
+                                     out_size))
+    return (MHD_NO ==
+            TALER_MINT_reply_arg_invalid (connection, param_name))
+      ? GNUNET_SYSERR : GNUNET_NO;
+  return GNUNET_OK;
+}

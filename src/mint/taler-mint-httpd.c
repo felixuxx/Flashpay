@@ -32,7 +32,7 @@
 #include "taler_signatures.h"
 #include "taler_rsa.h"
 #include "taler_json_lib.h"
-#include "taler-mint-httpd_json.h"
+#include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_mhd.h"
 #include "taler-mint-httpd_keys.h"
 #include "taler-mint-httpd_deposit.h"
@@ -372,4 +372,3 @@ main (int argc, char *const *argv)
   MHD_stop_daemon (mydaemon);
   return (GNUNET_OK == ret) ? 0 : 1;
 }
-

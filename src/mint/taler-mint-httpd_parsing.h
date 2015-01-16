@@ -1,4 +1,26 @@
+/*
+  This file is part of TALER
+  (C) 2014 GNUnet e.V.
 
+  TALER is free software; you can redistribute it and/or modify it under the
+  terms of the GNU Affero General Public License as published by the Free Software
+  Foundation; either version 3, or (at your option) any later version.
+
+  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+  A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License along with
+  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
+*/
+
+/**
+ * @file taler-mint-httpd_parsing.h
+ * @brief functions to parse incoming requests
+ * @author Florian Dold
+ * @author Benedikt Mueller
+ * @author Christian Grothoff
+ */
 
 #ifndef TALER_MICROHTTPD_LIB_H_
 #define TALER_MICROHTTPD_LIB_H_
@@ -45,38 +67,6 @@ enum
 };
 
 
-
-/**
- * Send JSON object as response.  Decreases
- * the reference count of the JSON object.
- *
- * @param connection the MHD connection
- * @param json the json object
- * @param status_code the http status code
- * @return MHD result code (MHD_YES on success)
- */
-int
-send_response_json (struct MHD_Connection *connection,
-                    json_t *json,
-                    unsigned int status_code);
-
-
-/**
- * Send a JSON object via an MHD connection,
- * specified with the JANSSON pack syntax (see json_pack).
- *
- * @param connection connection to send the JSON over
- * @param http_code HTTP status for the response
- * @param fmt format string for pack
- * @param ... varargs
- * @return MHD_YES on success or MHD_NO on error
- */
-int
-request_send_json_pack (struct MHD_Connection *connection,
-                        unsigned int http_code,
-                        const char *fmt, ...);
-
-
 /**
  * Process a POST request containing a JSON object.
  *
@@ -115,5 +105,32 @@ process_post_json (struct MHD_Connection *connection,
 int
 request_json_require_nav (struct MHD_Connection *connection,
                           const json_t *root, ...);
+
+
+
+
+/**
+ * Extraxt base32crockford encoded data from request.
+ *
+ * Queues an error response to the connection if the parameter is missing or
+ * invalid.
+ *
+ * @param connection the MHD connection
+ * @param param_name the name of the parameter with the key
+ * @param[out] out_data pointer to store the result
+ * @param out_size expected size of data
+ * @return
+ *   GNUNET_YES if the the argument is present
+ *   GNUNET_NO if the argument is absent or malformed
+ *   GNUNET_SYSERR on internal error (error response could not be sent)
+ */
+int
+TALER_MINT_mhd_request_arg_data (struct MHD_Connection *connection,
+                          const char *param_name,
+                          void *out_data,
+                          size_t out_size);
+
+
+
 
 #endif /* TALER_MICROHTTPD_LIB_H_ */

@@ -31,10 +31,11 @@
 #include "taler_signatures.h"
 #include "taler_rsa.h"
 #include "taler_json_lib.h"
-#include "taler-mint-httpd_json.h"
+#include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_keys.h"
 #include "taler-mint-httpd_mhd.h"
 #include "taler-mint-httpd_refresh.h"
+#include "taler-mint-httpd_responses.h"
 
 
 /**
@@ -228,10 +229,10 @@ check_confirm_signature (struct MHD_Connection *connection,
                                   coin_pub))
   {
     if (MHD_YES !=
-        request_send_json_pack (connection,
-                                MHD_HTTP_UNAUTHORIZED,
-                                "{s:s}",
-                                "error", "signature invalid"))
+        TALER_MINT_reply_json_pack (connection,
+                                    MHD_HTTP_UNAUTHORIZED,
+                                    "{s:s}",
+                                    "error", "signature invalid"))
       return GNUNET_SYSERR;
     return GNUNET_NO;
   }
@@ -356,15 +357,19 @@ refresh_accept_melts (struct MHD_Connection *connection,
     dki = &(TALER_MINT_get_denom_key (key_state, &coin_public_info.denom_pub)->issue);
 
     if (NULL == dki)
-      return (MHD_YES == request_send_json_pack (connection, MHD_HTTP_NOT_FOUND,
-                                                 "{s:s}",
-                                                 "error", "denom not found"))
+      return (MHD_YES ==
+              TALER_MINT_reply_json_pack (connection,
+                                          MHD_HTTP_NOT_FOUND,
+                                          "{s:s}",
+                                          "error", "denom not found"))
         ? GNUNET_NO : GNUNET_SYSERR;
 
     if (GNUNET_OK != TALER_MINT_test_coin_valid (key_state, &coin_public_info))
-      return (MHD_YES == request_send_json_pack (connection, MHD_HTTP_NOT_FOUND,
-                                                 "{s:s}",
-                                                 "error", "coin invalid"))
+      return (MHD_YES ==
+              TALER_MINT_reply_json_pack (connection,
+                                          MHD_HTTP_NOT_FOUND,
+                                          "{s:s}",
+                                          "error", "coin invalid"))
         ? GNUNET_NO : GNUNET_SYSERR;
 
     res = TALER_MINT_DB_get_known_coin (db_conn, &coin_public_info.coin_pub,
@@ -379,9 +384,13 @@ refresh_accept_melts (struct MHD_Connection *connection,
     if (GNUNET_YES == res)
     {
       if (GNUNET_YES == known_coin.is_refreshed)
-        return (MHD_YES == request_send_json_pack (connection, MHD_HTTP_NOT_FOUND,
-                                                   "{s:s}",
-                                                   "error", "coin already refreshed")) ? GNUNET_NO : GNUNET_SYSERR;
+        return (MHD_YES ==
+                TALER_MINT_reply_json_pack (connection,
+                                            MHD_HTTP_NOT_FOUND,
+                                            "{s:s}",
+                                            "error",
+                                            "coin already refreshed"))
+          ? GNUNET_NO : GNUNET_SYSERR;
     }
     else
     {
@@ -413,9 +422,11 @@ refresh_accept_melts (struct MHD_Connection *connection,
      * pay the refreshing fees of the coin. */
 
     if (TALER_amount_cmp (coin_gain, TALER_amount_ntoh (dki->fee_refresh)) < 0)
-      return (MHD_YES == request_send_json_pack (connection, MHD_HTTP_NOT_FOUND,
-                                                 "{s:s}",
-                                                 "error", "depleted")) ? GNUNET_NO : GNUNET_SYSERR;
+      return (MHD_YES ==
+              TALER_MINT_reply_json_pack (connection,
+                                          MHD_HTTP_NOT_FOUND,
+                                          "{s:s}",
+                                          "error", "depleted")) ? GNUNET_NO : GNUNET_SYSERR;
 
     coin_gain = TALER_amount_subtract (coin_gain, TALER_amount_ntoh (dki->fee_refresh));
 
@@ -472,9 +483,9 @@ helper_refresh_send_melt_response (struct MHD_Connection *connection,
     json_object_set (root, "signature", sig_json);
   }
 
-  return send_response_json (connection,
-                             root,
-                             MHD_HTTP_OK);
+  return TALER_MINT_reply_json (connection,
+                                root,
+                                MHD_HTTP_OK);
 }
 
 
@@ -524,9 +535,10 @@ request_json_check_signature (struct MHD_Connection *connection,
   if (purpose_num != ntohl (purpose->purpose))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING, "signature invalid (purpose wrong)\n");
-    return request_send_json_pack (connection, MHD_HTTP_BAD_REQUEST,
-                                   "{s:s}",
-                                   "error", "signature invalid (purpose)");
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       "{s:s}",
+                                       "error", "signature invalid (purpose)");
   }
 
   res = request_json_require_nav (connection, root,
@@ -543,10 +555,11 @@ request_json_check_signature (struct MHD_Connection *connection,
   if (size != ntohl (purpose->size))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING, "signature invalid (size wrong)\n");
-    return request_send_json_pack (connection, MHD_HTTP_BAD_REQUEST,
-                                   GNUNET_NO, GNUNET_SYSERR,
-                                   "{s:s}",
-                                   "error", "signature invalid (size)");
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       GNUNET_NO, GNUNET_SYSERR,
+                                       "{s:s}",
+                                       "error", "signature invalid (size)");
   }
 
   if (GNUNET_OK != GNUNET_CRYPTO_eddsa_verify (purpose_num,
@@ -555,9 +568,11 @@ request_json_check_signature (struct MHD_Connection *connection,
                                                pub))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING, "signature invalid (did not verify)\n");
-    return request_send_json_pack (connection, MHD_HTTP_UNAUTHORIZED,
-                                   "{s:s}",
-                                   "error", "invalid signature (verification)");
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_UNAUTHORIZED,
+                                       "{s:s}",
+                                       "error",
+                                       "invalid signature (verification)");
   }
 
   return GNUNET_OK;
@@ -705,10 +720,11 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
     if (NULL == melt_sig_json)
     {
       GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
-      return request_send_json_pack (connection,
-                                     MHD_HTTP_BAD_REQUEST,
-                                     "{s:s}",
-                                     "error", "melt_signature missing");
+      return TALER_MINT_reply_json_pack (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         "{s:s}",
+                                         "error",
+                                         "melt_signature missing");
     }
 
     body.melt_hash = melt_hash;
@@ -734,9 +750,11 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   {
     GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
 
-    return request_send_json_pack (connection, MHD_HTTP_FORBIDDEN,
-                                   "{s:s}",
-                                   "error", "not enough coins melted");
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_FORBIDDEN,
+                                       "{s:s}",
+                                       "error",
+                                       "not enough coins melted");
   }
 
   if (GNUNET_OK != TALER_MINT_DB_commit (db_conn))
@@ -771,10 +789,11 @@ refresh_send_commit_response (struct MHD_Connection *connection,
   body.noreveal_index = htons (refresh_session->noreveal_index);
   sig_json = sign_as_json (&body.purpose);
   GNUNET_assert (NULL != sig_json);
-  return request_send_json_pack (connection, MHD_HTTP_OK,
-                                 "{s:i, s:o}",
-                                 "noreveal_index", (int) refresh_session->noreveal_index,
-                                 "signature", sig_json);
+  return TALER_MINT_reply_json_pack (connection,
+                                     MHD_HTTP_OK,
+                                     "{s:i, s:o}",
+                                     "noreveal_index", (int) refresh_session->noreveal_index,
+                                     "signature", sig_json);
 }
 
 
@@ -1022,9 +1041,11 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
     if (NULL == commit_sig_json)
     {
       GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
-      return request_send_json_pack (connection, MHD_HTTP_BAD_REQUEST,
-                                     "{s:s}",
-                                     "error", "commit_signature missing");
+      return TALER_MINT_reply_json_pack (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         "{s:s}",
+                                         "error",
+                                         "commit_signature missing");
     }
 
     body.commit_hash = commit_hash;
@@ -1106,9 +1127,9 @@ helper_refresh_reveal_send_response (struct MHD_Connection *connection,
                            TALER_JSON_from_data (&ev_sig,
                                          sizeof (struct TALER_RSA_Signature)));
   }
-  return send_response_json (connection,
-                             root,
-                             MHD_HTTP_OK);
+  return TALER_MINT_reply_json (connection,
+                                root,
+                                MHD_HTTP_OK);
 }
 
 
@@ -1471,10 +1492,11 @@ TALER_MINT_handler_refresh_link (struct RequestHandler *rh,
   }
   if (GNUNET_NO == res)
   {
-    return request_send_json_pack (connection,
-                                   MHD_HTTP_NOT_FOUND,
-                                   "{s:s}",
-                                   "error", "link data not found (transfer)");
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       "{s:s}",
+                                       "error",
+                                       "link data not found (transfer)");
   }
   GNUNET_assert (GNUNET_OK == res);
 
@@ -1486,10 +1508,11 @@ TALER_MINT_handler_refresh_link (struct RequestHandler *rh,
   }
   if (GNUNET_NO == res)
   {
-    return request_send_json_pack (connection,
-                                   MHD_HTTP_NOT_FOUND,
-                                   "{s:s}",
-                                   "error", "link data not found (link)");
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       "{s:s}",
+                                       "error",
+                                       "link data not found (link)");
   }
   GNUNET_assert (GNUNET_OK == res);
   json_object_set_new (root, "transfer_pub",
@@ -1498,7 +1521,9 @@ TALER_MINT_handler_refresh_link (struct RequestHandler *rh,
   json_object_set_new (root, "secret_enc",
                        TALER_JSON_from_data (&shared_secret_enc,
                                              sizeof (struct SharedSecretEnc)));
-  return send_response_json (connection, root, MHD_HTTP_OK);
+  return TALER_MINT_reply_json (connection,
+                                root,
+                                MHD_HTTP_OK);
 }
 
 

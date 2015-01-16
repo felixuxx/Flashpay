@@ -31,9 +31,10 @@
 #include "taler_signatures.h"
 #include "taler_rsa.h"
 #include "taler_json_lib.h"
-#include "taler-mint-httpd_json.h"
+#include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_keys.h"
 #include "taler-mint-httpd_deposit.h"
+#include "taler-mint-httpd_responses.h"
 
 
 /**
@@ -48,8 +49,11 @@ helper_deposit_send_response_success (struct MHD_Connection *connection,
                                       struct Deposit *deposit)
 {
   // FIXME: return more information here
-  return request_send_json_pack (connection, MHD_HTTP_OK,
-                                 "{s:s}", "status", "DEPOSIT_OK");
+  return TALER_MINT_reply_json_pack (connection,
+                                     MHD_HTTP_OK,
+                                     "{s:s}",
+                                     "status",
+                                     "DEPOSIT_OK");
 }
 
 
@@ -199,9 +203,11 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
       // FIXME: in the future, check if there's enough credits
       // left on the coin. For now: refuse
       // FIXME: return more information here
-      return request_send_json_pack (connection, MHD_HTTP_FORBIDDEN,
-                                     "{s:s}",
-                                     "error", "double spending");
+      return TALER_MINT_reply_json_pack (connection,
+                                         MHD_HTTP_FORBIDDEN,
+                                         "{s:s}",
+                                         "error",
+                                         "double spending");
     }
 
     if (GNUNET_SYSERR == res)
@@ -221,9 +227,10 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
       // coin must have been refreshed
       // FIXME: check
       // FIXME: return more information here
-      return request_send_json_pack (connection, MHD_HTTP_FORBIDDEN,
-                                     "{s:s}",
-                                     "error", "coin was refreshed");
+      return TALER_MINT_reply_json_pack (connection,
+                                         MHD_HTTP_FORBIDDEN,
+                                         "{s:s}",
+                                         "error", "coin was refreshed");
     }
     if (GNUNET_SYSERR == res)
     {
@@ -252,7 +259,9 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
 
  EXITIF_exit:
   if (NULL != resp)
-    res = send_response_json (connection, resp, resp_code);
+    res = TALER_MINT_reply_json (connection,
+                                 resp,
+                                 resp_code);
   else
     res = MHD_NO;
   if (NULL != wire)
