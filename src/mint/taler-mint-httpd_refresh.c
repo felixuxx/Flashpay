@@ -125,7 +125,7 @@ refresh_accept_denoms (struct MHD_Connection *connection,
   int res;
   json_t *new_denoms;
 
-  res = request_json_require_nav (connection, root,
+  res = GNUNET_MINT_parse_navigate_json (connection, root,
                                   JNAV_FIELD, "new_denoms",
                                   JNAV_RET_TYPED_JSON,
                                   JSON_ARRAY,
@@ -142,7 +142,7 @@ refresh_accept_denoms (struct MHD_Connection *connection,
     struct TALER_MINT_DenomKeyIssue *dki;
     struct TALER_Amount cost;
 
-    res = request_json_require_nav (connection, root,
+    res = GNUNET_MINT_parse_navigate_json (connection, root,
                                     JNAV_FIELD, "new_denoms",
                                     JNAV_INDEX, (int) i,
                                     JNAV_RET_DATA,
@@ -210,7 +210,7 @@ check_confirm_signature (struct MHD_Connection *connection,
   body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_CONFIRM);
   body.session_pub = *session_pub;
 
-  res = request_json_require_nav (connection, coin_info,
+  res = GNUNET_MINT_parse_navigate_json (connection, coin_info,
                                   JNAV_FIELD, "confirm_sig",
                                   JNAV_RET_DATA,
                                   &sig,
@@ -259,7 +259,7 @@ request_json_require_coin_public_info (struct MHD_Connection *connection,
 
   GNUNET_assert (NULL != root);
 
-  ret = request_json_require_nav (connection, root,
+  ret = GNUNET_MINT_parse_navigate_json (connection, root,
                                   JNAV_FIELD, "coin_pub",
                                   JNAV_RET_DATA,
                                   &r_public_info->coin_pub,
@@ -267,7 +267,7 @@ request_json_require_coin_public_info (struct MHD_Connection *connection,
   if (GNUNET_OK != ret)
     return ret;
 
-  ret = request_json_require_nav (connection, root,
+  ret = GNUNET_MINT_parse_navigate_json (connection, root,
                                   JNAV_FIELD, "denom_sig",
                                   JNAV_RET_DATA,
                                   &r_public_info->denom_sig,
@@ -275,7 +275,7 @@ request_json_require_coin_public_info (struct MHD_Connection *connection,
   if (GNUNET_OK != ret)
     return ret;
 
-  ret = request_json_require_nav (connection, root,
+  ret = GNUNET_MINT_parse_navigate_json (connection, root,
                                   JNAV_FIELD, "denom_pub",
                                   JNAV_RET_DATA,
                                   &r_public_info->denom_pub,
@@ -315,7 +315,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
   int res;
   json_t *melt_coins;
 
-  res = request_json_require_nav (connection, root,
+  res = GNUNET_MINT_parse_navigate_json (connection, root,
                                   JNAV_FIELD, "melt_coins",
                                   JNAV_RET_TYPED_JSON,
                                   JSON_ARRAY,
@@ -512,7 +512,7 @@ request_json_check_signature (struct MHD_Connection *connection,
   int res;
   json_t *el;
 
-  res = request_json_require_nav (connection, root,
+  res = GNUNET_MINT_parse_navigate_json (connection, root,
                                   JNAV_FIELD, "sig",
                                   JNAV_RET_DATA,
                                   &signature,
@@ -521,7 +521,7 @@ request_json_check_signature (struct MHD_Connection *connection,
   if (GNUNET_OK != res)
     return res;
 
-  res = request_json_require_nav (connection, root,
+  res = GNUNET_MINT_parse_navigate_json (connection, root,
                                   JNAV_FIELD, "purpose",
                                   JNAV_RET_TYPED_JSON,
                                   JSON_INTEGER,
@@ -541,7 +541,7 @@ request_json_check_signature (struct MHD_Connection *connection,
                                        "error", "signature invalid (purpose)");
   }
 
-  res = request_json_require_nav (connection, root,
+  res = GNUNET_MINT_parse_navigate_json (connection, root,
                                   JNAV_FIELD, "size",
                                   JNAV_RET_TYPED_JSON,
                                   JSON_INTEGER,
@@ -623,7 +623,7 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   }
 
   /* session_pub field must always be present */
-  res = request_json_require_nav (connection, root,
+  res = GNUNET_MINT_parse_navigate_json (connection, root,
                                   JNAV_FIELD, "session_pub",
                                   JNAV_RET_DATA,
                                   &refresh_session_pub,
@@ -833,7 +833,7 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
   if ( (GNUNET_NO == res) || (NULL == root) )
     return MHD_YES;
 
-  res = request_json_require_nav (connection, root,
+  res = GNUNET_MINT_parse_navigate_json (connection, root,
                                   JNAV_FIELD, "session_pub",
                                   JNAV_RET_DATA,
                                   &refresh_session_pub,
@@ -906,7 +906,7 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
     {
       struct RefreshCommitCoin commit_coin;
 
-      res = request_json_require_nav (connection, root,
+      res = GNUNET_MINT_parse_navigate_json (connection, root,
                                       JNAV_FIELD, "coin_evs",
                                       JNAV_INDEX, (int) i,
                                       JNAV_INDEX, (int) j,
@@ -927,7 +927,7 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
                                &commit_coin.coin_ev,
                                sizeof (struct TALER_RSA_BlindedSignaturePurpose));
 
-      res = request_json_require_nav (connection, root,
+      res = GNUNET_MINT_parse_navigate_json (connection, root,
                                       JNAV_FIELD, "link_encs",
                                       JNAV_INDEX, (int) i,
                                       JNAV_INDEX, (int) j,
@@ -971,7 +971,7 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
     {
       struct RefreshCommitLink commit_link;
 
-      res = request_json_require_nav (connection, root,
+      res = GNUNET_MINT_parse_navigate_json (connection, root,
                                       JNAV_FIELD, "transfer_pubs",
                                       JNAV_INDEX, (int) i,
                                       JNAV_INDEX, (int) j,
@@ -991,7 +991,7 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
                                &commit_link.transfer_pub,
                                sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey));
 
-      res = request_json_require_nav (connection, root,
+      res = GNUNET_MINT_parse_navigate_json (connection, root,
                                       JNAV_FIELD, "secret_encs",
                                       JNAV_INDEX, (int) i,
                                       JNAV_INDEX, (int) j,
@@ -1165,7 +1165,7 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
   if ( (GNUNET_NO == res) || (NULL == root) )
     return MHD_YES;
 
-  res = request_json_require_nav (connection, root,
+  res = GNUNET_MINT_parse_navigate_json (connection, root,
                                   JNAV_FIELD, "session_pub",
                                   JNAV_RET_DATA,
                                   &refresh_session_pub,
@@ -1216,7 +1216,7 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
       struct GNUNET_HashCode transfer_secret;
       struct GNUNET_HashCode shared_secret;
 
-      res = request_json_require_nav (connection, root,
+      res = GNUNET_MINT_parse_navigate_json (connection, root,
                                       JNAV_FIELD, "transfer_privs",
                                       JNAV_INDEX, (int) i,
                                       JNAV_INDEX, (int) j,

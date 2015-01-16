@@ -131,9 +131,10 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
     if (cond) { GNUNET_break (0); goto EXITIF_exit; }             \
   } while (0)
 #define PARSE_DATA(field, addr)                                         \
-  EXITIF (GNUNET_OK != request_json_require_nav                         \
-          (connection, json,                                            \
-           JNAV_FIELD, field, JNAV_RET_DATA, addr, sizeof (*addr)))
+  EXITIF (GNUNET_OK !=                                                  \
+          GNUNET_MINT_parse_navigate_json                                      \
+            (connection, json,                                          \
+             JNAV_FIELD, field, JNAV_RET_DATA, addr, sizeof (*addr)))
   PARSE_DATA ("coin_pub", &deposit->coin_pub);
   PARSE_DATA ("denom_pub", &deposit->denom_pub);
   PARSE_DATA ("ubsig", &ubsig);

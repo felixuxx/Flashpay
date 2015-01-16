@@ -31,43 +31,6 @@
 
 
 /**
- * Constants for JSON navigation description.
- */
-enum
-{
-  /**
-   * Access a field.
-   * Param: const char *
-   */
-  JNAV_FIELD,
-  /**
-   * Access an array index.
-   * Param: int
-   */
-  JNAV_INDEX,
-  /**
-   * Return base32crockford encoded data of
-   * constant size.
-   * Params: (void *, size_t)
-   */
-  JNAV_RET_DATA,
-  /**
-   * Return base32crockford encoded data of
-   * variable size.
-   * Params: (void **, size_t *)
-   */
-  JNAV_RET_DATA_VAR,
-  /**
-   * Return a json object, which must be
-   * of the given type (JSON_* type constants,
-   * or -1 for any type).
-   * Params: (int, json_t **)
-   */
-  JNAV_RET_TYPED_JSON
-};
-
-
-/**
  * Process a POST request containing a JSON object.  This
  * function realizes an MHD POST processor that will
  * (incrementally) process JSON data uploaded to the HTTP
@@ -111,6 +74,47 @@ TALER_MINT_parse_post_cleanup_callback (void *con_cls);
 
 
 /**
+ * Constants for JSON navigation description.
+ */
+enum TALER_MINT_JsonNavigationCommand
+{
+  /**
+   * Access a field.
+   * Param: const char *
+   */
+  JNAV_FIELD,
+
+  /**
+   * Access an array index.
+   * Param: int
+   */
+  JNAV_INDEX,
+
+  /**
+   * Return base32crockford encoded data of
+   * constant size.
+   * Params: (void *, size_t)
+   */
+  JNAV_RET_DATA,
+
+  /**
+   * Return base32crockford encoded data of
+   * variable size.
+   * Params: (void **, size_t *)
+   */
+  JNAV_RET_DATA_VAR,
+
+  /**
+   * Return a json object, which must be
+   * of the given type (JSON_* type constants,
+   * or -1 for any type).
+   * Params: (int, json_t **)
+   */
+  JNAV_RET_TYPED_JSON
+};
+
+
+/**
  * Navigate through a JSON tree.
  *
  * Sends an error response if navigation is impossible (i.e.
@@ -124,7 +128,7 @@ TALER_MINT_parse_post_cleanup_callback (void *con_cls);
  *         GNUNET_SYSERR on internal error
  */
 int
-request_json_require_nav (struct MHD_Connection *connection,
+GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
                           const json_t *root, ...);
 
 

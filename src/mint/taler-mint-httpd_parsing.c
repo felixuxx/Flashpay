@@ -271,44 +271,48 @@ TALER_MINT_parse_post_cleanup_callback (void *con_cls)
  * @param ... navigation specification (see JNAV_*)
  * @return GNUNET_YES if navigation was successful
  *         GNUNET_NO if json is malformed, error response was generated
- *         GNUNET_SYSERR on internal error
+ *         GNUNET_SYSERR on internal error (no response was generated,
+ *                       connection must be closed)
  */
 int
-request_json_require_nav (struct MHD_Connection *connection,
-                          const json_t *root, ...)
+GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
+                          const json_t *root,
+                          ...)
 {
   va_list argp;
-  int ignore = GNUNET_NO;
-  // what's our current path from 'root'?
-  json_t *path;
+  int ret;
+  json_t *path; /* what's our current path from 'root'? */
 
   path = json_array ();
-
-  va_start(argp, root);
-
-  while (1)
+  va_start (argp, root);
+  ret = 2;
+  while (2 == ret)
   {
-    int command = va_arg(argp, int);
+    enum TALER_MINT_JsonNavigationCommand command
+      = va_arg (argp,
+                enum TALER_MINT_JsonNavigationCommand);
+
     switch (command)
     {
       case JNAV_FIELD:
         {
           const char *fname = va_arg(argp, const char *);
-          if (GNUNET_YES == ignore)
-            break;
-          json_array_append_new (path, json_string (fname));
-          root = json_object_get (root, fname);
+
+          json_array_append_new (path,
+                                 json_string (fname));
+          root = json_object_get (root,
+                                  fname);
           if (NULL == root)
           {
-            /* FIXME: can't IGNORE this return value! */
-            (void) TALER_MINT_reply_json_pack (connection,
+            ret = (MHD_YES ==
+                   TALER_MINT_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
                                                "{s:s,s:o}",
                                                "error",
                                                "missing field in JSON",
                                                "path",
-                                               path);
-            ignore = GNUNET_YES;
+                                               path))
+              ? GNUNET_NO : GNUNET_SYSERR;
             break;
           }
         }
@@ -316,19 +320,21 @@ request_json_require_nav (struct MHD_Connection *connection,
       case JNAV_INDEX:
         {
           int fnum = va_arg(argp, int);
-          if (GNUNET_YES == ignore)
-            break;
-          json_array_append_new (path, json_integer (fnum));
-          root = json_array_get (root, fnum);
+
+          json_array_append_new (path,
+                                 json_integer (fnum));
+          root = json_array_get (root,
+                                 fnum);
           if (NULL == root)
           {
-            /* FIXME: can't IGNORE this return value! */
-            (void) TALER_MINT_reply_json_pack (connection,
+            ret = (MHD_YES ==
+                   TALER_MINT_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
                                                "{s:s, s:o}",
-                                               "error", "missing index in JSON",
-                                               "path", path);
-            ignore = GNUNET_YES;
+                                               "error",
+                                               "missing index in JSON",
+                                               "path", path))
+              ? GNUNET_NO : GNUNET_SYSERR;
             break;
           }
         }
@@ -340,36 +346,36 @@ request_json_require_nav (struct MHD_Connection *connection,
           const char *str;
           int res;
 
-          va_end(argp);
-          if (GNUNET_YES == ignore)
-            return GNUNET_NO;
           str = json_string_value (root);
           if (NULL == str)
           {
-            /* FIXME: can't IGNORE this return value! */
-            (void) TALER_MINT_reply_json_pack (connection,
+            ret = (MHD_YES ==
+                   TALER_MINT_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
                                                "{s:s, s:o}",
                                                "error",
                                                "string expected",
                                                "path",
-                                               path);
-            return GNUNET_NO;
+                                               path))
+              ? GNUNET_NO : GNUNET_SYSERR;
+            break;
           }
           res = GNUNET_STRINGS_string_to_data (str, strlen (str),
                                                 where, len);
           if (GNUNET_OK != res)
           {
-            /* FIXME: can't IGNORE this return value! */
-            (void) TALER_MINT_reply_json_pack (connection,
+            ret = (MHD_YES ==
+                   TALER_MINT_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
                                                "{s:s,s:o}",
                                                "error",
                                                "malformed binary data in JSON",
-                                               "path", path);
-            return GNUNET_NO;
+                                               "path",
+                                               path))
+              ? GNUNET_NO : GNUNET_SYSERR;
+            break;
           }
-          return GNUNET_YES;
+          ret = GNUNET_OK;
         }
         break;
       case JNAV_RET_DATA_VAR:
@@ -378,35 +384,42 @@ request_json_require_nav (struct MHD_Connection *connection,
           size_t *len = va_arg (argp, size_t *);
           const char *str;
 
-          va_end(argp);
-          if (GNUNET_YES == ignore)
-            return GNUNET_NO;
           str = json_string_value (root);
           if (NULL == str)
           {
-            GNUNET_break (0);
-            return GNUNET_SYSERR;
+            ret = (MHD_YES ==
+                   TALER_MINT_reply_internal_error (connection,
+                                                    "json_string_value() failed"))
+              ? GNUNET_NO : GNUNET_SYSERR;
+            break;
           }
           *len = (strlen (str) * 5) / 8;
-          if (where != NULL)
+          if (NULL != where)
           {
             int res;
+
             *where = GNUNET_malloc (*len);
-            res = GNUNET_STRINGS_string_to_data (str, strlen (str),
-                                                  *where, *len);
+            res = GNUNET_STRINGS_string_to_data (str,
+                                                 strlen (str),
+                                                 *where,
+                                                 *len);
             if (GNUNET_OK != res)
             {
-              /* FIXME: can't IGNORE this return value! */
-              (void) TALER_MINT_reply_json_pack (connection,
+              GNUNET_free (*where);
+              *where = NULL;
+              *len = 0;
+              ret = (MHD_YES ==
+                     TALER_MINT_reply_json_pack (connection,
                                                  MHD_HTTP_BAD_REQUEST,
                                                  "{s:s, s:o}",
                                                  "error",
                                                  "malformed binary data in JSON",
-                                                 "path", path);
-              return GNUNET_NO;
+                                                 "path", path))
+                ? GNUNET_NO : GNUNET_SYSERR;
+              break;
             }
           }
-          return GNUNET_OK;
+          ret = GNUNET_OK;
         }
         break;
       case JNAV_RET_TYPED_JSON:
@@ -414,30 +427,35 @@ request_json_require_nav (struct MHD_Connection *connection,
           int typ = va_arg (argp, int);
           const json_t **r_json = va_arg (argp, const json_t **);
 
-          va_end(argp);
-          if (GNUNET_YES == ignore)
-            return GNUNET_NO;
-          if (typ != -1 && json_typeof (root) != typ)
+          if ( (-1 != typ) && (json_typeof (root) != typ))
           {
-            /* FIXME: can't IGNORE this return value! */
-              (void) TALER_MINT_reply_json_pack (connection,
-                                                 MHD_HTTP_BAD_REQUEST,
-                                                 "{s:s, s:i, s:i s:o}",
-                                                 "error", "wrong JSON field type",
-                                                 "type_expected", typ,
-                                                 "type_actual", json_typeof (root),
-                                                 "path", path);
-            return GNUNET_NO;
+            ret = (MHD_YES ==
+                   TALER_MINT_reply_json_pack (connection,
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:i, s:i s:o}",
+                                               "error", "wrong JSON field type",
+                                               "type_expected", typ,
+                                               "type_actual", json_typeof (root),
+                                               "path", path))
+              ? GNUNET_NO : GNUNET_SYSERR;
+            break;
           }
           *r_json = root;
-          return GNUNET_OK;
+          ret = GNUNET_OK;
         }
         break;
       default:
-        GNUNET_assert (0);
+        GNUNET_break (0);
+        ret = (MHD_YES ==
+               TALER_MINT_reply_internal_error (connection,
+                                                "unhandled value in switch"))
+          ? GNUNET_NO : GNUNET_SYSERR;
+        break;
     }
   }
-  GNUNET_assert (0);
+  va_end (argp);
+  json_decref (path);
+  return ret;
 }
 
 
