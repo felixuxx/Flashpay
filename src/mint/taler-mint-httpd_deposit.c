@@ -21,6 +21,11 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
+ *
+ * TODO:
+ * - actually verify coin signature
+ * - revisit `struct Deposit` parsing once the struct
+ *   has been finalized
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>

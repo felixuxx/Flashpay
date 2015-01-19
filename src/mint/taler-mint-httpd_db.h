@@ -13,11 +13,13 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file mint/taler-mint_httpd_db.h
  * @brief Mint-specific database access
  * @author Chrisitan Grothoff
+ *
+ * TODO:
+ * - revisit and document `struct Deposit` members.
  */
 #ifndef TALER_MINT_HTTPD_DB_H
 #define TALER_MINT_HTTPD_DB_H
@@ -28,7 +30,6 @@
 #include "taler_util.h"
 #include "taler_rsa.h"
 
-GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
  * Specification for a /deposit operation.
@@ -37,7 +38,9 @@ struct Deposit
 {
   /* FIXME: should be TALER_CoinPublicInfo */
   struct GNUNET_CRYPTO_EddsaPublicKey coin_pub;
+
   struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
+
   struct TALER_RSA_Signature coin_sig;
 
   struct TALER_RSA_Signature ubsig;
@@ -47,18 +50,21 @@ struct Deposit
    * #TALER_SIGNATURE_DEPOSIT or #TALER_SIGNATURE_INCREMENTAL_DEPOSIT.
    */
   struct TALER_RSA_SignaturePurpose purpose;
+
   uint64_t transaction_id;
+
   struct TALER_AmountNBO amount;
+
   struct GNUNET_CRYPTO_EddsaPublicKey merchant_pub;
+
   struct GNUNET_HashCode h_contract;
+
   struct GNUNET_HashCode h_wire;
 
   /* TODO: uint16_t wire_size */
   char wire[];                  /* string encoded wire JSON object */
 
 };
-
-GNUNET_NETWORK_STRUCT_END
 
 
 /**

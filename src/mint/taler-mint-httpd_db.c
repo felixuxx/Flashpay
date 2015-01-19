@@ -13,11 +13,16 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file taler-mint-httpd_db.c
  * @brief Database access abstraction for the mint.
  * @author Christian Grothoff
+ *
+ * TODO:
+ * - actually abstract DB implementation (i.e. via plugin logic)
+ * - /deposit: properly check existing deposits
+ * - /deposit: properly perform commit (check return value)
+ * - /deposit: check for leaks
  */
 #include "platform.h"
 #include "taler-mint-httpd_db.h"
@@ -61,6 +66,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
     if (GNUNET_YES == res)
     {
       // FIXME: memory leak
+      // FIXME: memcmp will not actually work here
       if (0 == memcmp (existing_deposit, deposit, sizeof (struct Deposit)))
         return TALER_MINT_reply_deposit_success (connection, deposit);
       // FIXME: in the future, check if there's enough credits

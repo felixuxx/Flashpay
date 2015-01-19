@@ -22,6 +22,10 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
+ *
+ * TODO:
+ * - when generating /deposit reply, do include signature of mint
+ *   to say that we accepted it (check reply format)
  */
 #include "platform.h"
 #include "taler-mint-httpd_responses.h"
