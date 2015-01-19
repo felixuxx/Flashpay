@@ -90,6 +90,34 @@ TALER_JSON_from_abs (struct GNUNET_TIME_Absolute stamp)
 }
 
 
+/**
+ * Convert a signature (with purpose) to a JSON object representation.
+ *
+ * @param purpose purpose of the signature
+ * @param signature the signature
+ * @return the JSON reporesentation of the signature with purpose
+ */
+json_t *
+TALER_JSON_from_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+                     const struct GNUNET_CRYPTO_EddsaSignature *signature)
+{
+  json_t *root;
+  json_t *el;
+
+  root = json_object ();
+
+  el = json_integer ((json_int_t) ntohl (purpose->size));
+  json_object_set_new (root, "size", el);
+
+  el = json_integer ((json_int_t) ntohl (purpose->purpose));
+  json_object_set_new (root, "purpose", el);
+
+  el = TALER_JSON_from_data (signature, sizeof (struct GNUNET_CRYPTO_EddsaSignature));
+  json_object_set_new (root, "sig", el);
+
+  return root;
+}
+
 
 /**
  * Convert binary data to a JSON string

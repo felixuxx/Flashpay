@@ -27,12 +27,12 @@
 #include <libpq-fe.h>
 #include <pthread.h>
 #include "mint.h"
-#include "mint_db.h"
 #include "taler_signatures.h"
 #include "taler_rsa.h"
 #include "taler_json_lib.h"
 #include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_keys.h"
+
 
 
 /**

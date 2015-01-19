@@ -26,9 +26,14 @@
  * TODO:
  * - when generating /deposit reply, do include signature of mint
  *   to say that we accepted it (check reply format)
+ * - when generating /withdraw/status reply, which signature do
+ *   we use there? Might want to instead return *all* signatures on the
+ *   existig withdraw operations, instead of Mint's signature
+ *   (check reply format, adjust `struct Reserve` if needed)
  */
 #include "platform.h"
 #include "taler-mint-httpd_responses.h"
+#include "taler_json_lib.h"
 
 
 /**
@@ -228,5 +233,62 @@ TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
                                      "status",
                                      "DEPOSIT_OK");
 }
+
+
+/**
+ * Send reserve status information to client.
+ *
+ * @param connection connection to the client
+ * @param reserve reserve status information to return
+ * @return MHD result code
+ */
+int
+TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
+                                          const struct Reserve *reserve)
+{
+  json_t *json;
+
+  /* Convert the public information of a reserve (i.e.
+     excluding private key) to a JSON object. */
+  json = json_object ();
+  json_object_set_new (json,
+                       "balance",
+                       TALER_JSON_from_amount (TALER_amount_ntoh (reserve->balance)));
+  json_object_set_new (json,
+                       "expiration",
+                       TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (reserve->expiration)));
+  json_object_set_new (json,
+                       "signature",
+                       TALER_JSON_from_sig (&reserve->status_sig_purpose,
+                                            &reserve->status_sig));
+
+  return TALER_MINT_reply_json (connection,
+                                json,
+                                MHD_HTTP_OK);
+}
+
+
+/**
+ * Send blinded coin information to client.
+ *
+ * @param connection connection to the client
+ * @param collectable blinded coin to return
+ * @return MHD result code
+ */
+int
+TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
+                                        const struct CollectableBlindcoin *collectable)
+{
+  json_t *root = json_object ();
+
+  json_object_set_new (root, "ev_sig",
+                       TALER_JSON_from_data (&collectable->ev_sig,
+                                             sizeof (struct TALER_RSA_Signature)));
+  return TALER_MINT_reply_json (connection,
+                                root,
+                                MHD_HTTP_OK);
+}
+
+
 
 /* end of taler-mint-httpd_responses.c */

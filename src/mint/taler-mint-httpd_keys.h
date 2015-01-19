@@ -26,7 +26,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
 #include "taler-mint-httpd.h"
-
+#include "mint.h"
 
 /**
  * Snapshot of the (coin and signing)

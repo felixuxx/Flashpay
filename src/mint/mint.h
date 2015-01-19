@@ -13,14 +13,15 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
- * @file taler_mint.h
+ * @file mint.h
  * @brief Common functionality for the mint
  * @author Florian Dold
  * @author Benedikt Mueller
+ *
+ * TODO:
+ * - revisit and document `struct Deposit` members.
  */
-
 #ifndef _MINT_H
 #define _MINT_H
 
@@ -55,10 +56,194 @@ struct TALER_MINT_DenomKeyIssuePriv
    * not available.
    */
   struct TALER_RSA_PrivateKey *denom_priv;
+
   struct TALER_MINT_DenomKeyIssue issue;
 };
 
 
+
+/**
+ * Public information about a coin.
+ */
+struct TALER_CoinPublicInfo
+{
+  /**
+   * The coin's public key.
+   */
+  struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+
+  /*
+   * The public key signifying the coin's denomination.
+   */
+  struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
+
+  /**
+   * Signature over coin_pub by denom_pub.
+   */
+  struct TALER_RSA_Signature denom_sig;
+};
+
+
+
+
+
+
+
+struct CollectableBlindcoin
+{
+  struct TALER_RSA_BlindedSignaturePurpose ev;
+  struct TALER_RSA_Signature ev_sig;
+  struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
+  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
+  struct GNUNET_CRYPTO_EddsaSignature reserve_sig;
+};
+
+
+struct RefreshSession
+{
+  int has_commit_sig;
+  struct GNUNET_CRYPTO_EddsaSignature commit_sig;
+  struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
+  uint16_t num_oldcoins;
+  uint16_t num_newcoins;
+  uint16_t kappa;
+  uint16_t noreveal_index;
+  uint8_t reveal_ok;
+};
+
+
+#define TALER_REFRESH_SHARED_SECRET_LENGTH (sizeof (struct GNUNET_HashCode))
+#define TALER_REFRESH_LINK_LENGTH (sizeof (struct LinkData))
+
+struct RefreshCommitLink
+{
+  struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
+  struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub;
+  uint16_t cnc_index;
+  uint16_t oldcoin_index;
+  char shared_secret_enc[sizeof (struct GNUNET_HashCode)];
+};
+
+struct LinkData
+{
+  struct GNUNET_CRYPTO_EcdsaPrivateKey coin_priv;
+  struct TALER_RSA_BlindingKeyBinaryEncoded bkey_enc;
+};
+
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
+struct SharedSecretEnc
+{
+  char data[TALER_REFRESH_SHARED_SECRET_LENGTH];
+};
+
+
+struct LinkDataEnc
+{
+  char data[sizeof (struct LinkData)];
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+struct RefreshCommitCoin
+{
+  struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
+  struct TALER_RSA_BlindedSignaturePurpose coin_ev;
+  uint16_t cnc_index;
+  uint16_t newcoin_index;
+  char link_enc[sizeof (struct LinkData)];
+};
+
+
+struct KnownCoin
+{
+  struct TALER_CoinPublicInfo public_info;
+  struct TALER_Amount expended_balance;
+  int is_refreshed;
+  /**
+   * Refreshing session, only valid if
+   * is_refreshed==1.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey refresh_session_pub;
+};
+
+
+/**
+ * Specification for a /deposit operation.
+ */
+struct Deposit
+{
+  /* FIXME: should be TALER_CoinPublicInfo */
+  struct GNUNET_CRYPTO_EddsaPublicKey coin_pub;
+
+  struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
+
+  struct TALER_RSA_Signature coin_sig;
+
+  struct TALER_RSA_Signature ubsig;
+
+  /**
+   * Type of the deposit (also purpose of the signature).  Either
+   * #TALER_SIGNATURE_DEPOSIT or #TALER_SIGNATURE_INCREMENTAL_DEPOSIT.
+   */
+  struct TALER_RSA_SignaturePurpose purpose;
+
+  uint64_t transaction_id;
+
+  struct TALER_AmountNBO amount;
+
+  struct GNUNET_CRYPTO_EddsaPublicKey merchant_pub;
+
+  struct GNUNET_HashCode h_contract;
+
+  struct GNUNET_HashCode h_wire;
+
+  /* TODO: uint16_t wire_size */
+  char wire[];                  /* string encoded wire JSON object */
+
+};
+
+
+/**
+ * Reserve row.  Corresponds to table 'reserves' in the mint's
+ * database.  FIXME: not sure this is how we want to store this
+ * information.  Also, may currently used in different ways in the
+ * code, so we might need to separate the struct into different ones
+ * depending on the context it is used in.
+ */
+struct Reserve
+{
+  /**
+   * Signature over the purse.
+   * Only valid if (blind_session_missing==GNUNET_YES).
+   */
+  struct GNUNET_CRYPTO_EddsaSignature status_sig;
+  /**
+   * Signature with purpose TALER_SIGNATURE_PURSE.
+   * Only valid if (blind_session_missing==GNUNET_YES).
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose status_sig_purpose;
+  /**
+   * Signing key used to sign the purse.
+   * Only valid if (blind_session_missing==GNUNET_YES).
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey status_sign_pub;
+  /**
+   * Withdraw public key, identifies the purse.
+   * Only the customer knows the corresponding private key.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
+  /**
+   * Remaining balance in the purse.
+   */
+  struct TALER_AmountNBO balance;
+
+  /**
+   * Expiration date for the purse.
+   */
+  struct GNUNET_TIME_AbsoluteNBO expiration;
+};
 
 
 
@@ -153,4 +338,3 @@ TALER_TALER_DB_extract_amount_nbo (PGresult *result, unsigned int row,
                              int indices[3], struct TALER_AmountNBO *denom_nbo);
 
 #endif /* _MINT_H */
-

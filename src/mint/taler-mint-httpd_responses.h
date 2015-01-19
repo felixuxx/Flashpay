@@ -31,8 +31,8 @@
 #include <libpq-fe.h>
 #include <pthread.h>
 #include "taler-mint-httpd.h"
+#include "taler-mint-httpd_db.h"
 #include "taler-mint-httpd_mhd.h"
-#include "mint_db.h"
 
 
 /**
@@ -134,6 +134,29 @@ int
 TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
                                   const struct Deposit *deposit);
 
+
+/**
+ * Send reserve status information to client.
+ *
+ * @param connection connection to the client
+ * @param reserve reserve status information to return
+ * @return MHD result code
+ */
+int
+TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
+                                          const struct Reserve *reserve);
+
+
+/**
+ * Send blinded coin information to client.
+ *
+ * @param connection connection to the client
+ * @param collectable blinded coin to return
+ * @return MHD result code
+ */
+int
+TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
+                                        const struct CollectableBlindcoin *collectable);
 
 
 #endif

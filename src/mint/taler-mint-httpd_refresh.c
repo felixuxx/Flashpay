@@ -19,6 +19,9 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
+ *
+ * TODO:
+ * - split properly into parsing, DB-ops and response generation
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -70,6 +73,9 @@ sign_as_json (struct GNUNET_CRYPTO_EccSignaturePurpose *purpose)
 }
 
 
+/**
+ * FIXME: document!
+ */
 static int
 link_iter (void *cls,
            const struct LinkDataEnc *link_data_enc,
@@ -246,9 +252,9 @@ check_confirm_signature (struct MHD_Connection *connection,
  *
  * @param connection the connection to send error responses to
  * @param root the JSON object to extract the coin info from
- * @return GNUNET_YES if coin public info in JSON was valid
- *         GNUNET_NO otherwise
- *         GNUNET_SYSERR on internal error
+ * @return #GNUNET_YES if coin public info in JSON was valid
+ *         #GNUNET_NO otherwise
+ *         #GNUNET_SYSERR on internal error
  */
 static int
 request_json_require_coin_public_info (struct MHD_Connection *connection,
@@ -298,9 +304,9 @@ request_json_require_coin_public_info (struct MHD_Connection *connection,
  * @param root the JSON object
  * @param hash_context the hash context that will receive
  *                     the coin public keys of the melted coin
- * @return a GNUnet result code, GNUNET_OK on success,
- *         GNUNET_NO if an error message was generated,
- *         GNUNET_SYSERR on internal errors (no response generated)
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if an error message was generated,
+ *         #GNUNET_SYSERR on internal errors (no response generated)
  */
 static int
 refresh_accept_melts (struct MHD_Connection *connection,

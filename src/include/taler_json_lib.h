@@ -27,8 +27,7 @@
 
 
 /**
- * Convert a TALER amount to a JSON
- * object.
+ * Convert a TALER amount to a JSON object.
  *
  * @param amount the amount
  * @return a json object describing the amount
@@ -46,6 +45,17 @@ TALER_JSON_from_amount (struct TALER_Amount amount);
 json_t *
 TALER_JSON_from_abs (struct GNUNET_TIME_Absolute stamp);
 
+
+/**
+ * Convert a signature (with purpose) to a JSON object representation.
+ *
+ * @param purpose purpose of the signature
+ * @param signature the signature
+ * @return the JSON reporesentation of the signature with purpose
+ */
+json_t *
+TALER_JSON_from_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+                     const struct GNUNET_CRYPTO_EddsaSignature *signature);
 
 
 /**
@@ -65,7 +75,7 @@ TALER_JSON_from_data (const void *data, size_t size);
  *
  * @param json the json object representing Amount
  * @param r_amount where the amount has to be written
- * @return GNUNET_OK upon successful parsing; GNUNET_SYSERR upon error
+ * @return #GNUNET_OK upon successful parsing; GNUNET_SYSERR upon error
  */
 int
 TALER_JSON_to_amount (json_t *json,
@@ -76,7 +86,7 @@ TALER_JSON_to_amount (json_t *json,
  *
  * @param json the json object representing absolute time in seconds
  * @param r_abs where the time has to be written
- * @return GNUNET_OK upon successful parsing; GNUNET_SYSERR upon error
+ * @return #GNUNET_OK upon successful parsing; GNUNET_SYSERR upon error
  */
 int
 TALER_JSON_to_abs (json_t *json,
@@ -88,7 +98,7 @@ TALER_JSON_to_abs (json_t *json,
  * @param json the json object representing data
  * @param out the pointer to hold the parsed data.
  * @param out_size the size of r_data.
- * @return GNUNET_OK upon successful parsing; GNUNET_SYSERR upon error
+ * @return #GNUNET_OK upon successful parsing; GNUNET_SYSERR upon error
  */
 int
 TALER_JSON_to_data (json_t *json,

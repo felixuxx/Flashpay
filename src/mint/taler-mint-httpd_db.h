@@ -17,9 +17,6 @@
  * @file mint/taler-mint_httpd_db.h
  * @brief Mint-specific database access
  * @author Chrisitan Grothoff
- *
- * TODO:
- * - revisit and document `struct Deposit` members.
  */
 #ifndef TALER_MINT_HTTPD_DB_H
 #define TALER_MINT_HTTPD_DB_H
@@ -29,46 +26,13 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
 #include "taler_rsa.h"
+#include "taler-mint-httpd_keys.h"
+#include "mint.h"
 
-
-/**
- * Specification for a /deposit operation.
- */
-struct Deposit
-{
-  /* FIXME: should be TALER_CoinPublicInfo */
-  struct GNUNET_CRYPTO_EddsaPublicKey coin_pub;
-
-  struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
-
-  struct TALER_RSA_Signature coin_sig;
-
-  struct TALER_RSA_Signature ubsig;
-
-  /**
-   * Type of the deposit (also purpose of the signature).  Either
-   * #TALER_SIGNATURE_DEPOSIT or #TALER_SIGNATURE_INCREMENTAL_DEPOSIT.
-   */
-  struct TALER_RSA_SignaturePurpose purpose;
-
-  uint64_t transaction_id;
-
-  struct TALER_AmountNBO amount;
-
-  struct GNUNET_CRYPTO_EddsaPublicKey merchant_pub;
-
-  struct GNUNET_HashCode h_contract;
-
-  struct GNUNET_HashCode h_wire;
-
-  /* TODO: uint16_t wire_size */
-  char wire[];                  /* string encoded wire JSON object */
-
-};
 
 
 /**
- * Execute a deposit.  The validity of the coin and signature
+ * Execute a /deposit.  The validity of the coin and signature
  * have already been checked.  The database must now check that
  * the coin is not (double or over) spent, and execute the
  * transaction (record details, generate success or failure response).
@@ -80,6 +44,30 @@ struct Deposit
 int
 TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                                const struct Deposit *deposit);
+
+
+/**
+ * Execute a /withdraw/status.
+ *
+ * @param connection the MHD connection to handle
+ * @param reserve_pub public key of the reserve to check
+ * @return MHD result code
+ */
+int
+TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
+                                       const struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub);
+
+
+/**
+ * Execute a /withdraw/sign.
+ *
+ * @param connection the MHD connection to handle
+ * @param wsrd details about the withdraw request
+ * @return MHD result code
+ */
+int
+TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
+                                     const struct TALER_WithdrawRequest *wsrd);
 
 
 #endif /* _NEURO_MINT_DB_H */
