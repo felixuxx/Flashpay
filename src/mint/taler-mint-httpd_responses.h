@@ -32,6 +32,7 @@
 #include <pthread.h>
 #include "taler-mint-httpd.h"
 #include "taler-mint-httpd_mhd.h"
+#include "mint_db.h"
 
 
 /**
@@ -122,6 +123,16 @@ int
 TALER_MINT_reply_invalid_json (struct MHD_Connection *connection);
 
 
+/**
+ * Send confirmation of deposit success to client.
+ *
+ * @param connection connection to the client
+ * @param deposit deposit request to confirm
+ * @return MHD result code
+ */
+int
+TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
+                                  const struct Deposit *deposit);
 
 
 

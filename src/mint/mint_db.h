@@ -24,10 +24,11 @@
 #define _NEURO_MINT_DB_H
 
 #include <libpq-fe.h>
+#include <microhttpd.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
 #include "taler_rsa.h"
-
+#include "taler-mint-httpd_db.h"
 
 /**
  * Public information about a coin.
@@ -171,26 +172,6 @@ struct KnownCoin
    */
   struct GNUNET_CRYPTO_EddsaPublicKey refresh_session_pub;
 };
-
-GNUNET_NETWORK_STRUCT_BEGIN
-
-struct Deposit
-{
-  /* FIXME: should be TALER_CoinPublicInfo */
-  struct GNUNET_CRYPTO_EddsaPublicKey coin_pub;
-  struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
-  struct TALER_RSA_Signature coin_sig;
-  struct TALER_RSA_SignaturePurpose purpose;
-  uint64_t transaction_id;
-  struct TALER_AmountNBO amount;
-  struct GNUNET_CRYPTO_EddsaPublicKey merchant_pub;
-  struct GNUNET_HashCode h_contract;
-  struct GNUNET_HashCode h_wire;
-  /* TODO: uint16_t wire_size */
-  char wire[];                  /* string encoded wire JSON object */
-};
-
-GNUNET_NETWORK_STRUCT_END
 
 int
 TALER_MINT_DB_prepare (PGconn *db_conn);
@@ -348,7 +329,6 @@ TALER_MINT_DB_get_deposit (PGconn *db_conn,
 int
 TALER_MINT_DB_insert_known_coin (PGconn *db_conn,
                                  const struct KnownCoin *known_coin);
-
 
 
 /**

@@ -269,9 +269,10 @@ TALER_MINT_parse_post_cleanup_callback (void *con_cls)
  * @param connection the connection to send an error response to
  * @param root the JSON node to start the navigation at.
  * @param ... navigation specification (see `enum TALER_MINT_JsonNavigationCommand`)
- * @return GNUNET_YES if navigation was successful
- *         GNUNET_NO if json is malformed, error response was generated
- *         GNUNET_SYSERR on internal error (no response was generated,
+ * @return
+ *    #GNUNET_YES if navigation was successful
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error (no response was generated,
  *                       connection must be closed)
  */
 int
@@ -462,6 +463,142 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
 
 
 /**
+ * Find a fixed-size field in the top-level of the JSON tree and store
+ * it in @a data.
+ *
+ * Sends an error response if navigation is impossible (i.e.
+ * the JSON object is invalid)
+ *
+ * @param connection the connection to send an error response to
+ * @param root the JSON node to start the navigation at.
+ * @param field name of the field to navigate to
+ * @param data where to store the extracted data
+ * @param data_size size of the @a data field
+ * @param[IN|OUT] ret return value, function does nothing if @a ret is not #GNUNET_YES
+ *                    on entry; will set @a ret to:
+ *    #GNUNET_YES if navigation was successful
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error
+ */
+static void
+parse_fixed_json_data (struct MHD_Connection *connection,
+                       const json_t *root,
+                       const char *field,
+                       void *data,
+                       size_t data_size,
+                       int *ret)
+{
+  if (GNUNET_YES != *ret)
+    return;
+  *ret = GNUNET_MINT_parse_navigate_json (connection,
+                                          root,
+                                          JNAV_FIELD, field,
+                                          JNAV_RET_DATA, data, data_size);
+}
+
+
+/**
+ * Find a variable-size field in the top-level of the JSON tree and store
+ * it in @a data.
+ *
+ * Sends an error response if navigation is impossible (i.e.
+ * the JSON object is invalid)
+ *
+ * @param connection the connection to send an error response to
+ * @param root the JSON node to start the navigation at.
+ * @param field name of the field to navigate to
+ * @param data where to store a pointer to memory allocated for the extracted data
+ * @param[IN|OUT] ret return value, function does nothing if @a ret is not #GNUNET_YES
+ *                    on entry; will set @a ret to:
+ *    #GNUNET_YES if navigation was successful
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error
+ */
+static void
+parse_variable_json_data (struct MHD_Connection *connection,
+                          const json_t *root,
+                          const char *field,
+                          void **data,
+                          size_t *data_size,
+                          int *ret)
+{
+  if (GNUNET_YES != *ret)
+    return;
+  *ret = GNUNET_MINT_parse_navigate_json (connection,
+                                          root,
+                                          JNAV_FIELD, field,
+                                          JNAV_RET_DATA_VAR, data, data_size);
+
+}
+
+
+/**
+ * Parse JSON object into components based on the given field
+ * specification.
+ *
+ * @param connection the connection to send an error response to
+ * @param root the JSON node to start the navigation at.
+ * @param spec field specification for the parser
+ * @return
+ *    #GNUNET_YES if navigation was successful (caller is responsible
+ *                for freeing allocated variable-size data using
+ *                #TALER_MINT_release_parsed_data() when done)
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error
+ */
+int
+TALER_MINT_parse_json_data (struct MHD_Connection *connection,
+                            const json_t *root,
+                            struct GNUNET_MINT_ParseFieldSpec *spec)
+{
+  unsigned int i;
+  int ret;
+
+  ret = GNUNET_YES;
+  for (i=0; NULL != spec[i].field_name; i++)
+  {
+    if (0 == spec[i].destination_size_in)
+      parse_variable_json_data (connection, root,
+                                spec[i].field_name,
+                                (void **) spec[i].destination,
+                                &spec[i].destination_size_out,
+                                &ret);
+    else
+      parse_fixed_json_data (connection, root,
+                             spec[i].field_name,
+                             spec[i].destination,
+                             spec[i].destination_size_in,
+                             &ret);
+  }
+  if (GNUNET_YES != ret)
+    TALER_MINT_release_parsed_data (spec);
+  return ret;
+}
+
+
+/**
+ * Release all memory allocated for the variable-size fields in
+ * the parser specification.
+ *
+ * @param spec specification to free
+ */
+void
+TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec)
+{
+  unsigned int i;
+
+  for (i=0; NULL != spec[i].field_name; i++)
+    if ( (0 == spec[i].destination_size_in) &&
+         (0 != spec[i].destination_size_out) )
+    {
+      GNUNET_free (spec[i].destination);
+      spec[i].destination = NULL;
+      spec[i].destination_size_out = 0;
+    }
+}
+
+
+/**
  * Extract base32crockford encoded data from request.
  *
  * Queues an error response to the connection if the parameter is missing or
@@ -472,9 +609,9 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
  * @param[out] out_data pointer to store the result
  * @param out_size expected size of data
  * @return
- *   GNUNET_YES if the the argument is present
- *   GNUNET_NO if the argument is absent or malformed
- *   GNUNET_SYSERR on internal error (error response could not be sent)
+ *   #GNUNET_YES if the the argument is present
+ *   #GNUNET_NO if the argument is absent or malformed
+ *   #GNUNET_SYSERR on internal error (error response could not be sent)
  */
 int
 TALER_MINT_mhd_request_arg_data (struct MHD_Connection *connection,

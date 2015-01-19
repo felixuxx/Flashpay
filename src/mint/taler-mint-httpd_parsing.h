@@ -123,9 +123,10 @@ enum TALER_MINT_JsonNavigationCommand
  * @param connection the connection to send an error response to
  * @param root the JSON node to start the navigation at.
  * @param ... navigation specification (see `enum TALER_MINT_JsonNavigationCommand`)
- * @return GNUNET_YES if navigation was successful
- *         GNUNET_NO if json is malformed, error response was generated
- *         GNUNET_SYSERR on internal error
+ * @return
+ *    #GNUNET_YES if navigation was successful
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error
  */
 int
 GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
@@ -133,6 +134,89 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
                                  ...);
 
 
+/**
+ * Specification for how to parse a JSON field.
+ */
+struct GNUNET_MINT_ParseFieldSpec
+{
+  /**
+   * Name of the field.  NULL only to terminate array.
+   */
+  const char *field_name;
+
+  /**
+   * Where to store the result.  Must have exactly
+   * @e destination_size bytes, except if @e destination_size is zero.
+   * NULL to skip assignment (but check presence of the value).
+   */
+  void *destination;
+
+  /**
+   * How big should the result be, 0 for variable size.  In
+   * this case, @e destination must be a "void **", pointing
+   * to a location that is currently NULL and is to be allocated.
+   */
+  size_t destination_size_in;
+
+  /**
+   * @e destination_size_out will then be set to the size of the
+   * value that was stored in @e destination (useful for
+   * variable-size allocations).
+   */
+  size_t destination_size_out;
+};
+
+
+/**
+ * Parse JSON object into components based on the given field
+ * specification.
+ *
+ * @param connection the connection to send an error response to
+ * @param root the JSON node to start the navigation at.
+ * @param spec field specification for the parser
+ * @return
+ *    #GNUNET_YES if navigation was successful (caller is responsible
+ *                for freeing allocated variable-size data using
+ *                #TALER_MINT_release_parsed_data() when done)
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error
+ */
+int
+TALER_MINT_parse_json_data (struct MHD_Connection *connection,
+                            const json_t *root,
+                            struct GNUNET_MINT_ParseFieldSpec *spec);
+
+
+/**
+ * Release all memory allocated for the variable-size fields in
+ * the parser specification.
+ *
+ * @param spec specification to free
+ */
+void
+TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec);
+
+
+/**
+ * Generate line in parser specification for fixed-size value.
+ *
+ * @param field name of the field
+ * @param value where to store the value
+ */
+#define TALER_MINT_PARSE_FIXED(field,value) { field, value, sizeof (*value), 0 }
+
+/**
+ * Generate line in parser specification for variable-size value.
+ *
+ * @param field name of the field
+ * @param value where to store the value
+ */
+#define TALER_MINT_PARSE_VARIABLE(field,value) { field, &value, 0, 0 }
+
+/**
+ * Generate line in parser specification indicating the end of the spec.
+ */
+#define TALER_MINT_PARSE_END { NULL, NULL, 0, 0 }
 
 
 /**
@@ -146,9 +230,9 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
  * @param[out] out_data pointer to store the result
  * @param out_size expected size of @a out_data
  * @return
- *   GNUNET_YES if the the argument is present
- *   GNUNET_NO if the argument is absent or malformed
- *   GNUNET_SYSERR on internal error (error response could not be sent)
+ *   #GNUNET_YES if the the argument is present
+ *   #GNUNET_NO if the argument is absent or malformed
+ *   #GNUNET_SYSERR on internal error (error response could not be sent)
  */
 int
 TALER_MINT_mhd_request_arg_data (struct MHD_Connection *connection,

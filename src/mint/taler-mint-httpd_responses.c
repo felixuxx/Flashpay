@@ -204,8 +204,25 @@ TALER_MINT_reply_invalid_json (struct MHD_Connection *connection)
 }
 
 
-
-
-
+/**
+ * Send confirmation of deposit success to client.
+ *
+ * @param connection connection to the client
+ * @param deposit deposit request to confirm
+ * @return MHD result code
+ */
+int
+TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
+                                  const struct Deposit *deposit)
+{
+  // FIXME: return more information here,
+  // including in particular a signature over
+  // the deposit data from the mint!
+  return TALER_MINT_reply_json_pack (connection,
+                                     MHD_HTTP_OK,
+                                     "{s:s}",
+                                     "status",
+                                     "DEPOSIT_OK");
+}
 
 /* end of taler-mint-httpd_responses.c */
