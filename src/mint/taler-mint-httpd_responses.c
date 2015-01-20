@@ -290,5 +290,39 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
 }
 
 
+/**
+ * Send a response to a "/refresh/commit" request.
+ *
+ * FIXME: maybe not the ideal argument type for @a refresh_session here.
+ *
+ * @param connection the connection to send the response to
+ * @param refresh_session the refresh session
+ * @return a MHD status code
+ */
+int
+TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
+                                         struct RefreshSession *refresh_session)
+{
+  struct RefreshCommitResponseSignatureBody body;
+  struct GNUNET_CRYPTO_EddsaSignature sig;
+  json_t *sig_json;
+
+  body.purpose.size = htonl (sizeof (struct RefreshCommitResponseSignatureBody));
+  body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_COMMIT_RESPONSE);
+  body.noreveal_index = htons (refresh_session->noreveal_index);
+  TALER_MINT_keys_sign (&body.purpose,
+                        &sig);
+  sig_json = TALER_JSON_from_sig (&body.purpose, &sig);
+  GNUNET_assert (NULL != sig_json);
+  return TALER_MINT_reply_json_pack (connection,
+                                     MHD_HTTP_OK,
+                                     "{s:i, s:o}",
+                                     "noreveal_index", (int) refresh_session->noreveal_index,
+                                     "signature", sig_json);
+}
+
+
+
+
 
 /* end of taler-mint-httpd_responses.c */

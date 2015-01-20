@@ -159,4 +159,22 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
                                         const struct CollectableBlindcoin *collectable);
 
 
+/**
+ * Send a response to a "/refresh/commit" request.
+ *
+ * FIXME: maybe not the ideal argument type for @a refresh_session here.
+ *
+ * @param connection the connection to send the response to
+ * @param refresh_session the refresh session
+ * @return a MHD status code
+ */
+int
+TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
+                                         struct RefreshSession *refresh_session);
+
+
+
+
+
+
 #endif

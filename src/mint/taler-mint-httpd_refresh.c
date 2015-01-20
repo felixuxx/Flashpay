@@ -42,38 +42,6 @@
 
 
 /**
- * Sign the message in @a purpose with the mint's signing
- * key and encode the signature as a JSON object.
- *
- * @param purpose the message to sign
- * @return signature as JSON object
- */
-static json_t *
-sign_as_json (struct GNUNET_CRYPTO_EccSignaturePurpose *purpose)
-{
-  json_t *sig_json;
-  struct GNUNET_CRYPTO_EddsaSignature sig;
-  struct MintKeyState *key_state;
-
-  key_state = TALER_MINT_key_state_acquire ();
-
-  sig_json = json_object ();
-
-  GNUNET_assert (GNUNET_OK == GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv,
-                                                        purpose,
-                                                        &sig));
-
-  TALER_MINT_key_state_release (key_state);
-
-  json_object_set (sig_json, "sig", TALER_JSON_from_data (&sig, sizeof (struct GNUNET_CRYPTO_EddsaSignature)));
-  json_object_set (sig_json, "purpose", json_integer (ntohl (purpose->purpose)));
-  json_object_set (sig_json, "size", json_integer (ntohl (purpose->size)));
-
-  return sig_json;
-}
-
-
-/**
  * FIXME: document!
  */
 static int
@@ -184,8 +152,7 @@ refresh_accept_denoms (struct MHD_Connection *connection,
 
 
 /**
- * Get an amount in the mint's currency
- * that is zero.
+ * Get an amount in the mint's currency that is zero.
  *
  * @return zero amount in the mint's currency
  */
@@ -479,12 +446,15 @@ helper_refresh_send_melt_response (struct MHD_Connection *connection,
 
   {
     struct RefreshMeltResponseSignatureBody body;
+    struct GNUNET_CRYPTO_EddsaSignature sig;
     json_t *sig_json;
 
     body.purpose.size = htonl (sizeof (struct RefreshMeltResponseSignatureBody));
     body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_RESPONSE);
     GNUNET_CRYPTO_hash_context_finish (hash_context, &body.melt_response_hash);
-    sig_json = sign_as_json (&body.purpose);
+    TALER_MINT_keys_sign (&body.purpose,
+                          &sig);
+    sig_json = TALER_JSON_from_sig (&body.purpose, &sig);
     GNUNET_assert (NULL != sig_json);
     json_object_set (root, "signature", sig_json);
   }
@@ -502,9 +472,9 @@ helper_refresh_send_melt_response (struct MHD_Connection *connection,
  * @param root the JSON object with the signature
  * @param the public key that the signature was created with
  * @param purpose the signed message
- * @return GNUNET_YES if the signature was valid
- *         GNUNET_NO if the signature was invalid
- *         GNUNET_SYSERR on internal error
+ * @return #GNUNET_YES if the signature was valid
+ *         #GNUNET_NO if the signature was invalid
+ *         #GNUNET_SYSERR on internal error
  */
 static int
 request_json_check_signature (struct MHD_Connection *connection,
@@ -775,35 +745,6 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
 
 
 /**
- * Send a response to a "/refresh/commit" request.
- *
- * @param connection the connection to send the response to
- * @param db_conn the mint database
- * @param refresh_session the refresh session
- * @return a MHD status code
- */
-static int
-refresh_send_commit_response (struct MHD_Connection *connection,
-                              PGconn *db_conn,
-                              struct RefreshSession *refresh_session)
-{
-  struct RefreshCommitResponseSignatureBody body;
-  json_t *sig_json;
-
-  body.purpose.size = htonl (sizeof (struct RefreshCommitResponseSignatureBody));
-  body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_COMMIT_RESPONSE);
-  body.noreveal_index = htons (refresh_session->noreveal_index);
-  sig_json = sign_as_json (&body.purpose);
-  GNUNET_assert (NULL != sig_json);
-  return TALER_MINT_reply_json_pack (connection,
-                                     MHD_HTTP_OK,
-                                     "{s:i, s:o}",
-                                     "noreveal_index", (int) refresh_session->noreveal_index,
-                                     "signature", sig_json);
-}
-
-
-/**
  * Handle a "/refresh/commit" request
  *
  * @param rh context of the handler
@@ -868,9 +809,8 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "sending cached commit response\n");
-    res = refresh_send_commit_response (connection,
-                                        db_conn,
-                                        &refresh_session);
+    res = TALER_MINT_reply_refresh_commit_success (connection,
+                                                   &refresh_session);
     GNUNET_break (res != GNUNET_SYSERR);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
@@ -1072,7 +1012,7 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
     return MHD_NO;
   }
 
-  return refresh_send_commit_response (connection, db_conn, &refresh_session);
+  return TALER_MINT_reply_refresh_commit_success (connection, &refresh_session);
 }
 
 
