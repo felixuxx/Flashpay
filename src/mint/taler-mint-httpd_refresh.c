@@ -409,61 +409,6 @@ refresh_accept_melts (struct MHD_Connection *connection,
 }
 
 
-/**
- * Send a response for "/refresh/melt".
- *
- * @param connection the connection to send the response to
- * @param db_conn the database connection to fetch values from
- * @param session_pub the refresh session public key.
- * @return a MHD result code
- */
-static int
-helper_refresh_send_melt_response (struct MHD_Connection *connection,
-                                   PGconn *db_conn,
-                                   const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub)
-{
-  struct RefreshSession session;
-  int res;
-  json_t *root;
-  json_t *list;
-  struct GNUNET_HashContext *hash_context;
-
-  if (GNUNET_OK !=
-      (res = TALER_MINT_DB_get_refresh_session (db_conn,
-                                                session_pub,
-                                                &session)))
-  {
-    // FIXME: send internal error
-    GNUNET_break (0);
-    return MHD_NO;
-  }
-
-  root = json_object ();
-  list = json_array ();
-  json_object_set_new (root, "blind_session_pubs", list);
-
-  hash_context = GNUNET_CRYPTO_hash_context_start ();
-
-  {
-    struct RefreshMeltResponseSignatureBody body;
-    struct GNUNET_CRYPTO_EddsaSignature sig;
-    json_t *sig_json;
-
-    body.purpose.size = htonl (sizeof (struct RefreshMeltResponseSignatureBody));
-    body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_RESPONSE);
-    GNUNET_CRYPTO_hash_context_finish (hash_context, &body.melt_response_hash);
-    TALER_MINT_keys_sign (&body.purpose,
-                          &sig);
-    sig_json = TALER_JSON_from_sig (&body.purpose, &sig);
-    GNUNET_assert (NULL != sig_json);
-    json_object_set (root, "signature", sig_json);
-  }
-
-  return TALER_MINT_reply_json (connection,
-                                root,
-                                MHD_HTTP_OK);
-}
-
 
 /**
  * Verify a signature that is encoded in a JSON object
@@ -581,6 +526,7 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   struct TALER_Amount melt_balance;
   struct GNUNET_HashContext *hash_context;
   struct GNUNET_HashCode melt_hash;
+  struct RefreshSession session;
 
   res = TALER_MINT_parse_post_json (connection,
                                     connection_cls,
@@ -620,9 +566,20 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
                                            &refresh_session_pub,
                                            NULL);
   if (GNUNET_YES == res)
-    return helper_refresh_send_melt_response (connection,
-                                              db_conn,
-                                              &refresh_session_pub);
+  {
+    if (GNUNET_OK !=
+        (res = TALER_MINT_DB_get_refresh_session (db_conn,
+                                                  &refresh_session_pub,
+                                                  &session)))
+      {
+        // FIXME: send internal error
+        GNUNET_break (0);
+        return MHD_NO;
+      }
+    return TALER_MINT_reply_refresh_melt_success (connection,
+                                                  &session,
+                                                  &refresh_session_pub);
+  }
   if (GNUNET_SYSERR == res)
   {
     // FIXME: return 'internal error'?
@@ -738,9 +695,18 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
     GNUNET_break (0);
     return MHD_NO;
   }
-  return helper_refresh_send_melt_response (connection,
-                                            db_conn,
-                                            &refresh_session_pub);
+  if (GNUNET_OK !=
+      (res = TALER_MINT_DB_get_refresh_session (db_conn,
+                                                &refresh_session_pub,
+                                                &session)))
+    {
+      // FIXME: send internal error
+      GNUNET_break (0);
+      return MHD_NO;
+    }
+  return TALER_MINT_reply_refresh_melt_success (connection,
+                                                &session,
+                                                &refresh_session_pub);
 }
 
 

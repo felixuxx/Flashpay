@@ -173,7 +173,18 @@ TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
                                          struct RefreshSession *refresh_session);
 
 
-
+/**
+ * Send a response for "/refresh/melt".
+ *
+ * @param connection the connection to send the response to
+ * @param db_conn the database connection to fetch values from
+ * @param session_pub the refresh session public key.
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
+                                       const struct RefreshSession *session,
+                                       const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub);
 
 
 

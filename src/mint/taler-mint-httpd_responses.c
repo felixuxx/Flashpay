@@ -291,6 +291,49 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
 
 
 /**
+ * Send a response for "/refresh/melt".
+ *
+ * @param connection the connection to send the response to
+ * @param db_conn the database connection to fetch values from
+ * @param session_pub the refresh session public key.
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
+                                       const struct RefreshSession *session,
+                                       const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub)
+{
+  json_t *root;
+  json_t *list;
+  struct GNUNET_HashContext *hash_context;
+
+  root = json_object ();
+  list = json_array ();
+  json_object_set_new (root, "blind_session_pubs", list);
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
+
+  {
+    struct RefreshMeltResponseSignatureBody body;
+    struct GNUNET_CRYPTO_EddsaSignature sig;
+    json_t *sig_json;
+
+    body.purpose.size = htonl (sizeof (struct RefreshMeltResponseSignatureBody));
+    body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_RESPONSE);
+    GNUNET_CRYPTO_hash_context_finish (hash_context, &body.melt_response_hash);
+    TALER_MINT_keys_sign (&body.purpose,
+                          &sig);
+    sig_json = TALER_JSON_from_sig (&body.purpose, &sig);
+    GNUNET_assert (NULL != sig_json);
+    json_object_set (root, "signature", sig_json);
+  }
+
+  return TALER_MINT_reply_json (connection,
+                                root,
+                                MHD_HTTP_OK);
+}
+
+
+/**
  * Send a response to a "/refresh/commit" request.
  *
  * FIXME: maybe not the ideal argument type for @a refresh_session here.
