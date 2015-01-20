@@ -356,9 +356,9 @@ TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
  *
  * @param key_state the key state to use for checking the coin's validity
  * @param coin_public_info the coin public info to check for validity
- * @return GNUNET_YES if the coin is valid,
- *         GNUNET_NO if it is invalid
- *         GNUNET_SYSERROR if an internal error occured
+ * @return #GNUNET_YES if the coin is valid,
+ *         #GNUNET_NO if it is invalid
+ *         #GNUNET_SYSERROR if an internal error occured
  */
 int
 TALER_MINT_test_coin_valid (const struct MintKeyState *key_state,

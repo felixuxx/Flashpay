@@ -79,7 +79,8 @@ link_iter (void *cls,
  * @param db_conn the database connection
  * @param key_state the mint's key state to use
  * @param session_pub the refresh session public key
- * @param root the request JSON object
+ * @param denom_pubs_count number of entries in @a denom_pubs
+ * @param denom_pubs array of public keys for the refresh
  * @param hash_context the hash context where accepted
  *                     denominations will be hased into
  * @param r_amount the sum of the cost (value+fee) for
@@ -91,60 +92,36 @@ refresh_accept_denoms (struct MHD_Connection *connection,
                        PGconn *db_conn,
                        const struct MintKeyState *key_state,
                        const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                       const json_t *root,
+                       unsigned int denom_pubs_count,
+                       const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pubs,
                        struct GNUNET_HashContext *hash_context,
                        struct TALER_Amount *r_amount)
 {
-  unsigned i;
+  unsigned int i;
   int res;
-  json_t *new_denoms;
-
-  res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                  JNAV_FIELD, "new_denoms",
-                                  JNAV_RET_TYPED_JSON,
-                                  JSON_ARRAY,
-                                  &new_denoms);
-  if (GNUNET_OK != res)
-    return res;
+  struct TALER_MINT_DenomKeyIssue *dki;
+  struct TALER_Amount cost;
 
   memset (r_amount, 0, sizeof (struct TALER_Amount));
-
-  for (i = 0; i < json_array_size (new_denoms); i++)
+  for (i = 0; i < denom_pubs_count; i++)
   {
-    struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
-    int res;
-    struct TALER_MINT_DenomKeyIssue *dki;
-    struct TALER_Amount cost;
-
-    res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                    JNAV_FIELD, "new_denoms",
-                                    JNAV_INDEX, (int) i,
-                                    JNAV_RET_DATA,
-                                    &denom_pub,
-                                    sizeof (struct TALER_RSA_PublicKeyBinaryEncoded));
-
-    if (GNUNET_OK != res)
-      return res;
-
-    dki = &(TALER_MINT_get_denom_key (key_state, &denom_pub)->issue);
-
+    dki = &(TALER_MINT_get_denom_key (key_state, &denom_pubs[i])->issue);
     GNUNET_CRYPTO_hash_context_read (hash_context,
-                                     &denom_pub,
+                                     &denom_pubs[i],
                                      sizeof (struct TALER_RSA_PublicKeyBinaryEncoded));
-
     cost = TALER_amount_add (TALER_amount_ntoh (dki->value),
                              TALER_amount_ntoh (dki->fee_withdraw));
-
     *r_amount = TALER_amount_add (cost, *r_amount);
+
 
     /* Insert the requested coin into the DB, so we'll know later
      * what denomination the request had */
 
     if (GNUNET_OK !=
-        TALER_MINT_DB_insert_refresh_order (db_conn,
-                                            i,
-                                            session_pub,
-                                            &denom_pub))
+        (res = TALER_MINT_DB_insert_refresh_order (db_conn,
+                                                   i,
+                                                   session_pub,
+                                                   &denom_pubs[i])))
       return res; // ???
   }
   return GNUNET_OK;
@@ -268,7 +245,8 @@ request_json_require_coin_public_info (struct MHD_Connection *connection,
  * @param db_conn the database connection
  * @param key_state the mint's key state
  * @param session_pub the refresh session's public key
- * @param root the JSON object
+ * @param coin_count number of coins in @a coin_public_infos to melt
+ * @param coin_public_infos the coins to melt
  * @param hash_context the hash context that will receive
  *                     the coin public keys of the melted coin
  * @return #GNUNET_OK on success,
@@ -280,54 +258,27 @@ refresh_accept_melts (struct MHD_Connection *connection,
                       PGconn *db_conn,
                       const struct MintKeyState *key_state,
                       const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                      json_t *root,
+                      unsigned int coin_count,
+                      const struct TALER_CoinPublicInfo *coin_public_infos,
                       struct GNUNET_HashContext *hash_context,
                       struct TALER_Amount *r_melt_balance)
 {
   size_t i;
   int res;
-  json_t *melt_coins;
-
-  res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                  JNAV_FIELD, "melt_coins",
-                                  JNAV_RET_TYPED_JSON,
-                                  JSON_ARRAY,
-                                  &melt_coins);
-  if (GNUNET_OK != res)
-    return res;
 
   memset (r_melt_balance, 0, sizeof (struct TALER_Amount));
 
-  for (i = 0; i < json_array_size (melt_coins); i++)
+  for (i = 0; i < coin_count; i++)
   {
-    struct TALER_CoinPublicInfo coin_public_info;
     struct TALER_MINT_DenomKeyIssue *dki;
     struct KnownCoin known_coin;
     // money the customer gets by melting the current coin
     struct TALER_Amount coin_gain;
 
-    res = request_json_require_coin_public_info (connection,
-                                                 json_array_get (melt_coins, i),
-                                                 &coin_public_info);
-    if (GNUNET_OK != res)
-    {
-      GNUNET_break (GNUNET_SYSERR != res);
-      return res;
-    }
-
-    if (GNUNET_OK != (res = check_confirm_signature (connection,
-                                                     json_array_get (melt_coins, i),
-                                                     &coin_public_info.coin_pub,
-                                                     session_pub)))
-    {
-      GNUNET_break (GNUNET_SYSERR != res);
-      return res;
-    }
-
     GNUNET_CRYPTO_hash_context_read (hash_context,
-                             &coin_public_info.coin_pub, sizeof (struct GNUNET_CRYPTO_EddsaPublicKey));
-
-    dki = &(TALER_MINT_get_denom_key (key_state, &coin_public_info.denom_pub)->issue);
+                                     &coin_public_infos[i].coin_pub,
+                                     sizeof (struct GNUNET_CRYPTO_EddsaPublicKey));
+    dki = &(TALER_MINT_get_denom_key (key_state, &coin_public_infos[i].denom_pub)->issue);
 
     if (NULL == dki)
       return (MHD_YES ==
@@ -337,15 +288,9 @@ refresh_accept_melts (struct MHD_Connection *connection,
                                           "error", "denom not found"))
         ? GNUNET_NO : GNUNET_SYSERR;
 
-    if (GNUNET_OK != TALER_MINT_test_coin_valid (key_state, &coin_public_info))
-      return (MHD_YES ==
-              TALER_MINT_reply_json_pack (connection,
-                                          MHD_HTTP_NOT_FOUND,
-                                          "{s:s}",
-                                          "error", "coin invalid"))
-        ? GNUNET_NO : GNUNET_SYSERR;
 
-    res = TALER_MINT_DB_get_known_coin (db_conn, &coin_public_info.coin_pub,
+    res = TALER_MINT_DB_get_known_coin (db_conn,
+                                        &coin_public_infos[i].coin_pub,
                                         &known_coin);
 
     if (GNUNET_SYSERR == res)
@@ -368,7 +313,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
     else
     {
       known_coin.expended_balance = mint_amount_native_zero ();
-      known_coin.public_info = coin_public_info;
+      known_coin.public_info = coin_public_infos[i];
     }
 
     known_coin.is_refreshed = GNUNET_YES;
@@ -381,8 +326,8 @@ refresh_accept_melts (struct MHD_Connection *connection,
     }
 
     if (GNUNET_OK != TALER_MINT_DB_insert_refresh_melt (db_conn, session_pub, i,
-                                                        &coin_public_info.coin_pub,
-                                                        &coin_public_info.denom_pub))
+                                                        &coin_public_infos[i].coin_pub,
+                                                        &coin_public_infos[i].denom_pub))
     {
       GNUNET_break (0);
       return GNUNET_SYSERR;
@@ -527,6 +472,13 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   struct GNUNET_HashContext *hash_context;
   struct GNUNET_HashCode melt_hash;
   struct RefreshSession session;
+  json_t *new_denoms;
+  unsigned int num_new_denoms;
+  unsigned int i;
+  struct TALER_RSA_PublicKeyBinaryEncoded *denom_pubs;
+  json_t *melt_coins;
+  struct TALER_CoinPublicInfo *coin_public_infos;
+  unsigned int coin_count;
 
   res = TALER_MINT_parse_post_json (connection,
                                     connection_cls,
@@ -537,12 +489,6 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == root) )
     return MHD_YES;
-
-  if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
-  {
-    /* FIXME: return error code to MHD! */
-    return MHD_NO;
-  }
 
   /* session_pub field must always be present */
   res = GNUNET_MINT_parse_navigate_json (connection, root,
@@ -559,9 +505,99 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   if (GNUNET_NO == res)
     return MHD_YES;
 
+  res = GNUNET_MINT_parse_navigate_json (connection, root,
+                                         JNAV_FIELD, "new_denoms",
+                                         JNAV_RET_TYPED_JSON,
+                                         JSON_ARRAY,
+                                         &new_denoms);
+  if (GNUNET_OK != res)
+    return res;
+  num_new_denoms = json_array_size (new_denoms);
+  denom_pubs = GNUNET_malloc (num_new_denoms *
+                              sizeof (struct TALER_RSA_PublicKeyBinaryEncoded));
+
+  for (i=0;i<num_new_denoms;i++)
+  {
+    res = GNUNET_MINT_parse_navigate_json (connection, root,
+                                           JNAV_FIELD, "new_denoms",
+                                           JNAV_INDEX, (int) i,
+                                           JNAV_RET_DATA,
+                                           &denom_pubs[i],
+                                           sizeof (struct TALER_RSA_PublicKeyBinaryEncoded));
+
+    if (GNUNET_OK != res)
+    {
+      GNUNET_free (denom_pubs);
+      /* FIXME: proper cleanup! */
+      return res;
+    }
+  }
+
+  res = GNUNET_MINT_parse_navigate_json (connection, root,
+                                  JNAV_FIELD, "melt_coins",
+                                  JNAV_RET_TYPED_JSON,
+                                  JSON_ARRAY,
+                                  &melt_coins);
+  if (GNUNET_OK != res)
+    {
+      // FIXME: leaks!
+      return res;
+    }
+
+  coin_count = json_array_size (melt_coins);
+  coin_public_infos = GNUNET_malloc (coin_count *
+                                     sizeof (struct TALER_CoinPublicInfo));
+  key_state = TALER_MINT_key_state_acquire ();
+  for (i = 0; i < coin_count; i++)
+    {
+      /* decode JSON data on coin to melt */
+      res = request_json_require_coin_public_info (connection,
+                                                   json_array_get (melt_coins, i),
+                                                   &coin_public_infos[i]);
+      if (GNUNET_OK != res)
+        {
+          GNUNET_break (GNUNET_SYSERR != res);
+          // FIXME: leaks!
+          return res;
+        }
+      /* check that this coin's private key was used to sign that
+         we should melt it */
+      if (GNUNET_OK != (res = check_confirm_signature (connection,
+                                                       json_array_get (melt_coins, i),
+                                                       &coin_public_infos[i].coin_pub,
+                                                       &refresh_session_pub)))
+        {
+          GNUNET_break (GNUNET_SYSERR != res);
+          // FIXME: leaks!
+          return res;
+        }
+      /* check mint signature on the coin */
+      if (GNUNET_OK != TALER_MINT_test_coin_valid (key_state,
+                                                   &coin_public_infos[i]))
+        {
+          // FIXME: leaks!
+          return (MHD_YES ==
+                TALER_MINT_reply_json_pack (connection,
+                                            MHD_HTTP_NOT_FOUND,
+                                            "{s:s}",
+                                            "error", "coin invalid"))
+          ? GNUNET_NO : GNUNET_SYSERR;
+        }
+    }
+  TALER_MINT_key_state_release (key_state);
+
+
+
+
+
   /* Send response immediately if we already know the session.
    * Do _not_ care about fields other than session_pub in this case. */
 
+  if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
+  {
+    /* FIXME: return error code to MHD! */
+    return MHD_NO;
+  }
   res = TALER_MINT_DB_get_refresh_session (db_conn,
                                            &refresh_session_pub,
                                            NULL);
@@ -609,17 +645,19 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   /* The next two operations must see the same key state,
    * thus we acquire it here. */
 
-  key_state = TALER_MINT_key_state_acquire ();
 
   /* Write requested denominations to the DB,
    * and sum the costs (value plus fees) */
 
   hash_context = GNUNET_CRYPTO_hash_context_start ();
-
-  if (GNUNET_OK != (res = refresh_accept_denoms (connection, db_conn, key_state,
-                                                 &refresh_session_pub, root,
-                                                 hash_context,
-                                                 &requested_cost)))
+  key_state = TALER_MINT_key_state_acquire ();
+  if (GNUNET_OK !=
+      (res = refresh_accept_denoms (connection, db_conn, key_state,
+                                    &refresh_session_pub,
+                                    num_new_denoms,
+                                    denom_pubs,
+                                    hash_context,
+                                    &requested_cost)))
   {
     TALER_MINT_key_state_release (key_state);
     TALER_MINT_DB_rollback (db_conn);
@@ -628,11 +666,13 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   }
 
   /* Write old coins to db and sum their value */
-
-  if (GNUNET_OK != (res = refresh_accept_melts (connection, db_conn, key_state,
-                                                &refresh_session_pub, root,
-                                                hash_context,
-                                                &melt_balance)))
+  if (GNUNET_OK !=
+      (res = refresh_accept_melts (connection, db_conn, key_state,
+                                   &refresh_session_pub,
+                                   coin_count,
+                                   coin_public_infos,
+                                   hash_context,
+                                   &melt_balance)))
   {
     TALER_MINT_key_state_release (key_state);
     GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));

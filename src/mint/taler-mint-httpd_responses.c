@@ -306,26 +306,23 @@ TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
   json_t *root;
   json_t *list;
   struct GNUNET_HashContext *hash_context;
+  struct RefreshMeltResponseSignatureBody body;
+  struct GNUNET_CRYPTO_EddsaSignature sig;
+  json_t *sig_json;
 
   root = json_object ();
   list = json_array ();
   json_object_set_new (root, "blind_session_pubs", list);
   hash_context = GNUNET_CRYPTO_hash_context_start ();
-
-  {
-    struct RefreshMeltResponseSignatureBody body;
-    struct GNUNET_CRYPTO_EddsaSignature sig;
-    json_t *sig_json;
-
-    body.purpose.size = htonl (sizeof (struct RefreshMeltResponseSignatureBody));
-    body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_RESPONSE);
-    GNUNET_CRYPTO_hash_context_finish (hash_context, &body.melt_response_hash);
-    TALER_MINT_keys_sign (&body.purpose,
-                          &sig);
-    sig_json = TALER_JSON_from_sig (&body.purpose, &sig);
-    GNUNET_assert (NULL != sig_json);
-    json_object_set (root, "signature", sig_json);
-  }
+  body.purpose.size = htonl (sizeof (struct RefreshMeltResponseSignatureBody));
+  body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_RESPONSE);
+  /* FIXME: should we not add something to the hash_context in the meantime? */
+  GNUNET_CRYPTO_hash_context_finish (hash_context, &body.melt_response_hash);
+  TALER_MINT_keys_sign (&body.purpose,
+                        &sig);
+  sig_json = TALER_JSON_from_sig (&body.purpose, &sig);
+  GNUNET_assert (NULL != sig_json);
+  json_object_set (root, "signature", sig_json);
 
   return TALER_MINT_reply_json (connection,
                                 root,

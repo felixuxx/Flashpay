@@ -829,7 +829,8 @@ TALER_MINT_DB_get_refresh_session (PGconn *db_conn,
 
 
 int
-TALER_MINT_DB_get_known_coin (PGconn *db_conn, struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
+TALER_MINT_DB_get_known_coin (PGconn *db_conn,
+                              const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
                               struct KnownCoin *known_coin)
 {
   int res;
