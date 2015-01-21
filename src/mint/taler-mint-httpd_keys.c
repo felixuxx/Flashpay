@@ -19,6 +19,10 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
+ *
+ * TODO:
+ * - separate key management into a file separate from
+ *   /keys handling (to fit other handlers)
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>

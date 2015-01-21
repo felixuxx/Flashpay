@@ -23,6 +23,8 @@
  * - /deposit: properly check existing deposits
  * - /deposit: properly perform commit (check return value)
  * - /deposit: check for leaks
+ * - ALL: check API: given structs are usually not perfect, as they
+ *        often contain too many fields for the context
  */
 #include "platform.h"
 #include <pthread.h>
