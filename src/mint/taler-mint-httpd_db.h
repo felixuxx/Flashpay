@@ -110,6 +110,23 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
                                       struct RefreshCommitLink *const* commit_link);
 
 
+/**
+ * Execute a /refresh/reveal.
+ *
+ * @param connection the MHD connection to handle
+ * @param refresh_session_pub public key of the refresh session
+ * @param kappa size of x-dimension of @transfer_privs array plus one (!)
+ * @param num_oldcoins size of y-dimension of @transfer_privs array
+ * @param transfer_pubs array with the revealed transfer keys
+ * @return MHD result code
+ */
+int
+TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
+                                      const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                      unsigned int kappa,
+                                      unsigned int num_oldcoins,
+                                      struct GNUNET_CRYPTO_EcdsaPrivateKey *const*transfer_privs);
+
 
 /**
  * Execute a /refresh/link.

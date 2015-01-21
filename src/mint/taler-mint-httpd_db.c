@@ -794,8 +794,6 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
     return MHD_NO;
   }
 
-
-
   if (GNUNET_OK != TALER_MINT_DB_commit (db_conn))
   {
     // FIXME: return 'internal error'?
@@ -804,7 +802,346 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
   }
 
   return TALER_MINT_reply_refresh_commit_success (connection, &refresh_session);
- }
+}
+
+
+/**
+ * Send response for "/refresh/reveal".
+ *
+ * @param connection the MHD connection
+ * @param db_conn the connection to the mint's db
+ * @param refresh_session_pub the refresh session's public key
+ * @return a MHD result code
+ */
+static int
+helper_refresh_reveal_send_response (struct MHD_Connection *connection,
+                                     PGconn *db_conn,
+                                     const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub)
+{
+  int res;
+  int newcoin_index;
+  struct RefreshSession refresh_session;
+  struct TALER_RSA_Signature *sigs;
+
+  res = TALER_MINT_DB_get_refresh_session (db_conn,
+                                           refresh_session_pub,
+                                           &refresh_session);
+  if (GNUNET_OK != res)
+  {
+    // FIXME: return 'internal error'
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+
+  GNUNET_assert (0 != refresh_session.reveal_ok);
+  sigs = GNUNET_malloc (refresh_session.num_newcoins *
+                        sizeof (struct TALER_RSA_Signature));
+  for (newcoin_index = 0; newcoin_index < refresh_session.num_newcoins; newcoin_index++)
+  {
+    res = TALER_MINT_DB_get_refresh_collectable (db_conn,
+                                                 newcoin_index,
+                                                 refresh_session_pub,
+                                                 &sigs[newcoin_index]);
+    if (GNUNET_OK != res)
+    {
+      // FIXME: return 'internal error'
+      GNUNET_break (0);
+      GNUNET_free (sigs);
+      return MHD_NO;
+    }
+  }
+  res = TALER_MINT_reply_refresh_reveal_success (connection,
+                                                 refresh_session.num_newcoins,
+                                                 sigs);
+  GNUNET_free (sigs);
+  return res;
+}
+
+
+/**
+ * Execute a /refresh/reveal.
+ *
+ * @param connection the MHD connection to handle
+ * @param refresh_session_pub public key of the refresh session
+ * @param kappa size of x-dimension of @transfer_privs array plus one (!)
+ * @param num_oldcoins size of y-dimension of @transfer_privs array
+ * @param transfer_pubs array with the revealed transfer keys
+ * @return MHD result code
+ */
+int
+TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
+                                      const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                      unsigned int kappa,
+                                      unsigned int num_oldcoins,
+                                      struct GNUNET_CRYPTO_EcdsaPrivateKey *const*transfer_privs)
+{
+  int res;
+  PGconn *db_conn;
+  struct RefreshSession refresh_session;
+  struct MintKeyState *key_state;
+  unsigned int i;
+  unsigned int j;
+  unsigned int off;
+
+  if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
+  {
+    GNUNET_break (0);
+    // FIXME: return 'internal error'?
+    return MHD_NO;
+  }
+
+  /* Send response immediately if we already know the session,
+   * and the session commited already.
+   * Do _not_ care about fields other than session_pub in this case. */
+
+  res = TALER_MINT_DB_get_refresh_session (db_conn,
+                                           refresh_session_pub,
+                                           &refresh_session);
+  if (GNUNET_YES == res && 0 != refresh_session.reveal_ok)
+    return helper_refresh_reveal_send_response (connection,
+                                                db_conn,
+                                                refresh_session_pub);
+  if (GNUNET_SYSERR == res)
+  {
+    GNUNET_break (0);
+    // FIXME: return 'internal error'?
+    return MHD_NO;
+  }
+
+  /* Check that the transfer private keys match their commitments.
+   * Then derive the shared secret for each kappa, and check that they match. */
+
+  off = 0;
+  for (i = 0; i < refresh_session.kappa - 1; i++)
+  {
+    struct GNUNET_HashCode last_shared_secret;
+    int secret_initialized = GNUNET_NO;
+
+    if (i == refresh_session.noreveal_index)
+      off = 1;
+
+    for (j = 0; j < refresh_session.num_oldcoins; j++)
+    {
+      struct RefreshCommitLink commit_link;
+      struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+      struct GNUNET_HashCode transfer_secret;
+      struct GNUNET_HashCode shared_secret;
+
+      res = TALER_MINT_DB_get_refresh_commit_link (db_conn,
+                                                   refresh_session_pub,
+                                                   i + off, j,
+                                                   &commit_link);
+      if (GNUNET_OK != res)
+      {
+        GNUNET_break (0);
+            // FIXME: return 'internal error'?
+        return MHD_NO;
+      }
+
+      res = TALER_MINT_DB_get_refresh_melt (db_conn, refresh_session_pub, j, &coin_pub);
+      if (GNUNET_OK != res)
+      {
+        GNUNET_break (0);
+        // FIXME: return 'internal error'?
+        return MHD_NO;
+      }
+
+      /* We're converting key types here, which is not very nice
+       * but necessary and harmless (keys will be thrown away later). */
+      if (GNUNET_OK != GNUNET_CRYPTO_ecc_ecdh ((struct GNUNET_CRYPTO_EcdhePrivateKey *) &transfer_privs[i+off][j],
+                                               (struct GNUNET_CRYPTO_EcdhePublicKey *) &coin_pub,
+                                               &transfer_secret))
+      {
+        GNUNET_break (0);
+        // FIXME: return 'internal error'?
+        return MHD_NO;
+      }
+
+      if (0 >= TALER_refresh_decrypt (commit_link.shared_secret_enc, TALER_REFRESH_SHARED_SECRET_LENGTH,
+                                      &transfer_secret, &shared_secret))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "decryption failed\n");
+        // FIXME: return 'internal error'?
+        return MHD_NO;
+      }
+
+      if (GNUNET_NO == secret_initialized)
+      {
+        secret_initialized = GNUNET_YES;
+        last_shared_secret = shared_secret;
+      }
+      else if (0 != memcmp (&shared_secret, &last_shared_secret, sizeof (struct GNUNET_HashCode)))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "shared secrets do not match\n");
+        // FIXME: return error code!
+        return MHD_NO;
+      }
+
+      {
+        struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub_check;
+        GNUNET_CRYPTO_ecdsa_key_get_public (&transfer_privs[i+off][j], &transfer_pub_check);
+        if (0 != memcmp (&transfer_pub_check, &commit_link.transfer_pub, sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey)))
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "transfer keys do not match\n");
+        // FIXME: return error code!
+          return MHD_NO;
+        }
+      }
+    }
+
+    /* Check that the commitments for all new coins were correct */
+
+    for (j = 0; j < refresh_session.num_newcoins; j++)
+    {
+      struct RefreshCommitCoin commit_coin;
+      struct LinkData link_data;
+      struct TALER_RSA_BlindedSignaturePurpose *coin_ev_check;
+      struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+      struct TALER_RSA_BlindingKey *bkey;
+      struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
+
+      bkey = NULL;
+      res = TALER_MINT_DB_get_refresh_commit_coin (db_conn,
+                                                   refresh_session_pub,
+                                                   i+off, j,
+                                                   &commit_coin);
+      if (GNUNET_OK != res)
+      {
+        GNUNET_break (0);
+                // FIXME: return error code!
+        return MHD_NO;
+      }
+
+
+      if (0 >= TALER_refresh_decrypt (commit_coin.link_enc, sizeof (struct LinkData),
+                                      &last_shared_secret, &link_data))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "decryption failed\n");
+                // FIXME: return error code!
+        return MHD_NO;
+      }
+
+      GNUNET_CRYPTO_ecdsa_key_get_public (&link_data.coin_priv, &coin_pub);
+      if (NULL == (bkey = TALER_RSA_blinding_key_decode (&link_data.bkey_enc)))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Invalid blinding key\n");
+                        // FIXME: return error code!
+        return MHD_NO;
+      }
+      res = TALER_MINT_DB_get_refresh_order (db_conn, j, refresh_session_pub, &denom_pub);
+      if (GNUNET_OK != res)
+      {
+        GNUNET_break (0);
+          // FIXME: return error code!
+        return MHD_NO;
+      }
+      if (NULL == (coin_ev_check =
+                   TALER_RSA_message_blind (&coin_pub,
+                                            sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
+                                            bkey,
+                                            &denom_pub)))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "blind failed\n");
+          // FIXME: return error code!
+        return MHD_NO;
+      }
+
+      if (0 != memcmp (&coin_ev_check,
+                       &commit_coin.coin_ev,
+                       sizeof (struct TALER_RSA_BlindedSignaturePurpose)))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "blind envelope does not match for kappa=%d, old=%d\n",
+                    (int) (i+off), (int) j);
+        // FIXME: return error code!
+        return MHD_NO;
+      }
+    }
+  }
+
+
+  if (GNUNET_OK != TALER_MINT_DB_transaction (db_conn))
+  {
+    GNUNET_break (0);
+            // FIXME: return error code!
+    return MHD_NO;
+  }
+
+  for (j = 0; j < refresh_session.num_newcoins; j++)
+  {
+    struct RefreshCommitCoin commit_coin;
+    struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
+    struct TALER_MINT_DenomKeyIssuePriv *dki;
+    struct TALER_RSA_Signature ev_sig;
+
+    res = TALER_MINT_DB_get_refresh_commit_coin (db_conn,
+                                                 refresh_session_pub,
+                                                 refresh_session.noreveal_index % refresh_session.kappa,
+                                                 j,
+                                                 &commit_coin);
+    if (GNUNET_OK != res)
+    {
+      GNUNET_break (0);
+              // FIXME: return error code!
+      return MHD_NO;
+    }
+    res = TALER_MINT_DB_get_refresh_order (db_conn, j, refresh_session_pub, &denom_pub);
+    if (GNUNET_OK != res)
+    {
+      GNUNET_break (0);
+                    // FIXME: return error code!
+      return MHD_NO;
+    }
+
+
+    key_state = TALER_MINT_key_state_acquire ();
+    dki = TALER_MINT_get_denom_key (key_state, &denom_pub);
+    TALER_MINT_key_state_release (key_state);
+    if (NULL == dki)
+    {
+      GNUNET_break (0);
+                    // FIXME: return error code!
+      return MHD_NO;
+    }
+    if (GNUNET_OK !=
+        TALER_RSA_sign (dki->denom_priv,
+                        &commit_coin.coin_ev,
+                        sizeof (struct TALER_RSA_BlindedSignaturePurpose),
+                        &ev_sig))
+    {
+      GNUNET_break (0);
+                    // FIXME: return error code!
+      return MHD_NO;
+    }
+
+    res = TALER_MINT_DB_insert_refresh_collectable (db_conn,
+                                                    j,
+                                                    refresh_session_pub,
+                                                    &ev_sig);
+    if (GNUNET_OK != res)
+    {
+      GNUNET_break (0);
+                          // FIXME: return error code!
+      return MHD_NO;
+    }
+  }
+  /* mark that reveal was successful */
+
+  res = TALER_MINT_DB_set_reveal_ok (db_conn, refresh_session_pub);
+  if (GNUNET_OK != res)
+  {
+    GNUNET_break (0);
+    // FIXME: return error code!
+    return MHD_NO;
+  }
+
+  if (GNUNET_OK != TALER_MINT_DB_commit (db_conn))
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+
+  return helper_refresh_reveal_send_response (connection, db_conn, refresh_session_pub);
+}
 
 
 
