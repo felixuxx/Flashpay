@@ -436,7 +436,7 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
                                             denom_pubs,
                                             coin_count,
                                             coin_public_infos);
-
+  // FIXME: free memory
   return res;
 }
 
@@ -696,8 +696,7 @@ helper_refresh_reveal_send_response (struct MHD_Connection *connection,
   int res;
   int newcoin_index;
   struct RefreshSession refresh_session;
-  json_t *root;
-  json_t *list;
+  struct TALER_RSA_Signature *sigs;
 
   res = TALER_MINT_DB_get_refresh_session (db_conn,
                                            refresh_session_pub,
@@ -710,32 +709,27 @@ helper_refresh_reveal_send_response (struct MHD_Connection *connection,
   }
 
   GNUNET_assert (0 != refresh_session.reveal_ok);
-
-  root = json_object ();
-  list = json_array ();
-  json_object_set_new (root, "ev_sigs", list);
-
+  sigs = GNUNET_malloc (refresh_session.num_newcoins *
+                        sizeof (struct TALER_RSA_Signature));
   for (newcoin_index = 0; newcoin_index < refresh_session.num_newcoins; newcoin_index++)
   {
-    struct TALER_RSA_Signature ev_sig;
-
     res = TALER_MINT_DB_get_refresh_collectable (db_conn,
                                                  newcoin_index,
                                                  refresh_session_pub,
-                                                 &ev_sig);
+                                                 &sigs[newcoin_index]);
     if (GNUNET_OK != res)
     {
       // FIXME: return 'internal error'
       GNUNET_break (0);
+      GNUNET_free (sigs);
       return MHD_NO;
     }
-    json_array_append_new (list,
-                           TALER_JSON_from_data (&ev_sig,
-                                         sizeof (struct TALER_RSA_Signature)));
   }
-  return TALER_MINT_reply_json (connection,
-                                root,
-                                MHD_HTTP_OK);
+  res = TALER_MINT_reply_refresh_reveal_success (connection,
+                                                 refresh_session.num_newcoins,
+                                                 sigs);
+  GNUNET_free (sigs);
+  return res;
 }
 
 

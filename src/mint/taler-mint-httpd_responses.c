@@ -362,6 +362,35 @@ TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
 }
 
 
+/**
+ * Send a response for "/refresh/reveal".
+ *
+ * @param connection the connection to send the response to
+ * @param num_newcoins number of new coins for which we reveal data
+ * @param sigs array of @a num_newcoins signatures revealed
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
+                                         unsigned int num_newcoins,
+                                         const struct TALER_RSA_Signature *sigs)
+{
+  int newcoin_index;
+  json_t *root;
+  json_t *list;
+
+  root = json_object ();
+  list = json_array ();
+  json_object_set_new (root, "ev_sigs", list);
+  for (newcoin_index = 0; newcoin_index < num_newcoins; newcoin_index++)
+    json_array_append_new (list,
+                           TALER_JSON_from_data (&sigs[newcoin_index],
+                                                 sizeof (struct TALER_RSA_Signature)));
+  return TALER_MINT_reply_json (connection,
+                                root,
+                                MHD_HTTP_OK);
+
+}
 
 
 

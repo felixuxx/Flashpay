@@ -177,7 +177,7 @@ TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
  * Send a response for "/refresh/melt".
  *
  * @param connection the connection to send the response to
- * @param db_conn the database connection to fetch values from
+ * @param session session data to generate reply from
  * @param session_pub the refresh session public key.
  * @return a MHD result code
  */
@@ -185,6 +185,20 @@ int
 TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
                                        const struct RefreshSession *session,
                                        const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub);
+
+
+/**
+ * Send a response for "/refresh/reveal".
+ *
+ * @param connection the connection to send the response to
+ * @param num_newcoins number of new coins for which we reveal data
+ * @param sigs array of @a num_newcoins signatures revealed
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
+                                         unsigned int num_newcoins,
+                                         const struct TALER_RSA_Signature *sigs);
 
 
 
