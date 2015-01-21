@@ -21,7 +21,9 @@
  * @author Christian Grothoff
  *
  * TODO:
- * - split properly into parsing, DB-ops and response generation
+ * - split /refresh/reveal properly into parsing, DB-ops and response generation
+ * - error handling
+ * - document functions properly
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
