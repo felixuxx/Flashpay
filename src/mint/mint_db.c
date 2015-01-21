@@ -1087,7 +1087,8 @@ TALER_MINT_DB_upsert_known_coin (PGconn *db_conn, struct KnownCoin *known_coin)
 
 
 int
-TALER_MINT_DB_insert_refresh_commit_link (PGconn *db_conn, struct RefreshCommitLink *commit_link)
+TALER_MINT_DB_insert_refresh_commit_link (PGconn *db_conn,
+                                          const struct RefreshCommitLink *commit_link)
 {
   uint16_t cnc_index_nbo = htons (commit_link->cnc_index);
   uint16_t oldcoin_index_nbo = htons (commit_link->oldcoin_index);
@@ -1121,7 +1122,8 @@ TALER_MINT_DB_insert_refresh_commit_link (PGconn *db_conn, struct RefreshCommitL
 
 
 int
-TALER_MINT_DB_insert_refresh_commit_coin (PGconn *db_conn, struct RefreshCommitCoin *commit_coin)
+TALER_MINT_DB_insert_refresh_commit_coin (PGconn *db_conn,
+                                          const struct RefreshCommitCoin *commit_coin)
 {
   uint16_t cnc_index_nbo = htons (commit_coin->cnc_index);
   uint16_t newcoin_index_nbo = htons (commit_coin->newcoin_index);

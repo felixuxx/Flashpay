@@ -91,4 +91,23 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     const struct TALER_CoinPublicInfo *coin_public_infos);
 
 
+/**
+ * Execute a /refresh/commit.
+ *
+ * @param connection the MHD connection to handle
+ * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
+ * @param num_oldcoins size of y-dimension of @commit_coin and @commit_link arrays
+ * @param num_newcoins size of y-dimension of @commit_coin and @commit_link arrays
+ * @return MHD result code
+ */
+int
+TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
+                                      const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                      unsigned int kappa,
+                                      unsigned int num_oldcoins,
+                                      unsigned int num_newcoins,
+                                      struct RefreshCommitCoin *const* commit_coin,
+                                      struct RefreshCommitLink *const* commit_link);
+
+
 #endif /* _NEURO_MINT_DB_H */

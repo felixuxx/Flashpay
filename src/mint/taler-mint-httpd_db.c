@@ -686,3 +686,124 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
 
 
 }
+
+
+/**
+ * Execute a /refresh/commit.
+ *
+ * @param connection the MHD connection to handle
+ * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
+ * @param num_oldcoins size of y-dimension of @commit_coin and @commit_link arrays
+ * @param num_newcoins size of y-dimension of @commit_coin and @commit_link arrays
+ * @return MHD result code
+ */
+int
+TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
+                                      const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                      unsigned int kappa,
+                                      unsigned int num_oldcoins,
+                                      unsigned int num_newcoins,
+                                      struct RefreshCommitCoin *const*commit_coin,
+                                      struct RefreshCommitLink *const*commit_link)
+
+{
+  PGconn *db_conn;
+  struct RefreshSession refresh_session;
+  unsigned int i;
+  unsigned int j;
+  int res;
+
+  if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
+  {
+    // FIXME: return 'internal error'?
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+
+  /* Send response immediately if we already know the session.
+   * Do _not_ care about fields other than session_pub in this case. */
+
+  res = TALER_MINT_DB_get_refresh_session (db_conn,
+                                           refresh_session_pub,
+                                           &refresh_session);
+  // FIXME: this should check that kappa and num_newcoins match
+  // our expectations from refresh_session!
+
+  for (i = 0; i < refresh_session.kappa; i++)
+  {
+    for (j = 0; j < refresh_session.num_newcoins; j++)
+    {
+      if (GNUNET_OK !=
+          TALER_MINT_DB_insert_refresh_commit_coin (db_conn,
+                                                    &commit_coin[i][j]))
+      {
+        // FIXME: return 'internal error'?
+        GNUNET_break (0);
+        GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+        return MHD_NO;
+      }
+
+      if (GNUNET_OK !=
+          TALER_MINT_DB_insert_refresh_commit_link (db_conn, &commit_link[i][j]))
+      {
+        // FIXME: return 'internal error'?
+        GNUNET_break (0);
+        GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+        return MHD_NO;
+      }
+    }
+  }
+
+
+
+
+
+  if ( (GNUNET_YES == res) &&
+       (GNUNET_YES == refresh_session.has_commit_sig) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "sending cached commit response\n");
+    res = TALER_MINT_reply_refresh_commit_success (connection,
+                                                   &refresh_session);
+    GNUNET_break (res != GNUNET_SYSERR);
+    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
+  }
+  if (GNUNET_SYSERR == res)
+  {
+    // FIXME: return 'internal error'?
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+
+  if (GNUNET_OK != TALER_MINT_DB_transaction (db_conn))
+  {
+    // FIXME: return 'internal error'?
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+
+  /* Re-fetch the session information from the database,
+   * in case a concurrent transaction modified it. */
+
+  res = TALER_MINT_DB_get_refresh_session (db_conn,
+                                           refresh_session_pub,
+                                           &refresh_session);
+  if (GNUNET_OK != res)
+  {
+    // FIXME: return 'internal error'?
+    GNUNET_break (GNUNET_SYSERR != res);
+    GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+    return MHD_NO;
+  }
+
+
+
+  if (GNUNET_OK != TALER_MINT_DB_commit (db_conn))
+  {
+    // FIXME: return 'internal error'?
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+
+  return TALER_MINT_reply_refresh_commit_success (connection, &refresh_session);
+ }

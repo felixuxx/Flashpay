@@ -460,12 +460,21 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
 {
   struct GNUNET_CRYPTO_EddsaPublicKey refresh_session_pub;
   int res;
-  PGconn *db_conn;
-  struct RefreshSession refresh_session;
-  int i;
+  unsigned int i;
+  unsigned int j;
+  unsigned int kappa;
+  unsigned int num_oldcoins;
+  unsigned int num_newcoins;
   struct GNUNET_HashCode commit_hash;
   struct GNUNET_HashContext *hash_context;
   json_t *root;
+  struct RefreshCommitSignatureBody body;
+  json_t *commit_sig_json;
+  struct RefreshCommitCoin **commit_coin;
+  struct RefreshCommitLink **commit_link;
+  json_t *coin_evs;
+  json_t *transfer_pubs;
+  json_t *coin_detail;
 
   res = TALER_MINT_parse_post_json (connection,
                                     connection_cls,
@@ -478,238 +487,196 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
     return MHD_YES;
 
   res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                  JNAV_FIELD, "session_pub",
-                                  JNAV_RET_DATA,
-                                  &refresh_session_pub,
-                                  sizeof (struct GNUNET_CRYPTO_EddsaPublicKey));
+                                         JNAV_FIELD, "session_pub",
+                                         JNAV_RET_DATA,
+                                         &refresh_session_pub,
+                                         sizeof (struct GNUNET_CRYPTO_EddsaPublicKey));
   if (GNUNET_OK != res)
   {
     GNUNET_break (GNUNET_SYSERR != res);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
 
-  if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
-  {
-    // FIXME: return 'internal error'?
-    GNUNET_break (0);
-    return MHD_NO;
-  }
-
-  /* Send response immediately if we already know the session.
-   * Do _not_ care about fields other than session_pub in this case. */
-
-  res = TALER_MINT_DB_get_refresh_session (db_conn,
-                                           &refresh_session_pub,
-                                           &refresh_session);
-  if ( (GNUNET_YES == res) &&
-       (GNUNET_YES == refresh_session.has_commit_sig) )
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "sending cached commit response\n");
-    res = TALER_MINT_reply_refresh_commit_success (connection,
-                                                   &refresh_session);
-    GNUNET_break (res != GNUNET_SYSERR);
-    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-  }
-  if (GNUNET_SYSERR == res)
-  {
-    // FIXME: return 'internal error'?
-    GNUNET_break (0);
-    return MHD_NO;
-  }
-
-  if (GNUNET_OK != TALER_MINT_DB_transaction (db_conn))
-  {
-    // FIXME: return 'internal error'?
-    GNUNET_break (0);
-    return MHD_NO;
-  }
-
-  /* Re-fetch the session information from the database,
-   * in case a concurrent transaction modified it. */
-
-  res = TALER_MINT_DB_get_refresh_session (db_conn,
-                                           &refresh_session_pub,
-                                           &refresh_session);
+  /* Determine dimensionality of the request (kappa, #old and #new coins) */
+  res = GNUNET_MINT_parse_navigate_json (connection, root,
+                                         JNAV_FIELD, "coin_evs",
+                                         JNAV_RET_TYPED_JSON, JSON_ARRAY, &coin_evs);
   if (GNUNET_OK != res)
+    return res;
+  kappa = json_array_size (coin_evs);
+  if (3 > kappa)
   {
-    // FIXME: return 'internal error'?
-    GNUNET_break (GNUNET_SYSERR != res);
-    GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+    GNUNET_break_op (0);
+    // FIXME: generate error message
     return MHD_NO;
   }
+  res = GNUNET_MINT_parse_navigate_json (connection, root,
+                                         JNAV_INDEX, (int) 0,
+                                         JNAV_RET_DATA,
+                                         JSON_ARRAY, &coin_detail);
+  if (GNUNET_OK != res)
+    return res;
+  num_newcoins = json_array_size (coin_detail);
+
+  res = GNUNET_MINT_parse_navigate_json (connection, root,
+                                         JNAV_FIELD, "transfer_pubs",
+                                         JNAV_RET_TYPED_JSON, JSON_ARRAY, &transfer_pubs);
+  if (GNUNET_OK != res)
+    return res;
+  if (json_array_size (transfer_pubs) != kappa)
+  {
+    GNUNET_break_op (0);
+    // FIXME: generate error message
+    return MHD_NO;
+  }
+  res = GNUNET_MINT_parse_navigate_json (connection, root,
+                                         JNAV_INDEX, (int) 0,
+                                         JNAV_RET_DATA,
+                                         JSON_ARRAY, &coin_detail);
+  if (GNUNET_OK != res)
+    return res;
+  num_oldcoins = json_array_size (coin_detail);
+
+
 
   hash_context = GNUNET_CRYPTO_hash_context_start ();
-
-  for (i = 0; i < refresh_session.kappa; i++)
+  commit_coin = GNUNET_malloc (kappa *
+                               sizeof (struct RefreshCommitCoin *));
+  for (i = 0; i < kappa; i++)
   {
-    unsigned int j;
-
-    for (j = 0; j < refresh_session.num_newcoins; j++)
+    commit_coin[i] = GNUNET_malloc (num_newcoins *
+                                    sizeof (struct RefreshCommitCoin));
+    for (j = 0; j < num_newcoins; j++)
     {
-      struct RefreshCommitCoin commit_coin;
-
       res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                      JNAV_FIELD, "coin_evs",
-                                      JNAV_INDEX, (int) i,
-                                      JNAV_INDEX, (int) j,
-                                      JNAV_RET_DATA,
-                                      &commit_coin.coin_ev,
-                                      sizeof (struct TALER_RSA_BlindedSignaturePurpose));
+                                             JNAV_FIELD, "coin_evs",
+                                             JNAV_INDEX, (int) i,
+                                             JNAV_INDEX, (int) j,
+                                             JNAV_RET_DATA,
+                                             commit_coin[i][j].coin_ev,
+                                             sizeof (struct TALER_RSA_BlindedSignaturePurpose));
 
       if (GNUNET_OK != res)
       {
         // FIXME: return 'internal error'?
         GNUNET_break (0);
-        GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
         GNUNET_CRYPTO_hash_context_abort (hash_context);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
 
       GNUNET_CRYPTO_hash_context_read (hash_context,
-                               &commit_coin.coin_ev,
-                               sizeof (struct TALER_RSA_BlindedSignaturePurpose));
+                                       &commit_coin[i][j].coin_ev,
+                                       sizeof (struct TALER_RSA_BlindedSignaturePurpose));
 
       res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                      JNAV_FIELD, "link_encs",
-                                      JNAV_INDEX, (int) i,
-                                      JNAV_INDEX, (int) j,
-                                      JNAV_RET_DATA,
-                                      commit_coin.link_enc,
-                                      TALER_REFRESH_LINK_LENGTH);
+                                             JNAV_FIELD, "link_encs",
+                                             JNAV_INDEX, (int) i,
+                                             JNAV_INDEX, (int) j,
+                                             JNAV_RET_DATA,
+                                             commit_coin[i][j].link_enc,
+                                             TALER_REFRESH_LINK_LENGTH);
       if (GNUNET_OK != res)
       {
         // FIXME: return 'internal error'?
         GNUNET_break (0);
-        GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
         GNUNET_CRYPTO_hash_context_abort (hash_context);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
 
       GNUNET_CRYPTO_hash_context_read (hash_context,
-                               commit_coin.link_enc,
-                               TALER_REFRESH_LINK_LENGTH);
-
-      commit_coin.cnc_index = i;
-      commit_coin.newcoin_index = j;
-      commit_coin.session_pub = refresh_session_pub;
-
-      if (GNUNET_OK !=
-          TALER_MINT_DB_insert_refresh_commit_coin (db_conn,
-                                                    &commit_coin))
-      {
-        // FIXME: return 'internal error'?
-        GNUNET_break (0);
-        GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
-        GNUNET_CRYPTO_hash_context_abort (hash_context);
-        return MHD_NO;
-      }
+                                       commit_coin[i][j].link_enc,
+                                       TALER_REFRESH_LINK_LENGTH);
+      commit_coin[i][j].cnc_index = i;
+      commit_coin[i][j].newcoin_index = j;
+      commit_coin[i][j].session_pub = refresh_session_pub;
     }
   }
 
-  for (i = 0; i < refresh_session.kappa; i++)
+  commit_link = GNUNET_malloc (kappa *
+                               sizeof (struct RefreshCommitLink *));
+  for (i = 0; i < kappa; i++)
   {
-    unsigned int j;
-    for (j = 0; j < refresh_session.num_oldcoins; j++)
+    commit_link[i] = GNUNET_malloc (num_oldcoins *
+                                    sizeof (struct RefreshCommitLink));
+    for (j = 0; j < num_oldcoins; j++)
     {
-      struct RefreshCommitLink commit_link;
-
       res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                      JNAV_FIELD, "transfer_pubs",
-                                      JNAV_INDEX, (int) i,
-                                      JNAV_INDEX, (int) j,
-                                      JNAV_RET_DATA,
-                                      &commit_link.transfer_pub,
-                                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey));
+                                             JNAV_FIELD, "transfer_pubs",
+                                             JNAV_INDEX, (int) i,
+                                             JNAV_INDEX, (int) j,
+                                             JNAV_RET_DATA,
+                                             &commit_link[i][j].transfer_pub,
+                                             sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey));
 
       if (GNUNET_OK != res)
       {
         GNUNET_break (GNUNET_SYSERR != res);
-        GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
         GNUNET_CRYPTO_hash_context_abort (hash_context);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
 
       GNUNET_CRYPTO_hash_context_read (hash_context,
-                               &commit_link.transfer_pub,
-                               sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey));
+                                       &commit_link[i][j].transfer_pub,
+                                       sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey));
 
       res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                      JNAV_FIELD, "secret_encs",
-                                      JNAV_INDEX, (int) i,
-                                      JNAV_INDEX, (int) j,
-                                      JNAV_RET_DATA,
-                                      commit_link.shared_secret_enc,
-                                      TALER_REFRESH_SHARED_SECRET_LENGTH);
+                                             JNAV_FIELD, "secret_encs",
+                                             JNAV_INDEX, (int) i,
+                                             JNAV_INDEX, (int) j,
+                                             JNAV_RET_DATA,
+                                             commit_link[i][j].shared_secret_enc,
+                                             TALER_REFRESH_SHARED_SECRET_LENGTH);
 
       if (GNUNET_OK != res)
       {
         GNUNET_break (GNUNET_SYSERR != res);
-        GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
         GNUNET_CRYPTO_hash_context_abort (hash_context);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
 
       GNUNET_CRYPTO_hash_context_read (hash_context,
-                               commit_link.shared_secret_enc,
-                               TALER_REFRESH_SHARED_SECRET_LENGTH);
+                                       commit_link[i][j].shared_secret_enc,
+                                       TALER_REFRESH_SHARED_SECRET_LENGTH);
 
-      commit_link.cnc_index = i;
-      commit_link.oldcoin_index = j;
-      commit_link.session_pub = refresh_session_pub;
+      commit_link[i][j].cnc_index = i;
+      commit_link[i][j].oldcoin_index = j;
+      commit_link[i][j].session_pub = refresh_session_pub;
 
-      if (GNUNET_OK != TALER_MINT_DB_insert_refresh_commit_link (db_conn, &commit_link))
-      {
-        // FIXME: return 'internal error'?
-        GNUNET_break (0);
-        GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
-        GNUNET_CRYPTO_hash_context_abort (hash_context);
-
-        return MHD_NO;
-      }
     }
   }
-
   GNUNET_CRYPTO_hash_context_finish (hash_context, &commit_hash);
 
+  commit_sig_json = json_object_get (root, "commit_signature");
+  if (NULL == commit_sig_json)
   {
-    struct RefreshCommitSignatureBody body;
-    json_t *commit_sig_json;
-
-    commit_sig_json = json_object_get (root, "commit_signature");
-    if (NULL == commit_sig_json)
-    {
-      GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
-      return TALER_MINT_reply_json_pack (connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         "{s:s}",
-                                         "error",
-                                         "commit_signature missing");
-    }
-
-    body.commit_hash = commit_hash;
-
-    body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_COMMIT);
-    body.purpose.size = htonl (sizeof (struct RefreshCommitSignatureBody));
-
-    if (GNUNET_OK != (res = request_json_check_signature (connection,
-                                                          commit_sig_json,
-                                                          &refresh_session_pub,
-                                                          &body.purpose)))
-    {
-      GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
-      return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-    }
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       "{s:s}",
+                                       "error",
+                                       "commit_signature missing");
   }
 
-  if (GNUNET_OK != TALER_MINT_DB_commit (db_conn))
+  body.commit_hash = commit_hash;
+  body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_COMMIT);
+  body.purpose.size = htonl (sizeof (struct RefreshCommitSignatureBody));
+
+  if (GNUNET_OK != (res = request_json_check_signature (connection,
+                                                        commit_sig_json,
+                                                        &refresh_session_pub,
+                                                        &body.purpose)))
   {
-    // FIXME: return 'internal error'?
-    GNUNET_break (0);
-    return MHD_NO;
+    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
 
-  return TALER_MINT_reply_refresh_commit_success (connection, &refresh_session);
+  res = TALER_MINT_db_execute_refresh_commit (connection,
+                                              &refresh_session_pub,
+                                              kappa,
+                                              num_oldcoins,
+                                              num_newcoins,
+                                              commit_coin,
+                                              commit_link);
+  // FIXME: free memory
+  return res;
 }
 
 
