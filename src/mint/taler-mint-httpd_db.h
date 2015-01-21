@@ -110,4 +110,17 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
                                       struct RefreshCommitLink *const* commit_link);
 
 
+
+/**
+ * Execute a /refresh/link.
+ *
+ * @param connection the MHD connection to handle
+ * @param coin_pub public key of the coin to link
+ * @return MHD result code
+ */
+int
+TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
+                                    const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub);
+
+
 #endif /* _NEURO_MINT_DB_H */

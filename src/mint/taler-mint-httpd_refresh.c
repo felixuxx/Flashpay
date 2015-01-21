@@ -41,36 +41,6 @@
 #include "taler-mint-httpd_responses.h"
 
 
-/**
- * FIXME: document!
- */
-static int
-link_iter (void *cls,
-           const struct LinkDataEnc *link_data_enc,
-           const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pub,
-           const struct TALER_RSA_Signature *ev_sig)
-{
-  json_t *list = cls;
-  json_t *obj = json_object ();
-
-  json_array_append_new (list, obj);
-
-  json_object_set_new (obj, "link_enc",
-                         TALER_JSON_from_data (link_data_enc,
-                                       sizeof (struct LinkDataEnc)));
-
-  json_object_set_new (obj, "denom_pub",
-                         TALER_JSON_from_data (denom_pub,
-                                       sizeof (struct TALER_RSA_PublicKeyBinaryEncoded)));
-
-  json_object_set_new (obj, "ev_sig",
-                         TALER_JSON_from_data (ev_sig,
-                                       sizeof (struct TALER_RSA_Signature)));
-
-  return GNUNET_OK;
-}
-
-
 static int
 check_confirm_signature (struct MHD_Connection *connection,
                          json_t *coin_info,
@@ -780,6 +750,8 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
     return res;
   }
 
+
+
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
     GNUNET_break (0);
@@ -791,9 +763,13 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
    * and the session commited already.
    * Do _not_ care about fields other than session_pub in this case. */
 
-  res = TALER_MINT_DB_get_refresh_session (db_conn, &refresh_session_pub, &refresh_session);
+  res = TALER_MINT_DB_get_refresh_session (db_conn,
+                                           &refresh_session_pub,
+                                           &refresh_session);
   if (GNUNET_YES == res && 0 != refresh_session.reveal_ok)
-    return helper_refresh_reveal_send_response (connection, db_conn, &refresh_session_pub);
+    return helper_refresh_reveal_send_response (connection,
+                                                db_conn,
+                                                &refresh_session_pub);
   if (GNUNET_SYSERR == res)
   {
     GNUNET_break (0);
@@ -1070,11 +1046,6 @@ TALER_MINT_handler_refresh_link (struct RequestHandler *rh,
 {
   struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
   int res;
-  json_t *root;
-  json_t *list;
-  PGconn *db_conn;
-  struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub;
-  struct SharedSecretEnc shared_secret_enc;
 
   res = TALER_MINT_mhd_request_arg_data (connection,
                                          "coin_pub",
@@ -1089,62 +1060,8 @@ TALER_MINT_handler_refresh_link (struct RequestHandler *rh,
   if (GNUNET_OK != res)
     return MHD_YES;
 
-  if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
-  {
-    GNUNET_break (0);
-    // FIXME: return error code!
-    return MHD_NO;
-  }
-
-  list = json_array ();
-  root = json_object ();
-  json_object_set_new (root, "new_coins", list);
-
-  res = TALER_db_get_transfer (db_conn,
-                               &coin_pub,
-                               &transfer_pub,
-                               &shared_secret_enc);
-  if (GNUNET_SYSERR == res)
-  {
-    GNUNET_break (0);
-        // FIXME: return error code!
-    return MHD_NO;
-  }
-  if (GNUNET_NO == res)
-  {
-    return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       "{s:s}",
-                                       "error",
-                                       "link data not found (transfer)");
-  }
-  GNUNET_assert (GNUNET_OK == res);
-
-  res = TALER_db_get_link (db_conn, &coin_pub, link_iter, list);
-  if (GNUNET_SYSERR == res)
-  {
-    GNUNET_break (0);
-        // FIXME: return error code!
-    return MHD_NO;
-  }
-  if (GNUNET_NO == res)
-  {
-    return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       "{s:s}",
-                                       "error",
-                                       "link data not found (link)");
-  }
-  GNUNET_assert (GNUNET_OK == res);
-  json_object_set_new (root, "transfer_pub",
-                       TALER_JSON_from_data (&transfer_pub,
-                                             sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)));
-  json_object_set_new (root, "secret_enc",
-                       TALER_JSON_from_data (&shared_secret_enc,
-                                             sizeof (struct SharedSecretEnc)));
-  return TALER_MINT_reply_json (connection,
-                                root,
-                                MHD_HTTP_OK);
+  return TALER_MINT_db_execute_refresh_link (connection,
+                                             &coin_pub);
 }
 
 

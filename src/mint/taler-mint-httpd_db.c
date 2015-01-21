@@ -807,3 +807,117 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
 
   return TALER_MINT_reply_refresh_commit_success (connection, &refresh_session);
  }
+
+
+
+/**
+ * FIXME: move into response generation logic!
+ * FIXME: need to separate this from DB logic!
+ */
+static int
+link_iter (void *cls,
+           const struct LinkDataEnc *link_data_enc,
+           const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pub,
+           const struct TALER_RSA_Signature *ev_sig)
+{
+  json_t *list = cls;
+  json_t *obj = json_object ();
+
+  json_array_append_new (list, obj);
+
+  json_object_set_new (obj, "link_enc",
+                         TALER_JSON_from_data (link_data_enc,
+                                       sizeof (struct LinkDataEnc)));
+
+  json_object_set_new (obj, "denom_pub",
+                         TALER_JSON_from_data (denom_pub,
+                                       sizeof (struct TALER_RSA_PublicKeyBinaryEncoded)));
+
+  json_object_set_new (obj, "ev_sig",
+                         TALER_JSON_from_data (ev_sig,
+                                       sizeof (struct TALER_RSA_Signature)));
+
+  return GNUNET_OK;
+}
+
+
+/**
+ * Execute a /refresh/link.
+ *
+ * @param connection the MHD connection to handle
+ * @param coin_pub public key of the coin to link
+ * @return MHD result code
+ */
+int
+TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
+                                    const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub)
+{
+  int res;
+  json_t *root;
+  json_t *list;
+  PGconn *db_conn;
+  struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub;
+  struct SharedSecretEnc shared_secret_enc;
+
+  if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
+  {
+    GNUNET_break (0);
+    // FIXME: return error code!
+    return MHD_NO;
+  }
+
+  res = TALER_db_get_transfer (db_conn,
+                               coin_pub,
+                               &transfer_pub,
+                               &shared_secret_enc);
+  if (GNUNET_SYSERR == res)
+  {
+    GNUNET_break (0);
+        // FIXME: return error code!
+    return MHD_NO;
+  }
+  if (GNUNET_NO == res)
+  {
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       "{s:s}",
+                                       "error",
+                                       "link data not found (transfer)");
+  }
+  GNUNET_assert (GNUNET_OK == res);
+
+  /* FIXME: separate out response generation logic! */
+
+  list = json_array ();
+  root = json_object ();
+  json_object_set_new (root, "new_coins", list);
+
+  res = TALER_db_get_link (db_conn, coin_pub,
+                           &link_iter, list);
+  if (GNUNET_SYSERR == res)
+  {
+    GNUNET_break (0);
+        // FIXME: return error code!
+    return MHD_NO;
+  }
+  if (GNUNET_NO == res)
+  {
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       "{s:s}",
+                                       "error",
+                                       "link data not found (link)");
+  }
+  GNUNET_assert (GNUNET_OK == res);
+  json_object_set_new (root, "transfer_pub",
+                       TALER_JSON_from_data (&transfer_pub,
+                                             sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)));
+  json_object_set_new (root, "secret_enc",
+                       TALER_JSON_from_data (&shared_secret_enc,
+                                             sizeof (struct SharedSecretEnc)));
+  return TALER_MINT_reply_json (connection,
+                                root,
+                                MHD_HTTP_OK);
+
+
+}
