@@ -816,27 +816,16 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
 static int
 helper_refresh_reveal_send_response (struct MHD_Connection *connection,
                                      PGconn *db_conn,
+                                     const struct RefreshSession *refresh_session,
                                      const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub)
 {
   int res;
-  int newcoin_index;
-  struct RefreshSession refresh_session;
+  unsigned int newcoin_index;
   struct TALER_RSA_Signature *sigs;
 
-  res = TALER_MINT_DB_get_refresh_session (db_conn,
-                                           refresh_session_pub,
-                                           &refresh_session);
-  if (GNUNET_OK != res)
-  {
-    // FIXME: return 'internal error'
-    GNUNET_break (0);
-    return MHD_NO;
-  }
-
-  GNUNET_assert (0 != refresh_session.reveal_ok);
-  sigs = GNUNET_malloc (refresh_session.num_newcoins *
+  sigs = GNUNET_malloc (refresh_session->num_newcoins *
                         sizeof (struct TALER_RSA_Signature));
-  for (newcoin_index = 0; newcoin_index < refresh_session.num_newcoins; newcoin_index++)
+  for (newcoin_index = 0; newcoin_index < refresh_session->num_newcoins; newcoin_index++)
   {
     res = TALER_MINT_DB_get_refresh_collectable (db_conn,
                                                  newcoin_index,
@@ -851,7 +840,7 @@ helper_refresh_reveal_send_response (struct MHD_Connection *connection,
     }
   }
   res = TALER_MINT_reply_refresh_reveal_success (connection,
-                                                 refresh_session.num_newcoins,
+                                                 refresh_session->num_newcoins,
                                                  sigs);
   GNUNET_free (sigs);
   return res;
@@ -886,8 +875,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
     GNUNET_break (0);
-    // FIXME: return 'internal error'?
-    return MHD_NO;
+    return TALER_MINT_reply_internal_db_error (connection);
   }
 
   /* Send response immediately if we already know the session,
@@ -900,6 +888,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
   if (GNUNET_YES == res && 0 != refresh_session.reveal_ok)
     return helper_refresh_reveal_send_response (connection,
                                                 db_conn,
+                                                &refresh_session,
                                                 refresh_session_pub);
   if (GNUNET_SYSERR == res)
   {
@@ -1140,7 +1129,10 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     return MHD_NO;
   }
 
-  return helper_refresh_reveal_send_response (connection, db_conn, refresh_session_pub);
+  return helper_refresh_reveal_send_response (connection,
+                                              db_conn,
+                                              &refresh_session,
+                                              refresh_session_pub);
 }
 
 
