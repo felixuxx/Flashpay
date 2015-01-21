@@ -104,6 +104,17 @@ TALER_MINT_reply_internal_error (struct MHD_Connection *connection,
 
 
 /**
+ * Send a response indicating a failure to talk to the Mint's
+ * database.
+ *
+ * @param connection the MHD connection to use
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_internal_db_error (struct MHD_Connection *connection);
+
+
+/**
  * Send a response indicating that the request was too big.
  *
  * @param connection the MHD connection to use

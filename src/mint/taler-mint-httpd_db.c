@@ -25,6 +25,7 @@
  * - /deposit: check for leaks
  * - ALL: check API: given structs are usually not perfect, as they
  *        often contain too many fields for the context
+ * - ALL: check transactional behavior
  */
 #include "platform.h"
 #include <pthread.h>
@@ -59,8 +60,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
     GNUNET_break (0);
-    return TALER_MINT_reply_internal_error (connection,
-                                            "Failed to connect to database");
+    return TALER_MINT_reply_internal_db_error (connection);
   }
   res = TALER_MINT_DB_get_deposit (db_conn,
                                    &deposit->coin_pub,
@@ -176,12 +176,10 @@ TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
   struct MintKeyState *key_state;
   int must_update = GNUNET_NO;
 
-
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
     GNUNET_break (0);
-    return TALER_MINT_reply_internal_error (connection,
-                                            "Failed to connect to database");
+    return TALER_MINT_reply_internal_db_error (connection);
   }
   res = TALER_MINT_DB_get_reserve (db_conn,
                                    reserve_pub,
@@ -245,9 +243,8 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
 
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
-    // FIXME: return 'internal error'?
     GNUNET_break (0);
-    return MHD_NO;
+    return TALER_MINT_reply_internal_db_error (connection);
   }
 
 
@@ -576,8 +573,8 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
 
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
-    /* FIXME: return error code to MHD! */
-    return MHD_NO;
+    GNUNET_break (0);
+    return TALER_MINT_reply_internal_db_error (connection);
   }
   res = TALER_MINT_DB_get_refresh_session (db_conn,
                                            refresh_session_pub,
@@ -717,9 +714,8 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
 
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
-    // FIXME: return 'internal error'?
     GNUNET_break (0);
-    return MHD_NO;
+    return TALER_MINT_reply_internal_db_error (connection);
   }
 
   /* Send response immediately if we already know the session.
@@ -864,8 +860,7 @@ TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
     GNUNET_break (0);
-    // FIXME: return error code!
-    return MHD_NO;
+    return TALER_MINT_reply_internal_db_error (connection);
   }
 
   res = TALER_db_get_transfer (db_conn,
@@ -920,6 +915,4 @@ TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
   return TALER_MINT_reply_json (connection,
                                 root,
                                 MHD_HTTP_OK);
-
-
 }
