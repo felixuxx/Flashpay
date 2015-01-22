@@ -69,11 +69,7 @@ main (int argc, char *argv[])
                                                 ntohs (priv_enc->len))));
   GNUNET_free (priv_enc);
   priv_enc = NULL;
-  EXITIF (GNUNET_OK != TALER_RSA_hash_verify (&hash,
-                                              &sig,
-                                              &pubkey));
-  EXITIF (GNUNET_OK != TALER_RSA_verify (rnd_blk,
-                                         RND_BLK_SIZE,
+  EXITIF (GNUNET_OK != TALER_RSA_verify (&hash, sizeof (hash),
                                          &sig,
                                          &pubkey));
 
@@ -93,9 +89,9 @@ main (int argc, char *argv[])
   EXITIF (GNUNET_OK != TALER_RSA_unblind (&sig,
                                           bkey,
                                           &pubkey));
-  EXITIF (GNUNET_OK != TALER_RSA_hash_verify (&hash,
-                                              &sig,
-                                              &pubkey));
+  EXITIF (GNUNET_OK != TALER_RSA_verify (&hash, sizeof (hash),
+                                         &sig,
+                                         &pubkey));
   ret = 0;                      /* all OK */
 
  EXITIF_exit:

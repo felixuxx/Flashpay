@@ -229,7 +229,8 @@ TALER_RSA_public_key_from_string (const char *enc,
 
 
 /**
- * Sign a given block.h
+ * Sign a given data block.  The size of the message should be less than
+ * TALER_RSA_DATA_ENCODING_LENGTH (256) bytes.
  *
  * @param key private key to use for the signing
  * @param msg the message
@@ -245,21 +246,8 @@ TALER_RSA_sign (const struct TALER_RSA_PrivateKey *key,
 
 
 /**
- * Verify signature with the given hash.
- *
- * @param hash the hash code to verify against the signature
- * @param sig signature that is being validated
- * @param publicKey public key of the signer
- * @returns GNUNET_OK if ok, GNUNET_SYSERR if invalid
- */
-int
-TALER_RSA_hash_verify (const struct GNUNET_HashCode *hash,
-                       const struct TALER_RSA_Signature *sig,
-                       const struct TALER_RSA_PublicKeyBinaryEncoded *publicKey);
-
-
-/**
- * Verify signature on the given message
+ * Verify signature on the given message.  The size of the message should be
+ * less than TALER_RSA_DATA_ENCODING_LENGTH (256) bytes.
  *
  * @param msg the message
  * @param size the size of the message

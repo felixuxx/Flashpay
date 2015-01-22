@@ -578,18 +578,19 @@ data_to_sexp (const void *ptr, size_t size)
 
 
 /**
- * Sign the given hash block.
+ * Sign the given message.  The size of the message should be less than
+ * TALER_RSA_DATA_ENCODING_LENGTH (256) bytes.
  *
  * @param key private key to use for the signing
- * @param hash the block containing the hash of the message to sign
- * @param hash_size the size of the hash block
+ * @param msg the message
+ * @param size the size of the message
  * @param sig where to write the signature
  * @return GNUNET_SYSERR on error, GNUNET_OK on success
  */
 int
 TALER_RSA_sign (const struct TALER_RSA_PrivateKey *key,
-                const void *hash,
-                size_t hash_size,
+                const void *msg,
+                size_t size,
                 struct TALER_RSA_Signature *sig)
 {
   gcry_sexp_t result;
@@ -597,7 +598,10 @@ TALER_RSA_sign (const struct TALER_RSA_PrivateKey *key,
   size_t ssize;
   gcry_mpi_t rval;
 
-  data = data_to_sexp (hash, hash_size);
+  GNUNET_assert (size <= TALER_RSA_DATA_ENCODING_LENGTH);
+  if (size > TALER_RSA_DATA_ENCODING_LENGTH)
+    return GNUNET_SYSERR;
+  data = data_to_sexp (msg, size);
   GNUNET_assert (0 == gcry_pk_sign (&result, data, key->sexp));
   gcry_sexp_release (data);
   GNUNET_assert (0 == key_from_sexp (&rval, result, "rsa", "s"));
@@ -666,35 +670,42 @@ decode_public_key (const struct TALER_RSA_PublicKeyBinaryEncoded *publicKey)
 
 
 /**
- * Verify signature with the given hash.
+ * Verify signature on the given message.  The size of the message should be less than
+ * TALER_RSA_DATA_ENCODING_LENGTH (256) bytes.
  *
- * @param hash the hash code to verify against the signature
+ * @param msg the message
+ * @param size the size of the message
  * @param sig signature that is being validated
  * @param publicKey public key of the signer
  * @returns GNUNET_OK if ok, GNUNET_SYSERR if invalid
  */
 int
-TALER_RSA_hash_verify (const struct GNUNET_HashCode *hash,
-                       const struct TALER_RSA_Signature *sig,
-                       const struct TALER_RSA_PublicKeyBinaryEncoded *publicKey)
+TALER_RSA_verify (const void *msg, size_t size,
+                  const struct TALER_RSA_Signature *sig,
+                  const struct TALER_RSA_PublicKeyBinaryEncoded *publicKey)
 {
   gcry_sexp_t data;
   gcry_sexp_t sigdata;
-  size_t size;
+  size_t sig_size;
   gcry_mpi_t val;
   gcry_sexp_t psexp;
   size_t erroff;
   int rc;
 
-  size = sizeof (struct TALER_RSA_Signature);
+  GNUNET_assert (size <= TALER_RSA_DATA_ENCODING_LENGTH);
+  if (size > TALER_RSA_DATA_ENCODING_LENGTH)
+    return GNUNET_SYSERR;
   GNUNET_assert (0 ==
                  gcry_mpi_scan (&val, GCRYMPI_FMT_USG,
-                                (const unsigned char *) sig, size, &size));
+                                (const unsigned char *) sig,
+                                sizeof (struct TALER_RSA_Signature),
+                                &sig_size));
+  GNUNET_assert (sizeof (struct TALER_RSA_Signature) == sig_size);
   GNUNET_assert (0 ==
                  gcry_sexp_build (&sigdata, &erroff, "(sig-val(rsa(s %m)))",
                                   val));
   gcry_mpi_release (val);
-  data = data_to_sexp (hash, sizeof (struct GNUNET_HashCode));
+  data = data_to_sexp (msg, size);
   if (! (psexp = decode_public_key (publicKey)))
   {
     gcry_sexp_release (data);
@@ -713,27 +724,6 @@ TALER_RSA_hash_verify (const struct GNUNET_HashCode *hash,
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
-}
-
-
-/**
- * Verify signature on the given message
- *
- * @param msg the message
- * @param size the size of the message
- * @param sig signature that is being validated
- * @param publicKey public key of the signer
- * @returns GNUNET_OK if ok, GNUNET_SYSERR if invalid
- */
-int
-TALER_RSA_verify (const void *msg, size_t size,
-                  const struct TALER_RSA_Signature *sig,
-                  const struct TALER_RSA_PublicKeyBinaryEncoded *publicKey)
-{
-  struct GNUNET_HashCode hash;
-
-  GNUNET_CRYPTO_hash (msg, size, &hash);
-  return TALER_RSA_hash_verify (&hash, sig, publicKey);
 }
 
 /**
