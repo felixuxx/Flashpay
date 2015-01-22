@@ -765,7 +765,6 @@ TALER_RSA_message_blind (const void *msg, size_t size,
                          struct TALER_RSA_PublicKeyBinaryEncoded *pkey)
 {
   struct TALER_RSA_BlindedSignaturePurpose *bsp;
-  struct GNUNET_HashCode hash;
   gcry_sexp_t psexp;
   gcry_mpi_t data;
   gcry_mpi_t skey[2];
@@ -792,7 +791,6 @@ TALER_RSA_message_blind (const void *msg, size_t size,
   gcry_sexp_release (psexp);
   psexp = NULL;
   GNUNET_assert (0 == ret);
-  GNUNET_CRYPTO_hash (msg, size, &hash);
   if (0 != (rc=gcry_mpi_scan (&data, GCRYMPI_FMT_USG,
                               (const unsigned char *) msg, size, &rsize)))
   {
