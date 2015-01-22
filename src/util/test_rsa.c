@@ -38,7 +38,7 @@
 int
 main (int argc, char *argv[])
 {
-#define RND_BLK_SIZE 4096
+#define RND_BLK_SIZE 16524
   unsigned char rnd_blk[RND_BLK_SIZE];
   struct TALER_RSA_PrivateKey *priv;
   struct TALER_RSA_PrivateKeyBinaryEncoded *priv_enc;
@@ -72,6 +72,12 @@ main (int argc, char *argv[])
   EXITIF (GNUNET_OK != TALER_RSA_verify (&hash, sizeof (hash),
                                          &sig,
                                          &pubkey));
+  /* corrupt our hash and see if the signature is still valid */
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, &hash,
+                              sizeof (struct GNUNET_HashCode));
+  EXITIF (GNUNET_OK == TALER_RSA_verify (&hash, sizeof (hash),
+                                         &sig,
+                                         &pubkey));
 
   /* test blind signing */
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, rnd_blk,
@@ -90,6 +96,12 @@ main (int argc, char *argv[])
                                           bkey,
                                           &pubkey));
   EXITIF (GNUNET_OK != TALER_RSA_verify (&hash, sizeof (hash),
+                                         &sig,
+                                         &pubkey));
+  /* corrupt our hash and see if the signature is still valid */
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, &hash,
+                              sizeof (struct GNUNET_HashCode));
+  EXITIF (GNUNET_OK == TALER_RSA_verify (&hash, sizeof (hash),
                                          &sig,
                                          &pubkey));
   ret = 0;                      /* all OK */

@@ -670,8 +670,8 @@ decode_public_key (const struct TALER_RSA_PublicKeyBinaryEncoded *publicKey)
 
 
 /**
- * Verify signature on the given message.  The size of the message should be less than
- * TALER_RSA_DATA_ENCODING_LENGTH (256) bytes.
+ * Verify signature on the given message.  The size of the message should be
+ * less than TALER_RSA_DATA_ENCODING_LENGTH (256) bytes.
  *
  * @param msg the message
  * @param size the size of the message
@@ -690,7 +690,7 @@ TALER_RSA_verify (const void *msg, size_t size,
   gcry_mpi_t val;
   gcry_sexp_t psexp;
   size_t erroff;
-  int rc;
+  gcry_error_t rc;
 
   GNUNET_assert (size <= TALER_RSA_DATA_ENCODING_LENGTH);
   if (size > TALER_RSA_DATA_ENCODING_LENGTH)
