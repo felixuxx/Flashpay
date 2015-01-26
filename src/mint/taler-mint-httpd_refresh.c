@@ -34,7 +34,6 @@
 #include "mint.h"
 #include "mint_db.h"
 #include "taler_signatures.h"
-#include "taler_rsa.h"
 #include "taler_json_lib.h"
 #include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_keys.h"
@@ -94,7 +93,7 @@ check_confirm_signature (struct MHD_Connection *connection,
  * @param connection the connection to send error responses to
  * @param root the JSON object to extract the coin info from
  * @return #GNUNET_YES if coin public info in JSON was valid
- *         #GNUNET_NO otherwise
+ *         #GNUNET_NO JSON was invalid, response was generated
  *         #GNUNET_SYSERR on internal error
  */
 static int
@@ -103,33 +102,38 @@ request_json_require_coin_public_info (struct MHD_Connection *connection,
                                        struct TALER_CoinPublicInfo *r_public_info)
 {
   int ret;
+  struct GNUNET_CRYPTO_rsa_Signature *sig;
+  struct GNUNET_CRYPTO_rsa_PublicKey *pk;
+  struct GNUNET_MINT_ParseFieldSpec spec[] =
+    {
+      TALER_MINT_PARSE_FIXED("coin_pub", &r_public_info->coin_pub),
+      TALER_MINT_PARSE_VARIABLE("denom_sig"),
+      TALER_MINT_PARSE_VARIABLE("denom_pub"),
+      TALER_MINT_PARSE_END
+    };
 
-  GNUNET_assert (NULL != root);
-
-  ret = GNUNET_MINT_parse_navigate_json (connection, root,
-                                  JNAV_FIELD, "coin_pub",
-                                  JNAV_RET_DATA,
-                                  &r_public_info->coin_pub,
-                                  sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey));
+  ret = TALER_MINT_parse_json_data (connection,
+                                    root,
+                                    spec);
   if (GNUNET_OK != ret)
     return ret;
-
-  ret = GNUNET_MINT_parse_navigate_json (connection, root,
-                                  JNAV_FIELD, "denom_sig",
-                                  JNAV_RET_DATA,
-                                  &r_public_info->denom_sig,
-                                  sizeof (struct TALER_RSA_Signature));
-  if (GNUNET_OK != ret)
-    return ret;
-
-  ret = GNUNET_MINT_parse_navigate_json (connection, root,
-                                  JNAV_FIELD, "denom_pub",
-                                  JNAV_RET_DATA,
-                                  &r_public_info->denom_pub,
-                                  sizeof (struct TALER_RSA_PublicKeyBinaryEncoded));
-  if (GNUNET_OK != ret)
-    return ret;
-
+  sig = GNUNET_CRYPTO_rsa_signature_decode (spec[1].destination,
+                                            spec[1].destination_size_out);
+  pk = GNUNET_CRYPTO_rsa_public_key_decode (spec[2].destination,
+                                            spec[2].destination_size_out);
+  TALER_MINT_release_parsed_data (spec);
+  if ( (NULL == pk) ||
+       (NULL == sig) )
+  {
+    if (NULL != sig)
+      GNUNET_CRYPTO_rsa_signature_free (sig);
+    if (NULL != pk)
+      GNUNET_CRYPTO_rsa_public_key_free (pk);
+    // FIXME: send error reply...
+    return GNUNET_NO;
+  }
+  r_public_info->denom_sig = sig;
+  r_public_info->denom_pub = pk;
   return GNUNET_OK;
 }
 
@@ -247,7 +251,7 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   json_t *new_denoms;
   unsigned int num_new_denoms;
   unsigned int i;
-  struct TALER_RSA_PublicKeyBinaryEncoded *denom_pubs;
+  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pubs;
   json_t *melt_coins;
   struct TALER_CoinPublicInfo *coin_public_infos;
   unsigned int coin_count;
@@ -256,6 +260,8 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   struct MintKeyState *key_state;
   struct RefreshMeltSignatureBody body;
   json_t *melt_sig_json;
+  char *buf;
+  size_t buf_size;
 
   res = TALER_MINT_parse_post_json (connection,
                                     connection_cls,
@@ -291,22 +297,30 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
     return res;
   num_new_denoms = json_array_size (new_denoms);
   denom_pubs = GNUNET_malloc (num_new_denoms *
-                              sizeof (struct TALER_RSA_PublicKeyBinaryEncoded));
+                              sizeof (struct GNUNET_CRYPTO_rsa_PublicKey *));
 
   for (i=0;i<num_new_denoms;i++)
   {
     res = GNUNET_MINT_parse_navigate_json (connection, root,
                                            JNAV_FIELD, "new_denoms",
                                            JNAV_INDEX, (int) i,
-                                           JNAV_RET_DATA,
-                                           &denom_pubs[i],
-                                           sizeof (struct TALER_RSA_PublicKeyBinaryEncoded));
-
+                                           JNAV_RET_DATA_VAR,
+                                           &buf,
+                                           &buf_size);
     if (GNUNET_OK != res)
     {
       GNUNET_free (denom_pubs);
       /* FIXME: proper cleanup! */
       return res;
+    }
+    denom_pubs[i] = GNUNET_CRYPTO_rsa_public_key_decode (buf, buf_size);
+    GNUNET_free (buf);
+    if (NULL == denom_pubs[i])
+    {
+      GNUNET_free (denom_pubs);
+      /* FIXME: proper cleanup! */
+      /* FIXME: generate error reply */
+      return GNUNET_SYSERR;
     }
   }
 
@@ -377,9 +391,14 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   /* check that signature from the session public key is ok */
   hash_context = GNUNET_CRYPTO_hash_context_start ();
   for (i = 0; i < num_new_denoms; i++)
+  {
+    buf_size = GNUNET_CRYPTO_rsa_public_key_encode (denom_pubs[i],
+                                                    &buf);
     GNUNET_CRYPTO_hash_context_read (hash_context,
-                                     &denom_pubs[i],
-                                     sizeof (struct TALER_RSA_PublicKeyBinaryEncoded));
+                                     buf,
+                                     buf_size);
+    GNUNET_free (buf);
+  }
   for (i = 0; i < coin_count; i++)
     GNUNET_CRYPTO_hash_context_read (hash_context,
                                      &coin_public_infos[i].coin_pub,
@@ -526,9 +545,9 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
                                              JNAV_FIELD, "coin_evs",
                                              JNAV_INDEX, (int) i,
                                              JNAV_INDEX, (int) j,
-                                             JNAV_RET_DATA,
-                                             commit_coin[i][j].coin_ev,
-                                             sizeof (struct TALER_RSA_BlindedSignaturePurpose));
+                                             JNAV_RET_DATA_VAR,
+                                             &commit_coin[i][j].coin_ev,
+                                             &commit_coin[i][j].coin_ev_size);
 
       if (GNUNET_OK != res)
       {
@@ -539,8 +558,8 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
       }
 
       GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       &commit_coin[i][j].coin_ev,
-                                       sizeof (struct TALER_RSA_BlindedSignaturePurpose));
+                                       commit_coin[i][j].coin_ev,
+                                       commit_coin[i][j].coin_ev_size);
 
       res = GNUNET_MINT_parse_navigate_json (connection, root,
                                              JNAV_FIELD, "link_encs",

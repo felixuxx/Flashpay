@@ -29,8 +29,6 @@
 #define TALER_SIGNATURES_H
 
 #include <gnunet/gnunet_util_lib.h>
-#include "taler_rsa.h"
-
 
 /**
  * Purpose for signing public keys signed
@@ -113,17 +111,12 @@
 
 GNUNET_NETWORK_STRUCT_BEGIN
 
-
 /**
- * Request to withdraw coins from a reserve.
+ * Format used for to generate the signature on a request to withdraw
+ * coins from a reserve.
  */
 struct TALER_WithdrawRequest
 {
-  /**
-   * Signature over the rest of the message
-   * by the withdraw public key.
-   */
-  struct GNUNET_CRYPTO_EddsaSignature sig;
 
   /**
    * Purpose must be #TALER_SIGNATURE_WITHDRAW.
@@ -131,24 +124,20 @@ struct TALER_WithdrawRequest
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Reserve public key.
+   * Reserve public key (which reserve to withdraw from).  This is
+   * the public key which must match the signature.
    */
   struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
 
   /**
-   * Denomination public key for the coin that is withdrawn.
-   * FIXME: change to the hash of the public key (so this
-   * is fixed-size).
+   * Hash of the denomination public key for the coin that is withdrawn.
    */
-  struct TALER_RSA_PublicKeyBinaryEncoded denomination_pub;
+  struct GNUNET_HashCode h_denomination_pub;
 
   /**
-   * Purpose containing coin's blinded public key.
-   *
-   * FIXME: this should be explicitly a variable-size field with the
-   * (blinded) message to be signed by the Mint.
+   * Hash of the (blinded) message to be signed by the Mint.
    */
-  struct TALER_RSA_BlindedSignaturePurpose coin_envelope;
+  struct GNUNET_HashCode h_coin_envelope;
 };
 
 
@@ -178,7 +167,8 @@ struct TALER_MINT_DenomKeyIssue
   struct GNUNET_TIME_AbsoluteNBO start;
   struct GNUNET_TIME_AbsoluteNBO expire_withdraw;
   struct GNUNET_TIME_AbsoluteNBO expire_spend;
-  struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
+  // FIXME: does not work like this:
+  struct GNUNET_CRYPTO_rsa_PublicKey * denom_pub;
   struct TALER_AmountNBO value;
   struct TALER_AmountNBO fee_withdraw;
   struct TALER_AmountNBO fee_deposit;
@@ -238,4 +228,3 @@ struct RefreshMeltConfirmSignRequestBody
 GNUNET_NETWORK_STRUCT_END
 
 #endif
-

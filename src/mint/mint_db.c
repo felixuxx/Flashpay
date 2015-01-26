@@ -54,25 +54,44 @@ static char *TALER_MINT_db_connection_cfg_str;
     if (cond) { GNUNET_break (0); goto EXITIF_exit; }             \
   } while (0)
 
+
+/**
+ * Locate the response for a /withdraw request under the
+ * key of the hash of the blinded message.
+ *
+ * @param db_conn database connection to use
+ * @param h_blind hash of the blinded message
+ * @param collectable corresponding collectable coin (blind signature)
+ *                    if a coin is found
+ * @return #GNUNET_SYSERR on internal error
+ *         #GNUNET_NO if the collectable was not found
+ *         #GNUNET_YES on success
+ */
 int
 TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
-                                         struct TALER_RSA_BlindedSignaturePurpose *blind_ev,
+                                         const struct GNUNET_HashCode *h_blind,
                                          struct CollectableBlindcoin *collectable)
 {
   PGresult *result;
   struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR (blind_ev),
+    TALER_DB_QUERY_PARAM_PTR (h_blind),
     TALER_DB_QUERY_PARAM_END
   };
-  result = TALER_DB_exec_prepared (db_conn, "get_collectable_blindcoins", params);
+  char *sig_buf;
+  size_t sig_buf_size;
+
+  result = TALER_DB_exec_prepared (db_conn,
+                                   "get_collectable_blindcoins",
+                                   params);
 
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Query failed: %s\n", PQresultErrorMessage (result));
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Query failed: %s\n",
+                PQresultErrorMessage (result));
     PQclear (result);
     return GNUNET_SYSERR;
   }
-
   if (0 == PQntuples (result))
   {
     PQclear (result);
@@ -80,7 +99,7 @@ TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
   }
 
   struct TALER_DB_ResultSpec rs[] = {
-    TALER_DB_RESULT_SPEC("blind_ev_sig", &collectable->ev_sig),
+    TALER_DB_RESULT_SPEC_VAR("blind_sig", &sig_buf, &sig_buf_size),
     TALER_DB_RESULT_SPEC("denom_pub", &collectable->denom_pub),
     TALER_DB_RESULT_SPEC("reserve_sig", &collectable->reserve_sig),
     TALER_DB_RESULT_SPEC("reserve_pub", &collectable->reserve_pub),
@@ -93,43 +112,66 @@ TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
     PQclear (result);
     return GNUNET_SYSERR;
   }
-  (void) memcpy (&collectable->ev, blind_ev, sizeof (struct TALER_RSA_BlindedSignaturePurpose));
   PQclear (result);
   return GNUNET_OK;
 }
 
 
+/**
+ * Store collectable bit coin under the corresponding
+ * hash of the blinded message.
+ *
+ * @param db_conn database connection to use
+ * @param h_blind hash of the blinded message
+ * @param collectable corresponding collectable coin (blind signature)
+ *                    if a coin is found
+ * @return #GNUNET_SYSERR on internal error
+ *         #GNUNET_NO if the collectable was not found
+ *         #GNUNET_YES on success
+ */
 int
 TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
+                                            const struct GNUNET_HashCode *h_blind,
                                             const struct CollectableBlindcoin *collectable)
 {
   PGresult *result;
-  struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR (&collectable->ev),
-    TALER_DB_QUERY_PARAM_PTR (&collectable->ev_sig),
-    TALER_DB_QUERY_PARAM_PTR (&collectable->denom_pub),
-    TALER_DB_QUERY_PARAM_PTR (&collectable->reserve_pub),
-    TALER_DB_QUERY_PARAM_PTR (&collectable->reserve_sig),
-    TALER_DB_QUERY_PARAM_END
-  };
-  result = TALER_DB_exec_prepared (db_conn, "insert_collectable_blindcoins", params);
+  char *sig_buf;
+  size_t sig_buf_size;
 
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  sig_buf_size = GNUNET_CRYPTO_rsa_signature_encode (collectable->sig,
+                                                     &sig_buf);
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Query failed: %s\n", PQresultErrorMessage (result));
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
+    struct TALER_DB_QueryParam params[] = {
+      TALER_DB_QUERY_PARAM_PTR (&h_blind),
+      TALER_DB_QUERY_PARAM_PTR_SIZED (sig_buf, sig_buf_size),
+      TALER_DB_QUERY_PARAM_PTR (&collectable->denom_pub),
+      TALER_DB_QUERY_PARAM_PTR (&collectable->reserve_pub),
+      TALER_DB_QUERY_PARAM_PTR (&collectable->reserve_sig),
+      TALER_DB_QUERY_PARAM_END
+    };
 
-  if (0 != strcmp ("1", PQcmdTuples (result)))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Insert failed (updated '%s' tupes instead of '1')\n",
-             PQcmdTuples (result));
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
+    result = TALER_DB_exec_prepared (db_conn,
+                                     "insert_collectable_blindcoins",
+                                     params);
+    if (PGRES_COMMAND_OK != PQresultStatus (result))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Query failed: %s\n",
+                  PQresultErrorMessage (result));
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
 
-  PQclear (result);
+    if (0 != strcmp ("1", PQcmdTuples (result)))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Insert failed (updated '%s' tupes instead of '1')\n",
+                    PQcmdTuples (result));
+        PQclear (result);
+        return GNUNET_SYSERR;
+      }
+    PQclear (result);
+  }
   return GNUNET_OK;
 }
 
@@ -730,7 +772,7 @@ int
 TALER_MINT_DB_insert_refresh_order (PGconn *db_conn,
                                     uint16_t newcoin_index,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                    const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pub)
+                                    const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub)
 {
   uint16_t newcoin_index_nbo = htons (newcoin_index);
   struct TALER_DB_QueryParam params[] = {
@@ -1267,7 +1309,7 @@ int
 TALER_MINT_DB_get_refresh_order (PGconn *db_conn,
                                  uint16_t newcoin_index,
                                  const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                 struct TALER_RSA_PublicKeyBinaryEncoded *denom_pub)
+                                 struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub)
 {
   uint16_t newcoin_index_nbo = htons (newcoin_index);
 
@@ -1315,7 +1357,7 @@ int
 TALER_MINT_DB_insert_refresh_collectable (PGconn *db_conn,
                                           uint16_t newcoin_index,
                                           const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                          const struct TALER_RSA_Signature *ev_sig)
+                                          const struct GNUNET_CRYPTO_rsa_Signature *ev_sig)
 {
   uint16_t newcoin_index_nbo = htons (newcoin_index);
   struct TALER_DB_QueryParam params[] = {
@@ -1343,7 +1385,7 @@ int
 TALER_MINT_DB_get_refresh_collectable (PGconn *db_conn,
                                        uint16_t newcoin_index,
                                        const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                       struct TALER_RSA_Signature *ev_sig)
+                                       struct GNUNET_CRYPTO_rsa_Signature *ev_sig)
 {
 
   uint16_t newcoin_index_nbo = htons (newcoin_index);
@@ -1394,7 +1436,7 @@ TALER_MINT_DB_insert_refresh_melt (PGconn *db_conn,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
                                     uint16_t oldcoin_index,
                                     const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
-                                    const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pub)
+                                    const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub)
 {
   uint16_t oldcoin_index_nbo = htons (oldcoin_index);
   struct TALER_DB_QueryParam params[] = {
@@ -1499,8 +1541,8 @@ TALER_db_get_link (PGconn *db_conn,
   for (i = 0; i < PQntuples (result); i++)
   {
     struct LinkDataEnc link_data_enc;
-    struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
-    struct TALER_RSA_Signature ev_sig;
+    struct GNUNET_CRYPTO_rsa__PublicKey *denom_pub;
+    struct GNUNET_CRYPTO_rsa_Signature *sig;
     struct TALER_DB_ResultSpec rs[] = {
       TALER_DB_RESULT_SPEC("link_vector_enc", &link_data_enc),
       TALER_DB_RESULT_SPEC("denom_pub", &denom_pub),

@@ -107,7 +107,7 @@ TALER_MINT_key_state_acquire (void);
  */
 struct TALER_MINT_DenomKeyIssuePriv *
 TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
-                          const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pub);
+                          const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub);
 
 
 /**
@@ -116,9 +116,9 @@ TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
  *
  * @param key_state the key state to use for checking the coin's validity
  * @param coin_public_info the coin public info to check for validity
- * @return GNUNET_YES if the coin is valid,
- *         GNUNET_NO if it is invalid
- *         GNUNET_SYSERROR if an internal error occured
+ * @return #GNUNET_YES if the coin is valid,
+ *         #GNUNET_NO if it is invalid
+ *         #GNUNET_SYSERROR if an internal error occured
  */
 int
 TALER_MINT_test_coin_valid (const struct MintKeyState *key_state,
@@ -129,7 +129,7 @@ TALER_MINT_test_coin_valid (const struct MintKeyState *key_state,
  * Read signals from a pipe in a loop, and reload keys from disk if
  * SIGUSR1 is read from the pipe.
  *
- * @return GNUNET_OK if we terminated normally, GNUNET_SYSERR on error
+ * @return #GNUNET_OK if we terminated normally, #GNUNET_SYSERR on error
  */
 int
 TALER_MINT_key_reload_loop (void);

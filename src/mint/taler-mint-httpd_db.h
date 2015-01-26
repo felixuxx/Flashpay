@@ -25,7 +25,6 @@
 #include <microhttpd.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
-#include "taler_rsa.h"
 #include "taler-mint-httpd_keys.h"
 #include "mint.h"
 
@@ -62,12 +61,20 @@ TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
  * Execute a /withdraw/sign.
  *
  * @param connection the MHD connection to handle
- * @param wsrd details about the withdraw request
+ * @param reserve public key of the reserve
+ * @param denomination_pub public key of the denomination requested
+ * @param blinded_msg blinded message to be signed
+ * @param blinded_msg_len number of bytes in @a blinded_msg
+ * @param signature signature over the withdraw request, to be stored in DB
  * @return MHD result code
  */
 int
 TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
-                                     const struct TALER_WithdrawRequest *wsrd);
+                                     const struct GNUNET_CRYPTO_EddsaPublicKey *reserve,
+                                     const struct GNUNET_CRYPTO_rsa_PublicKey *denomination_pub,
+                                     const char *blinded_msg,
+                                     size_t blinded_msg_len,
+                                     const struct GNUNET_CRYPTO_EddsaSignature *signature);
 
 
 
@@ -86,7 +93,7 @@ int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
                                     unsigned int num_new_denoms,
-                                    const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pubs,
+                                    const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pubs,
                                     unsigned int coin_count,
                                     const struct TALER_CoinPublicInfo *coin_public_infos);
 

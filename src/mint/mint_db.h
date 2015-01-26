@@ -27,7 +27,6 @@
 #include <microhttpd.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
-#include "taler_rsa.h"
 #include "taler-mint-httpd_db.h"
 #include "mint.h"
 
@@ -35,13 +34,40 @@
 int
 TALER_MINT_DB_prepare (PGconn *db_conn);
 
+
+/**
+ * Locate the response for a /withdraw request under the
+ * key of the hash of the blinded message.
+ *
+ * @param db_conn database connection to use
+ * @param h_blind hash of the blinded message
+ * @param collectable corresponding collectable coin (blind signature)
+ *                    if a coin is found
+ * @return #GNUNET_SYSERR on internal error
+ *         #GNUNET_NO if the collectable was not found
+ *         #GNUNET_YES on success
+ */
 int
 TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
-                                         struct TALER_RSA_BlindedSignaturePurpose *blind_ev,
+                                         const struct GNUNET_HashCode *h_blind,
                                          struct CollectableBlindcoin *collectable);
 
+
+/**
+ * Store collectable bit coin under the corresponding
+ * hash of the blinded message.
+ *
+ * @param db_conn database connection to use
+ * @param h_blind hash of the blinded message
+ * @param collectable corresponding collectable coin (blind signature)
+ *                    if a coin is found
+ * @return #GNUNET_SYSERR on internal error
+ *         #GNUNET_NO if the collectable was not found
+ *         #GNUNET_YES on success
+ */
 int
 TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
+                                            const struct GNUNET_HashCode *h_blind,
                                             const struct CollectableBlindcoin *collectable);
 
 
@@ -62,6 +88,15 @@ TALER_MINT_DB_get_reserve (PGconn *db_conn,
                            const struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub,
                            struct Reserve *reserve_res);
 
+
+/**
+ * Update information about a reserve.
+ *
+ * @param db_conn
+ * @param reserve current reserve status
+ * @param fresh FIXME
+ * @return #GNUNET_OK on success
+ */
 int
 TALER_MINT_DB_update_reserve (PGconn *db_conn,
                               const struct Reserve *reserve,
@@ -72,7 +107,7 @@ int
 TALER_MINT_DB_insert_refresh_order (PGconn *db_conn,
                                     uint16_t newcoin_index,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                    const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pub);
+                                    const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub);
 
 int
 TALER_MINT_DB_get_refresh_session (PGconn *db_conn,
@@ -123,19 +158,22 @@ int
 TALER_MINT_DB_get_refresh_order (PGconn *db_conn,
                                  uint16_t newcoin_index,
                                  const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                 struct TALER_RSA_PublicKeyBinaryEncoded *denom_pub);
+                                 struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub);
 
 
 int
 TALER_MINT_DB_insert_refresh_collectable (PGconn *db_conn,
                                           uint16_t newcoin_index,
                                           const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                          const struct TALER_RSA_Signature *ev_sig);
+                                          const struct GNUNET_CRYPTO_rsa_Signature *ev_sig);
+
 int
 TALER_MINT_DB_get_refresh_collectable (PGconn *db_conn,
                                        uint16_t newcoin_index,
                                        const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                       struct TALER_RSA_Signature *ev_sig);
+                                       struct GNUNET_CRYPTO_rsa_Signature *ev_sig);
+
+
 int
 TALER_MINT_DB_set_reveal_ok (PGconn *db_conn,
                              const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub);
@@ -145,7 +183,7 @@ TALER_MINT_DB_insert_refresh_melt (PGconn *db_conn,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
                                     uint16_t oldcoin_index,
                                     const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
-                                    const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pub);
+                                    const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub);
 
 
 int
@@ -158,8 +196,8 @@ TALER_MINT_DB_get_refresh_melt (PGconn *db_conn,
 typedef
 int (*LinkIterator) (void *cls,
                      const struct LinkDataEnc *link_data_enc,
-                     const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pub,
-                     const struct TALER_RSA_Signature *ev_sig);
+                     const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub,
+                     const struct GNUNET_CRYPTO_rsa_Signature *ev_sig);
 
 int
 TALER_db_get_link (PGconn *db_conn,

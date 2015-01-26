@@ -29,7 +29,6 @@
 #include <gnunet/gnunet_common.h>
 #include <libpq-fe.h>
 #include "taler_util.h"
-#include "taler_rsa.h"
 #include "taler_signatures.h"
 
 #define DIR_SIGNKEYS "signkeys"
@@ -55,7 +54,7 @@ struct TALER_MINT_DenomKeyIssuePriv
    * The private key of the denomination.  Will be NULL if the private key is
    * not available.
    */
-  struct TALER_RSA_PrivateKey *denom_priv;
+  struct GNUNET_CRYPTO_rsa_PrivateKey *denom_priv;
 
   struct TALER_MINT_DenomKeyIssue issue;
 };
@@ -75,26 +74,43 @@ struct TALER_CoinPublicInfo
   /*
    * The public key signifying the coin's denomination.
    */
-  struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
+  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
 
   /**
    * Signature over coin_pub by denom_pub.
    */
-  struct TALER_RSA_Signature denom_sig;
+  struct GNUNET_CRYPTO_rsa_Signature *denom_sig;
 };
 
 
 
-
-
-
-
+/**
+ * Information we keep for a withdrawn coin to reproduce
+ * the /withdraw operation if needed, and to have proof
+ * that a reserve was drained by this amount.
+ */
 struct CollectableBlindcoin
 {
-  struct TALER_RSA_BlindedSignaturePurpose ev;
-  struct TALER_RSA_Signature ev_sig;
-  struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
+
+  /**
+   * Our signature over the (blinded) coin.
+   */
+  struct GNUNET_CRYPTO_rsa_Signature *sig;
+
+  /**
+   * Denomination key (which coin was generated).
+   */
+  struct GNUNET_CRYPOT_rsa_PublicKey *denom_pub;
+
+  /**
+   * Public key of the reserve that was drained.
+   */
   struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
+
+  /**
+   * Signature confirming the withdrawl, matching @e reserve_pub,
+   * @e denom_pub and @e h_blind.
+   */
   struct GNUNET_CRYPTO_EddsaSignature reserve_sig;
 };
 
@@ -127,7 +143,7 @@ struct RefreshCommitLink
 struct LinkData
 {
   struct GNUNET_CRYPTO_EcdsaPrivateKey coin_priv;
-  struct TALER_RSA_BlindingKeyBinaryEncoded bkey_enc;
+  struct GNUNET_CRYPTO_rsa_BlindingKey *bkey_enc;
 };
 
 
@@ -149,7 +165,17 @@ GNUNET_NETWORK_STRUCT_END
 struct RefreshCommitCoin
 {
   struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
-  struct TALER_RSA_BlindedSignaturePurpose coin_ev;
+
+  /**
+   * Blinded message to be signed (in envelope).
+   */
+  char *coin_ev;
+
+  /**
+   * Number of bytes in @e coin_ev.
+   */
+  size_t coin_ev_size;
+
   uint16_t cnc_index;
   uint16_t newcoin_index;
   char link_enc[sizeof (struct LinkData)];
@@ -177,17 +203,17 @@ struct Deposit
   /* FIXME: should be TALER_CoinPublicInfo */
   struct GNUNET_CRYPTO_EddsaPublicKey coin_pub;
 
-  struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
+  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
 
-  struct TALER_RSA_Signature coin_sig;
+  struct GNUNET_CRYPTO_rsa_Signature *coin_sig;
 
-  struct TALER_RSA_Signature ubsig;
+  struct GNUNET_CRYPTO_rsa_Signature *ubsig; // ???
 
   /**
    * Type of the deposit (also purpose of the signature).  Either
    * #TALER_SIGNATURE_DEPOSIT or #TALER_SIGNATURE_INCREMENTAL_DEPOSIT.
    */
-  struct TALER_RSA_SignaturePurpose purpose;
+  // struct TALER_RSA_SignaturePurpose purpose; // FIXME: bad type!
 
   uint64_t transaction_id;
 

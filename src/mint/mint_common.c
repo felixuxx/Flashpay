@@ -93,7 +93,7 @@ TALER_MINT_read_denom_key (const char *filename,
   uint64_t size;
   size_t offset;
   void *data;
-  struct TALER_RSA_PrivateKey *priv;
+  struct GNUNET_CRYPTO_rsa_PrivateKey *priv;
   int ret;
 
   ret = GNUNET_SYSERR;
@@ -115,7 +115,8 @@ TALER_MINT_read_denom_key (const char *filename,
                                    data,
                                    size))
     goto cleanup;
-  if (NULL == (priv = TALER_RSA_decode_key (data + offset, size - offset)))
+  if (NULL == (priv = GNUNET_CRYPTO_rsa_private_key_decode (data + offset,
+                                                            size - offset)))
     goto cleanup;
   dki->denom_priv = priv;
   memcpy (&dki->issue.signature, data, offset);
@@ -138,21 +139,21 @@ int
 TALER_MINT_write_denom_key (const char *filename,
                             const struct TALER_MINT_DenomKeyIssuePriv *dki)
 {
-  struct TALER_RSA_PrivateKeyBinaryEncoded *priv_enc;
+  char *priv_enc;
+  size_t priv_enc_size;
   struct GNUNET_DISK_FileHandle *fh;
   ssize_t wrote;
   size_t wsize;
   int ret;
 
   fh = NULL;
-  priv_enc = NULL;
+  priv_enc_size = GNUNET_CRYPTO_rsa_private_key_encode (dki->denom_priv,
+                                                        &priv_enc);
   ret = GNUNET_SYSERR;
   if (NULL == (fh = GNUNET_DISK_file_open
                (filename,
                 GNUNET_DISK_OPEN_WRITE | GNUNET_DISK_OPEN_CREATE | GNUNET_DISK_OPEN_TRUNCATE,
                 GNUNET_DISK_PERM_USER_READ | GNUNET_DISK_PERM_USER_WRITE)))
-    goto cleanup;
-  if (NULL == (priv_enc = TALER_RSA_encode_key (dki->denom_priv)))
     goto cleanup;
   wsize = sizeof (struct TALER_MINT_DenomKeyIssuePriv)
       - offsetof (struct TALER_MINT_DenomKeyIssuePriv, issue.signature);
@@ -162,12 +163,11 @@ TALER_MINT_write_denom_key (const char *filename,
     goto cleanup;
   if (wrote != wsize)
     goto cleanup;
-  wsize = ntohs (priv_enc->len);
   if (GNUNET_SYSERR == (wrote = GNUNET_DISK_file_write (fh,
                                                         priv_enc,
-                                                        wsize)))
+                                                        priv_enc_size)))
     goto cleanup;
-  if (wrote != wsize)
+  if (wrote != priv_enc_size)
     goto cleanup;
   ret = GNUNET_OK;
  cleanup:

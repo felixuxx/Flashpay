@@ -553,22 +553,29 @@ TALER_MINT_parse_json_data (struct MHD_Connection *connection,
 {
   unsigned int i;
   int ret;
+  void *ptr;
 
   ret = GNUNET_YES;
   for (i=0; NULL != spec[i].field_name; i++)
   {
     if (0 == spec[i].destination_size_in)
+    {
+      ptr = NULL;
       parse_variable_json_data (connection, root,
                                 spec[i].field_name,
-                                (void **) spec[i].destination,
+                                &ptr,
                                 &spec[i].destination_size_out,
                                 &ret);
+      spec[i].destination = ptr;
+    }
     else
+    {
       parse_fixed_json_data (connection, root,
                              spec[i].field_name,
                              spec[i].destination,
                              spec[i].destination_size_in,
                              &ret);
+    }
   }
   if (GNUNET_YES != ret)
     TALER_MINT_release_parsed_data (spec);
@@ -640,5 +647,64 @@ TALER_MINT_mhd_request_arg_data (struct MHD_Connection *connection,
       ? GNUNET_SYSERR : GNUNET_NO;
   return GNUNET_OK;
 }
+
+
+/**
+ * Extraxt variable-size base32crockford encoded data from request.
+ *
+ * Queues an error response to the connection if the parameter is missing
+ * or the encoding is invalid.
+ *
+ * @param connection the MHD connection
+ * @param param_name the name of the parameter with the key
+ * @param[out] out_data pointer to allocate buffer and store the result
+ * @param[out] out_size set to the size of the buffer allocated in @a out_data
+ * @return
+ *   #GNUNET_YES if the the argument is present
+ *   #GNUNET_NO if the argument is absent or malformed
+ *   #GNUNET_SYSERR on internal error (error response could not be sent)
+ */
+int
+TALER_MINT_mhd_request_var_arg_data (struct MHD_Connection *connection,
+                                     const char *param_name,
+                                     void **out_data,
+                                     size_t *out_size)
+{
+  const char *str;
+  size_t slen;
+  size_t olen;
+  void *out;
+
+  str = MHD_lookup_connection_value (connection,
+                                     MHD_GET_ARGUMENT_KIND,
+                                     param_name);
+  if (NULL == str)
+  {
+    return (MHD_NO ==
+            TALER_MINT_reply_arg_missing (connection, param_name))
+      ? GNUNET_SYSERR : GNUNET_NO;
+  }
+  slen = strlen (str);
+  olen = (slen * 5) / 8;
+  out = GNUNET_malloc (olen);
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (str,
+                                     strlen (str),
+                                     out,
+                                     olen))
+  {
+    GNUNET_free (out);
+    *out_size = 0;
+    return (MHD_NO ==
+            TALER_MINT_reply_arg_invalid (connection, param_name))
+      ? GNUNET_SYSERR : GNUNET_NO;
+  }
+  *out_data = out;
+  *out_size = olen;
+  return GNUNET_OK;
+
+}
+
+
 
 /* end of taler-mint-httpd_parsing.c */

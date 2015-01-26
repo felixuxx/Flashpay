@@ -295,10 +295,15 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
                                         const struct CollectableBlindcoin *collectable)
 {
   json_t *root = json_object ();
+  size_t sig_buf_size;
+  char *sig_buf;
 
+  sig_buf_size = GNUNET_CRYPTO_rsa_signature_encode (collectable->sig,
+                                                     &sig_buf);
   json_object_set_new (root, "ev_sig",
-                       TALER_JSON_from_data (&collectable->ev_sig,
-                                             sizeof (struct TALER_RSA_Signature)));
+                       TALER_JSON_from_data (sig_buf,
+                                             sig_buf_size));
+  GNUNET_free (sig_buf);
   return TALER_MINT_reply_json (connection,
                                 root,
                                 MHD_HTTP_OK);
@@ -388,19 +393,26 @@ TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
 int
 TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
                                          unsigned int num_newcoins,
-                                         const struct TALER_RSA_Signature *sigs)
+                                         const struct GNUNET_CRYPTO_rsa_Signature *sigs)
 {
   int newcoin_index;
   json_t *root;
   json_t *list;
+  char *buf;
+  size_t buf_size;
 
   root = json_object ();
   list = json_array ();
   json_object_set_new (root, "ev_sigs", list);
   for (newcoin_index = 0; newcoin_index < num_newcoins; newcoin_index++)
+  {
+    buf_size = GNUNET_CRYPTO_rsa_signature_encode (&sigs[newcoin_index],
+                                                   &buf);
     json_array_append_new (list,
-                           TALER_JSON_from_data (&sigs[newcoin_index],
-                                                 sizeof (struct TALER_RSA_Signature)));
+                           TALER_JSON_from_data (buf,
+                                                 buf_size));
+    GNUNET_free (buf);
+  }
   return TALER_MINT_reply_json (connection,
                                 root,
                                 MHD_HTTP_OK);

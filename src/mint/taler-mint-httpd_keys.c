@@ -32,7 +32,6 @@
 #include <pthread.h>
 #include "mint.h"
 #include "taler_signatures.h"
-#include "taler_rsa.h"
 #include "taler_json_lib.h"
 #include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_keys.h"
@@ -66,14 +65,23 @@ static int reload_pipe[2];
 static json_t *
 denom_key_issue_to_json (const struct TALER_MINT_DenomKeyIssue *dki)
 {
+  char *buf;
+  size_t buf_len;
   json_t *dk_json = json_object ();
+
   json_object_set_new (dk_json, "master_sig",
                        TALER_JSON_from_data (&dki->signature, sizeof (struct GNUNET_CRYPTO_EddsaSignature)));
   json_object_set_new (dk_json, "stamp_start", TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->start)));
   json_object_set_new (dk_json, "stamp_expire_withdraw", TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_withdraw)));
   json_object_set_new (dk_json, "stamp_expire_deposit", TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_spend)));
+
+
+  buf_len = GNUNET_CRYPTO_rsa_public_key_encode (dki->denom_pub,
+                                                 &buf);
   json_object_set_new (dk_json, "denom_pub",
-                       TALER_JSON_from_data (&dki->denom_pub, sizeof (struct TALER_RSA_PublicKeyBinaryEncoded)));
+                       TALER_JSON_from_data (buf,
+                                             buf_len));
+  GNUNET_free (buf);
   json_object_set_new (dk_json, "value",
                        TALER_JSON_from_amount (TALER_amount_ntoh (dki->value)));
   json_object_set_new (dk_json,
@@ -341,14 +349,19 @@ TALER_MINT_key_state_acquire (void)
  */
 struct TALER_MINT_DenomKeyIssuePriv *
 TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
-                          const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pub)
+                          const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub)
 {
   struct TALER_MINT_DenomKeyIssuePriv *issue;
   struct GNUNET_HashCode hash;
+  char *buf;
+  size_t buf_len;
 
-  GNUNET_CRYPTO_hash (denom_pub,
-                      sizeof (struct TALER_RSA_PublicKeyBinaryEncoded),
+  buf_len = GNUNET_CRYPTO_rsa_public_key_encode (denom_pub,
+                                                 *buf);
+  GNUNET_CRYPTO_hash (buf,
+                      buf_len,
                       &hash);
+  GNUNET_free (buf);
   issue = GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map, &hash);
   return issue;
 }
@@ -373,10 +386,10 @@ TALER_MINT_test_coin_valid (const struct MintKeyState *key_state,
   dki = TALER_MINT_get_denom_key (key_state, &coin_public_info->denom_pub);
   if (NULL == dki)
     return GNUNET_NO;
-  if (GNUNET_OK != TALER_RSA_verify (&coin_public_info->coin_pub,
-                                     sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                                     &coin_public_info->denom_sig,
-                                     &dki->issue.denom_pub))
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_rsa_verify (&c_hash,
+                                coin_public_info->denom_sig,
+                                dki->issue.denom_pub))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "coin signature is invalid\n");

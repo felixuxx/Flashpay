@@ -209,9 +209,8 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec);
  * Generate line in parser specification for variable-size value.
  *
  * @param field name of the field
- * @param value where to store the value
  */
-#define TALER_MINT_PARSE_VARIABLE(field,value) { field, &value, 0, 0 }
+#define TALER_MINT_PARSE_VARIABLE(field) { field, NULL, 0, 0 }
 
 /**
  * Generate line in parser specification indicating the end of the spec.
@@ -220,7 +219,7 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec);
 
 
 /**
- * Extraxt base32crockford encoded data from request.
+ * Extraxt fixed-size base32crockford encoded data from request.
  *
  * Queues an error response to the connection if the parameter is missing or
  * invalid.
@@ -239,6 +238,28 @@ TALER_MINT_mhd_request_arg_data (struct MHD_Connection *connection,
                                  const char *param_name,
                                  void *out_data,
                                  size_t out_size);
+
+
+/**
+ * Extraxt variable-size base32crockford encoded data from request.
+ *
+ * Queues an error response to the connection if the parameter is missing
+ * or the encoding is invalid.
+ *
+ * @param connection the MHD connection
+ * @param param_name the name of the parameter with the key
+ * @param[out] out_data pointer to allocate buffer and store the result
+ * @param[out] out_size set to the size of the buffer allocated in @a out_data
+ * @return
+ *   #GNUNET_YES if the the argument is present
+ *   #GNUNET_NO if the argument is absent or malformed
+ *   #GNUNET_SYSERR on internal error (error response could not be sent)
+ */
+int
+TALER_MINT_mhd_request_var_arg_data (struct MHD_Connection *connection,
+                                     const char *param_name,
+                                     void **out_data,
+                                     size_t *out_size);
 
 
 

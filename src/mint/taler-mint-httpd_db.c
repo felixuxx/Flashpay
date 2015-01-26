@@ -83,9 +83,9 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
 
   if (GNUNET_SYSERR == res)
   {
-      GNUNET_break (0);
+    GNUNET_break (0);
     /* FIXME: return error message to client via MHD! */
-      return MHD_NO;
+    return MHD_NO;
   }
 
   {
@@ -221,56 +221,65 @@ TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
  * Execute a /withdraw/sign.
  *
  * @param connection the MHD connection to handle
- * @param wsrd_ro details about the withdraw request
+ * @param reserve public key of the reserve
+ * @param denomination_pub public key of the denomination requested
+ * @param blinded_msg blinded message to be signed
+ * @param blinded_msg_len number of bytes in @a blinded_msg
+ * @param signature signature over the withdraw request, to be stored in DB
  * @return MHD result code
  */
 int
 TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
-                                     const struct TALER_WithdrawRequest *wsrd_ro)
+                                     const struct GNUNET_CRYPTO_EddsaPublicKey *reserve,
+                                     const struct GNUNET_CRYPTO_rsa_PublicKey *denomination_pub,
+                                     const char *blinded_msg,
+                                     size_t blinded_msg_len,
+                                     const struct GNUNET_CRYPTO_EddsaSignature *signature)
 {
   PGconn *db_conn;
-  struct Reserve reserve;
+  struct Reserve db_reserve;
   struct MintKeyState *key_state;
   struct CollectableBlindcoin collectable;
   struct TALER_MINT_DenomKeyIssuePriv *dki;
-  struct TALER_RSA_Signature ev_sig;
+  struct GNUNET_CRYPTO_rsa_Signature *sig;
   struct TALER_Amount amount_required;
-  /* FIXME: the fact that we do this here is a sign that we
-     need to have different versions of this struct for
-     the different places it is used! */
-  struct TALER_WithdrawRequest wsrd = *wsrd_ro;
+  struct GNUNET_HashCode h_blind;
   int res;
+
+  GNUNET_CRYPTO_hash (blinded_msg,
+                      blinded_msg_len,
+                      &h_blind);
 
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
   }
-
-
   res = TALER_MINT_DB_get_collectable_blindcoin (db_conn,
-                                                 &wsrd.coin_envelope,
+                                                 &h_blind,
                                                  &collectable);
   if (GNUNET_SYSERR == res)
   {
-    // FIXME: return 'internal error'
     GNUNET_break (0);
-    return MHD_NO;
+    return TALER_MINT_reply_internal_db_error (connection);
   }
 
   /* Don't sign again if we have already signed the coin */
   if (GNUNET_YES == res)
-    return TALER_MINT_reply_withdraw_sign_success (connection,
-                                                   &collectable);
+  {
+    res = TALER_MINT_reply_withdraw_sign_success (connection,
+                                                  &collectable);
+    GNUNET_CRYPTO_rsa_signature_free (collectable.sig);
+    return res;
+  }
   GNUNET_assert (GNUNET_NO == res);
   res = TALER_MINT_DB_get_reserve (db_conn,
-                                   &wsrd.reserve_pub,
-                                   &reserve);
+                                   reserve,
+                                   &db_reserve);
   if (GNUNET_SYSERR == res)
   {
-    // FIXME: return 'internal error'
     GNUNET_break (0);
-    return MHD_NO;
+    return TALER_MINT_reply_internal_db_error (connection);
   }
   if (GNUNET_NO == res)
     return TALER_MINT_reply_json_pack (connection,
@@ -279,26 +288,9 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
                                        "error",
                                        "Reserve not found");
 
-  // fill out all the missing info in the request before
-  // we can check the signature on the request
-
-  wsrd.purpose.purpose = htonl (TALER_SIGNATURE_WITHDRAW);
-  wsrd.purpose.size = htonl (sizeof (struct TALER_WithdrawRequest) -
-                              offsetof (struct TALER_WithdrawRequest, purpose));
-
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WITHDRAW,
-                                  &wsrd.purpose,
-                                  &wsrd.sig,
-                                  &wsrd.reserve_pub))
-    return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_UNAUTHORIZED,
-                                       "{s:s}",
-                                       "error", "Invalid Signature");
-
   key_state = TALER_MINT_key_state_acquire ();
   dki = TALER_MINT_get_denom_key (key_state,
-                                  &wsrd.denomination_pub);
+                                  denomination_pub);
   TALER_MINT_key_state_release (key_state);
   if (NULL == dki)
     return TALER_MINT_reply_json_pack (connection,
@@ -307,52 +299,54 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
                                        "error",
                                        "Denomination not found");
 
-  amount_required = TALER_amount_ntoh (dki->issue.value);
-  amount_required = TALER_amount_add (amount_required,
+  amount_required = TALER_amount_add (TALER_amount_ntoh (dki->issue.value),
                                       TALER_amount_ntoh (dki->issue.fee_withdraw));
-
   if (0 < TALER_amount_cmp (amount_required,
-                            TALER_amount_ntoh (reserve.balance)))
+                            TALER_amount_ntoh (db_reserve.balance)))
     return TALER_MINT_reply_json_pack (connection,
                                        MHD_HTTP_PAYMENT_REQUIRED,
                                        "{s:s}",
                                        "error",
                                        "Insufficient funds");
-  if (GNUNET_OK !=
-      TALER_RSA_sign (dki->denom_priv,
-                      &wsrd.coin_envelope,
-                      sizeof (struct TALER_RSA_BlindedSignaturePurpose),
-                      &ev_sig))
+
+  db_reserve.balance = TALER_amount_hton
+    (TALER_amount_subtract (TALER_amount_ntoh (db_reserve.balance),
+                            amount_required));
+
+  sig = GNUNET_CRYPTO_rsa_sign (dki->denom_priv,
+                                blinded_msg,
+                                blinded_msg_len);
+  if (NULL == sig)
   {
-    // FIXME: return 'internal error'
     GNUNET_break (0);
-    return MHD_NO;
+    return TALER_MINT_reply_internal_error (connection,
+                                            "Internal error");
   }
 
-  reserve.balance = TALER_amount_hton (TALER_amount_subtract (TALER_amount_ntoh (reserve.balance),
-                                                              amount_required));
+  /* transaction start */
   if (GNUNET_OK !=
       TALER_MINT_DB_update_reserve (db_conn,
-                                    &reserve,
+                                    &db_reserve,
                                     GNUNET_YES))
   {
-    // FIXME: return 'internal error'
     GNUNET_break (0);
-    return MHD_NO;
+    return TALER_MINT_reply_internal_db_error (connection);
   }
-
   collectable.ev = wsrd.coin_envelope;
-  collectable.ev_sig = ev_sig;
+  collectable.sig = sig;
   collectable.reserve_pub = wsrd.reserve_pub;
   collectable.reserve_sig = wsrd.sig;
   if (GNUNET_OK !=
       TALER_MINT_DB_insert_collectable_blindcoin (db_conn,
+                                                  &h_blind,
                                                   &collectable))
   {
-    // FIXME: return 'internal error'
     GNUNET_break (0);
-    return GNUNET_NO;;
+    GNUNET_CRYPTO_rsa_signature_free (sig);
+    return TALER_MINT_reply_internal_db_error (connection);
   }
+  /* transaction end */
+  GNUNET_CRYPTO_rsa_signature_free (sig);
   return TALER_MINT_reply_withdraw_sign_success (connection,
                                                  &collectable);
 }
@@ -378,7 +372,7 @@ refresh_accept_denoms (struct MHD_Connection *connection,
                        const struct MintKeyState *key_state,
                        const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
                        unsigned int denom_pubs_count,
-                       const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pubs,
+                       const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pubs,
                        struct TALER_Amount *r_amount)
 {
   unsigned int i;
@@ -554,7 +548,7 @@ int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
                                     unsigned int num_new_denoms,
-                                    const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pubs,
+                                    const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pubs,
                                     unsigned int coin_count,
                                     const struct TALER_CoinPublicInfo *coin_public_infos)
 {
@@ -821,10 +815,10 @@ helper_refresh_reveal_send_response (struct MHD_Connection *connection,
 {
   int res;
   unsigned int newcoin_index;
-  struct TALER_RSA_Signature *sigs;
+  struct GNUNET_CRYPTO_rsa_Signature **sigs;
 
   sigs = GNUNET_malloc (refresh_session->num_newcoins *
-                        sizeof (struct TALER_RSA_Signature));
+                        sizeof (struct GNUNET_CRYPTO_rsa_Signature *));
   for (newcoin_index = 0; newcoin_index < refresh_session->num_newcoins; newcoin_index++)
   {
     res = TALER_MINT_DB_get_refresh_collectable (db_conn,
@@ -984,10 +978,12 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     {
       struct RefreshCommitCoin commit_coin;
       struct LinkData link_data;
-      struct TALER_RSA_BlindedSignaturePurpose *coin_ev_check;
+      // struct BlindedSignaturePurpose *coin_ev_check;
       struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
-      struct TALER_RSA_BlindingKey *bkey;
-      struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
+      struct GNUNET_CRYPTO_rsa_BlindingKey *bkey;
+      struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+      char *buf;
+      size_t buf_len;
 
       bkey = NULL;
       res = TALER_MINT_DB_get_refresh_commit_coin (db_conn,
@@ -1011,7 +1007,8 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
       }
 
       GNUNET_CRYPTO_ecdsa_key_get_public (&link_data.coin_priv, &coin_pub);
-      if (NULL == (bkey = TALER_RSA_blinding_key_decode (&link_data.bkey_enc)))
+      if (NULL == (bkey = GNUNET_CRYPTO_rsa_blinding_key_decode (link_data.bkey_enc,
+                                                                 link_data.bkey_enc_size)))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Invalid blinding key\n");
                         // FIXME: return error code!
@@ -1024,26 +1021,31 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
           // FIXME: return error code!
         return MHD_NO;
       }
-      if (NULL == (coin_ev_check =
-                   TALER_RSA_message_blind (&coin_pub,
-                                            sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
+      if (NULL == (buf_len =
+                   GNUNET_CRYPTO_rsa_blind (&h_msg,
                                             bkey,
-                                            &denom_pub)))
+                                            denom_pub,
+                                            &buf)))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "blind failed\n");
           // FIXME: return error code!
         return MHD_NO;
       }
 
-      if (0 != memcmp (&coin_ev_check,
-                       &commit_coin.coin_ev,
-                       sizeof (struct TALER_RSA_BlindedSignaturePurpose)))
+      if ( (buf_len != commit_coin.coin_ev_size) ||
+           (0 != memcmp (buf,
+                         commit_coin.coin_ev,
+                         buf_len)) )
       {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "blind envelope does not match for kappa=%d, old=%d\n",
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "blind envelope does not match for kappa=%d, old=%d\n",
                     (int) (i+off), (int) j);
         // FIXME: return error code!
+        GNUNET_free (buf);
         return MHD_NO;
       }
+      GNUNET_free (buf);
+
     }
   }
 
@@ -1058,9 +1060,9 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
   for (j = 0; j < refresh_session.num_newcoins; j++)
   {
     struct RefreshCommitCoin commit_coin;
-    struct TALER_RSA_PublicKeyBinaryEncoded denom_pub;
+    struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
     struct TALER_MINT_DenomKeyIssuePriv *dki;
-    struct TALER_RSA_Signature ev_sig;
+    struct GNUNET_CRYPTO_rsa_Signature *ev_sig;
 
     res = TALER_MINT_DB_get_refresh_commit_coin (db_conn,
                                                  refresh_session_pub,
@@ -1091,11 +1093,10 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
                     // FIXME: return error code!
       return MHD_NO;
     }
-    if (GNUNET_OK !=
-        TALER_RSA_sign (dki->denom_priv,
-                        &commit_coin.coin_ev,
-                        sizeof (struct TALER_RSA_BlindedSignaturePurpose),
-                        &ev_sig))
+    ev_sig = GNUNET_CRYPTO_rsa_sign (dki->denom_priv,
+                                     commit_coin.coin_ev,
+                                     commit_coin.coin_ev_len);
+    if (NULL == ev_sig)
     {
       GNUNET_break (0);
                     // FIXME: return error code!
@@ -1144,25 +1145,33 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
 static int
 link_iter (void *cls,
            const struct LinkDataEnc *link_data_enc,
-           const struct TALER_RSA_PublicKeyBinaryEncoded *denom_pub,
-           const struct TALER_RSA_Signature *ev_sig)
+           const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub,
+           const struct GNUNET_CRYPTO_rsa_Signature *ev_sig)
 {
   json_t *list = cls;
   json_t *obj = json_object ();
+  char *buf;
+  size_t buf_len;
+
 
   json_array_append_new (list, obj);
 
   json_object_set_new (obj, "link_enc",
-                         TALER_JSON_from_data (link_data_enc,
-                                       sizeof (struct LinkDataEnc)));
+                       TALER_JSON_from_data (link_data_enc,
+                                             sizeof (struct LinkDataEnc)));
 
+  buf_len = GNUNET_CRYPTO_rsa_public_key_encode (denom_pub,
+                                                 &buf);
   json_object_set_new (obj, "denom_pub",
-                         TALER_JSON_from_data (denom_pub,
-                                       sizeof (struct TALER_RSA_PublicKeyBinaryEncoded)));
-
+                       TALER_JSON_from_data (buf,
+                                             buf_len));
+  GNUNET_free (buf);
+  buf_len = GNUNET_CRYPTO_rsa_signature_encode (ev_sig,
+                                                &buf);
   json_object_set_new (obj, "ev_sig",
-                         TALER_JSON_from_data (ev_sig,
-                                       sizeof (struct TALER_RSA_Signature)));
+                       TALER_JSON_from_data (buf,
+                                             buf_len));
+  GNUNET_free (buf_len);
 
   return GNUNET_OK;
 }

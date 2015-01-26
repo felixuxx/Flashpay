@@ -32,7 +32,6 @@
 #include "mint.h"
 #include "mint_db.h"
 #include "taler_signatures.h"
-#include "taler_rsa.h"
 #include "taler_json_lib.h"
 #include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_keys.h"
@@ -94,6 +93,12 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
 {
   struct TALER_WithdrawRequest wsrd;
   int res;
+  const struct GNUNET_CRYPTO_rsa_PublicKey *denomination_pub;
+  char *denomination_pub_data;
+  size_t denomination_pub_data_size;
+  char *blinded_msg;
+  size_t blinded_msg_len;
+  const struct GNUNET_CRYPTO_EddsaSignature signature;
 
   res = TALER_MINT_mhd_request_arg_data (connection,
                                          "reserve_pub",
@@ -105,33 +110,66 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
     return MHD_YES; /* invalid request */
 
   /* FIXME: handle variable-size signing keys! */
-  res = TALER_MINT_mhd_request_arg_data (connection,
-                                  "denom_pub",
-                                  &wsrd.denomination_pub,
-                                  sizeof (struct TALER_RSA_PublicKeyBinaryEncoded));
+  res = TALER_MINT_mhd_request_var_arg_data (connection,
+                                             "denom_pub",
+                                             &denomination_pub_data,
+                                             &denomination_pub_data_size);
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
     return MHD_YES; /* invalid request */
-  res = TALER_MINT_mhd_request_arg_data (connection,
-                                         "coin_ev",
-                                         &wsrd.coin_envelope,
-                                         sizeof (struct TALER_RSA_Signature));
+  res = TALER_MINT_mhd_request_var_arg_data (connection,
+                                             "coin_ev",
+                                             &blinded_msg,
+                                             &blinded_msg_len);
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
     return MHD_YES; /* invalid request */
   res = TALER_MINT_mhd_request_arg_data (connection,
                                          "reserve_sig",
-                                         &wsrd.sig,
+                                         &signature,
                                          sizeof (struct GNUNET_CRYPTO_EddsaSignature));
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
     return MHD_YES; /* invalid request */
 
-  return TALER_MINT_db_execute_withdraw_sign (connection,
-                                              &wsrd);
+  /* verify signature! */
+  wsrd.purpose.size = htonl (sizeof (struct TALER_WithdrawRequest));
+  wsrd.purpose.type = htonl (TALER_SIGNATURE_WITHDRAW);
+  GNUNET_CRYPTO_hash (denomination_pub_data,
+                      denomination_pub_data_size,
+                      &wsrd.h_denomination_pub);
+  GNUNET_CRYPTO_hash (blinded_msg,
+                      blinded_msg_len,
+                      &wsrd.h_coin_envelope);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WITHDRAW,
+                                  &wsrd.purpose,
+                                  &signature,
+                                  &wsrd.reserve_pub))
+  {
+    return 42; // FIXME: generate error reply
+  }
+  denomination_pub = GNUNET_CRYPTO_rsa_private_key_decode (denomination_pub_data,
+                                                           denomination_pub_data_size);
+  if (NULL == denomination_pub)
+  {
+    GNUNET_free (denomination_pub_data);
+    GNUNET_free (blinded_msg);
+    return 42; // FIXME: generate error reply
+  }
+  res = TALER_MINT_db_execute_withdraw_sign (connection,
+                                             &wsrd.reserve_pub,
+                                             denomination_pub,
+                                             blinded_msg,
+                                             blinded_msg_len,
+                                             &signature);
+  GNUNET_free (denomination_pub_data);
+  GNUNET_free (blinded_msg);
+  GNUNET_CRYPTO_rsa_public_key_free (denomination_pub);
+  return res;
 }
 
 /* end of taler-mint-httpd_withdraw.c */

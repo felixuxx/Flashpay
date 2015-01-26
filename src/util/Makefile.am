@@ -6,8 +6,7 @@ lib_LTLIBRARIES = \
 libtalerutil_la_SOURCES = \
   util.c \
   json.c \
-  db.c \
-  rsa.c
+  db.c
 
 libtalerutil_la_LIBADD = \
   -lgnunetutil \

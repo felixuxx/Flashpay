@@ -105,7 +105,7 @@ static struct GNUNET_CRYPTO_EddsaPublicKey *master_pub;
 static struct GNUNET_TIME_Absolute lookahead_sign_stamp;
 
 
-int
+static int
 config_get_denom (const char *section, const char *option, struct TALER_Amount *denom)
 {
   char *str;
@@ -117,7 +117,7 @@ config_get_denom (const char *section, const char *option, struct TALER_Amount *
 }
 
 
-char *
+static char *
 get_signkey_dir ()
 {
   char *dir;
@@ -128,7 +128,7 @@ get_signkey_dir ()
 }
 
 
-char *
+static char *
 get_signkey_file (struct GNUNET_TIME_Absolute start)
 {
   char *dir;
@@ -140,13 +140,12 @@ get_signkey_file (struct GNUNET_TIME_Absolute start)
 }
 
 
-
 /**
  * Hash the data defining the coin type.
  * Exclude information that may not be the same for all
  * instances of the coin type (i.e. the anchor, overlap).
  */
-void
+static void
 hash_coin_type (const struct CoinTypeParams *p, struct GNUNET_HashCode *hash)
 {
   struct CoinTypeNBO p_nbo;
@@ -254,7 +253,7 @@ get_anchor_iter (void *cls,
  * @param overlap what's the overlap between the keys validity period?
  * @param[out] anchor the timestamp where the first new key should be generated
  */
-void
+static void
 get_anchor (const char *dir,
             struct GNUNET_TIME_Relative duration,
             struct GNUNET_TIME_Relative overlap,
@@ -290,6 +289,7 @@ get_anchor (const char *dir,
   }
   // anchor is now the stamp where we need to create a new key
 }
+
 
 static void
 create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
@@ -327,7 +327,7 @@ check_signkey_valid (const char *signkey_filename)
 }
 
 
-int
+static int
 mint_keys_update_signkeys ()
 {
   struct GNUNET_TIME_Relative signkey_duration;
@@ -377,7 +377,7 @@ mint_keys_update_signkeys ()
 }
 
 
-int
+static int
 get_cointype_params (const char *ct, struct CoinTypeParams *params)
 {
   const char *dir;
@@ -434,8 +434,8 @@ static void
 create_denomkey_issue (struct CoinTypeParams *params,
                        struct TALER_MINT_DenomKeyIssuePriv *dki)
 {
-  GNUNET_assert (NULL != (dki->denom_priv = TALER_RSA_key_create ()));
-  TALER_RSA_key_get_public (dki->denom_priv, &dki->issue.denom_pub);
+  GNUNET_assert (NULL != (dki->denom_priv = GNUNET_CRYPTO_rsa_private_key_create ()));
+  dki->issue.denom_pub = GNUNET_CRYPTO_rsa_private_key_get_get_public (dki->denom_priv);
   dki->issue.master = *master_pub;
   dki->issue.start = GNUNET_TIME_absolute_hton (params->anchor);
   dki->issue.expire_withdraw =
@@ -470,7 +470,7 @@ check_cointype_valid (const char *filename, struct CoinTypeParams *params)
 }
 
 
-int
+static int
 mint_keys_update_cointype (const char *coin_alias)
 {
   struct CoinTypeParams p;
@@ -496,7 +496,7 @@ mint_keys_update_cointype (const char *coin_alias)
       printf ("Target path: %s\n", dkf);
       create_denomkey_issue (&p, &denomkey_issue);
       ret = TALER_MINT_write_denom_key (dkf, &denomkey_issue);
-      TALER_RSA_key_free (denomkey_issue.denom_priv);
+      GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv);
       if (GNUNET_OK != ret)
       {
         fprintf (stderr, "Can't write to file '%s'\n", dkf);
@@ -514,7 +514,7 @@ mint_keys_update_cointype (const char *coin_alias)
 }
 
 
-int
+static int
 mint_keys_update_denomkeys ()
 {
   char *coin_types;
@@ -659,4 +659,3 @@ main (int argc, char *const *argv)
     return 1;
   return 0;
 }
-
