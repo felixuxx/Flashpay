@@ -21,7 +21,6 @@
 #ifndef _TALER_MINT_SERVICE_H
 #define _TALER_MINT_SERVICE_H
 
-#include "taler_rsa.h"
 #include "taler_util.h"
 #include <jansson.h>
 

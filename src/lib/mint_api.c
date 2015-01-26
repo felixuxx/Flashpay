@@ -343,6 +343,8 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
   const char *withdraw_valid_until_enc;
   const char *valid_from_enc;
   const char *key_enc;
+  char *buf;
+  size_t buf_size;
   struct TALER_MINT_DenomPublicKey *denom_key;
   struct GNUNET_TIME_Absolute valid_from;
   struct GNUNET_TIME_Absolute withdraw_valid_until;
@@ -366,19 +368,29 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
   EXITIF (NULL == (withdraw_valid_until_enc = json_string_value (obj)));
   EXITIF (NULL == (obj = json_object_get (denom_key_obj, "stamp_start")));
   EXITIF (NULL == (valid_from_enc = json_string_value (obj)));
+
   EXITIF (NULL == (obj = json_object_get (denom_key_obj, "denom_pub")));
   EXITIF (NULL == (key_enc = json_string_value (obj)));
-  EXITIF (52 != strlen (key_enc)); /* strlen(base32(char[32])) = 52 */
+
   EXITIF (GNUNET_SYSERR == parse_timestamp (&valid_from, valid_from_enc));
   EXITIF (GNUNET_SYSERR == parse_timestamp (&withdraw_valid_until,
                                             withdraw_valid_until_enc));
   EXITIF (GNUNET_SYSERR == parse_timestamp (&deposit_valid_until,
                                             deposit_valid_until_enc));
 
-  (void) memset (&denom_key_issue, 0, sizeof (denom_key_issue));
-  EXITIF (GNUNET_OK != GNUNET_STRINGS_string_to_data (key_enc, 52,
-                                                      &denom_key_issue.denom_pub,
-                                                      sizeof (struct TALER_RSA_PublicKeyBinaryEncoded)));
+  memset (&denom_key_issue, 0, sizeof (denom_key_issue));
+
+  buf_size = (strlen (key_enc) * 5) / 8;
+  buf = GNUNET_malloc (buf_size);
+
+  EXITIF (GNUNET_OK !=
+          GNUNET_STRINGS_string_to_data (key_enc, strlen (key_enc),
+                                         buf,
+                                         buf_size));
+  denom_key_issue.denom_pub = GNUNET_CRYPTO_rsa_public_key_decode (buf, buf_size);
+  GNUNET_free (buf);
+  EXITIF (NULL == denom_key_issue.denom_pub);
+
   EXITIF (NULL == (obj = json_object_get (denom_key_obj, "value")));
   EXITIF (GNUNET_SYSERR == parse_json_amount (obj, &value));
   EXITIF (NULL == (obj = json_object_get (denom_key_obj, "fee_withdraw")));
@@ -419,6 +431,7 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
  EXITIF_exit:
   return GNUNET_SYSERR;
 }
+
 
 static int
 parse_response_keys_get (const char *in, size_t size,
