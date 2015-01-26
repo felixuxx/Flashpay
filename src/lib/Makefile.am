@@ -1,10 +1,9 @@
-AM_CPPFLAGS = -I$(top_srcdir)/src/include $(POSTGRESQL_CPPFLAGS)
+AM_CPPFLAGS = -I$(top_srcdir)/src/include
 
 lib_LTLIBRARIES = \
   libtalermint.la
 
 libtalermint_la_LDFLAGS = \
-  $(POSTGRESQL_LDFLAGS) \
   -version-info 0:0:0 \
   -no-undefined
 
@@ -15,10 +14,6 @@ libtalermint_la_LIBADD = \
   -lgnunetutil \
   -ljansson \
   -lcurl
-
-libtalermint_la_LDFLAGS = \
-  -version-info 0:0:0 \
-  -no-undefined
 
 check_PROGRAMS = \
   test_mint_api
