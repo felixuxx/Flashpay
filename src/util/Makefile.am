@@ -19,13 +19,3 @@ libtalerutil_la_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS) \
   -version-info 0:0:0 \
   -export-dynamic -no-undefined
-
-check_PROGRAMS = \
-  test-rsa
-
-TESTS = \
-  $(check_PROGRAMS)
-
-test_rsa_SOURCES = test_rsa.c
-test_rsa_LDADD = libtalerutil.la \
-  -lgnunetutil $(LIBGCRYPT_LIBS)

@@ -65,7 +65,7 @@ struct TALER_MINT_DenomPublicKey
   /**
    * The public key
    */
-  struct TALER_RSA_PublicKeyBinaryEncoded key;
+  struct GNUNET_CRYPTO_rsa_PublicKey *key;
 
   /**
    * Timestamp indicating when the denomination key becomes valid
@@ -112,7 +112,7 @@ struct TALER_MINT_DenomPublicKey
  * @return the context
  */
 struct TALER_MINT_Context *
-TALER_MINT_init ();
+TALER_MINT_init (void);
 
 
 /**
