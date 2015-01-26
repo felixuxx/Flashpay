@@ -13,15 +13,13 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
-
 /**
  * @file util/db.c
  * @brief helper functions for DB interactions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Florian Dold
+ * @author Christian Grothoff
  */
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_db_lib.h"
@@ -39,12 +37,11 @@ TALER_DB_exec_prepared (PGconn *db_conn,
   unsigned i;
 
   /* count the number of parameters */
-
   {
     const struct TALER_DB_QueryParam *x;
     for (len = 0, x = params;
          x->more;
-         len +=1, x += 1);
+         len++, x++);
   }
 
   /* new scope to allow stack allocation without alloca */
@@ -61,20 +58,22 @@ TALER_DB_exec_prepared (PGconn *db_conn,
       param_formats[i] = 1;
     }
     return PQexecPrepared (db_conn, name, len,
-                           (const char **) param_values, param_lengths, param_formats, 1);
+                           (const char **) param_values,
+                           param_lengths,
+                           param_formats, 1);
   }
 }
 
 
 /**
  * Extract results from a query result according to the given specification.
- * If colums are NULL, the destination is not modified, and GNUNET_NO
+ * If colums are NULL, the destination is not modified, and #GNUNET_NO
  * is returned.
  *
  * @return
- *   GNUNET_YES if all results could be extracted
- *   GNUNET_NO if at least one result was NULL
- *   GNUNET_SYSERR if a result was invalid (non-existing field)
+ *   #GNUNET_YES if all results could be extracted
+ *   #GNUNET_NO if at least one result was NULL
+ *   #GNUNET_SYSERR if a result was invalid (non-existing field)
  */
 int
 TALER_DB_extract_result (PGresult *result,
@@ -82,35 +81,56 @@ TALER_DB_extract_result (PGresult *result,
                          int row)
 {
   int had_null = GNUNET_NO;
+  size_t len;
+  unsigned int i;
+  unsigned int j;
 
-  for (; NULL != rs->fname; rs += 1)
+  for (i=0; NULL != rs[i].fname; i++)
   {
     int fnum;
-    fnum = PQfnumber (result, rs->fname);
+
+    fnum = PQfnumber (result, rs[i].fname);
     if (fnum < 0)
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "field '%s' does not exist in result\n", rs->fname);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "field '%s' does not exist in result\n",
+                  rs->fname);
       return GNUNET_SYSERR;
     }
 
     /* if a field is null, continue but
      * remember that we now return a different result */
-
     if (PQgetisnull (result, row, fnum))
     {
       had_null = GNUNET_YES;
       continue;
     }
     const char *res;
-    if (rs->dst_size != PQgetlength (result, row, fnum))
+    len = PQgetlength (result, row, fnum);
+    if ( (0 != rs[i].dst_size) &&
+         (rs[i].dst_size != len) )
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "field '%s' has wrong size (got %u, expected %u)\n",
-                  rs->fname, (int) PQgetlength (result, row, fnum), (int) rs->dst_size);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "field '%s' has wrong size (got %d, expected %d)\n",
+                  rs[i].fname,
+                  (int) len,
+                  (int) rs->dst_size);
+      for (j=0;j<i;j++)
+        if (0 == rs[i].dst_size)
+        {
+          GNUNET_free (rs[i].dst);
+          rs[i].dst = NULL;
+          *rs[i].result_size = 0;
+        }
       return GNUNET_SYSERR;
     }
     res = PQgetvalue (result, row, fnum);
     GNUNET_assert (NULL != res);
-    memcpy (rs->dst, res, rs->dst_size);
+    if (0 == rs->dst_size)
+      *(void**) rs->dst = GNUNET_malloc (*rs->result_size = len);
+    memcpy (rs->dst,
+            res,
+            len);
   }
   if (GNUNET_YES == had_null)
     return GNUNET_NO;
@@ -124,6 +144,7 @@ TALER_DB_field_isnull (PGresult *result,
                        const char *fname)
 {
   int fnum;
+
   fnum = PQfnumber (result, fname);
   GNUNET_assert (fnum >= 0);
   if (PQgetisnull (result, row, fnum))

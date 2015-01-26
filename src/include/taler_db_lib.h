@@ -13,13 +13,12 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
-
 /**
  * @file include/taler_db_lib.h
  * @brief helper functions for DB interactions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Florian Dold
+ * @author Christian Grothoff
  */
 
 #ifndef TALER_DB_LIB_H_
@@ -27,16 +26,6 @@
 
 #include <libpq-fe.h>
 #include "taler_util.h"
-
-#define TALER_DB_QUERY_PARAM_END { NULL, 0, 0 }
-#define TALER_DB_QUERY_PARAM_PTR(x) { (x), sizeof (*(x)), 1 }
-#define TALER_DB_QUERY_PARAM_PTR_SIZED(x, s) { (x), (s), 1 }
-
-
-#define TALER_DB_RESULT_SPEC_END { NULL, 0, NULL }
-#define TALER_DB_RESULT_SPEC(name, dst) { (void *) (dst), sizeof (*(dst)), (name) }
-#define TALER_DB_RESULT_SPEC_SIZED(name, dst, s) { (void *) (dst), (s), (name) }
-
 
 /**
  * Description of a DB query parameter.
@@ -47,16 +36,39 @@ struct TALER_DB_QueryParam
    * Data or NULL
    */
   const void *data;
+
   /**
-   * Size of 'data'
+   * Size of @e data
    */
   size_t size;
+
   /**
    * Non-null if this is not the last parameter.
    * This allows for null as sentinal value.
    */
   int more;
 };
+
+/**
+ * End of query parameter specification.
+ */
+#define TALER_DB_QUERY_PARAM_END { NULL, 0, 0 }
+
+/**
+ * Generate fixed-size query parameter with size given explicitly.
+ *
+ * @param x pointer to the query parameter to pass
+ * @param s number of bytes of @a x to use for the query
+ */
+#define TALER_DB_QUERY_PARAM_PTR_SIZED(x, s) { (x), (s), 1 }
+
+/**
+ * Generate fixed-size query parameter with size determined
+ * by variable type.
+ *
+ * @param x pointer to the query parameter to pass.
+ */
+#define TALER_DB_QUERY_PARAM_PTR(x) TALER_DB_QUERY_PARAM_PTR_SIZED(x, sizeof (*(x)))
 
 
 /**
@@ -70,7 +82,9 @@ struct TALER_DB_ResultSpec
   void *dst;
 
   /**
-   * Allowed size for the data.
+   * Allowed size for the data, 0 for variable-size
+   * (in this case, the type of @e dst is a `void **`
+   * and we need to allocate a buffer of the right size).
    */
   size_t dst_size;
 
@@ -78,7 +92,45 @@ struct TALER_DB_ResultSpec
    * Field name of the desired result.
    */
   char *fname;
+
+  /**
+   * Actual size of the result.
+   */
+  size_t *result_size;
+
 };
+
+
+/**
+ * End of result parameter specification.
+ */
+#define TALER_DB_RESULT_SPEC_END { NULL, 0, NULL, NULL }
+
+/**
+ * We expect a fixed-size result, with size given explicitly
+ *
+ * @param name name of the field in the table
+ * @param dst point to where to store the result
+ * @param s number of bytes we should use in @a dst
+ */
+#define TALER_DB_RESULT_SPEC_SIZED(name, dst, s) { (void *) (dst), (s), (name), NULL }
+
+/**
+ * We expect a fixed-size result, with size determined by the type of `* dst`
+ *
+ * @param name name of the field in the table
+ * @param dst point to where to store the result, type fits expected result size
+ */
+#define TALER_DB_RESULT_SPEC(name, dst) TALER_DB_RESULT_SPEC_SIZED(name, dst, sizeof (*(dst)))
+
+/**
+ * Variable-size result expected.
+ *
+ * @param name name of the field in the table
+ * @param dst where to store the result (of type void **), to be allocated
+ * @param sptr pointer to a `size_t` for where to store the size of @a dst
+ */
+#define TALER_DB_RESULT_SPEC_VAR(name, dst, sptr) { (void *) (dst), 0, (name), sptr }
 
 
 /**
@@ -96,12 +148,14 @@ TALER_DB_exec_prepared (PGconn *db_conn,
  * is returned.
  *
  * @return
- *   GNUNET_YES if all results could be extracted
- *   GNUNET_NO if at least one result was NULL
- *   GNUNET_SYSERR if a result was invalid (non-existing field)
+ *   #GNUNET_YES if all results could be extracted
+ *   #GNUNET_NO if at least one result was NULL
+ *   #GNUNET_SYSERR if a result was invalid (non-existing field)
  */
 int
-TALER_DB_extract_result (PGresult *result, struct TALER_DB_ResultSpec *rs, int row);
+TALER_DB_extract_result (PGresult *result,
+                         struct TALER_DB_ResultSpec *rs,
+                         int row);
 
 
 int
