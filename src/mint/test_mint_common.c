@@ -13,16 +13,17 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file mint/test_mint_common.c
  * @brief test cases for some functions in mint/mint_common.c
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
-
 #include "platform.h"
 #include "gnunet/gnunet_util_lib.h"
 #include "mint.h"
+
+#define RSA_KEY_SIZE 1024
+
 
 #define EXITIF(cond)                                              \
   do {                                                            \
@@ -52,13 +53,13 @@ main (int argc, const char *const argv[])
                               &dki.issue.signature,
                               sizeof (dki) - offsetof (struct TALER_MINT_DenomKeyIssue,
                                                        signature));
-  dki.denom_priv = GNUNET_CRYPTO_rsa_private_key_create ();
+  dki.denom_priv = GNUNET_CRYPTO_rsa_private_key_create (RSA_KEY_SIZE);
   enc_size = GNUNET_CRYPTO_rsa_private_key_encode (dki.denom_priv, &enc);
   EXITIF (NULL == (tmpfile = GNUNET_DISK_mktemp ("test_mint_common")));
   EXITIF (GNUNET_OK != TALER_MINT_write_denom_key (tmpfile, &dki));
   EXITIF (GNUNET_OK != TALER_MINT_read_denom_key (tmpfile, &dki_read));
-  enc_read_size = GNUNET_CRYPTO_rsa_privae_key_encode (dki_read.denom_priv,
-                                                       &enc_read);
+  enc_read_size = GNUNET_CRYPTO_rsa_private_key_encode (dki_read.denom_priv,
+                                                        &enc_read);
   EXITIF (enc_size != enc_read_size);
   EXITIF (0 != memcmp (enc,
                        enc_read,
@@ -76,6 +77,6 @@ main (int argc, const char *const argv[])
   if (NULL != dki.denom_priv)
     GNUNET_CRYPTO_rsa_private_key_free (dki.denom_priv);
   if (NULL != dki_read.denom_priv)
-    GNUNET_CRYPOT_rsa_private_key_free (dki_read.denom_priv);
+    GNUNET_CRYPTO_rsa_private_key_free (dki_read.denom_priv);
   return ret;
 }

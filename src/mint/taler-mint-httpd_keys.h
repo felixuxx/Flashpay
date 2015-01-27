@@ -25,6 +25,7 @@
 
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
+#include <jansson.h>
 #include "taler-mint-httpd.h"
 #include "mint.h"
 
