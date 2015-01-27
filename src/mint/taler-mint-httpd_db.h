@@ -93,7 +93,7 @@ int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
                                     unsigned int num_new_denoms,
-                                    const struct GNUNET_CRYPTO_rsa_PublicKey **denom_pubs,
+                                    struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs,
                                     unsigned int coin_count,
                                     const struct TALER_CoinPublicInfo *coin_public_infos);
 

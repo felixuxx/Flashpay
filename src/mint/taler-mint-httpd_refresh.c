@@ -251,7 +251,7 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   json_t *new_denoms;
   unsigned int num_new_denoms;
   unsigned int i;
-  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pubs;
+  struct GNUNET_CRYPTO_rsa_PublicKey **denom_pubs;
   json_t *melt_coins;
   struct TALER_CoinPublicInfo *coin_public_infos;
   unsigned int coin_count;
@@ -541,7 +541,7 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
                                     sizeof (struct RefreshCommitCoin));
     for (j = 0; j < num_newcoins; j++)
     {
-      char *link_end;
+      char *link_enc;
       size_t link_enc_size;
 
       res = GNUNET_MINT_parse_navigate_json (connection, root,
@@ -583,8 +583,8 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
 
 
       GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       commit_coin[i][j].link_enc,
-                                       TALER_REFRESH_LINK_LENGTH);
+                                       link_enc,
+                                       link_enc_size);
     }
   }
 
@@ -620,7 +620,7 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
                                              JNAV_INDEX, (int) i,
                                              JNAV_INDEX, (int) j,
                                              JNAV_RET_DATA,
-                                             &commit_link[i][j].shared_secret,
+                                             &commit_link[i][j].shared_secret_enc,
                                              sizeof (struct GNUNET_HashCode));
 
       if (GNUNET_OK != res)
@@ -631,7 +631,7 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
       }
 
       GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       &commit_link[i][j].shared_secret,
+                                       &commit_link[i][j].shared_secret_enc,
                                        sizeof (struct GNUNET_HashCode));
     }
   }
