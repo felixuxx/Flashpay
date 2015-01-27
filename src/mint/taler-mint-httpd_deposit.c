@@ -157,9 +157,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
     if (GNUNET_NO == res)
       return MHD_YES; /* failure */
 
-    deposit->purpose.purpose = htonl (purpose);
-    deposit->purpose.size = htonl (sizeof (struct Deposit)
-                                   - offsetof (struct Deposit, purpose));
+    // deposit->purpose = htonl (purpose); // FIXME...
     res = verify_and_execute_deposit (connection,
                                       deposit);
     TALER_MINT_release_parsed_data (spec);

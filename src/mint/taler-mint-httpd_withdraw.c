@@ -98,7 +98,7 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
   size_t denomination_pub_data_size;
   char *blinded_msg;
   size_t blinded_msg_len;
-  const struct GNUNET_CRYPTO_EddsaSignature signature;
+  struct GNUNET_CRYPTO_EddsaSignature signature;
 
   res = TALER_MINT_mhd_request_arg_data (connection,
                                          "reserve_pub",
@@ -112,7 +112,7 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
   /* FIXME: handle variable-size signing keys! */
   res = TALER_MINT_mhd_request_var_arg_data (connection,
                                              "denom_pub",
-                                             &denomination_pub_data,
+                                             (void **) &denomination_pub_data,
                                              &denomination_pub_data_size);
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
@@ -120,7 +120,7 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
     return MHD_YES; /* invalid request */
   res = TALER_MINT_mhd_request_var_arg_data (connection,
                                              "coin_ev",
-                                             &blinded_msg,
+                                             (void **) &blinded_msg,
                                              &blinded_msg_len);
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
@@ -137,7 +137,7 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
 
   /* verify signature! */
   wsrd.purpose.size = htonl (sizeof (struct TALER_WithdrawRequest));
-  wsrd.purpose.type = htonl (TALER_SIGNATURE_WITHDRAW);
+  wsrd.purpose.purpose = htonl (TALER_SIGNATURE_WITHDRAW);
   GNUNET_CRYPTO_hash (denomination_pub_data,
                       denomination_pub_data_size,
                       &wsrd.h_denomination_pub);

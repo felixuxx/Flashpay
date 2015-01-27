@@ -357,7 +357,7 @@ TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
   size_t buf_len;
 
   buf_len = GNUNET_CRYPTO_rsa_public_key_encode (denom_pub,
-                                                 *buf);
+                                                 &buf);
   GNUNET_CRYPTO_hash (buf,
                       buf_len,
                       &hash);
@@ -382,10 +382,15 @@ TALER_MINT_test_coin_valid (const struct MintKeyState *key_state,
                             struct TALER_CoinPublicInfo *coin_public_info)
 {
   struct TALER_MINT_DenomKeyIssuePriv *dki;
+  struct GNUNET_HashCode c_hash;
 
-  dki = TALER_MINT_get_denom_key (key_state, &coin_public_info->denom_pub);
+  dki = TALER_MINT_get_denom_key (key_state, coin_public_info->denom_pub);
   if (NULL == dki)
     return GNUNET_NO;
+  /* FIXME: we had envisioned a more complex scheme... */
+  GNUNET_CRYPTO_hash (&coin_public_info->coin_pub,
+                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
+                      &c_hash);
   if (GNUNET_OK !=
       GNUNET_CRYPTO_rsa_verify (&c_hash,
                                 coin_public_info->denom_sig,
