@@ -821,11 +821,10 @@ helper_refresh_reveal_send_response (struct MHD_Connection *connection,
                         sizeof (struct GNUNET_CRYPTO_rsa_Signature *));
   for (newcoin_index = 0; newcoin_index < refresh_session->num_newcoins; newcoin_index++)
   {
-    res = TALER_MINT_DB_get_refresh_collectable (db_conn,
-                                                 newcoin_index,
-                                                 refresh_session_pub,
-                                                 &sigs[newcoin_index]);
-    if (GNUNET_OK != res)
+    sigs[newcoin_index] = TALER_MINT_DB_get_refresh_collectable (db_conn,
+                                                                 newcoin_index,
+                                                                 refresh_session_pub);
+    if (NULL == sigs[newcoin_index])
     {
       // FIXME: return 'internal error'
       GNUNET_break (0);
@@ -1014,8 +1013,8 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
                         // FIXME: return error code!
         return MHD_NO;
       }
-      res = TALER_MINT_DB_get_refresh_order (db_conn, j, refresh_session_pub, &denom_pub);
-      if (GNUNET_OK != res)
+      denom_pub = TALER_MINT_DB_get_refresh_order (db_conn, j, refresh_session_pub);
+      if (NULL == denom_pub)
       {
         GNUNET_break (0);
           // FIXME: return error code!

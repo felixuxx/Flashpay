@@ -34,6 +34,7 @@
 #include "platform.h"
 #include "taler-mint-httpd_responses.h"
 #include "taler_json_lib.h"
+#include <gnunet/gnunet_util_lib.h>
 
 
 /**
@@ -393,7 +394,7 @@ TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
 int
 TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
                                          unsigned int num_newcoins,
-                                         const struct GNUNET_CRYPTO_rsa_Signature *sigs)
+                                         const struct GNUNET_CRYPTO_rsa_Signature **sigs)
 {
   int newcoin_index;
   json_t *root;
@@ -406,7 +407,7 @@ TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
   json_object_set_new (root, "ev_sigs", list);
   for (newcoin_index = 0; newcoin_index < num_newcoins; newcoin_index++)
   {
-    buf_size = GNUNET_CRYPTO_rsa_signature_encode (&sigs[newcoin_index],
+    buf_size = GNUNET_CRYPTO_rsa_signature_encode (sigs[newcoin_index],
                                                    &buf);
     json_array_append_new (list,
                            TALER_JSON_from_data (buf,

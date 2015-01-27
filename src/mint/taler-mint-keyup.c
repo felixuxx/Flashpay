@@ -28,6 +28,11 @@
 #include "taler_signatures.h"
 #include "mint.h"
 
+/**
+ * FIXME: allow user to specify (within reason).
+ */
+#define RSA_KEYSIZE 2048
+
 #define HASH_CUTOFF 20
 
 /**
@@ -434,8 +439,8 @@ static void
 create_denomkey_issue (struct CoinTypeParams *params,
                        struct TALER_MINT_DenomKeyIssuePriv *dki)
 {
-  GNUNET_assert (NULL != (dki->denom_priv = GNUNET_CRYPTO_rsa_private_key_create ()));
-  dki->issue.denom_pub = GNUNET_CRYPTO_rsa_private_key_get_get_public (dki->denom_priv);
+  GNUNET_assert (NULL != (dki->denom_priv = GNUNET_CRYPTO_rsa_private_key_create (RSA_KEYSIZE)));
+  dki->issue.denom_pub = GNUNET_CRYPTO_rsa_private_key_get_public (dki->denom_priv);
   dki->issue.master = *master_pub;
   dki->issue.start = GNUNET_TIME_absolute_hton (params->anchor);
   dki->issue.expire_withdraw =

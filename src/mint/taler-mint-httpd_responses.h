@@ -209,7 +209,7 @@ TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
 int
 TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
                                          unsigned int num_newcoins,
-                                         const struct GNUNET_CRYPTO_rsa_Signature *sigs);
+                                         const struct GNUNET_CRYPTO_rsa_Signature **sigs);
 
 
 
