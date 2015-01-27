@@ -102,7 +102,7 @@ derive_refresh_key (const struct TALER_LinkSecret *secret,
  * @param[out] skey set to session key
  */
 static void
-derive_transfer_key (const struct GNUNET_HashCode *secret,
+derive_transfer_key (const struct TALER_TransferSecret *secret,
                      struct GNUNET_CRYPTO_SymmetricInitializationVector *iv,
                      struct GNUNET_CRYPTO_SymmetricSessionKey *skey)
 {
@@ -112,12 +112,12 @@ derive_transfer_key (const struct GNUNET_HashCode *secret,
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (skey, sizeof (struct GNUNET_CRYPTO_SymmetricSessionKey),
                                     ctx_key, strlen (ctx_key),
-                                    secret, sizeof (struct GNUNET_HashCode),
+                                    secret, sizeof (struct TALER_TransferSecret),
                                     NULL, 0));
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (iv, sizeof (struct GNUNET_CRYPTO_SymmetricInitializationVector),
                                     ctx_iv, strlen (ctx_iv),
-                                    secret, sizeof (struct GNUNET_HashCode),
+                                    secret, sizeof (struct TALER_TransferSecret),
                                     NULL, 0));
 }
 
@@ -127,13 +127,13 @@ derive_transfer_key (const struct GNUNET_HashCode *secret,
  * to obtain the @a secret to decrypt the linkage data.
  *
  * @param secret_enc encrypted secret
- * @param trans_sec transfer secret (FIXME: use different type?)
+ * @param trans_sec transfer secret
  * @param secret shared secret for refresh link decryption
  * @return #GNUNET_OK on success
  */
 int
 TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecret *secret_enc,
-                        const struct GNUNET_HashCode *trans_sec,
+                        const struct TALER_TransferSecret *trans_sec,
                         struct TALER_LinkSecret *secret)
 {
   struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
@@ -155,13 +155,13 @@ TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecret *secret_enc,
  * to obtain the @a secret_enc.
  *
  * @param secret shared secret for refresh link decryption
- * @param trans_sec transfer secret (FIXME: use different type?)
+ * @param trans_sec transfer secret
  * @param secret_enc[out] encrypted secret
  * @return #GNUNET_OK on success
  */
 int
 TALER_transfer_encrypt (const struct TALER_LinkSecret *secret,
-                        const struct GNUNET_HashCode *trans_sec,
+                        const struct TALER_TransferSecret *trans_sec,
                         struct TALER_EncryptedLinkSecret *secret_enc)
 {
   struct GNUNET_CRYPTO_SymmetricInitializationVector iv;

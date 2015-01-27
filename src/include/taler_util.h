@@ -241,6 +241,20 @@ TALER_data_to_string_alloc (const void *buf,
 /* ****************** Refresh crypto primitives ************* */
 
 /**
+ * Secret used to decrypt the key to decrypt link secrets.
+ */
+struct TALER_TransferSecret
+{
+  /**
+   * Secret used to encrypt/decrypt the `struct TALER_LinkSecret`.
+   * Must be (currently) a hash as this is what
+   * #GNUNET_CRYPTO_ecc_ecdh() returns to us.
+   */
+  struct GNUNET_HashCode key;
+};
+
+
+/**
  * Secret used to decrypt refresh links.
  */
 struct TALER_LinkSecret
@@ -312,15 +326,14 @@ struct TALER_RefreshLinkDecrypted
  * Use the @a trans_sec (from ECDHE) to decrypt the @a secret_enc
  * to obtain the @a secret to decrypt the linkage data.
  *
- * @param secret_enc encrypted secret (FIXME: use different type!)
- * @param trans_sec transfer secret (FIXME: use different type?)
+ * @param secret_enc encrypted secret
+ * @param trans_sec transfer secret
  * @param secret shared secret for refresh link decryption
- *               (FIXME: use different type?)
  * @return #GNUNET_OK on success
  */
 int
 TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecret *secret_enc,
-                        const struct GNUNET_HashCode *trans_sec,
+                        const struct TALER_TransferSecret *trans_sec,
                         struct TALER_LinkSecret *secret);
 
 
@@ -329,13 +342,13 @@ TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecret *secret_enc,
  * to obtain the @a secret_enc.
  *
  * @param secret shared secret for refresh link decryption
- * @param trans_sec transfer secret (FIXME: use different type?)
+ * @param trans_sec transfer secret
  * @param secret_enc[out] encrypted secret
  * @return #GNUNET_OK on success
  */
 int
 TALER_transfer_encrypt (const struct TALER_LinkSecret *secret,
-                        const struct GNUNET_HashCode *trans_sec,
+                        const struct TALER_TransferSecret *trans_sec,
                         struct TALER_EncryptedLinkSecret *secret_enc);
 
 

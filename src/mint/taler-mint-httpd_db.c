@@ -918,7 +918,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     {
       struct RefreshCommitLink commit_link;
       struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
-      struct GNUNET_HashCode transfer_secret;
+      struct TALER_TransferSecret transfer_secret;
       struct TALER_LinkSecret shared_secret;
 
       res = TALER_MINT_DB_get_refresh_commit_link (db_conn,
@@ -946,7 +946,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
       if (GNUNET_OK !=
           GNUNET_CRYPTO_ecc_ecdh ((const struct GNUNET_CRYPTO_EcdhePrivateKey *) &transfer_privs[i+off][j],
                                   (const struct GNUNET_CRYPTO_EcdhePublicKey *) &coin_pub,
-                                  &transfer_secret))
+                                  &transfer_secret.key))
       {
         GNUNET_break (0);
         // FIXME: return 'internal error'?
