@@ -123,7 +123,7 @@ TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
  */
 int
 TALER_MINT_test_coin_valid (const struct MintKeyState *key_state,
-                            struct TALER_CoinPublicInfo *coin_public_info);
+                            const struct TALER_CoinPublicInfo *coin_public_info);
 
 
 /**

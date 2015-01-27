@@ -40,14 +40,14 @@
  * @param upload_data the POST data
  * @param upload_data_size number of bytes in @a upload_data
  * @param json the JSON object for a completed request
- * @returns
- *    GNUNET_YES if json object was parsed or at least
+ * @return
+ *    #GNUNET_YES if json object was parsed or at least
  *               may be parsed in the future (call again);
  *               `*json` will be NULL if we need to be called again,
  *                and non-NULL if we are done.
- *    GNUNET_NO is request incomplete or invalid
+ *    #GNUNET_NO is request incomplete or invalid
  *               (error message was generated)
- *    GNUNET_SYSERR on internal error
+ *    #GNUNET_SYSERR on internal error
  *               (we could not even queue an error message,
  *                close HTTP session with MHD_NO)
  */

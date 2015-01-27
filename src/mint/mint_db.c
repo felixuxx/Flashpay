@@ -1840,17 +1840,21 @@ TALER_MINT_DB_insert_deposit (PGconn *db_conn,
                               const struct Deposit *deposit)
 {
   struct TALER_DB_QueryParam params[]= {
-    TALER_DB_QUERY_PARAM_PTR (&deposit->coin_pub),
-    TALER_DB_QUERY_PARAM_PTR (&deposit->denom_pub),
+    TALER_DB_QUERY_PARAM_PTR (&deposit->coin.coin_pub),
+    TALER_DB_QUERY_PARAM_PTR (&deposit->coin.denom_pub), // FIXME!
+    TALER_DB_QUERY_PARAM_PTR (&deposit->coin.denom_sig), // FIXME!
     TALER_DB_QUERY_PARAM_PTR (&deposit->transaction_id),
+    TALER_DB_QUERY_PARAM_PTR (&deposit->purpose), // FIXME: enum Ok here?
     TALER_DB_QUERY_PARAM_PTR (&deposit->amount.value),
     TALER_DB_QUERY_PARAM_PTR (&deposit->amount.fraction),
-    TALER_DB_QUERY_PARAM_PTR_SIZED (deposit->amount.currency, strlen (deposit->amount.currency)),
+    TALER_DB_QUERY_PARAM_PTR_SIZED (deposit->amount.currency,
+                                    strlen (deposit->amount.currency)),
     TALER_DB_QUERY_PARAM_PTR (&deposit->merchant_pub),
     TALER_DB_QUERY_PARAM_PTR (&deposit->h_contract),
     TALER_DB_QUERY_PARAM_PTR (&deposit->h_wire),
-    TALER_DB_QUERY_PARAM_PTR (&deposit->coin_sig),
-    TALER_DB_QUERY_PARAM_PTR_SIZED (deposit->wire, strlen(deposit->wire)),
+    TALER_DB_QUERY_PARAM_PTR (&deposit->csig),
+    TALER_DB_QUERY_PARAM_PTR_SIZED (deposit->wire,
+                                    strlen ("FIXME")), // FIXME! json!
     TALER_DB_QUERY_PARAM_END
   };
   PGresult *result;
@@ -1869,18 +1873,19 @@ TALER_MINT_DB_insert_deposit (PGconn *db_conn,
 
 int
 TALER_MINT_DB_get_deposit (PGconn *db_conn,
-                           const struct GNUNET_CRYPTO_EddsaPublicKey *coin_pub,
-                           struct Deposit **r_deposit)
+                           const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
+                           struct Deposit *deposit)
 {
   struct TALER_DB_QueryParam params[] = {
     TALER_DB_QUERY_PARAM_PTR (coin_pub),
     TALER_DB_QUERY_PARAM_END
   };
   PGresult *result;
-  struct Deposit *deposit;
 
-  deposit = NULL;
-  result = TALER_DB_exec_prepared (db_conn, "get_deposit", params);
+  memset (deposit, 0, sizeof (struct Deposit));
+  result = TALER_DB_exec_prepared (db_conn,
+                                   "get_deposit",
+                                   params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
     break_db_err (result);
@@ -1900,19 +1905,21 @@ TALER_MINT_DB_get_deposit (PGconn *db_conn,
   }
 
   {
-    deposit = GNUNET_malloc (sizeof (struct Deposit)); /* Without wire data */
-    char *sig_buf;
-    size_t sig_buf_size;
+    char *denom_sig_buf;
+    size_t denom_sig_buf_size;
     char *dk_buf;
     size_t dk_buf_size;
+
     struct TALER_DB_ResultSpec rs[] = {
-      TALER_DB_RESULT_SPEC ("coin_pub", &deposit->coin_pub),
+      TALER_DB_RESULT_SPEC ("coin_pub", &deposit->coin.coin_pub),
       TALER_DB_RESULT_SPEC_VAR ("denom_pub", &dk_buf, &dk_buf_size),
-      TALER_DB_RESULT_SPEC_VAR ("coin_sig", &sig_buf, &sig_buf_size),
+      TALER_DB_RESULT_SPEC_VAR ("denom_sig", &denom_sig_buf, &denom_sig_buf_size),
       TALER_DB_RESULT_SPEC ("transaction_id", &deposit->transaction_id),
       TALER_DB_RESULT_SPEC ("merchant_pub", &deposit->merchant_pub),
       TALER_DB_RESULT_SPEC ("h_contract", &deposit->h_contract),
       TALER_DB_RESULT_SPEC ("h_wire", &deposit->h_wire),
+      TALER_DB_RESULT_SPEC ("purpose", &deposit->purpose),
+      // FIXME: many fields missing...
       TALER_DB_RESULT_SPEC_END
     };
     EXITIF (GNUNET_OK !=
@@ -1923,15 +1930,15 @@ TALER_MINT_DB_get_deposit (PGconn *db_conn,
                                          "amount_fraction",
                                          "amount_currency",
                                          &deposit->amount));
-    deposit->coin_sig = GNUNET_CRYPTO_rsa_signature_decode (sig_buf,
-                                                            sig_buf_size);
-    deposit->denom_pub = GNUNET_CRYPTO_rsa_public_key_decode (dk_buf,
-                                                              dk_buf_size);
-    // deposit->purpose = htonl (TALER_SIGNATURE_DEPOSIT); // FIXME: struct Deposit not nice
+    deposit->coin.denom_sig
+      = GNUNET_CRYPTO_rsa_signature_decode (denom_sig_buf,
+                                            denom_sig_buf_size);
+    deposit->coin.denom_pub
+      = GNUNET_CRYPTO_rsa_public_key_decode (dk_buf,
+                                             dk_buf_size);
   }
 
   PQclear (result);
-  *r_deposit = deposit;
   return GNUNET_OK;
 
 EXITIF_exit:

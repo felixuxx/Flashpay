@@ -54,7 +54,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                                const struct Deposit *deposit)
 {
   PGconn *db_conn;
-  struct Deposit *existing_deposit;
+  struct Deposit existing_deposit;
   int res;
 
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
@@ -63,13 +63,15 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
     return TALER_MINT_reply_internal_db_error (connection);
   }
   res = TALER_MINT_DB_get_deposit (db_conn,
-                                   &deposit->coin_pub,
+                                   &deposit->coin.coin_pub,
                                    &existing_deposit);
   if (GNUNET_YES == res)
   {
     // FIXME: memory leak
     // FIXME: memcmp will not actually work here
-    if (0 == memcmp (existing_deposit, deposit, sizeof (struct Deposit)))
+    if (0 == memcmp (&existing_deposit,
+                     deposit,
+                     sizeof (struct Deposit)))
       return TALER_MINT_reply_deposit_success (connection, deposit);
     // FIXME: in the future, check if there's enough credits
     // left on the coin. For now: refuse
@@ -93,7 +95,9 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
     int res;
     struct TALER_CoinPublicInfo coin_info;
 
-    res = TALER_MINT_DB_get_known_coin (db_conn, &coin_info.coin_pub, &known_coin);
+    res = TALER_MINT_DB_get_known_coin (db_conn,
+                                        &coin_info.coin_pub,
+                                        &known_coin);
     if (GNUNET_YES == res)
     {
       // coin must have been refreshed

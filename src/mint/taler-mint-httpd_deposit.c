@@ -59,26 +59,6 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
                             const struct Deposit *deposit)
 {
   struct MintKeyState *key_state;
-  struct TALER_CoinPublicInfo coin_info;
-
-  memcpy (&coin_info.coin_pub,
-          &deposit->coin_pub,
-          sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey));
-  coin_info.denom_pub = deposit->denom_pub;
-  coin_info.denom_sig = deposit->ubsig;
-
-  key_state = TALER_MINT_key_state_acquire ();
-  if (GNUNET_YES !=
-      TALER_MINT_test_coin_valid (key_state,
-                                  &coin_info))
-  {
-    TALER_MINT_key_state_release (key_state);
-    return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       "{s:s}",
-                                       "error", "Coin is not valid");
-  }
-  TALER_MINT_key_state_release (key_state);
 
   /* FIXME: verify coin signature! */
   /*
@@ -88,10 +68,24 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
                                                       &deposit->coin_pub))
   {
     resp = json_pack ("{s:s}", "error", "Signature verfication failed");
-    resp_code = MHD_HTTP_NOT_FOUND;
-    goto EXITIF_exit;
+    return TALER_MINT_reply_arg_invalid (connection,
+                                         "csig");
   }
   */
+
+  key_state = TALER_MINT_key_state_acquire ();
+  if (GNUNET_YES !=
+      TALER_MINT_test_coin_valid (key_state,
+                                  &deposit->coin))
+  {
+    LOG_WARNING ("Invalid coin passed for /deposit\n");
+    TALER_MINT_key_state_release (key_state);
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       "{s:s}",
+                                       "error", "Coin is not valid");
+  }
+  TALER_MINT_key_state_release (key_state);
 
   return TALER_MINT_db_execute_deposit (connection,
                                         deposit);
@@ -101,12 +95,12 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
 /**
  * Handle a "/deposit" request.  This function parses the
  * JSON information and then calls #verify_and_execute_deposit()
- * to verify the data and execute the deposit.
+ * to verify the signatures and execute the deposit.
  *
  * @param connection the MHD connection to handle
  * @param root root of the posted JSON
  * @param purpose is this a #TALER_SIGNATURE_DEPOSIT or
- *           #TALER_SIGNATURE_INCREMENTAL_DEPOSIT
+ *           #TALER_SIGNATURE_INCREMENTAL_DEPOSIT // FIXME: bad type, use enum!
  * @param wire json describing the wire details (?)
  * @return MHD result code
   */
@@ -116,61 +110,88 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
                                   uint32_t purpose,
                                   const json_t *wire)
 {
-  struct Deposit *deposit;
+  int res;
+  struct Deposit deposit;
   char *wire_enc;
   size_t len;
-  int res;
+  struct GNUNET_MINT_ParseFieldSpec spec[] = {
+    TALER_MINT_PARSE_VARIABLE ("denom_pub"),
+    TALER_MINT_PARSE_VARIABLE ("ubsig"),
+    TALER_MINT_PARSE_FIXED ("coin_pub", &deposit.coin.coin_pub),
+    TALER_MINT_PARSE_FIXED ("merchant_pub", &deposit.merchant_pub),
+    TALER_MINT_PARSE_FIXED ("H_a", &deposit.h_contract),
+    TALER_MINT_PARSE_FIXED ("H_wire", &deposit.h_wire),
+    TALER_MINT_PARSE_FIXED ("csig",  &deposit.csig),
+    TALER_MINT_PARSE_FIXED ("transaction_id", &deposit.transaction_id),
+    TALER_MINT_PARSE_END
+  };
 
-  // FIXME: `struct Deposit` is clearly ill-defined, we should
-  // not have to do this...
+  memset (&deposit, 0, sizeof (deposit));
+  res = TALER_MINT_parse_json_data (connection,
+                                    root,
+                                    spec);
+  if (GNUNET_SYSERR == res)
+    return MHD_NO; /* hard failure */
+  if (GNUNET_NO == res)
+    return MHD_YES; /* failure */
+  deposit.coin.denom_pub
+    = GNUNET_CRYPTO_rsa_public_key_decode (spec[0].destination,
+                                           spec[0].destination_size_out);
+  if (NULL == deposit.coin.denom_pub)
+  {
+    LOG_WARNING ("Failed to parse denomination key for /deposit request\n");
+    TALER_MINT_release_parsed_data (spec);
+    return TALER_MINT_reply_arg_invalid (connection,
+                                         "denom_pub");
+  }
+  deposit.coin.denom_sig
+    = GNUNET_CRYPTO_rsa_signature_decode (spec[1].destination,
+                                          spec[1].destination_size_out);
+  if (NULL == deposit.coin.denom_sig)
+  {
+    LOG_WARNING ("Failed to parse unblinded signature for /deposit request\n");
+    GNUNET_CRYPTO_rsa_public_key_free (deposit.coin.denom_pub);
+    TALER_MINT_release_parsed_data (spec);
+    return TALER_MINT_reply_arg_invalid (connection,
+                                         "denom_pub");
+  }
   if (NULL == (wire_enc = json_dumps (wire, JSON_COMPACT | JSON_SORT_KEYS)))
   {
-    GNUNET_break_op (0);
-    return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       "{s:s}",
-                                       "error", "Bad format");
-
+    GNUNET_CRYPTO_rsa_public_key_free (deposit.coin.denom_pub);
+    GNUNET_CRYPTO_rsa_signature_free (deposit.coin.denom_sig);
+    LOG_WARNING ("Failed to parse JSON wire format specification for /deposit request\n");
+    TALER_MINT_release_parsed_data (spec);
+    return TALER_MINT_reply_arg_invalid (connection,
+                                         "wire");
   }
   len = strlen (wire_enc) + 1;
+  GNUNET_CRYPTO_hash (wire_enc,
+                      len,
+                      &deposit.h_wire);
   GNUNET_free (wire_enc);
 
-  deposit = GNUNET_malloc (sizeof (struct Deposit) + len);
-  {
-    struct GNUNET_MINT_ParseFieldSpec spec[] =
-      {
-        TALER_MINT_PARSE_FIXED ("coin_pub", &deposit->coin_pub),
-        TALER_MINT_PARSE_FIXED ("denom_pub", &deposit->denom_pub),
-        TALER_MINT_PARSE_FIXED ("ubsig", &deposit->ubsig),
-        TALER_MINT_PARSE_FIXED ("merchant_pub", &deposit->merchant_pub),
-        TALER_MINT_PARSE_FIXED ("H_a", &deposit->h_contract),
-        TALER_MINT_PARSE_FIXED ("H_wire", &deposit->h_wire),
-        TALER_MINT_PARSE_FIXED ("csig", &deposit->coin_sig),
-        TALER_MINT_PARSE_FIXED ("transaction_id", &deposit->transaction_id),
-        TALER_MINT_PARSE_END
-      };
-    res = TALER_MINT_parse_json_data (connection,
-                                      wire, /* FIXME: wire or root here? */
-                                      spec);
-    if (GNUNET_SYSERR == res)
-      return MHD_NO; /* hard failure */
-    if (GNUNET_NO == res)
-      return MHD_YES; /* failure */
+  deposit.wire = wire;
+  deposit.purpose = purpose;
 
-    // deposit->purpose = htonl (purpose); // FIXME...
-    res = verify_and_execute_deposit (connection,
-                                      deposit);
-    TALER_MINT_release_parsed_data (spec);
-  }
-  GNUNET_free (deposit);
+  // FIXME: deposit.amount not initialized!
+
+  res = verify_and_execute_deposit (connection,
+                                    &deposit);
+  GNUNET_CRYPTO_rsa_public_key_free (deposit.coin.denom_pub);
+  GNUNET_CRYPTO_rsa_signature_free (deposit.coin.denom_sig);
+  TALER_MINT_release_parsed_data (spec);
   return res;
 }
 
 
 /**
- * Handle a "/deposit" request.  Parses the JSON in the post and, if
+ * Handle a "/deposit" request.  Parses the JSON in the post to find
+ * the "type" (either DIRECT_DEPOSIT or INCREMENTAL_DEPOSIT), and, if
  * successful, passes the JSON data to
- * #parse_and_handle_deposit_request().
+ * #parse_and_handle_deposit_request() to further check the details
+ * of the operation specified in the "wire" field of the JSON data.
+ * If everything checks out, this will ultimately lead to the
+ * "/deposit" being executed, or rejected.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle

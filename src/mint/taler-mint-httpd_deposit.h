@@ -29,7 +29,13 @@
 
 
 /**
- * Handle a "/deposit" request
+ * Handle a "/deposit" request.  Parses the JSON in the post to find
+ * the "type" (either DIRECT_DEPOSIT or INCREMENTAL_DEPOSIT), and, if
+ * successful, passes the JSON data to
+ * #parse_and_handle_deposit_request() to further check the details
+ * of the operation specified in the "wire" field of the JSON data.
+ * If everything checks out, this will ultimately lead to the
+ * "/deposit" being executed, or rejected.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle

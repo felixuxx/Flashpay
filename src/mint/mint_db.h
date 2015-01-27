@@ -258,8 +258,8 @@ TALER_MINT_DB_insert_deposit (PGconn *db_conn,
 
 int
 TALER_MINT_DB_get_deposit (PGconn *db_conn,
-                           const struct GNUNET_CRYPTO_EddsaPublicKey *coin_pub,
-                           struct Deposit **r_deposit);
+                           const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
+                           struct Deposit *r_deposit);
 
 
 int
