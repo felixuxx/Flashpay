@@ -103,8 +103,10 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection to handle
  * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
- * @param num_oldcoins size of y-dimension of @commit_coin and @commit_link arrays
- * @param num_newcoins size of y-dimension of @commit_coin and @commit_link arrays
+ * @param num_oldcoins size of y-dimension of @commit_coin array
+ * @param num_newcoins size of y-dimension of @commit_link array
+ * @param commit_coin
+ * @param commit_link
  * @return MHD result code
  */
 int

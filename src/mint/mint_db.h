@@ -122,23 +122,49 @@ TALER_MINT_DB_get_known_coin (PGconn *db_conn,
 
 
 int
-TALER_MINT_DB_upsert_known_coin (PGconn *db_conn, struct KnownCoin *known_coin);
+TALER_MINT_DB_upsert_known_coin (PGconn *db_conn,
+                                 struct KnownCoin *known_coin);
 
 
+
+
+int
+TALER_MINT_DB_create_refresh_session (PGconn *db_conn,
+                                      const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub);
+
+
+/**
+ * Store the commitment to the given (encrypted) refresh link data
+ * for the given refresh session.
+ *
+ * @param db_conn database connection to use
+ * @param refresh_session_pub public key of the refresh session this
+ *        commitment belongs with
+ * @param i
+ * @param j
+ * @param commit_link link information to store
+ * @return #GNUNET_SYSERR on internal error, #GNUNET_OK on success
+ */
 int
 TALER_MINT_DB_insert_refresh_commit_link (PGconn *db_conn,
+                                          const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                          int i, int j,
                                           const struct RefreshCommitLink *commit_link);
-
-int
-TALER_MINT_DB_insert_refresh_commit_coin (PGconn *db_conn,
-                                          const struct RefreshCommitCoin *commit_coin);
 
 
 int
 TALER_MINT_DB_get_refresh_commit_link (PGconn *db_conn,
                                        const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
                                        int i, int j,
-                                       struct RefreshCommitLink *commit_link);
+                                       struct RefreshCommitLink *cc);
+
+
+int
+TALER_MINT_DB_insert_refresh_commit_coin (PGconn *db_conn,
+                                          const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                          int i,
+                                          int j,
+                                          const struct RefreshCommitCoin *commit_coin);
 
 
 int
@@ -146,12 +172,6 @@ TALER_MINT_DB_get_refresh_commit_coin (PGconn *db_conn,
                                        const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
                                        int i, int j,
                                        struct RefreshCommitCoin *commit_coin);
-
-
-int
-TALER_MINT_DB_create_refresh_session (PGconn *db_conn,
-                                      const struct GNUNET_CRYPTO_EddsaPublicKey
-                                      *session_pub);
 
 
 struct GNUNET_CRYPTO_rsa_PublicKey *
@@ -178,6 +198,7 @@ int
 TALER_MINT_DB_set_reveal_ok (PGconn *db_conn,
                              const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub);
 
+
 int
 TALER_MINT_DB_insert_refresh_melt (PGconn *db_conn,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
@@ -193,11 +214,15 @@ TALER_MINT_DB_get_refresh_melt (PGconn *db_conn,
                                 struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub);
 
 
-typedef
-int (*LinkIterator) (void *cls,
-                     const struct LinkDataEnc *link_data_enc,
-                     const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub,
-                     const struct GNUNET_CRYPTO_rsa_Signature *ev_sig);
+/**
+ * FIXME: doc, name is bad, too.
+ */
+typedef int
+(*LinkIterator) (void *cls,
+                 const struct TALER_RefreshLinkEncrypted *link_data_enc,
+                 const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub,
+                 const struct GNUNET_CRYPTO_rsa_Signature *ev_sig);
+
 
 int
 TALER_db_get_link (PGconn *db_conn,
@@ -206,26 +231,37 @@ TALER_db_get_link (PGconn *db_conn,
                    void *cls);
 
 
+/**
+ * Obtain shared secret from the transfer public key (?).
+ *
+ * @param shared_secret_enc[out] set to shared secret; FIXME: use other type
+ *               to indicate this is the encrypted secret
+ */
 int
 TALER_db_get_transfer (PGconn *db_conn,
                        const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
                        struct GNUNET_CRYPTO_EcdsaPublicKey *transfer_pub,
-                       struct SharedSecretEnc *shared_secret_enc);
+                       struct GNUNET_HashCode *shared_secret_enc);
 
 int
 TALER_MINT_DB_init_deposits (PGconn *db_conn, int temporary);
 
+
 int
 TALER_MINT_DB_prepare_deposits (PGconn *db_conn);
+
 
 int
 TALER_MINT_DB_insert_deposit (PGconn *db_conn,
                               const struct Deposit *deposit);
 
+
 int
 TALER_MINT_DB_get_deposit (PGconn *db_conn,
                            const struct GNUNET_CRYPTO_EddsaPublicKey *coin_pub,
                            struct Deposit **r_deposit);
+
+
 int
 TALER_MINT_DB_insert_known_coin (PGconn *db_conn,
                                  const struct KnownCoin *known_coin);

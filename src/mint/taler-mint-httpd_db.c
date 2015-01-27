@@ -689,8 +689,10 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection to handle
  * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
- * @param num_oldcoins size of y-dimension of @commit_coin and @commit_link arrays
- * @param num_newcoins size of y-dimension of @commit_coin and @commit_link arrays
+ * @param num_oldcoins size of y-dimension of @commit_link array
+ * @param num_newcoins size of y-dimension of @commit_coin array
+ * @param commit_coin
+ * @param commit_link
  * @return MHD result code
  */
 int
@@ -730,6 +732,9 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
     {
       if (GNUNET_OK !=
           TALER_MINT_DB_insert_refresh_commit_coin (db_conn,
+                                                    refresh_session_pub,
+                                                    i,
+                                                    j,
                                                     &commit_coin[i][j]))
       {
         // FIXME: return 'internal error'?
@@ -739,7 +744,11 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
       }
 
       if (GNUNET_OK !=
-          TALER_MINT_DB_insert_refresh_commit_link (db_conn, &commit_link[i][j]))
+          TALER_MINT_DB_insert_refresh_commit_link (db_conn,
+                                                    refresh_session_pub,
+                                                    i,
+                                                    j,
+                                                    &commit_link[i][j]))
       {
         // FIXME: return 'internal error'?
         GNUNET_break (0);

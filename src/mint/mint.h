@@ -115,43 +115,89 @@ struct CollectableBlindcoin
 };
 
 
+/**
+ * Global information for a refreshing session.
+ */
 struct RefreshSession
 {
+  /**
+   * Signature over the commitments by the client.
+   */
   struct GNUNET_CRYPTO_EddsaSignature commit_sig;
+
+  /**
+   * Public key of the refreshing session, used to sign
+   * the client's commit message.
+   */
   struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
-  int has_commit_sig;
+
+  /**
+   * Number of coins we are melting.
+   */
   uint16_t num_oldcoins;
+
+  /**
+   * Number of new coins we are creating.
+   */
   uint16_t num_newcoins;
+
+  /**
+   * Number of parallel operations we perform for the cut and choose.
+   * (must be greater or equal to three for security).
+   */
   uint16_t kappa;
+
+  /**
+   * Index (smaller @e kappa) which the mint has chosen to not
+   * have revealed during cut and choose.
+   */
   uint16_t noreveal_index;
+
+  /**
+   * FIXME.
+   */
+  int has_commit_sig;
+
+  /**
+   * FIXME.
+   */
   uint8_t reveal_ok;
 };
 
 
 /**
- * FIXME
+ * For each (old) coin being melted, we have a `struct
+ * RefreshCommitLink` that allows the user to find the shared secret
+ * to decrypt the respective refresh links for the new coins in the
+ * `struct RefreshCommitCoin`.
  */
 struct RefreshCommitLink
 {
-  struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
+  /**
+   * Transfer public key (FIXME: explain!)
+   */
   struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub;
+
+  /**
+   * FIXME: this can't be exactly the shared secret, must
+   * be a commitment to it or something.
+   */
   struct GNUNET_HashCode shared_secret;
-  uint16_t cnc_index;
-  uint16_t oldcoin_index;
 };
 
 
 /**
- * FIXME
+ * We have as many `struct RefreshCommitCoin` as there are new
+ * coins being created by the refresh.
  */
 struct RefreshCommitCoin
 {
-  /**
-   * Refresh session's public key.
-   */
-  struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
 
-  struct TALER_RefreshLinkEncrypted refresh_link;
+  /**
+   * Encrypted data allowing those able to decrypt it to derive
+   * the private keys of the new coins created by the refresh.
+   */
+  struct TALER_RefreshLinkEncrypted *refresh_link;
 
   /**
    * Blinded message to be signed (in envelope), with @e coin_env_size bytes.
@@ -162,16 +208,6 @@ struct RefreshCommitCoin
    * Number of bytes in @e coin_ev.
    */
   size_t coin_ev_size;
-
-  /**
-   * FIXME: needed?
-   */
-  uint16_t cnc_index;
-
-  /**
-   * FIXME: needed?
-   */
-  uint16_t newcoin_index;
 
 };
 

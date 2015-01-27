@@ -646,9 +646,10 @@ main (int argc, char *const *argv)
   // check if key from file matches the one from the configuration
   {
     struct GNUNET_CRYPTO_EddsaPublicKey master_pub_from_cfg;
-    if (GNUNET_OK != TALER_configuration_get_data (kcfg, "mint", "master_pub",
-                                                   &master_pub_from_cfg,
-                                                   sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_data (kcfg, "mint", "master_pub",
+                                       &master_pub_from_cfg,
+                                       sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
     {
       fprintf (stderr, "master key missing in configuration (mint.master_pub)\n");
       return 1;

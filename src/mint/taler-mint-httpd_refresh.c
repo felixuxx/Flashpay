@@ -541,6 +541,9 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
                                     sizeof (struct RefreshCommitCoin));
     for (j = 0; j < num_newcoins; j++)
     {
+      char *link_end;
+      size_t link_enc_size;
+
       res = GNUNET_MINT_parse_navigate_json (connection, root,
                                              JNAV_FIELD, "coin_evs",
                                              JNAV_INDEX, (int) i,
@@ -565,9 +568,9 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
                                              JNAV_FIELD, "link_encs",
                                              JNAV_INDEX, (int) i,
                                              JNAV_INDEX, (int) j,
-                                             JNAV_RET_DATA,
-                                             commit_coin[i][j].link_enc,
-                                             TALER_REFRESH_LINK_LENGTH);
+                                             JNAV_RET_DATA_VAR,
+                                             &link_enc,
+                                             &link_enc_size);
       if (GNUNET_OK != res)
       {
         // FIXME: return 'internal error'?
@@ -575,13 +578,13 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
         GNUNET_CRYPTO_hash_context_abort (hash_context);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
+      // FIXME: convert link_enc / link_enc_size to
+      // commit_coin[i][j].refresh_link!
+
 
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        commit_coin[i][j].link_enc,
                                        TALER_REFRESH_LINK_LENGTH);
-      commit_coin[i][j].cnc_index = i;
-      commit_coin[i][j].newcoin_index = j;
-      commit_coin[i][j].session_pub = refresh_session_pub;
     }
   }
 
@@ -617,8 +620,8 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
                                              JNAV_INDEX, (int) i,
                                              JNAV_INDEX, (int) j,
                                              JNAV_RET_DATA,
-                                             commit_link[i][j].shared_secret_enc,
-                                             TALER_REFRESH_SHARED_SECRET_LENGTH);
+                                             &commit_link[i][j].shared_secret,
+                                             sizeof (struct GNUNET_HashCode));
 
       if (GNUNET_OK != res)
       {
@@ -628,13 +631,8 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
       }
 
       GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       commit_link[i][j].shared_secret_enc,
-                                       TALER_REFRESH_SHARED_SECRET_LENGTH);
-
-      commit_link[i][j].cnc_index = i;
-      commit_link[i][j].oldcoin_index = j;
-      commit_link[i][j].session_pub = refresh_session_pub;
-
+                                       &commit_link[i][j].shared_secret,
+                                       sizeof (struct GNUNET_HashCode));
     }
   }
   GNUNET_CRYPTO_hash_context_finish (hash_context, &commit_hash);
