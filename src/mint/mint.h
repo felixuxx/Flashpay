@@ -179,10 +179,9 @@ struct RefreshCommitLink
   struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub;
 
   /**
-   * FIXME: this is the encrypted shared secret, should use
-   * a different type...
+   * Encrypted shared secret to decrypt the link.
    */
-  struct GNUNET_HashCode shared_secret_enc;
+  struct TALER_EncryptedLinkSecret shared_secret_enc;
 };
 
 

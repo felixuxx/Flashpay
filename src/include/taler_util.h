@@ -241,6 +241,30 @@ TALER_data_to_string_alloc (const void *buf,
 /* ****************** Refresh crypto primitives ************* */
 
 /**
+ * Secret used to decrypt refresh links.
+ */
+struct TALER_LinkSecret
+{
+  /**
+   * Secret used to decrypt the refresh link data.
+   */
+  char key[sizeof (struct GNUNET_HashCode)];
+};
+
+
+/**
+ * Encrypted secret used to decrypt refresh links.
+ */
+struct TALER_EncryptedLinkSecret
+{
+  /**
+   * Encrypted secret, must be the given size!
+   */
+  char enc[sizeof (struct TALER_LinkSecret)];
+};
+
+
+/**
  * Representation of an encrypted refresh link.
  */
 struct TALER_RefreshLinkEncrypted
@@ -295,9 +319,24 @@ struct TALER_RefreshLinkDecrypted
  * @return #GNUNET_OK on success
  */
 int
-TALER_transfer_decrypt (const struct GNUNET_HashCode *secret_enc,
+TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecret *secret_enc,
                         const struct GNUNET_HashCode *trans_sec,
-                        struct GNUNET_HashCode *secret);
+                        struct TALER_LinkSecret *secret);
+
+
+/**
+ * Use the @a trans_sec (from ECDHE) to encrypt the @a secret
+ * to obtain the @a secret_enc.
+ *
+ * @param secret shared secret for refresh link decryption
+ * @param trans_sec transfer secret (FIXME: use different type?)
+ * @param secret_enc[out] encrypted secret
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_transfer_encrypt (const struct TALER_LinkSecret *secret,
+                        const struct GNUNET_HashCode *trans_sec,
+                        struct TALER_EncryptedLinkSecret *secret_enc);
 
 
 /**
@@ -309,7 +348,7 @@ TALER_transfer_decrypt (const struct GNUNET_HashCode *secret_enc,
  */
 struct TALER_RefreshLinkDecrypted *
 TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
-                       const struct GNUNET_HashCode *secret);
+                       const struct TALER_LinkSecret *secret);
 
 
 /**
@@ -321,7 +360,7 @@ TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
  */
 struct TALER_RefreshLinkEncrypted *
 TALER_refresh_encrypt (const struct TALER_RefreshLinkDecrypted *input,
-                       const struct GNUNET_HashCode *secret);
+                       const struct TALER_LinkSecret *secret);
 
 
 #endif

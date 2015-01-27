@@ -908,7 +908,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
   off = 0;
   for (i = 0; i < refresh_session.kappa - 1; i++)
   {
-    struct GNUNET_HashCode last_shared_secret;
+    struct TALER_LinkSecret last_shared_secret;
     int secret_initialized = GNUNET_NO;
 
     if (i == refresh_session.noreveal_index)
@@ -919,7 +919,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
       struct RefreshCommitLink commit_link;
       struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
       struct GNUNET_HashCode transfer_secret;
-      struct GNUNET_HashCode shared_secret;
+      struct TALER_LinkSecret shared_secret;
 
       res = TALER_MINT_DB_get_refresh_commit_link (db_conn,
                                                    refresh_session_pub,
