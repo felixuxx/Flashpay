@@ -27,7 +27,10 @@
 #include "taler-mint-httpd.h"
 
 /**
- * Handle a "/withdraw/status" request
+ * Handle a "/withdraw/status" request.  Parses the
+ * given "reserve_pub" argument (which should contain the
+ * EdDSA public key of a reserve) and then respond with the
+ * status of the reserve.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
@@ -45,7 +48,13 @@ TALER_MINT_handler_withdraw_status (struct RequestHandler *rh,
 
 
 /**
- * Handle a "/withdraw/sign" request
+ * Handle a "/withdraw/sign" request.  Parses the "reserve_pub"
+ * EdDSA key of the reserve and the requested "denom_pub" which
+ * specifies the key/value of the coin to be withdrawn, and checks
+ * that the signature "reserve_sig" makes this a valid withdrawl
+ * request from the specified reserve.  If so, the envelope
+ * with the blinded coin "coin_ev" is passed down to execute the
+ * withdrawl operation.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
