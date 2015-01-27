@@ -23,7 +23,6 @@
 #ifndef TALER_MINT_HTTPD_WITHDRAW_H
 #define TALER_MINT_HTTPD_WITHDRAW_H
 
-#include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
 #include "taler-mint-httpd.h"
 

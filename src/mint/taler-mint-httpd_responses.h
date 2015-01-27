@@ -28,11 +28,9 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
-#include <libpq-fe.h>
 #include <pthread.h>
 #include "taler-mint-httpd.h"
 #include "taler-mint-httpd_db.h"
-#include "taler-mint-httpd_mhd.h"
 
 
 /**

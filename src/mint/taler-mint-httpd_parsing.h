@@ -13,7 +13,6 @@
   You should have received a copy of the GNU Affero General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file taler-mint-httpd_parsing.h
  * @brief functions to parse incoming requests
@@ -21,10 +20,8 @@
  * @author Benedikt Mueller
  * @author Christian Grothoff
  */
-
 #ifndef TALER_MICROHTTPD_LIB_H_
 #define TALER_MICROHTTPD_LIB_H_
-
 
 #include <microhttpd.h>
 #include <jansson.h>

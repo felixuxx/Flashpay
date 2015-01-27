@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2014 GNUnet e.V.
+  (C) 2014,2015 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -19,25 +19,12 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
- *
- * TODO:
- * - support variable-size RSA keys
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
-#include <microhttpd.h>
-#include <libpq-fe.h>
-#include <pthread.h>
-#include "mint.h"
-#include "mint_db.h"
-#include "taler_signatures.h"
-#include "taler_json_lib.h"
-#include "taler-mint-httpd_parsing.h"
-#include "taler-mint-httpd_keys.h"
-#include "taler-mint-httpd_db.h"
-#include "taler-mint-httpd_mhd.h"
 #include "taler-mint-httpd_withdraw.h"
+#include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_responses.h"
 
 
@@ -108,8 +95,14 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
     return MHD_YES; /* invalid request */
-
-  /* FIXME: handle variable-size signing keys! */
+  res = TALER_MINT_mhd_request_arg_data (connection,
+                                         "reserve_sig",
+                                         &signature,
+                                         sizeof (struct GNUNET_CRYPTO_EddsaSignature));
+  if (GNUNET_SYSERR == res)
+    return MHD_NO; /* internal error */
+  if (GNUNET_NO == res)
+    return MHD_YES; /* invalid request */
   res = TALER_MINT_mhd_request_var_arg_data (connection,
                                              "denom_pub",
                                              (void **) &denomination_pub_data,
@@ -123,17 +116,15 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
                                              (void **) &blinded_msg,
                                              &blinded_msg_len);
   if (GNUNET_SYSERR == res)
+  {
+    GNUNET_free (denomination_pub_data);
     return MHD_NO; /* internal error */
+  }
   if (GNUNET_NO == res)
+  {
+    GNUNET_free (denomination_pub_data);
     return MHD_YES; /* invalid request */
-  res = TALER_MINT_mhd_request_arg_data (connection,
-                                         "reserve_sig",
-                                         &signature,
-                                         sizeof (struct GNUNET_CRYPTO_EddsaSignature));
-  if (GNUNET_SYSERR == res)
-    return MHD_NO; /* internal error */
-  if (GNUNET_NO == res)
-    return MHD_YES; /* invalid request */
+  }
 
   /* verify signature! */
   wsrd.purpose.size = htonl (sizeof (struct TALER_WithdrawRequest));
@@ -150,15 +141,21 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
                                   &signature,
                                   &wsrd.reserve_pub))
   {
-    return 42; // FIXME: generate error reply
+    LOG_WARNING ("Client supplied invalid signature for /withdraw/sign request\n");
+    GNUNET_free (denomination_pub_data);
+    GNUNET_free (blinded_msg);
+    return TALER_MINT_reply_arg_invalid (connection,
+                                         "reserve_sig");
   }
   denomination_pub = GNUNET_CRYPTO_rsa_public_key_decode (denomination_pub_data,
                                                           denomination_pub_data_size);
+  GNUNET_free (denomination_pub_data);
   if (NULL == denomination_pub)
   {
-    GNUNET_free (denomination_pub_data);
+    LOG_WARNING ("Client supplied ill-formed denomination public key for /withdraw/sign request\n");
     GNUNET_free (blinded_msg);
-    return 42; // FIXME: generate error reply
+    return TALER_MINT_reply_arg_invalid (connection,
+                                         "denom_pub");
   }
   res = TALER_MINT_db_execute_withdraw_sign (connection,
                                              &wsrd.reserve_pub,
@@ -166,7 +163,6 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
                                              blinded_msg,
                                              blinded_msg_len,
                                              &signature);
-  GNUNET_free (denomination_pub_data);
   GNUNET_free (blinded_msg);
   GNUNET_CRYPTO_rsa_public_key_free (denomination_pub);
   return res;
