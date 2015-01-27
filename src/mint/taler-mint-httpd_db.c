@@ -953,10 +953,10 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
         return MHD_NO;
       }
 
-      if (0 >= TALER_refresh_decrypt (commit_link.shared_secret_enc,
-                                      TALER_REFRESH_SHARED_SECRET_LENGTH,
-                                      &transfer_secret,
-                                      &shared_secret))
+      if (GNUNET_OK !=
+          TALER_transfer_decrypt (&commit_link.shared_secret_enc,
+                                  &transfer_secret,
+                                  &shared_secret))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "decryption failed\n");
@@ -1001,16 +1001,14 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     for (j = 0; j < refresh_session.num_newcoins; j++)
     {
       struct RefreshCommitCoin commit_coin;
-      struct LinkData link_data;
+      struct TALER_RefreshLinkDecrypted *link_data;
       // struct BlindedSignaturePurpose *coin_ev_check;
       struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
-      struct GNUNET_CRYPTO_rsa_BlindingKey *bkey;
       struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
       struct GNUNET_HashCode h_msg;
       char *buf;
       size_t buf_len;
 
-      bkey = NULL;
       res = TALER_MINT_DB_get_refresh_commit_coin (db_conn,
                                                    refresh_session_pub,
                                                    i+off, j,
@@ -1022,11 +1020,9 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
         return MHD_NO;
       }
 
-
-      if (0 >= TALER_refresh_decrypt (commit_coin.link_enc,
-                                      sizeof (struct LinkData),
-                                      &last_shared_secret,
-                                      &link_data))
+      link_data = TALER_refresh_decrypt (commit_coin.refresh_link,
+                                         &last_shared_secret);
+      if (NULL == link_data)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "decryption failed\n");
@@ -1034,16 +1030,8 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
         return MHD_NO;
       }
 
-      GNUNET_CRYPTO_ecdsa_key_get_public (&link_data.coin_priv,
+      GNUNET_CRYPTO_ecdsa_key_get_public (&link_data->coin_priv,
                                           &coin_pub);
-      if (NULL == (bkey = GNUNET_CRYPTO_rsa_blinding_key_decode (link_data.bkey_enc,
-                                                                 link_data.bkey_enc_size)))
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Invalid blinding key\n");
-        // FIXME: return error code!
-        return MHD_NO;
-      }
       denom_pub = TALER_MINT_DB_get_refresh_order (db_conn,
                                                    j,
                                                    refresh_session_pub);
@@ -1060,7 +1048,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
                           &h_msg);
       if (0 == (buf_len =
                 GNUNET_CRYPTO_rsa_blind (&h_msg,
-                                         bkey,
+                                         link_data->blinding_key,
                                          denom_pub,
                                          &buf)))
       {
@@ -1133,7 +1121,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     }
     ev_sig = GNUNET_CRYPTO_rsa_sign (dki->denom_priv,
                                      commit_coin.coin_ev,
-                                     commit_coin.coin_ev_len);
+                                     commit_coin.coin_ev_size);
     if (NULL == ev_sig)
     {
       GNUNET_break (0);
@@ -1182,7 +1170,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
  */
 static int
 link_iter (void *cls,
-           const struct LinkDataEnc *link_data_enc,
+           const struct TALER_RefreshLinkEncrypted *link_data_enc,
            const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub,
            const struct GNUNET_CRYPTO_rsa_Signature *ev_sig)
 {
@@ -1195,8 +1183,9 @@ link_iter (void *cls,
   json_array_append_new (list, obj);
 
   json_object_set_new (obj, "link_enc",
-                       TALER_JSON_from_data (link_data_enc,
-                                             sizeof (struct LinkDataEnc)));
+                       TALER_JSON_from_data (link_data_enc->coin_priv_enc,
+                                             sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey) +
+                                             link_data_enc->blinding_key_enc_size));
 
   buf_len = GNUNET_CRYPTO_rsa_public_key_encode (denom_pub,
                                                  &buf);
@@ -1231,7 +1220,7 @@ TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
   json_t *list;
   PGconn *db_conn;
   struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub;
-  struct SharedSecretEnc shared_secret_enc;
+  struct GNUNET_HashCode shared_secret_enc;
 
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
@@ -1287,7 +1276,7 @@ TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
                                              sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)));
   json_object_set_new (root, "secret_enc",
                        TALER_JSON_from_data (&shared_secret_enc,
-                                             sizeof (struct SharedSecretEnc)));
+                                             sizeof (struct GNUNET_HashCode)));
   return TALER_MINT_reply_json (connection,
                                 root,
                                 MHD_HTTP_OK);

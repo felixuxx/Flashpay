@@ -1172,7 +1172,7 @@ TALER_MINT_DB_insert_refresh_commit_link (PGconn *db_conn,
     TALER_DB_QUERY_PARAM_PTR(&commit_link->transfer_pub),
     TALER_DB_QUERY_PARAM_PTR(&cnc_index_nbo),
     TALER_DB_QUERY_PARAM_PTR(&oldcoin_index_nbo),
-    TALER_DB_QUERY_PARAM_PTR(&commit_link->shared_secret),
+    TALER_DB_QUERY_PARAM_PTR(&commit_link->shared_secret_enc),
     TALER_DB_QUERY_PARAM_END
   };
 
@@ -1232,7 +1232,7 @@ TALER_MINT_DB_get_refresh_commit_link (PGconn *db_conn,
 
   struct TALER_DB_ResultSpec rs[] = {
     TALER_DB_RESULT_SPEC("transfer_pub", &cc->transfer_pub),
-    TALER_DB_RESULT_SPEC("link_secret_enc", &cc->shared_secret),
+    TALER_DB_RESULT_SPEC("link_secret_enc", &cc->shared_secret_enc),
     TALER_DB_RESULT_SPEC_END
   };
 

@@ -84,6 +84,33 @@ derive_refresh_key (const struct GNUNET_HashCode *secret,
 
 
 /**
+ * Use the @a trans_sec (from ECDHE) to decrypt the @a secret_enc
+ * to obtain the @a secret to decrypt the linkage data.
+ *
+ * @param secret_enc encrypted secret (FIXME: use different type!)
+ * @param trans_sec transfer secret (FIXME: use different type?)
+ * @param secret shared secret for refresh link decryption
+ *               (FIXME: use different type?)
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_transfer_decrypt (const struct GNUNET_HashCode *secret_enc,
+                        const struct GNUNET_HashCode *trans_sec,
+                        struct GNUNET_HashCode *secret)
+{
+  struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
+  struct GNUNET_CRYPTO_SymmetricSessionKey skey;
+
+  derive_refresh_key (trans_sec, &iv, &skey);
+  return GNUNET_CRYPTO_symmetric_decrypt (secret_enc,
+                                          sizeof (struct GNUNET_HashCode),
+                                          &skey,
+                                          &iv,
+                                          secret);
+}
+
+
+/**
  * Decrypt refresh link information.
  *
  * @param input encrypted refresh link data
