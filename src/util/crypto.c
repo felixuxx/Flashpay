@@ -83,36 +83,97 @@ derive_refresh_key (const struct GNUNET_HashCode *secret,
 }
 
 
-int
-TALER_refresh_decrypt (const void *input,
-                       size_t input_size,
-                       const struct GNUNET_HashCode *secret,
-                       void *result)
+/**
+ * Decrypt refresh link information.
+ *
+ * @param input encrypted refresh link data
+ * @param secret shared secret to use for decryption
+ * @return NULL on error
+ */
+struct TALER_RefreshLinkDecrypted *
+TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
+                       const struct GNUNET_HashCode *secret)
 {
+  struct TALER_RefreshLinkDecrypted *ret;
   struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
   struct GNUNET_CRYPTO_SymmetricSessionKey skey;
+  size_t buf_size = input->blinding_key_enc_size
+    + sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey);
+  char buf[buf_size];
 
+  GNUNET_assert (input->blinding_key_enc == (const char *) &input[1]);
   derive_refresh_key (secret, &iv, &skey);
-
-  return GNUNET_CRYPTO_symmetric_decrypt (input, input_size, &skey, &iv, result);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_symmetric_decrypt (input->coin_priv_enc,
+                                       buf_size,
+                                       &skey,
+                                       &iv,
+                                       buf))
+    return NULL;
+  ret = GNUNET_new (struct TALER_RefreshLinkDecrypted);
+  memcpy (&ret->coin_priv,
+          buf,
+          sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey));
+  ret->blinding_key
+    = GNUNET_CRYPTO_rsa_blinding_key_decode (&buf[sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey)],
+                                             input->blinding_key_enc_size);
+  if (NULL == ret->blinding_key)
+  {
+    GNUNET_free (ret);
+    return NULL;
+  }
+  return ret;
 }
 
 
-int
-TALER_refresh_encrypt (const void *input,
-                       size_t input_size,
-                       const struct GNUNET_HashCode *secret,
-                       void *result)
+/**
+ * Encrypt refresh link information.
+ *
+ * @param input plaintext refresh link data
+ * @param secret shared secret to use for encryption
+ * @return NULL on error (should never happen)
+ */
+struct TALER_RefreshLinkEncrypted *
+TALER_refresh_encrypt (const struct TALER_RefreshLinkDecrypted *input,
+                       const struct GNUNET_HashCode *secret)
 {
+  char *b_buf;
+  size_t b_buf_size;
   struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
   struct GNUNET_CRYPTO_SymmetricSessionKey skey;
+  struct TALER_RefreshLinkEncrypted *ret;
 
   derive_refresh_key (secret, &iv, &skey);
+  b_buf_size = GNUNET_CRYPTO_rsa_blinding_key_encode (input->blinding_key,
+                                                      &b_buf);
+  ret = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) +
+                       b_buf_size);
+  ret->blinding_key_enc = (const char *) &ret[1];
+  ret->blinding_key_enc_size = b_buf_size;
+  {
+    size_t buf_size = b_buf_size + sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey);
+    char buf[buf_size];
 
-  return GNUNET_CRYPTO_symmetric_encrypt (input, input_size, &skey, &iv, result);
+    memcpy (buf,
+            &input->coin_priv,
+            sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey));
+    memcpy (&buf[sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey)],
+            b_buf,
+            b_buf_size);
+
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_symmetric_encrypt (buf,
+                                         buf_size,
+                                         &skey,
+                                         &iv,
+                                         ret->coin_priv_enc))
+    {
+      GNUNET_free (ret);
+      return NULL;
+    }
+  }
+  return ret;
 }
-
-
 
 
 /* end of crypto.c */

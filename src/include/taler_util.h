@@ -247,19 +247,21 @@ struct TALER_RefreshLinkEncrypted
 {
 
   /**
-   * Encrypted private key of the coin.
+   * Encrypted blinding key with @e blinding_key_enc_size bytes,
+   * must be allocated at the end of this struct.
    */
-  char [sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey)] coin_priv_enc;
-
-  /**
-   * Encrypted blinding key with @e blinding_key_enc_size bytes.
-   */
-  char *blinding_key_enc;
+  const char *blinding_key_enc;
 
   /**
    * Number of bytes in @e blinding_key_enc.
    */
   size_t blinding_key_enc_size;
+
+  /**
+   * Encrypted private key of the coin.
+   */
+  char coin_priv_enc[sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey)];
+
 };
 
 
