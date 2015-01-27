@@ -93,7 +93,7 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
 {
   struct TALER_WithdrawRequest wsrd;
   int res;
-  const struct GNUNET_CRYPTO_rsa_PublicKey *denomination_pub;
+  struct GNUNET_CRYPTO_rsa_PublicKey *denomination_pub;
   char *denomination_pub_data;
   size_t denomination_pub_data_size;
   char *blinded_msg;
@@ -152,8 +152,8 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
   {
     return 42; // FIXME: generate error reply
   }
-  denomination_pub = GNUNET_CRYPTO_rsa_private_key_decode (denomination_pub_data,
-                                                           denomination_pub_data_size);
+  denomination_pub = GNUNET_CRYPTO_rsa_public_key_decode (denomination_pub_data,
+                                                          denomination_pub_data_size);
   if (NULL == denomination_pub)
   {
     GNUNET_free (denomination_pub_data);
