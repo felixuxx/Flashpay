@@ -100,7 +100,7 @@ struct CollectableBlindcoin
   /**
    * Denomination key (which coin was generated).
    */
-  struct GNUNET_CRYPOT_rsa_PublicKey *denom_pub;
+  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
 
   /**
    * Public key of the reserve that was drained.

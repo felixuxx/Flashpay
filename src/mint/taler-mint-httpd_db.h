@@ -84,7 +84,7 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
  * @param connection the MHD connection to handle
  * @param refresh_session_pub public key of the refresh session
  * @param num_new_denoms number of entries in @a denom_pubs
- * @param denum_pubs ???
+ * @param denum_pubs array of public denomination keys for the refresh (?)
  * @param coin_count number of entries in @a coin_public_infos
  * @param coin_public_infos information about the coins to melt
  * @return MHD result code
@@ -93,7 +93,7 @@ int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
                                     unsigned int num_new_denoms,
-                                    const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pubs,
+                                    const struct GNUNET_CRYPTO_rsa_PublicKey **denom_pubs,
                                     unsigned int coin_count,
                                     const struct TALER_CoinPublicInfo *coin_public_infos);
 

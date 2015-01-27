@@ -394,7 +394,7 @@ TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
 int
 TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
                                          unsigned int num_newcoins,
-                                         const struct GNUNET_CRYPTO_rsa_Signature **sigs)
+                                         struct GNUNET_CRYPTO_rsa_Signature **sigs)
 {
   int newcoin_index;
   json_t *root;

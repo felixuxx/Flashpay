@@ -332,10 +332,10 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
   }
-  collectable.ev = wsrd.coin_envelope;
+  collectable.denom_pub = (struct GNUNET_CRYPTO_rsa_PublicKey *) denomination_pub;
   collectable.sig = sig;
-  collectable.reserve_pub = wsrd.reserve_pub;
-  collectable.reserve_sig = wsrd.sig;
+  collectable.reserve_pub = *reserve;
+  collectable.reserve_sig = *signature;
   if (GNUNET_OK !=
       TALER_MINT_DB_insert_collectable_blindcoin (db_conn,
                                                   &h_blind,
@@ -372,7 +372,7 @@ refresh_accept_denoms (struct MHD_Connection *connection,
                        const struct MintKeyState *key_state,
                        const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
                        unsigned int denom_pubs_count,
-                       const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pubs,
+                       const struct GNUNET_CRYPTO_rsa_PublicKey **denom_pubs,
                        struct TALER_Amount *r_amount)
 {
   unsigned int i;
@@ -383,7 +383,8 @@ refresh_accept_denoms (struct MHD_Connection *connection,
   memset (r_amount, 0, sizeof (struct TALER_Amount));
   for (i = 0; i < denom_pubs_count; i++)
   {
-    dki = &(TALER_MINT_get_denom_key (key_state, &denom_pubs[i])->issue);
+    dki = &(TALER_MINT_get_denom_key (key_state,
+                                      denom_pubs[i])->issue);
     cost = TALER_amount_add (TALER_amount_ntoh (dki->value),
                              TALER_amount_ntoh (dki->fee_withdraw));
     *r_amount = TALER_amount_add (cost, *r_amount);
@@ -396,7 +397,7 @@ refresh_accept_denoms (struct MHD_Connection *connection,
         (res = TALER_MINT_DB_insert_refresh_order (db_conn,
                                                    i,
                                                    session_pub,
-                                                   &denom_pubs[i])))
+                                                   denom_pubs[i])))
       return res; // ???
   }
   return GNUNET_OK;
@@ -457,7 +458,8 @@ refresh_accept_melts (struct MHD_Connection *connection,
     // money the customer gets by melting the current coin
     struct TALER_Amount coin_gain;
 
-    dki = &(TALER_MINT_get_denom_key (key_state, &coin_public_infos[i].denom_pub)->issue);
+    dki = &(TALER_MINT_get_denom_key (key_state,
+                                      coin_public_infos[i].denom_pub)->issue);
 
     if (NULL == dki)
       return (MHD_YES ==
@@ -504,9 +506,10 @@ refresh_accept_melts (struct MHD_Connection *connection,
       return GNUNET_SYSERR;
     }
 
-    if (GNUNET_OK != TALER_MINT_DB_insert_refresh_melt (db_conn, session_pub, i,
-                                                        &coin_public_infos[i].coin_pub,
-                                                        &coin_public_infos[i].denom_pub))
+    if (GNUNET_OK !=
+        TALER_MINT_DB_insert_refresh_melt (db_conn, session_pub, i,
+                                           &coin_public_infos[i].coin_pub,
+                                           coin_public_infos[i].denom_pub))
     {
       GNUNET_break (0);
       return GNUNET_SYSERR;
@@ -548,7 +551,7 @@ int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
                                     unsigned int num_new_denoms,
-                                    const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pubs,
+                                    const struct GNUNET_CRYPTO_rsa_PublicKey **denom_pubs,
                                     unsigned int coin_count,
                                     const struct TALER_CoinPublicInfo *coin_public_infos)
 {
@@ -930,19 +933,24 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
 
       /* We're converting key types here, which is not very nice
        * but necessary and harmless (keys will be thrown away later). */
-      if (GNUNET_OK != GNUNET_CRYPTO_ecc_ecdh ((struct GNUNET_CRYPTO_EcdhePrivateKey *) &transfer_privs[i+off][j],
-                                               (struct GNUNET_CRYPTO_EcdhePublicKey *) &coin_pub,
-                                               &transfer_secret))
+      /* FIXME: ECDHE/ECDSA-key type confusion! Can we reduce/avoid this? */
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_ecc_ecdh ((const struct GNUNET_CRYPTO_EcdhePrivateKey *) &transfer_privs[i+off][j],
+                                  (const struct GNUNET_CRYPTO_EcdhePublicKey *) &coin_pub,
+                                  &transfer_secret))
       {
         GNUNET_break (0);
         // FIXME: return 'internal error'?
         return MHD_NO;
       }
 
-      if (0 >= TALER_refresh_decrypt (commit_link.shared_secret_enc, TALER_REFRESH_SHARED_SECRET_LENGTH,
-                                      &transfer_secret, &shared_secret))
+      if (0 >= TALER_refresh_decrypt (commit_link.shared_secret_enc,
+                                      TALER_REFRESH_SHARED_SECRET_LENGTH,
+                                      &transfer_secret,
+                                      &shared_secret))
       {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "decryption failed\n");
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "decryption failed\n");
         // FIXME: return 'internal error'?
         return MHD_NO;
       }
@@ -952,27 +960,35 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
         secret_initialized = GNUNET_YES;
         last_shared_secret = shared_secret;
       }
-      else if (0 != memcmp (&shared_secret, &last_shared_secret, sizeof (struct GNUNET_HashCode)))
+      else if (0 != memcmp (&shared_secret,
+                            &last_shared_secret,
+                            sizeof (struct GNUNET_HashCode)))
       {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "shared secrets do not match\n");
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "shared secrets do not match\n");
         // FIXME: return error code!
         return MHD_NO;
       }
 
       {
         struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub_check;
-        GNUNET_CRYPTO_ecdsa_key_get_public (&transfer_privs[i+off][j], &transfer_pub_check);
-        if (0 != memcmp (&transfer_pub_check, &commit_link.transfer_pub, sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey)))
+
+        GNUNET_CRYPTO_ecdsa_key_get_public (&transfer_privs[i+off][j],
+                                            &transfer_pub_check);
+        if (0 !=
+            memcmp (&transfer_pub_check,
+                    &commit_link.transfer_pub,
+                    sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey)))
         {
-          GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "transfer keys do not match\n");
-        // FIXME: return error code!
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "transfer keys do not match\n");
+          // FIXME: return error code!
           return MHD_NO;
         }
       }
     }
 
     /* Check that the commitments for all new coins were correct */
-
     for (j = 0; j < refresh_session.num_newcoins; j++)
     {
       struct RefreshCommitCoin commit_coin;
@@ -981,6 +997,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
       struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
       struct GNUNET_CRYPTO_rsa_BlindingKey *bkey;
       struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+      struct GNUNET_HashCode h_msg;
       char *buf;
       size_t buf_len;
 
@@ -992,41 +1009,54 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
       if (GNUNET_OK != res)
       {
         GNUNET_break (0);
-                // FIXME: return error code!
+        // FIXME: return error code!
         return MHD_NO;
       }
 
 
-      if (0 >= TALER_refresh_decrypt (commit_coin.link_enc, sizeof (struct LinkData),
-                                      &last_shared_secret, &link_data))
+      if (0 >= TALER_refresh_decrypt (commit_coin.link_enc,
+                                      sizeof (struct LinkData),
+                                      &last_shared_secret,
+                                      &link_data))
       {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "decryption failed\n");
-                // FIXME: return error code!
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "decryption failed\n");
+        // FIXME: return error code!
         return MHD_NO;
       }
 
-      GNUNET_CRYPTO_ecdsa_key_get_public (&link_data.coin_priv, &coin_pub);
+      GNUNET_CRYPTO_ecdsa_key_get_public (&link_data.coin_priv,
+                                          &coin_pub);
       if (NULL == (bkey = GNUNET_CRYPTO_rsa_blinding_key_decode (link_data.bkey_enc,
                                                                  link_data.bkey_enc_size)))
       {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Invalid blinding key\n");
-                        // FIXME: return error code!
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Invalid blinding key\n");
+        // FIXME: return error code!
         return MHD_NO;
       }
-      denom_pub = TALER_MINT_DB_get_refresh_order (db_conn, j, refresh_session_pub);
+      denom_pub = TALER_MINT_DB_get_refresh_order (db_conn,
+                                                   j,
+                                                   refresh_session_pub);
       if (NULL == denom_pub)
       {
         GNUNET_break (0);
           // FIXME: return error code!
         return MHD_NO;
       }
-      if (NULL == (buf_len =
-                   GNUNET_CRYPTO_rsa_blind (&h_msg,
-                                            bkey,
-                                            denom_pub,
-                                            &buf)))
+      /* FIXME: we had envisioned a more complex scheme to derive
+         the message to sign for a blinded coin... */
+      GNUNET_CRYPTO_hash (&coin_pub,
+                          sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
+                          &h_msg);
+      if (0 == (buf_len =
+                GNUNET_CRYPTO_rsa_blind (&h_msg,
+                                         bkey,
+                                         denom_pub,
+                                         &buf)))
       {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "blind failed\n");
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "blind failed\n");
           // FIXME: return error code!
         return MHD_NO;
       }
@@ -1074,8 +1104,8 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
               // FIXME: return error code!
       return MHD_NO;
     }
-    res = TALER_MINT_DB_get_refresh_order (db_conn, j, refresh_session_pub, &denom_pub);
-    if (GNUNET_OK != res)
+    denom_pub = TALER_MINT_DB_get_refresh_order (db_conn, j, refresh_session_pub);
+    if (NULL == denom_pub)
     {
       GNUNET_break (0);
                     // FIXME: return error code!
@@ -1084,7 +1114,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
 
 
     key_state = TALER_MINT_key_state_acquire ();
-    dki = TALER_MINT_get_denom_key (key_state, &denom_pub);
+    dki = TALER_MINT_get_denom_key (key_state, denom_pub);
     TALER_MINT_key_state_release (key_state);
     if (NULL == dki)
     {
@@ -1105,7 +1135,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     res = TALER_MINT_DB_insert_refresh_collectable (db_conn,
                                                     j,
                                                     refresh_session_pub,
-                                                    &ev_sig);
+                                                    ev_sig);
     if (GNUNET_OK != res)
     {
       GNUNET_break (0);
@@ -1170,7 +1200,7 @@ link_iter (void *cls,
   json_object_set_new (obj, "ev_sig",
                        TALER_JSON_from_data (buf,
                                              buf_len));
-  GNUNET_free (buf_len);
+  GNUNET_free (buf);
 
   return GNUNET_OK;
 }
