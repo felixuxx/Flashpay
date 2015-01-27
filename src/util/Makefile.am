@@ -4,6 +4,8 @@ lib_LTLIBRARIES = \
   libtalerutil.la
 
 libtalerutil_la_SOURCES = \
+  amount.c \
+  crypto.c \
   util.c \
   json.c \
   db.c

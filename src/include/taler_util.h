@@ -65,20 +65,48 @@
   do {int rc; rc = cmd; if (!rc) break; LOG_ERROR("A Gcrypt call failed at %s:%d with error: %s\n", __FILE__, __LINE__, gcry_strerror(rc)); abort(); } while (0)
 
 
+
+/**
+ * Initialize Gcrypt library.
+ */
+void
+TALER_gcrypt_init (void);
+
+
+/* *********************** Amount management ****************** */
+
+
+/**
+ * Number of characters (plus 1 for 0-termination) we use to
+ * represent currency names (i.e. EUR, USD, etc.).
+ */
 #define TALER_CURRENCY_LEN 4
 
 
 GNUNET_NETWORK_STRUCT_BEGIN
 
+/**
+ * Amount, encoded for network transmission.
+ */
 struct TALER_AmountNBO
 {
+  /**
+   * Value in the main currency, in NBO.
+   */
   uint32_t value;
+
+  /**
+   * Additinal fractional value, in NBO.
+   */
   uint32_t fraction;
+
+  /**
+   * Type of the currency being represented.
+   */
   char currency[TALER_CURRENCY_LEN];
 };
 
 GNUNET_NETWORK_STRUCT_END
-
 
 
 /**
@@ -90,10 +118,12 @@ struct TALER_Amount
    * Value (numerator of fraction)
    */
   uint32_t value;
+
   /**
    * Fraction (denominator of fraction)
    */
   uint32_t fraction;
+
   /**
    * Currency string, left adjusted and padded with zeros.
    */
@@ -102,36 +132,37 @@ struct TALER_Amount
 
 
 /**
- * Initialize Gcrypt library.
- */
-void
-TALER_gcrypt_init (void);
-
-
-/**
  * Parse denomination description, in the format "T : V : F".
  *
  * @param str denomination description
  * @param denom denomination to write the result to
- * @return GNUNET_OK if the string is a valid denomination specification,
- *         GNUNET_SYSERR if it is invalid.
+ * @return #GNUNET_OK if the string is a valid denomination specification,
+ *         #GNUNET_SYSERR if it is invalid.
  */
 int
-TALER_string_to_amount (const char *str, struct TALER_Amount *denom);
+TALER_string_to_amount (const char *str,
+                        struct TALER_Amount *denom);
 
 
 /**
- * FIXME
+ * Convert amount from host to network representation.
+ *
+ * @param d amount in host representation
+ * @return amount in network representation
  */
 struct TALER_AmountNBO
 TALER_amount_hton (struct TALER_Amount d);
 
 
 /**
- * FIXME
+ * Convert amount from network to host representation.
+ *
+ * @param d amount in network representation
+ * @return amount in host representation
  */
 struct TALER_Amount
 TALER_amount_ntoh (struct TALER_AmountNBO dn);
+
 
 /**
  * Compare the value/fraction of two amounts.  Does not compare the currency,
@@ -143,7 +174,8 @@ TALER_amount_ntoh (struct TALER_AmountNBO dn);
  * @return result of the comparison
  */
 int
-TALER_amount_cmp (struct TALER_Amount a1, struct TALER_Amount a2);
+TALER_amount_cmp (struct TALER_Amount a1,
+                  struct TALER_Amount a2);
 
 
 /**
@@ -154,7 +186,8 @@ TALER_amount_cmp (struct TALER_Amount a1, struct TALER_Amount a2);
  * @return (a1-a2) or 0 if a2>=a1
  */
 struct TALER_Amount
-TALER_amount_subtract (struct TALER_Amount a1, struct TALER_Amount a2);
+TALER_amount_subtract (struct TALER_Amount a1,
+                       struct TALER_Amount a2);
 
 
 /**
@@ -165,7 +198,8 @@ TALER_amount_subtract (struct TALER_Amount a1, struct TALER_Amount a2);
  * @return sum of a1 and a2
  */
 struct TALER_Amount
-TALER_amount_add (struct TALER_Amount a1, struct TALER_Amount a2);
+TALER_amount_add (struct TALER_Amount a1,
+                  struct TALER_Amount a2);
 
 
 /**
@@ -187,43 +221,89 @@ TALER_amount_normalize (struct TALER_Amount amount);
 char *
 TALER_amount_to_string (struct TALER_Amount amount);
 
+/* ****************** FIXME: move to GNUnet? ************** */
 
 /**
  * Return the base32crockford encoding of the given buffer.
  *
  * The returned string will be freshly allocated, and must be free'd
- * with GNUNET_free.
+ * with #GNUNET_free().
  *
  * @param buffer with data
  * @param size size of the buffer
  * @return freshly allocated, null-terminated string
  */
 char *
-TALER_data_to_string_alloc (const void *buf, size_t size);
+TALER_data_to_string_alloc (const void *buf,
+                            size_t size);
+
+
+/* ****************** Refresh crypto primitives ************* */
+
+/**
+ * Representation of an encrypted refresh link.
+ */
+struct TALER_RefreshLinkEncrypted
+{
+
+  /**
+   * Encrypted private key of the coin.
+   */
+  char [sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey)] coin_priv_enc;
+
+  /**
+   * Encrypted blinding key with @e blinding_key_enc_size bytes.
+   */
+  char *blinding_key_enc;
+
+  /**
+   * Number of bytes in @e blinding_key_enc.
+   */
+  size_t blinding_key_enc_size;
+};
 
 
 /**
- * Get encoded binary data from a configuration.
- *
- * @return GNUNET_OK on success
- *         GNUNET_NO is the value does not exist
- *         GNUNET_SYSERR on encoding error
+ * Representation of an refresh link in cleartext.
  */
-int
-TALER_configuration_get_data (const struct GNUNET_CONFIGURATION_Handle *cfg,
-                              const char *section, const char *option,
-                              void *buf, size_t buf_size);
+struct TALER_RefreshLinkDecrypted
+{
+
+  /**
+   * Private key of the coin.
+   */
+  struct GNUNET_CRYPTO_EcdsaPrivateKey coin_priv;
+
+  /**
+   * Blinding key with @e blinding_key_enc_size bytes.
+   */
+  struct GNUNET_CRYPTO_rsa_BlindingKey *blinding_key;
+
+};
 
 
+/**
+ * Decrypt refresh link information.
+ *
+ * @param input encrypted refresh link data
+ * @param secret shared secret to use for decryption
+ * @return NULL on error
+ */
+struct TALER_RefreshLinkDecrypted *
+TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
+                       const struct GNUNET_HashCode *secret);
 
 
-int
-TALER_refresh_decrypt (const void *input, size_t input_size, const struct GNUNET_HashCode *secret, void *result);
-
-int
-TALER_refresh_encrypt (const void *input, size_t input_size, const struct GNUNET_HashCode *secret, void *result);
-
-
+/**
+ * Encrypt refresh link information.
+ *
+ * @param input plaintext refresh link data
+ * @param secret shared secret to use for encryption
+ * @return NULL on error (should never happen)
+ */
+struct TALER_RefreshLinkEncrypted *
+TALER_refresh_encrypt (const struct TALER_RefreshLinkDecrypted *input,
+                       const struct GNUNET_HashCode *secret);
 
 
 #endif

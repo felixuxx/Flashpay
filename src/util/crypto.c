@@ -1,0 +1,118 @@
+/*
+  This file is part of TALER
+  (C) 2014 Christian Grothoff (and other contributing authors)
+
+  TALER is free software; you can redistribute it and/or modify it under the
+  terms of the GNU General Public License as published by the Free Software
+  Foundation; either version 3, or (at your option) any later version.
+
+  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License along with
+  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
+*/
+
+/**
+ * @file crypto.c
+ * @brief Cryptographic utility functions
+ * @author Sree Harsha Totakura <sreeharsha@totakura.in>
+ * @author Florian Dold
+ * @author Benedikt Mueller
+ */
+
+#include "platform.h"
+#include "taler_util.h"
+#include <gnunet/gnunet_common.h>
+#include <gnunet/gnunet_util_lib.h>
+#include <gcrypt.h>
+
+#define CURVE "Ed25519"
+
+
+static void
+fatal_error_handler (void *cls, int wtf, const char *msg)
+{
+  LOG_ERROR("Fatal error in Gcrypt: %s\n", msg);
+  abort();
+}
+
+
+/**
+ * Initialize Gcrypt library.
+ */
+void
+TALER_gcrypt_init()
+{
+  gcry_set_fatalerror_handler (&fatal_error_handler, NULL);
+  TALER_assert_as(gcry_check_version(NEED_LIBGCRYPT_VERSION),
+                  "libgcrypt version mismatch");
+  /* Disable secure memory.  */
+  gcry_control (GCRYCTL_DISABLE_SECMEM, 0);
+  gcry_control (GCRYCTL_INITIALIZATION_FINISHED, 0);
+}
+
+
+/**
+ * Derive symmetric key material for refresh operations from
+ * a given shared secret.
+ *
+ * @param secret the shared secret
+ * @param[out] iv set to initialization vector
+ * @param[out] skey set to session key
+ */
+static void
+derive_refresh_key (const struct GNUNET_HashCode *secret,
+                    struct GNUNET_CRYPTO_SymmetricInitializationVector *iv,
+                    struct GNUNET_CRYPTO_SymmetricSessionKey *skey)
+{
+  static const char ctx_key[] = "taler-key-skey";
+  static const char ctx_iv[] = "taler-key-iv";
+
+  GNUNET_assert (GNUNET_YES ==
+                 GNUNET_CRYPTO_kdf (skey, sizeof (struct GNUNET_CRYPTO_SymmetricSessionKey),
+                                    ctx_key, strlen (ctx_key),
+                                    secret, sizeof (struct GNUNET_HashCode),
+                                    NULL, 0));
+  GNUNET_assert (GNUNET_YES ==
+                 GNUNET_CRYPTO_kdf (iv, sizeof (struct GNUNET_CRYPTO_SymmetricInitializationVector),
+                                    ctx_iv, strlen (ctx_iv),
+                                    secret, sizeof (struct GNUNET_HashCode),
+                                    NULL, 0));
+}
+
+
+int
+TALER_refresh_decrypt (const void *input,
+                       size_t input_size,
+                       const struct GNUNET_HashCode *secret,
+                       void *result)
+{
+  struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
+  struct GNUNET_CRYPTO_SymmetricSessionKey skey;
+
+  derive_refresh_key (secret, &iv, &skey);
+
+  return GNUNET_CRYPTO_symmetric_decrypt (input, input_size, &skey, &iv, result);
+}
+
+
+int
+TALER_refresh_encrypt (const void *input,
+                       size_t input_size,
+                       const struct GNUNET_HashCode *secret,
+                       void *result)
+{
+  struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
+  struct GNUNET_CRYPTO_SymmetricSessionKey skey;
+
+  derive_refresh_key (secret, &iv, &skey);
+
+  return GNUNET_CRYPTO_symmetric_encrypt (input, input_size, &skey, &iv, result);
+}
+
+
+
+
+/* end of crypto.c */

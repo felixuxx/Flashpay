@@ -117,9 +117,9 @@ struct CollectableBlindcoin
 
 struct RefreshSession
 {
-  int has_commit_sig;
   struct GNUNET_CRYPTO_EddsaSignature commit_sig;
   struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
+  int has_commit_sig;
   uint16_t num_oldcoins;
   uint16_t num_newcoins;
   uint16_t kappa;
@@ -128,46 +128,33 @@ struct RefreshSession
 };
 
 
-#define TALER_REFRESH_SHARED_SECRET_LENGTH (sizeof (struct GNUNET_HashCode))
-#define TALER_REFRESH_LINK_LENGTH (sizeof (struct LinkData))
-
+/**
+ * FIXME
+ */
 struct RefreshCommitLink
 {
   struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
   struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub;
+  struct GNUNET_HashCode shared_secret;
   uint16_t cnc_index;
   uint16_t oldcoin_index;
-  char shared_secret_enc[sizeof (struct GNUNET_HashCode)];
-};
-
-struct LinkData
-{
-  struct GNUNET_CRYPTO_EcdsaPrivateKey coin_priv;
-  struct GNUNET_CRYPTO_rsa_BlindingKey *bkey_enc;
 };
 
 
-GNUNET_NETWORK_STRUCT_BEGIN
-
-struct SharedSecretEnc
-{
-  char data[TALER_REFRESH_SHARED_SECRET_LENGTH];
-};
-
-
-struct LinkDataEnc
-{
-  char data[sizeof (struct LinkData)];
-};
-
-GNUNET_NETWORK_STRUCT_END
-
+/**
+ * FIXME
+ */
 struct RefreshCommitCoin
 {
+  /**
+   * Refresh session's public key.
+   */
   struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
 
+  struct TALER_RefreshLinkEncrypted refresh_link;
+
   /**
-   * Blinded message to be signed (in envelope).
+   * Blinded message to be signed (in envelope), with @e coin_env_size bytes.
    */
   char *coin_ev;
 
@@ -176,22 +163,36 @@ struct RefreshCommitCoin
    */
   size_t coin_ev_size;
 
+  /**
+   * FIXME: needed?
+   */
   uint16_t cnc_index;
+
+  /**
+   * FIXME: needed?
+   */
   uint16_t newcoin_index;
-  char link_enc[sizeof (struct LinkData)];
+
 };
 
 
+/**
+ * FIXME
+ */
 struct KnownCoin
 {
   struct TALER_CoinPublicInfo public_info;
-  struct TALER_Amount expended_balance;
-  int is_refreshed;
+
   /**
    * Refreshing session, only valid if
    * is_refreshed==1.
    */
   struct GNUNET_CRYPTO_EddsaPublicKey refresh_session_pub;
+
+  struct TALER_Amount expended_balance;
+
+  int is_refreshed;
+
 };
 
 
@@ -356,11 +357,15 @@ TALER_MINT_config_load (const char *mint_base_dir);
 
 
 int
-TALER_TALER_DB_extract_amount (PGresult *result, unsigned int row,
-                        int indices[3], struct TALER_Amount *denom);
+TALER_TALER_DB_extract_amount (PGresult *result,
+                               unsigned int row,
+                               int indices[3],
+                               struct TALER_Amount *denom);
 
 int
-TALER_TALER_DB_extract_amount_nbo (PGresult *result, unsigned int row,
-                             int indices[3], struct TALER_AmountNBO *denom_nbo);
+TALER_TALER_DB_extract_amount_nbo (PGresult *result,
+                                   unsigned int row,
+                                   int indices[3],
+                                   struct TALER_AmountNBO *denom_nbo);
 
 #endif /* _MINT_H */
