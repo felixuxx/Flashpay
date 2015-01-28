@@ -318,7 +318,7 @@ TALER_MINT_reply_insufficient_funds (struct MHD_Connection *connection,
   const struct TALER_MINT_DB_TransactionList *pos;
   int ret;
 
-  // FIXME: implement properly!
+  // FIXME: implement properly! (#3632)
   for (pos = tl; NULL != pos; pos = pos->next)
   {
     switch (pos->type)
