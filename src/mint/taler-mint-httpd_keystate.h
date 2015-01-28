@@ -1,0 +1,129 @@
+/*
+  This file is part of TALER
+  (C) 2014 GNUnet e.V.
+
+  TALER is free software; you can redistribute it and/or modify it under the
+  terms of the GNU Affero General Public License as published by the Free Software
+  Foundation; either version 3, or (at your option) any later version.
+
+  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+  A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License along with
+  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
+*/
+/**
+ * @file taler-mint-httpd_keystate.h
+ * @brief management of our private signing keys (denomination keys)
+ * @author Florian Dold
+ * @author Benedikt Mueller
+ * @author Christian Grothoff
+ */
+#ifndef TALER_MINT_HTTPD_KEYSTATE_H
+#define TALER_MINT_HTTPD_KEYSTATE_H
+
+
+#include <gnunet/gnunet_util_lib.h>
+#include <microhttpd.h>
+#include <jansson.h>
+#include "taler-mint-httpd.h"
+#include "mint.h"
+#include "key_io.h"
+
+
+/**
+ * Snapshot of the (coin and signing)
+ * keys (including private keys) of the mint.
+ */
+struct MintKeyState
+{
+  /**
+   * When did we initiate the key reloading?
+   */
+  struct GNUNET_TIME_Absolute reload_time;
+
+  /**
+   * JSON array with denomination keys.
+   */
+  json_t *denom_keys_array;
+
+  /**
+   * JSON array with signing keys.
+   */
+  json_t *sign_keys_array;
+
+  /**
+   * Mapping from denomination keys to denomination key issue struct.
+   */
+  struct GNUNET_CONTAINER_MultiHashMap *denomkey_map;
+
+  /**
+   * When is the next key invalid and we have to reload?
+   */
+  struct GNUNET_TIME_Absolute next_reload;
+
+  /**
+   * Mint signing key that should be used currently.
+   */
+  struct TALER_MINT_SignKeyIssuePriv current_sign_key_issue;
+
+  /**
+   * Cached JSON text that the mint will send for
+   * a /keys request.
+   */
+  char *keys_json;
+
+  /**
+   * Reference count.
+   */
+  unsigned int refcnt;
+};
+
+
+/**
+ * Acquire the key state of the mint.  Updates keys if necessary.
+ * For every call to #TALER_MINT_key_state_acquire(), a matching call
+ * to #TALER_MINT_key_state_release() must be made.
+ *
+ * @return the key state
+ */
+struct MintKeyState *
+TALER_MINT_key_state_acquire (void);
+
+
+/**
+ * Release key state, free if necessary (if reference count gets to zero).
+ *
+ * @param key_state the key state to release
+ */
+void
+TALER_MINT_key_state_release (struct MintKeyState *key_state);
+
+
+/**
+ * Look up the issue for a denom public key.
+ *
+ * @param key state to look in
+ * @param denom_pub denomination public key
+ * @return the denomination key issue,
+ *         or NULL if denom_pub could not be found
+ */
+struct TALER_MINT_DenomKeyIssuePriv *
+TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
+                          const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub);
+
+
+/**
+ * Read signals from a pipe in a loop, and reload keys from disk if
+ * SIGUSR1 is read from the pipe.
+ *
+ * @return #GNUNET_OK if we terminated normally, #GNUNET_SYSERR on error
+ */
+int
+TALER_MINT_key_reload_loop (void);
+
+
+
+
+#endif

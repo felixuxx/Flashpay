@@ -29,88 +29,7 @@
 #include "taler-mint-httpd.h"
 #include "mint.h"
 #include "key_io.h"
-
-
-/**
- * Snapshot of the (coin and signing)
- * keys (including private keys) of the mint.
- */
-struct MintKeyState
-{
-  /**
-   * When did we initiate the key reloading?
-   */
-  struct GNUNET_TIME_Absolute reload_time;
-
-  /**
-   * JSON array with denomination keys.
-   */
-  json_t *denom_keys_array;
-
-  /**
-   * JSON array with signing keys.
-   */
-  json_t *sign_keys_array;
-
-  /**
-   * Mapping from denomination keys to denomination key issue struct.
-   */
-  struct GNUNET_CONTAINER_MultiHashMap *denomkey_map;
-
-  /**
-   * When is the next key invalid and we have to reload?
-   */
-  struct GNUNET_TIME_Absolute next_reload;
-
-  /**
-   * Mint signing key that should be used currently.
-   */
-  struct TALER_MINT_SignKeyIssuePriv current_sign_key_issue;
-
-  /**
-   * Cached JSON text that the mint will send for
-   * a /keys request.
-   */
-  char *keys_json;
-
-  /**
-   * Reference count.
-   */
-  unsigned int refcnt;
-};
-
-
-/**
- * Release key state, free if necessary (if reference count gets to zero).
- *
- * @param key_state the key state to release
- */
-void
-TALER_MINT_key_state_release (struct MintKeyState *key_state);
-
-
-/**
- * Acquire the key state of the mint.  Updates keys if necessary.
- * For every call to #TALER_MINT_key_state_acquire, a matching call
- * to #TALER_MINT_key_state_release must be made.
- *
- * @return the key state
- */
-struct MintKeyState *
-TALER_MINT_key_state_acquire (void);
-
-
-/**
- * Look up the issue for a denom public key.
- *
- * @param key state to look in
- * @param denom_pub denomination public key
- * @return the denomination key issue,
- *         or NULL if denom_pub could not be found
- */
-struct TALER_MINT_DenomKeyIssuePriv *
-TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
-                          const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub);
+#include "taler-mint-httpd_keystate.h"
 
 
 /**
@@ -129,13 +48,16 @@ TALER_MINT_test_coin_valid (const struct MintKeyState *key_state,
 
 
 /**
- * Read signals from a pipe in a loop, and reload keys from disk if
- * SIGUSR1 is read from the pipe.
+ * Sign the message in @a purpose with the mint's signing
+ * key.
  *
- * @return #GNUNET_OK if we terminated normally, #GNUNET_SYSERR on error
+ * @param purpose the message to sign
+ * @param[OUT] sig signature over purpose using current signing key
  */
-int
-TALER_MINT_key_reload_loop (void);
+void
+TALER_MINT_keys_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+                      struct GNUNET_CRYPTO_EddsaSignature *sig);
+
 
 
 /**
@@ -155,17 +77,6 @@ TALER_MINT_handler_keys (struct RequestHandler *rh,
                          const char *upload_data,
                          size_t *upload_data_size);
 
-
-/**
- * Sign the message in @a purpose with the mint's signing
- * key.
- *
- * @param purpose the message to sign
- * @param[OUT] sig signature over purpose using current signing key
- */
-void
-TALER_MINT_keys_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-                      struct GNUNET_CRYPTO_EddsaSignature *sig);
 
 
 #endif

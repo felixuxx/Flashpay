@@ -61,9 +61,10 @@ taler_mint_reservemod_LDFLAGS = \
 
 taler_mint_httpd_SOURCES = \
   taler-mint-httpd.c \
+  taler-mint-httpd_keystate.c taler-mint-httpd_keystate.h \
+  taler-mint-httpd_db.c taler-mint-httpd_db.h \
   taler-mint-httpd_parsing.c taler-mint-httpd_parsing.h \
   taler-mint-httpd_responses.c taler-mint-httpd_responses.h \
-  taler-mint-httpd_db.c taler-mint-httpd_db.h \
   taler-mint-httpd_mhd.c \
   taler-mint-httpd_keys.c \
   taler-mint-httpd_deposit.c \
