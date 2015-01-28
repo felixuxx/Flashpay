@@ -31,7 +31,7 @@
  */
 #include "platform.h"
 #include "taler-mint-httpd_responses.h"
-#include "taler_json_lib.h"
+#include "taler_util.h"
 #include <gnunet/gnunet_util_lib.h>
 
 

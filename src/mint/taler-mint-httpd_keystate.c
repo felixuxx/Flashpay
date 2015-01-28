@@ -26,7 +26,7 @@
 #include "mint.h"
 #include "taler_signatures.h"
 #include "taler-mint-httpd_keystate.h"
-#include "taler_json_lib.h"
+#include "taler_util.h"
 #include "taler-mint-httpd_parsing.h"
 
 
