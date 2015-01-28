@@ -117,7 +117,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
 
     /* coin valid but not known => insert into DB */
     known_coin.is_refreshed = GNUNET_NO;
-    known_coin.expended_balance = TALER_amount_ntoh (deposit->amount);
+    known_coin.expended_balance = deposit->amount;
     known_coin.public_info = coin_info;
 
     if (GNUNET_OK != TALER_MINT_DB_insert_known_coin (db_conn, &known_coin))
@@ -419,8 +419,7 @@ mint_amount_native_zero ()
   struct TALER_Amount amount;
 
   memset (&amount, 0, sizeof (amount));
-  // FIXME: load from config
-  memcpy (amount.currency, "EUR", 3);
+  memcpy (amount.currency, MINT_CURRENCY, strlen (MINT_CURRENCY) + 1);
 
   return amount;
 }

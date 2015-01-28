@@ -78,6 +78,18 @@ TALER_MINT_reply_arg_invalid (struct MHD_Connection *connection,
 
 
 /**
+ * Send a response indicating an invalid coin.  (I.e. the signature
+ * over the public key of the coin does not match a valid signing key
+ * of this mint).
+ *
+ * @param connection the MHD connection to use
+ * @return MHD result code
+ */
+int
+TALER_MINT_reply_coin_invalid (struct MHD_Connection *connection);
+
+
+/**
  * Send a response indicating a missing argument.
  *
  * @param connection the MHD connection to use

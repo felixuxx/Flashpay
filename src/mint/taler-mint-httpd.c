@@ -233,7 +233,7 @@ mint_serve_process_config (const char *mint_directory)
   char *master_pub_str;
   char *db_cfg;
 
-  cfg = TALER_MINT_config_load (mint_directory);
+  cfg = TALER_config_load (mint_directory);
   if (NULL == cfg)
   {
     fprintf (stderr,

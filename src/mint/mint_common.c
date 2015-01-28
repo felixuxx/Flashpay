@@ -231,27 +231,11 @@ TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
 }
 
 
-struct GNUNET_CONFIGURATION_Handle *
-TALER_MINT_config_load (const char *mint_base_dir)
-{
-  struct GNUNET_CONFIGURATION_Handle *cfg;
-  char *cfg_dir;
-  int res;
-
-  res = GNUNET_asprintf (&cfg_dir, "%s" DIR_SEPARATOR_STR "config", mint_base_dir);
-  GNUNET_assert (res > 0);
-
-  cfg = GNUNET_CONFIGURATION_create ();
-  res = GNUNET_CONFIGURATION_load_from (cfg, cfg_dir);
-  GNUNET_free (cfg_dir);
-  if (GNUNET_OK != res)
-   return NULL;
-  return cfg;
-}
-
 int
-TALER_TALER_DB_extract_amount_nbo (PGresult *result, unsigned int row,
-                            int indices[3], struct TALER_AmountNBO *denom_nbo)
+TALER_TALER_DB_extract_amount_nbo (PGresult *result,
+                                   unsigned int row,
+                                   int indices[3],
+                                   struct TALER_AmountNBO *denom_nbo)
 {
   if ((indices[0] < 0) || (indices[1] < 0) || (indices[2] < 0))
     return GNUNET_NO;
@@ -270,8 +254,10 @@ TALER_TALER_DB_extract_amount_nbo (PGresult *result, unsigned int row,
 
 
 int
-TALER_TALER_DB_extract_amount (PGresult *result, unsigned int row,
-                        int indices[3], struct TALER_Amount *denom)
+TALER_TALER_DB_extract_amount (PGresult *result,
+                               unsigned int row,
+                               int indices[3],
+                               struct TALER_Amount *denom)
 {
   struct TALER_AmountNBO denom_nbo;
   int res;

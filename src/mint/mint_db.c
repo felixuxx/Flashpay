@@ -1925,11 +1925,11 @@ TALER_MINT_DB_get_deposit (PGconn *db_conn,
     EXITIF (GNUNET_OK !=
             TALER_DB_extract_result (result, rs, 0));
     EXITIF (GNUNET_OK !=
-            TALER_DB_extract_amount_nbo (result, 0,
-                                         "amount_value",
-                                         "amount_fraction",
-                                         "amount_currency",
-                                         &deposit->amount));
+            TALER_DB_extract_amount (result, 0,
+                                     "amount_value",
+                                     "amount_fraction",
+                                     "amount_currency",
+                                     &deposit->amount));
     deposit->coin.denom_sig
       = GNUNET_CRYPTO_rsa_signature_decode (denom_sig_buf,
                                             denom_sig_buf_size);

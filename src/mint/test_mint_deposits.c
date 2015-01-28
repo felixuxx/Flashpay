@@ -104,9 +104,12 @@ run (void *cls, char *const *args, const char *cfgfile,
       htonl (GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, UINT32_MAX));
   deposit->amount.fraction =
       htonl (GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, UINT32_MAX));
-  strcpy (deposit->amount.currency, "EUR");
+  GNUNET_assert (strlen (MINT_CURRENCY) < sizeof (deposit->amount.currency));
+  strcpy (deposit->amount.currency, MINT_CURRENCY);
   /* Copy wireformat */
-  (void) memcpy (deposit->wire, wire, sizeof (wire));
+  memcpy (deposit->wire,
+          wire,
+          sizeof (wire));
   EXITIF (GNUNET_OK != TALER_MINT_DB_insert_deposit (conn,
                                                      deposit));
   EXITIF (GNUNET_OK != TALER_MINT_DB_get_deposit (conn,

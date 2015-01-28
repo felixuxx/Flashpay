@@ -73,14 +73,27 @@ void
 TALER_gcrypt_init (void);
 
 
+/**
+ * Load configuration by parsing all configuration
+ * files in the given directory.
+ *
+ * @param base_dir directory with the configuration files
+ * @return NULL on error, otherwise configuration
+ */
+struct GNUNET_CONFIGURATION_Handle *
+TALER_config_load (const char *base_dir);
+
+
+
 /* *********************** Amount management ****************** */
 
 
 /**
  * Number of characters (plus 1 for 0-termination) we use to
- * represent currency names (i.e. EUR, USD, etc.).
+ * represent currency names (i.e. EUR, USD, etc.).  We use
+ * 8 for alignment (!).
  */
-#define TALER_CURRENCY_LEN 4
+#define TALER_CURRENCY_LEN 8
 
 
 GNUNET_NETWORK_STRUCT_BEGIN
@@ -127,7 +140,7 @@ struct TALER_Amount
   /**
    * Currency string, left adjusted and padded with zeros.
    */
-  char currency[4];
+  char currency[TALER_CURRENCY_LEN];
 };
 
 

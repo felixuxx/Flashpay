@@ -162,7 +162,7 @@ main (int argc, char *const *argv)
     return 1;
   }
 
-  kcfg = TALER_MINT_config_load (mintdir);
+  kcfg = TALER_config_load (mintdir);
   if (NULL == kcfg)
   {
     fprintf (stderr, "can't load mint configuration\n");
@@ -172,4 +172,3 @@ main (int argc, char *const *argv)
     return 1;
   return 0;
 }
-

@@ -25,6 +25,7 @@
 
 #include <microhttpd.h>
 #include <jansson.h>
+#include "taler_util.h"
 
 
 /**
@@ -213,6 +214,23 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec);
  * Generate line in parser specification indicating the end of the spec.
  */
 #define TALER_MINT_PARSE_END { NULL, NULL, 0, 0 }
+
+
+/**
+ * Parse amount specified in JSON format.
+ *
+ * @param connection the MHD connection (to report errors)
+ * @param f json specification of the amount
+ * @param amount[OUT] set to the amount specified in @a f
+ * @return
+ *    #GNUNET_YES if parsing was successful
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error, error response was not generated
+ */
+int
+TALER_MINT_parse_amount_json (struct MHD_Connection *connection,
+                              json_t *f,
+                              struct TALER_Amount *amount);
 
 
 /**

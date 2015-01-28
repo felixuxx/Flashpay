@@ -29,6 +29,7 @@
 #define TALER_SIGNATURES_H
 
 #include <gnunet/gnunet_util_lib.h>
+#include "taler_util.h"
 
 /**
  * Purpose for signing public keys signed
@@ -140,6 +141,45 @@ struct TALER_WithdrawRequest
   struct GNUNET_HashCode h_coin_envelope;
 };
 
+
+/**
+ * Format used to generate the signature on a request to deposit
+ * a coin into the account of a merchant.
+ */
+struct TALER_DepositRequest
+{
+  /**
+   * Purpose must be #TALER_SIGNATURE_DEPOSIT
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash over the contract for which this deposit is made.
+   */
+  struct GNUNET_HashCode h_contract;
+
+  /**
+   * Hash over the wiring information of the merchant.
+   */
+  struct GNUNET_HashCode h_wire;
+
+  /**
+   * Merchant-generated transaction ID to detect duplicate
+   * transactions.
+   */
+  uint64_t transaction_id GNUNET_PACKED;
+
+  /**
+   * Amount to be deposited.
+   */
+  struct TALER_AmountNBO amount;
+
+  /**
+   * The coin's public key.
+   */
+  struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+
+};
 
 
 /**

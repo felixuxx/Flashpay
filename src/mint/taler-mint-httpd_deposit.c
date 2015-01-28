@@ -23,9 +23,8 @@
  * @author Christian Grothoff
  *
  * TODO:
- * - actually verify coin signature
- * - revisit `struct Deposit` parsing once the struct
- *   has been finalized
+ * - missing 'wire' format check (well-formed SEPA-details)
+ * - ugliy if-construction for deposit type
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -59,19 +58,25 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
                             const struct Deposit *deposit)
 {
   struct MintKeyState *key_state;
+  struct TALER_DepositRequest dr;
 
-  /* FIXME: verify coin signature! */
-  /*
-  if (GNUNET_OK != GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_DEPOSIT,
-                                                      &deposit->purpose,
-                                                      &deposit->coin_sig,
-                                                      &deposit->coin_pub))
+  dr.purpose.purpose = htonl (TALER_SIGNATURE_DEPOSIT);
+  dr.purpose.size = htonl (sizeof (struct TALER_DepositRequest));
+  dr.h_contract = deposit->h_contract;
+  dr.h_wire = deposit->h_wire;
+  dr.transaction_id = GNUNET_htonll (deposit->transaction_id);
+  dr.amount = TALER_amount_hton (deposit->amount);
+  dr.coin_pub = deposit->coin.coin_pub;
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_DEPOSIT,
+                                  &dr.purpose,
+                                  &deposit->csig,
+                                  &deposit->coin.coin_pub))
   {
-    resp = json_pack ("{s:s}", "error", "Signature verfication failed");
+    LOG_WARNING ("Invalid signature on /deposit request\n");
     return TALER_MINT_reply_arg_invalid (connection,
                                          "csig");
   }
-  */
 
   key_state = TALER_MINT_key_state_acquire ();
   if (GNUNET_YES !=
@@ -80,10 +85,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   {
     LOG_WARNING ("Invalid coin passed for /deposit\n");
     TALER_MINT_key_state_release (key_state);
-    return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       "{s:s}",
-                                       "error", "Coin is not valid");
+    return TALER_MINT_reply_coin_invalid (connection);
   }
   TALER_MINT_key_state_release (key_state);
 
@@ -101,6 +103,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
  * @param root root of the posted JSON
  * @param purpose is this a #TALER_SIGNATURE_DEPOSIT or
  *           #TALER_SIGNATURE_INCREMENTAL_DEPOSIT // FIXME: bad type, use enum!
+ * @param amount how much should be deposited
  * @param wire json describing the wire details (?)
  * @return MHD result code
   */
@@ -108,6 +111,7 @@ static int
 parse_and_handle_deposit_request (struct MHD_Connection *connection,
                                   const json_t *root,
                                   uint32_t purpose,
+                                  const struct TALER_Amount *amount,
                                   const json_t *wire)
 {
   int res;
@@ -155,6 +159,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
     return TALER_MINT_reply_arg_invalid (connection,
                                          "denom_pub");
   }
+  /* FIXME: check that "wire" is formatted correctly */
   if (NULL == (wire_enc = json_dumps (wire, JSON_COMPACT | JSON_SORT_KEYS)))
   {
     GNUNET_CRYPTO_rsa_public_key_free (deposit.coin.denom_pub);
@@ -172,9 +177,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
 
   deposit.wire = wire;
   deposit.purpose = purpose;
-
-  // FIXME: deposit.amount not initialized!
-
+  deposit.amount = *amount;
   res = verify_and_execute_deposit (connection,
                                     &deposit);
   GNUNET_CRYPTO_rsa_public_key_free (deposit.coin.denom_pub);
@@ -212,6 +215,8 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
   const char *deposit_type;
   int res;
   uint32_t purpose;
+  struct TALER_Amount amount;
+  json_t *f;
 
   res = TALER_MINT_parse_post_json (connection,
                                     connection_cls,
@@ -223,16 +228,35 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
   if (-1 == json_unpack (json,
-                         "{s:s, s:o}",
+                         "{s:s, s:o, f:o}",
                          "type", &deposit_type,
-                         "wire", &wire))
+                         "wire", &wire,
+                         "f", &f))
   {
     GNUNET_break_op (0);
+    json_decref (json);
     return TALER_MINT_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        "{s:s}",
                                        "error", "Bad format");
   }
+  res = TALER_MINT_parse_amount_json (connection,
+                                      f,
+                                      &amount);
+  json_decref (f);
+  if (GNUNET_SYSERR == res)
+  {
+    json_decref (wire);
+    json_decref (json);
+    return MHD_NO;
+  }
+  if (GNUNET_NO == res)
+  {
+    json_decref (wire);
+    json_decref (json);
+    return MHD_YES;
+  }
+  /* FIXME: use array search and enum, this is ugly */
   if (0 == strcmp ("DIRECT_DEPOSIT", deposit_type))
     purpose = TALER_SIGNATURE_DEPOSIT;
   else if (0 == strcmp ("INCREMENTAL_DEPOSIT", deposit_type))
@@ -241,6 +265,7 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
   {
     GNUNET_break_op (0);
     json_decref (wire);
+    json_decref (json);
     return TALER_MINT_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        "{s:s}",
@@ -249,8 +274,10 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
   res = parse_and_handle_deposit_request (connection,
                                           json,
                                           purpose,
+                                          &amount,
                                           wire);
   json_decref (wire);
+  json_decref (json);
   return res;
 }
 

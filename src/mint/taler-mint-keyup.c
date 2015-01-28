@@ -621,7 +621,7 @@ main (int argc, char *const *argv)
   }
   ROUND_TO_SECS (now, abs_value_us);
 
-  kcfg = TALER_MINT_config_load (mintdir);
+  kcfg = TALER_config_load (mintdir);
   if (NULL == kcfg)
   {
     fprintf (stderr, "can't load mint configuration\n");

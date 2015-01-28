@@ -16,7 +16,7 @@
 
 /**
  * @file util.c
- * @brief Common utility functions
+ * @brief Common utility functions; we might choose to move those to GNUnet at some point
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Florian Dold
  * @author Benedikt Mueller
@@ -58,6 +58,35 @@ TALER_data_to_string_alloc (const void *buf, size_t size)
   *end = '\0';
   return str_buf;
 }
+
+
+/**
+ * Load configuration by parsing all configuration
+ * files in the given directory.
+ *
+ * @param base_dir directory with the configuration files
+ * @return NULL on error, otherwise configuration
+ */
+struct GNUNET_CONFIGURATION_Handle *
+TALER_config_load (const char *base_dir)
+{
+  struct GNUNET_CONFIGURATION_Handle *cfg;
+  char *cfg_dir;
+  int res;
+
+  res = GNUNET_asprintf (&cfg_dir,
+                         "%s" DIR_SEPARATOR_STR "config",
+                         base_dir);
+  GNUNET_assert (res > 0);
+  cfg = GNUNET_CONFIGURATION_create ();
+  res = GNUNET_CONFIGURATION_load_from (cfg, cfg_dir);
+  GNUNET_free (cfg_dir);
+  if (GNUNET_OK != res)
+   return NULL;
+  return cfg;
+}
+
+
 
 
 /* end of util.c */

@@ -110,8 +110,8 @@ buffer_deinit (struct Buffer *buf)
  * @param data the data to append
  * @param size the size of @a data
  * @param max_size maximum size that the buffer can grow to
- * @return GNUNET_OK on success,
- *         GNUNET_NO if the buffer can't accomodate for the new data
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if the buffer can't accomodate for the new data
  */
 static int
 buffer_append (struct Buffer *buf,
@@ -153,14 +153,14 @@ buffer_append (struct Buffer *buf,
  * @param upload_data the POST data
  * @param upload_data_size number of bytes in @a upload_data
  * @param json the JSON object for a completed request
- * @returns
- *    GNUNET_YES if json object was parsed or at least
+ * @return
+ *    #GNUNET_YES if json object was parsed or at least
  *               may be parsed in the future (call again);
  *               `*json` will be NULL if we need to be called again,
  *                and non-NULL if we are done.
- *    GNUNET_NO is request incomplete or invalid
+ *    #GNUNET_NO is request incomplete or invalid
  *               (error message was generated)
- *    GNUNET_SYSERR on internal error
+ *    #GNUNET_SYSERR on internal error
  *               (we could not even queue an error message,
  *                close HTTP session with MHD_NO)
  */
@@ -602,6 +602,78 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec)
       spec[i].destination = NULL;
       spec[i].destination_size_out = 0;
     }
+}
+
+
+/**
+ * Parse amount specified in JSON format.
+ *
+ * @param connection the MHD connection (to report errors)
+ * @param f json specification of the amount
+ * @param amount[OUT] set to the amount specified in @a f
+ * @return
+ *    #GNUNET_YES if parsing was successful
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error, error response was not generated
+ */
+int
+TALER_MINT_parse_amount_json (struct MHD_Connection *connection,
+                              json_t *f,
+                              struct TALER_Amount *amount)
+{
+  json_int_t value;
+  json_int_t fraction;
+  const char *currency;
+  struct TALER_Amount a;
+
+  if (-1 == json_unpack (f,
+                         "{s:I, s:I, s:s}",
+                         "value", &value,
+                         "fraction", &fraction,
+                         "currency", &currency))
+  {
+    LOG_WARNING ("Failed to parse JSON amount specification\n");
+    if (MHD_YES !=
+        TALER_MINT_reply_json_pack (connection,
+                                    MHD_HTTP_BAD_REQUEST,
+                                    "{s:s}",
+                                    "error", "Bad format"))
+      return GNUNET_SYSERR;
+    return GNUNET_NO;
+  }
+  if ( (value < 0) ||
+       (fraction < 0) ||
+       (value > UINT32_MAX) ||
+       (fraction > UINT32_MAX) )
+  {
+    LOG_WARNING ("Amount specified not in allowed range\n");
+    if (MHD_YES !=
+        TALER_MINT_reply_json_pack (connection,
+                                    MHD_HTTP_BAD_REQUEST,
+                                    "{s:s}",
+                                    "error", "Amount outside of allowed range"))
+      return GNUNET_SYSERR;
+    return GNUNET_NO;
+  }
+  if (0 != strcmp (currency,
+                   MINT_CURRENCY))
+  {
+    LOG_WARNING ("Currency specified not supported by this mint\n");
+    if (MHD_YES !=
+        TALER_MINT_reply_json_pack (connection,
+                                    MHD_HTTP_BAD_REQUEST,
+                                    "{s:s, s:s}",
+                                    "error", "Currency not supported",
+                                    "currency", currency))
+      return GNUNET_SYSERR;
+    return GNUNET_NO;
+  }
+  a.value = (uint32_t) value;
+  a.fraction = (uint32_t) fraction;
+  GNUNET_assert (strlen (MINT_CURRENCY) < TALER_CURRENCY_LEN);
+  strcpy (a.currency, MINT_CURRENCY);
+  *amount = TALER_amount_normalize (a);
+  return GNUNET_OK;
 }
 
 

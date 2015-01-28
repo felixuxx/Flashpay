@@ -95,7 +95,7 @@ TALER_MINT_init_withdraw_tables (PGconn *conn)
   }
   PQclear (result);
 
-  result = PQexec (conn, 
+  result = PQexec (conn,
                    "CREATE TABLE IF NOT EXISTS refresh_sessions "
                    "("
                    " session_pub BYTEA PRIMARY KEY CHECK (length(session_pub) = 32)"
@@ -113,7 +113,7 @@ TALER_MINT_init_withdraw_tables (PGconn *conn)
   }
   PQclear (result);
 
-  result = PQexec (conn, 
+  result = PQexec (conn,
                    "CREATE TABLE IF NOT EXISTS refresh_order "
                    "( "
                    " session_pub BYTEA NOT NULL REFERENCES refresh_sessions (session_pub)"
@@ -130,7 +130,7 @@ TALER_MINT_init_withdraw_tables (PGconn *conn)
   PQclear (result);
 
 
-  result = PQexec (conn, 
+  result = PQexec (conn,
                    "CREATE TABLE IF NOT EXISTS refresh_commit_link"
                    "("
                    " session_pub BYTEA NOT NULL REFERENCES refresh_sessions (session_pub)"
@@ -150,7 +150,7 @@ TALER_MINT_init_withdraw_tables (PGconn *conn)
   }
   PQclear (result);
 
-  result = PQexec (conn, 
+  result = PQexec (conn,
                    "CREATE TABLE IF NOT EXISTS refresh_commit_coin"
                    "("
                    " session_pub BYTEA NOT NULL REFERENCES refresh_sessions (session_pub) "
@@ -169,7 +169,7 @@ TALER_MINT_init_withdraw_tables (PGconn *conn)
   }
   PQclear (result);
 
-  result = PQexec (conn, 
+  result = PQexec (conn,
                    "CREATE TABLE IF NOT EXISTS refresh_melt"
                    "("
                    " session_pub BYTEA NOT NULL REFERENCES refresh_sessions (session_pub) "
@@ -185,7 +185,7 @@ TALER_MINT_init_withdraw_tables (PGconn *conn)
   }
   PQclear (result);
 
-  result = PQexec (conn, 
+  result = PQexec (conn,
                    "CREATE TABLE IF NOT EXISTS refresh_collectable"
                    "("
                    " session_pub BYTEA NOT NULL REFERENCES refresh_sessions (session_pub) "
@@ -245,7 +245,7 @@ main (int argc, char *const *argv)
     GNUNET_GETOPT_OPTION_END
   };
 
-  if (GNUNET_GETOPT_run ("taler-mint-serve", options, argc, argv) < 0) 
+  if (GNUNET_GETOPT_run ("taler-mint-serve", options, argc, argv) < 0)
     return 1;
 
   GNUNET_assert (GNUNET_OK == GNUNET_log_setup ("taler-mint-dbinit", "INFO", NULL));
@@ -256,7 +256,7 @@ main (int argc, char *const *argv)
     return 1;
   }
 
-  cfg = TALER_MINT_config_load (mint_base_dir);
+  cfg = TALER_config_load (mint_base_dir);
   if (NULL == cfg)
   {
     fprintf (stderr, "Can't load mint configuration.\n");
@@ -282,4 +282,3 @@ main (int argc, char *const *argv)
 
   return 0;
 }
-

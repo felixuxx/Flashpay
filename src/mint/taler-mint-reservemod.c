@@ -38,7 +38,7 @@ static PGconn *db_conn;
 /**
  * Create a new or add to existing reserve.
  * Fails if currencies do not match.
- * 
+ *
  * @param denom denomination to add
  *
  * @return ...
@@ -72,7 +72,7 @@ reservemod_add (struct TALER_Amount denom)
       reserve_pub,
       &value,
       &fraction,
-      denom.currency, 
+      denom.currency,
       &exnbo};
     int param_lengths[] = {32, 4, 4, strlen(denom.currency), 8};
     int param_formats[] = {1, 1, 1, 1, 1};
@@ -81,14 +81,14 @@ reservemod_add (struct TALER_Amount denom)
                            " expiration_date )"
                            "values ($1,$2,$3,$4,$5);",
                            5, NULL, (const char **) param_values, param_lengths, param_formats, 1);
-  
+
     if (PGRES_COMMAND_OK != PQresultStatus (result))
     {
       fprintf (stderr, "Insert failed: %s\n", PQresultErrorMessage (result));
       return GNUNET_SYSERR;
     }
-  } 
-  else 
+  }
+  else
   {
     struct TALER_Amount old_denom;
     struct TALER_Amount new_denom;
@@ -125,8 +125,8 @@ reservemod_add (struct TALER_Amount denom)
       return GNUNET_SYSERR;
     }
 
-  } 
-  return GNUNET_OK; 
+  }
+  return GNUNET_OK;
 }
 
 
@@ -159,18 +159,18 @@ main (int argc, char *const *argv)
 
   GNUNET_assert (GNUNET_OK == GNUNET_log_setup ("taler-mint-keycheck", "WARNING", NULL));
 
-  if (GNUNET_GETOPT_run ("taler-mint-keyup", options, argc, argv) < 0) 
+  if (GNUNET_GETOPT_run ("taler-mint-keyup", options, argc, argv) < 0)
     return 1;
   if (NULL == mintdir)
   {
-    fprintf (stderr, "mint directory not given\n"); 
+    fprintf (stderr, "mint directory not given\n");
     return 1;
   }
 
   reserve_pub = GNUNET_new (struct GNUNET_CRYPTO_EddsaPublicKey);
   if ((NULL == reserve_pub_str) ||
       (GNUNET_OK != GNUNET_STRINGS_string_to_data (reserve_pub_str,
-                                                   strlen (reserve_pub_str), 
+                                                   strlen (reserve_pub_str),
                                                    reserve_pub,
                                                    sizeof (struct GNUNET_CRYPTO_EddsaPublicKey))))
   {
@@ -178,7 +178,7 @@ main (int argc, char *const *argv)
     return 1;
   }
 
-  kcfg = TALER_MINT_config_load (mintdir);
+  kcfg = TALER_config_load (mintdir);
   if (NULL == kcfg)
   {
     fprintf (stderr, "can't load mint configuration\n");
@@ -212,4 +212,3 @@ main (int argc, char *const *argv)
   }
   return 0;
 }
-
