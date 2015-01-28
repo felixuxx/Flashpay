@@ -34,8 +34,7 @@
 
 
 /**
- * Send JSON object as response.  Decreases the reference count of the
- * JSON object.
+ * Send JSON object as response.
  *
  * @param connection the MHD connection
  * @param json the json object
@@ -44,7 +43,7 @@
  */
 int
 TALER_MINT_reply_json (struct MHD_Connection *connection,
-                       json_t *json,
+                       const json_t *json,
                        unsigned int response_code);
 
 

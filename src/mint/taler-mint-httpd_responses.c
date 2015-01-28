@@ -36,8 +36,7 @@
 
 
 /**
- * Send JSON object as response.  Decreases the reference count of the
- * JSON object.
+ * Send JSON object as response.
  *
  * @param connection the MHD connection
  * @param json the json object
@@ -46,7 +45,7 @@
  */
 int
 TALER_MINT_reply_json (struct MHD_Connection *connection,
-                       json_t *json,
+                       const json_t *json,
                        unsigned int response_code)
 {
   struct MHD_Response *resp;
@@ -54,7 +53,6 @@ TALER_MINT_reply_json (struct MHD_Connection *connection,
   int ret;
 
   json_str = json_dumps (json, JSON_INDENT(2));
-  json_decref (json);
   resp = MHD_create_response_from_buffer (strlen (json_str), json_str,
                                           MHD_RESPMEM_MUST_FREE);
   if (NULL == resp)
@@ -86,15 +84,18 @@ TALER_MINT_reply_json_pack (struct MHD_Connection *connection,
 {
   json_t *json;
   va_list argp;
+  int ret;
 
   va_start (argp, fmt);
   json = json_vpack_ex (NULL, 0, fmt, argp);
   va_end (argp);
   if (NULL == json)
     return MHD_NO;
-  return TALER_MINT_reply_json (connection,
-                                json,
-                                response_code);
+  ret = TALER_MINT_reply_json (connection,
+                               json,
+                               response_code);
+  json_decref (json);
+  return ret;
 }
 
 
@@ -109,16 +110,11 @@ int
 TALER_MINT_reply_arg_invalid (struct MHD_Connection *connection,
                               const char *param_name)
 {
-  json_t *json;
-
-  json = json_pack ("{ s:s, s:s }",
-                    "error",
-                    "invalid parameter",
-                    "parameter",
-                    param_name);
-  return TALER_MINT_reply_json (connection,
-                                json,
-                                MHD_HTTP_BAD_REQUEST);
+  return TALER_MINT_reply_json_pack (connection,
+                                     MHD_HTTP_BAD_REQUEST,
+                                     "{s:s, s:s}",
+                                     "error", "invalid parameter",
+                                     "parameter", param_name);
 }
 
 
@@ -153,16 +149,11 @@ int
 TALER_MINT_reply_arg_missing (struct MHD_Connection *connection,
                               const char *param_name)
 {
-  json_t *json;
-
-  json = json_pack ("{ s:s, s:s }",
-                    "error",
-                    "missing parameter",
-                    "parameter",
-                    param_name);
-  return TALER_MINT_reply_json (connection,
-                                json,
-                                MHD_HTTP_BAD_REQUEST);
+  return TALER_MINT_reply_json_pack (connection,
+                                     MHD_HTTP_BAD_REQUEST,
+                                     "{ s:s, s:s}",
+                                     "error", "missing parameter",
+                                     "parameter", param_name);
 }
 
 
@@ -177,16 +168,11 @@ int
 TALER_MINT_reply_internal_error (struct MHD_Connection *connection,
                                  const char *hint)
 {
-  json_t *json;
-
-  json = json_pack ("{ s:s, s:s }",
-                    "error",
-                    "internal error",
-                    "hint",
-                    hint);
-  return TALER_MINT_reply_json (connection,
-                                json,
-                                MHD_HTTP_BAD_REQUEST);
+  return TALER_MINT_reply_json_pack (connection,
+                                     MHD_HTTP_BAD_REQUEST,
+                                     "{s:s, s:s}",
+                                     "error", "internal error",
+                                     "hint", hint);
 }
 
 
@@ -319,20 +305,20 @@ TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
                                           const struct TALER_Amount balance,
                                           struct GNUNET_TIME_Absolute expiration)
 {
-  json_t *json;
+  json_t *json_balance;
+  json_t *json_expiration;
+  int ret;
 
-  /* Convert the public information of a reserve (i.e.
-     excluding private key) to a JSON object. */
-  json = json_object ();
-  json_object_set_new (json,
-                       "balance",
-                       TALER_JSON_from_amount (balance));
-  json_object_set_new (json,
-                       "expiration",
-                       TALER_JSON_from_abs (expiration));
-  return TALER_MINT_reply_json (connection,
-                                json,
-                                MHD_HTTP_OK);
+  json_balance = TALER_JSON_from_amount (balance);
+  json_expiration = TALER_JSON_from_abs (expiration);
+  ret = TALER_MINT_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:o, s:o}",
+                                    "balance", json_balance,
+                                    "expiration", json_expiration);
+  json_decref (json_balance);
+  json_decref (json_expiration);
+  return ret;
 }
 
 
@@ -347,19 +333,23 @@ int
 TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
                                         const struct CollectableBlindcoin *collectable)
 {
-  json_t *root = json_object ();
+  json_t *sig_json;
   size_t sig_buf_size;
   char *sig_buf;
+  int ret;
 
+  /* FIXME: use TALER_JSON_from_sig here instead! */
   sig_buf_size = GNUNET_CRYPTO_rsa_signature_encode (collectable->sig,
                                                      &sig_buf);
-  json_object_set_new (root, "ev_sig",
-                       TALER_JSON_from_data (sig_buf,
-                                             sig_buf_size));
+  sig_json = TALER_JSON_from_data (sig_buf,
+                                   sig_buf_size);
   GNUNET_free (sig_buf);
-  return TALER_MINT_reply_json (connection,
-                                root,
-                                MHD_HTTP_OK);
+  ret = TALER_MINT_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:o}",
+                                    "ev_sig", sig_json);
+  json_decref (sig_json);
+  return ret;
 }
 
 
@@ -421,6 +411,7 @@ TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
   struct RefreshCommitResponseSignatureBody body;
   struct GNUNET_CRYPTO_EddsaSignature sig;
   json_t *sig_json;
+  int ret;
 
   body.purpose.size = htonl (sizeof (struct RefreshCommitResponseSignatureBody));
   body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_COMMIT_RESPONSE);
@@ -429,11 +420,13 @@ TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
                         &sig);
   sig_json = TALER_JSON_from_sig (&body.purpose, &sig);
   GNUNET_assert (NULL != sig_json);
-  return TALER_MINT_reply_json_pack (connection,
+  ret = TALER_MINT_reply_json_pack (connection,
                                      MHD_HTTP_OK,
                                      "{s:i, s:o}",
                                      "noreveal_index", (int) refresh_session->noreveal_index,
                                      "signature", sig_json);
+  json_decref (sig_json);
+  return ret;
 }
 
 
@@ -455,6 +448,7 @@ TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
   json_t *list;
   char *buf;
   size_t buf_size;
+  int ret;
 
   root = json_object ();
   list = json_array ();
@@ -468,10 +462,11 @@ TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
                                                  buf_size));
     GNUNET_free (buf);
   }
-  return TALER_MINT_reply_json (connection,
-                                root,
-                                MHD_HTTP_OK);
-
+  ret = TALER_MINT_reply_json (connection,
+                               root,
+                               MHD_HTTP_OK);
+  json_decref (root);
+  return ret;
 }
 
 

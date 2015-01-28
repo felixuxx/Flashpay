@@ -1293,7 +1293,9 @@ TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
   json_object_set_new (root, "secret_enc",
                        TALER_JSON_from_data (&shared_secret_enc,
                                              sizeof (struct GNUNET_HashCode)));
-  return TALER_MINT_reply_json (connection,
-                                root,
-                                MHD_HTTP_OK);
+  res = TALER_MINT_reply_json (connection,
+                               root,
+                               MHD_HTTP_OK);
+  json_decref (root);
+  return res;
 }
