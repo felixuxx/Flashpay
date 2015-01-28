@@ -250,15 +250,30 @@ TALER_MINT_reply_invalid_json (struct MHD_Connection *connection)
 
 
 /**
- * Send confirmation of deposit success to client.
+ * Send confirmation of deposit success to client.  This function
+ * will create a signed message affirming the given information
+ * and return it to the client.  By this, the mint affirms that
+ * the coin had sufficient (residual) value for the specified
+ * transaction and that it will execute the requested deposit
+ * operation with the given wiring details.
  *
  * @param connection connection to the client
- * @param deposit deposit request to confirm
+ * @param coin_pub public key of the coin
+ * @param h_wire hash of wire details
+ * @param h_contract hash of contract details
+ * @param transaction_id transaction ID
+ * @param merchant merchant public key
+ * @param amount fraction of coin value to deposit
  * @return MHD result code
  */
 int
 TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
-                                  const struct Deposit *deposit)
+                                  const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
+                                  const struct GNUNET_HashCode *h_wire,
+                                  const struct GNUNET_HashCode *h_contract,
+                                  uint64_t transaction_id,
+                                  const struct GNUNET_CRYPTO_EddsaPublicKey *merchant,
+                                  const struct TALER_Amount *amount)
 {
   // FIXME: return more information here,
   // including in particular a signature over

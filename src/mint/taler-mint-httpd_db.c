@@ -72,7 +72,13 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
     if (0 == memcmp (&existing_deposit,
                      deposit,
                      sizeof (struct Deposit)))
-      return TALER_MINT_reply_deposit_success (connection, deposit);
+      return TALER_MINT_reply_deposit_success (connection,
+                                               &deposit->coin.coin_pub,
+                                               &deposit->h_wire,
+                                               &deposit->h_contract,
+                                               deposit->transaction_id,
+                                               &deposit->merchant_pub,
+                                               &deposit->amount);
     // FIXME: in the future, check if there's enough credits
     // left on the coin. For now: refuse
     // FIXME: return more information here
@@ -136,7 +142,13 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
   }
   // FIXME: check commit return value!
   TALER_MINT_DB_commit (db_conn);
-  return TALER_MINT_reply_deposit_success (connection, deposit);
+  return TALER_MINT_reply_deposit_success (connection,
+                                           &deposit->coin.coin_pub,
+                                           &deposit->h_wire,
+                                           &deposit->h_contract,
+                                           deposit->transaction_id,
+                                           &deposit->merchant_pub,
+                                           &deposit->amount);
 }
 
 
