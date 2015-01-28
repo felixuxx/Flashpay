@@ -272,10 +272,8 @@ TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
   dc.amount = TALER_amount_hton (*amount);
   dc.coin_pub = *coin_pub;
   dc.merchant = *merchant;
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_sign (&mint_priv,
-                                &dc.purpose,
-                                &sig))
+  TALER_MINT_keys_sign (&dc.purpose,
+                        &sig);
   {
     LOG_WARNING ("Failed to create EdDSA signature using my private key\n");
     return TALER_MINT_reply_internal_error (connection,

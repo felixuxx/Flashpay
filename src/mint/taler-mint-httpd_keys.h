@@ -33,34 +33,6 @@
 
 
 /**
- * Check if a coin is valid; that is, whether the denomination key exists,
- * is not expired, and the signature is correct.
- *
- * @param key_state the key state to use for checking the coin's validity
- * @param coin_public_info the coin public info to check for validity
- * @return #GNUNET_YES if the coin is valid,
- *         #GNUNET_NO if it is invalid
- *         #GNUNET_SYSERROR if an internal error occured
- */
-int
-TALER_MINT_test_coin_valid (const struct MintKeyState *key_state,
-                            const struct TALER_CoinPublicInfo *coin_public_info);
-
-
-/**
- * Sign the message in @a purpose with the mint's signing
- * key.
- *
- * @param purpose the message to sign
- * @param[OUT] sig signature over purpose using current signing key
- */
-void
-TALER_MINT_keys_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-                      struct GNUNET_CRYPTO_EddsaSignature *sig);
-
-
-
-/**
  * Handle a "/keys" request
  *
  * @param rh context of the handler

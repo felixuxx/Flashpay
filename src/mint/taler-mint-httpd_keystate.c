@@ -456,4 +456,29 @@ read_again:
 }
 
 
+/**
+ * Sign the message in @a purpose with the mint's signing
+ * key.
+ *
+ * @param purpose the message to sign
+ * @param[OUT] sig signature over purpose using current signing key
+ */
+void
+TALER_MINT_keys_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+                      struct GNUNET_CRYPTO_EddsaSignature *sig)
+
+{
+  struct MintKeyState *key_state;
+
+  key_state = TALER_MINT_key_state_acquire ();
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv,
+                                           purpose,
+                                           sig));
+  TALER_MINT_key_state_release (key_state);
+}
+
+
+
+
 /* end of taler-mint-httpd_keystate.c */

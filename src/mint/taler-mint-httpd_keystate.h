@@ -124,6 +124,17 @@ int
 TALER_MINT_key_reload_loop (void);
 
 
+/**
+ * Sign the message in @a purpose with the mint's signing
+ * key.
+ *
+ * @param purpose the message to sign
+ * @param[OUT] sig signature over purpose using current signing key
+ */
+void
+TALER_MINT_keys_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+                      struct GNUNET_CRYPTO_EddsaSignature *sig);
+
 
 
 #endif
