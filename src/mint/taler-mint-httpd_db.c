@@ -89,60 +89,31 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
     // FIXME: in the future, check if there's enough credits
     // left on the coin. For now: refuse
     // FIXME: return more information here
+    TALER_MINT_DB_rollback (db_conn);
     return TALER_MINT_reply_json_pack (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s}",
-                                       "error",
-                                     "double spending");
+                                       "error", "insufficient funds");
   }
 
 
+  TALER_MINT_DB_free_coin_transaction_list (tl);
+
+  if (GNUNET_OK !=
+      TALER_MINT_DB_insert_deposit (db_conn,
+                                    deposit))
   {
-    struct KnownCoin known_coin;
-    int res;
-    struct TALER_CoinPublicInfo coin_info;
-
-    res = TALER_MINT_DB_get_known_coin (db_conn,
-                                        &coin_info.coin_pub,
-                                        &known_coin);
-    if (GNUNET_YES == res)
-    {
-      // coin must have been refreshed
-      // FIXME: check
-      // FIXME: return more information here
-      return TALER_MINT_reply_json_pack (connection,
-                                         MHD_HTTP_FORBIDDEN,
-                                         "{s:s}",
-                                         "error", "coin was refreshed");
-    }
-    if (GNUNET_SYSERR == res)
-    {
-      GNUNET_break (0);
-    /* FIXME: return error message to client via MHD! */
-      return MHD_NO;
-    }
-
-    /* coin valid but not known => insert into DB */
-    known_coin.is_refreshed = GNUNET_NO;
-    known_coin.expended_balance = deposit->amount;
-    known_coin.public_info = coin_info;
-
-    if (GNUNET_OK != TALER_MINT_DB_insert_known_coin (db_conn, &known_coin))
-    {
-      GNUNET_break (0);
-    /* FIXME: return error message to client via MHD! */
-      return MHD_NO;
-    }
+    LOG_WARNING ("Failed to store /deposit information in database\n");
+    TALER_MINT_DB_rollback (db_conn);
+    return TALER_MINT_reply_internal_db_error (connection);
   }
 
-  if (GNUNET_OK != TALER_MINT_DB_insert_deposit (db_conn, deposit))
+  if (GNUNET_OK !=
+      TALER_MINT_DB_commit (db_conn))
   {
-    GNUNET_break (0);
-    /* FIXME: return error message to client via MHD! */
-    return MHD_NO;
+    LOG_WARNING ("/deposit transaction commit failed\n");
+    return TALER_MINT_reply_commit_error (connection);
   }
-  // FIXME: check commit return value!
-  TALER_MINT_DB_commit (db_conn);
   return TALER_MINT_reply_deposit_success (connection,
                                            &deposit->coin.coin_pub,
                                            &deposit->h_wire,
@@ -673,7 +644,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                    &melt_balance)))
   {
     TALER_MINT_key_state_release (key_state);
-    GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+    TALER_MINT_DB_rollback (db_conn);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
 
@@ -686,7 +657,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   // FIXME: also, consider fees?
   if (TALER_amount_cmp (melt_balance, requested_cost) < 0)
   {
-    GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+    TALER_MINT_DB_rollback (db_conn);
 
     return TALER_MINT_reply_json_pack (connection,
                                        MHD_HTTP_FORBIDDEN,
@@ -772,7 +743,7 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
       {
         // FIXME: return 'internal error'?
         GNUNET_break (0);
-        GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+        TALER_MINT_DB_rollback (db_conn);
         return MHD_NO;
       }
 
@@ -785,7 +756,7 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
       {
         // FIXME: return 'internal error'?
         GNUNET_break (0);
-        GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+        TALER_MINT_DB_rollback (db_conn);
         return MHD_NO;
       }
     }
@@ -829,7 +800,7 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
   {
     // FIXME: return 'internal error'?
     GNUNET_break (GNUNET_SYSERR != res);
-    GNUNET_break (GNUNET_OK == TALER_MINT_DB_rollback (db_conn));
+    TALER_MINT_DB_rollback (db_conn);
     return MHD_NO;
   }
 

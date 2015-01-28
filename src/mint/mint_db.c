@@ -1572,6 +1572,7 @@ static void
 db_conn_destroy (void *cls)
 {
   PGconn *db_conn = cls;
+
   if (NULL != db_conn)
     PQfinish (db_conn);
 }
@@ -1589,8 +1590,7 @@ TALER_MINT_DB_init (const char *connection_cfg)
   if (0 != pthread_key_create (&db_conn_threadlocal,
                                &db_conn_destroy))
   {
-    fprintf (stderr,
-             "Can't create pthread key.\n");
+    LOG_ERROR ("Cannnot create pthread key.\n");
     return GNUNET_SYSERR;
   }
   TALER_MINT_db_connection_cfg_str = GNUNET_strdup (connection_cfg);
@@ -1614,16 +1614,17 @@ TALER_MINT_DB_get_connection (void)
 
   db_conn = PQconnectdb (TALER_MINT_db_connection_cfg_str);
 
-  if (CONNECTION_OK != PQstatus (db_conn))
+  if (CONNECTION_OK !=
+      PQstatus (db_conn))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "db connection failed: %s\n",
-                PQerrorMessage (db_conn));
+    LOG_ERROR ("Database connection failed: %s\n",
+               PQerrorMessage (db_conn));
     GNUNET_break (0);
     return NULL;
   }
 
-  if (GNUNET_OK != TALER_MINT_DB_prepare (db_conn))
+  if (GNUNET_OK !=
+      TALER_MINT_DB_prepare (db_conn))
   {
     GNUNET_break (0);
     return NULL;
@@ -1649,14 +1650,15 @@ TALER_MINT_DB_transaction (PGconn *db_conn)
 {
   PGresult *result;
 
-  result = PQexec(db_conn, "BEGIN");
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  result = PQexec (db_conn,
+                   "BEGIN");
+  if (PGRES_COMMAND_OK !=
+      PQresultStatus (result))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Can't start transaction: %s\n",
-                PQresultErrorMessage (result));
-    PQclear (result);
+    LOG_ERROR ("Failed to start transaction: %s\n",
+               PQresultErrorMessage (result));
     GNUNET_break (0);
+    PQclear (result);
     return GNUNET_SYSERR;
   }
 
@@ -1671,22 +1673,16 @@ TALER_MINT_DB_transaction (PGconn *db_conn)
  * @param db_conn the database connection
  * @return #GNUNET_OK on success
  */
-int
+void
 TALER_MINT_DB_rollback (PGconn *db_conn)
 {
   PGresult *result;
 
-  result = PQexec(db_conn,
-                  "ROLLBACK");
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    PQclear (result);
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-
+  result = PQexec (db_conn,
+                   "ROLLBACK");
+  GNUNET_break (PGRES_COMMAND_OK ==
+                PQresultStatus (result));
   PQclear (result);
-  return GNUNET_OK;
 }
 
 
@@ -1701,12 +1697,13 @@ TALER_MINT_DB_commit (PGconn *db_conn)
 {
   PGresult *result;
 
-  result = PQexec(db_conn,
-                  "COMMIT");
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  result = PQexec (db_conn,
+                   "COMMIT");
+  if (PGRES_COMMAND_OK !=
+      PQresultStatus (result))
   {
-    PQclear (result);
     GNUNET_break (0);
+    PQclear (result);
     return GNUNET_SYSERR;
   }
 
@@ -1744,7 +1741,8 @@ TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
                                    "get_collectable_blindcoins",
                                    params);
 
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Query failed: %s\n",
@@ -2035,6 +2033,18 @@ TALER_MINT_DB_get_coin_transactions (PGconn *db_conn,
 {
   GNUNET_break (0); // FIXME: implement!
   return NULL;
+}
+
+
+/**
+ * Free linked list of transactions.
+ *
+ * @param list list to free
+ */
+void
+TALER_MINT_DB_free_coin_transaction_list (struct TALER_MINT_DB_TransactionList *list)
+{
+  GNUNET_break (0);
 }
 
 

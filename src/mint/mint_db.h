@@ -302,6 +302,7 @@ TALER_MINT_DB_get_connection (void);
 /**
  * Start a transaction.
  *
+ * @param db_conn connection to use
  * @return #GNUNET_OK on success
  */
 int
@@ -311,6 +312,7 @@ TALER_MINT_DB_transaction (PGconn *db_conn);
 /**
  * Commit a transaction.
  *
+ * @param db_conn connection to use
  * @return #GNUNET_OK on success
  */
 int
@@ -320,9 +322,9 @@ TALER_MINT_DB_commit (PGconn *db_conn);
 /**
  * Abort/rollback a transaction.
  *
- * @return #GNUNET_OK on success
+ * @param db_conn connection to use
  */
-int
+void
 TALER_MINT_DB_rollback (PGconn *db_conn);
 
 

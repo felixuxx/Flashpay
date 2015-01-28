@@ -113,6 +113,17 @@ TALER_MINT_reply_internal_error (struct MHD_Connection *connection,
 
 
 /**
+ * Send a response indicating an error committing a
+ * transaction (concurrent interference).
+ *
+ * @param connection the MHD connection to use
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_commit_error (struct MHD_Connection *connection);
+
+
+/**
  * Send a response indicating a failure to talk to the Mint's
  * database.
  *
