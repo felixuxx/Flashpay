@@ -231,42 +231,5 @@ TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
 }
 
 
-int
-TALER_TALER_DB_extract_amount_nbo (PGresult *result,
-                                   unsigned int row,
-                                   int indices[3],
-                                   struct TALER_AmountNBO *denom_nbo)
-{
-  if ((indices[0] < 0) || (indices[1] < 0) || (indices[2] < 0))
-    return GNUNET_NO;
-  if (sizeof (uint32_t) != PQgetlength (result, row, indices[0]))
-    return GNUNET_SYSERR;
-  if (sizeof (uint32_t) != PQgetlength (result, row, indices[1]))
-    return GNUNET_SYSERR;
-  if (PQgetlength (result, row, indices[2]) > TALER_CURRENCY_LEN)
-    return GNUNET_SYSERR;
-  denom_nbo->value = *(uint32_t *) PQgetvalue (result, row, indices[0]);
-  denom_nbo->fraction = *(uint32_t *) PQgetvalue (result, row, indices[1]);
-  memset (denom_nbo->currency, 0, TALER_CURRENCY_LEN);
-  memcpy (denom_nbo->currency, PQgetvalue (result, row, indices[2]), PQgetlength (result, row, indices[2]));
-  return GNUNET_OK;
-}
-
-
-int
-TALER_TALER_DB_extract_amount (PGresult *result,
-                               unsigned int row,
-                               int indices[3],
-                               struct TALER_Amount *denom)
-{
-  struct TALER_AmountNBO denom_nbo;
-  int res;
-
-  res = TALER_TALER_DB_extract_amount_nbo (result, row, indices, &denom_nbo);
-  if (GNUNET_OK != res)
-    return res;
-  *denom = TALER_amount_ntoh (denom_nbo);
-  return GNUNET_OK;
-}
 
 /* end of mint_common.c */
