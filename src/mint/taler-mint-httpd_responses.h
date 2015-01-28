@@ -182,17 +182,30 @@ TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
 
 
 /**
+ * Send proof that a /deposit, /refresh/melt or /lock request is
+ * invalid to client.  This function will create a message with all of
+ * the operations affecting the coin that demonstrate that the coin
+ * has insufficient value.
+ *
+ * @param connection connection to the client
+ * @param tl transaction list to use to build reply
+ * @return MHD result code
+ */
+int
+TALER_MINT_reply_insufficient_funds (struct MHD_Connection *connection,
+                                     const struct TALER_MINT_DB_TransactionList *tl);
+
+
+/**
  * Send reserve status information to client.
  *
  * @param connection connection to the client
- * @param balance current reserve balance
- * @param expiration when will the reserve expire
+ * @param rh reserve history to return
  * @return MHD result code
  */
 int
 TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
-                                          struct TALER_Amount balance,
-                                          struct GNUNET_TIME_Absolute expiration);
+                                          const struct ReserveHistory *rh);
 
 
 /**

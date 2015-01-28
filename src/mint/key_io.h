@@ -42,6 +42,7 @@
 struct TALER_MINT_SignKeyIssuePriv
 {
   struct GNUNET_CRYPTO_EddsaPrivateKey signkey_priv;
+
   struct TALER_MINT_SignKeyIssue issue;
 };
 

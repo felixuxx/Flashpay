@@ -309,31 +309,132 @@ TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
 
 
 /**
+ * Send proof that a /deposit, /refresh/melt or /lock request is
+ * invalid to client.  This function will create a message with all of
+ * the operations affecting the coin that demonstrate that the coin
+ * has insufficient value.
+ *
+ * @param connection connection to the client
+ * @param tl transaction list to use to build reply
+ * @return MHD result code
+ */
+int
+TALER_MINT_reply_insufficient_funds (struct MHD_Connection *connection,
+                                     const struct TALER_MINT_DB_TransactionList *tl)
+{
+  const struct TALER_MINT_DB_TransactionList *pos;
+  int ret;
+
+  // FIXME: implement properly!
+  for (pos = tl; NULL != pos; pos = pos->next)
+  {
+    switch (pos->type)
+    {
+    case TALER_MINT_DB_TT_DEPOSIT:
+      /* FIXME: add operation details to json reply */
+      break;
+    case TALER_MINT_DB_TT_REFRESH_MELT:
+      /* FIXME: add operation details to json reply */
+      break;
+    case TALER_MINT_DB_TT_LOCK:
+      /* FIXME: add operation details to json reply */
+      break;
+    }
+  }
+
+  ret = TALER_MINT_reply_json_pack (connection,
+                                    MHD_HTTP_FORBIDDEN,
+                                    "{s:s}",
+                                    "error", "insufficient funds");
+  return ret;
+}
+
+
+/**
  * Send reserve status information to client.
  *
  * @param connection connection to the client
- * @param balance current reserve balance
- * @param expiration when will the reserve expire
+ * @param rh reserve history to return
  * @return MHD result code
  */
 int
 TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
-                                          const struct TALER_Amount balance,
-                                          struct GNUNET_TIME_Absolute expiration)
+                                          const struct ReserveHistory *rh)
 {
+  struct TALER_Amount deposit_total;
+  struct TALER_Amount withdraw_total;
+  struct TALER_Amount balance;
+  struct TALER_Amount value;
   json_t *json_balance;
-  json_t *json_expiration;
+  json_t *json_history;
   int ret;
+  struct MintKeyState *key_state;
+  const struct ReserveHistory *pos;
+  struct TALER_MINT_DenomKeyIssuePriv *dki;
 
+  json_history = json_array ();
+  ret = 0;
+  for (pos = rh; NULL != pos; pos = pos->next)
+  {
+    switch (pos->type)
+    {
+    case TALER_MINT_DB_RO_BANK_TO_MINT:
+      if (0 == ret)
+        deposit_total = pos->details.bank->amount;
+      else
+        deposit_total = TALER_amount_add (deposit_total,
+                                          pos->details.bank->amount);
+      ret = 1;
+      json_array_append_new (json_history,
+                             json_pack ("{s:s, s:o, s:o}",
+                                        "type", "DEPOSIT",
+                                        "wire", pos->details.bank->wire,
+                                        "amount", TALER_JSON_from_amount (pos->details.bank->amount)));
+      break;
+    case TALER_MINT_DB_RO_WITHDRAW_COIN:
+      break;
+    }
+  }
+
+  key_state = TALER_MINT_key_state_acquire ();
+  ret = 0;
+  for (pos = rh; NULL != pos; pos = pos->next)
+  {
+    switch (pos->type)
+    {
+    case TALER_MINT_DB_RO_BANK_TO_MINT:
+      break;
+    case TALER_MINT_DB_RO_WITHDRAW_COIN:
+      dki = TALER_MINT_get_denom_key (key_state,
+                                      pos->details.withdraw->denom_pub);
+      value = TALER_amount_ntoh (dki->issue.value);
+      if (0 == ret)
+        withdraw_total = value;
+      else
+        withdraw_total = TALER_amount_add (withdraw_total,
+                                           value);
+      ret = 1;
+      /* FIXME: add `struct CollectableBlindcoin` as JSON here as well! (#3527) */
+      json_array_append_new (json_history,
+                             json_pack ("{s:s, s:o, s:o}",
+                                        "type", "WITHDRAW",
+                                        "amount", TALER_JSON_from_amount (value)));
+
+      break;
+    }
+  }
+  TALER_MINT_key_state_release (key_state);
+
+  balance = TALER_amount_subtract (deposit_total,
+                                   withdraw_total);
   json_balance = TALER_JSON_from_amount (balance);
-  json_expiration = TALER_JSON_from_abs (expiration);
   ret = TALER_MINT_reply_json_pack (connection,
                                     MHD_HTTP_OK,
                                     "{s:o, s:o}",
                                     "balance", json_balance,
-                                    "expiration", json_expiration);
+                                    "history", json_history);
+  json_decref (json_history);
   json_decref (json_balance);
-  json_decref (json_expiration);
   return ret;
 }
 
@@ -354,7 +455,7 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
   char *sig_buf;
   int ret;
 
-  /* FIXME: use TALER_JSON_from_sig here instead! */
+  /* FIXME: use TALER_JSON_from_sig here instead!? */
   sig_buf_size = GNUNET_CRYPTO_rsa_signature_encode (collectable->sig,
                                                      &sig_buf);
   sig_json = TALER_JSON_from_data (sig_buf,

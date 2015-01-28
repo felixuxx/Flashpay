@@ -38,77 +38,6 @@ int
 TALER_MINT_DB_prepare (PGconn *db_conn);
 
 
-/**
- * Reserve row.  Corresponds to table 'reserves' in the mint's
- * database.  FIXME: not sure this is how we want to store this
- * information.  Also, may currently used in different ways in the
- * code, so we might need to separate the struct into different ones
- * depending on the context it is used in.
- */
-struct Reserve
-{
-  /**
-   * Signature over the purse.
-   * Only valid if (blind_session_missing==GNUNET_YES).
-   */
-  struct GNUNET_CRYPTO_EddsaSignature status_sig;
-
-  /**
-   * Signature with purpose TALER_SIGNATURE_PURSE.
-   * Only valid if (blind_session_missing==GNUNET_YES).
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose status_sig_purpose;
-
-  /**
-   * Signing key used to sign the purse.
-   * Only valid if (blind_session_missing==GNUNET_YES).
-   */
-  struct GNUNET_CRYPTO_EddsaPublicKey status_sign_pub;
-
-  /**
-   * Withdraw public key, identifies the purse.
-   * Only the customer knows the corresponding private key.
-   */
-  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
-
-  /**
-   * Remaining balance in the purse. // FIXME: do not use NBO here!
-   */
-  struct TALER_AmountNBO balance;
-
-  /**
-   * Expiration date for the purse.
-   */
-  struct GNUNET_TIME_AbsoluteNBO expiration;
-};
-
-
-int
-TALER_MINT_DB_get_reserve (PGconn *db_conn,
-                           const struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub,
-                           struct Reserve *reserve_res);
-
-
-/**
- * Update information about a reserve.
- *
- * @param db_conn
- * @param reserve current reserve status
- * @param fresh FIXME
- * @return #GNUNET_OK on success
- */
-int
-TALER_MINT_DB_update_reserve (PGconn *db_conn,
-                              const struct Reserve *reserve,
-                              int fresh);
-
-
-
-
-
-
-
-
 int
 TALER_MINT_DB_insert_refresh_order (PGconn *db_conn,
                                     uint16_t newcoin_index,
@@ -328,6 +257,34 @@ void
 TALER_MINT_DB_rollback (PGconn *db_conn);
 
 
+/**
+ * Information we keep on a bank transfer that
+ * established a reserve.
+ */
+struct BankTransfer
+{
+
+  /**
+   * Public key of the reserve that was filled.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
+
+  /**
+   * Amount that was transferred to the mint.
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * Detailed wire information about the transaction.
+   */
+  const json_t *wire;
+
+};
+
+
+/* FIXME: add functions to add bank transfers to our DB
+   (and to test if we already did add one) */
+
 
 /**
  * Information we keep for a withdrawn coin to reproduce
@@ -358,6 +315,9 @@ struct CollectableBlindcoin
    */
   struct GNUNET_CRYPTO_EddsaSignature reserve_sig;
 };
+
+
+/* FIXME: need call to convert CollectableBlindcoin to JSON (#3527) */
 
 
 /**
@@ -394,6 +354,86 @@ int
 TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
                                             const struct GNUNET_HashCode *h_blind,
                                             const struct CollectableBlindcoin *collectable);
+
+
+
+/**
+ * Types of operations on a reserved.
+ */
+enum TALER_MINT_DB_ReserveOperation
+{
+  /**
+   * Money was deposited into the reserve via a bank transfer.
+   */
+  TALER_MINT_DB_RO_BANK_TO_MINT = 0,
+
+  /**
+   * A Coin was withdrawn from the reserve using /withdraw.
+   */
+  TALER_MINT_DB_RO_WITHDRAW_COIN = 1
+};
+
+
+/**
+ * Reserve history as a linked list.  Lists all of the transactions
+ * associated with this reserve (such as the bank transfers that
+ * established the reserve and all /withdraw operations we have done
+ * since).
+ */
+struct ReserveHistory
+{
+
+  /**
+   * Next entry in the reserve history.
+   */
+  struct ReserveHistory *next;
+
+  /**
+   * Type of the event, determins @e details.
+   */
+  enum TALER_MINT_DB_ReserveOperation type;
+
+  /**
+   * Details of the operation, depending on @e type.
+   */
+  union
+  {
+
+    /**
+     * Details about a bank transfer to the mint.
+     */
+    struct BankTransfer *bank;
+
+    /**
+     * Details about a /withdraw operation.
+     */
+    struct CollectableBlindcoin *withdraw;
+
+  } details;
+
+};
+
+
+/**
+ * Get all of the transaction history associated with the specified
+ * reserve.
+ *
+ * @param db_conn connection to use
+ * @param reserve_pub public key of the reserve
+ * @return known transaction history (NULL if reserve is unknown)
+ */
+struct ReserveHistory *
+TALER_MINT_DB_get_reserve_history (PGconn *db_conn,
+                                   const struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub);
+
+
+/**
+ * Free memory associated with the given reserve history.
+ *
+ * @param rh history to free.
+ */
+void
+TALER_MINT_DB_free_reserve_history (struct ReserveHistory *rh);
 
 
 /**

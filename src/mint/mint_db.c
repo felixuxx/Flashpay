@@ -103,128 +103,6 @@ TALER_TALER_DB_extract_amount (PGresult *result,
 }
 
 
-
-int
-TALER_MINT_DB_get_reserve (PGconn *db_conn,
-                           const struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub,
-                           struct Reserve *reserve)
-{
-  PGresult *result;
-  int res;
-  struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR (reserve_pub),
-    TALER_DB_QUERY_PARAM_END
-  };
-
-  result = TALER_DB_exec_prepared (db_conn, "get_reserve", params);
-
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Query failed: %s\n", PQresultErrorMessage (result));
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    return GNUNET_NO;
-  }
-
-  reserve->reserve_pub = *reserve_pub;
-
-  struct TALER_DB_ResultSpec rs[] = {
-    TALER_DB_RESULT_SPEC("status_sig", &reserve->status_sig),
-    TALER_DB_RESULT_SPEC("status_sign_pub", &reserve->status_sign_pub),
-    TALER_DB_RESULT_SPEC_END
-  };
-
-  res = TALER_DB_extract_result (result, rs, 0);
-  if (GNUNET_SYSERR == res)
-  {
-    GNUNET_break (0);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-
-  {
-    int fnums[] = {
-      PQfnumber (result, "balance_value"),
-      PQfnumber (result, "balance_fraction"),
-      PQfnumber (result, "balance_currency"),
-    };
-    if (GNUNET_OK != TALER_TALER_DB_extract_amount_nbo (result, 0, fnums, &reserve->balance))
-    {
-      GNUNET_break (0);
-      PQclear (result);
-      return GNUNET_SYSERR;
-    }
-  }
-
-  /* FIXME: Add expiration?? */
-
-  PQclear (result);
-  return GNUNET_OK;
-}
-
-
-/* If fresh is GNUNET_YES, set some fields to NULL as they are not actually valid */
-int
-TALER_MINT_DB_update_reserve (PGconn *db_conn,
-                              const struct Reserve *reserve,
-                              int fresh)
-{
-  PGresult *result;
-  uint64_t stamp_sec;
-
-  stamp_sec = GNUNET_ntohll (GNUNET_TIME_absolute_ntoh (reserve->expiration).abs_value_us / 1000000);
-
-  struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR (&reserve->reserve_pub),
-    TALER_DB_QUERY_PARAM_PTR (&reserve->balance.value),
-    TALER_DB_QUERY_PARAM_PTR (&reserve->balance.fraction),
-    TALER_DB_QUERY_PARAM_PTR_SIZED (&reserve->balance.currency,
-                           strlen (reserve->balance.currency)),
-    TALER_DB_QUERY_PARAM_PTR (&reserve->status_sig),
-    TALER_DB_QUERY_PARAM_PTR (&reserve->status_sign_pub),
-    TALER_DB_QUERY_PARAM_PTR (&stamp_sec),
-    TALER_DB_QUERY_PARAM_END
-  };
-
-  /* set some fields to NULL if they are not actually valid */
-
-  if (GNUNET_YES == fresh)
-  {
-    unsigned i;
-    for (i = 4; i <= 7; i += 1)
-    {
-     params[i].data = NULL;
-     params[i].size = 0;
-    }
-  }
-
-  result = TALER_DB_exec_prepared (db_conn, "update_reserve", params);
-
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Query failed: %s\n", PQresultErrorMessage (result));
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-
-  if (0 != strcmp ("1", PQcmdTuples (result)))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Update failed (updated '%s' tupes instead of '1')\n",
-             PQcmdTuples (result));
-    return GNUNET_SYSERR;
-  }
-
-  PQclear (result);
-  return GNUNET_OK;
-}
-
-
-
 int
 TALER_MINT_DB_prepare (PGconn *db_conn)
 {
@@ -1560,9 +1438,6 @@ TALER_db_get_transfer (PGconn *db_conn,
 
 
 
-
-
-
 /**
  * Close thread-local database connection when a thread is destroyed.
  *
@@ -1712,6 +1587,10 @@ TALER_MINT_DB_commit (PGconn *db_conn)
 }
 
 
+
+
+
+
 /**
  * Locate the response for a /withdraw request under the
  * key of the hash of the blinded message.
@@ -1729,6 +1608,7 @@ TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
                                          const struct GNUNET_HashCode *h_blind,
                                          struct CollectableBlindcoin *collectable)
 {
+  // FIXME: check logic!
   PGresult *result;
   struct TALER_DB_QueryParam params[] = {
     TALER_DB_QUERY_PARAM_PTR (h_blind),
@@ -1792,6 +1672,7 @@ TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
                                             const struct GNUNET_HashCode *h_blind,
                                             const struct CollectableBlindcoin *collectable)
 {
+  // FIXME: check logic!
   PGresult *result;
   char *sig_buf;
   size_t sig_buf_size;
@@ -1835,6 +1716,95 @@ TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
 
 
 /**
+ * Get all of the transaction history associated with the specified
+ * reserve.
+ *
+ * @param db_conn connection to use
+ * @param reserve_pub public key of the reserve
+ * @return known transaction history (NULL if reserve is unknown)
+ */
+struct ReserveHistory *
+TALER_MINT_DB_get_reserve_history (PGconn *db_conn,
+                                   const struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub)
+{
+  // FIXME: implement logic!
+  PGresult *result;
+  // int res;
+  struct TALER_DB_QueryParam params[] = {
+    TALER_DB_QUERY_PARAM_PTR (reserve_pub),
+    TALER_DB_QUERY_PARAM_END
+  };
+
+  result = TALER_DB_exec_prepared (db_conn, "get_reserve", params);
+
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Query failed: %s\n",
+                PQresultErrorMessage (result));
+    PQclear (result);
+    return NULL;
+  }
+
+  if (0 == PQntuples (result))
+  {
+    PQclear (result);
+    return NULL;
+  }
+#if 0
+  reserve->reserve_pub = *reserve_pub;
+
+  struct TALER_DB_ResultSpec rs[] = {
+    TALER_DB_RESULT_SPEC("status_sig", &reserve->status_sig),
+    TALER_DB_RESULT_SPEC("status_sign_pub", &reserve->status_sign_pub),
+    TALER_DB_RESULT_SPEC_END
+  };
+
+  res = TALER_DB_extract_result (result, rs, 0);
+  if (GNUNET_SYSERR == res)
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  {
+    int fnums[] = {
+      PQfnumber (result, "balance_value"),
+      PQfnumber (result, "balance_fraction"),
+      PQfnumber (result, "balance_currency"),
+    };
+    if (GNUNET_OK != TALER_TALER_DB_extract_amount_nbo (result, 0, fnums, &reserve->balance))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+  }
+
+  /* FIXME: Add expiration?? */
+
+  PQclear (result);
+  return GNUNET_OK;
+#endif
+  return NULL;
+}
+
+
+/**
+ * Free memory associated with the given reserve history.
+ *
+ * @param rh history to free.
+ */
+void
+TALER_MINT_DB_free_reserve_history (struct ReserveHistory *rh)
+{
+  // FIXME: implement
+  GNUNET_assert (0);
+}
+
+
+/**
  * Check if we have the specified deposit already in the database.
  *
  * @param db_conn database connection
@@ -1846,6 +1816,7 @@ int
 TALER_MINT_DB_have_deposit (PGconn *db_conn,
                             const struct Deposit *deposit)
 {
+  // FIXME: check logic!
   struct TALER_DB_QueryParam params[] = {
     TALER_DB_QUERY_PARAM_PTR (&deposit->coin.coin_pub), // FIXME
     TALER_DB_QUERY_PARAM_END
@@ -1884,6 +1855,7 @@ int
 TALER_MINT_DB_insert_deposit (PGconn *db_conn,
                               const struct Deposit *deposit)
 {
+  // FIXME: check logic!
   struct TALER_DB_QueryParam params[]= {
     TALER_DB_QUERY_PARAM_PTR (&deposit->coin.coin_pub),
     TALER_DB_QUERY_PARAM_PTR (&deposit->coin.denom_pub), // FIXME!
@@ -1928,6 +1900,7 @@ int
 TALER_MINT_DB_have_refresh_melt (PGconn *db_conn,
                                  const struct RefreshMelt *melt)
 {
+  // FIXME: check logic!
   uint16_t oldcoin_index_nbo = htons (melt->oldcoin_index);
   struct TALER_DB_QueryParam params[] = {
     TALER_DB_QUERY_PARAM_PTR(&melt->session_pub),
@@ -1956,7 +1929,6 @@ TALER_MINT_DB_have_refresh_melt (PGconn *db_conn,
 }
 
 
-
 /**
  * Store the given /refresh/melt request in the database.
  *
@@ -1969,6 +1941,7 @@ int
 TALER_MINT_DB_insert_refresh_melt (PGconn *db_conn,
                                    const struct RefreshMelt *melt)
 {
+  // FIXME: check logic!
   uint16_t oldcoin_index_nbo = htons (melt->oldcoin_index);
   char *buf;
   size_t buf_size;
@@ -2014,6 +1987,7 @@ TALER_MINT_DB_get_refresh_melt (PGconn *db_conn,
                                 uint16_t oldcoin_index,
                                 struct RefreshMelt *melt)
 {
+  // FIXME: check logic!
   GNUNET_break (0);
   return GNUNET_SYSERR;
 }
@@ -2031,6 +2005,7 @@ struct TALER_MINT_DB_TransactionList *
 TALER_MINT_DB_get_coin_transactions (PGconn *db_conn,
                                      const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub)
 {
+  // FIXME: check logic!
   GNUNET_break (0); // FIXME: implement!
   return NULL;
 }
@@ -2044,6 +2019,7 @@ TALER_MINT_DB_get_coin_transactions (PGconn *db_conn,
 void
 TALER_MINT_DB_free_coin_transaction_list (struct TALER_MINT_DB_TransactionList *list)
 {
+  // FIXME: check logic!
   GNUNET_break (0);
 }
 

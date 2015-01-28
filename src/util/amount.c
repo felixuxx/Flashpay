@@ -19,6 +19,12 @@
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Florian Dold
  * @author Benedikt Mueller
+ *
+ * TODO:
+ * - the way this library currently deals with underflow/overflow
+ *   is insufficient; just going for UINT32_MAX on overflow
+ *   will not do; similar issues for incompatible currencies;
+ *   we need some more explicit logic to say 'bogus value',
  */
 #include "platform.h"
 #include "taler_util.h"
@@ -169,7 +175,8 @@ TALER_amount_ntoh (struct TALER_AmountNBO dn)
  * @return result of the comparison
  */
 int
-TALER_amount_cmp (struct TALER_Amount a1, struct TALER_Amount a2)
+TALER_amount_cmp (struct TALER_Amount a1,
+                  struct TALER_Amount a2)
 {
   a1 = TALER_amount_normalize (a1);
   a2 = TALER_amount_normalize (a2);
@@ -195,7 +202,8 @@ TALER_amount_cmp (struct TALER_Amount a1, struct TALER_Amount a2)
  * @return (a1-a2) or 0 if a2>=a1
  */
 struct TALER_Amount
-TALER_amount_subtract (struct TALER_Amount a1, struct TALER_Amount a2)
+TALER_amount_subtract (struct TALER_Amount a1,
+                       struct TALER_Amount a2)
 {
   a1 = TALER_amount_normalize (a1);
   a2 = TALER_amount_normalize (a2);
@@ -233,7 +241,8 @@ TALER_amount_subtract (struct TALER_Amount a1, struct TALER_Amount a2)
  * @return sum of a1 and a2
  */
 struct TALER_Amount
-TALER_amount_add (struct TALER_Amount a1, struct TALER_Amount a2)
+TALER_amount_add (struct TALER_Amount a1,
+                  struct TALER_Amount a2)
 {
   a1 = TALER_amount_normalize (a1);
   a2 = TALER_amount_normalize (a2);
@@ -243,17 +252,25 @@ TALER_amount_add (struct TALER_Amount a1, struct TALER_Amount a2)
 
   if (0 == a1.currency[0])
   {
-    memcpy (a2.currency, a1.currency, TALER_CURRENCY_LEN);
+    memcpy (a2.currency,
+            a1.currency,
+            TALER_CURRENCY_LEN);
   }
 
   if (0 == a2.currency[0])
   {
-    memcpy (a1.currency, a2.currency, TALER_CURRENCY_LEN);
+    memcpy (a1.currency,
+            a2.currency,
+            TALER_CURRENCY_LEN);
   }
 
-  if (0 != a1.currency[0] && 0 != memcmp (a1.currency, a2.currency, TALER_CURRENCY_LEN))
+  if ( (0 != a1.currency[0]) &&
+       (0 != memcmp (a1.currency,
+                     a2.currency,
+                     TALER_CURRENCY_LEN)) )
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING, "adding mismatching currencies\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "adding mismatching currencies\n");
   }
 
   if (a1.value < a2.value)
@@ -312,11 +329,18 @@ TALER_amount_to_string (struct TALER_Amount amount)
       n = (n * 10) % (AMOUNT_FRAC_BASE);
     }
     tail[i] = 0;
-    len = GNUNET_asprintf (&result, "%s:%lu.%s", curr, (unsigned long) amount.value, tail);
+    len = GNUNET_asprintf (&result,
+                           "%s:%lu.%s",
+                           curr,
+                           (unsigned long) amount.value,
+                           tail);
   }
   else
   {
-    len = GNUNET_asprintf (&result, "%s:%lu", curr, (unsigned long) amount.value);
+    len = GNUNET_asprintf (&result,
+                           "%s:%lu",
+                           curr,
+                           (unsigned long) amount.value);
   }
   GNUNET_assert (len > 0);
   return result;

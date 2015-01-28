@@ -22,12 +22,31 @@
  * - actually abstract DB implementation (i.e. via plugin logic)
  *   (this file should remain largely unchanged with the exception
  *    of the PQ-specific DB handle types)
- * - /deposit: properly check existing deposits
- * - /deposit: properly perform commit (check return value)
- * - /deposit: check for leaks
- * - ALL: check API: given structs are usually not perfect, as they
- *        often contain too many fields for the context
- * - ALL: check transactional behavior
+ * - /withdraw/sign: all
+ *   + properly check all conditions and handle errors
+ *   + properly check transaction logic
+ *   + check for leaks
+ *   + check low-level API
+ * - /refresh/melt: all
+ *   + properly check all conditions and handle errors
+ *   + properly check transaction logic
+ *   + check for leaks
+ *   + check low-level API
+ * - /refresh/commit: all
+ *   + properly check all conditions and handle errors
+ *   + properly check transaction logic
+ *   + check for leaks
+ *   + check low-level API
+ * - /refresh/reveal: all
+ *   + properly check all conditions and handle errors
+ *   + properly check transaction logic
+ *   + check for leaks
+ *   + check low-level API
+ * - /refresh/link: all
+ *   + properly check all conditions and handle errors
+ *   + properly check transaction logic
+ *   + check for leaks
+ *   + check low-level API
  */
 #include "platform.h"
 #include <pthread.h>
@@ -40,6 +59,26 @@
 #include "mint.h"
 #include "taler_util.h"
 #include "taler-mint-httpd_keystate.h"
+
+
+/**
+ * Get an amount in the mint's currency that is zero.
+ *
+ * @return zero amount in the mint's currency
+ */
+static struct TALER_Amount
+mint_amount_native_zero ()
+{
+  struct TALER_Amount amount;
+
+  memset (&amount,
+          0,
+          sizeof (amount));
+  memcpy (amount.currency,
+          MINT_CURRENCY,
+          strlen (MINT_CURRENCY) + 1);
+  return amount;
+}
 
 
 /**
@@ -58,6 +97,15 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
 {
   PGconn *db_conn;
   struct TALER_MINT_DB_TransactionList *tl;
+  struct TALER_MINT_DB_TransactionList *pos;
+  struct TALER_Amount spent;
+  struct TALER_Amount value;
+  struct TALER_Amount fee_deposit;
+  struct TALER_Amount fee_withdraw;
+  struct TALER_Amount fee_refresh;
+  struct MintKeyState *mks;
+  struct TALER_MINT_DenomKeyIssuePriv *dki;
+  int ret;
 
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
@@ -76,6 +124,14 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                                              &deposit->merchant_pub,
                                              &deposit->amount);
   }
+  mks = TALER_MINT_key_state_acquire ();
+  dki = TALER_MINT_get_denom_key (mks,
+                                  deposit->coin.denom_pub);
+  value = TALER_amount_ntoh (dki->issue.value);
+  fee_deposit = TALER_amount_ntoh (dki->issue.fee_deposit);
+  fee_refresh = TALER_amount_ntoh (dki->issue.fee_refresh);
+  TALER_MINT_key_state_release (mks);
+
   if (GNUNET_OK !=
       TALER_MINT_DB_transaction (db_conn))
   {
@@ -84,19 +140,48 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
   }
   tl = TALER_MINT_DB_get_coin_transactions (db_conn,
                                             &deposit->coin.coin_pub);
-  if (NULL != tl)
+  spent = fee_withdraw; /* fee for THIS transaction */
+  /* FIXME: need to deal better with integer overflows
+     in the logic that follows! (change amount.c API!) */
+  spent = TALER_amount_add (spent,
+                            deposit->amount);
+
+  for (pos = tl; NULL != pos; pos = pos->next)
   {
-    // FIXME: in the future, check if there's enough credits
-    // left on the coin. For now: refuse
-    // FIXME: return more information here
-    TALER_MINT_DB_rollback (db_conn);
-    return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       "{s:s}",
-                                       "error", "insufficient funds");
+    switch (pos->type)
+    {
+    case TALER_MINT_DB_TT_DEPOSIT:
+      spent = TALER_amount_add (spent,
+                                pos->details.deposit->amount);
+      spent = TALER_amount_add (spent,
+                                fee_deposit);
+      break;
+    case TALER_MINT_DB_TT_REFRESH_MELT:
+      spent = TALER_amount_add (spent,
+                                pos->details.melt->amount);
+      spent = TALER_amount_add (spent,
+                                fee_refresh);
+      break;
+    case TALER_MINT_DB_TT_LOCK:
+      /* should check if lock is still active,
+         and if it is for THIS operation; if
+         lock is inactive, delete it; if lock
+         is for THIS operation, ignore it;
+         if lock is for another operation,
+         count it! */
+      GNUNET_assert (0);  // FIXME: not implemented!
+      break;
+    }
   }
 
-
+  if (0 < TALER_amount_cmp (spent, value))
+  {
+    TALER_MINT_DB_rollback (db_conn);
+    ret = TALER_MINT_reply_insufficient_funds (connection,
+                                               tl);
+    TALER_MINT_DB_free_coin_transaction_list (tl);
+    return ret;
+  }
   TALER_MINT_DB_free_coin_transaction_list (tl);
 
   if (GNUNET_OK !=
@@ -124,37 +209,6 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
 }
 
 
-
-
-
-
-
-
-
-
-/**
- * Sign a reserve's status with the current signing key.
- * FIXME: not sure why we do this.  Should just return
- * existing list of operations on the reserve.
- *
- * @param reserve the reserve to sign
- * @param key_state the key state containing the current
- *                  signing private key
- */
-static void
-sign_reserve (struct Reserve *reserve,
-              struct MintKeyState *key_state)
-{
-  reserve->status_sign_pub = key_state->current_sign_key_issue.issue.signkey_pub;
-  reserve->status_sig_purpose.purpose = htonl (TALER_SIGNATURE_RESERVE_STATUS);
-  reserve->status_sig_purpose.size = htonl (sizeof (struct Reserve) -
-                                          offsetof (struct Reserve, status_sig_purpose));
-  GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv,
-                            &reserve->status_sig_purpose,
-                            &reserve->status_sig);
-}
-
-
 /**
  * Execute a /withdraw/status.
  *
@@ -167,50 +221,25 @@ TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
                                        const struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub)
 {
   PGconn *db_conn;
+  struct ReserveHistory *rh;
   int res;
-  struct Reserve reserve;
-  struct MintKeyState *key_state;
-  int must_update = GNUNET_NO;
 
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
   }
-  res = TALER_MINT_DB_get_reserve (db_conn,
-                                   reserve_pub,
-                                   &reserve);
-  /* check if these are really the matching error codes,
-     seems odd... */
-  if (GNUNET_SYSERR == res)
+  rh = TALER_MINT_DB_get_reserve_history (db_conn,
+                                          reserve_pub);
+  if (NULL == rh)
     return TALER_MINT_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s}",
-                                       "error",
-                                       "Reserve not found");
-  if (GNUNET_OK != res)
-  {
-    GNUNET_break (0);
-    return TALER_MINT_reply_internal_error (connection,
-                                            "Internal error");
-  }
-  key_state = TALER_MINT_key_state_acquire ();
-  if (0 != memcmp (&key_state->current_sign_key_issue.issue.signkey_pub,
-                   &reserve.status_sign_pub,
-                   sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
-  {
-    sign_reserve (&reserve, key_state);
-    must_update = GNUNET_YES;
-  }
-  if ((GNUNET_YES == must_update) &&
-      (GNUNET_OK != TALER_MINT_DB_update_reserve (db_conn, &reserve, !must_update)))
-  {
-    GNUNET_break (0);
-    return MHD_YES;
-  }
-  return TALER_MINT_reply_withdraw_status_success (connection,
-                                                   TALER_amount_ntoh (reserve.balance),
-                                                   GNUNET_TIME_absolute_ntoh (reserve.expiration));
+                                       "error", "Reserve not found");
+  res = TALER_MINT_reply_withdraw_status_success (connection,
+                                                  rh);
+  TALER_MINT_DB_free_reserve_history (rh);
+  return res;
 }
 
 
@@ -234,7 +263,7 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
                                      const struct GNUNET_CRYPTO_EddsaSignature *signature)
 {
   PGconn *db_conn;
-  struct Reserve db_reserve;
+  struct ReserveHistory *rh;
   struct MintKeyState *key_state;
   struct CollectableBlindcoin collectable;
   struct TALER_MINT_DenomKeyIssuePriv *dki;
@@ -270,15 +299,9 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
     return res;
   }
   GNUNET_assert (GNUNET_NO == res);
-  res = TALER_MINT_DB_get_reserve (db_conn,
-                                   reserve,
-                                   &db_reserve);
-  if (GNUNET_SYSERR == res)
-  {
-    GNUNET_break (0);
-    return TALER_MINT_reply_internal_db_error (connection);
-  }
-  if (GNUNET_NO == res)
+  rh = TALER_MINT_DB_get_reserve_history (db_conn,
+                                          reserve);
+  if (NULL == rh)
     return TALER_MINT_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s}",
@@ -298,6 +321,8 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
 
   amount_required = TALER_amount_add (TALER_amount_ntoh (dki->issue.value),
                                       TALER_amount_ntoh (dki->issue.fee_withdraw));
+  // FIX LOGIC!
+#if 0
   if (0 < TALER_amount_cmp (amount_required,
                             TALER_amount_ntoh (db_reserve.balance)))
     return TALER_MINT_reply_json_pack (connection,
@@ -329,6 +354,8 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
   }
+#endif
+
   collectable.denom_pub = (struct GNUNET_CRYPTO_rsa_PublicKey *) denomination_pub;
   collectable.sig = sig;
   collectable.reserve_pub = *reserve;
@@ -401,21 +428,6 @@ refresh_accept_denoms (struct MHD_Connection *connection,
 }
 
 
-/**
- * Get an amount in the mint's currency that is zero.
- *
- * @return zero amount in the mint's currency
- */
-static struct TALER_Amount
-mint_amount_native_zero ()
-{
-  struct TALER_Amount amount;
-
-  memset (&amount, 0, sizeof (amount));
-  memcpy (amount.currency, MINT_CURRENCY, strlen (MINT_CURRENCY) + 1);
-
-  return amount;
-}
 
 
 /**
@@ -1290,3 +1302,6 @@ TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
   json_decref (root);
   return res;
 }
+
+
+/* end of taler-mint-httpd_db.c */
