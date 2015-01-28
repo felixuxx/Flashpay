@@ -351,26 +351,25 @@ TALER_MINT_reply_insufficient_funds (struct MHD_Connection *connection,
 
 
 /**
- * Send reserve status information to client.
+ * Compile the history of a reserve into a JSON object
+ * and calculate the total balance.
  *
- * @param connection connection to the client
- * @param rh reserve history to return
- * @return MHD result code
+ * @param rh reserve history to JSON-ify
+ * @param balance[OUT] set to current reserve balance
+ * @return json representation of the @a rh
  */
-int
-TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
-                                          const struct ReserveHistory *rh)
+static json_t *
+compile_reserve_history (const struct ReserveHistory *rh,
+                         struct TALER_Amount *balance)
 {
   struct TALER_Amount deposit_total;
   struct TALER_Amount withdraw_total;
-  struct TALER_Amount balance;
   struct TALER_Amount value;
-  json_t *json_balance;
   json_t *json_history;
   int ret;
-  struct MintKeyState *key_state;
   const struct ReserveHistory *pos;
   struct TALER_MINT_DenomKeyIssuePriv *dki;
+  struct MintKeyState *key_state;
 
   json_history = json_array ();
   ret = 0;
@@ -425,12 +424,67 @@ TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
   }
   TALER_MINT_key_state_release (key_state);
 
-  balance = TALER_amount_subtract (deposit_total,
-                                   withdraw_total);
+  *balance = TALER_amount_subtract (deposit_total,
+                                    withdraw_total);
+  return json_history;
+}
+
+
+/**
+ * Send reserve status information to client.
+ *
+ * @param connection connection to the client
+ * @param rh reserve history to return
+ * @return MHD result code
+ */
+int
+TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
+                                          const struct ReserveHistory *rh)
+{
+  json_t *json_balance;
+  json_t *json_history;
+  struct TALER_Amount balance;
+  int ret;
+
+  json_history = compile_reserve_history (rh,
+                                          &balance);
   json_balance = TALER_JSON_from_amount (balance);
   ret = TALER_MINT_reply_json_pack (connection,
                                     MHD_HTTP_OK,
                                     "{s:o, s:o}",
+                                    "balance", json_balance,
+                                    "history", json_history);
+  json_decref (json_history);
+  json_decref (json_balance);
+  return ret;
+}
+
+
+/**
+ * Send reserve status information to client with the
+ * message that we have insufficient funds for the
+ * requested /withdraw/sign operation.
+ *
+ * @param connection connection to the client
+ * @param rh reserve history to return
+ * @return MHD result code
+ */
+int
+TALER_MINT_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *connection,
+                                                   const struct ReserveHistory *rh)
+{
+  json_t *json_balance;
+  json_t *json_history;
+  struct TALER_Amount balance;
+  int ret;
+
+  json_history = compile_reserve_history (rh,
+                                          &balance);
+  json_balance = TALER_JSON_from_amount (balance);
+  ret = TALER_MINT_reply_json_pack (connection,
+                                    MHD_HTTP_PAYMENT_REQUIRED,
+                                    "{s:s, s:o, s:o}",
+                                    "error", "Insufficient funds"
                                     "balance", json_balance,
                                     "history", json_history);
   json_decref (json_history);

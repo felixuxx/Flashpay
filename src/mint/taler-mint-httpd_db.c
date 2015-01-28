@@ -22,11 +22,6 @@
  * - actually abstract DB implementation (i.e. via plugin logic)
  *   (this file should remain largely unchanged with the exception
  *    of the PQ-specific DB handle types)
- * - /withdraw/sign: all
- *   + properly check all conditions and handle errors
- *   + properly check transaction logic
- *   + check for leaks
- *   + check low-level API
  * - /refresh/melt: all
  *   + properly check all conditions and handle errors
  *   + properly check transaction logic
@@ -264,11 +259,17 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
 {
   PGconn *db_conn;
   struct ReserveHistory *rh;
+  const struct ReserveHistory *pos;
   struct MintKeyState *key_state;
   struct CollectableBlindcoin collectable;
   struct TALER_MINT_DenomKeyIssuePriv *dki;
+  struct TALER_MINT_DenomKeyIssuePriv *tdki;
   struct GNUNET_CRYPTO_rsa_Signature *sig;
   struct TALER_Amount amount_required;
+  struct TALER_Amount deposit_total;
+  struct TALER_Amount withdraw_total;
+  struct TALER_Amount balance;
+  struct TALER_Amount value;
   struct GNUNET_HashCode h_blind;
   int res;
 
@@ -299,63 +300,102 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
     return res;
   }
   GNUNET_assert (GNUNET_NO == res);
-  rh = TALER_MINT_DB_get_reserve_history (db_conn,
-                                          reserve);
-  if (NULL == rh)
-    return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       "{s:s}",
-                                       "error",
-                                       "Reserve not found");
 
+  /* Check if balance is sufficient */
   key_state = TALER_MINT_key_state_acquire ();
   dki = TALER_MINT_get_denom_key (key_state,
                                   denomination_pub);
-  TALER_MINT_key_state_release (key_state);
   if (NULL == dki)
+  {
+    TALER_MINT_key_state_release (key_state);
     return TALER_MINT_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s}",
                                        "error",
                                        "Denomination not found");
+  }
+  if (GNUNET_OK !=
+      TALER_MINT_DB_transaction (db_conn))
+  {
+    GNUNET_break (0);
+    TALER_MINT_key_state_release (key_state);
+    return TALER_MINT_reply_internal_db_error (connection);
+  }
 
-  amount_required = TALER_amount_add (TALER_amount_ntoh (dki->issue.value),
-                                      TALER_amount_ntoh (dki->issue.fee_withdraw));
-  // FIX LOGIC!
-#if 0
-  if (0 < TALER_amount_cmp (amount_required,
-                            TALER_amount_ntoh (db_reserve.balance)))
+  rh = TALER_MINT_DB_get_reserve_history (db_conn,
+                                          reserve);
+  if (NULL == rh)
+  {
+    TALER_MINT_DB_rollback (db_conn);
+    TALER_MINT_key_state_release (key_state);
     return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_PAYMENT_REQUIRED,
+                                       MHD_HTTP_NOT_FOUND,
                                        "{s:s}",
                                        "error",
-                                       "Insufficient funds");
+                                       "Reserve not found");
+  }
 
-  db_reserve.balance = TALER_amount_hton
-    (TALER_amount_subtract (TALER_amount_ntoh (db_reserve.balance),
-                            amount_required));
+  /* calculate amount required including fees */
+  amount_required = TALER_amount_add (TALER_amount_ntoh (dki->issue.value),
+                                      TALER_amount_ntoh (dki->issue.fee_withdraw));
 
+  /* calculate balance of the reserve */
+  res = 0;
+  for (pos = rh; NULL != pos; pos = pos->next)
+  {
+    switch (pos->type)
+    {
+    case TALER_MINT_DB_RO_BANK_TO_MINT:
+      if (0 == (res & 1))
+        deposit_total = pos->details.bank->amount;
+      else
+        deposit_total = TALER_amount_add (deposit_total,
+                                          pos->details.bank->amount);
+      res |= 1;
+      break;
+    case TALER_MINT_DB_RO_WITHDRAW_COIN:
+      tdki = TALER_MINT_get_denom_key (key_state,
+                                       pos->details.withdraw->denom_pub);
+      value = TALER_amount_ntoh (tdki->issue.value);
+      if (0 == (res & 2))
+        withdraw_total = value;
+      else
+        withdraw_total = TALER_amount_add (withdraw_total,
+                                           value);
+      res |= 2;
+      break;
+    }
+  }
+
+  /* FIXME: good place to assert deposit_total > withdraw_total... */
+  balance = TALER_amount_subtract (deposit_total,
+                                   withdraw_total);
+  if (0 < TALER_amount_cmp (amount_required,
+                            balance))
+  {
+    TALER_MINT_key_state_release (key_state);
+    TALER_MINT_DB_rollback (db_conn);
+    res = TALER_MINT_reply_withdraw_sign_insufficient_funds (connection,
+                                                             rh);
+    TALER_MINT_DB_free_reserve_history (rh);
+    return res;
+  }
+  TALER_MINT_DB_free_reserve_history (rh);
+
+  /* Balance is good, sign the coin! */
   sig = GNUNET_CRYPTO_rsa_sign (dki->denom_priv,
                                 blinded_msg,
                                 blinded_msg_len);
+  TALER_MINT_key_state_release (key_state);
   if (NULL == sig)
   {
     GNUNET_break (0);
+    TALER_MINT_DB_rollback (db_conn);
     return TALER_MINT_reply_internal_error (connection,
                                             "Internal error");
   }
 
-  /* transaction start */
-  if (GNUNET_OK !=
-      TALER_MINT_DB_update_reserve (db_conn,
-                                    &db_reserve,
-                                    GNUNET_YES))
-  {
-    GNUNET_break (0);
-    return TALER_MINT_reply_internal_db_error (connection);
-  }
-#endif
-
+  // FIXME: can we avoid the cast?
   collectable.denom_pub = (struct GNUNET_CRYPTO_rsa_PublicKey *) denomination_pub;
   collectable.sig = sig;
   collectable.reserve_pub = *reserve;
@@ -367,17 +407,27 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
   {
     GNUNET_break (0);
     GNUNET_CRYPTO_rsa_signature_free (sig);
+    TALER_MINT_DB_rollback (db_conn);
     return TALER_MINT_reply_internal_db_error (connection);
   }
-  /* transaction end */
+  if (GNUNET_OK !=
+      TALER_MINT_DB_commit (db_conn))
+  {
+    LOG_WARNING ("/withdraw/sign transaction commit failed\n");
+    return TALER_MINT_reply_commit_error (connection);
+  }
+  res = TALER_MINT_reply_withdraw_sign_success (connection,
+                                                &collectable);
   GNUNET_CRYPTO_rsa_signature_free (sig);
-  return TALER_MINT_reply_withdraw_sign_success (connection,
-                                                 &collectable);
+  return res;
 }
 
 
+
+
+
 /**
- * Insert  all requested denominations  into the  db, and  compute the
+ * Insert  all requested denominations  into the DB, and  compute the
  * required cost of the denominations, including fees.
  *
  * @param connection the connection to send an error response to
@@ -615,11 +665,11 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   }
 
 
-  if (GNUNET_OK != TALER_MINT_DB_transaction (db_conn))
+  if (GNUNET_OK !=
+      TALER_MINT_DB_transaction (db_conn))
   {
-    // FIXME: return 'internal error'?
     GNUNET_break (0);
-    return MHD_NO;
+    return TALER_MINT_reply_internal_db_error (connection);
   }
 
   if (GNUNET_OK != TALER_MINT_DB_create_refresh_session (db_conn,
@@ -678,10 +728,11 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                        "not enough coins melted");
   }
 
-  if (GNUNET_OK != TALER_MINT_DB_commit (db_conn))
+  if (GNUNET_OK !=
+      TALER_MINT_DB_commit (db_conn))
   {
-    GNUNET_break (0);
-    return MHD_NO;
+    LOG_WARNING ("/refresh/melt transaction commit failed\n");
+    return TALER_MINT_reply_commit_error (connection);
   }
   if (GNUNET_OK !=
       (res = TALER_MINT_DB_get_refresh_session (db_conn,
@@ -795,11 +846,11 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
     return MHD_NO;
   }
 
-  if (GNUNET_OK != TALER_MINT_DB_transaction (db_conn))
+  if (GNUNET_OK !=
+      TALER_MINT_DB_transaction (db_conn))
   {
-    // FIXME: return 'internal error'?
     GNUNET_break (0);
-    return MHD_NO;
+    return TALER_MINT_reply_internal_db_error (connection);
   }
 
   /* Re-fetch the session information from the database,
@@ -816,11 +867,11 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
     return MHD_NO;
   }
 
-  if (GNUNET_OK != TALER_MINT_DB_commit (db_conn))
+  if (GNUNET_OK !=
+      TALER_MINT_DB_commit (db_conn))
   {
-    // FIXME: return 'internal error'?
-    GNUNET_break (0);
-    return MHD_NO;
+    LOG_WARNING ("/refresh/commit transaction commit failed\n");
+    return TALER_MINT_reply_commit_error (connection);
   }
 
   return TALER_MINT_reply_refresh_commit_success (connection, &refresh_session);
@@ -1095,11 +1146,11 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
   }
 
 
-  if (GNUNET_OK != TALER_MINT_DB_transaction (db_conn))
+  if (GNUNET_OK !=
+      TALER_MINT_DB_transaction (db_conn))
   {
     GNUNET_break (0);
-            // FIXME: return error code!
-    return MHD_NO;
+    return TALER_MINT_reply_internal_db_error (connection);
   }
 
   for (j = 0; j < refresh_session.num_newcoins; j++)
@@ -1169,10 +1220,11 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     return MHD_NO;
   }
 
-  if (GNUNET_OK != TALER_MINT_DB_commit (db_conn))
+  if (GNUNET_OK !=
+      TALER_MINT_DB_commit (db_conn))
   {
-    GNUNET_break (0);
-    return MHD_NO;
+    LOG_WARNING ("/refresh/reveal transaction commit failed\n");
+    return TALER_MINT_reply_commit_error (connection);
   }
 
   return helper_refresh_reveal_send_response (connection,

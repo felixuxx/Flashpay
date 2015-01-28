@@ -209,6 +209,20 @@ TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
 
 
 /**
+ * Send reserve status information to client with the
+ * message that we have insufficient funds for the
+ * requested /withdraw/sign operation.
+ *
+ * @param connection connection to the client
+ * @param rh reserve history to return
+ * @return MHD result code
+ */
+int
+TALER_MINT_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *connection,
+                                                   const struct ReserveHistory *rh);
+
+
+/**
  * Send blinded coin information to client.
  *
  * @param connection connection to the client
