@@ -24,12 +24,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
-#include <libpq-fe.h>
-#include <pthread.h>
 #include "mint.h"
-#include "taler_signatures.h"
-#include "taler_json_lib.h"
-#include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_keys.h"
 #include "taler-mint-httpd_keystate.h"
 

@@ -13,7 +13,6 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file crypto.c
  * @brief Cryptographic utility functions
@@ -21,14 +20,11 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  */
-
 #include "platform.h"
 #include "taler_util.h"
-#include <gnunet/gnunet_common.h>
 #include <gnunet/gnunet_util_lib.h>
 #include <gcrypt.h>
 
-#define CURVE "Ed25519"
 
 /**
  * Function called by libgcrypt on serious errors.
