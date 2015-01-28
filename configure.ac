@@ -151,6 +151,7 @@ AC_CONFIG_FILES([Makefile
                  src/Makefile
                  src/include/Makefile
                  src/util/Makefile
+                 src/pq/Makefile
                  src/mint/Makefile
                  src/lib/Makefile
                  ])

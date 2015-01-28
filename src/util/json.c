@@ -146,7 +146,7 @@ TALER_JSON_from_data (const void *data, size_t size)
  *
  * @param json the json object representing Amount
  * @param r_amount where the amount has to be written
- * @return GNUNET_OK upon successful parsing; GNUNET_SYSERR upon error
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 int
 TALER_JSON_to_amount (json_t *json,
@@ -177,7 +177,7 @@ TALER_JSON_to_amount (json_t *json,
  *
  * @param json the json object representing Amount
  * @param r_amount where the amount has to be written
- * @return GNUNET_OK upon successful parsing; GNUNET_SYSERR upon error
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 int
 TALER_JSON_to_abs (json_t *json,
@@ -201,8 +201,8 @@ TALER_JSON_to_abs (json_t *json,
  *
  * @param json the json object representing data
  * @param out the pointer to hold the parsed data.
- * @param out_size the size of r_data.
- * @return GNUNET_OK upon successful parsing; GNUNET_SYSERR upon error
+ * @param out_size the size of @a out
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 int
 TALER_JSON_to_data (json_t *json,

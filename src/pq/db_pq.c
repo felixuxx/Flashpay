@@ -14,8 +14,8 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file util/db.c
- * @brief helper functions for DB interactions
+ * @file util/db_pq.c
+ * @brief helper functions for libpq (PostGres) interactions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Florian Dold
  * @author Christian Grothoff
@@ -214,4 +214,4 @@ TALER_DB_extract_amount (PGresult *result,
   return GNUNET_OK;
 }
 
-/* end of util/db.c */
+/* end of pq/db_pq.c */

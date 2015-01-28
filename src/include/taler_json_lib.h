@@ -13,13 +13,11 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file include/taler_json_lib.h
  * @brief helper functions for JSON processing using libjansson
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
-
 #ifndef TALER_JSON_LIB_H_
 #define TALER_JSON_LIB_H_
 
@@ -75,7 +73,7 @@ TALER_JSON_from_data (const void *data, size_t size);
  *
  * @param json the json object representing Amount
  * @param r_amount where the amount has to be written
- * @return #GNUNET_OK upon successful parsing; GNUNET_SYSERR upon error
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 int
 TALER_JSON_to_amount (json_t *json,
@@ -86,7 +84,7 @@ TALER_JSON_to_amount (json_t *json,
  *
  * @param json the json object representing absolute time in seconds
  * @param r_abs where the time has to be written
- * @return #GNUNET_OK upon successful parsing; GNUNET_SYSERR upon error
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 int
 TALER_JSON_to_abs (json_t *json,
@@ -97,8 +95,8 @@ TALER_JSON_to_abs (json_t *json,
  *
  * @param json the json object representing data
  * @param out the pointer to hold the parsed data.
- * @param out_size the size of r_data.
- * @return #GNUNET_OK upon successful parsing; GNUNET_SYSERR upon error
+ * @param out_size the size of @a out
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 int
 TALER_JSON_to_data (json_t *json,

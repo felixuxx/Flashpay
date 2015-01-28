@@ -31,6 +31,7 @@ taler_mint_keyup_SOURCES = \
 taler_mint_keyup_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/mint/libtalermint_common.la \
   -lpq \
   -lgnunetutil
@@ -43,6 +44,7 @@ taler_mint_keycheck_SOURCES = \
 taler_mint_keycheck_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/mint/libtalermint_common.la \
   -lgnunetutil \
   -lpq
@@ -53,6 +55,7 @@ taler_mint_reservemod_SOURCES = \
 taler_mint_reservemod_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/mint/libtalermint_common.la \
   -lpq \
   -lgnunetutil
@@ -73,6 +76,7 @@ taler_mint_httpd_SOURCES = \
 taler_mint_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/mint/libtalermint_common.la \
   -lpq \
   -lmicrohttpd \
@@ -88,6 +92,7 @@ taler_mint_dbinit_SOURCES = \
 taler_mint_dbinit_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/mint/libtalermint_common.la \
   -lpq \
   -lgnunetutil

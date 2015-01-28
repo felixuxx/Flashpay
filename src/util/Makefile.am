@@ -7,17 +7,14 @@ libtalerutil_la_SOURCES = \
   amount.c \
   crypto.c \
   util.c \
-  json.c \
-  db.c
+  json.c
 
 libtalerutil_la_LIBADD = \
   -lgnunetutil \
   $(LIBGCRYPT_LIBS) \
   -ljansson \
-  -lmicrohttpd \
-  -lpq
+  -lmicrohttpd
 
 libtalerutil_la_LDFLAGS = \
-  $(POSTGRESQL_LDFLAGS) \
   -version-info 0:0:0 \
   -export-dynamic -no-undefined
