@@ -4,7 +4,7 @@ lib_LTLIBRARIES = \
   libtalermint_common.la
 
 libtalermint_common_la_SOURCES = \
-  mint_common.c \
+  key_io.c key_io.h \
   mint_db.c
 
 libtalermint_common_la_LIBADD = \

@@ -20,51 +20,24 @@
  * @author Benedikt Mueller
  *
  * TODO:
- * - revisit and document `struct Deposit` members.
+ * - move DB functions to mint_db.h
  */
 #ifndef _MINT_H
 #define _MINT_H
 
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_common.h>
-#include <libpq-fe.h>
 #include <jansson.h>
+#include <libpq-fe.h>
 #include "taler_util.h"
 #include "taler_signatures.h"
 
-#define DIR_SIGNKEYS "signkeys"
-#define DIR_DENOMKEYS "denomkeys"
 
 /**
  * For now, we just do EUR.  Should become configurable
  * in the future!
  */
 #define MINT_CURRENCY "EUR"
-
-/**
- * On disk format used for a mint signing key.
- * Includes the private key followed by the signed
- * issue message.
- */
-struct TALER_MINT_SignKeyIssuePriv
-{
-  struct GNUNET_CRYPTO_EddsaPrivateKey signkey_priv;
-  struct TALER_MINT_SignKeyIssue issue;
-};
-
-
-
-struct TALER_MINT_DenomKeyIssuePriv
-{
-  /**
-   * The private key of the denomination.  Will be NULL if the private key is
-   * not available.
-   */
-  struct GNUNET_CRYPTO_rsa_PrivateKey *denom_priv;
-
-  struct TALER_MINT_DenomKeyIssue issue;
-};
-
 
 
 /**
@@ -354,77 +327,6 @@ struct Reserve
   struct GNUNET_TIME_AbsoluteNBO expiration;
 };
 
-
-
-
-/**
- * Iterator for sign keys.
- *
- * @param cls closure
- * @param ski the sign key issue
- * @return #GNUNET_OK to continue to iterate,
- *  #GNUNET_NO to stop iteration with no error,
- *  #GNUNET_SYSERR to abort iteration with error!
- */
-typedef int
-(*TALER_MINT_SignkeyIterator)(void *cls,
-                              const struct TALER_MINT_SignKeyIssuePriv *ski);
-
-/**
- * Iterator for denomination keys.
- *
- * @param cls closure
- * @param dki the denomination key issue
- * @param alias coin alias
- * @return #GNUNET_OK to continue to iterate,
- *  #GNUNET_NO to stop iteration with no error,
- *  #GNUNET_SYSERR to abort iteration with error!
- */
-typedef int
-(*TALER_MINT_DenomkeyIterator)(void *cls,
-                               const char *alias,
-                               const struct TALER_MINT_DenomKeyIssuePriv *dki);
-
-
-
-/**
- * FIXME
- */
-int
-TALER_MINT_signkeys_iterate (const char *mint_base_dir,
-                             TALER_MINT_SignkeyIterator it, void *cls);
-
-
-/**
- * FIXME
- */
-int
-TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
-                              TALER_MINT_DenomkeyIterator it, void *cls);
-
-
-/**
- * Exports a denomination key to the given file
- *
- * @param filename the file where to write the denomination key
- * @param dki the denomination key
- * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
- */
-int
-TALER_MINT_write_denom_key (const char *filename,
-                            const struct TALER_MINT_DenomKeyIssuePriv *dki);
-
-
-/**
- * Import a denomination key from the given file
- *
- * @param filename the file to import the key from
- * @param dki pointer to return the imported denomination key
- * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
- */
-int
-TALER_MINT_read_denom_key (const char *filename,
-                           struct TALER_MINT_DenomKeyIssuePriv *dki);
 
 
 

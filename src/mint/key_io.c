@@ -15,15 +15,17 @@
 */
 
 /**
- * @file mint_common.c
- * @brief Common functionality for the mint
+ * @file key_io.c
+ * @brief I/O operations for the Mint's private keys
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Sree Harsha Totakura
+ * @author Christian Grothoff
  */
-
 #include "platform.h"
 #include "mint.h"
+#include "key_io.h"
+
 
 struct SignkeysIterateContext
 {
@@ -201,8 +203,8 @@ static int
 denomkeys_iterate_topdir_iter (void *cls,
                                const char *filename)
 {
-
   struct DenomkeysIterateContext *dic = cls;
+
   dic->alias = GNUNET_STRINGS_get_short_name (filename);
 
   // FIXME: differentiate between error case and normal iteration abortion
@@ -219,7 +221,9 @@ TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
   char *dir;
   size_t len;
   struct DenomkeysIterateContext dic;
-  len = GNUNET_asprintf (&dir, ("%s" DIR_SEPARATOR_STR DIR_DENOMKEYS),
+
+  len = GNUNET_asprintf (&dir,
+                         "%s" DIR_SEPARATOR_STR DIR_DENOMKEYS,
                          mint_base_dir);
   GNUNET_assert (len > 0);
 
@@ -227,7 +231,9 @@ TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
   dic.it_cls = cls;
 
   // scan over alias dirs
-  return GNUNET_DISK_directory_scan (dir, &denomkeys_iterate_topdir_iter, &dic);
+  return GNUNET_DISK_directory_scan (dir,
+                                     &denomkeys_iterate_topdir_iter,
+                                     &dic);
 }
 
 

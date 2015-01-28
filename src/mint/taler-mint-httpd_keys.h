@@ -28,6 +28,8 @@
 #include <jansson.h>
 #include "taler-mint-httpd.h"
 #include "mint.h"
+#include "key_io.h"
+
 
 /**
  * Snapshot of the (coin and signing)

@@ -27,6 +27,7 @@
 #include "taler_util.h"
 #include "taler_signatures.h"
 #include "mint.h"
+#include "key_io.h"
 
 /**
  * FIXME: allow user to specify (within reason).
