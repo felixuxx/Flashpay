@@ -18,9 +18,6 @@
  * @brief Common functionality for the mint
  * @author Florian Dold
  * @author Benedikt Mueller
- *
- * TODO:
- * - move DB functions to mint_db.h
  */
 #ifndef _MINT_H
 #define _MINT_H
@@ -28,7 +25,6 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_common.h>
 #include <jansson.h>
-#include <libpq-fe.h>
 #include "taler_util.h"
 #include "taler_signatures.h"
 
@@ -329,17 +325,5 @@ struct Reserve
 
 
 
-
-int
-TALER_TALER_DB_extract_amount (PGresult *result,
-                               unsigned int row,
-                               int indices[3],
-                               struct TALER_Amount *denom);
-
-int
-TALER_TALER_DB_extract_amount_nbo (PGresult *result,
-                                   unsigned int row,
-                                   int indices[3],
-                                   struct TALER_AmountNBO *denom_nbo);
 
 #endif /* _MINT_H */

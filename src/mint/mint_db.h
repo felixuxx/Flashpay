@@ -282,4 +282,18 @@ TALER_MINT_DB_init (const char *connection_cfg);
 
 
 
+
+int
+TALER_TALER_DB_extract_amount (PGresult *result,
+                               unsigned int row,
+                               int indices[3],
+                               struct TALER_Amount *denom);
+
+int
+TALER_TALER_DB_extract_amount_nbo (PGresult *result,
+                                   unsigned int row,
+                                   int indices[3],
+                                   struct TALER_AmountNBO *denom_nbo);
+
+
 #endif /* _NEURO_MINT_DB_H */

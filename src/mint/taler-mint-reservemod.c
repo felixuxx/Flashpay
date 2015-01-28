@@ -27,10 +27,14 @@
 #include "taler_util.h"
 #include "taler_signatures.h"
 #include "mint.h"
+#include "mint_db.h"
 
-static char *mintdir;
+char *mintdir;
+
 static struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub;
-static struct GNUNET_CONFIGURATION_Handle *kcfg;
+
+struct GNUNET_CONFIGURATION_Handle *cfg;
+
 static PGconn *db_conn;
 
 
@@ -169,22 +173,27 @@ main (int argc, char *const *argv)
 
   reserve_pub = GNUNET_new (struct GNUNET_CRYPTO_EddsaPublicKey);
   if ((NULL == reserve_pub_str) ||
-      (GNUNET_OK != GNUNET_STRINGS_string_to_data (reserve_pub_str,
-                                                   strlen (reserve_pub_str),
-                                                   reserve_pub,
-                                                   sizeof (struct GNUNET_CRYPTO_EddsaPublicKey))))
+      (GNUNET_OK !=
+       GNUNET_STRINGS_string_to_data (reserve_pub_str,
+                                      strlen (reserve_pub_str),
+                                      reserve_pub,
+                                      sizeof (struct GNUNET_CRYPTO_EddsaPublicKey))))
   {
     fprintf (stderr, "reserve key invalid\n");
     return 1;
   }
 
-  kcfg = TALER_config_load (mintdir);
-  if (NULL == kcfg)
+  cfg = TALER_config_load (mintdir);
+  if (NULL == cfg)
   {
     fprintf (stderr, "can't load mint configuration\n");
     return 1;
   }
-  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_string (kcfg, "mint", "db", &TALER_MINT_db_connection_cfg_str))
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "mint",
+                                             "db",
+                                             &TALER_MINT_db_connection_cfg_str))
   {
     fprintf (stderr, "db configuration string not found\n");
     return 42;

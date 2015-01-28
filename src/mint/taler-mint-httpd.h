@@ -38,6 +38,7 @@ extern struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
  * Main directory with mint data.
+ * FIXME: should we have those globals really here?
  */
 extern char *mintdir;
 
