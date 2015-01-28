@@ -13,14 +13,13 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file mint_db.c
  * @brief Database access for the mint
  * @author Florian Dold
  */
 #include "platform.h"
-#include "taler_db_lib.h"
+#include "db_pq.h"
 #include "taler_signatures.h"
 #include "taler-mint-httpd_responses.h"
 #include "mint_db.h"

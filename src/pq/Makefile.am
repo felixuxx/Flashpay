@@ -4,7 +4,7 @@ lib_LTLIBRARIES = \
   libtalerpq.la
 
 libtalerpq_la_SOURCES = \
-  db_pq.c
+  db_pq.c db_pq.h
 
 libtalerpq_la_LIBADD = \
   -lgnunetutil \

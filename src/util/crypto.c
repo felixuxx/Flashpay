@@ -14,11 +14,12 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file crypto.c
+ * @file util/crypto.c
  * @brief Cryptographic utility functions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Florian Dold
  * @author Benedikt Mueller
+ * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_util.h"

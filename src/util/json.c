@@ -13,13 +13,11 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file util/json.c
  * @brief helper functions for JSON processing using libjansson
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
@@ -49,6 +47,7 @@
     if (cond) { WARN_JSON(error); goto EXITIF_exit; }                   \
   } while (0)
 
+
 /**
  * Convert a TALER amount to a JSON
  * object.
@@ -60,6 +59,7 @@ json_t *
 TALER_JSON_from_amount (struct TALER_Amount amount)
 {
   json_t *j;
+
   j = json_pack ("{s: s, s:I, s:I}",
                  "currency", amount.currency,
                  "value", (json_int_t) amount.value,

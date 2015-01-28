@@ -22,7 +22,7 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
-#include "taler_db_lib.h"
+#include "db_pq.h"
 
 
 /**

@@ -13,9 +13,8 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
- * @file amount.c
+ * @file util/amount.c
  * @brief Common utility functions to deal with units of currency
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Florian Dold
@@ -23,8 +22,6 @@
  */
 #include "platform.h"
 #include "taler_util.h"
-#include <gnunet/gnunet_common.h>
-#include <gnunet/gnunet_util_lib.h>
 #include <gcrypt.h>
 
 #define AMOUNT_FRAC_BASE 1000000

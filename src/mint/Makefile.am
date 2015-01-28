@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -I$(top_srcdir)/src/include $(POSTGRESQL_CPPFLAGS)
+AM_CPPFLAGS = -I$(top_srcdir)/src/include -I$(top_srcdir)/src/pq/ $(POSTGRESQL_CPPFLAGS)
 
 lib_LTLIBRARIES = \
   libtalermint_common.la
