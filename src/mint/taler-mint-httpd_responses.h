@@ -160,12 +160,14 @@ TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
  * Send reserve status information to client.
  *
  * @param connection connection to the client
- * @param reserve reserve status information to return
+ * @param balance current reserve balance
+ * @param expiration when will the reserve expire
  * @return MHD result code
  */
 int
 TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
-                                          const struct Reserve *reserve);
+                                          struct TALER_Amount balance,
+                                          struct GNUNET_TIME_Absolute expiration);
 
 
 /**

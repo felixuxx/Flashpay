@@ -217,7 +217,8 @@ TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
     return MHD_YES;
   }
   return TALER_MINT_reply_withdraw_status_success (connection,
-                                                   &reserve);
+                                                   TALER_amount_ntoh (reserve.balance),
+                                                   GNUNET_TIME_absolute_ntoh (reserve.expiration));
 }
 
 

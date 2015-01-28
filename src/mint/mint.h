@@ -15,7 +15,7 @@
 */
 /**
  * @file mint.h
- * @brief Common functionality for the mint
+ * @brief Common structs passed all over the mint logic
  * @author Florian Dold
  * @author Benedikt Mueller
  */
@@ -23,10 +23,8 @@
 #define _MINT_H
 
 #include <gnunet/gnunet_util_lib.h>
-#include <gnunet/gnunet_common.h>
 #include <jansson.h>
 #include "taler_util.h"
-#include "taler_signatures.h"
 
 
 /**
@@ -60,7 +58,6 @@ struct TALER_CoinPublicInfo
    */
   struct GNUNET_CRYPTO_rsa_Signature *denom_sig;
 };
-
 
 
 /**
@@ -160,25 +157,6 @@ struct Deposit
 
 
 
-/**
- * FIXME
- */
-struct KnownCoin
-{
-  struct TALER_CoinPublicInfo public_info;
-
-  /**
-   * Refreshing session, only valid if
-   * is_refreshed==1.
-   */
-  struct GNUNET_CRYPTO_EddsaPublicKey refresh_session_pub;
-
-  struct TALER_Amount expended_balance;
-
-  int is_refreshed;
-
-};
-
 
 /**
  * Global information for a refreshing session.
@@ -277,52 +255,6 @@ struct RefreshCommitCoin
   size_t coin_ev_size;
 
 };
-
-
-
-
-
-
-/**
- * Reserve row.  Corresponds to table 'reserves' in the mint's
- * database.  FIXME: not sure this is how we want to store this
- * information.  Also, may currently used in different ways in the
- * code, so we might need to separate the struct into different ones
- * depending on the context it is used in.
- */
-struct Reserve
-{
-  /**
-   * Signature over the purse.
-   * Only valid if (blind_session_missing==GNUNET_YES).
-   */
-  struct GNUNET_CRYPTO_EddsaSignature status_sig;
-  /**
-   * Signature with purpose TALER_SIGNATURE_PURSE.
-   * Only valid if (blind_session_missing==GNUNET_YES).
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose status_sig_purpose;
-  /**
-   * Signing key used to sign the purse.
-   * Only valid if (blind_session_missing==GNUNET_YES).
-   */
-  struct GNUNET_CRYPTO_EddsaPublicKey status_sign_pub;
-  /**
-   * Withdraw public key, identifies the purse.
-   * Only the customer knows the corresponding private key.
-   */
-  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
-  /**
-   * Remaining balance in the purse.
-   */
-  struct TALER_AmountNBO balance;
-
-  /**
-   * Expiration date for the purse.
-   */
-  struct GNUNET_TIME_AbsoluteNBO expiration;
-};
-
 
 
 

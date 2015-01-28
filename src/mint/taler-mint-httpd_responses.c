@@ -275,12 +275,14 @@ TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
  * Send reserve status information to client.
  *
  * @param connection connection to the client
- * @param reserve reserve status information to return
+ * @param balance current reserve balance
+ * @param expiration when will the reserve expire
  * @return MHD result code
  */
 int
 TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
-                                          const struct Reserve *reserve)
+                                          const struct TALER_Amount balance,
+                                          struct GNUNET_TIME_Absolute expiration)
 {
   json_t *json;
 
@@ -289,15 +291,10 @@ TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
   json = json_object ();
   json_object_set_new (json,
                        "balance",
-                       TALER_JSON_from_amount (TALER_amount_ntoh (reserve->balance)));
+                       TALER_JSON_from_amount (balance));
   json_object_set_new (json,
                        "expiration",
-                       TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (reserve->expiration)));
-  json_object_set_new (json,
-                       "signature",
-                       TALER_JSON_from_sig (&reserve->status_sig_purpose,
-                                            &reserve->status_sig));
-
+                       TALER_JSON_from_abs (expiration));
   return TALER_MINT_reply_json (connection,
                                 json,
                                 MHD_HTTP_OK);
