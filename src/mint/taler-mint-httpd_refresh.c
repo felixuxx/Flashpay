@@ -40,6 +40,7 @@
 #include "taler-mint-httpd_mhd.h"
 #include "taler-mint-httpd_refresh.h"
 #include "taler-mint-httpd_responses.h"
+#include "taler-mint-httpd_keystate.h"
 
 
 static int

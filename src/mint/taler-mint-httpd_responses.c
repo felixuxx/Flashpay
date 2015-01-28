@@ -33,6 +33,7 @@
 #include "taler-mint-httpd_responses.h"
 #include "taler_util.h"
 #include <gnunet/gnunet_util_lib.h>
+#include "taler-mint-httpd_keystate.h"
 
 
 /**

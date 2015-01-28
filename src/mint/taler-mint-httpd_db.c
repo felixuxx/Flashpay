@@ -37,6 +37,7 @@
 #include "mint_db.h"
 #include "mint.h"
 #include "taler_util.h"
+#include "taler-mint-httpd_keystate.h"
 
 
 /**

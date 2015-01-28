@@ -48,8 +48,8 @@ static int reload_pipe[2];
 
 
 /**
- * Convert the public part of a denomination key
- * issue to a JSON object.
+ * Convert the public part of a denomination key issue to a JSON
+ * object.
  *
  * @param dki the denomination key issue
  * @return a JSON object describing the denomination key isue (public part)
@@ -61,37 +61,45 @@ denom_key_issue_to_json (const struct TALER_MINT_DenomKeyIssue *dki)
   size_t buf_len;
   json_t *dk_json = json_object ();
 
-  json_object_set_new (dk_json, "master_sig",
-                       TALER_JSON_from_data (&dki->signature, sizeof (struct GNUNET_CRYPTO_EddsaSignature)));
-  json_object_set_new (dk_json, "stamp_start", TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->start)));
-  json_object_set_new (dk_json, "stamp_expire_withdraw", TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_withdraw)));
-  json_object_set_new (dk_json, "stamp_expire_deposit", TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_spend)));
-
+  json_object_set_new (dk_json,
+                       "master_sig",
+                       TALER_JSON_from_data (&dki->signature,
+                                             sizeof (struct GNUNET_CRYPTO_EddsaSignature)));
+  json_object_set_new (dk_json,
+                       "stamp_start",
+                       TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->start)));
+  json_object_set_new (dk_json,
+                       "stamp_expire_withdraw",
+                       TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_withdraw)));
+  json_object_set_new (dk_json,
+                       "stamp_expire_deposit",
+                       TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_spend)));
 
   buf_len = GNUNET_CRYPTO_rsa_public_key_encode (dki->denom_pub,
                                                  &buf);
-  json_object_set_new (dk_json, "denom_pub",
+  json_object_set_new (dk_json,
+                       "denom_pub",
                        TALER_JSON_from_data (buf,
                                              buf_len));
   GNUNET_free (buf);
-  json_object_set_new (dk_json, "value",
+  json_object_set_new (dk_json,
+                       "value",
                        TALER_JSON_from_amount (TALER_amount_ntoh (dki->value)));
   json_object_set_new (dk_json,
                        "fee_withdraw",
-                       TALER_JSON_from_amount(TALER_amount_ntoh (dki->fee_withdraw)));
+                       TALER_JSON_from_amount (TALER_amount_ntoh (dki->fee_withdraw)));
   json_object_set_new (dk_json,
                        "fee_deposit",
-                       TALER_JSON_from_amount(TALER_amount_ntoh (dki->fee_deposit)));
+                       TALER_JSON_from_amount (TALER_amount_ntoh (dki->fee_deposit)));
   json_object_set_new (dk_json,
                        "fee_refresh",
-                       TALER_JSON_from_amount(TALER_amount_ntoh (dki->fee_refresh)));
+                       TALER_JSON_from_amount (TALER_amount_ntoh (dki->fee_refresh)));
   return dk_json;
 }
 
 
 /**
- * Convert the public part of a sign key
- * issue to a JSON object.
+ * Convert the public part of a sign key issue to a JSON object.
  *
  * @param ski the sign key issue
  * @return a JSON object describing the sign key isue (public part)
@@ -111,7 +119,8 @@ sign_key_issue_to_json (const struct TALER_MINT_SignKeyIssue *ski)
                        "master_sig",
                        TALER_JSON_from_data (&ski->signature,
                                              sizeof (struct GNUNET_CRYPTO_EddsaSignature)));
-  json_object_set_new (sk_json, "key",
+  json_object_set_new (sk_json,
+                       "key",
                        TALER_JSON_from_data (&ski->signkey_pub,
                                              sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)));
   return sk_json;
@@ -266,7 +275,8 @@ reload_keys ()
   key_state->sign_keys_array = json_array ();
   GNUNET_assert (NULL != key_state->sign_keys_array);
 
-  key_state->denomkey_map = GNUNET_CONTAINER_multihashmap_create (32, GNUNET_NO);
+  key_state->denomkey_map = GNUNET_CONTAINER_multihashmap_create (32,
+                                                                  GNUNET_NO);
   GNUNET_assert (NULL != key_state->denomkey_map);
 
   key_state->reload_time = GNUNET_TIME_absolute_get ();
@@ -275,7 +285,8 @@ reload_keys ()
   TALER_MINT_signkeys_iterate (mintdir, &reload_keys_sign_iter, key_state);
 
   keys = json_pack ("{s:o, s:o, s:o, s:o}",
-                    "master_pub", TALER_JSON_from_data (&master_pub, sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)),
+                    "master_pub", TALER_JSON_from_data (&master_pub,
+                                                        sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)),
                     "signkeys", key_state->sign_keys_array,
                     "denoms", key_state->denom_keys_array,
                     "list_issue_date", TALER_JSON_from_abs (key_state->reload_time));
@@ -295,9 +306,10 @@ void
 TALER_MINT_key_state_release (struct MintKeyState *key_state)
 {
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
-  GNUNET_assert (0 != key_state->refcnt);
-  key_state->refcnt += 1;
-  if (key_state->refcnt == 0) {
+  GNUNET_assert (0 < key_state->refcnt);
+  key_state->refcnt--;
+  if (0 == key_state->refcnt)
+  {
     GNUNET_free (key_state);
   }
   GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
@@ -317,9 +329,6 @@ TALER_MINT_key_state_acquire (void)
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct MintKeyState *key_state;
 
-  // FIXME: the locking we have is very coarse-grained,
-  // using multiple locks might be nicer ...
-
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
   if (NULL == internal_key_state)
   {
@@ -327,14 +336,14 @@ TALER_MINT_key_state_acquire (void)
   }
   else if (internal_key_state->next_reload.abs_value_us <= now.abs_value_us)
   {
-    GNUNET_assert (0 != internal_key_state->refcnt);
+    GNUNET_assert (0 < internal_key_state->refcnt);
     internal_key_state->refcnt--;
     if (0 == internal_key_state->refcnt)
       GNUNET_free (internal_key_state);
     internal_key_state = reload_keys ();
   }
   key_state = internal_key_state;
-  key_state->refcnt += 1;
+  key_state->refcnt++;
   GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
 
   return key_state;
@@ -353,7 +362,6 @@ struct TALER_MINT_DenomKeyIssuePriv *
 TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
                           const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub)
 {
-  struct TALER_MINT_DenomKeyIssuePriv *issue;
   struct GNUNET_HashCode hash;
   char *buf;
   size_t buf_len;
@@ -364,8 +372,8 @@ TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
                       buf_len,
                       &hash);
   GNUNET_free (buf);
-  issue = GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map, &hash);
-  return issue;
+  return GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map,
+                                            &hash);
 }
 
 
@@ -477,8 +485,6 @@ TALER_MINT_keys_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
                                            sig));
   TALER_MINT_key_state_release (key_state);
 }
-
-
 
 
 /* end of taler-mint-httpd_keystate.c */

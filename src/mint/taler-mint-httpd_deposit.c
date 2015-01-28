@@ -41,6 +41,7 @@
 #include "taler-mint-httpd_db.h"
 #include "taler-mint-httpd_deposit.h"
 #include "taler-mint-httpd_responses.h"
+#include "taler-mint-httpd_keystate.h"
 
 
 /**

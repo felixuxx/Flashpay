@@ -36,6 +36,7 @@
 #include "taler-mint-httpd_deposit.h"
 #include "taler-mint-httpd_withdraw.h"
 #include "taler-mint-httpd_refresh.h"
+#include "taler-mint-httpd_keystate.h"
 #include "mint_db.h"
 
 

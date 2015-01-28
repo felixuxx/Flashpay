@@ -26,6 +26,7 @@
 #include "taler-mint-httpd_withdraw.h"
 #include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_responses.h"
+#include "taler-mint-httpd_keystate.h"
 
 
 /**
