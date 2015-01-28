@@ -283,7 +283,7 @@ struct BankTransfer
 
 
 /* FIXME: add functions to add bank transfers to our DB
-   (and to test if we already did add one) */
+   (and to test if we already did add one) (#3633) */
 
 
 /**
