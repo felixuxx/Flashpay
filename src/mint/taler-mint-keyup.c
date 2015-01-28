@@ -180,7 +180,8 @@ get_cointype_dir (const struct CoinTypeParams *p)
   unsigned int i;
 
   hash_coin_type (p, &hash);
-  hash_str = TALER_data_to_string_alloc (&hash, sizeof (struct GNUNET_HashCode));
+  hash_str = GNUNET_STRINGS_data_to_string_alloc (&hash,
+                                                  sizeof (struct GNUNET_HashCode));
   GNUNET_assert (HASH_CUTOFF <= strlen (hash_str) + 1);
   GNUNET_assert (NULL != hash_str);
   hash_str[HASH_CUTOFF] = 0;
@@ -363,7 +364,8 @@ mint_keys_update_signkeys ()
     {
       struct TALER_MINT_SignKeyIssuePriv signkey_issue;
       ssize_t nwrite;
-      printf ("Generating signing key for %s.\n", GNUNET_STRINGS_absolute_time_to_string (anchor));
+      printf ("Generating signing key for %s.\n",
+              GNUNET_STRINGS_absolute_time_to_string (anchor));
       create_signkey_issue_priv (anchor, signkey_duration, &signkey_issue);
       nwrite = GNUNET_DISK_fn_write (skf, &signkey_issue, sizeof (struct TALER_MINT_SignKeyIssue),
                                      (GNUNET_DISK_PERM_USER_WRITE | GNUNET_DISK_PERM_USER_READ));
@@ -498,7 +500,8 @@ mint_keys_update_cointype (const char *coin_alias)
       struct TALER_MINT_DenomKeyIssuePriv denomkey_issue;
       int ret;
       printf ("Generating denomination key for type '%s', start %s.\n",
-              coin_alias, GNUNET_STRINGS_absolute_time_to_string (p.anchor));
+              coin_alias,
+              GNUNET_STRINGS_absolute_time_to_string (p.anchor));
       printf ("Target path: %s\n", dkf);
       create_denomkey_issue (&p, &denomkey_issue);
       ret = TALER_MINT_write_denom_key (dkf, &denomkey_issue);

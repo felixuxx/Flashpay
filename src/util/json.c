@@ -133,7 +133,8 @@ TALER_JSON_from_data (const void *data, size_t size)
 {
   char *buf;
   json_t *json;
-  buf = TALER_data_to_string_alloc (data, size);
+
+  buf = GNUNET_STRINGS_data_to_string_alloc (data, size);
   json = json_string (buf);
   GNUNET_free (buf);
   return json;

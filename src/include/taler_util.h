@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2014 Christian Grothoff (and other contributing authors)
+  (C) 2014, 2015 Christian Grothoff (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -13,15 +13,13 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file include/taler_util.h
  * @brief Interface for common utility functions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
-
-#ifndef UTIL_H_
-#define UTIL_H_
+#ifndef TALER_UTIL_H_
+#define TALER_UTIL_H_
 
 #include <gnunet/gnunet_util_lib.h>
 #include <gcrypt.h>
@@ -233,22 +231,6 @@ TALER_amount_normalize (struct TALER_Amount amount);
  */
 char *
 TALER_amount_to_string (struct TALER_Amount amount);
-
-/* ****************** FIXME: move to GNUnet? ************** */
-
-/**
- * Return the base32crockford encoding of the given buffer.
- *
- * The returned string will be freshly allocated, and must be free'd
- * with #GNUNET_free().
- *
- * @param buffer with data
- * @param size size of the buffer
- * @return freshly allocated, null-terminated string
- */
-char *
-TALER_data_to_string_alloc (const void *buf,
-                            size_t size);
 
 
 /* ****************** Coin crypto primitives ************* */
