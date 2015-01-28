@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2014 GNUnet e.V.
+  (C) 2014, 2015 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -13,7 +13,6 @@
   You should have received a copy of the GNU Affero General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file taler-mint-httpd_responses.c
  * @brief API for generating the various replies of the mint; these
@@ -22,12 +21,6 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
- *
- * TODO:
- * - when generating /withdraw/status reply, which signature do
- *   we use there? Might want to instead return *all* signatures on the
- *   existig withdraw operations, instead of Mint's signature
- *   (check reply format, adjust `struct Reserve` if needed)
  */
 #include "platform.h"
 #include "taler-mint-httpd_responses.h"
