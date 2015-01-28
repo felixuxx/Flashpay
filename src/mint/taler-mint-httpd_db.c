@@ -15,11 +15,13 @@
 */
 /**
  * @file taler-mint-httpd_db.c
- * @brief Database access abstraction for the mint.
+ * @brief High-level (transactional-layer) database operations for the mint.
  * @author Christian Grothoff
  *
  * TODO:
  * - actually abstract DB implementation (i.e. via plugin logic)
+ *   (this file should remain largely unchanged with the exception
+ *    of the PQ-specific DB handle types)
  * - /deposit: properly check existing deposits
  * - /deposit: properly perform commit (check return value)
  * - /deposit: check for leaks

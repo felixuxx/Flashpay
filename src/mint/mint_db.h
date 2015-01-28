@@ -13,11 +13,11 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file mint/mint_db.h
- * @brief Mint-specific database access
+ * @brief Low-level (statement-level) database access for the mint
  * @author Florian Dold
+ * @author Christian Grothoff
  */
 
 #ifndef _NEURO_MINT_DB_H

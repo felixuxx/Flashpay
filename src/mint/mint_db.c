@@ -15,8 +15,15 @@
 */
 /**
  * @file mint_db.c
- * @brief Database access for the mint
+ * @brief Low-level (statement-level) database access for the mint
  * @author Florian Dold
+ * @author Christian Grothoff
+ *
+ * TODO:
+ * - The mint_db.h-API should ideally be what we need to port
+ *   when using other databases; so here we should enable
+ *   alternative implementations by returning
+ *   a more opaque DB handle.
  */
 #include "platform.h"
 #include "db_pq.h"

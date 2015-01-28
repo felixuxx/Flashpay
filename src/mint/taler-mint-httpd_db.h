@@ -15,7 +15,7 @@
 */
 /**
  * @file mint/taler-mint_httpd_db.h
- * @brief Mint-specific database access
+ * @brief High-level (transactional-layer) database operations for the mint
  * @author Chrisitan Grothoff
  */
 #ifndef TALER_MINT_HTTPD_DB_H
