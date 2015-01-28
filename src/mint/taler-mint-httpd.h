@@ -48,6 +48,11 @@ extern char *mintdir;
  */
 extern struct GNUNET_CRYPTO_EddsaPublicKey master_pub;
 
+/**
+ * Private key of the mint we use to sign messages.
+ */
+extern struct GNUNET_CRYPTO_EddsaPrivateKey mint_priv;
+
 
 /**
  * Struct describing an URL and the handler for it.

@@ -60,7 +60,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   struct MintKeyState *key_state;
   struct TALER_DepositRequest dr;
 
-  dr.purpose.purpose = htonl (TALER_SIGNATURE_DEPOSIT);
+  dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_DEPOSIT);
   dr.purpose.size = htonl (sizeof (struct TALER_DepositRequest));
   dr.h_contract = deposit->h_contract;
   dr.h_wire = deposit->h_wire;
@@ -68,7 +68,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   dr.amount = TALER_amount_hton (deposit->amount);
   dr.coin_pub = deposit->coin.coin_pub;
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_DEPOSIT,
+      GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_WALLET_DEPOSIT,
                                   &dr.purpose,
                                   &deposit->csig,
                                   &deposit->coin.coin_pub))
@@ -101,8 +101,8 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection to handle
  * @param root root of the posted JSON
- * @param purpose is this a #TALER_SIGNATURE_DEPOSIT or
- *           #TALER_SIGNATURE_INCREMENTAL_DEPOSIT // FIXME: bad type, use enum!
+ * @param purpose is this a #TALER_SIGNATURE_WALLET_DEPOSIT or
+ *           #TALER_SIGNATURE_INCREMENTAL_WALLET_DEPOSIT // FIXME: bad type, use enum!
  * @param amount how much should be deposited
  * @param wire json describing the wire details (?)
  * @return MHD result code
@@ -258,9 +258,9 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
   }
   /* FIXME: use array search and enum, this is ugly */
   if (0 == strcmp ("DIRECT_DEPOSIT", deposit_type))
-    purpose = TALER_SIGNATURE_DEPOSIT;
+    purpose = TALER_SIGNATURE_WALLET_DEPOSIT;
   else if (0 == strcmp ("INCREMENTAL_DEPOSIT", deposit_type))
-    purpose = TALER_SIGNATURE_INCREMENTAL_DEPOSIT;
+    purpose = TALER_SIGNATURE_INCREMENTAL_WALLET_DEPOSIT;
   else
   {
     GNUNET_break_op (0);

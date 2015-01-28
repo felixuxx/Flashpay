@@ -56,6 +56,11 @@ struct GNUNET_CONFIGURATION_Handle *cfg;
 struct GNUNET_CRYPTO_EddsaPublicKey master_pub;
 
 /**
+ * Private key of the mint we use to sign messages.
+ */
+struct GNUNET_CRYPTO_EddsaPrivateKey mint_priv;
+
+/**
  * The HTTP Daemon.
  */
 static struct MHD_Daemon *mydaemon;
@@ -223,7 +228,7 @@ handle_mhd_request (void *cls,
  * server into the corresponding global variables.
  *
  * @param param mint_directory the mint's directory
- * @return GNUNET_OK on success
+ * @return #GNUNET_OK on success
  */
 static int
 mint_serve_process_config (const char *mint_directory)
@@ -231,6 +236,7 @@ mint_serve_process_config (const char *mint_directory)
   unsigned long long port;
   unsigned long long kappa;
   char *master_pub_str;
+  char *mint_priv_str;
   char *db_cfg;
 
   cfg = TALER_config_load (mint_directory);
@@ -256,8 +262,30 @@ mint_serve_process_config (const char *mint_directory)
   {
     fprintf (stderr,
              "Invalid master public key given in mint configuration.");
+    GNUNET_free (master_pub_str);
     return GNUNET_NO;
   }
+  GNUNET_free (master_pub_str);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "mint", "mint_priv",
+                                             &mint_priv_str))
+  {
+    fprintf (stderr,
+             "No master public key given in mint configuration.");
+    return GNUNET_NO;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_private_key_from_string (mint_priv_str,
+                                                   strlen (mint_priv_str),
+                                                   &mint_priv))
+  {
+    fprintf (stderr,
+             "Invalid mint private key given in mint configuration.");
+    GNUNET_free (mint_priv_str);
+    return GNUNET_NO;
+  }
+  GNUNET_free (mint_priv_str);
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,

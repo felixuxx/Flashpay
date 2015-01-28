@@ -85,6 +85,12 @@
  */
 #define TALER_SIGNATURE_REFRESH_MELT_CONFIRM 9
 
+/**
+ * Signature where the Mint confirms a deposit request.
+ */
+#define TALER_SIGNATURE_MINT_DEPOSIT 10
+
+
 /***********************/
 /* Merchant signatures */
 /***********************/
@@ -101,12 +107,12 @@
 /**
  * Signature made by the wallet of a user to confirm a deposit permission
  */
-#define TALER_SIGNATURE_DEPOSIT 201
+#define TALER_SIGNATURE_WALLET_DEPOSIT 201
 
 /**
  * Signature made by the wallet of a user to confirm a incremental deposit permission
  */
-#define TALER_SIGNATURE_INCREMENTAL_DEPOSIT 202
+#define TALER_SIGNATURE_INCREMENTAL_WALLET_DEPOSIT 202
 
 
 
@@ -149,7 +155,7 @@ struct TALER_WithdrawRequest
 struct TALER_DepositRequest
 {
   /**
-   * Purpose must be #TALER_SIGNATURE_DEPOSIT
+   * Purpose must be #TALER_SIGNATURE_WALLET_DEPOSIT
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -178,6 +184,51 @@ struct TALER_DepositRequest
    * The coin's public key.
    */
   struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+
+};
+
+
+/**
+ * Format used to generate the signature on a confirmation
+ * from the mint that a deposit request succeeded.
+ */
+struct TALER_DepositConfirmation
+{
+  /**
+   * Purpose must be #TALER_SIGNATURE_MINT_DEPOSIT
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash over the contract for which this deposit is made.
+   */
+  struct GNUNET_HashCode h_contract;
+
+  /**
+   * Hash over the wiring information of the merchant.
+   */
+  struct GNUNET_HashCode h_wire;
+
+  /**
+   * Merchant-generated transaction ID to detect duplicate
+   * transactions.
+   */
+  uint64_t transaction_id GNUNET_PACKED;
+
+  /**
+   * Amount to be deposited.
+   */
+  struct TALER_AmountNBO amount;
+
+  /**
+   * The coin's public key.
+   */
+  struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+
+  /**
+   * The Merachant's public key.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey merchant;
 
 };
 

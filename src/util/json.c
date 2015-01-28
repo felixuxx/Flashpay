@@ -112,7 +112,8 @@ TALER_JSON_from_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
   el = json_integer ((json_int_t) ntohl (purpose->purpose));
   json_object_set_new (root, "purpose", el);
 
-  el = TALER_JSON_from_data (signature, sizeof (struct GNUNET_CRYPTO_EddsaSignature));
+  el = TALER_JSON_from_data (signature,
+                             sizeof (struct GNUNET_CRYPTO_EddsaSignature));
   json_object_set_new (root, "sig", el);
 
   return root;

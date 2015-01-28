@@ -24,8 +24,6 @@
  * @author Christian Grothoff
  *
  * TODO:
- * - when generating /deposit reply, do include signature of mint
- *   to say that we accepted it (check reply format)
  * - when generating /withdraw/status reply, which signature do
  *   we use there? Might want to instead return *all* signatures on the
  *   existig withdraw operations, instead of Mint's signature
@@ -275,14 +273,36 @@ TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
                                   const struct GNUNET_CRYPTO_EddsaPublicKey *merchant,
                                   const struct TALER_Amount *amount)
 {
-  // FIXME: return more information here,
-  // including in particular a signature over
-  // the deposit data from the mint!
-  return TALER_MINT_reply_json_pack (connection,
-                                     MHD_HTTP_OK,
-                                     "{s:s}",
-                                     "status",
-                                     "DEPOSIT_OK");
+  struct TALER_DepositConfirmation dc;
+  struct GNUNET_CRYPTO_EddsaSignature sig;
+  json_t *sig_json;
+  int ret;
+
+  dc.purpose.purpose = htonl (TALER_SIGNATURE_MINT_DEPOSIT);
+  dc.purpose.size = htonl (sizeof (struct TALER_DepositConfirmation));
+  dc.h_contract = *h_contract;
+  dc.h_wire = *h_wire;
+  dc.transaction_id = GNUNET_htonll (transaction_id);
+  dc.amount = TALER_amount_hton (*amount);
+  dc.coin_pub = *coin_pub;
+  dc.merchant = *merchant;
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_sign (&mint_priv,
+                                &dc.purpose,
+                                &sig))
+  {
+    LOG_WARNING ("Failed to create EdDSA signature using my private key\n");
+    return TALER_MINT_reply_internal_error (connection,
+                                            "Failed to EdDSA-sign response\n");
+  }
+  sig_json = TALER_JSON_from_sig (&dc.purpose, &sig);
+  ret = TALER_MINT_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:s, s:o}",
+                                    "status", "DEPOSIT_OK",
+                                    "signature", sig_json);
+  json_decref (sig_json);
+  return ret;
 }
 
 
@@ -356,30 +376,32 @@ TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
                                        const struct RefreshSession *session,
                                        const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub)
 {
-  json_t *root;
+  int ret;
   json_t *list;
   struct GNUNET_HashContext *hash_context;
   struct RefreshMeltResponseSignatureBody body;
   struct GNUNET_CRYPTO_EddsaSignature sig;
   json_t *sig_json;
 
-  root = json_object ();
   list = json_array ();
-  json_object_set_new (root, "blind_session_pubs", list);
   hash_context = GNUNET_CRYPTO_hash_context_start ();
   body.purpose.size = htonl (sizeof (struct RefreshMeltResponseSignatureBody));
   body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_RESPONSE);
   /* FIXME: should we not add something to the hash_context in the meantime? */
-  GNUNET_CRYPTO_hash_context_finish (hash_context, &body.melt_response_hash);
+  GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                     &body.melt_response_hash);
   TALER_MINT_keys_sign (&body.purpose,
                         &sig);
   sig_json = TALER_JSON_from_sig (&body.purpose, &sig);
   GNUNET_assert (NULL != sig_json);
-  json_object_set (root, "signature", sig_json);
-
-  return TALER_MINT_reply_json (connection,
-                                root,
-                                MHD_HTTP_OK);
+  ret = TALER_MINT_reply_json_pack (connection,
+                                    MHD_HTTP_OK,
+                                    "{s:o, s:o}",
+                                    "signature", sig_json,
+                                    "blind_session_pubs", list);
+  json_decref (sig_json);
+  json_decref (list);
+  return ret;
 }
 
 
