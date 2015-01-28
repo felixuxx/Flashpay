@@ -54,125 +54,47 @@ static char *TALER_MINT_db_connection_cfg_str;
   } while (0)
 
 
-/**
- * Locate the response for a /withdraw request under the
- * key of the hash of the blinded message.
- *
- * @param db_conn database connection to use
- * @param h_blind hash of the blinded message
- * @param collectable corresponding collectable coin (blind signature)
- *                    if a coin is found
- * @return #GNUNET_SYSERR on internal error
- *         #GNUNET_NO if the collectable was not found
- *         #GNUNET_YES on success
- */
+
+
+
 int
-TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
-                                         const struct GNUNET_HashCode *h_blind,
-                                         struct CollectableBlindcoin *collectable)
+TALER_TALER_DB_extract_amount_nbo (PGresult *result,
+                                   unsigned int row,
+                                   int indices[3],
+                                   struct TALER_AmountNBO *denom_nbo)
 {
-  PGresult *result;
-  struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR (h_blind),
-    TALER_DB_QUERY_PARAM_END
-  };
-  char *sig_buf;
-  size_t sig_buf_size;
-
-  result = TALER_DB_exec_prepared (db_conn,
-                                   "get_collectable_blindcoins",
-                                   params);
-
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Query failed: %s\n",
-                PQresultErrorMessage (result));
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
+  if ((indices[0] < 0) || (indices[1] < 0) || (indices[2] < 0))
     return GNUNET_NO;
-  }
-
-  struct TALER_DB_ResultSpec rs[] = {
-    TALER_DB_RESULT_SPEC_VAR("blind_sig", &sig_buf, &sig_buf_size),
-    TALER_DB_RESULT_SPEC("denom_pub", &collectable->denom_pub),
-    TALER_DB_RESULT_SPEC("reserve_sig", &collectable->reserve_sig),
-    TALER_DB_RESULT_SPEC("reserve_pub", &collectable->reserve_pub),
-    TALER_DB_RESULT_SPEC_END
-  };
-
-  if (GNUNET_OK != TALER_DB_extract_result (result, rs, 0))
-  {
-    GNUNET_break (0);
-    PQclear (result);
+  if (sizeof (uint32_t) != PQgetlength (result, row, indices[0]))
     return GNUNET_SYSERR;
-  }
-  PQclear (result);
+  if (sizeof (uint32_t) != PQgetlength (result, row, indices[1]))
+    return GNUNET_SYSERR;
+  if (PQgetlength (result, row, indices[2]) > TALER_CURRENCY_LEN)
+    return GNUNET_SYSERR;
+  denom_nbo->value = *(uint32_t *) PQgetvalue (result, row, indices[0]);
+  denom_nbo->fraction = *(uint32_t *) PQgetvalue (result, row, indices[1]);
+  memset (denom_nbo->currency, 0, TALER_CURRENCY_LEN);
+  memcpy (denom_nbo->currency, PQgetvalue (result, row, indices[2]), PQgetlength (result, row, indices[2]));
   return GNUNET_OK;
 }
 
 
-/**
- * Store collectable bit coin under the corresponding
- * hash of the blinded message.
- *
- * @param db_conn database connection to use
- * @param h_blind hash of the blinded message
- * @param collectable corresponding collectable coin (blind signature)
- *                    if a coin is found
- * @return #GNUNET_SYSERR on internal error
- *         #GNUNET_NO if the collectable was not found
- *         #GNUNET_YES on success
- */
 int
-TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
-                                            const struct GNUNET_HashCode *h_blind,
-                                            const struct CollectableBlindcoin *collectable)
+TALER_TALER_DB_extract_amount (PGresult *result,
+                               unsigned int row,
+                               int indices[3],
+                               struct TALER_Amount *denom)
 {
-  PGresult *result;
-  char *sig_buf;
-  size_t sig_buf_size;
+  struct TALER_AmountNBO denom_nbo;
+  int res;
 
-  sig_buf_size = GNUNET_CRYPTO_rsa_signature_encode (collectable->sig,
-                                                     &sig_buf);
-  {
-    struct TALER_DB_QueryParam params[] = {
-      TALER_DB_QUERY_PARAM_PTR (&h_blind),
-      TALER_DB_QUERY_PARAM_PTR_SIZED (sig_buf, sig_buf_size),
-      TALER_DB_QUERY_PARAM_PTR (&collectable->denom_pub),
-      TALER_DB_QUERY_PARAM_PTR (&collectable->reserve_pub),
-      TALER_DB_QUERY_PARAM_PTR (&collectable->reserve_sig),
-      TALER_DB_QUERY_PARAM_END
-    };
-
-    result = TALER_DB_exec_prepared (db_conn,
-                                     "insert_collectable_blindcoins",
-                                     params);
-    if (PGRES_COMMAND_OK != PQresultStatus (result))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Query failed: %s\n",
-                  PQresultErrorMessage (result));
-      PQclear (result);
-      return GNUNET_SYSERR;
-    }
-
-    if (0 != strcmp ("1", PQcmdTuples (result)))
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Insert failed (updated '%s' tupes instead of '1')\n",
-                    PQcmdTuples (result));
-        PQclear (result);
-        return GNUNET_SYSERR;
-      }
-    PQclear (result);
-  }
+  res = TALER_TALER_DB_extract_amount_nbo (result, row, indices, &denom_nbo);
+  if (GNUNET_OK != res)
+    return res;
+  *denom = TALER_amount_ntoh (denom_nbo);
   return GNUNET_OK;
 }
+
 
 
 int
@@ -681,88 +603,51 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
   }
   PQclear (result);
 
-  if (GNUNET_OK != TALER_MINT_DB_prepare_deposits (db_conn))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-
-  return GNUNET_OK;
-}
-
-
-/**
- * Roll back the current transaction of a database connection.
- *
- * @param db_conn the database connection
- * @return GNUNET_OK on success
- */
-int
-TALER_MINT_DB_rollback (PGconn *db_conn)
-{
-  PGresult *result;
-
-  result = PQexec(db_conn, "ROLLBACK");
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    PQclear (result);
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-
+  result = PQprepare (db_conn, "insert_deposit",
+                      "INSERT INTO deposits ("
+                      "coin_pub,"
+                      "denom_pub,"
+                      "transaction_id,"
+                      "amount_value,"
+                      "amount_fraction,"
+                      "amount_currency,"
+                      "merchant_pub,"
+                      "h_contract,"
+                      "h_wire,"
+                      "coin_sig,"
+                      "wire"
+                      ") VALUES ("
+                      "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11"
+                      ")",
+                      11, NULL);
+  EXITIF (PGRES_COMMAND_OK != PQresultStatus(result));
   PQclear (result);
-  return GNUNET_OK;
-}
 
-
-/**
- * Roll back the current transaction of a database connection.
- *
- * @param db_conn the database connection
- * @return GNUNET_OK on success
- */
-int
-TALER_MINT_DB_commit (PGconn *db_conn)
-{
-  PGresult *result;
-
-  result = PQexec(db_conn, "COMMIT");
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    PQclear (result);
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-
+  result = PQprepare (db_conn, "get_deposit",
+                      "SELECT "
+                      "coin_pub,"
+                      "denom_pub,"
+                      "transaction_id,"
+                      "amount_value,"
+                      "amount_fraction,"
+                      "amount_currency,"
+                      "merchant_pub,"
+                      "h_contract,"
+                      "h_wire,"
+                      "coin_sig"
+                      " FROM deposits WHERE ("
+                      "coin_pub = $1"
+                      ")",
+                      1, NULL);
+  EXITIF (PGRES_COMMAND_OK != PQresultStatus(result));
   PQclear (result);
+
   return GNUNET_OK;
-}
 
-
-/**
- * Start a transaction.
- *
- * @param db_conn the database connection
- * @return GNUNET_OK on success
- */
-int
-TALER_MINT_DB_transaction (PGconn *db_conn)
-{
-  PGresult *result;
-
-  result = PQexec(db_conn, "BEGIN");
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Can't start transaction: %s\n",
-                PQresultErrorMessage (result));
-    PQclear (result);
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-
+ EXITIF_exit:
+  break_db_err (result);
   PQclear (result);
-  return GNUNET_OK;
+  return GNUNET_SYSERR;
 }
 
 
@@ -1495,91 +1380,6 @@ TALER_MINT_DB_get_refresh_collectable (PGconn *db_conn,
 }
 
 
-
-int
-TALER_MINT_DB_insert_refresh_melt (PGconn *db_conn,
-                                    const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                    uint16_t oldcoin_index,
-                                    const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
-                                    const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub)
-{
-  uint16_t oldcoin_index_nbo = htons (oldcoin_index);
-  char *buf;
-  size_t buf_size;
-  PGresult *result;
-
-  buf_size = GNUNET_CRYPTO_rsa_public_key_encode (denom_pub,
-                                                  &buf);
-  {
-    struct TALER_DB_QueryParam params[] = {
-      TALER_DB_QUERY_PARAM_PTR(session_pub),
-      TALER_DB_QUERY_PARAM_PTR(&oldcoin_index_nbo),
-      TALER_DB_QUERY_PARAM_PTR(coin_pub),
-      TALER_DB_QUERY_PARAM_PTR_SIZED(buf, buf_size),
-      TALER_DB_QUERY_PARAM_END
-    };
-    result = TALER_DB_exec_prepared (db_conn, "insert_refresh_melt", params);
-  }
-  GNUNET_free (buf);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
-}
-
-
-
-int
-TALER_MINT_DB_get_refresh_melt (PGconn *db_conn,
-                                const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                uint16_t oldcoin_index,
-                                struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub)
-{
-  uint16_t oldcoin_index_nbo = htons (oldcoin_index);
-  struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(session_pub),
-    TALER_DB_QUERY_PARAM_PTR(&oldcoin_index_nbo),
-    TALER_DB_QUERY_PARAM_END
-  };
-
-  PGresult *result = TALER_DB_exec_prepared (db_conn, "get_refresh_melt", params);
-
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    return GNUNET_NO;
-  }
-
-  GNUNET_assert (1 == PQntuples (result));
-
-  struct TALER_DB_ResultSpec rs[] = {
-    TALER_DB_RESULT_SPEC("coin_pub", coin_pub),
-    TALER_DB_RESULT_SPEC_END
-  };
-
-  if (GNUNET_OK != TALER_DB_extract_result (result, rs, 0))
-  {
-    PQclear (result);
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-
-  PQclear (result);
-  return GNUNET_OK;
-}
-
-
 int
 TALER_db_get_link (PGconn *db_conn,
                    const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
@@ -1744,96 +1544,337 @@ TALER_db_get_transfer (PGconn *db_conn,
 }
 
 
-int
-TALER_MINT_DB_init_deposits (PGconn *conn, int tmp)
-{
-  const char *tmp_str = (1 == tmp) ? "TEMPORARY" : "";
-  char *sql;
-  PGresult *res;
-  int ret;
 
-  res = NULL;
-  (void) GNUNET_asprintf (&sql,
-                          "CREATE %1$s TABLE IF NOT EXISTS deposits ("
-                          " coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (length(coin_pub)=32)"
-                          ",denom_pub BYTEA NOT NULL CHECK (length(denom_pub)=32)"
-                          ",transaction_id INT8 NOT NULL"
-                          ",amount_value INT4 NOT NULL"
-                          ",amount_fraction INT4 NOT NULL"
-                          ",amount_currency VARCHAR(4) NOT NULL"
-                          ",merchant_pub BYTEA NOT NULL"
-                          ",h_contract BYTEA NOT NULL CHECK (length(h_contract)=64)"
-                          ",h_wire BYTEA NOT NULL CHECK (length(h_wire)=64)"
-                          ",coin_sig BYTEA NOT NULL CHECK (length(coin_sig)=64)"
-                          ",wire TEXT NOT NULL"
-                          ")",
-                          tmp_str);
-  res = PQexec (conn, sql);
-  GNUNET_free (sql);
-  if (PGRES_COMMAND_OK != PQresultStatus (res))
-  {
-    break_db_err (res);
-    ret = GNUNET_SYSERR;
-  }
-  else
-    ret = GNUNET_OK;
-  PQclear (res);
-  return ret;
+
+
+// Chaos
+////////////////////////////////////////////////////////////////
+// Order
+
+
+
+
+
+
+/**
+ * Close thread-local database connection when a thread is destroyed.
+ *
+ * @param closure we get from pthreads (the db handle)
+ */
+static void
+db_conn_destroy (void *cls)
+{
+  PGconn *db_conn = cls;
+  if (NULL != db_conn)
+    PQfinish (db_conn);
 }
 
+
+/**
+ * Initialize database subsystem.
+ *
+ * @param connection_cfg configuration to use to talk to DB
+ * @return #GNUNET_OK on success
+ */
 int
-TALER_MINT_DB_prepare_deposits (PGconn *db_conn)
+TALER_MINT_DB_init (const char *connection_cfg)
+{
+  if (0 != pthread_key_create (&db_conn_threadlocal,
+                               &db_conn_destroy))
+  {
+    fprintf (stderr,
+             "Can't create pthread key.\n");
+    return GNUNET_SYSERR;
+  }
+  TALER_MINT_db_connection_cfg_str = GNUNET_strdup (connection_cfg);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Get the thread-local database-handle.
+ * Connect to the db if the connection does not exist yet.
+ *
+ * @return the database connection, or NULL on error
+ */
+PGconn *
+TALER_MINT_DB_get_connection (void)
+{
+  PGconn *db_conn;
+
+  if (NULL != (db_conn = pthread_getspecific (db_conn_threadlocal)))
+    return db_conn;
+
+  db_conn = PQconnectdb (TALER_MINT_db_connection_cfg_str);
+
+  if (CONNECTION_OK != PQstatus (db_conn))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "db connection failed: %s\n",
+                PQerrorMessage (db_conn));
+    GNUNET_break (0);
+    return NULL;
+  }
+
+  if (GNUNET_OK != TALER_MINT_DB_prepare (db_conn))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  if (0 != pthread_setspecific (db_conn_threadlocal,
+                                db_conn))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  return db_conn;
+}
+
+
+/**
+ * Start a transaction.
+ *
+ * @param db_conn the database connection
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_MINT_DB_transaction (PGconn *db_conn)
 {
   PGresult *result;
 
-  result = PQprepare (db_conn, "insert_deposit",
-                      "INSERT INTO deposits ("
-                      "coin_pub,"
-                      "denom_pub,"
-                      "transaction_id,"
-                      "amount_value,"
-                      "amount_fraction,"
-                      "amount_currency,"
-                      "merchant_pub,"
-                      "h_contract,"
-                      "h_wire,"
-                      "coin_sig,"
-                      "wire"
-                      ") VALUES ("
-                      "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11"
-                      ")",
-                      11, NULL);
-  EXITIF (PGRES_COMMAND_OK != PQresultStatus(result));
-  PQclear (result);
+  result = PQexec(db_conn, "BEGIN");
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Can't start transaction: %s\n",
+                PQresultErrorMessage (result));
+    PQclear (result);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
 
-  result = PQprepare (db_conn, "get_deposit",
-                      "SELECT "
-                      "coin_pub,"
-                      "denom_pub,"
-                      "transaction_id,"
-                      "amount_value,"
-                      "amount_fraction,"
-                      "amount_currency,"
-                      "merchant_pub,"
-                      "h_contract,"
-                      "h_wire,"
-                      "coin_sig"
-                      " FROM deposits WHERE ("
-                      "coin_pub = $1"
-                      ")",
-                      1, NULL);
-  EXITIF (PGRES_COMMAND_OK != PQresultStatus(result));
   PQclear (result);
-
   return GNUNET_OK;
-
- EXITIF_exit:
-  break_db_err (result);
-  PQclear (result);
-  return GNUNET_SYSERR;
 }
 
 
+/**
+ * Roll back the current transaction of a database connection.
+ *
+ * @param db_conn the database connection
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_MINT_DB_rollback (PGconn *db_conn)
+{
+  PGresult *result;
+
+  result = PQexec(db_conn,
+                  "ROLLBACK");
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    PQclear (result);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Commit the current transaction of a database connection.
+ *
+ * @param db_conn the database connection
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_MINT_DB_commit (PGconn *db_conn)
+{
+  PGresult *result;
+
+  result = PQexec(db_conn,
+                  "COMMIT");
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    PQclear (result);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Locate the response for a /withdraw request under the
+ * key of the hash of the blinded message.
+ *
+ * @param db_conn database connection to use
+ * @param h_blind hash of the blinded message
+ * @param collectable corresponding collectable coin (blind signature)
+ *                    if a coin is found
+ * @return #GNUNET_SYSERR on internal error
+ *         #GNUNET_NO if the collectable was not found
+ *         #GNUNET_YES on success
+ */
+int
+TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
+                                         const struct GNUNET_HashCode *h_blind,
+                                         struct CollectableBlindcoin *collectable)
+{
+  PGresult *result;
+  struct TALER_DB_QueryParam params[] = {
+    TALER_DB_QUERY_PARAM_PTR (h_blind),
+    TALER_DB_QUERY_PARAM_END
+  };
+  char *sig_buf;
+  size_t sig_buf_size;
+
+  result = TALER_DB_exec_prepared (db_conn,
+                                   "get_collectable_blindcoins",
+                                   params);
+
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Query failed: %s\n",
+                PQresultErrorMessage (result));
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  if (0 == PQntuples (result))
+  {
+    PQclear (result);
+    return GNUNET_NO;
+  }
+
+  struct TALER_DB_ResultSpec rs[] = {
+    TALER_DB_RESULT_SPEC_VAR("blind_sig", &sig_buf, &sig_buf_size),
+    TALER_DB_RESULT_SPEC("denom_pub", &collectable->denom_pub),
+    TALER_DB_RESULT_SPEC("reserve_sig", &collectable->reserve_sig),
+    TALER_DB_RESULT_SPEC("reserve_pub", &collectable->reserve_pub),
+    TALER_DB_RESULT_SPEC_END
+  };
+
+  if (GNUNET_OK != TALER_DB_extract_result (result, rs, 0))
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Store collectable bit coin under the corresponding
+ * hash of the blinded message.
+ *
+ * @param db_conn database connection to use
+ * @param h_blind hash of the blinded message
+ * @param collectable corresponding collectable coin (blind signature)
+ *                    if a coin is found
+ * @return #GNUNET_SYSERR on internal error
+ *         #GNUNET_NO if the collectable was not found
+ *         #GNUNET_YES on success
+ */
+int
+TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
+                                            const struct GNUNET_HashCode *h_blind,
+                                            const struct CollectableBlindcoin *collectable)
+{
+  PGresult *result;
+  char *sig_buf;
+  size_t sig_buf_size;
+
+  sig_buf_size = GNUNET_CRYPTO_rsa_signature_encode (collectable->sig,
+                                                     &sig_buf);
+  {
+    struct TALER_DB_QueryParam params[] = {
+      TALER_DB_QUERY_PARAM_PTR (&h_blind),
+      TALER_DB_QUERY_PARAM_PTR_SIZED (sig_buf, sig_buf_size),
+      TALER_DB_QUERY_PARAM_PTR (&collectable->denom_pub),
+      TALER_DB_QUERY_PARAM_PTR (&collectable->reserve_pub),
+      TALER_DB_QUERY_PARAM_PTR (&collectable->reserve_sig),
+      TALER_DB_QUERY_PARAM_END
+    };
+
+    result = TALER_DB_exec_prepared (db_conn,
+                                     "insert_collectable_blindcoins",
+                                     params);
+    if (PGRES_COMMAND_OK != PQresultStatus (result))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Query failed: %s\n",
+                  PQresultErrorMessage (result));
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+
+    if (0 != strcmp ("1", PQcmdTuples (result)))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Insert failed (updated '%s' tupes instead of '1')\n",
+                    PQcmdTuples (result));
+        PQclear (result);
+        return GNUNET_SYSERR;
+      }
+    PQclear (result);
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Check if we have the specified deposit already in the database.
+ *
+ * @param db_conn database connection
+ * @param deposit deposit to search for
+ * @return #GNUNET_YES if we know this operation,
+ *         #GNUNET_NO if this deposit is unknown to us
+ */
+int
+TALER_MINT_DB_have_deposit (PGconn *db_conn,
+                            const struct Deposit *deposit)
+{
+  struct TALER_DB_QueryParam params[] = {
+    TALER_DB_QUERY_PARAM_PTR (&deposit->coin.coin_pub), // FIXME
+    TALER_DB_QUERY_PARAM_END
+  };
+  PGresult *result;
+
+  result = TALER_DB_exec_prepared (db_conn,
+                                   "get_deposit",
+                                   params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    break_db_err (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  if (0 == PQntuples (result))
+  {
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  return GNUNET_YES;
+}
+
+
+/**
+ * Insert information about deposited coin into the
+ * database.
+ *
+ * @param db_conn connection to the database
+ * @param deposit deposit information to store
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
 int
 TALER_MINT_DB_insert_deposit (PGconn *db_conn,
                               const struct Deposit *deposit)
@@ -1843,7 +1884,6 @@ TALER_MINT_DB_insert_deposit (PGconn *db_conn,
     TALER_DB_QUERY_PARAM_PTR (&deposit->coin.denom_pub), // FIXME!
     TALER_DB_QUERY_PARAM_PTR (&deposit->coin.denom_sig), // FIXME!
     TALER_DB_QUERY_PARAM_PTR (&deposit->transaction_id),
-    TALER_DB_QUERY_PARAM_PTR (&deposit->purpose), // FIXME: enum Ok here?
     TALER_DB_QUERY_PARAM_PTR (&deposit->amount.value),
     TALER_DB_QUERY_PARAM_PTR (&deposit->amount.fraction),
     TALER_DB_QUERY_PARAM_PTR_SIZED (deposit->amount.currency,
@@ -1870,25 +1910,34 @@ TALER_MINT_DB_insert_deposit (PGconn *db_conn,
 }
 
 
+/**
+ * Test if the given /refresh/melt request is known to us.
+ *
+ * @param db_conn database connection
+ * @param melt melt operation
+ * @return #GNUNET_YES if known,
+ *         #GNUENT_NO if not,
+ *         #GNUNET_SYSERR on internal error
+ */
 int
-TALER_MINT_DB_get_deposit (PGconn *db_conn,
-                           const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
-                           struct Deposit *deposit)
+TALER_MINT_DB_have_refresh_melt (PGconn *db_conn,
+                                 const struct RefreshMelt *melt)
 {
+  uint16_t oldcoin_index_nbo = htons (melt->oldcoin_index);
   struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR (coin_pub),
+    TALER_DB_QUERY_PARAM_PTR(&melt->session_pub),
+    TALER_DB_QUERY_PARAM_PTR(&oldcoin_index_nbo),
     TALER_DB_QUERY_PARAM_END
   };
-  PGresult *result;
 
-  memset (deposit, 0, sizeof (struct Deposit));
-  result = TALER_DB_exec_prepared (db_conn,
-                                   "get_deposit",
-                                   params);
+  PGresult *result = TALER_DB_exec_prepared (db_conn,
+                                             "get_refresh_melt",
+                                             params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
     break_db_err (result);
-    goto EXITIF_exit;
+    PQclear (result);
+    return GNUNET_SYSERR;
   }
 
   if (0 == PQntuples (result))
@@ -1896,167 +1945,90 @@ TALER_MINT_DB_get_deposit (PGconn *db_conn,
     PQclear (result);
     return GNUNET_NO;
   }
+  GNUNET_break (1 == PQntuples (result));
+  PQclear (result);
+  return GNUNET_YES;
+}
 
-  if (1 != PQntuples (result))
+
+
+/**
+ * Store the given /refresh/melt request in the database.
+ *
+ * @param db_conn database connection
+ * @param melt melt operation
+ * @return #GNUNET_OK on success
+ *         #GNUNET_SYSERR on internal error
+ */
+int
+TALER_MINT_DB_insert_refresh_melt (PGconn *db_conn,
+                                   const struct RefreshMelt *melt)
+{
+  uint16_t oldcoin_index_nbo = htons (melt->oldcoin_index);
+  char *buf;
+  size_t buf_size;
+  PGresult *result;
+
+  buf_size = GNUNET_CRYPTO_rsa_public_key_encode (melt->coin.denom_pub,
+                                                  &buf);
   {
-    GNUNET_break (0);
-    goto EXITIF_exit;
-  }
-
-  {
-    char *denom_sig_buf;
-    size_t denom_sig_buf_size;
-    char *dk_buf;
-    size_t dk_buf_size;
-
-    struct TALER_DB_ResultSpec rs[] = {
-      TALER_DB_RESULT_SPEC ("coin_pub", &deposit->coin.coin_pub),
-      TALER_DB_RESULT_SPEC_VAR ("denom_pub", &dk_buf, &dk_buf_size),
-      TALER_DB_RESULT_SPEC_VAR ("denom_sig", &denom_sig_buf, &denom_sig_buf_size),
-      TALER_DB_RESULT_SPEC ("transaction_id", &deposit->transaction_id),
-      TALER_DB_RESULT_SPEC ("merchant_pub", &deposit->merchant_pub),
-      TALER_DB_RESULT_SPEC ("h_contract", &deposit->h_contract),
-      TALER_DB_RESULT_SPEC ("h_wire", &deposit->h_wire),
-      TALER_DB_RESULT_SPEC ("purpose", &deposit->purpose),
-      // FIXME: many fields missing...
-      TALER_DB_RESULT_SPEC_END
+    struct TALER_DB_QueryParam params[] = {
+      TALER_DB_QUERY_PARAM_PTR(&melt->session_pub),
+      TALER_DB_QUERY_PARAM_PTR(&oldcoin_index_nbo),
+      TALER_DB_QUERY_PARAM_PTR(&melt->coin.coin_pub),
+      TALER_DB_QUERY_PARAM_PTR_SIZED(buf, buf_size),
+      TALER_DB_QUERY_PARAM_END
     };
-    EXITIF (GNUNET_OK !=
-            TALER_DB_extract_result (result, rs, 0));
-    EXITIF (GNUNET_OK !=
-            TALER_DB_extract_amount (result, 0,
-                                     "amount_value",
-                                     "amount_fraction",
-                                     "amount_currency",
-                                     &deposit->amount));
-    deposit->coin.denom_sig
-      = GNUNET_CRYPTO_rsa_signature_decode (denom_sig_buf,
-                                            denom_sig_buf_size);
-    deposit->coin.denom_pub
-      = GNUNET_CRYPTO_rsa_public_key_decode (dk_buf,
-                                             dk_buf_size);
+    result = TALER_DB_exec_prepared (db_conn, "insert_refresh_melt", params);
   }
-
+  GNUNET_free (buf);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    break_db_err (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
   PQclear (result);
   return GNUNET_OK;
+}
 
-EXITIF_exit:
-  PQclear (result);
-  GNUNET_free_non_null (deposit);
-  deposit = NULL;
+
+/**
+ * Get information about melted coin details from the database.
+ *
+ * @param db_conn database connection
+ * @param session session key of the melt operation
+ * @param oldcoin_index index of the coin to retrieve
+ * @param melt melt data to fill in
+ * @return #GNUNET_OK on success
+ *         #GNUNET_SYSERR on internal error
+ */
+int
+TALER_MINT_DB_get_refresh_melt (PGconn *db_conn,
+                                const struct GNUNET_CRYPTO_EddsaPublicKey *session,
+                                uint16_t oldcoin_index,
+                                struct RefreshMelt *melt)
+{
+  GNUNET_break (0);
   return GNUNET_SYSERR;
 }
 
 
-
 /**
- * Get the thread-local database-handle.
- * Connect to the db if the connection does not exist yet.
+ * Compile a list of all (historic) transactions performed
+ * with the given coin (/refresh/melt and /deposit operations).
  *
- * @param the database connection, or NULL on error
+ * @param db_conn database connection
+ * @param coin_pub coin to investigate
+ * @return list of transactions, NULL if coin is fresh
  */
-PGconn *
-TALER_MINT_DB_get_connection (void)
+struct TALER_MINT_DB_TransactionList *
+TALER_MINT_DB_get_coin_transactions (PGconn *db_conn,
+                                     const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub)
 {
-  PGconn *db_conn;
-
-  if (NULL != (db_conn = pthread_getspecific (db_conn_threadlocal)))
-    return db_conn;
-
-  db_conn = PQconnectdb (TALER_MINT_db_connection_cfg_str);
-
-  if (CONNECTION_OK != PQstatus (db_conn))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "db connection failed: %s\n",
-                PQerrorMessage (db_conn));
-    GNUNET_break (0);
-    return NULL;
-  }
-
-  if (GNUNET_OK != TALER_MINT_DB_prepare (db_conn))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-  if (0 != pthread_setspecific (db_conn_threadlocal, db_conn))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-  return db_conn;
+  GNUNET_break (0); // FIXME: implement!
+  return NULL;
 }
 
 
-/**
- * Close thread-local database connection when a thread is destroyed.
- *
- * @param closure we get from pthreads (the db handle)
- */
-static void
-db_conn_destroy (void *cls)
-{
-  PGconn *db_conn = cls;
-  if (NULL != db_conn)
-    PQfinish (db_conn);
-}
-
-
-/**
- * Initialize database subsystem.
- *
- * @param connection_cfg configuration to use to talk to DB
- * @return #GNUNET_OK on success
- */
-int
-TALER_MINT_DB_init (const char *connection_cfg)
-{
-
-  if (0 != pthread_key_create (&db_conn_threadlocal, &db_conn_destroy))
-  {
-    fprintf (stderr,
-             "Can't create pthread key.\n");
-    return GNUNET_SYSERR;
-  }
-  TALER_MINT_db_connection_cfg_str = GNUNET_strdup (connection_cfg);
-  return GNUNET_OK;
-}
-
-
-int
-TALER_TALER_DB_extract_amount_nbo (PGresult *result,
-                                   unsigned int row,
-                                   int indices[3],
-                                   struct TALER_AmountNBO *denom_nbo)
-{
-  if ((indices[0] < 0) || (indices[1] < 0) || (indices[2] < 0))
-    return GNUNET_NO;
-  if (sizeof (uint32_t) != PQgetlength (result, row, indices[0]))
-    return GNUNET_SYSERR;
-  if (sizeof (uint32_t) != PQgetlength (result, row, indices[1]))
-    return GNUNET_SYSERR;
-  if (PQgetlength (result, row, indices[2]) > TALER_CURRENCY_LEN)
-    return GNUNET_SYSERR;
-  denom_nbo->value = *(uint32_t *) PQgetvalue (result, row, indices[0]);
-  denom_nbo->fraction = *(uint32_t *) PQgetvalue (result, row, indices[1]);
-  memset (denom_nbo->currency, 0, TALER_CURRENCY_LEN);
-  memcpy (denom_nbo->currency, PQgetvalue (result, row, indices[2]), PQgetlength (result, row, indices[2]));
-  return GNUNET_OK;
-}
-
-
-int
-TALER_TALER_DB_extract_amount (PGresult *result,
-                               unsigned int row,
-                               int indices[3],
-                               struct TALER_Amount *denom)
-{
-  struct TALER_AmountNBO denom_nbo;
-  int res;
-
-  res = TALER_TALER_DB_extract_amount_nbo (result, row, indices, &denom_nbo);
-  if (GNUNET_OK != res)
-    return res;
-  *denom = TALER_amount_ntoh (denom_nbo);
-  return GNUNET_OK;
-}
+/* end of mint_db.c */

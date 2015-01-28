@@ -55,31 +55,35 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                                const struct Deposit *deposit)
 {
   PGconn *db_conn;
-  struct Deposit existing_deposit;
-  int res;
+  struct TALER_MINT_DB_TransactionList *tl;
 
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
   }
-  res = TALER_MINT_DB_get_deposit (db_conn,
-                                   &deposit->coin.coin_pub,
-                                   &existing_deposit);
-  if (GNUNET_YES == res)
+  if (GNUNET_YES ==
+      TALER_MINT_DB_have_deposit (db_conn,
+                                  deposit))
   {
-    // FIXME: memory leak
-    // FIXME: memcmp will not actually work here
-    if (0 == memcmp (&existing_deposit,
-                     deposit,
-                     sizeof (struct Deposit)))
-      return TALER_MINT_reply_deposit_success (connection,
-                                               &deposit->coin.coin_pub,
-                                               &deposit->h_wire,
-                                               &deposit->h_contract,
-                                               deposit->transaction_id,
-                                               &deposit->merchant_pub,
-                                               &deposit->amount);
+    return TALER_MINT_reply_deposit_success (connection,
+                                             &deposit->coin.coin_pub,
+                                             &deposit->h_wire,
+                                             &deposit->h_contract,
+                                             deposit->transaction_id,
+                                             &deposit->merchant_pub,
+                                             &deposit->amount);
+  }
+  if (GNUNET_OK !=
+      TALER_MINT_DB_transaction (db_conn))
+  {
+    GNUNET_break (0);
+    return TALER_MINT_reply_internal_db_error (connection);
+  }
+  tl = TALER_MINT_DB_get_coin_transactions (db_conn,
+                                            &deposit->coin.coin_pub);
+  if (NULL != tl)
+  {
     // FIXME: in the future, check if there's enough credits
     // left on the coin. For now: refuse
     // FIXME: return more information here
@@ -87,15 +91,9 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s}",
                                        "error",
-                                       "double spending");
+                                     "double spending");
   }
 
-  if (GNUNET_SYSERR == res)
-  {
-    GNUNET_break (0);
-    /* FIXME: return error message to client via MHD! */
-    return MHD_NO;
-  }
 
   {
     struct KnownCoin known_coin;
@@ -151,6 +149,14 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                                            &deposit->merchant_pub,
                                            &deposit->amount);
 }
+
+
+
+
+
+
+
+
 
 
 /**
@@ -474,6 +480,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
     struct KnownCoin known_coin;
     // money the customer gets by melting the current coin
     struct TALER_Amount coin_gain;
+    struct RefreshMelt melt;
 
     dki = &(TALER_MINT_get_denom_key (key_state,
                                       coin_public_infos[i].denom_pub)->issue);
@@ -523,10 +530,17 @@ refresh_accept_melts (struct MHD_Connection *connection,
       return GNUNET_SYSERR;
     }
 
+    // FIXME: test first if coin was already melted
+    // in this session, etc.
+
+    melt.coin = coin_public_infos[i];
+    melt.session_pub = *session_pub;
+    // melt.coin_sig = FIXME;
+    // melt.amount = FIXME;
+    melt.oldcoin_index = i;
     if (GNUNET_OK !=
-        TALER_MINT_DB_insert_refresh_melt (db_conn, session_pub, i,
-                                           &coin_public_infos[i].coin_pub,
-                                           coin_public_infos[i].denom_pub))
+        TALER_MINT_DB_insert_refresh_melt (db_conn,
+                                           &melt))
     {
       GNUNET_break (0);
       return GNUNET_SYSERR;
@@ -934,9 +948,9 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     for (j = 0; j < refresh_session.num_oldcoins; j++)
     {
       struct RefreshCommitLink commit_link;
-      struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
       struct TALER_TransferSecret transfer_secret;
       struct TALER_LinkSecret shared_secret;
+      struct RefreshMelt melt;
 
       res = TALER_MINT_DB_get_refresh_commit_link (db_conn,
                                                    refresh_session_pub,
@@ -949,7 +963,10 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
         return MHD_NO;
       }
 
-      res = TALER_MINT_DB_get_refresh_melt (db_conn, refresh_session_pub, j, &coin_pub);
+      res = TALER_MINT_DB_get_refresh_melt (db_conn,
+                                            refresh_session_pub,
+                                            j,
+                                            &melt);
       if (GNUNET_OK != res)
       {
         GNUNET_break (0);
@@ -962,7 +979,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
       /* FIXME: ECDHE/ECDSA-key type confusion! Can we reduce/avoid this? */
       if (GNUNET_OK !=
           GNUNET_CRYPTO_ecc_ecdh ((const struct GNUNET_CRYPTO_EcdhePrivateKey *) &transfer_privs[i+off][j],
-                                  (const struct GNUNET_CRYPTO_EcdhePublicKey *) &coin_pub,
+                                  (const struct GNUNET_CRYPTO_EcdhePublicKey *) &melt.coin.coin_pub,
                                   &transfer_secret.key))
       {
         GNUNET_break (0);

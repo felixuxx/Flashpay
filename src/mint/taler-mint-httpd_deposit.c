@@ -112,8 +112,6 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection to handle
  * @param root root of the posted JSON
- * @param purpose is this a #TALER_SIGNATURE_WALLET_DEPOSIT or
- *           #TALER_SIGNATURE_INCREMENTAL_WALLET_DEPOSIT // FIXME: bad type, use enum!
  * @param amount how much should be deposited
  * @param wire json describing the wire details (?)
  * @return MHD result code
@@ -121,7 +119,6 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
 static int
 parse_and_handle_deposit_request (struct MHD_Connection *connection,
                                   const json_t *root,
-                                  uint32_t purpose,
                                   const struct TALER_Amount *amount,
                                   const json_t *wire)
 {
@@ -187,7 +184,6 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   GNUNET_free (wire_enc);
 
   deposit.wire = wire;
-  deposit.purpose = purpose;
   deposit.amount = *amount;
   res = verify_and_execute_deposit (connection,
                                     &deposit);
@@ -223,9 +219,7 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
 {
   json_t *json;
   json_t *wire;
-  const char *deposit_type;
   int res;
-  uint32_t purpose;
   struct TALER_Amount amount;
   json_t *f;
 
@@ -240,7 +234,6 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
     return MHD_YES;
   if (-1 == json_unpack (json,
                          "{s:s, s:o, f:o}",
-                         "type", &deposit_type,
                          "wire", &wire,
                          "f", &f))
   {
@@ -267,24 +260,8 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
     json_decref (json);
     return MHD_YES;
   }
-  /* FIXME: use array search and enum, this is ugly */
-  if (0 == strcmp ("DIRECT_DEPOSIT", deposit_type))
-    purpose = TALER_SIGNATURE_WALLET_DEPOSIT;
-  else if (0 == strcmp ("INCREMENTAL_DEPOSIT", deposit_type))
-    purpose = TALER_SIGNATURE_INCREMENTAL_WALLET_DEPOSIT;
-  else
-  {
-    GNUNET_break_op (0);
-    json_decref (wire);
-    json_decref (json);
-    return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       "{s:s}",
-                                       "error", "Bad format");
-  }
   res = parse_and_handle_deposit_request (connection,
                                           json,
-                                          purpose,
                                           &amount,
                                           wire);
   json_decref (wire);

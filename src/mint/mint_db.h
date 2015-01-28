@@ -30,57 +30,12 @@
 #include "mint.h"
 
 
+
+/**
+ * FIXME.
+ */
 int
 TALER_MINT_DB_prepare (PGconn *db_conn);
-
-
-/**
- * Locate the response for a /withdraw request under the
- * key of the hash of the blinded message.
- *
- * @param db_conn database connection to use
- * @param h_blind hash of the blinded message
- * @param collectable corresponding collectable coin (blind signature)
- *                    if a coin is found
- * @return #GNUNET_SYSERR on internal error
- *         #GNUNET_NO if the collectable was not found
- *         #GNUNET_YES on success
- */
-int
-TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
-                                         const struct GNUNET_HashCode *h_blind,
-                                         struct CollectableBlindcoin *collectable);
-
-
-/**
- * Store collectable bit coin under the corresponding
- * hash of the blinded message.
- *
- * @param db_conn database connection to use
- * @param h_blind hash of the blinded message
- * @param collectable corresponding collectable coin (blind signature)
- *                    if a coin is found
- * @return #GNUNET_SYSERR on internal error
- *         #GNUNET_NO if the collectable was not found
- *         #GNUNET_YES on success
- */
-int
-TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
-                                            const struct GNUNET_HashCode *h_blind,
-                                            const struct CollectableBlindcoin *collectable);
-
-
-int
-TALER_MINT_DB_rollback (PGconn *db_conn);
-
-
-int
-TALER_MINT_DB_transaction (PGconn *db_conn);
-
-
-int
-TALER_MINT_DB_commit (PGconn *db_conn);
-
 
 
 /**
@@ -151,6 +106,9 @@ TALER_MINT_DB_update_reserve (PGconn *db_conn,
 
 
 
+
+
+
 int
 TALER_MINT_DB_insert_refresh_order (PGconn *db_conn,
                                     uint16_t newcoin_index,
@@ -161,8 +119,6 @@ int
 TALER_MINT_DB_get_refresh_session (PGconn *db_conn,
                                    const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
                                    struct RefreshSession *r_session);
-
-
 
 
 /**
@@ -199,10 +155,6 @@ TALER_MINT_DB_upsert_known_coin (PGconn *db_conn,
 int
 TALER_MINT_DB_insert_known_coin (PGconn *db_conn,
                                  const struct KnownCoin *known_coin);
-
-
-
-
 
 
 int
@@ -276,19 +228,6 @@ TALER_MINT_DB_set_reveal_ok (PGconn *db_conn,
                              const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub);
 
 
-int
-TALER_MINT_DB_insert_refresh_melt (PGconn *db_conn,
-                                    const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                    uint16_t oldcoin_index,
-                                    const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
-                                    const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub);
-
-
-int
-TALER_MINT_DB_get_refresh_melt (PGconn *db_conn,
-                                const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                uint16_t oldcoin_index,
-                                struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub);
 
 
 /**
@@ -320,13 +259,139 @@ TALER_db_get_transfer (PGconn *db_conn,
                        struct GNUNET_CRYPTO_EcdsaPublicKey *transfer_pub,
                        struct GNUNET_HashCode *shared_secret_enc);
 
-int
-TALER_MINT_DB_init_deposits (PGconn *db_conn, int temporary);
-
 
 int
-TALER_MINT_DB_prepare_deposits (PGconn *db_conn);
+TALER_TALER_DB_extract_amount (PGresult *result,
+                               unsigned int row,
+                               int indices[3],
+                               struct TALER_Amount *denom);
 
+int
+TALER_TALER_DB_extract_amount_nbo (PGresult *result,
+                                   unsigned int row,
+                                   int indices[3],
+                                   struct TALER_AmountNBO *denom_nbo);
+
+
+
+
+
+// Chaos
+////////////////////////////////////////////////////////////////
+// Order
+
+
+
+/**
+ * Initialize database subsystem.
+ */
+int
+TALER_MINT_DB_init (const char *connection_cfg);
+
+
+/**
+ * Get the thread-local database-handle.
+ * Connect to the db if the connection does not exist yet.
+ *
+ * @param the database connection, or NULL on error
+ */
+PGconn *
+TALER_MINT_DB_get_connection (void);
+
+
+/**
+ * Start a transaction.
+ *
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_MINT_DB_transaction (PGconn *db_conn);
+
+
+/**
+ * Commit a transaction.
+ *
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_MINT_DB_commit (PGconn *db_conn);
+
+
+/**
+ * Abort/rollback a transaction.
+ *
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_MINT_DB_rollback (PGconn *db_conn);
+
+
+
+/**
+ * Information we keep for a withdrawn coin to reproduce
+ * the /withdraw operation if needed, and to have proof
+ * that a reserve was drained by this amount.
+ */
+struct CollectableBlindcoin
+{
+
+  /**
+   * Our signature over the (blinded) coin.
+   */
+  struct GNUNET_CRYPTO_rsa_Signature *sig;
+
+  /**
+   * Denomination key (which coin was generated).
+   */
+  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+
+  /**
+   * Public key of the reserve that was drained.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
+
+  /**
+   * Signature confirming the withdrawl, matching @e reserve_pub,
+   * @e denom_pub and @e h_blind.
+   */
+  struct GNUNET_CRYPTO_EddsaSignature reserve_sig;
+};
+
+
+/**
+ * Locate the response for a /withdraw request under the
+ * key of the hash of the blinded message.
+ *
+ * @param db_conn database connection to use
+ * @param h_blind hash of the blinded message
+ * @param collectable corresponding collectable coin (blind signature)
+ *                    if a coin is found
+ * @return #GNUNET_SYSERR on internal error
+ *         #GNUNET_NO if the collectable was not found
+ *         #GNUNET_YES on success
+ */
+int
+TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
+                                         const struct GNUNET_HashCode *h_blind,
+                                         struct CollectableBlindcoin *collectable);
+
+
+/**
+ * Store collectable bit coin under the corresponding
+ * hash of the blinded message.
+ *
+ * @param db_conn database connection to use
+ * @param h_blind hash of the blinded message
+ * @param collectable corresponding collectable coin (blind signature)
+ *                    if a coin is found
+ * @return #GNUNET_SYSERR on internal error
+ *         #GNUNET_NO if the collectable was not found
+ *         #GNUNET_YES on success
+ */
+int
+TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
+                                            const struct GNUNET_HashCode *h_blind,
+                                            const struct CollectableBlindcoin *collectable);
 
 
 /**
@@ -384,59 +449,253 @@ struct Deposit
    */
   struct TALER_Amount amount;
 
-  /**
-   * Type of the deposit (also purpose of the signature).  Either
-   * #TALER_SIGNATURE_DEPOSIT or #TALER_SIGNATURE_INCREMENTAL_DEPOSIT.
-   */
-  uint32_t purpose; // FIXME: bad type, use ENUM!
-
-
 };
 
 
+/**
+ * Check if we have the specified deposit already in the database.
+ *
+ * @param db_conn database connection
+ * @param deposit deposit to search for
+ * @return #GNUNET_YES if we know this operation,
+ *         #GNUNET_NO if this deposit is unknown to us,
+ *         #GNUNET_SYSERR on internal error
+ */
+int
+TALER_MINT_DB_have_deposit (PGconn *db_conn,
+                            const struct Deposit *deposit);
+
+
+/**
+ * Insert information about deposited coin into the
+ * database.
+ *
+ * @param db_conn connection to the database
+ * @param deposit deposit information to store
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
 int
 TALER_MINT_DB_insert_deposit (PGconn *db_conn,
                               const struct Deposit *deposit);
 
 
-// FIXME: with fractional deposits, we need more than
-// just the coin key to lookup deposits...
-int
-TALER_MINT_DB_get_deposit (PGconn *db_conn,
-                           const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
-                           struct Deposit *r_deposit);
+/**
+ * Specification for a /refresh/melt operation.
+ */
+struct RefreshMelt
+{
+  /**
+   * Information about the coin that is being melted.
+   */
+  struct TALER_CoinPublicInfo coin;
 
+  /**
+   * Public key of the melting session.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
 
+  /**
+   * Signature over the melting operation.
+   */
+  struct GNUNET_CRYPTO_EcdsaSignature coin_sig;
 
+  /**
+   * How much value is being melted?
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * What is the index of this coin in the melting session?
+   */
+  uint16_t oldcoin_index;
+
+};
 
 
 /**
- * Get the thread-local database-handle.
- * Connect to the db if the connection does not exist yet.
+ * Test if the given /refresh/melt request is known to us.
  *
- * @param the database connection, or NULL on error
+ * @param db_conn database connection
+ * @param melt melt operation
+ * @return #GNUNET_YES if known,
+ *         #GNUENT_NO if not,
+ *         #GNUNET_SYSERR on internal error
  */
-PGconn *
-TALER_MINT_DB_get_connection (void);
-
-
 int
-TALER_MINT_DB_init (const char *connection_cfg);
+TALER_MINT_DB_have_refresh_melt (PGconn *db_conn,
+                                 const struct RefreshMelt *melt);
 
 
-
-
+/**
+ * Store the given /refresh/melt request in the database.
+ *
+ * @param db_conn database connection
+ * @param melt melt operation
+ * @return #GNUNET_OK on success
+ *         #GNUNET_SYSERR on internal error
+ */
 int
-TALER_TALER_DB_extract_amount (PGresult *result,
-                               unsigned int row,
-                               int indices[3],
-                               struct TALER_Amount *denom);
+TALER_MINT_DB_insert_refresh_melt (PGconn *db_conn,
+                                   const struct RefreshMelt *melt);
 
+
+/**
+ * Get information about melted coin details from the database.
+ *
+ * @param db_conn database connection
+ * @param session session key of the melt operation
+ * @param oldcoin_index index of the coin to retrieve
+ * @param melt melt data to fill in
+ * @return #GNUNET_OK on success
+ *         #GNUNET_SYSERR on internal error
+ */
 int
-TALER_TALER_DB_extract_amount_nbo (PGresult *result,
-                                   unsigned int row,
-                                   int indices[3],
-                                   struct TALER_AmountNBO *denom_nbo);
+TALER_MINT_DB_get_refresh_melt (PGconn *db_conn,
+                                const struct GNUNET_CRYPTO_EddsaPublicKey *session,
+                                uint16_t oldcoin_index,
+                                struct RefreshMelt *melt);
+
+
+/**
+ * Specification for a /lock operation.
+ */
+struct Lock
+{
+  /**
+   * Information about the coin that is being melted.
+   */
+  struct TALER_CoinPublicInfo coin;
+
+  /**
+   * Signature over the melting operation.
+   */
+  const struct GNUNET_CRYPTO_EcdsaSignature coin_sig;
+
+  /**
+   * How much value is being melted?
+   */
+  struct TALER_Amount amount;
+
+  // FIXME: more needed...
+};
+
+
+/**
+ * Test if the given /lock request is known to us.
+ *
+ * @param db_conn database connection
+ * @param lock lock operation
+ * @return #GNUNET_YES if known,
+ *         #GNUENT_NO if not,
+ *         #GNUNET_SYSERR on internal error
+ */
+int
+TALER_MINT_DB_have_lock (PGconn *db_conn,
+                         const struct Lock *lock);
+
+
+/**
+ * Store the given /lock request in the database.
+ *
+ * @param db_conn database connection
+ * @param lock lock operation
+ * @return #GNUNET_OK on success
+ *         #GNUNET_SYSERR on internal error
+ */
+int
+TALER_MINT_DB_insert_lock (PGconn *db_conn,
+                           const struct Lock *lock);
+
+
+/**
+ * Enumeration to classify the different types of transactions
+ * that can be done with a coin.
+ */
+enum TALER_MINT_DB_TransactionType
+{
+  /**
+   * /deposit operation.
+   */
+  TALER_MINT_DB_TT_DEPOSIT = 0,
+
+  /**
+   * /refresh/melt operation.
+   */
+  TALER_MINT_DB_TT_REFRESH_MELT = 1,
+
+  /**
+   * /lock operation.
+   */
+  TALER_MINT_DB_TT_LOCK = 2
+};
+
+
+/**
+ * List of transactions we performed for a particular coin.
+ */
+struct TALER_MINT_DB_TransactionList
+{
+
+  /**
+   * Next pointer in the NULL-terminated linked list.
+   */
+  struct TALER_MINT_DB_TransactionList *next;
+
+  /**
+   * Type of the transaction, determines what is stored in @e details.
+   */
+  enum TALER_MINT_DB_TransactionType type;
+
+  /**
+   * Details about the transaction, depending on @e type.
+   */
+  union
+  {
+
+    /**
+     * Details if transaction was a /deposit operation.
+     */
+    struct Deposit *deposit;
+
+    /**
+     * Details if transaction was a /refresh/melt operation.
+     */
+    struct RefreshMelt *melt;
+
+    /**
+     * Details if transaction was a /lock operation.
+     */
+    struct Lock *lock;
+
+  } details;
+
+};
+
+
+/**
+ * Compile a list of all (historic) transactions performed
+ * with the given coin (/refresh/melt and /deposit operations).
+ *
+ * @param db_conn database connection
+ * @param coin_pub coin to investigate
+ * @return list of transactions, NULL if coin is fresh
+ */
+struct TALER_MINT_DB_TransactionList *
+TALER_MINT_DB_get_coin_transactions (PGconn *db_conn,
+                                     const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub);
+
+
+/**
+ * Free linked list of transactions.
+ *
+ * @param list list to free
+ */
+void
+TALER_MINT_DB_free_coin_transaction_list (struct TALER_MINT_DB_TransactionList *list);
+
+
+
+
 
 
 #endif /* _NEURO_MINT_DB_H */

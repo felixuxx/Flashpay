@@ -52,6 +52,44 @@ static int persistent;
 static int result;
 
 
+int
+TALER_MINT_DB_init_deposits (PGconn *conn, int tmp)
+{
+  const char *tmp_str = (1 == tmp) ? "TEMPORARY" : "";
+  char *sql;
+  PGresult *res;
+  int ret;
+
+  res = NULL;
+  (void) GNUNET_asprintf (&sql,
+                          "CREATE %1$s TABLE IF NOT EXISTS deposits ("
+                          " coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (length(coin_pub)=32)"
+                          ",denom_pub BYTEA NOT NULL CHECK (length(denom_pub)=32)"
+                          ",transaction_id INT8 NOT NULL"
+                          ",amount_value INT4 NOT NULL"
+                          ",amount_fraction INT4 NOT NULL"
+                          ",amount_currency VARCHAR(4) NOT NULL"
+                          ",merchant_pub BYTEA NOT NULL"
+                          ",h_contract BYTEA NOT NULL CHECK (length(h_contract)=64)"
+                          ",h_wire BYTEA NOT NULL CHECK (length(h_wire)=64)"
+                          ",coin_sig BYTEA NOT NULL CHECK (length(coin_sig)=64)"
+                          ",wire TEXT NOT NULL"
+                          ")",
+                          tmp_str);
+  res = PQexec (conn, sql);
+  GNUNET_free (sql);
+  if (PGRES_COMMAND_OK != PQresultStatus (res))
+  {
+    break_db_err (res);
+    ret = GNUNET_SYSERR;
+  }
+  else
+    ret = GNUNET_OK;
+  PQclear (res);
+  return ret;
+}
+
+
 static void
 do_shutdown (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
@@ -89,7 +127,7 @@ run (void *cls, char *const *args, const char *cfgfile,
                                 &do_shutdown, NULL);
   EXITIF (NULL == (conn = PQconnectdb(DB_URI)));
   EXITIF (GNUNET_OK != TALER_MINT_DB_init_deposits (conn, !persistent));
-  EXITIF (GNUNET_OK != TALER_MINT_DB_prepare_deposits (conn));
+  EXITIF (GNUNET_OK != TALER_MINT_DB_prepare (conn));
   deposit = GNUNET_malloc (sizeof (struct Deposit) + sizeof (wire));
   /* Makeup a random coin public key */
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,

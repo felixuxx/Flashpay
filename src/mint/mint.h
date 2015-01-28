@@ -35,36 +35,6 @@
 
 
 
-/**
- * Information we keep for a withdrawn coin to reproduce
- * the /withdraw operation if needed, and to have proof
- * that a reserve was drained by this amount.
- */
-struct CollectableBlindcoin
-{
-
-  /**
-   * Our signature over the (blinded) coin.
-   */
-  struct GNUNET_CRYPTO_rsa_Signature *sig;
-
-  /**
-   * Denomination key (which coin was generated).
-   */
-  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
-
-  /**
-   * Public key of the reserve that was drained.
-   */
-  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
-
-  /**
-   * Signature confirming the withdrawl, matching @e reserve_pub,
-   * @e denom_pub and @e h_blind.
-   */
-  struct GNUNET_CRYPTO_EddsaSignature reserve_sig;
-};
-
 
 /**
  * Global information for a refreshing session.
