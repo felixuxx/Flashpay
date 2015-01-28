@@ -72,41 +72,6 @@ TALER_MINT_handler_keys (struct RequestHandler *rh,
 }
 
 
-/**
- * Check if a coin is valid; that is, whether the denomination key exists,
- * is not expired, and the signature is correct.
- *
- * @param key_state the key state to use for checking the coin's validity
- * @param coin_public_info the coin public info to check for validity
- * @return #GNUNET_YES if the coin is valid,
- *         #GNUNET_NO if it is invalid
- *         #GNUNET_SYSERROR if an internal error occured
- */
-int
-TALER_MINT_test_coin_valid (const struct MintKeyState *key_state,
-                            const struct TALER_CoinPublicInfo *coin_public_info)
-{
-  struct TALER_MINT_DenomKeyIssuePriv *dki;
-  struct GNUNET_HashCode c_hash;
-
-  dki = TALER_MINT_get_denom_key (key_state, coin_public_info->denom_pub);
-  if (NULL == dki)
-    return GNUNET_NO;
-  /* FIXME: we had envisioned a more complex scheme... */
-  GNUNET_CRYPTO_hash (&coin_public_info->coin_pub,
-                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                      &c_hash);
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_rsa_verify (&c_hash,
-                                coin_public_info->denom_sig,
-                                dki->issue.denom_pub))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "coin signature is invalid\n");
-    return GNUNET_NO;
-  }
-  return GNUNET_YES;
-}
 
 
 /**

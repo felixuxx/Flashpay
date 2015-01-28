@@ -251,6 +251,47 @@ TALER_data_to_string_alloc (const void *buf,
                             size_t size);
 
 
+/* ****************** Coin crypto primitives ************* */
+
+/**
+ * Public information about a coin (including the public key
+ * of the coin, the denomination key and the signature with
+ * the denomination key).
+ */
+struct TALER_CoinPublicInfo
+{
+  /**
+   * The coin's public key.
+   */
+  struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+
+  /**
+   * Public key representing the denomination of the coin
+   * that is being deposited.
+   */
+  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+
+  /**
+   * (Unblinded) signature over @e coin_pub with @e denom_pub,
+   * which demonstrates that the coin is valid.
+   */
+  struct GNUNET_CRYPTO_rsa_Signature *denom_sig;
+};
+
+
+/**
+ * Check if a coin is valid; that is, whether the denomination key exists,
+ * is not expired, and the signature is correct.
+ *
+ * @param coin_public_info the coin public info to check for validity
+ * @return #GNUNET_YES if the coin is valid,
+ *         #GNUNET_NO if it is invalid
+ *         #GNUNET_SYSERROR if an internal error occured
+ */
+int
+TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info);
+
+
 /* ****************** Refresh crypto primitives ************* */
 
 /**

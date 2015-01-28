@@ -59,6 +59,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
 {
   struct MintKeyState *key_state;
   struct TALER_DepositRequest dr;
+  struct TALER_MINT_DenomKeyIssuePriv *dki;
 
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_DEPOSIT);
   dr.purpose.size = htonl (sizeof (struct TALER_DepositRequest));
@@ -77,11 +78,20 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
     return TALER_MINT_reply_arg_invalid (connection,
                                          "csig");
   }
-
+  /* check denomination exists and is valid */
   key_state = TALER_MINT_key_state_acquire ();
+  dki = TALER_MINT_get_denom_key (key_state,
+                                  deposit->coin.denom_pub);
+  if (NULL == dki)
+  {
+    TALER_MINT_key_state_release (key_state);
+    LOG_WARNING ("Unknown denomination key in /deposit request\n");
+    return TALER_MINT_reply_arg_invalid (connection,
+                                         "denom_pub");
+  }
+  /* check coin signature */
   if (GNUNET_YES !=
-      TALER_MINT_test_coin_valid (key_state,
-                                  &deposit->coin))
+      TALER_test_coin_valid (&deposit->coin))
   {
     LOG_WARNING ("Invalid coin passed for /deposit\n");
     TALER_MINT_key_state_release (key_state);

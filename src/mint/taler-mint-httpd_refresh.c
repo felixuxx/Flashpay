@@ -262,6 +262,7 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   json_t *melt_sig_json;
   char *buf;
   size_t buf_size;
+  struct TALER_MINT_DenomKeyIssuePriv *dki;
 
   res = TALER_MINT_parse_post_json (connection,
                                     connection_cls,
@@ -360,24 +361,39 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
         {
           GNUNET_break (GNUNET_SYSERR != res);
           // FIXME: leaks!
+          TALER_MINT_key_state_release (key_state);
           return res;
         }
       /* check that this coin's private key was used to sign that
          we should melt it */
-      if (GNUNET_OK != (res = check_confirm_signature (connection,
-                                                       json_array_get (melt_coins, i),
-                                                       &coin_public_infos[i].coin_pub,
-                                                       &refresh_session_pub)))
-        {
-          GNUNET_break (GNUNET_SYSERR != res);
-          // FIXME: leaks!
-          return res;
-        }
+      if (GNUNET_OK !=
+          (res = check_confirm_signature (connection,
+                                          json_array_get (melt_coins, i),
+                                          &coin_public_infos[i].coin_pub,
+                                          &refresh_session_pub)))
+      {
+        GNUNET_break (GNUNET_SYSERR != res);
+        // FIXME: leaks!
+        TALER_MINT_key_state_release (key_state);
+        return res;
+      }
+      /* check coin denomination is valid */
+      dki = TALER_MINT_get_denom_key (key_state,
+                                      coin_public_infos[i].denom_pub);
+      if (NULL == dki)
+      {
+        TALER_MINT_key_state_release (key_state);
+        LOG_WARNING ("Unknown denomination key in /refresh/melt request\n");
+        TALER_MINT_key_state_release (key_state);
+        return TALER_MINT_reply_arg_invalid (connection,
+                                             "melt_coins");
+      }
       /* check mint signature on the coin */
-      if (GNUNET_OK != TALER_MINT_test_coin_valid (key_state,
-                                                   &coin_public_infos[i]))
+      if (GNUNET_OK !=
+          TALER_test_coin_valid (&coin_public_infos[i]))
         {
           // FIXME: leaks!
+          TALER_MINT_key_state_release (key_state);
           return (MHD_YES ==
                 TALER_MINT_reply_json_pack (connection,
                                             MHD_HTTP_NOT_FOUND,

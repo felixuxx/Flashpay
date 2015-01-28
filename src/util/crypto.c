@@ -267,4 +267,35 @@ TALER_refresh_encrypt (const struct TALER_RefreshLinkDecrypted *input,
 }
 
 
+/**
+ * Check if a coin is valid; that is, whether the denomination key exists,
+ * is not expired, and the signature is correct.
+ *
+ * @param coin_public_info the coin public info to check for validity
+ * @return #GNUNET_YES if the coin is valid,
+ *         #GNUNET_NO if it is invalid
+ *         #GNUNET_SYSERROR if an internal error occured
+ */
+int
+TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info)
+{
+  struct GNUNET_HashCode c_hash;
+
+  /* FIXME: we had envisioned a more complex scheme... */
+  GNUNET_CRYPTO_hash (&coin_public_info->coin_pub,
+                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
+                      &c_hash);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_rsa_verify (&c_hash,
+                                coin_public_info->denom_sig,
+                                coin_public_info->denom_pub))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "coin signature is invalid\n");
+    return GNUNET_NO;
+  }
+  return GNUNET_YES;
+}
+
+
 /* end of crypto.c */

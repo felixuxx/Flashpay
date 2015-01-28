@@ -34,31 +34,6 @@
 #define MINT_CURRENCY "EUR"
 
 
-/**
- * Public information about a coin (including the public key
- * of the coin, the denomination key and the signature with
- * the denomination key).
- */
-struct TALER_CoinPublicInfo
-{
-  /**
-   * The coin's public key.
-   */
-  struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
-
-  /**
-   * Public key representing the denomination of the coin
-   * that is being deposited.
-   */
-  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
-
-  /**
-   * (Unblinded) signature over @e coin_pub with @e denom_pub,
-   * which demonstrates that the coin is valid.
-   */
-  struct GNUNET_CRYPTO_rsa_Signature *denom_sig;
-};
-
 
 /**
  * Information we keep for a withdrawn coin to reproduce
@@ -89,9 +64,6 @@ struct CollectableBlindcoin
    */
   struct GNUNET_CRYPTO_EddsaSignature reserve_sig;
 };
-
-
-
 
 
 /**
