@@ -582,76 +582,6 @@ TALER_MINT_DB_insert_refresh_order (PGconn *db_conn,
 
 
 int
-TALER_MINT_DB_get_refresh_session (PGconn *db_conn,
-                                   const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                   struct RefreshSession *session)
-{
-  int res;
-  struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(refresh_session_pub),
-    TALER_DB_QUERY_PARAM_END
-  };
-
-  PGresult *result = TALER_DB_exec_prepared (db_conn, "get_refresh_session", params);
-
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Query failed: %s\n",
-                PQresultErrorMessage (result));
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-
-  if (0 == PQntuples (result))
-    return GNUNET_NO;
-
-  GNUNET_assert (1 == PQntuples (result));
-
-  /* We're done if the caller is only interested in
-   * whether the session exists or not */
-
-  if (NULL == session)
-    return GNUNET_YES;
-
-  memset (session, 0, sizeof (struct RefreshSession));
-
-  session->session_pub = *refresh_session_pub;
-
-  struct TALER_DB_ResultSpec rs[] = {
-    TALER_DB_RESULT_SPEC("num_oldcoins", &session->num_oldcoins),
-    TALER_DB_RESULT_SPEC("num_newcoins", &session->num_newcoins),
-    TALER_DB_RESULT_SPEC("kappa", &session->kappa),
-    TALER_DB_RESULT_SPEC("noreveal_index", &session->noreveal_index),
-    TALER_DB_RESULT_SPEC("reveal_ok", &session->reveal_ok),
-    TALER_DB_RESULT_SPEC_END
-  };
-
-  res = TALER_DB_extract_result (result, rs, 0);
-
-  if (GNUNET_OK != res)
-  {
-    GNUNET_break (0);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-
-  if (TALER_DB_field_isnull (result, 0, "session_commit_sig"))
-    session->has_commit_sig = GNUNET_NO;
-  else
-    session->has_commit_sig = GNUNET_YES;
-
-  session->num_oldcoins = ntohs (session->num_oldcoins);
-  session->num_newcoins = ntohs (session->num_newcoins);
-  session->kappa = ntohs (session->kappa);
-  session->noreveal_index = ntohs (session->noreveal_index);
-
-  PQclear (result);
-  return GNUNET_YES;
-}
-
-
-int
 TALER_MINT_DB_get_known_coin (PGconn *db_conn,
                               const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
                               struct KnownCoin *known_coin)
@@ -740,34 +670,6 @@ TALER_MINT_DB_get_known_coin (PGconn *db_conn,
 
   PQclear (result);
   return GNUNET_YES;
-}
-
-
-int
-TALER_MINT_DB_create_refresh_session (PGconn *db_conn,
-                                      const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub)
-{
-  uint16_t noreveal_index;
-  struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(session_pub),
-    TALER_DB_QUERY_PARAM_PTR(&noreveal_index),
-    TALER_DB_QUERY_PARAM_END
-  };
-
-  noreveal_index = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, 1<<15);
-  noreveal_index = htonl (noreveal_index);
-
-  PGresult *result = TALER_DB_exec_prepared (db_conn, "insert_refresh_session", params);
-
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-
-  PQclear (result);
-  return GNUNET_OK;
 }
 
 
@@ -1878,6 +1780,145 @@ TALER_MINT_DB_insert_deposit (PGconn *db_conn,
   }
   PQclear (result);
   return GNUNET_OK;
+}
+
+
+/**
+ * Lookup refresh session data under the given public key.
+ *
+ * @param db_conn database handle to use
+ * @param refresh_session_pub public key to use for the lookup
+ * @param session[OUT] where to store the result
+ * @return #GNUNET_YES on success,
+ *         #GNUNET_NO if not found,
+ *         #GNUNET_SYSERR on DB failure
+ */
+int
+TALER_MINT_DB_get_refresh_session (PGconn *db_conn,
+                                   const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                   struct RefreshSession *session)
+{
+  // FIXME: check logic!
+  int res;
+  struct TALER_DB_QueryParam params[] = {
+    TALER_DB_QUERY_PARAM_PTR(refresh_session_pub),
+    TALER_DB_QUERY_PARAM_END
+  };
+
+  PGresult *result = TALER_DB_exec_prepared (db_conn, "get_refresh_session", params);
+
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Query failed: %s\n",
+                PQresultErrorMessage (result));
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  if (0 == PQntuples (result))
+    return GNUNET_NO;
+
+  GNUNET_assert (1 == PQntuples (result));
+
+  /* We're done if the caller is only interested in
+   * whether the session exists or not */
+
+  if (NULL == session)
+    return GNUNET_YES;
+
+  memset (session, 0, sizeof (struct RefreshSession));
+
+  struct TALER_DB_ResultSpec rs[] = {
+    TALER_DB_RESULT_SPEC("num_oldcoins", &session->num_oldcoins),
+    TALER_DB_RESULT_SPEC("num_newcoins", &session->num_newcoins),
+    TALER_DB_RESULT_SPEC("kappa", &session->kappa),
+    TALER_DB_RESULT_SPEC("noreveal_index", &session->noreveal_index),
+    TALER_DB_RESULT_SPEC_END
+  };
+
+  res = TALER_DB_extract_result (result, rs, 0);
+
+  if (GNUNET_OK != res)
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  if (TALER_DB_field_isnull (result, 0, "session_commit_sig"))
+    session->has_commit_sig = GNUNET_NO;
+  else
+    session->has_commit_sig = GNUNET_YES;
+
+  session->num_oldcoins = ntohs (session->num_oldcoins);
+  session->num_newcoins = ntohs (session->num_newcoins);
+  session->kappa = ntohs (session->kappa);
+  session->noreveal_index = ntohs (session->noreveal_index);
+
+  PQclear (result);
+  return GNUNET_YES;
+}
+
+
+/**
+ * Store new refresh session data under the given public key.
+ *
+ * @param db_conn database handle to use
+ * @param refresh_session_pub public key to use to locate the session
+ * @param session session data to store
+ * @return #GNUNET_YES on success,
+ *         #GNUNET_SYSERR on DB failure
+ */
+int
+TALER_MINT_DB_create_refresh_session (PGconn *db_conn,
+                                      const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                                      const struct RefreshSession *session)
+{
+  // FIXME: actually store session data!
+  uint16_t noreveal_index;
+  struct TALER_DB_QueryParam params[] = {
+    TALER_DB_QUERY_PARAM_PTR(session_pub),
+    TALER_DB_QUERY_PARAM_PTR(&noreveal_index),
+    TALER_DB_QUERY_PARAM_END
+  };
+
+  noreveal_index = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, 1<<15);
+  noreveal_index = htonl (noreveal_index);
+
+  PGresult *result = TALER_DB_exec_prepared (db_conn, "insert_refresh_session", params);
+
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    break_db_err (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Update new refresh session with the new state after the
+ * /refresh/commit operation.
+ *
+ * @param db_conn database handle to use
+ * @param refresh_session_pub public key to use to locate the session
+ * @param noreveal_index index chosen for the client to not reveal
+ * @param commit_client_sig signature of the client over its commitment
+ * @return #GNUNET_YES on success,
+ *         #GNUNET_SYSERR on DB failure
+ */
+int
+TALER_MINT_DB_update_refresh_session (PGconn *db_conn,
+                                      const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                                      uint16_t noreveal_index,
+                                      const struct GNUNET_CRYPTO_EddsaSignature *commit_client_sig)
+{
+  // FIXME: implement!
+  return GNUNET_SYSERR;
 }
 
 

@@ -242,8 +242,10 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                                        "error", "value mismatch");
   }
 
+  /* FIXME: we must also store the signature over the melt! (#3635) */
   return TALER_MINT_db_execute_refresh_melt (connection,
                                              refresh_session_pub,
+                                             NULL, /* FIXME: #3635! */
                                              num_new_denoms,
                                              denom_pubs,
                                              coin_count,
@@ -715,6 +717,7 @@ handle_refresh_commit_json (struct MHD_Connection *connection,
   /* FIXME: we must also store the signature! (#3635) */
   res = TALER_MINT_db_execute_refresh_commit (connection,
                                               refresh_session_pub,
+                                              NULL /* FIXME: 3635! */,
                                               kappa,
                                               num_oldcoins,
                                               num_newcoins,

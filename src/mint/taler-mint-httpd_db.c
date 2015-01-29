@@ -602,6 +602,8 @@ refresh_accept_melts (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection to handle
  * @param refresh_session_pub public key of the refresh session
+ * @param client_signature signature of the client (matching @a refresh_session_pub)
+ *         over the melting request
  * @param num_new_denoms number of entries in @a denom_pubs
  * @param denum_pubs public keys of the coins we want to withdraw in the end
  * @param coin_count number of entries in @a coin_public_infos
@@ -611,6 +613,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
 int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                    const struct GNUNET_CRYPTO_EddsaSignature *client_signature,
                                     unsigned int num_new_denoms,
                                     struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs,
                                     unsigned int coin_count,
@@ -622,57 +625,48 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   PGconn *db_conn;
   int res;
 
-  /* We incrementally update the db with other parameters in a transaction.
-   * The transaction is aborted if some parameter does not validate. */
-
-  /* Send response immediately if we already know the session.
-   * Do _not_ care about fields other than session_pub in this case. */
-
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
   }
-  res = TALER_MINT_DB_get_refresh_session (db_conn,
-                                           refresh_session_pub,
-                                           NULL);
-  if (GNUNET_YES == res)
-  {
-    if (GNUNET_OK !=
-        (res = TALER_MINT_DB_get_refresh_session (db_conn,
-                                                  refresh_session_pub,
-                                                  &session)))
-      {
-        // FIXME: send internal error
-        GNUNET_break (0);
-        return MHD_NO;
-      }
-    return TALER_MINT_reply_refresh_melt_success (connection,
-                                                  &session,
-                                                  refresh_session_pub);
-  }
-  if (GNUNET_SYSERR == res)
-  {
-    // FIXME: return 'internal error'?
-    GNUNET_break (0);
-    return MHD_NO;
-  }
-
-
   if (GNUNET_OK !=
       TALER_MINT_DB_transaction (db_conn))
   {
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
   }
-
-  if (GNUNET_OK != TALER_MINT_DB_create_refresh_session (db_conn,
-                                                         refresh_session_pub))
+  res = TALER_MINT_DB_get_refresh_session (db_conn,
+                                           refresh_session_pub,
+                                           &session);
+  if (GNUNET_YES == res)
   {
-    // FIXME: return 'internal error'?
-    GNUNET_break (0);
     TALER_MINT_DB_rollback (db_conn);
-    return MHD_NO;
+    return TALER_MINT_reply_refresh_melt_success (connection,
+                                                  &session.melt_sig,
+                                                  refresh_session_pub);
+  }
+  if (GNUNET_SYSERR == res)
+  {
+    TALER_MINT_DB_rollback (db_conn);
+    return TALER_MINT_reply_internal_db_error (connection);
+  }
+
+
+
+  session.melt_sig = *client_signature;
+  session.num_oldcoins = coin_count;
+  session.num_newcoins = num_new_denoms;
+  session.kappa = 0; /* FIXME: should be chosen by mint per config! */
+  session.noreveal_index = UINT16_MAX;
+  session.has_commit_sig = GNUNET_NO;
+  if (GNUNET_OK !=
+      (res = TALER_MINT_DB_create_refresh_session (db_conn,
+                                                   refresh_session_pub,
+                                                   &session)))
+  {
+    TALER_MINT_DB_rollback (db_conn);
+    return TALER_MINT_reply_internal_db_error (connection);
   }
 
   /* The next two operations must see the same key state,
@@ -725,7 +719,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
       return MHD_NO;
     }
   return TALER_MINT_reply_refresh_melt_success (connection,
-                                                &session,
+                                                client_signature,
                                                 refresh_session_pub);
 
 
@@ -741,6 +735,8 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
  * @a kappa sets of private transfer keys should not be revealed.
  *
  * @param connection the MHD connection to handle
+ * @param refresh_session public key of the session
+ * @param commit_client_sig signature of the client over this commitment
  * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
  * @param num_oldcoins size of y-dimension of @commit_link array
  * @param num_newcoins size of y-dimension of @commit_coin array
@@ -754,6 +750,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
 int
 TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
                                       const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                      const struct GNUNET_CRYPTO_EddsaSignature *commit_client_sig,
                                       unsigned int kappa,
                                       unsigned int num_oldcoins,
                                       unsigned int num_newcoins,
@@ -773,12 +770,35 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
     return TALER_MINT_reply_internal_db_error (connection);
   }
 
-  /* Send response immediately if we already know the session.
-   * Do _not_ care about fields other than session_pub in this case. */
-
+  if (GNUNET_OK !=
+      TALER_MINT_DB_transaction (db_conn))
+  {
+    GNUNET_break (0);
+    return TALER_MINT_reply_internal_db_error (connection);
+  }
   res = TALER_MINT_DB_get_refresh_session (db_conn,
                                            refresh_session_pub,
                                            &refresh_session);
+  if (GNUNET_SYSERR == res)
+  {
+    TALER_MINT_DB_rollback (db_conn);
+    return TALER_MINT_reply_internal_db_error (connection);
+  }
+  if (GNUNET_NO == res)
+  {
+    TALER_MINT_DB_rollback (db_conn);
+    return TALER_MINT_reply_arg_invalid (connection,
+                                         "session_pub");
+  }
+  if (GNUNET_YES == refresh_session.has_commit_sig)
+  {
+    TALER_MINT_DB_rollback (db_conn);
+    res = TALER_MINT_reply_refresh_commit_success (connection,
+                                                   &refresh_session);
+    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
+  }
+
+
   // FIXME: this should check that kappa and num_newcoins match
   // our expectations from refresh_session!
 
@@ -814,47 +834,20 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
     }
   }
 
-
-
-
-
-  if ( (GNUNET_YES == res) &&
-       (GNUNET_YES == refresh_session.has_commit_sig) )
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "sending cached commit response\n");
-    res = TALER_MINT_reply_refresh_commit_success (connection,
-                                                   &refresh_session);
-    GNUNET_break (res != GNUNET_SYSERR);
-    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-  }
-  if (GNUNET_SYSERR == res)
-  {
-    // FIXME: return 'internal error'?
-    GNUNET_break (0);
-    return MHD_NO;
-  }
+  refresh_session.noreveal_index
+    = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG,
+                                refresh_session.kappa);
 
   if (GNUNET_OK !=
-      TALER_MINT_DB_transaction (db_conn))
+      (res = TALER_MINT_DB_update_refresh_session (db_conn,
+                                                   refresh_session_pub,
+                                                   refresh_session.noreveal_index,
+                                                   commit_client_sig)))
   {
-    GNUNET_break (0);
+    TALER_MINT_DB_rollback (db_conn);
     return TALER_MINT_reply_internal_db_error (connection);
   }
 
-  /* Re-fetch the session information from the database,
-   * in case a concurrent transaction modified it. */
-
-  res = TALER_MINT_DB_get_refresh_session (db_conn,
-                                           refresh_session_pub,
-                                           &refresh_session);
-  if (GNUNET_OK != res)
-  {
-    // FIXME: return 'internal error'?
-    GNUNET_break (GNUNET_SYSERR != res);
-    TALER_MINT_DB_rollback (db_conn);
-    return MHD_NO;
-  }
 
   if (GNUNET_OK !=
       TALER_MINT_DB_commit (db_conn))
@@ -943,24 +936,14 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     return TALER_MINT_reply_internal_db_error (connection);
   }
 
-  /* Send response immediately if we already know the session,
-   * and the session commited already.
-   * Do _not_ care about fields other than session_pub in this case. */
-
   res = TALER_MINT_DB_get_refresh_session (db_conn,
                                            refresh_session_pub,
                                            &refresh_session);
-  if (GNUNET_YES == res && 0 != refresh_session.reveal_ok)
-    return helper_refresh_reveal_send_response (connection,
-                                                db_conn,
-                                                &refresh_session,
-                                                refresh_session_pub);
+  if (GNUNET_NO == res)
+    return TALER_MINT_reply_arg_invalid (connection,
+                                         "session_pub");
   if (GNUNET_SYSERR == res)
-  {
-    GNUNET_break (0);
-    // FIXME: return 'internal error'?
-    return MHD_NO;
-  }
+    return TALER_MINT_reply_internal_db_error (connection);
 
   /* Check that the transfer private keys match their commitments.
    * Then derive the shared secret for each kappa, and check that they match. */

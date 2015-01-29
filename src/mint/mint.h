@@ -36,54 +36,6 @@
 
 
 
-/**
- * Global information for a refreshing session.
- */
-struct RefreshSession
-{
-  /**
-   * Signature over the commitments by the client.
-   */
-  struct GNUNET_CRYPTO_EddsaSignature commit_sig;
-
-  /**
-   * Public key of the refreshing session, used to sign
-   * the client's commit message.
-   */
-  struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
-
-  /**
-   * Number of coins we are melting.
-   */
-  uint16_t num_oldcoins;
-
-  /**
-   * Number of new coins we are creating.
-   */
-  uint16_t num_newcoins;
-
-  /**
-   * Number of parallel operations we perform for the cut and choose.
-   * (must be greater or equal to three for security).
-   */
-  uint16_t kappa;
-
-  /**
-   * Index (smaller @e kappa) which the mint has chosen to not
-   * have revealed during cut and choose.
-   */
-  uint16_t noreveal_index;
-
-  /**
-   * FIXME.
-   */
-  int has_commit_sig;
-
-  /**
-   * FIXME.
-   */
-  uint8_t reveal_ok;
-};
 
 
 

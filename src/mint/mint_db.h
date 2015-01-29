@@ -44,10 +44,9 @@ TALER_MINT_DB_insert_refresh_order (PGconn *db_conn,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
                                     const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub);
 
-int
-TALER_MINT_DB_get_refresh_session (PGconn *db_conn,
-                                   const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                   struct RefreshSession *r_session);
+
+
+
 
 
 /**
@@ -85,10 +84,6 @@ int
 TALER_MINT_DB_insert_known_coin (PGconn *db_conn,
                                  const struct KnownCoin *known_coin);
 
-
-int
-TALER_MINT_DB_create_refresh_session (PGconn *db_conn,
-                                      const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub);
 
 
 /**
@@ -521,10 +516,111 @@ TALER_MINT_DB_insert_deposit (PGconn *db_conn,
                               const struct Deposit *deposit);
 
 
+
 /**
- * Specification for a /refresh/melt operation.
+ * Global information for a refreshing session.  Includes
+ * dimensions of the operation, security parameters and
+ * client signatures from "/refresh/melt" and "/refresh/commit".
  */
-struct RefreshMelt
+struct RefreshSession
+{
+  /**
+   * Signature over the commitments by the client,
+   * only valid if @e has_commit_sig is set.
+   */
+  struct GNUNET_CRYPTO_EddsaSignature commit_sig;
+
+    /**
+   * Signature over the melt by the client.
+   */
+  struct GNUNET_CRYPTO_EddsaSignature melt_sig;
+
+  /**
+   * Number of coins we are melting.
+   */
+  uint16_t num_oldcoins;
+
+  /**
+   * Number of new coins we are creating.
+   */
+  uint16_t num_newcoins;
+
+  /**
+   * Number of parallel operations we perform for the cut and choose.
+   * (must be greater or equal to three for security).  0 if not yet
+   * known.
+   */
+  uint16_t kappa;
+
+  /**
+   * Index (smaller @e kappa) which the mint has chosen to not
+   * have revealed during cut and choose.  Only valid if
+   * @e has_commit_sig is set to #GNUNET_YES.
+   */
+  uint16_t noreveal_index;
+
+  /**
+   * #GNUNET_YES if we have accepted the /refresh/commit and
+   * thus the @e commit_sig is valid.
+   */
+  int has_commit_sig;
+
+};
+
+
+/**
+ * Lookup refresh session data under the given public key.
+ *
+ * @param db_conn database handle to use
+ * @param refresh_session_pub public key to use for the lookup
+ * @param session[OUT] where to store the result
+ * @return #GNUNET_YES on success,
+ *         #GNUNET_NO if not found,
+ *         #GNUNET_SYSERR on DB failure
+ */
+int
+TALER_MINT_DB_get_refresh_session (PGconn *db_conn,
+                                   const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                   struct RefreshSession *session);
+
+
+/**
+ * Store new refresh session data under the given public key.
+ *
+ * @param db_conn database handle to use
+ * @param refresh_session_pub public key to use to locate the session
+ * @param session session data to store
+ * @return #GNUNET_YES on success,
+ *         #GNUNET_SYSERR on DB failure
+ */
+int
+TALER_MINT_DB_create_refresh_session (PGconn *db_conn,
+                                      const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                                      const struct RefreshSession *session);
+
+
+/**
+ * Update new refresh session with the new state after the
+ * /refresh/commit operation.
+ *
+ * @param db_conn database handle to use
+ * @param refresh_session_pub public key to use to locate the session
+ * @param noreveal_index index chosen for the client to not reveal
+ * @param commit_client_sig signature of the client over its commitment
+ * @return #GNUNET_YES on success,
+ *         #GNUNET_SYSERR on DB failure
+ */
+int
+TALER_MINT_DB_update_refresh_session (PGconn *db_conn,
+                                      const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                                      uint16_t noreveal_index,
+                                      const struct GNUNET_CRYPTO_EddsaSignature *commit_client_sig);
+
+
+/**
+ * Specification for coin in a /refresh/melt operation.
+ */
+struct RefreshMelt /* FIXME: name to make it clearer this is about ONE coin! */
 {
   /**
    * Information about the coin that is being melted.

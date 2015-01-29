@@ -91,6 +91,8 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection to handle
  * @param refresh_session_pub public key of the refresh session
+ * @param client_signature signature of the client (matching @a refresh_session_pub)
+ *         over the melting request
  * @param num_new_denoms number of entries in @a denom_pubs
  * @param denum_pubs array of public denomination keys for the refresh (?)
  * @param coin_count number of entries in @a coin_public_infos
@@ -100,6 +102,7 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
 int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                    const struct GNUNET_CRYPTO_EddsaSignature *client_signature,
                                     unsigned int num_new_denoms,
                                     struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs,
                                     unsigned int coin_count,
@@ -115,6 +118,8 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
  * @a kappa sets of private transfer keys should not be revealed.
  *
  * @param connection the MHD connection to handle
+ * @param refresh_session public key of the session
+ * @param commit_client_sig signature of the client over this commitment
  * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
  * @param num_oldcoins size of y-dimension of @commit_coin array
  * @param num_newcoins size of y-dimension of @commit_link array
@@ -129,6 +134,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
 int
 TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
                                       const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                      const struct GNUNET_CRYPTO_EddsaSignature *commit_client_sig,
                                       unsigned int kappa,
                                       unsigned int num_oldcoins,
                                       unsigned int num_newcoins,

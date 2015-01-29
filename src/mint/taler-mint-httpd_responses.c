@@ -518,43 +518,37 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
 
 
 /**
- * Send a response for "/refresh/melt".
+ * Send a response for "/refresh/melt".  Essentially we sign
+ * over the client's signature and public key, thereby
+ * demonstrating that we accepted all of the client's coins.
  *
  * @param connection the connection to send the response to
- * @param db_conn the database connection to fetch values from
+ * @param signature the client's signature over the melt request
  * @param session_pub the refresh session public key.
  * @return a MHD result code
  */
 int
 TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
-                                       const struct RefreshSession *session,
+                                       const struct GNUNET_CRYPTO_EddsaSignature *signature,
                                        const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub)
 {
   int ret;
-  json_t *list;
-  struct GNUNET_HashContext *hash_context;
   struct RefreshMeltResponseSignatureBody body;
   struct GNUNET_CRYPTO_EddsaSignature sig;
   json_t *sig_json;
 
-  list = json_array ();
-  hash_context = GNUNET_CRYPTO_hash_context_start ();
   body.purpose.size = htonl (sizeof (struct RefreshMeltResponseSignatureBody));
   body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_RESPONSE);
-  /* FIXME: should we not add something to the hash_context in the meantime? */
-  GNUNET_CRYPTO_hash_context_finish (hash_context,
-                                     &body.melt_response_hash);
+  body.melt_client_signature = *signature;
+  body.session_key = *session_pub;
   TALER_MINT_keys_sign (&body.purpose,
                         &sig);
   sig_json = TALER_JSON_from_sig (&body.purpose, &sig);
-  GNUNET_assert (NULL != sig_json);
   ret = TALER_MINT_reply_json_pack (connection,
                                     MHD_HTTP_OK,
-                                    "{s:o, s:o}",
-                                    "signature", sig_json,
-                                    "blind_session_pubs", list);
+                                    "{s:o}",
+                                    "signature", sig_json);
   json_decref (sig_json);
-  json_decref (list);
   return ret;
 }
 
@@ -570,7 +564,7 @@ TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
-                                         struct RefreshSession *refresh_session)
+                                         const struct RefreshSession *refresh_session)
 {
   struct RefreshCommitResponseSignatureBody body;
   struct GNUNET_CRYPTO_EddsaSignature sig;

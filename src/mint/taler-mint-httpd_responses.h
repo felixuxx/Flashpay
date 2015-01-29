@@ -245,20 +245,22 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
-                                         struct RefreshSession *refresh_session);
+                                         const struct RefreshSession *refresh_session);
 
 
 /**
- * Send a response for "/refresh/melt".
+ * Send a response for "/refresh/melt". Essentially we sign
+ * over the client's signature and public key, thereby
+ * demonstrating that we accepted all of the client's coins.
  *
  * @param connection the connection to send the response to
- * @param session session data to generate reply from
+ * @param signature the client's signature over the melt request
  * @param session_pub the refresh session public key.
  * @return a MHD result code
  */
 int
 TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
-                                       const struct RefreshSession *session,
+                                       const struct GNUNET_CRYPTO_EddsaSignature *signature,
                                        const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub);
 
 

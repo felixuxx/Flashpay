@@ -234,6 +234,36 @@ struct TALER_DepositConfirmation
 
 
 /**
+ * Format of the block signed by the Mint in response to
+ * a successful "/refresh/melt" request.  Hereby the mint
+ * affirms that all of the coins were successfully melted.
+ */
+struct RefreshMeltResponseSignatureBody
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_REFRESH_MELT_RESPONSE.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Signature of the client over the melt request (thereby
+   * indirectly including all of the information the client
+   * sent).
+   */
+  struct GNUNET_CRYPTO_EddsaSignature melt_client_signature;
+
+  /**
+   * Public key of the refresh session for which
+   * @e melt_client_signature must be a valid signature.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey session_key;
+};
+
+
+
+
+
+/**
  * FIXME
  */
 struct TALER_MINT_SignKeyIssue
@@ -295,15 +325,6 @@ struct RefreshCommitResponseSignatureBody
   uint16_t noreveal_index;
 };
 
-
-/**
- * FIXME
- */
-struct RefreshMeltResponseSignatureBody
-{
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-  struct GNUNET_HashCode melt_response_hash;
-};
 
 
 /**
