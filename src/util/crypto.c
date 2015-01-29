@@ -269,6 +269,32 @@ TALER_refresh_encrypt (const struct TALER_RefreshLinkDecrypted *input,
 
 
 /**
+ * Decode encrypted refresh link information from buffer.
+ *
+ * @param buf buffer with refresh link data
+ * @param buf_len number of bytes in @a buf
+ * @return NULL on error (@a buf_len too small)
+ */
+struct TALER_RefreshLinkEncrypted *
+TALER_refresh_link_encrypted_decode (const char *buf,
+                                     size_t buf_len)
+{
+  struct TALER_RefreshLinkEncrypted *rle;
+
+  if (buf_len < sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey))
+    return NULL;
+  rle = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) +
+                       buf_len - sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey));
+  rle->blinding_key_enc = (const char *) &rle[1];
+  rle->blinding_key_enc_size = buf_len - sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey);
+  memcpy (rle->coin_priv_enc,
+          buf,
+          buf_len);
+  return rle;
+}
+
+
+/**
  * Check if a coin is valid; that is, whether the denomination key exists,
  * is not expired, and the signature is correct.
  *

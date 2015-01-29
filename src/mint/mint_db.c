@@ -1109,14 +1109,8 @@ TALER_MINT_DB_get_refresh_commit_coin (PGconn *db_conn,
     GNUNET_free (rl_buf);
     return GNUNET_SYSERR;
   }
-
-  rl = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) +
-                      rl_buf_size - sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey));
-  rl->blinding_key_enc = (const char *) &rl[1];
-  rl->blinding_key_enc_size = rl_buf_size - sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey);
-  memcpy (rl->coin_priv_enc,
-          rl_buf,
-          rl_buf_size);
+  rl = TALER_refresh_link_encrypted_decode (rl_buf,
+                                            rl_buf_size);
   GNUNET_free (rl_buf);
   cc->refresh_link = rl;
   cc->coin_ev = c_buf;

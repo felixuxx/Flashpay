@@ -204,5 +204,17 @@ TALER_refresh_encrypt (const struct TALER_RefreshLinkDecrypted *input,
                        const struct TALER_LinkSecret *secret);
 
 
+/**
+ * Decode encrypted refresh link information from buffer.
+ *
+ * @param buf buffer with refresh link data
+ * @param buf_len number of bytes in @a buf
+ * @return NULL on error (@a buf_len too small)
+ */
+struct TALER_RefreshLinkEncrypted *
+TALER_refresh_link_encrypted_decode (const char *buf,
+                                     size_t buf_len);
+
+
 
 #endif
