@@ -256,12 +256,14 @@ TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
  * @param connection the connection to send the response to
  * @param signature the client's signature over the melt request
  * @param session_pub the refresh session public key.
+ * @param kappa security parameter to use for cut and choose
  * @return a MHD result code
  */
 int
 TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
                                        const struct GNUNET_CRYPTO_EddsaSignature *signature,
-                                       const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub);
+                                       const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                                       unsigned int kappa);
 
 
 /**

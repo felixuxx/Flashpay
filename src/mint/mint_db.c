@@ -30,7 +30,6 @@
 #include "taler_signatures.h"
 #include "taler-mint-httpd_responses.h"
 #include "mint_db.h"
-#include "mint.h"
 #include <pthread.h>
 
 /**

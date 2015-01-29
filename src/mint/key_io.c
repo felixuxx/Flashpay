@@ -23,7 +23,6 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
-#include "mint.h"
 #include "key_io.h"
 
 

@@ -525,12 +525,14 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
  * @param connection the connection to send the response to
  * @param signature the client's signature over the melt request
  * @param session_pub the refresh session public key.
+ * @param kappa security parameter to use for cut and choose
  * @return a MHD result code
  */
 int
 TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
                                        const struct GNUNET_CRYPTO_EddsaSignature *signature,
-                                       const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub)
+                                       const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                                       unsigned int kappa)
 {
   int ret;
   struct RefreshMeltResponseSignatureBody body;
@@ -541,13 +543,15 @@ TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
   body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_RESPONSE);
   body.melt_client_signature = *signature;
   body.session_key = *session_pub;
+  body.kappa = htonl (kappa);
   TALER_MINT_keys_sign (&body.purpose,
                         &sig);
   sig_json = TALER_JSON_from_sig (&body.purpose, &sig);
   ret = TALER_MINT_reply_json_pack (connection,
                                     MHD_HTTP_OK,
-                                    "{s:o}",
-                                    "signature", sig_json);
+                                    "{s:o, s:i}",
+                                    "signature", sig_json,
+                                    "kappa", (int) kappa);
   json_decref (sig_json);
   return ret;
 }

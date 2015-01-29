@@ -26,11 +26,5 @@
 #include <jansson.h>
 #include "taler_util.h"
 
-/**
- * For now, we just do EUR.  Should become configurable
- * in the future!
- */
-#define MINT_CURRENCY "EUR"
-
 
 #endif /* _MINT_H */

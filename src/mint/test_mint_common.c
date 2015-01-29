@@ -20,7 +20,7 @@
  */
 #include "platform.h"
 #include "gnunet/gnunet_util_lib.h"
-#include "mint.h"
+
 
 #define RSA_KEY_SIZE 1024
 

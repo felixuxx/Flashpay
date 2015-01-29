@@ -23,7 +23,6 @@
 
 #include <platform.h>
 #include <gnunet/gnunet_util_lib.h>
-#include "mint.h"
 #include "taler_signatures.h"
 #include "key_io.h"
 

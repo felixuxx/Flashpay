@@ -26,7 +26,6 @@
 #include <libpq-fe.h>
 #include "taler_util.h"
 #include "taler_signatures.h"
-#include "mint.h"
 #include "mint_db.h"
 
 char *mintdir;

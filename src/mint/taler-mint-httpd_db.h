@@ -26,7 +26,6 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
 #include "taler-mint-httpd_keys.h"
-#include "mint.h"
 #include "mint_db.h"
 
 

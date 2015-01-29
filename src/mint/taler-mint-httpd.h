@@ -30,6 +30,12 @@
  */
 #define KAPPA 3
 
+/**
+ * For now, we just do EUR.  Should become configurable
+ * in the future!
+ */
+#define MINT_CURRENCY "EUR"
+
 
 /**
  * The mint's configuration.

@@ -13,18 +13,15 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file taler-mint-dbinit.c
  * @brief Create tables for the mint database.
  * @author Florian Dold
  */
-
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <libpq-fe.h>
-#include "mint.h"
-
+#include "taler_util.h"
 
 #define break_db_err(result) do { \
     GNUNET_break(0); \
@@ -39,7 +36,7 @@ static PGconn *db_conn;
 static char *TALER_MINT_db_connection_cfg_str;
 
 
-int
+static int
 TALER_MINT_init_withdraw_tables (PGconn *conn)
 {
   PGresult *result;

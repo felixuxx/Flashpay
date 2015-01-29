@@ -257,6 +257,12 @@ struct RefreshMeltResponseSignatureBody
    * @e melt_client_signature must be a valid signature.
    */
   struct GNUNET_CRYPTO_EddsaPublicKey session_key;
+
+  /**
+   * Security parameter requested for the commitments.
+   */
+  uint32_t kappa GNUNET_PACKED;
+
 };
 
 

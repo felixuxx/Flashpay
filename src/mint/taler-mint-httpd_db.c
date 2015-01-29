@@ -22,22 +22,17 @@
  * - actually abstract DB implementation (i.e. via plugin logic)
  *   (this file should remain largely unchanged with the exception
  *    of the PQ-specific DB handle types)
- * - /refresh/melt: all
+ * - /refresh/melt:
  *   + properly check all conditions and handle errors
  *   + properly check transaction logic
  *   + check for leaks
  *   + check low-level API
- * - /refresh/commit: all
+ * - /refresh/reveal:
  *   + properly check all conditions and handle errors
  *   + properly check transaction logic
  *   + check for leaks
  *   + check low-level API
- * - /refresh/reveal: all
- *   + properly check all conditions and handle errors
- *   + properly check transaction logic
- *   + check for leaks
- *   + check low-level API
- * - /refresh/link: all
+ * - /refresh/link:
  *   + properly check all conditions and handle errors
  *   + properly check transaction logic
  *   + check for leaks
@@ -51,7 +46,6 @@
 #include "taler-mint-httpd_keys.h"
 #include "taler-mint-httpd_responses.h"
 #include "mint_db.h"
-#include "mint.h"
 #include "taler_util.h"
 #include "taler-mint-httpd_keystate.h"
 
@@ -644,7 +638,8 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
     TALER_MINT_DB_rollback (db_conn);
     return TALER_MINT_reply_refresh_melt_success (connection,
                                                   &session.melt_sig,
-                                                  refresh_session_pub);
+                                                  refresh_session_pub,
+                                                  session.kappa);
   }
   if (GNUNET_SYSERR == res)
   {
@@ -657,7 +652,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   session.melt_sig = *client_signature;
   session.num_oldcoins = coin_count;
   session.num_newcoins = num_new_denoms;
-  session.kappa = 0; /* FIXME: should be chosen by mint per config! */
+  session.kappa = KAPPA;
   session.noreveal_index = UINT16_MAX;
   session.has_commit_sig = GNUNET_NO;
   if (GNUNET_OK !=
@@ -720,7 +715,8 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   }
   return TALER_MINT_reply_refresh_melt_success (connection,
                                                 client_signature,
-                                                refresh_session_pub);
+                                                refresh_session_pub,
+                                                session.kappa);
 
 
 }

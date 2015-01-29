@@ -27,7 +27,6 @@
 #include <microhttpd.h>
 #include <libpq-fe.h>
 #include <pthread.h>
-#include "mint.h"
 #include "taler_signatures.h"
 #include "taler_util.h"
 #include "taler-mint-httpd_parsing.h"
