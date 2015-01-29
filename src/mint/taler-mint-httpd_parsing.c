@@ -261,402 +261,6 @@ TALER_MINT_parse_post_cleanup_callback (void *con_cls)
 
 
 /**
- * Navigate through a JSON tree.
- *
- * Sends an error response if navigation is impossible (i.e.
- * the JSON object is invalid)
- *
- * @param connection the connection to send an error response to
- * @param root the JSON node to start the navigation at.
- * @param ... navigation specification (see `enum TALER_MINT_JsonNavigationCommand`)
- * @return
- *    #GNUNET_YES if navigation was successful
- *    #GNUNET_NO if json is malformed, error response was generated
- *    #GNUNET_SYSERR on internal error (no response was generated,
- *                       connection must be closed)
- */
-int
-GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
-                                 const json_t *root,
-                                 ...)
-{
-  va_list argp;
-  int ret;
-  json_t *path; /* what's our current path from 'root'? */
-
-  path = json_array ();
-  va_start (argp, root);
-  ret = 2; /* just not any of the valid return values */
-  while (2 == ret)
-  {
-    enum TALER_MINT_JsonNavigationCommand command
-      = va_arg (argp,
-                enum TALER_MINT_JsonNavigationCommand);
-
-    switch (command)
-    {
-      case JNAV_FIELD:
-        {
-          const char *fname = va_arg(argp, const char *);
-
-          json_array_append_new (path,
-                                 json_string (fname));
-          root = json_object_get (root,
-                                  fname);
-          if (NULL == root)
-          {
-            ret = (MHD_YES ==
-                   TALER_MINT_reply_json_pack (connection,
-                                               MHD_HTTP_BAD_REQUEST,
-                                               "{s:s, s:s, s:o}",
-                                               "error",
-                                               "missing field in JSON",
-                                               "field",
-                                               fname,
-                                               "path",
-                                               path))
-              ? GNUNET_NO : GNUNET_SYSERR;
-            break;
-          }
-        }
-        break;
-      case JNAV_INDEX:
-        {
-          int fnum = va_arg(argp, int);
-
-          json_array_append_new (path,
-                                 json_integer (fnum));
-          root = json_array_get (root,
-                                 fnum);
-          if (NULL == root)
-          {
-            ret = (MHD_YES ==
-                   TALER_MINT_reply_json_pack (connection,
-                                               MHD_HTTP_BAD_REQUEST,
-                                               "{s:s, s:o}",
-                                               "error",
-                                               "missing index in JSON",
-                                               "path", path))
-              ? GNUNET_NO : GNUNET_SYSERR;
-            break;
-          }
-        }
-        break;
-      case JNAV_RET_DATA:
-        {
-          void *where = va_arg (argp, void *);
-          size_t len = va_arg (argp, size_t);
-          const char *str;
-          int res;
-
-          str = json_string_value (root);
-          if (NULL == str)
-          {
-            ret = (MHD_YES ==
-                   TALER_MINT_reply_json_pack (connection,
-                                               MHD_HTTP_BAD_REQUEST,
-                                               "{s:s, s:o}",
-                                               "error",
-                                               "string expected",
-                                               "path",
-                                               path))
-              ? GNUNET_NO : GNUNET_SYSERR;
-            break;
-          }
-          res = GNUNET_STRINGS_string_to_data (str, strlen (str),
-                                                where, len);
-          if (GNUNET_OK != res)
-          {
-            ret = (MHD_YES ==
-                   TALER_MINT_reply_json_pack (connection,
-                                               MHD_HTTP_BAD_REQUEST,
-                                               "{s:s, s:o}",
-                                               "error",
-                                               "malformed binary data in JSON",
-                                               "path",
-                                               path))
-              ? GNUNET_NO : GNUNET_SYSERR;
-            break;
-          }
-          ret = GNUNET_OK;
-        }
-        break;
-      case JNAV_RET_DATA_VAR:
-        {
-          void **where = va_arg (argp, void **);
-          size_t *len = va_arg (argp, size_t *);
-          const char *str;
-
-          str = json_string_value (root);
-          if (NULL == str)
-          {
-            ret = (MHD_YES ==
-                   TALER_MINT_reply_internal_error (connection,
-                                                    "json_string_value() failed"))
-              ? GNUNET_NO : GNUNET_SYSERR;
-            break;
-          }
-          *len = (strlen (str) * 5) / 8;
-          if (NULL != where)
-          {
-            int res;
-
-            *where = GNUNET_malloc (*len);
-            res = GNUNET_STRINGS_string_to_data (str,
-                                                 strlen (str),
-                                                 *where,
-                                                 *len);
-            if (GNUNET_OK != res)
-            {
-              GNUNET_free (*where);
-              *where = NULL;
-              *len = 0;
-              ret = (MHD_YES ==
-                     TALER_MINT_reply_json_pack (connection,
-                                                 MHD_HTTP_BAD_REQUEST,
-                                                 "{s:s, s:o}",
-                                                 "error",
-                                                 "malformed binary data in JSON",
-                                                 "path", path))
-                ? GNUNET_NO : GNUNET_SYSERR;
-              break;
-            }
-          }
-          ret = GNUNET_OK;
-        }
-        break;
-      case JNAV_RET_TYPED_JSON:
-        {
-          int typ = va_arg (argp, int);
-          const json_t **r_json = va_arg (argp, const json_t **);
-
-          if ( (-1 != typ) && (json_typeof (root) != typ))
-          {
-            ret = (MHD_YES ==
-                   TALER_MINT_reply_json_pack (connection,
-                                               MHD_HTTP_BAD_REQUEST,
-                                               "{s:s, s:i, s:i, s:o}",
-                                               "error", "wrong JSON field type",
-                                               "type_expected", typ,
-                                               "type_actual", json_typeof (root),
-                                               "path", path))
-              ? GNUNET_NO : GNUNET_SYSERR;
-            break;
-          }
-          *r_json = root;
-          ret = GNUNET_OK;
-        }
-        break;
-      default:
-        GNUNET_break (0);
-        ret = (MHD_YES ==
-               TALER_MINT_reply_internal_error (connection,
-                                                "unhandled value in switch"))
-          ? GNUNET_NO : GNUNET_SYSERR;
-        break;
-    }
-  }
-  va_end (argp);
-  json_decref (path);
-  return ret;
-}
-
-
-/**
- * Parse JSON object into components based on the given field
- * specification.
- *
- * @param connection the connection to send an error response to
- * @param root the JSON node to start the navigation at.
- * @param spec field specification for the parser
- * @return
- *    #GNUNET_YES if navigation was successful (caller is responsible
- *                for freeing allocated variable-size data using
- *                #TALER_MINT_release_parsed_data() when done)
- *    #GNUNET_NO if json is malformed, error response was generated
- *    #GNUNET_SYSERR on internal error
- */
-int
-TALER_MINT_parse_json_data (struct MHD_Connection *connection,
-                            const json_t *root,
-                            struct GNUNET_MINT_ParseFieldSpec *spec)
-{
-  unsigned int i;
-  int ret;
-  void *ptr;
-
-  ret = GNUNET_YES;
-  for (i=0; NULL != spec[i].field_name; i++)
-  {
-    switch (spec[i].command)
-    {
-    case JNAV_FIELD:
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    case JNAV_INDEX:
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    case JNAV_RET_DATA:
-      if (GNUNET_YES != ret)
-        break;
-      ret = GNUNET_MINT_parse_navigate_json (connection,
-                                             root,
-                                             JNAV_FIELD,
-                                             spec[i].field_name,
-                                             JNAV_RET_DATA,
-                                             spec[i].destination,
-                                             spec[i].destination_size_in);
-      break;
-    case JNAV_RET_DATA_VAR:
-      if (GNUNET_YES != ret)
-        break;
-      ptr = NULL;
-      ret = GNUNET_MINT_parse_navigate_json (connection,
-                                             root,
-                                             JNAV_FIELD,
-                                             spec[i].field_name,
-                                             JNAV_RET_DATA_VAR,
-                                             &ptr,
-                                             &spec[i].destination_size_out);
-      spec[i].destination = ptr;
-      break;
-    case JNAV_RET_TYPED_JSON:
-      if (GNUNET_YES != ret)
-        break;
-      ptr = NULL;
-      ret = GNUNET_MINT_parse_navigate_json (connection,
-                                             root,
-                                             JNAV_FIELD,
-                                             spec[i].field_name,
-                                             JNAV_RET_TYPED_JSON,
-                                             spec[i].type,
-                                             &ptr);
-      spec[i].destination = ptr;
-      break;
-    }
-  }
-  if (GNUNET_YES != ret)
-    TALER_MINT_release_parsed_data (spec);
-  return ret;
-}
-
-
-/**
- * Release all memory allocated for the variable-size fields in
- * the parser specification.
- *
- * @param spec specification to free
- */
-void
-TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec)
-{
-  unsigned int i;
-
-  for (i=0; NULL != spec[i].field_name; i++)
-  {
-    switch (spec[i].command)
-    {
-    case JNAV_FIELD:
-      GNUNET_break (0);
-      return;
-    case JNAV_INDEX:
-      GNUNET_break (0);
-      return;
-    case JNAV_RET_DATA:
-      break;
-    case JNAV_RET_DATA_VAR:
-      if (0 != spec[i].destination_size_out)
-      {
-        GNUNET_free (spec[i].destination);
-        spec[i].destination = NULL;
-        spec[i].destination_size_out = 0;
-      }
-      break;
-    case JNAV_RET_TYPED_JSON:
-      if (NULL != spec[i].destination)
-      {
-        json_decref (spec[i].destination);
-        spec[i].destination = NULL;
-      }
-      break;
-    }
-  }
-}
-
-
-/**
- * Parse amount specified in JSON format.
- *
- * @param connection the MHD connection (to report errors)
- * @param f json specification of the amount
- * @param amount[OUT] set to the amount specified in @a f
- * @return
- *    #GNUNET_YES if parsing was successful
- *    #GNUNET_NO if json is malformed, error response was generated
- *    #GNUNET_SYSERR on internal error, error response was not generated
- */
-int
-TALER_MINT_parse_amount_json (struct MHD_Connection *connection,
-                              json_t *f,
-                              struct TALER_Amount *amount)
-{
-  json_int_t value;
-  json_int_t fraction;
-  const char *currency;
-  struct TALER_Amount a;
-
-  if (-1 == json_unpack (f,
-                         "{s:I, s:I, s:s}",
-                         "value", &value,
-                         "fraction", &fraction,
-                         "currency", &currency))
-  {
-    LOG_WARNING ("Failed to parse JSON amount specification\n");
-    if (MHD_YES !=
-        TALER_MINT_reply_json_pack (connection,
-                                    MHD_HTTP_BAD_REQUEST,
-                                    "{s:s}",
-                                    "error", "Bad format"))
-      return GNUNET_SYSERR;
-    return GNUNET_NO;
-  }
-  if ( (value < 0) ||
-       (fraction < 0) ||
-       (value > UINT32_MAX) ||
-       (fraction > UINT32_MAX) )
-  {
-    LOG_WARNING ("Amount specified not in allowed range\n");
-    if (MHD_YES !=
-        TALER_MINT_reply_json_pack (connection,
-                                    MHD_HTTP_BAD_REQUEST,
-                                    "{s:s}",
-                                    "error", "Amount outside of allowed range"))
-      return GNUNET_SYSERR;
-    return GNUNET_NO;
-  }
-  if (0 != strcmp (currency,
-                   MINT_CURRENCY))
-  {
-    LOG_WARNING ("Currency specified not supported by this mint\n");
-    if (MHD_YES !=
-        TALER_MINT_reply_json_pack (connection,
-                                    MHD_HTTP_BAD_REQUEST,
-                                    "{s:s, s:s}",
-                                    "error", "Currency not supported",
-                                    "currency", currency))
-      return GNUNET_SYSERR;
-    return GNUNET_NO;
-  }
-  a.value = (uint32_t) value;
-  a.fraction = (uint32_t) fraction;
-  GNUNET_assert (strlen (MINT_CURRENCY) < TALER_CURRENCY_LEN);
-  strcpy (a.currency, MINT_CURRENCY);
-  *amount = TALER_amount_normalize (a);
-  return GNUNET_OK;
-}
-
-
-/**
  * Extract base32crockford encoded data from request.
  *
  * Queues an error response to the connection if the parameter is missing or
@@ -752,6 +356,577 @@ TALER_MINT_mhd_request_var_arg_data (struct MHD_Connection *connection,
   }
   *out_data = out;
   *out_size = olen;
+  return GNUNET_OK;
+}
+
+
+/**
+ * Navigate through a JSON tree.
+ *
+ * Sends an error response if navigation is impossible (i.e.
+ * the JSON object is invalid)
+ *
+ * @param connection the connection to send an error response to
+ * @param root the JSON node to start the navigation at.
+ * @param ... navigation specification (see `enum TALER_MINT_JsonNavigationCommand`)
+ * @return
+ *    #GNUNET_YES if navigation was successful
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error (no response was generated,
+ *                       connection must be closed)
+ */
+int
+GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
+                                 const json_t *root,
+                                 ...)
+{
+  va_list argp;
+  int ret;
+  json_t *path; /* what's our current path from 'root'? */
+
+  path = json_array ();
+  va_start (argp, root);
+  ret = 2; /* just not any of the valid return values */
+  while (2 == ret)
+  {
+    enum TALER_MINT_JsonNavigationCommand command
+      = va_arg (argp,
+                enum TALER_MINT_JsonNavigationCommand);
+
+    switch (command)
+    {
+    case JNAV_FIELD:
+      {
+        const char *fname = va_arg(argp, const char *);
+
+        json_array_append_new (path,
+                               json_string (fname));
+        root = json_object_get (root,
+                                fname);
+        if (NULL == root)
+        {
+          ret = (MHD_YES ==
+                 TALER_MINT_reply_json_pack (connection,
+                                             MHD_HTTP_BAD_REQUEST,
+                                             "{s:s, s:s, s:o}",
+                                             "error",
+                                             "missing field in JSON",
+                                             "field",
+                                             fname,
+                                             "path",
+                                             path))
+            ? GNUNET_NO : GNUNET_SYSERR;
+          break;
+        }
+      }
+      break;
+
+    case JNAV_INDEX:
+      {
+        int fnum = va_arg(argp, int);
+
+        json_array_append_new (path,
+                               json_integer (fnum));
+        root = json_array_get (root,
+                               fnum);
+        if (NULL == root)
+        {
+          ret = (MHD_YES ==
+                 TALER_MINT_reply_json_pack (connection,
+                                             MHD_HTTP_BAD_REQUEST,
+                                             "{s:s, s:o}",
+                                             "error",
+                                             "missing index in JSON",
+                                             "path", path))
+            ? GNUNET_NO : GNUNET_SYSERR;
+          break;
+        }
+      }
+      break;
+
+    case JNAV_RET_DATA:
+      {
+        void *where = va_arg (argp, void *);
+        size_t len = va_arg (argp, size_t);
+        const char *str;
+        int res;
+
+        // FIXME: avoidable code duplication here...
+        str = json_string_value (root);
+        if (NULL == str)
+        {
+          ret = (MHD_YES ==
+                 TALER_MINT_reply_json_pack (connection,
+                                             MHD_HTTP_BAD_REQUEST,
+                                             "{s:s, s:o}",
+                                             "error",
+                                             "string expected",
+                                             "path",
+                                             path))
+            ? GNUNET_NO : GNUNET_SYSERR;
+          break;
+        }
+        res = GNUNET_STRINGS_string_to_data (str, strlen (str),
+                                             where, len);
+        if (GNUNET_OK != res)
+        {
+          ret = (MHD_YES ==
+                 TALER_MINT_reply_json_pack (connection,
+                                             MHD_HTTP_BAD_REQUEST,
+                                             "{s:s, s:o}",
+                                             "error",
+                                             "malformed binary data in JSON",
+                                             "path",
+                                             path))
+            ? GNUNET_NO : GNUNET_SYSERR;
+          break;
+        }
+        ret = GNUNET_OK;
+      }
+      break;
+
+    case JNAV_RET_DATA_VAR:
+      {
+        void **where = va_arg (argp, void **);
+        size_t *len = va_arg (argp, size_t *);
+        const char *str;
+
+        // FIXME: avoidable code duplication here...
+        str = json_string_value (root);
+        if (NULL == str)
+        {
+          ret = (MHD_YES ==
+                 TALER_MINT_reply_internal_error (connection,
+                                                  "json_string_value() failed"))
+            ? GNUNET_NO : GNUNET_SYSERR;
+          break;
+        }
+        *len = (strlen (str) * 5) / 8;
+        if (NULL != where)
+        {
+          int res;
+
+          *where = GNUNET_malloc (*len);
+          res = GNUNET_STRINGS_string_to_data (str,
+                                               strlen (str),
+                                               *where,
+                                               *len);
+          if (GNUNET_OK != res)
+          {
+            GNUNET_free (*where);
+            *where = NULL;
+            *len = 0;
+            ret = (MHD_YES ==
+                   TALER_MINT_reply_json_pack (connection,
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:o}",
+                                               "error",
+                                               "malformed binary data in JSON",
+                                               "path", path))
+              ? GNUNET_NO : GNUNET_SYSERR;
+            break;
+          }
+        }
+        ret = GNUNET_OK;
+      }
+      break;
+
+    case JNAV_RET_TYPED_JSON:
+      {
+        int typ = va_arg (argp, int);
+        const json_t **r_json = va_arg (argp, const json_t **);
+
+        if ( (-1 != typ) && (json_typeof (root) != typ))
+        {
+          ret = (MHD_YES ==
+                 TALER_MINT_reply_json_pack (connection,
+                                             MHD_HTTP_BAD_REQUEST,
+                                             "{s:s, s:i, s:i, s:o}",
+                                             "error", "wrong JSON field type",
+                                             "type_expected", typ,
+                                             "type_actual", json_typeof (root),
+                                             "path", path))
+            ? GNUNET_NO : GNUNET_SYSERR;
+          break;
+        }
+        *r_json = root;
+        ret = GNUNET_OK;
+      }
+      break;
+
+    case JNAV_RET_RSA_PUBLIC_KEY:
+      {
+        void **where = va_arg (argp, void **);
+        size_t len;
+        const char *str;
+        int res;
+        void *buf;
+
+        // FIXME: avoidable code duplication here...
+        str = json_string_value (root);
+        if (NULL == str)
+        {
+          ret = (MHD_YES ==
+                 TALER_MINT_reply_json_pack (connection,
+                                             MHD_HTTP_BAD_REQUEST,
+                                             "{s:s, s:o}",
+                                             "error",
+                                             "string expected",
+                                             "path",
+                                             path))
+            ? GNUNET_NO : GNUNET_SYSERR;
+          break;
+        }
+        len = (strlen (str) * 5) / 8;
+        buf = GNUNET_malloc (len);
+        res = GNUNET_STRINGS_string_to_data (str,
+                                             strlen (str),
+                                             buf,
+                                             len);
+        if (GNUNET_OK != res)
+        {
+          GNUNET_free (buf);
+          ret = (MHD_YES ==
+                 TALER_MINT_reply_json_pack (connection,
+                                             MHD_HTTP_BAD_REQUEST,
+                                             "{s:s, s:o}",
+                                             "error",
+                                             "malformed binary data in JSON",
+                                             "path",
+                                             path))
+            ? GNUNET_NO : GNUNET_SYSERR;
+          break;
+        }
+        *where = GNUNET_CRYPTO_rsa_public_key_decode (buf,
+                                                      len);
+        GNUNET_free (buf);
+        if (NULL == *where)
+        {
+          ret = (MHD_YES ==
+                 TALER_MINT_reply_json_pack (connection,
+                                             MHD_HTTP_BAD_REQUEST,
+                                             "{s:s, s:o}",
+                                             "error",
+                                             "malformed RSA public key in JSON",
+                                             "path",
+                                             path))
+            ? GNUNET_NO : GNUNET_SYSERR;
+          break;
+        }
+        ret = GNUNET_OK;
+        break;
+      }
+
+    case JNAV_RET_RSA_SIGNATURE:
+      {
+        void **where = va_arg (argp, void **);
+        size_t len;
+        const char *str;
+        int res;
+        void *buf;
+
+        // FIXME: avoidable code duplication here...
+        str = json_string_value (root);
+        if (NULL == str)
+        {
+          ret = (MHD_YES ==
+                 TALER_MINT_reply_json_pack (connection,
+                                             MHD_HTTP_BAD_REQUEST,
+                                             "{s:s, s:o}",
+                                             "error",
+                                             "string expected",
+                                             "path",
+                                             path))
+            ? GNUNET_NO : GNUNET_SYSERR;
+          break;
+        }
+        len = (strlen (str) * 5) / 8;
+        buf = GNUNET_malloc (len);
+        res = GNUNET_STRINGS_string_to_data (str,
+                                             strlen (str),
+                                             buf,
+                                             len);
+        if (GNUNET_OK != res)
+        {
+          GNUNET_free (buf);
+          ret = (MHD_YES ==
+                 TALER_MINT_reply_json_pack (connection,
+                                             MHD_HTTP_BAD_REQUEST,
+                                             "{s:s, s:o}",
+                                             "error",
+                                             "malformed binary data in JSON",
+                                             "path",
+                                             path))
+            ? GNUNET_NO : GNUNET_SYSERR;
+          break;
+        }
+        *where = GNUNET_CRYPTO_rsa_signature_decode (buf,
+                                                     len);
+        GNUNET_free (buf);
+        if (NULL == *where)
+        {
+          ret = (MHD_YES ==
+                 TALER_MINT_reply_json_pack (connection,
+                                             MHD_HTTP_BAD_REQUEST,
+                                             "{s:s, s:o}",
+                                             "error",
+                                             "malformed RSA signature in JSON",
+                                             "path",
+                                             path))
+            ? GNUNET_NO : GNUNET_SYSERR;
+          break;
+        }
+        ret = GNUNET_OK;
+        break;
+      }
+
+    default:
+      GNUNET_break (0);
+      ret = (MHD_YES ==
+             TALER_MINT_reply_internal_error (connection,
+                                              "unhandled value in switch"))
+        ? GNUNET_NO : GNUNET_SYSERR;
+      break;
+    }
+  }
+  va_end (argp);
+  json_decref (path);
+  return ret;
+}
+
+
+/**
+ * Parse JSON object into components based on the given field
+ * specification.
+ *
+ * @param connection the connection to send an error response to
+ * @param root the JSON node to start the navigation at.
+ * @param spec field specification for the parser
+ * @return
+ *    #GNUNET_YES if navigation was successful (caller is responsible
+ *                for freeing allocated variable-size data using
+ *                #TALER_MINT_release_parsed_data() when done)
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error
+ */
+int
+TALER_MINT_parse_json_data (struct MHD_Connection *connection,
+                            const json_t *root,
+                            struct GNUNET_MINT_ParseFieldSpec *spec)
+{
+  unsigned int i;
+  int ret;
+  void *ptr;
+
+  ret = GNUNET_YES;
+  for (i=0; NULL != spec[i].field_name; i++)
+  {
+    switch (spec[i].command)
+    {
+    case JNAV_FIELD:
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    case JNAV_INDEX:
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    case JNAV_RET_DATA:
+      if (GNUNET_YES != ret)
+        break;
+      ret = GNUNET_MINT_parse_navigate_json (connection,
+                                             root,
+                                             JNAV_FIELD,
+                                             spec[i].field_name,
+                                             JNAV_RET_DATA,
+                                             spec[i].destination,
+                                             spec[i].destination_size_in);
+      break;
+    case JNAV_RET_DATA_VAR:
+      if (GNUNET_YES != ret)
+        break;
+      ptr = NULL;
+      ret = GNUNET_MINT_parse_navigate_json (connection,
+                                             root,
+                                             JNAV_FIELD,
+                                             spec[i].field_name,
+                                             JNAV_RET_DATA_VAR,
+                                             &ptr,
+                                             &spec[i].destination_size_out);
+      spec[i].destination = ptr;
+      break;
+    case JNAV_RET_TYPED_JSON:
+      if (GNUNET_YES != ret)
+        break;
+      ptr = NULL;
+      ret = GNUNET_MINT_parse_navigate_json (connection,
+                                             root,
+                                             JNAV_FIELD,
+                                             spec[i].field_name,
+                                             JNAV_RET_TYPED_JSON,
+                                             spec[i].type,
+                                             &ptr);
+      *((void**)spec[i].destination) = ptr;
+      break;
+    case JNAV_RET_RSA_PUBLIC_KEY:
+      if (GNUNET_YES != ret)
+        break;
+      ptr = NULL;
+      ret = GNUNET_MINT_parse_navigate_json (connection,
+                                             root,
+                                             JNAV_FIELD,
+                                             spec[i].field_name,
+                                             JNAV_RET_RSA_PUBLIC_KEY,
+                                             &ptr);
+      spec[i].destination = ptr;
+      break;
+    case JNAV_RET_RSA_SIGNATURE:
+      if (GNUNET_YES != ret)
+        break;
+      ptr = NULL;
+      ret = GNUNET_MINT_parse_navigate_json (connection,
+                                             root,
+                                             JNAV_FIELD,
+                                             spec[i].field_name,
+                                             JNAV_RET_RSA_SIGNATURE,
+                                             &ptr);
+      spec[i].destination = ptr;
+      break;
+    }
+  }
+  if (GNUNET_YES != ret)
+    TALER_MINT_release_parsed_data (spec);
+  return ret;
+}
+
+
+/**
+ * Release all memory allocated for the variable-size fields in
+ * the parser specification.
+ *
+ * @param spec specification to free
+ */
+void
+TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec)
+{
+  unsigned int i;
+  void *ptr;
+
+  for (i=0; NULL != spec[i].field_name; i++)
+  {
+    switch (spec[i].command)
+    {
+    case JNAV_FIELD:
+      GNUNET_break (0);
+      return;
+    case JNAV_INDEX:
+      GNUNET_break (0);
+      return;
+    case JNAV_RET_DATA:
+      break;
+    case JNAV_RET_DATA_VAR:
+      if (0 != spec[i].destination_size_out)
+      {
+        GNUNET_free (spec[i].destination);
+        spec[i].destination = NULL;
+        spec[i].destination_size_out = 0;
+      }
+      break;
+    case JNAV_RET_TYPED_JSON:
+      ptr = *(void **) spec[i].destination;
+      if (NULL != ptr)
+      {
+        json_decref (ptr);
+        *(void**) spec[i].destination = NULL;
+      }
+      break;
+    case JNAV_RET_RSA_PUBLIC_KEY:
+      ptr = *(void **) spec[i].destination;
+      if (NULL != ptr)
+      {
+        GNUNET_CRYPTO_rsa_public_key_free (ptr);
+        *(void**) spec[i].destination = NULL;
+      }
+      break;
+    case JNAV_RET_RSA_SIGNATURE:
+      ptr = *(void **) spec[i].destination;
+      if (NULL != ptr)
+      {
+        GNUNET_CRYPTO_rsa_signature_free (ptr);
+        *(void**) spec[i].destination = NULL;
+      }
+      break;
+    }
+  }
+}
+
+
+/**
+ * Parse amount specified in JSON format.
+ *
+ * @param connection the MHD connection (to report errors)
+ * @param f json specification of the amount
+ * @param amount[OUT] set to the amount specified in @a f
+ * @return
+ *    #GNUNET_YES if parsing was successful
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error, error response was not generated
+ */
+int
+TALER_MINT_parse_amount_json (struct MHD_Connection *connection,
+                              json_t *f,
+                              struct TALER_Amount *amount)
+{
+  json_int_t value;
+  json_int_t fraction;
+  const char *currency;
+  struct TALER_Amount a;
+
+  if (-1 == json_unpack (f,
+                         "{s:I, s:I, s:s}",
+                         "value", &value,
+                         "fraction", &fraction,
+                         "currency", &currency))
+  {
+    LOG_WARNING ("Failed to parse JSON amount specification\n");
+    if (MHD_YES !=
+        TALER_MINT_reply_json_pack (connection,
+                                    MHD_HTTP_BAD_REQUEST,
+                                    "{s:s}",
+                                    "error", "Bad format"))
+      return GNUNET_SYSERR;
+    return GNUNET_NO;
+  }
+  if ( (value < 0) ||
+       (fraction < 0) ||
+       (value > UINT32_MAX) ||
+       (fraction > UINT32_MAX) )
+  {
+    LOG_WARNING ("Amount specified not in allowed range\n");
+    if (MHD_YES !=
+        TALER_MINT_reply_json_pack (connection,
+                                    MHD_HTTP_BAD_REQUEST,
+                                    "{s:s}",
+                                    "error", "Amount outside of allowed range"))
+      return GNUNET_SYSERR;
+    return GNUNET_NO;
+  }
+  if (0 != strcmp (currency,
+                   MINT_CURRENCY))
+  {
+    LOG_WARNING ("Currency specified not supported by this mint\n");
+    if (MHD_YES !=
+        TALER_MINT_reply_json_pack (connection,
+                                    MHD_HTTP_BAD_REQUEST,
+                                    "{s:s, s:s}",
+                                    "error", "Currency not supported",
+                                    "currency", currency))
+      return GNUNET_SYSERR;
+    return GNUNET_NO;
+  }
+  a.value = (uint32_t) value;
+  a.fraction = (uint32_t) fraction;
+  GNUNET_assert (strlen (MINT_CURRENCY) < TALER_CURRENCY_LEN);
+  strcpy (a.currency, MINT_CURRENCY);
+  *amount = TALER_amount_normalize (a);
   return GNUNET_OK;
 }
 

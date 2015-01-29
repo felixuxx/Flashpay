@@ -107,9 +107,9 @@ request_json_require_coin_public_info (struct MHD_Connection *connection,
   struct GNUNET_CRYPTO_rsa_PublicKey *pk;
   struct GNUNET_MINT_ParseFieldSpec spec[] =
     {
-      TALER_MINT_PARSE_FIXED("coin_pub", &r_public_info->coin_pub),
-      TALER_MINT_PARSE_VARIABLE("denom_sig"),
-      TALER_MINT_PARSE_VARIABLE("denom_pub"),
+      TALER_MINT_PARSE_FIXED ("coin_pub", &r_public_info->coin_pub),
+      TALER_MINT_PARSE_RSA_SIGNATURE ("denom_sig", &sig),
+      TALER_MINT_PARSE_RSA_PUBLIC_KEY ("denom_pub", &pk),
       TALER_MINT_PARSE_END
     };
 
@@ -118,21 +118,7 @@ request_json_require_coin_public_info (struct MHD_Connection *connection,
                                     spec);
   if (GNUNET_OK != ret)
     return ret;
-  sig = GNUNET_CRYPTO_rsa_signature_decode (spec[1].destination,
-                                            spec[1].destination_size_out);
-  pk = GNUNET_CRYPTO_rsa_public_key_decode (spec[2].destination,
-                                            spec[2].destination_size_out);
-  TALER_MINT_release_parsed_data (spec);
-  if ( (NULL == pk) ||
-       (NULL == sig) )
-  {
-    if (NULL != sig)
-      GNUNET_CRYPTO_rsa_signature_free (sig);
-    if (NULL != pk)
-      GNUNET_CRYPTO_rsa_public_key_free (pk);
-    // FIXME: send error reply...
-    return GNUNET_NO;
-  }
+  // TALER_MINT_release_parsed_data (spec);
   r_public_info->denom_sig = sig;
   r_public_info->denom_pub = pk;
   return GNUNET_OK;
@@ -152,8 +138,8 @@ request_json_require_coin_public_info (struct MHD_Connection *connection,
  */
 static int
 request_json_check_signature (struct MHD_Connection *connection,
-                              json_t *root,
-                              struct GNUNET_CRYPTO_EddsaPublicKey *pub,
+                              const json_t *root,
+                              const struct GNUNET_CRYPTO_EddsaPublicKey *pub,
                               struct GNUNET_CRYPTO_EccSignaturePurpose *purpose)
 {
   struct GNUNET_CRYPTO_EddsaSignature signature;
@@ -230,99 +216,37 @@ request_json_check_signature (struct MHD_Connection *connection,
 
 
 /**
- * Handle a "/refresh/melt" request
+ * Handle a "/refresh/melt" request after the first parsing has happened.
+ * We now need to validate the coins being melted and the session signature
+ * and then hand things of to execute the melt operation.
  *
- * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[IN|OUT] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[IN|OUT] upload_data_size number of bytes (left) in @a upload_data
+ * @param refresh_session_pub public key of the melt operation
+ * @param new_denoms array of denomination keys
+ * @param melt_coins array of coins to melt
+ * @param melt_sig_json signature affirming the melt operation
  * @return MHD result code
  */
-int
-TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
-                                 struct MHD_Connection *connection,
-                                 void **connection_cls,
-                                 const char *upload_data,
-                                 size_t *upload_data_size)
+static int
+handle_refresh_melt_json (struct MHD_Connection *connection,
+                          const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                          const json_t *new_denoms,
+                          const json_t *melt_coins,
+                          const json_t *melt_sig_json)
 {
-  json_t *root;
-  struct GNUNET_CRYPTO_EddsaPublicKey refresh_session_pub;
   int res;
-  json_t *new_denoms;
   unsigned int num_new_denoms;
   unsigned int i;
   struct GNUNET_CRYPTO_rsa_PublicKey **denom_pubs;
-  json_t *melt_coins;
   struct TALER_CoinPublicInfo *coin_public_infos;
   unsigned int coin_count;
   struct GNUNET_HashContext *hash_context;
   struct GNUNET_HashCode melt_hash;
   struct MintKeyState *key_state;
   struct RefreshMeltSignatureBody body;
-  json_t *melt_sig_json;
   char *buf;
   size_t buf_size;
   struct TALER_MINT_DenomKeyIssuePriv *dki;
-
-  res = TALER_MINT_parse_post_json (connection,
-                                    connection_cls,
-                                    upload_data,
-                                    upload_data_size,
-                                    &root);
-  if (GNUNET_SYSERR == res)
-    return MHD_NO;
-  if ( (GNUNET_NO == res) || (NULL == root) )
-    return MHD_YES;
-
-  res = GNUNET_MINT_parse_navigate_json (connection,
-                                         root,
-                                         JNAV_FIELD,
-                                         "session_pub",
-                                         JNAV_RET_DATA,
-                                         &refresh_session_pub,
-                                         sizeof (struct GNUNET_CRYPTO_EddsaPublicKey));
-  if (GNUNET_SYSERR == res)
-    return MHD_NO;
-  if (GNUNET_NO == res)
-    return MHD_YES;
-  res = GNUNET_MINT_parse_navigate_json (connection,
-                                         root,
-                                         JNAV_FIELD,
-                                         "new_denoms",
-                                         JNAV_RET_TYPED_JSON,
-                                         JSON_ARRAY,
-                                         &new_denoms);
-  if (GNUNET_SYSERR == res)
-    return MHD_NO;
-  if (GNUNET_NO == res)
-    return MHD_YES;
-
-  res = GNUNET_MINT_parse_navigate_json (connection,
-                                         root,
-                                         JNAV_FIELD,
-                                         "melt_coins",
-                                         JNAV_RET_TYPED_JSON,
-                                         JSON_ARRAY,
-                                         &melt_coins);
-  if (GNUNET_OK != res)
-    {
-      // FIXME: leaks!
-      return res;
-    }
-
-  melt_sig_json = json_object_get (root,
-                                   "melt_signature");
-  if (NULL == melt_sig_json)
-  {
-    return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       "{s:s}",
-                                       "error",
-                                       "melt_signature missing");
-  }
-
-
 
   num_new_denoms = json_array_size (new_denoms);
 
@@ -331,8 +255,7 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
 
   for (i=0;i<num_new_denoms;i++)
   {
-    res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                           JNAV_FIELD, "new_denoms",
+    res = GNUNET_MINT_parse_navigate_json (connection, new_denoms,
                                            JNAV_INDEX, (int) i,
                                            JNAV_RET_DATA_VAR,
                                            &buf,
@@ -380,7 +303,7 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
           (res = check_confirm_signature (connection,
                                           json_array_get (melt_coins, i),
                                           &coin_public_infos[i].coin_pub,
-                                          &refresh_session_pub)))
+                                          refresh_session_pub)))
       {
         GNUNET_break (GNUNET_SYSERR != res);
         // FIXME: leaks!
@@ -439,7 +362,7 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   if (GNUNET_OK !=
       (res = request_json_check_signature (connection,
                                            melt_sig_json,
-                                           &refresh_session_pub,
+                                           refresh_session_pub,
                                            &body.purpose)))
   {
     // FIXME: generate proper error reply
@@ -448,12 +371,72 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
 
 
   res = TALER_MINT_db_execute_refresh_melt (connection,
-                                            &refresh_session_pub,
+                                            refresh_session_pub,
                                             num_new_denoms,
                                             denom_pubs,
                                             coin_count,
                                             coin_public_infos);
   // FIXME: free memory
+  return res;
+}
+
+
+/**
+ * Handle a "/refresh/melt" request.  Parses the request into the JSON
+ * components and then hands things of to #handle_referesh_melt_json()
+ * to validate the melted coins, the signature and execute the melt.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[IN|OUT] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[IN|OUT] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+ */
+int
+TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
+                                 struct MHD_Connection *connection,
+                                 void **connection_cls,
+                                 const char *upload_data,
+                                 size_t *upload_data_size)
+{
+  json_t *root;
+  json_t *new_denoms;
+  json_t *melt_coins;
+  json_t *melt_sig_json;
+  struct GNUNET_CRYPTO_EddsaPublicKey refresh_session_pub;
+  int res;
+  struct GNUNET_MINT_ParseFieldSpec spec[] = {
+    TALER_MINT_PARSE_FIXED ("session_pub", &refresh_session_pub),
+    TALER_MINT_PARSE_ARRAY ("new_denoms", &new_denoms),
+    TALER_MINT_PARSE_ARRAY ("melt_coins", &melt_coins),
+    TALER_MINT_PARSE_ARRAY ("melt_signature", &melt_sig_json),
+    TALER_MINT_PARSE_END
+  };
+
+  res = TALER_MINT_parse_post_json (connection,
+                                    connection_cls,
+                                    upload_data,
+                                    upload_data_size,
+                                    &root);
+  if (GNUNET_SYSERR == res)
+    return MHD_NO;
+  if ( (GNUNET_NO == res) || (NULL == root) )
+    return MHD_YES;
+
+  res = TALER_MINT_parse_json_data (connection,
+                                    root,
+                                    spec);
+  if (GNUNET_SYSERR == res)
+    return MHD_NO;
+  if (GNUNET_NO == res)
+    return MHD_YES;
+  res = handle_refresh_melt_json (connection,
+                                  &refresh_session_pub,
+                                  new_denoms,
+                                  melt_coins,
+                                  melt_sig_json);
+  TALER_MINT_release_parsed_data (spec);
   return res;
 }
 

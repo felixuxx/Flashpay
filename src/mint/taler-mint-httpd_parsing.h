@@ -108,7 +108,19 @@ enum TALER_MINT_JsonNavigationCommand
    * or -1 for any type).
    * Params: (int, json_t **)
    */
-  JNAV_RET_TYPED_JSON
+  JNAV_RET_TYPED_JSON,
+
+  /**
+   * Return a `struct GNUNET_CRYPTO_rsa_PublicKey` which was
+   * encoded as variable-size base32crockford encoded data.
+   */
+  JNAV_RET_RSA_PUBLIC_KEY,
+
+  /**
+   * Return a `struct GNUNET_CRYPTO_rsa_Signature` which was
+   * encoded as variable-size base32crockford encoded data.
+   */
+  JNAV_RET_RSA_SIGNATURE
 };
 
 
@@ -230,15 +242,34 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec);
  * Generate line in parser specification for JSON array value.
  *
  * @param field name of the field
+ * @param ptraddr address of pointer to initialize (a `void **`)
  */
-#define TALER_MINT_PARSE_ARRAY(field) { field, NULL, 0, 0, JNAV_RET_TYPED_JSON, JSON_ARRAY }
+#define TALER_MINT_PARSE_ARRAY(field,ptraddr) { field, ptraddr, 0, 0, JNAV_RET_TYPED_JSON, JSON_ARRAY }
 
 /**
  * Generate line in parser specification for JSON object value.
  *
  * @param field name of the field
+ * @param ptraddr address of pointer to initialize (a `void **`)
  */
-#define TALER_MINT_PARSE_OBJECT(field) { field, NULL, 0, 0, JNAV_RET_TYPED_JSON, JSON_OBJECT }
+#define TALER_MINT_PARSE_OBJECT(field,ptraddr) { field, ptraddr, 0, 0, JNAV_RET_TYPED_JSON, JSON_OBJECT }
+
+/**
+ * Generate line in parser specification for RSA public key.
+ *
+ * @param field name of the field
+ * @param ptraddr address of `struct GNUNET_CRYPTO_rsa_PublicKey *` initialize
+ */
+#define TALER_MINT_PARSE_RSA_PUBLIC_KEY(field,ptrpk) { field, ptrpk, 0, 0, JNAV_RET_RSA_PUBLIC_KEY, 0 }
+
+/**
+ * Generate line in parser specification for RSA public key.
+ *
+ * @param field name of the field
+ * @param ptrsig address of `struct GNUNET_CRYPTO_rsa_Signature *` initialize
+ */
+#define TALER_MINT_PARSE_RSA_SIGNATURE(field,ptrsig) { field, ptrsig, 0, 0, JNAV_RET_RSA_SIGNATURE, 0 }
+
 
 
 /**

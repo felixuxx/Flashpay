@@ -127,8 +127,8 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   char *wire_enc;
   size_t len;
   struct GNUNET_MINT_ParseFieldSpec spec[] = {
-    TALER_MINT_PARSE_VARIABLE ("denom_pub"),
-    TALER_MINT_PARSE_VARIABLE ("ubsig"),
+    TALER_MINT_PARSE_RSA_PUBLIC_KEY ("denom_pub", &deposit.coin.denom_pub),
+    TALER_MINT_PARSE_RSA_SIGNATURE ("ubsig", &deposit.coin.denom_sig),
     TALER_MINT_PARSE_FIXED ("coin_pub", &deposit.coin.coin_pub),
     TALER_MINT_PARSE_FIXED ("merchant_pub", &deposit.merchant_pub),
     TALER_MINT_PARSE_FIXED ("H_a", &deposit.h_contract),
@@ -146,32 +146,9 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
     return MHD_NO; /* hard failure */
   if (GNUNET_NO == res)
     return MHD_YES; /* failure */
-  deposit.coin.denom_pub
-    = GNUNET_CRYPTO_rsa_public_key_decode (spec[0].destination,
-                                           spec[0].destination_size_out);
-  if (NULL == deposit.coin.denom_pub)
-  {
-    LOG_WARNING ("Failed to parse denomination key for /deposit request\n");
-    TALER_MINT_release_parsed_data (spec);
-    return TALER_MINT_reply_arg_invalid (connection,
-                                         "denom_pub");
-  }
-  deposit.coin.denom_sig
-    = GNUNET_CRYPTO_rsa_signature_decode (spec[1].destination,
-                                          spec[1].destination_size_out);
-  if (NULL == deposit.coin.denom_sig)
-  {
-    LOG_WARNING ("Failed to parse unblinded signature for /deposit request\n");
-    GNUNET_CRYPTO_rsa_public_key_free (deposit.coin.denom_pub);
-    TALER_MINT_release_parsed_data (spec);
-    return TALER_MINT_reply_arg_invalid (connection,
-                                         "denom_pub");
-  }
   /* FIXME: check that "wire" is formatted correctly */
   if (NULL == (wire_enc = json_dumps (wire, JSON_COMPACT | JSON_SORT_KEYS)))
   {
-    GNUNET_CRYPTO_rsa_public_key_free (deposit.coin.denom_pub);
-    GNUNET_CRYPTO_rsa_signature_free (deposit.coin.denom_sig);
     LOG_WARNING ("Failed to parse JSON wire format specification for /deposit request\n");
     TALER_MINT_release_parsed_data (spec);
     return TALER_MINT_reply_arg_invalid (connection,
@@ -187,8 +164,6 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   deposit.amount = *amount;
   res = verify_and_execute_deposit (connection,
                                     &deposit);
-  GNUNET_CRYPTO_rsa_public_key_free (deposit.coin.denom_pub);
-  GNUNET_CRYPTO_rsa_signature_free (deposit.coin.denom_sig);
   TALER_MINT_release_parsed_data (spec);
   return res;
 }
