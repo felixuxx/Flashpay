@@ -463,76 +463,6 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
 
 
 /**
- * Find a fixed-size field in the top-level of the JSON tree and store
- * it in @a data.
- *
- * Sends an error response if navigation is impossible (i.e.
- * the JSON object is invalid)
- *
- * @param connection the connection to send an error response to
- * @param root the JSON node to start the navigation at.
- * @param field name of the field to navigate to
- * @param data where to store the extracted data
- * @param data_size size of the @a data field
- * @param[IN|OUT] ret return value, function does nothing if @a ret is not #GNUNET_YES
- *                    on entry; will set @a ret to:
- *    #GNUNET_YES if navigation was successful
- *    #GNUNET_NO if json is malformed, error response was generated
- *    #GNUNET_SYSERR on internal error
- */
-static void
-parse_fixed_json_data (struct MHD_Connection *connection,
-                       const json_t *root,
-                       const char *field,
-                       void *data,
-                       size_t data_size,
-                       int *ret)
-{
-  if (GNUNET_YES != *ret)
-    return;
-  *ret = GNUNET_MINT_parse_navigate_json (connection,
-                                          root,
-                                          JNAV_FIELD, field,
-                                          JNAV_RET_DATA, data, data_size);
-}
-
-
-/**
- * Find a variable-size field in the top-level of the JSON tree and store
- * it in @a data.
- *
- * Sends an error response if navigation is impossible (i.e.
- * the JSON object is invalid)
- *
- * @param connection the connection to send an error response to
- * @param root the JSON node to start the navigation at.
- * @param field name of the field to navigate to
- * @param data where to store a pointer to memory allocated for the extracted data
- * @param[IN|OUT] ret return value, function does nothing if @a ret is not #GNUNET_YES
- *                    on entry; will set @a ret to:
- *    #GNUNET_YES if navigation was successful
- *    #GNUNET_NO if json is malformed, error response was generated
- *    #GNUNET_SYSERR on internal error
- */
-static void
-parse_variable_json_data (struct MHD_Connection *connection,
-                          const json_t *root,
-                          const char *field,
-                          void **data,
-                          size_t *data_size,
-                          int *ret)
-{
-  if (GNUNET_YES != *ret)
-    return;
-  *ret = GNUNET_MINT_parse_navigate_json (connection,
-                                          root,
-                                          JNAV_FIELD, field,
-                                          JNAV_RET_DATA_VAR, data, data_size);
-
-}
-
-
-/**
  * Parse JSON object into components based on the given field
  * specification.
  *
@@ -558,23 +488,51 @@ TALER_MINT_parse_json_data (struct MHD_Connection *connection,
   ret = GNUNET_YES;
   for (i=0; NULL != spec[i].field_name; i++)
   {
-    if (0 == spec[i].destination_size_in)
+    switch (spec[i].command)
     {
+    case JNAV_FIELD:
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    case JNAV_INDEX:
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    case JNAV_RET_DATA:
+      if (GNUNET_YES != ret)
+        break;
+      ret = GNUNET_MINT_parse_navigate_json (connection,
+                                             root,
+                                             JNAV_FIELD,
+                                             spec[i].field_name,
+                                             JNAV_RET_DATA,
+                                             spec[i].destination,
+                                             spec[i].destination_size_in);
+      break;
+    case JNAV_RET_DATA_VAR:
+      if (GNUNET_YES != ret)
+        break;
       ptr = NULL;
-      parse_variable_json_data (connection, root,
-                                spec[i].field_name,
-                                &ptr,
-                                &spec[i].destination_size_out,
-                                &ret);
+      ret = GNUNET_MINT_parse_navigate_json (connection,
+                                             root,
+                                             JNAV_FIELD,
+                                             spec[i].field_name,
+                                             JNAV_RET_DATA_VAR,
+                                             &ptr,
+                                             &spec[i].destination_size_out);
       spec[i].destination = ptr;
-    }
-    else
-    {
-      parse_fixed_json_data (connection, root,
-                             spec[i].field_name,
-                             spec[i].destination,
-                             spec[i].destination_size_in,
-                             &ret);
+      break;
+    case JNAV_RET_TYPED_JSON:
+      if (GNUNET_YES != ret)
+        break;
+      ptr = NULL;
+      ret = GNUNET_MINT_parse_navigate_json (connection,
+                                             root,
+                                             JNAV_FIELD,
+                                             spec[i].field_name,
+                                             JNAV_RET_TYPED_JSON,
+                                             spec[i].type,
+                                             &ptr);
+      spec[i].destination = ptr;
+      break;
     }
   }
   if (GNUNET_YES != ret)
@@ -595,13 +553,34 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec)
   unsigned int i;
 
   for (i=0; NULL != spec[i].field_name; i++)
-    if ( (0 == spec[i].destination_size_in) &&
-         (0 != spec[i].destination_size_out) )
+  {
+    switch (spec[i].command)
     {
-      GNUNET_free (spec[i].destination);
-      spec[i].destination = NULL;
-      spec[i].destination_size_out = 0;
+    case JNAV_FIELD:
+      GNUNET_break (0);
+      return;
+    case JNAV_INDEX:
+      GNUNET_break (0);
+      return;
+    case JNAV_RET_DATA:
+      break;
+    case JNAV_RET_DATA_VAR:
+      if (0 != spec[i].destination_size_out)
+      {
+        GNUNET_free (spec[i].destination);
+        spec[i].destination = NULL;
+        spec[i].destination_size_out = 0;
+      }
+      break;
+    case JNAV_RET_TYPED_JSON:
+      if (NULL != spec[i].destination)
+      {
+        json_decref (spec[i].destination);
+        spec[i].destination = NULL;
+      }
+      break;
     }
+  }
 }
 
 
@@ -774,7 +753,6 @@ TALER_MINT_mhd_request_var_arg_data (struct MHD_Connection *connection,
   *out_data = out;
   *out_size = olen;
   return GNUNET_OK;
-
 }
 
 

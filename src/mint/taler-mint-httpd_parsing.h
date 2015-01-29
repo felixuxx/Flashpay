@@ -162,6 +162,22 @@ struct GNUNET_MINT_ParseFieldSpec
    * variable-size allocations).
    */
   size_t destination_size_out;
+
+  /**
+   * Navigation command to use to extract the value.  Note that
+   * #JNAV_RET_DATA or #JNAV_RET_DATA_VAR must be used for @e
+   * destination_size_in and @e destination_size_out to have a
+   * meaning.  #JNAV_FIELD and #JNAV_INDEX must not be used here!
+   */
+  enum TALER_MINT_JsonNavigationCommand command;
+
+  /**
+   * JSON type to use, only meaningful in connection with a @e command
+   * value of #JNAV_RET_TYPED_JSON.  Typical values are
+   * #JSON_ARRAY and #JSON_OBJECT.
+   */
+  int type;
+
 };
 
 
@@ -201,19 +217,34 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec);
  * @param field name of the field
  * @param value where to store the value
  */
-#define TALER_MINT_PARSE_FIXED(field,value) { field, value, sizeof (*value), 0 }
+#define TALER_MINT_PARSE_FIXED(field,value) { field, value, sizeof (*value), 0, JNAV_RET_DATA, 0 }
 
 /**
  * Generate line in parser specification for variable-size value.
  *
  * @param field name of the field
  */
-#define TALER_MINT_PARSE_VARIABLE(field) { field, NULL, 0, 0 }
+#define TALER_MINT_PARSE_VARIABLE(field) { field, NULL, 0, 0, JNAV_RET_DATA_VAR, 0 }
+
+/**
+ * Generate line in parser specification for JSON array value.
+ *
+ * @param field name of the field
+ */
+#define TALER_MINT_PARSE_ARRAY(field) { field, NULL, 0, 0, JNAV_RET_TYPED_JSON, JSON_ARRAY }
+
+/**
+ * Generate line in parser specification for JSON object value.
+ *
+ * @param field name of the field
+ */
+#define TALER_MINT_PARSE_OBJECT(field) { field, NULL, 0, 0, JNAV_RET_TYPED_JSON, JSON_OBJECT }
+
 
 /**
  * Generate line in parser specification indicating the end of the spec.
  */
-#define TALER_MINT_PARSE_END { NULL, NULL, 0, 0 }
+#define TALER_MINT_PARSE_END { NULL, NULL, 0, 0, JNAV_FIELD, 0 }
 
 
 /**

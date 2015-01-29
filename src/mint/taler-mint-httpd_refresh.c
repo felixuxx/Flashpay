@@ -275,29 +275,57 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   if ( (GNUNET_NO == res) || (NULL == root) )
     return MHD_YES;
 
-  /* session_pub field must always be present */
-  res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                  JNAV_FIELD, "session_pub",
-                                  JNAV_RET_DATA,
-                                  &refresh_session_pub,
-                                  sizeof (struct GNUNET_CRYPTO_EddsaPublicKey));
-  if (GNUNET_OK != res)
-  {
-    // FIXME: return 'internal error'?
-    GNUNET_break (0);
+  res = GNUNET_MINT_parse_navigate_json (connection,
+                                         root,
+                                         JNAV_FIELD,
+                                         "session_pub",
+                                         JNAV_RET_DATA,
+                                         &refresh_session_pub,
+                                         sizeof (struct GNUNET_CRYPTO_EddsaPublicKey));
+  if (GNUNET_SYSERR == res)
     return MHD_NO;
-  }
   if (GNUNET_NO == res)
     return MHD_YES;
-
-  res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                         JNAV_FIELD, "new_denoms",
+  res = GNUNET_MINT_parse_navigate_json (connection,
+                                         root,
+                                         JNAV_FIELD,
+                                         "new_denoms",
                                          JNAV_RET_TYPED_JSON,
                                          JSON_ARRAY,
                                          &new_denoms);
+  if (GNUNET_SYSERR == res)
+    return MHD_NO;
+  if (GNUNET_NO == res)
+    return MHD_YES;
+
+  res = GNUNET_MINT_parse_navigate_json (connection,
+                                         root,
+                                         JNAV_FIELD,
+                                         "melt_coins",
+                                         JNAV_RET_TYPED_JSON,
+                                         JSON_ARRAY,
+                                         &melt_coins);
   if (GNUNET_OK != res)
-    return res;
+    {
+      // FIXME: leaks!
+      return res;
+    }
+
+  melt_sig_json = json_object_get (root,
+                                   "melt_signature");
+  if (NULL == melt_sig_json)
+  {
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       "{s:s}",
+                                       "error",
+                                       "melt_signature missing");
+  }
+
+
+
   num_new_denoms = json_array_size (new_denoms);
+
   denom_pubs = GNUNET_malloc (num_new_denoms *
                               sizeof (struct GNUNET_CRYPTO_rsa_PublicKey *));
 
@@ -326,27 +354,8 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
     }
   }
 
-  res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                         JNAV_FIELD, "melt_coins",
-                                         JNAV_RET_TYPED_JSON,
-                                         JSON_ARRAY,
-                                         &melt_coins);
-  if (GNUNET_OK != res)
-    {
-      // FIXME: leaks!
-      return res;
-    }
 
-  melt_sig_json = json_object_get (root,
-                                   "melt_signature");
-  if (NULL == melt_sig_json)
-  {
-    return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       "{s:s}",
-                                       "error",
-                                       "melt_signature missing");
-  }
+
 
   coin_count = json_array_size (melt_coins);
   coin_public_infos = GNUNET_malloc (coin_count *
