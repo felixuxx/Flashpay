@@ -986,11 +986,7 @@ TALER_MINT_handler_refresh_link (struct RequestHandler *rh,
                                          &coin_pub,
                                          sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey));
   if (GNUNET_SYSERR == res)
-  {
-    // FIXME: return 'internal error'
-    GNUNET_break (0);
     return MHD_NO;
-  }
   if (GNUNET_OK != res)
     return MHD_YES;
 
