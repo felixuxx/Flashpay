@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2014 Christian Grothoff (and other contributing authors)
+  (C) 2014, 2015 Christian Grothoff (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -31,7 +31,7 @@
 
 
 /**
- * Execute a /deposit.  The validity of the coin and signature
+ * Execute a "/deposit".  The validity of the coin and signature
  * have already been checked.  The database must now check that
  * the coin is not (double or over) spent, and execute the
  * transaction (record details, generate success or failure response).
@@ -46,7 +46,8 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
 
 
 /**
- * Execute a /withdraw/status.
+ * Execute a "/withdraw/status".  Given the public key of a reserve,
+ * return the associated transaction history.
  *
  * @param connection the MHD connection to handle
  * @param reserve_pub public key of the reserve to check
@@ -58,7 +59,10 @@ TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
 
 
 /**
- * Execute a /withdraw/sign.
+ * Execute a "/withdraw/sign".  Given a reserve and a properly signed
+ * request to withdraw a coin, check the balance of the reserve and
+ * if it is sufficient, store the request and return the signed
+ * blinded envelope.
  *
  * @param connection the MHD connection to handle
  * @param reserve public key of the reserve
@@ -79,7 +83,11 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
 
 
 /**
- * Execute a /refresh/melt.
+ * Execute a "/refresh/melt". We have been given a list of valid
+ * coins and a request to melt them into the given
+ * @a refresh_session_pub.  Check that the coins all have the
+ * required value left and if so, store that they have been
+ * melted and confirm the melting operation to the client.
  *
  * @param connection the MHD connection to handle
  * @param refresh_session_pub public key of the refresh session
@@ -99,16 +107,25 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
 
 
 /**
- * Execute a /refresh/commit.
+ * Execute a "/refresh/commit".  The client is committing to @a kappa
+ * sets of transfer keys, and linkage information for a refresh
+ * operation.  Confirm that the commit matches the melts of an
+ * existing @a refresh_session_pub, store the refresh session commit
+ * data and then return the client a challenge specifying which of the
+ * @a kappa sets of private transfer keys should not be revealed.
  *
  * @param connection the MHD connection to handle
  * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
  * @param num_oldcoins size of y-dimension of @commit_coin array
  * @param num_newcoins size of y-dimension of @commit_link array
- * @param commit_coin
- * @param commit_link
+ * @param commit_coin 2d array of coin commitments (what the mint is to sign
+ *                    once the "/refres/reveal" of cut and choose is done)
+ * @param commit_link 2d array of coin link commitments (what the mint is
+ *                    to return via "/refresh/link" to enable linkage in the
+ *                    future)
  * @return MHD result code
  */
+// FIXME: see #3635.
 int
 TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
                                       const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
@@ -120,7 +137,11 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
 
 
 /**
- * Execute a /refresh/reveal.
+ * Execute a "/refresh/reveal".  The client is revealing to us the
+ * transfer keys for @a kappa-1 sets of coins.  Verify that the
+ * revealed transfer keys would allow linkage to the blinded coins,
+ * and if so, return the signed coins for corresponding to the set of
+ * coins that was not chosen.
  *
  * @param connection the MHD connection to handle
  * @param refresh_session_pub public key of the refresh session
@@ -138,7 +159,9 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
 
 
 /**
- * Execute a /refresh/link.
+ * Execute a "/refresh/link".  Returns the linkage information that
+ * will allow the owner of a coin to follow the refresh trail to the
+ * refreshed coin.
  *
  * @param connection the MHD connection to handle
  * @param coin_pub public key of the coin to link
@@ -149,4 +172,5 @@ TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
                                     const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub);
 
 
-#endif /* _NEURO_MINT_DB_H */
+#endif
+/* TALER_MINT_HTTPD_DB_H */

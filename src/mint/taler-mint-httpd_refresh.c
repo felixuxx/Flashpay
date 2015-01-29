@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2014 GNUnet e.V.
+  (C) 2014, 2015 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -24,8 +24,6 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
-#include <libpq-fe.h>
-#include <pthread.h>
 #include "mint.h"
 #include "mint_db.h"
 #include "taler_signatures.h"
@@ -250,7 +248,8 @@ get_and_verify_coin_public_info (struct MHD_Connection *connection,
                                     spec);
   if (GNUNET_OK != ret)
     return ret;
-  /* TODO: include amount of coin value to be melted here!? */
+  /* FIXME: include amount of coin value to be melted here (#3636!) and
+    in what we return!? */
   body.purpose.size = htonl (sizeof (struct RefreshMeltConfirmSignRequestBody));
   body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_CONFIRM);
   body.session_pub = *session_pub;
