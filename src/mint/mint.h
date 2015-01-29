@@ -26,66 +26,11 @@
 #include <jansson.h>
 #include "taler_util.h"
 
-
 /**
  * For now, we just do EUR.  Should become configurable
  * in the future!
  */
 #define MINT_CURRENCY "EUR"
-
-
-
-
-
-
-
-
-
-/**
- * For each (old) coin being melted, we have a `struct
- * RefreshCommitLink` that allows the user to find the shared secret
- * to decrypt the respective refresh links for the new coins in the
- * `struct RefreshCommitCoin`.
- */
-struct RefreshCommitLink
-{
-  /**
-   * Transfer public key (FIXME: explain!)
-   */
-  struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub;
-
-  /**
-   * Encrypted shared secret to decrypt the link.
-   */
-  struct TALER_EncryptedLinkSecret shared_secret_enc;
-};
-
-
-/**
- * We have as many `struct RefreshCommitCoin` as there are new
- * coins being created by the refresh.
- */
-struct RefreshCommitCoin
-{
-
-  /**
-   * Encrypted data allowing those able to decrypt it to derive
-   * the private keys of the new coins created by the refresh.
-   */
-  struct TALER_RefreshLinkEncrypted *refresh_link;
-
-  /**
-   * Blinded message to be signed (in envelope), with @e coin_env_size bytes.
-   */
-  char *coin_ev;
-
-  /**
-   * Number of bytes in @e coin_ev.
-   */
-  size_t coin_ev_size;
-
-};
-
 
 
 #endif /* _MINT_H */

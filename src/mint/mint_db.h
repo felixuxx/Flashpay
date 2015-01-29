@@ -86,45 +86,8 @@ TALER_MINT_DB_insert_known_coin (PGconn *db_conn,
 
 
 
-/**
- * Store the commitment to the given (encrypted) refresh link data
- * for the given refresh session.
- *
- * @param db_conn database connection to use
- * @param refresh_session_pub public key of the refresh session this
- *        commitment belongs with
- * @param i
- * @param j
- * @param commit_link link information to store
- * @return #GNUNET_SYSERR on internal error, #GNUNET_OK on success
- */
-int
-TALER_MINT_DB_insert_refresh_commit_link (PGconn *db_conn,
-                                          const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                          int i, int j,
-                                          const struct RefreshCommitLink *commit_link);
 
 
-int
-TALER_MINT_DB_get_refresh_commit_link (PGconn *db_conn,
-                                       const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                       int i, int j,
-                                       struct RefreshCommitLink *cc);
-
-
-int
-TALER_MINT_DB_insert_refresh_commit_coin (PGconn *db_conn,
-                                          const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                          int i,
-                                          int j,
-                                          const struct RefreshCommitCoin *commit_coin);
-
-
-int
-TALER_MINT_DB_get_refresh_commit_coin (PGconn *db_conn,
-                                       const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                       int i, int j,
-                                       struct RefreshCommitCoin *commit_coin);
 
 
 struct GNUNET_CRYPTO_rsa_PublicKey *
@@ -695,6 +658,136 @@ TALER_MINT_DB_get_refresh_melt (PGconn *db_conn,
 
 
 /**
+ * We have as many `struct RefreshCommitCoin` as there are new
+ * coins being created by the refresh (for each of the kappa
+ * sets).  These are the coins we ask the mint to sign if the
+ * respective set is selected.
+ */
+struct RefreshCommitCoin
+{
+
+  /**
+   * Encrypted data allowing those able to decrypt it to derive
+   * the private keys of the new coins created by the refresh.
+   */
+  struct TALER_RefreshLinkEncrypted *refresh_link;
+
+  /**
+   * Blinded message to be signed (in envelope), with @e coin_env_size bytes.
+   */
+  char *coin_ev;
+
+  /**
+   * Number of bytes in @e coin_ev.
+   */
+  size_t coin_ev_size;
+
+};
+
+
+/**
+ * Store information about the commitment of the
+ * given coin for the given refresh session in the database.
+ *
+ * @param db_conn database connection to use
+ * @param refresh_session_pub refresh session this commitment belongs to
+ * @param i set index (1st dimension)
+ * @param j coin index (2nd dimension), corresponds to refreshed (new) coins
+ * @param commit_coin coin commitment to store
+ * @return #GNUNET_OK on success
+ *         #GNUNET_SYSERR on error
+ */
+int
+TALER_MINT_DB_insert_refresh_commit_coin (PGconn *db_conn,
+                                          const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                          unsigned int i,
+                                          unsigned int j,
+                                          const struct RefreshCommitCoin *commit_coin);
+
+
+/**
+ * Obtain information about the commitment of the
+ * given coin of the given refresh session from the database.
+ *
+ * @param db_conn database connection to use
+ * @param refresh_session_pub refresh session the commitment belongs to
+ * @param i set index (1st dimension)
+ * @param j coin index (2nd dimension), corresponds to refreshed (new) coins
+ * @param commit_coin[OUT] coin commitment to return
+ * @return #GNUNET_OK on success
+ *         #GNUNET_NO if not found
+ *         #GNUNET_SYSERR on error
+ */
+int
+TALER_MINT_DB_get_refresh_commit_coin (PGconn *db_conn,
+                                       const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                       unsigned int i,
+                                       unsigned int j,
+                                       struct RefreshCommitCoin *commit_coin);
+
+
+/**
+ * For each (old) coin being melted, we have a `struct
+ * RefreshCommitLink` that allows the user to find the shared secret
+ * to decrypt the respective refresh links for the new coins in the
+ * `struct RefreshCommitCoin`.
+ */
+struct RefreshCommitLink
+{
+  /**
+   * Transfer public key (FIXME: explain!)
+   */
+  struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub;
+
+  /**
+   * Encrypted shared secret to decrypt the link.
+   */
+  struct TALER_EncryptedLinkSecret shared_secret_enc;
+};
+
+
+/**
+ * Store the commitment to the given (encrypted) refresh link data
+ * for the given refresh session.
+ *
+ * @param db_conn database connection to use
+ * @param refresh_session_pub public key of the refresh session this
+ *        commitment belongs with
+ * @param i set index (1st dimension)
+ * @param j coin index (2nd dimension), corresponds to melted (old) coins
+ * @param commit_link link information to store
+ * @return #GNUNET_SYSERR on internal error, #GNUNET_OK on success
+ */
+int
+TALER_MINT_DB_insert_refresh_commit_link (PGconn *db_conn,
+                                          const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                          unsigned int i,
+                                          unsigned int j,
+                                          const struct RefreshCommitLink *commit_link);
+
+/**
+ * Obtain the commited (encrypted) refresh link data
+ * for the given refresh session.
+ *
+ * @param db_conn database connection to use
+ * @param refresh_session_pub public key of the refresh session this
+ *        commitment belongs with
+ * @param i set index (1st dimension)
+ * @param j coin index (2nd dimension), corresponds to melted (old) coins
+ * @param cc[OUT] link information to return
+ * @return #GNUNET_SYSERR on internal error,
+ *         #GNUNET_NO if commitment was not found
+ *         #GNUNET_OK on success
+ */
+int
+TALER_MINT_DB_get_refresh_commit_link (PGconn *db_conn,
+                                       const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                       unsigned int i,
+                                       unsigned int j,
+                                       struct RefreshCommitLink *cc);
+
+
+/**
  * Specification for a /lock operation.
  */
 struct Lock
@@ -830,9 +923,6 @@ TALER_MINT_DB_get_coin_transactions (PGconn *db_conn,
  */
 void
 TALER_MINT_DB_free_coin_transaction_list (struct TALER_MINT_DB_TransactionList *list);
-
-
-
 
 
 

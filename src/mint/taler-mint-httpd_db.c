@@ -713,11 +713,11 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
       (res = TALER_MINT_DB_get_refresh_session (db_conn,
                                                 refresh_session_pub,
                                                 &session)))
-    {
-      // FIXME: send internal error
-      GNUNET_break (0);
-      return MHD_NO;
-    }
+  {
+    // FIXME: send internal error
+    GNUNET_break (0);
+    return MHD_NO;
+  }
   return TALER_MINT_reply_refresh_melt_success (connection,
                                                 client_signature,
                                                 refresh_session_pub);
@@ -790,6 +790,14 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
     return TALER_MINT_reply_arg_invalid (connection,
                                          "session_pub");
   }
+  if ( (refresh_session.kappa != kappa) ||
+       (refresh_session.num_newcoins != num_newcoins) ||
+       (refresh_session.num_oldcoins != num_oldcoins) )
+  {
+    TALER_MINT_DB_rollback (db_conn);
+    return TALER_MINT_reply_arg_invalid (connection,
+                                         "dimensions");
+  }
   if (GNUNET_YES == refresh_session.has_commit_sig)
   {
     TALER_MINT_DB_rollback (db_conn);
@@ -797,14 +805,9 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
                                                    &refresh_session);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
-
-
-  // FIXME: this should check that kappa and num_newcoins match
-  // our expectations from refresh_session!
-
-  for (i = 0; i < refresh_session.kappa; i++)
+  for (i = 0; i < kappa; i++)
   {
-    for (j = 0; j < refresh_session.num_newcoins; j++)
+    for (j = 0; j < num_newcoins; j++)
     {
       if (GNUNET_OK !=
           TALER_MINT_DB_insert_refresh_commit_coin (db_conn,
@@ -813,12 +816,15 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
                                                     j,
                                                     &commit_coin[i][j]))
       {
-        // FIXME: return 'internal error'?
-        GNUNET_break (0);
         TALER_MINT_DB_rollback (db_conn);
-        return MHD_NO;
+        return TALER_MINT_reply_internal_db_error (connection);
       }
-
+    }
+  }
+  for (i = 0; i < kappa; i++)
+  {
+    for (j = 0; j < num_oldcoins; j++)
+    {
       if (GNUNET_OK !=
           TALER_MINT_DB_insert_refresh_commit_link (db_conn,
                                                     refresh_session_pub,
@@ -826,10 +832,8 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
                                                     j,
                                                     &commit_link[i][j]))
       {
-        // FIXME: return 'internal error'?
-        GNUNET_break (0);
         TALER_MINT_DB_rollback (db_conn);
-        return MHD_NO;
+        return TALER_MINT_reply_internal_db_error (connection);
       }
     }
   }
