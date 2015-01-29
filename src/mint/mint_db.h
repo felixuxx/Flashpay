@@ -44,50 +44,6 @@ TALER_MINT_DB_insert_refresh_order (PGconn *db_conn,
 
 
 
-
-
-
-/**
- * FIXME
- */
-struct KnownCoin
-{
-  struct TALER_CoinPublicInfo public_info;
-
-  /**
-   * Refreshing session, only valid if
-   * is_refreshed==1.
-   */
-  struct GNUNET_CRYPTO_EddsaPublicKey refresh_session_pub;
-
-  struct TALER_Amount expended_balance;
-
-  int is_refreshed;
-
-};
-
-
-int
-TALER_MINT_DB_get_known_coin (PGconn *db_conn,
-                              const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
-                              struct KnownCoin *known_coin);
-
-// FIXME: what does 'upsert' even mean!?
-int
-TALER_MINT_DB_upsert_known_coin (PGconn *db_conn,
-                                 struct KnownCoin *known_coin);
-
-
-int
-TALER_MINT_DB_insert_known_coin (PGconn *db_conn,
-                                 const struct KnownCoin *known_coin);
-
-
-
-
-
-
-
 struct GNUNET_CRYPTO_rsa_PublicKey *
 TALER_MINT_DB_get_refresh_order (PGconn *db_conn,
                                  uint16_t newcoin_index,
