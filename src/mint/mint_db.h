@@ -27,8 +27,6 @@
 #include <microhttpd.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
-#include "mint.h"
-
 
 
 /**
