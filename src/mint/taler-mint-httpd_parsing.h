@@ -270,8 +270,6 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec);
  */
 #define TALER_MINT_PARSE_RSA_SIGNATURE(field,ptrsig) { field, ptrsig, 0, 0, JNAV_RET_RSA_SIGNATURE, 0 }
 
-
-
 /**
  * Generate line in parser specification indicating the end of the spec.
  */
