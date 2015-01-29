@@ -19,11 +19,6 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
- *
- * TODO:
- * - split /refresh/reveal properly into parsing, DB-ops and response generation
- * - error handling
- * - document functions properly
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -448,10 +443,9 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   res = TALER_MINT_parse_json_data (connection,
                                     root,
                                     spec);
-  if (GNUNET_SYSERR == res)
-    return MHD_NO;
-  if (GNUNET_NO == res)
-    return MHD_YES;
+  json_decref (root);
+  if (GNUNET_OK != res)
+    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   res = handle_refresh_melt_json (connection,
                                   &refresh_session_pub,
                                   new_denoms,
@@ -674,7 +668,7 @@ handle_refresh_commit_json (struct MHD_Connection *connection,
   }
 
   /* execute commit */
-  /* FIXME: we must also store the signature! */
+  /* FIXME: we must also store the signature! (#3635) */
   res = TALER_MINT_db_execute_refresh_commit (connection,
                                               refresh_session_pub,
                                               kappa,
@@ -747,18 +741,15 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
   res = TALER_MINT_parse_json_data (connection,
                                     root,
                                     spec);
+  json_decref (root);
   if (GNUNET_OK != res)
-  {
-    json_decref (root);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-  }
 
   /* Determine dimensionality of the request (kappa, #old and #new coins) */
   kappa = json_array_size (coin_evs);
   if ( (3 > kappa) || (kappa > 32) )
   {
     GNUNET_break_op (0);
-    json_decref (root);
     TALER_MINT_release_parsed_data (spec);
     return TALER_MINT_reply_arg_invalid (connection,
                                          "coin_evs");
@@ -766,7 +757,6 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
   if (json_array_size (transfer_pubs) != kappa)
   {
     GNUNET_break_op (0);
-    json_decref (root);
     TALER_MINT_release_parsed_data (spec);
     return TALER_MINT_reply_arg_invalid (connection,
                                          "transfer_pubs");
@@ -777,19 +767,17 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
                                          JSON_ARRAY, &coin_detail);
   if (GNUNET_OK != res)
   {
-    json_decref (root);
     TALER_MINT_release_parsed_data (spec);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   num_newcoins = json_array_size (coin_detail);
-  res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                         JNAV_FIELD, "transfer_pubs",
+  res = GNUNET_MINT_parse_navigate_json (connection,
+                                         transfer_pubs,
                                          JNAV_INDEX, (int) 0,
                                          JNAV_RET_DATA,
                                          JSON_ARRAY, &coin_detail);
   if (GNUNET_OK != res)
   {
-    json_decref (root);
     TALER_MINT_release_parsed_data (spec);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
@@ -805,7 +793,6 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
                                     coin_evs,
                                     link_encs);
   TALER_MINT_release_parsed_data (spec);
-  json_decref (root);
   return res;
 }
 
@@ -920,17 +907,14 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
   res = TALER_MINT_parse_json_data (connection,
                                     root,
                                     spec);
+  json_decref (root);
   if (GNUNET_OK != res)
-  {
-    json_decref (root);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-  }
 
   /* Determine dimensionality of the request (kappa and #old coins) */
   kappa = json_array_size (transfer_privs) + 1;
   if ( (2 > kappa) || (kappa > 31) )
   {
-    json_decref (root);
     TALER_MINT_release_parsed_data (spec);
     return TALER_MINT_reply_arg_invalid (connection,
                                          "transfer_privs");
@@ -945,7 +929,6 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
                                          &reveal_detail);
   if (GNUNET_OK != res)
   {
-    json_decref (root);
     TALER_MINT_release_parsed_data (spec);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
@@ -955,7 +938,6 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
                                     kappa,
                                     num_oldcoins,
                                     transfer_privs);
-  json_decref (root);
   TALER_MINT_release_parsed_data (spec);
   return res;
 }
