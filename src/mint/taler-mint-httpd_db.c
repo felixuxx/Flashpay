@@ -137,7 +137,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                                             &deposit->coin.coin_pub);
   spent = fee_withdraw; /* fee for THIS transaction */
   /* FIXME: need to deal better with integer overflows
-     in the logic that follows! (change amount.c API!) */
+     in the logic that follows! (change amount.c API! -- #3637) */
   spent = TALER_amount_add (spent,
                             deposit->amount);
 
@@ -164,7 +164,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
          is for THIS operation, ignore it;
          if lock is for another operation,
          count it! */
-      GNUNET_assert (0);  // FIXME: not implemented!
+      GNUNET_assert (0);  // FIXME: not implemented! (#3625)
       break;
     }
   }
@@ -440,8 +440,6 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
  * @param session_pub the refresh session public key
  * @param denom_pubs_count number of entries in @a denom_pubs
  * @param denom_pubs array of public keys for the refresh
- * @param r_amount the sum of the cost (value+fee) for
- *        all requested coins
  * @return FIXME!
  */
 static int
@@ -450,24 +448,13 @@ refresh_accept_denoms (struct MHD_Connection *connection,
                        const struct MintKeyState *key_state,
                        const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
                        unsigned int denom_pubs_count,
-                       struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs,
-                       struct TALER_Amount *r_amount)
+                       struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs)
 {
   unsigned int i;
   int res;
-  struct TALER_MINT_DenomKeyIssue *dki;
-  struct TALER_Amount cost;
 
-  memset (r_amount, 0, sizeof (struct TALER_Amount));
   for (i = 0; i < denom_pubs_count; i++)
   {
-    dki = &(TALER_MINT_get_denom_key (key_state,
-                                      denom_pubs[i])->issue);
-    cost = TALER_amount_add (TALER_amount_ntoh (dki->value),
-                             TALER_amount_ntoh (dki->fee_withdraw));
-    *r_amount = TALER_amount_add (cost, *r_amount);
-
-
     /* Insert the requested coin into the DB, so we'll know later
      * what denomination the request had */
 
@@ -629,7 +616,6 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     unsigned int coin_count,
                                     const struct TALER_CoinPublicInfo *coin_public_infos)
 {
-  struct TALER_Amount requested_cost;
   struct TALER_Amount melt_balance;
   struct MintKeyState *key_state;
   struct RefreshSession session;
@@ -697,8 +683,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
       (res = refresh_accept_denoms (connection, db_conn, key_state,
                                     refresh_session_pub,
                                     num_new_denoms,
-                                    denom_pubs,
-                                    &requested_cost)))
+                                    denom_pubs)))
   {
     TALER_MINT_key_state_release (key_state);
     TALER_MINT_DB_rollback (db_conn);
@@ -723,18 +708,6 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
 
   /* Request is only ok if cost of requested coins
    * does not exceed value of melted coins. */
-
-  // FIXME: also, consider fees?
-  if (TALER_amount_cmp (melt_balance, requested_cost) < 0)
-  {
-    TALER_MINT_DB_rollback (db_conn);
-
-    return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       "{s:s}",
-                                       "error",
-                                       "not enough coins melted");
-  }
 
   if (GNUNET_OK !=
       TALER_MINT_DB_commit (db_conn))

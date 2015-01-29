@@ -167,6 +167,12 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   struct RefreshMeltSignatureBody body;
   char *buf;
   size_t buf_size;
+  struct MintKeyState *key_state;
+  struct TALER_MINT_DenomKeyIssue *dki;
+  struct TALER_Amount cost;
+  struct TALER_Amount total_cost;
+  struct TALER_Amount melt;
+  struct TALER_Amount total_melt;
 
   /* check that signature from the session public key is ok */
   hash_context = GNUNET_CRYPTO_hash_context_start ();
@@ -196,6 +202,45 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                                            refresh_session_pub,
                                            &body.purpose)))
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
+
+  // FIXME: badness, use proper way to set to zero...
+  key_state = TALER_MINT_key_state_acquire ();
+  memset (&total_cost, 0, sizeof (struct TALER_Amount));
+  for (i=0;i<num_new_denoms;i++)
+  {
+    dki = &TALER_MINT_get_denom_key (key_state,
+                                     denom_pubs[i])->issue;
+    cost = TALER_amount_add (TALER_amount_ntoh (dki->value),
+                             TALER_amount_ntoh (dki->fee_withdraw));
+    // FIXME: #3637
+    total_cost = TALER_amount_add (cost,
+                                   total_cost);
+  }
+
+  // FIXME: badness, use proper way to set to zero...
+  memset (&total_melt, 0, sizeof (struct TALER_Amount));
+  for (i=0;i<coin_count;i++)
+  {
+    memset (&melt, 0, sizeof (struct TALER_Amount));
+    // FIXME: reduce coin value by melting fee!
+    // melt = coin_values[i]; // FIXME: #3636!
+
+    // FIXME: #3637
+    total_melt = TALER_amount_add (melt,
+                                   total_melt);
+  }
+  TALER_MINT_key_state_release (key_state);
+  if (0 !=
+      TALER_amount_cmp (total_cost,
+                        total_melt) )
+  {
+    /* We require total value of coins being melted and
+       total value of coins being generated to match! */
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       "{s:s}",
+                                       "error", "value mismatch");
+  }
 
   return TALER_MINT_db_execute_refresh_melt (connection,
                                              refresh_session_pub,
