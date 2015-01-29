@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2014 Christian Grothoff (and other contributing authors)
+  (C) 2014, 2015 Christian Grothoff (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -59,47 +59,6 @@ static char *TALER_MINT_db_connection_cfg_str;
     if (cond) { GNUNET_break (0); goto EXITIF_exit; }             \
   } while (0)
 
-
-
-
-
-int
-TALER_TALER_DB_extract_amount_nbo (PGresult *result,
-                                   unsigned int row,
-                                   int indices[3],
-                                   struct TALER_AmountNBO *denom_nbo)
-{
-  if ((indices[0] < 0) || (indices[1] < 0) || (indices[2] < 0))
-    return GNUNET_NO;
-  if (sizeof (uint32_t) != PQgetlength (result, row, indices[0]))
-    return GNUNET_SYSERR;
-  if (sizeof (uint32_t) != PQgetlength (result, row, indices[1]))
-    return GNUNET_SYSERR;
-  if (PQgetlength (result, row, indices[2]) > TALER_CURRENCY_LEN)
-    return GNUNET_SYSERR;
-  denom_nbo->value = *(uint32_t *) PQgetvalue (result, row, indices[0]);
-  denom_nbo->fraction = *(uint32_t *) PQgetvalue (result, row, indices[1]);
-  memset (denom_nbo->currency, 0, TALER_CURRENCY_LEN);
-  memcpy (denom_nbo->currency, PQgetvalue (result, row, indices[2]), PQgetlength (result, row, indices[2]));
-  return GNUNET_OK;
-}
-
-
-int
-TALER_TALER_DB_extract_amount (PGresult *result,
-                               unsigned int row,
-                               int indices[3],
-                               struct TALER_Amount *denom)
-{
-  struct TALER_AmountNBO denom_nbo;
-  int res;
-
-  res = TALER_TALER_DB_extract_amount_nbo (result, row, indices, &denom_nbo);
-  if (GNUNET_OK != res)
-    return res;
-  *denom = TALER_amount_ntoh (denom_nbo);
-  return GNUNET_OK;
-}
 
 
 int
@@ -1263,12 +1222,12 @@ TALER_MINT_DB_get_reserve_history (PGconn *db_conn,
   }
 
   {
-    int fnums[] = {
-      PQfnumber (result, "balance_value"),
-      PQfnumber (result, "balance_fraction"),
-      PQfnumber (result, "balance_currency"),
-    };
-    if (GNUNET_OK != TALER_TALER_DB_extract_amount_nbo (result, 0, fnums, &reserve->balance))
+    if (GNUNET_OK !=
+        TALER_DB_extract_amount_nbo (result, 0,
+                                     "balance_value",
+                                     "balance_fraction",
+                                     "balance_currency",
+                                     &reserve->balance))
     {
       GNUNET_break (0);
       PQclear (result);

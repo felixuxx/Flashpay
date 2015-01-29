@@ -27,6 +27,7 @@
 #include "taler_util.h"
 #include "taler_signatures.h"
 #include "mint_db.h"
+#include "db_pq.h"
 
 char *mintdir;
 
@@ -46,7 +47,7 @@ static PGconn *db_conn;
  *
  * @return ...
  */
-int
+static int
 reservemod_add (struct TALER_Amount denom)
 {
   PGresult *result;
@@ -96,7 +97,6 @@ reservemod_add (struct TALER_Amount denom)
     struct TALER_Amount old_denom;
     struct TALER_Amount new_denom;
     struct TALER_AmountNBO new_denom_nbo;
-    int denom_indices[] = {0, 1, 2};
     int param_lengths[] = {4, 4, 32};
     int param_formats[] = {1, 1, 1};
     const void *param_values[] = {
@@ -105,7 +105,12 @@ reservemod_add (struct TALER_Amount denom)
       reserve_pub
     };
 
-    GNUNET_assert (GNUNET_OK == TALER_TALER_DB_extract_amount (result, 0, denom_indices, &old_denom));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_DB_extract_amount (result, 0,
+                                            "balance_value",
+                                            "balance_fraction",
+                                            "balance_currency",
+                                            &old_denom));
     new_denom = TALER_amount_add (old_denom, denom);
     new_denom_nbo = TALER_amount_hton (new_denom);
     result = PQexecParams (db_conn,

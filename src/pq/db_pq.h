@@ -181,6 +181,9 @@ TALER_DB_extract_amount (PGresult *result,
                          const char *curr_name,
                          struct TALER_Amount *r_amount);
 
+
+
+
 #endif  /* TALER_DB_LIB_H_ */
 
 /* end of include/taler_db_lib.h */

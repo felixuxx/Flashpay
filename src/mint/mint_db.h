@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2014 Christian Grothoff (and other contributing authors)
+  (C) 2014, 2015 Christian Grothoff (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -19,9 +19,8 @@
  * @author Florian Dold
  * @author Christian Grothoff
  */
-
-#ifndef _NEURO_MINT_DB_H
-#define _NEURO_MINT_DB_H
+#ifndef MINT_DB_H
+#define MINT_DB_H
 
 #include <libpq-fe.h>
 #include <microhttpd.h>
@@ -99,21 +98,6 @@ TALER_db_get_transfer (PGconn *db_conn,
                        const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
                        struct GNUNET_CRYPTO_EcdsaPublicKey *transfer_pub,
                        struct GNUNET_HashCode *shared_secret_enc);
-
-
-int
-TALER_TALER_DB_extract_amount (PGresult *result,
-                               unsigned int row,
-                               int indices[3],
-                               struct TALER_Amount *denom);
-
-int
-TALER_TALER_DB_extract_amount_nbo (PGresult *result,
-                                   unsigned int row,
-                                   int indices[3],
-                                   struct TALER_AmountNBO *denom_nbo);
-
-
 
 
 
