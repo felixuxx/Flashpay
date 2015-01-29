@@ -404,7 +404,8 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
 /**
  * Handle a "/refresh/melt" request.  Parses the request into the JSON
  * components and then hands things of to #handle_referesh_melt_json()
- * to validate the melted coins, the signature and execute the melt.
+ * to validate the melted coins, the signature and execute the melt
+ * using TALER_MINT_db_execute_refresh_melt().
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
@@ -692,7 +693,10 @@ handle_refresh_commit_json (struct MHD_Connection *connection,
  * Handle a "/refresh/commit" request.  Parses the top-level JSON to
  * determine the dimensions of the problem and then handles handing
  * off to #handle_refresh_commit_json() to parse the details of the
- * JSON arguments.
+ * JSON arguments.  Once the signature has been verified, the
+ * commit data is written to the database via
+ * #TALER_MINT_db_execute_refresh_commit() and the reveal parameter
+ * is then returned to the client.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
@@ -751,7 +755,7 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
 
   /* Determine dimensionality of the request (kappa, #old and #new coins) */
   kappa = json_array_size (coin_evs);
-  if (3 > kappa)
+  if ( (3 > kappa) || (kappa > 32) )
   {
     GNUNET_break_op (0);
     json_decref (root);
@@ -807,7 +811,74 @@ TALER_MINT_handler_refresh_commit (struct RequestHandler *rh,
 
 
 /**
- * Handle a "/refresh/reveal" request
+ * Handle a "/refresh/reveal" request.   Parses the given JSON
+ * transfer private keys and if successful, passes everything to
+ * #TALER_MINT_db_execute_refresh_reveal() which will verify that the
+ * revealed information is valid then returns the signed refreshed
+ * coins.
+ *
+ * @param connection the MHD connection to handle
+ * @param refresh_session_pub public key of the session
+ * @param kappa length of the 1st dimension of @a transfer_privs array PLUS ONE
+ * @param num_oldcoins length of the 2nd dimension of @a transfer_privs array
+ * @param tp_json private transfer keys in JSON format
+ * @return MHD result code
+  */
+static int
+handle_refresh_reveal_json (struct MHD_Connection *connection,
+                            const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                            unsigned int kappa,
+                            unsigned int num_oldcoins,
+                            const json_t *tp_json)
+{
+  struct GNUNET_CRYPTO_EcdsaPrivateKey *transfer_privs[kappa - 1];
+  unsigned int i;
+  unsigned int j;
+  int res;
+
+  for (i = 0; i < kappa - 1; i++)
+    transfer_privs[i] = GNUNET_malloc (num_oldcoins *
+                                       sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey));
+  res = GNUNET_OK;
+  for (i = 0; i < kappa - 1; i++)
+  {
+    if (GNUNET_OK != res)
+      break;
+    for (j = 0; j < num_oldcoins; j++)
+    {
+      if (GNUNET_OK != res)
+        break;
+      res = GNUNET_MINT_parse_navigate_json (connection,
+                                             tp_json,
+                                             JNAV_INDEX, (int) i,
+                                             JNAV_INDEX, (int) j,
+                                             JNAV_RET_DATA,
+                                             &transfer_privs[i][j],
+                                             sizeof (struct GNUNET_CRYPTO_EddsaPrivateKey));
+    }
+  }
+  if (GNUNET_OK != res)
+    res = (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
+  else
+    res = TALER_MINT_db_execute_refresh_reveal (connection,
+                                                refresh_session_pub,
+                                                kappa,
+                                                num_oldcoins,
+                                                transfer_privs);
+  for (i = 0; i < kappa - 1; i++)
+    GNUNET_free (transfer_privs[i]);
+  return res;
+}
+
+
+/**
+ * Handle a "/refresh/reveal" request. This time, the client reveals
+ * the private transfer keys except for the cut-and-choose value
+ * returned from "/refresh/commit".  This function parses the revealed
+ * keys and secrets and ultimately passes everything to
+ * #TALER_MINT_db_execute_refresh_reveal() which will verify that the
+ * revealed information is valid then returns the signed refreshed
+ * coins.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
@@ -827,12 +898,14 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
   int res;
   unsigned int kappa;
   unsigned int num_oldcoins;
-  json_t *transfer_p;
   json_t *reveal_detail;
-  unsigned int i;
-  unsigned int j;
   json_t *root;
-  struct GNUNET_CRYPTO_EcdsaPrivateKey **transfer_privs;
+  json_t *transfer_privs;
+  struct GNUNET_MINT_ParseFieldSpec spec[] = {
+    TALER_MINT_PARSE_FIXED ("session_pub", &refresh_session_pub),
+    TALER_MINT_PARSE_ARRAY ("transfer_privs", &transfer_privs),
+    TALER_MINT_PARSE_END
+  };
 
   res = TALER_MINT_parse_post_json (connection,
                                     connection_cls,
@@ -844,71 +917,46 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
   if ( (GNUNET_NO == res) || (NULL == root) )
     return MHD_YES;
 
-  res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                  JNAV_FIELD, "session_pub",
-                                  JNAV_RET_DATA,
-                                  &refresh_session_pub,
-                                  sizeof (struct GNUNET_CRYPTO_EddsaPublicKey));
+  res = TALER_MINT_parse_json_data (connection,
+                                    root,
+                                    spec);
   if (GNUNET_OK != res)
   {
-    GNUNET_break (GNUNET_SYSERR != res);
-    return res;
+    json_decref (root);
+    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
-
 
   /* Determine dimensionality of the request (kappa and #old coins) */
-  res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                         JNAV_FIELD, "transfer_privs",
-                                         JNAV_RET_TYPED_JSON, JSON_ARRAY, &transfer_p);
-  if (GNUNET_OK != res)
-    return res;
-  kappa = json_array_size (transfer_p) + 1; /* 1 row is missing */
-  if (3 > kappa)
+  kappa = json_array_size (transfer_privs) + 1;
+  if ( (2 > kappa) || (kappa > 31) )
   {
-    GNUNET_break_op (0);
-    // FIXME: generate error message
-    return MHD_NO;
+    json_decref (root);
+    TALER_MINT_release_parsed_data (spec);
+    return TALER_MINT_reply_arg_invalid (connection,
+                                         "transfer_privs");
   }
-  res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                         JNAV_FIELD, "transfer_privs",
+  /* Note we do +1 as 1 row (cut-and-choose!) is missing! */
+  kappa++;
+  res = GNUNET_MINT_parse_navigate_json (connection,
+                                         transfer_privs,
                                          JNAV_INDEX, 0,
-                                         JNAV_RET_TYPED_JSON, JSON_ARRAY, &reveal_detail);
+                                         JNAV_RET_TYPED_JSON,
+                                         JSON_ARRAY,
+                                         &reveal_detail);
   if (GNUNET_OK != res)
-    return res;
-  num_oldcoins = json_array_size (reveal_detail);
-
-
-  transfer_privs = GNUNET_malloc ((kappa - 1) *
-                                  sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey *));
-  for (i = 0; i < kappa - 1; i++)
   {
-    transfer_privs[i] = GNUNET_malloc (num_oldcoins *
-                                       sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey));
-    for (j = 0; j < num_oldcoins; j++)
-      {
-        res = GNUNET_MINT_parse_navigate_json (connection, root,
-                                               JNAV_FIELD, "transfer_privs",
-                                               JNAV_INDEX, (int) i,
-                                               JNAV_INDEX, (int) j,
-                                               JNAV_RET_DATA,
-                                               &transfer_privs[i][j],
-                                               sizeof (struct GNUNET_CRYPTO_EddsaPrivateKey));
-        if (GNUNET_OK != res)
-          {
-            GNUNET_break (0);
-            // FIXME: return 'internal error'?
-            return MHD_NO;
-          }
-      }
+    json_decref (root);
+    TALER_MINT_release_parsed_data (spec);
+    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
-
-
-  res = TALER_MINT_db_execute_refresh_reveal (connection,
-                                              &refresh_session_pub,
-                                              kappa,
-                                              num_oldcoins,
-                                              transfer_privs);
-  // FIXME: free memory
+  num_oldcoins = json_array_size (reveal_detail);
+  res = handle_refresh_reveal_json (connection,
+                                    &refresh_session_pub,
+                                    kappa,
+                                    num_oldcoins,
+                                    transfer_privs);
+  json_decref (root);
+  TALER_MINT_release_parsed_data (spec);
   return res;
 }
 
