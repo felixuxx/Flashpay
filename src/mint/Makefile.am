@@ -107,7 +107,9 @@ test_mint_deposits_SOURCES = \
 test_mint_deposits_LDADD = \
   libtalermint_common.la \
   $(top_srcdir)/src/util/libtalerutil.la \
+  $(top_srcdir)/src/pq/libtalerpq.la \
   -lgnunetutil \
+  -ljansson \
   -lpq
 
 test_mint_common_SOURCES = \
@@ -115,4 +117,5 @@ test_mint_common_SOURCES = \
 test_mint_common_LDADD = \
   libtalermint_common.la \
   $(top_srcdir)/src/util/libtalerutil.la \
+  $(top_srcdir)/src/pq/libtalerpq.la \
   -lgnunetutil

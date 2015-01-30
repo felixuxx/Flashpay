@@ -24,8 +24,15 @@
 #include <libpq-fe.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "mint_db.h"
+#include "db_pq.h"
+#include "taler-mint-httpd.h"
 
 #define DB_URI "postgres:///taler"
+
+#define break_db_err(result) do { \
+    GNUNET_break(0); \
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Database failure: %s\n", PQresultErrorMessage (result)); \
+  } while (0)
 
 /**
  * Shorthand for exit jumps.
@@ -118,11 +125,9 @@ run (void *cls, char *const *args, const char *cfgfile,
       "\"BIC\":\"GENODEF1SRL\""
       "}";
   struct Deposit *deposit;
-  struct Deposit *q_deposit;
   uint64_t transaction_id;
 
   deposit = NULL;
-  q_deposit = NULL;
   GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_FOREVER_REL,
                                 &do_shutdown, NULL);
   EXITIF (NULL == (conn = PQconnectdb(DB_URI)));
@@ -145,24 +150,15 @@ run (void *cls, char *const *args, const char *cfgfile,
   GNUNET_assert (strlen (MINT_CURRENCY) < sizeof (deposit->amount.currency));
   strcpy (deposit->amount.currency, MINT_CURRENCY);
   /* Copy wireformat */
-  memcpy (deposit->wire,
-          wire,
-          sizeof (wire));
+  deposit->wire = json_loads (wire, 0, NULL);
   EXITIF (GNUNET_OK != TALER_MINT_DB_insert_deposit (conn,
                                                      deposit));
-  EXITIF (GNUNET_OK != TALER_MINT_DB_get_deposit (conn,
-                                                  &deposit->coin_pub,
-                                                  &q_deposit));
-  EXITIF (0 != memcmp (deposit,
-                       q_deposit,
-                       sizeof (struct Deposit) - offsetof(struct Deposit,
-                                                          wire)));
-  EXITIF (transaction_id != GNUNET_ntohll (q_deposit->transaction_id));
+  EXITIF (GNUNET_OK != TALER_MINT_DB_have_deposit (conn,
+                                                   deposit));
   result = GNUNET_OK;
 
  EXITIF_exit:
   GNUNET_free_non_null (deposit);
-  GNUNET_free_non_null (q_deposit);
   GNUNET_SCHEDULER_shutdown ();
   return;
 }

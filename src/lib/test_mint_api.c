@@ -109,8 +109,8 @@ cont (void *cls, const char *emsg)
   if (NULL != emsg)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "%s\n", emsg);
 
-  enc_32 = TALER_data_to_string_alloc (rnd_32, sizeof (rnd_32));
-  enc_64 = TALER_data_to_string_alloc (rnd_64, sizeof (rnd_64));
+  enc_32 = GNUNET_STRINGS_data_to_string_alloc (rnd_32, sizeof (rnd_32));
+  enc_64 = GNUNET_STRINGS_data_to_string_alloc (rnd_64, sizeof (rnd_64));
   dp = json_pack ("{s:s s:o s:s s:s s:s s:s s:s s:s s:s s:s}",
                   "type", "DIRECT_DEPOSIT",
                   "wire", json_pack ("{s:s}", "type", "SEPA"),
