@@ -385,7 +385,7 @@ TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
 static void
 handle_signal (int signal_number)
 {
-  size_t res;
+  ssize_t res;
   char c = signal_number;
 
   if (SIGUSR1 == signal_number)
