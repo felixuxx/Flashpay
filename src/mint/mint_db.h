@@ -35,19 +35,6 @@ int
 TALER_MINT_DB_prepare (PGconn *db_conn);
 
 
-int
-TALER_MINT_DB_insert_refresh_order (PGconn *db_conn,
-                                    uint16_t newcoin_index,
-                                    const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                    const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub);
-
-
-
-struct GNUNET_CRYPTO_rsa_PublicKey *
-TALER_MINT_DB_get_refresh_order (PGconn *db_conn,
-                                 uint16_t newcoin_index,
-                                 const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub);
-
 
 int
 TALER_MINT_DB_insert_refresh_collectable (PGconn *db_conn,
@@ -520,6 +507,8 @@ TALER_MINT_DB_update_refresh_session (PGconn *db_conn,
 
 /**
  * Specification for coin in a /refresh/melt operation.
+ * FIXME: same as `struct MeltDetails`, and not by accident!
+ * We should merge the structs!
  */
 struct RefreshMelt /* FIXME: name to make it clearer this is about ONE coin! */
 {
@@ -527,11 +516,6 @@ struct RefreshMelt /* FIXME: name to make it clearer this is about ONE coin! */
    * Information about the coin that is being melted.
    */
   struct TALER_CoinPublicInfo coin;
-
-  /**
-   * Public key of the melting session.
-   */
-  struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
 
   /**
    * Signature over the melting operation.
@@ -543,39 +527,25 @@ struct RefreshMelt /* FIXME: name to make it clearer this is about ONE coin! */
    */
   struct TALER_Amount amount;
 
-  /**
-   * What is the index of this coin in the melting session?
-   */
-  uint16_t oldcoin_index;
-
 };
-
-
-/**
- * Test if the given /refresh/melt request is known to us.
- *
- * @param db_conn database connection
- * @param melt melt operation
- * @return #GNUNET_YES if known,
- *         #GNUENT_NO if not,
- *         #GNUNET_SYSERR on internal error
- */
-int
-TALER_MINT_DB_have_refresh_melt (PGconn *db_conn,
-                                 const struct RefreshMelt *melt);
 
 
 /**
  * Store the given /refresh/melt request in the database.
  *
  * @param db_conn database connection
- * @param melt melt operation
+ * @param session session key of the melt operation
+ * @param oldcoin_index index of the coin to store
+ * @param melt coin melt operation details to store
  * @return #GNUNET_OK on success
  *         #GNUNET_SYSERR on internal error
  */
 int
 TALER_MINT_DB_insert_refresh_melt (PGconn *db_conn,
+                                   const struct GNUNET_CRYPTO_EddsaPublicKey *session,
+                                   uint16_t oldcoin_index,
                                    const struct RefreshMelt *melt);
+
 
 
 /**
@@ -593,6 +563,40 @@ TALER_MINT_DB_get_refresh_melt (PGconn *db_conn,
                                 const struct GNUNET_CRYPTO_EddsaPublicKey *session,
                                 uint16_t oldcoin_index,
                                 struct RefreshMelt *melt);
+
+
+/**
+ * Store in the database which coin(s) we want to create
+ * in a given refresh operation.
+ *
+ * @param db_conn database connection
+ * @param session_pub refresh session key
+ * @param newcoin_index index of the coin to generate
+ * @param denom_pub denomination of the coin to create
+ * @return #GNUNET_OK on success
+ *         #GNUNET_SYSERR on internal error
+ */
+int
+TALER_MINT_DB_insert_refresh_order (PGconn *db_conn,
+                                    const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                                    uint16_t newcoin_index,
+                                    const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub);
+
+
+/**
+ * Lookup in the database the @a newcoin_index coin that we want to
+ * create in the given refresh operation.
+ *
+ * @param db_conn database connection
+ * @param session_pub refresh session key
+ * @param newcoin_index index of the coin to generate
+ * @param denom_pub denomination of the coin to create
+ * @return NULL on error (not found or internal error)
+ */
+struct GNUNET_CRYPTO_rsa_PublicKey *
+TALER_MINT_DB_get_refresh_order (PGconn *db_conn,
+                                 const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                                 uint16_t newcoin_index);
 
 
 /**

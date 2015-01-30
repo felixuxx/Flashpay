@@ -494,51 +494,6 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
 }
 
 
-/**
- * Insert a refresh order into the database.
- */
-int
-TALER_MINT_DB_insert_refresh_order (PGconn *db_conn,
-                                    uint16_t newcoin_index,
-                                    const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                    const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub)
-{
-  uint16_t newcoin_index_nbo = htons (newcoin_index);
-  char *buf;
-  size_t buf_size;
-  PGresult *result;
-
-  buf_size = GNUNET_CRYPTO_rsa_public_key_encode (denom_pub,
-                                                  &buf);
-
-  {
-    struct TALER_DB_QueryParam params[] = {
-      TALER_DB_QUERY_PARAM_PTR (&newcoin_index_nbo),
-      TALER_DB_QUERY_PARAM_PTR (session_pub),
-      TALER_DB_QUERY_PARAM_PTR_SIZED (buf, buf_size),
-      TALER_DB_QUERY_PARAM_END
-    };
-    result = TALER_DB_exec_prepared (db_conn,
-                                     "insert_refresh_order",
-                                     params);
-  }
-  GNUNET_free (buf);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (0 != strcmp ("1", PQcmdTuples (result)))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
-}
-
-
 int
 TALER_MINT_DB_set_commit_signature (PGconn *db_conn,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
@@ -577,55 +532,6 @@ TALER_MINT_DB_set_reveal_ok (PGconn *db_conn,
   return GNUNET_OK;
 }
 
-
-struct GNUNET_CRYPTO_rsa_PublicKey *
-TALER_MINT_DB_get_refresh_order (PGconn *db_conn,
-                                 uint16_t newcoin_index,
-                                 const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub)
-
-{
-  char *buf;
-  size_t buf_size;
-  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
-  uint16_t newcoin_index_nbo = htons (newcoin_index);
-
-  struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(session_pub),
-    TALER_DB_QUERY_PARAM_PTR(&newcoin_index_nbo),
-    TALER_DB_QUERY_PARAM_END
-  };
-
-  PGresult *result = TALER_DB_exec_prepared (db_conn, "get_refresh_order", params);
-
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return NULL;
-  }
-
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    /* FIXME: may want to distinguish between different error cases! */
-    return NULL;
-  }
-  GNUNET_assert (1 == PQntuples (result));
-  struct TALER_DB_ResultSpec rs[] = {
-    TALER_DB_RESULT_SPEC_VAR ("denom_pub", &buf, &buf_size),
-    TALER_DB_RESULT_SPEC_END
-  };
-  if (GNUNET_OK != TALER_DB_extract_result (result, rs, 0))
-  {
-    PQclear (result);
-    GNUNET_break (0);
-    return NULL;
-  }
-  PQclear (result);
-  denom_pub = GNUNET_CRYPTO_rsa_public_key_decode (buf, buf_size);
-  GNUNET_free (buf);
-  return denom_pub;
-}
 
 
 int
@@ -1480,61 +1386,23 @@ TALER_MINT_DB_update_refresh_session (PGconn *db_conn,
 
 
 /**
- * Test if the given /refresh/melt request is known to us.
- *
- * @param db_conn database connection
- * @param melt melt operation
- * @return #GNUNET_YES if known,
- *         #GNUENT_NO if not,
- *         #GNUNET_SYSERR on internal error
- */
-int
-TALER_MINT_DB_have_refresh_melt (PGconn *db_conn,
-                                 const struct RefreshMelt *melt)
-{
-  // FIXME: check logic!
-  uint16_t oldcoin_index_nbo = htons (melt->oldcoin_index);
-  struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(&melt->session_pub),
-    TALER_DB_QUERY_PARAM_PTR(&oldcoin_index_nbo),
-    TALER_DB_QUERY_PARAM_END
-  };
-
-  PGresult *result = TALER_DB_exec_prepared (db_conn,
-                                             "get_refresh_melt",
-                                             params);
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    return GNUNET_NO;
-  }
-  GNUNET_break (1 == PQntuples (result));
-  PQclear (result);
-  return GNUNET_YES;
-}
-
-
-/**
  * Store the given /refresh/melt request in the database.
  *
  * @param db_conn database connection
+ * @param session session key of the melt operation
+ * @param oldcoin_index index of the coin to store
  * @param melt melt operation
  * @return #GNUNET_OK on success
  *         #GNUNET_SYSERR on internal error
  */
 int
 TALER_MINT_DB_insert_refresh_melt (PGconn *db_conn,
+                                   const struct GNUNET_CRYPTO_EddsaPublicKey *session,
+                                   uint16_t oldcoin_index,
                                    const struct RefreshMelt *melt)
 {
   // FIXME: check logic!
-  uint16_t oldcoin_index_nbo = htons (melt->oldcoin_index);
+  uint16_t oldcoin_index_nbo = htons (oldcoin_index);
   char *buf;
   size_t buf_size;
   PGresult *result;
@@ -1543,7 +1411,7 @@ TALER_MINT_DB_insert_refresh_melt (PGconn *db_conn,
                                                   &buf);
   {
     struct TALER_DB_QueryParam params[] = {
-      TALER_DB_QUERY_PARAM_PTR(&melt->session_pub),
+      TALER_DB_QUERY_PARAM_PTR(session),
       TALER_DB_QUERY_PARAM_PTR(&oldcoin_index_nbo),
       TALER_DB_QUERY_PARAM_PTR(&melt->coin.coin_pub),
       TALER_DB_QUERY_PARAM_PTR_SIZED(buf, buf_size),
@@ -1583,6 +1451,121 @@ TALER_MINT_DB_get_refresh_melt (PGconn *db_conn,
   GNUNET_break (0);
   return GNUNET_SYSERR;
 }
+
+
+/**
+ * Store in the database which coin(s) we want to create
+ * in a given refresh operation.
+ *
+ * @param db_conn database connection
+ * @param session_pub refresh session key
+ * @param newcoin_index index of the coin to generate
+ * @param denom_pub denomination of the coin to create
+ * @return #GNUNET_OK on success
+ *         #GNUNET_SYSERR on internal error
+ */
+int
+TALER_MINT_DB_insert_refresh_order (PGconn *db_conn,
+                                    const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                                    uint16_t newcoin_index,
+                                    const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub)
+{
+  // FIXME: check logic
+  uint16_t newcoin_index_nbo = htons (newcoin_index);
+  char *buf;
+  size_t buf_size;
+  PGresult *result;
+
+  buf_size = GNUNET_CRYPTO_rsa_public_key_encode (denom_pub,
+                                                  &buf);
+
+  {
+    struct TALER_DB_QueryParam params[] = {
+      TALER_DB_QUERY_PARAM_PTR (&newcoin_index_nbo),
+      TALER_DB_QUERY_PARAM_PTR (session_pub),
+      TALER_DB_QUERY_PARAM_PTR_SIZED (buf, buf_size),
+      TALER_DB_QUERY_PARAM_END
+    };
+    result = TALER_DB_exec_prepared (db_conn,
+                                     "insert_refresh_order",
+                                     params);
+  }
+  GNUNET_free (buf);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    break_db_err (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  if (0 != strcmp ("1", PQcmdTuples (result)))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Lookup in the database the @a newcoin_index coin that we want to
+ * create in the given refresh operation.
+ *
+ * @param db_conn database connection
+ * @param session_pub refresh session key
+ * @param newcoin_index index of the coin to generate
+ * @param denom_pub denomination of the coin to create
+ * @return NULL on error (not found or internal error)
+ */
+struct GNUNET_CRYPTO_rsa_PublicKey *
+TALER_MINT_DB_get_refresh_order (PGconn *db_conn,
+                                 const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                                 uint16_t newcoin_index)
+{
+  // FIXME: check logic
+  char *buf;
+  size_t buf_size;
+  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+  uint16_t newcoin_index_nbo = htons (newcoin_index);
+
+  struct TALER_DB_QueryParam params[] = {
+    TALER_DB_QUERY_PARAM_PTR(session_pub),
+    TALER_DB_QUERY_PARAM_PTR(&newcoin_index_nbo),
+    TALER_DB_QUERY_PARAM_END
+  };
+
+  PGresult *result = TALER_DB_exec_prepared (db_conn, "get_refresh_order", params);
+
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    break_db_err (result);
+    PQclear (result);
+    return NULL;
+  }
+
+  if (0 == PQntuples (result))
+  {
+    PQclear (result);
+    /* FIXME: may want to distinguish between different error cases! */
+    return NULL;
+  }
+  GNUNET_assert (1 == PQntuples (result));
+  struct TALER_DB_ResultSpec rs[] = {
+    TALER_DB_RESULT_SPEC_VAR ("denom_pub", &buf, &buf_size),
+    TALER_DB_RESULT_SPEC_END
+  };
+  if (GNUNET_OK != TALER_DB_extract_result (result, rs, 0))
+  {
+    PQclear (result);
+    GNUNET_break (0);
+    return NULL;
+  }
+  PQclear (result);
+  denom_pub = GNUNET_CRYPTO_rsa_public_key_decode (buf, buf_size);
+  GNUNET_free (buf);
+  return denom_pub;
+}
+
 
 
 /**

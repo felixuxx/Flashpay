@@ -80,6 +80,24 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
                                      const struct GNUNET_CRYPTO_EddsaSignature *signature);
 
 
+/**
+ * Details about a melt operation of an individual coin.
+ */
+struct MeltDetails
+{
+  /**
+   * Signature allowing the melt (using
+   * a `struct RefreshMeltConfirmSignRequestBody`) to sign over.
+   */
+  struct GNUNET_CRYPTO_EcdsaSignature melt_sig;
+
+  /**
+   * How much of the coin's value did the client allow to be melted?
+   * (FIXME: are the fees included here!?)
+   */
+  struct TALER_Amount melt_amount;
+};
+
 
 /**
  * Execute a "/refresh/melt". We have been given a list of valid
@@ -94,8 +112,9 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
  *         over the melting request
  * @param num_new_denoms number of entries in @a denom_pubs
  * @param denum_pubs array of public denomination keys for the refresh (?)
- * @param coin_count number of entries in @a coin_public_infos
+ * @param coin_count number of entries in @a coin_public_infos and @ a coin_melt_details
  * @param coin_public_infos information about the coins to melt
+ * @param coin_melt_details signatures and (residual) value of the respective coin should be melted
  * @return MHD result code
  */
 int
@@ -105,7 +124,8 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     unsigned int num_new_denoms,
                                     struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs,
                                     unsigned int coin_count,
-                                    const struct TALER_CoinPublicInfo *coin_public_infos);
+                                    const struct TALER_CoinPublicInfo *coin_public_infos,
+                                    const struct MeltDetails *coin_melt_details);
 
 
 /**
