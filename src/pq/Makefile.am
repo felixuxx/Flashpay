@@ -1,5 +1,10 @@
 AM_CPPFLAGS = -I$(top_srcdir)/src/include $(LIBGCRYPT_CFLAGS) $(POSTGRESQL_CPPFLAGS)
 
+talerincludedir = $(includedir)/taler
+
+talerinclude_HEADERS = \
+  db_pq.h
+
 lib_LTLIBRARIES = \
   libtalerpq.la
 
