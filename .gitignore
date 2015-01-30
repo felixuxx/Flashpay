@@ -24,3 +24,4 @@ GPATH
 GRTAGS
 GTAGS
 *.swp
+src/lib/test_mint_api
