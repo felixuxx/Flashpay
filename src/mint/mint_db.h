@@ -36,24 +36,6 @@ TALER_MINT_DB_prepare (PGconn *db_conn);
 
 
 
-int
-TALER_MINT_DB_insert_refresh_collectable (PGconn *db_conn,
-                                          uint16_t newcoin_index,
-                                          const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                          const struct GNUNET_CRYPTO_rsa_Signature *ev_sig);
-
-
-struct GNUNET_CRYPTO_rsa_Signature *
-TALER_MINT_DB_get_refresh_collectable (PGconn *db_conn,
-                                       uint16_t newcoin_index,
-                                       const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub);
-
-
-
-int
-TALER_MINT_DB_set_reveal_ok (PGconn *db_conn,
-                             const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub);
-
 
 
 
