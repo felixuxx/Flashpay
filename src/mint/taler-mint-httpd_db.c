@@ -802,6 +802,203 @@ helper_refresh_reveal_send_response (struct MHD_Connection *connection,
 
 
 /**
+ * Check if the given @a transfer_privs correspond to an honest
+ * commitment for the given session.
+ * Checks that the transfer private keys match their commitments.
+ * Then derives the shared secret for each kappa, and check that they match.
+ *
+ * @param connection the MHD connection to handle
+ * @param db_conn database connection to use
+ * @param refresh_session session to query
+ * @param off commitment offset to check
+ * @param num_oldcoins size of the @a transfer_privs and @a melts arrays
+ * @param num_newcoins number of newcoins being generated
+ * @param transfer_privs private transfer keys
+ * @param melts array of melted coins
+ * @return #GNUNET_OK if the committment was honest,
+ *         #GNUNET_NO if there was a problem and we generated an error message
+ *         #GNUNET_SYSERR if we could not even generate an error message
+ */
+static int
+check_commitment (struct MHD_Connection *connection,
+                  PGconn *db_conn,
+                  const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session,
+                  unsigned int off,
+                  unsigned int num_oldcoins,
+                  unsigned int num_newcoins,
+                  const struct GNUNET_CRYPTO_EcdsaPrivateKey *transfer_privs,
+                  const struct RefreshMelt *melts)
+{
+  unsigned int j;
+  int res;
+  struct TALER_LinkSecret last_shared_secret;
+  int secret_initialized = GNUNET_NO;
+
+  for (j = 0; j < num_oldcoins; j++)
+  {
+    struct RefreshCommitLink commit_link;
+    struct TALER_TransferSecret transfer_secret;
+    struct TALER_LinkSecret shared_secret;
+    struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub_check;
+
+    res = TALER_MINT_DB_get_refresh_commit_link (db_conn,
+                                                 refresh_session,
+                                                 off,
+                                                 j,
+                                                 &commit_link);
+    if (GNUNET_OK != res)
+    {
+      GNUNET_break (0);
+      return (MHD_YES == TALER_MINT_reply_internal_db_error (connection))
+        ? GNUNET_NO : GNUNET_SYSERR;
+    }
+
+    GNUNET_CRYPTO_ecdsa_key_get_public (&transfer_privs[j],
+                                        &transfer_pub_check);
+    if (0 !=
+        memcmp (&transfer_pub_check,
+                &commit_link.transfer_pub,
+                sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey)))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "transfer keys do not match\n");
+      return (MHD_YES == TALER_MINT_reply_external_error (connection,
+                                                          "Transfer private key missmatch"))
+        ? GNUNET_NO : GNUNET_SYSERR;
+    }
+
+    /* We're converting key types here, which is not very nice
+     * but necessary and harmless (keys will be thrown away later). */
+    /* FIXME: ECDHE/ECDSA-key type confusion! Can we reduce/avoid this? */
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_ecc_ecdh ((const struct GNUNET_CRYPTO_EcdhePrivateKey *) &transfer_privs[j],
+                                (const struct GNUNET_CRYPTO_EcdhePublicKey *) &melts[j].coin.coin_pub,
+                                &transfer_secret.key))
+    {
+      GNUNET_break (0);
+      return (MHD_YES == TALER_MINT_reply_internal_error (connection,
+                                                          "ECDH error"))
+        ? GNUNET_NO : GNUNET_SYSERR;
+    }
+
+    if (GNUNET_OK !=
+        TALER_transfer_decrypt (&commit_link.shared_secret_enc,
+                                &transfer_secret,
+                                &shared_secret))
+    {
+      GNUNET_break (0);
+      return (MHD_YES == TALER_MINT_reply_internal_error (connection,
+                                                          "Decryption error"))
+        ? GNUNET_NO : GNUNET_SYSERR;
+    }
+
+    if (GNUNET_NO == secret_initialized)
+    {
+      secret_initialized = GNUNET_YES;
+      last_shared_secret = shared_secret;
+    }
+    else if (0 != memcmp (&shared_secret,
+                          &last_shared_secret,
+                          sizeof (struct GNUNET_HashCode)))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "shared secrets do not match\n");
+      return (MHD_YES == TALER_MINT_reply_external_error (connection,
+                                                          "Shared secret missmatch"))
+        ? GNUNET_NO : GNUNET_SYSERR;
+    }
+  }
+  GNUNET_break (GNUNET_YES == secret_initialized);
+
+
+  /* Check that the commitments for all new coins were correct */
+  for (j = 0; j < num_newcoins; j++)
+  {
+    struct RefreshCommitCoin commit_coin;
+    struct TALER_RefreshLinkDecrypted *link_data;
+    // struct BlindedSignaturePurpose *coin_ev_check;
+    struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+    struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+    struct GNUNET_HashCode h_msg;
+    char *buf;
+    size_t buf_len;
+
+    res = TALER_MINT_DB_get_refresh_commit_coin (db_conn,
+                                                 refresh_session,
+                                                 off,
+                                                 j,
+                                                 &commit_coin);
+    if (GNUNET_OK != res)
+    {
+      GNUNET_break (0);
+      return (MHD_YES == TALER_MINT_reply_internal_db_error (connection))
+        ? GNUNET_NO : GNUNET_SYSERR;
+    }
+
+    link_data = TALER_refresh_decrypt (commit_coin.refresh_link,
+                                       &last_shared_secret);
+    if (NULL == link_data)
+    {
+      GNUNET_break (0);
+      return (MHD_YES == TALER_MINT_reply_internal_error (connection,
+                                                          "Decryption error"))
+        ? GNUNET_NO : GNUNET_SYSERR;
+    }
+
+    GNUNET_CRYPTO_ecdsa_key_get_public (&link_data->coin_priv,
+                                        &coin_pub);
+    /* FIXME: like the melts,
+       do get these ONCE outside of the kappa-loop! */
+    denom_pub = TALER_MINT_DB_get_refresh_order (db_conn,
+                                                 refresh_session,
+                                                 j);
+    if (NULL == denom_pub)
+    {
+      GNUNET_break (0);
+      return (MHD_YES == TALER_MINT_reply_internal_db_error (connection))
+        ? GNUNET_NO : GNUNET_SYSERR;
+    }
+    /* FIXME: we had envisioned a more complex scheme to derive
+       the message to sign for a blinded coin...
+       FIXME: we should have a function in util/ to do this! */
+    GNUNET_CRYPTO_hash (&coin_pub,
+                        sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
+                        &h_msg);
+    if (0 == (buf_len =
+              GNUNET_CRYPTO_rsa_blind (&h_msg,
+                                       link_data->blinding_key,
+                                       denom_pub,
+                                       &buf)))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "blind failed\n");
+      return (MHD_YES == TALER_MINT_reply_internal_error (connection,
+                                                          "Blinding error"))
+        ? GNUNET_NO : GNUNET_SYSERR;
+    }
+
+    if ( (buf_len != commit_coin.coin_ev_size) ||
+         (0 != memcmp (buf,
+                       commit_coin.coin_ev,
+                       buf_len)) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "blind envelope does not match for kappa=%u, old=%d\n",
+                  off,
+                  (int) j);
+      /* FIXME: return more specific error with exact offset */
+      return (MHD_YES == TALER_MINT_reply_external_error (connection,
+                                                          "Envelope missmatch"))
+        ? GNUNET_NO : GNUNET_SYSERR;
+    }
+    GNUNET_free (buf);
+  }
+
+  return GNUNET_OK;
+}
+
+
+/**
  * Execute a "/refresh/reveal".  The client is revealing to us the
  * transfer keys for @a kappa-1 sets of coins.  Verify that the
  * revealed transfer keys would allow linkage to the blinded coins,
@@ -826,6 +1023,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
   PGconn *db_conn;
   struct RefreshSession refresh_session;
   struct MintKeyState *key_state;
+  struct RefreshMelt *melts;
   unsigned int i;
   unsigned int j;
   unsigned int off;
@@ -844,184 +1042,55 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
                                          "session_pub");
   if (GNUNET_SYSERR == res)
     return TALER_MINT_reply_internal_db_error (connection);
+  if (0 == refresh_session.num_oldcoins)
+  {
+    GNUNET_break (0);
+    return TALER_MINT_reply_internal_db_error (connection);
+  }
 
-  /* Check that the transfer private keys match their commitments.
-   * Then derive the shared secret for each kappa, and check that they match. */
+  if ( (refresh_session.noreveal_index >= refresh_session.kappa) ||
+       (GNUNET_NO == refresh_session.has_commit_sig) )
+  {
+    GNUNET_break (UINT16_MAX == refresh_session.noreveal_index);
+    GNUNET_break (GNUNET_NO == refresh_session.has_commit_sig);
+    return TALER_MINT_reply_external_error (connection,
+                                            "/refresh/commit must be executed first");
+  }
+
+  melts = GNUNET_malloc (refresh_session.num_oldcoins *
+                         sizeof (struct RefreshMelt));
+  for (j = 0; j < refresh_session.num_oldcoins; j++)
+  {
+    if (GNUNET_OK !=
+        TALER_MINT_DB_get_refresh_melt (db_conn,
+                                        refresh_session_pub,
+                                        j,
+                                        &melts[j]))
+    {
+      GNUNET_break (0);
+      GNUNET_free (melts);
+      return TALER_MINT_reply_internal_db_error (connection);
+    }
+  }
 
   off = 0;
   for (i = 0; i < refresh_session.kappa - 1; i++)
   {
-    struct TALER_LinkSecret last_shared_secret;
-    int secret_initialized = GNUNET_NO;
-
     if (i == refresh_session.noreveal_index)
       off = 1;
-
-    for (j = 0; j < refresh_session.num_oldcoins; j++)
-    {
-      struct RefreshCommitLink commit_link;
-      struct TALER_TransferSecret transfer_secret;
-      struct TALER_LinkSecret shared_secret;
-      struct RefreshMelt melt;
-
-      res = TALER_MINT_DB_get_refresh_commit_link (db_conn,
-                                                   refresh_session_pub,
-                                                   i + off, j,
-                                                   &commit_link);
-      if (GNUNET_OK != res)
-      {
-        GNUNET_break (0);
-            // FIXME: return 'internal error'?
-        return MHD_NO;
-      }
-
-      res = TALER_MINT_DB_get_refresh_melt (db_conn,
-                                            refresh_session_pub,
-                                            j,
-                                            &melt);
-      if (GNUNET_OK != res)
-      {
-        GNUNET_break (0);
-        // FIXME: return 'internal error'?
-        return MHD_NO;
-      }
-
-      /* We're converting key types here, which is not very nice
-       * but necessary and harmless (keys will be thrown away later). */
-      /* FIXME: ECDHE/ECDSA-key type confusion! Can we reduce/avoid this? */
-      if (GNUNET_OK !=
-          GNUNET_CRYPTO_ecc_ecdh ((const struct GNUNET_CRYPTO_EcdhePrivateKey *) &transfer_privs[i+off][j],
-                                  (const struct GNUNET_CRYPTO_EcdhePublicKey *) &melt.coin.coin_pub,
-                                  &transfer_secret.key))
-      {
-        GNUNET_break (0);
-        // FIXME: return 'internal error'?
-        return MHD_NO;
-      }
-
-      if (GNUNET_OK !=
-          TALER_transfer_decrypt (&commit_link.shared_secret_enc,
-                                  &transfer_secret,
-                                  &shared_secret))
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "decryption failed\n");
-        // FIXME: return 'internal error'?
-        return MHD_NO;
-      }
-
-      if (GNUNET_NO == secret_initialized)
-      {
-        secret_initialized = GNUNET_YES;
-        last_shared_secret = shared_secret;
-      }
-      else if (0 != memcmp (&shared_secret,
-                            &last_shared_secret,
-                            sizeof (struct GNUNET_HashCode)))
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "shared secrets do not match\n");
-        // FIXME: return error code!
-        return MHD_NO;
-      }
-
-      {
-        struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub_check;
-
-        GNUNET_CRYPTO_ecdsa_key_get_public (&transfer_privs[i+off][j],
-                                            &transfer_pub_check);
-        if (0 !=
-            memcmp (&transfer_pub_check,
-                    &commit_link.transfer_pub,
-                    sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey)))
-        {
-          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                      "transfer keys do not match\n");
-          // FIXME: return error code!
-          return MHD_NO;
-        }
-      }
-    }
-
-    /* Check that the commitments for all new coins were correct */
-    for (j = 0; j < refresh_session.num_newcoins; j++)
-    {
-      struct RefreshCommitCoin commit_coin;
-      struct TALER_RefreshLinkDecrypted *link_data;
-      // struct BlindedSignaturePurpose *coin_ev_check;
-      struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
-      struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
-      struct GNUNET_HashCode h_msg;
-      char *buf;
-      size_t buf_len;
-
-      res = TALER_MINT_DB_get_refresh_commit_coin (db_conn,
-                                                   refresh_session_pub,
-                                                   i+off, j,
-                                                   &commit_coin);
-      if (GNUNET_OK != res)
-      {
-        GNUNET_break (0);
-        // FIXME: return error code!
-        return MHD_NO;
-      }
-
-      link_data = TALER_refresh_decrypt (commit_coin.refresh_link,
-                                         &last_shared_secret);
-      if (NULL == link_data)
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "decryption failed\n");
-        // FIXME: return error code!
-        return MHD_NO;
-      }
-
-      GNUNET_CRYPTO_ecdsa_key_get_public (&link_data->coin_priv,
-                                          &coin_pub);
-      denom_pub = TALER_MINT_DB_get_refresh_order (db_conn,
-                                                   refresh_session_pub,
-                                                   j);
-      if (NULL == denom_pub)
-      {
-        GNUNET_break (0);
-          // FIXME: return error code!
-        return MHD_NO;
-      }
-      /* FIXME: we had envisioned a more complex scheme to derive
-         the message to sign for a blinded coin... */
-      GNUNET_CRYPTO_hash (&coin_pub,
-                          sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                          &h_msg);
-      if (0 == (buf_len =
-                GNUNET_CRYPTO_rsa_blind (&h_msg,
-                                         link_data->blinding_key,
-                                         denom_pub,
-                                         &buf)))
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "blind failed\n");
-          // FIXME: return error code!
-        return MHD_NO;
-      }
-
-      if ( (buf_len != commit_coin.coin_ev_size) ||
-           (0 != memcmp (buf,
-                         commit_coin.coin_ev,
-                         buf_len)) )
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "blind envelope does not match for kappa=%d, old=%d\n",
-                    (int) (i+off), (int) j);
-        // FIXME: return error code!
-        GNUNET_free (buf);
-        return MHD_NO;
-      }
-      GNUNET_free (buf);
-
-    }
+    if (GNUNET_OK !=
+        (res = check_commitment (connection,
+                                 db_conn,
+                                 refresh_session_pub,
+                                 i + off,
+                                 refresh_session.num_oldcoins,
+                                 refresh_session.num_newcoins,
+                                 transfer_privs[i + off],
+                                 melts)))
+      return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   }
 
-
+  /* Client request OK, start transaction */
   if (GNUNET_OK !=
       TALER_MINT_DB_transaction (db_conn))
   {
@@ -1044,7 +1113,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     if (GNUNET_OK != res)
     {
       GNUNET_break (0);
-              // FIXME: return error code!
+      // FIXME: return error code!
       return MHD_NO;
     }
     denom_pub = TALER_MINT_DB_get_refresh_order (db_conn,
@@ -1053,7 +1122,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     if (NULL == denom_pub)
     {
       GNUNET_break (0);
-                    // FIXME: return error code!
+      // FIXME: return error code!
       return MHD_NO;
     }
 

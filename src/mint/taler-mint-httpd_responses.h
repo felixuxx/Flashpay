@@ -113,6 +113,18 @@ TALER_MINT_reply_internal_error (struct MHD_Connection *connection,
 
 
 /**
+ * Send a response indicating an external error.
+ *
+ * @param connection the MHD connection to use
+ * @param hint hint about the error's nature
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_external_error (struct MHD_Connection *connection,
+                                 const char *hint);
+
+
+/**
  * Send a response indicating an error committing a
  * transaction (concurrent interference).
  *
