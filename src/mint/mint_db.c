@@ -1579,6 +1579,7 @@ struct LinkDataList *
 TALER_db_get_link (PGconn *db_conn,
                    const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub)
 {
+  // FIXME: check logic!
   struct LinkDataList *ldl;
   struct LinkDataList *pos;
   struct TALER_DB_QueryParam params[] = {
@@ -1711,6 +1712,7 @@ TALER_db_get_transfer (PGconn *db_conn,
                        struct GNUNET_CRYPTO_EcdsaPublicKey *transfer_pub,
                        struct TALER_EncryptedLinkSecret *shared_secret_enc)
 {
+  // FIXME: check logic!
   struct TALER_DB_QueryParam params[] = {
     TALER_DB_QUERY_PARAM_PTR(coin_pub),
     TALER_DB_QUERY_PARAM_END
