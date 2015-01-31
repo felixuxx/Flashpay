@@ -4,11 +4,15 @@ src/include/
   -- installed headers for public APIs
 
 src/util/
-  -- common utility functions (to be ideally eliminated)
+  -- common utility functions (currency representation,
+     Taler-specific cryptography, Taler-specific json
+     support)
+
+src/pq/
+  -- Postgres-specific utility functions
 
 src/mint/
   -- taler mint server and helper binaries
 
 src/lib/
   -- libtalermint: C API to issue HTTP requests to mint, including testcases
-
