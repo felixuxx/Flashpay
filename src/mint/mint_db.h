@@ -29,55 +29,10 @@
 
 
 /**
- * FIXME.
- */
-int
-TALER_MINT_DB_prepare (PGconn *db_conn);
-
-
-
-
-
-
-/**
- * FIXME: doc, name is bad, too.
- */
-typedef int
-(*LinkIterator) (void *cls,
-                 const struct TALER_RefreshLinkEncrypted *link_data_enc,
-                 const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub,
-                 const struct GNUNET_CRYPTO_rsa_Signature *ev_sig);
-
-
-int
-TALER_db_get_link (PGconn *db_conn,
-                   const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
-                   LinkIterator link_iter,
-                   void *cls);
-
-
-/**
- * Obtain shared secret from the transfer public key (?).
- *
- * @param shared_secret_enc[out] set to shared secret; FIXME: use other type
- *               to indicate this is the encrypted secret
- */
-int
-TALER_db_get_transfer (PGconn *db_conn,
-                       const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
-                       struct GNUNET_CRYPTO_EcdsaPublicKey *transfer_pub,
-                       struct GNUNET_HashCode *shared_secret_enc);
-
-
-
-// Chaos
-////////////////////////////////////////////////////////////////
-// Order
-
-
-
-/**
  * Initialize database subsystem.
+ *
+ * @param connection_cfg configuration for the DB
+ * @return #GNUNET_OK on success
  */
 int
 TALER_MINT_DB_init (const char *connection_cfg);
@@ -91,6 +46,17 @@ TALER_MINT_DB_init (const char *connection_cfg);
  */
 PGconn *
 TALER_MINT_DB_get_connection (void);
+
+
+/**
+ * Setup prepared statements.  FIXME: should this be part of the API,
+ * or just internal to "TALER_MINT_DB_get_connection()"?
+ *
+ * @param db_conn connection handle to initialize
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
+ */
+int
+TALER_MINT_DB_prepare (PGconn *db_conn);
 
 
 /**
@@ -709,6 +675,97 @@ TALER_MINT_DB_get_refresh_commit_link (PGconn *db_conn,
                                        unsigned int i,
                                        unsigned int j,
                                        struct RefreshCommitLink *cc);
+
+
+/**
+ * Insert signature of a new coin generated during refresh into
+ * the database indexed by the refresh session and the index
+ * of the coin.  This data is later used should an old coin
+ * be used to try to obtain the private keys during "/refresh/link".
+ *
+ * @param db_conn database connection
+ * @param session_pub refresh session
+ * @param newcoin_index coin index
+ * @param ev_sig coin signature
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_MINT_DB_insert_refresh_collectable (PGconn *db_conn,
+                                          const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                                          uint16_t newcoin_index,
+                                          const struct GNUNET_CRYPTO_rsa_Signature *ev_sig);
+
+
+/**
+ * Linked list of refresh information linked to a coin.
+ */
+struct LinkDataList
+{
+  /**
+   * Information is stored in a NULL-terminated linked list.
+   */
+  struct LinkDataList *next;
+
+  /**
+   * Link data, used to recover the private key of the coin
+   * by the owner of the old coin.
+   */
+  struct TALER_RefreshLinkEncrypted *link_data_enc;
+
+  /**
+   * Denomination public key, determines the value of the coin.
+   */
+  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+
+  /**
+   * Signature over the blinded envelope.
+   */
+  struct GNUNET_CRYPTO_rsa_Signature *ev_sig;
+};
+
+
+/**
+ * Obtain the link data of a coin, that is the encrypted link
+ * information, the denomination keys and the signatures.
+ *
+ * @param db_conn database connection
+ * @param coin_pub public key to use to retrieve linkage data
+ * @return all known link data for the coin
+ */
+struct LinkDataList *
+TALER_db_get_link (PGconn *db_conn,
+                   const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub);
+
+
+/**
+ * Free memory of the link data list.
+ *
+ * @param ldl link data list to release
+ */
+void
+TALER_db_link_data_list_free (struct LinkDataList *ldl);
+
+
+/**
+ * Obtain shared secret and transfer public key from the public key of
+ * the coin.  This information and the link information returned by
+ * #TALER_db_get_link() enable the owner of an old coin to determine
+ * the private keys of the new coins after the melt.
+ *
+ *
+ * @param db_conn database connection
+ * @param coin_pub public key of the coin
+ * @param transfer_pub[OUT] public transfer key
+ * @param shared_secret_enc[OUT] set to shared secret
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO on failure (not found)
+ *         #GNUNET_SYSERR on internal failure (database issue)
+ */
+int
+TALER_db_get_transfer (PGconn *db_conn,
+                       const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
+                       struct GNUNET_CRYPTO_EcdsaPublicKey *transfer_pub,
+                       struct TALER_EncryptedLinkSecret *shared_secret_enc);
 
 
 /**

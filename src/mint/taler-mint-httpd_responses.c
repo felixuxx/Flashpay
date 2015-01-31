@@ -647,5 +647,71 @@ TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
 }
 
 
+/**
+ * Send a response for "/refresh/link".
+ *
+ * @param connection the connection to send the response to
+ * @param transfer_pub transfer public key
+ * @param shared_secret_enc encrypted shared secret
+ * @param ldl linked list with link data
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_refresh_link_success (struct MHD_Connection *connection,
+                                       const struct GNUNET_CRYPTO_EcdsaPublicKey *transfer_pub,
+                                       const struct TALER_EncryptedLinkSecret *shared_secret_enc,
+                                       const struct LinkDataList *ldl)
+{
+  const struct LinkDataList *pos;
+  json_t *root;
+  json_t *list;
+  int res;
+
+  list = json_array ();
+  for (pos = ldl; NULL != pos; pos = pos->next)
+  {
+    json_t *obj;
+    char *buf;
+    size_t buf_len;
+
+    obj = json_object ();
+    json_object_set_new (obj, "link_enc",
+                         TALER_JSON_from_data (ldl->link_data_enc->coin_priv_enc,
+                                               sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey) +
+                                               ldl->link_data_enc->blinding_key_enc_size));
+    buf_len = GNUNET_CRYPTO_rsa_public_key_encode (ldl->denom_pub,
+                                                   &buf);
+    json_object_set_new (obj, "denom_pub",
+                         TALER_JSON_from_data (buf,
+                                               buf_len));
+    GNUNET_free (buf);
+    buf_len = GNUNET_CRYPTO_rsa_signature_encode (ldl->ev_sig,
+                                                  &buf);
+    json_object_set_new (obj, "ev_sig",
+                         TALER_JSON_from_data (buf,
+                                               buf_len));
+    GNUNET_free (buf);
+    json_array_append_new (list, obj);
+  }
+
+  root = json_object ();
+  json_object_set_new (root,
+                       "new_coins",
+                       list);
+  json_object_set_new (root,
+                       "transfer_pub",
+                       TALER_JSON_from_data (transfer_pub,
+                                             sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)));
+  json_object_set_new (root,
+                       "secret_enc",
+                       TALER_JSON_from_data (shared_secret_enc,
+                                             sizeof (struct TALER_EncryptedLinkSecret)));
+  res = TALER_MINT_reply_json (connection,
+                               root,
+                               MHD_HTTP_OK);
+  json_decref (root);
+  return res;
+}
+
 
 /* end of taler-mint-httpd_responses.c */

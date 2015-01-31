@@ -988,6 +988,16 @@ refresh_mint_coin (struct MHD_Connection *connection,
     GNUNET_break (0);
     return NULL;
   }
+  if (GNUNET_OK !=
+      TALER_MINT_DB_insert_refresh_collectable (db_conn,
+                                                refresh_session,
+                                                coin_off,
+                                                ev_sig))
+  {
+    GNUNET_break (0);
+    GNUNET_CRYPTO_rsa_signature_free (ev_sig);
+    return NULL;
+  }
   return ev_sig;
 }
 
@@ -1173,47 +1183,6 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
 }
 
 
-
-/**
- * FIXME: move into response generation logic!
- * FIXME: need to separate this from DB logic!
- */
-static int
-link_iter (void *cls,
-           const struct TALER_RefreshLinkEncrypted *link_data_enc,
-           const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub,
-           const struct GNUNET_CRYPTO_rsa_Signature *ev_sig)
-{
-  json_t *list = cls;
-  json_t *obj = json_object ();
-  char *buf;
-  size_t buf_len;
-
-
-  json_array_append_new (list, obj);
-
-  json_object_set_new (obj, "link_enc",
-                       TALER_JSON_from_data (link_data_enc->coin_priv_enc,
-                                             sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey) +
-                                             link_data_enc->blinding_key_enc_size));
-
-  buf_len = GNUNET_CRYPTO_rsa_public_key_encode (denom_pub,
-                                                 &buf);
-  json_object_set_new (obj, "denom_pub",
-                       TALER_JSON_from_data (buf,
-                                             buf_len));
-  GNUNET_free (buf);
-  buf_len = GNUNET_CRYPTO_rsa_signature_encode (ev_sig,
-                                                &buf);
-  json_object_set_new (obj, "ev_sig",
-                       TALER_JSON_from_data (buf,
-                                             buf_len));
-  GNUNET_free (buf);
-
-  return GNUNET_OK;
-}
-
-
 /**
  * Execute a "/refresh/link".  Returns the linkage information that
  * will allow the owner of a coin to follow the refresh trail to
@@ -1228,18 +1197,16 @@ TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
                                     const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub)
 {
   int res;
-  json_t *root;
-  json_t *list;
   PGconn *db_conn;
   struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub;
-  struct GNUNET_HashCode shared_secret_enc;
+  struct TALER_EncryptedLinkSecret shared_secret_enc;
+  struct LinkDataList *ldl;
 
   if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
   {
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
   }
-
   res = TALER_db_get_transfer (db_conn,
                                coin_pub,
                                &transfer_pub,
@@ -1259,21 +1226,8 @@ TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
   }
   GNUNET_assert (GNUNET_OK == res);
 
-  /* FIXME: separate out response generation logic! */
-
-  list = json_array ();
-  root = json_object ();
-  json_object_set_new (root, "new_coins", list);
-
-  res = TALER_db_get_link (db_conn, coin_pub,
-                           &link_iter, list);
-  if (GNUNET_SYSERR == res)
-  {
-    GNUNET_break (0);
-    // FIXME: return error code!
-    return MHD_NO;
-  }
-  if (GNUNET_NO == res)
+  ldl = TALER_db_get_link (db_conn, coin_pub);
+  if (NULL == ldl)
   {
     return TALER_MINT_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
@@ -1281,17 +1235,11 @@ TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
                                        "error",
                                        "link data not found (link)");
   }
-  GNUNET_assert (GNUNET_OK == res);
-  json_object_set_new (root, "transfer_pub",
-                       TALER_JSON_from_data (&transfer_pub,
-                                             sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)));
-  json_object_set_new (root, "secret_enc",
-                       TALER_JSON_from_data (&shared_secret_enc,
-                                             sizeof (struct GNUNET_HashCode)));
-  res = TALER_MINT_reply_json (connection,
-                               root,
-                               MHD_HTTP_OK);
-  json_decref (root);
+  res = TALER_MINT_reply_refresh_link_success (connection,
+                                               &transfer_pub,
+                                               &shared_secret_enc,
+                                               ldl);
+  TALER_db_link_data_list_free (ldl);
   return res;
 }
 

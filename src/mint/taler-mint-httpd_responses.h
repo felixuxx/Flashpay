@@ -292,5 +292,20 @@ TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
                                          struct GNUNET_CRYPTO_rsa_Signature **sigs);
 
 
+/**
+ * Send a response for "/refresh/link".
+ *
+ * @param connection the connection to send the response to
+ * @param transfer_pub transfer public key
+ * @param shared_secret_enc encrypted shared secret
+ * @param ldl linked list with link data
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_refresh_link_success (struct MHD_Connection *connection,
+                                       const struct GNUNET_CRYPTO_EcdsaPublicKey *transfer_pub,
+                                       const struct TALER_EncryptedLinkSecret *shared_secret_enc,
+                                       const struct LinkDataList *ldl);
+
 
 #endif

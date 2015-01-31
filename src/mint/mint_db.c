@@ -60,7 +60,12 @@ static char *TALER_MINT_db_connection_cfg_str;
   } while (0)
 
 
-
+/**
+ * Setup prepared statements.
+ *
+ * @param db_conn connection handle to initialize
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
+ */
 int
 TALER_MINT_DB_prepare (PGconn *db_conn)
 {
@@ -492,189 +497,6 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
   PQclear (result);
   return GNUNET_SYSERR;
 }
-
-
-int
-TALER_MINT_DB_set_commit_signature (PGconn *db_conn,
-                                    const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                    const struct GNUNET_CRYPTO_EddsaSignature *commit_sig)
-{
-  GNUNET_break (0);
-  return GNUNET_SYSERR;
-}
-
-
-int
-TALER_db_get_link (PGconn *db_conn,
-                   const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
-                   LinkIterator link_iter,
-                   void *cls)
-{
-  struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(coin_pub),
-    TALER_DB_QUERY_PARAM_END
-  };
-
-  PGresult *result = TALER_DB_exec_prepared (db_conn, "get_link", params);
-
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    return GNUNET_NO;
-  }
-
-
-  int i = 0;
-  int res;
-
-  for (i = 0; i < PQntuples (result); i++)
-  {
-    struct TALER_RefreshLinkEncrypted *link_enc;
-    struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
-    struct GNUNET_CRYPTO_rsa_Signature *sig;
-    char *ld_buf;
-    size_t ld_buf_size;
-    char *pk_buf;
-    size_t pk_buf_size;
-    char *sig_buf;
-    size_t sig_buf_size;
-    struct TALER_DB_ResultSpec rs[] = {
-      TALER_DB_RESULT_SPEC_VAR("link_vector_enc", &ld_buf, &ld_buf_size),
-      TALER_DB_RESULT_SPEC_VAR("denom_pub", &pk_buf, &pk_buf_size),
-      TALER_DB_RESULT_SPEC_VAR("ev_sig", &sig_buf, &sig_buf_size),
-      TALER_DB_RESULT_SPEC_END
-    };
-
-    if (GNUNET_OK != TALER_DB_extract_result (result, rs, i))
-    {
-      PQclear (result);
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-    if (ld_buf_size < sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey))
-    {
-      PQclear (result);
-      GNUNET_free (pk_buf);
-      GNUNET_free (sig_buf);
-      GNUNET_free (ld_buf);
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-    link_enc = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) +
-                              ld_buf_size - sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey));
-    link_enc->blinding_key_enc = (const char *) &link_enc[1];
-    link_enc->blinding_key_enc_size = ld_buf_size - sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey);
-    memcpy (link_enc->coin_priv_enc,
-            ld_buf,
-            ld_buf_size);
-
-    sig = GNUNET_CRYPTO_rsa_signature_decode (sig_buf,
-                                              sig_buf_size);
-    denom_pub = GNUNET_CRYPTO_rsa_public_key_decode (pk_buf,
-                                                     pk_buf_size);
-    GNUNET_free (pk_buf);
-    GNUNET_free (sig_buf);
-    GNUNET_free (ld_buf);
-    if ( (NULL == sig) ||
-         (NULL == denom_pub) )
-    {
-      if (NULL != denom_pub)
-        GNUNET_CRYPTO_rsa_public_key_free (denom_pub);
-      if (NULL != sig)
-        GNUNET_CRYPTO_rsa_signature_free (sig);
-      GNUNET_free (link_enc);
-      GNUNET_break (0);
-      PQclear (result);
-      return GNUNET_SYSERR;
-    }
-    if (GNUNET_OK != (res = link_iter (cls,
-                                       link_enc,
-                                       denom_pub,
-                                       sig)))
-    {
-      GNUNET_assert (GNUNET_SYSERR != res);
-      GNUNET_CRYPTO_rsa_signature_free (sig);
-      GNUNET_CRYPTO_rsa_public_key_free (denom_pub);
-      GNUNET_free (link_enc);
-      PQclear (result);
-      return res;
-    }
-    GNUNET_CRYPTO_rsa_signature_free (sig);
-    GNUNET_CRYPTO_rsa_public_key_free (denom_pub);
-    GNUNET_free (link_enc);
-  }
-
-  return GNUNET_OK;
-}
-
-
-int
-TALER_db_get_transfer (PGconn *db_conn,
-                       const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
-                       struct GNUNET_CRYPTO_EcdsaPublicKey *transfer_pub,
-                       struct GNUNET_HashCode *shared_secret_enc)
-{
-  struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(coin_pub),
-    TALER_DB_QUERY_PARAM_END
-  };
-
-  PGresult *result = TALER_DB_exec_prepared (db_conn, "get_transfer", params);
-
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    return GNUNET_NO;
-  }
-
-  if (1 != PQntuples (result))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "got %d tuples for get_transfer\n",
-                PQntuples (result));
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-
-  struct TALER_DB_ResultSpec rs[] = {
-    TALER_DB_RESULT_SPEC("transfer_pub", transfer_pub),
-    TALER_DB_RESULT_SPEC("link_secret_enc", shared_secret_enc),
-    TALER_DB_RESULT_SPEC_END
-  };
-
-  if (GNUNET_OK != TALER_DB_extract_result (result, rs, 0))
-  {
-    PQclear (result);
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-
-  PQclear (result);
-  return GNUNET_OK;
-}
-
-
-
-
-
-// Chaos
-////////////////////////////////////////////////////////////////
-// Order
-
 
 
 /**
@@ -1695,6 +1517,245 @@ TALER_MINT_DB_get_refresh_commit_link (PGconn *db_conn,
   return GNUNET_OK;
 }
 
+
+/**
+ * Insert signature of a new coin generated during refresh into
+ * the database indexed by the refresh session and the index
+ * of the coin.  This data is later used should an old coin
+ * be used to try to obtain the private keys during "/refresh/link".
+ *
+ * @param db_conn database connection
+ * @param session_pub refresh session
+ * @param newcoin_index coin index
+ * @param ev_sig coin signature
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_MINT_DB_insert_refresh_collectable (PGconn *db_conn,
+                                          const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                                          uint16_t newcoin_index,
+                                          const struct GNUNET_CRYPTO_rsa_Signature *ev_sig)
+{
+  // FIXME: check logic!
+  uint16_t newcoin_index_nbo = htons (newcoin_index);
+  char *buf;
+  size_t buf_size;
+  PGresult *result;
+
+  buf_size = GNUNET_CRYPTO_rsa_signature_encode (ev_sig,
+                                                 &buf);
+  {
+    struct TALER_DB_QueryParam params[] = {
+      TALER_DB_QUERY_PARAM_PTR(session_pub),
+      TALER_DB_QUERY_PARAM_PTR(&newcoin_index_nbo),
+      TALER_DB_QUERY_PARAM_PTR_SIZED(buf, buf_size),
+      TALER_DB_QUERY_PARAM_END
+    };
+    result = TALER_DB_exec_prepared (db_conn,
+                                     "insert_refresh_collectable",
+                                     params);
+  }
+  GNUNET_free (buf);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    break_db_err (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Obtain the link data of a coin, that is the encrypted link
+ * information, the denomination keys and the signatures.
+ *
+ * @param db_conn database connection
+ * @param coin_pub public key to use to retrieve linkage data
+ * @return all known link data for the coin
+ */
+struct LinkDataList *
+TALER_db_get_link (PGconn *db_conn,
+                   const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub)
+{
+  struct LinkDataList *ldl;
+  struct LinkDataList *pos;
+  struct TALER_DB_QueryParam params[] = {
+    TALER_DB_QUERY_PARAM_PTR(coin_pub),
+    TALER_DB_QUERY_PARAM_END
+  };
+  PGresult *result = TALER_DB_exec_prepared (db_conn, "get_link", params);
+
+  ldl = NULL;
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    break_db_err (result);
+    PQclear (result);
+    return NULL;
+  }
+
+  if (0 == PQntuples (result))
+  {
+    PQclear (result);
+    return NULL;
+  }
+
+
+  int i = 0;
+
+  for (i = 0; i < PQntuples (result); i++)
+  {
+    struct TALER_RefreshLinkEncrypted *link_enc;
+    struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+    struct GNUNET_CRYPTO_rsa_Signature *sig;
+    char *ld_buf;
+    size_t ld_buf_size;
+    char *pk_buf;
+    size_t pk_buf_size;
+    char *sig_buf;
+    size_t sig_buf_size;
+    struct TALER_DB_ResultSpec rs[] = {
+      TALER_DB_RESULT_SPEC_VAR("link_vector_enc", &ld_buf, &ld_buf_size),
+      TALER_DB_RESULT_SPEC_VAR("denom_pub", &pk_buf, &pk_buf_size),
+      TALER_DB_RESULT_SPEC_VAR("ev_sig", &sig_buf, &sig_buf_size),
+      TALER_DB_RESULT_SPEC_END
+    };
+
+    if (GNUNET_OK != TALER_DB_extract_result (result, rs, i))
+    {
+      PQclear (result);
+      GNUNET_break (0);
+      TALER_db_link_data_list_free (ldl);
+      return NULL;
+    }
+    if (ld_buf_size < sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey))
+    {
+      PQclear (result);
+      GNUNET_free (pk_buf);
+      GNUNET_free (sig_buf);
+      GNUNET_free (ld_buf);
+      TALER_db_link_data_list_free (ldl);
+      return NULL;
+    }
+    // FIXME: use util API for this!
+    link_enc = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) +
+                              ld_buf_size - sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey));
+    link_enc->blinding_key_enc = (const char *) &link_enc[1];
+    link_enc->blinding_key_enc_size = ld_buf_size - sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey);
+    memcpy (link_enc->coin_priv_enc,
+            ld_buf,
+            ld_buf_size);
+
+    sig = GNUNET_CRYPTO_rsa_signature_decode (sig_buf,
+                                              sig_buf_size);
+    denom_pub = GNUNET_CRYPTO_rsa_public_key_decode (pk_buf,
+                                                     pk_buf_size);
+    GNUNET_free (pk_buf);
+    GNUNET_free (sig_buf);
+    GNUNET_free (ld_buf);
+    if ( (NULL == sig) ||
+         (NULL == denom_pub) )
+    {
+      if (NULL != denom_pub)
+        GNUNET_CRYPTO_rsa_public_key_free (denom_pub);
+      if (NULL != sig)
+        GNUNET_CRYPTO_rsa_signature_free (sig);
+      GNUNET_free (link_enc);
+      GNUNET_break (0);
+      PQclear (result);
+      TALER_db_link_data_list_free (ldl);
+      return NULL;
+    }
+    pos = GNUNET_new (struct LinkDataList);
+    pos->next = ldl;
+    pos->link_data_enc = link_enc;
+    pos->denom_pub = denom_pub;
+    pos->ev_sig = sig;
+    ldl = pos;
+  }
+  return ldl;
+}
+
+
+/**
+ * Free memory of the link data list.
+ *
+ * @param ldl link data list to release
+ */
+void
+TALER_db_link_data_list_free (struct LinkDataList *ldl)
+{
+  GNUNET_break (0); // FIXME
+}
+
+
+/**
+ * Obtain shared secret and transfer public key from the public key of
+ * the coin.  This information and the link information returned by
+ * #TALER_db_get_link() enable the owner of an old coin to determine
+ * the private keys of the new coins after the melt.
+ *
+ *
+ * @param db_conn database connection
+ * @param coin_pub public key of the coin
+ * @param transfer_pub[OUT] public transfer key
+ * @param shared_secret_enc[OUT] set to shared secret
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO on failure (not found)
+ *         #GNUNET_SYSERR on internal failure (database issue)
+ */
+int
+TALER_db_get_transfer (PGconn *db_conn,
+                       const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
+                       struct GNUNET_CRYPTO_EcdsaPublicKey *transfer_pub,
+                       struct TALER_EncryptedLinkSecret *shared_secret_enc)
+{
+  struct TALER_DB_QueryParam params[] = {
+    TALER_DB_QUERY_PARAM_PTR(coin_pub),
+    TALER_DB_QUERY_PARAM_END
+  };
+
+  PGresult *result = TALER_DB_exec_prepared (db_conn, "get_transfer", params);
+
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    break_db_err (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  if (0 == PQntuples (result))
+  {
+    PQclear (result);
+    return GNUNET_NO;
+  }
+
+  if (1 != PQntuples (result))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "got %d tuples for get_transfer\n",
+                PQntuples (result));
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  struct TALER_DB_ResultSpec rs[] = {
+    TALER_DB_RESULT_SPEC("transfer_pub", transfer_pub),
+    TALER_DB_RESULT_SPEC("link_secret_enc", shared_secret_enc),
+    TALER_DB_RESULT_SPEC_END
+  };
+
+  if (GNUNET_OK != TALER_DB_extract_result (result, rs, 0))
+  {
+    PQclear (result);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  PQclear (result);
+  return GNUNET_OK;
+}
 
 
 
