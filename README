@@ -1,3 +1,40 @@
+                       Welcome to GNU Taler
+
+
+What is Taler?
+==============
+
+Taler is an electronic payment system providing the ability to pay
+anonymously using digital cash.  Taler consists of a network protocol
+definition (using a RESTful API over HTTP), a Mint (which creates
+digital coins), a Wallet (which allows customers to manage, store and
+spend digital coins), and a Merchant website which allows customers to
+spend their digital coins.  Naturally, each Merchant is different, but
+Taler includes code examples to help Merchants integrate Taler as a
+payment system.
+
+Taler is currently developed by a worldwide group of independent free
+software developers and the DECENTRALISE team at Inria Rennes.  Taler
+is free software and a GNU package (http://www.gnu.org/).
+
+This is not even a release yet, but some raw development prototype
+that does not work yet.  This package also only includes the Taler
+mint, not the other components of the system.
+
+Documentation about Taler can be found at http://taler.net/.
+
+
+Dependencies:
+=============
+
+These are the direct dependencies for running a Taler mint:
+
+- GNUnet            >= 0.10.2
+- GNU libmicrohttpd >= 0.9.38
+- Postgres          >= 9.3
+
+
+
 Project structure is currently as follows:
 
 src/include/
