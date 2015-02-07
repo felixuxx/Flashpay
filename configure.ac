@@ -1,6 +1,21 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
-
+#
+#  This file is part of TALER
+#  Copyright (C) 2014 GNUnet e.V.
+#
+#  TALER is free software; you can redistribute it and/or modify it under the
+#  terms of the GNU General Public License as published by the Free Software
+#  Foundation; either version 3, or (at your option) any later version.
+#
+#  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+#  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along with
+#  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/license>
+#
+#
 AC_PREREQ([2.69])
 AC_INIT([taler-mint], [0.0.0], [taler-bug@gnunet.org])
 AC_CONFIG_SRCDIR([src/util/json.c])
