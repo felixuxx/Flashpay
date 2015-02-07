@@ -1,3 +1,4 @@
+# This Makefile.am is in the public domain
 talerincludedir = $(includedir)/taler
 
 talerinclude_HEADERS = \
