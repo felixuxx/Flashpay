@@ -19,3 +19,15 @@ libtalerutil_la_LIBADD = \
 libtalerutil_la_LDFLAGS = \
   -version-info 0:0:0 \
   -export-dynamic -no-undefined
+
+TESTS=\
+ test-json-validations
+
+check_PROGRAMS=\
+ test-json-validations
+
+test_json_validations_SOURCES=test_json_validations.c
+test_json_validations_LDADD=\
+  -lgnunetutil \
+  -ljansson \
+  libtalerutil.la

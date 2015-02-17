@@ -23,6 +23,14 @@
 
 #include <jansson.h>
 
+/**
+ * Print JSON parsing related error information
+ */
+#define TALER_JSON_warn(error)                                         \
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,                                \
+              "JSON parsing failed at %s:%u: %s (%s)\n",                  \
+              __FILE__, __LINE__, error.text, error.source)
+
 
 /**
  * Convert a TALER amount to a JSON object.
@@ -102,6 +110,16 @@ int
 TALER_JSON_to_data (json_t *json,
                     void *out,
                     size_t out_size);
+
+/**
+ * Check if the given wire format JSON object is correctly formatted
+ *
+ * @param type the type of the wire format
+ * @param wire the JSON wire format object
+ * @return 1 if correctly formatted; 0 if not
+ */
+int
+TALER_JSON_validate_wireformat (const char *type, json_t *wire);
 
 
 #endif /* TALER_JSON_LIB_H_ */
