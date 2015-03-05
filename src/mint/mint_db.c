@@ -747,18 +747,18 @@ TALER_MINT_DB_init (const char *connection_cfg)
  * Get the thread-local database-handle.
  * Connect to the db if the connection does not exist yet.
  *
+ * @param temporary #GNUNET_YES to use a temporary schema; #GNUNET_NO to use the
+ *        database default one
  * @return the database connection, or NULL on error
  */
 PGconn *
-TALER_MINT_DB_get_connection (void)
+TALER_MINT_DB_get_connection (int temporary)
 {
   PGconn *db_conn;
 
   if (NULL != (db_conn = pthread_getspecific (db_conn_threadlocal)))
     return db_conn;
-
   db_conn = PQconnectdb (TALER_MINT_db_connection_cfg_str);
-
   if (CONNECTION_OK !=
       PQstatus (db_conn))
   {
@@ -767,7 +767,12 @@ TALER_MINT_DB_get_connection (void)
     GNUNET_break (0);
     return NULL;
   }
-
+  if ((GNUNET_YES == temporary)
+      && (GNUNET_SYSERR == set_temporary_schema(db_conn)))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   if (GNUNET_OK !=
       TALER_MINT_DB_prepare (db_conn))
   {
