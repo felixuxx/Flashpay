@@ -13,11 +13,13 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
+
 /**
  * @file mint_db.c
  * @brief Low-level (statement-level) database access for the mint
  * @author Florian Dold
  * @author Christian Grothoff
+ * @author Sree Harsha Totakura
  *
  * TODO:
  * - The mint_db.h-API should ideally be what we need to port
@@ -32,6 +34,7 @@
 #include "mint_db.h"
 #include <pthread.h>
 
+
 /**
  * Thread-local database connection.
  * Contains a pointer to PGconn or NULL.
@@ -45,7 +48,6 @@ static pthread_key_t db_conn_threadlocal;
  */
 static char *TALER_MINT_db_connection_cfg_str;
 
-
 #define break_db_err(result) do { \
     GNUNET_break(0); \
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Database failure: %s\n", PQresultErrorMessage (result)); \
@@ -58,6 +60,213 @@ static char *TALER_MINT_db_connection_cfg_str;
   do {                                                            \
     if (cond) { GNUNET_break (0); goto EXITIF_exit; }             \
   } while (0)
+
+
+#define SQLEXEC_(conn, sql, result)                                     \
+  do {                                                                  \
+    result = PQexec (conn, sql);                                        \
+    if (PGRES_COMMAND_OK != PQresultStatus (result))                    \
+    {                                                                   \
+      break_db_err (result);                                            \
+      PQclear (result); result = NULL;                                  \
+      goto SQLEXEC_fail;                                                \
+    }                                                                   \
+    PQclear (result); result = NULL;                                    \
+  } while (0)
+
+
+/**
+ * Set the given connection to use a temporary schema
+ *
+ * @param db the database connection
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon error
+ */
+static int
+set_temporary_schema (PGconn *db)
+{
+  PGresult *result;
+
+  SQLEXEC_(db,
+           "CREATE SCHEMA IF NOT EXISTS " TALER_TEMP_SCHEMA_NAME ";"
+           "SET search_path to " TALER_TEMP_SCHEMA_NAME ";",
+           result);
+  return GNUNET_OK;
+ SQLEXEC_fail:
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Drop the temporary taler schema.  This is only useful for testcases
+ *
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
+ */
+int
+TALER_MINT_DB_drop_temporary (PGconn *db)
+{
+  PGresult *result;
+
+  SQLEXEC_ (db,
+            "DROP SCHEMA " TALER_TEMP_SCHEMA_NAME " CASCADE;",
+            result);
+  return GNUNET_OK;
+ SQLEXEC_fail:
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Create the necessary tables if they are not present
+ *
+ * @param temporary should we use a temporary schema
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
+ */
+int
+TALER_MINT_DB_create_tables (int temporary)
+{
+  PGresult *result;
+  PGconn *conn;
+
+  result = NULL;
+  conn = PQconnectdb (TALER_MINT_db_connection_cfg_str);
+  if (CONNECTION_OK != PQstatus (conn))
+  {
+    LOG_ERROR ("Database connection failed: %s\n",
+               PQerrorMessage (conn));
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if ((GNUNET_YES == temporary)
+      && (GNUNET_SYSERR == set_temporary_schema (conn)))
+  {
+    PQfinish (conn);
+    return GNUNET_SYSERR;
+  }
+#define SQLEXEC(sql) SQLEXEC_(conn, sql, result);
+  /* reserves table is for summarization of a reserve.  It is updated when new
+     funds are added and existing funds are withdrawn */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS reserves"
+           "("
+           " reserve_pub BYTEA PRIMARY KEY"
+           ",current_balance_value INT4 NOT NULL"
+           ",current_balance_fraction INT4 NOT NULL"
+           ",balance_currency VARCHAR(4) NOT NULL"
+           ",expiration_date INT8 NOT NULL"
+           ")");
+  /* reserves_in table collects the transactions which transfer funds into the
+     reserve.  The amount and expiration date for the corresponding reserve are
+     updated when new transfer funds are added.  The rows of this table
+     correspond to each incoming transaction. */
+  SQLEXEC("CREATE TABLE IF NOT EXISTS reserves_in"
+          "("
+          " reserve_pub BYTEA REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
+          ",balance_value INT4 NOT NULL"
+          ",balance_fraction INT4 NOT NULL"
+          ",expiration_date INT8 NOT NULL"
+          ");");
+  result = PQexec (conn,
+                   "CREATE INDEX reserves_in_index ON reserves_in (reserve_pub);");
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ExecStatusType status = PQresultStatus (result);
+    PQclear (result);
+    result = NULL;
+    goto SQLEXEC_fail;
+  }
+  PQclear (result);
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS collectable_blindcoins"
+           "("
+           "blind_ev BYTEA PRIMARY KEY"
+           ",blind_ev_sig BYTEA NOT NULL"
+           ",denom_pub BYTEA NOT NULL"
+           ",reserve_sig BYTEA NOT NULL"
+           ",reserve_pub BYTEA REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
+           ");"
+           "CREATE INDEX collectable_blindcoins_index ON"
+           " collectable_blindcoins(reserve_pub)");
+  SQLEXEC("CREATE TABLE IF NOT EXISTS known_coins "
+          "("
+          " coin_pub BYTEA NOT NULL PRIMARY KEY"
+          ",denom_pub BYTEA NOT NULL"
+          ",denom_sig BYTEA NOT NULL"
+          ",expended_value INT4 NOT NULL"
+          ",expended_fraction INT4 NOT NULL"
+          ",expended_currency VARCHAR(4) NOT NULL"
+          ",refresh_session_pub BYTEA"
+          ")");
+  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_sessions "
+          "("
+          " session_pub BYTEA PRIMARY KEY CHECK (length(session_pub) = 32)"
+          ",session_melt_sig BYTEA"
+          ",session_commit_sig BYTEA"
+          ",noreveal_index INT2 NOT NULL"
+          // non-zero if all reveals were ok
+          // and the new coin signatures are ready
+          ",reveal_ok BOOLEAN NOT NULL DEFAULT false"
+          ") ");
+  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_order "
+          "( "
+          " session_pub BYTEA NOT NULL REFERENCES refresh_sessions (session_pub)"
+          ",newcoin_index INT2 NOT NULL "
+          ",denom_pub BYTEA NOT NULL "
+          ",PRIMARY KEY (session_pub, newcoin_index)"
+          ") ");
+  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_link"
+          "("
+          " session_pub BYTEA NOT NULL REFERENCES refresh_sessions (session_pub)"
+          ",transfer_pub BYTEA NOT NULL"
+          ",link_secret_enc BYTEA NOT NULL"
+          // index of the old coin in the customer's request
+          ",oldcoin_index INT2 NOT NULL"
+          // index for cut and choose,
+          // ranges from 0 to kappa-1
+          ",cnc_index INT2 NOT NULL"
+          ")");
+  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_coin"
+          "("
+          " session_pub BYTEA NOT NULL REFERENCES refresh_sessions (session_pub) "
+          ",link_vector_enc BYTEA NOT NULL"
+          // index of the new coin in the customer's request
+          ",newcoin_index INT2 NOT NULL"
+          // index for cut and choose,
+          ",cnc_index INT2 NOT NULL"
+          ",coin_ev BYTEA NOT NULL"
+          ")");
+  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_melt"
+          "("
+          " session_pub BYTEA NOT NULL REFERENCES refresh_sessions (session_pub) "
+          ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) "
+          ",denom_pub BYTEA NOT NULL "
+          ",oldcoin_index INT2 NOT NULL"
+          ")");
+  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_collectable"
+          "("
+          " session_pub BYTEA NOT NULL REFERENCES refresh_sessions (session_pub) "
+          ",ev_sig BYTEA NOT NULL"
+          ",newcoin_index INT2 NOT NULL"
+          ")");
+  SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
+          "( "
+          " coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (length(coin_pub)=32)"
+          ",denom_pub BYTEA NOT NULL CHECK (length(denom_pub)=32)"
+          ",transaction_id INT8 NOT NULL"
+          ",amount_currency VARCHAR(4) NOT NULL"
+          ",amount_value INT4 NOT NULL"
+          ",amount_fraction INT4 NOT NULL"
+          ",merchant_pub BYTEA NOT NULL"
+          ",h_contract BYTEA NOT NULL CHECK (length(h_contract)=64)"
+          ",h_wire BYTEA NOT NULL CHECK (length(h_wire)=64)"
+          ",coin_sig BYTEA NOT NULL CHECK (length(coin_sig)=64)"
+          ",wire TEXT NOT NULL"
+          ")");
+#undef SQLEXEC
+  PQfinish (conn);
+  return GNUNET_OK;
+
+ SQLEXEC_fail:
+  PQfinish (conn);
+  return GNUNET_SYSERR;
+}
 
 
 /**
