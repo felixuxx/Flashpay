@@ -42,6 +42,9 @@
 static pthread_key_t db_conn_threadlocal;
 
 
+#define QUERY_ERR(result)                          \
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,  "%s: query failed: %s\n", __FUNCTION__, PQresultErrorMessage (result))
+
 /**
  * Database connection string, as read from
  * the configuration.
@@ -699,9 +702,7 @@ TALER_MINT_DB_reserve_get (PGconn *db,
                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Query failed: %s\n",
-              PQresultErrorMessage (result));
+    QUERY_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
