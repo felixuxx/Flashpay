@@ -101,7 +101,8 @@ taler_mint_dbinit_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 
 check_PROGRAMS = \
   test-mint-deposits \
-  test-mint-common
+  test-mint-common \
+  test-mint-db
 
 test_mint_deposits_SOURCES = \
   test_mint_deposits.c
@@ -116,6 +117,14 @@ test_mint_deposits_LDADD = \
 test_mint_common_SOURCES = \
   test_mint_common.c
 test_mint_common_LDADD = \
+  libtalermint_common.la \
+  $(top_srcdir)/src/util/libtalerutil.la \
+  $(top_srcdir)/src/pq/libtalerpq.la \
+  -lgnunetutil
+
+test_mint_db_SOURCES = \
+  test_mint_db.c
+test_mint_db_LDADD = \
   libtalermint_common.la \
   $(top_srcdir)/src/util/libtalerutil.la \
   $(top_srcdir)/src/pq/libtalerpq.la \
