@@ -852,25 +852,27 @@ TALER_MINT_DB_commit (PGconn *db_conn)
  * Get the summary of a reserve.
  *
  * @param db the database connection handle
- * @param reserve_pub the public key identifying the reserve
- * @param balance the amount existing in the reserve (will be filled)
- * @param expiry expiration of the reserve (will be filled)
- * @return #GNUNET_OK upon success; #GNUNET_NO when the given reserve is not
- *           found; #GNUNET_SYSERR upon failure
+ * @param reserve the reserve data.  The public key of the reserve should be set
+ *          in this structure; it is used to query the database.  The balance
+ *          and expiration are then filled accordingly.
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 int
 TALER_MINT_DB_reserve_get (PGconn *db,
-                           struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub,
-                           struct TALER_Amount *balance,
-                           struct GNUNET_TIME_Absolute *expiry)
+                           struct Reserve *reserve)
 {
   PGresult *result;
   uint64_t expiration_date_nbo;
   struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(reserve_pub),
+    TALER_DB_QUERY_PARAM_PTR(reserve->pub),
     TALER_DB_QUERY_PARAM_END
   };
 
+  if (NULL == reserve->pub)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   result = TALER_DB_exec_prepared (db,
                                    "get_reserve",
                                    params);
@@ -897,8 +899,8 @@ TALER_MINT_DB_reserve_get (PGconn *db,
                                    "current_balance_value",
                                    "current_balance_fraction",
                                    "current_balance_currency",
-                                   balance));
-  expiry->abs_value_us = GNUNET_ntohll (expiration_date_nbo);
+                                   &reserve->balance));
+  reserve->expiry.abs_value_us = GNUNET_ntohll (expiration_date_nbo);
   PQclear (result);
   return GNUNET_OK;
 
