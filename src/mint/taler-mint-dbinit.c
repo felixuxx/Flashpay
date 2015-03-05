@@ -22,6 +22,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <libpq-fe.h>
 #include "taler_util.h"
+#include "mint_db.h"
 
 #define break_db_err(result) do { \
     GNUNET_break(0); \
@@ -86,7 +87,7 @@ main (int argc, char *const *argv)
     return 1;
   }
 
-  if (GNUNET_OK != TALER_MINT_DB_create_tables (db_conn))
+  if (GNUNET_OK != TALER_MINT_DB_create_tables (GNUNET_NO))
   {
     fprintf (stderr, "Failed to initialize database.\n");
     return 1;
