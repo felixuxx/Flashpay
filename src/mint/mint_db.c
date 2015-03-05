@@ -297,6 +297,23 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
            "WHERE reserve_pub=$1 "
            "LIMIT 1; ",
            1, NULL);
+  PREPARE ("create_reserve",
+           "INSERT INTO reserves ("
+           " reserve_pub,"
+           " current_balance_value,"
+           " current_balance_fraction,"
+           " balance_currency,"
+           " expiration_date) VALUES ("
+           "$1, $2, $3, $4, $5);",
+           5, NULL);
+  PREPARE ("create_reserves_in_transaction",
+           "INSERT INTO reserves_in ("
+           " reserve_pub,"
+           " balance_value,"
+           " balance_fraction,"
+           " expiration_date) VALUES ("
+           " $1, $2, $3, $4);",
+           4, NULL);
   PREPARE ("update_reserve",
            "UPDATE reserves "
            "SET"
@@ -732,8 +749,103 @@ TALER_MINT_DB_reserve_get (PGconn *db,
 }
 
 
+/**
+ * Insert a incoming transaction into reserves.  New reserves are also created
+ * through this function.
+ *
+ * @param db the database connection handle
+ * @param reserve the reserve structure.  The public key of the reserve should
+ *          be set here.  Upon successful execution of this function, the
+ *          balance and expiration of the reserve will be updated.
+ * @param balance the amount that has to be added to the reserve
+ * @param expiry the new expiration time for the reserve
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failures
+ */
+int
+TALER_MINT_DB_reserves_in_insert (PGconn *db,
+                                  struct Reserve *reserve,
+                                  const struct TALER_Amount *balance,
+                                  const struct GNUNET_TIME_Absolute *expiry)
+{
+  struct TALER_AmountNBO balance_nbo;
+  struct GNUNET_TIME_AbsoluteNBO expiry_nbo;
+  PGresult *result;
+  int reserve_exists;
 
+  if (NULL == reserve)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK != TALER_MINT_DB_transaction (db))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  reserve_exists = TALER_MINT_DB_reserve_get (db, reserve);
+  if (GNUNET_SYSERR == reserve_exists)
+  {
+    TALER_MINT_DB_rollback (db);
+    return GNUNET_SYSERR;
+  }
+  balance_nbo = TALER_amount_hton (*balance);
+  expiry_nbo = GNUNET_TIME_absolute_hton (*expiry);
+  if (GNUNET_NO == reserve_exists)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Reserve does not exist; creating a new one\n");
+    struct TALER_DB_QueryParam params[] = {
+      TALER_DB_QUERY_PARAM_PTR_SIZED (reserve->pub, sizeof (reserve->pub)),
+      TALER_DB_QUERY_PARAM_PTR (&balance_nbo.value),
+      TALER_DB_QUERY_PARAM_PTR (&balance_nbo.fraction),
+      TALER_DB_QUERY_PARAM_PTR_SIZED (balance_nbo.currency,
+                                      TALER_CURRENCY_LEN),
+      TALER_DB_QUERY_PARAM_PTR (&expiry_nbo),
+      TALER_DB_QUERY_PARAM_END
+    };
+    result = TALER_DB_exec_prepared (db,
+                                     "create_reserve",
+                                     params);
+    if (PGRES_COMMAND_OK != result)
+    {
+      QUERY_ERR (result);
+      goto rollback;
+    }
+  }
+  PQclear (result); result = NULL;
+  /* create new incoming transaction */
+  struct TALER_DB_QueryParam params[] = {
+    TALER_DB_QUERY_PARAM_PTR_SIZED (reserve->pub, sizeof (reserve->pub)),
+    TALER_DB_QUERY_PARAM_PTR (&balance_nbo.value),
+    TALER_DB_QUERY_PARAM_PTR (&balance_nbo.fraction),
+    TALER_DB_QUERY_PARAM_PTR (&expiry_nbo),
+    TALER_DB_QUERY_PARAM_END
+  };
+  result = TALER_DB_exec_prepared (db,
+                                   "create_reserves_in_transaction",
+                                   params);
+  if (PGRES_COMMAND_OK != result)
+  {
+    QUERY_ERR (result);
+    goto rollback;
+  }
+  PQclear (result); result = NULL;
+  if (GNUNET_NO == reserve_exists)
+  {
+    if (GNUNET_OK != TALER_MINT_DB_commit (db))
+      return GNUNET_SYSERR;
+    (void) memcpy (&reserve->balance, balance, sizeof (balance));
+    reserve->expiry = *expiry;
+    return GNUNET_OK;
+  }
+  /* FIXME: Update reserve */
+  return GNUNET_OK;
 
+ rollback:
+  PQclear (result);
+  TALER_MINT_DB_rollback (db);
+  return GNUNET_SYSERR;
+}
 
 
 /**
