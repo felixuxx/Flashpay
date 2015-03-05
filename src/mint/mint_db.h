@@ -137,6 +137,27 @@ struct BankTransfer
 /* FIXME: add functions to add bank transfers to our DB
    (and to test if we already did add one) (#3633) */
 
+/**
+ * A summary of a Reserve
+ */
+struct Reserve
+{
+  /**
+   * The reserve's public key.  This uniquely identifies the reserve
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey *pub;
+
+  /**
+   * The balance amount existing in the reserve
+   */
+  struct TALER_Amount balance;
+
+  /**
+   * The expiration date of this reserve
+   */
+  struct GNUNET_TIME_Absolute expiry;
+};
+
 
 /**
  * Information we keep for a withdrawn coin to reproduce
@@ -173,16 +194,15 @@ struct CollectableBlindcoin
  * Get the summary of a reserve.
  *
  * @param db the database connection handle
- * @param reserve_pub the public key identifying the reserve
- * @param balance the amount existing in the reserve (will be filled)
- * @param expiry expiration of the reserve (will be filled)
+ * @param reserve the reserve data.  The public key of the reserve should be set
+ *          in this structure; it is used to query the database.  The balance
+ *          and expiration are then filled accordingly.
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 int
 TALER_MINT_DB_reserve_get (PGconn *db,
-                           struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub,
-                           struct TALER_Amount *balance,
-                           struct GNUNET_TIME_Absolute *expiry);
+                           struct Reserve *reserve);
+
 
 
 /* FIXME: need call to convert CollectableBlindcoin to JSON (#3527) */
