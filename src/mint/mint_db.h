@@ -169,6 +169,22 @@ struct CollectableBlindcoin
 };
 
 
+/**
+ * Get the summary of a reserve.
+ *
+ * @param db the database connection handle
+ * @param reserve_pub the public key identifying the reserve
+ * @param balance the amount existing in the reserve (will be filled)
+ * @param expiry expiration of the reserve (will be filled)
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
+ */
+int
+TALER_MINT_DB_reserve_get (PGconn *db,
+                           struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub,
+                           struct TALER_Amount *balance,
+                           struct GNUNET_TIME_Absolute *expiry);
+
+
 /* FIXME: need call to convert CollectableBlindcoin to JSON (#3527) */
 
 

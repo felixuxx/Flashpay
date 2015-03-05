@@ -848,6 +848,66 @@ TALER_MINT_DB_commit (PGconn *db_conn)
 }
 
 
+/**
+ * Get the summary of a reserve.
+ *
+ * @param db the database connection handle
+ * @param reserve_pub the public key identifying the reserve
+ * @param balance the amount existing in the reserve (will be filled)
+ * @param expiry expiration of the reserve (will be filled)
+ * @return #GNUNET_OK upon success; #GNUNET_NO when the given reserve is not
+ *           found; #GNUNET_SYSERR upon failure
+ */
+int
+TALER_MINT_DB_reserve_get (PGconn *db,
+                           struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub,
+                           struct TALER_Amount *balance,
+                           struct GNUNET_TIME_Absolute *expiry)
+{
+  PGresult *result;
+  uint64_t expiration_date_nbo;
+  struct TALER_DB_QueryParam params[] = {
+    TALER_DB_QUERY_PARAM_PTR(reserve_pub),
+    TALER_DB_QUERY_PARAM_END
+  };
+
+  result = TALER_DB_exec_prepared (db,
+                                   "get_reserve",
+                                   params);
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Query failed: %s\n",
+              PQresultErrorMessage (result));
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  if (0 == PQntuples (result))
+  {
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  struct TALER_DB_ResultSpec rs[] = {
+    TALER_DB_RESULT_SPEC("expiration_date", &expiration_date_nbo),
+    TALER_DB_RESULT_SPEC_END
+  };
+  EXITIF (GNUNET_OK != TALER_DB_extract_result (result, rs, 0));
+  EXITIF (GNUNET_OK !=
+          TALER_DB_extract_amount (result, 0,
+                                   "current_balance_value",
+                                   "current_balance_fraction",
+                                   "current_balance_currency",
+                                   balance));
+  expiry->abs_value_us = GNUNET_ntohll (expiration_date_nbo);
+  PQclear (result);
+  return GNUNET_OK;
+
+ EXITIF_exit:
+  PQclear (result);
+  return GNUNET_SYSERR;
+}
+
+
 
 
 
