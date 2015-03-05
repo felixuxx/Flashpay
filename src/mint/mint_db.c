@@ -164,16 +164,8 @@ TALER_MINT_DB_create_tables (int temporary)
           ",balance_fraction INT4 NOT NULL"
           ",expiration_date INT8 NOT NULL"
           ");");
-  result = PQexec (conn,
-                   "CREATE INDEX reserves_in_index ON reserves_in (reserve_pub);");
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    ExecStatusType status = PQresultStatus (result);
-    PQclear (result);
-    result = NULL;
-    goto SQLEXEC_fail;
-  }
-  PQclear (result);
+  /* Create an index on the foreign key as it is not created automatically by PSQL */
+  SQLEXEC ("CREATE INDEX reserves_in_index ON reserves_in (reserve_pub);");
   SQLEXEC ("CREATE TABLE IF NOT EXISTS collectable_blindcoins"
            "("
            "blind_ev BYTEA PRIMARY KEY"
