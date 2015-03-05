@@ -282,9 +282,10 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
 
   result = PQprepare (db_conn, "get_reserve",
                       "SELECT "
-                      " balance_value, balance_fraction, balance_currency "
-                      ",expiration_date, blind_session_pub, blind_session_priv"
-                      ",status_sig, status_sign_pub "
+                      "current_balance_value"
+                      ",current_balance_fraction"
+                      ",balance_currency "
+                      ",expiration_date "
                       "FROM reserves "
                       "WHERE reserve_pub=$1 "
                       "LIMIT 1; ",
@@ -300,14 +301,11 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
   result = PQprepare (db_conn, "update_reserve",
                       "UPDATE reserves "
                       "SET"
-                      " balance_value=$2 "
-                      ",balance_fraction=$3 "
-                      ",balance_currency=$4 "
-                      ",status_sig=$5 "
-                      ",status_sign_pub=$6 "
-                      ",expiration_date=$7 "
+                      " current_balance_value=$2 "
+                      ",current_balance_fraction=$3 "
+                      ",expiration_date=$4 "
                       "WHERE reserve_pub=$1 ",
-                      9, NULL);
+                      4, NULL);
   if (PGRES_COMMAND_OK != PQresultStatus(result))
   {
     break_db_err (result);
@@ -343,21 +341,8 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
   }
   PQclear (result);
 
-  result = PQprepare (db_conn, "insert_reserve_order",
-                      "SELECT "
-                      " blind_ev, blind_ev_sig, denom_pub, reserve_sig, reserve_pub "
-                      "FROM collectable_blindcoins "
-                      "WHERE blind_session_pub = $1",
-                      1, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
   /* FIXME: does it make sense to store these computed values in the DB? */
+#if 0
   result = PQprepare (db_conn, "get_refresh_session",
                       "SELECT "
                       " (SELECT count(*) FROM refresh_melt WHERE session_pub = $1)::INT2 as num_oldcoins "
@@ -378,6 +363,7 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
     return GNUNET_SYSERR;
   }
   PQclear (result);
+#endif
 
   result = PQprepare (db_conn, "get_known_coin",
                       "SELECT "
