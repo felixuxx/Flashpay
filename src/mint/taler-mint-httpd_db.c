@@ -85,7 +85,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
   struct TALER_MINT_DenomKeyIssuePriv *dki;
   int ret;
 
-  if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
+  if (NULL == (db_conn = TALER_MINT_DB_get_connection (GNUNET_NO)))
   {
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
@@ -203,7 +203,7 @@ TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
   struct ReserveHistory *rh;
   int res;
 
-  if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
+  if (NULL == (db_conn = TALER_MINT_DB_get_connection (GNUNET_NO)))
   {
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
@@ -264,7 +264,7 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
                       blinded_msg_len,
                       &h_blind);
 
-  if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
+  if (NULL == (db_conn = TALER_MINT_DB_get_connection (GNUNET_NO)))
   {
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
@@ -521,7 +521,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   int res;
   unsigned int i;
 
-  if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
+  if (NULL == (db_conn = TALER_MINT_DB_get_connection (GNUNET_NO)))
   {
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
@@ -650,7 +650,7 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
   unsigned int j;
   int res;
 
-  if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
+  if (NULL == (db_conn = TALER_MINT_DB_get_connection (GNUNET_NO)))
   {
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
@@ -1034,7 +1034,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
   unsigned int j;
   unsigned int off;
 
-  if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
+  if (NULL == (db_conn = TALER_MINT_DB_get_connection (GNUNET_NO)))
   {
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
@@ -1202,7 +1202,7 @@ TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
   struct TALER_EncryptedLinkSecret shared_secret_enc;
   struct LinkDataList *ldl;
 
-  if (NULL == (db_conn = TALER_MINT_DB_get_connection ()))
+  if (NULL == (db_conn = TALER_MINT_DB_get_connection (GNUNET_NO)))
   {
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);

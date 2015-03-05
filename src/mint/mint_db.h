@@ -27,6 +27,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
 
+#define TALER_TEMP_SCHEMA_NAME "taler_temporary"
 
 /**
  * Initialize database subsystem.
@@ -42,11 +43,31 @@ TALER_MINT_DB_init (const char *connection_cfg);
  * Get the thread-local database-handle.
  * Connect to the db if the connection does not exist yet.
  *
+ * @param temporary #GNUNET_YES to use a temporary schema; #GNUNET_NO to use the
+ *        database default one
  * @param the database connection, or NULL on error
  */
 PGconn *
-TALER_MINT_DB_get_connection (void);
+TALER_MINT_DB_get_connection (int temporary);
 
+
+/**
+ * Drop the temporary taler schema.  This is only useful for testcases
+ *
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
+ */
+int
+TALER_MINT_DB_drop_temporary (PGconn *db);
+
+
+/**
+ * Create the necessary tables if they are not present
+ *
+ * @param temporary should we use a temporary schema
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
+ */
+int
+TALER_MINT_DB_create_tables (int temporary);
 
 /**
  * Setup prepared statements.  FIXME: should this be part of the API,
