@@ -139,7 +139,7 @@ TALER_string_to_amount (const char *str,
  * FIXME
  */
 struct TALER_AmountNBO
-TALER_amount_hton (struct TALER_Amount d)
+TALER_amount_hton (const struct TALER_Amount d)
 {
   struct TALER_AmountNBO dn;
   dn.value = htonl (d.value);
@@ -154,7 +154,7 @@ TALER_amount_hton (struct TALER_Amount d)
  * FIXME
  */
 struct TALER_Amount
-TALER_amount_ntoh (struct TALER_AmountNBO dn)
+TALER_amount_ntoh (const struct TALER_AmountNBO dn)
 {
   struct TALER_Amount d;
   d.value = ntohl (dn.value);

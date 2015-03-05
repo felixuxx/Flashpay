@@ -99,7 +99,7 @@ TALER_string_to_amount (const char *str,
  * @return amount in network representation
  */
 struct TALER_AmountNBO
-TALER_amount_hton (struct TALER_Amount d);
+TALER_amount_hton (const struct TALER_Amount d);
 
 
 /**
@@ -109,7 +109,7 @@ TALER_amount_hton (struct TALER_Amount d);
  * @return amount in host representation
  */
 struct TALER_Amount
-TALER_amount_ntoh (struct TALER_AmountNBO dn);
+TALER_amount_ntoh (const struct TALER_AmountNBO dn);
 
 
 /**
