@@ -272,417 +272,246 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
 {
   PGresult *result;
 
-  result = PQprepare (db_conn, "get_reserve",
-                      "SELECT "
-                      "current_balance_value"
-                      ",current_balance_fraction"
-                      ",balance_currency "
-                      ",expiration_date "
-                      "FROM reserves "
-                      "WHERE reserve_pub=$1 "
-                      "LIMIT 1; ",
-                      1, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
+#define PREPARE(name, sql, ...)                                 \
+  do {                                                          \
+    result = PQprepare (db_conn, name, sql, __VA_ARGS__);       \
+    if (PGRES_COMMAND_OK != PQresultStatus (result))            \
+    {                                                           \
+      break_db_err (result);                                    \
+      PQclear (result); result = NULL;                          \
+      return GNUNET_SYSERR;                                     \
+    }                                                           \
+    PQclear (result); result = NULL;                            \
+  } while (0);
 
-  result = PQprepare (db_conn, "update_reserve",
-                      "UPDATE reserves "
-                      "SET"
-                      " current_balance_value=$2 "
-                      ",current_balance_fraction=$3 "
-                      ",expiration_date=$4 "
-                      "WHERE reserve_pub=$1 ",
-                      4, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  result = PQprepare (db_conn, "insert_collectable_blindcoins",
-                      "INSERT INTO collectable_blindcoins ( "
-                      " blind_ev, blind_ev_sig "
-                      ",denom_pub, reserve_pub, reserve_sig) "
-                      "VALUES ($1, $2, $3, $4, $5)",
-                      6, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "get_collectable_blindcoins",
-                      "SELECT "
-                      "blind_ev_sig, denom_pub, reserve_sig, reserve_pub "
-                      "FROM collectable_blindcoins "
-                      "WHERE blind_ev = $1",
-                      1, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
+  PREPARE ("get_reserve",
+           "SELECT "
+           "current_balance_value"
+           ",current_balance_fraction"
+           ",balance_currency "
+           ",expiration_date "
+           "FROM reserves "
+           "WHERE reserve_pub=$1 "
+           "LIMIT 1; ",
+           1, NULL);
+  PREPARE ("update_reserve",
+           "UPDATE reserves "
+           "SET"
+           " current_balance_value=$2 "
+           ",current_balance_fraction=$3 "
+           ",expiration_date=$4 "
+           "WHERE reserve_pub=$1 ",
+           4, NULL);
+  PREPARE ("insert_collectable_blindcoins",
+           "INSERT INTO collectable_blindcoins ( "
+           " blind_ev, blind_ev_sig "
+           ",denom_pub, reserve_pub, reserve_sig) "
+           "VALUES ($1, $2, $3, $4, $5)",
+           6, NULL);
+  PREPARE ("get_collectable_blindcoins",
+           "SELECT "
+           "blind_ev_sig, denom_pub, reserve_sig, reserve_pub "
+           "FROM collectable_blindcoins "
+           "WHERE blind_ev = $1",
+           1, NULL);
 
   /* FIXME: does it make sense to store these computed values in the DB? */
 #if 0
-  result = PQprepare (db_conn, "get_refresh_session",
-                      "SELECT "
-                      " (SELECT count(*) FROM refresh_melt WHERE session_pub = $1)::INT2 as num_oldcoins "
-                      ",(SELECT count(*) FROM refresh_blind_session_keys "
-                      "  WHERE session_pub = $1 and cnc_index = 0)::INT2 as num_newcoins "
-                      ",(SELECT count(*) FROM refresh_blind_session_keys "
-                      "  WHERE session_pub = $1 and newcoin_index = 0)::INT2 as kappa "
-                      ",noreveal_index"
-                      ",session_commit_sig "
-                      ",reveal_ok "
-                      "FROM refresh_sessions "
-                      "WHERE session_pub = $1",
-                      1, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
+  PREPARE ("get_refresh_session",
+           "SELECT "
+           " (SELECT count(*) FROM refresh_melt WHERE session_pub = $1)::INT2 as num_oldcoins "
+           ",(SELECT count(*) FROM refresh_blind_session_keys "
+           "  WHERE session_pub = $1 and cnc_index = 0)::INT2 as num_newcoins "
+           ",(SELECT count(*) FROM refresh_blind_session_keys "
+           "  WHERE session_pub = $1 and newcoin_index = 0)::INT2 as kappa "
+           ",noreveal_index"
+           ",session_commit_sig "
+           ",reveal_ok "
+           "FROM refresh_sessions "
+           "WHERE session_pub = $1",
+           1, NULL);
 #endif
 
-  result = PQprepare (db_conn, "get_known_coin",
-                      "SELECT "
-                      " coin_pub, denom_pub, denom_sig "
-                      ",expended_value, expended_fraction, expended_currency "
-                      ",refresh_session_pub "
-                      "FROM known_coins "
-                      "WHERE coin_pub = $1",
-                      1, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "update_known_coin",
-                      "UPDATE known_coins "
-                      "SET "
-                      " denom_pub = $2 "
-                      ",denom_sig = $3 "
-                      ",expended_value = $4 "
-                      ",expended_fraction = $5 "
-                      ",expended_currency = $6 "
-                      ",refresh_session_pub = $7 "
-                      "WHERE "
-                      " coin_pub = $1 ",
-                      7, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "insert_known_coin",
-                      "INSERT INTO known_coins ("
-                      " coin_pub"
-                      ",denom_pub"
-                      ",denom_sig"
-                      ",expended_value"
-                      ",expended_fraction"
-                      ",expended_currency"
-                      ",refresh_session_pub"
-                      ")"
-                      "VALUES ($1,$2,$3,$4,$5,$6,$7)",
-                      7, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "get_refresh_commit_link",
-                      "SELECT "
-                      " transfer_pub "
-                      ",link_secret_enc "
-                      "FROM refresh_commit_link "
-                      "WHERE session_pub = $1 AND cnc_index = $2 AND oldcoin_index = $3",
-                      3, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "get_refresh_commit_coin",
-                      "SELECT "
-                      " link_vector_enc "
-                      ",coin_ev "
-                      "FROM refresh_commit_coin "
-                      "WHERE session_pub = $1 AND cnc_index = $2 AND newcoin_index = $3",
-                      3, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "insert_refresh_order",
-                      "INSERT INTO refresh_order ( "
-                      " newcoin_index "
-                      ",session_pub "
-                      ",denom_pub "
-                      ") "
-                      "VALUES ($1, $2, $3) ",
-                      3, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "insert_refresh_melt",
-                      "INSERT INTO refresh_melt ( "
-                      " session_pub "
-                      ",oldcoin_index "
-                      ",coin_pub "
-                      ",denom_pub "
-                      ") "
-                      "VALUES ($1, $2, $3, $4) ",
-                      3, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "get_refresh_order",
-                      "SELECT denom_pub "
-                      "FROM refresh_order "
-                      "WHERE session_pub = $1 AND newcoin_index = $2",
-                      2, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "get_refresh_collectable",
-                      "SELECT ev_sig "
-                      "FROM refresh_collectable "
-                      "WHERE session_pub = $1 AND newcoin_index = $2",
-                      2, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "get_refresh_melt",
-                      "SELECT coin_pub "
-                      "FROM refresh_melt "
-                      "WHERE session_pub = $1 AND oldcoin_index = $2",
-                      2, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "insert_refresh_session",
-                      "INSERT INTO refresh_sessions ( "
-                      " session_pub "
-                      ",noreveal_index "
-                      ") "
-                      "VALUES ($1, $2) ",
-                      2, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "insert_refresh_commit_link",
-                      "INSERT INTO refresh_commit_link ( "
-                      " session_pub "
-                      ",transfer_pub "
-                      ",cnc_index "
-                      ",oldcoin_index "
-                      ",link_secret_enc "
-                      ") "
-                      "VALUES ($1, $2, $3, $4, $5) ",
-                      5, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "insert_refresh_commit_coin",
-                      "INSERT INTO refresh_commit_coin ( "
-                      " session_pub "
-                      ",coin_ev "
-                      ",cnc_index "
-                      ",newcoin_index "
-                      ",link_vector_enc "
-                      ") "
-                      "VALUES ($1, $2, $3, $4, $5) ",
-                      5, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "insert_refresh_collectable",
-                      "INSERT INTO refresh_collectable ( "
-                      " session_pub "
-                      ",newcoin_index "
-                      ",ev_sig "
-                      ") "
-                      "VALUES ($1, $2, $3) ",
-                      3, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "set_reveal_ok",
-                      "UPDATE refresh_sessions "
-                      "SET reveal_ok = TRUE "
-                      "WHERE session_pub = $1 ",
-                      1, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "get_link",
-                      "SELECT link_vector_enc, ro.denom_pub, ev_sig "
-                      "FROM refresh_melt rm "
-                      "     JOIN refresh_order ro USING (session_pub) "
-                      "     JOIN refresh_commit_coin rcc USING (session_pub) "
-                      "     JOIN refresh_sessions rs USING (session_pub) "
-                      "     JOIN refresh_collectable rc USING (session_pub) "
-                      "WHERE rm.coin_pub = $1 "
-                      "AND ro.newcoin_index = rcc.newcoin_index "
-                      "AND ro.newcoin_index = rc.newcoin_index "
-                      "AND  rcc.cnc_index = rs.noreveal_index % ( "
-                      "         SELECT count(*) FROM refresh_commit_coin rcc2 "
-                      "         WHERE rcc2.newcoin_index = 0 AND rcc2.session_pub = rs.session_pub "
-                      "     ) ",
-                      1, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "get_transfer",
-                      "SELECT transfer_pub, link_secret_enc "
-                      "FROM refresh_melt rm "
-                      "     JOIN refresh_commit_link rcl USING (session_pub) "
-                      "     JOIN refresh_sessions rs USING (session_pub) "
-                      "WHERE rm.coin_pub = $1 "
-                      "AND  rm.oldcoin_index = rcl.oldcoin_index "
-                      "AND  rcl.cnc_index = rs.noreveal_index % ( "
-                      "         SELECT count(*) FROM refresh_commit_coin rcc2 "
-                      "         WHERE newcoin_index = 0 AND rcc2.session_pub = rm.session_pub "
-                      "     ) ",
-                      1, NULL);
-  if (PGRES_COMMAND_OK != PQresultStatus(result))
-  {
-    break_db_err (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-
-  result = PQprepare (db_conn, "insert_deposit",
-                      "INSERT INTO deposits ("
-                      "coin_pub,"
-                      "denom_pub,"
-                      "transaction_id,"
-                      "amount_value,"
-                      "amount_fraction,"
-                      "amount_currency,"
-                      "merchant_pub,"
-                      "h_contract,"
-                      "h_wire,"
-                      "coin_sig,"
-                      "wire"
-                      ") VALUES ("
-                      "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11"
-                      ")",
-                      11, NULL);
-  EXITIF (PGRES_COMMAND_OK != PQresultStatus(result));
-  PQclear (result);
-
-  result = PQprepare (db_conn, "get_deposit",
-                      "SELECT "
-                      "coin_pub,"
-                      "denom_pub,"
-                      "transaction_id,"
-                      "amount_value,"
-                      "amount_fraction,"
-                      "amount_currency,"
-                      "merchant_pub,"
-                      "h_contract,"
-                      "h_wire,"
-                      "coin_sig"
-                      " FROM deposits WHERE ("
-                      "coin_pub = $1"
-                      ")",
-                      1, NULL);
-  EXITIF (PGRES_COMMAND_OK != PQresultStatus(result));
-  PQclear (result);
-
+  PREPARE ("get_known_coin",
+           "SELECT "
+           " coin_pub, denom_pub, denom_sig "
+           ",expended_value, expended_fraction, expended_currency "
+           ",refresh_session_pub "
+           "FROM known_coins "
+           "WHERE coin_pub = $1",
+           1, NULL);
+  PREPARE ("update_known_coin",
+           "UPDATE known_coins "
+           "SET "
+           " denom_pub = $2 "
+           ",denom_sig = $3 "
+           ",expended_value = $4 "
+           ",expended_fraction = $5 "
+           ",expended_currency = $6 "
+           ",refresh_session_pub = $7 "
+           "WHERE "
+           " coin_pub = $1 ",
+           7, NULL);
+  PREPARE ("insert_known_coin",
+           "INSERT INTO known_coins ("
+           " coin_pub"
+           ",denom_pub"
+           ",denom_sig"
+           ",expended_value"
+           ",expended_fraction"
+           ",expended_currency"
+           ",refresh_session_pub"
+           ")"
+           "VALUES ($1,$2,$3,$4,$5,$6,$7)",
+           7, NULL);
+  PREPARE ("get_refresh_commit_link",
+           "SELECT "
+           " transfer_pub "
+           ",link_secret_enc "
+           "FROM refresh_commit_link "
+           "WHERE session_pub = $1 AND cnc_index = $2 AND oldcoin_index = $3",
+           3, NULL);
+  PREPARE ("get_refresh_commit_coin",
+           "SELECT "
+           " link_vector_enc "
+           ",coin_ev "
+           "FROM refresh_commit_coin "
+           "WHERE session_pub = $1 AND cnc_index = $2 AND newcoin_index = $3",
+           3, NULL);
+  PREPARE ("insert_refresh_order",
+           "INSERT INTO refresh_order ( "
+           " newcoin_index "
+           ",session_pub "
+           ",denom_pub "
+           ") "
+           "VALUES ($1, $2, $3) ",
+           3, NULL);
+  PREPARE ("insert_refresh_melt",
+           "INSERT INTO refresh_melt ( "
+           " session_pub "
+           ",oldcoin_index "
+           ",coin_pub "
+           ",denom_pub "
+           ") "
+           "VALUES ($1, $2, $3, $4) ",
+           3, NULL);
+  PREPARE ("get_refresh_order",
+           "SELECT denom_pub "
+           "FROM refresh_order "
+           "WHERE session_pub = $1 AND newcoin_index = $2",
+           2, NULL);
+  PREPARE ("get_refresh_collectable",
+           "SELECT ev_sig "
+           "FROM refresh_collectable "
+           "WHERE session_pub = $1 AND newcoin_index = $2",
+           2, NULL);
+  PREPARE ("get_refresh_melt",
+           "SELECT coin_pub "
+           "FROM refresh_melt "
+           "WHERE session_pub = $1 AND oldcoin_index = $2",
+           2, NULL);
+  PREPARE ("insert_refresh_session",
+           "INSERT INTO refresh_sessions ( "
+           " session_pub "
+           ",noreveal_index "
+           ") "
+           "VALUES ($1, $2) ",
+           2, NULL);
+  PREPARE ("insert_refresh_commit_link",
+           "INSERT INTO refresh_commit_link ( "
+           " session_pub "
+           ",transfer_pub "
+           ",cnc_index "
+           ",oldcoin_index "
+           ",link_secret_enc "
+           ") "
+           "VALUES ($1, $2, $3, $4, $5) ",
+           5, NULL);
+  PREPARE ("insert_refresh_commit_coin",
+           "INSERT INTO refresh_commit_coin ( "
+           " session_pub "
+           ",coin_ev "
+           ",cnc_index "
+           ",newcoin_index "
+           ",link_vector_enc "
+           ") "
+           "VALUES ($1, $2, $3, $4, $5) ",
+           5, NULL);
+  PREPARE ("insert_refresh_collectable",
+           "INSERT INTO refresh_collectable ( "
+           " session_pub "
+           ",newcoin_index "
+           ",ev_sig "
+           ") "
+           "VALUES ($1, $2, $3) ",
+           3, NULL);
+  PREPARE ("set_reveal_ok",
+           "UPDATE refresh_sessions "
+           "SET reveal_ok = TRUE "
+           "WHERE session_pub = $1 ",
+           1, NULL);
+  PREPARE ("get_link",
+           "SELECT link_vector_enc, ro.denom_pub, ev_sig "
+           "FROM refresh_melt rm "
+           "     JOIN refresh_order ro USING (session_pub) "
+           "     JOIN refresh_commit_coin rcc USING (session_pub) "
+           "     JOIN refresh_sessions rs USING (session_pub) "
+           "     JOIN refresh_collectable rc USING (session_pub) "
+           "WHERE rm.coin_pub = $1 "
+           "AND ro.newcoin_index = rcc.newcoin_index "
+           "AND ro.newcoin_index = rc.newcoin_index "
+           "AND  rcc.cnc_index = rs.noreveal_index % ( "
+           "         SELECT count(*) FROM refresh_commit_coin rcc2 "
+           "         WHERE rcc2.newcoin_index = 0 AND rcc2.session_pub = rs.session_pub "
+           "     ) ",
+           1, NULL);
+  PREPARE ("get_transfer",
+           "SELECT transfer_pub, link_secret_enc "
+           "FROM refresh_melt rm "
+           "     JOIN refresh_commit_link rcl USING (session_pub) "
+           "     JOIN refresh_sessions rs USING (session_pub) "
+           "WHERE rm.coin_pub = $1 "
+           "AND  rm.oldcoin_index = rcl.oldcoin_index "
+           "AND  rcl.cnc_index = rs.noreveal_index % ( "
+           "         SELECT count(*) FROM refresh_commit_coin rcc2 "
+           "         WHERE newcoin_index = 0 AND rcc2.session_pub = rm.session_pub "
+           "     ) ",
+           1, NULL);
+  PREPARE ("insert_deposit",
+           "INSERT INTO deposits ("
+           "coin_pub,"
+           "denom_pub,"
+           "transaction_id,"
+           "amount_value,"
+           "amount_fraction,"
+           "amount_currency,"
+           "merchant_pub,"
+           "h_contract,"
+           "h_wire,"
+           "coin_sig,"
+           "wire"
+           ") VALUES ("
+           "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11"
+           ")",
+           11, NULL);
+  PREPARE ("get_deposit",
+           "SELECT "
+           "coin_pub,"
+           "denom_pub,"
+           "transaction_id,"
+           "amount_value,"
+           "amount_fraction,"
+           "amount_currency,"
+           "merchant_pub,"
+           "h_contract,"
+           "h_wire,"
+           "coin_sig"
+           " FROM deposits WHERE ("
+           "coin_pub = $1"
+           ")",
+           1, NULL);
   return GNUNET_OK;
-
- EXITIF_exit:
-  break_db_err (result);
-  PQclear (result);
-  return GNUNET_SYSERR;
+#undef PREPARE
 }
 
 
