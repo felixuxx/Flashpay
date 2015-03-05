@@ -48,7 +48,7 @@ static pthread_key_t db_conn_threadlocal;
  */
 static char *TALER_MINT_db_connection_cfg_str;
 
-#define break_db_err(result) do { \
+#define BREAK_DB_ERR(result) do { \
     GNUNET_break(0); \
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Database failure: %s\n", PQresultErrorMessage (result)); \
   } while (0)
@@ -67,7 +67,7 @@ static char *TALER_MINT_db_connection_cfg_str;
     result = PQexec (conn, sql);                                        \
     if (PGRES_COMMAND_OK != PQresultStatus (result))                    \
     {                                                                   \
-      break_db_err (result);                                            \
+      BREAK_DB_ERR (result);                                            \
       PQclear (result); result = NULL;                                  \
       goto SQLEXEC_fail;                                                \
     }                                                                   \
@@ -277,7 +277,7 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
     result = PQprepare (db_conn, name, sql, __VA_ARGS__);       \
     if (PGRES_COMMAND_OK != PQresultStatus (result))            \
     {                                                           \
-      break_db_err (result);                                    \
+      BREAK_DB_ERR (result);                                    \
       PQclear (result); result = NULL;                          \
       return GNUNET_SYSERR;                                     \
     }                                                           \
@@ -973,7 +973,7 @@ TALER_MINT_DB_have_deposit (PGconn *db_conn,
   if (PGRES_TUPLES_OK !=
       PQresultStatus (result))
   {
-    break_db_err (result);
+    BREAK_DB_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -1022,7 +1022,7 @@ TALER_MINT_DB_insert_deposit (PGconn *db_conn,
   result = TALER_DB_exec_prepared (db_conn, "insert_deposit", params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
-    break_db_err (result);
+    BREAK_DB_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -1138,7 +1138,7 @@ TALER_MINT_DB_create_refresh_session (PGconn *db_conn,
 
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
-    break_db_err (result);
+    BREAK_DB_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -1207,7 +1207,7 @@ TALER_MINT_DB_insert_refresh_melt (PGconn *db_conn,
   GNUNET_free (buf);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
-    break_db_err (result);
+    BREAK_DB_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -1278,7 +1278,7 @@ TALER_MINT_DB_insert_refresh_order (PGconn *db_conn,
   GNUNET_free (buf);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
-    break_db_err (result);
+    BREAK_DB_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -1323,7 +1323,7 @@ TALER_MINT_DB_get_refresh_order (PGconn *db_conn,
 
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
-    break_db_err (result);
+    BREAK_DB_ERR (result);
     PQclear (result);
     return NULL;
   }
@@ -1390,7 +1390,7 @@ TALER_MINT_DB_insert_refresh_commit_coin (PGconn *db_conn,
 
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
-    break_db_err (result);
+    BREAK_DB_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -1445,7 +1445,7 @@ TALER_MINT_DB_get_refresh_commit_coin (PGconn *db_conn,
 
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
-    break_db_err (result);
+    BREAK_DB_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -1519,7 +1519,7 @@ TALER_MINT_DB_insert_refresh_commit_link (PGconn *db_conn,
                                              params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
-    break_db_err (result);
+    BREAK_DB_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -1572,7 +1572,7 @@ TALER_MINT_DB_get_refresh_commit_link (PGconn *db_conn,
                                              params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
-    break_db_err (result);
+    BREAK_DB_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -1641,7 +1641,7 @@ TALER_MINT_DB_insert_refresh_collectable (PGconn *db_conn,
   GNUNET_free (buf);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
-    break_db_err (result);
+    BREAK_DB_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -1674,7 +1674,7 @@ TALER_db_get_link (PGconn *db_conn,
   ldl = NULL;
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
-    break_db_err (result);
+    BREAK_DB_ERR (result);
     PQclear (result);
     return NULL;
   }
@@ -1805,7 +1805,7 @@ TALER_db_get_transfer (PGconn *db_conn,
 
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
-    break_db_err (result);
+    BREAK_DB_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
