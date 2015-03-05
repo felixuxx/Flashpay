@@ -27,6 +27,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
 
+#define TALER_TEMP_SCHEMA_NAME "taler_temporary"
 
 /**
  * Initialize database subsystem.
