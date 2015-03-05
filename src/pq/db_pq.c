@@ -94,7 +94,7 @@ TALER_DB_extract_result (PGresult *result,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "field '%s' does not exist in result\n",
-                  rs->fname);
+                  rs[i].fname);
       return GNUNET_SYSERR;
     }
 
@@ -111,26 +111,28 @@ TALER_DB_extract_result (PGresult *result,
          (rs[i].dst_size != len) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "field '%s' has wrong size (got %d, expected %d)\n",
+                  "field '%s' has wrong size (got %u, expected %u)\n",
                   rs[i].fname,
-                  (int) len,
-                  (int) rs->dst_size);
-      for (j=0;j<i;j++)
-        if (0 == rs[i].dst_size)
+                  (unsigned int) len,
+                  (unsigned int) rs[i].dst_size);
+      for (j=0; j<i; j++)
+        if (0 == rs[j].dst_size)
         {
-          GNUNET_free (rs[i].dst);
-          rs[i].dst = NULL;
-          *rs[i].result_size = 0;
+          GNUNET_free (rs[j].dst);
+          rs[j].dst = NULL;
+          *rs[j].result_size = 0;
         }
       return GNUNET_SYSERR;
     }
     res = PQgetvalue (result, row, fnum);
     GNUNET_assert (NULL != res);
-    if (0 == rs->dst_size)
-      *(void**) rs->dst = GNUNET_malloc (*rs->result_size = len);
-    memcpy (rs->dst,
-            res,
-            len);
+    if (0 == rs[i].dst_size)
+    {
+      *rs[i].result_size = len;
+      *((void **) rs[i].dst) = GNUNET_malloc (len);
+      rs[i].dst = *((void **) rs[i].dst);
+    }
+    memcpy (rs[i].dst, res, len);
   }
   if (GNUNET_YES == had_null)
     return GNUNET_NO;
