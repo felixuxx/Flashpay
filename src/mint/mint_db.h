@@ -204,6 +204,23 @@ TALER_MINT_DB_reserve_get (PGconn *db,
                            struct Reserve *reserve);
 
 
+/**
+ * Insert a incoming transaction into reserves.  New reserves are also created
+ * through this function.
+ *
+ * @param db the database connection handle
+ * @param reserve the reserve structure.  The public key of the reserve should
+ *          be set here.  Upon successful execution of this function, the
+ *          balance and expiration of the reserve will be updated.
+ * @param balance the amount that has to be added to the reserve
+ * @param expiry the new expiration time for the reserve
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failures
+ */
+int
+TALER_MINT_DB_reserves_in_insert (PGconn *db,
+                                  struct Reserve *reserve,
+                                  const struct TALER_Amount balance,
+                                  const struct GNUNET_TIME_Absolute expiry);
 
 /* FIXME: need call to convert CollectableBlindcoin to JSON (#3527) */
 
