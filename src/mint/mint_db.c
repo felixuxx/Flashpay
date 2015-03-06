@@ -191,13 +191,12 @@ TALER_MINT_DB_create_tables (int temporary)
   SQLEXEC ("CREATE TABLE IF NOT EXISTS collectable_blindcoins"
            "("
            "blind_ev BYTEA PRIMARY KEY"
-           ",blind_ev_sig BYTEA NOT NULL"
            ",denom_pub BYTEA NOT NULL"
            ",reserve_sig BYTEA NOT NULL"
            ",reserve_pub BYTEA REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
-           ");"
-           "CREATE INDEX collectable_blindcoins_index ON"
-           " collectable_blindcoins(reserve_pub)");
+           ");");
+  SQLEXEC ("CREATE INDEX collectable_blindcoins_reserve_pub_index ON"
+           " collectable_blindcoins (reserve_pub)");
   SQLEXEC("CREATE TABLE IF NOT EXISTS known_coins "
           "("
           " coin_pub BYTEA NOT NULL PRIMARY KEY"
