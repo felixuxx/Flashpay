@@ -25,6 +25,13 @@
 
 static int result;
 
+#define FAILIF(cond)                              \
+  do {                                          \
+    if (!(cond)){ break;}                      \
+    GNUNET_break (0);                           \
+    goto drop;                                  \
+  } while (0)
+
 
 /**
  * Main function that will be run by the scheduler.
@@ -39,6 +46,10 @@ run (void *cls, char *const *args, const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *config)
 {
   PGconn *db;
+  struct GNUNET_CRYPTO_EddsaPublicKey pub;
+  struct Reserve reserve;
+  struct GNUNET_TIME_Absolute expiry;
+  struct TALER_Amount amount;
 
   db = NULL;
   if (GNUNET_OK != TALER_MINT_DB_init ("postgres:///taler"))
@@ -55,6 +66,28 @@ run (void *cls, char *const *args, const char *cfgfile,
   {
     result = 3;
     goto drop;
+  }
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                              &pub, sizeof (pub));
+  reserve.pub = &pub;
+  amount.value = 1;
+  amount.fraction = 1;
+  strcpy (amount.currency, "EUR");
+  expiry = GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
+                                     GNUNET_TIME_UNIT_HOURS);
+  result = 4;
+  FAILIF (GNUNET_OK != TALER_MINT_DB_reserves_in_insert (db,
+                                                         &reserve,
+                                                         amount,
+                                                         expiry));
+  {
+    struct Reserve g_reserve;
+    g_reserve.pub = &pub;
+    FAILIF (GNUNET_OK != TALER_MINT_DB_reserve_get (db, &g_reserve));
+    FAILIF (amount.value != g_reserve.balance.value);
+    FAILIF (amount.fraction != g_reserve.balance.fraction);
+    FAILIF (0 != strcmp (amount.currency, g_reserve.balance.currency));
+    FAILIF (expiry.abs_value_us != g_reserve.expiry.abs_value_us);
   }
   result = 0;
  drop:

@@ -43,7 +43,7 @@ static pthread_key_t db_conn_threadlocal;
 
 
 #define QUERY_ERR(result)                          \
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,  "%s: query failed: %s\n", __FUNCTION__, PQresultErrorMessage (result))
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Query failed at %s:%u: %s\n", __FILE__, __LINE__, PQresultErrorMessage (result))
 
 /**
  * Database connection string, as read from
@@ -77,6 +77,12 @@ static char *TALER_MINT_db_connection_cfg_str;
     PQclear (result); result = NULL;                                    \
   } while (0)
 
+/**
+ * This the length of the currency strings (without 0-termination) we use.  Note
+ * that we need to use this at the DB layer instead of TALER_CURRENCY_LEN as the
+ * DB only needs to store 3 bytes instead of 8 bytes.
+ */
+#define TALER_DB_CURRENCY_LEN 3
 
 /**
  * Set the given connection to use a temporary schema
@@ -737,7 +743,7 @@ TALER_MINT_DB_reserve_get (PGconn *db,
           TALER_DB_extract_amount (result, 0,
                                    "current_balance_value",
                                    "current_balance_fraction",
-                                   "current_balance_currency",
+                                   "balance_currency",
                                    &reserve->balance));
   reserve->expiry.abs_value_us = GNUNET_ntohll (expiration_date_nbo);
   PQclear (result);
@@ -837,11 +843,11 @@ TALER_MINT_DB_reserves_in_insert (PGconn *db,
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Reserve does not exist; creating a new one\n");
     struct TALER_DB_QueryParam params[] = {
-      TALER_DB_QUERY_PARAM_PTR_SIZED (reserve->pub, sizeof (reserve->pub)),
+      TALER_DB_QUERY_PARAM_PTR (reserve->pub),
       TALER_DB_QUERY_PARAM_PTR (&balance_nbo.value),
       TALER_DB_QUERY_PARAM_PTR (&balance_nbo.fraction),
       TALER_DB_QUERY_PARAM_PTR_SIZED (balance_nbo.currency,
-                                      TALER_CURRENCY_LEN),
+                                      TALER_DB_CURRENCY_LEN),
       TALER_DB_QUERY_PARAM_PTR (&expiry_nbo),
       TALER_DB_QUERY_PARAM_END
     };
@@ -866,7 +872,7 @@ TALER_MINT_DB_reserves_in_insert (PGconn *db,
   result = TALER_DB_exec_prepared (db,
                                    "create_reserves_in_transaction",
                                    params);
-  if (PGRES_COMMAND_OK != result)
+  if (PGRES_COMMAND_OK != PQresultStatus(result))
   {
     QUERY_ERR (result);
     goto rollback;
