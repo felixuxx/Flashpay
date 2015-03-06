@@ -176,18 +176,6 @@ TALER_MINT_DB_create_tables (int temporary)
   /* Create an index on the foreign key as it is not created automatically by PSQL */
   SQLEXEC ("CREATE INDEX reserves_in_reserve_pub_index"
            " ON reserves_in (reserve_pub);");
-  SQLEXEC ("CREATE TABLE IF NOT EXISTS reserves_out"
-           "("
-           " reserve_pub BYTEA REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
-           ",value INT4 NOT NULL"
-           ",fraction INT4 NOT NULL"
-           ",blind_ev BYTEA PRIMARY KEY"
-           ",denom_pub BYTEA NOT NULL" /* FIXME: Make this a foreign key? */
-           ",auth_sig BYTEA NOT NULL"
-           ")");
-  SQLEXEC ("CREATE INDEX reserves_out_reserve_pub_index"
-           " ON reserves_out (reserve_pub);");
-
   SQLEXEC ("CREATE TABLE IF NOT EXISTS collectable_blindcoins"
            "("
            "blind_ev BYTEA PRIMARY KEY"
