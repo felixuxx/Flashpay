@@ -27,7 +27,7 @@
  * represent currency names (i.e. EUR, USD, etc.).  We use
  * 8 for alignment (!).
  */
-#define TALER_CURRENCY_LEN 8
+#define TALER_CURRENCY_LEN 4
 
 
 GNUNET_NETWORK_STRUCT_BEGIN
