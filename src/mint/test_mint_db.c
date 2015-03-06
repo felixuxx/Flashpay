@@ -34,6 +34,39 @@ static int result;
 
 
 /**
+ * Checks if the given reserve has the given amount of balance and expiry
+ *
+ * @param db the database connection
+ * @param pub the public key of the reserve
+ * @param value balance value
+ * @param fraction balance fraction
+ * @param currency currency of the reserve
+ * @param expiry expiration of the reserve
+ * @return #GNUNET_OK if the given reserve has the same balance and expiration
+ *           as the given parameters; #GNUNET_SYSERR if not
+ */
+int
+check_reserve (PGconn *db,
+               struct GNUNET_CRYPTO_EddsaPublicKey *pub,
+               uint32_t value, uint32_t fraction, const char *currency,
+               uint64_t expiry)
+{
+  struct Reserve reserve;
+  reserve.pub = pub;
+
+  FAILIF (GNUNET_OK != TALER_MINT_DB_reserve_get (db, &reserve));
+  FAILIF (value != reserve.balance.value);
+  FAILIF (fraction != reserve.balance.fraction);
+  FAILIF (0 != strcmp (currency, reserve.balance.currency));
+  FAILIF (expiry != reserve.expiry.abs_value_us);
+
+  return GNUNET_OK;
+ drop:
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Main function that will be run by the scheduler.
  *
  * @param cls closure
@@ -80,15 +113,22 @@ run (void *cls, char *const *args, const char *cfgfile,
                                                          &reserve,
                                                          amount,
                                                          expiry));
-  {
-    struct Reserve g_reserve;
-    g_reserve.pub = &pub;
-    FAILIF (GNUNET_OK != TALER_MINT_DB_reserve_get (db, &g_reserve));
-    FAILIF (amount.value != g_reserve.balance.value);
-    FAILIF (amount.fraction != g_reserve.balance.fraction);
-    FAILIF (0 != strcmp (amount.currency, g_reserve.balance.currency));
-    FAILIF (expiry.abs_value_us != g_reserve.expiry.abs_value_us);
-  }
+  FAILIF (GNUNET_OK != check_reserve (db,
+                                      &pub,
+                                      amount.value,
+                                      amount.fraction,
+                                      amount.currency,
+                                      expiry.abs_value_us));
+  FAILIF (GNUNET_OK != TALER_MINT_DB_reserves_in_insert (db,
+                                                         &reserve,
+                                                         amount,
+                                                         expiry));
+  FAILIF (GNUNET_OK != check_reserve (db,
+                                      &pub,
+                                      ++amount.value,
+                                      ++amount.fraction,
+                                      amount.currency,
+                                      expiry.abs_value_us));
   result = 0;
  drop:
   if (NULL != db)
