@@ -39,6 +39,10 @@ run (void *cls, char *const *args, const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *config)
 {
   PGconn *db;
+  struct GNUNET_CRYPTO_EddsaPublicKey pub;
+  struct Reserve reserve;
+  struct GNUNET_TIME_Absolute expiry;
+  struct TALER_Amount amount;
 
   db = NULL;
   if (GNUNET_OK != TALER_MINT_DB_init ("postgres:///taler"))
@@ -54,6 +58,22 @@ run (void *cls, char *const *args, const char *cfgfile,
   if (NULL == (db = TALER_MINT_DB_get_connection(GNUNET_YES)))
   {
     result = 3;
+    goto drop;
+  }
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                              &pub, sizeof (pub));
+  reserve.pub = &pub;
+  amount.value = 1;
+  amount.fraction = 1;
+  strcpy (amount.currency, "EUR");
+  expiry = GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
+                                     GNUNET_TIME_UNIT_HOURS);
+  if (GNUNET_OK != TALER_MINT_DB_reserves_in_insert (db,
+                                                     &reserve,
+                                                     amount,
+                                                     expiry))
+  {
+    result = 4;
     goto drop;
   }
   result = 0;
