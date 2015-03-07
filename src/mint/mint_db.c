@@ -336,7 +336,7 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
            4, NULL);
   PREPARE ("get_collectable_blindcoins",
            "SELECT "
-           "blind_ev_sig, denom_pub, reserve_sig, reserve_pub "
+           "denom_pub, reserve_sig, reserve_pub "
            "FROM collectable_blindcoins "
            "WHERE blind_ev = $1",
            1, NULL);
@@ -926,37 +926,35 @@ TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
                                          const struct GNUNET_HashCode *h_blind,
                                          struct CollectableBlindcoin *collectable)
 {
-  // FIXME: check logic!
   PGresult *result;
   struct TALER_DB_QueryParam params[] = {
     TALER_DB_QUERY_PARAM_PTR (h_blind),
     TALER_DB_QUERY_PARAM_END
   };
-  char *sig_buf;
-  size_t sig_buf_size;
+  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+  char *denom_pub_enc;
+  size_t denom_pub_enc_size;
+  int ret;
 
+  ret = GNUNET_SYSERR;
+  denom_pub = NULL;
+  denom_pub_enc = NULL;
   result = TALER_DB_exec_prepared (db_conn,
                                    "get_collectable_blindcoins",
                                    params);
 
-  if (PGRES_TUPLES_OK !=
-      PQresultStatus (result))
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Query failed: %s\n",
-                PQresultErrorMessage (result));
-    PQclear (result);
-    return GNUNET_SYSERR;
+    QUERY_ERR (result);
+    goto cleanup;
   }
   if (0 == PQntuples (result))
   {
-    PQclear (result);
-    return GNUNET_NO;
+    ret = GNUNET_NO;
+    goto cleanup;
   }
-
   struct TALER_DB_ResultSpec rs[] = {
-    TALER_DB_RESULT_SPEC_VAR("blind_sig", &sig_buf, &sig_buf_size),
-    TALER_DB_RESULT_SPEC("denom_pub", &collectable->denom_pub),
+    TALER_DB_RESULT_SPEC_VAR("denom_pub", &denom_pub_enc, &denom_pub_enc_size),
     TALER_DB_RESULT_SPEC("reserve_sig", &collectable->reserve_sig),
     TALER_DB_RESULT_SPEC("reserve_pub", &collectable->reserve_pub),
     TALER_DB_RESULT_SPEC_END
@@ -965,11 +963,24 @@ TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
   if (GNUNET_OK != TALER_DB_extract_result (result, rs, 0))
   {
     GNUNET_break (0);
-    PQclear (result);
-    return GNUNET_SYSERR;
+    goto cleanup;
   }
+  denom_pub = GNUNET_CRYPTO_rsa_public_key_decode (denom_pub_enc,
+                                                   denom_pub_enc_size);
+  if (NULL == denom_pub)
+  {
+    GNUNET_break (0);
+    goto cleanup;
+  }
+  collectable->denom_pub = denom_pub;
+  ret = GNUNET_YES;
+
+ cleanup:
   PQclear (result);
-  return GNUNET_OK;
+  GNUNET_free_non_null (denom_pub_enc);
+  if ((GNUNET_YES != ret) && (NULL != denom_pub))
+    GNUNET_CRYPTO_rsa_public_key_free (denom_pub);
+  return ret;
 }
 
 

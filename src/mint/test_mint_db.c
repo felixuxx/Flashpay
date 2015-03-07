@@ -36,6 +36,9 @@ static int result;
 #define RND_BLK(ptr)                                                    \
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, ptr, sizeof (*ptr))
 
+#define ZR_BLK(ptr) \
+  memset (ptr, 0, sizeof (*ptr))
+
 
 /**
  * Checks if the given reserve has the given amount of balance and expiry
@@ -115,9 +118,12 @@ run (void *cls, char *const *args, const char *cfgfile,
   struct DenomKeyPair *dkp;
   struct GNUNET_HashCode *h_blind;
   struct CollectableBlindcoin cbc;
+  struct CollectableBlindcoin cbc2;
+
 
   db = NULL;
   dkp = NULL;
+  ZR_BLK (&cbc2);
   if (GNUNET_OK != TALER_MINT_DB_init ("postgres:///taler"))
   {
     result = 1;
@@ -167,9 +173,15 @@ run (void *cls, char *const *args, const char *cfgfile,
   cbc.denom_pub = dkp->pub;
   cbc.sig = NULL;
   memcpy (&cbc.reserve_pub, &reserve_pub, sizeof (reserve_pub));
-  TALER_MINT_DB_insert_collectable_blindcoin (db,
-                                              &h_blind,
-                                              &cbc);
+  FAILIF (GNUNET_OK!= TALER_MINT_DB_insert_collectable_blindcoin (db,
+                                                                  &h_blind,
+                                                                  &cbc));
+  FAILIF (GNUNET_YES != TALER_MINT_DB_get_collectable_blindcoin (db,
+                                                                 &h_blind,
+                                                                 &cbc2));
+  FAILIF (NULL == cbc2.denom_pub);
+  FAILIF (0 != memcmp (&cbc2.reserve_sig, &cbc.reserve_sig, sizeof (cbc2.reserve_sig)));
+  FAILIF (0 != memcmp (&cbc2.reserve_pub, &cbc.reserve_pub, sizeof (cbc2.reserve_pub)));
   result = 0;
 
  drop:
@@ -177,6 +189,8 @@ run (void *cls, char *const *args, const char *cfgfile,
     GNUNET_break (GNUNET_OK == TALER_MINT_DB_drop_temporary (db));
   if (NULL != dkp)
     destroy_denon_key_pair (dkp);
+  if (NULL != cbc2.denom_pub)
+    GNUNET_CRYPTO_rsa_public_key_free (cbc2.denom_pub);
   dkp = NULL;
 }
 

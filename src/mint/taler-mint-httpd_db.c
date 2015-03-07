@@ -284,6 +284,7 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
     res = TALER_MINT_reply_withdraw_sign_success (connection,
                                                   &collectable);
     GNUNET_CRYPTO_rsa_signature_free (collectable.sig);
+    GNUNET_CRYPTO_rsa_public_key_free (collectable.denom_pub);
     return res;
   }
   GNUNET_assert (GNUNET_NO == res);
