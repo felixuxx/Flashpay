@@ -33,6 +33,10 @@ static int result;
   } while (0)
 
 
+#define RND_BLK(ptr)                                                    \
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, ptr, sizeof (*ptr))
+
+
 /**
  * Checks if the given reserve has the given amount of balance and expiry
  *
@@ -66,6 +70,31 @@ check_reserve (PGconn *db,
 }
 
 
+struct DenomKeyPair
+{
+  struct GNUNET_CRYPTO_rsa_PrivateKey *priv;
+  struct GNUNET_CRYPTO_rsa_PublicKey *pub;
+};
+
+struct DenomKeyPair *
+create_denom_key_pair (unsigned int size)
+{
+  struct DenomKeyPair *dkp;
+
+  dkp = GNUNET_new (struct DenomKeyPair);
+  dkp->priv = GNUNET_CRYPTO_rsa_private_key_create (size);
+  GNUNET_assert (NULL != dkp->priv);
+  dkp->pub = GNUNET_CRYPTO_rsa_private_key_get_public (dkp->priv);
+  return dkp;
+}
+
+destroy_denon_key_pair (struct DenomKeyPair *dkp)
+{
+  GNUNET_CRYPTO_rsa_public_key_free (dkp->pub);
+  GNUNET_CRYPTO_rsa_private_key_free (dkp->priv);
+  GNUNET_free (dkp);
+}
+
 /**
  * Main function that will be run by the scheduler.
  *
@@ -79,12 +108,16 @@ run (void *cls, char *const *args, const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *config)
 {
   PGconn *db;
-  struct GNUNET_CRYPTO_EddsaPublicKey pub;
+  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
   struct Reserve reserve;
   struct GNUNET_TIME_Absolute expiry;
   struct TALER_Amount amount;
+  struct DenomKeyPair *dkp;
+  struct GNUNET_HashCode *h_blind;
+  struct CollectableBlindcoin cbc;
 
   db = NULL;
+  dkp = NULL;
   if (GNUNET_OK != TALER_MINT_DB_init ("postgres:///taler"))
   {
     result = 1;
@@ -100,9 +133,8 @@ run (void *cls, char *const *args, const char *cfgfile,
     result = 3;
     goto drop;
   }
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                              &pub, sizeof (pub));
-  reserve.pub = &pub;
+  RND_BLK (&reserve_pub);
+  reserve.pub = &reserve_pub;
   amount.value = 1;
   amount.fraction = 1;
   strcpy (amount.currency, "EUR");
@@ -114,7 +146,7 @@ run (void *cls, char *const *args, const char *cfgfile,
                                                          amount,
                                                          expiry));
   FAILIF (GNUNET_OK != check_reserve (db,
-                                      &pub,
+                                      &reserve_pub,
                                       amount.value,
                                       amount.fraction,
                                       amount.currency,
@@ -124,15 +156,28 @@ run (void *cls, char *const *args, const char *cfgfile,
                                                          amount,
                                                          expiry));
   FAILIF (GNUNET_OK != check_reserve (db,
-                                      &pub,
+                                      &reserve_pub,
                                       ++amount.value,
                                       ++amount.fraction,
                                       amount.currency,
                                       expiry.abs_value_us));
+  dkp = create_denom_key_pair (1024);
+  RND_BLK(&h_blind);
+  RND_BLK(&cbc.reserve_sig);
+  cbc.denom_pub = dkp->pub;
+  cbc.sig = NULL;
+  memcpy (&cbc.reserve_pub, &reserve_pub, sizeof (reserve_pub));
+  TALER_MINT_DB_insert_collectable_blindcoin (db,
+                                              &h_blind,
+                                              &cbc);
   result = 0;
+
  drop:
   if (NULL != db)
     GNUNET_break (GNUNET_OK == TALER_MINT_DB_drop_temporary (db));
+  if (NULL != dkp)
+    destroy_denon_key_pair (dkp);
+  dkp = NULL;
 }
 
 
