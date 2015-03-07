@@ -820,6 +820,7 @@ TALER_MINT_DB_reserves_in_insert (PGconn *db,
   PGresult *result;
   int reserve_exists;
 
+  result = NULL;
   if (NULL == reserve)
   {
     GNUNET_break (0);
@@ -860,7 +861,9 @@ TALER_MINT_DB_reserves_in_insert (PGconn *db,
       goto rollback;
     }
   }
-  PQclear (result); result = NULL;
+  if (NULL != result)
+    PQclear (result);
+  result = NULL;
   /* create new incoming transaction */
   struct TALER_DB_QueryParam params[] = {
     TALER_DB_QUERY_PARAM_PTR (reserve->pub),
