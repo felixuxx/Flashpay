@@ -266,7 +266,83 @@ struct RefreshMeltResponseSignatureBody
 };
 
 
+/**
+ * Message signed by a coin to indicate that the coin should
+ * be melted.
+ */
+struct RefreshMeltSignatureBody
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_REFRESH_MELT.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
+  /**
+   * Which melting operation should the coin become a part of.
+   */
+  struct GNUNET_HashCode melt_hash;
+
+  /**
+   * How much of the value of the coin should be melted?
+   * This amount includes the fees, so the final amount contributed
+   * to the melt is this value minus the fee for melting the coin.
+   */
+  struct TALER_AmountNBO amount;
+};
+
+
+/**
+ * Message signed during melting committing the client to the
+ * hashed inputs.
+ */
+struct RefreshCommitSignatureBody
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_REFRESH_COMMIT.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Session state the client commits itself to.
+   */
+  struct GNUNET_HashCode commit_hash;
+};
+
+
+/**
+ * Message signed by the mint, committing it to a particular
+ * index to not be revealed during the refresh.
+ */
+struct RefreshCommitResponseSignatureBody
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_REFRESH_MELT_RESPONSE.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Index that the client will not have to reveal.
+   */
+  uint16_t noreveal_index GNUNET_PACKED;
+};
+
+
+/**
+ * Message signed by the client requesting the final
+ * result of the melting operation.
+ */
+struct RefreshMeltConfirmSignRequestBody
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_REFRESH_MELT_CONFIRM.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * FIXME.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
+};
 
 
 /**
@@ -302,45 +378,6 @@ struct TALER_MINT_DenomKeyIssue
   struct TALER_AmountNBO fee_refresh;
 };
 
-
-/**
- * FIXME
- */
-struct RefreshMeltSignatureBody
-{
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-  struct GNUNET_HashCode melt_hash;
-};
-
-/**
- * FIXME
- */
-struct RefreshCommitSignatureBody
-{
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-  struct GNUNET_HashCode commit_hash;
-};
-
-
-/**
- * FIXME
- */
-struct RefreshCommitResponseSignatureBody
-{
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-  uint16_t noreveal_index;
-};
-
-
-
-/**
- * FIXME
- */
-struct RefreshMeltConfirmSignRequestBody
-{
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-  struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
-};
 
 
 GNUNET_NETWORK_STRUCT_END

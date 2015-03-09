@@ -22,10 +22,6 @@
  * - actually abstract DB implementation (i.e. via plugin logic)
  *   (this file should remain largely unchanged with the exception
  *    of the PQ-specific DB handle types)
- * - /refresh/link:
- *   + check low-level API
- *   + separate DB logic from response generation
- *   + check for leaks
  */
 #include "platform.h"
 #include <pthread.h>
@@ -354,8 +350,8 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
       break;
     }
   }
-
-  /* FIXME: good place to assert deposit_total > withdraw_total... */
+  GNUNET_break (0 > TALER_amount_cmp (withdraw_total,
+                                      deposit_total));
   balance = TALER_amount_subtract (deposit_total,
                                    withdraw_total);
   if (0 < TALER_amount_cmp (amount_required,
@@ -382,8 +378,6 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
     return TALER_MINT_reply_internal_error (connection,
                                             "Internal error");
   }
-
-  // FIXME: can we avoid the cast?
   collectable.denom_pub = (struct GNUNET_CRYPTO_rsa_PublicKey *) denomination_pub;
   collectable.sig = sig;
   collectable.reserve_pub = *reserve;
@@ -430,6 +424,7 @@ static int
 refresh_accept_melts (struct MHD_Connection *connection,
                       PGconn *db_conn,
                       const struct MintKeyState *key_state,
+                      const struct GNUNET_HashCode *melt_hash,
                       const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
                       const struct TALER_CoinPublicInfo *coin_public_info,
                       const struct MeltDetails *coin_details,
@@ -474,6 +469,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
 
   melt.coin = *coin_public_info;
   melt.coin_sig = coin_details->melt_sig;
+  melt.melt_hash = *melt_hash;
   melt.amount = coin_details->melt_amount;
   if (GNUNET_OK !=
       TALER_MINT_DB_insert_refresh_melt (db_conn,
@@ -496,6 +492,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
  * melted and confirm the melting operation to the client.
  *
  * @param connection the MHD connection to handle
+ * @param melt_hash hash code of the session the coins are melted into
  * @param refresh_session_pub public key of the refresh session
  * @param client_signature signature of the client (matching @a refresh_session_pub)
  *         over the melting request
@@ -508,6 +505,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
+                                    const struct GNUNET_HashCode *melt_hash,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
                                     const struct GNUNET_CRYPTO_EddsaSignature *client_signature,
                                     unsigned int num_new_denoms,
@@ -558,6 +556,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
         (res = refresh_accept_melts (connection,
                                      db_conn,
                                      key_state,
+                                     melt_hash,
                                      refresh_session_pub,
                                      &coin_public_infos[i],
                                      &coin_melt_details[i],

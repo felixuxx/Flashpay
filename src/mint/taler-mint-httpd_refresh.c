@@ -195,9 +195,10 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   GNUNET_CRYPTO_hash_context_finish (hash_context,
                                      &melt_hash);
 
-  body.melt_hash = melt_hash;
   body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT);
   body.purpose.size = htonl (sizeof (struct RefreshMeltSignatureBody));
+  body.melt_hash = melt_hash;
+  body.amount = TALER_amount_hton (coin_melt_details->melt_amount);
 
   if (GNUNET_OK !=
       (res = request_json_check_signature (connection,
@@ -247,6 +248,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
 
   /* FIXME: we must also store the signature over the melt! (#3635) */
   return TALER_MINT_db_execute_refresh_melt (connection,
+                                             &melt_hash,
                                              refresh_session_pub,
                                              NULL, /* FIXME: #3635! */
                                              num_new_denoms,

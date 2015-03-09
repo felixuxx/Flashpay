@@ -90,8 +90,8 @@ TALER_JSON_from_abs (struct GNUNET_TIME_Absolute stamp)
  * @return the JSON reporesentation of the signature with purpose
  */
 json_t *
-TALER_JSON_from_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-                     const struct GNUNET_CRYPTO_EddsaSignature *signature)
+TALER_JSON_from_eddsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+                           const struct GNUNET_CRYPTO_EddsaSignature *signature)
 {
   json_t *root;
   json_t *el;
@@ -106,7 +106,37 @@ TALER_JSON_from_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
 
   el = TALER_JSON_from_data (signature,
                              sizeof (struct GNUNET_CRYPTO_EddsaSignature));
-  json_object_set_new (root, "sig", el);
+  json_object_set_new (root, "eddsa-sig", el);
+
+  return root;
+}
+
+
+/**
+ * Convert a signature (with purpose) to a JSON object representation.
+ *
+ * @param purpose purpose of the signature
+ * @param signature the signature
+ * @return the JSON reporesentation of the signature with purpose
+ */
+json_t *
+TALER_JSON_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+                           const struct GNUNET_CRYPTO_EcdsaSignature *signature)
+{
+  json_t *root;
+  json_t *el;
+
+  root = json_object ();
+
+  el = json_integer ((json_int_t) ntohl (purpose->size));
+  json_object_set_new (root, "size", el);
+
+  el = json_integer ((json_int_t) ntohl (purpose->purpose));
+  json_object_set_new (root, "purpose", el);
+
+  el = TALER_JSON_from_data (signature,
+                             sizeof (struct GNUNET_CRYPTO_EddsaSignature));
+  json_object_set_new (root, "ecdsa-sig", el);
 
   return root;
 }
@@ -130,6 +160,20 @@ TALER_JSON_from_data (const void *data, size_t size)
   json = json_string (buf);
   GNUNET_free (buf);
   return json;
+}
+
+
+/**
+ * Convert binary hash to a JSON string with the base32crockford
+ * encoding.
+ *
+ * @param hc binary data
+ * @return json string that encodes @a hc
+ */
+json_t *
+TALER_JSON_from_hash (const struct GNUNET_HashCode *hc)
+{
+  return TALER_JSON_from_data (hc, sizeof (struct GNUNET_HashCode));
 }
 
 

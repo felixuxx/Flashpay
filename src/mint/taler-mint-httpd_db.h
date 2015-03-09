@@ -93,7 +93,8 @@ struct MeltDetails
 
   /**
    * How much of the coin's value did the client allow to be melted?
-   * (FIXME: are the fees included here!?)
+   * This amount includes the fees, so the final amount contributed
+   * to the melt is this value minus the fee for melting the coin.
    */
   struct TALER_Amount melt_amount;
 };
@@ -107,6 +108,7 @@ struct MeltDetails
  * melted and confirm the melting operation to the client.
  *
  * @param connection the MHD connection to handle
+ * @param melt_hash hash code of the session the coins are melted into
  * @param refresh_session_pub public key of the refresh session
  * @param client_signature signature of the client (matching @a refresh_session_pub)
  *         over the melting request
@@ -119,6 +121,7 @@ struct MeltDetails
  */
 int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
+                                    const struct GNUNET_HashCode *melt_hash,
                                     const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
                                     const struct GNUNET_CRYPTO_EddsaSignature *client_signature,
                                     unsigned int num_new_denoms,

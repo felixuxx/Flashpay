@@ -222,8 +222,6 @@ TALER_MINT_DB_reserves_in_insert (PGconn *db,
                                   const struct TALER_Amount balance,
                                   const struct GNUNET_TIME_Absolute expiry);
 
-/* FIXME: need call to convert CollectableBlindcoin to JSON (#3527) */
-
 
 /**
  * Locate the response for a /withdraw request under the
@@ -529,10 +527,8 @@ TALER_MINT_DB_update_refresh_session (PGconn *db_conn,
 
 /**
  * Specification for coin in a /refresh/melt operation.
- * FIXME: same as `struct MeltDetails`, and not by accident!
- * We should merge the structs!
  */
-struct RefreshMelt /* FIXME: name to make it clearer this is about ONE coin! */
+struct RefreshMelt
 {
   /**
    * Information about the coin that is being melted.
@@ -545,7 +541,14 @@ struct RefreshMelt /* FIXME: name to make it clearer this is about ONE coin! */
   struct GNUNET_CRYPTO_EcdsaSignature coin_sig;
 
   /**
+   * Which melting operation should the coin become a part of.
+   */
+  struct GNUNET_HashCode melt_hash;
+
+  /**
    * How much value is being melted?
+   * This amount includes the fees, so the final amount contributed
+   * to the melt is this value minus the fee for melting the coin.
    */
   struct TALER_Amount amount;
 

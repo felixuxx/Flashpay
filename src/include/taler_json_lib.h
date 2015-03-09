@@ -60,8 +60,20 @@ TALER_JSON_from_abs (struct GNUNET_TIME_Absolute stamp);
  * @return the JSON reporesentation of the signature with purpose
  */
 json_t *
-TALER_JSON_from_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-                     const struct GNUNET_CRYPTO_EddsaSignature *signature);
+TALER_JSON_from_eddsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+                           const struct GNUNET_CRYPTO_EddsaSignature *signature);
+
+
+/**
+ * Convert a signature (with purpose) to a JSON object representation.
+ *
+ * @param purpose purpose of the signature
+ * @param signature the signature
+ * @return the JSON reporesentation of the signature with purpose
+ */
+json_t *
+TALER_JSON_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+                           const struct GNUNET_CRYPTO_EcdsaSignature *signature);
 
 
 /**
@@ -74,6 +86,17 @@ TALER_JSON_from_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
  */
 json_t *
 TALER_JSON_from_data (const void *data, size_t size);
+
+
+/**
+ * Convert binary hash to a JSON string with the base32crockford
+ * encoding.
+ *
+ * @param hc binary data
+ * @return json string that encodes @a hc
+ */
+json_t *
+TALER_JSON_from_hash (const struct GNUNET_HashCode *hc);
 
 
 /**
@@ -119,7 +142,8 @@ TALER_JSON_to_data (json_t *json,
  * @return 1 if correctly formatted; 0 if not
  */
 int
-TALER_JSON_validate_wireformat (const char *type, json_t *wire);
+TALER_JSON_validate_wireformat (const char *type,
+                                json_t *wire);
 
 
 #endif /* TALER_JSON_LIB_H_ */
