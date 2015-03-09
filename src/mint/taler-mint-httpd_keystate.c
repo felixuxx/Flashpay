@@ -145,7 +145,7 @@ TALER_MINT_conf_duration_provide ()
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "mint_keys.lookahead_provide not valid or not given\n");
-    GNUNET_abort ();
+    GNUNET_assert (0);
   }
   return rel;
 }
