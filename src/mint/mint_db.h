@@ -444,7 +444,13 @@ struct RefreshSession
    */
   struct GNUNET_CRYPTO_EddsaSignature commit_sig;
 
-    /**
+  /**
+   * Hash over coins to melt and coins to create of the
+   * refresh session.
+   */
+  struct GNUNET_HashCode session_hash;
+
+  /**
    * Signature over the melt by the client.
    */
   struct GNUNET_CRYPTO_EddsaSignature melt_sig;

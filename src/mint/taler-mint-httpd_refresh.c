@@ -179,6 +179,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
 
   /* check that signature from the session public key is ok */
   hash_context = GNUNET_CRYPTO_hash_context_start ();
+  /* FIXME: also hash session public key here!? */
   for (i = 0; i < num_new_denoms; i++)
   {
     buf_size = GNUNET_CRYPTO_rsa_public_key_encode (denom_pubs[i],

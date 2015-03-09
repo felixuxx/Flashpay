@@ -631,15 +631,15 @@ TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
 /**
  * Send a response to a "/refresh/commit" request.
  *
- * FIXME: maybe not the ideal argument type for @a refresh_session here.
- *
  * @param connection the connection to send the response to
- * @param refresh_session the refresh session
+ * @param session_hash hash of the refresh session
+ * @param noreveal_index which index will the client not have to reveal
  * @return a MHD status code
  */
 int
 TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
-                                         const struct RefreshSession *refresh_session)
+                                         const struct GNUNET_HashCode *session_hash,
+                                         uint16_t noreveal_index)
 {
   struct RefreshCommitResponseSignatureBody body;
   struct GNUNET_CRYPTO_EddsaSignature sig;
@@ -648,15 +648,17 @@ TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
 
   body.purpose.size = htonl (sizeof (struct RefreshCommitResponseSignatureBody));
   body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_COMMIT_RESPONSE);
-  body.noreveal_index = htons (refresh_session->noreveal_index);
+  body.session_hash = *session_hash;
+  body.noreveal_index = htons (noreveal_index);
   TALER_MINT_keys_sign (&body.purpose,
                         &sig);
-  sig_json = TALER_JSON_from_eddsa_sig (&body.purpose, &sig);
+  sig_json = TALER_JSON_from_eddsa_sig (&body.purpose,
+                                        &sig);
   GNUNET_assert (NULL != sig_json);
   ret = TALER_MINT_reply_json_pack (connection,
                                      MHD_HTTP_OK,
                                      "{s:i, s:o}",
-                                     "noreveal_index", (int) refresh_session->noreveal_index,
+                                     "noreveal_index", (int) noreveal_index,
                                      "signature", sig_json);
   json_decref (sig_json);
   return ret;

@@ -588,6 +588,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
 
   /* store 'global' session data */
   session.melt_sig = *client_signature;
+  session.session_hash = *melt_hash;
   session.num_oldcoins = coin_count;
   session.num_newcoins = num_new_denoms;
   session.kappa = KAPPA;
@@ -691,7 +692,8 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
   {
     TALER_MINT_DB_rollback (db_conn);
     res = TALER_MINT_reply_refresh_commit_success (connection,
-                                                   &refresh_session);
+                                                   &refresh_session.session_hash,
+                                                   refresh_session.noreveal_index);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   for (i = 0; i < kappa; i++)
@@ -749,7 +751,9 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
     return TALER_MINT_reply_commit_error (connection);
   }
 
-  return TALER_MINT_reply_refresh_commit_success (connection, &refresh_session);
+  return TALER_MINT_reply_refresh_commit_success (connection,
+                                                  &refresh_session.session_hash,
+                                                  refresh_session.noreveal_index);
 }
 
 

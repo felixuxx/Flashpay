@@ -321,6 +321,11 @@ struct RefreshCommitResponseSignatureBody
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
+   * Hash of the refresh session.
+   */
+  struct GNUNET_HashCode session_hash;
+
+  /**
    * Index that the client will not have to reveal.
    */
   uint16_t noreveal_index GNUNET_PACKED;
