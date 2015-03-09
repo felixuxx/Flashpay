@@ -183,8 +183,14 @@ struct CollectableBlindcoin
   struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
 
   /**
+   * Hash over the blinded message, needed to verify
+   * the @e reserve_sig.
+   */
+  struct GNUNET_HashCode h_coin_envelope;
+
+  /**
    * Signature confirming the withdrawl, matching @e reserve_pub,
-   * @e denom_pub and @e h_blind.
+   * @e denom_pub and @e h_coin_envelope.
    */
   struct GNUNET_CRYPTO_EddsaSignature reserve_sig;
 };

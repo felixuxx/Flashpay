@@ -418,10 +418,12 @@ compile_reserve_history (const struct ReserveHistory *rh,
   struct TALER_Amount withdraw_total;
   struct TALER_Amount value;
   json_t *json_history;
+  json_t *transaction;
   int ret;
   const struct ReserveHistory *pos;
   struct TALER_MINT_DenomKeyIssuePriv *dki;
   struct MintKeyState *key_state;
+  struct TALER_WithdrawRequest wr;
 
   json_history = json_array ();
   ret = 0;
@@ -456,6 +458,7 @@ compile_reserve_history (const struct ReserveHistory *rh,
     case TALER_MINT_DB_RO_BANK_TO_MINT:
       break;
     case TALER_MINT_DB_RO_WITHDRAW_COIN:
+
       dki = TALER_MINT_get_denom_key (key_state,
                                       pos->details.withdraw->denom_pub);
       value = TALER_amount_ntoh (dki->issue.value);
@@ -465,10 +468,20 @@ compile_reserve_history (const struct ReserveHistory *rh,
         withdraw_total = TALER_amount_add (withdraw_total,
                                            value);
       ret = 1;
-      /* FIXME: add `struct CollectableBlindcoin` as JSON here as well! (#3527) */
+      wr.purpose.purpose = htonl (TALER_SIGNATURE_WITHDRAW);
+      wr.purpose.size = htonl (sizeof (struct TALER_WithdrawRequest));
+      wr.reserve_pub = pos->details.withdraw->reserve_pub;
+      GNUNET_CRYPTO_rsa_public_key_hash (pos->details.withdraw->denom_pub,
+                                         &wr.h_denomination_pub);
+      wr.h_coin_envelope = pos->details.withdraw->h_coin_envelope;
+
+      transaction = TALER_JSON_from_eddsa_sig (&wr.purpose,
+                                               &pos->details.withdraw->reserve_sig);
+
       json_array_append_new (json_history,
                              json_pack ("{s:s, s:o, s:o}",
                                         "type", "WITHDRAW",
+                                        "signature", transaction,
                                         "amount", TALER_JSON_from_amount (value)));
 
       break;

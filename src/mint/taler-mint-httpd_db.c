@@ -378,9 +378,12 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
     return TALER_MINT_reply_internal_error (connection,
                                             "Internal error");
   }
-  collectable.denom_pub = (struct GNUNET_CRYPTO_rsa_PublicKey *) denomination_pub;
   collectable.sig = sig;
+  collectable.denom_pub = (struct GNUNET_CRYPTO_rsa_PublicKey *) denomination_pub;
   collectable.reserve_pub = *reserve;
+  GNUNET_CRYPTO_hash (blinded_msg,
+                      blinded_msg_len,
+                      &collectable.h_coin_envelope);
   collectable.reserve_sig = *signature;
   if (GNUNET_OK !=
       TALER_MINT_DB_insert_collectable_blindcoin (db_conn,
