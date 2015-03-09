@@ -318,10 +318,10 @@ create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
   issue->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNKEY);
   issue->purpose.size = htonl (sizeof (struct TALER_MINT_SignKeyIssue) - offsetof (struct TALER_MINT_SignKeyIssue, purpose));
 
-  if (GNUNET_OK != GNUNET_CRYPTO_eddsa_sign (master_priv, &issue->purpose, &issue->signature))
-  {
-    GNUNET_abort ();
-  }
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_sign (master_priv,
+                                           &issue->purpose,
+                                           &issue->signature));
 }
 
 
@@ -459,13 +459,10 @@ create_denomkey_issue (struct CoinTypeParams *params,
   dki->issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOM);
   dki->issue.purpose.size = htonl (sizeof (struct TALER_MINT_DenomKeyIssuePriv) - offsetof (struct TALER_MINT_DenomKeyIssuePriv, issue.purpose));
 
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_sign (master_priv,
-                                &dki->issue.purpose,
-                                &dki->issue.signature))
-    {
-    GNUNET_abort ();
-  }
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_sign (master_priv,
+                                           &dki->issue.purpose,
+                                           &dki->issue.signature));
 }
 
 
