@@ -104,6 +104,10 @@ TALER_JSON_from_eddsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpo
   el = json_integer ((json_int_t) ntohl (purpose->purpose));
   json_object_set_new (root, "purpose", el);
 
+  el = TALER_JSON_from_data (purpose,
+                             ntohl (purpose->size));
+  json_object_set_new (root, "eddsa-val", el);
+
   el = TALER_JSON_from_data (signature,
                              sizeof (struct GNUNET_CRYPTO_EddsaSignature));
   json_object_set_new (root, "eddsa-sig", el);
@@ -133,6 +137,10 @@ TALER_JSON_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpo
 
   el = json_integer ((json_int_t) ntohl (purpose->purpose));
   json_object_set_new (root, "purpose", el);
+
+  el = TALER_JSON_from_data (purpose,
+                             ntohl (purpose->size));
+  json_object_set_new (root, "ecdsa-val", el);
 
   el = TALER_JSON_from_data (signature,
                              sizeof (struct GNUNET_CRYPTO_EddsaSignature));

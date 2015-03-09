@@ -574,7 +574,6 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
   char *sig_buf;
   int ret;
 
-  /* FIXME: use TALER_JSON_from_eddsa_sig here instead!? */
   sig_buf_size = GNUNET_CRYPTO_rsa_signature_encode (collectable->sig,
                                                      &sig_buf);
   sig_json = TALER_JSON_from_data (sig_buf,
