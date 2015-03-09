@@ -40,6 +40,8 @@ static int result;
   memset (ptr, 0, sizeof (*ptr))
 
 
+#define CURRENCY "EUR"
+
 /**
  * Checks if the given reserve has the given amount of balance and expiry
  *
@@ -120,10 +122,15 @@ run (void *cls, char *const *args, const char *cfgfile,
   struct GNUNET_HashCode h_blind;
   struct CollectableBlindcoin cbc;
   struct CollectableBlindcoin cbc2;
-
+  struct ReserveHistory *rh;
+  struct ReserveHistory *rh_head;
+  struct BankTransfer *bt;
+  struct CollectableBlindcoin *withdraw;
+  unsigned int cnt;
 
   db = NULL;
   dkp = NULL;
+  rh = NULL;
   ZR_BLK (&cbc);
   ZR_BLK (&cbc2);
   if (GNUNET_OK != TALER_MINT_DB_init ("postgres:///taler"))
@@ -145,7 +152,7 @@ run (void *cls, char *const *args, const char *cfgfile,
   reserve.pub = &reserve_pub;
   amount.value = 1;
   amount.fraction = 1;
-  strcpy (amount.currency, "EUR");
+  strcpy (amount.currency, CURRENCY);
   expiry = GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
                                      GNUNET_TIME_UNIT_HOURS);
   result = 4;
@@ -174,7 +181,7 @@ run (void *cls, char *const *args, const char *cfgfile,
   RND_BLK(&cbc.reserve_sig);
   cbc.denom_pub = dkp->pub;
   cbc.sig = GNUNET_CRYPTO_rsa_sign (dkp->priv, &h_blind, sizeof (h_blind));
-  memcpy (&cbc.reserve_pub, &reserve_pub, sizeof (reserve_pub));
+  (void) memcpy (&cbc.reserve_pub, &reserve_pub, sizeof (reserve_pub));
   FAILIF (GNUNET_OK != TALER_MINT_DB_insert_collectable_blindcoin (db,
                                                                    &h_blind,
                                                                    &cbc));
@@ -185,9 +192,37 @@ run (void *cls, char *const *args, const char *cfgfile,
   FAILIF (0 != memcmp (&cbc2.reserve_sig, &cbc.reserve_sig, sizeof (cbc2.reserve_sig)));
   FAILIF (0 != memcmp (&cbc2.reserve_pub, &cbc.reserve_pub, sizeof (cbc2.reserve_pub)));
   FAILIF (GNUNET_OK != GNUNET_CRYPTO_rsa_verify (&h_blind, cbc2.sig, dkp->pub));
+  rh_head = rh = TALER_MINT_DB_get_reserve_history (db, &reserve_pub);
+  FAILIF (NULL == rh);
+  for (cnt=0; NULL != rh_head; rh_head=rh_head->next, cnt++)
+  {
+    switch (rh_head->type)
+    {
+    case TALER_MINT_DB_RO_BANK_TO_MINT:
+      bt = rh_head->details.bank;
+      FAILIF (0 != memcmp (&bt->reserve_pub, &reserve_pub, sizeof (reserve_pub)));
+      FAILIF (1 != bt->amount.value);
+      FAILIF (1 != bt->amount.fraction);
+      FAILIF (0 != strcmp (CURRENCY, bt->amount.currency));
+      FAILIF (NULL != bt->wire); /* FIXME: write wire details to db */
+      break;
+    case TALER_MINT_DB_RO_WITHDRAW_COIN:
+      withdraw = rh_head->details.withdraw;
+      FAILIF (0 != memcmp (&withdraw->reserve_pub,
+                           &reserve_pub,
+                           sizeof (reserve_pub)));
+      FAILIF (0 != memcmp (&withdraw->h_coin_envelope,
+                           &h_blind, sizeof (h_blind)));
+      break;
+    }
+  }
+  FAILIF (3 != cnt);
   result = 0;
 
  drop:
+  if (NULL != rh)
+    TALER_MINT_DB_free_reserve_history (rh);
+  rh = NULL;
   if (NULL != db)
     GNUNET_break (GNUNET_OK == TALER_MINT_DB_drop_temporary (db));
   if (NULL != dkp)
