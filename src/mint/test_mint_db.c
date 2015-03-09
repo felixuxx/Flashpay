@@ -91,6 +91,7 @@ create_denom_key_pair (unsigned int size)
   return dkp;
 }
 
+static void
 destroy_denon_key_pair (struct DenomKeyPair *dkp)
 {
   GNUNET_CRYPTO_rsa_public_key_free (dkp->pub);
@@ -116,7 +117,7 @@ run (void *cls, char *const *args, const char *cfgfile,
   struct GNUNET_TIME_Absolute expiry;
   struct TALER_Amount amount;
   struct DenomKeyPair *dkp;
-  struct GNUNET_HashCode *h_blind;
+  struct GNUNET_HashCode h_blind;
   struct CollectableBlindcoin cbc;
   struct CollectableBlindcoin cbc2;
 
