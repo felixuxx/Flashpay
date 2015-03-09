@@ -171,6 +171,7 @@ TALER_MINT_DB_create_tables (int temporary)
           " reserve_pub BYTEA REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
           ",balance_value INT4 NOT NULL"
           ",balance_fraction INT4 NOT NULL"
+          ",balance_currency VARCHAR(4) NOT NULL"
           ",expiration_date INT8 NOT NULL"
           ");");
   /* Create an index on the foreign key as it is not created automatically by PSQL */
@@ -326,9 +327,10 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
            " reserve_pub,"
            " balance_value,"
            " balance_fraction,"
+           " balance_currency,"
            " expiration_date) VALUES ("
-           " $1, $2, $3, $4);",
-           4, NULL);
+           " $1, $2, $3, $4, $5);",
+           5, NULL);
   PREPARE ("insert_collectable_blindcoin",
            "INSERT INTO collectable_blindcoins ( "
            " blind_ev"
