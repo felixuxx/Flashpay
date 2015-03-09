@@ -124,6 +124,7 @@ run (void *cls, char *const *args, const char *cfgfile,
 
   db = NULL;
   dkp = NULL;
+  ZR_BLK (&cbc);
   ZR_BLK (&cbc2);
   if (GNUNET_OK != TALER_MINT_DB_init ("postgres:///taler"))
   {
@@ -172,17 +173,18 @@ run (void *cls, char *const *args, const char *cfgfile,
   RND_BLK(&h_blind);
   RND_BLK(&cbc.reserve_sig);
   cbc.denom_pub = dkp->pub;
-  cbc.sig = NULL;
+  cbc.sig = GNUNET_CRYPTO_rsa_sign (dkp->priv, &h_blind, sizeof (h_blind));
   memcpy (&cbc.reserve_pub, &reserve_pub, sizeof (reserve_pub));
-  FAILIF (GNUNET_OK!= TALER_MINT_DB_insert_collectable_blindcoin (db,
-                                                                  &h_blind,
-                                                                  &cbc));
+  FAILIF (GNUNET_OK != TALER_MINT_DB_insert_collectable_blindcoin (db,
+                                                                   &h_blind,
+                                                                   &cbc));
   FAILIF (GNUNET_YES != TALER_MINT_DB_get_collectable_blindcoin (db,
                                                                  &h_blind,
                                                                  &cbc2));
   FAILIF (NULL == cbc2.denom_pub);
   FAILIF (0 != memcmp (&cbc2.reserve_sig, &cbc.reserve_sig, sizeof (cbc2.reserve_sig)));
   FAILIF (0 != memcmp (&cbc2.reserve_pub, &cbc.reserve_pub, sizeof (cbc2.reserve_pub)));
+  FAILIF (GNUNET_OK != GNUNET_CRYPTO_rsa_verify (&h_blind, cbc2.sig, dkp->pub));
   result = 0;
 
  drop:
@@ -190,8 +192,12 @@ run (void *cls, char *const *args, const char *cfgfile,
     GNUNET_break (GNUNET_OK == TALER_MINT_DB_drop_temporary (db));
   if (NULL != dkp)
     destroy_denon_key_pair (dkp);
+  if (NULL != cbc.sig)
+    GNUNET_CRYPTO_rsa_signature_free (cbc.sig);
   if (NULL != cbc2.denom_pub)
     GNUNET_CRYPTO_rsa_public_key_free (cbc2.denom_pub);
+  if (NULL != cbc2.sig)
+    GNUNET_CRYPTO_rsa_signature_free (cbc2.sig);
   dkp = NULL;
 }
 

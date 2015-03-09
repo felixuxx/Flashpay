@@ -180,6 +180,7 @@ TALER_MINT_DB_create_tables (int temporary)
            "("
            "blind_ev BYTEA PRIMARY KEY"
            ",denom_pub BYTEA NOT NULL" /* FIXME: Make this a foreign key? */
+           ",denom_sig BYTEA NOT NULL"
            ",reserve_pub BYTEA REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
            ",reserve_sig BYTEA NOT NULL"
            ");");
@@ -328,15 +329,17 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
            " expiration_date) VALUES ("
            " $1, $2, $3, $4);",
            4, NULL);
-  PREPARE ("insert_collectable_blindcoins",
+  PREPARE ("insert_collectable_blindcoin",
            "INSERT INTO collectable_blindcoins ( "
            " blind_ev"
-           ",denom_pub, reserve_pub, reserve_sig) "
-           "VALUES ($1, $2, $3, $4)",
-           4, NULL);
-  PREPARE ("get_collectable_blindcoins",
+           ",denom_pub, denom_sig"
+           ",reserve_pub, reserve_sig) "
+           "VALUES ($1, $2, $3, $4, $5)",
+           5, NULL);
+  PREPARE ("get_collectable_blindcoin",
            "SELECT "
-           "denom_pub, reserve_sig, reserve_pub "
+           " denom_pub, denom_sig"
+           ",reserve_sig, reserve_pub "
            "FROM collectable_blindcoins "
            "WHERE blind_ev = $1",
            1, NULL);
@@ -932,15 +935,19 @@ TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
     TALER_DB_QUERY_PARAM_END
   };
   struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+  struct GNUNET_CRYPTO_rsa_Signature *denom_sig;
   char *denom_pub_enc;
+  char *denom_sig_enc;
   size_t denom_pub_enc_size;
+  size_t denom_sig_enc_size;
   int ret;
 
   ret = GNUNET_SYSERR;
   denom_pub = NULL;
   denom_pub_enc = NULL;
+  denom_sig_enc = NULL;
   result = TALER_DB_exec_prepared (db_conn,
-                                   "get_collectable_blindcoins",
+                                   "get_collectable_blindcoin",
                                    params);
 
   if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -955,6 +962,7 @@ TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
   }
   struct TALER_DB_ResultSpec rs[] = {
     TALER_DB_RESULT_SPEC_VAR("denom_pub", &denom_pub_enc, &denom_pub_enc_size),
+    TALER_DB_RESULT_SPEC_VAR("denom_sig", &denom_sig_enc, &denom_sig_enc_size),
     TALER_DB_RESULT_SPEC("reserve_sig", &collectable->reserve_sig),
     TALER_DB_RESULT_SPEC("reserve_pub", &collectable->reserve_pub),
     TALER_DB_RESULT_SPEC_END
@@ -967,19 +975,27 @@ TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
   }
   denom_pub = GNUNET_CRYPTO_rsa_public_key_decode (denom_pub_enc,
                                                    denom_pub_enc_size);
-  if (NULL == denom_pub)
+  denom_sig = GNUNET_CRYPTO_rsa_signature_decode (denom_sig_enc,
+                                                  denom_sig_enc_size);
+  if ((NULL == denom_pub) || (NULL == denom_sig))
   {
     GNUNET_break (0);
     goto cleanup;
   }
   collectable->denom_pub = denom_pub;
+  collectable->sig = denom_sig;
   ret = GNUNET_YES;
 
  cleanup:
   PQclear (result);
   GNUNET_free_non_null (denom_pub_enc);
-  if ((GNUNET_YES != ret) && (NULL != denom_pub))
-    GNUNET_CRYPTO_rsa_public_key_free (denom_pub);
+  GNUNET_free_non_null (denom_sig_enc);
+  if (GNUNET_YES != ret)
+  { if (NULL != denom_pub)
+      GNUNET_CRYPTO_rsa_public_key_free (denom_pub);
+    if (NULL != denom_sig)
+      GNUNET_CRYPTO_rsa_signature_free (denom_sig);
+  }
   return ret;
 }
 
@@ -1003,25 +1019,31 @@ TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
 {
   PGresult *result;
   char *denom_pub_enc = NULL;
+  char *denom_sig_enc = NULL;
   size_t denom_pub_enc_size;
+  size_t denom_sig_enc_size;
+  int ret;
+
+  ret = GNUNET_SYSERR;
   denom_pub_enc_size =
       GNUNET_CRYPTO_rsa_public_key_encode (collectable->denom_pub,
                                            &denom_pub_enc);
+  denom_sig_enc_size =
+      GNUNET_CRYPTO_rsa_signature_encode (collectable->sig, &denom_sig_enc);
   struct TALER_DB_QueryParam params[] = {
     TALER_DB_QUERY_PARAM_PTR (h_blind),
-    TALER_DB_QUERY_PARAM_PTR_SIZED (denom_pub_enc, denom_pub_enc_size - 1), /* DB doesn't like the trailing \0 */
+    TALER_DB_QUERY_PARAM_PTR_SIZED (denom_pub_enc, denom_pub_enc_size - 1),
+    TALER_DB_QUERY_PARAM_PTR_SIZED (denom_sig_enc, denom_sig_enc_size - 1), /* DB doesn't like the trailing \0 */
     TALER_DB_QUERY_PARAM_PTR (&collectable->reserve_pub),
     TALER_DB_QUERY_PARAM_PTR (&collectable->reserve_sig),
     TALER_DB_QUERY_PARAM_END
   };
-  int ret;
-
   result = TALER_DB_exec_prepared (db_conn,
-                                   "insert_collectable_blindcoins",
+                                   "insert_collectable_blindcoin",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
-    ret = GNUNET_SYSERR;
+    QUERY_ERR (result);
     goto cleanup;
   }
   ret = GNUNET_OK;
@@ -1029,6 +1051,7 @@ TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
  cleanup:
   PQclear (result);
   GNUNET_free_non_null (denom_pub_enc);
+  GNUNET_free_non_null (denom_sig_enc);
   return ret;
 }
 
@@ -1047,7 +1070,6 @@ TALER_MINT_DB_get_reserve_history (PGconn *db_conn,
 {
   // FIXME: implement logic!
   PGresult *result;
-  // int res;
   struct TALER_DB_QueryParam params[] = {
     TALER_DB_QUERY_PARAM_PTR (reserve_pub),
     TALER_DB_QUERY_PARAM_END
