@@ -355,15 +355,16 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
       }
     case TALER_MINT_DB_TT_REFRESH_MELT:
       {
-        struct RefreshMeltSignatureBody ms;
+        struct RefreshMeltCoinSignature ms;
         const struct RefreshMelt *melt = pos->details.melt;
 
         type = "melt";
         value = melt->amount;
-        ms.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT);
-        ms.purpose.size = htonl (sizeof (struct RefreshMeltSignatureBody));
+        ms.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_COIN);
+        ms.purpose.size = htonl (sizeof (struct RefreshMeltCoinSignature));
         ms.melt_hash = melt->melt_hash;
         ms.amount = TALER_amount_hton (melt->amount);
+        ms.coin_pub = melt->coin.coin_pub;
         transaction = TALER_JSON_from_ecdsa_sig (&ms.purpose,
                                                  &melt->coin_sig);
       }

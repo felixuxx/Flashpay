@@ -36,109 +36,6 @@
 
 
 /**
- * Verify a signature that is encoded in a JSON object.  Extracts
- * the signature and its associated purpose and checks that it
- * matches the specified @a purpose and @a pub public key.  Any
- * errors are reported via appropriate response messages.
- *
- * @param connection the connection to send errors to
- * @param json_sig the JSON object with the signature
- * @param the public key that the signature was created with
- * @param purpose the signed message
- * @return #GNUNET_YES if the signature was valid
- *         #GNUNET_NO if the signature was invalid
- *         #GNUNET_SYSERR on internal error
- */
-static int
-request_json_check_signature (struct MHD_Connection *connection,
-                              const json_t *json_sig,
-                              const struct GNUNET_CRYPTO_EddsaPublicKey *pub,
-                              const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose)
-{
-  struct GNUNET_CRYPTO_EddsaSignature signature;
-  int size;
-  uint32_t purpose_num;
-  int res;
-  json_t *el;
-
-  /* TODO: use specification array to simplify the parsing! */
-  res = GNUNET_MINT_parse_navigate_json (connection,
-                                         json_sig,
-                                         JNAV_FIELD,
-                                         "sig",
-                                         JNAV_RET_DATA,
-                                         &signature,
-                                         sizeof (struct GNUNET_CRYPTO_EddsaSignature));
-
-  if (GNUNET_OK != res)
-    return res;
-
-  res = GNUNET_MINT_parse_navigate_json (connection,
-                                         json_sig,
-                                         JNAV_FIELD,
-                                         "purpose",
-                                         JNAV_RET_TYPED_JSON,
-                                         JSON_INTEGER,
-                                         &el);
-
-  if (GNUNET_OK != res)
-    return res;
-
-  purpose_num = json_integer_value (el);
-
-  if (purpose_num != ntohl (purpose->purpose))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "signature invalid (purpose wrong)\n");
-    return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       "{s:s}",
-                                       "error", "signature invalid (purpose)");
-  }
-
-  res = GNUNET_MINT_parse_navigate_json (connection,
-                                         json_sig,
-                                         JNAV_FIELD, "size",
-                                         JNAV_RET_TYPED_JSON,
-                                         JSON_INTEGER,
-                                         &el);
-
-  if (GNUNET_OK != res)
-    return res;
-
-  size = json_integer_value (el);
-
-  if (size != ntohl (purpose->size))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "signature invalid (size wrong)\n");
-    return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       GNUNET_NO, GNUNET_SYSERR,
-                                       "{s:s}",
-                                       "error",
-                                       "signature invalid (size)");
-  }
-
-  if (GNUNET_OK != GNUNET_CRYPTO_eddsa_verify (purpose_num,
-                                               purpose,
-                                               &signature,
-                                               pub))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "signature invalid (did not verify)\n");
-    return TALER_MINT_reply_json_pack (connection,
-                                       MHD_HTTP_UNAUTHORIZED,
-                                       "{s:s}",
-                                       "error",
-                                       "invalid signature (verification)");
-  }
-
-  return GNUNET_OK;
-}
-
-
-/**
  * Handle a "/refresh/melt" request after the main JSON parsing has happened.
  * We now need to validate the coins being melted and the session signature
  * and then hand things of to execute the melt operation.
@@ -150,7 +47,7 @@ request_json_check_signature (struct MHD_Connection *connection,
  * @param coin_count number of coins to be melted, size of y-dimension of @commit_coin array
  * @param coin_public_infos array with @a coin_count entries about the coins
  * @param coin_melt_details array with @a coin_count entries with melting details
- * @param melt_sig_json signature affirming the overall melt operation
+ * @param commit_hash hash over the data that the client commits to
  * @param commit_client_sig signature of the client over this commitment
  * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
  * @param commit_coin 2d array of coin commitments (what the mint is to sign
@@ -168,18 +65,17 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                             unsigned int coin_count,
                             struct TALER_CoinPublicInfo *coin_public_infos,
                             const struct MeltDetails *coin_melt_details,
-                            const json_t *melt_sig_json,
+                            const struct GNUNET_HashCode *commit_hash,
                             const struct GNUNET_CRYPTO_EddsaSignature *commit_client_sig,
                             unsigned int kappa,
                             struct RefreshCommitCoin *const* commit_coin,
                             struct RefreshCommitLink *const* commit_link)
 
 {
-  int res;
   unsigned int i;
   struct GNUNET_HashContext *hash_context;
   struct GNUNET_HashCode melt_hash;
-  struct RefreshMeltSignatureBody body;
+  struct RefreshMeltSessionSignature body;
   char *buf;
   size_t buf_size;
   struct MintKeyState *key_state;
@@ -207,18 +103,26 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                                      sizeof (struct GNUNET_CRYPTO_EddsaPublicKey));
   GNUNET_CRYPTO_hash_context_finish (hash_context,
                                      &melt_hash);
+  // FIXME: what about the `commit_hash`?
 
-  body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT);
-  body.purpose.size = htonl (sizeof (struct RefreshMeltSignatureBody));
+  body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_SESSION);
+  body.purpose.size = htonl (sizeof (struct RefreshMeltSessionSignature));
   body.melt_hash = melt_hash;
   body.amount = TALER_amount_hton (coin_melt_details->melt_amount);
 
-  if (GNUNET_OK !=
-      (res = request_json_check_signature (connection,
-                                           melt_sig_json,
-                                           refresh_session_pub,
-                                           &body.purpose)))
-    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
+  if (GNUNET_OK != GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_REFRESH_MELT_SESSION,
+                                               &body.purpose,
+                                               commit_client_sig,
+                                               refresh_session_pub))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "signature invalid (did not verify)\n");
+    return TALER_MINT_reply_json_pack (connection,
+                                       MHD_HTTP_UNAUTHORIZED,
+                                       "{s:s}",
+                                       "error",
+                                       "invalid signature (verification)");
+  }
 
   // FIXME: badness, use proper way to set to zero...
   key_state = TALER_MINT_key_state_acquire ();
@@ -276,15 +180,9 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
 
 
 /**
- * Extract public coin information from a JSON object and verify
- * that the signature shows that this coin is to be melted into
- * the given @a session_pub melting session, and that this is
- * a valid coin (we know the denomination key and the signature
- * on it is valid).  Essentially, this does all of the per-coin
- * checks that can be done before the transaction starts.
+ * Extract public coin information from a JSON object.
  *
  * @param connection the connection to send error responses to
- * @param session_pub public key of the session the coin is melted into
  * @param coin_info the JSON object to extract the coin info from
  * @param r_public_info[OUT] set to the coin's public information
  * @param r_melt_detail[OUT] set to details about the coin's melting permission (if valid)
@@ -293,19 +191,15 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
  *         #GNUNET_SYSERR on internal error
  */
 static int
-get_and_verify_coin_public_info (struct MHD_Connection *connection,
-                                 const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                 json_t *coin_info,
-                                 struct TALER_CoinPublicInfo *r_public_info,
-                                 struct MeltDetails *r_melt_detail)
+get_coin_public_info (struct MHD_Connection *connection,
+                      json_t *coin_info,
+                      struct TALER_CoinPublicInfo *r_public_info,
+                      struct MeltDetails *r_melt_detail)
 {
   int ret;
   struct GNUNET_CRYPTO_EcdsaSignature melt_sig;
   struct GNUNET_CRYPTO_rsa_Signature *sig;
   struct GNUNET_CRYPTO_rsa_PublicKey *pk;
-  struct RefreshMeltConfirmSignRequestBody body;
-  struct MintKeyState *key_state;
-  struct TALER_MINT_DenomKeyIssuePriv *dki;
   struct TALER_Amount amount;
   struct GNUNET_MINT_ParseFieldSpec spec[] = {
     TALER_MINT_PARSE_FIXED ("coin_pub", &r_public_info->coin_pub),
@@ -316,6 +210,7 @@ get_and_verify_coin_public_info (struct MHD_Connection *connection,
     TALER_MINT_PARSE_END
   };
 
+  memset (&amount, 0, sizeof (amount)); // FIXME: #3636!
   ret = TALER_MINT_parse_json_data (connection,
                                     coin_info,
                                     spec);
@@ -323,38 +218,6 @@ get_and_verify_coin_public_info (struct MHD_Connection *connection,
     return ret;
   /* FIXME: include amount of coin value to be melted here (#3636!) and
     in what we return!? */
-  memset (&amount, 0, sizeof (amount)); // FIXME: #3636!
-  body.purpose.size = htonl (sizeof (struct RefreshMeltConfirmSignRequestBody));
-  body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_CONFIRM);
-  body.session_pub = *session_pub;
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_REFRESH_MELT_CONFIRM,
-                                  &body.purpose,
-                                  &melt_sig,
-                                  &r_public_info->coin_pub))
-  {
-    TALER_MINT_release_parsed_data (spec);
-    if (MHD_YES !=
-        TALER_MINT_reply_json_pack (connection,
-                                    MHD_HTTP_UNAUTHORIZED,
-                                    "{s:s}",
-                                    "error", "signature invalid"))
-      return GNUNET_SYSERR;
-    return GNUNET_NO;
-  }
-  key_state = TALER_MINT_key_state_acquire ();
-  dki = TALER_MINT_get_denom_key (key_state,
-                                  pk);
-  /* FIXME: need to check if denomination key is still
-     valid for issuing! (#3634) */
-  if (NULL == dki)
-  {
-    TALER_MINT_key_state_release (key_state);
-    LOG_WARNING ("Unknown denomination key in /refresh/melt request\n");
-    return TALER_MINT_reply_arg_invalid (connection,
-                                         "denom_pub");
-  }
-  TALER_MINT_key_state_release (key_state);
 
   /* check mint signature on the coin */
   r_public_info->denom_sig = sig;
@@ -374,6 +237,70 @@ get_and_verify_coin_public_info (struct MHD_Connection *connection,
   }
   r_melt_detail->melt_sig = melt_sig;
   r_melt_detail->melt_amount = amount;
+  TALER_MINT_release_parsed_data (spec);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Verify that the signature shows that this coin is to be melted into
+ * the given @a session_pub melting session, and that this is a valid
+ * coin (we know the denomination key and the signature on it is
+ * valid).  Essentially, this does all of the per-coin checks that can
+ * be done before the transaction starts.
+ *
+ * @param connection the connection to send error responses to
+ * @param melt_hash hash over refresh session the coin is melted into
+ * @param r_public_info the coin's public information
+ * @param r_melt_detail details about the coin's melting permission (if valid)
+ * @return #GNUNET_YES if coin public info in JSON was valid
+ *         #GNUNET_NO JSON was invalid, response was generated
+ *         #GNUNET_SYSERR on internal error
+ */
+static int
+verify_coin_public_info (struct MHD_Connection *connection,
+                         const struct GNUNET_HashCode *melt_hash,
+                         const struct TALER_CoinPublicInfo *r_public_info,
+                         const struct MeltDetails *r_melt_detail)
+{
+  struct RefreshMeltCoinSignature body;
+  struct MintKeyState *key_state;
+  struct TALER_MINT_DenomKeyIssuePriv *dki;
+
+  /* FIXME: include amount of coin value to be melted here (#3636!) and
+    in what we return!? */
+  body.purpose.size = htonl (sizeof (struct RefreshMeltCoinSignature));
+  body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_COIN);
+  body.melt_hash = *melt_hash;
+  body.amount = TALER_amount_hton (r_melt_detail->melt_amount);
+  body.coin_pub = r_public_info->coin_pub;
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_REFRESH_MELT_COIN,
+                                  &body.purpose,
+                                  &r_melt_detail->melt_sig,
+                                  &r_public_info->coin_pub))
+  {
+    if (MHD_YES !=
+        TALER_MINT_reply_json_pack (connection,
+                                    MHD_HTTP_UNAUTHORIZED,
+                                    "{s:s}",
+                                    "error", "signature invalid"))
+      return GNUNET_SYSERR;
+    return GNUNET_NO;
+  }
+  key_state = TALER_MINT_key_state_acquire ();
+  dki = TALER_MINT_get_denom_key (key_state,
+                                  r_public_info->denom_pub);
+  /* FIXME: need to check if denomination key is still
+     valid for issuing! (#3634) */
+  if (NULL == dki)
+  {
+    TALER_MINT_key_state_release (key_state);
+    LOG_WARNING ("Unknown denomination key in /refresh/melt request\n");
+    return TALER_MINT_reply_arg_invalid (connection,
+                                         "denom_pub");
+  }
+  TALER_MINT_key_state_release (key_state);
   return GNUNET_OK;
 }
 
@@ -478,9 +405,9 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   unsigned int coin_count;
   struct GNUNET_HashCode commit_hash;
   struct GNUNET_HashContext *hash_context;
-  struct RefreshCommitSignatureBody body;
   struct RefreshCommitCoin *commit_coin[kappa];
   struct RefreshCommitLink *commit_link[kappa];
+  const struct GNUNET_CRYPTO_EddsaSignature commit_client_sig;
 
   num_new_denoms = json_array_size (new_denoms);
   denom_pubs = GNUNET_malloc (num_new_denoms *
@@ -509,11 +436,10 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   for (i=0;i<coin_count;i++)
   {
     /* decode JSON data on coin to melt */
-    res = get_and_verify_coin_public_info (connection,
-                                           refresh_session_pub,
-                                           json_array_get (melt_coins, i),
-                                           &coin_public_infos[i],
-                                           &coin_melt_details[i]);
+    res = get_coin_public_info (connection,
+                                json_array_get (melt_coins, i),
+                                &coin_public_infos[i],
+                                &coin_melt_details[i]);
     if (GNUNET_OK != res)
     {
       for (j=0;j<i;j++)
@@ -635,24 +561,34 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   }
   GNUNET_CRYPTO_hash_context_finish (hash_context, &commit_hash);
 
-  /* verify commit signature */
-  body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT);
-  body.purpose.size = htonl (sizeof (struct RefreshCommitSignatureBody));
-  body.commit_hash = commit_hash;
 
-  if (GNUNET_OK !=
-      (res = request_json_check_signature (connection,
-                                           commit_signature,
-                                           refresh_session_pub,
-                                           &body.purpose)))
+  res = GNUNET_MINT_parse_navigate_json (connection,
+                                         commit_signature,
+                                         JNAV_FIELD,
+                                         "sig",
+                                         JNAV_RET_DATA,
+                                         &commit_client_sig,
+                                         sizeof (struct GNUNET_CRYPTO_EddsaSignature));
+
+  if (GNUNET_OK != res)
+    return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+
+
+  for (i=0;i<coin_count;i++)
   {
-    free_commit_coins (commit_coin, kappa, num_newcoins);
-    free_commit_links (commit_link, kappa, num_oldcoins);
-    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
+    /* verify signatures ons coin to melt */
+    res = verify_coin_public_info (connection,
+                                   &commit_hash,
+                                   &coin_public_infos[i],
+                                   &coin_melt_details[i]);
+    if (GNUNET_OK != res)
+    {
+      res = (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+      goto cleanup;
+    }
   }
 
   /* execute commit */
-  /* FIXME: we must also store the signature! (#3635) */
   res = handle_refresh_melt_binary (connection,
                                     refresh_session_pub,
                                     num_new_denoms,
@@ -660,11 +596,12 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                                     coin_count,
                                     coin_public_infos,
                                     coin_melt_details,
-                                    melt_sig_json,
-                                    NULL /* FIXME: 3635! */,
+                                    &commit_hash,
+                                    &commit_client_sig,
                                     kappa,
                                     commit_coin,
                                     commit_link);
+ cleanup:
   free_commit_coins (commit_coin, kappa, num_newcoins);
   free_commit_links (commit_link, kappa, num_oldcoins);
   for (j=0;j<coin_count;j++)

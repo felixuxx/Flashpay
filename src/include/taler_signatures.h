@@ -65,7 +65,7 @@
  * Signature where the refresh session confirms
  * the commits.
  */
-#define TALER_SIGNATURE_REFRESH_MELT 6
+#define TALER_SIGNATURE_REFRESH_MELT_SESSION 6
 
 /**
  * Signature where the mint (current signing key)
@@ -221,7 +221,7 @@ struct TALER_DepositConfirmation
   struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
 
   /**
-   * The Merachant's public key.
+   * The Merchant's public key.
    */
   struct GNUNET_CRYPTO_EddsaPublicKey merchant;
 
@@ -232,7 +232,7 @@ struct TALER_DepositConfirmation
  * Message signed by a coin to indicate that the coin should
  * be melted.
  */
-struct RefreshMeltSignatureBody
+struct RefreshMeltCoinSignature
 {
   /**
    * Purpose is #TALER_SIGNATURE_REFRESH_MELT_COIN.
@@ -245,11 +245,34 @@ struct RefreshMeltSignatureBody
   struct GNUNET_HashCode melt_hash;
 
   /**
-   * Signature of the client over the melt request (thereby
-   * indirectly including all of the information the client
-   * sent).
+   * How much of the value of the coin should be melted?
+   * This amount includes the fees, so the final amount contributed
+   * to the melt is this value minus the fee for melting the coin.
    */
-  struct GNUNET_CRYPTO_EddsaSignature melt_client_signature;
+  struct TALER_AmountNBO amount;
+
+  /**
+   * The coin's public key.
+   */
+  struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+};
+
+
+/**
+ * Message signed by a coin to indicate that the coin should
+ * be melted.
+ */
+struct RefreshMeltSessionSignature
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_REFRESH_MELT_SESSION
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Which melting operation should the coin become a part of.
+   */
+  struct GNUNET_HashCode melt_hash;
 
   /**
    * Public key of the refresh session for which
@@ -258,29 +281,10 @@ struct RefreshMeltSignatureBody
   struct GNUNET_CRYPTO_EddsaPublicKey session_key;
 
   /**
-   * How much of the value of the coin should be melted?
-   * This amount includes the fees, so the final amount contributed
-   * to the melt is this value minus the fee for melting the coin.
+   * What is the total value of the coins created during the
+   * refresh, excluding fees?
    */
   struct TALER_AmountNBO amount;
-};
-
-
-/**
- * Message signed during melting committing the client to the
- * hashed inputs.
- */
-struct RefreshCommitSignatureBody
-{
-  /**
-   * Purpose is #TALER_SIGNATURE_REFRESH_MELT.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Session state the client commits itself to.
-   */
-  struct GNUNET_HashCode commit_hash;
 };
 
 
