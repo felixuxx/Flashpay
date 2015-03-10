@@ -508,14 +508,12 @@ refresh_accept_melts (struct MHD_Connection *connection,
  * @param refresh_session_pub public key of the refresh session
  * @param client_signature signature of the client (matching @a refresh_session_pub)
  *         over the melting request
- * @param num_new_denoms number of entries in @a denom_pubs
+ * @param num_new_denoms number of entries in @a denom_pubs, size of y-dimension of @commit_coin array
  * @param denum_pubs public keys of the coins we want to withdraw in the end
- * @param coin_count number of entries in @a coin_public_infos and @a coin_melt_details
+ * @param coin_count number of entries in @a coin_public_infos and @a coin_melt_details, size of y-dimension of @commit_link array
  * @param coin_public_infos information about the coins to melt
  * @param coin_melt_details signatures and (residual) value of the respective coin should be melted
  * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
- * @param num_oldcoins size of y-dimension of @commit_link array
- * @param num_newcoins size of y-dimension of @commit_coin array
  * @param commit_coin 2d array of coin commitments (what the mint is to sign
  *                    once the "/refres/reveal" of cut and choose is done)
  * @param commit_link 2d array of coin link commitments (what the mint is
@@ -534,8 +532,6 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     const struct TALER_CoinPublicInfo *coin_public_infos,
                                     const struct MeltDetails *coin_melt_details,
                                     unsigned int kappa,
-                                    unsigned int num_oldcoins,
-                                    unsigned int num_newcoins,
                                     struct RefreshCommitCoin *const* commit_coin,
                                     struct RefreshCommitLink *const* commit_link)
 {
@@ -611,7 +607,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
 
   for (i = 0; i < kappa; i++)
   {
-    for (j = 0; j < num_newcoins; j++)
+    for (j = 0; j < num_new_denoms; j++)
     {
       if (GNUNET_OK !=
           TALER_MINT_DB_insert_refresh_commit_coin (db_conn,
@@ -627,7 +623,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   }
   for (i = 0; i < kappa; i++)
   {
-    for (j = 0; j < num_oldcoins; j++)
+    for (j = 0; j < coin_count; j++)
     {
       if (GNUNET_OK !=
           TALER_MINT_DB_insert_refresh_commit_link (db_conn,

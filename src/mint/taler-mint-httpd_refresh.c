@@ -145,16 +145,14 @@ request_json_check_signature (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection to handle
  * @param refresh_session_pub public key of the melt operation
- * @param num_new_denoms number of coins to be created
+ * @param num_new_denoms number of coins to be created, size of y-dimension of @commit_link array
  * @param denom_pubs array of @a num_new_denoms keys
- * @param coin_count number of coins to be melted
+ * @param coin_count number of coins to be melted, size of y-dimension of @commit_coin array
  * @param coin_public_infos array with @a coin_count entries about the coins
  * @param coin_melt_details array with @a coin_count entries with melting details
  * @param melt_sig_json signature affirming the overall melt operation
  * @param commit_client_sig signature of the client over this commitment
  * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
- * @param num_oldcoins size of y-dimension of @commit_coin array
- * @param num_newcoins size of y-dimension of @commit_link array
  * @param commit_coin 2d array of coin commitments (what the mint is to sign
  *                    once the "/refres/reveal" of cut and choose is done)
  * @param commit_link 2d array of coin link commitments (what the mint is
@@ -173,8 +171,6 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                             const json_t *melt_sig_json,
                             const struct GNUNET_CRYPTO_EddsaSignature *commit_client_sig,
                             unsigned int kappa,
-                            unsigned int num_oldcoins,
-                            unsigned int num_newcoins,
                             struct RefreshCommitCoin *const* commit_coin,
                             struct RefreshCommitLink *const* commit_link)
 
@@ -274,8 +270,6 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                                              coin_public_infos,
                                              coin_melt_details,
                                              kappa,
-                                             num_oldcoins,
-                                             num_newcoins,
                                              commit_coin,
                                              commit_link);
 }
@@ -669,8 +663,6 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                                     melt_sig_json,
                                     NULL /* FIXME: 3635! */,
                                     kappa,
-                                    num_oldcoins,
-                                    num_newcoins,
                                     commit_coin,
                                     commit_link);
   free_commit_coins (commit_coin, kappa, num_newcoins);
