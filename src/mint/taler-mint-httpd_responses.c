@@ -315,27 +315,20 @@ TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
   return ret;
 }
 
-
 /**
- * Send proof that a /deposit, /refresh/melt or /lock request is
- * invalid to client.  This function will create a message with all of
- * the operations affecting the coin that demonstrate that the coin
- * has insufficient value.
+ * Compile the transaction history of a coin into a JSON object.
  *
- * @param connection connection to the client
- * @param tl transaction list to use to build reply
- * @return MHD result code
+ * @param tl transaction history to JSON-ify
+ * @return json representation of the @a rh
  */
-int
-TALER_MINT_reply_insufficient_funds (struct MHD_Connection *connection,
-                                     const struct TALER_MINT_DB_TransactionList *tl)
+static json_t *
+compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
 {
-  const struct TALER_MINT_DB_TransactionList *pos;
-  int ret;
-  json_t *history;
   json_t *transaction;
   const char *type;
   struct TALER_Amount value;
+  json_t *history;
+  const struct TALER_MINT_DB_TransactionList *pos;
 
   history = json_array ();
   for (pos = tl; NULL != pos; pos = pos->next)
@@ -392,13 +385,31 @@ TALER_MINT_reply_insufficient_funds (struct MHD_Connection *connection,
                                       "amount", TALER_JSON_from_amount (value),
                                       "signature", transaction));
   }
+  return history;
+}
 
-  ret = TALER_MINT_reply_json_pack (connection,
-                                    MHD_HTTP_FORBIDDEN,
-                                    "{s:s, s:o}",
-                                    "error", "insufficient funds",
-                                    "history", history);
-  return ret;
+
+/**
+ * Send proof that a /withdraw request is invalid to client.  This
+ * function will create a message with all of the operations affecting
+ * the coin that demonstrate that the coin has insufficient value.
+ *
+ * @param connection connection to the client
+ * @param tl transaction list to use to build reply
+ * @return MHD result code
+ */
+int
+TALER_MINT_reply_deposit_insufficient_funds (struct MHD_Connection *connection,
+                                             const struct TALER_MINT_DB_TransactionList *tl)
+{
+  json_t *history;
+
+  history = compile_transaction_history (tl);
+  return TALER_MINT_reply_json_pack (connection,
+                                     MHD_HTTP_FORBIDDEN,
+                                     "{s:s, s:o}",
+                                     "error", "insufficient funds",
+                                     "history", history);
 }
 
 
@@ -589,47 +600,46 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
 
 
 /**
- * Send a response for "/refresh/melt".  Essentially we sign
- * over the client's signature and public key, thereby
- * demonstrating that we accepted all of the client's coins.
+ * Send a response for a failed "/refresh/melt" request.  The
+ * transaction history of the given coin demonstrates that the
+ * @a residual value of the coin is below the @a requested
+ * contribution of the coin for the melt.  Thus, the mint
+ * refuses the melt operation.
  *
  * @param connection the connection to send the response to
- * @param signature the client's signature over the melt request
- * @param session_pub the refresh session public key.
- * @param kappa security parameter to use for cut and choose
+ * @param coin_pub public key of the coin
+ * @param coin_value original value of the coin
+ * @param tl transaction history for the coin
+ * @param requested how much this coin was supposed to contribute
+ * @param residual remaining value of the coin (after subtracting @a tl)
  * @return a MHD result code
  */
 int
-TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
-                                       const struct GNUNET_CRYPTO_EddsaSignature *signature,
-                                       const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                       unsigned int kappa)
+TALER_MINT_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
+                                                  const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
+                                                  struct TALER_Amount coin_value,
+                                                  struct TALER_MINT_DB_TransactionList *tl,
+                                                  struct TALER_Amount requested,
+                                                  struct TALER_Amount residual)
 {
-  int ret;
-  struct RefreshMeltResponseSignatureBody body;
-  struct GNUNET_CRYPTO_EddsaSignature sig;
-  json_t *sig_json;
+  json_t *history;
 
-  body.purpose.size = htonl (sizeof (struct RefreshMeltResponseSignatureBody));
-  body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_RESPONSE);
-  body.melt_client_signature = *signature;
-  body.session_key = *session_pub;
-  body.kappa = htonl (kappa);
-  TALER_MINT_keys_sign (&body.purpose,
-                        &sig);
-  sig_json = TALER_JSON_from_eddsa_sig (&body.purpose, &sig);
-  ret = TALER_MINT_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:o, s:i}",
-                                    "signature", sig_json,
-                                    "kappa", (int) kappa);
-  json_decref (sig_json);
-  return ret;
+  history = compile_transaction_history (tl);
+  return TALER_MINT_reply_json_pack (connection,
+                                     MHD_HTTP_NOT_FOUND,
+                                     "{s:s, s:o, s:o, s:o, s:o, s:o}",
+                                     "error", "insufficient funds",
+                                     "coin-pub", TALER_JSON_from_data (coin_pub,
+                                                                       sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey)),
+                                     "original-value", TALER_JSON_from_amount (coin_value),
+                                     "residual-value", TALER_JSON_from_amount (residual),
+                                     "requested-value", TALER_JSON_from_amount (requested),
+                                     "history", history);
 }
 
 
 /**
- * Send a response to a "/refresh/commit" request.
+ * Send a response to a "/refresh/melt" request.
  *
  * @param connection the connection to send the response to
  * @param session_hash hash of the refresh session
@@ -637,17 +647,17 @@ TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
  * @return a MHD status code
  */
 int
-TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
-                                         const struct GNUNET_HashCode *session_hash,
-                                         uint16_t noreveal_index)
+TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
+                                       const struct GNUNET_HashCode *session_hash,
+                                       uint16_t noreveal_index)
 {
-  struct RefreshCommitResponseSignatureBody body;
+  struct RefreshMeltResponseSignatureBody body;
   struct GNUNET_CRYPTO_EddsaSignature sig;
   json_t *sig_json;
   int ret;
 
-  body.purpose.size = htonl (sizeof (struct RefreshCommitResponseSignatureBody));
-  body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_COMMIT_RESPONSE);
+  body.purpose.size = htonl (sizeof (struct RefreshMeltResponseSignatureBody));
+  body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_RESPONSE);
   body.session_hash = *session_hash;
   body.noreveal_index = htons (noreveal_index);
   TALER_MINT_keys_sign (&body.purpose,

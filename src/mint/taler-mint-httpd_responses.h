@@ -194,18 +194,17 @@ TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
 
 
 /**
- * Send proof that a /deposit, /refresh/melt or /lock request is
- * invalid to client.  This function will create a message with all of
- * the operations affecting the coin that demonstrate that the coin
- * has insufficient value.
+ * Send proof that a /deposit request is invalid to client.  This
+ * function will create a message with all of the operations affecting
+ * the coin that demonstrate that the coin has insufficient value.
  *
  * @param connection connection to the client
  * @param tl transaction list to use to build reply
  * @return MHD result code
  */
 int
-TALER_MINT_reply_insufficient_funds (struct MHD_Connection *connection,
-                                     const struct TALER_MINT_DB_TransactionList *tl);
+TALER_MINT_reply_deposit_insufficient_funds (struct MHD_Connection *connection,
+                                             const struct TALER_MINT_DB_TransactionList *tl);
 
 
 /**
@@ -247,7 +246,7 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
 
 
 /**
- * Send a response to a "/refresh/commit" request.
+ * Send a confirmation response to a "/refresh/melt" request.
  *
  * @param connection the connection to send the response to
  * @param session_hash hash of the refresh session
@@ -255,27 +254,33 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
  * @return a MHD status code
  */
 int
-TALER_MINT_reply_refresh_commit_success (struct MHD_Connection *connection,
-                                         const struct GNUNET_HashCode *session_hash,
-                                         uint16_t noreveal_index);
+TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
+                                       const struct GNUNET_HashCode *session_hash,
+                                       uint16_t noreveal_index);
 
 
 /**
- * Send a response for "/refresh/melt". Essentially we sign
- * over the client's signature and public key, thereby
- * demonstrating that we accepted all of the client's coins.
+ * Send a response for a failed "/refresh/melt" request.  The
+ * transaction history of the given coin demonstrates that the
+ * @a residual value of the coin is below the @a requested
+ * contribution of the coin for the melt.  Thus, the mint
+ * refuses the melt operation.
  *
  * @param connection the connection to send the response to
- * @param signature the client's signature over the melt request
- * @param session_pub the refresh session public key.
- * @param kappa security parameter to use for cut and choose
+ * @param coin_pub public key of the coin
+ * @param coin_value original value of the coin
+ * @param tl transaction history for the coin
+ * @param requested how much this coin was supposed to contribute
+ * @param residual remaining value of the coin (after subtracting @a tl)
  * @return a MHD result code
  */
 int
-TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
-                                       const struct GNUNET_CRYPTO_EddsaSignature *signature,
-                                       const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                       unsigned int kappa);
+TALER_MINT_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
+                                                  const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
+                                                  struct TALER_Amount coin_value,
+                                                  struct TALER_MINT_DB_TransactionList *tl,
+                                                  struct TALER_Amount requested,
+                                                  struct TALER_Amount residual);
 
 
 /**

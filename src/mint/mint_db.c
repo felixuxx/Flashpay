@@ -1417,11 +1417,6 @@ TALER_MINT_DB_get_refresh_session (PGconn *db_conn,
     return GNUNET_SYSERR;
   }
 
-  if (TALER_DB_field_isnull (result, 0, "session_commit_sig"))
-    session->has_commit_sig = GNUNET_NO;
-  else
-    session->has_commit_sig = GNUNET_YES;
-
   session->num_oldcoins = ntohs (session->num_oldcoins);
   session->num_newcoins = ntohs (session->num_newcoins);
   session->kappa = ntohs (session->kappa);
@@ -1468,28 +1463,6 @@ TALER_MINT_DB_create_refresh_session (PGconn *db_conn,
 
   PQclear (result);
   return GNUNET_OK;
-}
-
-
-/**
- * Update new refresh session with the new state after the
- * /refresh/commit operation.
- *
- * @param db_conn database handle to use
- * @param refresh_session_pub public key to use to locate the session
- * @param noreveal_index index chosen for the client to not reveal
- * @param commit_client_sig signature of the client over its commitment
- * @return #GNUNET_YES on success,
- *         #GNUNET_SYSERR on DB failure
- */
-int
-TALER_MINT_DB_update_refresh_session (PGconn *db_conn,
-                                      const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                                      uint16_t noreveal_index,
-                                      const struct GNUNET_CRYPTO_EddsaSignature *commit_client_sig)
-{
-  // FIXME: implement!
-  return GNUNET_SYSERR;
 }
 
 

@@ -151,7 +151,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
   if (0 < TALER_amount_cmp (spent, value))
   {
     TALER_MINT_DB_rollback (db_conn);
-    ret = TALER_MINT_reply_insufficient_funds (connection,
+    ret = TALER_MINT_reply_deposit_insufficient_funds (connection,
                                                tl);
     TALER_MINT_DB_free_coin_transaction_list (tl);
     return ret;
@@ -435,8 +435,10 @@ refresh_accept_melts (struct MHD_Connection *connection,
 {
   struct TALER_MINT_DenomKeyIssue *dki;
   struct TALER_MINT_DB_TransactionList *tl;
-  struct TALER_Amount coin_gain;
+  struct TALER_Amount coin_value;
+  struct TALER_Amount coin_residual;
   struct RefreshMelt melt;
+  int res;
 
   dki = &TALER_MINT_get_denom_key (key_state,
                                    coin_public_info->denom_pub)->issue;
@@ -450,25 +452,30 @@ refresh_accept_melts (struct MHD_Connection *connection,
                                         "denom not found"))
       ? GNUNET_NO : GNUNET_SYSERR;
 
-  coin_gain = TALER_amount_ntoh (dki->value);
+  coin_value = TALER_amount_ntoh (dki->value);
   tl = TALER_MINT_DB_get_coin_transactions (db_conn,
                                             &coin_public_info->coin_pub);
   /* FIXME: #3636: compute how much value is left with this coin and
-     compare to `expected_value`! (subtract from "coin_gain") */
-  TALER_MINT_DB_free_coin_transaction_list (tl);
-
+     compare to `expected_value`! (subtract from "coin_value") */
+  coin_residual = coin_value;
   /* Refuse to refresh when the coin does not have enough money left to
    * pay the refreshing fees of the coin. */
 
-  if (TALER_amount_cmp (coin_gain,
+  if (TALER_amount_cmp (coin_residual,
                         coin_details->melt_amount) < 0)
-    return (MHD_YES ==
-            TALER_MINT_reply_json_pack (connection,
-                                        MHD_HTTP_NOT_FOUND,
-                                        "{s:s}",
-                                        "error", "depleted")) ? GNUNET_NO : GNUNET_SYSERR;
-
-
+  {
+    res = (MHD_YES ==
+           TALER_MINT_reply_refresh_melt_insufficient_funds (connection,
+                                                             &coin_public_info->coin_pub,
+                                                             coin_value,
+                                                             tl,
+                                                             coin_details->melt_amount,
+                                                             coin_residual))
+      ? GNUNET_NO : GNUNET_SYSERR;
+    TALER_MINT_DB_free_coin_transaction_list (tl);
+    return res;
+  }
+  TALER_MINT_DB_free_coin_transaction_list (tl);
 
   melt.coin = *coin_public_info;
   melt.coin_sig = coin_details->melt_sig;
@@ -494,6 +501,8 @@ refresh_accept_melts (struct MHD_Connection *connection,
  * required value left and if so, store that they have been
  * melted and confirm the melting operation to the client.
  *
+ * FIXME: some arguments are redundant here...
+ *
  * @param connection the MHD connection to handle
  * @param melt_hash hash code of the session the coins are melted into
  * @param refresh_session_pub public key of the refresh session
@@ -504,6 +513,15 @@ refresh_accept_melts (struct MHD_Connection *connection,
  * @param coin_count number of entries in @a coin_public_infos and @a coin_melt_details
  * @param coin_public_infos information about the coins to melt
  * @param coin_melt_details signatures and (residual) value of the respective coin should be melted
+ * @param commit_client_sig signature of the client over this commitment
+ * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
+ * @param num_oldcoins size of y-dimension of @commit_link array
+ * @param num_newcoins size of y-dimension of @commit_coin array
+ * @param commit_coin 2d array of coin commitments (what the mint is to sign
+ *                    once the "/refres/reveal" of cut and choose is done)
+ * @param commit_link 2d array of coin link commitments (what the mint is
+ *                    to return via "/refresh/link" to enable linkage in the
+ *                    future)
  * @return MHD result code
  */
 int
@@ -515,13 +533,20 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs,
                                     unsigned int coin_count,
                                     const struct TALER_CoinPublicInfo *coin_public_infos,
-                                    const struct MeltDetails *coin_melt_details)
+                                    const struct MeltDetails *coin_melt_details,
+                                    const struct GNUNET_CRYPTO_EddsaSignature *commit_client_sig,
+                                    unsigned int kappa,
+                                    unsigned int num_oldcoins,
+                                    unsigned int num_newcoins,
+                                    struct RefreshCommitCoin *const* commit_coin,
+                                    struct RefreshCommitLink *const* commit_link)
 {
   struct MintKeyState *key_state;
   struct RefreshSession session;
   PGconn *db_conn;
   int res;
   unsigned int i;
+  unsigned int j;
 
   if (NULL == (db_conn = TALER_MINT_DB_get_connection (GNUNET_NO)))
   {
@@ -540,10 +565,10 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   if (GNUNET_YES == res)
   {
     TALER_MINT_DB_rollback (db_conn);
-    return TALER_MINT_reply_refresh_melt_success (connection,
-                                                  &session.melt_sig,
-                                                  refresh_session_pub,
-                                                  session.kappa);
+    res = TALER_MINT_reply_refresh_melt_success (connection,
+                                                 &session.session_hash,
+                                                 session.noreveal_index);
+    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   if (GNUNET_SYSERR == res)
   {
@@ -586,116 +611,6 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
     }
   }
 
-  /* store 'global' session data */
-  session.melt_sig = *client_signature;
-  session.session_hash = *melt_hash;
-  session.num_oldcoins = coin_count;
-  session.num_newcoins = num_new_denoms;
-  session.kappa = KAPPA;
-  session.noreveal_index = UINT16_MAX;
-  session.has_commit_sig = GNUNET_NO;
-  if (GNUNET_OK !=
-      (res = TALER_MINT_DB_create_refresh_session (db_conn,
-                                                   refresh_session_pub,
-                                                   &session)))
-  {
-    TALER_MINT_DB_rollback (db_conn);
-    return TALER_MINT_reply_internal_db_error (connection);
-  }
-
-  if (GNUNET_OK !=
-      TALER_MINT_DB_commit (db_conn))
-  {
-    LOG_WARNING ("/refresh/melt transaction commit failed\n");
-    return TALER_MINT_reply_commit_error (connection);
-  }
-  return TALER_MINT_reply_refresh_melt_success (connection,
-                                                client_signature,
-                                                refresh_session_pub,
-                                                session.kappa);
-}
-
-
-/**
- * Execute a "/refresh/commit".  The client is committing to @a kappa
- * sets of transfer keys, and linkage information for a refresh
- * operation.  Confirm that the commit matches the melts of an
- * existing @a refresh_session_pub, store the refresh session commit
- * data and then return the client a challenge specifying which of the
- * @a kappa sets of private transfer keys should not be revealed.
- *
- * @param connection the MHD connection to handle
- * @param refresh_session public key of the session
- * @param commit_client_sig signature of the client over this commitment
- * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
- * @param num_oldcoins size of y-dimension of @commit_link array
- * @param num_newcoins size of y-dimension of @commit_coin array
- * @param commit_coin 2d array of coin commitments (what the mint is to sign
- *                    once the "/refres/reveal" of cut and choose is done)
- * @param commit_link 2d array of coin link commitments (what the mint is
- *                    to return via "/refresh/link" to enable linkage in the
- *                    future)
- * @return MHD result code
- */
-int
-TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
-                                      const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                      const struct GNUNET_CRYPTO_EddsaSignature *commit_client_sig,
-                                      unsigned int kappa,
-                                      unsigned int num_oldcoins,
-                                      unsigned int num_newcoins,
-                                      struct RefreshCommitCoin *const*commit_coin,
-                                      struct RefreshCommitLink *const*commit_link)
-
-{
-  PGconn *db_conn;
-  struct RefreshSession refresh_session;
-  unsigned int i;
-  unsigned int j;
-  int res;
-
-  if (NULL == (db_conn = TALER_MINT_DB_get_connection (GNUNET_NO)))
-  {
-    GNUNET_break (0);
-    return TALER_MINT_reply_internal_db_error (connection);
-  }
-
-  if (GNUNET_OK !=
-      TALER_MINT_DB_transaction (db_conn))
-  {
-    GNUNET_break (0);
-    return TALER_MINT_reply_internal_db_error (connection);
-  }
-  res = TALER_MINT_DB_get_refresh_session (db_conn,
-                                           refresh_session_pub,
-                                           &refresh_session);
-  if (GNUNET_SYSERR == res)
-  {
-    TALER_MINT_DB_rollback (db_conn);
-    return TALER_MINT_reply_internal_db_error (connection);
-  }
-  if (GNUNET_NO == res)
-  {
-    TALER_MINT_DB_rollback (db_conn);
-    return TALER_MINT_reply_arg_invalid (connection,
-                                         "session_pub");
-  }
-  if ( (refresh_session.kappa != kappa) ||
-       (refresh_session.num_newcoins != num_newcoins) ||
-       (refresh_session.num_oldcoins != num_oldcoins) )
-  {
-    TALER_MINT_DB_rollback (db_conn);
-    return TALER_MINT_reply_arg_invalid (connection,
-                                         "dimensions");
-  }
-  if (GNUNET_YES == refresh_session.has_commit_sig)
-  {
-    TALER_MINT_DB_rollback (db_conn);
-    res = TALER_MINT_reply_refresh_commit_success (connection,
-                                                   &refresh_session.session_hash,
-                                                   refresh_session.noreveal_index);
-    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-  }
   for (i = 0; i < kappa; i++)
   {
     for (j = 0; j < num_newcoins; j++)
@@ -729,31 +644,36 @@ TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
     }
   }
 
-  refresh_session.noreveal_index
-    = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG,
-                                refresh_session.kappa);
 
+  /* store 'global' session data */
+  session.melt_sig = *client_signature;
+  session.session_hash = *melt_hash;
+  session.num_oldcoins = coin_count;
+  session.num_newcoins = num_new_denoms;
+  session.kappa = KAPPA; // FIXME...
+  session.noreveal_index
+    = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG,
+                                session.kappa);
   if (GNUNET_OK !=
-      (res = TALER_MINT_DB_update_refresh_session (db_conn,
+      (res = TALER_MINT_DB_create_refresh_session (db_conn,
                                                    refresh_session_pub,
-                                                   refresh_session.noreveal_index,
-                                                   commit_client_sig)))
+                                                   &session)))
   {
     TALER_MINT_DB_rollback (db_conn);
     return TALER_MINT_reply_internal_db_error (connection);
   }
 
 
+
   if (GNUNET_OK !=
       TALER_MINT_DB_commit (db_conn))
   {
-    LOG_WARNING ("/refresh/commit transaction commit failed\n");
+    LOG_WARNING ("/refresh/melt transaction commit failed\n");
     return TALER_MINT_reply_commit_error (connection);
   }
-
-  return TALER_MINT_reply_refresh_commit_success (connection,
-                                                  &refresh_session.session_hash,
-                                                  refresh_session.noreveal_index);
+  return TALER_MINT_reply_refresh_melt_success (connection,
+                                                &session.session_hash,
+                                                session.noreveal_index);
 }
 
 
@@ -1059,15 +979,6 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
   {
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
-  }
-
-  if ( (refresh_session.noreveal_index >= refresh_session.kappa) ||
-       (GNUNET_NO == refresh_session.has_commit_sig) )
-  {
-    GNUNET_break (UINT16_MAX == refresh_session.noreveal_index);
-    GNUNET_break (GNUNET_NO == refresh_session.has_commit_sig);
-    return TALER_MINT_reply_external_error (connection,
-                                            "/refresh/commit must be executed first");
   }
 
   melts = GNUNET_malloc (refresh_session.num_oldcoins *

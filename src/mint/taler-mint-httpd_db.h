@@ -107,6 +107,8 @@ struct MeltDetails
  * required value left and if so, store that they have been
  * melted and confirm the melting operation to the client.
  *
+ * FIXME: some arguments are redundant here...
+ *
  * @param connection the MHD connection to handle
  * @param melt_hash hash code of the session the coins are melted into
  * @param refresh_session_pub public key of the refresh session
@@ -117,30 +119,6 @@ struct MeltDetails
  * @param coin_count number of entries in @a coin_public_infos and @ a coin_melt_details
  * @param coin_public_infos information about the coins to melt
  * @param coin_melt_details signatures and (residual) value of the respective coin should be melted
- * @return MHD result code
- */
-int
-TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
-                                    const struct GNUNET_HashCode *melt_hash,
-                                    const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                    const struct GNUNET_CRYPTO_EddsaSignature *client_signature,
-                                    unsigned int num_new_denoms,
-                                    struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs,
-                                    unsigned int coin_count,
-                                    const struct TALER_CoinPublicInfo *coin_public_infos,
-                                    const struct MeltDetails *coin_melt_details);
-
-
-/**
- * Execute a "/refresh/commit".  The client is committing to @a kappa
- * sets of transfer keys, and linkage information for a refresh
- * operation.  Confirm that the commit matches the melts of an
- * existing @a refresh_session_pub, store the refresh session commit
- * data and then return the client a challenge specifying which of the
- * @a kappa sets of private transfer keys should not be revealed.
- *
- * @param connection the MHD connection to handle
- * @param refresh_session public key of the session
  * @param commit_client_sig signature of the client over this commitment
  * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
  * @param num_oldcoins size of y-dimension of @commit_coin array
@@ -154,14 +132,21 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
  */
 // FIXME: see #3635.
 int
-TALER_MINT_db_execute_refresh_commit (struct MHD_Connection *connection,
-                                      const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                      const struct GNUNET_CRYPTO_EddsaSignature *commit_client_sig,
-                                      unsigned int kappa,
-                                      unsigned int num_oldcoins,
-                                      unsigned int num_newcoins,
-                                      struct RefreshCommitCoin *const* commit_coin,
-                                      struct RefreshCommitLink *const* commit_link);
+TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
+                                    const struct GNUNET_HashCode *melt_hash,
+                                    const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                    const struct GNUNET_CRYPTO_EddsaSignature *client_signature,
+                                    unsigned int num_new_denoms,
+                                    struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs,
+                                    unsigned int coin_count,
+                                    const struct TALER_CoinPublicInfo *coin_public_infos,
+                                    const struct MeltDetails *coin_melt_details,
+                                    const struct GNUNET_CRYPTO_EddsaSignature *commit_client_sig,
+                                    unsigned int kappa,
+                                    unsigned int num_oldcoins,
+                                    unsigned int num_newcoins,
+                                    struct RefreshCommitCoin *const* commit_coin,
+                                    struct RefreshCommitLink *const* commit_link);
 
 
 /**

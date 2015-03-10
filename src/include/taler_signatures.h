@@ -56,28 +56,23 @@
 #define TALER_SIGNATURE_WITHDRAW 4
 
 /**
- * Signature where the refresh session confirms
- * the list of melted coins and requested denominations.
+ * Signature using a coin key confirming the melting of
+ * a coin.
  */
-#define TALER_SIGNATURE_REFRESH_MELT 5
+#define TALER_SIGNATURE_REFRESH_MELT_COIN 5
 
 /**
  * Signature where the refresh session confirms
  * the commits.
  */
-#define TALER_SIGNATURE_REFRESH_COMMIT 6
+#define TALER_SIGNATURE_REFRESH_MELT 6
 
 /**
  * Signature where the mint (current signing key)
- * confirms the list of blind session keys.
+ * confirms the no-reveal index for cut-and-choose and
+ * the validity of the melted coins.
  */
 #define TALER_SIGNATURE_REFRESH_MELT_RESPONSE 7
-
-/**
- * Signature where the mint (current signing key)
- * confirms the no-reveal index for cut-and-choose.
- */
-#define TALER_SIGNATURE_REFRESH_COMMIT_RESPONSE 8
 
 /**
  * Signature where coins confirm that they want
@@ -234,16 +229,20 @@ struct TALER_DepositConfirmation
 
 
 /**
- * Format of the block signed by the Mint in response to
- * a successful "/refresh/melt" request.  Hereby the mint
- * affirms that all of the coins were successfully melted.
+ * Message signed by a coin to indicate that the coin should
+ * be melted.
  */
-struct RefreshMeltResponseSignatureBody
+struct RefreshMeltSignatureBody
 {
   /**
-   * Purpose is #TALER_SIGNATURE_REFRESH_MELT_RESPONSE.
+   * Purpose is #TALER_SIGNATURE_REFRESH_MELT_COIN.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Which melting operation should the coin become a part of.
+   */
+  struct GNUNET_HashCode melt_hash;
 
   /**
    * Signature of the client over the melt request (thereby
@@ -257,30 +256,6 @@ struct RefreshMeltResponseSignatureBody
    * @e melt_client_signature must be a valid signature.
    */
   struct GNUNET_CRYPTO_EddsaPublicKey session_key;
-
-  /**
-   * Security parameter requested for the commitments.
-   */
-  uint32_t kappa GNUNET_PACKED;
-
-};
-
-
-/**
- * Message signed by a coin to indicate that the coin should
- * be melted.
- */
-struct RefreshMeltSignatureBody
-{
-  /**
-   * Purpose is #TALER_SIGNATURE_REFRESH_MELT.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Which melting operation should the coin become a part of.
-   */
-  struct GNUNET_HashCode melt_hash;
 
   /**
    * How much of the value of the coin should be melted?
@@ -298,7 +273,7 @@ struct RefreshMeltSignatureBody
 struct RefreshCommitSignatureBody
 {
   /**
-   * Purpose is #TALER_SIGNATURE_REFRESH_COMMIT.
+   * Purpose is #TALER_SIGNATURE_REFRESH_MELT.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -310,10 +285,12 @@ struct RefreshCommitSignatureBody
 
 
 /**
- * Message signed by the mint, committing it to a particular
- * index to not be revealed during the refresh.
+ * Format of the block signed by the Mint in response to a successful
+ * "/refresh/melt" request.  Hereby the mint affirms that all of the
+ * coins were successfully melted.  This also commits the mint to a
+ * particular index to not be revealed during the refresh.
  */
-struct RefreshCommitResponseSignatureBody
+struct RefreshMeltResponseSignatureBody
 {
   /**
    * Purpose is #TALER_SIGNATURE_REFRESH_MELT_RESPONSE.
