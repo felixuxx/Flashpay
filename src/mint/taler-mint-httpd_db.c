@@ -513,7 +513,6 @@ refresh_accept_melts (struct MHD_Connection *connection,
  * @param coin_count number of entries in @a coin_public_infos and @a coin_melt_details
  * @param coin_public_infos information about the coins to melt
  * @param coin_melt_details signatures and (residual) value of the respective coin should be melted
- * @param commit_client_sig signature of the client over this commitment
  * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
  * @param num_oldcoins size of y-dimension of @commit_link array
  * @param num_newcoins size of y-dimension of @commit_coin array
@@ -534,7 +533,6 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     unsigned int coin_count,
                                     const struct TALER_CoinPublicInfo *coin_public_infos,
                                     const struct MeltDetails *coin_melt_details,
-                                    const struct GNUNET_CRYPTO_EddsaSignature *commit_client_sig,
                                     unsigned int kappa,
                                     unsigned int num_oldcoins,
                                     unsigned int num_newcoins,
