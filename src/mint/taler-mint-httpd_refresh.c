@@ -162,12 +162,10 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                                        "{s:s}",
                                        "error", "value mismatch");
   }
-
-  /* FIXME: we must also store the signature over the melt! (#3635) */
   return TALER_MINT_db_execute_refresh_melt (connection,
                                              &melt_hash,
                                              refresh_session_pub,
-                                             NULL, /* FIXME: #3635! */
+                                             commit_client_sig,
                                              num_new_denoms,
                                              denom_pubs,
                                              coin_count,

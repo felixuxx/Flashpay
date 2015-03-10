@@ -501,8 +501,6 @@ refresh_accept_melts (struct MHD_Connection *connection,
  * required value left and if so, store that they have been
  * melted and confirm the melting operation to the client.
  *
- * FIXME: some arguments are redundant here...
- *
  * @param connection the MHD connection to handle
  * @param melt_hash hash code of the session the coins are melted into
  * @param refresh_session_pub public key of the refresh session
