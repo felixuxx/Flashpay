@@ -505,13 +505,15 @@ validate_iban (const char *iban)
  *
  * @param type the type of the wire format
  * @param wire the JSON wire format object
- * @return 1 if correctly formatted; 0 if not
+ * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
 int
-TALER_JSON_validate_wireformat (const char *type, json_t *wire)
+TALER_JSON_validate_wireformat (const char *type,
+				const json_t *wire)
 {
   json_error_t error;
-  if (0 == strcmp ("SEPA", type))
+
+  if (0 == strcasecmp ("SEPA", type))
   {
     const char *type;
     const char *iban;
@@ -521,7 +523,8 @@ TALER_JSON_validate_wireformat (const char *type, json_t *wire)
     uint64_t r;
     const char *address;
     UNPACK_EXITIF (0 != json_unpack_ex
-                   (wire, &error, JSON_STRICT,
+                   ((json_t *) wire,
+		    &error, JSON_STRICT,
                     "{"
                     "s:s " /* type: "SEPA" */
                     "s:s " /* IBAN: iban */
@@ -540,11 +543,11 @@ TALER_JSON_validate_wireformat (const char *type, json_t *wire)
                     "address", &address));
     EXITIF (0 != strcmp (type, "SEPA"));
     EXITIF (1 != validate_iban (iban));
-    return 1;
+    return GNUNET_YES;
   }
 
  EXITIF_exit:
-  return 0;
+  return GNUNET_NO;
 }
 
 /* End of util/json.c */

@@ -139,11 +139,11 @@ TALER_JSON_to_data (json_t *json,
  *
  * @param type the type of the wire format
  * @param wire the JSON wire format object
- * @return 1 if correctly formatted; 0 if not
+ * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
 int
 TALER_JSON_validate_wireformat (const char *type,
-                                json_t *wire);
+                                const json_t *wire);
 
 
 #endif /* TALER_JSON_LIB_H_ */

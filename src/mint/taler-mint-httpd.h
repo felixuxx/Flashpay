@@ -49,6 +49,11 @@ extern struct GNUNET_CONFIGURATION_Handle *cfg;
 extern char *mintdir;
 
 /**
+ * In which format does this MINT expect wiring instructions?
+ */
+extern char *expected_wire_format;
+
+/**
  * Master public key (according to the
  * configuration in the mint directory).
  */

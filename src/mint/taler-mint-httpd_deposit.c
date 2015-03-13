@@ -145,7 +145,14 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
     return MHD_NO; /* hard failure */
   if (GNUNET_NO == res)
     return MHD_YES; /* failure */
-  /* FIXME: check that "wire" is formatted correctly */
+  if (GNUNET_YES !=
+      TALER_JSON_validate_wireformat (expected_wire_format,
+				      wire))
+  {
+    TALER_MINT_release_parsed_data (spec);
+    return TALER_MINT_reply_arg_invalid (connection,
+                                         "wire");
+  }
   if (NULL == (wire_enc = json_dumps (wire, JSON_COMPACT | JSON_SORT_KEYS)))
   {
     LOG_WARNING ("Failed to parse JSON wire format specification for /deposit request\n");

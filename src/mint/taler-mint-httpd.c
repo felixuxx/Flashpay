@@ -56,6 +56,11 @@ struct GNUNET_CONFIGURATION_Handle *cfg;
 struct GNUNET_CRYPTO_EddsaPublicKey master_pub;
 
 /**
+ * In which format does this MINT expect wiring instructions?
+ */
+char *expected_wire_format = "sepa";
+
+/**
  * The HTTP Daemon.
  */
 static struct MHD_Daemon *mydaemon;
