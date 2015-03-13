@@ -732,8 +732,12 @@ check_commitment (struct MHD_Connection *connection,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "transfer keys do not match\n");
-      return (MHD_YES == TALER_MINT_reply_external_error (connection,
-                                                          "Transfer private key missmatch"))
+      /* FIXME: return more specific error with original signature (#3712) */
+      return (MHD_YES == 
+	      TALER_MINT_reply_refresh_reveal_missmatch (connection,
+							 off,
+							 j,
+							 "transfer key"))
         ? GNUNET_NO : GNUNET_SYSERR;
     }
 
@@ -757,8 +761,9 @@ check_commitment (struct MHD_Connection *connection,
                                 &shared_secret))
     {
       GNUNET_break (0);
-      return (MHD_YES == TALER_MINT_reply_internal_error (connection,
-                                                          "Decryption error"))
+      return (MHD_YES == 
+	      TALER_MINT_reply_internal_error (connection,
+					       "Decryption error"))
         ? GNUNET_NO : GNUNET_SYSERR;
     }
 
@@ -773,8 +778,12 @@ check_commitment (struct MHD_Connection *connection,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "shared secrets do not match\n");
-      return (MHD_YES == TALER_MINT_reply_external_error (connection,
-                                                          "Shared secret missmatch"))
+      /* FIXME: return more specific error with original signature (#3712) */
+      return (MHD_YES ==
+	      TALER_MINT_reply_refresh_reveal_missmatch (connection,
+							 off,
+							 j,
+							 "transfer secret"))
         ? GNUNET_NO : GNUNET_SYSERR;
     }
   }
@@ -843,9 +852,12 @@ check_commitment (struct MHD_Connection *connection,
                   "blind envelope does not match for kappa=%u, old=%d\n",
                   off,
                   (int) j);
-      /* FIXME: return more specific error with exact offset */
-      return (MHD_YES == TALER_MINT_reply_external_error (connection,
-                                                          "Envelope missmatch"))
+      /* FIXME: return more specific error with original signature (#3712) */
+      return (MHD_YES ==
+	      TALER_MINT_reply_refresh_reveal_missmatch (connection,
+							 off,
+							 j,
+							 "envelope"))
         ? GNUNET_NO : GNUNET_SYSERR;
     }
     GNUNET_free (buf);

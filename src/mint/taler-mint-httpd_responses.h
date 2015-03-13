@@ -298,6 +298,30 @@ TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
 
 
 /**
+ * Send a response for a failed "/refresh/reveal", where the
+ * revealed value(s) do not match the original commitment.
+ *
+ * FIXME: should also include the client's signature over
+ * the original reveal operation and the data that was signed
+ * over eventually... (#3712)
+ *
+ * @param connection the connection to send the response to
+ * @param off offset in the array of kappa-commitments where
+ *            the missmatch was detected
+ * @param j index of the coin for which the missmatch was
+ *            detected
+ * @param missmatch_object name of the object that was
+ *            bogus (i.e. "transfer key").
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
+					   unsigned int off,
+					   unsigned int j,
+					   const char *missmatch_object);
+
+
+/**
  * Send a response for "/refresh/link".
  *
  * @param connection the connection to send the response to

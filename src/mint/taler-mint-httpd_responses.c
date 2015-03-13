@@ -189,7 +189,6 @@ TALER_MINT_reply_external_error (struct MHD_Connection *connection,
 }
 
 
-
 /**
  * Send a response indicating an error committing a
  * transaction (concurrent interference).
@@ -713,6 +712,39 @@ TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
                                MHD_HTTP_OK);
   json_decref (root);
   return ret;
+}
+
+
+/**
+ * Send a response for a failed "/refresh/reveal", where the
+ * revealed value(s) do not match the original commitment.
+ *
+ * FIXME: should also include the client's signature over
+ * the original reveal operation and the data that was signed
+ * over eventually... (#3712)
+ *
+ * @param connection the connection to send the response to
+ * @param off offset in the array of kappa-commitments where
+ *            the missmatch was detected
+ * @param j index of the coin for which the missmatch was
+ *            detected
+ * @param missmatch_object name of the object that was
+ *            bogus (i.e. "transfer key").
+ * @return a MHD result code
+ */
+int
+TALER_MINT_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
+					   unsigned int off,
+					   unsigned int j,
+					   const char *missmatch_object)
+{
+  return TALER_MINT_reply_json_pack (connection,
+				     MHD_HTTP_BAD_REQUEST,
+				     "{s:s, s:i, s:i, s:s}",
+				     "error", "commitment violation",
+				     "offset", (int) off,
+				     "index", (int) j,
+				     "object", missmatch_object);
 }
 
 
