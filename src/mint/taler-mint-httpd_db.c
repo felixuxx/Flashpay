@@ -74,7 +74,6 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
   struct TALER_Amount spent;
   struct TALER_Amount value;
   struct TALER_Amount fee_deposit;
-  struct TALER_Amount fee_withdraw;
   struct TALER_Amount fee_refresh;
   struct MintKeyState *mks;
   struct TALER_MINT_DenomKeyIssuePriv *dki;
@@ -113,7 +112,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
   }
   tl = TALER_MINT_DB_get_coin_transactions (db_conn,
                                             &deposit->coin.coin_pub);
-  spent = fee_withdraw; /* fee for THIS transaction */
+  spent = fee_deposit; /* fee for THIS transaction */
   /* FIXME: need to deal better with integer overflows
      in the logic that follows! (change amount.c API! -- #3637) */
   spent = TALER_amount_add (spent,
