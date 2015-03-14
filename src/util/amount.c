@@ -159,7 +159,7 @@ TALER_amount_ntoh (const struct TALER_AmountNBO dn)
   struct TALER_Amount d;
   d.value = ntohl (dn.value);
   d.fraction = ntohl (dn.fraction);
-  memcpy (d.currency, dn.currency, sizeof(dn.currency));
+  memcpy (d.currency, dn.currency, TALER_CURRENCY_LEN);
 
   return d;
 }
