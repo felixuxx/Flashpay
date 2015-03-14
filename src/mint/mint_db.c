@@ -529,6 +529,7 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
            "INSERT INTO deposits ("
            "coin_pub,"
            "denom_pub,"
+           "denom_sig,"
            "transaction_id,"
            "amount_value,"
            "amount_fraction,"
@@ -539,9 +540,9 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
            "coin_sig,"
            "wire"
            ") VALUES ("
-           "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11"
+           "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12"
            ")",
-           11, NULL);
+           12, NULL);
   PREPARE ("get_deposit",
            "SELECT "
            "coin_pub,"
@@ -1324,35 +1325,55 @@ int
 TALER_MINT_DB_insert_deposit (PGconn *db_conn,
                               const struct Deposit *deposit)
 {
-  // FIXME: check logic!
+  char *denom_pub_enc;
+  char *denom_sig_enc;
+  char *json_wire_enc;
+  PGresult *result;
+  struct TALER_AmountNBO amount_nbo;
+  size_t denom_pub_enc_size;
+  size_t denom_sig_enc_size;
+  int ret;
+
+  ret = GNUNET_SYSERR;
+  denom_pub_enc_size =
+      GNUNET_CRYPTO_rsa_public_key_encode (deposit->coin.denom_pub,
+                                           &denom_pub_enc);
+  denom_sig_enc_size =
+      GNUNET_CRYPTO_rsa_signature_encode (deposit->coin.denom_sig,
+                                          &denom_sig_enc);
+  json_wire_enc = json_dumps (deposit->wire, JSON_COMPACT);
+  amount_nbo = TALER_amount_hton (deposit->amount);
   struct TALER_DB_QueryParam params[]= {
     TALER_DB_QUERY_PARAM_PTR (&deposit->coin.coin_pub),
-    TALER_DB_QUERY_PARAM_PTR (&deposit->coin.denom_pub), // FIXME!
-    TALER_DB_QUERY_PARAM_PTR (&deposit->coin.denom_sig), // FIXME!
+    TALER_DB_QUERY_PARAM_PTR_SIZED (denom_pub_enc, denom_pub_enc_size),
+    TALER_DB_QUERY_PARAM_PTR_SIZED (denom_sig_enc, denom_sig_enc_size),
     TALER_DB_QUERY_PARAM_PTR (&deposit->transaction_id),
-    TALER_DB_QUERY_PARAM_PTR (&deposit->amount.value),
-    TALER_DB_QUERY_PARAM_PTR (&deposit->amount.fraction),
-    TALER_DB_QUERY_PARAM_PTR_SIZED (deposit->amount.currency,
-                                    strlen (deposit->amount.currency)),
+    TALER_DB_QUERY_PARAM_PTR (&amount_nbo.value),
+    TALER_DB_QUERY_PARAM_PTR (&amount_nbo.fraction),
+    TALER_DB_QUERY_PARAM_PTR_SIZED (amount_nbo.currency,
+                                    TALER_CURRENCY_LEN - 1),
     TALER_DB_QUERY_PARAM_PTR (&deposit->merchant_pub),
     TALER_DB_QUERY_PARAM_PTR (&deposit->h_contract),
     TALER_DB_QUERY_PARAM_PTR (&deposit->h_wire),
     TALER_DB_QUERY_PARAM_PTR (&deposit->csig),
-    TALER_DB_QUERY_PARAM_PTR_SIZED (deposit->wire,
-                                    strlen ("FIXME")), // FIXME! json!
+    TALER_DB_QUERY_PARAM_PTR_SIZED (json_wire_enc,
+                                    strlen (json_wire_enc)),
     TALER_DB_QUERY_PARAM_END
   };
-  PGresult *result;
-
   result = TALER_DB_exec_prepared (db_conn, "insert_deposit", params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
+    goto cleanup;
   }
+  ret = GNUNET_OK;
+
+ cleanup:
   PQclear (result);
-  return GNUNET_OK;
+  GNUNET_free_non_null (denom_pub_enc);
+  GNUNET_free_non_null (denom_sig_enc);
+  GNUNET_free_non_null (json_wire_enc);
+  return ret;
 }
 
 
