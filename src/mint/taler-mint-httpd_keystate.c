@@ -479,6 +479,7 @@ TALER_MINT_key_reload_loop (void)
 {
   struct sigaction act;
   struct sigaction rec;
+  int ret;
 
   if (0 != pipe (reload_pipe))
   {
@@ -499,6 +500,7 @@ TALER_MINT_key_reload_loop (void)
     return GNUNET_SYSERR;
   }
 
+  ret = GNUNET_OK;
   /* FIXME: allow for 'clean' termination or restart (#3474) */
   while (1)
   {
@@ -518,11 +520,14 @@ TALER_MINT_key_reload_loop (void)
 
 read_again:
     errno = 0;
-    res = read (reload_pipe[0], &c, 1);
+    res = read (reload_pipe[0],
+                &c,
+                1);
     if ((res < 0) && (EINTR != errno))
     {
       GNUNET_break (0);
-      return GNUNET_SYSERR;
+      ret = GNUNET_SYSERR;
+      break;
     }
     if (EINTR == errno)
       goto read_again;
@@ -536,7 +541,7 @@ read_again:
              "Failed to restore signal handler.\n");
     return GNUNET_SYSERR;
   }
-  return GNUNET_OK;
+  return ret;
 }
 
 
