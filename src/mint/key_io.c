@@ -55,10 +55,14 @@ signkeys_iterate_dir_iter (void *cls,
                                sizeof (struct TALER_MINT_SignKeyIssuePriv));
   if (nread != sizeof (struct TALER_MINT_SignKeyIssuePriv))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING, "Invalid signkey file: '%s'\n", filename);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Invalid signkey file: '%s'\n",
+                filename);
     return GNUNET_OK;
   }
-  return skc->it (skc->it_cls, &issue);
+  return skc->it (skc->it_cls,
+                  filename,
+                  &issue);
 }
 
 

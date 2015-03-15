@@ -41,13 +41,21 @@
  */
 struct TALER_MINT_SignKeyIssuePriv
 {
+  /**
+   * FIXME.
+   */
   struct GNUNET_CRYPTO_EddsaPrivateKey signkey_priv;
 
+  /**
+   * FIXME.
+   */
   struct TALER_MINT_SignKeyIssue issue;
 };
 
 
-
+/**
+ * FIXME.
+ */
 struct TALER_MINT_DenomKeyIssuePriv
 {
   /**
@@ -56,16 +64,18 @@ struct TALER_MINT_DenomKeyIssuePriv
    */
   struct GNUNET_CRYPTO_rsa_PrivateKey *denom_priv;
 
+  /**
+   * FIXME.
+   */
   struct TALER_MINT_DenomKeyIssue issue;
 };
-
-
 
 
 /**
  * Iterator for sign keys.
  *
  * @param cls closure
+ * @param filename name of the file the key came from
  * @param ski the sign key issue
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
@@ -73,7 +83,9 @@ struct TALER_MINT_DenomKeyIssuePriv
  */
 typedef int
 (*TALER_MINT_SignkeyIterator)(void *cls,
+                              const char *filename,
                               const struct TALER_MINT_SignKeyIssuePriv *ski);
+
 
 /**
  * Iterator for denomination keys.
@@ -97,7 +109,8 @@ typedef int
  */
 int
 TALER_MINT_signkeys_iterate (const char *mint_base_dir,
-                             TALER_MINT_SignkeyIterator it, void *cls);
+                             TALER_MINT_SignkeyIterator it,
+                             void *it_cls);
 
 
 /**
@@ -105,7 +118,8 @@ TALER_MINT_signkeys_iterate (const char *mint_base_dir,
  */
 int
 TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
-                              TALER_MINT_DenomkeyIterator it, void *cls);
+                              TALER_MINT_DenomkeyIterator it,
+                              void *it_cls);
 
 
 /**
@@ -130,9 +144,6 @@ TALER_MINT_write_denom_key (const char *filename,
 int
 TALER_MINT_read_denom_key (const char *filename,
                            struct TALER_MINT_DenomKeyIssuePriv *dki);
-
-
-
 
 
 #endif

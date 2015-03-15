@@ -141,30 +141,6 @@ denom_key_issue_to_json (const struct TALER_MINT_DenomKeyIssue *dki)
 
 
 /**
- * Convert the public part of a sign key issue to a JSON object.
- *
- * @param ski the sign key issue
- * @return a JSON object describing the sign key isue (public part)
- */
-static json_t *
-sign_key_issue_to_json (const struct TALER_MINT_SignKeyIssue *ski)
-{
-  return
-    json_pack ("{s:o, s:o, s:o, s:o}",
-               "stamp_start",
-               TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (ski->start)),
-               "stamp_expire",
-               TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (ski->expire)),
-               "master_sig",
-               TALER_JSON_from_data (&ski->signature,
-                                     sizeof (struct GNUNET_CRYPTO_EddsaSignature)),
-               "key",
-               TALER_JSON_from_data (&ski->signkey_pub,
-                                     sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)));
-}
-
-
-/**
  * Get the relative time value that describes how
  * far in the future do we want to provide coin keys.
  *
@@ -207,6 +183,7 @@ reload_keys_denom_iter (void *cls,
   struct MintKeyState *ctx = cls;
   struct GNUNET_TIME_Absolute stamp_provide;
   struct GNUNET_HashCode denom_key_hash;
+  struct TALER_MINT_DenomKeyIssuePriv *d2;
   int res;
 
   stamp_provide = GNUNET_TIME_absolute_add (ctx->reload_time,
@@ -214,32 +191,63 @@ reload_keys_denom_iter (void *cls,
 
   if (GNUNET_TIME_absolute_ntoh (dki->issue.expire_spend).abs_value_us < ctx->reload_time.abs_value_us)
   {
-    // this key is expired
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Skipping expired denomination key `%s'\n",
+                alias);
     return GNUNET_OK;
   }
   if (GNUNET_TIME_absolute_ntoh (dki->issue.start).abs_value_us > stamp_provide.abs_value_us)
   {
-    // we are to early for this key
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Skipping future denomination key `%s'\n",
+                alias);
     return GNUNET_OK;
   }
 
   GNUNET_CRYPTO_hash (&dki->issue.denom_pub,
                       sizeof (struct GNUNET_CRYPTO_EddsaPublicKey),
                       &denom_key_hash);
-
+  d2 = GNUNET_memdup (dki,
+                      sizeof (struct TALER_MINT_DenomKeyIssuePriv));
   res = GNUNET_CONTAINER_multihashmap_put (ctx->denomkey_map,
                                            &denom_key_hash,
-                                           GNUNET_memdup (dki,
-                                                          sizeof (struct TALER_MINT_DenomKeyIssuePriv)),
+                                           d2,
                                            GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY);
   if (GNUNET_OK != res)
+  {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Duplicate denomination key\n");
-
+                "Duplicate denomination key `%s'\n",
+                alias);
+    GNUNET_free (d2);
+    return GNUNET_OK;
+  }
   json_array_append_new (ctx->denom_keys_array,
                          denom_key_issue_to_json (&dki->issue));
-
   return GNUNET_OK;
+}
+
+
+/**
+ * Convert the public part of a sign key issue to a JSON object.
+ *
+ * @param ski the sign key issue
+ * @return a JSON object describing the sign key isue (public part)
+ */
+static json_t *
+sign_key_issue_to_json (const struct TALER_MINT_SignKeyIssue *ski)
+{
+  return
+    json_pack ("{s:o, s:o, s:o, s:o}",
+               "stamp_start",
+               TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (ski->start)),
+               "stamp_expire",
+               TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (ski->expire)),
+               "master_sig",
+               TALER_JSON_from_data (&ski->signature,
+                                     sizeof (struct GNUNET_CRYPTO_EddsaSignature)),
+               "key",
+               TALER_JSON_from_data (&ski->signkey_pub,
+                                     sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)));
 }
 
 
@@ -247,6 +255,7 @@ reload_keys_denom_iter (void *cls,
  * Iterator for sign keys.
  *
  * @param cls closure
+ * @param filename name of the file the key came from
  * @param ski the sign key issue
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
@@ -254,6 +263,7 @@ reload_keys_denom_iter (void *cls,
  */
 static int
 reload_keys_sign_iter (void *cls,
+                       const char *filename,
                        const struct TALER_MINT_SignKeyIssuePriv *ski)
 {
   struct MintKeyState *ctx = cls;
@@ -264,13 +274,17 @@ reload_keys_sign_iter (void *cls,
 
   if (GNUNET_TIME_absolute_ntoh (ski->issue.expire).abs_value_us < ctx->reload_time.abs_value_us)
   {
-    // this key is expired
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Skipping expired signing key `%s'\n",
+                filename);
     return GNUNET_OK;
   }
 
   if (GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us > stamp_provide.abs_value_us)
   {
-    // we are to early for this key
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Skipping future signing key `%s'\n",
+                filename);
     return GNUNET_OK;
   }
 

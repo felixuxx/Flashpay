@@ -28,11 +28,14 @@
 
 
 static char *mintdir;
+
 static struct GNUNET_CONFIGURATION_Handle *kcfg;
 
 
 static int
-signkeys_iter (void *cls, const struct TALER_MINT_SignKeyIssuePriv *ski)
+signkeys_iter (void *cls,
+               const char *filename,
+               const struct TALER_MINT_SignKeyIssuePriv *ski)
 {
   struct GNUNET_TIME_Absolute start;
 
