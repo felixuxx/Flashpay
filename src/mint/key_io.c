@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -15,7 +15,7 @@
 */
 
 /**
- * @file key_io.c
+ * @file mint/key_io.c
  * @brief I/O operations for the Mint's private keys
  * @author Florian Dold
  * @author Benedikt Mueller
@@ -29,14 +29,6 @@
 struct SignkeysIterateContext
 {
   TALER_MINT_SignkeyIterator it;
-  void *it_cls;
-};
-
-
-struct DenomkeysIterateContext
-{
-  const char *alias;
-  TALER_MINT_DenomkeyIterator it;
   void *it_cls;
 };
 
@@ -56,7 +48,7 @@ signkeys_iterate_dir_iter (void *cls,
   if (nread != sizeof (struct TALER_MINT_SignKeyIssuePriv))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Invalid signkey file: '%s'\n",
+                "Invalid signkey file: `%s'\n",
                 filename);
     return GNUNET_OK;
   }
@@ -68,19 +60,23 @@ signkeys_iterate_dir_iter (void *cls,
 
 int
 TALER_MINT_signkeys_iterate (const char *mint_base_dir,
-                             TALER_MINT_SignkeyIterator it, void *cls)
+                             TALER_MINT_SignkeyIterator it,
+                             void *it_cls)
 {
   char *signkey_dir;
-  size_t len;
   struct SignkeysIterateContext skc;
+  int ret;
 
-  len = GNUNET_asprintf (&signkey_dir, ("%s" DIR_SEPARATOR_STR DIR_SIGNKEYS), mint_base_dir);
-  GNUNET_assert (len > 0);
-
+  GNUNET_asprintf (&signkey_dir,
+                   "%s" DIR_SEPARATOR_STR DIR_SIGNKEYS,
+                   mint_base_dir);
   skc.it = it;
-  skc.it_cls = cls;
-
-  return GNUNET_DISK_directory_scan (signkey_dir, &signkeys_iterate_dir_iter, &skc);
+  skc.it_cls = it_cls;
+  ret = GNUNET_DISK_directory_scan (signkey_dir,
+                                    &signkeys_iterate_dir_iter,
+                                    &skc);
+  GNUNET_free (signkey_dir);
+  return ret;
 }
 
 
@@ -104,7 +100,8 @@ TALER_MINT_read_denom_key (const char *filename,
   ret = GNUNET_SYSERR;
   data = NULL;
   offset = sizeof (struct TALER_MINT_DenomKeyIssuePriv)
-      - offsetof (struct TALER_MINT_DenomKeyIssuePriv, issue.signature);
+      - offsetof (struct TALER_MINT_DenomKeyIssuePriv,
+                  issue.signature);
   if (GNUNET_OK != GNUNET_DISK_file_size (filename,
                                           &size,
                                           GNUNET_YES,
@@ -161,16 +158,18 @@ TALER_MINT_write_denom_key (const char *filename,
                 GNUNET_DISK_PERM_USER_READ | GNUNET_DISK_PERM_USER_WRITE)))
     goto cleanup;
   wsize = sizeof (struct TALER_MINT_DenomKeyIssuePriv)
-      - offsetof (struct TALER_MINT_DenomKeyIssuePriv, issue.signature);
+      - offsetof (struct TALER_MINT_DenomKeyIssuePriv,
+                  issue.signature);
   if (GNUNET_SYSERR == (wrote = GNUNET_DISK_file_write (fh,
                                                         &dki->issue.signature,
                                                         wsize)))
     goto cleanup;
   if (wrote != wsize)
     goto cleanup;
-  if (GNUNET_SYSERR == (wrote = GNUNET_DISK_file_write (fh,
-                                                        priv_enc,
-                                                        priv_enc_size)))
+  if (GNUNET_SYSERR ==
+      (wrote = GNUNET_DISK_file_write (fh,
+                                       priv_enc,
+                                       priv_enc_size)))
     goto cleanup;
   if (wrote != priv_enc_size)
     goto cleanup;
@@ -183,6 +182,14 @@ TALER_MINT_write_denom_key (const char *filename,
 }
 
 
+struct DenomkeysIterateContext
+{
+  const char *alias;
+  TALER_MINT_DenomkeyIterator it;
+  void *it_cls;
+};
+
+
 static int
 denomkeys_iterate_keydir_iter (void *cls,
                                const char *filename)
@@ -191,7 +198,9 @@ denomkeys_iterate_keydir_iter (void *cls,
   struct DenomkeysIterateContext *dic = cls;
   struct TALER_MINT_DenomKeyIssuePriv issue;
 
-  if (GNUNET_OK != TALER_MINT_read_denom_key (filename, &issue))
+  if (GNUNET_OK !=
+      TALER_MINT_read_denom_key (filename,
+                                 &issue))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Invalid denomkey file: '%s'\n",
@@ -211,7 +220,9 @@ denomkeys_iterate_topdir_iter (void *cls,
   dic->alias = GNUNET_STRINGS_get_short_name (filename);
 
   // FIXME: differentiate between error case and normal iteration abortion
-  if (0 > GNUNET_DISK_directory_scan (filename, &denomkeys_iterate_keydir_iter, dic))
+  if (0 > GNUNET_DISK_directory_scan (filename,
+                                      &denomkeys_iterate_keydir_iter,
+                                      dic))
     return GNUNET_SYSERR;
   return GNUNET_OK;
 }
