@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file key_io.h
+ * @file mint/key_io.h
  * @brief IO operations for the mint's private keys
  * @author Florian Dold
  * @author Benedikt Mueller
@@ -27,8 +27,6 @@
 #define KEY_IO_H
 
 #include <gnunet/gnunet_util_lib.h>
-#include <gnunet/gnunet_common.h>
-#include "taler_util.h"
 #include "taler_signatures.h"
 
 #define DIR_SIGNKEYS "signkeys"

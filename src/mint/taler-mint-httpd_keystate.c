@@ -21,12 +21,8 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
-#include <gnunet/gnunet_util_lib.h>
 #include <pthread.h>
-#include "taler_signatures.h"
 #include "taler-mint-httpd_keystate.h"
-#include "taler_util.h"
-#include "taler-mint-httpd_parsing.h"
 
 
 /**

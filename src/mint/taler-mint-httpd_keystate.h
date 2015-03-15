@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 GNUnet e.V.
+  Copyright (C) 2014, 2015 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-mint-httpd_keystate.h
+ * @file mint/taler-mint-httpd_keystate.h
  * @brief management of our private signing keys (denomination keys)
  * @author Florian Dold
  * @author Benedikt Mueller
@@ -23,10 +23,8 @@
 #ifndef TALER_MINT_HTTPD_KEYSTATE_H
 #define TALER_MINT_HTTPD_KEYSTATE_H
 
-
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
-#include <jansson.h>
 #include "taler-mint-httpd.h"
 #include "key_io.h"
 
@@ -59,7 +57,8 @@ TALER_MINT_key_state_release (struct MintKeyState *key_state);
 
 
 /**
- * Look up the issue for a denom public key.
+ * Look up the issue for a denom public key.  Note that the result
+ * is only valid while the @a key_state is not released!
  *
  * @param key state to look in
  * @param denom_pub denomination public key
@@ -75,7 +74,8 @@ TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
  * Read signals from a pipe in a loop, and reload keys from disk if
  * SIGUSR1 is read from the pipe.
  *
- * @return #GNUNET_OK if we terminated normally, #GNUNET_SYSERR on error
+ * @return #GNUNET_OK if we terminated normally,
+ *         #GNUNET_SYSERR on error
  */
 int
 TALER_MINT_key_reload_loop (void);
