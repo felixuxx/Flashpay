@@ -288,16 +288,14 @@ reload_keys_sign_iter (void *cls,
     return GNUNET_OK;
   }
 
-  // the signkey is valid for now, check
-  // if it's more recent than the current one!
+  /* The signkey is valid at this time, check if it's more recent than
+     what we have so far! */
   if (GNUNET_TIME_absolute_ntoh (ctx->current_sign_key_issue.issue.start).abs_value_us >
       GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us)
+  {
+    /* We keep the most recent one around */
     ctx->current_sign_key_issue = *ski;
-
-
-  ctx->next_reload = GNUNET_TIME_absolute_min (ctx->next_reload,
-                                               GNUNET_TIME_absolute_ntoh (ski->issue.expire));
-
+  }
   json_array_append_new (ctx->sign_keys_array,
                          sign_key_issue_to_json (&ski->issue));
 
@@ -376,7 +374,6 @@ TALER_MINT_key_state_acquire (void)
   if (NULL == internal_key_state)
   {
     key_state = GNUNET_new (struct MintKeyState);
-    key_state->next_reload = GNUNET_TIME_UNIT_FOREVER_ABS;
     key_state->denom_keys_array = json_array ();
     GNUNET_assert (NULL != key_state->denom_keys_array);
     key_state->sign_keys_array = json_array ();
@@ -390,6 +387,11 @@ TALER_MINT_key_state_acquire (void)
     TALER_MINT_signkeys_iterate (mintdir,
                                  &reload_keys_sign_iter,
                                  key_state);
+    key_state->next_reload = GNUNET_TIME_absolute_ntoh (key_state->current_sign_key_issue.issue.expire);
+    if (0 == key_state->next_reload.abs_value_us)
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "No valid signing key found!\n");
+
     keys = json_pack ("{s:o, s:o, s:o, s:o}",
                       "master_pub",
                       TALER_JSON_from_data (&master_pub,
