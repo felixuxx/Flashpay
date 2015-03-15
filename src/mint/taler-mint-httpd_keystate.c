@@ -201,7 +201,7 @@ TALER_MINT_conf_duration_provide ()
 
 
 /**
- * Iterator for denomination keys.
+ * Iterator for (re)loading/initializing denomination keys.
  *
  * @param cls closure
  * @param dki the denomination key issue
@@ -240,7 +240,8 @@ reload_keys_denom_iter (void *cls,
 
   res = GNUNET_CONTAINER_multihashmap_put (ctx->denomkey_map,
                                            &denom_key_hash,
-                                           GNUNET_memdup (dki, sizeof (struct TALER_MINT_DenomKeyIssuePriv)),
+                                           GNUNET_memdup (dki,
+                                                          sizeof (struct TALER_MINT_DenomKeyIssuePriv)),
                                            GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY);
   if (GNUNET_OK != res)
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -302,46 +303,24 @@ reload_keys_sign_iter (void *cls,
 
 
 /**
- * Load the mint's key state from disk.
+ * Iterator for freeing denomination keys.
  *
- * @return fresh key state (with reference count 1)
+ * @param cls closure with the `struct MintKeyState`
+ * @param key key for the denomination key
+ * @param alias coin alias
+ * @return #GNUNET_OK to continue to iterate,
+ *  #GNUNET_NO to stop iteration with no error,
+ *  #GNUNET_SYSERR to abort iteration with error!
  */
-static struct MintKeyState *
-reload_keys ()
+static int
+free_denom_key (void *cls,
+                const struct GNUNET_HashCode *key,
+                void *value)
 {
-  struct MintKeyState *key_state;
-  json_t *keys;
+  struct TALER_MINT_DenomKeyIssuePriv *dki = value;
 
-  key_state = GNUNET_new (struct MintKeyState);
-  key_state->refcnt = 1;
-
-  key_state->next_reload = GNUNET_TIME_UNIT_FOREVER_ABS;
-
-  key_state->denom_keys_array = json_array ();
-  GNUNET_assert (NULL != key_state->denom_keys_array);
-
-  key_state->sign_keys_array = json_array ();
-  GNUNET_assert (NULL != key_state->sign_keys_array);
-
-  key_state->denomkey_map = GNUNET_CONTAINER_multihashmap_create (32,
-                                                                  GNUNET_NO);
-  GNUNET_assert (NULL != key_state->denomkey_map);
-
-  key_state->reload_time = GNUNET_TIME_absolute_get ();
-
-  TALER_MINT_denomkeys_iterate (mintdir, &reload_keys_denom_iter, key_state);
-  TALER_MINT_signkeys_iterate (mintdir, &reload_keys_sign_iter, key_state);
-
-  keys = json_pack ("{s:o, s:o, s:o, s:o}",
-                    "master_pub", TALER_JSON_from_data (&master_pub,
-                                                        sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)),
-                    "signkeys", key_state->sign_keys_array,
-                    "denoms", key_state->denom_keys_array,
-                    "list_issue_date", TALER_JSON_from_abs (key_state->reload_time));
-
-  key_state->keys_json = json_dumps (keys, JSON_INDENT(2));
-
-  return key_state;
+  GNUNET_free (dki);
+  return GNUNET_OK;
 }
 
 
@@ -358,6 +337,12 @@ TALER_MINT_key_state_release (struct MintKeyState *key_state)
   key_state->refcnt--;
   if (0 == key_state->refcnt)
   {
+    json_decref (key_state->denom_keys_array);
+    json_decref (key_state->sign_keys_array);
+    GNUNET_CONTAINER_multihashmap_iterate (key_state->denomkey_map,
+                                           &free_denom_key,
+                                           key_state);
+    GNUNET_CONTAINER_multihashmap_destroy (key_state->denomkey_map);
     GNUNET_free (key_state);
   }
   GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
@@ -376,19 +361,41 @@ TALER_MINT_key_state_acquire (void)
 {
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct MintKeyState *key_state;
+  json_t *keys;
 
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
+  if (internal_key_state->next_reload.abs_value_us <= now.abs_value_us)
+  {
+    TALER_MINT_key_state_release (internal_key_state);
+    internal_key_state = NULL;
+  }
   if (NULL == internal_key_state)
   {
-    internal_key_state = reload_keys ();
-  }
-  else if (internal_key_state->next_reload.abs_value_us <= now.abs_value_us)
-  {
-    GNUNET_assert (0 < internal_key_state->refcnt);
-    internal_key_state->refcnt--;
-    if (0 == internal_key_state->refcnt)
-      GNUNET_free (internal_key_state);
-    internal_key_state = reload_keys ();
+    key_state = GNUNET_new (struct MintKeyState);
+    key_state->next_reload = GNUNET_TIME_UNIT_FOREVER_ABS;
+    key_state->denom_keys_array = json_array ();
+    GNUNET_assert (NULL != key_state->denom_keys_array);
+    key_state->sign_keys_array = json_array ();
+    GNUNET_assert (NULL != key_state->sign_keys_array);
+    key_state->denomkey_map = GNUNET_CONTAINER_multihashmap_create (32,
+                                                                    GNUNET_NO);
+    key_state->reload_time = GNUNET_TIME_absolute_get ();
+    TALER_MINT_denomkeys_iterate (mintdir,
+                                  &reload_keys_denom_iter,
+                                  key_state);
+    TALER_MINT_signkeys_iterate (mintdir,
+                                 &reload_keys_sign_iter,
+                                 key_state);
+    keys = json_pack ("{s:o, s:o, s:o, s:o}",
+                      "master_pub",
+                      TALER_JSON_from_data (&master_pub,
+                                            sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)),
+                      "signkeys", key_state->sign_keys_array,
+                      "denoms", key_state->denom_keys_array,
+                      "list_issue_date", TALER_JSON_from_abs (key_state->reload_time));
+    key_state->keys_json = json_dumps (keys,
+                                       JSON_INDENT(2));
+    internal_key_state = key_state;
   }
   key_state = internal_key_state;
   key_state->refcnt++;
@@ -458,6 +465,9 @@ handle_signal (int signal_number)
 /**
  * Read signals from a pipe in a loop, and reload keys from disk if
  * SIGUSR1 is read from the pipe.
+ *
+ * @return #GNUNET_SYSERR on errors, otherwise does not return
+ *          (FIXME: #3474)
  */
 int
 TALER_MINT_key_reload_loop (void)
@@ -487,16 +497,15 @@ TALER_MINT_key_reload_loop (void)
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "(re-)loading keys\n");
-    GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
     if (NULL != internal_key_state)
     {
       GNUNET_assert (0 != internal_key_state->refcnt);
-      internal_key_state->refcnt -= 1;
-      if (0 == internal_key_state->refcnt)
-        GNUNET_free (internal_key_state);
+      TALER_MINT_key_state_release (internal_key_state);
     }
-    internal_key_state = reload_keys ();
-    GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
+    /* This will re-initialize 'internal_key_state' with
+       an initial refcnt of 1 */
+    (void) TALER_MINT_key_state_acquire ();
+
 read_again:
     errno = 0;
     res = read (reload_pipe[0], &c, 1);
@@ -513,8 +522,7 @@ read_again:
 
 
 /**
- * Sign the message in @a purpose with the mint's signing
- * key.
+ * Sign the message in @a purpose with the mint's signing key.
  *
  * @param purpose the message to sign
  * @param[OUT] sig signature over purpose using current signing key
