@@ -426,18 +426,12 @@ struct TALER_MINT_DenomKeyIssuePriv *
 TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
                           const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub)
 {
-  struct GNUNET_HashCode hash;
-  char *buf;
-  size_t buf_len;
+  struct GNUNET_HashCode hc;
 
-  buf_len = GNUNET_CRYPTO_rsa_public_key_encode (denom_pub,
-                                                 &buf);
-  GNUNET_CRYPTO_hash (buf,
-                      buf_len,
-                      &hash);
-  GNUNET_free (buf);
+  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub,
+                                     &hc);
   return GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map,
-                                            &hash);
+                                            &hc);
 }
 
 
