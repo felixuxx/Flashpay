@@ -30,29 +30,39 @@
 
 
 /**
- * Snapshot of the (coin and signing)
- * keys (including private keys) of the mint.
+ * Snapshot of the (coin and signing) keys (including private keys) of
+ * the mint.  There can be multiple instances of this struct, as it is
+ * reference counted and only destroyed once the last user is done
+ * with it.  The current instance is acquired using
+ * #TALER_MINT_key_state_acquire().  Using this function increases the
+ * reference count.  The contents of this structure (except for the
+ * reference counter) should be considered READ-ONLY until it is
+ * ultimately destroyed (as there can be many concurrent users).
  */
 struct MintKeyState
 {
   /**
-   * JSON array with denomination keys.
+   * JSON array with denomination keys.  (Currently not really used
+   * after initialization.)
    */
   json_t *denom_keys_array;
 
   /**
-   * JSON array with signing keys.
+   * JSON array with signing keys. (Currently not really used
+   * after initialization.)
    */
   json_t *sign_keys_array;
 
   /**
-   * Cached JSON text that the mint will send for
-   * a /keys request.
+   * Cached JSON text that the mint will send for a "/keys" request.
+   * Includes our @e master_pub public key, the signing and
+   * denomination keys as well as the @e reload_time.
    */
   char *keys_json;
 
   /**
    * Mapping from denomination keys to denomination key issue struct.
+   * Used to lookup the key by hash.
    */
   struct GNUNET_CONTAINER_MultiHashMap *denomkey_map;
 
@@ -62,7 +72,8 @@ struct MintKeyState
   struct GNUNET_TIME_Absolute reload_time;
 
   /**
-   * When is the next key invalid and we have to reload?
+   * When is the next key invalid and we have to reload? (We also
+   * reload on SIGUSR1.)
    */
   struct GNUNET_TIME_Absolute next_reload;
 
@@ -72,7 +83,7 @@ struct MintKeyState
   struct TALER_MINT_SignKeyIssuePriv current_sign_key_issue;
 
   /**
-   * Reference count.
+   * Reference count.  The struct is released when the RC hits zero.
    */
   unsigned int refcnt;
 };
@@ -80,7 +91,7 @@ struct MintKeyState
 
 /**
  * Mint key state.  Never use directly, instead access via
- * #TALER_MINT_key_state_acquire and #TALER_MINT_key_state_release.
+ * #TALER_MINT_key_state_acquire() and #TALER_MINT_key_state_release().
  */
 static struct MintKeyState *internal_key_state;
 
@@ -343,6 +354,7 @@ TALER_MINT_key_state_release (struct MintKeyState *key_state)
                                            &free_denom_key,
                                            key_state);
     GNUNET_CONTAINER_multihashmap_destroy (key_state->denomkey_map);
+    GNUNET_free (key_state->keys_json);
     GNUNET_free (key_state);
   }
   GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
@@ -351,8 +363,8 @@ TALER_MINT_key_state_release (struct MintKeyState *key_state)
 
 /**
  * Acquire the key state of the mint.  Updates keys if necessary.
- * For every call to #TALER_MINT_key_state_acquire, a matching call
- * to #TALER_MINT_key_state_release must be made.
+ * For every call to #TALER_MINT_key_state_acquire(), a matching call
+ * to #TALER_MINT_key_state_release() must be made.
  *
  * @return the key state
  */
@@ -499,8 +511,8 @@ TALER_MINT_key_reload_loop (void)
                 "(re-)loading keys\n");
     if (NULL != internal_key_state)
     {
-      GNUNET_assert (0 != internal_key_state->refcnt);
       TALER_MINT_key_state_release (internal_key_state);
+      internal_key_state = NULL;
     }
     /* This will re-initialize 'internal_key_state' with
        an initial refcnt of 1 */
