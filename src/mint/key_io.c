@@ -21,18 +21,39 @@
  * @author Benedikt Mueller
  * @author Sree Harsha Totakura
  * @author Christian Grothoff
+ *
+ * TODO:
+ * - document better
+ * - revisit IO with respect to variable-size RSA keys!
  */
 #include "platform.h"
 #include "key_io.h"
 
-
+/**
+ *
+ */
 struct SignkeysIterateContext
 {
+
+  /**
+   *
+   */
   TALER_MINT_SignkeyIterator it;
+
+  /**
+   *
+   */
   void *it_cls;
 };
 
 
+/**
+ *
+ *
+ * @param cls
+ * @param filename
+ * @return
+ */
 static int
 signkeys_iterate_dir_iter (void *cls,
                            const char *filename)
@@ -181,19 +202,40 @@ TALER_MINT_write_denom_key (const char *filename,
 }
 
 
+/**
+ *
+ */
 struct DenomkeysIterateContext
 {
+
+  /**
+   *
+   */
   const char *alias;
+
+  /**
+   *
+   */
   TALER_MINT_DenomkeyIterator it;
+
+  /**
+   *
+   */
   void *it_cls;
 };
 
 
+/**
+ *
+ *
+ * @param cls
+ * @param filename
+ * @return
+ */
 static int
 denomkeys_iterate_keydir_iter (void *cls,
                                const char *filename)
 {
-
   struct DenomkeysIterateContext *dic = cls;
   struct TALER_MINT_DenomKeyIssuePriv issue;
 
@@ -206,10 +248,19 @@ denomkeys_iterate_keydir_iter (void *cls,
                 filename);
     return GNUNET_OK;
   }
-  return dic->it (dic->it_cls, dic->alias, &issue);
+  return dic->it (dic->it_cls,
+                  dic->alias,
+                  &issue);
 }
 
 
+/**
+ *
+ *
+ * @param cls
+ * @param filename
+ * @return
+ */
 static int
 denomkeys_iterate_topdir_iter (void *cls,
                                const char *filename)
@@ -229,7 +280,8 @@ denomkeys_iterate_topdir_iter (void *cls,
 
 int
 TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
-                              TALER_MINT_DenomkeyIterator it, void *cls)
+                              TALER_MINT_DenomkeyIterator it,
+                              void *it_cls)
 {
   char *dir;
   size_t len;
@@ -241,7 +293,7 @@ TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
   GNUNET_assert (len > 0);
 
   dic.it = it;
-  dic.it_cls = cls;
+  dic.it_cls = it_cls;
 
   // scan over alias dirs
   return GNUNET_DISK_directory_scan (dir,
@@ -250,5 +302,4 @@ TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
 }
 
 
-
-/* end of mint_common.c */
+/* end of key_io.c */

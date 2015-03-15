@@ -29,8 +29,16 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_signatures.h"
 
+/**
+ *
+ */
 #define DIR_SIGNKEYS "signkeys"
+
+/**
+ *
+ */
 #define DIR_DENOMKEYS "denomkeys"
+
 
 /**
  * On disk format used for a mint signing key.
@@ -104,6 +112,11 @@ typedef int
 
 /**
  * FIXME
+ *
+ * @param mint_base_dir
+ * @param it
+ * @param it_cls closure for @a it
+ * @return
  */
 int
 TALER_MINT_signkeys_iterate (const char *mint_base_dir,
@@ -113,6 +126,11 @@ TALER_MINT_signkeys_iterate (const char *mint_base_dir,
 
 /**
  * FIXME
+ *
+ * @param mint_base_dir
+ * @param it
+ * @param it_cls closure for @a it
+ * @return
  */
 int
 TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
