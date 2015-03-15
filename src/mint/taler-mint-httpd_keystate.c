@@ -181,25 +181,27 @@ reload_keys_denom_iter (void *cls,
                         const struct TALER_MINT_DenomKeyIssuePriv *dki)
 {
   struct MintKeyState *ctx = cls;
-  struct GNUNET_TIME_Absolute stamp_provide;
+  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Absolute horizon;
   struct GNUNET_HashCode denom_key_hash;
   struct TALER_MINT_DenomKeyIssuePriv *d2;
   int res;
 
-  stamp_provide = GNUNET_TIME_absolute_add (ctx->reload_time,
-                                            TALER_MINT_conf_duration_provide ());
-
-  if (GNUNET_TIME_absolute_ntoh (dki->issue.expire_spend).abs_value_us < ctx->reload_time.abs_value_us)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Skipping expired denomination key `%s'\n",
-                alias);
-    return GNUNET_OK;
-  }
-  if (GNUNET_TIME_absolute_ntoh (dki->issue.start).abs_value_us > stamp_provide.abs_value_us)
+  horizon = GNUNET_TIME_relative_to_absolute (TALER_MINT_conf_duration_provide ());
+  if (GNUNET_TIME_absolute_ntoh (dki->issue.expire_spend).abs_value_us >
+      horizon.abs_value_us)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Skipping future denomination key `%s'\n",
+                alias);
+    return GNUNET_OK;
+  }
+  now = GNUNET_TIME_absolute_get ();
+  if (GNUNET_TIME_absolute_ntoh (dki->issue.expire_spend).abs_value_us <
+      now.abs_value_us)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Skipping expired denomination key `%s'\n",
                 alias);
     return GNUNET_OK;
   }
@@ -267,12 +269,21 @@ reload_keys_sign_iter (void *cls,
                        const struct TALER_MINT_SignKeyIssuePriv *ski)
 {
   struct MintKeyState *ctx = cls;
-  struct GNUNET_TIME_Absolute stamp_provide;
+  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Absolute horizon;
 
-  stamp_provide = GNUNET_TIME_absolute_add (ctx->reload_time,
-                                            TALER_MINT_conf_duration_provide (cfg));
-
-  if (GNUNET_TIME_absolute_ntoh (ski->issue.expire).abs_value_us < ctx->reload_time.abs_value_us)
+  horizon = GNUNET_TIME_relative_to_absolute (TALER_MINT_conf_duration_provide ());
+  if (GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us >
+      horizon.abs_value_us)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Skipping future signing key `%s'\n",
+                filename);
+    return GNUNET_OK;
+  }
+  now = GNUNET_TIME_absolute_get ();
+  if (GNUNET_TIME_absolute_ntoh (ski->issue.expire).abs_value_us <
+      now.abs_value_us)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Skipping expired signing key `%s'\n",
@@ -280,17 +291,9 @@ reload_keys_sign_iter (void *cls,
     return GNUNET_OK;
   }
 
-  if (GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us > stamp_provide.abs_value_us)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Skipping future signing key `%s'\n",
-                filename);
-    return GNUNET_OK;
-  }
-
   /* The signkey is valid at this time, check if it's more recent than
      what we have so far! */
-  if (GNUNET_TIME_absolute_ntoh (ctx->current_sign_key_issue.issue.start).abs_value_us >
+  if (GNUNET_TIME_absolute_ntoh (ctx->current_sign_key_issue.issue.start).abs_value_us <
       GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us)
   {
     /* We keep the most recent one around */
