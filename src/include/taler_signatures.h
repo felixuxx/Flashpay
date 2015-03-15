@@ -442,8 +442,11 @@ struct TALER_MINT_DenomKeyIssue
    */
   struct TALER_AmountNBO fee_refresh;
 
-  // FIXME: does not work like this:
-  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+  /**
+   * Hash code of the denomination public key.
+   */
+  struct GNUNET_HashCode denom_hash;
+
 };
 
 GNUNET_NETWORK_STRUCT_END

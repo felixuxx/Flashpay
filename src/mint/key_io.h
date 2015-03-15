@@ -60,6 +60,7 @@ struct TALER_MINT_SignKeyIssuePriv
   struct TALER_MINT_SignKeyIssue issue;
 };
 
+
 GNUNET_NETWORK_STRUCT_END
 
 
@@ -77,7 +78,13 @@ struct TALER_MINT_DenomKeyIssuePriv
   struct GNUNET_CRYPTO_rsa_PrivateKey *denom_priv;
 
   /**
-   * Public information about a denomination key.
+   * Decoded denomination public key (the hash of it is in
+   * @e issue, but we sometimes need the full public key as well).
+   */
+  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+
+  /**
+   * Signed public information about a denomination key.
    */
   struct TALER_MINT_DenomKeyIssue issue;
 };

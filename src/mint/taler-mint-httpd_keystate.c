@@ -106,11 +106,13 @@ static int reload_pipe[2];
  * Convert the public part of a denomination key issue to a JSON
  * object.
  *
+ * @param pk public key of the denomination key
  * @param dki the denomination key issue
  * @return a JSON object describing the denomination key isue (public part)
  */
 static json_t *
-denom_key_issue_to_json (const struct TALER_MINT_DenomKeyIssue *dki)
+denom_key_issue_to_json (struct GNUNET_CRYPTO_rsa_PublicKey *pk,
+                         const struct TALER_MINT_DenomKeyIssue *dki)
 {
   return
     json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
@@ -124,7 +126,7 @@ denom_key_issue_to_json (const struct TALER_MINT_DenomKeyIssue *dki)
                "stamp_expire_deposit",
                TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_spend)),
                "denom_pub",
-               TALER_JSON_from_rsa_public_key (dki->denom_pub),
+               TALER_JSON_from_rsa_public_key (pk),
                "value",
                TALER_JSON_from_amount (TALER_amount_ntoh (dki->value)),
                "fee_withdraw",
@@ -202,9 +204,8 @@ reload_keys_denom_iter (void *cls,
     return GNUNET_OK;
   }
 
-  GNUNET_CRYPTO_hash (&dki->issue.denom_pub,
-                      sizeof (struct GNUNET_CRYPTO_EddsaPublicKey),
-                      &denom_key_hash);
+  GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub,
+                                     &denom_key_hash);
   d2 = GNUNET_memdup (dki,
                       sizeof (struct TALER_MINT_DenomKeyIssuePriv));
   res = GNUNET_CONTAINER_multihashmap_put (ctx->denomkey_map,
@@ -220,7 +221,8 @@ reload_keys_denom_iter (void *cls,
     return GNUNET_OK;
   }
   json_array_append_new (ctx->denom_keys_array,
-                         denom_key_issue_to_json (&dki->issue));
+                         denom_key_issue_to_json (dki->denom_pub,
+                                                  &dki->issue));
   return GNUNET_OK;
 }
 

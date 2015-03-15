@@ -442,7 +442,9 @@ create_denomkey_issue (struct CoinTypeParams *params,
                        struct TALER_MINT_DenomKeyIssuePriv *dki)
 {
   GNUNET_assert (NULL != (dki->denom_priv = GNUNET_CRYPTO_rsa_private_key_create (RSA_KEYSIZE)));
-  dki->issue.denom_pub = GNUNET_CRYPTO_rsa_private_key_get_public (dki->denom_priv);
+  dki->denom_pub = GNUNET_CRYPTO_rsa_private_key_get_public (dki->denom_priv);
+  GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub,
+                                     &dki->issue.denom_hash);
   dki->issue.master = *master_pub;
   dki->issue.start = GNUNET_TIME_absolute_hton (params->anchor);
   dki->issue.expire_withdraw =
