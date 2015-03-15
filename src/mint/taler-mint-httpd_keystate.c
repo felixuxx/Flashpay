@@ -116,8 +116,6 @@ static int reload_pipe[2];
 static json_t *
 denom_key_issue_to_json (const struct TALER_MINT_DenomKeyIssue *dki)
 {
-  char *buf;
-  size_t buf_len;
   json_t *dk_json = json_object ();
 
   json_object_set_new (dk_json,
@@ -134,13 +132,9 @@ denom_key_issue_to_json (const struct TALER_MINT_DenomKeyIssue *dki)
                        "stamp_expire_deposit",
                        TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_spend)));
 
-  buf_len = GNUNET_CRYPTO_rsa_public_key_encode (dki->denom_pub,
-                                                 &buf);
   json_object_set_new (dk_json,
                        "denom_pub",
-                       TALER_JSON_from_data (buf,
-                                             buf_len));
-  GNUNET_free (buf);
+                       TALER_JSON_from_rsa_public_key (dki->denom_pub));
   json_object_set_new (dk_json,
                        "value",
                        TALER_JSON_from_amount (TALER_amount_ntoh (dki->value)));

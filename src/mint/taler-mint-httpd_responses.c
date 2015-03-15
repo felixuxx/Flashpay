@@ -581,15 +581,9 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
                                         const struct CollectableBlindcoin *collectable)
 {
   json_t *sig_json;
-  size_t sig_buf_size;
-  char *sig_buf;
   int ret;
 
-  sig_buf_size = GNUNET_CRYPTO_rsa_signature_encode (collectable->sig,
-                                                     &sig_buf);
-  sig_json = TALER_JSON_from_data (sig_buf,
-                                   sig_buf_size);
-  GNUNET_free (sig_buf);
+  sig_json = TALER_JSON_from_rsa_signature (collectable->sig);
   ret = TALER_MINT_reply_json_pack (connection,
                                     MHD_HTTP_OK,
                                     "{s:o}",
@@ -691,22 +685,14 @@ TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
   int newcoin_index;
   json_t *root;
   json_t *list;
-  char *buf;
-  size_t buf_size;
   int ret;
 
   root = json_object ();
   list = json_array ();
   json_object_set_new (root, "ev_sigs", list);
   for (newcoin_index = 0; newcoin_index < num_newcoins; newcoin_index++)
-  {
-    buf_size = GNUNET_CRYPTO_rsa_signature_encode (sigs[newcoin_index],
-                                                   &buf);
     json_array_append_new (list,
-                           TALER_JSON_from_data (buf,
-                                                 buf_size));
-    GNUNET_free (buf);
-  }
+                           TALER_JSON_from_rsa_signature (sigs[newcoin_index]));
   ret = TALER_MINT_reply_json (connection,
                                root,
                                MHD_HTTP_OK);
@@ -772,26 +758,18 @@ TALER_MINT_reply_refresh_link_success (struct MHD_Connection *connection,
   for (pos = ldl; NULL != pos; pos = pos->next)
   {
     json_t *obj;
-    char *buf;
-    size_t buf_len;
 
     obj = json_object ();
     json_object_set_new (obj, "link_enc",
                          TALER_JSON_from_data (ldl->link_data_enc->coin_priv_enc,
                                                sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey) +
                                                ldl->link_data_enc->blinding_key_enc_size));
-    buf_len = GNUNET_CRYPTO_rsa_public_key_encode (ldl->denom_pub,
-                                                   &buf);
-    json_object_set_new (obj, "denom_pub",
-                         TALER_JSON_from_data (buf,
-                                               buf_len));
-    GNUNET_free (buf);
-    buf_len = GNUNET_CRYPTO_rsa_signature_encode (ldl->ev_sig,
-                                                  &buf);
-    json_object_set_new (obj, "ev_sig",
-                         TALER_JSON_from_data (buf,
-                                               buf_len));
-    GNUNET_free (buf);
+    json_object_set_new (obj,
+                         "denom_pub",
+                         TALER_JSON_from_rsa_public_key (ldl->denom_pub));
+    json_object_set_new (obj,
+                         "ev_sig",
+                         TALER_JSON_from_rsa_signature (ldl->ev_sig));
     json_array_append_new (list, obj);
   }
 

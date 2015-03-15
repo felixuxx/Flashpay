@@ -151,6 +151,50 @@ TALER_JSON_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpo
 
 
 /**
+ * Convert RSA public key to JSON.
+ *
+ * @param pk public key to convert
+ * @return corresponding JSON encoding
+ */
+json_t *
+TALER_JSON_from_rsa_public_key (struct GNUNET_CRYPTO_rsa_PublicKey *pk)
+{
+  char *buf;
+  size_t buf_len;
+  json_t *ret;
+
+  buf_len = GNUNET_CRYPTO_rsa_public_key_encode (pk,
+                                                 &buf);
+  ret = TALER_JSON_from_data (buf,
+                              buf_len);
+  GNUNET_free (buf);
+  return ret;
+}
+
+
+/**
+ * Convert RSA signature to JSON.
+ *
+ * @param sig signature to convert
+ * @return corresponding JSON encoding
+ */
+json_t *
+TALER_JSON_from_rsa_signature (struct GNUNET_CRYPTO_rsa_Signature *sig)
+{
+  char *buf;
+  size_t buf_len;
+  json_t *ret;
+
+  buf_len = GNUNET_CRYPTO_rsa_signature_encode (sig,
+                                                &buf);
+  ret = TALER_JSON_from_data (buf,
+                              buf_len);
+  GNUNET_free (buf);
+  return ret;
+}
+
+
+/**
  * Convert binary data to a JSON string
  * with the base32crockford encoding.
  *
