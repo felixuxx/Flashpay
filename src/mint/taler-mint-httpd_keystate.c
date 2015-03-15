@@ -116,38 +116,27 @@ static int reload_pipe[2];
 static json_t *
 denom_key_issue_to_json (const struct TALER_MINT_DenomKeyIssue *dki)
 {
-  json_t *dk_json = json_object ();
-
-  json_object_set_new (dk_json,
-                       "master_sig",
-                       TALER_JSON_from_data (&dki->signature,
-                                             sizeof (struct GNUNET_CRYPTO_EddsaSignature)));
-  json_object_set_new (dk_json,
-                       "stamp_start",
-                       TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->start)));
-  json_object_set_new (dk_json,
-                       "stamp_expire_withdraw",
-                       TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_withdraw)));
-  json_object_set_new (dk_json,
-                       "stamp_expire_deposit",
-                       TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_spend)));
-
-  json_object_set_new (dk_json,
-                       "denom_pub",
-                       TALER_JSON_from_rsa_public_key (dki->denom_pub));
-  json_object_set_new (dk_json,
-                       "value",
-                       TALER_JSON_from_amount (TALER_amount_ntoh (dki->value)));
-  json_object_set_new (dk_json,
-                       "fee_withdraw",
-                       TALER_JSON_from_amount (TALER_amount_ntoh (dki->fee_withdraw)));
-  json_object_set_new (dk_json,
-                       "fee_deposit",
-                       TALER_JSON_from_amount (TALER_amount_ntoh (dki->fee_deposit)));
-  json_object_set_new (dk_json,
-                       "fee_refresh",
-                       TALER_JSON_from_amount (TALER_amount_ntoh (dki->fee_refresh)));
-  return dk_json;
+  return
+    json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+               "master_sig",
+               TALER_JSON_from_data (&dki->signature,
+                                     sizeof (struct GNUNET_CRYPTO_EddsaSignature)),
+               "stamp_start",
+               TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->start)),
+               "stamp_expire_withdraw",
+               TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_withdraw)),
+               "stamp_expire_deposit",
+               TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_spend)),
+               "denom_pub",
+               TALER_JSON_from_rsa_public_key (dki->denom_pub),
+               "value",
+               TALER_JSON_from_amount (TALER_amount_ntoh (dki->value)),
+               "fee_withdraw",
+               TALER_JSON_from_amount (TALER_amount_ntoh (dki->fee_withdraw)),
+               "fee_deposit",
+               TALER_JSON_from_amount (TALER_amount_ntoh (dki->fee_deposit)),
+               "fee_refresh",
+               TALER_JSON_from_amount (TALER_amount_ntoh (dki->fee_refresh)));
 }
 
 
@@ -160,23 +149,18 @@ denom_key_issue_to_json (const struct TALER_MINT_DenomKeyIssue *dki)
 static json_t *
 sign_key_issue_to_json (const struct TALER_MINT_SignKeyIssue *ski)
 {
-  json_t *sk_json = json_object ();
-
-  json_object_set_new (sk_json,
-                       "stamp_start",
-                       TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (ski->start)));
-  json_object_set_new (sk_json,
-                       "stamp_expire",
-                       TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (ski->expire)));
-  json_object_set_new (sk_json,
-                       "master_sig",
-                       TALER_JSON_from_data (&ski->signature,
-                                             sizeof (struct GNUNET_CRYPTO_EddsaSignature)));
-  json_object_set_new (sk_json,
-                       "key",
-                       TALER_JSON_from_data (&ski->signkey_pub,
-                                             sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)));
-  return sk_json;
+  return
+    json_pack ("{s:o, s:o, s:o, s:o}",
+               "stamp_start",
+               TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (ski->start)),
+               "stamp_expire",
+               TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (ski->expire)),
+               "master_sig",
+               TALER_JSON_from_data (&ski->signature,
+                                     sizeof (struct GNUNET_CRYPTO_EddsaSignature)),
+               "key",
+               TALER_JSON_from_data (&ski->signkey_pub,
+                                     sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)));
 }
 
 

@@ -689,7 +689,9 @@ TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
 
   root = json_object ();
   list = json_array ();
-  json_object_set_new (root, "ev_sigs", list);
+  json_object_set_new (root,
+                       "ev_sigs",
+                       list);
   for (newcoin_index = 0; newcoin_index < num_newcoins; newcoin_index++)
     json_array_append_new (list,
                            TALER_JSON_from_rsa_signature (sigs[newcoin_index]));

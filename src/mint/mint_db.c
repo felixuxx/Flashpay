@@ -1049,7 +1049,8 @@ TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
       GNUNET_CRYPTO_rsa_public_key_encode (collectable->denom_pub,
                                            &denom_pub_enc);
   denom_sig_enc_size =
-      GNUNET_CRYPTO_rsa_signature_encode (collectable->sig, &denom_sig_enc);
+      GNUNET_CRYPTO_rsa_signature_encode (collectable->sig,
+                                          &denom_sig_enc);
   struct TALER_DB_QueryParam params[] = {
     TALER_DB_QUERY_PARAM_PTR (h_blind),
     TALER_DB_QUERY_PARAM_PTR_SIZED (denom_pub_enc, denom_pub_enc_size - 1),
