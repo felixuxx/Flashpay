@@ -4,6 +4,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/src/include -I$(top_srcdir)/src/pq/ $(POSTGRESQL_C
 lib_LTLIBRARIES = \
   libtalermint_common.la
 
+# Note: mint_db.c should become a plugin soon! (#3608)
 libtalermint_common_la_SOURCES = \
   key_io.c key_io.h \
   mint_db.c
