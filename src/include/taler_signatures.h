@@ -332,34 +332,116 @@ struct RefreshMeltConfirmSignRequestBody
 
 
 /**
- * FIXME
+ * Information about a signing key of the mint.  Signing keys are used
+ * to sign mint messages other than coins, i.e. to confirm that a
+ * deposit was successful or that a refresh was accepted.
  */
 struct TALER_MINT_SignKeyIssue
 {
+  /**
+   * Signature over the signing key (by the master key of the mint).
+   */
   struct GNUNET_CRYPTO_EddsaSignature signature;
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_SIGNKEY.
+   */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Master public key of the mint corresponding to @e signature.
+   * This is the long-term offline master key of the mint.
+   */
   struct GNUNET_CRYPTO_EddsaPublicKey master_pub;
+
+  /**
+   * When does this signing key begin to be valid?
+   */
   struct GNUNET_TIME_AbsoluteNBO start;
+
+  /**
+   * When does this signing key expire? Note: This is
+   * currently when the Mint will definitively stop using it.
+   * This does not mean that all signatures with tkey key are
+   * afterwards invalid.
+   */
   struct GNUNET_TIME_AbsoluteNBO expire;
+
+  /**
+   * The public online signing key that the mint will use
+   * between @e start and @e expire.
+   */
   struct GNUNET_CRYPTO_EddsaPublicKey signkey_pub;
 };
 
 
 /**
- * FIXME
+ * Information about a denomination key. Denomination keys
+ * are used to sign coins of a certain value into existence.
  */
 struct TALER_MINT_DenomKeyIssue
 {
+  /**
+   * Signature over this struct to affirm the validity
+   * of the key.
+   */
   struct GNUNET_CRYPTO_EddsaSignature signature;
+
+  /**
+   * Purpose ist #TALER_SIGNATURE_MASTER_DENOM.
+   */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * The long-term offline master key of the mint that was
+   * used to create @e signature.
+   */
   struct GNUNET_CRYPTO_EddsaPublicKey master;
+
+  /**
+   * Start time of the validity period for this key.
+   */
   struct GNUNET_TIME_AbsoluteNBO start;
+
+  /**
+   * The mint will sign fresh coins between @e start and
+   * this time.
+   */
   struct GNUNET_TIME_AbsoluteNBO expire_withdraw;
+
+  /**
+   * Coins signed with the denomination key must be spent or refreshed
+   * between @e start and this expiration time.  After this time, the
+   * mint will refuse transactions involving this key as it will
+   * "drop" the table with double-spending information (shortly after)
+   * this time.  Note that wallets should refresh coins significantly
+   * before this time to be on the safe side.
+   */
   struct GNUNET_TIME_AbsoluteNBO expire_spend;
+
+  /**
+   * The value of the coins signed with this denomination key.
+   */
   struct TALER_AmountNBO value;
+
+  /**
+   * The fee the mint charges when a coin of this type is withdrawn.
+   * (can be zero).
+   */
   struct TALER_AmountNBO fee_withdraw;
+
+  /**
+   * The fee the mint charges when a coin of this type is deposited.
+   * (can be zero).
+   */
   struct TALER_AmountNBO fee_deposit;
+
+  /**
+   * The fee the mint charges when a coin of this type is refreshed.
+   * (can be zero).
+   */
   struct TALER_AmountNBO fee_refresh;
+
   // FIXME: does not work like this:
   struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
 };
