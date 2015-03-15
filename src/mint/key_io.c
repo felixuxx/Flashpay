@@ -37,7 +37,6 @@ static int
 signkeys_iterate_dir_iter (void *cls,
                            const char *filename)
 {
-
   struct SignkeysIterateContext *skc = cls;
   ssize_t nread;
   struct TALER_MINT_SignKeyIssuePriv issue;
