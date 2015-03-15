@@ -13,7 +13,6 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file mint/key_io.c
  * @brief I/O operations for the Mint's private keys
@@ -23,36 +22,40 @@
  * @author Christian Grothoff
  *
  * TODO:
- * - document better
  * - revisit IO with respect to variable-size RSA keys!
  */
 #include "platform.h"
 #include "key_io.h"
 
+
 /**
- *
+ * Closure for the #signkeys_iterate_dir_iter().
  */
 struct SignkeysIterateContext
 {
 
   /**
-   *
+   * Function to call on each signing key.
    */
   TALER_MINT_SignkeyIterator it;
 
   /**
-   *
+   * Closure for @e it.
    */
   void *it_cls;
 };
 
 
 /**
+ * Function called on each file in the directory with
+ * our signing keys. Parses the file and calls the
+ * iterator from @a cls.
  *
- *
- * @param cls
- * @param filename
- * @return
+ * @param cls the `struct SignkeysIterateContext *`
+ * @param filename name of the file to parse
+ * @return #GNUNET_OK to continue,
+ *         #GNUNET_NO to stop iteration without error,
+ *         #GNUNET_SYSERR to stop iteration with error
  */
 static int
 signkeys_iterate_dir_iter (void *cls,
@@ -78,6 +81,18 @@ signkeys_iterate_dir_iter (void *cls,
 }
 
 
+/**
+ * Call @a it for each signing key found in the @a mint_base_dir.
+ *
+ * @param mint_base_dir base directory for the mint,
+ *                      the signing keys must be in the #DIR_SIGNKEYS
+ *                      subdirectory
+ * @param it function to call on each signing key
+ * @param it_cls closure for @a it
+ * @return number of files found (may not match
+ *         number of keys given to @a it as malformed
+ *         files are simply skipped), -1 on error
+ */
 int
 TALER_MINT_signkeys_iterate (const char *mint_base_dir,
                              TALER_MINT_SignkeyIterator it,
@@ -101,10 +116,10 @@ TALER_MINT_signkeys_iterate (const char *mint_base_dir,
 
 
 /**
- * Import a denomination key from the given file
+ * Import a denomination key from the given file.
  *
  * @param filename the file to import the key from
- * @param dki pointer to return the imported denomination key
+ * @param[OUT] dki set to the imported denomination key
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 int
@@ -203,34 +218,40 @@ TALER_MINT_write_denom_key (const char *filename,
 
 
 /**
- *
+ * Closure for #denomkeys_iterate_keydir_iter() and
+ * #denomkeys_iterate_topdir_iter().
  */
 struct DenomkeysIterateContext
 {
 
   /**
-   *
+   * Set to the name of the directory below the top-level directory
+   * during the call to #denomkeys_iterate_keydir_iter().
    */
   const char *alias;
 
   /**
-   *
+   * Function to call on each denomination key.
    */
   TALER_MINT_DenomkeyIterator it;
 
   /**
-   *
+   * Closure for @e it.
    */
   void *it_cls;
 };
 
 
 /**
+ * Decode the denomination key in the given file @a filename and call
+ * the callback in @a cls with the information.
  *
- *
- * @param cls
- * @param filename
- * @return
+ * @param cls the `struct DenomkeysIterateContext *`
+ * @param filename name of a file that should contain
+ *                 a denomination key
+ * @return #GNUNET_OK to continue to iterate
+ *         #GNUNET_NO to abort iteration with success
+ *         #GNUNET_SYSERR to abort iteration with failure
  */
 static int
 denomkeys_iterate_keydir_iter (void *cls,
@@ -255,11 +276,14 @@ denomkeys_iterate_keydir_iter (void *cls,
 
 
 /**
+ * Function called on each subdirectory in the #DIR_DENOMKEYS.  Will
+ * call the #denomkeys_iterate_keydir_iter() on each file in the
+ * subdirectory.
  *
- *
- * @param cls
- * @param filename
- * @return
+ * @param cls the `struct DenomkeysIterateContext *`
+ * @param filename name of the subdirectory to scan
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_SYSERR if we need to abort
  */
 static int
 denomkeys_iterate_topdir_iter (void *cls,
@@ -268,8 +292,6 @@ denomkeys_iterate_topdir_iter (void *cls,
   struct DenomkeysIterateContext *dic = cls;
 
   dic->alias = GNUNET_STRINGS_get_short_name (filename);
-
-  // FIXME: differentiate between error case and normal iteration abortion
   if (0 > GNUNET_DISK_directory_scan (filename,
                                       &denomkeys_iterate_keydir_iter,
                                       dic))
@@ -278,6 +300,19 @@ denomkeys_iterate_topdir_iter (void *cls,
 }
 
 
+/**
+ * Call @a it for each denomination key found in the @a mint_base_dir.
+ *
+ * @param mint_base_dir base directory for the mint,
+ *                      the signing keys must be in the #DIR_DENOMKEYS
+ *                      subdirectory
+ * @param it function to call on each denomination key found
+ * @param it_cls closure for @a it
+ * @return -1 on error, 0 if no files were found, otherwise
+ *         a positive number (however, even with a positive
+ *         number it is possible that @a it was never called
+ *         as maybe none of the files were well-formed)
+ */
 int
 TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
                               TALER_MINT_DenomkeyIterator it,
@@ -286,19 +321,18 @@ TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
   char *dir;
   size_t len;
   struct DenomkeysIterateContext dic;
+  int ret;
 
-  len = GNUNET_asprintf (&dir,
-                         "%s" DIR_SEPARATOR_STR DIR_DENOMKEYS,
-                         mint_base_dir);
-  GNUNET_assert (len > 0);
-
+  GNUNET_asprintf (&dir,
+                   "%s" DIR_SEPARATOR_STR DIR_DENOMKEYS,
+                   mint_base_dir);
   dic.it = it;
   dic.it_cls = it_cls;
-
-  // scan over alias dirs
-  return GNUNET_DISK_directory_scan (dir,
-                                     &denomkeys_iterate_topdir_iter,
-                                     &dic);
+  ret = GNUNET_DISK_directory_scan (dir,
+                                    &denomkeys_iterate_topdir_iter,
+                                    &dic);
+  GNUNET_free (dir);
+  return ret;
 }
 
 

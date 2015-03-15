@@ -19,9 +19,6 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
- *
- * TODO:
- * - document better
  */
 #ifndef KEY_IO_H
 #define KEY_IO_H
@@ -30,59 +27,64 @@
 #include "taler_signatures.h"
 
 /**
- *
+ * Subdirectroy under the mint's base directory which contains
+ * the mint's signing keys.
  */
 #define DIR_SIGNKEYS "signkeys"
 
 /**
- *
+ * Subdirectory under the mint's base directory which contains
+ * the mint's denomination keys.
  */
 #define DIR_DENOMKEYS "denomkeys"
 
 
 /**
- * On disk format used for a mint signing key.
- * Includes the private key followed by the signed
- * issue message.
+ * On disk format used for a mint signing key.  Signing keys are used
+ * by the mint to affirm its messages, but not to create coins.
+ * Includes the private key followed by the public information about
+ * the signing key.
  */
 struct TALER_MINT_SignKeyIssuePriv
 {
   /**
-   * FIXME.
+   * Private key part of the mint's signing key.
    */
   struct GNUNET_CRYPTO_EddsaPrivateKey signkey_priv;
 
   /**
-   * FIXME.
+   * Public information about a mint signing key.
    */
   struct TALER_MINT_SignKeyIssue issue;
 };
 
 
 /**
- * FIXME.
+ * All information about a denomination key (which is used to
+ * sign coins into existence).
  */
 struct TALER_MINT_DenomKeyIssuePriv
 {
   /**
-   * The private key of the denomination.  Will be NULL if the private key is
-   * not available.
+   * The private key of the denomination.  Will be NULL if the private
+   * key is not available (this is the case after the key has expired
+   * for signing coins, but is still valid for depositing coins).
    */
   struct GNUNET_CRYPTO_rsa_PrivateKey *denom_priv;
 
   /**
-   * FIXME.
+   * Public information about a denomination key.
    */
   struct TALER_MINT_DenomKeyIssue issue;
 };
 
 
 /**
- * Iterator for sign keys.
+ * Iterator over signing keys.
  *
  * @param cls closure
  * @param filename name of the file the key came from
- * @param ski the sign key issue
+ * @param ski the sign key
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -94,10 +96,10 @@ typedef int
 
 
 /**
- * Iterator for denomination keys.
+ * Iterator over denomination keys.
  *
  * @param cls closure
- * @param dki the denomination key issue
+ * @param dki the denomination key
  * @param alias coin alias
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
@@ -111,12 +113,16 @@ typedef int
 
 
 /**
- * FIXME
+ * Call @a it for each signing key found in the @a mint_base_dir.
  *
- * @param mint_base_dir
- * @param it
+ * @param mint_base_dir base directory for the mint,
+ *                      the signing keys must be in the #DIR_SIGNKEYS
+ *                      subdirectory
+ * @param it function to call on each signing key
  * @param it_cls closure for @a it
- * @return
+ * @return number of files found (may not match
+ *         number of keys given to @a it as malformed
+ *         files are simply skipped), -1 on error
  */
 int
 TALER_MINT_signkeys_iterate (const char *mint_base_dir,
@@ -125,12 +131,17 @@ TALER_MINT_signkeys_iterate (const char *mint_base_dir,
 
 
 /**
- * FIXME
+ * Call @a it for each denomination key found in the @a mint_base_dir.
  *
- * @param mint_base_dir
- * @param it
+ * @param mint_base_dir base directory for the mint,
+ *                      the signing keys must be in the #DIR_DENOMKEYS
+ *                      subdirectory
+ * @param it function to call on each denomination key found
  * @param it_cls closure for @a it
- * @return
+ * @return -1 on error, 0 if no files were found, otherwise
+ *         a positive number (however, even with a positive
+ *         number it is possible that @a it was never called
+ *         as maybe none of the files were well-formed)
  */
 int
 TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
@@ -139,7 +150,7 @@ TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
 
 
 /**
- * Exports a denomination key to the given file
+ * Exports a denomination key to the given file.
  *
  * @param filename the file where to write the denomination key
  * @param dki the denomination key
@@ -151,10 +162,10 @@ TALER_MINT_write_denom_key (const char *filename,
 
 
 /**
- * Import a denomination key from the given file
+ * Import a denomination key from the given file.
  *
  * @param filename the file to import the key from
- * @param dki pointer to return the imported denomination key
+ * @param[OUT] dki set to the imported denomination key
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 int
