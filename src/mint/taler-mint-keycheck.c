@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -13,25 +13,40 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file taler-mint-keycheck.c
- * @brief Check mint keys for validity.
+ * @brief Check mint keys for validity.  Reads the signing and denomination
+ *        keys from the mint directory and checks to make sure they are
+ *        well-formed.  This is purely a diagnostic tool.
  * @author Florian Dold
  * @author Benedikt Mueller
+ * @author Christian Grothoff
  */
-
 #include <platform.h>
 #include <gnunet/gnunet_util_lib.h>
-#include "taler_signatures.h"
 #include "key_io.h"
 
-
+/**
+ * Mint directory with the keys.
+ */
 static char *mintdir;
 
+/**
+ * Our configuration.
+ */
 static struct GNUNET_CONFIGURATION_Handle *kcfg;
 
 
+/**
+ * Function called on each signing key.
+ *
+ * @param cls closure (NULL)
+ * @param filename name of the file the key came from
+ * @param ski the sign key
+ * @return #GNUNET_OK to continue to iterate,
+ *  #GNUNET_NO to stop iteration with no error,
+ *  #GNUNET_SYSERR to abort iteration with error!
+ */
 static int
 signkeys_iter (void *cls,
                const char *filename,
@@ -39,63 +54,81 @@ signkeys_iter (void *cls,
 {
   struct GNUNET_TIME_Absolute start;
 
-  printf ("iterating over key for start time %s\n",
-          GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (ski->issue.start)));
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Iterating over key `%s' for start time %s\n",
+              filename,
+              GNUNET_STRINGS_absolute_time_to_string
+              (GNUNET_TIME_absolute_ntoh (ski->issue.start)));
 
   start = GNUNET_TIME_absolute_ntoh (ski->issue.start);
-
   if (ntohl (ski->issue.purpose.size) !=
-      (sizeof (struct TALER_MINT_SignKeyIssue) - offsetof (struct TALER_MINT_SignKeyIssue, purpose)))
+      (sizeof (struct TALER_MINT_SignKeyIssue) -
+       offsetof (struct TALER_MINT_SignKeyIssue, purpose)))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Signkey with start %s has invalid purpose field (timestamp: %llu)\n",
-                GNUNET_STRINGS_absolute_time_to_string (start),
-                (long long) start.abs_value_us);
+    fprintf (stderr,
+             "Signing key `%s' has invalid purpose size\n",
+             filename);
     return GNUNET_SYSERR;
   }
-
-
-  if (GNUNET_OK != GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNKEY,
-                                               &ski->issue.purpose,
-                                               &ski->issue.signature,
-                                               &ski->issue.master_pub))
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNKEY,
+                                  &ski->issue.purpose,
+                                  &ski->issue.signature,
+                                  &ski->issue.master_pub))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Signkey with start %s has invalid signature (timestamp: %llu)\n",
-                GNUNET_STRINGS_absolute_time_to_string (start),
-                (long long) start.abs_value_us);
+    fprintf (stderr,
+             "Signing key `%s' has invalid signature\n",
+             filename);
     return GNUNET_SYSERR;
   }
-  /* FIXME: what about private key matching the public key? */
-  printf ("key valid\n");
+  printf ("Signing key `%s' valid\n",
+          filename);
   return GNUNET_OK;
 }
 
 
+/**
+ * Check signing keys.
+ *
+ * @return #GNUNET_OK if the keys are OK
+ *         #GNUNET_NO if not
+ */
 static int
 mint_signkeys_check ()
 {
-  if (0 > TALER_MINT_signkeys_iterate (mintdir, signkeys_iter, NULL))
+  if (0 > TALER_MINT_signkeys_iterate (mintdir,
+                                       &signkeys_iter,
+                                       NULL))
     return GNUNET_NO;
   return GNUNET_OK;
 }
 
 
+/**
+ * Function called on each denomination key.
+ *
+ * @param cls closure (NULL)
+ * @param dki the denomination key
+ * @param alias coin alias
+ * @return #GNUNET_OK to continue to iterate,
+ *  #GNUNET_NO to stop iteration with no error,
+ *  #GNUNET_SYSERR to abort iteration with error!
+ */
 static int
 denomkeys_iter (void *cls,
                 const char *alias,
                 const struct TALER_MINT_DenomKeyIssuePriv *dki)
 {
   struct GNUNET_TIME_Absolute start;
+  struct GNUNET_HashCode hc;
 
   start = GNUNET_TIME_absolute_ntoh (dki->issue.start);
-
   if (ntohl (dki->issue.purpose.size) !=
-      (sizeof (struct TALER_MINT_DenomKeyIssuePriv) - offsetof (struct TALER_MINT_DenomKeyIssuePriv, issue.purpose)))
+      sizeof (struct TALER_MINT_DenomKeyIssue))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Denomkey for '%s' with start %s has invalid purpose field (timestamp: %llu)\n",
-                alias,
-                GNUNET_STRINGS_absolute_time_to_string (start),
-                (long long) start.abs_value_us);
+    fprintf (stderr,
+             "Denomination key for `%s' has invalid purpose size\n",
+             alias);
     return GNUNET_SYSERR;
   }
 
@@ -105,35 +138,43 @@ denomkeys_iter (void *cls,
                                   &dki->issue.signature,
                                   &dki->issue.master))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Denomkey for '%s'with start %s has invalid signature (timestamp: %llu)\n",
-                alias,
-                GNUNET_STRINGS_absolute_time_to_string (start),
-                (long long) start.abs_value_us);
+    fprintf (stderr,
+             "Denomination key for `%s' has invalid signature\n",
+             alias);
     return GNUNET_SYSERR;
   }
-  printf ("denom key valid\n");
+  GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub,
+                                     &hc);
+  if (0 != memcmp (&hc,
+                   &dki->issue.denom_hash,
+                   sizeof (struct GNUNET_HashCode)))
+  {
+    fprintf (stderr,
+             "Public key for `%s' does not match signature\n",
+             alias);
+    return GNUNET_SYSERR;
+  }
+  printf ("Denomination key `%s' is valid\n",
+          alias);
 
   return GNUNET_OK;
 }
 
 
+/**
+ * Check denomination keys.
+ *
+ * @return #GNUNET_OK if the keys are OK
+ *         #GNUNET_NO if not
+ */
 static int
 mint_denomkeys_check ()
 {
   if (0 > TALER_MINT_denomkeys_iterate (mintdir,
-                                        &denomkeys_iter, NULL))
+                                        &denomkeys_iter,
+                                        NULL))
     return GNUNET_NO;
   return GNUNET_OK;
-}
-
-
-static int
-mint_keys_check (void)
-{
-  if (GNUNET_OK != mint_signkeys_check ())
-    return GNUNET_NO;
-  return mint_denomkeys_check ();
 }
 
 
@@ -148,30 +189,44 @@ int
 main (int argc, char *const *argv)
 {
   static const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_HELP ("gnunet-mint-keyup OPTIONS"),
-    {'d', "mint-dir", "DIR",
-     "mint directory with keys to update", 1,
+    GNUNET_GETOPT_OPTION_HELP ("gnunet-mint-keycheck OPTIONS"),
+    {'d', "directory", "DIRECTORY",
+     "mint directory with keys to check", 1,
      &GNUNET_GETOPT_set_filename, &mintdir},
     GNUNET_GETOPT_OPTION_END
   };
 
-  GNUNET_assert (GNUNET_OK == GNUNET_log_setup ("taler-mint-keycheck", "WARNING", NULL));
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_log_setup ("taler-mint-keycheck",
+                                   "WARNING",
+                                   NULL));
 
-  if (GNUNET_GETOPT_run ("taler-mint-keyup", options, argc, argv) < 0)
+  if (GNUNET_GETOPT_run ("taler-mint-keycheck",
+                         options,
+                         argc, argv) < 0)
     return 1;
   if (NULL == mintdir)
   {
-    fprintf (stderr, "mint directory not given\n");
+    fprintf (stderr,
+             "Mint directory not given\n");
     return 1;
   }
 
   kcfg = TALER_config_load (mintdir);
   if (NULL == kcfg)
   {
-    fprintf (stderr, "can't load mint configuration\n");
+    fprintf (stderr,
+             "Failed to load mint configuration\n");
     return 1;
   }
-  if (GNUNET_OK != mint_keys_check ())
+  if ( (GNUNET_OK != mint_signkeys_check ()) ||
+       (GNUNET_OK != mint_denomkeys_check ()) )
+  {
+    GNUNET_CONFIGURATION_destroy (kcfg);
     return 1;
+  }
+  GNUNET_CONFIGURATION_destroy (kcfg);
   return 0;
 }
+
+/* end of taler-mint-keycheck.c */
