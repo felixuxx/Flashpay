@@ -52,15 +52,12 @@ signkeys_iter (void *cls,
                const char *filename,
                const struct TALER_MINT_SignKeyIssuePriv *ski)
 {
-  struct GNUNET_TIME_Absolute start;
-
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Iterating over key `%s' for start time %s\n",
               filename,
               GNUNET_STRINGS_absolute_time_to_string
               (GNUNET_TIME_absolute_ntoh (ski->issue.start)));
 
-  start = GNUNET_TIME_absolute_ntoh (ski->issue.start);
   if (ntohl (ski->issue.purpose.size) !=
       (sizeof (struct TALER_MINT_SignKeyIssue) -
        offsetof (struct TALER_MINT_SignKeyIssue, purpose)))
@@ -119,10 +116,8 @@ denomkeys_iter (void *cls,
                 const char *alias,
                 const struct TALER_MINT_DenomKeyIssuePriv *dki)
 {
-  struct GNUNET_TIME_Absolute start;
   struct GNUNET_HashCode hc;
 
-  start = GNUNET_TIME_absolute_ntoh (dki->issue.start);
   if (ntohl (dki->issue.purpose.size) !=
       sizeof (struct TALER_MINT_DenomKeyIssue))
   {
