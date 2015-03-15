@@ -39,6 +39,8 @@
 #define DIR_DENOMKEYS "denomkeys"
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * On disk format used for a mint signing key.  Signing keys are used
  * by the mint to affirm its messages, but not to create coins.
@@ -57,6 +59,8 @@ struct TALER_MINT_SignKeyIssuePriv
    */
   struct TALER_MINT_SignKeyIssue issue;
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 /**

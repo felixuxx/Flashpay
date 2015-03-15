@@ -356,15 +356,13 @@ struct TALER_MINT_DenomKeyIssue
   struct GNUNET_TIME_AbsoluteNBO start;
   struct GNUNET_TIME_AbsoluteNBO expire_withdraw;
   struct GNUNET_TIME_AbsoluteNBO expire_spend;
-  // FIXME: does not work like this:
-  struct GNUNET_CRYPTO_rsa_PublicKey * denom_pub;
   struct TALER_AmountNBO value;
   struct TALER_AmountNBO fee_withdraw;
   struct TALER_AmountNBO fee_deposit;
   struct TALER_AmountNBO fee_refresh;
+  // FIXME: does not work like this:
+  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
 };
-
-
 
 GNUNET_NETWORK_STRUCT_END
 

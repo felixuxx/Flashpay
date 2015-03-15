@@ -71,7 +71,7 @@ signkeys_iterate_dir_iter (void *cls,
   if (nread != sizeof (struct TALER_MINT_SignKeyIssuePriv))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Invalid signkey file: `%s'\n",
+                "Invalid signkey file `%s': wrong size\n",
                 filename);
     return GNUNET_OK;
   }
@@ -137,6 +137,8 @@ TALER_MINT_read_denom_key (const char *filename,
   offset = sizeof (struct TALER_MINT_DenomKeyIssuePriv)
       - offsetof (struct TALER_MINT_DenomKeyIssuePriv,
                   issue.signature);
+  /* FIXME: this is very wrong, does not support variable-size
+     encoding of RSA keys (private or public!) */
   if (GNUNET_OK != GNUNET_DISK_file_size (filename,
                                           &size,
                                           GNUNET_YES,
@@ -319,7 +321,6 @@ TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
                               void *it_cls)
 {
   char *dir;
-  size_t len;
   struct DenomkeysIterateContext dic;
   int ret;
 
