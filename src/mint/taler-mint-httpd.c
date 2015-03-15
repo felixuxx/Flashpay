@@ -31,7 +31,6 @@
 #include "taler_util.h"
 #include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_mhd.h"
-#include "taler-mint-httpd_keys.h"
 #include "taler-mint-httpd_deposit.h"
 #include "taler-mint-httpd_withdraw.h"
 #include "taler-mint-httpd_refresh.h"

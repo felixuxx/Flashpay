@@ -28,7 +28,6 @@
 #include <jansson.h>
 #include "taler-mint-httpd_db.h"
 #include "taler_signatures.h"
-#include "taler-mint-httpd_keys.h"
 #include "taler-mint-httpd_responses.h"
 #include "mint_db.h"
 #include "taler_util.h"
@@ -733,7 +732,7 @@ check_commitment (struct MHD_Connection *connection,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "transfer keys do not match\n");
       /* FIXME: return more specific error with original signature (#3712) */
-      return (MHD_YES == 
+      return (MHD_YES ==
 	      TALER_MINT_reply_refresh_reveal_missmatch (connection,
 							 off,
 							 j,
@@ -761,7 +760,7 @@ check_commitment (struct MHD_Connection *connection,
                                 &shared_secret))
     {
       GNUNET_break (0);
-      return (MHD_YES == 
+      return (MHD_YES ==
 	      TALER_MINT_reply_internal_error (connection,
 					       "Decryption error"))
         ? GNUNET_NO : GNUNET_SYSERR;

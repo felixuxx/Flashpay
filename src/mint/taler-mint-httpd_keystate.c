@@ -30,6 +30,55 @@
 
 
 /**
+ * Snapshot of the (coin and signing)
+ * keys (including private keys) of the mint.
+ */
+struct MintKeyState
+{
+  /**
+   * JSON array with denomination keys.
+   */
+  json_t *denom_keys_array;
+
+  /**
+   * JSON array with signing keys.
+   */
+  json_t *sign_keys_array;
+
+  /**
+   * Cached JSON text that the mint will send for
+   * a /keys request.
+   */
+  char *keys_json;
+
+  /**
+   * Mapping from denomination keys to denomination key issue struct.
+   */
+  struct GNUNET_CONTAINER_MultiHashMap *denomkey_map;
+
+  /**
+   * When did we initiate the key reloading?
+   */
+  struct GNUNET_TIME_Absolute reload_time;
+
+  /**
+   * When is the next key invalid and we have to reload?
+   */
+  struct GNUNET_TIME_Absolute next_reload;
+
+  /**
+   * Mint signing key that should be used currently.
+   */
+  struct TALER_MINT_SignKeyIssuePriv current_sign_key_issue;
+
+  /**
+   * Reference count.
+   */
+  unsigned int refcnt;
+};
+
+
+/**
  * Mint key state.  Never use directly, instead access via
  * #TALER_MINT_key_state_acquire and #TALER_MINT_key_state_release.
  */
@@ -484,6 +533,50 @@ TALER_MINT_keys_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
                                            sig));
   TALER_MINT_key_state_release (key_state);
 }
+
+
+/**
+ * Function to call to handle the request by sending
+ * back static data from the @a rh.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[IN|OUT] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[IN|OUT] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+ */
+int
+TALER_MINT_handler_keys (struct RequestHandler *rh,
+                         struct MHD_Connection *connection,
+                         void **connection_cls,
+                         const char *upload_data,
+                         size_t *upload_data_size)
+{
+  struct MintKeyState *key_state;
+  struct MHD_Response *response;
+  int ret;
+
+  key_state = TALER_MINT_key_state_acquire ();
+  response = MHD_create_response_from_buffer (strlen (key_state->keys_json),
+                                              key_state->keys_json,
+                                              MHD_RESPMEM_MUST_COPY);
+  TALER_MINT_key_state_release (key_state);
+  if (NULL == response)
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+  (void) MHD_add_response_header (response,
+                                  "Content-Type",
+                                  rh->mime_type);
+  ret = MHD_queue_response (connection,
+                            rh->response_code,
+                            response);
+  MHD_destroy_response (response);
+  return ret;
+}
+
 
 
 /* end of taler-mint-httpd_keystate.c */

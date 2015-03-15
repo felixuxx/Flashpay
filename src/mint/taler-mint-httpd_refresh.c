@@ -28,7 +28,6 @@
 #include "taler_signatures.h"
 #include "taler_util.h"
 #include "taler-mint-httpd_parsing.h"
-#include "taler-mint-httpd_keys.h"
 #include "taler-mint-httpd_mhd.h"
 #include "taler-mint-httpd_refresh.h"
 #include "taler-mint-httpd_responses.h"
@@ -125,8 +124,8 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   }
 
   // FIXME: badness, use proper way to set to zero...
-  key_state = TALER_MINT_key_state_acquire ();
   memset (&total_cost, 0, sizeof (struct TALER_Amount));
+  key_state = TALER_MINT_key_state_acquire ();
   for (i=0;i<num_new_denoms;i++)
   {
     dki = &TALER_MINT_get_denom_key (key_state,

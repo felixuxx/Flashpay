@@ -36,7 +36,6 @@
 #include "taler_signatures.h"
 #include "taler_util.h"
 #include "taler-mint-httpd_parsing.h"
-#include "taler-mint-httpd_keys.h"
 #include "taler-mint-httpd_db.h"
 #include "taler-mint-httpd_deposit.h"
 #include "taler-mint-httpd_responses.h"
