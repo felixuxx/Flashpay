@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 GNUnet e.V.
+  Copyright (C) 2014, 2015 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -449,9 +449,11 @@ handle_signal (int signal_number)
 
   if (SIGUSR1 == signal_number)
   {
-    errno = 0;
-    res = write (reload_pipe[1], &c, 1);
-    if ((res < 0) && (EINTR != errno))
+    res = write (reload_pipe[1],
+                 &c,
+                 1);
+    if ( (res < 0) &&
+         (EINTR != errno) )
     {
       GNUNET_break (0);
       return;
@@ -476,6 +478,7 @@ int
 TALER_MINT_key_reload_loop (void)
 {
   struct sigaction act;
+  struct sigaction rec;
 
   if (0 != pipe (reload_pipe))
   {
@@ -483,16 +486,20 @@ TALER_MINT_key_reload_loop (void)
              "Failed to create pipe.\n");
     return GNUNET_SYSERR;
   }
-  memset (&act, 0, sizeof (struct sigaction));
+  memset (&act,
+          0,
+          sizeof (struct sigaction));
   act.sa_handler = &handle_signal;
-
-  if (0 != sigaction (SIGUSR1, &act, NULL))
+  if (0 != sigaction (SIGUSR1,
+                      &act,
+                      &rec))
   {
     fprintf (stderr,
              "Failed to set signal handler.\n");
     return GNUNET_SYSERR;
   }
 
+  /* FIXME: allow for 'clean' termination or restart (#3474) */
   while (1)
   {
     char c;
@@ -519,6 +526,15 @@ read_again:
     }
     if (EINTR == errno)
       goto read_again;
+  }
+
+  if (0 != sigaction (SIGUSR1,
+                      &rec,
+                      &act))
+  {
+    fprintf (stderr,
+             "Failed to restore signal handler.\n");
+    return GNUNET_SYSERR;
   }
   return GNUNET_OK;
 }
@@ -587,7 +603,6 @@ TALER_MINT_handler_keys (struct RequestHandler *rh,
   MHD_destroy_response (response);
   return ret;
 }
-
 
 
 /* end of taler-mint-httpd_keystate.c */
