@@ -332,6 +332,8 @@ parse_json_amount (json_t *amount_obj, struct TALER_Amount *amt)
   return GNUNET_SYSERR;
 }
 
+
+/* FIXME: avoid useless ** for _denom_key! */
 static int
 parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
                      json_t *denom_key_obj,
@@ -354,6 +356,7 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
   struct TALER_Amount fee_deposit;
   struct TALER_Amount fee_refresh;
   struct TALER_MINT_DenomKeyIssue denom_key_issue;
+  struct GNUNET_CRYPTO_rsa_PublicKey *pk;
   struct GNUNET_CRYPTO_EddsaSignature sig;
 
   EXITIF (JSON_OBJECT != json_typeof (denom_key_obj));
@@ -387,10 +390,12 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
           GNUNET_STRINGS_string_to_data (key_enc, strlen (key_enc),
                                          buf,
                                          buf_size));
-  denom_key_issue.denom_pub = GNUNET_CRYPTO_rsa_public_key_decode (buf, buf_size);
+  pk = GNUNET_CRYPTO_rsa_public_key_decode (buf, buf_size);
   GNUNET_free (buf);
-  EXITIF (NULL == denom_key_issue.denom_pub);
 
+  EXITIF (NULL == pk);
+  GNUNET_CRYPTO_rsa_public_key_hash (pk,
+                                     &denom_key_issue.denom_hash);
   EXITIF (NULL == (obj = json_object_get (denom_key_obj, "value")));
   EXITIF (GNUNET_SYSERR == parse_json_amount (obj, &value));
   EXITIF (NULL == (obj = json_object_get (denom_key_obj, "fee_withdraw")));
@@ -417,7 +422,7 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
                                       &sig,
                                       master_key));
   denom_key = GNUNET_new (struct TALER_MINT_DenomPublicKey);
-  denom_key->key = denom_key_issue.denom_pub;
+  denom_key->key = pk;
   denom_key->valid_from = valid_from;
   denom_key->withdraw_valid_until = withdraw_valid_until;
   denom_key->deposit_valid_until = deposit_valid_until;
