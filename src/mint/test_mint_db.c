@@ -126,11 +126,23 @@ run (void *cls, char *const *args, const char *cfgfile,
   struct ReserveHistory *rh_head;
   struct BankTransfer *bt;
   struct CollectableBlindcoin *withdraw;
+  struct Deposit deposit;
+  struct Deposit deposit2;
+  struct json_t *wire;
+  const char * const json_wire_str =
+      "{ \"type\":\"SEPA\", \
+\"IBAN\":\"DE67830654080004822650\",                    \
+\"name\":\"GNUnet e.V.\",                               \
+\"bic\":\"GENODEF1SLR\",                                 \
+\"edate\":\"1449930207000\",                                \
+\"r\":123456789,                                     \
+\"address\": \"foobar\"}";
   unsigned int cnt;
 
   db = NULL;
   dkp = NULL;
   rh = NULL;
+  wire = NULL;
   ZR_BLK (&cbc);
   ZR_BLK (&cbc2);
   if (GNUNET_OK != TALER_MINT_DB_init ("postgres:///taler"))
@@ -217,9 +229,35 @@ run (void *cls, char *const *args, const char *cfgfile,
     }
   }
   FAILIF (3 != cnt);
+  /* Tests for deposits */
+  RND_BLK (&deposit.coin.coin_pub);
+  deposit.coin.denom_pub = dkp->pub;
+  deposit.coin.denom_sig = cbc.sig;
+  RND_BLK (&deposit.csig);
+  RND_BLK (&deposit.merchant_pub);
+  RND_BLK (&deposit.h_contract);
+  RND_BLK (&deposit.h_wire);
+  wire = json_loads (json_wire_str, 0, NULL);
+  deposit.wire = wire;
+  deposit.transaction_id =
+      GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
+  deposit.amount = amount;
+  FAILIF (GNUNET_OK != TALER_MINT_DB_insert_deposit (db, &deposit));
+  FAILIF (GNUNET_YES != TALER_MINT_DB_have_deposit (db, &deposit));
+  (void) memcpy (&deposit2, &deposit, sizeof (deposit));
+  deposit2.transaction_id++;     /* should fail if transaction id is different */
+  FAILIF (GNUNET_NO != TALER_MINT_DB_have_deposit (db, &deposit2));
+  deposit2.transaction_id = deposit.transaction_id;
+  RND_BLK (&deposit2.merchant_pub); /* should fail if merchant is different */
+  FAILIF (GNUNET_NO != TALER_MINT_DB_have_deposit (db, &deposit2));
+  (void) memcpy (&deposit2.merchant_pub, &deposit.merchant_pub, sizeof (deposit.merchant_pub));
+  RND_BLK (&deposit2.coin.coin_pub); /* should fail if coin is different */
+  FAILIF (GNUNET_NO != TALER_MINT_DB_have_deposit (db, &deposit2));
   result = 0;
 
  drop:
+  if (NULL != wire)
+    json_decref (wire);
   if (NULL != rh)
     TALER_MINT_DB_free_reserve_history (rh);
   rh = NULL;
