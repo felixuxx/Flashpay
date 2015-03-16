@@ -556,9 +556,11 @@ TALER_MINT_DB_prepare (PGconn *db_conn)
            "h_wire,"
            "coin_sig"
            " FROM deposits WHERE ("
-           "coin_pub = $1"
+           "(coin_pub = $1) AND"
+           "(transaction_id = $2) AND"
+           "(merchant_pub = $3)"
            ")",
-           1, NULL);
+           3, NULL);
   return GNUNET_OK;
 #undef PREPARE
 }
@@ -1286,13 +1288,16 @@ int
 TALER_MINT_DB_have_deposit (PGconn *db_conn,
                             const struct Deposit *deposit)
 {
-  // FIXME: check logic!
   struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR (&deposit->coin.coin_pub), // FIXME
+    TALER_DB_QUERY_PARAM_PTR (&deposit->coin.coin_pub),
+    TALER_DB_QUERY_PARAM_PTR (&deposit->transaction_id),
+    TALER_DB_QUERY_PARAM_PTR (&deposit->merchant_pub),
     TALER_DB_QUERY_PARAM_END
   };
   PGresult *result;
+  int ret;
 
+  ret = GNUNET_SYSERR;
   result = TALER_DB_exec_prepared (db_conn,
                                    "get_deposit",
                                    params);
@@ -1300,16 +1305,19 @@ TALER_MINT_DB_have_deposit (PGconn *db_conn,
       PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
+    goto cleanup;
   }
 
   if (0 == PQntuples (result))
   {
-    PQclear (result);
-    return GNUNET_NO;
+    ret = GNUNET_NO;
+    goto cleanup;
   }
-  return GNUNET_YES;
+  ret = GNUNET_YES;
+
+ cleanup:
+  PQclear (result);
+  return ret;
 }
 
 
