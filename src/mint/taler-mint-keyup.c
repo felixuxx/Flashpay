@@ -44,37 +44,38 @@
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
- *
+ * Struct with all of the key information for a kind of coin.  Hashed
+ * to generate a unique directory name per coin type.
  */
 struct CoinTypeNBO
 {
   /**
-   *
+   * How long can the coin be spend?
    */
   struct GNUNET_TIME_RelativeNBO duration_spend;
 
   /**
-   *
+   * How long can the coin be withdrawn (generated)?
    */
   struct GNUNET_TIME_RelativeNBO duration_withdraw;
 
   /**
-   *
+   * What is the value of the coin?
    */
   struct TALER_AmountNBO value;
 
   /**
-   *
+   * What is the fee charged for withdrawl?
    */
   struct TALER_AmountNBO fee_withdraw;
 
   /**
-   *
+   * What is the fee charged for deposits?
    */
   struct TALER_AmountNBO fee_deposit;
 
   /**
-   *
+   * What is the fee charged for melting?
    */
   struct TALER_AmountNBO fee_refresh;
 };
@@ -171,63 +172,22 @@ static struct GNUNET_CRYPTO_EddsaPublicKey *master_pub;
 static struct GNUNET_TIME_Absolute lookahead_sign_stamp;
 
 
-/**
- *
- *
- * @param section
- * @param option
- * @param denom
- * @return
- */
-static int
-config_get_denom (const char *section,
-                  const char *option,
-                  struct TALER_Amount *denom)
-{
-  char *str;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (kcfg,
-                                             section,
-                                             option,
-                                             &str))
-    return GNUNET_NO;
-  if (GNUNET_OK != TALER_string_to_amount (str,
-                                           denom))
-    return GNUNET_SYSERR;
-  return GNUNET_OK;
-}
-
 
 /**
+ * Obtain the name of the directory we use to store signing
+ * keys created at time @a start.
  *
- *
- * @return
+ * @param start time at which we create the signing key
+ * @return name of the directory we should use, basically "$MINTDIR/$TIME/";
+ *         (valid until next call to this function)
  */
-static char *
-get_signkey_dir ()
-{
-  char *dir;
-
-  GNUNET_asprintf (&dir,
-                   "%s" DIR_SEPARATOR_STR DIR_SIGNKEYS,
-                   mintdir);
-  return dir;
-}
-
-
-/**
- *
- *
- * @param start
- * @return
- */
-static char *
+static const char *
 get_signkey_file (struct GNUNET_TIME_Absolute start)
 {
-  char *dir;
+  static char dir[4096];
 
-  GNUNET_asprintf (&dir,
+  GNUNET_snprintf (dir,
+                   sizeof (dir),
                    "%s" DIR_SEPARATOR_STR DIR_SIGNKEYS DIR_SEPARATOR_STR "%llu",
                    mintdir,
                    (unsigned long long) start.abs_value_us);
@@ -236,12 +196,12 @@ get_signkey_file (struct GNUNET_TIME_Absolute start)
 
 
 /**
- * Hash the data defining the coin type.
- * Exclude information that may not be the same for all
- * instances of the coin type (i.e. the anchor, overlap).
+ * Hash the data defining the coin type.  Exclude information that may
+ * not be the same for all instances of the coin type (i.e. the
+ * anchor, overlap).
  *
- * @param p
- * @param hash
+ * @param p coin parameters to convert to a hash
+ * @param hash[OUT] set to the hash matching @a p
  */
 static void
 hash_coin_type (const struct CoinTypeParams *p,
@@ -267,10 +227,17 @@ hash_coin_type (const struct CoinTypeParams *p,
 
 
 /**
+ * Obtain the name of the directory we should use to store coins of
+ * the given type.  The directory name has the format
+ * "$MINTDIR/$VALUE/$HASH/" where "$VALUE" represents the value of the
+ * coin and "$HASH" encodes all of the coin's parameters, generating a
+ * unique string for each type of coin.  Note that the "$HASH"
+ * includes neither the absolute creation time nor the key of the
+ * coin, thus the files in the subdirectory really just refer to the
+ * same type of coins, not the same coin.
  *
- *
- * @param p
- * @return
+ * @param p coin parameters to convert to a directory name
+ * @return directory name (valid until next call to this function)
  */
 static const char *
 get_cointype_dir (const struct CoinTypeParams *p)
@@ -499,7 +466,9 @@ mint_keys_update_signkeys ()
   }
   ROUND_TO_SECS (signkey_duration,
                  rel_value_us);
-  signkey_dir = get_signkey_dir ();
+  GNUNET_asprintf (&signkey_dir,
+                   "%s" DIR_SEPARATOR_STR DIR_SIGNKEYS,
+                   mintdir);
   // make sure the directory exists
   if (GNUNET_OK !=
       GNUNET_DISK_directory_create (signkey_dir))
@@ -516,7 +485,7 @@ mint_keys_update_signkeys ()
 
   while (anchor.abs_value_us < lookahead_sign_stamp.abs_value_us)
   {
-    char *skf;
+    const char *skf;
 
     skf = get_signkey_file (anchor);
     if (GNUNET_YES !=
@@ -607,9 +576,10 @@ get_cointype_params (const char *ct,
                  rel_value_us);
 
   if (GNUNET_OK !=
-      config_get_denom ("mint_denom_value",
-                        ct,
-                        &params->value))
+      TALER_config_get_denom (kcfg,
+                              "mint_denom_value",
+                              ct,
+                              &params->value))
   {
     fprintf (stderr,
              "Value not given for coin type '%s'\n",
@@ -618,9 +588,10 @@ get_cointype_params (const char *ct,
   }
 
   if (GNUNET_OK !=
-      config_get_denom ("mint_denom_fee_withdraw",
-                        ct,
-                        &params->fee_withdraw))
+      TALER_config_get_denom (kcfg,
+                              "mint_denom_fee_withdraw",
+                              ct,
+                              &params->fee_withdraw))
   {
     fprintf (stderr,
              "Withdraw fee not given for coin type '%s'\n",
@@ -629,9 +600,10 @@ get_cointype_params (const char *ct,
   }
 
   if (GNUNET_OK !=
-      config_get_denom ("mint_denom_fee_deposit",
-                        ct,
-                        &params->fee_deposit))
+      TALER_config_get_denom (kcfg,
+                              "mint_denom_fee_deposit",
+                              ct,
+                              &params->fee_deposit))
   {
     fprintf (stderr,
              "Deposit fee not given for coin type '%s'\n",
@@ -640,9 +612,10 @@ get_cointype_params (const char *ct,
   }
 
   if (GNUNET_OK !=
-      config_get_denom ("mint_denom_fee_refresh",
-                        ct,
-                        &params->fee_refresh))
+      TALER_config_get_denom (kcfg,
+                              "mint_denom_fee_refresh",
+                              ct,
+                              &params->fee_refresh))
   {
     fprintf (stderr,
              "Deposit fee not given for coin type '%s'\n",

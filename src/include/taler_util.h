@@ -84,5 +84,19 @@ struct GNUNET_CONFIGURATION_Handle *
 TALER_config_load (const char *base_dir);
 
 
+/**
+ * Obtain denomination amount from configuration file.
+ *
+ * @param section section of the configuration to access
+ * @param option option of the configuration to access
+ * @param denom[OUT] set to the amount found in configuration
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+TALER_config_get_denom (struct GNUNET_CONFIGURATION_Handle *cfg,
+                        const char *section,
+                        const char *option,
+                        struct TALER_Amount *denom);
+
 
 #endif
