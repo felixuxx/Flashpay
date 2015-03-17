@@ -15,7 +15,7 @@
 */
 /**
  * @file taler-mint-reservemod.c
- * @brief Modify reserves.  Allows manipulation of reserve balances for testing.
+ * @brief Modify reserves.  Allows manipulation of reserve balances.
  * @author Florian Dold
  * @author Benedikt Mueller
  */
@@ -57,6 +57,11 @@ static PGconn *db_conn;
  * @return #GNUNET_OK on success,
  *         #GNUNET_SYSERR on error
  */
+// FIXME: this should use the DB abstraction layer. (#3717)
+// FIXME: this should be done by adding an inbound transaction
+//        to the table with the transactions for this reserve,
+//        not by modifying some 'total' value for the reserve!
+//        (we should in fact probably never modify, always just append!) (#3633)
 static int
 reservemod_add (struct TALER_Amount denom)
 {
@@ -223,7 +228,7 @@ main (int argc, char *const *argv)
                                    "WARNING",
                                    NULL));
 
-  if (GNUNET_GETOPT_run ("taler-mint-keyup",
+  if (GNUNET_GETOPT_run ("taler-mint-reservemod",
                          options,
                          argc, argv) < 0)
     return 1;

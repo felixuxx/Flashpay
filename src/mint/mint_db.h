@@ -110,8 +110,7 @@ TALER_MINT_DB_rollback (PGconn *db_conn);
 
 
 /**
- * Information we keep on a bank transfer that
- * established a reserve.
+ * Information we keep on bank transfer(s) that established a reserve.
  */
 struct BankTransfer
 {
@@ -135,7 +134,7 @@ struct BankTransfer
 
 
 /* FIXME: add functions to add bank transfers to our DB
-   (and to test if we already did add one) (#3633) */
+   (and to test if we already did add one) (#3633/#3717) */
 
 /**
  * A summary of a Reserve
