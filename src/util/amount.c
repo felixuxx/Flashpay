@@ -30,8 +30,14 @@
 #include "taler_util.h"
 #include <gcrypt.h>
 
+/**
+ *
+ */
 #define AMOUNT_FRAC_BASE 1000000
 
+/**
+ *
+ */
 #define AMOUNT_FRAC_LEN 6
 
 
@@ -47,34 +53,39 @@ int
 TALER_string_to_amount (const char *str,
                         struct TALER_Amount *denom)
 {
-  unsigned int i; // pos in str
+  size_t i; // pos in str
   int n; // number tmp
-  unsigned int c; // currency pos
+  size_t c; // currency pos
   uint32_t b; // base for suffix
 
-  memset (denom, 0, sizeof (struct TALER_Amount));
+  memset (denom,
+          0,
+          sizeof (struct TALER_Amount));
 
-  i = n = c = 0;
-
+  i = 0;
   while (isspace(str[i]))
     i++;
 
   if (0 == str[i])
   {
-    printf("null before currency\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "null before currency\n");
     return GNUNET_SYSERR;
   }
 
+  c = 0;
   while (str[i] != ':')
   {
     if (0 == str[i])
     {
-      printf("null before colon");
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "null before colon");
       return GNUNET_SYSERR;
     }
     if (c > 3)
     {
-      printf("currency too long\n");
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "currency too long\n");
       return GNUNET_SYSERR;
     }
     denom->currency[c] = str[i];
@@ -87,7 +98,8 @@ TALER_string_to_amount (const char *str,
 
   if (0 == str[i])
   {
-    printf("null before value\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "null before value\n");
     return GNUNET_SYSERR;
   }
 
@@ -100,7 +112,10 @@ TALER_string_to_amount (const char *str,
     n = str[i] - '0';
     if (n < 0 || n > 9)
     {
-      printf("invalid character '%c' before comma at %u\n", (char) n, i);
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "invalid character '%c' before comma at %u\n",
+                  (char) n,
+                  i);
       return GNUNET_SYSERR;
     }
     denom->value = (denom->value * 10) + n;
@@ -112,7 +127,8 @@ TALER_string_to_amount (const char *str,
 
   if (0 == str[i])
   {
-    printf("null after dot");
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "null after dot");
     return GNUNET_SYSERR;
   }
 
@@ -121,9 +137,10 @@ TALER_string_to_amount (const char *str,
   while (0 != str[i])
   {
     n = str[i] - '0';
-    if (b == 0 || n < 0 || n > 9)
+    if ( (0 == b) || (n < 0) || (n > 9) )
     {
-      printf("error after comma");
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "error after comma");
       return GNUNET_SYSERR;
     }
     denom->fraction += n * b;
@@ -293,7 +310,8 @@ TALER_amount_add (struct TALER_Amount a1,
 struct TALER_Amount
 TALER_amount_normalize (struct TALER_Amount amount)
 {
-  while (amount.value != UINT32_MAX && amount.fraction >= AMOUNT_FRAC_BASE)
+  while ( (amount.value != UINT32_MAX) &&
+          (amount.fraction >= AMOUNT_FRAC_BASE) )
   {
     amount.fraction -= AMOUNT_FRAC_BASE;
     amount.value += 1;
