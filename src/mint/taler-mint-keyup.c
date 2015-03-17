@@ -419,11 +419,12 @@ get_anchor (const char *dir,
 
 
 /**
+ * Create a mint signing key (for signing mint messages, not for coins)
+ * and assert its correctness by signing it with the master key.
  *
- *
- * @param start
- * @param duration
- * @param pi[OUT]
+ * @param start start time of the validity period for the key
+ * @param duration how long should the key be valid
+ * @param pi[OUT] set to the signing key information
  */
 static void
 create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
@@ -440,10 +441,8 @@ create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
   issue->start = GNUNET_TIME_absolute_hton (start);
   issue->expire = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (start,
                                                                        duration));
-
   GNUNET_CRYPTO_eddsa_key_get_public (&pi->signkey_priv,
                                       &issue->signkey_pub);
-
   issue->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNKEY);
   issue->purpose.size = htonl (sizeof (struct TALER_MINT_SignKeyIssue) -
                                offsetof (struct TALER_MINT_SignKeyIssue,
@@ -474,8 +473,9 @@ mint_keys_update_signkeys ()
                                            "signkey_duration",
                                            &signkey_duration))
   {
-    fprintf (stderr,
-             "Cannot read config value mint_keys.signkey_duration\n");
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "mint_keys",
+                               "signkey_duration");
     return GNUNET_SYSERR;
   }
   ROUND_TO_SECS (signkey_duration,
@@ -549,15 +549,16 @@ get_cointype_params (const char *ct,
   const char *dir;
   unsigned long long rsa_keysize;
 
+  /* FIXME: is 'ct' option or section name? */
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            "mint_denom_duration_withdraw",
                                            ct,
                                            &params->duration_withdraw))
   {
-    fprintf (stderr,
-             "Withdraw duration not given for coin type '%s'\n",
-             ct);
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "mint_denom_duration_withdraw");
     return GNUNET_SYSERR;
   }
   ROUND_TO_SECS (params->duration_withdraw,
@@ -568,9 +569,9 @@ get_cointype_params (const char *ct,
                                            ct,
                                            &params->duration_spend))
   {
-    fprintf (stderr,
-             "Spend duration not given for coin type '%s'\n",
-             ct);
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "mint_denom_duration_spend");
     return GNUNET_SYSERR;
   }
   ROUND_TO_SECS (params->duration_spend,
@@ -581,9 +582,9 @@ get_cointype_params (const char *ct,
                                            ct,
                                            &params->duration_overlap))
   {
-    fprintf (stderr,
-             "Overlap duration not given for coin type '%s'\n",
-             ct);
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "mint_denom_duration_overlap");
     return GNUNET_SYSERR;
   }
   ROUND_TO_SECS (params->duration_overlap,
@@ -594,9 +595,9 @@ get_cointype_params (const char *ct,
                                              ct,
                                              &rsa_keysize))
   {
-    fprintf (stderr,
-             "RSA keysize not given for coin type '%s'\n",
-             ct);
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "mint_denom_rsa_keysize");
     return GNUNET_SYSERR;
   }
   if ( (rsa_keysize > 4 * 2048) ||
@@ -614,9 +615,9 @@ get_cointype_params (const char *ct,
                               ct,
                               &params->value))
   {
-    fprintf (stderr,
-             "Value not given for coin type '%s'\n",
-             ct);
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "mint_denom_value");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -625,9 +626,9 @@ get_cointype_params (const char *ct,
                               ct,
                               &params->fee_withdraw))
   {
-    fprintf (stderr,
-             "Withdraw fee not given for coin type '%s'\n",
-             ct);
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "mint_denom_fee_withdraw");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -636,9 +637,9 @@ get_cointype_params (const char *ct,
                               ct,
                               &params->fee_deposit))
   {
-    fprintf (stderr,
-             "Deposit fee not given for coin type '%s'\n",
-             ct);
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "mint_denom_fee_deposit");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -647,9 +648,9 @@ get_cointype_params (const char *ct,
                               ct,
                               &params->fee_refresh))
   {
-    fprintf (stderr,
-             "Deposit fee not given for coin type '%s'\n",
-             ct);
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "mint_denom_fee_refresh");
     return GNUNET_SYSERR;
   }
 
@@ -763,7 +764,7 @@ mint_keys_update_cointype (const char *coin_alias)
 /**
  *
  *
- * @return
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
 mint_keys_update_denomkeys ()
@@ -778,8 +779,9 @@ mint_keys_update_denomkeys ()
                                              "coin_types",
                                              &coin_types))
   {
-    fprintf (stderr,
-             "mint_keys.coin_types not in configuration\n");
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "mint_keys",
+                               "coin_types");
     return GNUNET_SYSERR;
   }
 
@@ -800,7 +802,7 @@ mint_keys_update_denomkeys ()
 
 /**
  *
- * @return
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
 mint_keys_update ()
@@ -814,14 +816,17 @@ mint_keys_update ()
                                            "lookahead_sign",
                                            &lookahead_sign))
   {
-    fprintf (stderr,
-             "mint_keys.lookahead_sign not found\n");
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "mint_keys",
+                               "lookahead_sign");
     return GNUNET_SYSERR;
   }
   if (0 == lookahead_sign.rel_value_us)
   {
-    fprintf (stderr,
-             "mint_keys.lookahead_sign must not be zero\n");
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "mint_keys",
+                               "lookahead_sign",
+                               _("must not be zero"));
     return GNUNET_SYSERR;
   }
   ROUND_TO_SECS (lookahead_sign,
@@ -932,8 +937,9 @@ main (int argc, char *const *argv)
                                        &master_pub_from_cfg,
                                        sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
     {
-      fprintf (stderr,
-               "Master public key missing in configuration (mint.master_pub)\n");
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "mint",
+                                 "master_pub");
       return 1;
     }
     if (0 !=
@@ -941,8 +947,10 @@ main (int argc, char *const *argv)
                 &master_pub_from_cfg,
                 sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
     {
-      fprintf (stderr,
-               "Mismatch between key from mint configuration and master private key file from command line.\n");
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "mint",
+                                 "master_pub",
+                                 _("does not match with private key"));
       return 1;
     }
   }
