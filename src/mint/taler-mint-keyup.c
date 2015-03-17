@@ -707,99 +707,94 @@ create_denomkey_issue (const struct CoinTypeParams *params,
  * Generate new coin signing keys for the coin type of the given @a
  * coin_alias.
  *
+ * @param cls a `int *`, to be set to #GNUNET_SYSERR on failure
  * @param coin_alias name of the coin's section in the configuration
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
  */
-static int
-mint_keys_update_cointype (const char *coin_alias)
+static void
+mint_keys_update_cointype (void *cls,
+                           const char *coin_alias)
 {
+  int *ret = cls;
   struct CoinTypeParams p;
-  const char *cointype_dir;
+  const char *dkf;
+  struct TALER_MINT_DenomKeyIssuePriv denomkey_issue;
 
-  if (GNUNET_OK != get_cointype_params (coin_alias, &p))
-    return GNUNET_SYSERR;
-
-  cointype_dir = get_cointype_dir (&p);
-  if (GNUNET_OK != GNUNET_DISK_directory_create (cointype_dir))
-    return GNUNET_SYSERR;
+  if (0 != strncasecmp (coin_alias,
+                        "coin_",
+                        strlen ("coin_")))
+    return; /* not a coin definition */
+  if (GNUNET_OK !=
+      get_cointype_params (coin_alias,
+                           &p))
+  {
+    *ret = GNUNET_SYSERR;
+    return;
+  }
+  if (GNUNET_OK !=
+      GNUNET_DISK_directory_create (get_cointype_dir (&p)))
+  {
+    *ret = GNUNET_SYSERR;
+    return;
+  }
 
   while (p.anchor.abs_value_us < lookahead_sign_stamp.abs_value_us)
   {
-    const char *dkf;
-
-    dkf = get_cointype_file (&p, p.anchor);
-
-    if (GNUNET_YES != GNUNET_DISK_file_test (dkf))
+    dkf = get_cointype_file (&p,
+                             p.anchor);
+    GNUNET_break (GNUNET_YES != GNUNET_DISK_file_test (dkf));
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Generating denomination key for type `%s', start %s at %s\n",
+                coin_alias,
+                GNUNET_STRINGS_absolute_time_to_string (p.anchor),
+                dkf);
+    create_denomkey_issue (&p,
+                           &denomkey_issue);
+    if (GNUNET_OK !=
+        TALER_MINT_write_denom_key (dkf,
+                                    &denomkey_issue))
     {
-      struct TALER_MINT_DenomKeyIssuePriv denomkey_issue;
-      int ret;
-
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "Generating denomination key for type '%s', start %s at %s\n",
-                  coin_alias,
-                  GNUNET_STRINGS_absolute_time_to_string (p.anchor),
-                  dkf);
-      create_denomkey_issue (&p,
-                             &denomkey_issue);
-      ret = TALER_MINT_write_denom_key (dkf,
-                                        &denomkey_issue);
+      fprintf (stderr,
+               "Failed to write denomination key information to file `%s'.\n",
+               dkf);
+      *ret = GNUNET_SYSERR;
       GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv);
-      if (GNUNET_OK != ret)
-      {
-        fprintf (stderr,
-                 "Failed to write to file `%s'\n",
-                 dkf);
-        return GNUNET_SYSERR;
-      }
+      return;
     }
-    p.anchor = GNUNET_TIME_absolute_add (p.anchor, p.duration_spend);
-    p.anchor = GNUNET_TIME_absolute_subtract (p.anchor, p.duration_overlap);
+    GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv);
+    p.anchor = GNUNET_TIME_absolute_add (p.anchor,
+                                         p.duration_spend);
+    p.anchor = GNUNET_TIME_absolute_subtract (p.anchor,
+                                              p.duration_overlap);
   }
-  return GNUNET_OK;
 }
 
 
 /**
- *
+ * Update all of the denomination keys of the mint.
  *
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
 mint_keys_update_denomkeys ()
 {
-  char *coin_types;
-  char *ct;
-  char *tok_ctx;
+  int ok;
 
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (kcfg,
-                                             "mint_keys",
-                                             "coin_types",
-                                             &coin_types))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "mint_keys",
-                               "coin_types");
-    return GNUNET_SYSERR;
-  }
-
-  for (ct = strtok_r (coin_types, " ", &tok_ctx);
-       ct != NULL;
-       ct = strtok_r (NULL, " ", &tok_ctx))
-  {
-    if (GNUNET_OK != mint_keys_update_cointype (ct))
-    {
-      GNUNET_free (coin_types);
-      return GNUNET_SYSERR;
-    }
-  }
-  GNUNET_free (coin_types);
-  return GNUNET_OK;
+  ok = GNUNET_OK;
+  GNUNET_CONFIGURATION_iterate_sections (kcfg,
+                                         &mint_keys_update_cointype,
+                                         &ok);
+  return ok;
 }
 
 
 /**
- * The main function of the keyup tool
+ * The main function of the taler-mint-keyup tool.  This tool is used
+ * to create the signing and denomination keys for the mint.  It uses
+ * the long-term offline private key and writes the (additional) key
+ * files to the respective mint directory (from where they can then be
+ * copied to the online server).  Note that we need (at least) the
+ * most recent generated previous keys so as to align the validity
+ * periods.
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments
