@@ -801,48 +801,6 @@ mint_keys_update_denomkeys ()
 
 
 /**
- *
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
- */
-static int
-mint_keys_update ()
-{
-  int ret;
-  struct GNUNET_TIME_Relative lookahead_sign;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_time (kcfg,
-                                           "mint_keys",
-                                           "lookahead_sign",
-                                           &lookahead_sign))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "mint_keys",
-                               "lookahead_sign");
-    return GNUNET_SYSERR;
-  }
-  if (0 == lookahead_sign.rel_value_us)
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "mint_keys",
-                               "lookahead_sign",
-                               _("must not be zero"));
-    return GNUNET_SYSERR;
-  }
-  ROUND_TO_SECS (lookahead_sign,
-                 rel_value_us);
-  lookahead_sign_stamp = GNUNET_TIME_absolute_add (now,
-                                                   lookahead_sign);
-
-  ret = mint_keys_update_signkeys ();
-  if (GNUNET_OK != ret)
-    return GNUNET_SYSERR;
-
-  return mint_keys_update_denomkeys ();
-}
-
-
-/**
  * The main function of the keyup tool
  *
  * @param argc number of arguments from the command line
@@ -850,7 +808,8 @@ mint_keys_update ()
  * @return 0 ok, 1 on error
  */
 int
-main (int argc, char *const *argv)
+main (int argc,
+      char *const *argv)
 {
   static const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_OPTION_HELP ("gnunet-mint-keyup OPTIONS"),
@@ -865,6 +824,7 @@ main (int argc, char *const *argv)
      &GNUNET_GETOPT_set_string, &pretend_time_str},
     GNUNET_GETOPT_OPTION_END
   };
+  struct GNUNET_TIME_Relative lookahead_sign;
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-mint-keyup",
@@ -878,10 +838,9 @@ main (int argc, char *const *argv)
   if (NULL == mintdir)
   {
     fprintf (stderr,
-             "mint directory not given\n");
+             "Mint directory not given\n");
     return 1;
   }
-
   if (NULL != pretend_time_str)
   {
     if (GNUNET_OK !=
@@ -889,7 +848,8 @@ main (int argc, char *const *argv)
                                                &now))
     {
       fprintf (stderr,
-               "timestamp invalid\n");
+               "timestamp `%s' invalid\n",
+               pretend_time_str);
       return 1;
     }
   }
@@ -906,11 +866,10 @@ main (int argc, char *const *argv)
              "Failed to load mint configuration\n");
     return 1;
   }
-
   if (NULL == masterkeyfile)
   {
     fprintf (stderr,
-             "master key file not given\n");
+             "Master key file not given\n");
     return 1;
   }
   master_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (masterkeyfile);
@@ -926,7 +885,7 @@ main (int argc, char *const *argv)
   GNUNET_CRYPTO_eddsa_key_get_public (master_priv,
                                       master_pub);
 
-  // check if key from file matches the one from the configuration
+  /* check if key from file matches the one from the configuration */
   {
     struct GNUNET_CRYPTO_EddsaPublicKey master_pub_from_cfg;
 
@@ -955,7 +914,36 @@ main (int argc, char *const *argv)
     }
   }
 
-  if (GNUNET_OK != mint_keys_update ())
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (kcfg,
+                                           "mint_keys",
+                                           "lookahead_sign",
+                                           &lookahead_sign))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "mint_keys",
+                               "lookahead_sign");
+    return GNUNET_SYSERR;
+  }
+  if (0 == lookahead_sign.rel_value_us)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "mint_keys",
+                               "lookahead_sign",
+                               _("must not be zero"));
+    return GNUNET_SYSERR;
+  }
+  ROUND_TO_SECS (lookahead_sign,
+                 rel_value_us);
+  lookahead_sign_stamp = GNUNET_TIME_absolute_add (now,
+                                                   lookahead_sign);
+
+
+  /* finally, do actual work */
+  if (GNUNET_OK != mint_keys_update_signkeys ())
+    return 1;
+
+  if (GNUNET_OK != mint_keys_update_denomkeys ())
     return 1;
   return 0;
 }
