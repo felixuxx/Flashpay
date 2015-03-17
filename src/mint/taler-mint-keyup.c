@@ -321,7 +321,9 @@ get_cointype_file (const struct CoinTypeParams *p,
 /**
  * Get the latest key file from a past run of the key generation
  * tool.  Used to calculate the starting time for the keys we
- * generate during this invocation.
+ * generate during this invocation.  This function is used to
+ * handle both signing keys and coin keys, as in both cases
+ * the filenames correspond to the timestamps we need.
  *
  * @param cls closure, a `struct GNUNET_TIME_Absolute *`, updated
  *                     to contain the highest timestamp (below #now)
@@ -349,7 +351,6 @@ get_anchor_iter (void *cls,
             filename);
     return GNUNET_OK;
   }
-  // TODO: check if it's actually a valid key file?
   if (stamp.abs_value_us <= now.abs_value_us)
     *anchor = GNUNET_TIME_absolute_max (stamp,
                                         *anchor);
@@ -456,7 +457,8 @@ create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
 
 
 /**
- *
+ * Generate signing keys starting from the last key found to
+ * the lookahead time.
  *
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
@@ -483,7 +485,7 @@ mint_keys_update_signkeys ()
   GNUNET_asprintf (&signkey_dir,
                    "%s" DIR_SEPARATOR_STR DIR_SIGNKEYS,
                    mintdir);
-  // make sure the directory exists
+  /* make sure the directory exists */
   if (GNUNET_OK !=
       GNUNET_DISK_directory_create (signkey_dir))
   {
@@ -494,38 +496,35 @@ mint_keys_update_signkeys ()
 
   get_anchor (signkey_dir,
               signkey_duration,
-              GNUNET_TIME_UNIT_ZERO,
+              GNUNET_TIME_UNIT_ZERO /* no overlap for signing keys */,
               &anchor);
 
   while (anchor.abs_value_us < lookahead_sign_stamp.abs_value_us)
   {
     const char *skf;
+    struct TALER_MINT_SignKeyIssuePriv signkey_issue;
+    ssize_t nwrite;
 
     skf = get_signkey_file (anchor);
-    if (GNUNET_YES !=
-        GNUNET_DISK_file_test (skf))
+    GNUNET_break (GNUNET_YES !=
+                  GNUNET_DISK_file_test (skf));
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Generating signing key for %s.\n",
+                GNUNET_STRINGS_absolute_time_to_string (anchor));
+    create_signkey_issue_priv (anchor,
+                               signkey_duration,
+                               &signkey_issue);
+    nwrite = GNUNET_DISK_fn_write (skf,
+                                   &signkey_issue,
+                                   sizeof (struct TALER_MINT_SignKeyIssue),
+                                   GNUNET_DISK_PERM_USER_WRITE | GNUNET_DISK_PERM_USER_READ);
+    if (nwrite != sizeof (struct TALER_MINT_SignKeyIssue))
     {
-      struct TALER_MINT_SignKeyIssuePriv signkey_issue;
-      ssize_t nwrite;
-
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "Generating signing key for %s.\n",
-                  GNUNET_STRINGS_absolute_time_to_string (anchor));
-      create_signkey_issue_priv (anchor,
-                                 signkey_duration,
-                                 &signkey_issue);
-      nwrite = GNUNET_DISK_fn_write (skf,
-                                     &signkey_issue,
-                                     sizeof (struct TALER_MINT_SignKeyIssue),
-                                     GNUNET_DISK_PERM_USER_WRITE | GNUNET_DISK_PERM_USER_READ);
-      if (nwrite != sizeof (struct TALER_MINT_SignKeyIssue))
-      {
-        fprintf (stderr,
-                 "Failed to write to file `%s': %s\n",
-                 skf,
-                 STRERROR (errno));
-        return GNUNET_SYSERR;
-      }
+      fprintf (stderr,
+               "Failed to write to file `%s': %s\n",
+               skf,
+               STRERROR (errno));
+      return GNUNET_SYSERR;
     }
     anchor = GNUNET_TIME_absolute_add (anchor,
                                        signkey_duration);
@@ -549,37 +548,36 @@ get_cointype_params (const char *ct,
   const char *dir;
   unsigned long long rsa_keysize;
 
-  /* FIXME: is 'ct' option or section name? */
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
-                                           "mint_denom_duration_withdraw",
                                            ct,
+                                           "duration_withdraw",
                                            &params->duration_withdraw))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "mint_denom_duration_withdraw");
+                               "duration_withdraw");
     return GNUNET_SYSERR;
   }
   ROUND_TO_SECS (params->duration_withdraw,
                  rel_value_us);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
-                                           "mint_denom_duration_spend",
                                            ct,
+                                           "duration_spend",
                                            &params->duration_spend))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "mint_denom_duration_spend");
+                               "duration_spend");
     return GNUNET_SYSERR;
   }
   ROUND_TO_SECS (params->duration_spend,
                  rel_value_us);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
-                                           "mint_denom_duration_overlap",
                                            ct,
+                                           "duration_overlap",
                                            &params->duration_overlap))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
@@ -591,13 +589,13 @@ get_cointype_params (const char *ct,
                  rel_value_us);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (kcfg,
-                                             "mint_denom_rsa_keysize",
                                              ct,
+                                             "rsa_keysize",
                                              &rsa_keysize))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "mint_denom_rsa_keysize");
+                               "rsa_keysize");
     return GNUNET_SYSERR;
   }
   if ( (rsa_keysize > 4 * 2048) ||
@@ -611,46 +609,46 @@ get_cointype_params (const char *ct,
   params->rsa_keysize = (unsigned int) rsa_keysize;
   if (GNUNET_OK !=
       TALER_config_get_denom (kcfg,
-                              "mint_denom_value",
                               ct,
+                              "value",
                               &params->value))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "mint_denom_value");
+                               "value");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       TALER_config_get_denom (kcfg,
-                              "mint_denom_fee_withdraw",
                               ct,
+                              "fee_withdraw",
                               &params->fee_withdraw))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "mint_denom_fee_withdraw");
+                               "fee_withdraw");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       TALER_config_get_denom (kcfg,
-                              "mint_denom_fee_deposit",
                               ct,
+                              "fee_deposit",
                               &params->fee_deposit))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "mint_denom_fee_deposit");
+                               "fee_deposit");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       TALER_config_get_denom (kcfg,
-                              "mint_denom_fee_refresh",
                               ct,
+                              "fee_refresh",
                               &params->fee_refresh))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                ct,
-                               "mint_denom_fee_refresh");
+                               "fee_refresh");
     return GNUNET_SYSERR;
   }
 
