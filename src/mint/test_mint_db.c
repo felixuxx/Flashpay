@@ -170,7 +170,7 @@ run (void *cls, char *const *args, const char *cfgfile,
   result = 4;
   FAILIF (GNUNET_OK != TALER_MINT_DB_reserves_in_insert (db,
                                                          &reserve,
-                                                         amount,
+                                                         &amount,
                                                          expiry));
   FAILIF (GNUNET_OK != check_reserve (db,
                                       &reserve_pub,
@@ -180,7 +180,7 @@ run (void *cls, char *const *args, const char *cfgfile,
                                       expiry.abs_value_us));
   FAILIF (GNUNET_OK != TALER_MINT_DB_reserves_in_insert (db,
                                                          &reserve,
-                                                         amount,
+                                                         &amount,
                                                          expiry));
   FAILIF (GNUNET_OK != check_reserve (db,
                                       &reserve_pub,
