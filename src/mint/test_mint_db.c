@@ -194,9 +194,18 @@ run (void *cls, char *const *args, const char *cfgfile,
   cbc.denom_pub = dkp->pub;
   cbc.sig = GNUNET_CRYPTO_rsa_sign (dkp->priv, &h_blind, sizeof (h_blind));
   (void) memcpy (&cbc.reserve_pub, &reserve_pub, sizeof (reserve_pub));
+  amount.value--;
+  amount.fraction--;
   FAILIF (GNUNET_OK != TALER_MINT_DB_insert_collectable_blindcoin (db,
                                                                    &h_blind,
+                                                                   amount,
                                                                    &cbc));
+  FAILIF (GNUNET_OK != check_reserve (db,
+                                      &reserve_pub,
+                                      amount.value,
+                                      amount.fraction,
+                                      amount.currency,
+                                      expiry.abs_value_us));
   FAILIF (GNUNET_YES != TALER_MINT_DB_get_collectable_blindcoin (db,
                                                                  &h_blind,
                                                                  &cbc2));
