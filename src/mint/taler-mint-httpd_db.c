@@ -35,26 +35,6 @@
 
 
 /**
- * Get an amount in the mint's currency that is zero.
- *
- * @return zero amount in the mint's currency
- */
-static struct TALER_Amount
-mint_amount_native_zero ()
-{
-  struct TALER_Amount amount;
-
-  memset (&amount,
-          0,
-          sizeof (amount));
-  memcpy (amount.currency,
-          MINT_CURRENCY,
-          strlen (MINT_CURRENCY) + 1);
-  return amount;
-}
-
-
-/**
  * Execute a deposit.  The validity of the coin and signature
  * have already been checked.  The database must now check that
  * the coin is not (double or over) spent, and execute the
@@ -99,9 +79,12 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
   mks = TALER_MINT_key_state_acquire ();
   dki = TALER_MINT_get_denom_key (mks,
                                   deposit->coin.denom_pub);
-  value = TALER_amount_ntoh (dki->issue.value);
-  fee_deposit = TALER_amount_ntoh (dki->issue.fee_deposit);
-  fee_refresh = TALER_amount_ntoh (dki->issue.fee_refresh);
+  TALER_amount_ntoh (&value,
+                     &dki->issue.value);
+  TALER_amount_ntoh (&fee_deposit,
+                     &dki->issue.fee_deposit);
+  TALER_amount_ntoh (&fee_refresh,
+                     &dki->issue.fee_refresh);
   TALER_MINT_key_state_release (mks);
 
   if (GNUNET_OK !=
@@ -113,26 +96,49 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
   tl = TALER_MINT_DB_get_coin_transactions (db_conn,
                                             &deposit->coin.coin_pub);
   spent = fee_deposit; /* fee for THIS transaction */
-  /* FIXME: need to deal better with integer overflows
-     in the logic that follows! (change amount.c API! -- #3637) */
-  spent = TALER_amount_add (spent,
-                            deposit->amount);
+  if (GNUNET_OK !=
+      TALER_amount_add (&spent,
+                        &spent,
+                        &deposit->amount))
+  {
+    GNUNET_break (0);
+    TALER_MINT_DB_free_coin_transaction_list (tl);
+    return TALER_MINT_reply_internal_db_error (connection);
+  }
 
   for (pos = tl; NULL != pos; pos = pos->next)
   {
     switch (pos->type)
     {
     case TALER_MINT_DB_TT_DEPOSIT:
-      spent = TALER_amount_add (spent,
-                                pos->details.deposit->amount);
-      spent = TALER_amount_add (spent,
-                                fee_deposit);
+      if ( (GNUNET_OK !=
+            TALER_amount_add (&spent,
+                              &spent,
+                              &pos->details.deposit->amount)) ||
+           (GNUNET_OK !=
+            TALER_amount_add (&spent,
+                              &spent,
+                              &fee_deposit)) )
+      {
+        GNUNET_break (0);
+        TALER_MINT_DB_free_coin_transaction_list (tl);
+        return TALER_MINT_reply_internal_db_error (connection);
+      }
       break;
     case TALER_MINT_DB_TT_REFRESH_MELT:
-      spent = TALER_amount_add (spent,
-                                pos->details.melt->amount);
-      spent = TALER_amount_add (spent,
-                                fee_refresh);
+      if ( (GNUNET_OK !=
+            TALER_amount_add (&spent,
+                              &spent,
+                              &pos->details.melt->amount)) ||
+           (GNUNET_OK !=
+            TALER_amount_add (&spent,
+                              &spent,
+                              &fee_refresh)) )
+      {
+        GNUNET_break (0);
+        TALER_MINT_DB_free_coin_transaction_list (tl);
+        return TALER_MINT_reply_internal_db_error (connection);
+      }
       break;
     case TALER_MINT_DB_TT_LOCK:
       /* should check if lock is still active,
@@ -146,11 +152,12 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
     }
   }
 
-  if (0 < TALER_amount_cmp (spent, value))
+  if (0 < TALER_amount_cmp (&spent,
+                            &value))
   {
     TALER_MINT_DB_rollback (db_conn);
     ret = TALER_MINT_reply_deposit_insufficient_funds (connection,
-                                               tl);
+                                                       tl);
     TALER_MINT_DB_free_coin_transaction_list (tl);
     return ret;
   }
@@ -251,6 +258,7 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
   struct TALER_Amount withdraw_total;
   struct TALER_Amount balance;
   struct TALER_Amount value;
+  struct TALER_Amount fee_withdraw;
   struct GNUNET_HashCode h_blind;
   int res;
 
@@ -318,8 +326,20 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
   }
 
   /* calculate amount required including fees */
-  amount_required = TALER_amount_add (TALER_amount_ntoh (dki->issue.value),
-                                      TALER_amount_ntoh (dki->issue.fee_withdraw));
+  TALER_amount_ntoh (&value,
+                     &dki->issue.value);
+  TALER_amount_ntoh (&fee_withdraw,
+                     &dki->issue.fee_withdraw);
+
+  if (GNUNET_OK !=
+      TALER_amount_add (&amount_required,
+                        &value,
+                        &fee_withdraw))
+  {
+    TALER_MINT_DB_rollback (db_conn);
+    TALER_MINT_key_state_release (key_state);
+    return TALER_MINT_reply_internal_db_error (connection);
+  }
 
   /* calculate balance of the reserve */
   res = 0;
@@ -331,29 +351,45 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
       if (0 == (res & 1))
         deposit_total = pos->details.bank->amount;
       else
-        deposit_total = TALER_amount_add (deposit_total,
-                                          pos->details.bank->amount);
+        if (GNUNET_OK !=
+            TALER_amount_add (&deposit_total,
+                              &deposit_total,
+                              &pos->details.bank->amount))
+        {
+          TALER_MINT_DB_rollback (db_conn);
+          TALER_MINT_key_state_release (key_state);
+          return TALER_MINT_reply_internal_db_error (connection);
+        }
       res |= 1;
       break;
     case TALER_MINT_DB_RO_WITHDRAW_COIN:
       tdki = TALER_MINT_get_denom_key (key_state,
                                        pos->details.withdraw->denom_pub);
-      value = TALER_amount_ntoh (tdki->issue.value);
+      TALER_amount_ntoh (&value,
+                         &tdki->issue.value);
       if (0 == (res & 2))
         withdraw_total = value;
       else
-        withdraw_total = TALER_amount_add (withdraw_total,
-                                           value);
+        if (GNUNET_OK !=
+            TALER_amount_add (&withdraw_total,
+                              &withdraw_total,
+                              &value))
+        {
+          TALER_MINT_DB_rollback (db_conn);
+          TALER_MINT_key_state_release (key_state);
+          return TALER_MINT_reply_internal_db_error (connection);
+        }
       res |= 2;
       break;
     }
   }
-  GNUNET_break (0 > TALER_amount_cmp (withdraw_total,
-                                      deposit_total));
-  balance = TALER_amount_subtract (deposit_total,
-                                   withdraw_total);
-  if (0 < TALER_amount_cmp (amount_required,
-                            balance))
+  /* All reserve balances should be non-negative */
+  GNUNET_break (GNUNET_SYSERR !=
+                TALER_amount_subtract (&balance,
+                                       &deposit_total,
+                                       &withdraw_total));
+  if (0 < TALER_amount_cmp (&amount_required,
+                            &balance))
   {
     TALER_MINT_key_state_release (key_state);
     TALER_MINT_DB_rollback (db_conn);
@@ -450,7 +486,8 @@ refresh_accept_melts (struct MHD_Connection *connection,
                                         "denom not found"))
       ? GNUNET_NO : GNUNET_SYSERR;
 
-  coin_value = TALER_amount_ntoh (dki->value);
+  TALER_amount_ntoh (&coin_value,
+                     &dki->value);
   tl = TALER_MINT_DB_get_coin_transactions (db_conn,
                                             &coin_public_info->coin_pub);
   /* FIXME: #3636: compute how much value is left with this coin and
@@ -459,8 +496,8 @@ refresh_accept_melts (struct MHD_Connection *connection,
   /* Refuse to refresh when the coin does not have enough money left to
    * pay the refreshing fees of the coin. */
 
-  if (TALER_amount_cmp (coin_residual,
-                        coin_details->melt_amount) < 0)
+  if (TALER_amount_cmp (&coin_residual,
+                        &coin_details->melt_amount) < 0)
   {
     res = (MHD_YES ==
            TALER_MINT_reply_refresh_melt_insufficient_funds (connection,

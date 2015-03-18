@@ -299,7 +299,8 @@ TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
   dc.h_contract = *h_contract;
   dc.h_wire = *h_wire;
   dc.transaction_id = GNUNET_htonll (transaction_id);
-  dc.amount = TALER_amount_hton (*amount);
+  TALER_amount_hton (&dc.amount,
+                     amount);
   dc.coin_pub = *coin_pub;
   dc.merchant = *merchant;
   TALER_MINT_keys_sign (&dc.purpose,
@@ -346,7 +347,8 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
         dr.h_contract = deposit->h_contract;
         dr.h_wire = deposit->h_wire;
         dr.transaction_id = GNUNET_htonll (deposit->transaction_id);
-        dr.amount = TALER_amount_hton (deposit->amount);
+        TALER_amount_hton (&dr.amount,
+                           &deposit->amount);
         dr.coin_pub = deposit->coin.coin_pub;
         transaction = TALER_JSON_from_ecdsa_sig (&dr.purpose,
                                                  &deposit->csig);
@@ -362,7 +364,8 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
         ms.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_COIN);
         ms.purpose.size = htonl (sizeof (struct RefreshMeltCoinSignature));
         ms.melt_hash = melt->melt_hash;
-        ms.amount = TALER_amount_hton (melt->amount);
+        TALER_amount_hton (&ms.amount,
+                           &melt->amount);
         ms.coin_pub = melt->coin.coin_pub;
         transaction = TALER_JSON_from_ecdsa_sig (&ms.purpose,
                                                  &melt->coin_sig);
@@ -382,7 +385,7 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
     json_array_append_new (history,
                            json_pack ("{s:s, s:o}",
                                       "type", type,
-                                      "amount", TALER_JSON_from_amount (value),
+                                      "amount", TALER_JSON_from_amount (&value),
                                       "signature", transaction));
   }
   return history;
@@ -419,7 +422,7 @@ TALER_MINT_reply_deposit_insufficient_funds (struct MHD_Connection *connection,
  *
  * @param rh reserve history to JSON-ify
  * @param balance[OUT] set to current reserve balance
- * @return json representation of the @a rh
+ * @return json representation of the @a rh, NULL on error
  */
 static json_t *
 compile_reserve_history (const struct ReserveHistory *rh,
@@ -446,14 +449,20 @@ compile_reserve_history (const struct ReserveHistory *rh,
       if (0 == ret)
         deposit_total = pos->details.bank->amount;
       else
-        deposit_total = TALER_amount_add (deposit_total,
-                                          pos->details.bank->amount);
+        if (GNUNET_OK !=
+            TALER_amount_add (&deposit_total,
+                              &deposit_total,
+                              &pos->details.bank->amount))
+        {
+          json_decref (json_history);
+          return NULL;
+        }
       ret = 1;
       json_array_append_new (json_history,
                              json_pack ("{s:s, s:o, s:o}",
                                         "type", "DEPOSIT",
                                         "wire", pos->details.bank->wire,
-                                        "amount", TALER_JSON_from_amount (pos->details.bank->amount)));
+                                        "amount", TALER_JSON_from_amount (&pos->details.bank->amount)));
       break;
     case TALER_MINT_DB_RO_WITHDRAW_COIN:
       break;
@@ -472,12 +481,20 @@ compile_reserve_history (const struct ReserveHistory *rh,
 
       dki = TALER_MINT_get_denom_key (key_state,
                                       pos->details.withdraw->denom_pub);
-      value = TALER_amount_ntoh (dki->issue.value);
+      TALER_amount_ntoh (&value,
+                         &dki->issue.value);
       if (0 == ret)
         withdraw_total = value;
       else
-        withdraw_total = TALER_amount_add (withdraw_total,
-                                           value);
+        if (GNUNET_OK !=
+            TALER_amount_add (&withdraw_total,
+                              &withdraw_total,
+                              &value))
+        {
+          TALER_MINT_key_state_release (key_state);
+          json_decref (json_history);
+          return NULL;
+        }
       ret = 1;
       wr.purpose.purpose = htonl (TALER_SIGNATURE_WITHDRAW);
       wr.purpose.size = htonl (sizeof (struct TALER_WithdrawRequest));
@@ -493,15 +510,22 @@ compile_reserve_history (const struct ReserveHistory *rh,
                              json_pack ("{s:s, s:o, s:o}",
                                         "type", "WITHDRAW",
                                         "signature", transaction,
-                                        "amount", TALER_JSON_from_amount (value)));
+                                        "amount", TALER_JSON_from_amount (&value)));
 
       break;
     }
   }
   TALER_MINT_key_state_release (key_state);
 
-  *balance = TALER_amount_subtract (deposit_total,
-                                    withdraw_total);
+  if (GNUNET_SYSERR ==
+      TALER_amount_subtract (balance,
+                             &deposit_total,
+                             &withdraw_total))
+  {
+    GNUNET_break (0);
+    json_decref (json_history);
+    return NULL;
+  }
   return json_history;
 }
 
@@ -524,7 +548,10 @@ TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
 
   json_history = compile_reserve_history (rh,
                                           &balance);
-  json_balance = TALER_JSON_from_amount (balance);
+  if (NULL == json_history)
+    return TALER_MINT_reply_internal_error (connection,
+                                            "balance calculation failure");
+  json_balance = TALER_JSON_from_amount (&balance);
   ret = TALER_MINT_reply_json_pack (connection,
                                     MHD_HTTP_OK,
                                     "{s:o, s:o}",
@@ -556,7 +583,10 @@ TALER_MINT_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *connec
 
   json_history = compile_reserve_history (rh,
                                           &balance);
-  json_balance = TALER_JSON_from_amount (balance);
+  if (NULL == json_history)
+    return TALER_MINT_reply_internal_error (connection,
+                                            "balance calculation failure");
+  json_balance = TALER_JSON_from_amount (&balance);
   ret = TALER_MINT_reply_json_pack (connection,
                                     MHD_HTTP_PAYMENT_REQUIRED,
                                     "{s:s, s:o, s:o}",
@@ -625,9 +655,9 @@ TALER_MINT_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connect
                                      "error", "insufficient funds",
                                      "coin-pub", TALER_JSON_from_data (coin_pub,
                                                                        sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey)),
-                                     "original-value", TALER_JSON_from_amount (coin_value),
-                                     "residual-value", TALER_JSON_from_amount (residual),
-                                     "requested-value", TALER_JSON_from_amount (requested),
+                                     "original-value", TALER_JSON_from_amount (&coin_value),
+                                     "residual-value", TALER_JSON_from_amount (&residual),
+                                     "requested-value", TALER_JSON_from_amount (&requested),
                                      "history", history);
 }
 

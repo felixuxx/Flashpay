@@ -878,8 +878,10 @@ TALER_MINT_parse_amount_json (struct MHD_Connection *connection,
   json_int_t value;
   json_int_t fraction;
   const char *currency;
-  struct TALER_Amount a;
 
+  memset (amount,
+          0,
+          sizeof (struct TALER_Amount));
   if (-1 == json_unpack (f,
                          "{s:I, s:I, s:s}",
                          "value", &value,
@@ -897,7 +899,7 @@ TALER_MINT_parse_amount_json (struct MHD_Connection *connection,
   }
   if ( (value < 0) ||
        (fraction < 0) ||
-       (value > UINT32_MAX) ||
+       (value > UINT64_MAX) ||
        (fraction > UINT32_MAX) )
   {
     LOG_WARNING ("Amount specified not in allowed range\n");
@@ -922,11 +924,11 @@ TALER_MINT_parse_amount_json (struct MHD_Connection *connection,
       return GNUNET_SYSERR;
     return GNUNET_NO;
   }
-  a.value = (uint32_t) value;
-  a.fraction = (uint32_t) fraction;
+  amount->value = (uint64_t) value;
+  amount->fraction = (uint32_t) fraction;
   GNUNET_assert (strlen (MINT_CURRENCY) < TALER_CURRENCY_LEN);
-  strcpy (a.currency, MINT_CURRENCY);
-  *amount = TALER_amount_normalize (a);
+  strcpy (amount->currency, MINT_CURRENCY);
+  TALER_amount_normalize (amount);
   return GNUNET_OK;
 }
 

@@ -161,9 +161,11 @@ reservemod_add (struct TALER_Amount denom)
                                             "balance_fraction",
                                             "balance_currency",
                                             &old_denom));
-    new_denom = TALER_amount_add (old_denom,
-                                  denom);
-    new_denom_nbo = TALER_amount_hton (new_denom);
+    TALER_amount_add (&new_denom,
+                      &old_denom,
+                      &denom);
+    TALER_amount_hton (&new_denom_nbo,
+                       &new_denom);
     result = PQexecParams (db_conn,
                            "UPDATE reserves"
                            " SET balance_value = $1, balance_fraction = $2, status_sig = NULL, status_sign_pub = NULL"

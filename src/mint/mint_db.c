@@ -807,7 +807,8 @@ reserves_update (PGconn *db,
     TALER_DB_QUERY_PARAM_PTR (&expiry_nbo),
     TALER_DB_QUERY_PARAM_END
   };
-  balance_nbo = TALER_amount_hton (reserve->balance);
+  TALER_amount_hton (&balance_nbo,
+                     &reserve->balance);
   expiry_nbo = GNUNET_TIME_absolute_hton (reserve->expiry);
   result = TALER_DB_exec_prepared (db,
                                    "update_reserve",
@@ -837,7 +838,7 @@ reserves_update (PGconn *db,
 int
 TALER_MINT_DB_reserves_in_insert (PGconn *db,
                                   struct Reserve *reserve,
-                                  const struct TALER_Amount balance,
+                                  const struct TALER_Amount *balance,
                                   const struct GNUNET_TIME_Absolute expiry)
 {
   struct TALER_AmountNBO balance_nbo;
@@ -862,7 +863,8 @@ TALER_MINT_DB_reserves_in_insert (PGconn *db,
     TALER_MINT_DB_rollback (db);
     return GNUNET_SYSERR;
   }
-  balance_nbo = TALER_amount_hton (balance);
+  TALER_amount_hton (&balance_nbo,
+                     balance);
   expiry_nbo = GNUNET_TIME_absolute_hton (expiry);
   if (GNUNET_NO == reserve_exists)
   {
@@ -907,19 +909,27 @@ TALER_MINT_DB_reserves_in_insert (PGconn *db,
     QUERY_ERR (result);
     goto rollback;
   }
-  PQclear (result); result = NULL;
+  PQclear (result);
+  result = NULL;
   if (GNUNET_NO == reserve_exists)
   {
     if (GNUNET_OK != TALER_MINT_DB_commit (db))
       return GNUNET_SYSERR;
-    reserve->balance = balance;
+    reserve->balance = *balance;
     reserve->expiry = expiry;
     return GNUNET_OK;
   }
   /* Update reserve */
   struct Reserve updated_reserve;
   updated_reserve.pub = reserve->pub;
-  updated_reserve.balance = TALER_amount_add (reserve->balance, balance);
+
+  if (GNUNET_OK !=
+      TALER_amount_add (&updated_reserve.balance,
+                        &reserve->balance,
+                        balance))
+  {
+    return GNUNET_SYSERR;
+  }
   updated_reserve.expiry = GNUNET_TIME_absolute_max (expiry, reserve->expiry);
   if (GNUNET_OK != reserves_update (db, &updated_reserve))
     goto rollback;
@@ -1350,7 +1360,8 @@ TALER_MINT_DB_insert_deposit (PGconn *db_conn,
       GNUNET_CRYPTO_rsa_signature_encode (deposit->coin.denom_sig,
                                           &denom_sig_enc);
   json_wire_enc = json_dumps (deposit->wire, JSON_COMPACT);
-  amount_nbo = TALER_amount_hton (deposit->amount);
+  TALER_amount_hton (&amount_nbo,
+                     &deposit->amount);
   struct TALER_DB_QueryParam params[]= {
     TALER_DB_QUERY_PARAM_PTR (&deposit->coin.coin_pub),
     TALER_DB_QUERY_PARAM_PTR_SIZED (denom_pub_enc, denom_pub_enc_size),

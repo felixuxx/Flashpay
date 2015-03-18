@@ -82,6 +82,8 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   struct TALER_Amount cost;
   struct TALER_Amount total_cost;
   struct TALER_Amount melt;
+  struct TALER_Amount value;
+  struct TALER_Amount fee_withdraw;
   struct TALER_Amount total_melt;
 
   /* check that signature from the session public key is ok */
@@ -107,7 +109,8 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_SESSION);
   body.purpose.size = htonl (sizeof (struct RefreshMeltSessionSignature));
   body.melt_hash = melt_hash;
-  body.amount = TALER_amount_hton (coin_melt_details->melt_amount);
+  TALER_amount_hton (&body.amount,
+                     &coin_melt_details->melt_amount);
 
   if (GNUNET_OK != GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_REFRESH_MELT_SESSION,
                                                &body.purpose,
@@ -130,11 +133,22 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   {
     dki = &TALER_MINT_get_denom_key (key_state,
                                      denom_pubs[i])->issue;
-    cost = TALER_amount_add (TALER_amount_ntoh (dki->value),
-                             TALER_amount_ntoh (dki->fee_withdraw));
+    TALER_amount_ntoh (&value,
+                       &dki->value);
+    TALER_amount_ntoh (&fee_withdraw,
+                       &dki->fee_withdraw);
     // FIXME: #3637
-    total_cost = TALER_amount_add (cost,
-                                   total_cost);
+    if ( (GNUNET_OK !=
+          TALER_amount_add (&cost,
+                            &value,
+                            &fee_withdraw)) ||
+         (GNUNET_OK !=
+          TALER_amount_add (&total_cost,
+                            &cost,
+                            &total_cost)) )
+    {
+      // FIXME...
+    }
   }
 
   // FIXME: badness, use proper way to set to zero...
@@ -146,13 +160,18 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
     // melt = coin_values[i]; // FIXME: #3636!
 
     // FIXME: #3637
-    total_melt = TALER_amount_add (melt,
-                                   total_melt);
+    if (GNUNET_OK !=
+        TALER_amount_add (&total_melt,
+                          &melt,
+                          &total_melt))
+    {
+      // FIXME ...
+    }
   }
   TALER_MINT_key_state_release (key_state);
   if (0 !=
-      TALER_amount_cmp (total_cost,
-                        total_melt) )
+      TALER_amount_cmp (&total_cost,
+                        &total_melt) )
   {
     /* We require total value of coins being melted and
        total value of coins being generated to match! */
@@ -269,7 +288,8 @@ verify_coin_public_info (struct MHD_Connection *connection,
   body.purpose.size = htonl (sizeof (struct RefreshMeltCoinSignature));
   body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_COIN);
   body.melt_hash = *melt_hash;
-  body.amount = TALER_amount_hton (r_melt_detail->melt_amount);
+  TALER_amount_hton (&body.amount,
+                     &r_melt_detail->melt_amount);
   body.coin_pub = r_public_info->coin_pub;
   if (GNUNET_OK !=
       GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_REFRESH_MELT_COIN,

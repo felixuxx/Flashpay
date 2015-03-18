@@ -233,10 +233,14 @@ hash_coin_type (const struct CoinTypeParams *p,
           sizeof (struct CoinTypeNBO));
   p_nbo.duration_spend = GNUNET_TIME_relative_hton (p->duration_spend);
   p_nbo.duration_withdraw = GNUNET_TIME_relative_hton (p->duration_withdraw);
-  p_nbo.value = TALER_amount_hton (p->value);
-  p_nbo.fee_withdraw = TALER_amount_hton (p->fee_withdraw);
-  p_nbo.fee_deposit = TALER_amount_hton (p->fee_deposit);
-  p_nbo.fee_refresh = TALER_amount_hton (p->fee_refresh);
+  TALER_amount_hton (&p_nbo.value,
+                     &p->value);
+  TALER_amount_hton (&p_nbo.fee_withdraw,
+                     &p->fee_withdraw);
+  TALER_amount_hton (&p_nbo.fee_deposit,
+                     &p->fee_deposit);
+  TALER_amount_hton (&p_nbo.fee_refresh,
+                     &p->fee_refresh);
   p_nbo.rsa_keysize = htonl (p->rsa_keysize);
   GNUNET_CRYPTO_hash (&p_nbo,
                       sizeof (struct CoinTypeNBO),
@@ -273,7 +277,7 @@ get_cointype_dir (const struct CoinTypeParams *p)
   GNUNET_assert (HASH_CUTOFF <= strlen (hash_str) + 1);
   hash_str[HASH_CUTOFF] = 0;
 
-  val_str = TALER_amount_to_string (p->value);
+  val_str = TALER_amount_to_string (&p->value);
   for (i = 0; i < strlen (val_str); i++)
     if ( (':' == val_str[i]) ||
          ('.' == val_str[i]) )
@@ -687,11 +691,14 @@ create_denomkey_issue (const struct CoinTypeParams *params,
   dki->issue.expire_spend =
     GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
                                                            params->duration_spend));
-  dki->issue.value = TALER_amount_hton (params->value);
-  dki->issue.fee_withdraw = TALER_amount_hton (params->fee_withdraw);
-  dki->issue.fee_deposit = TALER_amount_hton (params->fee_deposit);
-  dki->issue.fee_refresh = TALER_amount_hton (params->fee_refresh);
-
+  TALER_amount_hton (&dki->issue.value,
+                     &params->value);
+  TALER_amount_hton (&dki->issue.fee_withdraw,
+                     &params->fee_withdraw);
+  TALER_amount_hton (&dki->issue.fee_deposit,
+                     &params->fee_deposit);
+  TALER_amount_hton (&dki->issue.fee_refresh,
+                     &params->fee_refresh);
   dki->issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOM);
   dki->issue.purpose.size = htonl (sizeof (struct TALER_MINT_DenomKeyIssuePriv) -
                                    offsetof (struct TALER_MINT_DenomKeyIssuePriv,

@@ -39,7 +39,7 @@
  * @return a json object describing the amount
  */
 json_t *
-TALER_JSON_from_amount (struct TALER_Amount amount);
+TALER_JSON_from_amount (const struct TALER_Amount *amount);
 
 
 /**

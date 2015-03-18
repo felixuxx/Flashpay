@@ -48,14 +48,25 @@
  * @return a json object describing the amount
  */
 json_t *
-TALER_JSON_from_amount (struct TALER_Amount amount)
+TALER_JSON_from_amount (const struct TALER_Amount *amount)
 {
   json_t *j;
 
-  j = json_pack ("{s: s, s:I, s:I}",
-                 "currency", amount.currency,
-                 "value", (json_int_t) amount.value,
-                 "fraction", (json_int_t) amount.fraction);
+  if ( (amount->value != (uint64_t) ((json_int_t) amount->value)) ||
+       (0 > ((json_int_t) amount->value)) )
+  {
+    /* Theoretically, json_int_t can be a 32-bit "long", or we might
+       have a 64-bit value which converted to a 63-bit signed long
+       long causes problems here.  So we check.  Note that depending
+       on the platform, the compiler may be able to statically tell
+       that at least the first check is always false. */
+    GNUNET_break (0);
+    return NULL;
+  }
+  j = json_pack ("{s:s, s:I, s:I}",
+                 "currency", amount->currency,
+                 "value", (json_int_t) amount->value,
+                 "fraction", (json_int_t) amount->fraction);
   GNUNET_assert (NULL != j);
   return j;
 }

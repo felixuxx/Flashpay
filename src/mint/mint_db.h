@@ -224,7 +224,7 @@ TALER_MINT_DB_reserve_get (PGconn *db,
 int
 TALER_MINT_DB_reserves_in_insert (PGconn *db,
                                   struct Reserve *reserve,
-                                  const struct TALER_Amount balance,
+                                  const struct TALER_Amount *balance,
                                   const struct GNUNET_TIME_Absolute expiry);
 
 

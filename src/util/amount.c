@@ -30,16 +30,6 @@
 #include "taler_util.h"
 #include <gcrypt.h>
 
-/**
- *
- */
-#define AMOUNT_FRAC_BASE 1000000
-
-/**
- *
- */
-#define AMOUNT_FRAC_LEN 6
-
 
 /**
  * Parse money amount description, in the format "A:B.C".
@@ -53,159 +43,260 @@ int
 TALER_string_to_amount (const char *str,
                         struct TALER_Amount *denom)
 {
-  size_t i; // pos in str
-  int n; // number tmp
-  size_t c; // currency pos
-  uint32_t b; // base for suffix
+  size_t i;
+  int n;
+  uint32_t b;
+  const char *colon;
+  const char *value;
 
   memset (denom,
           0,
           sizeof (struct TALER_Amount));
+  /* skip leading whitespace */
+  while (isspace(str[0]))
+    str++;
+  if ('\0' == str[0])
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Null before currency\n");
+    return GNUNET_SYSERR;
+  }
+  /* parse currency */
+  colon = strchr (str, (int) ':');
+  if ( (NULL == colon) ||
+       ((colon - str) >= TALER_CURRENCY_LEN) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Invalid currency specified before colon: `%s'",
+                str);
+    goto fail;
+  }
+  memcpy (denom->currency,
+          str,
+          colon - str);
+  /* skip colon */
+  value = colon + 1;
+  if ('\0' == value[0])
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Null before value\n");
+    goto fail;
+  }
 
+  /* parse value */
   i = 0;
-  while (isspace(str[i]))
-    i++;
-
-  if (0 == str[i])
+  while ('.' != value[i])
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "null before currency\n");
-    return GNUNET_SYSERR;
-  }
-
-  c = 0;
-  while (str[i] != ':')
-  {
-    if (0 == str[i])
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "null before colon");
-      return GNUNET_SYSERR;
-    }
-    if (c > 3)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "currency too long\n");
-      return GNUNET_SYSERR;
-    }
-    denom->currency[c] = str[i];
-    c++;
-    i++;
-  }
-
-  // skip colon
-  i++;
-
-  if (0 == str[i])
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "null before value\n");
-    return GNUNET_SYSERR;
-  }
-
-  while (str[i] != '.')
-  {
-    if (0 == str[i])
+    if ('\0' == value[i])
     {
       return GNUNET_OK;
     }
-    n = str[i] - '0';
-    if (n < 0 || n > 9)
+    if ( (str[i] < '0') || (str[i] > '9') )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "invalid character '%c' before comma at %u\n",
-                  (char) n,
-                  i);
-      return GNUNET_SYSERR;
+                  "Invalid character `%c'\n",
+                  str[i]);
+      goto fail;
+    }
+    n = str[i] - '0';
+    if (denom->value * 10 + n < denom->value)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Value too large\n");
+      goto fail;
     }
     denom->value = (denom->value * 10) + n;
     i++;
   }
 
-  // skip the dot
+  /* skip the dot */
   i++;
 
-  if (0 == str[i])
+  /* parse fraction */
+  if ('\0' == str[i])
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "null after dot");
-    return GNUNET_SYSERR;
+                "Null after dot");
+    goto fail;
   }
-
-  b = 100000;
-
-  while (0 != str[i])
+  b = TALER_AMOUNT_FRAC_BASE / 10;
+  while ('\0' != str[i])
   {
-    n = str[i] - '0';
-    if ( (0 == b) || (n < 0) || (n > 9) )
+    if (0 == b)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "error after comma");
-      return GNUNET_SYSERR;
+                  "Fractional value too small (only %u digits supported)",
+                  (unsigned int) TALER_AMOUNT_FRAC_LEN);
+      goto fail;
     }
+    if ( (str[i] < '0') || (str[i] > '9') )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Error after comma");
+      goto fail;
+    }
+    n = str[i] - '0';
     denom->fraction += n * b;
     b /= 10;
     i++;
   }
+  return GNUNET_OK;
 
+ fail:
+  /* set currency to 'invalid' to prevent accidental use */
+  memset (denom->currency,
+          0,
+          TALER_CURRENCY_LEN);
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Convert amount from host to network representation.
+ *
+ * @param res where to store amount in network representation
+ * @param d amount in host representation
+ */
+void
+TALER_amount_hton (struct TALER_AmountNBO *res,
+                   const struct TALER_Amount *d)
+{
+  res->value = GNUNET_htonll (d->value);
+  res->fraction = htonl (d->fraction);
+  memcpy (res->currency,
+          d->currency,
+          TALER_CURRENCY_LEN);
+}
+
+
+/**
+ * Convert amount from network to host representation.
+ *
+ * @param res where to store amount in host representation
+ * @param d amount in network representation
+ */
+void
+TALER_amount_ntoh (struct TALER_Amount *res,
+                   const struct TALER_AmountNBO *dn)
+{
+  res->value = GNUNET_ntohll (dn->value);
+  res->fraction = ntohl (dn->fraction);
+  memcpy (res->currency,
+          dn->currency,
+          TALER_CURRENCY_LEN);
+}
+
+
+/**
+ * Get the value of "zero" in a particular currency.
+ *
+ * @param cur currency description
+ * @param denom denomination to write the result to
+ * @return #GNUNET_OK if @a cur is a valid currency specification,
+ *         #GNUNET_SYSERR if it is invalid.
+ */
+int
+TALER_amount_get_zero (const char *cur,
+                       struct TALER_Amount *denom)
+{
+  size_t slen;
+
+  slen = strlen (cur);
+  if (slen >= TALER_CURRENCY_LEN)
+    return GNUNET_SYSERR;
+  memset (denom,
+          0,
+          sizeof (struct TALER_Amount));
+  memcpy (denom->currency,
+          cur,
+          slen);
   return GNUNET_OK;
 }
 
 
 /**
- * FIXME
+ * Set @a a to "invalid".
+ *
+ * @param a amount to set to invalid
  */
-struct TALER_AmountNBO
-TALER_amount_hton (const struct TALER_Amount d)
+static void
+invalidate (struct TALER_Amount *a)
 {
-  struct TALER_AmountNBO dn;
-  dn.value = htonl (d.value);
-  dn.fraction = htonl (d.fraction);
-  memcpy (dn.currency, d.currency, TALER_CURRENCY_LEN);
-
-  return dn;
+  memset (a,
+          0,
+          sizeof (struct TALER_Amount));
 }
 
 
 /**
- * FIXME
+ * Test if @a a is valid
+ *
+ * @param a amount to test
+ * @return #GNUNET_YES if valid,
+ *         #GNUNET_NO if invalid
  */
-struct TALER_Amount
-TALER_amount_ntoh (const struct TALER_AmountNBO dn)
+static int
+test_valid (const struct TALER_Amount *a)
 {
-  struct TALER_Amount d;
-  d.value = ntohl (dn.value);
-  d.fraction = ntohl (dn.fraction);
-  memcpy (d.currency, dn.currency, TALER_CURRENCY_LEN);
-
-  return d;
+  return ('\0' != a->currency[0]);
 }
 
 
 /**
- * Compare the value/fraction of two amounts.  Does not compare the currency,
- * i.e. comparing amounts with the same value and fraction but different
- * currency would return 0.
+ * Test if @a a1 and @a a2 are the same currency.
+ *
+ * @param a1 amount to test
+ * @param a2 amount to test
+ * @return #GNUNET_YES if @a a1 and @a a2 are the same currency
+ *         #GNUNET_NO if the currencies are different,
+ *         #GNUNET_SYSERR if either amount is invalid
+ */
+int
+TALER_amount_cmp_currency (const struct TALER_Amount *a1,
+                           const struct TALER_Amount *a2)
+{
+  if ( (GNUNET_NO == test_valid (a1)) ||
+       (GNUNET_NO == test_valid (a2)) )
+    return GNUNET_SYSERR;
+  if (0 == strcmp (a1->currency,
+                   a2->currency))
+    return GNUNET_YES;
+  return GNUNET_NO;
+}
+
+
+/**
+ * Compare the value/fraction of two amounts.  Does not compare the currency.
+ * Comparing amounts of different currencies will cause the program to abort().
+ * If unsure, check with #TALER_amount_cmp_currency() first to be sure that
+ * the currencies of the two amounts are identical.
  *
  * @param a1 first amount
  * @param a2 second amount
  * @return result of the comparison
  */
 int
-TALER_amount_cmp (struct TALER_Amount a1,
-                  struct TALER_Amount a2)
+TALER_amount_cmp (const struct TALER_Amount *a1,
+                  const struct TALER_Amount *a2)
 {
-  a1 = TALER_amount_normalize (a1);
-  a2 = TALER_amount_normalize (a2);
-  if (a1.value == a2.value)
+  struct TALER_Amount n1;
+  struct TALER_Amount n2;
+
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (a1, a2));
+  n1 = *a1;
+  n2 = *a2;
+  TALER_amount_normalize (&n1);
+  TALER_amount_normalize (&n2);
+  if (n1.value == n2.value)
   {
-    if (a1.fraction < a2.fraction)
+    if (n1.fraction < n2.fraction)
       return -1;
-    if (a1.fraction > a2.fraction)
+    if (n1.fraction > n2.fraction)
       return 1;
     return 0;
   }
-  if (a1.value < a2.value)
+  if (n1.value < n2.value)
     return -1;
   return 1;
 }
@@ -214,109 +305,142 @@ TALER_amount_cmp (struct TALER_Amount a1,
 /**
  * Perform saturating subtraction of amounts.
  *
+ * @param diff where to store (@a a1 - @a a2), or invalid if @a a2 > @a a1
  * @param a1 amount to subtract from
  * @param a2 amount to subtract
- * @return (a1-a2) or 0 if a2>=a1
+ * @return #GNUNET_OK if the subtraction worked,
+ *         #GNUNET_NO if @a a1 = @a a2
+ *         #GNUNET_SYSERR if @a a2 > @a a1 or currencies are incompatible;
+ *                        @a diff is set to invalid
  */
-struct TALER_Amount
-TALER_amount_subtract (struct TALER_Amount a1,
-                       struct TALER_Amount a2)
+int
+TALER_amount_subtract (struct TALER_Amount *diff,
+                       const struct TALER_Amount *a1,
+                       const struct TALER_Amount *a2)
 {
-  a1 = TALER_amount_normalize (a1);
-  a2 = TALER_amount_normalize (a2);
+  struct TALER_Amount n1;
+  struct TALER_Amount n2;
 
-  if (a1.value < a2.value)
+  if (GNUNET_YES !=
+      TALER_amount_cmp_currency (a1, a2))
   {
-    a1.value = 0;
-    a1.fraction = 0;
-    return a1;
+    invalidate (diff);
+    return GNUNET_SYSERR;
   }
+  n1 = *a1;
+  n2 = *a2;
+  TALER_amount_normalize (&n1);
+  TALER_amount_normalize (&n2);
 
-  if (a1.fraction < a2.fraction)
+  if (n1.fraction < n2.fraction)
   {
-    if (0 == a1.value)
+    if (0 == n1.value)
     {
-      a1.fraction = 0;
-      return a1;
+      invalidate (diff);
+      return GNUNET_SYSERR;
     }
-    a1.fraction += AMOUNT_FRAC_BASE;
-    a1.value -= 1;
+    n1.fraction += TALER_AMOUNT_FRAC_BASE;
+    n1.value--;
   }
-
-  a1.fraction -= a2.fraction;
-  a1.value -= a2.value;
-
-  return a1;
+  if (n1.value < n2.value)
+  {
+    invalidate (diff);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (a1->currency,
+                                        diff));
+  GNUNET_assert (n1.fraction >= n2.fraction);
+  diff->fraction = n1.fraction - n2.fraction;
+  GNUNET_assert (n1.value >= n2.value);
+  diff->value = n1.value - n2.value;
+  if ( (0 == diff->fraction) &&
+       (0 == diff->value) )
+    return GNUNET_NO;
+  return GNUNET_OK;
 }
 
 
 /**
- * Perform saturating addition of amounts.
+ * Perform addition of amounts.
  *
+ * @param sum where to store @a a1 + @a a2, set to "invalid" on overflow
  * @param a1 first amount to add
  * @param a2 second amount to add
- * @return sum of a1 and a2
+ * @return #GNUNET_OK if the addition worked,
+ *         #GNUNET_SYSERR on overflow
  */
-struct TALER_Amount
-TALER_amount_add (struct TALER_Amount a1,
-                  struct TALER_Amount a2)
+int
+TALER_amount_add (struct TALER_Amount *sum,
+                  const struct TALER_Amount *a1,
+                  const struct TALER_Amount *a2)
 {
-  a1 = TALER_amount_normalize (a1);
-  a2 = TALER_amount_normalize (a2);
+  struct TALER_Amount n1;
+  struct TALER_Amount n2;
 
-  a1.value += a2.value;
-  a1.fraction += a2.fraction;
-
-  if (0 == a1.currency[0])
+  if (GNUNET_YES !=
+      TALER_amount_cmp_currency (a1, a2))
   {
-    memcpy (a2.currency,
-            a1.currency,
-            TALER_CURRENCY_LEN);
+    invalidate (sum);
+    return GNUNET_SYSERR;
   }
+  n1 = *a1;
+  n2 = *a2;
+  TALER_amount_normalize (&n1);
+  TALER_amount_normalize (&n2);
 
-  if (0 == a2.currency[0])
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (a1->currency,
+                                        sum));
+  sum->value = n1.value + n2.value;
+  if (sum->value < n1.value)
   {
-    memcpy (a1.currency,
-            a2.currency,
-            TALER_CURRENCY_LEN);
+    /* integer overflow */
+    invalidate (sum);
+    return GNUNET_SYSERR;
   }
-
-  if ( (0 != a1.currency[0]) &&
-       (0 != memcmp (a1.currency,
-                     a2.currency,
-                     TALER_CURRENCY_LEN)) )
+  sum->fraction = n1.fraction + n2.fraction;
+  if (GNUNET_SYSERR ==
+      TALER_amount_normalize (sum))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "adding mismatching currencies\n");
+    /* integer overflow via carry from fraction */
+    invalidate (sum);
+    return GNUNET_SYSERR;
   }
-
-  if (a1.value < a2.value)
-  {
-    a1.value = UINT32_MAX;
-    a2.value = UINT32_MAX;
-    return a1;
-  }
-
-  return TALER_amount_normalize (a1);
+  return GNUNET_OK;
 }
 
 
 /**
  * Normalize the given amount.
  *
- * @param amout amount to normalize
- * @return normalized amount
+ * @param amount amount to normalize
+ * @return #GNUNET_OK if normalization worked
+ *         #GNUNET_NO if value was already normalized
+ *         #GNUNET_SYSERR if value was invalid or could not be normalized
  */
-struct TALER_Amount
-TALER_amount_normalize (struct TALER_Amount amount)
+int
+TALER_amount_normalize (struct TALER_Amount *amount)
 {
-  while ( (amount.value != UINT32_MAX) &&
-          (amount.fraction >= AMOUNT_FRAC_BASE) )
+  int ret;
+
+  if (GNUNET_YES != test_valid (amount))
+    return GNUNET_SYSERR;
+  ret = GNUNET_NO;
+  while ( (amount->value != UINT64_MAX) &&
+          (amount->fraction >= TALER_AMOUNT_FRAC_BASE) )
   {
-    amount.fraction -= AMOUNT_FRAC_BASE;
-    amount.value += 1;
+    amount->fraction -= TALER_AMOUNT_FRAC_BASE;
+    amount->value++;
+    ret = GNUNET_OK;
   }
-  return amount;
+  if (amount->fraction >= TALER_AMOUNT_FRAC_BASE)
+  {
+    /* failed to normalize, adding up fractions caused
+       main value to overflow! */
+    return GNUNET_SYSERR;
+  }
+  return ret;
 }
 
 
@@ -327,40 +451,40 @@ TALER_amount_normalize (struct TALER_Amount amount)
  * @return freshly allocated string representation
  */
 char *
-TALER_amount_to_string (struct TALER_Amount amount)
+TALER_amount_to_string (const struct TALER_Amount *amount)
 {
-  char tail[AMOUNT_FRAC_LEN + 1] = { 0 };
-  char curr[TALER_CURRENCY_LEN + 1] = { 0 };
-  char *result = NULL;
-  int len;
+  char *result;
+  uint32_t n;
+  char tail[TALER_AMOUNT_FRAC_LEN + 1];
+  unsigned int i;
+  struct TALER_Amount norm;
 
-  memcpy (curr, amount.currency, TALER_CURRENCY_LEN);
-
-  amount = TALER_amount_normalize (amount);
-  if (0 != amount.fraction)
+  if (GNUNET_YES != test_valid (amount))
+    return NULL;
+  norm = *amount;
+  GNUNET_break (GNUNET_SYSERR !=
+                TALER_amount_normalize (&norm));
+  if (0 != (n = norm.fraction))
   {
-    unsigned int i;
-    uint32_t n = amount.fraction;
-    for (i = 0; (i < AMOUNT_FRAC_LEN) && (n != 0); i++)
+    for (i = 0; (i < TALER_AMOUNT_FRAC_LEN) && (0 != n); i++)
     {
-      tail[i] = '0' + (n / (AMOUNT_FRAC_BASE / 10));
-      n = (n * 10) % (AMOUNT_FRAC_BASE);
+      tail[i] = '0' + (n / (TALER_AMOUNT_FRAC_BASE / 10));
+      n = (n * 10) % (TALER_AMOUNT_FRAC_BASE);
     }
-    tail[i] = 0;
-    len = GNUNET_asprintf (&result,
-                           "%s:%lu.%s",
-                           curr,
-                           (unsigned long) amount.value,
-                           tail);
+    tail[i] = '\0';
+    GNUNET_asprintf (&result,
+                     "%s:%llu.%s",
+                     norm.currency,
+                     (unsigned long long) norm.value,
+                     tail);
   }
   else
   {
-    len = GNUNET_asprintf (&result,
-                           "%s:%lu",
-                           curr,
-                           (unsigned long) amount.value);
+    GNUNET_asprintf (&result,
+                     "%s:%llu",
+                     norm.currency,
+                     (unsigned long long) norm.value);
   }
-  GNUNET_assert (len > 0);
   return result;
 }
 

@@ -412,10 +412,14 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
   denom_key_issue.start = GNUNET_TIME_absolute_hton (valid_from);
   denom_key_issue.expire_withdraw = GNUNET_TIME_absolute_hton (withdraw_valid_until);
   denom_key_issue.expire_spend = GNUNET_TIME_absolute_hton (deposit_valid_until);
-  denom_key_issue.value = TALER_amount_hton (value);
-  denom_key_issue.fee_withdraw = TALER_amount_hton (fee_withdraw);
-  denom_key_issue.fee_deposit = TALER_amount_hton (fee_deposit);
-  denom_key_issue.fee_refresh = TALER_amount_hton (fee_refresh);
+  TALER_amount_hton (&denom_key_issue.value,
+                     &value);
+  TALER_amount_hton (&denom_key_issue.fee_withdraw,
+                     &fee_withdraw);
+  TALER_amount_hton (&denom_key_issue.fee_deposit,
+                     &fee_deposit);
+  TALER_amount_hton (&denom_key_issue.fee_refresh,
+                     &fee_refresh);
   EXITIF (GNUNET_SYSERR ==
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOM,
                                       &denom_key_issue.purpose,

@@ -114,6 +114,19 @@ static json_t *
 denom_key_issue_to_json (struct GNUNET_CRYPTO_rsa_PublicKey *pk,
                          const struct TALER_MINT_DenomKeyIssue *dki)
 {
+  struct TALER_Amount value;
+  struct TALER_Amount fee_withdraw;
+  struct TALER_Amount fee_deposit;
+  struct TALER_Amount fee_refresh;
+
+  TALER_amount_ntoh (&value,
+                     &dki->value);
+  TALER_amount_ntoh (&fee_withdraw,
+                     &dki->fee_withdraw);
+  TALER_amount_ntoh (&fee_deposit,
+                     &dki->fee_deposit);
+  TALER_amount_ntoh (&fee_refresh,
+                     &dki->fee_refresh);
   return
     json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                "master_sig",
@@ -128,13 +141,13 @@ denom_key_issue_to_json (struct GNUNET_CRYPTO_rsa_PublicKey *pk,
                "denom_pub",
                TALER_JSON_from_rsa_public_key (pk),
                "value",
-               TALER_JSON_from_amount (TALER_amount_ntoh (dki->value)),
+               TALER_JSON_from_amount (&value),
                "fee_withdraw",
-               TALER_JSON_from_amount (TALER_amount_ntoh (dki->fee_withdraw)),
+               TALER_JSON_from_amount (&fee_withdraw),
                "fee_deposit",
-               TALER_JSON_from_amount (TALER_amount_ntoh (dki->fee_deposit)),
+               TALER_JSON_from_amount (&fee_deposit),
                "fee_refresh",
-               TALER_JSON_from_amount (TALER_amount_ntoh (dki->fee_refresh)));
+               TALER_JSON_from_amount (&fee_refresh));
 }
 
 
