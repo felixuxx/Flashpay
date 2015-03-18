@@ -1092,7 +1092,11 @@ TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
   if (GNUNET_OK != TALER_MINT_DB_reserve_get (db_conn,
                                               &reserve))
     goto rollback;
-  reserve.balance = TALER_amount_subtract (reserve.balance, withdraw);
+  if (GNUNET_SYSERR ==
+      TALER_amount_subtract (&reserve.balance,
+                             &reserve.balance,
+                             &withdraw))
+    goto rollback;
   if (GNUNET_OK != reserves_update (db_conn, &reserve))
     goto rollback;
   if (GNUNET_OK == TALER_MINT_DB_commit (db_conn))
