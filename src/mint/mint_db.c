@@ -1030,6 +1030,8 @@ TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
  *
  * @param db_conn database connection to use
  * @param h_blind hash of the blinded message
+ * @param withdraw amount by which the reserve will be withdrawn with this
+ *          transaction
  * @param collectable corresponding collectable coin (blind signature)
  *                    if a coin is found
  * @return #GNUNET_SYSERR on internal error
@@ -1039,9 +1041,11 @@ TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
 int
 TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
                                             const struct GNUNET_HashCode *h_blind,
+                                            struct TALER_Amount withdraw,
                                             const struct CollectableBlindcoin *collectable)
 {
   PGresult *result;
+  struct Reserve reserve;
   char *denom_pub_enc = NULL;
   char *denom_sig_enc = NULL;
   size_t denom_pub_enc_size;
@@ -1063,16 +1067,32 @@ TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
     TALER_DB_QUERY_PARAM_PTR (&collectable->reserve_sig),
     TALER_DB_QUERY_PARAM_END
   };
+  if (GNUNET_OK != TALER_MINT_DB_transaction (db_conn))
+    goto cleanup;
   result = TALER_DB_exec_prepared (db_conn,
                                    "insert_collectable_blindcoin",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     QUERY_ERR (result);
+    goto rollback;
+  }
+  reserve.pub = (struct GNUNET_CRYPTO_EddsaPublicKey *)
+      &collectable->reserve_pub;
+  if (GNUNET_OK != TALER_MINT_DB_reserve_get (db_conn,
+                                              &reserve))
+    goto rollback;
+  reserve.balance = TALER_amount_subtract (reserve.balance, withdraw);
+  if (GNUNET_OK != reserves_update (db_conn, &reserve))
+    goto rollback;
+  if (GNUNET_OK == TALER_MINT_DB_commit (db_conn))
+  {
+    ret = GNUNET_OK;
     goto cleanup;
   }
-  ret = GNUNET_OK;
 
+ rollback:
+    TALER_MINT_DB_rollback(db_conn);
  cleanup:
   PQclear (result);
   GNUNET_free_non_null (denom_pub_enc);

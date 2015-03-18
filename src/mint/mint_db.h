@@ -252,6 +252,8 @@ TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
  *
  * @param db_conn database connection to use
  * @param h_blind hash of the blinded message
+ * @param withdraw amount by which the reserve will be withdrawn with this
+ *          transaction
  * @param collectable corresponding collectable coin (blind signature)
  *                    if a coin is found
  * @return #GNUNET_SYSERR on internal error
@@ -261,6 +263,7 @@ TALER_MINT_DB_get_collectable_blindcoin (PGconn *db_conn,
 int
 TALER_MINT_DB_insert_collectable_blindcoin (PGconn *db_conn,
                                             const struct GNUNET_HashCode *h_blind,
+                                            struct TALER_Amount withdraw,
                                             const struct CollectableBlindcoin *collectable);
 
 

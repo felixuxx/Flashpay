@@ -386,6 +386,7 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
   if (GNUNET_OK !=
       TALER_MINT_DB_insert_collectable_blindcoin (db_conn,
                                                   &h_blind,
+                                                  amount_required,
                                                   &collectable))
   {
     GNUNET_break (0);
