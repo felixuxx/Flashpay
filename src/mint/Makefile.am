@@ -128,4 +128,4 @@ test_mint_db_LDADD = \
   libtalermint_common.la \
   $(top_srcdir)/src/util/libtalerutil.la \
   $(top_srcdir)/src/pq/libtalerpq.la \
-  -lgnunetutil
+  -lgnunetutil -ljansson
