@@ -739,6 +739,8 @@ check_commitment (struct MHD_Connection *connection,
   int res;
   struct TALER_LinkSecret last_shared_secret;
   int secret_initialized = GNUNET_NO;
+  struct GNUNET_CRYPTO_EcdhePublicKey coin_ecdhe;
+  struct GNUNET_CRYPTO_EcdhePrivateKey transfer_ecdhe;
 
   for (j = 0; j < num_oldcoins; j++)
   {
@@ -779,18 +781,22 @@ check_commitment (struct MHD_Connection *connection,
 
     /* We're converting key types here, which is not very nice
      * but necessary and harmless (keys will be thrown away later). */
-    /* FIXME: ECDHE/ECDSA-key type confusion! Can we reduce/avoid this? */
+    GNUNET_CRYPTO_ecdsa_public_to_ecdhe (&melts[j].coin.coin_pub,
+                                         &coin_ecdhe);
+    GNUNET_CRYPTO_ecdsa_private_to_ecdhe (&transfer_privs[j],
+                                          &transfer_ecdhe);
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_ecc_ecdh ((const struct GNUNET_CRYPTO_EcdhePrivateKey *) &transfer_privs[j],
-                                (const struct GNUNET_CRYPTO_EcdhePublicKey *) &melts[j].coin.coin_pub,
+        GNUNET_CRYPTO_ecc_ecdh (&transfer_ecdhe,
+                                &coin_ecdhe,
                                 &transfer_secret.key))
     {
       GNUNET_break (0);
+      GNUNET_CRYPTO_ecdhe_key_clear (&transfer_ecdhe);
       return (MHD_YES == TALER_MINT_reply_internal_error (connection,
                                                           "ECDH error"))
         ? GNUNET_NO : GNUNET_SYSERR;
     }
-
+    GNUNET_CRYPTO_ecdhe_key_clear (&transfer_ecdhe);
     if (GNUNET_OK !=
         TALER_transfer_decrypt (&commit_link.shared_secret_enc,
                                 &transfer_secret,
