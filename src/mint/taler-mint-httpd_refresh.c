@@ -24,7 +24,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
-#include "mint_db.h"
+#include "taler_mintdb_plugin.h"
 #include "taler_signatures.h"
 #include "taler_util.h"
 #include "taler-mint-httpd_parsing.h"

@@ -65,6 +65,13 @@ AS_IF([test $libgnunetutil != 1],
 *** ]])])
 
 
+TALER_LIB_LDFLAGS="-export-dynamic -no-undefined"
+TALER_PLUGIN_LDFLAGS="-export-dynamic -avoid-version -module -no-undefined"
+
+AC_SUBST(TALER_LIB_LDFLAGS)
+AC_SUBST(TALER_PLUGIN_LDFLAGS)
+
+
 # check for libmicrohttpd
 microhttpd=0
 AC_MSG_CHECKING([for microhttpd])

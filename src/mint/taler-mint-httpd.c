@@ -35,7 +35,7 @@
 #include "taler-mint-httpd_withdraw.h"
 #include "taler-mint-httpd_refresh.h"
 #include "taler-mint-httpd_keystate.h"
-#include "mint_db.h"
+#include "taler_mintdb_plugin.h"
 
 
 /**
@@ -260,16 +260,7 @@ mint_serve_process_config (const char *mint_directory)
   GNUNET_free (master_pub_str);
 
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "mint", "db",
-                                             &db_cfg))
-  {
-    fprintf (stderr,
-             "invalid configuration: mint.db\n");
-    return GNUNET_NO;
-  }
-  if (GNUNET_OK !=
-      TALER_MINT_DB_init (db_cfg))
+      TALER_MINT_plugin_load (cfg))
   {
     fprintf (stderr,
              "failed to initialize DB subsystem\n");

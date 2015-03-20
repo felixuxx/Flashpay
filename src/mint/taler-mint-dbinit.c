@@ -22,7 +22,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <libpq-fe.h>
 #include "taler_util.h"
-#include "mint_db.h"
+#include "taler_mintdb_plugin.h"
 
 
 /**

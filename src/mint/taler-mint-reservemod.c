@@ -24,7 +24,7 @@
 #include <libpq-fe.h>
 #include "taler_util.h"
 #include "taler_signatures.h"
-#include "mint_db.h"
+#include "taler_mintdb_plugin.h"
 #include "db_pq.h"
 
 
