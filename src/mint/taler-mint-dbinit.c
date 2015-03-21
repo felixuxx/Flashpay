@@ -23,7 +23,7 @@
 #include <libpq-fe.h>
 #include "taler_util.h"
 #include "taler_mintdb_plugin.h"
-
+#include "plugin.h"
 
 /**
  * Mint directory with the keys.
@@ -34,12 +34,6 @@ static char *mint_base_dir;
  * Our configuration.
  */
 static struct GNUNET_CONFIGURATION_Handle *cfg;
-
-/**
- * Database connection handle.
- */
-static PGconn *db_conn;
-
 
 
 /**
@@ -61,7 +55,6 @@ main (int argc,
      &GNUNET_GETOPT_set_filename, &mint_base_dir},
     GNUNET_GETOPT_OPTION_END
   };
-  char *db_connection_cfg_str;
 
   if (GNUNET_GETOPT_run ("taler-mint-dbinit",
                          options,
@@ -78,7 +71,6 @@ main (int argc,
              "Mint base directory not given.\n");
     return 1;
   }
-
   cfg = TALER_config_load (mint_base_dir);
   if (NULL == cfg)
   {
@@ -87,32 +79,22 @@ main (int argc,
     return 1;
   }
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "mint",
-                                             "db",
-                                             &db_connection_cfg_str))
+      TALER_MINT_plugin_load (cfg))
   {
     fprintf (stderr,
-             "Configuration 'mint.db' not found.\n");
+             "Failed to initialize database plugin.\n");
     return 1;
   }
-  db_conn = PQconnectdb (db_connection_cfg_str);
-  if (CONNECTION_OK != PQstatus (db_conn))
-  {
-    fprintf (stderr,
-             "Database connection failed: %s\n",
-             PQerrorMessage (db_conn));
-    free (db_connection_cfg_str);
-    return 1;
-  }
-  free (db_connection_cfg_str);
-
-  if (GNUNET_OK != TALER_MINT_DB_create_tables (GNUNET_NO))
+  if (GNUNET_OK !=
+      plugin->create_tables (plugin->cls,
+                             GNUNET_NO))
   {
     fprintf (stderr,
              "Failed to initialize database.\n");
+    TALER_MINT_plugin_unload ();
     return 1;
   }
+  TALER_MINT_plugin_unload ();
   return 0;
 }
 

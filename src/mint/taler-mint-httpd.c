@@ -36,6 +36,7 @@
 #include "taler-mint-httpd_refresh.h"
 #include "taler-mint-httpd_keystate.h"
 #include "taler_mintdb_plugin.h"
+#include "plugin.h"
 
 
 /**
@@ -229,7 +230,6 @@ mint_serve_process_config (const char *mint_directory)
   unsigned long long port;
   unsigned long long kappa;
   char *master_pub_str;
-  char *db_cfg;
 
   cfg = TALER_config_load (mint_directory);
   if (NULL == cfg)
