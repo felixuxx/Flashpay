@@ -37,7 +37,7 @@ extern struct TALER_MINTDB_Plugin *plugin;
  * @return #GNUNET_OK on success
  */
 int
-TALER_MINT_plugin_load (struct GNUNET_CONFIGURATION_Handle *cfg);
+TALER_MINT_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg);
 
 
 /**

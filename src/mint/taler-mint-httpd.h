@@ -23,6 +23,7 @@
 #ifndef TALER_MINT_HTTPD_H
 #define TALER_MINT_HTTPD_H
 
+#include <microhttpd.h>
 
 /**
  * Cut-and-choose size for refreshing.

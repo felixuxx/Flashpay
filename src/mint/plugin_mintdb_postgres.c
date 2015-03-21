@@ -148,14 +148,15 @@ postgres_drop_temporary (void *cls,
 /**
  * Create the necessary tables if they are not present
  *
- * @param pc our overall context
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param temporary should we use a temporary schema
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 static int
-postgres_create_tables (struct PostgresClosure *pc,
+postgres_create_tables (void *cls,
                         int temporary)
 {
+  struct PostgresClosure *pc = cls;
   PGresult *result;
   PGconn *conn;
 
@@ -168,8 +169,8 @@ postgres_create_tables (struct PostgresClosure *pc,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if ((GNUNET_YES == temporary)
-      && (GNUNET_SYSERR == set_temporary_schema (conn)))
+  if ( (GNUNET_YES == temporary) &&
+       (GNUNET_SYSERR == set_temporary_schema (conn)))
   {
     PQfinish (conn);
     return GNUNET_SYSERR;
@@ -287,6 +288,7 @@ postgres_create_tables (struct PostgresClosure *pc,
           ",wire TEXT NOT NULL"
           ")");
 #undef SQLEXEC
+
   PQfinish (conn);
   return GNUNET_OK;
 
