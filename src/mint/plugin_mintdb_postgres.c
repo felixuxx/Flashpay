@@ -28,6 +28,7 @@
 #include <pthread.h>
 #include <libpq-fe.h>
 
+#include "plugin_mintdb_common.c"
 
 #define TALER_TEMP_SCHEMA_NAME "taler_temporary"
 
@@ -1313,7 +1314,8 @@ postgres_get_reserve_history (void *cls,
     PQclear (result);
   if (GNUNET_SYSERR == ret)
   {
-    TALER_MINT_DB_free_reserve_history (rh);
+    common_free_reserve_history (cls,
+                                 rh);
     rh = NULL;
   }
   return rh;
@@ -2064,9 +2066,9 @@ postgres_insert_refresh_collectable (void *cls,
  * @return all known link data for the coin
  */
 static struct LinkDataList *
-postgres_get_link (void *cls,
-                   struct TALER_MINTDB_Session *session,
-                   const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub)
+postgres_get_link_data_list (void *cls,
+                             struct TALER_MINTDB_Session *session,
+                             const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub)
 {
   // FIXME: check logic!
   struct LinkDataList *ldl;
@@ -2116,7 +2118,8 @@ postgres_get_link (void *cls,
     {
       PQclear (result);
       GNUNET_break (0);
-      TALER_db_link_data_list_free (ldl);
+      common_free_link_data_list (cls,
+                                  ldl);
       return NULL;
     }
     if (ld_buf_size < sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey))
@@ -2125,7 +2128,8 @@ postgres_get_link (void *cls,
       GNUNET_free (pk_buf);
       GNUNET_free (sig_buf);
       GNUNET_free (ld_buf);
-      TALER_db_link_data_list_free (ldl);
+      common_free_link_data_list (cls,
+                                  ldl);
       return NULL;
     }
     // FIXME: use util API for this!
@@ -2154,7 +2158,8 @@ postgres_get_link (void *cls,
       GNUNET_free (link_enc);
       GNUNET_break (0);
       PQclear (result);
-      TALER_db_link_data_list_free (ldl);
+      common_free_link_data_list (cls,
+                                  ldl);
       return NULL;
     }
     pos = GNUNET_new (struct LinkDataList);
@@ -2171,8 +2176,8 @@ postgres_get_link (void *cls,
 /**
  * Obtain shared secret and transfer public key from the public key of
  * the coin.  This information and the link information returned by
- * #TALER_db_get_link() enable the owner of an old coin to determine
- * the private keys of the new coins after the melt.
+ * #postgres_get_link_data_list() enable the owner of an old coin to
+ * determine the private keys of the new coins after the melt.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
@@ -2304,6 +2309,7 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->get_collectable_blindcoin = &postgres_get_collectable_blindcoin;
   plugin->insert_collectable_blindcoin = &postgres_insert_collectable_blindcoin;
   plugin->get_reserve_history = &postgres_get_reserve_history;
+  plugin->free_reserve_history = &common_free_reserve_history;
   plugin->have_deposit = &postgres_have_deposit;
   plugin->insert_deposit = &postgres_insert_deposit;
   plugin->get_refresh_session = &postgres_get_refresh_session;
@@ -2317,11 +2323,13 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->insert_refresh_commit_link = &postgres_insert_refresh_commit_link;
   plugin->get_refresh_commit_link = &postgres_get_refresh_commit_link;
   plugin->insert_refresh_collectable = &postgres_insert_refresh_collectable;
-  plugin->get_link = &postgres_get_link;
+  plugin->get_link_data_list = &postgres_get_link_data_list;
+  plugin->free_link_data_list = &common_free_link_data_list;
   plugin->get_transfer = &postgres_get_transfer;
   // plugin->have_lock = &postgres_have_lock;
   // plugin->insert_lock = &postgres_insert_lock;
   plugin->get_coin_transactions = &postgres_get_coin_transactions;
+  plugin->free_coin_transaction_list = &common_free_coin_transaction_list;
   return plugin;
 }
 

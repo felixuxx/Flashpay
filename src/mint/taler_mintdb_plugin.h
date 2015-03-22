@@ -659,6 +659,17 @@ struct TALER_MINTDB_Plugin
 
 
   /**
+   * Free memory associated with the given reserve history.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param rh history to free.
+   */
+  void
+  (*free_reserve_history) (void *cls,
+                           struct ReserveHistory *rh);
+
+
+  /**
    * Check if we have the specified deposit already in the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
@@ -922,9 +933,20 @@ struct TALER_MINTDB_Plugin
    * @return all known link data for the coin
    */
   struct LinkDataList *
-  (*get_link) (void *cls,
-               struct TALER_MINTDB_Session *db_conn,
-               const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub);
+  (*get_link_data_list) (void *cls,
+                         struct TALER_MINTDB_Session *db_conn,
+                         const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub);
+
+
+  /**
+   * Free memory of the link data list.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param ldl link data list to release
+   */
+  void
+  (*free_link_data_list) (void *cls,
+                          struct LinkDataList *ldl);
 
 
   /**
@@ -995,6 +1017,18 @@ struct TALER_MINTDB_Plugin
   (*get_coin_transactions) (void *cls,
                             struct TALER_MINTDB_Session *db_conn,
                             const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub);
+
+
+  /**
+   * Free linked list of transactions.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param list list to free
+   */
+  void
+  (*free_coin_transaction_list) (void *cls,
+                                 struct TALER_MINT_DB_TransactionList *list);
+
 
 };
 

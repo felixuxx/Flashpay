@@ -106,7 +106,8 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                         &deposit->amount))
   {
     GNUNET_break (0);
-    TALER_MINT_DB_free_coin_transaction_list (tl);
+    plugin->free_coin_transaction_list (plugin->cls,
+                                        tl);
     return TALER_MINT_reply_internal_db_error (connection);
   }
 
@@ -125,7 +126,8 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                               &fee_deposit)) )
       {
         GNUNET_break (0);
-        TALER_MINT_DB_free_coin_transaction_list (tl);
+        plugin->free_coin_transaction_list (plugin->cls,
+                                            tl);
         return TALER_MINT_reply_internal_db_error (connection);
       }
       break;
@@ -140,7 +142,8 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                               &fee_refresh)) )
       {
         GNUNET_break (0);
-        TALER_MINT_DB_free_coin_transaction_list (tl);
+        plugin->free_coin_transaction_list (plugin->cls,
+                                            tl);
         return TALER_MINT_reply_internal_db_error (connection);
       }
       break;
@@ -163,10 +166,12 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                       session);
     ret = TALER_MINT_reply_deposit_insufficient_funds (connection,
                                                        tl);
-    TALER_MINT_DB_free_coin_transaction_list (tl);
+    plugin->free_coin_transaction_list (plugin->cls,
+                                        tl);
     return ret;
   }
-  TALER_MINT_DB_free_coin_transaction_list (tl);
+  plugin->free_coin_transaction_list (plugin->cls,
+                                      tl);
 
   if (GNUNET_OK !=
       plugin->insert_deposit (plugin->cls,
@@ -228,7 +233,8 @@ TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
                                        "error", "Reserve not found");
   res = TALER_MINT_reply_withdraw_status_success (connection,
                                                   rh);
-  TALER_MINT_DB_free_reserve_history (rh);
+  plugin->free_reserve_history (plugin->cls,
+                                rh);
   return res;
 }
 
@@ -414,10 +420,12 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
                       session);
     res = TALER_MINT_reply_withdraw_sign_insufficient_funds (connection,
                                                              rh);
-    TALER_MINT_DB_free_reserve_history (rh);
+    plugin->free_reserve_history (plugin->cls,
+                                  rh);
     return res;
   }
-  TALER_MINT_DB_free_reserve_history (rh);
+  plugin->free_reserve_history (plugin->cls,
+                                rh);
 
   /* Balance is good, sign the coin! */
   sig = GNUNET_CRYPTO_rsa_sign (dki->denom_priv,
@@ -532,10 +540,12 @@ refresh_accept_melts (struct MHD_Connection *connection,
                                                              coin_details->melt_amount,
                                                              coin_residual))
       ? GNUNET_NO : GNUNET_SYSERR;
-    TALER_MINT_DB_free_coin_transaction_list (tl);
+    plugin->free_coin_transaction_list (plugin->cls,
+                                        tl);
     return res;
   }
-  TALER_MINT_DB_free_coin_transaction_list (tl);
+  plugin->free_coin_transaction_list (plugin->cls,
+                                      tl);
 
   melt.coin = *coin_public_info;
   melt.coin_sig = coin_details->melt_sig;
@@ -1242,9 +1252,9 @@ TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
   }
   GNUNET_assert (GNUNET_OK == res);
 
-  ldl = plugin->get_link (plugin->cls,
-                          session,
-                          coin_pub);
+  ldl = plugin->get_link_data_list (plugin->cls,
+                                    session,
+                                    coin_pub);
   if (NULL == ldl)
   {
     return TALER_MINT_reply_json_pack (connection,
@@ -1257,7 +1267,8 @@ TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
                                                &transfer_pub,
                                                &shared_secret_enc,
                                                ldl);
-  TALER_db_link_data_list_free (ldl);
+  plugin->free_link_data_list (plugin->cls,
+                               ldl);
   return res;
 }
 

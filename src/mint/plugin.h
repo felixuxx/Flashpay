@@ -47,31 +47,4 @@ void
 TALER_MINT_plugin_unload (void);
 
 
-/**
- * Free memory associated with the given reserve history.
- *
- * @param rh history to free.
- */
-void
-TALER_MINT_DB_free_reserve_history (struct ReserveHistory *rh);
-
-
-/**
- * Free memory of the link data list.
- *
- * @param ldl link data list to release
- */
-void
-TALER_db_link_data_list_free (struct LinkDataList *ldl);
-
-
-/**
- * Free linked list of transactions.
- *
- * @param list list to free
- */
-void
-TALER_MINT_DB_free_coin_transaction_list (struct TALER_MINT_DB_TransactionList *list);
-
-
 #endif
