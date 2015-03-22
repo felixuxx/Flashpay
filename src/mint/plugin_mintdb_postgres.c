@@ -1637,8 +1637,8 @@ postgres_get_refresh_melt (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
  * @param session_pub refresh session key
- * @param newcoin_index index of the coin to generate
- * @param denom_pub denomination of the coin to create
+ * @param num_newcoins number of coins to generate, size of the @a denom_pubs array
+ * @param denom_pubs array denominations of the coins to create
  * @return #GNUNET_OK on success
  *         #GNUNET_SYSERR on internal error
  */
@@ -1646,16 +1646,16 @@ static int
 postgres_insert_refresh_order (void *cls,
                                struct TALER_MINTDB_Session *session,
                                const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                               uint16_t newcoin_index,
-                               const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub)
+                               uint16_t num_newcoins,
+                               struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs)
 {
-  // FIXME: check logic
-  uint16_t newcoin_index_nbo = htons (newcoin_index);
+  // FIXME: check logic: was written for just one COIN!
+  uint16_t newcoin_index_nbo = htons (num_newcoins);
   char *buf;
   size_t buf_size;
   PGresult *result;
 
-  buf_size = GNUNET_CRYPTO_rsa_public_key_encode (denom_pub,
+  buf_size = GNUNET_CRYPTO_rsa_public_key_encode (*denom_pubs,
                                                   &buf);
 
   {
@@ -1687,27 +1687,28 @@ postgres_insert_refresh_order (void *cls,
 
 
 /**
- * Lookup in the database the @a newcoin_index coin that we want to
+ * Lookup in the database the coins that we want to
  * create in the given refresh operation.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
  * @param session_pub refresh session key
- * @param newcoin_index index of the coin to generate
- * @param denom_pub denomination of the coin to create
- * @return NULL on error (not found or internal error)
+ * @param newcoin_index array of the @a denom_pubs array
+ * @param denom_pubs where to store the deomination keys
+ * @return #GNUNET_OK on success
+ *         #GNUNET_SYSERR on internal error
  */
-static struct GNUNET_CRYPTO_rsa_PublicKey *
+static int
 postgres_get_refresh_order (void *cls,
                             struct TALER_MINTDB_Session *session,
                             const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                            uint16_t newcoin_index)
+                            uint16_t num_newcoins,
+                            struct GNUNET_CRYPTO_rsa_PublicKey **denom_pubs)
 {
-  // FIXME: check logic
+  // FIXME: check logic -- was written for just one coin!
   char *buf;
   size_t buf_size;
-  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
-  uint16_t newcoin_index_nbo = htons (newcoin_index);
+  uint16_t newcoin_index_nbo = htons (num_newcoins);
 
   struct TALER_DB_QueryParam params[] = {
     TALER_DB_QUERY_PARAM_PTR(session_pub),
@@ -1715,20 +1716,21 @@ postgres_get_refresh_order (void *cls,
     TALER_DB_QUERY_PARAM_END
   };
 
-  PGresult *result = TALER_DB_exec_prepared (session->conn, "get_refresh_order", params);
+  PGresult *result = TALER_DB_exec_prepared (session->conn,
+                                             "get_refresh_order", params);
 
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
     PQclear (result);
-    return NULL;
+    return GNUNET_SYSERR;
   }
 
   if (0 == PQntuples (result))
   {
     PQclear (result);
     /* FIXME: may want to distinguish between different error cases! */
-    return NULL;
+    return GNUNET_SYSERR;
   }
   GNUNET_assert (1 == PQntuples (result));
   struct TALER_DB_ResultSpec rs[] = {
@@ -1739,12 +1741,12 @@ postgres_get_refresh_order (void *cls,
   {
     PQclear (result);
     GNUNET_break (0);
-    return NULL;
+    return GNUNET_SYSERR;
   }
   PQclear (result);
-  denom_pub = GNUNET_CRYPTO_rsa_public_key_decode (buf, buf_size);
+  denom_pubs[0] = GNUNET_CRYPTO_rsa_public_key_decode (buf, buf_size);
   GNUNET_free (buf);
-  return denom_pub;
+  return GNUNET_OK;
 }
 
 
@@ -1757,34 +1759,36 @@ postgres_get_refresh_order (void *cls,
  * @param session database connection to use
  * @param refresh_session_pub refresh session this commitment belongs to
  * @param i set index (1st dimension)
- * @param j coin index (2nd dimension), corresponds to refreshed (new) coins
- * @param commit_coin coin commitment to store
+ * @param num_newcoins coin index size of the @a commit_coins array
+ * @param commit_coins array of coin commitments to store
  * @return #GNUNET_OK on success
  *         #GNUNET_SYSERR on error
  */
 static int
-postgres_insert_refresh_commit_coin (void *cls,
-                                     struct TALER_MINTDB_Session *session,
-                                     const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                     unsigned int i,
-                                     unsigned int j,
-                                     const struct RefreshCommitCoin *commit_coin)
+postgres_insert_refresh_commit_coins (void *cls,
+                                      struct TALER_MINTDB_Session *session,
+                                      const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                      unsigned int i,
+                                      unsigned int num_newcoins,
+                                      const struct RefreshCommitCoin *commit_coins)
 {
-  // FIXME: check logic!
+  // FIXME: check logic! -- was written for single commit_coin!
   uint16_t cnc_index_nbo = htons (i);
-  uint16_t newcoin_index_nbo = htons (j);
+  uint16_t newcoin_index_nbo = htons (num_newcoins);
   struct TALER_DB_QueryParam params[] = {
     TALER_DB_QUERY_PARAM_PTR(refresh_session_pub),
-    TALER_DB_QUERY_PARAM_PTR_SIZED(commit_coin->coin_ev, commit_coin->coin_ev_size),
+    TALER_DB_QUERY_PARAM_PTR_SIZED(commit_coins->coin_ev, commit_coins->coin_ev_size),
     TALER_DB_QUERY_PARAM_PTR(&cnc_index_nbo),
     TALER_DB_QUERY_PARAM_PTR(&newcoin_index_nbo),
-    TALER_DB_QUERY_PARAM_PTR_SIZED(commit_coin->refresh_link->coin_priv_enc,
-                                   commit_coin->refresh_link->blinding_key_enc_size +
+    TALER_DB_QUERY_PARAM_PTR_SIZED(commit_coins->refresh_link->coin_priv_enc,
+                                   commit_coins->refresh_link->blinding_key_enc_size +
                                    sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey)),
     TALER_DB_QUERY_PARAM_END
   };
 
-  PGresult *result = TALER_DB_exec_prepared (session->conn, "insert_refresh_commit_coin", params);
+  PGresult *result = TALER_DB_exec_prepared (session->conn,
+                                             "insert_refresh_commit_coin",
+                                             params);
 
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
@@ -1819,12 +1823,12 @@ postgres_insert_refresh_commit_coin (void *cls,
  *         #GNUNET_SYSERR on error
  */
 static int
-postgres_get_refresh_commit_coin (void *cls,
-                                  struct TALER_MINTDB_Session *session,
-                                  const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                  unsigned int cnc_index,
-                                  unsigned int newcoin_index,
-                                  struct RefreshCommitCoin *cc)
+postgres_get_refresh_commit_coins (void *cls,
+                                   struct TALER_MINTDB_Session *session,
+                                   const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                   unsigned int cnc_index,
+                                   unsigned int newcoin_index,
+                                   struct RefreshCommitCoin *cc)
 {
   // FIXME: check logic!
   uint16_t cnc_index_nbo = htons (cnc_index);
@@ -1841,7 +1845,9 @@ postgres_get_refresh_commit_coin (void *cls,
   size_t rl_buf_size;
   struct TALER_RefreshLinkEncrypted *rl;
 
-  PGresult *result = TALER_DB_exec_prepared (session->conn, "get_refresh_commit_coin", params);
+  PGresult *result = TALER_DB_exec_prepared (session->conn,
+                                             "get_refresh_commit_coin",
+                                             params);
 
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
@@ -1897,12 +1903,12 @@ postgres_get_refresh_commit_coin (void *cls,
  * @return #GNUNET_SYSERR on internal error, #GNUNET_OK on success
  */
 static int
-postgres_insert_refresh_commit_link (void *cls,
-                                     struct TALER_MINTDB_Session *session,
-                                     const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                     unsigned int i,
-                                     unsigned int j,
-                                     const struct RefreshCommitLink *commit_link)
+postgres_insert_refresh_commit_links (void *cls,
+                                      struct TALER_MINTDB_Session *session,
+                                      const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                      unsigned int i,
+                                      unsigned int j,
+                                      const struct RefreshCommitLink *commit_link)
 {
   // FIXME: check logic!
   uint16_t cnc_index_nbo = htons (i);
@@ -1946,23 +1952,23 @@ postgres_insert_refresh_commit_link (void *cls,
  * @param refresh_session_pub public key of the refresh session this
  *        commitment belongs with
  * @param i set index (1st dimension)
- * @param j coin index (2nd dimension), corresponds to melted (old) coins
- * @param cc[OUT] link information to return
+ * @param num_links size of the @a commit_link array
+ * @param links[OUT] array of link information to return
  * @return #GNUNET_SYSERR on internal error,
  *         #GNUNET_NO if commitment was not found
  *         #GNUNET_OK on success
  */
 static int
-postgres_get_refresh_commit_link (void *cls,
-                                  struct TALER_MINTDB_Session *session,
-                                  const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                  unsigned int cnc_index,
-                                  unsigned int oldcoin_index,
-                                  struct RefreshCommitLink *cc)
+postgres_get_refresh_commit_links (void *cls,
+                                   struct TALER_MINTDB_Session *session,
+                                   const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                   unsigned int i,
+                                   unsigned int num_links,
+                                   struct RefreshCommitLink *links)
 {
-  // FIXME: check logic!
-  uint16_t cnc_index_nbo = htons (cnc_index);
-  uint16_t oldcoin_index_nbo = htons (oldcoin_index);
+  // FIXME: check logic: was written for a single link!
+  uint16_t cnc_index_nbo = htons (i);
+  uint16_t oldcoin_index_nbo = htons (num_links);
 
   struct TALER_DB_QueryParam params[] = {
     TALER_DB_QUERY_PARAM_PTR(refresh_session_pub),
@@ -1988,15 +1994,14 @@ postgres_get_refresh_commit_link (void *cls,
   }
 
   struct TALER_DB_ResultSpec rs[] = {
-    TALER_DB_RESULT_SPEC("transfer_pub", &cc->transfer_pub),
-    TALER_DB_RESULT_SPEC("link_secret_enc", &cc->shared_secret_enc),
+    TALER_DB_RESULT_SPEC("transfer_pub", &links->transfer_pub),
+    TALER_DB_RESULT_SPEC("link_secret_enc", &links->shared_secret_enc),
     TALER_DB_RESULT_SPEC_END
   };
 
   if (GNUNET_YES != TALER_DB_extract_result (result, rs, 0))
   {
     PQclear (result);
-    GNUNET_free (cc);
     return GNUNET_SYSERR;
   }
 
@@ -2318,10 +2323,10 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->get_refresh_melt = &postgres_get_refresh_melt;
   plugin->insert_refresh_order = &postgres_insert_refresh_order;
   plugin->get_refresh_order = &postgres_get_refresh_order;
-  plugin->insert_refresh_commit_coin = &postgres_insert_refresh_commit_coin;
-  plugin->get_refresh_commit_coin = &postgres_get_refresh_commit_coin;
-  plugin->insert_refresh_commit_link = &postgres_insert_refresh_commit_link;
-  plugin->get_refresh_commit_link = &postgres_get_refresh_commit_link;
+  plugin->insert_refresh_commit_coins = &postgres_insert_refresh_commit_coins;
+  plugin->get_refresh_commit_coins = &postgres_get_refresh_commit_coins;
+  plugin->insert_refresh_commit_links = &postgres_insert_refresh_commit_links;
+  plugin->get_refresh_commit_links = &postgres_get_refresh_commit_links;
   plugin->insert_refresh_collectable = &postgres_insert_refresh_collectable;
   plugin->get_link_data_list = &postgres_get_link_data_list;
   plugin->free_link_data_list = &common_free_link_data_list;

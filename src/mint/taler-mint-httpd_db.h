@@ -126,7 +126,6 @@ struct MeltDetails
  *                    future)
  * @return MHD result code
  */
-// FIXME: see #3635.
 int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     const struct GNUNET_HashCode *melt_hash,

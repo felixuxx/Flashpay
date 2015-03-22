@@ -781,8 +781,8 @@ struct TALER_MINTDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param db_conn database connection
    * @param session_pub refresh session key
-   * @param newcoin_index index of the coin to generate
-   * @param denom_pub denomination of the coin to create
+   * @param num_newcoins number of coins to generate, size of the @a denom_pubs array
+   * @param denom_pubs array denominations of the coins to create
    * @return #GNUNET_OK on success
    *         #GNUNET_SYSERR on internal error
    */
@@ -790,48 +790,50 @@ struct TALER_MINTDB_Plugin
   (*insert_refresh_order) (void *cls,
                            struct TALER_MINTDB_Session *db_conn,
                            const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                           uint16_t newcoin_index,
-                           const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub);
+                           uint16_t num_newcoins,
+                           struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs);
 
 
   /**
-   * Lookup in the database the @a newcoin_index coin that we want to
+   * Lookup in the database for the @a num_newcoins coins that we want to
    * create in the given refresh operation.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param db_conn database connection
    * @param session_pub refresh session key
-   * @param newcoin_index index of the coin to generate
-   * @param denom_pub denomination of the coin to create
-   * @return NULL on error (not found or internal error)
+   * @param num_newcoins size of the @a denom_pubs array
+   * @param denom_pubs[OUT] where to write @a num_newcoins denomination keys
+   * @return #GNUNET_OK on success
+   *         #GNUNET_SYSERR on internal error
    */
-  struct GNUNET_CRYPTO_rsa_PublicKey *
+  int
   (*get_refresh_order) (void *cls,
                         struct TALER_MINTDB_Session *db_conn,
                         const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
-                        uint16_t newcoin_index);
+                        uint16_t num_newcoins,
+                        struct GNUNET_CRYPTO_rsa_PublicKey **denom_pubs);
 
 
   /**
-   * Store information about the commitment of the
-   * given coin for the given refresh session in the database.
+   * Store information about the commitments of the given index @a i
+   * for the given refresh session in the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param db_conn database connection to use
    * @param refresh_session_pub refresh session this commitment belongs to
-   * @param i set index (1st dimension)
-   * @param j coin index (2nd dimension), corresponds to refreshed (new) coins
-   * @param commit_coin coin commitment to store
+   * @param i set index (1st dimension), relating to kappa
+   * @param num_newcoins coin index size of the @a commit_coins array
+   * @param commit_coin array of coin commitments to store
    * @return #GNUNET_OK on success
    *         #GNUNET_SYSERR on error
    */
   int
-  (*insert_refresh_commit_coin) (void *cls,
-                                 struct TALER_MINTDB_Session *db_conn,
-                                 const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                 unsigned int i,
-                                 unsigned int j,
-                                 const struct RefreshCommitCoin *commit_coin);
+  (*insert_refresh_commit_coins) (void *cls,
+                                  struct TALER_MINTDB_Session *db_conn,
+                                  const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                  unsigned int i,
+                                  unsigned int num_newcoins,
+                                  const struct RefreshCommitCoin *commit_coins);
 
 
   /**
@@ -849,12 +851,12 @@ struct TALER_MINTDB_Plugin
    *         #GNUNET_SYSERR on error
    */
   int
-  (*get_refresh_commit_coin) (void *cls,
-                              struct TALER_MINTDB_Session *db_conn,
-                              const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                              unsigned int i,
-                              unsigned int j,
-                              struct RefreshCommitCoin *commit_coin);
+  (*get_refresh_commit_coins) (void *cls,
+                               struct TALER_MINTDB_Session *db_conn,
+                               const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                               unsigned int i,
+                               unsigned int j,
+                               struct RefreshCommitCoin *commit_coin);
 
 
   /**
@@ -865,18 +867,18 @@ struct TALER_MINTDB_Plugin
    * @param db_conn database connection to use
    * @param refresh_session_pub public key of the refresh session this
    *        commitment belongs with
-   * @param i set index (1st dimension)
-   * @param j coin index (2nd dimension), corresponds to melted (old) coins
-   * @param commit_link link information to store
+   * @param i set index (1st dimension), relating to kappa
+   * @param num_links size of the @a commit_link array
+   * @param commit_links array of link information to store
    * @return #GNUNET_SYSERR on internal error, #GNUNET_OK on success
    */
   int
-  (*insert_refresh_commit_link) (void *cls,
-                                 struct TALER_MINTDB_Session *db_conn,
-                                 const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                 unsigned int i,
-                                 unsigned int j,
-                                 const struct RefreshCommitLink *commit_link);
+  (*insert_refresh_commit_links) (void *cls,
+                                  struct TALER_MINTDB_Session *db_conn,
+                                  const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                  unsigned int i,
+                                  unsigned int num_links,
+                                  const struct RefreshCommitLink *commit_links);
 
   /**
    * Obtain the commited (encrypted) refresh link data
@@ -887,19 +889,19 @@ struct TALER_MINTDB_Plugin
    * @param refresh_session_pub public key of the refresh session this
    *        commitment belongs with
    * @param i set index (1st dimension)
-   * @param j coin index (2nd dimension), corresponds to melted (old) coins
-   * @param cc[OUT] link information to return
+   * @param num_links size of the @links array to return
+   * @param links[OUT] array link information to return
    * @return #GNUNET_SYSERR on internal error,
    *         #GNUNET_NO if commitment was not found
    *         #GNUNET_OK on success
    */
   int
-  (*get_refresh_commit_link) (void *cls,
-                              struct TALER_MINTDB_Session *db_conn,
-                              const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                              unsigned int i,
-                              unsigned int j,
-                              struct RefreshCommitLink *cc);
+  (*get_refresh_commit_links) (void *cls,
+                               struct TALER_MINTDB_Session *db_conn,
+                               const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                               unsigned int i,
+                               unsigned int j,
+                               struct RefreshCommitLink *links);
 
 
   /**
