@@ -616,8 +616,8 @@ db_conn_destroy (void *cls)
  * @return the database connection, or NULL on error
  */
 static struct TALER_MINTDB_Session *
-postgres_get_connection (void *cls,
-                         int temporary)
+postgres_get_session (void *cls,
+                      int temporary)
 {
   struct PostgresClosure *pc = cls;
   PGconn *db_conn;
@@ -2293,7 +2293,35 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   }
   plugin = GNUNET_new (struct TALER_MINTDB_Plugin);
   plugin->cls = pg;
-
+  plugin->get_session = &postgres_get_session;
+  plugin->drop_temporary = &postgres_drop_temporary;
+  plugin->create_tables = &postgres_create_tables;
+  plugin->start = &postgres_start;
+  plugin->commit = &postgres_commit;
+  plugin->rollback = &postgres_rollback;
+  plugin->reserve_get = &postgres_reserve_get;
+  plugin->reserves_in_insert = &postgres_reserves_in_insert;
+  plugin->get_collectable_blindcoin = &postgres_get_collectable_blindcoin;
+  plugin->insert_collectable_blindcoin = &postgres_insert_collectable_blindcoin;
+  plugin->get_reserve_history = &postgres_get_reserve_history;
+  plugin->have_deposit = &postgres_have_deposit;
+  plugin->insert_deposit = &postgres_insert_deposit;
+  plugin->get_refresh_session = &postgres_get_refresh_session;
+  plugin->create_refresh_session = &postgres_create_refresh_session;
+  plugin->insert_refresh_melt = &postgres_insert_refresh_melt;
+  plugin->get_refresh_melt = &postgres_get_refresh_melt;
+  plugin->insert_refresh_order = &postgres_insert_refresh_order;
+  plugin->get_refresh_order = &postgres_get_refresh_order;
+  plugin->insert_refresh_commit_coin = &postgres_insert_refresh_commit_coin;
+  plugin->get_refresh_commit_coin = &postgres_get_refresh_commit_coin;
+  plugin->insert_refresh_commit_link = &postgres_insert_refresh_commit_link;
+  plugin->get_refresh_commit_link = &postgres_get_refresh_commit_link;
+  plugin->insert_refresh_collectable = &postgres_insert_refresh_collectable;
+  plugin->get_link = &postgres_get_link;
+  plugin->get_transfer = &postgres_get_transfer;
+  // plugin->have_lock = &postgres_have_lock;
+  // plugin->insert_lock = &postgres_insert_lock;
+  plugin->get_coin_transactions = &postgres_get_coin_transactions;
   return plugin;
 }
 
