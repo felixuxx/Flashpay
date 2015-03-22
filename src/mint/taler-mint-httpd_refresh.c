@@ -84,11 +84,12 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   struct TALER_Amount melt;
   struct TALER_Amount value;
   struct TALER_Amount fee_withdraw;
+  struct TALER_Amount fee_melt;
   struct TALER_Amount total_melt;
 
   /* check that signature from the session public key is ok */
   hash_context = GNUNET_CRYPTO_hash_context_start ();
-  /* FIXME: also hash session public key here!? */
+  /* FIXME: also hash session public key here!? #3708 */
   for (i = 0; i < num_new_denoms; i++)
   {
     buf_size = GNUNET_CRYPTO_rsa_public_key_encode (denom_pubs[i],
@@ -104,7 +105,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                                      sizeof (struct GNUNET_CRYPTO_EddsaPublicKey));
   GNUNET_CRYPTO_hash_context_finish (hash_context,
                                      &melt_hash);
-  // FIXME: what about the `commit_hash`?
+  /* FIXME: what about the `commit_hash`? #3708 */
 
   body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_SESSION);
   body.purpose.size = htonl (sizeof (struct RefreshMeltSessionSignature));
@@ -125,9 +126,9 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                                        "error",
                                        "invalid signature (verification)");
   }
-
-  // FIXME: badness, use proper way to set to zero...
-  memset (&total_cost, 0, sizeof (struct TALER_Amount));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (MINT_CURRENCY,
+                                        &total_cost));
   key_state = TALER_MINT_key_state_acquire ();
   for (i=0;i<num_new_denoms;i++)
   {
@@ -137,7 +138,6 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                        &dki->value);
     TALER_amount_ntoh (&fee_withdraw,
                        &dki->fee_withdraw);
-    // FIXME: #3637
     if ( (GNUNET_OK !=
           TALER_amount_add (&cost,
                             &value,
@@ -147,31 +147,46 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                             &cost,
                             &total_cost)) )
     {
-      // FIXME...
+      TALER_MINT_key_state_release (key_state);
+      return TALER_MINT_reply_internal_error (connection,
+                                              "cost calculation failure");
     }
   }
 
-  // FIXME: badness, use proper way to set to zero...
-  memset (&total_melt, 0, sizeof (struct TALER_Amount));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (MINT_CURRENCY,
+                                        &total_melt));
   for (i=0;i<coin_count;i++)
   {
-    memset (&melt, 0, sizeof (struct TALER_Amount));
-    // FIXME: reduce coin value by melting fee!
-    // melt = coin_values[i]; // FIXME: #3636!
-
-    // FIXME: #3637
+    /* calculate contribution of the i-th melt by subtracting
+       the fee; add the rest to the total_melt value */
+    dki = &TALER_MINT_get_denom_key (key_state,
+                                     coin_public_infos[i].denom_pub)->issue;
+    TALER_amount_ntoh (&fee_melt,
+                       &dki->fee_refresh);
+    if (GNUNET_OK !=
+        TALER_amount_subtract (&melt,
+                               &coin_melt_details->melt_amount_with_fee,
+                               &fee_melt))
+    {
+      TALER_MINT_key_state_release (key_state);
+      return TALER_MINT_reply_external_error (connection,
+                                              "Melt contribution below melting fee");
+    }
     if (GNUNET_OK !=
         TALER_amount_add (&total_melt,
                           &melt,
                           &total_melt))
     {
-      // FIXME ...
+      TALER_MINT_key_state_release (key_state);
+      return TALER_MINT_reply_internal_error (connection,
+                                              "balance calculation failure");
     }
   }
   TALER_MINT_key_state_release (key_state);
   if (0 !=
       TALER_amount_cmp (&total_cost,
-                        &total_melt) )
+                        &total_melt))
   {
     /* We require total value of coins being melted and
        total value of coins being generated to match! */
