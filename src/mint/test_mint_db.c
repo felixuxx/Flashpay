@@ -322,7 +322,8 @@ run (void *cls,
   if (NULL != wire)
     json_decref (wire);
   if (NULL != rh)
-    TALER_MINT_DB_free_reserve_history (rh);
+    plugin->free_reserve_history (plugin->cls,
+                                  rh);
   rh = NULL;
   if (NULL != session)
     GNUNET_break (GNUNET_OK ==
