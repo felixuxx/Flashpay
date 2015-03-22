@@ -680,6 +680,16 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
         break;
       }
 
+    case JNAV_RET_AMOUNT:
+      {
+        struct TALER_Amount *where = va_arg (argp, void *);
+
+        ret = TALER_MINT_parse_amount_json (connection,
+                                            (json_t *) root,
+                                            where);
+        break;
+      }
+
     default:
       GNUNET_break (0);
       ret = (MHD_YES ==
@@ -721,6 +731,8 @@ TALER_MINT_parse_json_data (struct MHD_Connection *connection,
   ret = GNUNET_YES;
   for (i=0; NULL != spec[i].field_name; i++)
   {
+    if (GNUNET_YES != ret)
+      break;
     switch (spec[i].command)
     {
     case JNAV_FIELD:
@@ -730,8 +742,6 @@ TALER_MINT_parse_json_data (struct MHD_Connection *connection,
       GNUNET_break (0);
       return GNUNET_SYSERR;
     case JNAV_RET_DATA:
-      if (GNUNET_YES != ret)
-        break;
       ret = GNUNET_MINT_parse_navigate_json (connection,
                                              root,
                                              JNAV_FIELD,
@@ -741,8 +751,6 @@ TALER_MINT_parse_json_data (struct MHD_Connection *connection,
                                              spec[i].destination_size_in);
       break;
     case JNAV_RET_DATA_VAR:
-      if (GNUNET_YES != ret)
-        break;
       ptr = NULL;
       ret = GNUNET_MINT_parse_navigate_json (connection,
                                              root,
@@ -754,8 +762,6 @@ TALER_MINT_parse_json_data (struct MHD_Connection *connection,
       spec[i].destination = ptr;
       break;
     case JNAV_RET_TYPED_JSON:
-      if (GNUNET_YES != ret)
-        break;
       ptr = NULL;
       ret = GNUNET_MINT_parse_navigate_json (connection,
                                              root,
@@ -767,8 +773,6 @@ TALER_MINT_parse_json_data (struct MHD_Connection *connection,
       *((void**)spec[i].destination) = ptr;
       break;
     case JNAV_RET_RSA_PUBLIC_KEY:
-      if (GNUNET_YES != ret)
-        break;
       ptr = NULL;
       ret = GNUNET_MINT_parse_navigate_json (connection,
                                              root,
@@ -779,8 +783,6 @@ TALER_MINT_parse_json_data (struct MHD_Connection *connection,
       spec[i].destination = ptr;
       break;
     case JNAV_RET_RSA_SIGNATURE:
-      if (GNUNET_YES != ret)
-        break;
       ptr = NULL;
       ret = GNUNET_MINT_parse_navigate_json (connection,
                                              root,
@@ -789,6 +791,16 @@ TALER_MINT_parse_json_data (struct MHD_Connection *connection,
                                              JNAV_RET_RSA_SIGNATURE,
                                              &ptr);
       spec[i].destination = ptr;
+      break;
+    case JNAV_RET_AMOUNT:
+      GNUNET_assert (sizeof (struct TALER_Amount) ==
+                     spec[i].destination_size_in);
+      ret = GNUNET_MINT_parse_navigate_json (connection,
+                                             root,
+                                             JNAV_FIELD,
+                                             spec[i].field_name,
+                                             JNAV_RET_AMOUNT,
+                                             &spec[i].destination);
       break;
     }
   }
@@ -853,6 +865,11 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec)
         GNUNET_CRYPTO_rsa_signature_free (ptr);
         *(void**) spec[i].destination = NULL;
       }
+      break;
+    case JNAV_RET_AMOUNT:
+      memset (spec[i].destination,
+              0,
+              sizeof (struct TALER_Amount));
       break;
     }
   }

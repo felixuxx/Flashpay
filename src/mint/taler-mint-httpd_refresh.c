@@ -237,19 +237,15 @@ get_coin_public_info (struct MHD_Connection *connection,
     TALER_MINT_PARSE_RSA_SIGNATURE ("denom_sig", &sig),
     TALER_MINT_PARSE_RSA_PUBLIC_KEY ("denom_pub", &pk),
     TALER_MINT_PARSE_FIXED ("confirm_sig", &melt_sig),
-    /* FIXME: #3636! */
+    TALER_MINT_PARSE_AMOUNT ("value_with_fee", &amount),
     TALER_MINT_PARSE_END
   };
 
-  memset (&amount, 0, sizeof (amount)); // FIXME: #3636!
   ret = TALER_MINT_parse_json_data (connection,
                                     coin_info,
                                     spec);
   if (GNUNET_OK != ret)
     return ret;
-  /* FIXME: include amount of coin value to be melted here (#3636!) and
-    in what we return!? */
-
   /* check mint signature on the coin */
   r_public_info->denom_sig = sig;
   r_public_info->denom_pub = pk;
