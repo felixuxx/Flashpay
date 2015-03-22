@@ -308,7 +308,6 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info)
 {
   struct GNUNET_HashCode c_hash;
 
-  /* FIXME: we had envisioned a more complex scheme... */
   GNUNET_CRYPTO_hash (&coin_public_info->coin_pub,
                       sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
                       &c_hash);

@@ -919,9 +919,6 @@ check_commitment (struct MHD_Connection *connection,
 
     GNUNET_CRYPTO_ecdsa_key_get_public (&link_data->coin_priv,
                                         &coin_pub);
-    /* FIXME: we had envisioned a more complex scheme to derive
-       the message to sign for a blinded coin...
-       FIXME: we should have a function in util/ to do this! */
     GNUNET_CRYPTO_hash (&coin_pub,
                         sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
                         &h_msg);
