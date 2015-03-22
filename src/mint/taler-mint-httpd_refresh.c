@@ -282,9 +282,8 @@ verify_coin_public_info (struct MHD_Connection *connection,
   struct RefreshMeltCoinSignature body;
   struct MintKeyState *key_state;
   struct TALER_MINT_DenomKeyIssuePriv *dki;
+  struct TALER_Amount fee_refresh;
 
-  /* FIXME: include amount of coin value to be melted here (#3636!) and
-    in what we return!? */
   body.purpose.size = htonl (sizeof (struct RefreshMeltCoinSignature));
   body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_COIN);
   body.melt_hash = *melt_hash;
@@ -308,8 +307,6 @@ verify_coin_public_info (struct MHD_Connection *connection,
   key_state = TALER_MINT_key_state_acquire ();
   dki = TALER_MINT_get_denom_key (key_state,
                                   r_public_info->denom_pub);
-  /* FIXME: need to check if denomination key is still
-     valid for issuing! (#3634) */
   if (NULL == dki)
   {
     TALER_MINT_key_state_release (key_state);
@@ -317,6 +314,20 @@ verify_coin_public_info (struct MHD_Connection *connection,
     return TALER_MINT_reply_arg_invalid (connection,
                                          "denom_pub");
   }
+  /* FIXME: need to check if denomination key is still
+     valid for issuing! (#3634) */
+  TALER_amount_ntoh (&fee_refresh,
+                     &dki->issue.fee_refresh);
+  if (TALER_amount_cmp (&fee_refresh,
+                        &r_melt_detail->melt_amount_with_fee) < 0)
+  {
+    TALER_MINT_key_state_release (key_state);
+    return (MHD_YES ==
+            TALER_MINT_reply_external_error (connection,
+                                             "melt amount smaller than melting fee"))
+      ? GNUNET_NO : GNUNET_SYSERR;
+  }
+
   TALER_MINT_key_state_release (key_state);
   return GNUNET_OK;
 }

@@ -510,8 +510,6 @@ refresh_accept_melts (struct MHD_Connection *connection,
 {
   struct TALER_MINT_DenomKeyIssue *dki;
   struct TALER_MINT_DB_TransactionList *tl;
-  struct TALER_Amount fee_deposit;
-  struct TALER_Amount fee_refresh;
   struct TALER_Amount coin_value;
   struct TALER_Amount coin_residual;
   struct TALER_Amount spent;
@@ -530,22 +528,10 @@ refresh_accept_melts (struct MHD_Connection *connection,
                                         "denom not found"))
       ? GNUNET_NO : GNUNET_SYSERR;
 
-  TALER_amount_ntoh (&fee_deposit,
-                     &dki->fee_deposit);
-  TALER_amount_ntoh (&fee_refresh,
-                     &dki->fee_refresh);
   TALER_amount_ntoh (&coin_value,
                      &dki->value);
   /* fee for THIS transaction; the melt amount includes the fee! */
   spent = coin_details->melt_amount_with_fee;
-  if (TALER_amount_cmp (&fee_refresh,
-                        &spent) < 0)
-  {
-    return (MHD_YES ==
-            TALER_MINT_reply_external_error (connection,
-                                             "melt amount smaller than melting fee"))
-      ? GNUNET_NO : GNUNET_SYSERR;
-  }
   /* add historic transaction costs of this coin */
   tl = plugin->get_coin_transactions (plugin->cls,
                                       session,
@@ -560,8 +546,8 @@ refresh_accept_melts (struct MHD_Connection *connection,
                                         tl);
     return TALER_MINT_reply_internal_db_error (connection);
   }
-  /* Refuse to refresh when the coin does not have enough money left to
-   * pay the refreshing fees of the coin. */
+  /* Refuse to refresh when the coin's value is insufficient
+     for the cost of all transactions. */
   if (TALER_amount_cmp (&coin_value,
                         &spent) < 0)
   {
