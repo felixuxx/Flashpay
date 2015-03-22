@@ -17,11 +17,6 @@
  * @file taler-mint-httpd_db.c
  * @brief High-level (transactional-layer) database operations for the mint.
  * @author Christian Grothoff
- *
- * TODO:
- * - actually abstract DB implementation (i.e. via plugin logic)
- *   (this file should remain largely unchanged with the exception
- *    of the PQ-specific DB handle types)
  */
 #include "platform.h"
 #include <pthread.h>
