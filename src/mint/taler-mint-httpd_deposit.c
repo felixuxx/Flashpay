@@ -59,6 +59,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   struct MintKeyState *key_state;
   struct TALER_DepositRequest dr;
   struct TALER_MINT_DenomKeyIssuePriv *dki;
+  struct TALER_Amount fee_deposit;
 
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_DEPOSIT);
   dr.purpose.size = htonl (sizeof (struct TALER_DepositRequest));
@@ -96,6 +97,17 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
     LOG_WARNING ("Invalid coin passed for /deposit\n");
     TALER_MINT_key_state_release (key_state);
     return TALER_MINT_reply_coin_invalid (connection);
+  }
+  TALER_amount_ntoh (&fee_deposit,
+                     &dki->issue.fee_deposit);
+  if (TALER_amount_cmp (&fee_deposit,
+                        &deposit->amount_with_fee) < 0)
+  {
+    TALER_MINT_key_state_release (key_state);
+    return (MHD_YES ==
+            TALER_MINT_reply_external_error (connection,
+                                             "deposited amount smaller than depositing fee"))
+      ? GNUNET_NO : GNUNET_SYSERR;
   }
   TALER_MINT_key_state_release (key_state);
 

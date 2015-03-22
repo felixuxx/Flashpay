@@ -105,7 +105,6 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
   struct TALER_MINT_DB_TransactionList *tl;
   struct TALER_Amount spent;
   struct TALER_Amount value;
-  struct TALER_Amount fee_deposit;
   struct MintKeyState *mks;
   struct TALER_MINT_DenomKeyIssuePriv *dki;
   int ret;
@@ -134,8 +133,6 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                                   deposit->coin.denom_pub);
   TALER_amount_ntoh (&value,
                      &dki->issue.value);
-  TALER_amount_ntoh (&fee_deposit,
-                     &dki->issue.fee_deposit);
   TALER_MINT_key_state_release (mks);
 
   if (GNUNET_OK !=
@@ -147,14 +144,6 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
   }
   /* fee for THIS transaction */
   spent = deposit->amount_with_fee;
-  if (TALER_amount_cmp (&fee_deposit,
-                        &spent) < 0)
-  {
-    return (MHD_YES ==
-            TALER_MINT_reply_external_error (connection,
-                                             "deposited amount smaller than depositing fee"))
-      ? GNUNET_NO : GNUNET_SYSERR;
-  }
   /* add cost of all previous transactions */
   tl = plugin->get_coin_transactions (plugin->cls,
                                       session,
@@ -168,6 +157,8 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                                         tl);
     return TALER_MINT_reply_internal_db_error (connection);
   }
+  /* Check that cost of all transactions is smaller than
+     the value of the coin. */
   if (0 < TALER_amount_cmp (&spent,
                             &value))
   {
