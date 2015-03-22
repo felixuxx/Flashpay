@@ -130,7 +130,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
   }
   mks = TALER_MINT_key_state_acquire ();
   dki = TALER_MINT_get_denom_key (mks,
-                                  deposit->coin.denom_pub);
+                                  &deposit->coin.denom_pub);
   TALER_amount_ntoh (&value,
                      &dki->issue.value);
   TALER_MINT_key_state_release (mks);
@@ -211,7 +211,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
-                                       const struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub)
+                                       const struct TALER_ReservePublicKey *reserve_pub)
 {
   struct TALER_MINTDB_Session *session;
   struct ReserveHistory *rh;
@@ -255,11 +255,11 @@ TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
-                                     const struct GNUNET_CRYPTO_EddsaPublicKey *reserve,
-                                     const struct GNUNET_CRYPTO_rsa_PublicKey *denomination_pub,
+                                     const struct TALER_ReservePublicKey *reserve,
+                                     const struct TALER_DenominationPublicKey *denomination_pub,
                                      const char *blinded_msg,
                                      size_t blinded_msg_len,
-                                     const struct GNUNET_CRYPTO_EddsaSignature *signature)
+                                     const struct TALER_ReserveSignature *signature)
 {
   struct TALER_MINTDB_Session *session;
   struct ReserveHistory *rh;
@@ -303,8 +303,8 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
   {
     res = TALER_MINT_reply_withdraw_sign_success (connection,
                                                   &collectable);
-    GNUNET_CRYPTO_rsa_signature_free (collectable.sig);
-    GNUNET_CRYPTO_rsa_public_key_free (collectable.denom_pub);
+    GNUNET_CRYPTO_rsa_signature_free (collectable.sig.rsa_signature);
+    GNUNET_CRYPTO_rsa_public_key_free (collectable.denom_pub.rsa_public_key);
     return res;
   }
   GNUNET_assert (GNUNET_NO == res);
@@ -387,7 +387,7 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
       break;
     case TALER_MINT_DB_RO_WITHDRAW_COIN:
       tdki = TALER_MINT_get_denom_key (key_state,
-                                       pos->details.withdraw->denom_pub);
+                                       &pos->details.withdraw->denom_pub);
       TALER_amount_ntoh (&value,
                          &tdki->issue.value);
       if (0 == (res & 2))
@@ -428,7 +428,7 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
                                 rh);
 
   /* Balance is good, sign the coin! */
-  sig = GNUNET_CRYPTO_rsa_sign (dki->denom_priv,
+  sig = GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
                                 blinded_msg,
                                 blinded_msg_len);
   TALER_MINT_key_state_release (key_state);
@@ -440,8 +440,9 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
     return TALER_MINT_reply_internal_error (connection,
                                             "Internal error");
   }
-  collectable.sig = sig;
-  collectable.denom_pub = (struct GNUNET_CRYPTO_rsa_PublicKey *) denomination_pub;
+  /* FIXME: this signature is still blinded, bad name... */
+  collectable.sig.rsa_signature = sig;
+  collectable.denom_pub = *denomination_pub;
   collectable.reserve_pub = *reserve;
   GNUNET_CRYPTO_hash (blinded_msg,
                       blinded_msg_len,
@@ -494,7 +495,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
                       struct TALER_MINTDB_Session *session,
                       const struct MintKeyState *key_state,
                       const struct GNUNET_HashCode *melt_hash,
-                      const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                      const struct TALER_SessionPublicKey *session_pub,
                       const struct TALER_CoinPublicInfo *coin_public_info,
                       const struct MeltDetails *coin_details,
                       uint16_t oldcoin_index)
@@ -508,7 +509,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
   int res;
 
   dki = &TALER_MINT_get_denom_key (key_state,
-                                   coin_public_info->denom_pub)->issue;
+                                   &coin_public_info->denom_pub)->issue;
 
   if (NULL == dki)
     return (MHD_YES ==
@@ -607,10 +608,10 @@ refresh_accept_melts (struct MHD_Connection *connection,
 int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     const struct GNUNET_HashCode *melt_hash,
-                                    const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                    const struct GNUNET_CRYPTO_EddsaSignature *client_signature,
+                                    const struct TALER_SessionPublicKey *refresh_session_pub,
+                                    const struct TALER_SessionSignature *client_signature,
                                     unsigned int num_new_denoms,
-                                    struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs,
+                                    const struct TALER_DenominationPublicKey *denom_pubs,
                                     unsigned int coin_count,
                                     const struct TALER_CoinPublicInfo *coin_public_infos,
                                     const struct MeltDetails *coin_melt_details,
@@ -773,7 +774,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
  * @param transfer_privs private transfer keys
  * @param melts array of melted coins
  * @param num_newcoins number of newcoins being generated
- * @param denom_pub array of @a num_newcoins keys for the new coins
+ * @param denom_pubs array of @a num_newcoins keys for the new coins
  * @return #GNUNET_OK if the committment was honest,
  *         #GNUNET_NO if there was a problem and we generated an error message
  *         #GNUNET_SYSERR if we could not even generate an error message
@@ -781,13 +782,13 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
 static int
 check_commitment (struct MHD_Connection *connection,
                   struct TALER_MINTDB_Session *session,
-                  const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session,
+                  const struct TALER_SessionPublicKey *refresh_session,
                   unsigned int off,
                   unsigned int num_oldcoins,
-                  const struct GNUNET_CRYPTO_EcdsaPrivateKey *transfer_privs,
+                  const struct TALER_TransferPrivateKey *transfer_privs,
                   const struct RefreshMelt *melts,
                   unsigned int num_newcoins,
-                  struct GNUNET_CRYPTO_rsa_PublicKey **denom_pubs)
+                  const struct TALER_DenominationPublicKey *denom_pubs)
 {
   unsigned int j;
   struct TALER_LinkSecret last_shared_secret;
@@ -817,14 +818,14 @@ check_commitment (struct MHD_Connection *connection,
   {
     struct TALER_TransferSecret transfer_secret;
     struct TALER_LinkSecret shared_secret;
-    struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub_check;
+    struct TALER_TransferPublicKey transfer_pub_check;
 
-    GNUNET_CRYPTO_ecdsa_key_get_public (&transfer_privs[j],
-                                        &transfer_pub_check);
+    GNUNET_CRYPTO_ecdsa_key_get_public (&transfer_privs[j].ecdsa_priv,
+                                        &transfer_pub_check.ecdsa_pub);
     if (0 !=
         memcmp (&transfer_pub_check,
                 &commit_links[j].transfer_pub,
-                sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey)))
+                sizeof (struct TALER_TransferPublicKey)))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "transfer keys do not match\n");
@@ -840,9 +841,9 @@ check_commitment (struct MHD_Connection *connection,
 
     /* We're converting key types here, which is not very nice
      * but necessary and harmless (keys will be thrown away later). */
-    GNUNET_CRYPTO_ecdsa_public_to_ecdhe (&melts[j].coin.coin_pub,
+    GNUNET_CRYPTO_ecdsa_public_to_ecdhe (&melts[j].coin.coin_pub.ecdsa_pub,
                                          &coin_ecdhe);
-    GNUNET_CRYPTO_ecdsa_private_to_ecdhe (&transfer_privs[j],
+    GNUNET_CRYPTO_ecdsa_private_to_ecdhe (&transfer_privs[j].ecdsa_priv,
                                           &transfer_ecdhe);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_ecc_ecdh (&transfer_ecdhe,
@@ -915,7 +916,7 @@ check_commitment (struct MHD_Connection *connection,
   for (j = 0; j < num_newcoins; j++)
   {
     struct TALER_RefreshLinkDecrypted *link_data;
-    struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+    struct TALER_CoinSpendPublicKey coin_pub;
     struct GNUNET_HashCode h_msg;
     char *buf;
     size_t buf_len;
@@ -931,15 +932,15 @@ check_commitment (struct MHD_Connection *connection,
         ? GNUNET_NO : GNUNET_SYSERR;
     }
 
-    GNUNET_CRYPTO_ecdsa_key_get_public (&link_data->coin_priv,
-                                        &coin_pub);
+    GNUNET_CRYPTO_ecdsa_key_get_public (&link_data->coin_priv.ecdsa_priv,
+                                        &coin_pub.ecdsa_pub);
     GNUNET_CRYPTO_hash (&coin_pub,
-                        sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
+                        sizeof (struct TALER_CoinSpendPublicKey),
                         &h_msg);
     if (0 == (buf_len =
               GNUNET_CRYPTO_rsa_blind (&h_msg,
-                                       link_data->blinding_key,
-                                       denom_pubs[j],
+                                       link_data->blinding_key.rsa_blinding_key,
+                                       denom_pubs[j].rsa_public_key,
                                        &buf)))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -989,42 +990,45 @@ check_commitment (struct MHD_Connection *connection,
  * @param coin_off number of the coin
  * @return NULL on error, otherwise signature over the coin
  */
-static struct GNUNET_CRYPTO_rsa_Signature *
+static struct TALER_DenominationSignature
 refresh_mint_coin (struct MHD_Connection *connection,
                    struct TALER_MINTDB_Session *session,
-                   const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session,
+                   const struct TALER_SessionPublicKey *refresh_session,
                    struct MintKeyState *key_state,
-                   const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub,
+                   const struct TALER_DenominationPublicKey *denom_pub,
                    const struct RefreshCommitCoin *commit_coin,
                    unsigned int coin_off)
 {
   struct TALER_MINT_DenomKeyIssuePriv *dki;
-  struct GNUNET_CRYPTO_rsa_Signature *ev_sig;
+  struct TALER_DenominationSignature ev_sig;
 
-  dki = TALER_MINT_get_denom_key (key_state, denom_pub);
+  dki = TALER_MINT_get_denom_key (key_state,
+                                  denom_pub);
   if (NULL == dki)
   {
     GNUNET_break (0);
-    return NULL;
+    ev_sig.rsa_signature = NULL;
+    return ev_sig;
   }
-  ev_sig = GNUNET_CRYPTO_rsa_sign (dki->denom_priv,
-                                   commit_coin->coin_ev,
-                                   commit_coin->coin_ev_size);
-  if (NULL == ev_sig)
+  ev_sig.rsa_signature
+    = GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
+                              commit_coin->coin_ev,
+                              commit_coin->coin_ev_size);
+  if (NULL == ev_sig.rsa_signature)
   {
     GNUNET_break (0);
-    return NULL;
+    return ev_sig;
   }
   if (GNUNET_OK !=
       plugin->insert_refresh_collectable (plugin->cls,
                                           session,
                                           refresh_session,
                                           coin_off,
-                                          ev_sig))
+                                          &ev_sig))
   {
     GNUNET_break (0);
-    GNUNET_CRYPTO_rsa_signature_free (ev_sig);
-    return NULL;
+    GNUNET_CRYPTO_rsa_signature_free (ev_sig.rsa_signature);
+    ev_sig.rsa_signature = NULL;
   }
   return ev_sig;
 }
@@ -1046,18 +1050,18 @@ refresh_mint_coin (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
-                                      const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                      const struct TALER_SessionPublicKey *refresh_session_pub,
                                       unsigned int kappa,
                                       unsigned int num_oldcoins,
-                                      struct GNUNET_CRYPTO_EcdsaPrivateKey *const*transfer_privs)
+                                      struct TALER_TransferPrivateKey **transfer_privs)
 {
   int res;
   struct TALER_MINTDB_Session *session;
   struct RefreshSession refresh_session;
   struct MintKeyState *key_state;
   struct RefreshMelt *melts;
-  struct GNUNET_CRYPTO_rsa_PublicKey **denom_pubs;
-  struct GNUNET_CRYPTO_rsa_Signature **ev_sigs;
+  struct TALER_DenominationPublicKey *denom_pubs;
+  struct TALER_DenominationSignature *ev_sigs;
   struct RefreshCommitCoin *commit_coins;
   unsigned int i;
   unsigned int j;
@@ -1102,7 +1106,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     }
   }
   denom_pubs = GNUNET_malloc (refresh_session.num_newcoins *
-                              sizeof (struct GNUNET_CRYPTO_rsa_PublicKey *));
+                              sizeof (struct TALER_DenominationPublicKey));
   if (GNUNET_OK !=
       plugin->get_refresh_order (plugin->cls,
                                  session,
@@ -1135,7 +1139,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
                                  denom_pubs)))
     {
       for (j=0;j<refresh_session.num_newcoins;j++)
-        GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j]);
+        GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
       GNUNET_free (denom_pubs);
       GNUNET_free (melts);
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
@@ -1150,7 +1154,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
   {
     GNUNET_break (0);
     for (j=0;j<refresh_session.num_newcoins;j++)
-      GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j]);
+      GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
     GNUNET_free (denom_pubs);
     return TALER_MINT_reply_internal_db_error (connection);
   }
@@ -1168,12 +1172,12 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     GNUNET_break (0);
     GNUNET_free (commit_coins);
     for (j=0;j<refresh_session.num_newcoins;j++)
-      GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j]);
+      GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
     GNUNET_free (denom_pubs);
     return TALER_MINT_reply_internal_db_error (connection);
   }
   ev_sigs = GNUNET_malloc (refresh_session.num_newcoins *
-                           sizeof (struct GNUNET_CRYPTO_rsa_Signature *));
+                           sizeof (struct TALER_DenominationSignature));
   key_state = TALER_MINT_key_state_acquire ();
   for (j=0;j<refresh_session.num_newcoins;j++)
   {
@@ -1181,17 +1185,17 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
                                     session,
                                     refresh_session_pub,
                                     key_state,
-                                    denom_pubs[j],
+                                    &denom_pubs[j],
                                     &commit_coins[j],
                                     j);
-    if (NULL == ev_sigs[j])
+    if (NULL == ev_sigs[j].rsa_signature)
     {
       TALER_MINT_key_state_release (key_state);
       for (i=0;i<j;i++)
-        GNUNET_CRYPTO_rsa_signature_free (ev_sigs[i]);
+        GNUNET_CRYPTO_rsa_signature_free (ev_sigs[i].rsa_signature);
       GNUNET_free (ev_sigs);
       for (j=0;j<refresh_session.num_newcoins;j++)
-        GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j]);
+        GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
       GNUNET_free (denom_pubs);
       GNUNET_free (commit_coins);
       return TALER_MINT_reply_internal_db_error (connection);
@@ -1199,7 +1203,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
   }
   TALER_MINT_key_state_release (key_state);
   for (j=0;j<refresh_session.num_newcoins;j++)
-    GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j]);
+    GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
   GNUNET_free (denom_pubs);
   GNUNET_free (commit_coins);
 
@@ -1209,7 +1213,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
   {
     LOG_WARNING ("/refresh/reveal transaction commit failed\n");
     for (i=0;i<refresh_session.num_newcoins;i++)
-      GNUNET_CRYPTO_rsa_signature_free (ev_sigs[i]);
+      GNUNET_CRYPTO_rsa_signature_free (ev_sigs[i].rsa_signature);
     GNUNET_free (ev_sigs);
     return TALER_MINT_reply_commit_error (connection);
   }
@@ -1218,7 +1222,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
                                                  refresh_session.num_newcoins,
                                                  ev_sigs);
   for (i=0;i<refresh_session.num_newcoins;i++)
-    GNUNET_CRYPTO_rsa_signature_free (ev_sigs[i]);
+    GNUNET_CRYPTO_rsa_signature_free (ev_sigs[i].rsa_signature);
   GNUNET_free (ev_sigs);
   return res;
 }
@@ -1235,11 +1239,11 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
-                                    const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub)
+                                    const struct TALER_CoinSpendPublicKey *coin_pub)
 {
   int res;
   struct TALER_MINTDB_Session *session;
-  struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub;
+  struct TALER_TransferPublicKey transfer_pub;
   struct TALER_EncryptedLinkSecret shared_secret_enc;
   struct LinkDataList *ldl;
 

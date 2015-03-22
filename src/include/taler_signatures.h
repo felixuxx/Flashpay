@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -28,7 +28,6 @@
 #ifndef TALER_SIGNATURES_H
 #define TALER_SIGNATURES_H
 
-#include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
 
 /**
@@ -129,7 +128,7 @@ struct TALER_WithdrawRequest
    * Reserve public key (which reserve to withdraw from).  This is
    * the public key which must match the signature.
    */
-  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
+  struct TALER_ReservePublicKey reserve_pub;
 
   /**
    * Value of the coin being minted (matching the denomination key)
@@ -189,7 +188,7 @@ struct TALER_DepositRequest
   /**
    * The coin's public key.
    */
-  struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+  struct TALER_CoinSpendPublicKey coin_pub;
 
 };
 
@@ -232,12 +231,12 @@ struct TALER_DepositConfirmation
   /**
    * The coin's public key.
    */
-  struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+  struct TALER_CoinSpendPublicKey coin_pub;
 
   /**
    * The Merchant's public key.
    */
-  struct GNUNET_CRYPTO_EddsaPublicKey merchant;
+  struct TALER_MerchantPublicKey merchant;
 
 };
 
@@ -274,7 +273,7 @@ struct RefreshMeltCoinSignature
   /**
    * The coin's public key.
    */
-  struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+  struct TALER_CoinSpendPublicKey coin_pub;
 };
 
 
@@ -298,7 +297,7 @@ struct RefreshMeltSessionSignature
    * Public key of the refresh session for which
    * @e melt_client_signature must be a valid signature.
    */
-  struct GNUNET_CRYPTO_EddsaPublicKey session_key;
+  struct TALER_SessionPublicKey session_key;
 
   /**
    * What is the total value of the coins created during the
@@ -348,10 +347,12 @@ struct RefreshMeltConfirmSignRequestBody
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
+  // FIXME: We probably need more info in here...
+
   /**
-   * FIXME.
+   * Public key the client uses for this session.
    */
-  struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
+  struct TALER_SessionPublicKey session_pub;
 };
 
 
@@ -365,7 +366,7 @@ struct TALER_MINT_SignKeyIssue
   /**
    * Signature over the signing key (by the master key of the mint).
    */
-  struct GNUNET_CRYPTO_EddsaSignature signature;
+  struct TALER_MasterSignature signature;
 
   /**
    * Purpose is #TALER_SIGNATURE_MASTER_SIGNKEY.
@@ -376,7 +377,7 @@ struct TALER_MINT_SignKeyIssue
    * Master public key of the mint corresponding to @e signature.
    * This is the long-term offline master key of the mint.
    */
-  struct GNUNET_CRYPTO_EddsaPublicKey master_pub;
+  struct TALER_MasterPublicKey master_pub;
 
   /**
    * When does this signing key begin to be valid?
@@ -395,7 +396,7 @@ struct TALER_MINT_SignKeyIssue
    * The public online signing key that the mint will use
    * between @e start and @e expire.
    */
-  struct GNUNET_CRYPTO_EddsaPublicKey signkey_pub;
+  struct TALER_MintPublicKey signkey_pub;
 };
 
 
@@ -409,7 +410,7 @@ struct TALER_MINT_DenomKeyIssue
    * Signature over this struct to affirm the validity
    * of the key.
    */
-  struct GNUNET_CRYPTO_EddsaSignature signature;
+  struct TALER_MasterSignature signature;
 
   /**
    * Purpose ist #TALER_SIGNATURE_MASTER_DENOM.
@@ -420,7 +421,7 @@ struct TALER_MINT_DenomKeyIssue
    * The long-term offline master key of the mint that was
    * used to create @e signature.
    */
-  struct GNUNET_CRYPTO_EddsaPublicKey master;
+  struct TALER_MasterPublicKey master;
 
   /**
    * Start time of the validity period for this key.

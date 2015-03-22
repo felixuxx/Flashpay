@@ -758,15 +758,10 @@ postgres_reserve_get (void *cls,
   PGresult *result;
   uint64_t expiration_date_nbo;
   struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(reserve->pub),
+    TALER_DB_QUERY_PARAM_PTR(&reserve->pub),
     TALER_DB_QUERY_PARAM_END
   };
 
-  if (NULL == reserve->pub)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
   result = TALER_DB_exec_prepared (session->conn,
                                    "get_reserve",
                                    params);
@@ -821,11 +816,11 @@ postgres_reserves_update (void *cls,
   struct GNUNET_TIME_AbsoluteNBO expiry_nbo;
   int ret;
 
-  if ((NULL == reserve) || (NULL == reserve->pub))
+  if (NULL == reserve)
     return GNUNET_SYSERR;
   ret = GNUNET_OK;
   struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR (reserve->pub),
+    TALER_DB_QUERY_PARAM_PTR (&reserve->pub),
     TALER_DB_QUERY_PARAM_PTR (&balance_nbo.value),
     TALER_DB_QUERY_PARAM_PTR (&balance_nbo.fraction),
     TALER_DB_QUERY_PARAM_PTR (&expiry_nbo),
@@ -901,7 +896,7 @@ postgres_reserves_in_insert (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Reserve does not exist; creating a new one\n");
     struct TALER_DB_QueryParam params[] = {
-      TALER_DB_QUERY_PARAM_PTR (reserve->pub),
+      TALER_DB_QUERY_PARAM_PTR (&reserve->pub),
       TALER_DB_QUERY_PARAM_PTR (&balance_nbo.value),
       TALER_DB_QUERY_PARAM_PTR (&balance_nbo.fraction),
       TALER_DB_QUERY_PARAM_PTR_SIZED (balance_nbo.currency,
@@ -923,7 +918,7 @@ postgres_reserves_in_insert (void *cls,
   result = NULL;
   /* create new incoming transaction */
   struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR (reserve->pub),
+    TALER_DB_QUERY_PARAM_PTR (&reserve->pub),
     TALER_DB_QUERY_PARAM_PTR (&balance_nbo.value),
     TALER_DB_QUERY_PARAM_PTR (&balance_nbo.fraction),
     TALER_DB_QUERY_PARAM_PTR_SIZED (&balance_nbo.currency,
@@ -1053,8 +1048,8 @@ postgres_get_collectable_blindcoin (void *cls,
     GNUNET_break (0);
     goto cleanup;
   }
-  collectable->denom_pub = denom_pub;
-  collectable->sig = denom_sig;
+  collectable->denom_pub.rsa_public_key = denom_pub;
+  collectable->sig.rsa_signature = denom_sig;
   ret = GNUNET_YES;
 
  cleanup:
@@ -1103,10 +1098,10 @@ postgres_insert_collectable_blindcoin (void *cls,
 
   ret = GNUNET_SYSERR;
   denom_pub_enc_size =
-      GNUNET_CRYPTO_rsa_public_key_encode (collectable->denom_pub,
+      GNUNET_CRYPTO_rsa_public_key_encode (collectable->denom_pub.rsa_public_key,
                                            &denom_pub_enc);
   denom_sig_enc_size =
-      GNUNET_CRYPTO_rsa_signature_encode (collectable->sig,
+      GNUNET_CRYPTO_rsa_signature_encode (collectable->sig.rsa_signature,
                                           &denom_sig_enc);
   struct TALER_DB_QueryParam params[] = {
     TALER_DB_QUERY_PARAM_PTR (h_blind),
@@ -1127,8 +1122,7 @@ postgres_insert_collectable_blindcoin (void *cls,
     QUERY_ERR (result);
     goto rollback;
   }
-  reserve.pub = (struct GNUNET_CRYPTO_EddsaPublicKey *)
-      &collectable->reserve_pub;
+  reserve.pub = collectable->reserve_pub;
   if (GNUNET_OK != postgres_reserve_get (cls,
                                          session,
                                          &reserve))
@@ -1172,7 +1166,7 @@ postgres_insert_collectable_blindcoin (void *cls,
 static struct ReserveHistory *
 postgres_get_reserve_history (void *cls,
                               struct TALER_MINTDB_Session *session,
-                              const struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub)
+                              const struct TALER_ReservePublicKey *reserve_pub)
 {
   PGresult *result;
   struct ReserveHistory *rh;
@@ -1219,7 +1213,7 @@ postgres_get_reserve_history (void *cls,
         GNUNET_break (0);
         goto cleanup;
       }
-      (void) memcpy (&bt->reserve_pub, reserve_pub, sizeof (bt->reserve_pub));
+      bt->reserve_pub = *reserve_pub;
       if (NULL != rh_head)
       {
         rh_head->next = GNUNET_new (struct ReserveHistory);
@@ -1238,7 +1232,7 @@ postgres_get_reserve_history (void *cls,
   result = NULL;
   {
     struct GNUNET_HashCode blind_ev;
-    struct GNUNET_CRYPTO_EddsaSignature reserve_sig;
+    struct TALER_ReserveSignature reserve_sig;
     struct CollectableBlindcoin *cbc;
     char *denom_pub_enc;
     char *denom_sig_enc;
@@ -1280,20 +1274,23 @@ postgres_get_reserve_history (void *cls,
         goto cleanup;
       }
       cbc = GNUNET_new (struct CollectableBlindcoin);
-      cbc->sig = GNUNET_CRYPTO_rsa_signature_decode (denom_sig_enc,
-                                                    denom_sig_enc_size);
+      cbc->sig.rsa_signature
+        = GNUNET_CRYPTO_rsa_signature_decode (denom_sig_enc,
+                                              denom_sig_enc_size);
       GNUNET_free (denom_sig_enc);
       denom_sig_enc = NULL;
-      cbc->denom_pub = GNUNET_CRYPTO_rsa_public_key_decode (denom_pub_enc,
-                                                            denom_pub_enc_size);
+      cbc->denom_pub.rsa_public_key
+        = GNUNET_CRYPTO_rsa_public_key_decode (denom_pub_enc,
+                                               denom_pub_enc_size);
       GNUNET_free (denom_pub_enc);
       denom_pub_enc = NULL;
-      if ((NULL == cbc->sig) || (NULL == cbc->denom_pub))
+      if ( (NULL == cbc->sig.rsa_signature) ||
+           (NULL == cbc->denom_pub.rsa_public_key) )
       {
-        if (NULL != cbc->sig)
-          GNUNET_CRYPTO_rsa_signature_free (cbc->sig);
-        if (NULL != cbc->denom_pub)
-          GNUNET_CRYPTO_rsa_public_key_free (cbc->denom_pub);
+        if (NULL != cbc->sig.rsa_signature)
+          GNUNET_CRYPTO_rsa_signature_free (cbc->sig.rsa_signature);
+        if (NULL != cbc->denom_pub.rsa_public_key)
+          GNUNET_CRYPTO_rsa_public_key_free (cbc->denom_pub.rsa_public_key);
         GNUNET_free (cbc);
         GNUNET_break (0);
         goto cleanup;
@@ -1394,10 +1391,10 @@ postgres_insert_deposit (void *cls,
 
   ret = GNUNET_SYSERR;
   denom_pub_enc_size =
-      GNUNET_CRYPTO_rsa_public_key_encode (deposit->coin.denom_pub,
+      GNUNET_CRYPTO_rsa_public_key_encode (deposit->coin.denom_pub.rsa_public_key,
                                            &denom_pub_enc);
   denom_sig_enc_size =
-      GNUNET_CRYPTO_rsa_signature_encode (deposit->coin.denom_sig,
+      GNUNET_CRYPTO_rsa_signature_encode (deposit->coin.denom_sig.rsa_signature,
                                           &denom_sig_enc);
   json_wire_enc = json_dumps (deposit->wire, JSON_COMPACT);
   TALER_amount_hton (&amount_nbo,
@@ -1450,7 +1447,7 @@ postgres_insert_deposit (void *cls,
 static int
 postgres_get_refresh_session (void *cls,
                               struct TALER_MINTDB_Session *session,
-                              const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                              const struct TALER_SessionPublicKey *refresh_session_pub,
                               struct RefreshSession *refresh_session)
 {
   // FIXME: check logic!
@@ -1526,7 +1523,7 @@ postgres_get_refresh_session (void *cls,
 static int
 postgres_create_refresh_session (void *cls,
                                  struct TALER_MINTDB_Session *session,
-                                 const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                                 const struct TALER_SessionPublicKey *session_pub,
                                  const struct RefreshSession *refresh_session)
 {
   // FIXME: actually store session data!
@@ -1570,7 +1567,7 @@ postgres_create_refresh_session (void *cls,
 static int
 postgres_insert_refresh_melt (void *cls,
                               struct TALER_MINTDB_Session *session,
-                              const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session,
+                              const struct TALER_SessionPublicKey *refresh_session,
                               uint16_t oldcoin_index,
                               const struct RefreshMelt *melt)
 {
@@ -1580,7 +1577,7 @@ postgres_insert_refresh_melt (void *cls,
   size_t buf_size;
   PGresult *result;
 
-  buf_size = GNUNET_CRYPTO_rsa_public_key_encode (melt->coin.denom_pub,
+  buf_size = GNUNET_CRYPTO_rsa_public_key_encode (melt->coin.denom_pub.rsa_public_key,
                                                   &buf);
   {
     struct TALER_DB_QueryParam params[] = {
@@ -1620,7 +1617,7 @@ postgres_insert_refresh_melt (void *cls,
 static int
 postgres_get_refresh_melt (void *cls,
                            struct TALER_MINTDB_Session *session,
-                           const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session,
+                           const struct TALER_SessionPublicKey *refresh_session,
                            uint16_t oldcoin_index,
                            struct RefreshMelt *melt)
 {
@@ -1645,9 +1642,9 @@ postgres_get_refresh_melt (void *cls,
 static int
 postgres_insert_refresh_order (void *cls,
                                struct TALER_MINTDB_Session *session,
-                               const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                               const struct TALER_SessionPublicKey *session_pub,
                                uint16_t num_newcoins,
-                               struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs)
+                               const struct TALER_DenominationPublicKey *denom_pubs)
 {
   // FIXME: check logic: was written for just one COIN!
   uint16_t newcoin_index_nbo = htons (num_newcoins);
@@ -1655,7 +1652,7 @@ postgres_insert_refresh_order (void *cls,
   size_t buf_size;
   PGresult *result;
 
-  buf_size = GNUNET_CRYPTO_rsa_public_key_encode (*denom_pubs,
+  buf_size = GNUNET_CRYPTO_rsa_public_key_encode (denom_pubs->rsa_public_key,
                                                   &buf);
 
   {
@@ -1701,9 +1698,9 @@ postgres_insert_refresh_order (void *cls,
 static int
 postgres_get_refresh_order (void *cls,
                             struct TALER_MINTDB_Session *session,
-                            const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                            const struct TALER_SessionPublicKey *session_pub,
                             uint16_t num_newcoins,
-                            struct GNUNET_CRYPTO_rsa_PublicKey **denom_pubs)
+                            struct TALER_DenominationPublicKey *denom_pubs)
 {
   // FIXME: check logic -- was written for just one coin!
   char *buf;
@@ -1744,7 +1741,9 @@ postgres_get_refresh_order (void *cls,
     return GNUNET_SYSERR;
   }
   PQclear (result);
-  denom_pubs[0] = GNUNET_CRYPTO_rsa_public_key_decode (buf, buf_size);
+  denom_pubs->rsa_public_key
+    = GNUNET_CRYPTO_rsa_public_key_decode (buf,
+                                           buf_size);
   GNUNET_free (buf);
   return GNUNET_OK;
 }
@@ -1767,7 +1766,7 @@ postgres_get_refresh_order (void *cls,
 static int
 postgres_insert_refresh_commit_coins (void *cls,
                                       struct TALER_MINTDB_Session *session,
-                                      const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                      const struct TALER_SessionPublicKey *refresh_session_pub,
                                       unsigned int i,
                                       unsigned int num_newcoins,
                                       const struct RefreshCommitCoin *commit_coins)
@@ -1780,9 +1779,9 @@ postgres_insert_refresh_commit_coins (void *cls,
     TALER_DB_QUERY_PARAM_PTR_SIZED(commit_coins->coin_ev, commit_coins->coin_ev_size),
     TALER_DB_QUERY_PARAM_PTR(&cnc_index_nbo),
     TALER_DB_QUERY_PARAM_PTR(&newcoin_index_nbo),
-    TALER_DB_QUERY_PARAM_PTR_SIZED(commit_coins->refresh_link->coin_priv_enc,
-                                   commit_coins->refresh_link->blinding_key_enc_size +
-                                   sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey)),
+    TALER_DB_QUERY_PARAM_PTR_SIZED (commit_coins->refresh_link->coin_priv_enc,
+                                    commit_coins->refresh_link->blinding_key_enc_size +
+                                    sizeof (struct TALER_CoinSpendPrivateKey)),
     TALER_DB_QUERY_PARAM_END
   };
 
@@ -1825,7 +1824,7 @@ postgres_insert_refresh_commit_coins (void *cls,
 static int
 postgres_get_refresh_commit_coins (void *cls,
                                    struct TALER_MINTDB_Session *session,
-                                   const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                   const struct TALER_SessionPublicKey *refresh_session_pub,
                                    unsigned int cnc_index,
                                    unsigned int newcoin_index,
                                    struct RefreshCommitCoin *cc)
@@ -1873,7 +1872,7 @@ postgres_get_refresh_commit_coins (void *cls,
     return GNUNET_SYSERR;
   }
   PQclear (result);
-  if (rl_buf_size < sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey))
+  if (rl_buf_size < sizeof (struct TALER_CoinSpendPrivateKey))
   {
     GNUNET_free (c_buf);
     GNUNET_free (rl_buf);
@@ -1896,7 +1895,7 @@ postgres_get_refresh_commit_coins (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection to use
  * @param refresh_session_pub public key of the refresh session this
- *        commitment belongs with
+ *        commitment belongs with  -- FIXME: should not be needed!
  * @param i set index (1st dimension)
  * @param j coin index (2nd dimension), corresponds to melted (old) coins
  * @param commit_link link information to store
@@ -1905,7 +1904,7 @@ postgres_get_refresh_commit_coins (void *cls,
 static int
 postgres_insert_refresh_commit_links (void *cls,
                                       struct TALER_MINTDB_Session *session,
-                                      const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                      const struct TALER_SessionPublicKey *refresh_session_pub,
                                       unsigned int i,
                                       unsigned int j,
                                       const struct RefreshCommitLink *commit_link)
@@ -1950,7 +1949,7 @@ postgres_insert_refresh_commit_links (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection to use
  * @param refresh_session_pub public key of the refresh session this
- *        commitment belongs with
+ *        commitment belongs with -- FIXME: should not be needed!
  * @param i set index (1st dimension)
  * @param num_links size of the @a commit_link array
  * @param links[OUT] array of link information to return
@@ -1961,7 +1960,7 @@ postgres_insert_refresh_commit_links (void *cls,
 static int
 postgres_get_refresh_commit_links (void *cls,
                                    struct TALER_MINTDB_Session *session,
-                                   const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                   const struct TALER_SessionPublicKey *refresh_session_pub,
                                    unsigned int i,
                                    unsigned int num_links,
                                    struct RefreshCommitLink *links)
@@ -2026,9 +2025,9 @@ postgres_get_refresh_commit_links (void *cls,
 static int
 postgres_insert_refresh_collectable (void *cls,
                                      struct TALER_MINTDB_Session *session,
-                                     const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                                     const struct TALER_SessionPublicKey *session_pub,
                                      uint16_t newcoin_index,
-                                     const struct GNUNET_CRYPTO_rsa_Signature *ev_sig)
+                                     const struct TALER_DenominationSignature *ev_sig)
 {
   // FIXME: check logic!
   uint16_t newcoin_index_nbo = htons (newcoin_index);
@@ -2036,7 +2035,7 @@ postgres_insert_refresh_collectable (void *cls,
   size_t buf_size;
   PGresult *result;
 
-  buf_size = GNUNET_CRYPTO_rsa_signature_encode (ev_sig,
+  buf_size = GNUNET_CRYPTO_rsa_signature_encode (ev_sig->rsa_signature,
                                                  &buf);
   {
     struct TALER_DB_QueryParam params[] = {
@@ -2073,7 +2072,7 @@ postgres_insert_refresh_collectable (void *cls,
 static struct LinkDataList *
 postgres_get_link_data_list (void *cls,
                              struct TALER_MINTDB_Session *session,
-                             const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub)
+                             const struct TALER_CoinSpendPublicKey *coin_pub)
 {
   // FIXME: check logic!
   struct LinkDataList *ldl;
@@ -2146,10 +2145,12 @@ postgres_get_link_data_list (void *cls,
             ld_buf,
             ld_buf_size);
 
-    sig = GNUNET_CRYPTO_rsa_signature_decode (sig_buf,
-                                              sig_buf_size);
-    denom_pub = GNUNET_CRYPTO_rsa_public_key_decode (pk_buf,
-                                                     pk_buf_size);
+    sig
+      = GNUNET_CRYPTO_rsa_signature_decode (sig_buf,
+                                            sig_buf_size);
+    denom_pub
+      = GNUNET_CRYPTO_rsa_public_key_decode (pk_buf,
+                                             pk_buf_size);
     GNUNET_free (pk_buf);
     GNUNET_free (sig_buf);
     GNUNET_free (ld_buf);
@@ -2170,8 +2171,8 @@ postgres_get_link_data_list (void *cls,
     pos = GNUNET_new (struct LinkDataList);
     pos->next = ldl;
     pos->link_data_enc = link_enc;
-    pos->denom_pub = denom_pub;
-    pos->ev_sig = sig;
+    pos->denom_pub.rsa_public_key = denom_pub;
+    pos->ev_sig.rsa_signature = sig;
     ldl = pos;
   }
   return ldl;
@@ -2196,8 +2197,8 @@ postgres_get_link_data_list (void *cls,
 static int
 postgres_get_transfer (void *cls,
                        struct TALER_MINTDB_Session *session,
-                       const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
-                       struct GNUNET_CRYPTO_EcdsaPublicKey *transfer_pub,
+                       const struct TALER_CoinSpendPublicKey *coin_pub,
+                       struct TALER_TransferPublicKey *transfer_pub,
                        struct TALER_EncryptedLinkSecret *shared_secret_enc)
 {
   // FIXME: check logic!
@@ -2260,7 +2261,7 @@ postgres_get_transfer (void *cls,
 static struct TALER_MINT_DB_TransactionList *
 postgres_get_coin_transactions (void *cls,
                                 struct TALER_MINTDB_Session *session,
-                                const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub)
+                                const struct TALER_CoinSpendPublicKey *coin_pub)
 {
   // FIXME: check logic!
   GNUNET_break (0); // FIXME: implement!

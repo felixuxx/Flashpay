@@ -46,8 +46,8 @@ common_free_reserve_history (void *cls,
       break;
     case TALER_MINT_DB_RO_WITHDRAW_COIN:
       cbc = rh->details.withdraw;
-      GNUNET_CRYPTO_rsa_signature_free (cbc->sig);
-      GNUNET_CRYPTO_rsa_public_key_free (cbc->denom_pub);
+      GNUNET_CRYPTO_rsa_signature_free (cbc->sig.rsa_signature);
+      GNUNET_CRYPTO_rsa_public_key_free (cbc->denom_pub.rsa_public_key);
       GNUNET_free (cbc);
       break;
     }

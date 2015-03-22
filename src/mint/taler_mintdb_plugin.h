@@ -35,7 +35,7 @@ struct BankTransfer
   /**
    * Public key of the reserve that was filled.
    */
-  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
+  struct TALER_ReservePublicKey reserve_pub;
 
   /**
    * Amount that was transferred to the mint.
@@ -58,7 +58,7 @@ struct Reserve
   /**
    * The reserve's public key.  This uniquely identifies the reserve
    */
-  struct GNUNET_CRYPTO_EddsaPublicKey *pub;
+  struct TALER_ReservePublicKey pub;
 
   /**
    * The balance amount existing in the reserve
@@ -83,7 +83,7 @@ struct CollectableBlindcoin
   /**
    * Our signature over the (blinded) coin.
    */
-  struct GNUNET_CRYPTO_rsa_Signature *sig;
+  struct TALER_DenominationSignature sig;
 
   /**
    * Denomination key (which coin was generated).
@@ -91,12 +91,12 @@ struct CollectableBlindcoin
    * AMOUNT *including* fee in what is being signed
    * as well!
    */
-  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+  struct TALER_DenominationPublicKey denom_pub;
 
   /**
    * Public key of the reserve that was drained.
    */
-  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
+  struct TALER_ReservePublicKey reserve_pub;
 
   /**
    * Hash over the blinded message, needed to verify
@@ -108,7 +108,7 @@ struct CollectableBlindcoin
    * Signature confirming the withdrawl, matching @e reserve_pub,
    * @e denom_pub and @e h_coin_envelope.
    */
-  struct GNUNET_CRYPTO_EddsaSignature reserve_sig;
+  struct TALER_ReserveSignature reserve_sig;
 };
 
 
@@ -186,13 +186,13 @@ struct Deposit
    * by @e h_wire in relation to the contract identified
    * by @e h_contract.
    */
-  struct GNUNET_CRYPTO_EcdsaSignature csig;
+  struct TALER_CoinSpendSignature csig;
 
   /**
    * Public key of the merchant.  Enables later identification
    * of the merchant in case of a need to rollback transactions.
    */
-  struct GNUNET_CRYPTO_EddsaPublicKey merchant_pub;
+  struct TALER_MerchantPublicKey merchant_pub;
 
   /**
    * Hash over the contract between merchant and customer
@@ -238,8 +238,10 @@ struct RefreshSession
   /**
    * Signature over the commitments by the client,
    * only valid if @e has_commit_sig is set.
+   *
+   * FIXME: The above comment is clearly confused.
    */
-  struct GNUNET_CRYPTO_EddsaSignature commit_sig;
+  struct TALER_SessionSignature commit_sig;
 
   /**
    * Hash over coins to melt and coins to create of the
@@ -250,7 +252,7 @@ struct RefreshSession
   /**
    * Signature over the melt by the client.
    */
-  struct GNUNET_CRYPTO_EddsaSignature melt_sig;
+  struct TALER_SessionSignature melt_sig;
 
   /**
    * Number of coins we are melting.
@@ -291,7 +293,7 @@ struct RefreshMelt
   /**
    * Signature over the melting operation.
    */
-  struct GNUNET_CRYPTO_EcdsaSignature coin_sig;
+  struct TALER_CoinSpendSignature coin_sig;
 
   /**
    * Which melting operation should the coin become a part of.
@@ -350,7 +352,7 @@ struct RefreshCommitLink
   /**
    * Transfer public key (FIXME: explain!)
    */
-  struct GNUNET_CRYPTO_EcdsaPublicKey transfer_pub;
+  struct TALER_TransferPublicKey transfer_pub;
 
   /**
    * Encrypted shared secret to decrypt the link.
@@ -378,12 +380,12 @@ struct LinkDataList
   /**
    * Denomination public key, determines the value of the coin.
    */
-  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+  struct TALER_DenominationPublicKey denom_pub;
 
   /**
    * Signature over the blinded envelope.
    */
-  struct GNUNET_CRYPTO_rsa_Signature *ev_sig;
+  struct TALER_DenominationSignature ev_sig;
 };
 
 
@@ -393,14 +395,14 @@ struct LinkDataList
 struct Lock
 {
   /**
-   * Information about the coin that is being melted.
+   * Information about the coin that is being locked.
    */
   struct TALER_CoinPublicInfo coin;
 
   /**
-   * Signature over the melting operation.
+   * Signature over the locking operation.
    */
-  const struct GNUNET_CRYPTO_EcdsaSignature coin_sig;
+  struct TALER_CoinSpendSignature coin_sig;
 
   /**
    * How much value is being locked?
@@ -535,35 +537,35 @@ struct TALER_MINTDB_Plugin
    * Start a transaction.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn connection to use
+   * @param sesssion connection to use
    * @return #GNUNET_OK on success
    */
   int
   (*start) (void *cls,
-            struct TALER_MINTDB_Session *db_conn);
+            struct TALER_MINTDB_Session *sesssion);
 
 
   /**
    * Commit a transaction.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn connection to use
+   * @param sesssion connection to use
    * @return #GNUNET_OK on success
    */
   int
   (*commit) (void *cls,
-             struct TALER_MINTDB_Session *db_conn);
+             struct TALER_MINTDB_Session *sesssion);
 
 
   /**
    * Abort/rollback a transaction.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn connection to use
+   * @param sesssion connection to use
    */
   void
   (*rollback) (void *cls,
-               struct TALER_MINTDB_Session *db_conn);
+               struct TALER_MINTDB_Session *sesssion);
 
 
   /**
@@ -611,7 +613,7 @@ struct TALER_MINTDB_Plugin
    * key of the hash of the blinded message.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection to use
+   * @param sesssion database connection to use
    * @param h_blind hash of the blinded message
    * @param collectable corresponding collectable coin (blind signature)
    *                    if a coin is found
@@ -621,7 +623,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*get_collectable_blindcoin) (void *cls,
-                                struct TALER_MINTDB_Session *db_conn,
+                                struct TALER_MINTDB_Session *sesssion,
                                 const struct GNUNET_HashCode *h_blind,
                                 struct CollectableBlindcoin *collectable);
 
@@ -631,7 +633,7 @@ struct TALER_MINTDB_Plugin
    * hash of the blinded message.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection to use
+   * @param sesssion database connection to use
    * @param h_blind hash of the blinded message
    * @param withdraw amount by which the reserve will be withdrawn with this
    *          transaction
@@ -643,7 +645,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*insert_collectable_blindcoin) (void *cls,
-                                   struct TALER_MINTDB_Session *db_conn,
+                                   struct TALER_MINTDB_Session *sesssion,
                                    const struct GNUNET_HashCode *h_blind,
                                    struct TALER_Amount withdraw,
                                    const struct CollectableBlindcoin *collectable);
@@ -654,14 +656,14 @@ struct TALER_MINTDB_Plugin
    * reserve.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn connection to use
+   * @param sesssion connection to use
    * @param reserve_pub public key of the reserve
    * @return known transaction history (NULL if reserve is unknown)
    */
   struct ReserveHistory *
   (*get_reserve_history) (void *cls,
-                          struct TALER_MINTDB_Session *db_conn,
-                          const struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub);
+                          struct TALER_MINTDB_Session *sesssion,
+                          const struct TALER_ReservePublicKey *reserve_pub);
 
 
   /**
@@ -679,7 +681,7 @@ struct TALER_MINTDB_Plugin
    * Check if we have the specified deposit already in the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection
+   * @param sesssion database connection
    * @param deposit deposit to search for
    * @return #GNUNET_YES if we know this operation,
    *         #GNUNET_NO if this deposit is unknown to us,
@@ -687,7 +689,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*have_deposit) (void *cls,
-                   struct TALER_MINTDB_Session *db_conn,
+                   struct TALER_MINTDB_Session *sesssion,
                    const struct Deposit *deposit);
 
 
@@ -696,13 +698,13 @@ struct TALER_MINTDB_Plugin
    * database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn connection to the database
+   * @param sesssion connection to the database
    * @param deposit deposit information to store
    * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
    */
   int
   (*insert_deposit) (void *cls,
-                     struct TALER_MINTDB_Session *db_conn,
+                     struct TALER_MINTDB_Session *sesssion,
                      const struct Deposit *deposit);
 
 
@@ -710,7 +712,7 @@ struct TALER_MINTDB_Plugin
    * Lookup refresh session data under the given public key.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database handle to use
+   * @param sesssion database handle to use
    * @param refresh_session_pub public key to use for the lookup
    * @param refresh_session[OUT] where to store the result
    * @return #GNUNET_YES on success,
@@ -719,8 +721,8 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*get_refresh_session) (void *cls,
-                          struct TALER_MINTDB_Session *db_conn,
-                          const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                          struct TALER_MINTDB_Session *sesssion,
+                          const struct TALER_SessionPublicKey *refresh_session_pub,
                           struct RefreshSession *refresh_session);
 
 
@@ -728,7 +730,7 @@ struct TALER_MINTDB_Plugin
    * Store new refresh session data under the given public key.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database handle to use
+   * @param sesssion database handle to use
    * @param refresh_session_pub public key to use to locate the session
    * @param refresh_session session data to store
    * @return #GNUNET_YES on success,
@@ -736,8 +738,8 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*create_refresh_session) (void *cls,
-                             struct TALER_MINTDB_Session *db_conn,
-                             const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                             struct TALER_MINTDB_Session *sesssion,
+                             const struct TALER_SessionPublicKey *session_pub,
                              const struct RefreshSession *refresh_session);
 
 
@@ -746,7 +748,7 @@ struct TALER_MINTDB_Plugin
    * Store the given /refresh/melt request in the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection
+   * @param sesssion database connection
    * @param refresh_session session key of the melt operation
    * @param oldcoin_index index of the coin to store
    * @param melt coin melt operation details to store
@@ -755,8 +757,8 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*insert_refresh_melt) (void *cls,
-                          struct TALER_MINTDB_Session *db_conn,
-                          const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session,
+                          struct TALER_MINTDB_Session *sesssion,
+                          const struct TALER_SessionPublicKey *refresh_session,
                           uint16_t oldcoin_index,
                           const struct RefreshMelt *melt);
 
@@ -765,7 +767,7 @@ struct TALER_MINTDB_Plugin
    * Get information about melted coin details from the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection
+   * @param sesssion database connection
    * @param refresh_session session key of the melt operation
    * @param oldcoin_index index of the coin to retrieve
    * @param melt melt data to fill in
@@ -774,8 +776,8 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*get_refresh_melt) (void *cls,
-                       struct TALER_MINTDB_Session *db_conn,
-                       const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session,
+                       struct TALER_MINTDB_Session *sesssion,
+                       const struct TALER_SessionPublicKey *refresh_session,
                        uint16_t oldcoin_index,
                        struct RefreshMelt *melt);
 
@@ -785,7 +787,7 @@ struct TALER_MINTDB_Plugin
    * in a given refresh operation.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection
+   * @param sesssion database connection
    * @param session_pub refresh session key
    * @param num_newcoins number of coins to generate, size of the @a denom_pubs array
    * @param denom_pubs array denominations of the coins to create
@@ -794,10 +796,10 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*insert_refresh_order) (void *cls,
-                           struct TALER_MINTDB_Session *db_conn,
-                           const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                           struct TALER_MINTDB_Session *sesssion,
+                           const struct TALER_SessionPublicKey *session_pub,
                            uint16_t num_newcoins,
-                           struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs);
+                           const struct TALER_DenominationPublicKey *denom_pubs);
 
 
   /**
@@ -805,7 +807,7 @@ struct TALER_MINTDB_Plugin
    * create in the given refresh operation.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection
+   * @param sesssion database connection
    * @param session_pub refresh session key
    * @param num_newcoins size of the @a denom_pubs array
    * @param denom_pubs[OUT] where to write @a num_newcoins denomination keys
@@ -814,10 +816,10 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*get_refresh_order) (void *cls,
-                        struct TALER_MINTDB_Session *db_conn,
-                        const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                        struct TALER_MINTDB_Session *sesssion,
+                        const struct TALER_SessionPublicKey *session_pub,
                         uint16_t num_newcoins,
-                        struct GNUNET_CRYPTO_rsa_PublicKey **denom_pubs);
+                        struct TALER_DenominationPublicKey *denom_pubs);
 
 
   /**
@@ -825,7 +827,7 @@ struct TALER_MINTDB_Plugin
    * for the given refresh session in the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection to use
+   * @param sesssion database connection to use
    * @param refresh_session_pub refresh session this commitment belongs to
    * @param i set index (1st dimension), relating to kappa
    * @param num_newcoins coin index size of the @a commit_coins array
@@ -835,8 +837,8 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*insert_refresh_commit_coins) (void *cls,
-                                  struct TALER_MINTDB_Session *db_conn,
-                                  const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                  struct TALER_MINTDB_Session *sesssion,
+                                  const struct TALER_SessionPublicKey *refresh_session_pub,
                                   unsigned int i,
                                   unsigned int num_newcoins,
                                   const struct RefreshCommitCoin *commit_coins);
@@ -847,22 +849,22 @@ struct TALER_MINTDB_Plugin
    * given coin of the given refresh session from the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection to use
+   * @param sesssion database connection to use
    * @param refresh_session_pub refresh session the commitment belongs to
    * @param i set index (1st dimension)
-   * @param j coin index (2nd dimension), corresponds to refreshed (new) coins
-   * @param commit_coin[OUT] coin commitment to return
+   * @param num_coins size of the @a commit_coins array
+   * @param commit_coin[OUT] array of coin commitments to return
    * @return #GNUNET_OK on success
    *         #GNUNET_NO if not found
    *         #GNUNET_SYSERR on error
    */
   int
   (*get_refresh_commit_coins) (void *cls,
-                               struct TALER_MINTDB_Session *db_conn,
-                               const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                               struct TALER_MINTDB_Session *sesssion,
+                               const struct TALER_SessionPublicKey *refresh_session_pub,
                                unsigned int i,
-                               unsigned int j,
-                               struct RefreshCommitCoin *commit_coin);
+                               unsigned int num_coins,
+                               struct RefreshCommitCoin *commit_coins);
 
 
   /**
@@ -870,7 +872,7 @@ struct TALER_MINTDB_Plugin
    * for the given refresh session.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection to use
+   * @param sesssion database connection to use
    * @param refresh_session_pub public key of the refresh session this
    *        commitment belongs with
    * @param i set index (1st dimension), relating to kappa
@@ -880,8 +882,8 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*insert_refresh_commit_links) (void *cls,
-                                  struct TALER_MINTDB_Session *db_conn,
-                                  const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                  struct TALER_MINTDB_Session *sesssion,
+                                  const struct TALER_SessionPublicKey *refresh_session_pub,
                                   unsigned int i,
                                   unsigned int num_links,
                                   const struct RefreshCommitLink *commit_links);
@@ -891,7 +893,7 @@ struct TALER_MINTDB_Plugin
    * for the given refresh session.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection to use
+   * @param sesssion database connection to use
    * @param refresh_session_pub public key of the refresh session this
    *        commitment belongs with
    * @param i set index (1st dimension)
@@ -903,10 +905,10 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*get_refresh_commit_links) (void *cls,
-                               struct TALER_MINTDB_Session *db_conn,
-                               const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                               struct TALER_MINTDB_Session *sesssion,
+                               const struct TALER_SessionPublicKey *refresh_session_pub,
                                unsigned int i,
-                               unsigned int j,
+                               unsigned int num_links,
                                struct RefreshCommitLink *links);
 
 
@@ -917,7 +919,7 @@ struct TALER_MINTDB_Plugin
    * be used to try to obtain the private keys during "/refresh/link".
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection
+   * @param sesssion database connection
    * @param session_pub refresh session
    * @param newcoin_index coin index
    * @param ev_sig coin signature
@@ -925,10 +927,10 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*insert_refresh_collectable) (void *cls,
-                                 struct TALER_MINTDB_Session *db_conn,
-                                 const struct GNUNET_CRYPTO_EddsaPublicKey *session_pub,
+                                 struct TALER_MINTDB_Session *sesssion,
+                                 const struct TALER_SessionPublicKey *session_pub,
                                  uint16_t newcoin_index,
-                                 const struct GNUNET_CRYPTO_rsa_Signature *ev_sig);
+                                 const struct TALER_DenominationSignature *ev_sig);
 
 
   /**
@@ -936,14 +938,14 @@ struct TALER_MINTDB_Plugin
    * information, the denomination keys and the signatures.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection
+   * @param sesssion database connection
    * @param coin_pub public key to use to retrieve linkage data
    * @return all known link data for the coin
    */
   struct LinkDataList *
   (*get_link_data_list) (void *cls,
-                         struct TALER_MINTDB_Session *db_conn,
-                         const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub);
+                         struct TALER_MINTDB_Session *sesssion,
+                         const struct TALER_CoinSpendPublicKey *coin_pub);
 
 
   /**
@@ -965,7 +967,7 @@ struct TALER_MINTDB_Plugin
    *
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection
+   * @param sesssion database connection
    * @param coin_pub public key of the coin
    * @param transfer_pub[OUT] public transfer key
    * @param shared_secret_enc[OUT] set to shared secret
@@ -975,9 +977,9 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*get_transfer) (void *cls,
-                   struct TALER_MINTDB_Session *db_conn,
-                   const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
-                   struct GNUNET_CRYPTO_EcdsaPublicKey *transfer_pub,
+                   struct TALER_MINTDB_Session *sesssion,
+                   const struct TALER_CoinSpendPublicKey *coin_pub,
+                   struct TALER_TransferPublicKey *transfer_pub,
                    struct TALER_EncryptedLinkSecret *shared_secret_enc);
 
 
@@ -985,7 +987,7 @@ struct TALER_MINTDB_Plugin
    * Test if the given /lock request is known to us.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection
+   * @param sesssion database connection
    * @param lock lock operation
    * @return #GNUNET_YES if known,
    *         #GNUENT_NO if not,
@@ -993,7 +995,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*have_lock) (void *cls,
-                struct TALER_MINTDB_Session *db_conn,
+                struct TALER_MINTDB_Session *sesssion,
                 const struct Lock *lock);
 
 
@@ -1001,14 +1003,14 @@ struct TALER_MINTDB_Plugin
    * Store the given /lock request in the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection
+   * @param sesssion database connection
    * @param lock lock operation
    * @return #GNUNET_OK on success
    *         #GNUNET_SYSERR on internal error
    */
   int
   (*insert_lock) (void *cls,
-                  struct TALER_MINTDB_Session *db_conn,
+                  struct TALER_MINTDB_Session *sesssion,
                   const struct Lock *lock);
 
 
@@ -1017,14 +1019,14 @@ struct TALER_MINTDB_Plugin
    * with the given coin (/refresh/melt and /deposit operations).
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param db_conn database connection
+   * @param sesssion database connection
    * @param coin_pub coin to investigate
    * @return list of transactions, NULL if coin is fresh
    */
   struct TALER_MINT_DB_TransactionList *
   (*get_coin_transactions) (void *cls,
-                            struct TALER_MINTDB_Session *db_conn,
-                            const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub);
+                            struct TALER_MINTDB_Session *sesssion,
+                            const struct TALER_CoinSpendPublicKey *coin_pub);
 
 
   /**

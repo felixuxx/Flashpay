@@ -53,7 +53,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
-                                       const struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub);
+                                       const struct TALER_ReservePublicKey *reserve_pub);
 
 
 /**
@@ -72,11 +72,11 @@ TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
-                                     const struct GNUNET_CRYPTO_EddsaPublicKey *reserve,
-                                     const struct GNUNET_CRYPTO_rsa_PublicKey *denomination_pub,
+                                     const struct TALER_ReservePublicKey *reserve,
+                                     const struct TALER_DenominationPublicKey *denomination_pub,
                                      const char *blinded_msg,
                                      size_t blinded_msg_len,
-                                     const struct GNUNET_CRYPTO_EddsaSignature *signature);
+                                     const struct TALER_ReserveSignature *signature);
 
 
 /**
@@ -88,7 +88,7 @@ struct MeltDetails
    * Signature allowing the melt (using
    * a `struct RefreshMeltConfirmSignRequestBody`) to sign over.
    */
-  struct GNUNET_CRYPTO_EcdsaSignature melt_sig;
+  struct TALER_CoinSpendSignature melt_sig;
 
   /**
    * How much of the coin's value did the client allow to be melted?
@@ -129,10 +129,10 @@ struct MeltDetails
 int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     const struct GNUNET_HashCode *melt_hash,
-                                    const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                    const struct GNUNET_CRYPTO_EddsaSignature *client_signature,
+                                    const struct TALER_SessionPublicKey *refresh_session_pub,
+                                    const struct TALER_SessionSignature *client_signature,
                                     unsigned int num_new_denoms,
-                                    struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs,
+                                    const struct TALER_DenominationPublicKey *denom_pubs,
                                     unsigned int coin_count,
                                     const struct TALER_CoinPublicInfo *coin_public_infos,
                                     const struct MeltDetails *coin_melt_details,
@@ -157,10 +157,10 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
-                                      const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
+                                      const struct TALER_SessionPublicKey *refresh_session_pub,
                                       unsigned int kappa,
                                       unsigned int num_oldcoins,
-                                      struct GNUNET_CRYPTO_EcdsaPrivateKey *const*transfer_privs);
+                                      struct TALER_TransferPrivateKey **transfer_privs);
 
 
 /**
@@ -174,7 +174,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
-                                    const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub);
+                                    const struct TALER_CoinSpendPublicKey *coin_pub);
 
 
 #endif

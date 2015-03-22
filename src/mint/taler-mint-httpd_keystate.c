@@ -111,7 +111,7 @@ static int reload_pipe[2];
  * @return a JSON object describing the denomination key isue (public part)
  */
 static json_t *
-denom_key_issue_to_json (struct GNUNET_CRYPTO_rsa_PublicKey *pk,
+denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
                          const struct TALER_MINT_DenomKeyIssue *dki)
 {
   struct TALER_Amount value;
@@ -139,7 +139,7 @@ denom_key_issue_to_json (struct GNUNET_CRYPTO_rsa_PublicKey *pk,
                "stamp_expire_deposit",
                TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_spend)),
                "denom_pub",
-               TALER_JSON_from_rsa_public_key (pk),
+               TALER_JSON_from_rsa_public_key (pk->rsa_public_key),
                "value",
                TALER_JSON_from_amount (&value),
                "fee_withdraw",
@@ -217,7 +217,7 @@ reload_keys_denom_iter (void *cls,
     return GNUNET_OK;
   }
 
-  GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub,
+  GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
                                      &denom_key_hash);
   d2 = GNUNET_memdup (dki,
                       sizeof (struct TALER_MINT_DenomKeyIssuePriv));
@@ -234,7 +234,7 @@ reload_keys_denom_iter (void *cls,
     return GNUNET_OK;
   }
   json_array_append_new (ctx->denom_keys_array,
-                         denom_key_issue_to_json (dki->denom_pub,
+                         denom_key_issue_to_json (&dki->denom_pub,
                                                   &dki->issue));
   return GNUNET_OK;
 }
@@ -435,11 +435,11 @@ TALER_MINT_key_state_acquire (void)
  */
 struct TALER_MINT_DenomKeyIssuePriv *
 TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
-                          const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub)
+                          const struct TALER_DenominationPublicKey *denom_pub)
 {
   struct GNUNET_HashCode hc;
 
-  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub,
+  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
                                      &hc);
   return GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map,
                                             &hc);
@@ -564,16 +564,16 @@ read_again:
  */
 void
 TALER_MINT_keys_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-                      struct GNUNET_CRYPTO_EddsaSignature *sig)
+                      struct TALER_MintSignature *sig)
 
 {
   struct MintKeyState *key_state;
 
   key_state = TALER_MINT_key_state_acquire ();
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv,
+                 GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
                                            purpose,
-                                           sig));
+                                           &sig->eddsa_signature));
   TALER_MINT_key_state_release (key_state);
 }
 

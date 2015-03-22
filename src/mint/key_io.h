@@ -52,7 +52,7 @@ struct TALER_MINT_SignKeyIssuePriv
   /**
    * Private key part of the mint's signing key.
    */
-  struct GNUNET_CRYPTO_EddsaPrivateKey signkey_priv;
+  struct TALER_MintPrivateKey signkey_priv;
 
   /**
    * Public information about a mint signing key.
@@ -75,13 +75,13 @@ struct TALER_MINT_DenomKeyIssuePriv
    * key is not available (this is the case after the key has expired
    * for signing coins, but is still valid for depositing coins).
    */
-  struct GNUNET_CRYPTO_rsa_PrivateKey *denom_priv;
+  struct TALER_DenominationPrivateKey denom_priv;
 
   /**
    * Decoded denomination public key (the hash of it is in
    * @e issue, but we sometimes need the full public key as well).
    */
-  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+  struct TALER_DenominationPublicKey denom_pub;
 
   /**
    * Signed public information about a denomination key.

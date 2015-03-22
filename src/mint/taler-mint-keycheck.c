@@ -70,8 +70,8 @@ signkeys_iter (void *cls,
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNKEY,
                                   &ski->issue.purpose,
-                                  &ski->issue.signature,
-                                  &ski->issue.master_pub))
+                                  &ski->issue.signature.eddsa_signature,
+                                  &ski->issue.master_pub.eddsa_pub))
   {
     fprintf (stderr,
              "Signing key `%s' has invalid signature\n",
@@ -130,15 +130,15 @@ denomkeys_iter (void *cls,
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOM,
                                   &dki->issue.purpose,
-                                  &dki->issue.signature,
-                                  &dki->issue.master))
+                                  &dki->issue.signature.eddsa_signature,
+                                  &dki->issue.master.eddsa_pub))
   {
     fprintf (stderr,
              "Denomination key for `%s' has invalid signature\n",
              alias);
     return GNUNET_SYSERR;
   }
-  GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub,
+  GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
                                      &hc);
   if (0 != memcmp (&hc,
                    &dki->issue.denom_hash,

@@ -67,7 +67,7 @@ TALER_MINT_key_state_release (struct MintKeyState *key_state);
  */
 struct TALER_MINT_DenomKeyIssuePriv *
 TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
-                          const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub);
+                          const struct TALER_DenominationPublicKey *denom_pub);
 
 
 /**
@@ -90,7 +90,7 @@ TALER_MINT_key_reload_loop (void);
  */
 void
 TALER_MINT_keys_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-                      struct GNUNET_CRYPTO_EddsaSignature *sig);
+                      struct TALER_MintSignature *sig);
 
 
 /**

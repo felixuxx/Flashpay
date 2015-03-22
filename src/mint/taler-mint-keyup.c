@@ -179,12 +179,12 @@ static struct GNUNET_TIME_Absolute now;
 /**
  * Master private key of the mint.
  */
-static struct GNUNET_CRYPTO_EddsaPrivateKey *master_priv;
+static struct TALER_MasterPrivateKey master_priv;
 
 /**
  * Master public key of the mint.
  */
-static struct GNUNET_CRYPTO_EddsaPublicKey *master_pub;
+static struct TALER_MasterPublicKey master_pub;
 
 /**
  * Until what time do we provide keys?
@@ -440,23 +440,23 @@ create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
   struct TALER_MINT_SignKeyIssue *issue = &pi->issue;
 
   priv = GNUNET_CRYPTO_eddsa_key_create ();
-  pi->signkey_priv = *priv;
+  pi->signkey_priv.eddsa_priv = *priv;
   GNUNET_free (priv);
-  issue->master_pub = *master_pub;
+  issue->master_pub = master_pub;
   issue->start = GNUNET_TIME_absolute_hton (start);
   issue->expire = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (start,
                                                                        duration));
-  GNUNET_CRYPTO_eddsa_key_get_public (&pi->signkey_priv,
-                                      &issue->signkey_pub);
+  GNUNET_CRYPTO_eddsa_key_get_public (&pi->signkey_priv.eddsa_priv,
+                                      &issue->signkey_pub.eddsa_pub);
   issue->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNKEY);
   issue->purpose.size = htonl (sizeof (struct TALER_MINT_SignKeyIssue) -
                                offsetof (struct TALER_MINT_SignKeyIssue,
                                          purpose));
 
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (master_priv,
+                 GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
                                            &issue->purpose,
-                                           &issue->signature));
+                                           &issue->signature.eddsa_signature));
 }
 
 
@@ -678,12 +678,14 @@ static void
 create_denomkey_issue (const struct CoinTypeParams *params,
                        struct TALER_MINT_DenomKeyIssuePriv *dki)
 {
-  GNUNET_assert (NULL !=
-                 (dki->denom_priv = GNUNET_CRYPTO_rsa_private_key_create (params->rsa_keysize)));
-  dki->denom_pub = GNUNET_CRYPTO_rsa_private_key_get_public (dki->denom_priv);
-  GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub,
+  dki->denom_priv.rsa_private_key
+    = GNUNET_CRYPTO_rsa_private_key_create (params->rsa_keysize);
+  GNUNET_assert (NULL != dki->denom_priv.rsa_private_key);
+  dki->denom_pub.rsa_public_key
+    = GNUNET_CRYPTO_rsa_private_key_get_public (dki->denom_priv.rsa_private_key);
+  GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
                                      &dki->issue.denom_hash);
-  dki->issue.master = *master_pub;
+  dki->issue.master = master_pub;
   dki->issue.start = GNUNET_TIME_absolute_hton (params->anchor);
   dki->issue.expire_withdraw =
       GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
@@ -704,9 +706,9 @@ create_denomkey_issue (const struct CoinTypeParams *params,
                                    offsetof (struct TALER_MINT_DenomKeyIssuePriv,
                                              issue.purpose));
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (master_priv,
+                 GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
                                            &dki->issue.purpose,
-                                           &dki->issue.signature));
+                                           &dki->issue.signature.eddsa_signature));
 }
 
 
@@ -764,10 +766,10 @@ mint_keys_update_cointype (void *cls,
                "Failed to write denomination key information to file `%s'.\n",
                dkf);
       *ret = GNUNET_SYSERR;
-      GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv);
+      GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv.rsa_private_key);
       return;
     }
-    GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv);
+    GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv.rsa_private_key);
     p.anchor = GNUNET_TIME_absolute_add (p.anchor,
                                          p.duration_spend);
     p.anchor = GNUNET_TIME_absolute_subtract (p.anchor,
@@ -825,6 +827,7 @@ main (int argc,
     GNUNET_GETOPT_OPTION_END
   };
   struct GNUNET_TIME_Relative lookahead_sign;
+  struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-mint-keyup",
@@ -872,18 +875,18 @@ main (int argc,
              "Master key file not given\n");
     return 1;
   }
-  master_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (masterkeyfile);
-  if (NULL == master_priv)
+  eddsa_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (masterkeyfile);
+  if (NULL == eddsa_priv)
   {
     fprintf (stderr,
              "Failed to initialize master key from file `%s'\n",
              masterkeyfile);
     return 1;
   }
-
-  master_pub = GNUNET_new (struct GNUNET_CRYPTO_EddsaPublicKey);
-  GNUNET_CRYPTO_eddsa_key_get_public (master_priv,
-                                      master_pub);
+  master_priv.eddsa_priv = *eddsa_priv;
+  GNUNET_free (eddsa_priv);
+  GNUNET_CRYPTO_eddsa_key_get_public (&master_priv.eddsa_priv,
+                                      &master_pub.eddsa_pub);
 
   /* check if key from file matches the one from the configuration */
   {
@@ -902,7 +905,7 @@ main (int argc,
       return 1;
     }
     if (0 !=
-        memcmp (master_pub,
+        memcmp (&master_pub,
                 &master_pub_from_cfg,
                 sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
     {

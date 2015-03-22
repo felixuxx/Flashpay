@@ -72,8 +72,8 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   if (GNUNET_OK !=
       GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_WALLET_DEPOSIT,
                                   &dr.purpose,
-                                  &deposit->csig,
-                                  &deposit->coin.coin_pub))
+                                  &deposit->csig.ecdsa_signature,
+                                  &deposit->coin.coin_pub.ecdsa_pub))
   {
     LOG_WARNING ("Invalid signature on /deposit request\n");
     return TALER_MINT_reply_arg_invalid (connection,
@@ -82,7 +82,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   /* check denomination exists and is valid */
   key_state = TALER_MINT_key_state_acquire ();
   dki = TALER_MINT_get_denom_key (key_state,
-                                  deposit->coin.denom_pub);
+                                  &deposit->coin.denom_pub);
   if (NULL == dki)
   {
     TALER_MINT_key_state_release (key_state);

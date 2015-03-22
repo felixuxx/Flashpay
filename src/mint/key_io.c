@@ -164,8 +164,9 @@ TALER_MINT_read_denom_key (const char *filename,
     GNUNET_free (data);
     return GNUNET_SYSERR;
   }
-  dki->denom_priv = priv;
-  dki->denom_pub = GNUNET_CRYPTO_rsa_private_key_get_public (priv);
+  dki->denom_priv.rsa_private_key = priv;
+  dki->denom_pub.rsa_public_key
+    = GNUNET_CRYPTO_rsa_private_key_get_public (priv);
   memcpy (&dki->issue,
           data,
           offset);
@@ -193,8 +194,9 @@ TALER_MINT_write_denom_key (const char *filename,
   int ret;
 
   fh = NULL;
-  priv_enc_size = GNUNET_CRYPTO_rsa_private_key_encode (dki->denom_priv,
-                                                        &priv_enc);
+  priv_enc_size
+    = GNUNET_CRYPTO_rsa_private_key_encode (dki->denom_priv.rsa_private_key,
+                                            &priv_enc);
   ret = GNUNET_SYSERR;
   if (NULL == (fh = GNUNET_DISK_file_open
                (filename,

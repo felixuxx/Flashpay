@@ -179,9 +179,11 @@ struct TALER_MINT_KeysGetHandle
   char *url;
 
   TALER_MINT_KeysGetCallback cb;
-  void *cls;
+
+  void *cb_cls;
 
   TALER_MINT_ContinuationCallback cont_cb;
+
   void *cont_cls;
 };
 
@@ -202,7 +204,8 @@ struct TALER_MINT_DepositHandle
   char *url;
 
   TALER_MINT_DepositResultCallback cb;
-  void *cls;
+
+  void *cb_cls;
 
   char *json_enc;
 
@@ -219,7 +222,8 @@ struct TALER_MINT_DepositHandle
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 static int
-parse_timestamp (struct GNUNET_TIME_Absolute *abs, const char *tstamp_enc)
+parse_timestamp (struct GNUNET_TIME_Absolute *abs,
+                 const char *tstamp_enc)
 {
   unsigned long tstamp;
 
@@ -242,7 +246,7 @@ parse_timestamp (struct GNUNET_TIME_Absolute *abs, const char *tstamp_enc)
 static int
 parse_json_signkey (struct TALER_MINT_SigningPublicKey **_sign_key,
                     json_t *sign_key_obj,
-                    struct GNUNET_CRYPTO_EddsaPublicKey *master_key)
+                    struct TALER_MasterPublicKey *master_key)
 {
   json_t *valid_from_obj;
   json_t *valid_until_obj;
@@ -281,7 +285,7 @@ parse_json_signkey (struct TALER_MINT_SigningPublicKey **_sign_key,
   EXITIF (GNUNET_SYSERR ==
           GNUNET_CRYPTO_eddsa_public_key_from_string (key_enc,
                                                       52,
-                                                      &sign_key_issue.signkey_pub));
+                                                      &sign_key_issue.signkey_pub.eddsa_pub));
   sign_key_issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNKEY);
   sign_key_issue.purpose.size =
       htonl (sizeof (sign_key_issue)
@@ -293,7 +297,7 @@ parse_json_signkey (struct TALER_MINT_SigningPublicKey **_sign_key,
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNKEY,
                                       &sign_key_issue.purpose,
                                       &sig,
-                                      master_key));
+                                      &master_key->eddsa_pub));
   sign_key = GNUNET_new (struct TALER_MINT_SigningPublicKey);
   sign_key->valid_from = valid_from;
   sign_key->valid_until = valid_until;
@@ -337,7 +341,7 @@ parse_json_amount (json_t *amount_obj, struct TALER_Amount *amt)
 static int
 parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
                      json_t *denom_key_obj,
-                     struct GNUNET_CRYPTO_EddsaPublicKey *master_key)
+                     struct TALER_MasterPublicKey *master_key)
 {
   json_t *obj;
   const char *sig_enc;
@@ -424,9 +428,9 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOM,
                                       &denom_key_issue.purpose,
                                       &sig,
-                                      master_key));
+                                      &master_key->eddsa_pub));
   denom_key = GNUNET_new (struct TALER_MINT_DenomPublicKey);
-  denom_key->key = pk;
+  denom_key->key.rsa_public_key = pk;
   denom_key->valid_from = valid_from;
   denom_key->withdraw_valid_until = withdraw_valid_until;
   denom_key->deposit_valid_until = deposit_valid_until;
@@ -451,7 +455,7 @@ parse_response_keys_get (const char *in, size_t size,
 {
   json_t *resp_obj;
   struct TALER_MINT_DenomPublicKey **denom_keys;
-  struct GNUNET_CRYPTO_EddsaPublicKey master_key;
+  struct TALER_MasterPublicKey master_key;
   struct GNUNET_TIME_Absolute list_issue_date;
   struct TALER_MINT_SigningPublicKey **sign_keys;
   unsigned int n_denom_keys;
@@ -487,7 +491,7 @@ parse_response_keys_get (const char *in, size_t size,
     EXITIF (GNUNET_OK !=
               GNUNET_CRYPTO_eddsa_public_key_from_string (master_key_enc,
                                                           52,
-                                                          &master_key));
+                                                          &master_key.eddsa_pub));
   }
   {
     /* parse the issue date of the response */
@@ -664,7 +668,8 @@ request_failed (struct TALER_MINT_Handle *mint, long resp_code)
     {
       struct TALER_MINT_DepositHandle *dh = mint->req.deposit;
       TALER_MINT_DepositResultCallback cb = dh->cb;
-      void *cls = dh->cls;
+      void *cls = dh->cb_cls;
+
       GNUNET_assert (NULL != dh);
       cleanup_deposit (dh);
       mint_disconnect (mint);
@@ -705,7 +710,7 @@ request_succeeded (struct TALER_MINT_Handle *mint, long resp_code)
             parse_response_keys_get (mint->buf, mint->buf_size,
                                      &sign_keys, &n_sign_keys,
                                      &denom_keys, &n_denom_keys))
-          gh->cb (gh->cls, sign_keys, denom_keys);
+          gh->cb (gh->cb_cls, sign_keys, denom_keys);
         else
           emsg = GNUNET_strdup ("Error parsing response");
       }
@@ -727,7 +732,7 @@ request_succeeded (struct TALER_MINT_Handle *mint, long resp_code)
       GNUNET_assert (NULL != dh);
       obj = NULL;
       cb = dh->cb;
-      cls = dh->cls;
+      cls = dh->cb_cls;
       status = 0;
       if (200 == resp_code)
       {
@@ -903,15 +908,15 @@ download (char *bufptr, size_t size, size_t nitems, void *cls)
  * @param ctx the context
  * @param hostname the hostname of the mint
  * @param port the point where the mint's HTTP service is running.
- * @param mint_key the public key of the mint.  This is used to verify the
- *                 responses of the mint.
+ * @param mint_key the offline master public key of the mint.
+ *                 This is used to verify the responses of the mint.
  * @return the mint handle; NULL upon error
  */
 struct TALER_MINT_Handle *
 TALER_MINT_connect (struct TALER_MINT_Context *ctx,
                     const char *hostname,
                     uint16_t port,
-                    struct GNUNET_CRYPTO_EddsaPublicKey *mint_key)
+                    const struct TALER_MasterPublicKey *mint_key)
 {
   struct TALER_MINT_Handle *mint;
 
@@ -952,15 +957,17 @@ TALER_MINT_disconnect (struct TALER_MINT_Handle *mint)
  *
  * @param mint handle to the mint
  * @param cb the callback to call with each retrieved denomination key
- * @param cls closure for the above callback
+ * @param cb_cls closure for the above callback
  * @param cont_cb the callback to call after completing this asynchronous call
  * @param cont_cls the closure for the continuation callback
  * @return a handle to this asynchronous call; NULL upon eror
  */
 struct TALER_MINT_KeysGetHandle *
 TALER_MINT_keys_get (struct TALER_MINT_Handle *mint,
-                           TALER_MINT_KeysGetCallback cb, void *cls,
-                           TALER_MINT_ContinuationCallback cont_cb, void *cont_cls)
+                     TALER_MINT_KeysGetCallback cb,
+                     void *cb_cls,
+                     TALER_MINT_ContinuationCallback cont_cb,
+                     void *cont_cls)
 {
   struct TALER_MINT_KeysGetHandle *gh;
 
@@ -970,12 +977,17 @@ TALER_MINT_keys_get (struct TALER_MINT_Handle *mint,
   mint->req_type = REQUEST_TYPE_KEYSGET;
   mint->req.keys_get = gh;
   gh->cb = cb;
-  gh->cls = cls;
+  gh->cb_cls = cb_cls;
   gh->cont_cb = cont_cb;
   gh->cont_cls = cont_cls;
-  GNUNET_asprintf (&gh->url, "http://%s:%hu/keys", mint->hostname, mint->port);
+  GNUNET_asprintf (&gh->url,
+                   "http://%s:%hu/keys",
+                   mint->hostname,
+                   mint->port);
   GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (mint->curl, CURLOPT_URL, gh->url));
+                 curl_easy_setopt (mint->curl,
+                                   CURLOPT_URL,
+                                   gh->url));
   if (GNUNET_NO == mint->connected)
     mint_connect (mint);
   perform_now (mint->ctx);
@@ -1005,7 +1017,7 @@ TALER_MINT_keys_get_cancel (struct TALER_MINT_KeysGetHandle *get)
  *
  * @param mint the mint handle
  * @param cb the callback to call when a reply for this request is available
- * @param cls closure for the above callback
+ * @param cb_cls closure for the above callback
  * @param deposit_obj the deposit permission received from the customer along
  *         with the wireformat JSON object
  * @return a handle for this request; NULL if the JSON object could not be
@@ -1015,7 +1027,7 @@ TALER_MINT_keys_get_cancel (struct TALER_MINT_KeysGetHandle *get)
 struct TALER_MINT_DepositHandle *
 TALER_MINT_deposit_submit_json (struct TALER_MINT_Handle *mint,
                                 TALER_MINT_DepositResultCallback cb,
-                                void *cls,
+                                void *cb_cls,
                                 json_t *deposit_obj)
 {
   struct TALER_MINT_DepositHandle *dh;
@@ -1026,7 +1038,7 @@ TALER_MINT_deposit_submit_json (struct TALER_MINT_Handle *mint,
   mint->req_type = REQUEST_TYPE_DEPOSIT;
   mint->req.deposit = dh;
   dh->cb = cb;
-  dh->cls = cls;
+  dh->cb_cls = cb_cls;
   GNUNET_asprintf (&dh->url, "http://%s:%hu/deposit", mint->hostname, mint->port);
   GNUNET_assert (NULL != (dh->json_enc = json_dumps (deposit_obj, JSON_COMPACT)));
   GNUNET_assert (CURLE_OK ==

@@ -282,15 +282,15 @@ TALER_MINT_reply_invalid_json (struct MHD_Connection *connection)
  */
 int
 TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
-                                  const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
+                                  const struct TALER_CoinSpendPublicKey *coin_pub,
                                   const struct GNUNET_HashCode *h_wire,
                                   const struct GNUNET_HashCode *h_contract,
                                   uint64_t transaction_id,
-                                  const struct GNUNET_CRYPTO_EddsaPublicKey *merchant,
+                                  const struct TALER_MerchantPublicKey *merchant,
                                   const struct TALER_Amount *amount)
 {
   struct TALER_DepositConfirmation dc;
-  struct GNUNET_CRYPTO_EddsaSignature sig;
+  struct TALER_MintSignature sig;
   json_t *sig_json;
   int ret;
 
@@ -305,7 +305,8 @@ TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
   dc.merchant = *merchant;
   TALER_MINT_keys_sign (&dc.purpose,
                         &sig);
-  sig_json = TALER_JSON_from_eddsa_sig (&dc.purpose, &sig);
+  sig_json = TALER_JSON_from_eddsa_sig (&dc.purpose,
+                                        &sig.eddsa_signature);
   ret = TALER_MINT_reply_json_pack (connection,
                                     MHD_HTTP_OK,
                                     "{s:s, s:o}",
@@ -351,7 +352,7 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
                            &deposit->amount_with_fee);
         dr.coin_pub = deposit->coin.coin_pub;
         transaction = TALER_JSON_from_ecdsa_sig (&dr.purpose,
-                                                 &deposit->csig);
+                                                 &deposit->csig.ecdsa_signature);
         break;
       }
     case TALER_MINT_DB_TT_REFRESH_MELT:
@@ -368,7 +369,7 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
                            &melt->amount_with_fee);
         ms.coin_pub = melt->coin.coin_pub;
         transaction = TALER_JSON_from_ecdsa_sig (&ms.purpose,
-                                                 &melt->coin_sig);
+                                                 &melt->coin_sig.ecdsa_signature);
       }
       break;
     case TALER_MINT_DB_TT_LOCK:
@@ -480,7 +481,7 @@ compile_reserve_history (const struct ReserveHistory *rh,
     case TALER_MINT_DB_RO_WITHDRAW_COIN:
 
       dki = TALER_MINT_get_denom_key (key_state,
-                                      pos->details.withdraw->denom_pub);
+                                      &pos->details.withdraw->denom_pub);
       TALER_amount_ntoh (&value,
                          &dki->issue.value);
       if (0 == ret)
@@ -499,12 +500,12 @@ compile_reserve_history (const struct ReserveHistory *rh,
       wr.purpose.purpose = htonl (TALER_SIGNATURE_WITHDRAW);
       wr.purpose.size = htonl (sizeof (struct TALER_WithdrawRequest));
       wr.reserve_pub = pos->details.withdraw->reserve_pub;
-      GNUNET_CRYPTO_rsa_public_key_hash (pos->details.withdraw->denom_pub,
+      GNUNET_CRYPTO_rsa_public_key_hash (pos->details.withdraw->denom_pub.rsa_public_key,
                                          &wr.h_denomination_pub);
       wr.h_coin_envelope = pos->details.withdraw->h_coin_envelope;
 
       transaction = TALER_JSON_from_eddsa_sig (&wr.purpose,
-                                               &pos->details.withdraw->reserve_sig);
+                                               &pos->details.withdraw->reserve_sig.eddsa_signature);
 
       json_array_append_new (json_history,
                              json_pack ("{s:s, s:o, s:o}",
@@ -613,7 +614,7 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
   json_t *sig_json;
   int ret;
 
-  sig_json = TALER_JSON_from_rsa_signature (collectable->sig);
+  sig_json = TALER_JSON_from_rsa_signature (collectable->sig.rsa_signature);
   ret = TALER_MINT_reply_json_pack (connection,
                                     MHD_HTTP_OK,
                                     "{s:o}",
@@ -640,7 +641,7 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
-                                                  const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
+                                                  const struct TALER_CoinSpendPublicKey *coin_pub,
                                                   struct TALER_Amount coin_value,
                                                   struct TALER_MINT_DB_TransactionList *tl,
                                                   struct TALER_Amount requested,
@@ -654,7 +655,7 @@ TALER_MINT_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connect
                                      "{s:s, s:o, s:o, s:o, s:o, s:o}",
                                      "error", "insufficient funds",
                                      "coin-pub", TALER_JSON_from_data (coin_pub,
-                                                                       sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey)),
+                                                                       sizeof (struct TALER_CoinSpendPublicKey)),
                                      "original-value", TALER_JSON_from_amount (&coin_value),
                                      "residual-value", TALER_JSON_from_amount (&residual),
                                      "requested-value", TALER_JSON_from_amount (&requested),
@@ -676,7 +677,7 @@ TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
                                        uint16_t noreveal_index)
 {
   struct RefreshMeltResponseSignatureBody body;
-  struct GNUNET_CRYPTO_EddsaSignature sig;
+  struct TALER_MintSignature sig;
   json_t *sig_json;
   int ret;
 
@@ -687,7 +688,7 @@ TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
   TALER_MINT_keys_sign (&body.purpose,
                         &sig);
   sig_json = TALER_JSON_from_eddsa_sig (&body.purpose,
-                                        &sig);
+                                        &sig.eddsa_signature);
   GNUNET_assert (NULL != sig_json);
   ret = TALER_MINT_reply_json_pack (connection,
                                      MHD_HTTP_OK,
@@ -710,7 +711,7 @@ TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
 int
 TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
                                          unsigned int num_newcoins,
-                                         struct GNUNET_CRYPTO_rsa_Signature **sigs)
+                                         const struct TALER_DenominationSignature *sigs)
 {
   int newcoin_index;
   json_t *root;
@@ -724,7 +725,7 @@ TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
                        list);
   for (newcoin_index = 0; newcoin_index < num_newcoins; newcoin_index++)
     json_array_append_new (list,
-                           TALER_JSON_from_rsa_signature (sigs[newcoin_index]));
+                           TALER_JSON_from_rsa_signature (sigs[newcoin_index].rsa_signature));
   ret = TALER_MINT_reply_json (connection,
                                root,
                                MHD_HTTP_OK);
@@ -777,7 +778,7 @@ TALER_MINT_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_reply_refresh_link_success (struct MHD_Connection *connection,
-                                       const struct GNUNET_CRYPTO_EcdsaPublicKey *transfer_pub,
+                                       const struct TALER_TransferPublicKey *transfer_pub,
                                        const struct TALER_EncryptedLinkSecret *shared_secret_enc,
                                        const struct LinkDataList *ldl)
 {
@@ -794,14 +795,14 @@ TALER_MINT_reply_refresh_link_success (struct MHD_Connection *connection,
     obj = json_object ();
     json_object_set_new (obj, "link_enc",
                          TALER_JSON_from_data (ldl->link_data_enc->coin_priv_enc,
-                                               sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey) +
+                                               sizeof (struct TALER_CoinSpendPrivateKey) +
                                                ldl->link_data_enc->blinding_key_enc_size));
     json_object_set_new (obj,
                          "denom_pub",
-                         TALER_JSON_from_rsa_public_key (ldl->denom_pub));
+                         TALER_JSON_from_rsa_public_key (ldl->denom_pub.rsa_public_key));
     json_object_set_new (obj,
                          "ev_sig",
-                         TALER_JSON_from_rsa_signature (ldl->ev_sig));
+                         TALER_JSON_from_rsa_signature (ldl->ev_sig.rsa_signature));
     json_array_append_new (list, obj);
   }
 
@@ -812,7 +813,7 @@ TALER_MINT_reply_refresh_link_success (struct MHD_Connection *connection,
   json_object_set_new (root,
                        "transfer_pub",
                        TALER_JSON_from_data (transfer_pub,
-                                             sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)));
+                                             sizeof (struct TALER_TransferPublicKey)));
   json_object_set_new (root,
                        "secret_enc",
                        TALER_JSON_from_data (shared_secret_enc,

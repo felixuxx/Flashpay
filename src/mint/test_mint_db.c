@@ -54,14 +54,15 @@ static int result;
  */
 static int
 check_reserve (struct TALER_MINTDB_Session *session,
-               struct GNUNET_CRYPTO_EddsaPublicKey *pub,
+               const struct TALER_ReservePublicKey *pub,
                uint32_t value,
                uint32_t fraction,
                const char *currency,
                uint64_t expiry)
 {
   struct Reserve reserve;
-  reserve.pub = pub;
+
+  reserve.pub = *pub;
 
   FAILIF (GNUNET_OK !=
           plugin->reserve_get (plugin->cls,
@@ -80,8 +81,8 @@ check_reserve (struct TALER_MINTDB_Session *session,
 
 struct DenomKeyPair
 {
-  struct GNUNET_CRYPTO_rsa_PrivateKey *priv;
-  struct GNUNET_CRYPTO_rsa_PublicKey *pub;
+  struct TALER_DenominationPrivateKey priv;
+  struct TALER_DenominationPublicKey pub;
 };
 
 
@@ -91,9 +92,10 @@ create_denom_key_pair (unsigned int size)
   struct DenomKeyPair *dkp;
 
   dkp = GNUNET_new (struct DenomKeyPair);
-  dkp->priv = GNUNET_CRYPTO_rsa_private_key_create (size);
-  GNUNET_assert (NULL != dkp->priv);
-  dkp->pub = GNUNET_CRYPTO_rsa_private_key_get_public (dkp->priv);
+  dkp->priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (size);
+  GNUNET_assert (NULL != dkp->priv.rsa_private_key);
+  dkp->pub.rsa_public_key
+    = GNUNET_CRYPTO_rsa_private_key_get_public (dkp->priv.rsa_private_key);
   return dkp;
 }
 
@@ -101,8 +103,8 @@ create_denom_key_pair (unsigned int size)
 static void
 destroy_denon_key_pair (struct DenomKeyPair *dkp)
 {
-  GNUNET_CRYPTO_rsa_public_key_free (dkp->pub);
-  GNUNET_CRYPTO_rsa_private_key_free (dkp->priv);
+  GNUNET_CRYPTO_rsa_public_key_free (dkp->pub.rsa_public_key);
+  GNUNET_CRYPTO_rsa_private_key_free (dkp->priv.rsa_private_key);
   GNUNET_free (dkp);
 }
 
@@ -121,7 +123,7 @@ run (void *cls,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   struct TALER_MINTDB_Session *session;
-  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
+  struct TALER_ReservePublicKey reserve_pub;
   struct Reserve reserve;
   struct GNUNET_TIME_Absolute expiry;
   struct TALER_Amount amount;
@@ -172,7 +174,7 @@ run (void *cls,
     goto drop;
   }
   RND_BLK (&reserve_pub);
-  reserve.pub = &reserve_pub;
+  reserve.pub = reserve_pub;
   amount.value = 1;
   amount.fraction = 1;
   strcpy (amount.currency, CURRENCY);
@@ -209,7 +211,10 @@ run (void *cls,
   RND_BLK(&h_blind);
   RND_BLK(&cbc.reserve_sig);
   cbc.denom_pub = dkp->pub;
-  cbc.sig = GNUNET_CRYPTO_rsa_sign (dkp->priv, &h_blind, sizeof (h_blind));
+  cbc.sig.rsa_signature
+    = GNUNET_CRYPTO_rsa_sign (dkp->priv.rsa_private_key,
+                              &h_blind,
+                              sizeof (h_blind));
   (void) memcpy (&cbc.reserve_pub,
                  &reserve_pub,
                  sizeof (reserve_pub));
@@ -233,7 +238,7 @@ run (void *cls,
                                              session,
                                              &h_blind,
                                              &cbc2));
-  FAILIF (NULL == cbc2.denom_pub);
+  FAILIF (NULL == cbc2.denom_pub.rsa_public_key);
   FAILIF (0 != memcmp (&cbc2.reserve_sig,
                        &cbc.reserve_sig,
                        sizeof (cbc2.reserve_sig)));
@@ -242,8 +247,8 @@ run (void *cls,
                        sizeof (cbc2.reserve_pub)));
   FAILIF (GNUNET_OK !=
           GNUNET_CRYPTO_rsa_verify (&h_blind,
-                                    cbc2.sig,
-                                    dkp->pub));
+                                    cbc2.sig.rsa_signature,
+                                    dkp->pub.rsa_public_key));
   rh = plugin->get_reserve_history (plugin->cls,
                                     session,
                                     &reserve_pub);
@@ -331,12 +336,12 @@ run (void *cls,
                                           session));
   if (NULL != dkp)
     destroy_denon_key_pair (dkp);
-  if (NULL != cbc.sig)
-    GNUNET_CRYPTO_rsa_signature_free (cbc.sig);
-  if (NULL != cbc2.denom_pub)
-    GNUNET_CRYPTO_rsa_public_key_free (cbc2.denom_pub);
-  if (NULL != cbc2.sig)
-    GNUNET_CRYPTO_rsa_signature_free (cbc2.sig);
+  if (NULL != cbc.sig.rsa_signature)
+    GNUNET_CRYPTO_rsa_signature_free (cbc.sig.rsa_signature);
+  if (NULL != cbc2.denom_pub.rsa_public_key)
+    GNUNET_CRYPTO_rsa_public_key_free (cbc2.denom_pub.rsa_public_key);
+  if (NULL != cbc2.sig.rsa_signature)
+    GNUNET_CRYPTO_rsa_signature_free (cbc2.sig.rsa_signature);
   dkp = NULL;
 }
 
