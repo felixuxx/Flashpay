@@ -109,8 +109,8 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_SESSION);
   body.purpose.size = htonl (sizeof (struct RefreshMeltSessionSignature));
   body.melt_hash = melt_hash;
-  TALER_amount_hton (&body.amount,
-                     &coin_melt_details->melt_amount);
+  TALER_amount_hton (&body.amount_with_fee,
+                     &coin_melt_details->melt_amount_with_fee);
 
   if (GNUNET_OK != GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_REFRESH_MELT_SESSION,
                                                &body.purpose,
@@ -252,7 +252,7 @@ get_coin_public_info (struct MHD_Connection *connection,
       ? GNUNET_NO : GNUNET_SYSERR;
   }
   r_melt_detail->melt_sig = melt_sig;
-  r_melt_detail->melt_amount = amount;
+  r_melt_detail->melt_amount_with_fee = amount;
   TALER_MINT_release_parsed_data (spec);
   return GNUNET_OK;
 }
@@ -288,8 +288,8 @@ verify_coin_public_info (struct MHD_Connection *connection,
   body.purpose.size = htonl (sizeof (struct RefreshMeltCoinSignature));
   body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_COIN);
   body.melt_hash = *melt_hash;
-  TALER_amount_hton (&body.amount,
-                     &r_melt_detail->melt_amount);
+  TALER_amount_hton (&body.amount_with_fee,
+                     &r_melt_detail->melt_amount_with_fee);
   body.coin_pub = r_public_info->coin_pub;
   if (GNUNET_OK !=
       GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_REFRESH_MELT_COIN,

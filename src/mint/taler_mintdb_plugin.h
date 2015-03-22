@@ -14,13 +14,13 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file mint/mint_db.h
+ * @file mint/taler_mintdb_plugin.h
  * @brief Low-level (statement-level) database access for the mint
  * @author Florian Dold
  * @author Christian Grothoff
  */
-#ifndef MINT_DB_H
-#define MINT_DB_H
+#ifndef TALER_MINTDB_PLUGIN_H
+#define TALER_MINTDB_PLUGIN_H
 
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
@@ -87,6 +87,9 @@ struct CollectableBlindcoin
 
   /**
    * Denomination key (which coin was generated).
+   * FIXME: we should probably instead have the
+   * AMOUNT *including* fee in what is being signed
+   * as well!
    */
   struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
 
@@ -217,10 +220,10 @@ struct Deposit
   uint64_t transaction_id;
 
   /**
-   * Fraction of the coin's remaining value to be deposited.
-   * The coin is identified by @e coin_pub.
+   * Fraction of the coin's remaining value to be deposited, including
+   * depositing fee (if any).  The coin is identified by @e coin_pub.
    */
-  struct TALER_Amount amount;
+  struct TALER_Amount amount_with_fee;
 
 };
 
@@ -296,11 +299,14 @@ struct RefreshMelt
   struct GNUNET_HashCode melt_hash;
 
   /**
-   * How much value is being melted?
-   * This amount includes the fees, so the final amount contributed
-   * to the melt is this value minus the fee for melting the coin.
+   * How much value is being melted?  This amount includes the fees,
+   * so the final amount contributed to the melt is this value minus
+   * the fee for melting the coin.  We include the fee in what is
+   * being signed so that we can verify a reserve's remaining total
+   * balance without needing to access the respective denomination key
+   * information each time.
    */
-  struct TALER_Amount amount;
+  struct TALER_Amount amount_with_fee;
 
 };
 
@@ -397,7 +403,7 @@ struct Lock
   const struct GNUNET_CRYPTO_EcdsaSignature coin_sig;
 
   /**
-   * How much value is being melted?
+   * How much value is being locked?
    */
   struct TALER_Amount amount;
 

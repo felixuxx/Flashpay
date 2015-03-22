@@ -95,7 +95,7 @@ struct MeltDetails
    * This amount includes the fees, so the final amount contributed
    * to the melt is this value minus the fee for melting the coin.
    */
-  struct TALER_Amount melt_amount;
+  struct TALER_Amount melt_amount_with_fee;
 };
 
 

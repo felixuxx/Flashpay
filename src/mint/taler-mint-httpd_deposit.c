@@ -65,8 +65,8 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   dr.h_contract = deposit->h_contract;
   dr.h_wire = deposit->h_wire;
   dr.transaction_id = GNUNET_htonll (deposit->transaction_id);
-  TALER_amount_hton (&dr.amount,
-                     &deposit->amount);
+  TALER_amount_hton (&dr.amount_with_fee,
+                     &deposit->amount_with_fee);
   dr.coin_pub = deposit->coin.coin_pub;
   if (GNUNET_OK !=
       GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_WALLET_DEPOSIT,
@@ -167,7 +167,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   GNUNET_free (wire_enc);
 
   deposit.wire = wire;
-  deposit.amount = *amount;
+  deposit.amount_with_fee = *amount;
   res = verify_and_execute_deposit (connection,
                                     &deposit);
   TALER_MINT_release_parsed_data (spec);

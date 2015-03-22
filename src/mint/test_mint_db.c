@@ -286,7 +286,7 @@ run (void *cls,
   deposit.wire = wire;
   deposit.transaction_id =
       GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
-  deposit.amount = amount;
+  deposit.amount_with_fee = amount;
   FAILIF (GNUNET_OK !=
           plugin->insert_deposit (plugin->cls,
                                   session, &deposit));

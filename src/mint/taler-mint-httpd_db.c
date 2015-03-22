@@ -35,6 +35,64 @@
 
 
 /**
+ * Calculate the total value of all transactions performed.
+ * Stores @a off plus the cost of all transactions in @a tl
+ * in @a ret.
+ *
+ * @param pos transaction list to process
+ * @param off offset to use as the starting value
+ * @param ret where the resulting total is to be stored
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
+ */
+static int
+calculate_transaction_list_totals (struct TALER_MINT_DB_TransactionList *tl,
+                                   const struct TALER_Amount *off,
+                                   struct TALER_Amount *ret)
+{
+  struct TALER_Amount spent = *off;
+  struct TALER_MINT_DB_TransactionList *pos;
+
+  for (pos = tl; NULL != pos; pos = pos->next)
+  {
+    switch (pos->type)
+    {
+    case TALER_MINT_DB_TT_DEPOSIT:
+      if (GNUNET_OK !=
+          TALER_amount_add (&spent,
+                            &spent,
+                            &pos->details.deposit->amount_with_fee))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      break;
+    case TALER_MINT_DB_TT_REFRESH_MELT:
+      if (GNUNET_OK !=
+          TALER_amount_add (&spent,
+                            &spent,
+                            &pos->details.melt->amount_with_fee))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      break;
+    case TALER_MINT_DB_TT_LOCK:
+      /* should check if lock is still active,
+         and if it is for THIS operation; if
+         lock is inactive, delete it; if lock
+         is for THIS operation, ignore it;
+         if lock is for another operation,
+         count it! */
+      GNUNET_assert (0);  // FIXME: not implemented! (#3625)
+      return GNUNET_SYSERR;
+    }
+  }
+  *ret = spent;
+  return GNUNET_OK;
+}
+
+
+/**
  * Execute a deposit.  The validity of the coin and signature
  * have already been checked.  The database must now check that
  * the coin is not (double or over) spent, and execute the
@@ -50,11 +108,9 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
 {
   struct TALER_MINTDB_Session *session;
   struct TALER_MINT_DB_TransactionList *tl;
-  struct TALER_MINT_DB_TransactionList *pos;
   struct TALER_Amount spent;
   struct TALER_Amount value;
   struct TALER_Amount fee_deposit;
-  struct TALER_Amount fee_refresh;
   struct MintKeyState *mks;
   struct TALER_MINT_DenomKeyIssuePriv *dki;
   int ret;
@@ -76,7 +132,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                                              &deposit->h_contract,
                                              deposit->transaction_id,
                                              &deposit->merchant_pub,
-                                             &deposit->amount);
+                                             &deposit->amount_with_fee);
   }
   mks = TALER_MINT_key_state_acquire ();
   dki = TALER_MINT_get_denom_key (mks,
@@ -85,8 +141,6 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                      &dki->issue.value);
   TALER_amount_ntoh (&fee_deposit,
                      &dki->issue.fee_deposit);
-  TALER_amount_ntoh (&fee_refresh,
-                     &dki->issue.fee_refresh);
   TALER_MINT_key_state_release (mks);
 
   if (GNUNET_OK !=
@@ -96,69 +150,29 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
     GNUNET_break (0);
     return TALER_MINT_reply_internal_db_error (connection);
   }
+  /* fee for THIS transaction */
+  spent = deposit->amount_with_fee;
+  if (TALER_amount_cmp (&fee_deposit,
+                        &spent) < 0)
+  {
+    return (MHD_YES ==
+            TALER_MINT_reply_external_error (connection,
+                                             "deposited amount smaller than depositing fee"))
+      ? GNUNET_NO : GNUNET_SYSERR;
+  }
+  /* add cost of all previous transactions */
   tl = plugin->get_coin_transactions (plugin->cls,
                                       session,
                                       &deposit->coin.coin_pub);
-  spent = fee_deposit; /* fee for THIS transaction */
   if (GNUNET_OK !=
-      TALER_amount_add (&spent,
-                        &spent,
-                        &deposit->amount))
+      calculate_transaction_list_totals (tl,
+                                         &spent,
+                                         &spent))
   {
-    GNUNET_break (0);
     plugin->free_coin_transaction_list (plugin->cls,
                                         tl);
     return TALER_MINT_reply_internal_db_error (connection);
   }
-
-  for (pos = tl; NULL != pos; pos = pos->next)
-  {
-    switch (pos->type)
-    {
-    case TALER_MINT_DB_TT_DEPOSIT:
-      if ( (GNUNET_OK !=
-            TALER_amount_add (&spent,
-                              &spent,
-                              &pos->details.deposit->amount)) ||
-           (GNUNET_OK !=
-            TALER_amount_add (&spent,
-                              &spent,
-                              &fee_deposit)) )
-      {
-        GNUNET_break (0);
-        plugin->free_coin_transaction_list (plugin->cls,
-                                            tl);
-        return TALER_MINT_reply_internal_db_error (connection);
-      }
-      break;
-    case TALER_MINT_DB_TT_REFRESH_MELT:
-      if ( (GNUNET_OK !=
-            TALER_amount_add (&spent,
-                              &spent,
-                              &pos->details.melt->amount)) ||
-           (GNUNET_OK !=
-            TALER_amount_add (&spent,
-                              &spent,
-                              &fee_refresh)) )
-      {
-        GNUNET_break (0);
-        plugin->free_coin_transaction_list (plugin->cls,
-                                            tl);
-        return TALER_MINT_reply_internal_db_error (connection);
-      }
-      break;
-    case TALER_MINT_DB_TT_LOCK:
-      /* should check if lock is still active,
-         and if it is for THIS operation; if
-         lock is inactive, delete it; if lock
-         is for THIS operation, ignore it;
-         if lock is for another operation,
-         count it! */
-      GNUNET_assert (0);  // FIXME: not implemented! (#3625)
-      break;
-    }
-  }
-
   if (0 < TALER_amount_cmp (&spent,
                             &value))
   {
@@ -197,7 +211,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                                            &deposit->h_contract,
                                            deposit->transaction_id,
                                            &deposit->merchant_pub,
-                                           &deposit->amount);
+                                           &deposit->amount_with_fee);
 }
 
 
@@ -501,8 +515,11 @@ refresh_accept_melts (struct MHD_Connection *connection,
 {
   struct TALER_MINT_DenomKeyIssue *dki;
   struct TALER_MINT_DB_TransactionList *tl;
+  struct TALER_Amount fee_deposit;
+  struct TALER_Amount fee_refresh;
   struct TALER_Amount coin_value;
   struct TALER_Amount coin_residual;
+  struct TALER_Amount spent;
   struct RefreshMelt melt;
   int res;
 
@@ -518,26 +535,51 @@ refresh_accept_melts (struct MHD_Connection *connection,
                                         "denom not found"))
       ? GNUNET_NO : GNUNET_SYSERR;
 
+  TALER_amount_ntoh (&fee_deposit,
+                     &dki->fee_deposit);
+  TALER_amount_ntoh (&fee_refresh,
+                     &dki->fee_refresh);
   TALER_amount_ntoh (&coin_value,
                      &dki->value);
+  /* fee for THIS transaction; the melt amount includes the fee! */
+  spent = coin_details->melt_amount_with_fee;
+  if (TALER_amount_cmp (&fee_refresh,
+                        &spent) < 0)
+  {
+    return (MHD_YES ==
+            TALER_MINT_reply_external_error (connection,
+                                             "melt amount smaller than melting fee"))
+      ? GNUNET_NO : GNUNET_SYSERR;
+  }
+  /* add historic transaction costs of this coin */
   tl = plugin->get_coin_transactions (plugin->cls,
                                       session,
                                       &coin_public_info->coin_pub);
-  /* FIXME: #3636: compute how much value is left with this coin and
-     compare to `expected_value`! (subtract from "coin_value") */
-  coin_residual = coin_value;
+  if (GNUNET_OK !=
+      calculate_transaction_list_totals (tl,
+                                         &spent,
+                                         &spent))
+  {
+    GNUNET_break (0);
+    plugin->free_coin_transaction_list (plugin->cls,
+                                        tl);
+    return TALER_MINT_reply_internal_db_error (connection);
+  }
   /* Refuse to refresh when the coin does not have enough money left to
    * pay the refreshing fees of the coin. */
-
-  if (TALER_amount_cmp (&coin_residual,
-                        &coin_details->melt_amount) < 0)
+  if (TALER_amount_cmp (&coin_value,
+                        &spent) < 0)
   {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_subtract (&coin_residual,
+                                          &spent,
+                                          &coin_details->melt_amount_with_fee));
     res = (MHD_YES ==
            TALER_MINT_reply_refresh_melt_insufficient_funds (connection,
                                                              &coin_public_info->coin_pub,
                                                              coin_value,
                                                              tl,
-                                                             coin_details->melt_amount,
+                                                             coin_details->melt_amount_with_fee,
                                                              coin_residual))
       ? GNUNET_NO : GNUNET_SYSERR;
     plugin->free_coin_transaction_list (plugin->cls,
@@ -550,7 +592,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
   melt.coin = *coin_public_info;
   melt.coin_sig = coin_details->melt_sig;
   melt.melt_hash = *melt_hash;
-  melt.amount = coin_details->melt_amount;
+  melt.amount_with_fee = coin_details->melt_amount_with_fee;
   if (GNUNET_OK !=
       plugin->insert_refresh_melt (plugin->cls,
                                    session,

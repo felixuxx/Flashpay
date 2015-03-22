@@ -1401,7 +1401,7 @@ postgres_insert_deposit (void *cls,
                                           &denom_sig_enc);
   json_wire_enc = json_dumps (deposit->wire, JSON_COMPACT);
   TALER_amount_hton (&amount_nbo,
-                     &deposit->amount);
+                     &deposit->amount_with_fee);
   struct TALER_DB_QueryParam params[]= {
     TALER_DB_QUERY_PARAM_PTR (&deposit->coin.coin_pub),
     TALER_DB_QUERY_PARAM_PTR_SIZED (denom_pub_enc, denom_pub_enc_size),

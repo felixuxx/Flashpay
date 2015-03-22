@@ -132,6 +132,15 @@ struct TALER_WithdrawRequest
   struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
 
   /**
+   * Value of the coin being minted (matching the denomination key)
+   * plus the transaction fee.  We include this in what is being
+   * signed so that we can verify a reserve's remaining total balance
+   * without needing to access the respective denomination key
+   * information each time.
+   */
+  struct TALER_AmountNBO amount_with_fee;
+
+  /**
    * Hash of the denomination public key for the coin that is withdrawn.
    */
   struct GNUNET_HashCode h_denomination_pub;
@@ -171,9 +180,11 @@ struct TALER_DepositRequest
   uint64_t transaction_id GNUNET_PACKED;
 
   /**
-   * Amount to be deposited.
+   * Amount to be deposited, including fee.
    */
-  struct TALER_AmountNBO amount;
+  struct TALER_AmountNBO amount_with_fee;
+  /* FIXME: we should probably also include the value of
+     the depositing fee here as well! */
 
   /**
    * The coin's public key.
@@ -211,9 +222,12 @@ struct TALER_DepositConfirmation
   uint64_t transaction_id GNUNET_PACKED;
 
   /**
-   * Amount to be deposited.
+   * Amount to be deposited, including fee.
    */
-  struct TALER_AmountNBO amount;
+  struct TALER_AmountNBO amount_with_fee;
+
+  /* FIXME: we should probably also include the value of
+     the depositing fee here as well! */
 
   /**
    * The coin's public key.
@@ -245,11 +259,17 @@ struct RefreshMeltCoinSignature
   struct GNUNET_HashCode melt_hash;
 
   /**
-   * How much of the value of the coin should be melted?
-   * This amount includes the fees, so the final amount contributed
-   * to the melt is this value minus the fee for melting the coin.
+   * How much of the value of the coin should be melted?  This amount
+   * includes the fees, so the final amount contributed to the melt is
+   * this value minus the fee for melting the coin.  We include the
+   * fee in what is being signed so that we can verify a reserve's
+   * remaining total balance without needing to access the respective
+   * denomination key information each time.
    */
-  struct TALER_AmountNBO amount;
+  struct TALER_AmountNBO amount_with_fee;
+
+  /* FIXME: we should probably also include the value of
+     the melting fee here as well! */
 
   /**
    * The coin's public key.
@@ -282,9 +302,13 @@ struct RefreshMeltSessionSignature
 
   /**
    * What is the total value of the coins created during the
-   * refresh, excluding fees?
+   * refresh, including melting fee!
    */
-  struct TALER_AmountNBO amount;
+  struct TALER_AmountNBO amount_with_fee;
+
+  /* FIXME: we should probably also include the value of
+     the melting fee here as well! */
+
 };
 
 

@@ -299,7 +299,7 @@ TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
   dc.h_contract = *h_contract;
   dc.h_wire = *h_wire;
   dc.transaction_id = GNUNET_htonll (transaction_id);
-  TALER_amount_hton (&dc.amount,
+  TALER_amount_hton (&dc.amount_with_fee,
                      amount);
   dc.coin_pub = *coin_pub;
   dc.merchant = *merchant;
@@ -341,14 +341,14 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
         const struct Deposit *deposit = pos->details.deposit;
 
         type = "deposit";
-        value = deposit->amount;
+        value = deposit->amount_with_fee;
         dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_DEPOSIT);
         dr.purpose.size = htonl (sizeof (struct TALER_DepositRequest));
         dr.h_contract = deposit->h_contract;
         dr.h_wire = deposit->h_wire;
         dr.transaction_id = GNUNET_htonll (deposit->transaction_id);
-        TALER_amount_hton (&dr.amount,
-                           &deposit->amount);
+        TALER_amount_hton (&dr.amount_with_fee,
+                           &deposit->amount_with_fee);
         dr.coin_pub = deposit->coin.coin_pub;
         transaction = TALER_JSON_from_ecdsa_sig (&dr.purpose,
                                                  &deposit->csig);
@@ -360,12 +360,12 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
         const struct RefreshMelt *melt = pos->details.melt;
 
         type = "melt";
-        value = melt->amount;
+        value = melt->amount_with_fee;
         ms.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_COIN);
         ms.purpose.size = htonl (sizeof (struct RefreshMeltCoinSignature));
         ms.melt_hash = melt->melt_hash;
-        TALER_amount_hton (&ms.amount,
-                           &melt->amount);
+        TALER_amount_hton (&ms.amount_with_fee,
+                           &melt->amount_with_fee);
         ms.coin_pub = melt->coin.coin_pub;
         transaction = TALER_JSON_from_ecdsa_sig (&ms.purpose,
                                                  &melt->coin_sig);

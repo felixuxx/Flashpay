@@ -94,12 +94,12 @@ run (void *cls,
                                              UINT64_MAX);
   deposit->transaction_id = GNUNET_htonll (transaction_id);
   /* Random amount */
-  deposit->amount.value =
+  deposit->amount_with_fee.value =
       htonl (GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, UINT32_MAX));
-  deposit->amount.fraction =
+  deposit->amount_with_fee.fraction =
       htonl (GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, UINT32_MAX));
-  GNUNET_assert (strlen (MINT_CURRENCY) < sizeof (deposit->amount.currency));
-  strcpy (deposit->amount.currency, MINT_CURRENCY);
+  GNUNET_assert (strlen (MINT_CURRENCY) < sizeof (deposit->amount_with_fee.currency));
+  strcpy (deposit->amount_with_fee.currency, MINT_CURRENCY);
   /* Copy wireformat */
   deposit->wire = json_loads (wire, 0, NULL);
   EXITIF (GNUNET_OK !=
