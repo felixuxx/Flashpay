@@ -493,6 +493,28 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
       GNUNET_free (denom_pubs);
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     }
+    /* Check that the client does not try to melt the same coin twice
+       into the same session! */
+    for (j=0;j<i;j++)
+    {
+      if (0 == memcmp (&coin_public_infos[i].coin_pub,
+                       &coin_public_infos[j].coin_pub,
+                       sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey)))
+      {
+        for (j=0;j<i;j++)
+        {
+          GNUNET_CRYPTO_rsa_public_key_free (coin_public_infos[j].denom_pub);
+          GNUNET_CRYPTO_rsa_signature_free (coin_public_infos[j].denom_sig);
+        }
+        GNUNET_free (coin_public_infos);
+        for (j=0;j<num_new_denoms;j++)
+          GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j]);
+        GNUNET_free (coin_melt_details);
+        GNUNET_free (denom_pubs);
+        return TALER_MINT_reply_external_error (connection,
+                                                "melting same coin twice in same session is not allowed");
+      }
+    }
   }
 
 
