@@ -68,7 +68,7 @@ static void
 common_free_link_data_list (void *cls,
                             struct LinkDataList *ldl)
 {
-  GNUNET_break (0); // FIXME
+  GNUNET_break (0); // FIXME (#3728)
 }
 
 
@@ -82,7 +82,7 @@ static void
 common_free_coin_transaction_list (void *cls,
                                    struct TALER_MINT_DB_TransactionList *list)
 {
-  // FIXME: check logic!
+  // FIXME: implement! // FIXME (#3728)
   GNUNET_break (0);
 }
 
