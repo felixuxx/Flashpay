@@ -45,7 +45,7 @@ struct BankTransfer
   /**
    * Detailed wire information about the transaction.
    */
-  const json_t *wire;
+  json_t *wire;
 
 };
 

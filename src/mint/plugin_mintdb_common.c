@@ -41,7 +41,7 @@ common_free_reserve_history (void *cls,
     case TALER_MINT_DB_RO_BANK_TO_MINT:
       bt = rh->details.bank;
       if (NULL != bt->wire)
-        json_decref ((json_t *) bt->wire); /* FIXME: avoid cast? */
+        json_decref (bt->wire);
       GNUNET_free (bt);
       break;
     case TALER_MINT_DB_RO_WITHDRAW_COIN:
