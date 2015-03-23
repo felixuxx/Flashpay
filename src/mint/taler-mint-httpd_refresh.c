@@ -470,7 +470,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
 
   coin_count = json_array_size (melt_coins);
   /* FIXME: make 'struct TALER_CoinPublicInfo' part of `struct MeltDetails`
-     and combine these two arrays/arguments! */
+     and combine these two arrays/arguments! (#3726) */
   coin_public_infos = GNUNET_malloc (coin_count *
                                      sizeof (struct TALER_CoinPublicInfo));
   coin_melt_details = GNUNET_malloc (coin_count *

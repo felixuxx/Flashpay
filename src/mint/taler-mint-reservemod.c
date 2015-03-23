@@ -184,7 +184,7 @@ reservemod_add (struct TALER_Amount denom)
                PQresultErrorMessage (result));
       return GNUNET_SYSERR;
     }
-    /* FIXME: strcmp!? There must be an API that returns an int! */
+    /* Yes, for historic reasons libpq returns a 'const char *'... */
     if (0 != strcmp ("1",
                      PQcmdTuples (result)))
     {

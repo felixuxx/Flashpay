@@ -440,7 +440,6 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
     return TALER_MINT_reply_internal_error (connection,
                                             "Internal error");
   }
-  /* FIXME: this signature is still blinded, bad name... */
   collectable.sig.rsa_signature = sig;
   collectable.denom_pub = *denomination_pub;
   collectable.reserve_pub = *reserve;
@@ -730,7 +729,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   refresh_session.session_hash = *melt_hash;
   refresh_session.num_oldcoins = coin_count;
   refresh_session.num_newcoins = num_new_denoms;
-  refresh_session.kappa = KAPPA; // FIXME...
+  refresh_session.kappa = KAPPA; // FIXME... (#3711)
   refresh_session.noreveal_index
     = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG,
                                 refresh_session.kappa);
