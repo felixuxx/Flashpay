@@ -364,7 +364,7 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
         value = melt->amount_with_fee;
         ms.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_COIN);
         ms.purpose.size = htonl (sizeof (struct RefreshMeltCoinSignature));
-        ms.melt_hash = melt->melt_hash;
+        ms.session_hash = melt->session_hash;
         TALER_amount_hton (&ms.amount_with_fee,
                            &melt->amount_with_fee);
         ms.coin_pub = melt->coin.coin_pub;

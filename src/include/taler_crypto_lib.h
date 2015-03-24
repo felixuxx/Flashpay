@@ -27,6 +27,8 @@
 
 /* ****************** Coin crypto primitives ************* */
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Type of public keys for Taler reserves.
  */
@@ -269,6 +271,10 @@ struct TALER_CoinSpendSignature
 };
 
 
+GNUNET_NETWORK_STRUCT_END
+
+
+
 /**
  * Type of blinding keys for Taler.
  */
@@ -358,6 +364,9 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info);
 
 /* ****************** Refresh crypto primitives ************* */
 
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Secret used to decrypt the key to decrypt link secrets.
  */
@@ -397,6 +406,28 @@ struct TALER_EncryptedLinkSecret
 
 
 /**
+ * Representation of an refresh link in cleartext.
+ */
+struct TALER_RefreshLinkDecrypted
+{
+
+  /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKey coin_priv;
+
+  /**
+   * Blinding key.
+   */
+  struct TALER_DenominationBlindingKey blinding_key;
+
+};
+
+
+GNUNET_NETWORK_STRUCT_END
+
+
+/**
  * Representation of an encrypted refresh link.
  */
 struct TALER_RefreshLinkEncrypted
@@ -417,25 +448,6 @@ struct TALER_RefreshLinkEncrypted
    * Encrypted private key of the coin.
    */
   char coin_priv_enc[sizeof (struct TALER_CoinSpendPrivateKey)];
-
-};
-
-
-/**
- * Representation of an refresh link in cleartext.
- */
-struct TALER_RefreshLinkDecrypted
-{
-
-  /**
-   * Private key of the coin.
-   */
-  struct TALER_CoinSpendPrivateKey coin_priv;
-
-  /**
-   * Blinding key.
-   */
-  struct TALER_DenominationBlindingKey blinding_key;
 
 };
 

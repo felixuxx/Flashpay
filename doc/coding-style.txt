@@ -44,6 +44,13 @@ Naming conventions:
     MUST match the subdirectory of src/ in which the symbol is defined
   + from libtalerutil start just with TALER_, without subsystemname
 
+* structs:
+  + structs that are 'packed' and do not contain pointers and are
+    thus suitable for hashing or similar operations are distinguished
+    by adding a "P" at the end of the name. (NEW)  Note that this
+    convention does not hold for the GNUnet-structs (yet).
+
+
 * private (library-internal) symbols (including structs and macros)
   + must not start with TALER_ or any other prefix
 

@@ -220,11 +220,11 @@ postgres_create_tables (void *cls,
           ",expended_value INT4 NOT NULL"
           ",expended_fraction INT4 NOT NULL"
           ",expended_currency VARCHAR(4) NOT NULL"
-          ",refresh_session_pub BYTEA"
+          ",refresh_session_hash BYTEA"
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_sessions "
           "("
-          " session_pub BYTEA PRIMARY KEY CHECK (length(session_pub) = 32)"
+          " session_hash BYTEA PRIMARY KEY CHECK (length(session_hash) = 32)"
           ",session_melt_sig BYTEA"
           ",session_commit_sig BYTEA"
           ",noreveal_index INT2 NOT NULL"
@@ -234,14 +234,14 @@ postgres_create_tables (void *cls,
           ") ");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_order "
           "( "
-          " session_pub BYTEA NOT NULL REFERENCES refresh_sessions (session_pub)"
+          " session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
           ",newcoin_index INT2 NOT NULL "
           ",denom_pub BYTEA NOT NULL "
-          ",PRIMARY KEY (session_pub, newcoin_index)"
+          ",PRIMARY KEY (session_hash, newcoin_index)"
           ") ");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_link"
           "("
-          " session_pub BYTEA NOT NULL REFERENCES refresh_sessions (session_pub)"
+          " session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
           ",transfer_pub BYTEA NOT NULL"
           ",link_secret_enc BYTEA NOT NULL"
           // index of the old coin in the customer's request
@@ -252,7 +252,7 @@ postgres_create_tables (void *cls,
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_coin"
           "("
-          " session_pub BYTEA NOT NULL REFERENCES refresh_sessions (session_pub) "
+          " session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) "
           ",link_vector_enc BYTEA NOT NULL"
           // index of the new coin in the customer's request
           ",newcoin_index INT2 NOT NULL"
@@ -262,14 +262,14 @@ postgres_create_tables (void *cls,
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_melt"
           "("
-          " session_pub BYTEA NOT NULL REFERENCES refresh_sessions (session_pub) "
+          " session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) "
           ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) "
           ",denom_pub BYTEA NOT NULL "
           ",oldcoin_index INT2 NOT NULL"
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_collectable"
           "("
-          " session_pub BYTEA NOT NULL REFERENCES refresh_sessions (session_pub) "
+          " session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) "
           ",ev_sig BYTEA NOT NULL"
           ",newcoin_index INT2 NOT NULL"
           ")");
@@ -393,16 +393,16 @@ postgres_prepare (PGconn *db_conn)
 #if 0
   PREPARE ("get_refresh_session",
            "SELECT "
-           " (SELECT count(*) FROM refresh_melt WHERE session_pub = $1)::INT2 as num_oldcoins "
+           " (SELECT count(*) FROM refresh_melt WHERE session_hash = $1)::INT2 as num_oldcoins "
            ",(SELECT count(*) FROM refresh_blind_session_keys "
-           "  WHERE session_pub = $1 and cnc_index = 0)::INT2 as num_newcoins "
+           "  WHERE session_hash = $1 and cnc_index = 0)::INT2 as num_newcoins "
            ",(SELECT count(*) FROM refresh_blind_session_keys "
-           "  WHERE session_pub = $1 and newcoin_index = 0)::INT2 as kappa "
+           "  WHERE session_hash = $1 and newcoin_index = 0)::INT2 as kappa "
            ",noreveal_index"
            ",session_commit_sig "
            ",reveal_ok "
            "FROM refresh_sessions "
-           "WHERE session_pub = $1",
+           "WHERE session_hash = $1",
            1, NULL);
 #endif
 
@@ -410,7 +410,7 @@ postgres_prepare (PGconn *db_conn)
            "SELECT "
            " coin_pub, denom_pub, denom_sig "
            ",expended_value, expended_fraction, expended_currency "
-           ",refresh_session_pub "
+           ",refresh_session_hash "
            "FROM known_coins "
            "WHERE coin_pub = $1",
            1, NULL);
@@ -422,7 +422,7 @@ postgres_prepare (PGconn *db_conn)
            ",expended_value = $4 "
            ",expended_fraction = $5 "
            ",expended_currency = $6 "
-           ",refresh_session_pub = $7 "
+           ",refresh_session_hash = $7 "
            "WHERE "
            " coin_pub = $1 ",
            7, NULL);
@@ -434,7 +434,7 @@ postgres_prepare (PGconn *db_conn)
            ",expended_value"
            ",expended_fraction"
            ",expended_currency"
-           ",refresh_session_pub"
+           ",refresh_session_hash"
            ")"
            "VALUES ($1,$2,$3,$4,$5,$6,$7)",
            7, NULL);
@@ -443,26 +443,26 @@ postgres_prepare (PGconn *db_conn)
            " transfer_pub "
            ",link_secret_enc "
            "FROM refresh_commit_link "
-           "WHERE session_pub = $1 AND cnc_index = $2 AND oldcoin_index = $3",
+           "WHERE session_hash = $1 AND cnc_index = $2 AND oldcoin_index = $3",
            3, NULL);
   PREPARE ("get_refresh_commit_coin",
            "SELECT "
            " link_vector_enc "
            ",coin_ev "
            "FROM refresh_commit_coin "
-           "WHERE session_pub = $1 AND cnc_index = $2 AND newcoin_index = $3",
+           "WHERE session_hash = $1 AND cnc_index = $2 AND newcoin_index = $3",
            3, NULL);
   PREPARE ("insert_refresh_order",
            "INSERT INTO refresh_order ( "
            " newcoin_index "
-           ",session_pub "
+           ",session_hash "
            ",denom_pub "
            ") "
            "VALUES ($1, $2, $3) ",
            3, NULL);
   PREPARE ("insert_refresh_melt",
            "INSERT INTO refresh_melt ( "
-           " session_pub "
+           " session_hash "
            ",oldcoin_index "
            ",coin_pub "
            ",denom_pub "
@@ -472,28 +472,28 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("get_refresh_order",
            "SELECT denom_pub "
            "FROM refresh_order "
-           "WHERE session_pub = $1 AND newcoin_index = $2",
+           "WHERE session_hash = $1 AND newcoin_index = $2",
            2, NULL);
   PREPARE ("get_refresh_collectable",
            "SELECT ev_sig "
            "FROM refresh_collectable "
-           "WHERE session_pub = $1 AND newcoin_index = $2",
+           "WHERE session_hash = $1 AND newcoin_index = $2",
            2, NULL);
   PREPARE ("get_refresh_melt",
            "SELECT coin_pub "
            "FROM refresh_melt "
-           "WHERE session_pub = $1 AND oldcoin_index = $2",
+           "WHERE session_hash = $1 AND oldcoin_index = $2",
            2, NULL);
   PREPARE ("insert_refresh_session",
            "INSERT INTO refresh_sessions ( "
-           " session_pub "
+           " session_hash "
            ",noreveal_index "
            ") "
            "VALUES ($1, $2) ",
            2, NULL);
   PREPARE ("insert_refresh_commit_link",
            "INSERT INTO refresh_commit_link ( "
-           " session_pub "
+           " session_hash "
            ",transfer_pub "
            ",cnc_index "
            ",oldcoin_index "
@@ -503,7 +503,7 @@ postgres_prepare (PGconn *db_conn)
            5, NULL);
   PREPARE ("insert_refresh_commit_coin",
            "INSERT INTO refresh_commit_coin ( "
-           " session_pub "
+           " session_hash "
            ",coin_ev "
            ",cnc_index "
            ",newcoin_index "
@@ -513,7 +513,7 @@ postgres_prepare (PGconn *db_conn)
            5, NULL);
   PREPARE ("insert_refresh_collectable",
            "INSERT INTO refresh_collectable ( "
-           " session_pub "
+           " session_hash "
            ",newcoin_index "
            ",ev_sig "
            ") "
@@ -522,33 +522,33 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("set_reveal_ok",
            "UPDATE refresh_sessions "
            "SET reveal_ok = TRUE "
-           "WHERE session_pub = $1 ",
+           "WHERE session_hash = $1 ",
            1, NULL);
   PREPARE ("get_link",
            "SELECT link_vector_enc, ro.denom_pub, ev_sig "
            "FROM refresh_melt rm "
-           "     JOIN refresh_order ro USING (session_pub) "
-           "     JOIN refresh_commit_coin rcc USING (session_pub) "
-           "     JOIN refresh_sessions rs USING (session_pub) "
-           "     JOIN refresh_collectable rc USING (session_pub) "
+           "     JOIN refresh_order ro USING (session_hash) "
+           "     JOIN refresh_commit_coin rcc USING (session_hash) "
+           "     JOIN refresh_sessions rs USING (session_hash) "
+           "     JOIN refresh_collectable rc USING (session_hash) "
            "WHERE rm.coin_pub = $1 "
            "AND ro.newcoin_index = rcc.newcoin_index "
            "AND ro.newcoin_index = rc.newcoin_index "
            "AND  rcc.cnc_index = rs.noreveal_index % ( "
            "         SELECT count(*) FROM refresh_commit_coin rcc2 "
-           "         WHERE rcc2.newcoin_index = 0 AND rcc2.session_pub = rs.session_pub "
+           "         WHERE rcc2.newcoin_index = 0 AND rcc2.session_hash = rs.session_hash "
            "     ) ",
            1, NULL);
   PREPARE ("get_transfer",
            "SELECT transfer_pub, link_secret_enc "
            "FROM refresh_melt rm "
-           "     JOIN refresh_commit_link rcl USING (session_pub) "
-           "     JOIN refresh_sessions rs USING (session_pub) "
+           "     JOIN refresh_commit_link rcl USING (session_hash) "
+           "     JOIN refresh_sessions rs USING (session_hash) "
            "WHERE rm.coin_pub = $1 "
            "AND  rm.oldcoin_index = rcl.oldcoin_index "
            "AND  rcl.cnc_index = rs.noreveal_index % ( "
            "         SELECT count(*) FROM refresh_commit_coin rcc2 "
-           "         WHERE newcoin_index = 0 AND rcc2.session_pub = rm.session_pub "
+           "         WHERE newcoin_index = 0 AND rcc2.session_hash = rm.session_hash "
            "     ) ",
            1, NULL);
   PREPARE ("insert_deposit",
@@ -1434,11 +1434,11 @@ postgres_insert_deposit (void *cls,
 
 
 /**
- * Lookup refresh session data under the given public key.
+ * Lookup refresh session data under the given @a session_hash.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database handle to use
- * @param refresh_session_pub public key to use for the lookup
+ * @param session_hash hash over the melt to use to locate the session
  * @param refresh_session[OUT] where to store the result
  * @return #GNUNET_YES on success,
  *         #GNUNET_NO if not found,
@@ -1447,13 +1447,13 @@ postgres_insert_deposit (void *cls,
 static int
 postgres_get_refresh_session (void *cls,
                               struct TALER_MINTDB_Session *session,
-                              const struct TALER_SessionPublicKey *refresh_session_pub,
+                              const struct GNUNET_HashCode *session_hash,
                               struct RefreshSession *refresh_session)
 {
   // FIXME: check logic!
   int res;
   struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(refresh_session_pub),
+    TALER_DB_QUERY_PARAM_PTR(session_hash),
     TALER_DB_QUERY_PARAM_END
   };
 
@@ -1511,11 +1511,11 @@ postgres_get_refresh_session (void *cls,
 
 
 /**
- * Store new refresh session data under the given public key.
+ * Store new refresh session data under the given @a session_hash.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database handle to use
- * @param refresh_session_pub public key to use to locate the session
+ * @param session_hash hash over the melt to use to locate the session
  * @param refresh_session session data to store
  * @return #GNUNET_YES on success,
  *         #GNUNET_SYSERR on DB failure
@@ -1523,13 +1523,13 @@ postgres_get_refresh_session (void *cls,
 static int
 postgres_create_refresh_session (void *cls,
                                  struct TALER_MINTDB_Session *session,
-                                 const struct TALER_SessionPublicKey *session_pub,
+                                 const struct GNUNET_HashCode *session_hash,
                                  const struct RefreshSession *refresh_session)
 {
   // FIXME: actually store session data!
   uint16_t noreveal_index;
   struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(session_pub),
+    TALER_DB_QUERY_PARAM_PTR(session_hash),
     TALER_DB_QUERY_PARAM_PTR(&noreveal_index),
     TALER_DB_QUERY_PARAM_END
   };
@@ -1558,16 +1558,15 @@ postgres_create_refresh_session (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
- * @param refresh_session session key of the melt operation
  * @param oldcoin_index index of the coin to store
- * @param melt melt operation
+ * @param melt melt operation details to store; includes
+   *             the session hash of the melt
  * @return #GNUNET_OK on success
  *         #GNUNET_SYSERR on internal error
  */
 static int
 postgres_insert_refresh_melt (void *cls,
                               struct TALER_MINTDB_Session *session,
-                              const struct TALER_SessionPublicKey *refresh_session,
                               uint16_t oldcoin_index,
                               const struct RefreshMelt *melt)
 {
@@ -1581,7 +1580,7 @@ postgres_insert_refresh_melt (void *cls,
                                                   &buf);
   {
     struct TALER_DB_QueryParam params[] = {
-      TALER_DB_QUERY_PARAM_PTR(refresh_session),
+      TALER_DB_QUERY_PARAM_PTR(&melt->session_hash),
       TALER_DB_QUERY_PARAM_PTR(&oldcoin_index_nbo),
       TALER_DB_QUERY_PARAM_PTR(&melt->coin.coin_pub),
       TALER_DB_QUERY_PARAM_PTR_SIZED(buf, buf_size),
@@ -1617,7 +1616,7 @@ postgres_insert_refresh_melt (void *cls,
 static int
 postgres_get_refresh_melt (void *cls,
                            struct TALER_MINTDB_Session *session,
-                           const struct TALER_SessionPublicKey *refresh_session,
+                           const struct GNUNET_HashCode *session_hash,
                            uint16_t oldcoin_index,
                            struct RefreshMelt *melt)
 {
@@ -1633,7 +1632,7 @@ postgres_get_refresh_melt (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
- * @param session_pub refresh session key
+ * @param session_hash hash to identify refresh session
  * @param num_newcoins number of coins to generate, size of the @a denom_pubs array
  * @param denom_pubs array denominations of the coins to create
  * @return #GNUNET_OK on success
@@ -1642,7 +1641,7 @@ postgres_get_refresh_melt (void *cls,
 static int
 postgres_insert_refresh_order (void *cls,
                                struct TALER_MINTDB_Session *session,
-                               const struct TALER_SessionPublicKey *session_pub,
+                               const struct GNUNET_HashCode *session_hash,
                                uint16_t num_newcoins,
                                const struct TALER_DenominationPublicKey *denom_pubs)
 {
@@ -1658,7 +1657,7 @@ postgres_insert_refresh_order (void *cls,
   {
     struct TALER_DB_QueryParam params[] = {
       TALER_DB_QUERY_PARAM_PTR (&newcoin_index_nbo),
-      TALER_DB_QUERY_PARAM_PTR (session_pub),
+      TALER_DB_QUERY_PARAM_PTR (session_hash),
       TALER_DB_QUERY_PARAM_PTR_SIZED (buf, buf_size),
       TALER_DB_QUERY_PARAM_END
     };
@@ -1689,7 +1688,7 @@ postgres_insert_refresh_order (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
- * @param session_pub refresh session key
+ * @param session_hash hash to identify refresh session
  * @param newcoin_index array of the @a denom_pubs array
  * @param denom_pubs where to store the deomination keys
  * @return #GNUNET_OK on success
@@ -1698,7 +1697,7 @@ postgres_insert_refresh_order (void *cls,
 static int
 postgres_get_refresh_order (void *cls,
                             struct TALER_MINTDB_Session *session,
-                            const struct TALER_SessionPublicKey *session_pub,
+                            const struct GNUNET_HashCode *session_hash,
                             uint16_t num_newcoins,
                             struct TALER_DenominationPublicKey *denom_pubs)
 {
@@ -1708,7 +1707,7 @@ postgres_get_refresh_order (void *cls,
   uint16_t newcoin_index_nbo = htons (num_newcoins);
 
   struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(session_pub),
+    TALER_DB_QUERY_PARAM_PTR(session_hash),
     TALER_DB_QUERY_PARAM_PTR(&newcoin_index_nbo),
     TALER_DB_QUERY_PARAM_END
   };
@@ -1756,7 +1755,7 @@ postgres_get_refresh_order (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection to use
- * @param refresh_session_pub refresh session this commitment belongs to
+ * @param session_hash hash to identify refresh session
  * @param i set index (1st dimension)
  * @param num_newcoins coin index size of the @a commit_coins array
  * @param commit_coins array of coin commitments to store
@@ -1766,7 +1765,7 @@ postgres_get_refresh_order (void *cls,
 static int
 postgres_insert_refresh_commit_coins (void *cls,
                                       struct TALER_MINTDB_Session *session,
-                                      const struct TALER_SessionPublicKey *refresh_session_pub,
+                                      const struct GNUNET_HashCode *session_hash,
                                       unsigned int i,
                                       unsigned int num_newcoins,
                                       const struct RefreshCommitCoin *commit_coins)
@@ -1775,7 +1774,7 @@ postgres_insert_refresh_commit_coins (void *cls,
   uint16_t cnc_index_nbo = htons (i);
   uint16_t newcoin_index_nbo = htons (num_newcoins);
   struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(refresh_session_pub),
+    TALER_DB_QUERY_PARAM_PTR(session_hash),
     TALER_DB_QUERY_PARAM_PTR_SIZED(commit_coins->coin_ev, commit_coins->coin_ev_size),
     TALER_DB_QUERY_PARAM_PTR(&cnc_index_nbo),
     TALER_DB_QUERY_PARAM_PTR(&newcoin_index_nbo),
@@ -1813,7 +1812,7 @@ postgres_insert_refresh_commit_coins (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection to use
- * @param refresh_session_pub refresh session the commitment belongs to
+ * @param session_hash hash to identify refresh session
  * @param i set index (1st dimension)
  * @param j coin index (2nd dimension), corresponds to refreshed (new) coins
  * @param commit_coin[OUT] coin commitment to return
@@ -1824,7 +1823,7 @@ postgres_insert_refresh_commit_coins (void *cls,
 static int
 postgres_get_refresh_commit_coins (void *cls,
                                    struct TALER_MINTDB_Session *session,
-                                   const struct TALER_SessionPublicKey *refresh_session_pub,
+                                   const struct GNUNET_HashCode *session_hash,
                                    unsigned int cnc_index,
                                    unsigned int newcoin_index,
                                    struct RefreshCommitCoin *cc)
@@ -1833,7 +1832,7 @@ postgres_get_refresh_commit_coins (void *cls,
   uint16_t cnc_index_nbo = htons (cnc_index);
   uint16_t newcoin_index_nbo = htons (newcoin_index);
   struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(refresh_session_pub),
+    TALER_DB_QUERY_PARAM_PTR(session_hash),
     TALER_DB_QUERY_PARAM_PTR(&cnc_index_nbo),
     TALER_DB_QUERY_PARAM_PTR(&newcoin_index_nbo),
     TALER_DB_QUERY_PARAM_END
@@ -1894,8 +1893,7 @@ postgres_get_refresh_commit_coins (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection to use
- * @param refresh_session_pub public key of the refresh session this
- *        commitment belongs with  -- FIXME: should not be needed!
+ * @param session_hash hash to identify refresh session
  * @param i set index (1st dimension)
  * @param j coin index (2nd dimension), corresponds to melted (old) coins
  * @param commit_link link information to store
@@ -1904,7 +1902,7 @@ postgres_get_refresh_commit_coins (void *cls,
 static int
 postgres_insert_refresh_commit_links (void *cls,
                                       struct TALER_MINTDB_Session *session,
-                                      const struct TALER_SessionPublicKey *refresh_session_pub,
+                                      const struct GNUNET_HashCode *session_hash,
                                       unsigned int i,
                                       unsigned int j,
                                       const struct RefreshCommitLink *commit_link)
@@ -1913,7 +1911,7 @@ postgres_insert_refresh_commit_links (void *cls,
   uint16_t cnc_index_nbo = htons (i);
   uint16_t oldcoin_index_nbo = htons (j);
   struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(refresh_session_pub),
+    TALER_DB_QUERY_PARAM_PTR(session_hash),
     TALER_DB_QUERY_PARAM_PTR(&commit_link->transfer_pub),
     TALER_DB_QUERY_PARAM_PTR(&cnc_index_nbo),
     TALER_DB_QUERY_PARAM_PTR(&oldcoin_index_nbo),
@@ -1948,8 +1946,7 @@ postgres_insert_refresh_commit_links (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection to use
- * @param refresh_session_pub public key of the refresh session this
- *        commitment belongs with -- FIXME: should not be needed!
+ * @param session_hash hash to identify refresh session
  * @param i set index (1st dimension)
  * @param num_links size of the @a commit_link array
  * @param links[OUT] array of link information to return
@@ -1960,7 +1957,7 @@ postgres_insert_refresh_commit_links (void *cls,
 static int
 postgres_get_refresh_commit_links (void *cls,
                                    struct TALER_MINTDB_Session *session,
-                                   const struct TALER_SessionPublicKey *refresh_session_pub,
+                                   const struct GNUNET_HashCode *session_hash,
                                    unsigned int i,
                                    unsigned int num_links,
                                    struct RefreshCommitLink *links)
@@ -1970,7 +1967,7 @@ postgres_get_refresh_commit_links (void *cls,
   uint16_t oldcoin_index_nbo = htons (num_links);
 
   struct TALER_DB_QueryParam params[] = {
-    TALER_DB_QUERY_PARAM_PTR(refresh_session_pub),
+    TALER_DB_QUERY_PARAM_PTR(session_hash),
     TALER_DB_QUERY_PARAM_PTR(&cnc_index_nbo),
     TALER_DB_QUERY_PARAM_PTR(&oldcoin_index_nbo),
     TALER_DB_QUERY_PARAM_END
@@ -2017,7 +2014,7 @@ postgres_get_refresh_commit_links (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
- * @param session_pub refresh session
+ * @param session_hash hash to identify refresh session
  * @param newcoin_index coin index
  * @param ev_sig coin signature
  * @return #GNUNET_OK on success
@@ -2025,7 +2022,7 @@ postgres_get_refresh_commit_links (void *cls,
 static int
 postgres_insert_refresh_collectable (void *cls,
                                      struct TALER_MINTDB_Session *session,
-                                     const struct TALER_SessionPublicKey *session_pub,
+                                     const struct GNUNET_HashCode *session_hash,
                                      uint16_t newcoin_index,
                                      const struct TALER_DenominationSignature *ev_sig)
 {
@@ -2039,7 +2036,7 @@ postgres_insert_refresh_collectable (void *cls,
                                                  &buf);
   {
     struct TALER_DB_QueryParam params[] = {
-      TALER_DB_QUERY_PARAM_PTR(session_pub),
+      TALER_DB_QUERY_PARAM_PTR(session_hash),
       TALER_DB_QUERY_PARAM_PTR(&newcoin_index_nbo),
       TALER_DB_QUERY_PARAM_PTR_SIZED(buf, buf_size),
       TALER_DB_QUERY_PARAM_END

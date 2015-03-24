@@ -481,7 +481,7 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
  * @param connection the connection to send errors to
  * @param session the database connection
  * @param key_state the mint's key state
- * @param session_pub the refresh session's public key
+ * @param session_hash hash identifying the refresh session
  * @param coin_public_info the coin to melt
  * @param coin_details details about the coin being melted
  * @param oldcoin_index what is the number assigned to this coin
@@ -493,7 +493,7 @@ static int
 refresh_accept_melts (struct MHD_Connection *connection,
                       struct TALER_MINTDB_Session *session,
                       const struct MintKeyState *key_state,
-                      const struct GNUNET_HashCode *melt_hash,
+                      const struct GNUNET_HashCode *session_hash,
                       const struct TALER_SessionPublicKey *session_pub,
                       const struct TALER_CoinPublicInfo *coin_public_info,
                       const struct MeltDetails *coin_details,
@@ -563,12 +563,11 @@ refresh_accept_melts (struct MHD_Connection *connection,
 
   melt.coin = *coin_public_info;
   melt.coin_sig = coin_details->melt_sig;
-  melt.melt_hash = *melt_hash;
+  melt.session_hash = *session_hash;
   melt.amount_with_fee = coin_details->melt_amount_with_fee;
   if (GNUNET_OK !=
       plugin->insert_refresh_melt (plugin->cls,
                                    session,
-                                   session_pub,
                                    oldcoin_index,
                                    &melt))
   {
@@ -587,7 +586,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
  * melted and confirm the melting operation to the client.
  *
  * @param connection the MHD connection to handle
- * @param melt_hash hash code of the session the coins are melted into
+ * @param session_hash hash code of the session the coins are melted into
  * @param refresh_session_pub public key of the refresh session
  * @param client_signature signature of the client (matching @a refresh_session_pub)
  *         over the melting request
@@ -606,7 +605,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
-                                    const struct GNUNET_HashCode *melt_hash,
+                                    const struct GNUNET_HashCode *session_hash,
                                     const struct TALER_SessionPublicKey *refresh_session_pub,
                                     const struct TALER_SessionSignature *client_signature,
                                     unsigned int num_new_denoms,
@@ -639,14 +638,14 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   }
   res = plugin->get_refresh_session (plugin->cls,
                                      session,
-                                     refresh_session_pub,
+                                     session_hash,
                                      &refresh_session);
   if (GNUNET_YES == res)
   {
     plugin->rollback (plugin->cls,
                       session);
     res = TALER_MINT_reply_refresh_melt_success (connection,
-                                                 &refresh_session.session_hash,
+                                                 session_hash,
                                                  refresh_session.noreveal_index);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
@@ -665,7 +664,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
         (res = refresh_accept_melts (connection,
                                      session,
                                      key_state,
-                                     melt_hash,
+                                     session_hash,
                                      refresh_session_pub,
                                      &coin_public_infos[i],
                                      &coin_melt_details[i],
@@ -683,7 +682,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   if (GNUNET_OK !=
       plugin->insert_refresh_order (plugin->cls,
                                     session,
-                                    refresh_session_pub,
+                                    session_hash,
                                     num_new_denoms,
                                     denom_pubs))
   {
@@ -697,7 +696,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
     if (GNUNET_OK !=
         plugin->insert_refresh_commit_coins (plugin->cls,
                                              session,
-                                             refresh_session_pub,
+                                             session_hash,
                                              i,
                                              num_new_denoms,
                                              commit_coin[i]))
@@ -712,7 +711,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
     if (GNUNET_OK !=
         plugin->insert_refresh_commit_links (plugin->cls,
                                              session,
-                                             refresh_session_pub,
+                                             session_hash,
                                              i,
                                              coin_count,
                                              commit_link[i]))
@@ -726,7 +725,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
 
   /* store 'global' session data */
   refresh_session.melt_sig = *client_signature;
-  refresh_session.session_hash = *melt_hash;
+  refresh_session.refresh_session_pub = *refresh_session_pub;
   refresh_session.num_oldcoins = coin_count;
   refresh_session.num_newcoins = num_new_denoms;
   refresh_session.kappa = KAPPA; // FIXME... (#3711)
@@ -736,7 +735,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   if (GNUNET_OK !=
       (res = plugin->create_refresh_session (plugin->cls,
                                              session,
-                                             refresh_session_pub,
+                                             session_hash,
                                              &refresh_session)))
   {
     plugin->rollback (plugin->cls,
@@ -754,7 +753,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
     return TALER_MINT_reply_commit_error (connection);
   }
   return TALER_MINT_reply_refresh_melt_success (connection,
-                                                &refresh_session.session_hash,
+                                                session_hash,
                                                 refresh_session.noreveal_index);
 }
 
@@ -767,7 +766,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection to handle
  * @param session database connection to use
- * @param refresh_session session to query
+ * @param session_hash hash of session to query
  * @param off commitment offset to check
  * @param num_oldcoins size of the @a transfer_privs and @a melts arrays
  * @param transfer_privs private transfer keys
@@ -781,7 +780,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
 static int
 check_commitment (struct MHD_Connection *connection,
                   struct TALER_MINTDB_Session *session,
-                  const struct TALER_SessionPublicKey *refresh_session,
+                  const struct GNUNET_HashCode *session_hash,
                   unsigned int off,
                   unsigned int num_oldcoins,
                   const struct TALER_TransferPrivateKey *transfer_privs,
@@ -802,7 +801,7 @@ check_commitment (struct MHD_Connection *connection,
   if (GNUNET_OK !=
       plugin->get_refresh_commit_links (plugin->cls,
                                         session,
-                                        refresh_session,
+                                        session_hash,
                                         off,
                                         num_oldcoins,
                                         commit_links))
@@ -901,7 +900,7 @@ check_commitment (struct MHD_Connection *connection,
   if (GNUNET_OK !=
       plugin->get_refresh_commit_coins (plugin->cls,
                                         session,
-                                        refresh_session,
+                                        session_hash,
                                         off,
                                         num_newcoins,
                                         commit_coins))
@@ -982,7 +981,7 @@ check_commitment (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection to handle
  * @param session database connection to use
- * @param refresh_session session to query
+ * @param session_hash hash of session to query
  * @param key_state key state to lookup denomination pubs
  * @param denom_pub denomination key for the coin to create
  * @param commit_coin the coin that was committed
@@ -992,7 +991,7 @@ check_commitment (struct MHD_Connection *connection,
 static struct TALER_DenominationSignature
 refresh_mint_coin (struct MHD_Connection *connection,
                    struct TALER_MINTDB_Session *session,
-                   const struct TALER_SessionPublicKey *refresh_session,
+                   const struct GNUNET_HashCode *session_hash,
                    struct MintKeyState *key_state,
                    const struct TALER_DenominationPublicKey *denom_pub,
                    const struct RefreshCommitCoin *commit_coin,
@@ -1021,7 +1020,7 @@ refresh_mint_coin (struct MHD_Connection *connection,
   if (GNUNET_OK !=
       plugin->insert_refresh_collectable (plugin->cls,
                                           session,
-                                          refresh_session,
+                                          session_hash,
                                           coin_off,
                                           &ev_sig))
   {
@@ -1041,7 +1040,7 @@ refresh_mint_coin (struct MHD_Connection *connection,
  * coins that was not chosen.
  *
  * @param connection the MHD connection to handle
- * @param refresh_session_pub public key of the refresh session
+ * @param session_hash hash identifying the refresh session
  * @param kappa size of x-dimension of @transfer_privs array plus one (!)
  * @param num_oldcoins size of y-dimension of @transfer_privs array
  * @param transfer_pubs array with the revealed transfer keys
@@ -1049,7 +1048,7 @@ refresh_mint_coin (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
-                                      const struct TALER_SessionPublicKey *refresh_session_pub,
+                                      const struct GNUNET_HashCode *session_hash,
                                       unsigned int kappa,
                                       unsigned int num_oldcoins,
                                       struct TALER_TransferPrivateKey **transfer_privs)
@@ -1075,11 +1074,11 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
 
   res = plugin->get_refresh_session (plugin->cls,
                                      session,
-                                     refresh_session_pub,
+                                     session_hash,
                                      &refresh_session);
   if (GNUNET_NO == res)
     return TALER_MINT_reply_arg_invalid (connection,
-                                         "session_pub");
+                                         "session_hash");
   if (GNUNET_SYSERR == res)
     return TALER_MINT_reply_internal_db_error (connection);
   if (0 == refresh_session.num_oldcoins)
@@ -1095,7 +1094,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     if (GNUNET_OK !=
         plugin->get_refresh_melt (plugin->cls,
                                   session,
-                                  refresh_session_pub,
+                                  session_hash,
                                   j,
                                   &melts[j]))
     {
@@ -1109,7 +1108,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
   if (GNUNET_OK !=
       plugin->get_refresh_order (plugin->cls,
                                  session,
-                                 refresh_session_pub,
+                                 session_hash,
                                  refresh_session.num_newcoins,
                                  denom_pubs))
   {
@@ -1129,7 +1128,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     if (GNUNET_OK !=
         (res = check_commitment (connection,
                                  session,
-                                 refresh_session_pub,
+                                 session_hash,
                                  i + off,
                                  refresh_session.num_oldcoins,
                                  transfer_privs[i + off],
@@ -1163,7 +1162,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
   if (GNUNET_OK !=
       plugin->get_refresh_commit_coins (plugin->cls,
                                         session,
-                                        refresh_session_pub,
+                                        session_hash,
                                         refresh_session.noreveal_index,
                                         refresh_session.num_newcoins,
                                         commit_coins))
@@ -1182,7 +1181,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
   {
     ev_sigs[j] = refresh_mint_coin (connection,
                                     session,
-                                    refresh_session_pub,
+                                    session_hash,
                                     key_state,
                                     &denom_pubs[j],
                                     &commit_coins[j],

@@ -131,7 +131,7 @@ static int
 parse_and_handle_deposit_request (struct MHD_Connection *connection,
                                   const json_t *root,
                                   const struct TALER_Amount *amount,
-                                  const json_t *wire)
+                                  json_t *wire)
 {
   int res;
   struct Deposit deposit;

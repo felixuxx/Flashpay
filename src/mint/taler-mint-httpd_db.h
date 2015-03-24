@@ -106,11 +106,8 @@ struct MeltDetails
  * required value left and if so, store that they have been
  * melted and confirm the melting operation to the client.
  *
- * FIXME: some arguments are redundant here...
- *
  * @param connection the MHD connection to handle
- * @param melt_hash hash code of the session the coins are melted into
- * @param refresh_session_pub public key of the refresh session
+ * @param session_hash hash code of the session the coins are melted into
  * @param client_signature signature of the client (matching @a refresh_session_pub)
  *         over the melting request
  * @param num_new_denoms number of entries in @a denom_pubs, size of y-dimension of @commit_coin array
@@ -128,7 +125,7 @@ struct MeltDetails
  */
 int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
-                                    const struct GNUNET_HashCode *melt_hash,
+                                    const struct GNUNET_HashCode *session_hash,
                                     const struct TALER_SessionPublicKey *refresh_session_pub,
                                     const struct TALER_SessionSignature *client_signature,
                                     unsigned int num_new_denoms,
@@ -149,7 +146,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
  * coins that was not chosen.
  *
  * @param connection the MHD connection to handle
- * @param refresh_session_pub public key of the refresh session
+ * @param session_hash hash over the refresh session
  * @param kappa size of x-dimension of @transfer_privs array plus one (!)
  * @param num_oldcoins size of y-dimension of @transfer_privs array
  * @param transfer_pubs array with the revealed transfer keys
@@ -157,7 +154,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
-                                      const struct TALER_SessionPublicKey *refresh_session_pub,
+                                      const struct GNUNET_HashCode *session_hash,
                                       unsigned int kappa,
                                       unsigned int num_oldcoins,
                                       struct TALER_TransferPrivateKey **transfer_privs);

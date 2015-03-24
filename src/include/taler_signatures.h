@@ -253,9 +253,9 @@ struct RefreshMeltCoinSignature
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Which melting operation should the coin become a part of.
+   * Which melting session should the coin become a part of.
    */
-  struct GNUNET_HashCode melt_hash;
+  struct GNUNET_HashCode session_hash;
 
   /**
    * How much of the value of the coin should be melted?  This amount
