@@ -211,7 +211,7 @@ struct Deposit
   /**
    * Detailed wire information for executing the transaction.
    */
-  const json_t *wire;
+  json_t *wire;
 
   /**
    * Merchant-generated transaction ID to detect duplicate

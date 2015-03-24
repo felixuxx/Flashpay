@@ -68,7 +68,15 @@ static void
 common_free_link_data_list (void *cls,
                             struct LinkDataList *ldl)
 {
-  GNUNET_break (0); // FIXME (#3728)
+  struct LinkDataList *next;
+
+  while (NULL != ldl)
+  {
+    next = ldl->next;
+    GNUNET_free (ldl->link_data_enc);
+    GNUNET_free (ldl);
+    ldl = next;
+  }
 }
 
 
@@ -82,8 +90,29 @@ static void
 common_free_coin_transaction_list (void *cls,
                                    struct TALER_MINT_DB_TransactionList *list)
 {
-  // FIXME: implement! // FIXME (#3728)
-  GNUNET_break (0);
+  struct TALER_MINT_DB_TransactionList *next;
+
+  while (NULL != list)
+  {
+    next = list->next;
+
+    switch (list->type)
+    {
+    case TALER_MINT_DB_TT_DEPOSIT:
+      json_decref (list->details.deposit->wire);
+      GNUNET_free (list->details.deposit);
+      break;
+    case TALER_MINT_DB_TT_REFRESH_MELT:
+      GNUNET_free (list->details.melt);
+      break;
+    case TALER_MINT_DB_TT_LOCK:
+      GNUNET_free (list->details.lock);
+      /* FIXME: look at this again once locking is implemented (#3625) */
+      break;
+    }
+    GNUNET_free (list);
+    list = next;
+  }
 }
 
 /* end of plugin_mintdb_common.c */
