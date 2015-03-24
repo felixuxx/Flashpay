@@ -314,6 +314,7 @@ TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
   return ret;
 }
 
+
 /**
  * Compile the transaction history of a coin into a JSON object.
  *
