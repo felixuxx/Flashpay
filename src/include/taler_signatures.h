@@ -83,6 +83,11 @@
  */
 #define TALER_SIGNATURE_MINT_DEPOSIT 7
 
+/**
+ * Signature where the Mint confirms the full /keys response set.
+ */
+#define TALER_SIGNATURE_KEYS_SET 8
+
 
 /***********************/
 /* Merchant signatures */
@@ -346,6 +351,31 @@ struct TALER_MINT_SignKeyIssue
 
 
 /**
+ * Signature made by the mint over the full set of keys, used
+ * to detect cheating mints that give out different sets to
+ * different users.
+ */
+struct TALER_MINT_KeySetSignature
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_KEYS_SET
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Time of the key set issue.
+   */
+  struct GNUNET_TIME_AbsoluteNBO list_issue_date;
+
+  /**
+   * Hash over the "inner" JSON with the key set.
+   */
+  struct GNUNET_HashCode hc;
+};
+
+
+/**
  * Information about a denomination key. Denomination keys
  * are used to sign coins of a certain value into existence.
  */
@@ -358,7 +388,7 @@ struct TALER_MINT_DenomKeyIssue
   struct TALER_MasterSignature signature;
 
   /**
-   * Purpose ist #TALER_SIGNATURE_MASTER_DENOM.
+   * Purpose is #TALER_SIGNATURE_MASTER_DENOM.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 

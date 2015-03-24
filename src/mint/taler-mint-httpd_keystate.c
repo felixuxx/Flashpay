@@ -378,6 +378,9 @@ TALER_MINT_key_state_acquire (void)
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct MintKeyState *key_state;
   json_t *keys;
+  char *inner;
+  struct TALER_MINT_KeySetSignature ks;
+  struct TALER_MintSignature sig;
 
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
   if (internal_key_state->next_reload.abs_value_us <= now.abs_value_us)
@@ -413,8 +416,24 @@ TALER_MINT_key_state_acquire (void)
                       "signkeys", key_state->sign_keys_array,
                       "denoms", key_state->denom_keys_array,
                       "list_issue_date", TALER_JSON_from_abs (key_state->reload_time));
+    inner = json_dumps (keys,
+                        JSON_INDENT(2));
+    ks.purpose.size = htonl (sizeof (ks));
+    ks.purpose.purpose = htonl (TALER_SIGNATURE_KEYS_SET);
+    ks.list_issue_date = GNUNET_TIME_absolute_hton (key_state->reload_time);
+    GNUNET_CRYPTO_hash (inner,
+                        strlen (inner),
+                        &ks.hc);
+    GNUNET_free (inner);
+    TALER_MINT_keys_sign (&ks.purpose,
+                          &sig);
+    keys = json_pack ("{s:o, s:o}",
+                      "keys", keys,
+                      "eddsa-signature", TALER_JSON_from_eddsa_sig (&ks.purpose,
+                                                                    &sig.eddsa_signature));
     key_state->keys_json = json_dumps (keys,
-                                       JSON_INDENT(2));
+                                       JSON_INDENT (2));
+    json_decref (keys);
     internal_key_state = key_state;
   }
   key_state = internal_key_state;
