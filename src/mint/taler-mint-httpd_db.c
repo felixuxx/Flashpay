@@ -494,7 +494,6 @@ refresh_accept_melts (struct MHD_Connection *connection,
                       struct TALER_MINTDB_Session *session,
                       const struct MintKeyState *key_state,
                       const struct GNUNET_HashCode *session_hash,
-                      const struct TALER_SessionPublicKey *session_pub,
                       const struct TALER_CoinPublicInfo *coin_public_info,
                       const struct MeltDetails *coin_details,
                       uint16_t oldcoin_index)
@@ -587,9 +586,6 @@ refresh_accept_melts (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection to handle
  * @param session_hash hash code of the session the coins are melted into
- * @param refresh_session_pub public key of the refresh session
- * @param client_signature signature of the client (matching @a refresh_session_pub)
- *         over the melting request
  * @param num_new_denoms number of entries in @a denom_pubs, size of y-dimension of @commit_coin array
  * @param denum_pubs public keys of the coins we want to withdraw in the end
  * @param coin_count number of entries in @a coin_public_infos and @a coin_melt_details, size of y-dimension of @commit_link array
@@ -606,8 +602,6 @@ refresh_accept_melts (struct MHD_Connection *connection,
 int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     const struct GNUNET_HashCode *session_hash,
-                                    const struct TALER_SessionPublicKey *refresh_session_pub,
-                                    const struct TALER_SessionSignature *client_signature,
                                     unsigned int num_new_denoms,
                                     const struct TALER_DenominationPublicKey *denom_pubs,
                                     unsigned int coin_count,
@@ -665,7 +659,6 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                      session,
                                      key_state,
                                      session_hash,
-                                     refresh_session_pub,
                                      &coin_public_infos[i],
                                      &coin_melt_details[i],
                                      i)))
@@ -724,8 +717,6 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
 
 
   /* store 'global' session data */
-  refresh_session.melt_sig = *client_signature;
-  refresh_session.refresh_session_pub = *refresh_session_pub;
   refresh_session.num_oldcoins = coin_count;
   refresh_session.num_newcoins = num_new_denoms;
   refresh_session.kappa = KAPPA; // FIXME... (#3711)

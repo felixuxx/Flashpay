@@ -108,8 +108,6 @@ struct MeltDetails
  *
  * @param connection the MHD connection to handle
  * @param session_hash hash code of the session the coins are melted into
- * @param client_signature signature of the client (matching @a refresh_session_pub)
- *         over the melting request
  * @param num_new_denoms number of entries in @a denom_pubs, size of y-dimension of @commit_coin array
  * @param denum_pubs array of public denomination keys for the refresh (?)
  * @param coin_count number of entries in @a coin_public_infos and @ a coin_melt_details, size of y-dimension of @commit_link array
@@ -126,8 +124,6 @@ struct MeltDetails
 int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     const struct GNUNET_HashCode *session_hash,
-                                    const struct TALER_SessionPublicKey *refresh_session_pub,
-                                    const struct TALER_SessionSignature *client_signature,
                                     unsigned int num_new_denoms,
                                     const struct TALER_DenominationPublicKey *denom_pubs,
                                     unsigned int coin_count,

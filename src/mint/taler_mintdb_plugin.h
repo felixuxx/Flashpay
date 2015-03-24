@@ -235,21 +235,6 @@ struct Deposit
  */
 struct RefreshSession
 {
-  /**
-   * Signature over the commitments by the client.
-   */
-  struct TALER_SessionSignature commit_sig;
-
-  /**
-   * Public key the client uses to sign messages in
-   * this exchange.
-   */
-  struct TALER_SessionPublicKey refresh_session_pub;
-
-  /**
-   * Signature over the melt by the client.
-   */
-  struct TALER_SessionSignature melt_sig;
 
   /**
    * Number of coins we are melting.

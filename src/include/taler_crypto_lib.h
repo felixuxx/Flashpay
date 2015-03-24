@@ -94,32 +94,6 @@ struct TALER_MerchantPrivateKey
 
 
 /**
- * Type of public keys used by clients to sign
- * messages during a melting session.
- */
-struct TALER_SessionPublicKey
-{
-  /**
-   * Taler uses EdDSA for melting session keys.
-   */
-  struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
-};
-
-
-/**
- * Type of public keys used by clients to sign
- * messages during a melting session.
- */
-struct TALER_SessionPrivateKey
-{
-  /**
-   * Taler uses EdDSA for melting session keys.
-   */
-  struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
-};
-
-
-/**
  * Type of transfer public keys used during refresh
  * operations.
  */
@@ -144,19 +118,6 @@ struct TALER_TransferPrivateKey
    * FIXME: should this not be ECDHE?
    */
   struct GNUNET_CRYPTO_EcdsaPrivateKey ecdsa_priv;
-};
-
-
-/**
- * Type of signatures used by clients to sign
- * messages during a melting session.
- */
-struct TALER_SessionSignature
-{
-  /**
-   * Taler uses EdDSA for melting session keys.
-   */
-  struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
 };
 
 

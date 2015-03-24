@@ -61,28 +61,16 @@
 #define TALER_SIGNATURE_REFRESH_MELT_COIN 5
 
 /**
- * Signature where the refresh session confirms
- * the commits.
- */
-#define TALER_SIGNATURE_REFRESH_MELT_SESSION 6
-
-/**
  * Signature where the mint (current signing key)
  * confirms the no-reveal index for cut-and-choose and
  * the validity of the melted coins.
  */
-#define TALER_SIGNATURE_REFRESH_MELT_RESPONSE 7
-
-/**
- * Signature where coins confirm that they want
- * to be melted into a certain session.
- */
-#define TALER_SIGNATURE_REFRESH_MELT_CONFIRM 9
+#define TALER_SIGNATURE_REFRESH_MELT_RESPONSE 6
 
 /**
  * Signature where the Mint confirms a deposit request.
  */
-#define TALER_SIGNATURE_MINT_DEPOSIT 10
+#define TALER_SIGNATURE_MINT_DEPOSIT 7
 
 
 /***********************/
@@ -278,40 +266,6 @@ struct RefreshMeltCoinSignature
 
 
 /**
- * Message signed by a coin to indicate that the coin should
- * be melted.
- */
-struct RefreshMeltSessionSignature
-{
-  /**
-   * Purpose is #TALER_SIGNATURE_REFRESH_MELT_SESSION
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Which melting operation should the coin become a part of.
-   */
-  struct GNUNET_HashCode melt_hash;
-
-  /**
-   * Public key of the refresh session for which
-   * @e melt_client_signature must be a valid signature.
-   */
-  struct TALER_SessionPublicKey session_key;
-
-  /**
-   * What is the total value of the coins created during the
-   * refresh, including melting fee!
-   */
-  struct TALER_AmountNBO amount_with_fee;
-
-  /* FIXME: we should probably also include the value of
-     the melting fee here as well! */
-
-};
-
-
-/**
  * Format of the block signed by the Mint in response to a successful
  * "/refresh/melt" request.  Hereby the mint affirms that all of the
  * coins were successfully melted.  This also commits the mint to a
@@ -333,26 +287,6 @@ struct RefreshMeltResponseSignatureBody
    * Index that the client will not have to reveal.
    */
   uint16_t noreveal_index GNUNET_PACKED;
-};
-
-
-/**
- * Message signed by the client requesting the final
- * result of the melting operation.
- */
-struct RefreshMeltConfirmSignRequestBody
-{
-  /**
-   * Purpose is #TALER_SIGNATURE_REFRESH_MELT_CONFIRM.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  // FIXME: We probably need more info in here...
-
-  /**
-   * Public key the client uses for this session.
-   */
-  struct TALER_SessionPublicKey session_pub;
 };
 
 
