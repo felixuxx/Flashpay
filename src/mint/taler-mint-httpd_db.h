@@ -113,7 +113,6 @@ struct MeltDetails
  * @param coin_count number of entries in @a coin_public_infos and @ a coin_melt_details, size of y-dimension of @commit_link array
  * @param coin_public_infos information about the coins to melt
  * @param coin_melt_details signatures and (residual) value of the respective coin should be melted
- * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
  * @param commit_coin 2d array of coin commitments (what the mint is to sign
  *                    once the "/refres/reveal" of cut and choose is done)
  * @param commit_link 2d array of coin link commitments (what the mint is
@@ -129,29 +128,26 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     unsigned int coin_count,
                                     const struct TALER_CoinPublicInfo *coin_public_infos,
                                     const struct MeltDetails *coin_melt_details,
-                                    unsigned int kappa,
                                     struct RefreshCommitCoin *const* commit_coin,
                                     struct RefreshCommitLink *const* commit_link);
 
 
 /**
  * Execute a "/refresh/reveal".  The client is revealing to us the
- * transfer keys for @a kappa-1 sets of coins.  Verify that the
+ * transfer keys for #KAPPA-1 sets of coins.  Verify that the
  * revealed transfer keys would allow linkage to the blinded coins,
  * and if so, return the signed coins for corresponding to the set of
  * coins that was not chosen.
  *
  * @param connection the MHD connection to handle
  * @param session_hash hash over the refresh session
- * @param kappa size of x-dimension of @transfer_privs array plus one (!)
  * @param num_oldcoins size of y-dimension of @transfer_privs array
- * @param transfer_pubs array with the revealed transfer keys
+ * @param transfer_pubs array with the revealed transfer keys, #KAPPA is 1st-dimension
  * @return MHD result code
  */
 int
 TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
                                       const struct GNUNET_HashCode *session_hash,
-                                      unsigned int kappa,
                                       unsigned int num_oldcoins,
                                       struct TALER_TransferPrivateKey **transfer_privs);
 

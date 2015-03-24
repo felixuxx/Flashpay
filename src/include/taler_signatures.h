@@ -31,6 +31,17 @@
 #include "taler_util.h"
 
 /**
+ * Cut-and-choose size for refreshing.  Client looses the gamble (of
+ * unaccountable transfers) with probability 1/KAPPA.  Refresh cost
+ * increases linearly with KAPPA, and 3 is sufficient up to a
+ * income/sales tax of 66% of total transaction value.  As there is
+ * no good reason to change this security parameter, we declare it
+ * fixed and part of the protocol.
+ */
+#define KAPPA 3
+
+
+/**
  * Purpose for signing public keys signed
  * by the mint master key.
  */

@@ -247,7 +247,7 @@ postgres_create_tables (void *cls,
           // index of the old coin in the customer's request
           ",oldcoin_index INT2 NOT NULL"
           // index for cut and choose,
-          // ranges from 0 to kappa-1
+          // ranges from 0 to #KAPPA-1
           ",cnc_index INT2 NOT NULL"
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_coin"
@@ -1486,7 +1486,6 @@ postgres_get_refresh_session (void *cls,
   struct TALER_DB_ResultSpec rs[] = {
     TALER_DB_RESULT_SPEC("num_oldcoins", &refresh_session->num_oldcoins),
     TALER_DB_RESULT_SPEC("num_newcoins", &refresh_session->num_newcoins),
-    TALER_DB_RESULT_SPEC("kappa", &refresh_session->kappa),
     TALER_DB_RESULT_SPEC("noreveal_index", &refresh_session->noreveal_index),
     TALER_DB_RESULT_SPEC_END
   };
@@ -1502,7 +1501,6 @@ postgres_get_refresh_session (void *cls,
 
   refresh_session->num_oldcoins = ntohs (refresh_session->num_oldcoins);
   refresh_session->num_newcoins = ntohs (refresh_session->num_newcoins);
-  refresh_session->kappa = ntohs (refresh_session->kappa);
   refresh_session->noreveal_index = ntohs (refresh_session->noreveal_index);
 
   PQclear (result);

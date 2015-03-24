@@ -47,7 +47,6 @@
  * @param coin_melt_details array with @a coin_count entries with melting details
  * @param session_hash hash over the data that the client commits to
  * @param commit_client_sig signature of the client over this commitment
- * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
  * @param commit_coin 2d array of coin commitments (what the mint is to sign
  *                    once the "/refres/reveal" of cut and choose is done)
  * @param commit_link 2d array of coin link commitments (what the mint is
@@ -63,7 +62,6 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                             struct TALER_CoinPublicInfo *coin_public_infos,
                             const struct MeltDetails *coin_melt_details,
                             const struct GNUNET_HashCode *session_hash,
-                            unsigned int kappa,
                             struct RefreshCommitCoin *const* commit_coin,
                             struct RefreshCommitLink *const* commit_link)
 
@@ -155,7 +153,6 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                                              coin_count,
                                              coin_public_infos,
                                              coin_melt_details,
-                                             kappa,
                                              commit_coin,
                                              commit_link);
 }
@@ -359,13 +356,12 @@ free_commit_links (struct RefreshCommitLink **commit_link,
  * @param melt_coins array of coins to melt
  * @param melt_sig_json signature affirming the melt operation
  * @param commit_signature signature over the commit
- * @param kappa security parameter for cut and choose
  * @param num_oldcoins number of coins that are being melted
- * @param transfer_pubs @a kappa-dimensional array of @a num_oldcoins transfer keys
- * @param secret_encs @a kappa-dimensional array of @a num_oldcoins secrets
+ * @param transfer_pubs #KAPPA-dimensional array of @a num_oldcoins transfer keys
+ * @param secret_encs #KAPPA-dimensional array of @a num_oldcoins secrets
  * @param num_newcoins number of coins that the refresh will generate
- * @param coin_envs @a kappa-dimensional array of @a num_newcoins envelopes to sign
- * @param link_encs @a kappa-dimensional array of @a num_newcoins encrypted links
+ * @param coin_envs #KAPPA-dimensional array of @a num_newcoins envelopes to sign
+ * @param link_encs #KAPPA-dimensional array of @a num_newcoins encrypted links
  * @return MHD result code
  */
 static int
@@ -374,7 +370,6 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                           const json_t *melt_coins,
                           const json_t *melt_sig_json,
                           const json_t *commit_signature,
-                          unsigned int kappa,
                           unsigned int num_oldcoins,
                           const json_t *transfer_pubs,
                           const json_t *secret_encs,
@@ -393,8 +388,8 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   unsigned int coin_count;
   struct GNUNET_HashCode session_hash;
   struct GNUNET_HashContext *hash_context;
-  struct RefreshCommitCoin *commit_coin[kappa];
-  struct RefreshCommitLink *commit_link[kappa];
+  struct RefreshCommitCoin *commit_coin[KAPPA];
+  struct RefreshCommitLink *commit_link[KAPPA];
 
   /* For the signature check, we hash most of the inputs together
      (except for the signatures on the coins). */
@@ -494,7 +489,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
      together for the signature check */
   memset (commit_coin, 0, sizeof (commit_coin));
   memset (commit_link, 0, sizeof (commit_link));
-  for (i = 0; i < kappa; i++)
+  for (i = 0; i < KAPPA; i++)
   {
     commit_coin[i] = GNUNET_malloc (num_newcoins *
                                     sizeof (struct RefreshCommitCoin));
@@ -515,7 +510,9 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
       if (GNUNET_OK != res)
       {
         GNUNET_CRYPTO_hash_context_abort (hash_context);
-        free_commit_coins (commit_coin, kappa, num_newcoins);
+        free_commit_coins (commit_coin,
+                           KAPPA,
+                           num_newcoins);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
       GNUNET_CRYPTO_hash_context_read (hash_context,
@@ -531,7 +528,9 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
       if (GNUNET_OK != res)
       {
         GNUNET_CRYPTO_hash_context_abort (hash_context);
-        free_commit_coins (commit_coin, kappa, num_newcoins);
+        free_commit_coins (commit_coin,
+                           KAPPA,
+                           num_newcoins);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
       rcc->refresh_link
@@ -543,7 +542,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
     }
   }
 
-  for (i = 0; i < kappa; i++)
+  for (i = 0; i < KAPPA; i++)
   {
     commit_link[i] = GNUNET_malloc (num_oldcoins *
                                     sizeof (struct RefreshCommitLink));
@@ -563,8 +562,12 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
       {
         GNUNET_break (GNUNET_SYSERR != res);
         GNUNET_CRYPTO_hash_context_abort (hash_context);
-        free_commit_coins (commit_coin, kappa, num_newcoins);
-        free_commit_links (commit_link, kappa, num_oldcoins);
+        free_commit_coins (commit_coin,
+                           KAPPA,
+                           num_newcoins);
+        free_commit_links (commit_link,
+                           KAPPA,
+                           num_oldcoins);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
       res = GNUNET_MINT_parse_navigate_json (connection,
@@ -579,8 +582,12 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
       {
         GNUNET_break (GNUNET_SYSERR != res);
         GNUNET_CRYPTO_hash_context_abort (hash_context);
-        free_commit_coins (commit_coin, kappa, num_newcoins);
-        free_commit_links (commit_link, kappa, num_oldcoins);
+        free_commit_coins (commit_coin,
+                           KAPPA,
+                           num_newcoins);
+        free_commit_links (commit_link,
+                           KAPPA,
+                           num_oldcoins);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
 
@@ -615,12 +622,15 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                                     coin_public_infos,
                                     coin_melt_details,
                                     &session_hash,
-                                    kappa,
                                     commit_coin,
                                     commit_link);
  cleanup:
-  free_commit_coins (commit_coin, kappa, num_newcoins);
-  free_commit_links (commit_link, kappa, num_oldcoins);
+  free_commit_coins (commit_coin,
+                     KAPPA,
+                     num_newcoins);
+  free_commit_links (commit_link,
+                     KAPPA,
+                     num_oldcoins);
   for (j=0;j<coin_count;j++)
   {
     GNUNET_CRYPTO_rsa_public_key_free (coin_public_infos[j].denom_pub.rsa_public_key);
@@ -664,7 +674,6 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
   json_t *transfer_pubs;
   json_t *secret_encs;
   json_t *commit_sig_json;
-  unsigned int kappa;
   unsigned int num_oldcoins;
   unsigned int num_newcoins;
   json_t *coin_detail;
@@ -699,15 +708,14 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
 
   /* Determine dimensionality of the request (kappa, #old and #new coins) */
-  kappa = json_array_size (coin_evs);
-  if ( (3 > kappa) || (kappa > 32) )
+  if (KAPPA != json_array_size (coin_evs))
   {
     GNUNET_break_op (0);
     TALER_MINT_release_parsed_data (spec);
     return TALER_MINT_reply_arg_invalid (connection,
                                          "coin_evs");
   }
-  if (json_array_size (transfer_pubs) != kappa)
+  if (KAPPA != json_array_size (transfer_pubs))
   {
     GNUNET_break_op (0);
     TALER_MINT_release_parsed_data (spec);
@@ -741,7 +749,6 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
                                   melt_coins,
                                   melt_sig_json,
                                   commit_sig_json,
-                                  kappa,
                                   num_oldcoins,
                                   transfer_pubs,
                                   secret_encs,
@@ -763,7 +770,6 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
  *
  * @param connection the MHD connection to handle
  * @param session_hash hash identifying the melting session
- * @param kappa length of the 1st dimension of @a transfer_privs array PLUS ONE
  * @param num_oldcoins length of the 2nd dimension of @a transfer_privs array
  * @param tp_json private transfer keys in JSON format
  * @return MHD result code
@@ -771,20 +777,19 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
 static int
 handle_refresh_reveal_json (struct MHD_Connection *connection,
                             const struct GNUNET_HashCode *session_hash,
-                            unsigned int kappa,
                             unsigned int num_oldcoins,
                             const json_t *tp_json)
 {
-  struct TALER_TransferPrivateKey *transfer_privs[kappa - 1];
+  struct TALER_TransferPrivateKey *transfer_privs[KAPPA - 1];
   unsigned int i;
   unsigned int j;
   int res;
 
-  for (i = 0; i < kappa - 1; i++)
+  for (i = 0; i < KAPPA - 1; i++)
     transfer_privs[i] = GNUNET_malloc (num_oldcoins *
                                        sizeof (struct TALER_TransferPrivateKey));
   res = GNUNET_OK;
-  for (i = 0; i < kappa - 1; i++)
+  for (i = 0; i < KAPPA - 1; i++)
   {
     if (GNUNET_OK != res)
       break;
@@ -806,10 +811,9 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
   else
     res = TALER_MINT_db_execute_refresh_reveal (connection,
                                                 session_hash,
-                                                kappa,
                                                 num_oldcoins,
                                                 transfer_privs);
-  for (i = 0; i < kappa - 1; i++)
+  for (i = 0; i < KAPPA - 1; i++)
     GNUNET_free (transfer_privs[i]);
   return res;
 }
@@ -840,7 +844,6 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
 {
   struct GNUNET_HashCode session_hash;
   int res;
-  unsigned int kappa;
   unsigned int num_oldcoins;
   json_t *reveal_detail;
   json_t *root;
@@ -869,15 +872,13 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
 
   /* Determine dimensionality of the request (kappa and #old coins) */
-  kappa = json_array_size (transfer_privs) + 1;
-  if ( (2 > kappa) || (kappa > 31) )
+  if (KAPPA != json_array_size (transfer_privs) + 1)
   {
     TALER_MINT_release_parsed_data (spec);
     return TALER_MINT_reply_arg_invalid (connection,
                                          "transfer_privs");
   }
   /* Note we do +1 as 1 row (cut-and-choose!) is missing! */
-  kappa++;
   res = GNUNET_MINT_parse_navigate_json (connection,
                                          transfer_privs,
                                          JNAV_INDEX, 0,
@@ -892,7 +893,6 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
   num_oldcoins = json_array_size (reveal_detail);
   res = handle_refresh_reveal_json (connection,
                                     &session_hash,
-                                    kappa,
                                     num_oldcoins,
                                     transfer_privs);
   TALER_MINT_release_parsed_data (spec);

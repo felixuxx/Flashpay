@@ -591,12 +591,13 @@ refresh_accept_melts (struct MHD_Connection *connection,
  * @param coin_count number of entries in @a coin_public_infos and @a coin_melt_details, size of y-dimension of @commit_link array
  * @param coin_public_infos information about the coins to melt
  * @param coin_melt_details signatures and (residual) value of the respective coin should be melted
- * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
  * @param commit_coin 2d array of coin commitments (what the mint is to sign
- *                    once the "/refres/reveal" of cut and choose is done)
+ *                    once the "/refres/reveal" of cut and choose is done),
+ *                    x-dimension must be #KAPPA
  * @param commit_link 2d array of coin link commitments (what the mint is
  *                    to return via "/refresh/link" to enable linkage in the
  *                    future)
+ *                    x-dimension must be #KAPPA
  * @return MHD result code
  */
 int
@@ -607,7 +608,6 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                     unsigned int coin_count,
                                     const struct TALER_CoinPublicInfo *coin_public_infos,
                                     const struct MeltDetails *coin_melt_details,
-                                    unsigned int kappa,
                                     struct RefreshCommitCoin *const* commit_coin,
                                     struct RefreshCommitLink *const* commit_link)
 {
@@ -684,7 +684,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
     return TALER_MINT_reply_internal_db_error (connection);
   }
 
-  for (i = 0; i < kappa; i++)
+  for (i = 0; i < KAPPA; i++)
   {
     if (GNUNET_OK !=
         plugin->insert_refresh_commit_coins (plugin->cls,
@@ -699,7 +699,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
       return TALER_MINT_reply_internal_db_error (connection);
     }
   }
-  for (i = 0; i < kappa; i++)
+  for (i = 0; i < KAPPA; i++)
   {
     if (GNUNET_OK !=
         plugin->insert_refresh_commit_links (plugin->cls,
@@ -719,10 +719,9 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   /* store 'global' session data */
   refresh_session.num_oldcoins = coin_count;
   refresh_session.num_newcoins = num_new_denoms;
-  refresh_session.kappa = KAPPA; // FIXME... (#3711)
   refresh_session.noreveal_index
     = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG,
-                                refresh_session.kappa);
+                                KAPPA);
   if (GNUNET_OK !=
       (res = plugin->create_refresh_session (plugin->cls,
                                              session,
@@ -753,7 +752,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
  * Check if the given @a transfer_privs correspond to an honest
  * commitment for the given session.
  * Checks that the transfer private keys match their commitments.
- * Then derives the shared secret for each kappa, and check that they match.
+ * Then derives the shared secret for each #KAPPA, and check that they match.
  *
  * @param connection the MHD connection to handle
  * @param session database connection to use
@@ -946,7 +945,7 @@ check_commitment (struct MHD_Connection *connection,
                        buf_len)) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "blind envelope does not match for kappa=%u, old=%d\n",
+                  "blind envelope does not match for k=%u, old=%d\n",
                   off,
                   (int) j);
       /* FIXME: return more specific error with original signature (#3712) */
@@ -1025,22 +1024,21 @@ refresh_mint_coin (struct MHD_Connection *connection,
 
 /**
  * Execute a "/refresh/reveal".  The client is revealing to us the
- * transfer keys for @a kappa-1 sets of coins.  Verify that the
+ * transfer keys for @a #KAPPA-1 sets of coins.  Verify that the
  * revealed transfer keys would allow linkage to the blinded coins,
  * and if so, return the signed coins for corresponding to the set of
  * coins that was not chosen.
  *
  * @param connection the MHD connection to handle
  * @param session_hash hash identifying the refresh session
- * @param kappa size of x-dimension of @transfer_privs array plus one (!)
  * @param num_oldcoins size of y-dimension of @transfer_privs array
- * @param transfer_pubs array with the revealed transfer keys
+ * @param transfer_pubs array with the revealed transfer keys,
+ *                      x-dimension must be #KAPPA - 1
  * @return MHD result code
  */
 int
 TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
                                       const struct GNUNET_HashCode *session_hash,
-                                      unsigned int kappa,
                                       unsigned int num_oldcoins,
                                       struct TALER_TransferPrivateKey **transfer_privs)
 {
@@ -1112,7 +1110,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
 
 
   off = 0;
-  for (i=0;i<refresh_session.kappa - 1;i++)
+  for (i=0;i<KAPPA - 1;i++)
   {
     if (i == refresh_session.noreveal_index)
       off = 1;

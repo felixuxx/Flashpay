@@ -247,14 +247,7 @@ struct RefreshSession
   uint16_t num_newcoins;
 
   /**
-   * Number of parallel operations we perform for the cut and choose.
-   * (must be greater or equal to three for security).  0 if not yet
-   * known.
-   */
-  uint16_t kappa;
-
-  /**
-   * Index (smaller @e kappa) which the mint has chosen to not
+   * Index (smaller #KAPPA) which the mint has chosen to not
    * have revealed during cut and choose.
    */
   uint16_t noreveal_index;
@@ -297,7 +290,7 @@ struct RefreshMelt
 
 /**
  * We have as many `struct RefreshCommitCoin` as there are new
- * coins being created by the refresh (for each of the kappa
+ * coins being created by the refresh (for each of the #KAPPA
  * sets).  These are the coins we ask the mint to sign if the
  * respective set is selected.
  */
@@ -816,7 +809,7 @@ struct TALER_MINTDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database connection to use
    * @param session_hash hash to identify refresh session
-   * @param i set index (1st dimension), relating to kappa
+   * @param i set index (1st dimension), relating to #KAPPA
    * @param num_newcoins coin index size of the @a commit_coins array
    * @param commit_coin array of coin commitments to store
    * @return #GNUNET_OK on success
@@ -861,7 +854,7 @@ struct TALER_MINTDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database connection to use
    * @param session_hash hash to identify refresh session
-   * @param i set index (1st dimension), relating to kappa
+   * @param i set index (1st dimension), relating to #KAPPA
    * @param num_links size of the @a commit_link array
    * @param commit_links array of link information to store
    * @return #GNUNET_SYSERR on internal error, #GNUNET_OK on success

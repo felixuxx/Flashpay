@@ -26,12 +26,6 @@
 #include <microhttpd.h>
 
 /**
- * Cut-and-choose size for refreshing.
- * FIXME: maybe make it a config option?
- */
-#define KAPPA 3
-
-/**
  * For now, we just do EUR.  Should become configurable
  * in the future!
  */
