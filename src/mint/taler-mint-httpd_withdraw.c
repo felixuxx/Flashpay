@@ -49,13 +49,13 @@ TALER_MINT_handler_withdraw_status (struct RequestHandler *rh,
                                     const char *upload_data,
                                     size_t *upload_data_size)
 {
-  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
+  struct TALER_ReservePublicKey reserve_pub;
   int res;
 
   res = TALER_MINT_mhd_request_arg_data (connection,
                                          "reserve_pub",
                                          &reserve_pub,
-                                         sizeof (struct GNUNET_CRYPTO_EddsaPublicKey));
+                                         sizeof (struct TALER_ReservePublicKey));
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
@@ -90,17 +90,17 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
 {
   struct TALER_WithdrawRequest wsrd;
   int res;
-  struct GNUNET_CRYPTO_rsa_PublicKey *denomination_pub;
+  struct TALER_DenominationPublicKey denomination_pub;
   char *denomination_pub_data;
   size_t denomination_pub_data_size;
   char *blinded_msg;
   size_t blinded_msg_len;
-  struct GNUNET_CRYPTO_EddsaSignature signature;
+  struct TALER_ReserveSignature signature;
 
   res = TALER_MINT_mhd_request_arg_data (connection,
                                          "reserve_pub",
                                          &wsrd.reserve_pub,
-                                         sizeof (struct GNUNET_CRYPTO_EddsaPublicKey));
+                                         sizeof (struct TALER_ReservePublicKey));
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
@@ -108,7 +108,7 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
   res = TALER_MINT_mhd_request_arg_data (connection,
                                          "reserve_sig",
                                          &signature,
-                                         sizeof (struct GNUNET_CRYPTO_EddsaSignature));
+                                         sizeof (struct TALER_ReserveSignature));
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
@@ -148,8 +148,8 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WITHDRAW,
                                   &wsrd.purpose,
-                                  &signature,
-                                  &wsrd.reserve_pub))
+                                  &signature.eddsa_signature,
+                                  &wsrd.reserve_pub.eddsa_pub))
   {
     LOG_WARNING ("Client supplied invalid signature for /withdraw/sign request\n");
     GNUNET_free (denomination_pub_data);
@@ -157,10 +157,11 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
     return TALER_MINT_reply_arg_invalid (connection,
                                          "reserve_sig");
   }
-  denomination_pub = GNUNET_CRYPTO_rsa_public_key_decode (denomination_pub_data,
-                                                          denomination_pub_data_size);
+  denomination_pub.rsa_public_key
+    = GNUNET_CRYPTO_rsa_public_key_decode (denomination_pub_data,
+                                           denomination_pub_data_size);
   GNUNET_free (denomination_pub_data);
-  if (NULL == denomination_pub)
+  if (NULL == denomination_pub.rsa_public_key)
   {
     LOG_WARNING ("Client supplied ill-formed denomination public key for /withdraw/sign request\n");
     GNUNET_free (blinded_msg);
@@ -169,12 +170,12 @@ TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
   }
   res = TALER_MINT_db_execute_withdraw_sign (connection,
                                              &wsrd.reserve_pub,
-                                             denomination_pub,
+                                             &denomination_pub,
                                              blinded_msg,
                                              blinded_msg_len,
                                              &signature);
   GNUNET_free (blinded_msg);
-  GNUNET_CRYPTO_rsa_public_key_free (denomination_pub);
+  GNUNET_CRYPTO_rsa_public_key_free (denomination_pub.rsa_public_key);
   return res;
 }
 

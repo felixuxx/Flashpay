@@ -13,15 +13,13 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file mint/test_mint_db.c
  * @brief test cases for DB interaction functions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
-
 #include "platform.h"
-#include "mint_db.h"
+#include "plugin.h"
 
 static int result;
 
@@ -45,7 +43,7 @@ static int result;
 /**
  * Checks if the given reserve has the given amount of balance and expiry
  *
- * @param db the database connection
+ * @param session the database connection
  * @param pub the public key of the reserve
  * @param value balance value
  * @param fraction balance fraction
@@ -54,16 +52,22 @@ static int result;
  * @return #GNUNET_OK if the given reserve has the same balance and expiration
  *           as the given parameters; #GNUNET_SYSERR if not
  */
-int
-check_reserve (PGconn *db,
-               struct GNUNET_CRYPTO_EddsaPublicKey *pub,
-               uint32_t value, uint32_t fraction, const char *currency,
+static int
+check_reserve (struct TALER_MINTDB_Session *session,
+               const struct TALER_ReservePublicKey *pub,
+               uint32_t value,
+               uint32_t fraction,
+               const char *currency,
                uint64_t expiry)
 {
   struct Reserve reserve;
-  reserve.pub = pub;
 
-  FAILIF (GNUNET_OK != TALER_MINT_DB_reserve_get (db, &reserve));
+  reserve.pub = *pub;
+
+  FAILIF (GNUNET_OK !=
+          plugin->reserve_get (plugin->cls,
+                               session,
+                               &reserve));
   FAILIF (value != reserve.balance.value);
   FAILIF (fraction != reserve.balance.fraction);
   FAILIF (0 != strcmp (currency, reserve.balance.currency));
@@ -77,27 +81,30 @@ check_reserve (PGconn *db,
 
 struct DenomKeyPair
 {
-  struct GNUNET_CRYPTO_rsa_PrivateKey *priv;
-  struct GNUNET_CRYPTO_rsa_PublicKey *pub;
+  struct TALER_DenominationPrivateKey priv;
+  struct TALER_DenominationPublicKey pub;
 };
 
-struct DenomKeyPair *
+
+static struct DenomKeyPair *
 create_denom_key_pair (unsigned int size)
 {
   struct DenomKeyPair *dkp;
 
   dkp = GNUNET_new (struct DenomKeyPair);
-  dkp->priv = GNUNET_CRYPTO_rsa_private_key_create (size);
-  GNUNET_assert (NULL != dkp->priv);
-  dkp->pub = GNUNET_CRYPTO_rsa_private_key_get_public (dkp->priv);
+  dkp->priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (size);
+  GNUNET_assert (NULL != dkp->priv.rsa_private_key);
+  dkp->pub.rsa_public_key
+    = GNUNET_CRYPTO_rsa_private_key_get_public (dkp->priv.rsa_private_key);
   return dkp;
 }
+
 
 static void
 destroy_denon_key_pair (struct DenomKeyPair *dkp)
 {
-  GNUNET_CRYPTO_rsa_public_key_free (dkp->pub);
-  GNUNET_CRYPTO_rsa_private_key_free (dkp->priv);
+  GNUNET_CRYPTO_rsa_public_key_free (dkp->pub.rsa_public_key);
+  GNUNET_CRYPTO_rsa_private_key_free (dkp->priv.rsa_private_key);
   GNUNET_free (dkp);
 }
 
@@ -107,14 +114,16 @@ destroy_denon_key_pair (struct DenomKeyPair *dkp)
  * @param cls closure
  * @param args remaining command-line arguments
  * @param cfgfile name of the configuration file used (for saving, can be NULL!)
- * @param config configuration
+ * @param cfg configuration
  */
 static void
-run (void *cls, char *const *args, const char *cfgfile,
-     const struct GNUNET_CONFIGURATION_Handle *config)
+run (void *cls,
+     char *const *args,
+     const char *cfgfile,
+     const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
-  PGconn *db;
-  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
+  struct TALER_MINTDB_Session *session;
+  struct TALER_ReservePublicKey reserve_pub;
   struct Reserve reserve;
   struct GNUNET_TIME_Absolute expiry;
   struct TALER_Amount amount;
@@ -126,81 +135,134 @@ run (void *cls, char *const *args, const char *cfgfile,
   struct ReserveHistory *rh_head;
   struct BankTransfer *bt;
   struct CollectableBlindcoin *withdraw;
+  struct Deposit deposit;
+  struct Deposit deposit2;
+  struct json_t *wire;
+  const char * const json_wire_str =
+      "{ \"type\":\"SEPA\", \
+\"IBAN\":\"DE67830654080004822650\",                    \
+\"name\":\"GNUnet e.V.\",                               \
+\"bic\":\"GENODEF1SLR\",                                 \
+\"edate\":\"1449930207000\",                                \
+\"r\":123456789,                                     \
+\"address\": \"foobar\"}";
   unsigned int cnt;
 
-  db = NULL;
   dkp = NULL;
   rh = NULL;
+  wire = NULL;
   ZR_BLK (&cbc);
   ZR_BLK (&cbc2);
-  if (GNUNET_OK != TALER_MINT_DB_init ("postgres:///taler"))
+  if (GNUNET_OK !=
+      TALER_MINT_plugin_load (cfg))
   {
     result = 1;
     return;
   }
-  if (GNUNET_OK != TALER_MINT_DB_create_tables (GNUNET_YES))
+  if (GNUNET_OK !=
+      plugin->create_tables (plugin->cls,
+                             GNUNET_YES))
   {
     result = 2;
     goto drop;
   }
-  if (NULL == (db = TALER_MINT_DB_get_connection(GNUNET_YES)))
+  if (NULL ==
+      (session = plugin->get_session (plugin->cls,
+                                      GNUNET_YES)))
   {
     result = 3;
     goto drop;
   }
   RND_BLK (&reserve_pub);
-  reserve.pub = &reserve_pub;
+  reserve.pub = reserve_pub;
   amount.value = 1;
   amount.fraction = 1;
   strcpy (amount.currency, CURRENCY);
   expiry = GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
                                      GNUNET_TIME_UNIT_HOURS);
   result = 4;
-  FAILIF (GNUNET_OK != TALER_MINT_DB_reserves_in_insert (db,
-                                                         &reserve,
-                                                         amount,
-                                                         expiry));
-  FAILIF (GNUNET_OK != check_reserve (db,
-                                      &reserve_pub,
-                                      amount.value,
-                                      amount.fraction,
-                                      amount.currency,
-                                      expiry.abs_value_us));
-  FAILIF (GNUNET_OK != TALER_MINT_DB_reserves_in_insert (db,
-                                                         &reserve,
-                                                         amount,
-                                                         expiry));
-  FAILIF (GNUNET_OK != check_reserve (db,
-                                      &reserve_pub,
-                                      ++amount.value,
-                                      ++amount.fraction,
-                                      amount.currency,
-                                      expiry.abs_value_us));
+  FAILIF (GNUNET_OK !=
+          plugin->reserves_in_insert (plugin->cls,
+                                      session,
+                                      &reserve,
+                                      &amount,
+                                      expiry));
+  FAILIF (GNUNET_OK !=
+          check_reserve (session,
+                         &reserve_pub,
+                         amount.value,
+                         amount.fraction,
+                         amount.currency,
+                         expiry.abs_value_us));
+  FAILIF (GNUNET_OK !=
+          plugin->reserves_in_insert (plugin->cls,
+                                      session,
+                                      &reserve,
+                                      &amount,
+                                      expiry));
+  FAILIF (GNUNET_OK !=
+          check_reserve (session,
+                         &reserve_pub,
+                         ++amount.value,
+                         ++amount.fraction,
+                         amount.currency,
+                         expiry.abs_value_us));
   dkp = create_denom_key_pair (1024);
   RND_BLK(&h_blind);
   RND_BLK(&cbc.reserve_sig);
   cbc.denom_pub = dkp->pub;
-  cbc.sig = GNUNET_CRYPTO_rsa_sign (dkp->priv, &h_blind, sizeof (h_blind));
-  (void) memcpy (&cbc.reserve_pub, &reserve_pub, sizeof (reserve_pub));
-  FAILIF (GNUNET_OK != TALER_MINT_DB_insert_collectable_blindcoin (db,
-                                                                   &h_blind,
-                                                                   &cbc));
-  FAILIF (GNUNET_YES != TALER_MINT_DB_get_collectable_blindcoin (db,
-                                                                 &h_blind,
-                                                                 &cbc2));
-  FAILIF (NULL == cbc2.denom_pub);
-  FAILIF (0 != memcmp (&cbc2.reserve_sig, &cbc.reserve_sig, sizeof (cbc2.reserve_sig)));
-  FAILIF (0 != memcmp (&cbc2.reserve_pub, &cbc.reserve_pub, sizeof (cbc2.reserve_pub)));
-  FAILIF (GNUNET_OK != GNUNET_CRYPTO_rsa_verify (&h_blind, cbc2.sig, dkp->pub));
-  rh_head = rh = TALER_MINT_DB_get_reserve_history (db, &reserve_pub);
+  cbc.sig.rsa_signature
+    = GNUNET_CRYPTO_rsa_sign (dkp->priv.rsa_private_key,
+                              &h_blind,
+                              sizeof (h_blind));
+  (void) memcpy (&cbc.reserve_pub,
+                 &reserve_pub,
+                 sizeof (reserve_pub));
+  amount.value--;
+  amount.fraction--;
+  FAILIF (GNUNET_OK !=
+          plugin->insert_collectable_blindcoin (plugin->cls,
+                                                session,
+                                                &h_blind,
+                                                amount,
+                                                &cbc));
+  FAILIF (GNUNET_OK !=
+          check_reserve (session,
+                         &reserve_pub,
+                         amount.value,
+                         amount.fraction,
+                         amount.currency,
+                         expiry.abs_value_us));
+  FAILIF (GNUNET_YES !=
+          plugin->get_collectable_blindcoin (plugin->cls,
+                                             session,
+                                             &h_blind,
+                                             &cbc2));
+  FAILIF (NULL == cbc2.denom_pub.rsa_public_key);
+  FAILIF (0 != memcmp (&cbc2.reserve_sig,
+                       &cbc.reserve_sig,
+                       sizeof (cbc2.reserve_sig)));
+  FAILIF (0 != memcmp (&cbc2.reserve_pub,
+                       &cbc.reserve_pub,
+                       sizeof (cbc2.reserve_pub)));
+  FAILIF (GNUNET_OK !=
+          GNUNET_CRYPTO_rsa_verify (&h_blind,
+                                    cbc2.sig.rsa_signature,
+                                    dkp->pub.rsa_public_key));
+  rh = plugin->get_reserve_history (plugin->cls,
+                                    session,
+                                    &reserve_pub);
   FAILIF (NULL == rh);
+  rh_head = rh;
   for (cnt=0; NULL != rh_head; rh_head=rh_head->next, cnt++)
   {
     switch (rh_head->type)
     {
     case TALER_MINT_DB_RO_BANK_TO_MINT:
       bt = rh_head->details.bank;
-      FAILIF (0 != memcmp (&bt->reserve_pub, &reserve_pub, sizeof (reserve_pub)));
+      FAILIF (0 != memcmp (&bt->reserve_pub,
+                           &reserve_pub,
+                           sizeof (reserve_pub)));
       FAILIF (1 != bt->amount.value);
       FAILIF (1 != bt->amount.fraction);
       FAILIF (0 != strcmp (CURRENCY, bt->amount.currency));
@@ -217,28 +279,76 @@ run (void *cls, char *const *args, const char *cfgfile,
     }
   }
   FAILIF (3 != cnt);
+  /* Tests for deposits */
+  RND_BLK (&deposit.coin.coin_pub);
+  deposit.coin.denom_pub = dkp->pub;
+  deposit.coin.denom_sig = cbc.sig;
+  RND_BLK (&deposit.csig);
+  RND_BLK (&deposit.merchant_pub);
+  RND_BLK (&deposit.h_contract);
+  RND_BLK (&deposit.h_wire);
+  wire = json_loads (json_wire_str, 0, NULL);
+  deposit.wire = wire;
+  deposit.transaction_id =
+      GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
+  deposit.amount_with_fee = amount;
+  FAILIF (GNUNET_OK !=
+          plugin->insert_deposit (plugin->cls,
+                                  session, &deposit));
+  FAILIF (GNUNET_YES !=
+          plugin->have_deposit (plugin->cls,
+                                session,
+                                &deposit));
+  (void) memcpy (&deposit2,
+                 &deposit,
+                 sizeof (deposit));
+  deposit2.transaction_id++;     /* should fail if transaction id is different */
+  FAILIF (GNUNET_NO !=
+          plugin->have_deposit (plugin->cls,
+                                session,
+                                &deposit2));
+  deposit2.transaction_id = deposit.transaction_id;
+  RND_BLK (&deposit2.merchant_pub); /* should fail if merchant is different */
+  FAILIF (GNUNET_NO !=
+          plugin->have_deposit (plugin->cls,
+                                session,
+                                &deposit2));
+  (void) memcpy (&deposit2.merchant_pub,
+                 &deposit.merchant_pub,
+                 sizeof (deposit.merchant_pub));
+  RND_BLK (&deposit2.coin.coin_pub); /* should fail if coin is different */
+  FAILIF (GNUNET_NO !=
+          plugin->have_deposit (plugin->cls,
+                                session,
+                                &deposit2));
   result = 0;
 
  drop:
+  if (NULL != wire)
+    json_decref (wire);
   if (NULL != rh)
-    TALER_MINT_DB_free_reserve_history (rh);
+    plugin->free_reserve_history (plugin->cls,
+                                  rh);
   rh = NULL;
-  if (NULL != db)
-    GNUNET_break (GNUNET_OK == TALER_MINT_DB_drop_temporary (db));
+  if (NULL != session)
+    GNUNET_break (GNUNET_OK ==
+                  plugin->drop_temporary (plugin->cls,
+                                          session));
   if (NULL != dkp)
     destroy_denon_key_pair (dkp);
-  if (NULL != cbc.sig)
-    GNUNET_CRYPTO_rsa_signature_free (cbc.sig);
-  if (NULL != cbc2.denom_pub)
-    GNUNET_CRYPTO_rsa_public_key_free (cbc2.denom_pub);
-  if (NULL != cbc2.sig)
-    GNUNET_CRYPTO_rsa_signature_free (cbc2.sig);
+  if (NULL != cbc.sig.rsa_signature)
+    GNUNET_CRYPTO_rsa_signature_free (cbc.sig.rsa_signature);
+  if (NULL != cbc2.denom_pub.rsa_public_key)
+    GNUNET_CRYPTO_rsa_public_key_free (cbc2.denom_pub.rsa_public_key);
+  if (NULL != cbc2.sig.rsa_signature)
+    GNUNET_CRYPTO_rsa_signature_free (cbc2.sig.rsa_signature);
   dkp = NULL;
 }
 
 
 int
-main (int argc, char *const argv[])
+main (int argc,
+      char *const argv[])
 {
    static const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_OPTION_END

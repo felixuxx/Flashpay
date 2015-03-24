@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -42,7 +42,7 @@ struct TALER_MINT_SigningPublicKey
   /**
    * The signing public key
    */
-  struct GNUNET_CRYPTO_EddsaPublicKey key;
+  struct TALER_MintPublicKey key;
 
   /**
    * Validity start time
@@ -64,7 +64,7 @@ struct TALER_MINT_DenomPublicKey
   /**
    * The public key
    */
-  struct GNUNET_CRYPTO_rsa_PublicKey *key;
+  struct TALER_DenominationPublicKey key;
 
   /**
    * Timestamp indicating when the denomination key becomes valid
@@ -132,7 +132,7 @@ TALER_MINT_cleanup (struct TALER_MINT_Context *ctx);
  * @param hostname the hostname of the mint
  * @param port the point where the mint's HTTP service is running.  If port is
  *             given as 0, ports 80 or 443 are chosen depending on @a url.
- * @param mint_key the public key of the mint.  This is used to verify the
+ * @param master_key the public master key of the mint.  This is used to verify the
  *                 responses of the mint.
  * @return the mint handle; NULL upon error
  */
@@ -140,7 +140,7 @@ struct TALER_MINT_Handle *
 TALER_MINT_connect (struct TALER_MINT_Context *ctx,
                     const char *hostname,
                     uint16_t port,
-                    struct GNUNET_CRYPTO_EddsaPublicKey *mint_key);
+                    const struct TALER_MasterPublicKey *master_key);
 
 /**
  * Disconnect from the mint
@@ -282,15 +282,15 @@ struct TALER_MINT_DepositHandle *
 TALER_MINT_deposit_submit_json_ (struct TALER_MINT_Handle *mint,
                                  TALER_MINT_DepositResultCallback *cb,
                                  void *cls,
-                                 struct GNUNET_CRYPTO_EddsaPublicKey *coin_pub,
-                                 struct TALER_BLIND_SigningPublicKey *denom_pub,
+                                 const struct TALER_CoinPublicKey *coin_pub,
+                                 const struct TALER_BLIND_SigningPublicKey *denom_pub,
                                  struct TALER_BLIND_Signature *ubsig,
                                  uint64_t transaction_id,
                                  struct TALER_Amount *amount,
-                                 struct GNUNET_CRYPTO_EddsaPublicKey *merchant_pub,
-                                 struct GNUNET_HashCode *h_contract,
-                                 struct GNUNET_HashCode *h_wire,
-                                 struct GNUNET_CRYPTO_EddsaSignature *csig,
+                                 const struct TALER_MerchantPublicKey *merchant_pub,
+                                 const struct GNUNET_HashCode *h_contract,
+                                 const struct GNUNET_HashCode *h_wire,
+                                 const struct TALER_CoinSignature *csig,
                                  json_t *wire_obj);
 #endif
 

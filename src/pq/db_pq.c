@@ -181,13 +181,16 @@ TALER_DB_extract_amount_nbo (PGresult *result,
 
   r_amount_nbo->value = *(uint32_t *) PQgetvalue (result, row, val_num);
   r_amount_nbo->fraction = *(uint32_t *) PQgetvalue (result, row, frac_num);
-  memset (r_amount_nbo->currency, 0, TALER_CURRENCY_LEN);
-  // FIXME: overflow?
-  len = PQgetlength (result, row, curr_num);
-  len = GNUNET_MIN (TALER_CURRENCY_LEN, len);
-  memcpy (r_amount_nbo->currency, PQgetvalue (result, row, curr_num), len);
-  r_amount_nbo->currency[TALER_CURRENCY_LEN - 1] = '\0';
-
+  memset (r_amount_nbo->currency,
+          0,
+          TALER_CURRENCY_LEN);
+  len = GNUNET_MIN (TALER_CURRENCY_LEN - 1,
+                    PQgetlength (result, row, curr_num));
+  memcpy (r_amount_nbo->currency,
+          PQgetvalue (result,
+                      row,
+                      curr_num),
+          len);
   return GNUNET_OK;
 }
 

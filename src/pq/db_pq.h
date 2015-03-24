@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file include/taler_db_lib.h
+ * @file pq/db_pq.h
  * @brief helper functions for DB interactions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Florian Dold
@@ -186,4 +186,4 @@ TALER_DB_extract_amount (PGresult *result,
 
 #endif  /* TALER_DB_LIB_H_ */
 
-/* end of include/taler_db_lib.h */
+/* end of db/db_pq.h */

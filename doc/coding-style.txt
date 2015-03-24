@@ -1,0 +1,61 @@
+These are the general coding style rules for Taler.
+
+* Baseline rules are to follow GNU guidelines, modified or extended
+  by the GNUnet style: https://gnunet.org/style
+
+Naming conventions:
+===================
+
+* include files (very similar to GNUnet):
+  + if installed, must start with "taler_" (exception: platform.h),
+    and MUST live in src/include/
+  + if NOT installed, must NOT start with "taler_" and
+    MUST NOT live in src/include/ and
+    SHOULD NOT be included from outside of their own directory
+  + end in "_lib" for "simple" libraries
+  + end in "_plugin" for plugins
+  + end in "_service" for libraries accessing a service, i.e. the mint
+
+* binaries:
+  + taler-mint-xxx: mint programs
+  + taler-merchant-xxx: merchant programs (demos)
+  + taler-wallet-xxx: wallet programs
+  + plugins should be libtaler_plugin_xxx_yyy.so: plugin yyy for API xxx
+  + libtalerxxx: library for API xxx
+
+* logging
+  + tools use their full name in GNUNET_log_setup
+    (i.e. 'taler-mint-keyup') and log using plain 'GNUNET_log'.
+  + pure libraries (without associated service) use 'GNUNET_log_from'
+    with the component set to their library name (without lib or '.so'),
+    which should also be their directory name (i.e. 'util')
+  + plugin libraries (without associated service) use 'GNUNET_log_from'
+    with the component set to their type and plugin name (without lib or '.so'),
+    which should also be their directory name (i.e. 'mintdb-postgres')
+  + libraries with associated service) use 'GNUNET_log_from'
+    with the name of the service,  which should also be their
+    directory name (i.e. 'mint')
+
+* configuration
+  + same rules as for GNUnet
+
+* exported symbols
+  + must start with TALER_[SUBSYSTEMNAME]_ where SUBSYSTEMNAME
+    MUST match the subdirectory of src/ in which the symbol is defined
+  + from libtalerutil start just with TALER_, without subsystemname
+
+* structs:
+  + structs that are 'packed' and do not contain pointers and are
+    thus suitable for hashing or similar operations are distinguished
+    by adding a "P" at the end of the name. (NEW)  Note that this
+    convention does not hold for the GNUnet-structs (yet).
+
+
+* private (library-internal) symbols (including structs and macros)
+  + must not start with TALER_ or any other prefix
+
+* testcases
+  + must be called "test_module-under-test_case-description.c"
+
+* performance tests
+  + must be called "perf_module-under-test_case-description.c"

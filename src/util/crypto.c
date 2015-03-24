@@ -52,7 +52,8 @@ fatal_error_handler (void *cls,
 void
 TALER_gcrypt_init ()
 {
-  gcry_set_fatalerror_handler (&fatal_error_handler, NULL);
+  gcry_set_fatalerror_handler (&fatal_error_handler,
+                               NULL);
   TALER_assert_as (gcry_check_version (NEED_LIBGCRYPT_VERSION),
                    "libgcrypt version mismatch");
   /* Disable secure memory.  */
@@ -205,11 +206,11 @@ TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
   ret = GNUNET_new (struct TALER_RefreshLinkDecrypted);
   memcpy (&ret->coin_priv,
           buf,
-          sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey));
-  ret->blinding_key
+          sizeof (struct TALER_CoinSpendPrivateKey));
+  ret->blinding_key.rsa_blinding_key
     = GNUNET_CRYPTO_rsa_blinding_key_decode (&buf[sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey)],
                                              input->blinding_key_enc_size);
-  if (NULL == ret->blinding_key)
+  if (NULL == ret->blinding_key.rsa_blinding_key)
   {
     GNUNET_free (ret);
     return NULL;
@@ -236,7 +237,7 @@ TALER_refresh_encrypt (const struct TALER_RefreshLinkDecrypted *input,
   struct TALER_RefreshLinkEncrypted *ret;
 
   derive_refresh_key (secret, &iv, &skey);
-  b_buf_size = GNUNET_CRYPTO_rsa_blinding_key_encode (input->blinding_key,
+  b_buf_size = GNUNET_CRYPTO_rsa_blinding_key_encode (input->blinding_key.rsa_blinding_key,
                                                       &b_buf);
   ret = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) +
                        b_buf_size);
@@ -308,14 +309,13 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info)
 {
   struct GNUNET_HashCode c_hash;
 
-  /* FIXME: we had envisioned a more complex scheme... */
   GNUNET_CRYPTO_hash (&coin_public_info->coin_pub,
                       sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
                       &c_hash);
   if (GNUNET_OK !=
       GNUNET_CRYPTO_rsa_verify (&c_hash,
-                                coin_public_info->denom_sig,
-                                coin_public_info->denom_pub))
+                                coin_public_info->denom_sig.rsa_signature,
+                                coin_public_info->denom_pub.rsa_public_key))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "coin signature is invalid\n");

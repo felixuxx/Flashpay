@@ -25,8 +25,7 @@
 #include <microhttpd.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
-#include "taler-mint-httpd_keys.h"
-#include "mint_db.h"
+#include "taler_mintdb_plugin.h"
 
 
 /**
@@ -54,7 +53,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
-                                       const struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub);
+                                       const struct TALER_ReservePublicKey *reserve_pub);
 
 
 /**
@@ -73,11 +72,11 @@ TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
-                                     const struct GNUNET_CRYPTO_EddsaPublicKey *reserve,
-                                     const struct GNUNET_CRYPTO_rsa_PublicKey *denomination_pub,
+                                     const struct TALER_ReservePublicKey *reserve,
+                                     const struct TALER_DenominationPublicKey *denomination_pub,
                                      const char *blinded_msg,
                                      size_t blinded_msg_len,
-                                     const struct GNUNET_CRYPTO_EddsaSignature *signature);
+                                     const struct TALER_ReserveSignature *signature);
 
 
 /**
@@ -89,14 +88,14 @@ struct MeltDetails
    * Signature allowing the melt (using
    * a `struct RefreshMeltConfirmSignRequestBody`) to sign over.
    */
-  struct GNUNET_CRYPTO_EcdsaSignature melt_sig;
+  struct TALER_CoinSpendSignature melt_sig;
 
   /**
    * How much of the coin's value did the client allow to be melted?
    * This amount includes the fees, so the final amount contributed
    * to the melt is this value minus the fee for melting the coin.
    */
-  struct TALER_Amount melt_amount;
+  struct TALER_Amount melt_amount_with_fee;
 };
 
 
@@ -107,19 +106,13 @@ struct MeltDetails
  * required value left and if so, store that they have been
  * melted and confirm the melting operation to the client.
  *
- * FIXME: some arguments are redundant here...
- *
  * @param connection the MHD connection to handle
- * @param melt_hash hash code of the session the coins are melted into
- * @param refresh_session_pub public key of the refresh session
- * @param client_signature signature of the client (matching @a refresh_session_pub)
- *         over the melting request
+ * @param session_hash hash code of the session the coins are melted into
  * @param num_new_denoms number of entries in @a denom_pubs, size of y-dimension of @commit_coin array
  * @param denum_pubs array of public denomination keys for the refresh (?)
  * @param coin_count number of entries in @a coin_public_infos and @ a coin_melt_details, size of y-dimension of @commit_link array
  * @param coin_public_infos information about the coins to melt
  * @param coin_melt_details signatures and (residual) value of the respective coin should be melted
- * @param kappa size of x-dimension of @commit_coin and @commit_link arrays
  * @param commit_coin 2d array of coin commitments (what the mint is to sign
  *                    once the "/refres/reveal" of cut and choose is done)
  * @param commit_link 2d array of coin link commitments (what the mint is
@@ -127,42 +120,36 @@ struct MeltDetails
  *                    future)
  * @return MHD result code
  */
-// FIXME: see #3635.
 int
 TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
-                                    const struct GNUNET_HashCode *melt_hash,
-                                    const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                    const struct GNUNET_CRYPTO_EddsaSignature *client_signature,
+                                    const struct GNUNET_HashCode *session_hash,
                                     unsigned int num_new_denoms,
-                                    struct GNUNET_CRYPTO_rsa_PublicKey *const*denom_pubs,
+                                    const struct TALER_DenominationPublicKey *denom_pubs,
                                     unsigned int coin_count,
                                     const struct TALER_CoinPublicInfo *coin_public_infos,
                                     const struct MeltDetails *coin_melt_details,
-                                    unsigned int kappa,
                                     struct RefreshCommitCoin *const* commit_coin,
                                     struct RefreshCommitLink *const* commit_link);
 
 
 /**
  * Execute a "/refresh/reveal".  The client is revealing to us the
- * transfer keys for @a kappa-1 sets of coins.  Verify that the
+ * transfer keys for #KAPPA-1 sets of coins.  Verify that the
  * revealed transfer keys would allow linkage to the blinded coins,
  * and if so, return the signed coins for corresponding to the set of
  * coins that was not chosen.
  *
  * @param connection the MHD connection to handle
- * @param refresh_session_pub public key of the refresh session
- * @param kappa size of x-dimension of @transfer_privs array plus one (!)
+ * @param session_hash hash over the refresh session
  * @param num_oldcoins size of y-dimension of @transfer_privs array
- * @param transfer_pubs array with the revealed transfer keys
+ * @param transfer_pubs array with the revealed transfer keys, #KAPPA is 1st-dimension
  * @return MHD result code
  */
 int
 TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
-                                      const struct GNUNET_CRYPTO_EddsaPublicKey *refresh_session_pub,
-                                      unsigned int kappa,
+                                      const struct GNUNET_HashCode *session_hash,
                                       unsigned int num_oldcoins,
-                                      struct GNUNET_CRYPTO_EcdsaPrivateKey *const*transfer_privs);
+                                      struct TALER_TransferPrivateKey **transfer_privs);
 
 
 /**
@@ -176,7 +163,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
-                                    const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub);
+                                    const struct TALER_CoinSpendPublicKey *coin_pub);
 
 
 #endif

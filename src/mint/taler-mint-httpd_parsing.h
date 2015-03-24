@@ -120,7 +120,13 @@ enum TALER_MINT_JsonNavigationCommand
    * Return a `struct GNUNET_CRYPTO_rsa_Signature` which was
    * encoded as variable-size base32crockford encoded data.
    */
-  JNAV_RET_RSA_SIGNATURE
+  JNAV_RET_RSA_SIGNATURE,
+
+  /**
+   * Return a `struct TALER_Amount` which was
+   * encoded within its own json object.
+   */
+  JNAV_RET_AMOUNT
 };
 
 
@@ -269,6 +275,14 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec);
  * @param ptrsig address of `struct GNUNET_CRYPTO_rsa_Signature *` initialize
  */
 #define TALER_MINT_PARSE_RSA_SIGNATURE(field,ptrsig) { field, ptrsig, 0, 0, JNAV_RET_RSA_SIGNATURE, 0 }
+
+/**
+ * Generate line in parser specification for an amount.
+ *
+ * @param field name of the field
+ * @param amount a `struct TALER_Amount *` to initialize
+ */
+#define TALER_MINT_PARSE_AMOUNT(field,amount) { field, amount, sizeof(*amount), 0, JNAV_RET_AMOUNT, 0 }
 
 /**
  * Generate line in parser specification indicating the end of the spec.

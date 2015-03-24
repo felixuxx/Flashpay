@@ -39,7 +39,7 @@
  * @return a json object describing the amount
  */
 json_t *
-TALER_JSON_from_amount (struct TALER_Amount amount);
+TALER_JSON_from_amount (const struct TALER_Amount *amount);
 
 
 /**
@@ -74,6 +74,26 @@ TALER_JSON_from_eddsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpo
 json_t *
 TALER_JSON_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
                            const struct GNUNET_CRYPTO_EcdsaSignature *signature);
+
+
+/**
+ * Convert RSA public key to JSON.
+ *
+ * @param pk public key to convert
+ * @return corresponding JSON encoding
+ */
+json_t *
+TALER_JSON_from_rsa_public_key (struct GNUNET_CRYPTO_rsa_PublicKey *pk);
+
+
+/**
+ * Convert RSA signature to JSON.
+ *
+ * @param sig signature to convert
+ * @return corresponding JSON encoding
+ */
+json_t *
+TALER_JSON_from_rsa_signature (struct GNUNET_CRYPTO_rsa_Signature *sig);
 
 
 /**

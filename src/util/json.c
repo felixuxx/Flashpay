@@ -48,14 +48,25 @@
  * @return a json object describing the amount
  */
 json_t *
-TALER_JSON_from_amount (struct TALER_Amount amount)
+TALER_JSON_from_amount (const struct TALER_Amount *amount)
 {
   json_t *j;
 
-  j = json_pack ("{s: s, s:I, s:I}",
-                 "currency", amount.currency,
-                 "value", (json_int_t) amount.value,
-                 "fraction", (json_int_t) amount.fraction);
+  if ( (amount->value != (uint64_t) ((json_int_t) amount->value)) ||
+       (0 > ((json_int_t) amount->value)) )
+  {
+    /* Theoretically, json_int_t can be a 32-bit "long", or we might
+       have a 64-bit value which converted to a 63-bit signed long
+       long causes problems here.  So we check.  Note that depending
+       on the platform, the compiler may be able to statically tell
+       that at least the first check is always false. */
+    GNUNET_break (0);
+    return NULL;
+  }
+  j = json_pack ("{s:s, s:I, s:I}",
+                 "currency", amount->currency,
+                 "value", (json_int_t) amount->value,
+                 "fraction", (json_int_t) amount->fraction);
   GNUNET_assert (NULL != j);
   return j;
 }
@@ -147,6 +158,50 @@ TALER_JSON_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpo
   json_object_set_new (root, "ecdsa-sig", el);
 
   return root;
+}
+
+
+/**
+ * Convert RSA public key to JSON.
+ *
+ * @param pk public key to convert
+ * @return corresponding JSON encoding
+ */
+json_t *
+TALER_JSON_from_rsa_public_key (struct GNUNET_CRYPTO_rsa_PublicKey *pk)
+{
+  char *buf;
+  size_t buf_len;
+  json_t *ret;
+
+  buf_len = GNUNET_CRYPTO_rsa_public_key_encode (pk,
+                                                 &buf);
+  ret = TALER_JSON_from_data (buf,
+                              buf_len);
+  GNUNET_free (buf);
+  return ret;
+}
+
+
+/**
+ * Convert RSA signature to JSON.
+ *
+ * @param sig signature to convert
+ * @return corresponding JSON encoding
+ */
+json_t *
+TALER_JSON_from_rsa_signature (struct GNUNET_CRYPTO_rsa_Signature *sig)
+{
+  char *buf;
+  size_t buf_len;
+  json_t *ret;
+
+  buf_len = GNUNET_CRYPTO_rsa_signature_encode (sig,
+                                                &buf);
+  ret = TALER_JSON_from_data (buf,
+                              buf_len);
+  GNUNET_free (buf);
+  return ret;
 }
 
 

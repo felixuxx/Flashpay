@@ -1,17 +1,33 @@
 # This Makefile.am is in the public domain
 AM_CPPFLAGS = -I$(top_srcdir)/src/include -I$(top_srcdir)/src/pq/ $(POSTGRESQL_CPPFLAGS)
 
+plugindir = $(libdir)/taler
+
+plugin_LTLIBRARIES = \
+  libtaler_plugin_mintdb_postgres.la
+
+EXTRA_DIST = plugin_mintdb_common.c
+
+libtaler_plugin_mintdb_postgres_la_SOURCES = \
+  plugin_mintdb_postgres.c
+libtaler_plugin_mintdb_postgres_la_LIBADD = \
+  $(LTLIBINTL)
+libtaler_plugin_mintdb_postgres_la_LDFLAGS = \
+  $(TALER_PLUGIN_LDFLAGS) \
+  -lpq \
+  -lgnunetutil
+
 lib_LTLIBRARIES = \
   libtalermint_common.la
 
 libtalermint_common_la_SOURCES = \
   key_io.c key_io.h \
-  mint_db.c
+  plugin.c plugin.h \
+  taler_mintdb_plugin.h
 
 libtalermint_common_la_LIBADD = \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetutil \
-  -lpq
+  -lgnunetutil
 
 libtalermint_common_la_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS) \
@@ -70,7 +86,6 @@ taler_mint_httpd_SOURCES = \
   taler-mint-httpd_parsing.c taler-mint-httpd_parsing.h \
   taler-mint-httpd_responses.c taler-mint-httpd_responses.h \
   taler-mint-httpd_mhd.c \
-  taler-mint-httpd_keys.c \
   taler-mint-httpd_deposit.c \
   taler-mint-httpd_withdraw.c \
   taler-mint-httpd_refresh.c
@@ -128,4 +143,4 @@ test_mint_db_LDADD = \
   libtalermint_common.la \
   $(top_srcdir)/src/util/libtalerutil.la \
   $(top_srcdir)/src/pq/libtalerpq.la \
-  -lgnunetutil
+  -lgnunetutil -ljansson

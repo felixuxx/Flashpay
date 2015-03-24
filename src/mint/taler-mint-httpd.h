@@ -23,12 +23,7 @@
 #ifndef TALER_MINT_HTTPD_H
 #define TALER_MINT_HTTPD_H
 
-
-/**
- * Cut-and-choose size for refreshing.
- * FIXME: maybe make it a config option?
- */
-#define KAPPA 3
+#include <microhttpd.h>
 
 /**
  * For now, we just do EUR.  Should become configurable

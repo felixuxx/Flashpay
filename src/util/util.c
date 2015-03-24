@@ -29,6 +29,34 @@
 #include <gcrypt.h>
 
 
+/**
+ * Obtain denomination amount from configuration file.
+ *
+ * @param section section of the configuration to access
+ * @param option option of the configuration to access
+ * @param denom[OUT] set to the amount found in configuration
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+TALER_config_get_denom (struct GNUNET_CONFIGURATION_Handle *cfg,
+                        const char *section,
+                        const char *option,
+                        struct TALER_Amount *denom)
+{
+  char *str;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             section,
+                                             option,
+                                             &str))
+    return GNUNET_NO;
+  if (GNUNET_OK != TALER_string_to_amount (str,
+                                           denom))
+    return GNUNET_SYSERR;
+  return GNUNET_OK;
+}
+
 
 /**
  * Load configuration by parsing all configuration

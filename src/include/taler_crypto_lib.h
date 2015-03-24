@@ -27,6 +27,263 @@
 
 /* ****************** Coin crypto primitives ************* */
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Type of public keys for Taler reserves.
+ */
+struct TALER_ReservePublicKey
+{
+  /**
+   * Taler uses EdDSA for reserves.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
+};
+
+
+/**
+ * Type of private keys for Taler reserves.
+ */
+struct TALER_ReservePrivateKey
+{
+  /**
+   * Taler uses EdDSA for reserves.
+   */
+  struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
+};
+
+
+/**
+ * Type of signatures used with Taler reserves.
+ */
+struct TALER_ReserveSignature
+{
+  /**
+   * Taler uses EdDSA for reserves.
+   */
+  struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
+};
+
+
+/**
+ * Type of public keys to for merchant authorizations.
+ * Merchants can issue refunds using the corresponding
+ * private key.
+ */
+struct TALER_MerchantPublicKey
+{
+  /**
+   * Taler uses EdDSA for merchants.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
+};
+
+
+/**
+ * Type of private keys for merchant authorizations.
+ * Merchants can issue refunds using the corresponding
+ * private key.
+ */
+struct TALER_MerchantPrivateKey
+{
+  /**
+   * Taler uses EdDSA for merchants.
+   */
+  struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
+};
+
+
+/**
+ * Type of transfer public keys used during refresh
+ * operations.
+ */
+struct TALER_TransferPublicKey
+{
+  /**
+   * Taler uses ECDSA for transfer keys.
+   * FIXME: should this not be ECDHE?
+   */
+  struct GNUNET_CRYPTO_EcdsaPublicKey ecdsa_pub;
+};
+
+
+/**
+ * Type of transfer public keys used during refresh
+ * operations.
+ */
+struct TALER_TransferPrivateKey
+{
+  /**
+   * Taler uses ECDSA for melting session keys.
+   * FIXME: should this not be ECDHE?
+   */
+  struct GNUNET_CRYPTO_EcdsaPrivateKey ecdsa_priv;
+};
+
+
+/**
+ * Type of online public keys used by the mint to sign
+ * messages.
+ */
+struct TALER_MintPublicKey
+{
+  /**
+   * Taler uses EdDSA for online mint message signing.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
+};
+
+
+/**
+ * Type of online public keys used by the mint to
+ * sign messages.
+ */
+struct TALER_MintPrivateKey
+{
+  /**
+   * Taler uses EdDSA for online signatures sessions.
+   */
+  struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
+};
+
+
+/**
+ * Type of signatures used by the mint to sign messages online.
+ */
+struct TALER_MintSignature
+{
+  /**
+   * Taler uses EdDSA for online signatures sessions.
+   */
+  struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
+};
+
+
+/**
+ * Type of the offline master public key used by the mint.
+ */
+struct TALER_MasterPublicKey
+{
+  /**
+   * Taler uses EdDSA for the long-term offline master key.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
+};
+
+
+/**
+ * Type of the offline master public keys used by the mint.
+ */
+struct TALER_MasterPrivateKey
+{
+  /**
+   * Taler uses EdDSA for the long-term offline master key.
+   */
+  struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
+};
+
+
+/**
+ * Type of signatures by the offline master public key used by the mint.
+ */
+struct TALER_MasterSignature
+{
+  /**
+   * Taler uses EdDSA for the long-term offline master key.
+   */
+  struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
+};
+
+
+
+/**
+ * Type of public keys for Taler coins.
+ */
+struct TALER_CoinSpendPublicKey
+{
+  /**
+   * Taler uses ECDSA for coins.
+   */
+  struct GNUNET_CRYPTO_EcdsaPublicKey ecdsa_pub;
+};
+
+
+/**
+ * Type of private keys for Taler coins.
+ */
+struct TALER_CoinSpendPrivateKey
+{
+  /**
+   * Taler uses ECDSA for coins.
+   */
+  struct GNUNET_CRYPTO_EcdsaPrivateKey ecdsa_priv;
+};
+
+
+/**
+ * Type of signatures made with Taler coins.
+ */
+struct TALER_CoinSpendSignature
+{
+  /**
+   * Taler uses ECDSA for coins.
+   */
+  struct GNUNET_CRYPTO_EcdsaSignature ecdsa_signature;
+};
+
+
+GNUNET_NETWORK_STRUCT_END
+
+
+
+/**
+ * Type of blinding keys for Taler.
+ */
+struct TALER_DenominationBlindingKey
+{
+  /**
+   * Taler uses RSA for blinding.
+   */
+  struct GNUNET_CRYPTO_rsa_BlindingKey *rsa_blinding_key;
+};
+
+
+/**
+ * Type of (unblinded) coin signatures for Taler.
+ */
+struct TALER_DenominationSignature
+{
+  /**
+   * Taler uses RSA for blinding.
+   */
+  struct GNUNET_CRYPTO_rsa_Signature *rsa_signature;
+};
+
+
+/**
+ * Type of public signing keys for verifying blindly signed coins.
+ */
+struct TALER_DenominationPublicKey
+{
+  /**
+   * Taler uses RSA for signing coins.
+   */
+  struct GNUNET_CRYPTO_rsa_PublicKey *rsa_public_key;
+};
+
+
+/**
+ * Type of private signing keys for blind signing of coins.
+ */
+struct TALER_DenominationPrivateKey
+{
+  /**
+   * Taler uses RSA for signing coins.
+   */
+  struct GNUNET_CRYPTO_rsa_PrivateKey *rsa_private_key;
+};
+
+
 /**
  * Public information about a coin (including the public key
  * of the coin, the denomination key and the signature with
@@ -37,19 +294,19 @@ struct TALER_CoinPublicInfo
   /**
    * The coin's public key.
    */
-  struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+  struct TALER_CoinSpendPublicKey coin_pub;
 
   /**
    * Public key representing the denomination of the coin
    * that is being deposited.
    */
-  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+  struct TALER_DenominationPublicKey denom_pub;
 
   /**
    * (Unblinded) signature over @e coin_pub with @e denom_pub,
    * which demonstrates that the coin is valid.
    */
-  struct GNUNET_CRYPTO_rsa_Signature *denom_sig;
+  struct TALER_DenominationSignature denom_sig;
 };
 
 
@@ -67,6 +324,9 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info);
 
 
 /* ****************** Refresh crypto primitives ************* */
+
+
+GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
  * Secret used to decrypt the key to decrypt link secrets.
@@ -107,6 +367,28 @@ struct TALER_EncryptedLinkSecret
 
 
 /**
+ * Representation of an refresh link in cleartext.
+ */
+struct TALER_RefreshLinkDecrypted
+{
+
+  /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKey coin_priv;
+
+  /**
+   * Blinding key.
+   */
+  struct TALER_DenominationBlindingKey blinding_key;
+
+};
+
+
+GNUNET_NETWORK_STRUCT_END
+
+
+/**
  * Representation of an encrypted refresh link.
  */
 struct TALER_RefreshLinkEncrypted
@@ -126,26 +408,7 @@ struct TALER_RefreshLinkEncrypted
   /**
    * Encrypted private key of the coin.
    */
-  char coin_priv_enc[sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey)];
-
-};
-
-
-/**
- * Representation of an refresh link in cleartext.
- */
-struct TALER_RefreshLinkDecrypted
-{
-
-  /**
-   * Private key of the coin.
-   */
-  struct GNUNET_CRYPTO_EcdsaPrivateKey coin_priv;
-
-  /**
-   * Blinding key with @e blinding_key_enc_size bytes.
-   */
-  struct GNUNET_CRYPTO_rsa_BlindingKey *blinding_key;
+  char coin_priv_enc[sizeof (struct TALER_CoinSpendPrivateKey)];
 
 };
 

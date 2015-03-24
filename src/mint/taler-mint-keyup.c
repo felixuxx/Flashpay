@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -13,58 +13,140 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file taler-mint-keyup.c
  * @brief Update the mint's keys for coins and signatures,
  *        using the mint's offline master key.
  * @author Florian Dold
  * @author Benedikt Mueller
+ * @author Christian Grothoff
  */
-
 #include <platform.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
-#include "taler_signatures.h"
 #include "key_io.h"
 
 /**
- * FIXME: allow user to specify (within reason).
+ * When generating filenames from a cryptographic hash, we do not use
+ * all 512 bits but cut off after this number of characters (in
+ * base32-encoding).  Base32 is 5 bit per character, and given that we
+ * have very few coin types we hash, at 100 bits the chance of
+ * collision (by accident over tiny set -- birthday paradox does not
+ * apply here!) is negligible.
  */
-#define RSA_KEYSIZE 2048
-
 #define HASH_CUTOFF 20
 
 /**
  * Macro to round microseconds to seconds in GNUNET_TIME_* structs.
+ *
+ * @param name value to round
+ * @param field rel_value_us or abs_value_us
  */
 #define ROUND_TO_SECS(name,us_field) name.us_field -= name.us_field % (1000 * 1000);
 
 
 GNUNET_NETWORK_STRUCT_BEGIN
 
+/**
+ * Struct with all of the key information for a kind of coin.  Hashed
+ * to generate a unique directory name per coin type.
+ */
 struct CoinTypeNBO
 {
+  /**
+   * How long can the coin be spend?
+   */
   struct GNUNET_TIME_RelativeNBO duration_spend;
+
+  /**
+   * How long can the coin be withdrawn (generated)?
+   */
   struct GNUNET_TIME_RelativeNBO duration_withdraw;
+
+  /**
+   * What is the value of the coin?
+   */
   struct TALER_AmountNBO value;
+
+  /**
+   * What is the fee charged for withdrawl?
+   */
   struct TALER_AmountNBO fee_withdraw;
+
+  /**
+   * What is the fee charged for deposits?
+   */
   struct TALER_AmountNBO fee_deposit;
+
+  /**
+   * What is the fee charged for melting?
+   */
   struct TALER_AmountNBO fee_refresh;
+
+  /**
+   * Key size in NBO.
+   */
+  uint32_t rsa_keysize;
 };
 
 GNUNET_NETWORK_STRUCT_END
 
+/**
+ * Set of all of the parameters that chracterize a coin.
+ */
 struct CoinTypeParams
 {
+
+  /**
+   * How long can the coin be spend?  Should be significantly
+   * larger than @e duration_withdraw (i.e. years).
+   */
   struct GNUNET_TIME_Relative duration_spend;
+
+  /**
+   * How long can the coin be withdrawn (generated)?  Should be small
+   * enough to limit how many coins will be signed into existence with
+   * the same key, but large enough to still provide a reasonable
+   * anonymity set.
+   */
   struct GNUNET_TIME_Relative duration_withdraw;
+
+  /**
+   * How much should coin creation (@e duration_withdraw) duration
+   * overlap with the next coin?  Basically, the starting time of two
+   * coins is always @e duration_withdraw - @e duration_overlap apart.
+   */
   struct GNUNET_TIME_Relative duration_overlap;
+
+  /**
+   * What is the value of the coin?
+   */
   struct TALER_Amount value;
+
+  /**
+   * What is the fee charged for withdrawl?
+   */
   struct TALER_Amount fee_withdraw;
+
+  /**
+   * What is the fee charged for deposits?
+   */
   struct TALER_Amount fee_deposit;
+
+  /**
+   * What is the fee charged for melting?
+   */
   struct TALER_Amount fee_refresh;
+
+  /**
+   * Time at which this coin is supposed to become valid.
+   */
   struct GNUNET_TIME_Absolute anchor;
+
+  /**
+   * Length of the RSA key in bits.
+   */
+  uint32_t rsa_keysize;
 };
 
 
@@ -97,12 +179,12 @@ static struct GNUNET_TIME_Absolute now;
 /**
  * Master private key of the mint.
  */
-static struct GNUNET_CRYPTO_EddsaPrivateKey *master_priv;
+static struct TALER_MasterPrivateKey master_priv;
 
 /**
  * Master public key of the mint.
  */
-static struct GNUNET_CRYPTO_EddsaPublicKey *master_pub;
+static struct TALER_MasterPublicKey master_pub;
 
 /**
  * Until what time do we provide keys?
@@ -110,152 +192,183 @@ static struct GNUNET_CRYPTO_EddsaPublicKey *master_pub;
 static struct GNUNET_TIME_Absolute lookahead_sign_stamp;
 
 
-static int
-config_get_denom (const char *section, const char *option, struct TALER_Amount *denom)
-{
-  char *str;
-  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_string (kcfg, section, option, &str))
-    return GNUNET_NO;
-  if (GNUNET_OK != TALER_string_to_amount (str, denom))
-    return GNUNET_SYSERR;
-  return GNUNET_OK;
-}
-
-
-static char *
-get_signkey_dir ()
-{
-  char *dir;
-  size_t len;
-  len = GNUNET_asprintf (&dir, ("%s" DIR_SEPARATOR_STR DIR_SIGNKEYS), mintdir);
-  GNUNET_assert (len > 0);
-  return dir;
-}
-
-
-static char *
+/**
+ * Obtain the name of the directory we use to store signing
+ * keys created at time @a start.
+ *
+ * @param start time at which we create the signing key
+ * @return name of the directory we should use, basically "$MINTDIR/$TIME/";
+ *         (valid until next call to this function)
+ */
+static const char *
 get_signkey_file (struct GNUNET_TIME_Absolute start)
 {
-  char *dir;
-  size_t len;
-  len = GNUNET_asprintf (&dir, ("%s" DIR_SEPARATOR_STR DIR_SIGNKEYS DIR_SEPARATOR_STR "%llu"),
-                         mintdir, (long long) start.abs_value_us);
-  GNUNET_assert (len > 0);
+  static char dir[4096];
+
+  GNUNET_snprintf (dir,
+                   sizeof (dir),
+                   "%s" DIR_SEPARATOR_STR DIR_SIGNKEYS DIR_SEPARATOR_STR "%llu",
+                   mintdir,
+                   (unsigned long long) start.abs_value_us);
   return dir;
 }
 
 
 /**
- * Hash the data defining the coin type.
- * Exclude information that may not be the same for all
- * instances of the coin type (i.e. the anchor, overlap).
+ * Hash the data defining the coin type.  Exclude information that may
+ * not be the same for all instances of the coin type (i.e. the
+ * anchor, overlap).
+ *
+ * @param p coin parameters to convert to a hash
+ * @param hash[OUT] set to the hash matching @a p
  */
 static void
-hash_coin_type (const struct CoinTypeParams *p, struct GNUNET_HashCode *hash)
+hash_coin_type (const struct CoinTypeParams *p,
+                struct GNUNET_HashCode *hash)
 {
   struct CoinTypeNBO p_nbo;
 
-  memset (&p_nbo, 0, sizeof (struct CoinTypeNBO));
-
+  memset (&p_nbo,
+          0,
+          sizeof (struct CoinTypeNBO));
   p_nbo.duration_spend = GNUNET_TIME_relative_hton (p->duration_spend);
   p_nbo.duration_withdraw = GNUNET_TIME_relative_hton (p->duration_withdraw);
-  p_nbo.value = TALER_amount_hton (p->value);
-  p_nbo.fee_withdraw = TALER_amount_hton (p->fee_withdraw);
-  p_nbo.fee_deposit = TALER_amount_hton (p->fee_deposit);
-  p_nbo.fee_refresh = TALER_amount_hton (p->fee_refresh);
-
-  GNUNET_CRYPTO_hash (&p_nbo, sizeof (struct CoinTypeNBO), hash);
+  TALER_amount_hton (&p_nbo.value,
+                     &p->value);
+  TALER_amount_hton (&p_nbo.fee_withdraw,
+                     &p->fee_withdraw);
+  TALER_amount_hton (&p_nbo.fee_deposit,
+                     &p->fee_deposit);
+  TALER_amount_hton (&p_nbo.fee_refresh,
+                     &p->fee_refresh);
+  p_nbo.rsa_keysize = htonl (p->rsa_keysize);
+  GNUNET_CRYPTO_hash (&p_nbo,
+                      sizeof (struct CoinTypeNBO),
+                      hash);
 }
 
 
+/**
+ * Obtain the name of the directory we should use to store coins of
+ * the given type.  The directory name has the format
+ * "$MINTDIR/$VALUE/$HASH/" where "$VALUE" represents the value of the
+ * coin and "$HASH" encodes all of the coin's parameters, generating a
+ * unique string for each type of coin.  Note that the "$HASH"
+ * includes neither the absolute creation time nor the key of the
+ * coin, thus the files in the subdirectory really just refer to the
+ * same type of coins, not the same coin.
+ *
+ * @param p coin parameters to convert to a directory name
+ * @return directory name (valid until next call to this function)
+ */
 static const char *
 get_cointype_dir (const struct CoinTypeParams *p)
 {
   static char dir[4096];
-  size_t len;
   struct GNUNET_HashCode hash;
   char *hash_str;
   char *val_str;
-  unsigned int i;
+  size_t i;
 
   hash_coin_type (p, &hash);
   hash_str = GNUNET_STRINGS_data_to_string_alloc (&hash,
                                                   sizeof (struct GNUNET_HashCode));
-  GNUNET_assert (HASH_CUTOFF <= strlen (hash_str) + 1);
   GNUNET_assert (NULL != hash_str);
+  GNUNET_assert (HASH_CUTOFF <= strlen (hash_str) + 1);
   hash_str[HASH_CUTOFF] = 0;
 
-  val_str = TALER_amount_to_string (p->value);
+  val_str = TALER_amount_to_string (&p->value);
   for (i = 0; i < strlen (val_str); i++)
-    if (':' == val_str[i] || '.' == val_str[i])
+    if ( (':' == val_str[i]) ||
+         ('.' == val_str[i]) )
       val_str[i] = '_';
 
-  len = GNUNET_snprintf (dir, sizeof (dir),
-                         ("%s" DIR_SEPARATOR_STR DIR_DENOMKEYS DIR_SEPARATOR_STR "%s-%s"),
-                         mintdir, val_str, hash_str);
-  GNUNET_assert (len > 0);
+  GNUNET_snprintf (dir,
+                   sizeof (dir),
+                   "%s" DIR_SEPARATOR_STR DIR_DENOMKEYS DIR_SEPARATOR_STR "%s-%s",
+                   mintdir,
+                   val_str,
+                   hash_str);
   GNUNET_free (hash_str);
+  GNUNET_free (val_str);
   return dir;
 }
 
 
+/**
+ * Obtain the name of the file we would use to store the key
+ * information for a coin of the given type @a p and validity
+ * start time @a start
+ *
+ * @param p parameters for the coin
+ * @param start when would the coin begin to be issued
+ * @return name of the file to use for this coin
+ *         (valid until next call to this function)
+ */
 static const char *
-get_cointype_file (struct CoinTypeParams *p,
+get_cointype_file (const struct CoinTypeParams *p,
                    struct GNUNET_TIME_Absolute start)
 {
-  const char *dir;
   static char filename[4096];
-  size_t len;
+  const char *dir;
+
   dir = get_cointype_dir (p);
-  len = GNUNET_snprintf (filename, sizeof (filename), ("%s" DIR_SEPARATOR_STR "%llu"),
-                         dir, (unsigned long long) start.abs_value_us);
-  GNUNET_assert (len > 0);
+  GNUNET_snprintf (filename,
+                   sizeof (filename),
+                   "%s" DIR_SEPARATOR_STR "%llu",
+                   dir,
+                   (unsigned long long) start.abs_value_us);
   return filename;
 }
 
 
 /**
- * Get the latest key file from the past.
+ * Get the latest key file from a past run of the key generation
+ * tool.  Used to calculate the starting time for the keys we
+ * generate during this invocation.  This function is used to
+ * handle both signing keys and coin keys, as in both cases
+ * the filenames correspond to the timestamps we need.
  *
- * @param cls closure
+ * @param cls closure, a `struct GNUNET_TIME_Absolute *`, updated
+ *                     to contain the highest timestamp (below #now)
+ *                     that was found
  * @param filename complete filename (absolute path)
- * @return #GNUNET_OK to continue to iterate,
- *  #GNUNET_NO to stop iteration with no error,
- *  #GNUNET_SYSERR to abort iteration with error!
+ * @return #GNUNET_OK (to continue to iterate)
  */
 static int
 get_anchor_iter (void *cls,
                  const char *filename)
 {
-  struct GNUNET_TIME_Absolute stamp;
   struct GNUNET_TIME_Absolute *anchor = cls;
+  struct GNUNET_TIME_Absolute stamp;
   const char *base;
   char *end = NULL;
 
   base = GNUNET_STRINGS_get_short_name (filename);
-  stamp.abs_value_us = strtol (base, &end, 10);
-
+  stamp.abs_value_us = strtol (base,
+                               &end,
+                               10);
   if ((NULL == end) || (0 != *end))
   {
-    fprintf(stderr, "Ignoring unexpected file '%s'.\n", filename);
+    fprintf(stderr,
+            "Ignoring unexpected file `%s'.\n",
+            filename);
     return GNUNET_OK;
   }
-
-  // TODO: check if it's actually a valid key file
-
-  if ((stamp.abs_value_us <= now.abs_value_us) && (stamp.abs_value_us > anchor->abs_value_us))
-    *anchor = stamp;
-
+  if (stamp.abs_value_us <= now.abs_value_us)
+    *anchor = GNUNET_TIME_absolute_max (stamp,
+                                        *anchor);
   return GNUNET_OK;
 }
 
 
 /**
  * Get the timestamp where the first new key should be generated.
- * Relies on correctly named key files.
+ * Relies on correctly named key files (as we do not parse them,
+ * but just look at the filenames to "guess" at their contents).
  *
- * @param dir directory with the signed stuff
- * @param duration how long is one key valid?
+ * @param dir directory that should contain the existing keys
+ * @param duration how long is one key valid (for signing)?
  * @param overlap what's the overlap between the keys validity period?
  * @param[out] anchor the timestamp where the first new key should be generated
  */
@@ -267,36 +380,57 @@ get_anchor (const char *dir,
 {
   GNUNET_assert (0 == duration.rel_value_us % 1000000);
   GNUNET_assert (0 == overlap.rel_value_us % 1000000);
-  if (GNUNET_YES != GNUNET_DISK_directory_test (dir, GNUNET_YES))
+  if (GNUNET_YES !=
+      GNUNET_DISK_directory_test (dir,
+                                  GNUNET_YES))
   {
     *anchor = now;
-    printf ("Can't look for anchor (%s)\n", dir);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "No existing keys found, starting with fresh key set.\n");
     return;
   }
-
   *anchor = GNUNET_TIME_UNIT_ZERO_ABS;
-  if (-1 == GNUNET_DISK_directory_scan (dir, &get_anchor_iter, anchor))
+  if (-1 ==
+      GNUNET_DISK_directory_scan (dir,
+                                  &get_anchor_iter,
+                                  anchor))
   {
     *anchor = now;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "No existing keys found, starting with fresh key set.\n");
     return;
   }
 
-  if ((GNUNET_TIME_absolute_add (*anchor, duration)).abs_value_us < now.abs_value_us)
+  /* FIXME: this check is a bit dubious, as 'now'
+     may be way into the future if we want to generate
+     many keys... #3727*/
+  if ((GNUNET_TIME_absolute_add (*anchor,
+                                 duration)).abs_value_us < now.abs_value_us)
   {
-    // there's no good anchor, start from now
-    // (existing keys are too old)
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Existing keys are way too old, starting with fresh key set.\n");
     *anchor = now;
   }
-  else if (anchor->abs_value_us != now.abs_value_us)
+  else if (anchor->abs_value_us != now.abs_value_us) // Also odd...
   {
-    // we have a good anchor
-    *anchor = GNUNET_TIME_absolute_add (*anchor, duration);
-    *anchor = GNUNET_TIME_absolute_subtract (*anchor, overlap);
+    /* Real starting time is the last start time + duration - overlap */
+    *anchor = GNUNET_TIME_absolute_add (*anchor,
+                                        duration);
+    *anchor = GNUNET_TIME_absolute_subtract (*anchor,
+                                             overlap);
   }
-  // anchor is now the stamp where we need to create a new key
+  /* anchor is now the stamp where we need to create a new key */
 }
 
 
+/**
+ * Create a mint signing key (for signing mint messages, not for coins)
+ * and assert its correctness by signing it with the master key.
+ *
+ * @param start start time of the validity period for the key
+ * @param duration how long should the key be valid
+ * @param pi[OUT] set to the signing key information
+ */
 static void
 create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
                            struct GNUNET_TIME_Relative duration,
@@ -306,33 +440,32 @@ create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
   struct TALER_MINT_SignKeyIssue *issue = &pi->issue;
 
   priv = GNUNET_CRYPTO_eddsa_key_create ();
-  GNUNET_assert (NULL != priv);
-  pi->signkey_priv = *priv;
+  pi->signkey_priv.eddsa_priv = *priv;
   GNUNET_free (priv);
-  issue->master_pub = *master_pub;
+  issue->master_pub = master_pub;
   issue->start = GNUNET_TIME_absolute_hton (start);
-  issue->expire = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (start, duration));
-
-  GNUNET_CRYPTO_eddsa_key_get_public (&pi->signkey_priv, &issue->signkey_pub);
-
+  issue->expire = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (start,
+                                                                       duration));
+  GNUNET_CRYPTO_eddsa_key_get_public (&pi->signkey_priv.eddsa_priv,
+                                      &issue->signkey_pub.eddsa_pub);
   issue->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNKEY);
-  issue->purpose.size = htonl (sizeof (struct TALER_MINT_SignKeyIssue) - offsetof (struct TALER_MINT_SignKeyIssue, purpose));
+  issue->purpose.size = htonl (sizeof (struct TALER_MINT_SignKeyIssue) -
+                               offsetof (struct TALER_MINT_SignKeyIssue,
+                                         purpose));
 
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (master_priv,
+                 GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
                                            &issue->purpose,
-                                           &issue->signature));
+                                           &issue->signature.eddsa_signature));
 }
 
 
-static int
-check_signkey_valid (const char *signkey_filename)
-{
-  // FIXME: do real checks
-  return GNUNET_OK;
-}
-
-
+/**
+ * Generate signing keys starting from the last key found to
+ * the lookahead time.
+ *
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
 static int
 mint_keys_update_signkeys ()
 {
@@ -340,110 +473,219 @@ mint_keys_update_signkeys ()
   struct GNUNET_TIME_Absolute anchor;
   char *signkey_dir;
 
-  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_time (kcfg, "mint_keys", "signkey_duration", &signkey_duration))
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (kcfg,
+                                           "mint_keys",
+                                           "signkey_duration",
+                                           &signkey_duration))
   {
-    fprintf (stderr, "Can't read config value mint_keys.signkey_duration\n");
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "mint_keys",
+                               "signkey_duration");
     return GNUNET_SYSERR;
   }
-  ROUND_TO_SECS (signkey_duration, rel_value_us);
-  signkey_dir = get_signkey_dir ();
-  // make sure the directory exists
-  if (GNUNET_OK != GNUNET_DISK_directory_create (signkey_dir))
+  ROUND_TO_SECS (signkey_duration,
+                 rel_value_us);
+  GNUNET_asprintf (&signkey_dir,
+                   "%s" DIR_SEPARATOR_STR DIR_SIGNKEYS,
+                   mintdir);
+  /* make sure the directory exists */
+  if (GNUNET_OK !=
+      GNUNET_DISK_directory_create (signkey_dir))
   {
-    fprintf (stderr, "Cant create signkey dir\n");
+    fprintf (stderr,
+             "Failed to create signing key directory\n");
     return GNUNET_SYSERR;
   }
 
-  get_anchor (signkey_dir, signkey_duration, GNUNET_TIME_UNIT_ZERO, &anchor);
+  get_anchor (signkey_dir,
+              signkey_duration,
+              GNUNET_TIME_UNIT_ZERO /* no overlap for signing keys */,
+              &anchor);
 
-  while (anchor.abs_value_us < lookahead_sign_stamp.abs_value_us) {
-    char *skf;
+  while (anchor.abs_value_us < lookahead_sign_stamp.abs_value_us)
+  {
+    const char *skf;
+    struct TALER_MINT_SignKeyIssuePriv signkey_issue;
+    ssize_t nwrite;
+
     skf = get_signkey_file (anchor);
-    if (GNUNET_YES != GNUNET_DISK_file_test (skf))
+    GNUNET_break (GNUNET_YES !=
+                  GNUNET_DISK_file_test (skf));
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Generating signing key for %s.\n",
+                GNUNET_STRINGS_absolute_time_to_string (anchor));
+    create_signkey_issue_priv (anchor,
+                               signkey_duration,
+                               &signkey_issue);
+    nwrite = GNUNET_DISK_fn_write (skf,
+                                   &signkey_issue,
+                                   sizeof (struct TALER_MINT_SignKeyIssue),
+                                   GNUNET_DISK_PERM_USER_WRITE | GNUNET_DISK_PERM_USER_READ);
+    if (nwrite != sizeof (struct TALER_MINT_SignKeyIssue))
     {
-      struct TALER_MINT_SignKeyIssuePriv signkey_issue;
-      ssize_t nwrite;
-      printf ("Generating signing key for %s.\n",
-              GNUNET_STRINGS_absolute_time_to_string (anchor));
-      create_signkey_issue_priv (anchor, signkey_duration, &signkey_issue);
-      nwrite = GNUNET_DISK_fn_write (skf, &signkey_issue, sizeof (struct TALER_MINT_SignKeyIssue),
-                                     (GNUNET_DISK_PERM_USER_WRITE | GNUNET_DISK_PERM_USER_READ));
-      if (nwrite != sizeof (struct TALER_MINT_SignKeyIssue))
-      {
-        fprintf (stderr, "Can't write to file '%s'\n", skf);
-        return GNUNET_SYSERR;
-      }
-    }
-    else if (GNUNET_OK != check_signkey_valid (skf))
-    {
+      fprintf (stderr,
+               "Failed to write to file `%s': %s\n",
+               skf,
+               STRERROR (errno));
       return GNUNET_SYSERR;
     }
-    anchor = GNUNET_TIME_absolute_add (anchor, signkey_duration);
+    anchor = GNUNET_TIME_absolute_add (anchor,
+                                       signkey_duration);
   }
   return GNUNET_OK;
 }
 
 
+/**
+ * Parse configuration for coin type parameters.  Also determines
+ * our anchor by looking at the existing coins of the same type.
+ *
+ * @param ct section in the configuration file giving the coin type parameters
+ * @param params[OUT] set to the coin parameters from the configuration
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if the configuration is invalid
+ */
 static int
-get_cointype_params (const char *ct, struct CoinTypeParams *params)
+get_cointype_params (const char *ct,
+                     struct CoinTypeParams *params)
 {
   const char *dir;
-  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_time (kcfg, "mint_denom_duration_withdraw", ct, &params->duration_withdraw))
-  {
-    fprintf (stderr, "Withdraw duration not given for coin type '%s'\n", ct);
-    return GNUNET_SYSERR;
-  }
-  ROUND_TO_SECS (params->duration_withdraw, rel_value_us);
-  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_time (kcfg, "mint_denom_duration_spend", ct, &params->duration_spend))
-  {
-    fprintf (stderr, "Spend duration not given for coin type '%s'\n", ct);
-    return GNUNET_SYSERR;
-  }
-  ROUND_TO_SECS (params->duration_spend, rel_value_us);
-  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_time (kcfg, "mint_denom_duration_overlap", ct, &params->duration_overlap))
-  {
-    fprintf (stderr, "Overlap duration not given for coin type '%s'\n", ct);
-    return GNUNET_SYSERR;
-  }
-  ROUND_TO_SECS (params->duration_overlap, rel_value_us);
+  unsigned long long rsa_keysize;
 
-  if (GNUNET_OK != config_get_denom ("mint_denom_value", ct, &params->value))
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (kcfg,
+                                           ct,
+                                           "duration_withdraw",
+                                           &params->duration_withdraw))
   {
-    fprintf (stderr, "Value not given for coin type '%s'\n", ct);
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "duration_withdraw");
     return GNUNET_SYSERR;
   }
-
-  if (GNUNET_OK != config_get_denom ("mint_denom_fee_withdraw", ct, &params->fee_withdraw))
+  ROUND_TO_SECS (params->duration_withdraw,
+                 rel_value_us);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (kcfg,
+                                           ct,
+                                           "duration_spend",
+                                           &params->duration_spend))
   {
-    fprintf (stderr, "Withdraw fee not given for coin type '%s'\n", ct);
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "duration_spend");
     return GNUNET_SYSERR;
   }
-
-  if (GNUNET_OK != config_get_denom ("mint_denom_fee_deposit", ct, &params->fee_deposit))
+  ROUND_TO_SECS (params->duration_spend,
+                 rel_value_us);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (kcfg,
+                                           ct,
+                                           "duration_overlap",
+                                           &params->duration_overlap))
   {
-    fprintf (stderr, "Deposit fee not given for coin type '%s'\n", ct);
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "mint_denom_duration_overlap");
     return GNUNET_SYSERR;
   }
-
-  if (GNUNET_OK != config_get_denom ("mint_denom_fee_refresh", ct, &params->fee_refresh))
+  ROUND_TO_SECS (params->duration_overlap,
+                 rel_value_us);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (kcfg,
+                                             ct,
+                                             "rsa_keysize",
+                                             &rsa_keysize))
   {
-    fprintf (stderr, "Deposit fee not given for coin type '%s'\n", ct);
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "rsa_keysize");
+    return GNUNET_SYSERR;
+  }
+  if ( (rsa_keysize > 4 * 2048) ||
+       (rsa_keysize < 1024) )
+  {
+    fprintf (stderr,
+             "Given RSA keysize %llu outside of permitted range\n",
+             rsa_keysize);
+    return GNUNET_SYSERR;
+  }
+  params->rsa_keysize = (unsigned int) rsa_keysize;
+  if (GNUNET_OK !=
+      TALER_config_get_denom (kcfg,
+                              ct,
+                              "value",
+                              &params->value))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "value");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_config_get_denom (kcfg,
+                              ct,
+                              "fee_withdraw",
+                              &params->fee_withdraw))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "fee_withdraw");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_config_get_denom (kcfg,
+                              ct,
+                              "fee_deposit",
+                              &params->fee_deposit))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "fee_deposit");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_config_get_denom (kcfg,
+                              ct,
+                              "fee_refresh",
+                              &params->fee_refresh))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "fee_refresh");
     return GNUNET_SYSERR;
   }
 
   dir = get_cointype_dir (params);
-  get_anchor (dir, params->duration_spend, params->duration_overlap, &params->anchor);
+  get_anchor (dir,
+              params->duration_spend,
+              params->duration_overlap,
+              &params->anchor);
   return GNUNET_OK;
 }
 
 
+/**
+ * Initialize the private and public key information structure for
+ * signing coins into existence.  Generates the private signing key
+ * and signes it together with the coin's meta data using the master
+ * signing key.
+ *
+ * @param params parameters used to initialize the @a dki
+ * @param dki[OUT] initialized according to @a params
+ */
 static void
-create_denomkey_issue (struct CoinTypeParams *params,
+create_denomkey_issue (const struct CoinTypeParams *params,
                        struct TALER_MINT_DenomKeyIssuePriv *dki)
 {
-  GNUNET_assert (NULL != (dki->denom_priv = GNUNET_CRYPTO_rsa_private_key_create (RSA_KEYSIZE)));
-  dki->issue.denom_pub = GNUNET_CRYPTO_rsa_private_key_get_public (dki->denom_priv);
-  dki->issue.master = *master_pub;
+  dki->denom_priv.rsa_private_key
+    = GNUNET_CRYPTO_rsa_private_key_create (params->rsa_keysize);
+  GNUNET_assert (NULL != dki->denom_priv.rsa_private_key);
+  dki->denom_pub.rsa_public_key
+    = GNUNET_CRYPTO_rsa_private_key_get_public (dki->denom_priv.rsa_private_key);
+  GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
+                                     &dki->issue.denom_hash);
+  dki->issue.master = master_pub;
   dki->issue.start = GNUNET_TIME_absolute_hton (params->anchor);
   dki->issue.expire_withdraw =
       GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
@@ -451,137 +693,125 @@ create_denomkey_issue (struct CoinTypeParams *params,
   dki->issue.expire_spend =
     GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
                                                            params->duration_spend));
-  dki->issue.value = TALER_amount_hton (params->value);
-  dki->issue.fee_withdraw = TALER_amount_hton (params->fee_withdraw);
-  dki->issue.fee_deposit = TALER_amount_hton (params->fee_deposit);
-  dki->issue.fee_refresh = TALER_amount_hton (params->fee_refresh);
-
+  TALER_amount_hton (&dki->issue.value,
+                     &params->value);
+  TALER_amount_hton (&dki->issue.fee_withdraw,
+                     &params->fee_withdraw);
+  TALER_amount_hton (&dki->issue.fee_deposit,
+                     &params->fee_deposit);
+  TALER_amount_hton (&dki->issue.fee_refresh,
+                     &params->fee_refresh);
   dki->issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOM);
-  dki->issue.purpose.size = htonl (sizeof (struct TALER_MINT_DenomKeyIssuePriv) - offsetof (struct TALER_MINT_DenomKeyIssuePriv, issue.purpose));
-
+  dki->issue.purpose.size = htonl (sizeof (struct TALER_MINT_DenomKeyIssuePriv) -
+                                   offsetof (struct TALER_MINT_DenomKeyIssuePriv,
+                                             issue.purpose));
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (master_priv,
+                 GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
                                            &dki->issue.purpose,
-                                           &dki->issue.signature));
-}
-
-
-static int
-check_cointype_valid (const char *filename, struct CoinTypeParams *params)
-{
-  // FIXME: add real checks
-  return GNUNET_OK;
-}
-
-
-static int
-mint_keys_update_cointype (const char *coin_alias)
-{
-  struct CoinTypeParams p;
-  const char *cointype_dir;
-
-  if (GNUNET_OK != get_cointype_params (coin_alias, &p))
-    return GNUNET_SYSERR;
-
-  cointype_dir = get_cointype_dir (&p);
-  if (GNUNET_OK != GNUNET_DISK_directory_create (cointype_dir))
-    return GNUNET_SYSERR;
-
-  while (p.anchor.abs_value_us < lookahead_sign_stamp.abs_value_us) {
-    const char *dkf;
-    dkf = get_cointype_file (&p, p.anchor);
-
-    if (GNUNET_YES != GNUNET_DISK_file_test (dkf))
-    {
-      struct TALER_MINT_DenomKeyIssuePriv denomkey_issue;
-      int ret;
-      printf ("Generating denomination key for type '%s', start %s.\n",
-              coin_alias,
-              GNUNET_STRINGS_absolute_time_to_string (p.anchor));
-      printf ("Target path: %s\n", dkf);
-      create_denomkey_issue (&p, &denomkey_issue);
-      ret = TALER_MINT_write_denom_key (dkf, &denomkey_issue);
-      GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv);
-      if (GNUNET_OK != ret)
-      {
-        fprintf (stderr, "Can't write to file '%s'\n", dkf);
-        return GNUNET_SYSERR;
-      }
-    }
-    else if (GNUNET_OK != check_cointype_valid (dkf, &p))
-    {
-      return GNUNET_SYSERR;
-    }
-    p.anchor = GNUNET_TIME_absolute_add (p.anchor, p.duration_spend);
-    p.anchor = GNUNET_TIME_absolute_subtract (p.anchor, p.duration_overlap);
-  }
-  return GNUNET_OK;
-}
-
-
-static int
-mint_keys_update_denomkeys ()
-{
-  char *coin_types;
-  char *ct;
-  char *tok_ctx;
-
-  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_string (kcfg, "mint_keys", "coin_types", &coin_types))
-  {
-    fprintf (stderr, "mint_keys.coin_types not in configuration\n");
-    return GNUNET_SYSERR;
-  }
-
-  for (ct = strtok_r (coin_types, " ", &tok_ctx);
-       ct != NULL;
-       ct = strtok_r (NULL, " ", &tok_ctx))
-  {
-    if (GNUNET_OK != mint_keys_update_cointype (ct))
-    {
-      GNUNET_free (coin_types);
-      return GNUNET_SYSERR;
-    }
-  }
-  GNUNET_free (coin_types);
-  return GNUNET_OK;
-}
-
-
-static int
-mint_keys_update ()
-{
-  int ret;
-  struct GNUNET_TIME_Relative lookahead_sign;
-  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_time (kcfg, "mint_keys", "lookahead_sign", &lookahead_sign))
-  {
-    fprintf (stderr, "mint_keys.lookahead_sign not found\n");
-    return GNUNET_SYSERR;
-  }
-  if (lookahead_sign.rel_value_us == 0)
-  {
-    fprintf (stderr, "mint_keys.lookahead_sign must not be zero\n");
-    return GNUNET_SYSERR;
-  }
-  ROUND_TO_SECS (lookahead_sign, rel_value_us);
-  lookahead_sign_stamp = GNUNET_TIME_absolute_add (now, lookahead_sign);
-
-  ret = mint_keys_update_signkeys ();
-  if (GNUNET_OK != ret)
-    return GNUNET_SYSERR;
-
-  return mint_keys_update_denomkeys ();
+                                           &dki->issue.signature.eddsa_signature));
 }
 
 
 /**
- * The main function of the keyup tool
+ * Generate new coin signing keys for the coin type of the given @a
+ * coin_alias.
+ *
+ * @param cls a `int *`, to be set to #GNUNET_SYSERR on failure
+ * @param coin_alias name of the coin's section in the configuration
+ */
+static void
+mint_keys_update_cointype (void *cls,
+                           const char *coin_alias)
+{
+  int *ret = cls;
+  struct CoinTypeParams p;
+  const char *dkf;
+  struct TALER_MINT_DenomKeyIssuePriv denomkey_issue;
+
+  if (0 != strncasecmp (coin_alias,
+                        "coin_",
+                        strlen ("coin_")))
+    return; /* not a coin definition */
+  if (GNUNET_OK !=
+      get_cointype_params (coin_alias,
+                           &p))
+  {
+    *ret = GNUNET_SYSERR;
+    return;
+  }
+  if (GNUNET_OK !=
+      GNUNET_DISK_directory_create (get_cointype_dir (&p)))
+  {
+    *ret = GNUNET_SYSERR;
+    return;
+  }
+
+  while (p.anchor.abs_value_us < lookahead_sign_stamp.abs_value_us)
+  {
+    dkf = get_cointype_file (&p,
+                             p.anchor);
+    GNUNET_break (GNUNET_YES != GNUNET_DISK_file_test (dkf));
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Generating denomination key for type `%s', start %s at %s\n",
+                coin_alias,
+                GNUNET_STRINGS_absolute_time_to_string (p.anchor),
+                dkf);
+    create_denomkey_issue (&p,
+                           &denomkey_issue);
+    if (GNUNET_OK !=
+        TALER_MINT_write_denom_key (dkf,
+                                    &denomkey_issue))
+    {
+      fprintf (stderr,
+               "Failed to write denomination key information to file `%s'.\n",
+               dkf);
+      *ret = GNUNET_SYSERR;
+      GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv.rsa_private_key);
+      return;
+    }
+    GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv.rsa_private_key);
+    p.anchor = GNUNET_TIME_absolute_add (p.anchor,
+                                         p.duration_spend);
+    p.anchor = GNUNET_TIME_absolute_subtract (p.anchor,
+                                              p.duration_overlap);
+  }
+}
+
+
+/**
+ * Update all of the denomination keys of the mint.
+ *
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+static int
+mint_keys_update_denomkeys ()
+{
+  int ok;
+
+  ok = GNUNET_OK;
+  GNUNET_CONFIGURATION_iterate_sections (kcfg,
+                                         &mint_keys_update_cointype,
+                                         &ok);
+  return ok;
+}
+
+
+/**
+ * The main function of the taler-mint-keyup tool.  This tool is used
+ * to create the signing and denomination keys for the mint.  It uses
+ * the long-term offline private key and writes the (additional) key
+ * files to the respective mint directory (from where they can then be
+ * copied to the online server).  Note that we need (at least) the
+ * most recent generated previous keys so as to align the validity
+ * periods.
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments
  * @return 0 ok, 1 on error
  */
 int
-main (int argc, char *const *argv)
+main (int argc,
+      char *const *argv)
 {
   static const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_OPTION_HELP ("gnunet-mint-keyup OPTIONS"),
@@ -596,22 +826,33 @@ main (int argc, char *const *argv)
      &GNUNET_GETOPT_set_string, &pretend_time_str},
     GNUNET_GETOPT_OPTION_END
   };
+  struct GNUNET_TIME_Relative lookahead_sign;
+  struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
 
-  GNUNET_assert (GNUNET_OK == GNUNET_log_setup ("taler-mint-keyup", "WARNING", NULL));
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_log_setup ("taler-mint-keyup",
+                                   "WARNING",
+                                   NULL));
 
-  if (GNUNET_GETOPT_run ("taler-mint-keyup", options, argc, argv) < 0)
+  if (GNUNET_GETOPT_run ("taler-mint-keyup",
+                         options,
+                         argc, argv) < 0)
     return 1;
   if (NULL == mintdir)
   {
-    fprintf (stderr, "mint directory not given\n");
+    fprintf (stderr,
+             "Mint directory not given\n");
     return 1;
   }
-
   if (NULL != pretend_time_str)
   {
-    if (GNUNET_OK != GNUNET_STRINGS_fancy_time_to_absolute (pretend_time_str, &now))
+    if (GNUNET_OK !=
+        GNUNET_STRINGS_fancy_time_to_absolute (pretend_time_str,
+                                               &now))
     {
-      fprintf (stderr, "timestamp invalid\n");
+      fprintf (stderr,
+               "timestamp `%s' invalid\n",
+               pretend_time_str);
       return 1;
     }
   }
@@ -624,44 +865,90 @@ main (int argc, char *const *argv)
   kcfg = TALER_config_load (mintdir);
   if (NULL == kcfg)
   {
-    fprintf (stderr, "can't load mint configuration\n");
+    fprintf (stderr,
+             "Failed to load mint configuration\n");
     return 1;
   }
-
   if (NULL == masterkeyfile)
   {
-    fprintf (stderr, "master key file not given\n");
+    fprintf (stderr,
+             "Master key file not given\n");
     return 1;
   }
-  master_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (masterkeyfile);
-  if (NULL == master_priv)
+  eddsa_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (masterkeyfile);
+  if (NULL == eddsa_priv)
   {
-    fprintf (stderr, "master key invalid\n");
+    fprintf (stderr,
+             "Failed to initialize master key from file `%s'\n",
+             masterkeyfile);
     return 1;
   }
+  master_priv.eddsa_priv = *eddsa_priv;
+  GNUNET_free (eddsa_priv);
+  GNUNET_CRYPTO_eddsa_key_get_public (&master_priv.eddsa_priv,
+                                      &master_pub.eddsa_pub);
 
-  master_pub = GNUNET_new (struct GNUNET_CRYPTO_EddsaPublicKey);
-  GNUNET_CRYPTO_eddsa_key_get_public (master_priv, master_pub);
-
-  // check if key from file matches the one from the configuration
+  /* check if key from file matches the one from the configuration */
   {
     struct GNUNET_CRYPTO_EddsaPublicKey master_pub_from_cfg;
+
     if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_data (kcfg, "mint", "master_pub",
+        GNUNET_CONFIGURATION_get_data (kcfg,
+                                       "mint",
+                                       "master_pub",
                                        &master_pub_from_cfg,
                                        sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
     {
-      fprintf (stderr, "master key missing in configuration (mint.master_pub)\n");
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "mint",
+                                 "master_pub");
       return 1;
     }
-    if (0 != memcmp (master_pub, &master_pub_from_cfg, sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
+    if (0 !=
+        memcmp (&master_pub,
+                &master_pub_from_cfg,
+                sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
     {
-      fprintf (stderr, "Mismatch between key from mint configuration and master private key file from command line.\n");
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "mint",
+                                 "master_pub",
+                                 _("does not match with private key"));
       return 1;
     }
   }
 
-  if (GNUNET_OK != mint_keys_update ())
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (kcfg,
+                                           "mint_keys",
+                                           "lookahead_sign",
+                                           &lookahead_sign))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "mint_keys",
+                               "lookahead_sign");
+    return GNUNET_SYSERR;
+  }
+  if (0 == lookahead_sign.rel_value_us)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "mint_keys",
+                               "lookahead_sign",
+                               _("must not be zero"));
+    return GNUNET_SYSERR;
+  }
+  ROUND_TO_SECS (lookahead_sign,
+                 rel_value_us);
+  lookahead_sign_stamp = GNUNET_TIME_absolute_add (now,
+                                                   lookahead_sign);
+
+
+  /* finally, do actual work */
+  if (GNUNET_OK != mint_keys_update_signkeys ())
+    return 1;
+
+  if (GNUNET_OK != mint_keys_update_denomkeys ())
     return 1;
   return 0;
 }
+
+/* end of taler-mint-keyup.c */

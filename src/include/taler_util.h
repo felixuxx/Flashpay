@@ -84,5 +84,31 @@ struct GNUNET_CONFIGURATION_Handle *
 TALER_config_load (const char *base_dir);
 
 
+/**
+ * Obtain denomination amount from configuration file.
+ *
+ * @param section section of the configuration to access
+ * @param option option of the configuration to access
+ * @param denom[OUT] set to the amount found in configuration
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+TALER_config_get_denom (struct GNUNET_CONFIGURATION_Handle *cfg,
+                        const char *section,
+                        const char *option,
+                        struct TALER_Amount *denom);
+
+
+/**
+ * Get the path to a specific Taler installation directory or, with
+ * #GNUNET_OS_IPK_SELF_PREFIX, the current running apps installation
+ * directory.
+ *
+ * @param dirkind what kind of directory is desired?
+ * @return a pointer to the dir path (to be freed by the caller)
+ */
+char *
+TALER_OS_installation_get_path (enum GNUNET_OS_InstallationPathKind dirkind);
+
 
 #endif

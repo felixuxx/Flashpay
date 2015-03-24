@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -28,8 +28,18 @@
 #ifndef TALER_SIGNATURES_H
 #define TALER_SIGNATURES_H
 
-#include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
+
+/**
+ * Cut-and-choose size for refreshing.  Client looses the gamble (of
+ * unaccountable transfers) with probability 1/KAPPA.  Refresh cost
+ * increases linearly with KAPPA, and 3 is sufficient up to a
+ * income/sales tax of 66% of total transaction value.  As there is
+ * no good reason to change this security parameter, we declare it
+ * fixed and part of the protocol.
+ */
+#define KAPPA 3
+
 
 /**
  * Purpose for signing public keys signed
@@ -62,28 +72,21 @@
 #define TALER_SIGNATURE_REFRESH_MELT_COIN 5
 
 /**
- * Signature where the refresh session confirms
- * the commits.
- */
-#define TALER_SIGNATURE_REFRESH_MELT_SESSION 6
-
-/**
  * Signature where the mint (current signing key)
  * confirms the no-reveal index for cut-and-choose and
  * the validity of the melted coins.
  */
-#define TALER_SIGNATURE_REFRESH_MELT_RESPONSE 7
-
-/**
- * Signature where coins confirm that they want
- * to be melted into a certain session.
- */
-#define TALER_SIGNATURE_REFRESH_MELT_CONFIRM 9
+#define TALER_SIGNATURE_REFRESH_MELT_RESPONSE 6
 
 /**
  * Signature where the Mint confirms a deposit request.
  */
-#define TALER_SIGNATURE_MINT_DEPOSIT 10
+#define TALER_SIGNATURE_MINT_DEPOSIT 7
+
+/**
+ * Signature where the Mint confirms the full /keys response set.
+ */
+#define TALER_SIGNATURE_KEYS_SET 8
 
 
 /***********************/
@@ -129,7 +132,16 @@ struct TALER_WithdrawRequest
    * Reserve public key (which reserve to withdraw from).  This is
    * the public key which must match the signature.
    */
-  struct GNUNET_CRYPTO_EddsaPublicKey reserve_pub;
+  struct TALER_ReservePublicKey reserve_pub;
+
+  /**
+   * Value of the coin being minted (matching the denomination key)
+   * plus the transaction fee.  We include this in what is being
+   * signed so that we can verify a reserve's remaining total balance
+   * without needing to access the respective denomination key
+   * information each time.
+   */
+  struct TALER_AmountNBO amount_with_fee;
 
   /**
    * Hash of the denomination public key for the coin that is withdrawn.
@@ -171,14 +183,16 @@ struct TALER_DepositRequest
   uint64_t transaction_id GNUNET_PACKED;
 
   /**
-   * Amount to be deposited.
+   * Amount to be deposited, including fee.
    */
-  struct TALER_AmountNBO amount;
+  struct TALER_AmountNBO amount_with_fee;
+  /* FIXME: we should probably also include the value of
+     the depositing fee here as well! */
 
   /**
    * The coin's public key.
    */
-  struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+  struct TALER_CoinSpendPublicKey coin_pub;
 
 };
 
@@ -211,19 +225,22 @@ struct TALER_DepositConfirmation
   uint64_t transaction_id GNUNET_PACKED;
 
   /**
-   * Amount to be deposited.
+   * Amount to be deposited, including fee.
    */
-  struct TALER_AmountNBO amount;
+  struct TALER_AmountNBO amount_with_fee;
+
+  /* FIXME: we should probably also include the value of
+     the depositing fee here as well! */
 
   /**
    * The coin's public key.
    */
-  struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
+  struct TALER_CoinSpendPublicKey coin_pub;
 
   /**
    * The Merchant's public key.
    */
-  struct GNUNET_CRYPTO_EddsaPublicKey merchant;
+  struct TALER_MerchantPublicKey merchant;
 
 };
 
@@ -240,51 +257,27 @@ struct RefreshMeltCoinSignature
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Which melting operation should the coin become a part of.
+   * Which melting session should the coin become a part of.
    */
-  struct GNUNET_HashCode melt_hash;
+  struct GNUNET_HashCode session_hash;
 
   /**
-   * How much of the value of the coin should be melted?
-   * This amount includes the fees, so the final amount contributed
-   * to the melt is this value minus the fee for melting the coin.
+   * How much of the value of the coin should be melted?  This amount
+   * includes the fees, so the final amount contributed to the melt is
+   * this value minus the fee for melting the coin.  We include the
+   * fee in what is being signed so that we can verify a reserve's
+   * remaining total balance without needing to access the respective
+   * denomination key information each time.
    */
-  struct TALER_AmountNBO amount;
+  struct TALER_AmountNBO amount_with_fee;
+
+  /* FIXME: we should probably also include the value of
+     the melting fee here as well! */
 
   /**
    * The coin's public key.
    */
-  struct GNUNET_CRYPTO_EcdsaPublicKey coin_pub;
-};
-
-
-/**
- * Message signed by a coin to indicate that the coin should
- * be melted.
- */
-struct RefreshMeltSessionSignature
-{
-  /**
-   * Purpose is #TALER_SIGNATURE_REFRESH_MELT_SESSION
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Which melting operation should the coin become a part of.
-   */
-  struct GNUNET_HashCode melt_hash;
-
-  /**
-   * Public key of the refresh session for which
-   * @e melt_client_signature must be a valid signature.
-   */
-  struct GNUNET_CRYPTO_EddsaPublicKey session_key;
-
-  /**
-   * What is the total value of the coins created during the
-   * refresh, excluding fees?
-   */
-  struct TALER_AmountNBO amount;
+  struct TALER_CoinSpendPublicKey coin_pub;
 };
 
 
@@ -314,57 +307,147 @@ struct RefreshMeltResponseSignatureBody
 
 
 /**
- * Message signed by the client requesting the final
- * result of the melting operation.
- */
-struct RefreshMeltConfirmSignRequestBody
-{
-  /**
-   * Purpose is #TALER_SIGNATURE_REFRESH_MELT_CONFIRM.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * FIXME.
-   */
-  struct GNUNET_CRYPTO_EddsaPublicKey session_pub;
-};
-
-
-/**
- * FIXME
+ * Information about a signing key of the mint.  Signing keys are used
+ * to sign mint messages other than coins, i.e. to confirm that a
+ * deposit was successful or that a refresh was accepted.
  */
 struct TALER_MINT_SignKeyIssue
 {
-  struct GNUNET_CRYPTO_EddsaSignature signature;
+  /**
+   * Signature over the signing key (by the master key of the mint).
+   */
+  struct TALER_MasterSignature signature;
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_SIGNKEY.
+   */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-  struct GNUNET_CRYPTO_EddsaPublicKey master_pub;
+
+  /**
+   * Master public key of the mint corresponding to @e signature.
+   * This is the long-term offline master key of the mint.
+   */
+  struct TALER_MasterPublicKey master_pub;
+
+  /**
+   * When does this signing key begin to be valid?
+   */
   struct GNUNET_TIME_AbsoluteNBO start;
+
+  /**
+   * When does this signing key expire? Note: This is
+   * currently when the Mint will definitively stop using it.
+   * This does not mean that all signatures with tkey key are
+   * afterwards invalid.
+   */
   struct GNUNET_TIME_AbsoluteNBO expire;
-  struct GNUNET_CRYPTO_EddsaPublicKey signkey_pub;
+
+  /**
+   * The public online signing key that the mint will use
+   * between @e start and @e expire.
+   */
+  struct TALER_MintPublicKey signkey_pub;
 };
 
 
 /**
- * FIXME
+ * Signature made by the mint over the full set of keys, used
+ * to detect cheating mints that give out different sets to
+ * different users.
  */
-struct TALER_MINT_DenomKeyIssue
+struct TALER_MINT_KeySetSignature
 {
-  struct GNUNET_CRYPTO_EddsaSignature signature;
+
+  /**
+   * Purpose is #TALER_SIGNATURE_KEYS_SET
+   */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-  struct GNUNET_CRYPTO_EddsaPublicKey master;
-  struct GNUNET_TIME_AbsoluteNBO start;
-  struct GNUNET_TIME_AbsoluteNBO expire_withdraw;
-  struct GNUNET_TIME_AbsoluteNBO expire_spend;
-  // FIXME: does not work like this:
-  struct GNUNET_CRYPTO_rsa_PublicKey * denom_pub;
-  struct TALER_AmountNBO value;
-  struct TALER_AmountNBO fee_withdraw;
-  struct TALER_AmountNBO fee_deposit;
-  struct TALER_AmountNBO fee_refresh;
+
+  /**
+   * Time of the key set issue.
+   */
+  struct GNUNET_TIME_AbsoluteNBO list_issue_date;
+
+  /**
+   * Hash over the "inner" JSON with the key set.
+   */
+  struct GNUNET_HashCode hc;
 };
 
 
+/**
+ * Information about a denomination key. Denomination keys
+ * are used to sign coins of a certain value into existence.
+ */
+struct TALER_MINT_DenomKeyIssue
+{
+  /**
+   * Signature over this struct to affirm the validity
+   * of the key.
+   */
+  struct TALER_MasterSignature signature;
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_DENOM.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * The long-term offline master key of the mint that was
+   * used to create @e signature.
+   */
+  struct TALER_MasterPublicKey master;
+
+  /**
+   * Start time of the validity period for this key.
+   */
+  struct GNUNET_TIME_AbsoluteNBO start;
+
+  /**
+   * The mint will sign fresh coins between @e start and
+   * this time.
+   */
+  struct GNUNET_TIME_AbsoluteNBO expire_withdraw;
+
+  /**
+   * Coins signed with the denomination key must be spent or refreshed
+   * between @e start and this expiration time.  After this time, the
+   * mint will refuse transactions involving this key as it will
+   * "drop" the table with double-spending information (shortly after)
+   * this time.  Note that wallets should refresh coins significantly
+   * before this time to be on the safe side.
+   */
+  struct GNUNET_TIME_AbsoluteNBO expire_spend;
+
+  /**
+   * The value of the coins signed with this denomination key.
+   */
+  struct TALER_AmountNBO value;
+
+  /**
+   * The fee the mint charges when a coin of this type is withdrawn.
+   * (can be zero).
+   */
+  struct TALER_AmountNBO fee_withdraw;
+
+  /**
+   * The fee the mint charges when a coin of this type is deposited.
+   * (can be zero).
+   */
+  struct TALER_AmountNBO fee_deposit;
+
+  /**
+   * The fee the mint charges when a coin of this type is refreshed.
+   * (can be zero).
+   */
+  struct TALER_AmountNBO fee_refresh;
+
+  /**
+   * Hash code of the denomination public key.
+   */
+  struct GNUNET_HashCode denom_hash;
+
+};
 
 GNUNET_NETWORK_STRUCT_END
 

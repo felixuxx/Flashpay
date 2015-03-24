@@ -185,11 +185,11 @@ TALER_MINT_reply_invalid_json (struct MHD_Connection *connection);
  */
 int
 TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
-                                  const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
+                                  const struct TALER_CoinSpendPublicKey *coin_pub,
                                   const struct GNUNET_HashCode *h_wire,
                                   const struct GNUNET_HashCode *h_contract,
                                   uint64_t transaction_id,
-                                  const struct GNUNET_CRYPTO_EddsaPublicKey *merchant,
+                                  const struct TALER_MerchantPublicKey *merchant,
                                   const struct TALER_Amount *amount);
 
 
@@ -276,7 +276,7 @@ TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
-                                                  const struct GNUNET_CRYPTO_EcdsaPublicKey *coin_pub,
+                                                  const struct TALER_CoinSpendPublicKey *coin_pub,
                                                   struct TALER_Amount coin_value,
                                                   struct TALER_MINT_DB_TransactionList *tl,
                                                   struct TALER_Amount requested,
@@ -294,7 +294,7 @@ TALER_MINT_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connect
 int
 TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
                                          unsigned int num_newcoins,
-                                         struct GNUNET_CRYPTO_rsa_Signature **sigs);
+                                         const struct TALER_DenominationSignature *sigs);
 
 
 /**
@@ -332,7 +332,7 @@ TALER_MINT_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
  */
 int
 TALER_MINT_reply_refresh_link_success (struct MHD_Connection *connection,
-                                       const struct GNUNET_CRYPTO_EcdsaPublicKey *transfer_pub,
+                                       const struct TALER_TransferPublicKey *transfer_pub,
                                        const struct TALER_EncryptedLinkSecret *shared_secret_enc,
                                        const struct LinkDataList *ldl);
 

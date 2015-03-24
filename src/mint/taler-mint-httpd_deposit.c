@@ -32,11 +32,10 @@
 #include <microhttpd.h>
 #include <libpq-fe.h>
 #include <pthread.h>
-#include "mint_db.h"
+#include "taler_mintdb_plugin.h"
 #include "taler_signatures.h"
 #include "taler_util.h"
 #include "taler-mint-httpd_parsing.h"
-#include "taler-mint-httpd_keys.h"
 #include "taler-mint-httpd_db.h"
 #include "taler-mint-httpd_deposit.h"
 #include "taler-mint-httpd_responses.h"
@@ -60,19 +59,21 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   struct MintKeyState *key_state;
   struct TALER_DepositRequest dr;
   struct TALER_MINT_DenomKeyIssuePriv *dki;
+  struct TALER_Amount fee_deposit;
 
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_DEPOSIT);
   dr.purpose.size = htonl (sizeof (struct TALER_DepositRequest));
   dr.h_contract = deposit->h_contract;
   dr.h_wire = deposit->h_wire;
   dr.transaction_id = GNUNET_htonll (deposit->transaction_id);
-  dr.amount = TALER_amount_hton (deposit->amount);
+  TALER_amount_hton (&dr.amount_with_fee,
+                     &deposit->amount_with_fee);
   dr.coin_pub = deposit->coin.coin_pub;
   if (GNUNET_OK !=
       GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_WALLET_DEPOSIT,
                                   &dr.purpose,
-                                  &deposit->csig,
-                                  &deposit->coin.coin_pub))
+                                  &deposit->csig.ecdsa_signature,
+                                  &deposit->coin.coin_pub.ecdsa_pub))
   {
     LOG_WARNING ("Invalid signature on /deposit request\n");
     return TALER_MINT_reply_arg_invalid (connection,
@@ -81,7 +82,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   /* check denomination exists and is valid */
   key_state = TALER_MINT_key_state_acquire ();
   dki = TALER_MINT_get_denom_key (key_state,
-                                  deposit->coin.denom_pub);
+                                  &deposit->coin.denom_pub);
   if (NULL == dki)
   {
     TALER_MINT_key_state_release (key_state);
@@ -96,6 +97,17 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
     LOG_WARNING ("Invalid coin passed for /deposit\n");
     TALER_MINT_key_state_release (key_state);
     return TALER_MINT_reply_coin_invalid (connection);
+  }
+  TALER_amount_ntoh (&fee_deposit,
+                     &dki->issue.fee_deposit);
+  if (TALER_amount_cmp (&fee_deposit,
+                        &deposit->amount_with_fee) < 0)
+  {
+    TALER_MINT_key_state_release (key_state);
+    return (MHD_YES ==
+            TALER_MINT_reply_external_error (connection,
+                                             "deposited amount smaller than depositing fee"))
+      ? GNUNET_NO : GNUNET_SYSERR;
   }
   TALER_MINT_key_state_release (key_state);
 
@@ -119,7 +131,7 @@ static int
 parse_and_handle_deposit_request (struct MHD_Connection *connection,
                                   const json_t *root,
                                   const struct TALER_Amount *amount,
-                                  const json_t *wire)
+                                  json_t *wire)
 {
   int res;
   struct Deposit deposit;
@@ -167,7 +179,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   GNUNET_free (wire_enc);
 
   deposit.wire = wire;
-  deposit.amount = *amount;
+  deposit.amount_with_fee = *amount;
   res = verify_and_execute_deposit (connection,
                                     &deposit);
   TALER_MINT_release_parsed_data (spec);

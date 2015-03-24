@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 GNUnet e.V.
+  Copyright (C) 2014, 2015 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-mint-httpd_keystate.h
+ * @file mint/taler-mint-httpd_keystate.h
  * @brief management of our private signing keys (denomination keys)
  * @author Florian Dold
  * @author Benedikt Mueller
@@ -23,10 +23,8 @@
 #ifndef TALER_MINT_HTTPD_KEYSTATE_H
 #define TALER_MINT_HTTPD_KEYSTATE_H
 
-
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
-#include <jansson.h>
 #include "taler-mint-httpd.h"
 #include "key_io.h"
 
@@ -35,49 +33,7 @@
  * Snapshot of the (coin and signing)
  * keys (including private keys) of the mint.
  */
-struct MintKeyState
-{
-  /**
-   * When did we initiate the key reloading?
-   */
-  struct GNUNET_TIME_Absolute reload_time;
-
-  /**
-   * JSON array with denomination keys.
-   */
-  json_t *denom_keys_array;
-
-  /**
-   * JSON array with signing keys.
-   */
-  json_t *sign_keys_array;
-
-  /**
-   * Mapping from denomination keys to denomination key issue struct.
-   */
-  struct GNUNET_CONTAINER_MultiHashMap *denomkey_map;
-
-  /**
-   * When is the next key invalid and we have to reload?
-   */
-  struct GNUNET_TIME_Absolute next_reload;
-
-  /**
-   * Mint signing key that should be used currently.
-   */
-  struct TALER_MINT_SignKeyIssuePriv current_sign_key_issue;
-
-  /**
-   * Cached JSON text that the mint will send for
-   * a /keys request.
-   */
-  char *keys_json;
-
-  /**
-   * Reference count.
-   */
-  unsigned int refcnt;
-};
+struct MintKeyState;
 
 
 /**
@@ -101,7 +57,8 @@ TALER_MINT_key_state_release (struct MintKeyState *key_state);
 
 
 /**
- * Look up the issue for a denom public key.
+ * Look up the issue for a denom public key.  Note that the result
+ * is only valid while the @a key_state is not released!
  *
  * @param key state to look in
  * @param denom_pub denomination public key
@@ -110,14 +67,15 @@ TALER_MINT_key_state_release (struct MintKeyState *key_state);
  */
 struct TALER_MINT_DenomKeyIssuePriv *
 TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
-                          const struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub);
+                          const struct TALER_DenominationPublicKey *denom_pub);
 
 
 /**
  * Read signals from a pipe in a loop, and reload keys from disk if
  * SIGUSR1 is read from the pipe.
  *
- * @return #GNUNET_OK if we terminated normally, #GNUNET_SYSERR on error
+ * @return #GNUNET_OK if we terminated normally,
+ *         #GNUNET_SYSERR on error
  */
 int
 TALER_MINT_key_reload_loop (void);
@@ -132,8 +90,25 @@ TALER_MINT_key_reload_loop (void);
  */
 void
 TALER_MINT_keys_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-                      struct GNUNET_CRYPTO_EddsaSignature *sig);
+                      struct TALER_MintSignature *sig);
 
+
+/**
+ * Handle a "/keys" request
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[IN|OUT] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[IN|OUT] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+  */
+int
+TALER_MINT_handler_keys (struct RequestHandler *rh,
+                         struct MHD_Connection *connection,
+                         void **connection_cls,
+                         const char *upload_data,
+                         size_t *upload_data_size);
 
 
 #endif

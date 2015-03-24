@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-mint-dbinit.c
+ * @file mint/taler-mint-dbinit.c
  * @brief Create tables for the mint database.
  * @author Florian Dold
  */
@@ -22,76 +22,80 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <libpq-fe.h>
 #include "taler_util.h"
-#include "mint_db.h"
+#include "taler_mintdb_plugin.h"
+#include "plugin.h"
 
-#define break_db_err(result) do { \
-    GNUNET_break(0); \
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Database failure: %s\n", PQresultErrorMessage (result)); \
-    PQclear (result); \
-  } while (0)
-
-
+/**
+ * Mint directory with the keys.
+ */
 static char *mint_base_dir;
+
+/**
+ * Our configuration.
+ */
 static struct GNUNET_CONFIGURATION_Handle *cfg;
-static PGconn *db_conn;
-static char *TALER_MINT_db_connection_cfg_str;
-
-
-
 
 
 /**
- * The main function of the serve tool
+ * The main function of the database initialization tool.
+ * Used to initialize the Taler Mint's database.
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments
  * @return 0 ok, 1 on error
  */
 int
-main (int argc, char *const *argv)
+main (int argc,
+      char *const *argv)
 {
   static const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_HELP ("gnunet-mint-keyup OPTIONS"),
+    GNUNET_GETOPT_OPTION_HELP ("gnunet-mint-dbinit OPTIONS"),
     {'d', "mint-dir", "DIR",
      "mint directory", 1,
      &GNUNET_GETOPT_set_filename, &mint_base_dir},
     GNUNET_GETOPT_OPTION_END
   };
 
-  if (GNUNET_GETOPT_run ("taler-mint-serve", options, argc, argv) < 0)
+  if (GNUNET_GETOPT_run ("taler-mint-dbinit",
+                         options,
+                         argc, argv) < 0)
     return 1;
 
-  GNUNET_assert (GNUNET_OK == GNUNET_log_setup ("taler-mint-dbinit", "INFO", NULL));
-
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_log_setup ("taler-mint-dbinit",
+                                   "INFO",
+                                   NULL));
   if (NULL == mint_base_dir)
   {
-    fprintf (stderr, "Mint base directory not given.\n");
+    fprintf (stderr,
+             "Mint base directory not given.\n");
     return 1;
   }
-
   cfg = TALER_config_load (mint_base_dir);
   if (NULL == cfg)
   {
-    fprintf (stderr, "Can't load mint configuration.\n");
+    fprintf (stderr,
+             "Failed to load mint configuration.\n");
     return 1;
   }
-  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_string (cfg, "mint", "db", &TALER_MINT_db_connection_cfg_str))
+  if (GNUNET_OK !=
+      TALER_MINT_plugin_load (cfg))
   {
-    fprintf (stderr, "Configuration 'mint.db' not found.\n");
-    return 42;
-  }
-  db_conn = PQconnectdb (TALER_MINT_db_connection_cfg_str);
-  if (CONNECTION_OK != PQstatus (db_conn))
-  {
-    fprintf (stderr, "Database connection failed: %s\n", PQerrorMessage (db_conn));
+    fprintf (stderr,
+             "Failed to initialize database plugin.\n");
     return 1;
   }
-
-  if (GNUNET_OK != TALER_MINT_DB_create_tables (GNUNET_NO))
+  if (GNUNET_OK !=
+      plugin->create_tables (plugin->cls,
+                             GNUNET_NO))
   {
-    fprintf (stderr, "Failed to initialize database.\n");
+    fprintf (stderr,
+             "Failed to initialize database.\n");
+    TALER_MINT_plugin_unload ();
     return 1;
   }
-
+  TALER_MINT_plugin_unload ();
   return 0;
 }
+
+/* end of taler-mint-dbinit.c */

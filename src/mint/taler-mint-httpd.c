@@ -31,12 +31,12 @@
 #include "taler_util.h"
 #include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_mhd.h"
-#include "taler-mint-httpd_keys.h"
 #include "taler-mint-httpd_deposit.h"
 #include "taler-mint-httpd_withdraw.h"
 #include "taler-mint-httpd_refresh.h"
 #include "taler-mint-httpd_keystate.h"
-#include "mint_db.h"
+#include "taler_mintdb_plugin.h"
+#include "plugin.h"
 
 
 /**
@@ -230,7 +230,6 @@ mint_serve_process_config (const char *mint_directory)
   unsigned long long port;
   unsigned long long kappa;
   char *master_pub_str;
-  char *db_cfg;
 
   cfg = TALER_config_load (mint_directory);
   if (NULL == cfg)
@@ -261,16 +260,7 @@ mint_serve_process_config (const char *mint_directory)
   GNUNET_free (master_pub_str);
 
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "mint", "db",
-                                             &db_cfg))
-  {
-    fprintf (stderr,
-             "invalid configuration: mint.db\n");
-    return GNUNET_NO;
-  }
-  if (GNUNET_OK !=
-      TALER_MINT_DB_init (db_cfg))
+      TALER_MINT_plugin_load (cfg))
   {
     fprintf (stderr,
              "failed to initialize DB subsystem\n");
