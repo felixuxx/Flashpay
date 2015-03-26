@@ -55,7 +55,7 @@ static int result;
 static int
 check_reserve (struct TALER_MINTDB_Session *session,
                const struct TALER_ReservePublicKey *pub,
-               uint32_t value,
+               uint64_t value,
                uint32_t fraction,
                const char *currency,
                uint64_t expiry)
@@ -151,6 +151,7 @@ run (void *cls,
   dkp = NULL;
   rh = NULL;
   wire = NULL;
+  session = NULL;
   ZR_BLK (&cbc);
   ZR_BLK (&cbc2);
   if (GNUNET_OK !=
