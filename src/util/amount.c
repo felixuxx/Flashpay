@@ -348,7 +348,7 @@ TALER_amount_subtract (struct TALER_Amount *diff,
     return GNUNET_SYSERR;
   }
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (a1->currency,
+                 TALER_amount_get_zero (n1.currency,
                                         diff));
   GNUNET_assert (n1.fraction >= n2.fraction);
   diff->fraction = n1.fraction - n2.fraction;
