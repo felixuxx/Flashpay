@@ -354,13 +354,34 @@ main (int argc,
    static const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_OPTION_END
   };
+   const char *argv2[] = {
+     "test-mint-db-<plugin_name>", /* will be replaced later */
+     "-c", "test-mint-db-<plugin_name>.conf", /* will be replaced later */
+     NULL,
+   };
+   const char *plugin_name;
+   char *config_filename;
 
    result = -1;
+   if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
+   {
+     GNUNET_break (0);
+     return -1;
+   }
+   plugin_name++;
+   (void) GNUNET_asprintf (&config_filename,
+                           "test-mint-db-%s.conf", plugin_name);
+   argv2[0] = argv[0];
+   argv2[2] = config_filename;
   if (GNUNET_OK !=
-      GNUNET_PROGRAM_run (argc, argv,
-                          "test-mint-db",
+      GNUNET_PROGRAM_run ((sizeof (argv2)/sizeof (char *)) - 1, argv2,
+                          "test-mint-db-postgres",
                           "Test cases for mint database helper functions.",
                           options, &run, NULL))
+  {
+    GNUNET_free (config_filename);
     return 3;
+  }
+  GNUNET_free (config_filename);
   return result;
 }
