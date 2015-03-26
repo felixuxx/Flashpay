@@ -179,7 +179,7 @@ TALER_DB_extract_amount_nbo (PGresult *result,
   curr_num = PQfnumber (result, curr_name);
   GNUNET_assert (curr_num >= 0);
 
-  r_amount_nbo->value = *(uint32_t *) PQgetvalue (result, row, val_num);
+  r_amount_nbo->value = *(uint64_t *) PQgetvalue (result, row, val_num);
   r_amount_nbo->fraction = *(uint32_t *) PQgetvalue (result, row, frac_num);
   memset (r_amount_nbo->currency,
           0,
@@ -212,7 +212,7 @@ TALER_DB_extract_amount (PGresult *result,
                                    frac_name,
                                    curr_name,
                                    &amount_nbo);
-  r_amount->value = ntohl (amount_nbo.value);
+  r_amount->value = GNUNET_ntohll (amount_nbo.value);
   r_amount->fraction = ntohl (amount_nbo.fraction);
   (void) strncpy (r_amount->currency, amount_nbo.currency, TALER_CURRENCY_LEN);
 
