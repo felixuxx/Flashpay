@@ -361,6 +361,7 @@ main (int argc,
    };
    const char *plugin_name;
    char *config_filename;
+   char *testname;
 
    result = -1;
    if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
@@ -369,19 +370,23 @@ main (int argc,
      return -1;
    }
    plugin_name++;
+   (void) GNUNET_asprintf (&testname,
+                           "test-mint-db-%s", plugin_name);
    (void) GNUNET_asprintf (&config_filename,
-                           "test-mint-db-%s.conf", plugin_name);
+                           "%s.conf", testname);
    argv2[0] = argv[0];
    argv2[2] = config_filename;
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run ((sizeof (argv2)/sizeof (char *)) - 1, argv2,
-                          "test-mint-db-postgres",
+                          testname,
                           "Test cases for mint database helper functions.",
                           options, &run, NULL))
   {
     GNUNET_free (config_filename);
+    GNUNET_free (testname);
     return 3;
   }
   GNUNET_free (config_filename);
+  GNUNET_free (testname);
   return result;
 }
