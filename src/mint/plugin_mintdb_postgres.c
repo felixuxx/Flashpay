@@ -2348,6 +2348,7 @@ libtaler_plugin_mintdb_postgres_done (void *cls)
   struct TALER_MINTDB_Plugin *plugin = cls;
   struct PostgresClosure *pg = plugin->cls;
 
+  GNUNET_free (pg->TALER_MINT_db_connection_cfg_str);
   GNUNET_free (pg);
   GNUNET_free (plugin);
   return NULL;
