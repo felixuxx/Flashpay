@@ -144,3 +144,5 @@ test_mint_db_postgres_LDADD = \
   $(top_srcdir)/src/util/libtalerutil.la \
   $(top_srcdir)/src/pq/libtalerpq.la \
   -lgnunetutil -ljansson
+EXTRA_test_mint_db_postgres_DEPENDENCIES = \
+  libtaler_plugin_mintdb_postgres.la
