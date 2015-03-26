@@ -2289,16 +2289,17 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   /* FIXME: use configuration section with "postgres" in its name... */
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "mint", "db",
+                                             "mint", "db_conn_str",
                                              &pg->TALER_MINT_db_connection_cfg_str))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "mint",
-                               "db");
+                               "db_conn_str");
     return NULL;
   }
   plugin = GNUNET_new (struct TALER_MINTDB_Plugin);
   plugin->cls = pg;
+  plugin->library_name = "libtaler_plugin_mintdb_postgres";
   plugin->get_session = &postgres_get_session;
   plugin->drop_temporary = &postgres_drop_temporary;
   plugin->create_tables = &postgres_create_tables;

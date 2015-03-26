@@ -43,7 +43,34 @@ static char *old_dlsearchpath;
 int
 TALER_MINT_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
-  return GNUNET_SYSERR;
+  char *plugin_name;
+  char *lib_name;
+  struct GNUNET_CONFIGURATION_Handle *cfg_dup;
+
+  if (NULL != plugin)
+    return GNUNET_OK;
+  if (GNUNET_SYSERR ==
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "mint",
+                                             "db",
+                                             &plugin_name))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "mint",
+                               "db");
+    return GNUNET_SYSERR;
+  }
+  (void) GNUNET_asprintf (&lib_name,
+                          "libtaler_plugin_mintdb_%s",
+                          plugin_name);
+  GNUNET_free (plugin_name);
+  cfg_dup = GNUNET_CONFIGURATION_dup (cfg);
+  plugin = GNUNET_PLUGIN_load (lib_name, cfg_dup);
+  GNUNET_CONFIGURATION_destroy (cfg_dup);
+  GNUNET_free (lib_name);
+  if (NULL == plugin)
+    return GNUNET_SYSERR;
+  return GNUNET_OK;
 }
 
 
@@ -55,6 +82,8 @@ TALER_MINT_plugin_unload ()
 {
   if (NULL == plugin)
     return;
+  GNUNET_assert (NULL == GNUNET_PLUGIN_unload (plugin->library_name,
+                                               plugin));
 }
 
 

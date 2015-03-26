@@ -479,6 +479,11 @@ struct TALER_MINTDB_Plugin
   void *cls;
 
   /**
+   * Name of the library which generated this plugin
+   */
+  const char *library_name;
+
+  /**
    * Get the thread-local database-handle.
    * Connect to the db if the connection does not exist yet.
    *

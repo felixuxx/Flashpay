@@ -343,6 +343,7 @@ run (void *cls,
   if (NULL != cbc2.sig.rsa_signature)
     GNUNET_CRYPTO_rsa_signature_free (cbc2.sig.rsa_signature);
   dkp = NULL;
+  TALER_MINT_plugin_unload ();
 }
 
 
