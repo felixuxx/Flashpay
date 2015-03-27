@@ -29,13 +29,13 @@
 
 
 /* Define logging functions */
-#define LOG_DEBUG(...)                                  \
+#define TALER_LOG_DEBUG(...)                                  \
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, __VA_ARGS__)
 
-#define LOG_WARNING(...)                                \
+#define TALER_LOG_WARNING(...)                                \
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING, __VA_ARGS__)
 
-#define LOG_ERROR(...)                                  \
+#define TALER_LOG_ERROR(...)                                  \
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR, __VA_ARGS__)
 
 
@@ -49,7 +49,7 @@
 #define TALER_assert_as(EXP, reason)                           \
   do {                                                          \
     if (EXP) break;                                             \
-    LOG_ERROR("%s at %s:%d\n", reason, __FILE__, __LINE__);       \
+    TALER_LOG_ERROR("%s at %s:%d\n", reason, __FILE__, __LINE__);       \
     abort();                                                    \
   } while(0)
 
@@ -59,11 +59,11 @@
  * a failure of the command 'cmd' with the message given
  * by gcry_strerror(rc).
  */
-#define LOG_GCRY_ERROR(cmd, rc) do { LOG_ERROR("`%s' failed at %s:%d with error: %s\n", cmd, __FILE__, __LINE__, gcry_strerror(rc)); } while(0)
+#define TALER_LOG_GCRY_ERROR(cmd, rc) do { TALER_LOG_ERROR("`%s' failed at %s:%d with error: %s\n", cmd, __FILE__, __LINE__, gcry_strerror(rc)); } while(0)
 
 
 #define TALER_gcry_ok(cmd) \
-  do {int rc; rc = cmd; if (!rc) break; LOG_ERROR("A Gcrypt call failed at %s:%d with error: %s\n", __FILE__, __LINE__, gcry_strerror(rc)); abort(); } while (0)
+  do {int rc; rc = cmd; if (!rc) break; TALER_LOG_ERROR("A Gcrypt call failed at %s:%d with error: %s\n", __FILE__, __LINE__, gcry_strerror(rc)); abort(); } while (0)
 
 
 /**
@@ -108,7 +108,7 @@ TALER_config_get_denom (struct GNUNET_CONFIGURATION_Handle *cfg,
  * @return a pointer to the dir path (to be freed by the caller)
  */
 char *
-TALER_OS_installation_get_path (enum GNUNET_OS_InstallationPathKind dirkind);
+TALER_os_installation_get_path (enum GNUNET_OS_InstallationPathKind dirkind);
 
 
 #endif

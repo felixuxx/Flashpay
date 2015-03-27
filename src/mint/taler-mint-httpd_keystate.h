@@ -33,18 +33,18 @@
  * Snapshot of the (coin and signing)
  * keys (including private keys) of the mint.
  */
-struct MintKeyState;
+struct TMH_KS_StateHandle;
 
 
 /**
  * Acquire the key state of the mint.  Updates keys if necessary.
- * For every call to #TALER_MINT_key_state_acquire(), a matching call
- * to #TALER_MINT_key_state_release() must be made.
+ * For every call to #TMH_KS_acquire(), a matching call
+ * to #TMH_KS_release() must be made.
  *
  * @return the key state
  */
-struct MintKeyState *
-TALER_MINT_key_state_acquire (void);
+struct TMH_KS_StateHandle *
+TMH_KS_acquire (void);
 
 
 /**
@@ -53,7 +53,7 @@ TALER_MINT_key_state_acquire (void);
  * @param key_state the key state to release
  */
 void
-TALER_MINT_key_state_release (struct MintKeyState *key_state);
+TMH_KS_release (struct TMH_KS_StateHandle *key_state);
 
 
 /**
@@ -65,9 +65,9 @@ TALER_MINT_key_state_release (struct MintKeyState *key_state);
  * @return the denomination key issue,
  *         or NULL if denom_pub could not be found
  */
-struct TALER_MINT_DenomKeyIssuePriv *
-TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
-                          const struct TALER_DenominationPublicKey *denom_pub);
+struct TALER_DenominationKeyIssueInformation *
+TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
+                                const struct TALER_DenominationPublicKey *denom_pub);
 
 
 /**
@@ -78,7 +78,7 @@ TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
  *         #GNUNET_SYSERR on error
  */
 int
-TALER_MINT_key_reload_loop (void);
+TMH_KS_loop (void);
 
 
 /**
@@ -89,8 +89,8 @@ TALER_MINT_key_reload_loop (void);
  * @param[OUT] sig signature over purpose using current signing key
  */
 void
-TALER_MINT_keys_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-                      struct TALER_MintSignature *sig);
+TMH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+             struct TALER_MintSignatureP *sig);
 
 
 /**
@@ -104,11 +104,11 @@ TALER_MINT_keys_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
  * @return MHD result code
   */
 int
-TALER_MINT_handler_keys (struct RequestHandler *rh,
-                         struct MHD_Connection *connection,
-                         void **connection_cls,
-                         const char *upload_data,
-                         size_t *upload_data_size);
+TMH_KS_handler_keys (struct TMH_RequestHandler *rh,
+                     struct MHD_Connection *connection,
+                     void **connection_cls,
+                     const char *upload_data,
+                     size_t *upload_data_size);
 
 
 #endif

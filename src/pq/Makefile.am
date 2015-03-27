@@ -3,14 +3,11 @@ AM_CPPFLAGS = -I$(top_srcdir)/src/include $(LIBGCRYPT_CFLAGS) $(POSTGRESQL_CPPFL
 
 talerincludedir = $(includedir)/taler
 
-talerinclude_HEADERS = \
-  db_pq.h
-
 lib_LTLIBRARIES = \
   libtalerpq.la
 
 libtalerpq_la_SOURCES = \
-  db_pq.c db_pq.h
+  db_pq.c
 
 libtalerpq_la_LIBADD = \
   -lgnunetutil \

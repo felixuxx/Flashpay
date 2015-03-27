@@ -16,7 +16,7 @@
 /**
  * @file taler-mint-httpd_responses.c
  * @brief API for generating the various replies of the mint; these
- *        functions are called TALER_MINT_reply_ and they generate
+ *        functions are called TMH_RESPONSE_reply_ and they generate
  *        and queue MHD response objects for a given connection.
  * @author Florian Dold
  * @author Benedikt Mueller
@@ -38,7 +38,7 @@
  * @return MHD result code
  */
 int
-TALER_MINT_reply_json (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_json (struct MHD_Connection *connection,
                        const json_t *json,
                        unsigned int response_code)
 {
@@ -71,7 +71,7 @@ TALER_MINT_reply_json (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TALER_MINT_reply_json_pack (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
                             unsigned int response_code,
                             const char *fmt,
                             ...)
@@ -85,7 +85,7 @@ TALER_MINT_reply_json_pack (struct MHD_Connection *connection,
   va_end (argp);
   if (NULL == json)
     return MHD_NO;
-  ret = TALER_MINT_reply_json (connection,
+  ret = TMH_RESPONSE_reply_json (connection,
                                json,
                                response_code);
   json_decref (json);
@@ -101,10 +101,10 @@ TALER_MINT_reply_json_pack (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TALER_MINT_reply_arg_invalid (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
                               const char *param_name)
 {
-  return TALER_MINT_reply_json_pack (connection,
+  return TMH_RESPONSE_reply_json_pack (connection,
                                      MHD_HTTP_BAD_REQUEST,
                                      "{s:s, s:s}",
                                      "error", "invalid parameter",
@@ -121,11 +121,11 @@ TALER_MINT_reply_arg_invalid (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TALER_MINT_reply_coin_invalid (struct MHD_Connection *connection)
+TMH_RESPONSE_reply_coin_invalid (struct MHD_Connection *connection)
 {
   /* TODO: may want to be more precise in the future and
      distinguish bogus signatures from bogus public keys. */
-  return TALER_MINT_reply_json_pack (connection,
+  return TMH_RESPONSE_reply_json_pack (connection,
                                      MHD_HTTP_NOT_FOUND,
                                      "{s:s}",
                                      "error", "Coin is not valid");
@@ -140,10 +140,10 @@ TALER_MINT_reply_coin_invalid (struct MHD_Connection *connection)
  * @return a MHD result code
  */
 int
-TALER_MINT_reply_arg_missing (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
                               const char *param_name)
 {
-  return TALER_MINT_reply_json_pack (connection,
+  return TMH_RESPONSE_reply_json_pack (connection,
                                      MHD_HTTP_BAD_REQUEST,
                                      "{ s:s, s:s}",
                                      "error", "missing parameter",
@@ -159,10 +159,10 @@ TALER_MINT_reply_arg_missing (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TALER_MINT_reply_internal_error (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
                                  const char *hint)
 {
-  return TALER_MINT_reply_json_pack (connection,
+  return TMH_RESPONSE_reply_json_pack (connection,
                                      MHD_HTTP_BAD_REQUEST,
                                      "{s:s, s:s}",
                                      "error", "internal error",
@@ -178,10 +178,10 @@ TALER_MINT_reply_internal_error (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TALER_MINT_reply_external_error (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
                                  const char *hint)
 {
-  return TALER_MINT_reply_json_pack (connection,
+  return TMH_RESPONSE_reply_json_pack (connection,
                                      MHD_HTTP_BAD_REQUEST,
                                      "{s:s, s:s}",
                                      "error", "client error",
@@ -197,9 +197,9 @@ TALER_MINT_reply_external_error (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TALER_MINT_reply_commit_error (struct MHD_Connection *connection)
+TMH_RESPONSE_reply_commit_error (struct MHD_Connection *connection)
 {
-  return TALER_MINT_reply_json_pack (connection,
+  return TMH_RESPONSE_reply_json_pack (connection,
                                      MHD_HTTP_BAD_REQUEST,
                                      "{s:s}",
                                      "error", "commit failure");
@@ -214,9 +214,9 @@ TALER_MINT_reply_commit_error (struct MHD_Connection *connection)
  * @return a MHD result code
  */
 int
-TALER_MINT_reply_internal_db_error (struct MHD_Connection *connection)
+TMH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection)
 {
-  return TALER_MINT_reply_internal_error (connection,
+  return TMH_RESPONSE_reply_internal_error (connection,
                                           "Failed to connect to database");
 }
 
@@ -228,7 +228,7 @@ TALER_MINT_reply_internal_db_error (struct MHD_Connection *connection)
  * @return a MHD result code
  */
 int
-TALER_MINT_reply_request_too_large (struct MHD_Connection *connection)
+TMH_RESPONSE_reply_request_too_large (struct MHD_Connection *connection)
 {
   struct MHD_Response *resp;
   int ret;
@@ -253,9 +253,9 @@ TALER_MINT_reply_request_too_large (struct MHD_Connection *connection)
  * @return a MHD result code
  */
 int
-TALER_MINT_reply_invalid_json (struct MHD_Connection *connection)
+TMH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection)
 {
-  return TALER_MINT_reply_json_pack (connection,
+  return TMH_RESPONSE_reply_json_pack (connection,
                                      MHD_HTTP_BAD_REQUEST,
                                      "{s:s}",
                                      "error",
@@ -281,21 +281,21 @@ TALER_MINT_reply_invalid_json (struct MHD_Connection *connection)
  * @return MHD result code
  */
 int
-TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
-                                  const struct TALER_CoinSpendPublicKey *coin_pub,
+TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
+                                  const union TALER_CoinSpendPublicKeyP *coin_pub,
                                   const struct GNUNET_HashCode *h_wire,
                                   const struct GNUNET_HashCode *h_contract,
                                   uint64_t transaction_id,
-                                  const struct TALER_MerchantPublicKey *merchant,
+                                  const struct TALER_MerchantPublicKeyP *merchant,
                                   const struct TALER_Amount *amount)
 {
-  struct TALER_DepositConfirmation dc;
-  struct TALER_MintSignature sig;
+  struct TALER_DepositConfirmationPS dc;
+  struct TALER_MintSignatureP sig;
   json_t *sig_json;
   int ret;
 
-  dc.purpose.purpose = htonl (TALER_SIGNATURE_MINT_DEPOSIT);
-  dc.purpose.size = htonl (sizeof (struct TALER_DepositConfirmation));
+  dc.purpose.purpose = htonl (TALER_SIGNATURE_COIN_DEPOSIT);
+  dc.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
   dc.h_contract = *h_contract;
   dc.h_wire = *h_wire;
   dc.transaction_id = GNUNET_htonll (transaction_id);
@@ -303,11 +303,11 @@ TALER_MINT_reply_deposit_success (struct MHD_Connection *connection,
                      amount);
   dc.coin_pub = *coin_pub;
   dc.merchant = *merchant;
-  TALER_MINT_keys_sign (&dc.purpose,
+  TMH_KS_sign (&dc.purpose,
                         &sig);
-  sig_json = TALER_JSON_from_eddsa_sig (&dc.purpose,
+  sig_json = TALER_json_from_eddsa_sig (&dc.purpose,
                                         &sig.eddsa_signature);
-  ret = TALER_MINT_reply_json_pack (connection,
+  ret = TMH_RESPONSE_reply_json_pack (connection,
                                     MHD_HTTP_OK,
                                     "{s:s, s:o}",
                                     "status", "DEPOSIT_OK",
@@ -339,37 +339,37 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
     {
     case TALER_MINT_DB_TT_DEPOSIT:
       {
-        struct TALER_DepositRequest dr;
+        struct TALER_DepositRequestPS dr;
         const struct Deposit *deposit = pos->details.deposit;
 
         type = "deposit";
         value = deposit->amount_with_fee;
         dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_DEPOSIT);
-        dr.purpose.size = htonl (sizeof (struct TALER_DepositRequest));
+        dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
         dr.h_contract = deposit->h_contract;
         dr.h_wire = deposit->h_wire;
         dr.transaction_id = GNUNET_htonll (deposit->transaction_id);
         TALER_amount_hton (&dr.amount_with_fee,
                            &deposit->amount_with_fee);
         dr.coin_pub = deposit->coin.coin_pub;
-        transaction = TALER_JSON_from_ecdsa_sig (&dr.purpose,
+        transaction = TALER_json_from_ecdsa_sig (&dr.purpose,
                                                  &deposit->csig.ecdsa_signature);
         break;
       }
     case TALER_MINT_DB_TT_REFRESH_MELT:
       {
-        struct RefreshMeltCoinSignature ms;
+        struct TALER_RefreshMeltCoinAffirmationPS ms;
         const struct RefreshMelt *melt = pos->details.melt;
 
         type = "melt";
         value = melt->amount_with_fee;
-        ms.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_COIN);
-        ms.purpose.size = htonl (sizeof (struct RefreshMeltCoinSignature));
+        ms.purpose.purpose = htonl (TALER_SIGNATURE_COIN_MELT);
+        ms.purpose.size = htonl (sizeof (struct TALER_RefreshMeltCoinAffirmationPS));
         ms.session_hash = melt->session_hash;
         TALER_amount_hton (&ms.amount_with_fee,
                            &melt->amount_with_fee);
         ms.coin_pub = melt->coin.coin_pub;
-        transaction = TALER_JSON_from_ecdsa_sig (&ms.purpose,
+        transaction = TALER_json_from_ecdsa_sig (&ms.purpose,
                                                  &melt->coin_sig.ecdsa_signature);
       }
       break;
@@ -387,7 +387,7 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
     json_array_append_new (history,
                            json_pack ("{s:s, s:o}",
                                       "type", type,
-                                      "amount", TALER_JSON_from_amount (&value),
+                                      "amount", TALER_json_from_amount (&value),
                                       "signature", transaction));
   }
   return history;
@@ -404,13 +404,13 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
  * @return MHD result code
  */
 int
-TALER_MINT_reply_deposit_insufficient_funds (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection,
                                              const struct TALER_MINT_DB_TransactionList *tl)
 {
   json_t *history;
 
   history = compile_transaction_history (tl);
-  return TALER_MINT_reply_json_pack (connection,
+  return TMH_RESPONSE_reply_json_pack (connection,
                                      MHD_HTTP_FORBIDDEN,
                                      "{s:s, s:o}",
                                      "error", "insufficient funds",
@@ -437,9 +437,9 @@ compile_reserve_history (const struct ReserveHistory *rh,
   json_t *transaction;
   int ret;
   const struct ReserveHistory *pos;
-  struct TALER_MINT_DenomKeyIssuePriv *dki;
-  struct MintKeyState *key_state;
-  struct TALER_WithdrawRequest wr;
+  struct TALER_DenominationKeyIssueInformation *dki;
+  struct TMH_KS_StateHandle *key_state;
+  struct TALER_WithdrawRequestPS wr;
 
   json_history = json_array ();
   ret = 0;
@@ -464,14 +464,14 @@ compile_reserve_history (const struct ReserveHistory *rh,
                              json_pack ("{s:s, s:o, s:o}",
                                         "type", "DEPOSIT",
                                         "wire", pos->details.bank->wire,
-                                        "amount", TALER_JSON_from_amount (&pos->details.bank->amount)));
+                                        "amount", TALER_json_from_amount (&pos->details.bank->amount)));
       break;
     case TALER_MINT_DB_RO_WITHDRAW_COIN:
       break;
     }
   }
 
-  key_state = TALER_MINT_key_state_acquire ();
+  key_state = TMH_KS_acquire ();
   ret = 0;
   for (pos = rh; NULL != pos; pos = pos->next)
   {
@@ -481,7 +481,7 @@ compile_reserve_history (const struct ReserveHistory *rh,
       break;
     case TALER_MINT_DB_RO_WITHDRAW_COIN:
 
-      dki = TALER_MINT_get_denom_key (key_state,
+      dki = TMH_KS_denomination_key_lookup (key_state,
                                       &pos->details.withdraw->denom_pub);
       TALER_amount_ntoh (&value,
                          &dki->issue.value);
@@ -493,31 +493,31 @@ compile_reserve_history (const struct ReserveHistory *rh,
                               &withdraw_total,
                               &value))
         {
-          TALER_MINT_key_state_release (key_state);
+          TMH_KS_release (key_state);
           json_decref (json_history);
           return NULL;
         }
       ret = 1;
-      wr.purpose.purpose = htonl (TALER_SIGNATURE_WITHDRAW);
-      wr.purpose.size = htonl (sizeof (struct TALER_WithdrawRequest));
+      wr.purpose.purpose = htonl (TALER_SIGNATURE_RESERVE_WITHDRAW_REQUEST);
+      wr.purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS));
       wr.reserve_pub = pos->details.withdraw->reserve_pub;
       GNUNET_CRYPTO_rsa_public_key_hash (pos->details.withdraw->denom_pub.rsa_public_key,
                                          &wr.h_denomination_pub);
       wr.h_coin_envelope = pos->details.withdraw->h_coin_envelope;
 
-      transaction = TALER_JSON_from_eddsa_sig (&wr.purpose,
+      transaction = TALER_json_from_eddsa_sig (&wr.purpose,
                                                &pos->details.withdraw->reserve_sig.eddsa_signature);
 
       json_array_append_new (json_history,
                              json_pack ("{s:s, s:o, s:o}",
                                         "type", "WITHDRAW",
                                         "signature", transaction,
-                                        "amount", TALER_JSON_from_amount (&value)));
+                                        "amount", TALER_json_from_amount (&value)));
 
       break;
     }
   }
-  TALER_MINT_key_state_release (key_state);
+  TMH_KS_release (key_state);
 
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (balance,
@@ -540,7 +540,7 @@ compile_reserve_history (const struct ReserveHistory *rh,
  * @return MHD result code
  */
 int
-TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_withdraw_status_success (struct MHD_Connection *connection,
                                           const struct ReserveHistory *rh)
 {
   json_t *json_balance;
@@ -551,10 +551,10 @@ TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
   json_history = compile_reserve_history (rh,
                                           &balance);
   if (NULL == json_history)
-    return TALER_MINT_reply_internal_error (connection,
+    return TMH_RESPONSE_reply_internal_error (connection,
                                             "balance calculation failure");
-  json_balance = TALER_JSON_from_amount (&balance);
-  ret = TALER_MINT_reply_json_pack (connection,
+  json_balance = TALER_json_from_amount (&balance);
+  ret = TMH_RESPONSE_reply_json_pack (connection,
                                     MHD_HTTP_OK,
                                     "{s:o, s:o}",
                                     "balance", json_balance,
@@ -575,7 +575,7 @@ TALER_MINT_reply_withdraw_status_success (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TALER_MINT_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *connection,
                                                    const struct ReserveHistory *rh)
 {
   json_t *json_balance;
@@ -586,10 +586,10 @@ TALER_MINT_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *connec
   json_history = compile_reserve_history (rh,
                                           &balance);
   if (NULL == json_history)
-    return TALER_MINT_reply_internal_error (connection,
+    return TMH_RESPONSE_reply_internal_error (connection,
                                             "balance calculation failure");
-  json_balance = TALER_JSON_from_amount (&balance);
-  ret = TALER_MINT_reply_json_pack (connection,
+  json_balance = TALER_json_from_amount (&balance);
+  ret = TMH_RESPONSE_reply_json_pack (connection,
                                     MHD_HTTP_PAYMENT_REQUIRED,
                                     "{s:s, s:o, s:o}",
                                     "error", "Insufficient funds"
@@ -609,14 +609,14 @@ TALER_MINT_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *connec
  * @return MHD result code
  */
 int
-TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_withdraw_sign_success (struct MHD_Connection *connection,
                                         const struct CollectableBlindcoin *collectable)
 {
   json_t *sig_json;
   int ret;
 
-  sig_json = TALER_JSON_from_rsa_signature (collectable->sig.rsa_signature);
-  ret = TALER_MINT_reply_json_pack (connection,
+  sig_json = TALER_json_from_rsa_signature (collectable->sig.rsa_signature);
+  ret = TMH_RESPONSE_reply_json_pack (connection,
                                     MHD_HTTP_OK,
                                     "{s:o}",
                                     "ev_sig", sig_json);
@@ -641,8 +641,8 @@ TALER_MINT_reply_withdraw_sign_success (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TALER_MINT_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
-                                                  const struct TALER_CoinSpendPublicKey *coin_pub,
+TMH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
+                                                  const union TALER_CoinSpendPublicKeyP *coin_pub,
                                                   struct TALER_Amount coin_value,
                                                   struct TALER_MINT_DB_TransactionList *tl,
                                                   struct TALER_Amount requested,
@@ -651,15 +651,15 @@ TALER_MINT_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connect
   json_t *history;
 
   history = compile_transaction_history (tl);
-  return TALER_MINT_reply_json_pack (connection,
+  return TMH_RESPONSE_reply_json_pack (connection,
                                      MHD_HTTP_NOT_FOUND,
                                      "{s:s, s:o, s:o, s:o, s:o, s:o}",
                                      "error", "insufficient funds",
-                                     "coin-pub", TALER_JSON_from_data (coin_pub,
-                                                                       sizeof (struct TALER_CoinSpendPublicKey)),
-                                     "original-value", TALER_JSON_from_amount (&coin_value),
-                                     "residual-value", TALER_JSON_from_amount (&residual),
-                                     "requested-value", TALER_JSON_from_amount (&requested),
+                                     "coin-pub", TALER_json_from_data (coin_pub,
+                                                                       sizeof (union TALER_CoinSpendPublicKeyP)),
+                                     "original-value", TALER_json_from_amount (&coin_value),
+                                     "residual-value", TALER_json_from_amount (&residual),
+                                     "requested-value", TALER_json_from_amount (&requested),
                                      "history", history);
 }
 
@@ -673,25 +673,25 @@ TALER_MINT_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connect
  * @return a MHD status code
  */
 int
-TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_refresh_melt_success (struct MHD_Connection *connection,
                                        const struct GNUNET_HashCode *session_hash,
                                        uint16_t noreveal_index)
 {
-  struct RefreshMeltResponseSignatureBody body;
-  struct TALER_MintSignature sig;
+  struct TALER_RefreshMeltConfirmationPS body;
+  struct TALER_MintSignatureP sig;
   json_t *sig_json;
   int ret;
 
-  body.purpose.size = htonl (sizeof (struct RefreshMeltResponseSignatureBody));
-  body.purpose.purpose = htonl (TALER_SIGNATURE_REFRESH_MELT_RESPONSE);
+  body.purpose.size = htonl (sizeof (struct TALER_RefreshMeltConfirmationPS));
+  body.purpose.purpose = htonl (TALER_SIGNATURE_MINT_MELT_RESPONSE);
   body.session_hash = *session_hash;
   body.noreveal_index = htons (noreveal_index);
-  TALER_MINT_keys_sign (&body.purpose,
+  TMH_KS_sign (&body.purpose,
                         &sig);
-  sig_json = TALER_JSON_from_eddsa_sig (&body.purpose,
+  sig_json = TALER_json_from_eddsa_sig (&body.purpose,
                                         &sig.eddsa_signature);
   GNUNET_assert (NULL != sig_json);
-  ret = TALER_MINT_reply_json_pack (connection,
+  ret = TMH_RESPONSE_reply_json_pack (connection,
                                      MHD_HTTP_OK,
                                      "{s:i, s:o}",
                                      "noreveal_index", (int) noreveal_index,
@@ -710,7 +710,7 @@ TALER_MINT_reply_refresh_melt_success (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
                                          unsigned int num_newcoins,
                                          const struct TALER_DenominationSignature *sigs)
 {
@@ -726,8 +726,8 @@ TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
                        list);
   for (newcoin_index = 0; newcoin_index < num_newcoins; newcoin_index++)
     json_array_append_new (list,
-                           TALER_JSON_from_rsa_signature (sigs[newcoin_index].rsa_signature));
-  ret = TALER_MINT_reply_json (connection,
+                           TALER_json_from_rsa_signature (sigs[newcoin_index].rsa_signature));
+  ret = TMH_RESPONSE_reply_json (connection,
                                root,
                                MHD_HTTP_OK);
   json_decref (root);
@@ -753,12 +753,12 @@ TALER_MINT_reply_refresh_reveal_success (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TALER_MINT_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
 					   unsigned int off,
 					   unsigned int j,
 					   const char *missmatch_object)
 {
-  return TALER_MINT_reply_json_pack (connection,
+  return TMH_RESPONSE_reply_json_pack (connection,
 				     MHD_HTTP_BAD_REQUEST,
 				     "{s:s, s:i, s:i, s:s}",
 				     "error", "commitment violation",
@@ -778,9 +778,9 @@ TALER_MINT_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TALER_MINT_reply_refresh_link_success (struct MHD_Connection *connection,
-                                       const struct TALER_TransferPublicKey *transfer_pub,
-                                       const struct TALER_EncryptedLinkSecret *shared_secret_enc,
+TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
+                                       const struct TALER_TransferPublicKeyP *transfer_pub,
+                                       const struct TALER_EncryptedLinkSecretP *shared_secret_enc,
                                        const struct LinkDataList *ldl)
 {
   const struct LinkDataList *pos;
@@ -795,15 +795,15 @@ TALER_MINT_reply_refresh_link_success (struct MHD_Connection *connection,
 
     obj = json_object ();
     json_object_set_new (obj, "link_enc",
-                         TALER_JSON_from_data (ldl->link_data_enc->coin_priv_enc,
-                                               sizeof (struct TALER_CoinSpendPrivateKey) +
+                         TALER_json_from_data (ldl->link_data_enc->coin_priv_enc,
+                                               sizeof (union TALER_CoinSpendPrivateKeyP) +
                                                ldl->link_data_enc->blinding_key_enc_size));
     json_object_set_new (obj,
                          "denom_pub",
-                         TALER_JSON_from_rsa_public_key (ldl->denom_pub.rsa_public_key));
+                         TALER_json_from_rsa_public_key (ldl->denom_pub.rsa_public_key));
     json_object_set_new (obj,
                          "ev_sig",
-                         TALER_JSON_from_rsa_signature (ldl->ev_sig.rsa_signature));
+                         TALER_json_from_rsa_signature (ldl->ev_sig.rsa_signature));
     json_array_append_new (list, obj);
   }
 
@@ -813,13 +813,13 @@ TALER_MINT_reply_refresh_link_success (struct MHD_Connection *connection,
                        list);
   json_object_set_new (root,
                        "transfer_pub",
-                       TALER_JSON_from_data (transfer_pub,
-                                             sizeof (struct TALER_TransferPublicKey)));
+                       TALER_json_from_data (transfer_pub,
+                                             sizeof (struct TALER_TransferPublicKeyP)));
   json_object_set_new (root,
                        "secret_enc",
-                       TALER_JSON_from_data (shared_secret_enc,
-                                             sizeof (struct TALER_EncryptedLinkSecret)));
-  res = TALER_MINT_reply_json (connection,
+                       TALER_json_from_data (shared_secret_enc,
+                                             sizeof (struct TALER_EncryptedLinkSecretP)));
+  res = TMH_RESPONSE_reply_json (connection,
                                root,
                                MHD_HTTP_OK);
   json_decref (root);

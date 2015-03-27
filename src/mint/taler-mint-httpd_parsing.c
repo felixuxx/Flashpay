@@ -146,7 +146,7 @@ buffer_append (struct Buffer *buf,
  * (incrementally) process JSON data uploaded to the HTTP
  * server.  It will store the required state in the
  * "connection_cls", which must be cleaned up using
- * #TALER_MINT_parse_post_cleanup_callback().
+ * #TMH_PARSE_post_cleanup_callback().
  *
  * @param connection the MHD connection
  * @param con_cs the closure (points to a `struct Buffer *`)
@@ -165,7 +165,7 @@ buffer_append (struct Buffer *buf,
  *                close HTTP session with MHD_NO)
  */
 int
-TALER_MINT_parse_post_json (struct MHD_Connection *connection,
+TMH_PARSE_post_json (struct MHD_Connection *connection,
                             void **con_cls,
                             const char *upload_data,
                             size_t *upload_data_size,
@@ -189,7 +189,7 @@ TALER_MINT_parse_post_json (struct MHD_Connection *connection,
       buffer_deinit (r);
       GNUNET_free (r);
       return (MHD_NO ==
-              TALER_MINT_reply_internal_error (connection,
+              TMH_RESPONSE_reply_internal_error (connection,
                                                "out of memory"))
         ? GNUNET_SYSERR : GNUNET_NO;
     }
@@ -213,7 +213,7 @@ TALER_MINT_parse_post_json (struct MHD_Connection *connection,
       buffer_deinit (r);
       GNUNET_free (r);
       return (MHD_NO ==
-              TALER_MINT_reply_request_too_large (connection))
+              TMH_RESPONSE_reply_request_too_large (connection))
         ? GNUNET_SYSERR : GNUNET_NO;
     }
     /* everything OK, wait for more POST data */
@@ -234,7 +234,7 @@ TALER_MINT_parse_post_json (struct MHD_Connection *connection,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to parse JSON request body\n");
     return (MHD_YES ==
-            TALER_MINT_reply_invalid_json (connection))
+            TMH_RESPONSE_reply_invalid_json (connection))
       ? GNUNET_NO : GNUNET_SYSERR;
   }
   *con_cls = NULL;
@@ -248,10 +248,10 @@ TALER_MINT_parse_post_json (struct MHD_Connection *connection,
  * to clean up our state.
  *
  * @param con_cls value as it was left by
- *        #TALER_MINT_parse_post_json(), to be cleaned up
+ *        #TMH_PARSE_post_json(), to be cleaned up
  */
 void
-TALER_MINT_parse_post_cleanup_callback (void *con_cls)
+TMH_PARSE_post_cleanup_callback (void *con_cls)
 {
   struct Buffer *r = con_cls;
 
@@ -276,7 +276,7 @@ TALER_MINT_parse_post_cleanup_callback (void *con_cls)
  *   #GNUNET_SYSERR on internal error (error response could not be sent)
  */
 int
-TALER_MINT_mhd_request_arg_data (struct MHD_Connection *connection,
+TMH_PARSE_mhd_request_arg_data (struct MHD_Connection *connection,
                                  const char *param_name,
                                  void *out_data,
                                  size_t out_size)
@@ -289,7 +289,7 @@ TALER_MINT_mhd_request_arg_data (struct MHD_Connection *connection,
   if (NULL == str)
   {
     return (MHD_NO ==
-            TALER_MINT_reply_arg_missing (connection, param_name))
+            TMH_RESPONSE_reply_arg_missing (connection, param_name))
       ? GNUNET_SYSERR : GNUNET_NO;
   }
   if (GNUNET_OK !=
@@ -298,7 +298,7 @@ TALER_MINT_mhd_request_arg_data (struct MHD_Connection *connection,
                                      out_data,
                                      out_size))
     return (MHD_NO ==
-            TALER_MINT_reply_arg_invalid (connection, param_name))
+            TMH_RESPONSE_reply_arg_invalid (connection, param_name))
       ? GNUNET_SYSERR : GNUNET_NO;
   return GNUNET_OK;
 }
@@ -320,7 +320,7 @@ TALER_MINT_mhd_request_arg_data (struct MHD_Connection *connection,
  *   #GNUNET_SYSERR on internal error (error response could not be sent)
  */
 int
-TALER_MINT_mhd_request_var_arg_data (struct MHD_Connection *connection,
+TMH_PARSE_mhd_request_var_arg_data (struct MHD_Connection *connection,
                                      const char *param_name,
                                      void **out_data,
                                      size_t *out_size)
@@ -336,7 +336,7 @@ TALER_MINT_mhd_request_var_arg_data (struct MHD_Connection *connection,
   if (NULL == str)
   {
     return (MHD_NO ==
-            TALER_MINT_reply_arg_missing (connection, param_name))
+            TMH_RESPONSE_reply_arg_missing (connection, param_name))
       ? GNUNET_SYSERR : GNUNET_NO;
   }
   slen = strlen (str);
@@ -351,7 +351,7 @@ TALER_MINT_mhd_request_var_arg_data (struct MHD_Connection *connection,
     GNUNET_free (out);
     *out_size = 0;
     return (MHD_NO ==
-            TALER_MINT_reply_arg_invalid (connection, param_name))
+            TMH_RESPONSE_reply_arg_invalid (connection, param_name))
       ? GNUNET_SYSERR : GNUNET_NO;
   }
   *out_data = out;
@@ -368,7 +368,7 @@ TALER_MINT_mhd_request_var_arg_data (struct MHD_Connection *connection,
  *
  * @param connection the connection to send an error response to
  * @param root the JSON node to start the navigation at.
- * @param ... navigation specification (see `enum TALER_MINT_JsonNavigationCommand`)
+ * @param ... navigation specification (see `enum TMH_PARSE_JsonNavigationCommand`)
  * @return
  *    #GNUNET_YES if navigation was successful
  *    #GNUNET_NO if json is malformed, error response was generated
@@ -376,7 +376,7 @@ TALER_MINT_mhd_request_var_arg_data (struct MHD_Connection *connection,
  *                       connection must be closed)
  */
 int
-GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
+TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                                  const json_t *root,
                                  ...)
 {
@@ -389,13 +389,13 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
   ret = 2; /* just not any of the valid return values */
   while (2 == ret)
   {
-    enum TALER_MINT_JsonNavigationCommand command
+    enum TMH_PARSE_JsonNavigationCommand command
       = va_arg (argp,
-                enum TALER_MINT_JsonNavigationCommand);
+                enum TMH_PARSE_JsonNavigationCommand);
 
     switch (command)
     {
-    case JNAV_FIELD:
+    case TMH_PARSE_JNC_FIELD:
       {
         const char *fname = va_arg(argp, const char *);
 
@@ -406,7 +406,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
         if (NULL == root)
         {
           ret = (MHD_YES ==
-                 TALER_MINT_reply_json_pack (connection,
+                 TMH_RESPONSE_reply_json_pack (connection,
                                              MHD_HTTP_BAD_REQUEST,
                                              "{s:s, s:s, s:o}",
                                              "error",
@@ -421,7 +421,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
       }
       break;
 
-    case JNAV_INDEX:
+    case TMH_PARSE_JNC_INDEX:
       {
         int fnum = va_arg(argp, int);
 
@@ -432,7 +432,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
         if (NULL == root)
         {
           ret = (MHD_YES ==
-                 TALER_MINT_reply_json_pack (connection,
+                 TMH_RESPONSE_reply_json_pack (connection,
                                              MHD_HTTP_BAD_REQUEST,
                                              "{s:s, s:o}",
                                              "error",
@@ -444,7 +444,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
       }
       break;
 
-    case JNAV_RET_DATA:
+    case TMH_PARSE_JNC_RET_DATA:
       {
         void *where = va_arg (argp, void *);
         size_t len = va_arg (argp, size_t);
@@ -456,7 +456,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
         if (NULL == str)
         {
           ret = (MHD_YES ==
-                 TALER_MINT_reply_json_pack (connection,
+                 TMH_RESPONSE_reply_json_pack (connection,
                                              MHD_HTTP_BAD_REQUEST,
                                              "{s:s, s:o}",
                                              "error",
@@ -471,7 +471,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
         if (GNUNET_OK != res)
         {
           ret = (MHD_YES ==
-                 TALER_MINT_reply_json_pack (connection,
+                 TMH_RESPONSE_reply_json_pack (connection,
                                              MHD_HTTP_BAD_REQUEST,
                                              "{s:s, s:o}",
                                              "error",
@@ -485,7 +485,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
       }
       break;
 
-    case JNAV_RET_DATA_VAR:
+    case TMH_PARSE_JNC_RET_DATA_VAR:
       {
         void **where = va_arg (argp, void **);
         size_t *len = va_arg (argp, size_t *);
@@ -496,7 +496,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
         if (NULL == str)
         {
           ret = (MHD_YES ==
-                 TALER_MINT_reply_internal_error (connection,
+                 TMH_RESPONSE_reply_internal_error (connection,
                                                   "json_string_value() failed"))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
@@ -517,7 +517,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
             *where = NULL;
             *len = 0;
             ret = (MHD_YES ==
-                   TALER_MINT_reply_json_pack (connection,
+                   TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
                                                "{s:s, s:o}",
                                                "error",
@@ -531,7 +531,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
       }
       break;
 
-    case JNAV_RET_TYPED_JSON:
+    case TMH_PARSE_JNC_RET_TYPED_JSON:
       {
         int typ = va_arg (argp, int);
         const json_t **r_json = va_arg (argp, const json_t **);
@@ -539,7 +539,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
         if ( (-1 != typ) && (json_typeof (root) != typ))
         {
           ret = (MHD_YES ==
-                 TALER_MINT_reply_json_pack (connection,
+                 TMH_RESPONSE_reply_json_pack (connection,
                                              MHD_HTTP_BAD_REQUEST,
                                              "{s:s, s:i, s:i, s:o}",
                                              "error", "wrong JSON field type",
@@ -554,7 +554,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
       }
       break;
 
-    case JNAV_RET_RSA_PUBLIC_KEY:
+    case TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY:
       {
         void **where = va_arg (argp, void **);
         size_t len;
@@ -567,7 +567,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
         if (NULL == str)
         {
           ret = (MHD_YES ==
-                 TALER_MINT_reply_json_pack (connection,
+                 TMH_RESPONSE_reply_json_pack (connection,
                                              MHD_HTTP_BAD_REQUEST,
                                              "{s:s, s:o}",
                                              "error",
@@ -587,7 +587,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
         {
           GNUNET_free (buf);
           ret = (MHD_YES ==
-                 TALER_MINT_reply_json_pack (connection,
+                 TMH_RESPONSE_reply_json_pack (connection,
                                              MHD_HTTP_BAD_REQUEST,
                                              "{s:s, s:o}",
                                              "error",
@@ -603,7 +603,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
         if (NULL == *where)
         {
           ret = (MHD_YES ==
-                 TALER_MINT_reply_json_pack (connection,
+                 TMH_RESPONSE_reply_json_pack (connection,
                                              MHD_HTTP_BAD_REQUEST,
                                              "{s:s, s:o}",
                                              "error",
@@ -617,7 +617,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
         break;
       }
 
-    case JNAV_RET_RSA_SIGNATURE:
+    case TMH_PARSE_JNC_RET_RSA_SIGNATURE:
       {
         void **where = va_arg (argp, void **);
         size_t len;
@@ -630,7 +630,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
         if (NULL == str)
         {
           ret = (MHD_YES ==
-                 TALER_MINT_reply_json_pack (connection,
+                 TMH_RESPONSE_reply_json_pack (connection,
                                              MHD_HTTP_BAD_REQUEST,
                                              "{s:s, s:o}",
                                              "error",
@@ -650,7 +650,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
         {
           GNUNET_free (buf);
           ret = (MHD_YES ==
-                 TALER_MINT_reply_json_pack (connection,
+                 TMH_RESPONSE_reply_json_pack (connection,
                                              MHD_HTTP_BAD_REQUEST,
                                              "{s:s, s:o}",
                                              "error",
@@ -666,7 +666,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
         if (NULL == *where)
         {
           ret = (MHD_YES ==
-                 TALER_MINT_reply_json_pack (connection,
+                 TMH_RESPONSE_reply_json_pack (connection,
                                              MHD_HTTP_BAD_REQUEST,
                                              "{s:s, s:o}",
                                              "error",
@@ -680,11 +680,11 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
         break;
       }
 
-    case JNAV_RET_AMOUNT:
+    case TMH_PARSE_JNC_RET_AMOUNT:
       {
         struct TALER_Amount *where = va_arg (argp, void *);
 
-        ret = TALER_MINT_parse_amount_json (connection,
+        ret = TMH_PARSE_amount_json (connection,
                                             (json_t *) root,
                                             where);
         break;
@@ -693,7 +693,7 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
     default:
       GNUNET_break (0);
       ret = (MHD_YES ==
-             TALER_MINT_reply_internal_error (connection,
+             TMH_RESPONSE_reply_internal_error (connection,
                                               "unhandled value in switch"))
         ? GNUNET_NO : GNUNET_SYSERR;
       break;
@@ -715,14 +715,14 @@ GNUNET_MINT_parse_navigate_json (struct MHD_Connection *connection,
  * @return
  *    #GNUNET_YES if navigation was successful (caller is responsible
  *                for freeing allocated variable-size data using
- *                #TALER_MINT_release_parsed_data() when done)
+ *                #TMH_PARSE_release_data() when done)
  *    #GNUNET_NO if json is malformed, error response was generated
  *    #GNUNET_SYSERR on internal error
  */
 int
-TALER_MINT_parse_json_data (struct MHD_Connection *connection,
+TMH_PARSE_json_data (struct MHD_Connection *connection,
                             const json_t *root,
-                            struct GNUNET_MINT_ParseFieldSpec *spec)
+                            struct TMH_PARSE_FieldSpecification *spec)
 {
   unsigned int i;
   int ret;
@@ -735,77 +735,77 @@ TALER_MINT_parse_json_data (struct MHD_Connection *connection,
       break;
     switch (spec[i].command)
     {
-    case JNAV_FIELD:
+    case TMH_PARSE_JNC_FIELD:
       GNUNET_break (0);
       return GNUNET_SYSERR;
-    case JNAV_INDEX:
+    case TMH_PARSE_JNC_INDEX:
       GNUNET_break (0);
       return GNUNET_SYSERR;
-    case JNAV_RET_DATA:
-      ret = GNUNET_MINT_parse_navigate_json (connection,
+    case TMH_PARSE_JNC_RET_DATA:
+      ret = TMH_PARSE_navigate_json (connection,
                                              root,
-                                             JNAV_FIELD,
+                                             TMH_PARSE_JNC_FIELD,
                                              spec[i].field_name,
-                                             JNAV_RET_DATA,
+                                             TMH_PARSE_JNC_RET_DATA,
                                              spec[i].destination,
                                              spec[i].destination_size_in);
       break;
-    case JNAV_RET_DATA_VAR:
+    case TMH_PARSE_JNC_RET_DATA_VAR:
       ptr = NULL;
-      ret = GNUNET_MINT_parse_navigate_json (connection,
+      ret = TMH_PARSE_navigate_json (connection,
                                              root,
-                                             JNAV_FIELD,
+                                             TMH_PARSE_JNC_FIELD,
                                              spec[i].field_name,
-                                             JNAV_RET_DATA_VAR,
+                                             TMH_PARSE_JNC_RET_DATA_VAR,
                                              &ptr,
                                              &spec[i].destination_size_out);
       spec[i].destination = ptr;
       break;
-    case JNAV_RET_TYPED_JSON:
+    case TMH_PARSE_JNC_RET_TYPED_JSON:
       ptr = NULL;
-      ret = GNUNET_MINT_parse_navigate_json (connection,
+      ret = TMH_PARSE_navigate_json (connection,
                                              root,
-                                             JNAV_FIELD,
+                                             TMH_PARSE_JNC_FIELD,
                                              spec[i].field_name,
-                                             JNAV_RET_TYPED_JSON,
+                                             TMH_PARSE_JNC_RET_TYPED_JSON,
                                              spec[i].type,
                                              &ptr);
       *((void**)spec[i].destination) = ptr;
       break;
-    case JNAV_RET_RSA_PUBLIC_KEY:
+    case TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY:
       ptr = NULL;
-      ret = GNUNET_MINT_parse_navigate_json (connection,
+      ret = TMH_PARSE_navigate_json (connection,
                                              root,
-                                             JNAV_FIELD,
+                                             TMH_PARSE_JNC_FIELD,
                                              spec[i].field_name,
-                                             JNAV_RET_RSA_PUBLIC_KEY,
+                                             TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY,
                                              &ptr);
       spec[i].destination = ptr;
       break;
-    case JNAV_RET_RSA_SIGNATURE:
+    case TMH_PARSE_JNC_RET_RSA_SIGNATURE:
       ptr = NULL;
-      ret = GNUNET_MINT_parse_navigate_json (connection,
+      ret = TMH_PARSE_navigate_json (connection,
                                              root,
-                                             JNAV_FIELD,
+                                             TMH_PARSE_JNC_FIELD,
                                              spec[i].field_name,
-                                             JNAV_RET_RSA_SIGNATURE,
+                                             TMH_PARSE_JNC_RET_RSA_SIGNATURE,
                                              &ptr);
       spec[i].destination = ptr;
       break;
-    case JNAV_RET_AMOUNT:
+    case TMH_PARSE_JNC_RET_AMOUNT:
       GNUNET_assert (sizeof (struct TALER_Amount) ==
                      spec[i].destination_size_in);
-      ret = GNUNET_MINT_parse_navigate_json (connection,
+      ret = TMH_PARSE_navigate_json (connection,
                                              root,
-                                             JNAV_FIELD,
+                                             TMH_PARSE_JNC_FIELD,
                                              spec[i].field_name,
-                                             JNAV_RET_AMOUNT,
+                                             TMH_PARSE_JNC_RET_AMOUNT,
                                              &spec[i].destination);
       break;
     }
   }
   if (GNUNET_YES != ret)
-    TALER_MINT_release_parsed_data (spec);
+    TMH_PARSE_release_data (spec);
   return ret;
 }
 
@@ -817,7 +817,7 @@ TALER_MINT_parse_json_data (struct MHD_Connection *connection,
  * @param spec specification to free
  */
 void
-TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec)
+TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec)
 {
   unsigned int i;
   void *ptr;
@@ -826,15 +826,15 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec)
   {
     switch (spec[i].command)
     {
-    case JNAV_FIELD:
+    case TMH_PARSE_JNC_FIELD:
       GNUNET_break (0);
       return;
-    case JNAV_INDEX:
+    case TMH_PARSE_JNC_INDEX:
       GNUNET_break (0);
       return;
-    case JNAV_RET_DATA:
+    case TMH_PARSE_JNC_RET_DATA:
       break;
-    case JNAV_RET_DATA_VAR:
+    case TMH_PARSE_JNC_RET_DATA_VAR:
       if (0 != spec[i].destination_size_out)
       {
         GNUNET_free (spec[i].destination);
@@ -842,7 +842,7 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec)
         spec[i].destination_size_out = 0;
       }
       break;
-    case JNAV_RET_TYPED_JSON:
+    case TMH_PARSE_JNC_RET_TYPED_JSON:
       ptr = *(void **) spec[i].destination;
       if (NULL != ptr)
       {
@@ -850,7 +850,7 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec)
         *(void**) spec[i].destination = NULL;
       }
       break;
-    case JNAV_RET_RSA_PUBLIC_KEY:
+    case TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY:
       ptr = *(void **) spec[i].destination;
       if (NULL != ptr)
       {
@@ -858,7 +858,7 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec)
         *(void**) spec[i].destination = NULL;
       }
       break;
-    case JNAV_RET_RSA_SIGNATURE:
+    case TMH_PARSE_JNC_RET_RSA_SIGNATURE:
       ptr = *(void **) spec[i].destination;
       if (NULL != ptr)
       {
@@ -866,7 +866,7 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec)
         *(void**) spec[i].destination = NULL;
       }
       break;
-    case JNAV_RET_AMOUNT:
+    case TMH_PARSE_JNC_RET_AMOUNT:
       memset (spec[i].destination,
               0,
               sizeof (struct TALER_Amount));
@@ -888,7 +888,7 @@ TALER_MINT_release_parsed_data (struct GNUNET_MINT_ParseFieldSpec *spec)
  *    #GNUNET_SYSERR on internal error, error response was not generated
  */
 int
-TALER_MINT_parse_amount_json (struct MHD_Connection *connection,
+TMH_PARSE_amount_json (struct MHD_Connection *connection,
                               json_t *f,
                               struct TALER_Amount *amount)
 {
@@ -905,9 +905,9 @@ TALER_MINT_parse_amount_json (struct MHD_Connection *connection,
                          "fraction", &fraction,
                          "currency", &currency))
   {
-    LOG_WARNING ("Failed to parse JSON amount specification\n");
+    TALER_LOG_WARNING ("Failed to parse JSON amount specification\n");
     if (MHD_YES !=
-        TALER_MINT_reply_json_pack (connection,
+        TMH_RESPONSE_reply_json_pack (connection,
                                     MHD_HTTP_BAD_REQUEST,
                                     "{s:s}",
                                     "error", "Bad format"))
@@ -919,9 +919,9 @@ TALER_MINT_parse_amount_json (struct MHD_Connection *connection,
        (value > UINT64_MAX) ||
        (fraction > UINT32_MAX) )
   {
-    LOG_WARNING ("Amount specified not in allowed range\n");
+    TALER_LOG_WARNING ("Amount specified not in allowed range\n");
     if (MHD_YES !=
-        TALER_MINT_reply_json_pack (connection,
+        TMH_RESPONSE_reply_json_pack (connection,
                                     MHD_HTTP_BAD_REQUEST,
                                     "{s:s}",
                                     "error", "Amount outside of allowed range"))
@@ -929,11 +929,11 @@ TALER_MINT_parse_amount_json (struct MHD_Connection *connection,
     return GNUNET_NO;
   }
   if (0 != strcmp (currency,
-                   MINT_CURRENCY))
+                   TMH_MINT_CURRENCY))
   {
-    LOG_WARNING ("Currency specified not supported by this mint\n");
+    TALER_LOG_WARNING ("Currency specified not supported by this mint\n");
     if (MHD_YES !=
-        TALER_MINT_reply_json_pack (connection,
+        TMH_RESPONSE_reply_json_pack (connection,
                                     MHD_HTTP_BAD_REQUEST,
                                     "{s:s, s:s}",
                                     "error", "Currency not supported",
@@ -943,8 +943,8 @@ TALER_MINT_parse_amount_json (struct MHD_Connection *connection,
   }
   amount->value = (uint64_t) value;
   amount->fraction = (uint32_t) fraction;
-  GNUNET_assert (strlen (MINT_CURRENCY) < TALER_CURRENCY_LEN);
-  strcpy (amount->currency, MINT_CURRENCY);
+  GNUNET_assert (strlen (TMH_MINT_CURRENCY) < TALER_CURRENCY_LEN);
+  strcpy (amount->currency, TMH_MINT_CURRENCY);
   TALER_amount_normalize (amount);
   return GNUNET_OK;
 }

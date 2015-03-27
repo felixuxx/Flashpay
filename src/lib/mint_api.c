@@ -246,7 +246,7 @@ parse_timestamp (struct GNUNET_TIME_Absolute *abs,
 static int
 parse_json_signkey (struct TALER_MINT_SigningPublicKey **_sign_key,
                     json_t *sign_key_obj,
-                    struct TALER_MasterPublicKey *master_key)
+                    struct TALER_MasterPublicKeyP *master_key)
 {
   json_t *valid_from_obj;
   json_t *valid_until_obj;
@@ -257,7 +257,7 @@ parse_json_signkey (struct TALER_MINT_SigningPublicKey **_sign_key,
   const char *key_enc;
   const char *sig_enc;
   struct TALER_MINT_SigningPublicKey *sign_key;
-  struct TALER_MINT_SignKeyIssue sign_key_issue;
+  struct TALER_MintSigningKeyValidityPS sign_key_issue;
   struct GNUNET_CRYPTO_EddsaSignature sig;
   struct GNUNET_TIME_Absolute valid_from;
   struct GNUNET_TIME_Absolute valid_until;
@@ -286,15 +286,15 @@ parse_json_signkey (struct TALER_MINT_SigningPublicKey **_sign_key,
           GNUNET_CRYPTO_eddsa_public_key_from_string (key_enc,
                                                       52,
                                                       &sign_key_issue.signkey_pub.eddsa_pub));
-  sign_key_issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNKEY);
+  sign_key_issue.purpose.purpose = htonl (TALER_SIGNATURE_MINT_SIGNING_KEY_VALIDITY);
   sign_key_issue.purpose.size =
       htonl (sizeof (sign_key_issue)
-             - offsetof (struct TALER_MINT_SignKeyIssue, purpose));
-  sign_key_issue.master_pub = *master_key;
+             - offsetof (struct TALER_MintSigningKeyValidityPS, purpose));
+  sign_key_issue.master_public_key = *master_key;
   sign_key_issue.start = GNUNET_TIME_absolute_hton (valid_from);
   sign_key_issue.expire = GNUNET_TIME_absolute_hton (valid_until);
   EXITIF (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNKEY,
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MINT_SIGNING_KEY_VALIDITY,
                                       &sign_key_issue.purpose,
                                       &sig,
                                       &master_key->eddsa_pub));
@@ -341,7 +341,7 @@ parse_json_amount (json_t *amount_obj, struct TALER_Amount *amt)
 static int
 parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
                      json_t *denom_key_obj,
-                     struct TALER_MasterPublicKey *master_key)
+                     struct TALER_MasterPublicKeyP *master_key)
 {
   json_t *obj;
   const char *sig_enc;
@@ -359,7 +359,7 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
   struct TALER_Amount fee_withdraw;
   struct TALER_Amount fee_deposit;
   struct TALER_Amount fee_refresh;
-  struct TALER_MINT_DenomKeyIssue denom_key_issue;
+  struct TALER_DenominationKeyValidityPS denom_key_issue;
   struct GNUNET_CRYPTO_rsa_PublicKey *pk;
   struct GNUNET_CRYPTO_EddsaSignature sig;
 
@@ -408,10 +408,10 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
   EXITIF (GNUNET_SYSERR == parse_json_amount (obj, &fee_deposit));
   EXITIF (NULL == (obj = json_object_get (denom_key_obj, "fee_refresh")));
   EXITIF (GNUNET_SYSERR == parse_json_amount (obj, &fee_refresh));
-  denom_key_issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOM);
+  denom_key_issue.purpose.purpose = htonl (TALER_SIGNATURE_MINT_DENOMINATION_KEY_VALIDITY);
   denom_key_issue.purpose.size = htonl
-      (sizeof (struct TALER_MINT_DenomKeyIssue) -
-       offsetof (struct TALER_MINT_DenomKeyIssue, purpose));
+      (sizeof (struct TALER_DenominationKeyValidityPS) -
+       offsetof (struct TALER_DenominationKeyValidityPS, purpose));
   denom_key_issue.master = *master_key;
   denom_key_issue.start = GNUNET_TIME_absolute_hton (valid_from);
   denom_key_issue.expire_withdraw = GNUNET_TIME_absolute_hton (withdraw_valid_until);
@@ -425,7 +425,7 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
   TALER_amount_hton (&denom_key_issue.fee_refresh,
                      &fee_refresh);
   EXITIF (GNUNET_SYSERR ==
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOM,
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MINT_DENOMINATION_KEY_VALIDITY,
                                       &denom_key_issue.purpose,
                                       &sig,
                                       &master_key->eddsa_pub));
@@ -455,7 +455,7 @@ parse_response_keys_get (const char *in, size_t size,
 {
   json_t *resp_obj;
   struct TALER_MINT_DenomPublicKey **denom_keys;
-  struct TALER_MasterPublicKey master_key;
+  struct TALER_MasterPublicKeyP master_key;
   struct GNUNET_TIME_Absolute list_issue_date;
   struct TALER_MINT_SigningPublicKey **sign_keys;
   unsigned int n_denom_keys;
@@ -485,7 +485,7 @@ parse_response_keys_get (const char *in, size_t size,
     json_t *master_key_obj;
     const char *master_key_enc;
 
-    EXITIF (NULL == (master_key_obj = json_object_get (resp_obj, "master_pub")));
+    EXITIF (NULL == (master_key_obj = json_object_get (resp_obj, "TMH_master_public_key")));
     EXITIF (NULL == (master_key_enc = json_string_value (master_key_obj)));
     EXITIF (52 != strlen (master_key_enc)); /* strlen(base32(char[32])) = 52 */
     EXITIF (GNUNET_OK !=
@@ -584,7 +584,7 @@ parse_deposit_response (void *buf, size_t size, int *r_status, json_t **r_obj)
     return GNUNET_SYSERR;
   }
   EXITIF (-1 == json_unpack (obj, "{s:s}", "status", &status_str));
-  LOG_DEBUG ("Received deposit response: %s from mint\n", status_str);
+  TALER_LOG_DEBUG ("Received deposit response: %s from mint\n", status_str);
   if (0 == strcmp ("DEPOSIT_OK", status_str))
     *r_status = 1;
   else if (0 == strcmp ("DEPOSIT_QUEUED", status_str))
@@ -916,7 +916,7 @@ struct TALER_MINT_Handle *
 TALER_MINT_connect (struct TALER_MINT_Context *ctx,
                     const char *hostname,
                     uint16_t port,
-                    const struct TALER_MasterPublicKey *mint_key)
+                    const struct TALER_MasterPublicKeyP *mint_key)
 {
   struct TALER_MINT_Handle *mint;
 

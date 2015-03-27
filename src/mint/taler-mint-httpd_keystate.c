@@ -30,12 +30,12 @@
  * the mint.  There can be multiple instances of this struct, as it is
  * reference counted and only destroyed once the last user is done
  * with it.  The current instance is acquired using
- * #TALER_MINT_key_state_acquire().  Using this function increases the
+ * #TMH_KS_acquire().  Using this function increases the
  * reference count.  The contents of this structure (except for the
  * reference counter) should be considered READ-ONLY until it is
  * ultimately destroyed (as there can be many concurrent users).
  */
-struct MintKeyState
+struct TMH_KS_StateHandle
 {
   /**
    * JSON array with denomination keys.  (Currently not really used
@@ -51,7 +51,7 @@ struct MintKeyState
 
   /**
    * Cached JSON text that the mint will send for a "/keys" request.
-   * Includes our @e master_pub public key, the signing and
+   * Includes our @e TMH_master_public_key public key, the signing and
    * denomination keys as well as the @e reload_time.
    */
   char *keys_json;
@@ -76,7 +76,7 @@ struct MintKeyState
   /**
    * Mint signing key that should be used currently.
    */
-  struct TALER_MINT_SignKeyIssuePriv current_sign_key_issue;
+  struct TALER_MintSigningKeyValidityPSPriv current_sign_key_issue;
 
   /**
    * Reference count.  The struct is released when the RC hits zero.
@@ -87,9 +87,9 @@ struct MintKeyState
 
 /**
  * Mint key state.  Never use directly, instead access via
- * #TALER_MINT_key_state_acquire() and #TALER_MINT_key_state_release().
+ * #TMH_KS_acquire() and #TMH_KS_release().
  */
-static struct MintKeyState *internal_key_state;
+static struct TMH_KS_StateHandle *internal_key_state;
 
 /**
  * Mutex protecting access to #internal_key_state.
@@ -112,7 +112,7 @@ static int reload_pipe[2];
  */
 static json_t *
 denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
-                         const struct TALER_MINT_DenomKeyIssue *dki)
+                         const struct TALER_DenominationKeyValidityPS *dki)
 {
   struct TALER_Amount value;
   struct TALER_Amount fee_withdraw;
@@ -130,24 +130,24 @@ denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
   return
     json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                "master_sig",
-               TALER_JSON_from_data (&dki->signature,
+               TALER_json_from_data (&dki->signature,
                                      sizeof (struct GNUNET_CRYPTO_EddsaSignature)),
                "stamp_start",
-               TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->start)),
+               TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (dki->start)),
                "stamp_expire_withdraw",
-               TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_withdraw)),
+               TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_withdraw)),
                "stamp_expire_deposit",
-               TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_spend)),
+               TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_spend)),
                "denom_pub",
-               TALER_JSON_from_rsa_public_key (pk->rsa_public_key),
+               TALER_json_from_rsa_public_key (pk->rsa_public_key),
                "value",
-               TALER_JSON_from_amount (&value),
+               TALER_json_from_amount (&value),
                "fee_withdraw",
-               TALER_JSON_from_amount (&fee_withdraw),
+               TALER_json_from_amount (&fee_withdraw),
                "fee_deposit",
-               TALER_JSON_from_amount (&fee_deposit),
+               TALER_json_from_amount (&fee_deposit),
                "fee_refresh",
-               TALER_JSON_from_amount (&fee_refresh));
+               TALER_json_from_amount (&fee_refresh));
 }
 
 
@@ -189,13 +189,13 @@ TALER_MINT_conf_duration_provide ()
 static int
 reload_keys_denom_iter (void *cls,
                         const char *alias,
-                        const struct TALER_MINT_DenomKeyIssuePriv *dki)
+                        const struct TALER_DenominationKeyIssueInformation *dki)
 {
-  struct MintKeyState *ctx = cls;
+  struct TMH_KS_StateHandle *ctx = cls;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute horizon;
   struct GNUNET_HashCode denom_key_hash;
-  struct TALER_MINT_DenomKeyIssuePriv *d2;
+  struct TALER_DenominationKeyIssueInformation *d2;
   int res;
 
   horizon = GNUNET_TIME_relative_to_absolute (TALER_MINT_conf_duration_provide ());
@@ -220,7 +220,7 @@ reload_keys_denom_iter (void *cls,
   GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
                                      &denom_key_hash);
   d2 = GNUNET_memdup (dki,
-                      sizeof (struct TALER_MINT_DenomKeyIssuePriv));
+                      sizeof (struct TALER_DenominationKeyIssueInformation));
   res = GNUNET_CONTAINER_multihashmap_put (ctx->denomkey_map,
                                            &denom_key_hash,
                                            d2,
@@ -247,19 +247,19 @@ reload_keys_denom_iter (void *cls,
  * @return a JSON object describing the sign key isue (public part)
  */
 static json_t *
-sign_key_issue_to_json (const struct TALER_MINT_SignKeyIssue *ski)
+sign_key_issue_to_json (const struct TALER_MintSigningKeyValidityPS *ski)
 {
   return
     json_pack ("{s:o, s:o, s:o, s:o}",
                "stamp_start",
-               TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (ski->start)),
+               TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (ski->start)),
                "stamp_expire",
-               TALER_JSON_from_abs (GNUNET_TIME_absolute_ntoh (ski->expire)),
+               TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (ski->expire)),
                "master_sig",
-               TALER_JSON_from_data (&ski->signature,
+               TALER_json_from_data (&ski->signature,
                                      sizeof (struct GNUNET_CRYPTO_EddsaSignature)),
                "key",
-               TALER_JSON_from_data (&ski->signkey_pub,
+               TALER_json_from_data (&ski->signkey_pub,
                                      sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)));
 }
 
@@ -277,9 +277,9 @@ sign_key_issue_to_json (const struct TALER_MINT_SignKeyIssue *ski)
 static int
 reload_keys_sign_iter (void *cls,
                        const char *filename,
-                       const struct TALER_MINT_SignKeyIssuePriv *ski)
+                       const struct TALER_MintSigningKeyValidityPSPriv *ski)
 {
-  struct MintKeyState *ctx = cls;
+  struct TMH_KS_StateHandle *ctx = cls;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute horizon;
 
@@ -320,7 +320,7 @@ reload_keys_sign_iter (void *cls,
 /**
  * Iterator for freeing denomination keys.
  *
- * @param cls closure with the `struct MintKeyState`
+ * @param cls closure with the `struct TMH_KS_StateHandle`
  * @param key key for the denomination key
  * @param alias coin alias
  * @return #GNUNET_OK to continue to iterate,
@@ -332,7 +332,7 @@ free_denom_key (void *cls,
                 const struct GNUNET_HashCode *key,
                 void *value)
 {
-  struct TALER_MINT_DenomKeyIssuePriv *dki = value;
+  struct TALER_DenominationKeyIssueInformation *dki = value;
 
   GNUNET_free (dki);
   return GNUNET_OK;
@@ -345,7 +345,7 @@ free_denom_key (void *cls,
  * @param key_state the key state to release
  */
 void
-TALER_MINT_key_state_release (struct MintKeyState *key_state)
+TMH_KS_release (struct TMH_KS_StateHandle *key_state)
 {
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
   GNUNET_assert (0 < key_state->refcnt);
@@ -367,30 +367,30 @@ TALER_MINT_key_state_release (struct MintKeyState *key_state)
 
 /**
  * Acquire the key state of the mint.  Updates keys if necessary.
- * For every call to #TALER_MINT_key_state_acquire(), a matching call
- * to #TALER_MINT_key_state_release() must be made.
+ * For every call to #TMH_KS_acquire(), a matching call
+ * to #TMH_KS_release() must be made.
  *
  * @return the key state
  */
-struct MintKeyState *
-TALER_MINT_key_state_acquire (void)
+struct TMH_KS_StateHandle *
+TMH_KS_acquire (void)
 {
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
-  struct MintKeyState *key_state;
+  struct TMH_KS_StateHandle *key_state;
   json_t *keys;
   char *inner;
-  struct TALER_MINT_KeySetSignature ks;
-  struct TALER_MintSignature sig;
+  struct TALER_MintKeySetPS ks;
+  struct TALER_MintSignatureP sig;
 
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
   if (internal_key_state->next_reload.abs_value_us <= now.abs_value_us)
   {
-    TALER_MINT_key_state_release (internal_key_state);
+    TMH_KS_release (internal_key_state);
     internal_key_state = NULL;
   }
   if (NULL == internal_key_state)
   {
-    key_state = GNUNET_new (struct MintKeyState);
+    key_state = GNUNET_new (struct TMH_KS_StateHandle);
     key_state->denom_keys_array = json_array ();
     GNUNET_assert (NULL != key_state->denom_keys_array);
     key_state->sign_keys_array = json_array ();
@@ -398,10 +398,10 @@ TALER_MINT_key_state_acquire (void)
     key_state->denomkey_map = GNUNET_CONTAINER_multihashmap_create (32,
                                                                     GNUNET_NO);
     key_state->reload_time = GNUNET_TIME_absolute_get ();
-    TALER_MINT_denomkeys_iterate (mintdir,
+    TALER_MINT_denomkeys_iterate (TMH_mint_directory,
                                   &reload_keys_denom_iter,
                                   key_state);
-    TALER_MINT_signkeys_iterate (mintdir,
+    TALER_MINT_signkeys_iterate (TMH_mint_directory,
                                  &reload_keys_sign_iter,
                                  key_state);
     key_state->next_reload = GNUNET_TIME_absolute_ntoh (key_state->current_sign_key_issue.issue.expire);
@@ -410,26 +410,26 @@ TALER_MINT_key_state_acquire (void)
                   "No valid signing key found!\n");
 
     keys = json_pack ("{s:o, s:o, s:o, s:o}",
-                      "master_pub",
-                      TALER_JSON_from_data (&master_pub,
+                      "TMH_master_public_key",
+                      TALER_json_from_data (&TMH_master_public_key,
                                             sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)),
                       "signkeys", key_state->sign_keys_array,
                       "denoms", key_state->denom_keys_array,
-                      "list_issue_date", TALER_JSON_from_abs (key_state->reload_time));
+                      "list_issue_date", TALER_json_from_abs (key_state->reload_time));
     inner = json_dumps (keys,
                         JSON_INDENT(2));
     ks.purpose.size = htonl (sizeof (ks));
-    ks.purpose.purpose = htonl (TALER_SIGNATURE_KEYS_SET);
+    ks.purpose.purpose = htonl (TALER_SIGNATURE_MINT_KEY_SET);
     ks.list_issue_date = GNUNET_TIME_absolute_hton (key_state->reload_time);
     GNUNET_CRYPTO_hash (inner,
                         strlen (inner),
                         &ks.hc);
     GNUNET_free (inner);
-    TALER_MINT_keys_sign (&ks.purpose,
+    TMH_KS_sign (&ks.purpose,
                           &sig);
     keys = json_pack ("{s:o, s:o}",
                       "keys", keys,
-                      "eddsa-signature", TALER_JSON_from_eddsa_sig (&ks.purpose,
+                      "eddsa-signature", TALER_json_from_eddsa_sig (&ks.purpose,
                                                                     &sig.eddsa_signature));
     key_state->keys_json = json_dumps (keys,
                                        JSON_INDENT (2));
@@ -452,8 +452,8 @@ TALER_MINT_key_state_acquire (void)
  * @return the denomination key issue,
  *         or NULL if denom_pub could not be found
  */
-struct TALER_MINT_DenomKeyIssuePriv *
-TALER_MINT_get_denom_key (const struct MintKeyState *key_state,
+struct TALER_DenominationKeyIssueInformation *
+TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
                           const struct TALER_DenominationPublicKey *denom_pub)
 {
   struct GNUNET_HashCode hc;
@@ -505,7 +505,7 @@ handle_signal (int signal_number)
  *          (FIXME: #3474)
  */
 int
-TALER_MINT_key_reload_loop (void)
+TMH_KS_loop (void)
 {
   struct sigaction act;
   struct sigaction rec;
@@ -541,12 +541,12 @@ TALER_MINT_key_reload_loop (void)
                 "(re-)loading keys\n");
     if (NULL != internal_key_state)
     {
-      TALER_MINT_key_state_release (internal_key_state);
+      TMH_KS_release (internal_key_state);
       internal_key_state = NULL;
     }
     /* This will re-initialize 'internal_key_state' with
        an initial refcnt of 1 */
-    (void) TALER_MINT_key_state_acquire ();
+    (void) TMH_KS_acquire ();
 
 read_again:
     errno = 0;
@@ -582,18 +582,18 @@ read_again:
  * @param[OUT] sig signature over purpose using current signing key
  */
 void
-TALER_MINT_keys_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-                      struct TALER_MintSignature *sig)
+TMH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+                      struct TALER_MintSignatureP *sig)
 
 {
-  struct MintKeyState *key_state;
+  struct TMH_KS_StateHandle *key_state;
 
-  key_state = TALER_MINT_key_state_acquire ();
+  key_state = TMH_KS_acquire ();
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
                                            purpose,
                                            &sig->eddsa_signature));
-  TALER_MINT_key_state_release (key_state);
+  TMH_KS_release (key_state);
 }
 
 
@@ -609,21 +609,21 @@ TALER_MINT_keys_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
  * @return MHD result code
  */
 int
-TALER_MINT_handler_keys (struct RequestHandler *rh,
+TMH_KS_handler_keys (struct TMH_RequestHandler *rh,
                          struct MHD_Connection *connection,
                          void **connection_cls,
                          const char *upload_data,
                          size_t *upload_data_size)
 {
-  struct MintKeyState *key_state;
+  struct TMH_KS_StateHandle *key_state;
   struct MHD_Response *response;
   int ret;
 
-  key_state = TALER_MINT_key_state_acquire ();
+  key_state = TMH_KS_acquire ();
   response = MHD_create_response_from_buffer (strlen (key_state->keys_json),
                                               key_state->keys_json,
                                               MHD_RESPMEM_MUST_COPY);
-  TALER_MINT_key_state_release (key_state);
+  TMH_KS_release (key_state);
   if (NULL == response)
   {
     GNUNET_break (0);

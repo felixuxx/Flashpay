@@ -22,7 +22,7 @@
 #include <libpq-fe.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "plugin.h"
-#include "db_pq.h"
+#include "taler_pq_lib.h"
 #include "taler-mint-httpd.h"
 
 #define DB_URI "postgres:///taler"
@@ -98,8 +98,8 @@ run (void *cls,
       htonl (GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, UINT32_MAX));
   deposit->amount_with_fee.fraction =
       htonl (GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, UINT32_MAX));
-  GNUNET_assert (strlen (MINT_CURRENCY) < sizeof (deposit->amount_with_fee.currency));
-  strcpy (deposit->amount_with_fee.currency, MINT_CURRENCY);
+  GNUNET_assert (strlen (TMH_MINT_CURRENCY) < sizeof (deposit->amount_with_fee.currency));
+  strcpy (deposit->amount_with_fee.currency, TMH_MINT_CURRENCY);
   /* Copy wireformat */
   deposit->wire = json_loads (wire, 0, NULL);
   EXITIF (GNUNET_OK !=

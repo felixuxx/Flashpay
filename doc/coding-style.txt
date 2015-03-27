@@ -43,13 +43,17 @@ Naming conventions:
   + must start with TALER_[SUBSYSTEMNAME]_ where SUBSYSTEMNAME
     MUST match the subdirectory of src/ in which the symbol is defined
   + from libtalerutil start just with TALER_, without subsystemname
+  + if scope is ONE binary and symbols are not in a shared library,
+    use binary-specific prefix (such as TMH = taler-mint-httpd) for
+    globals, possibly followed by the subsystem (TMH_DB_xxx).
 
 * structs:
   + structs that are 'packed' and do not contain pointers and are
     thus suitable for hashing or similar operations are distinguished
     by adding a "P" at the end of the name. (NEW)  Note that this
     convention does not hold for the GNUnet-structs (yet).
-
+  + structs that are used with a purpose for signatures, additionally
+    get an "S" at the end of the name.
 
 * private (library-internal) symbols (including structs and macros)
   + must not start with TALER_ or any other prefix

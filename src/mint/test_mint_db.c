@@ -54,7 +54,7 @@ static int result;
  */
 static int
 check_reserve (struct TALER_MINTDB_Session *session,
-               const struct TALER_ReservePublicKey *pub,
+               const struct TALER_ReservePublicKeyP *pub,
                uint64_t value,
                uint32_t fraction,
                const char *currency,
@@ -123,7 +123,7 @@ run (void *cls,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   struct TALER_MINTDB_Session *session;
-  struct TALER_ReservePublicKey reserve_pub;
+  struct TALER_ReservePublicKeyP reserve_pub;
   struct Reserve reserve;
   struct GNUNET_TIME_Absolute expiry;
   struct TALER_Amount amount;
@@ -355,7 +355,7 @@ main (int argc,
    static const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_OPTION_END
   };
-   const char *argv2[] = {
+   char *argv2[] = {
      "test-mint-db-<plugin_name>", /* will be replaced later */
      "-c", "test-mint-db-<plugin_name>.conf", /* will be replaced later */
      NULL,

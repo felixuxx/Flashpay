@@ -44,10 +44,10 @@ int main(int argc, const char *const argv[])
   wire = json_loads (json_wire_str, 0, &error);
   if (NULL == wire)
   {
-    TALER_JSON_warn (error);
+    TALER_json_warn (error);
     return 2;
   }
-  ret = TALER_JSON_validate_wireformat ("SEPA", wire);
+  ret = TALER_json_validate_wireformat ("SEPA", wire);
   if (1 == ret)
     return 0;
   return 1;

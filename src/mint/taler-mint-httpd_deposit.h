@@ -45,10 +45,10 @@
  * @return MHD result code
   */
 int
-TALER_MINT_handler_deposit (struct RequestHandler *rh,
-                            struct MHD_Connection *connection,
-                            void **connection_cls,
-                            const char *upload_data,
-                            size_t *upload_data_size);
+TMH_DEPOSIT_handler_deposit (struct TMH_RequestHandler *rh,
+                             struct MHD_Connection *connection,
+                             void **connection_cls,
+                             const char *upload_data,
+                             size_t *upload_data_size);
 
 #endif

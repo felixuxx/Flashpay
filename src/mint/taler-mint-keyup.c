@@ -51,7 +51,7 @@ GNUNET_NETWORK_STRUCT_BEGIN
  * Struct with all of the key information for a kind of coin.  Hashed
  * to generate a unique directory name per coin type.
  */
-struct CoinTypeNBO
+struct CoinTypeNBOP
 {
   /**
    * How long can the coin be spend?
@@ -158,7 +158,7 @@ static char *masterkeyfile;
 /**
  * Director of the mint, containing the keys.
  */
-static char *mintdir;
+static char *mint_directory;
 
 /**
  * Time to pretend when the key update is executed.
@@ -179,12 +179,12 @@ static struct GNUNET_TIME_Absolute now;
 /**
  * Master private key of the mint.
  */
-static struct TALER_MasterPrivateKey master_priv;
+static struct TALER_MasterPrivateKeyP master_priv;
 
 /**
  * Master public key of the mint.
  */
-static struct TALER_MasterPublicKey master_pub;
+static struct TALER_MasterPublicKeyP master_public_key;
 
 /**
  * Until what time do we provide keys?
@@ -208,7 +208,7 @@ get_signkey_file (struct GNUNET_TIME_Absolute start)
   GNUNET_snprintf (dir,
                    sizeof (dir),
                    "%s" DIR_SEPARATOR_STR DIR_SIGNKEYS DIR_SEPARATOR_STR "%llu",
-                   mintdir,
+                   mint_directory,
                    (unsigned long long) start.abs_value_us);
   return dir;
 }
@@ -226,11 +226,11 @@ static void
 hash_coin_type (const struct CoinTypeParams *p,
                 struct GNUNET_HashCode *hash)
 {
-  struct CoinTypeNBO p_nbo;
+  struct CoinTypeNBOP p_nbo;
 
   memset (&p_nbo,
           0,
-          sizeof (struct CoinTypeNBO));
+          sizeof (struct CoinTypeNBOP));
   p_nbo.duration_spend = GNUNET_TIME_relative_hton (p->duration_spend);
   p_nbo.duration_withdraw = GNUNET_TIME_relative_hton (p->duration_withdraw);
   TALER_amount_hton (&p_nbo.value,
@@ -243,7 +243,7 @@ hash_coin_type (const struct CoinTypeParams *p,
                      &p->fee_refresh);
   p_nbo.rsa_keysize = htonl (p->rsa_keysize);
   GNUNET_CRYPTO_hash (&p_nbo,
-                      sizeof (struct CoinTypeNBO),
+                      sizeof (struct CoinTypeNBOP),
                       hash);
 }
 
@@ -286,7 +286,7 @@ get_cointype_dir (const struct CoinTypeParams *p)
   GNUNET_snprintf (dir,
                    sizeof (dir),
                    "%s" DIR_SEPARATOR_STR DIR_DENOMKEYS DIR_SEPARATOR_STR "%s-%s",
-                   mintdir,
+                   mint_directory,
                    val_str,
                    hash_str);
   GNUNET_free (hash_str);
@@ -434,23 +434,23 @@ get_anchor (const char *dir,
 static void
 create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
                            struct GNUNET_TIME_Relative duration,
-                           struct TALER_MINT_SignKeyIssuePriv *pi)
+                           struct TALER_MintSigningKeyValidityPSPriv *pi)
 {
   struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
-  struct TALER_MINT_SignKeyIssue *issue = &pi->issue;
+  struct TALER_MintSigningKeyValidityPS *issue = &pi->issue;
 
   priv = GNUNET_CRYPTO_eddsa_key_create ();
   pi->signkey_priv.eddsa_priv = *priv;
   GNUNET_free (priv);
-  issue->master_pub = master_pub;
+  issue->master_public_key = master_public_key;
   issue->start = GNUNET_TIME_absolute_hton (start);
   issue->expire = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (start,
                                                                        duration));
   GNUNET_CRYPTO_eddsa_key_get_public (&pi->signkey_priv.eddsa_priv,
                                       &issue->signkey_pub.eddsa_pub);
-  issue->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNKEY);
-  issue->purpose.size = htonl (sizeof (struct TALER_MINT_SignKeyIssue) -
-                               offsetof (struct TALER_MINT_SignKeyIssue,
+  issue->purpose.purpose = htonl (TALER_SIGNATURE_MINT_SIGNING_KEY_VALIDITY);
+  issue->purpose.size = htonl (sizeof (struct TALER_MintSigningKeyValidityPS) -
+                               offsetof (struct TALER_MintSigningKeyValidityPS,
                                          purpose));
 
   GNUNET_assert (GNUNET_OK ==
@@ -488,7 +488,7 @@ mint_keys_update_signkeys ()
                  rel_value_us);
   GNUNET_asprintf (&signkey_dir,
                    "%s" DIR_SEPARATOR_STR DIR_SIGNKEYS,
-                   mintdir);
+                   mint_directory);
   /* make sure the directory exists */
   if (GNUNET_OK !=
       GNUNET_DISK_directory_create (signkey_dir))
@@ -506,7 +506,7 @@ mint_keys_update_signkeys ()
   while (anchor.abs_value_us < lookahead_sign_stamp.abs_value_us)
   {
     const char *skf;
-    struct TALER_MINT_SignKeyIssuePriv signkey_issue;
+    struct TALER_MintSigningKeyValidityPSPriv signkey_issue;
     ssize_t nwrite;
 
     skf = get_signkey_file (anchor);
@@ -520,9 +520,9 @@ mint_keys_update_signkeys ()
                                &signkey_issue);
     nwrite = GNUNET_DISK_fn_write (skf,
                                    &signkey_issue,
-                                   sizeof (struct TALER_MINT_SignKeyIssue),
+                                   sizeof (struct TALER_MintSigningKeyValidityPS),
                                    GNUNET_DISK_PERM_USER_WRITE | GNUNET_DISK_PERM_USER_READ);
-    if (nwrite != sizeof (struct TALER_MINT_SignKeyIssue))
+    if (nwrite != sizeof (struct TALER_MintSigningKeyValidityPS))
     {
       fprintf (stderr,
                "Failed to write to file `%s': %s\n",
@@ -676,7 +676,7 @@ get_cointype_params (const char *ct,
  */
 static void
 create_denomkey_issue (const struct CoinTypeParams *params,
-                       struct TALER_MINT_DenomKeyIssuePriv *dki)
+                       struct TALER_DenominationKeyIssueInformation *dki)
 {
   dki->denom_priv.rsa_private_key
     = GNUNET_CRYPTO_rsa_private_key_create (params->rsa_keysize);
@@ -685,7 +685,7 @@ create_denomkey_issue (const struct CoinTypeParams *params,
     = GNUNET_CRYPTO_rsa_private_key_get_public (dki->denom_priv.rsa_private_key);
   GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
                                      &dki->issue.denom_hash);
-  dki->issue.master = master_pub;
+  dki->issue.master = master_public_key;
   dki->issue.start = GNUNET_TIME_absolute_hton (params->anchor);
   dki->issue.expire_withdraw =
       GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
@@ -701,9 +701,9 @@ create_denomkey_issue (const struct CoinTypeParams *params,
                      &params->fee_deposit);
   TALER_amount_hton (&dki->issue.fee_refresh,
                      &params->fee_refresh);
-  dki->issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOM);
-  dki->issue.purpose.size = htonl (sizeof (struct TALER_MINT_DenomKeyIssuePriv) -
-                                   offsetof (struct TALER_MINT_DenomKeyIssuePriv,
+  dki->issue.purpose.purpose = htonl (TALER_SIGNATURE_MINT_DENOMINATION_KEY_VALIDITY);
+  dki->issue.purpose.size = htonl (sizeof (struct TALER_DenominationKeyIssueInformation) -
+                                   offsetof (struct TALER_DenominationKeyIssueInformation,
                                              issue.purpose));
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
@@ -726,7 +726,7 @@ mint_keys_update_cointype (void *cls,
   int *ret = cls;
   struct CoinTypeParams p;
   const char *dkf;
-  struct TALER_MINT_DenomKeyIssuePriv denomkey_issue;
+  struct TALER_DenominationKeyIssueInformation denomkey_issue;
 
   if (0 != strncasecmp (coin_alias,
                         "coin_",
@@ -820,7 +820,7 @@ main (int argc,
      &GNUNET_GETOPT_set_filename, &masterkeyfile},
     {'d', "mint-dir", "DIR",
      "mint directory with keys to update", 1,
-     &GNUNET_GETOPT_set_filename, &mintdir},
+     &GNUNET_GETOPT_set_filename, &mint_directory},
     {'t', "time", "TIMESTAMP",
      "pretend it is a different time for the update", 0,
      &GNUNET_GETOPT_set_string, &pretend_time_str},
@@ -838,7 +838,7 @@ main (int argc,
                          options,
                          argc, argv) < 0)
     return 1;
-  if (NULL == mintdir)
+  if (NULL == mint_directory)
   {
     fprintf (stderr,
              "Mint directory not given\n");
@@ -862,7 +862,7 @@ main (int argc,
   }
   ROUND_TO_SECS (now, abs_value_us);
 
-  kcfg = TALER_config_load (mintdir);
+  kcfg = TALER_config_load (mint_directory);
   if (NULL == kcfg)
   {
     fprintf (stderr,
@@ -886,32 +886,32 @@ main (int argc,
   master_priv.eddsa_priv = *eddsa_priv;
   GNUNET_free (eddsa_priv);
   GNUNET_CRYPTO_eddsa_key_get_public (&master_priv.eddsa_priv,
-                                      &master_pub.eddsa_pub);
+                                      &master_public_key.eddsa_pub);
 
   /* check if key from file matches the one from the configuration */
   {
-    struct GNUNET_CRYPTO_EddsaPublicKey master_pub_from_cfg;
+    struct GNUNET_CRYPTO_EddsaPublicKey master_public_key_from_cfg;
 
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_data (kcfg,
                                        "mint",
-                                       "master_pub",
-                                       &master_pub_from_cfg,
+                                       "master_public_key",
+                                       &master_public_key_from_cfg,
                                        sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
     {
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "mint",
-                                 "master_pub");
+                                 "master_public_key");
       return 1;
     }
     if (0 !=
-        memcmp (&master_pub,
-                &master_pub_from_cfg,
+        memcmp (&master_public_key,
+                &master_public_key_from_cfg,
                 sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
     {
       GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                  "mint",
-                                 "master_pub",
+                                 "master_public_key",
                                  _("does not match with private key"));
       return 1;
     }

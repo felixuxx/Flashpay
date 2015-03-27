@@ -47,17 +47,17 @@ GNUNET_NETWORK_STRUCT_BEGIN
  * Includes the private key followed by the public information about
  * the signing key.
  */
-struct TALER_MINT_SignKeyIssuePriv
+struct TALER_MintSigningKeyValidityPSPriv
 {
   /**
    * Private key part of the mint's signing key.
    */
-  struct TALER_MintPrivateKey signkey_priv;
+  struct TALER_MintPrivateKeyP signkey_priv;
 
   /**
    * Public information about a mint signing key.
    */
-  struct TALER_MINT_SignKeyIssue issue;
+  struct TALER_MintSigningKeyValidityPS issue;
 };
 
 
@@ -68,7 +68,7 @@ GNUNET_NETWORK_STRUCT_END
  * All information about a denomination key (which is used to
  * sign coins into existence).
  */
-struct TALER_MINT_DenomKeyIssuePriv
+struct TALER_DenominationKeyIssueInformation
 {
   /**
    * The private key of the denomination.  Will be NULL if the private
@@ -86,7 +86,7 @@ struct TALER_MINT_DenomKeyIssuePriv
   /**
    * Signed public information about a denomination key.
    */
-  struct TALER_MINT_DenomKeyIssue issue;
+  struct TALER_DenominationKeyValidityPS issue;
 };
 
 
@@ -103,7 +103,7 @@ struct TALER_MINT_DenomKeyIssuePriv
 typedef int
 (*TALER_MINT_SignkeyIterator)(void *cls,
                               const char *filename,
-                              const struct TALER_MINT_SignKeyIssuePriv *ski);
+                              const struct TALER_MintSigningKeyValidityPSPriv *ski);
 
 
 /**
@@ -119,7 +119,7 @@ typedef int
 typedef int
 (*TALER_MINT_DenomkeyIterator)(void *cls,
                                const char *alias,
-                               const struct TALER_MINT_DenomKeyIssuePriv *dki);
+                               const struct TALER_DenominationKeyIssueInformation *dki);
 
 
 
@@ -169,7 +169,7 @@ TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
  */
 int
 TALER_MINT_write_denom_key (const char *filename,
-                            const struct TALER_MINT_DenomKeyIssuePriv *dki);
+                            const struct TALER_DenominationKeyIssueInformation *dki);
 
 
 /**
@@ -181,7 +181,7 @@ TALER_MINT_write_denom_key (const char *filename,
  */
 int
 TALER_MINT_read_denom_key (const char *filename,
-                           struct TALER_MINT_DenomKeyIssuePriv *dki);
+                           struct TALER_DenominationKeyIssueInformation *dki);
 
 
 #endif

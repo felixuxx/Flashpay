@@ -40,11 +40,11 @@
  * @return MHD result code
   */
 int
-TALER_MINT_handler_withdraw_status (struct RequestHandler *rh,
-                                    struct MHD_Connection *connection,
-                                    void **connection_cls,
-                                    const char *upload_data,
-                                    size_t *upload_data_size);
+TMH_WITHDRAW_handler_withdraw_status (struct TMH_RequestHandler *rh,
+                                      struct MHD_Connection *connection,
+                                      void **connection_cls,
+                                      const char *upload_data,
+                                      size_t *upload_data_size);
 
 
 /**
@@ -64,10 +64,10 @@ TALER_MINT_handler_withdraw_status (struct RequestHandler *rh,
  * @return MHD result code
   */
 int
-TALER_MINT_handler_withdraw_sign (struct RequestHandler *rh,
-                                  struct MHD_Connection *connection,
-                                  void **connection_cls,
-                                  const char *upload_data,
-                                  size_t *upload_data_size);
+TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
+                                    struct MHD_Connection *connection,
+                                    void **connection_cls,
+                                    const char *upload_data,
+                                    size_t *upload_data_size);
 
 #endif

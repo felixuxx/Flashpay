@@ -40,7 +40,7 @@ fatal_error_handler (void *cls,
                      int wtf,
                      const char *msg)
 {
-  LOG_ERROR ("Fatal error in libgcrypt: %s\n",
+  TALER_LOG_ERROR ("Fatal error in libgcrypt: %s\n",
              msg);
   abort();
 }
@@ -71,7 +71,7 @@ TALER_gcrypt_init ()
  * @param[out] skey set to session key
  */
 static void
-derive_refresh_key (const struct TALER_LinkSecret *secret,
+derive_refresh_key (const struct TALER_LinkSecretP *secret,
                     struct GNUNET_CRYPTO_SymmetricInitializationVector *iv,
                     struct GNUNET_CRYPTO_SymmetricSessionKey *skey)
 {
@@ -81,12 +81,12 @@ derive_refresh_key (const struct TALER_LinkSecret *secret,
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (skey, sizeof (struct GNUNET_CRYPTO_SymmetricSessionKey),
                                     ctx_key, strlen (ctx_key),
-                                    secret, sizeof (struct TALER_LinkSecret),
+                                    secret, sizeof (struct TALER_LinkSecretP),
                                     NULL, 0));
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (iv, sizeof (struct GNUNET_CRYPTO_SymmetricInitializationVector),
                                     ctx_iv, strlen (ctx_iv),
-                                    secret, sizeof (struct TALER_LinkSecret),
+                                    secret, sizeof (struct TALER_LinkSecretP),
                                     NULL, 0));
 }
 
@@ -100,7 +100,7 @@ derive_refresh_key (const struct TALER_LinkSecret *secret,
  * @param[out] skey set to session key
  */
 static void
-derive_transfer_key (const struct TALER_TransferSecret *secret,
+derive_transfer_key (const struct TALER_TransferSecretP *secret,
                      struct GNUNET_CRYPTO_SymmetricInitializationVector *iv,
                      struct GNUNET_CRYPTO_SymmetricSessionKey *skey)
 {
@@ -110,12 +110,12 @@ derive_transfer_key (const struct TALER_TransferSecret *secret,
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (skey, sizeof (struct GNUNET_CRYPTO_SymmetricSessionKey),
                                     ctx_key, strlen (ctx_key),
-                                    secret, sizeof (struct TALER_TransferSecret),
+                                    secret, sizeof (struct TALER_TransferSecretP),
                                     NULL, 0));
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (iv, sizeof (struct GNUNET_CRYPTO_SymmetricInitializationVector),
                                     ctx_iv, strlen (ctx_iv),
-                                    secret, sizeof (struct TALER_TransferSecret),
+                                    secret, sizeof (struct TALER_TransferSecretP),
                                     NULL, 0));
 }
 
@@ -130,18 +130,18 @@ derive_transfer_key (const struct TALER_TransferSecret *secret,
  * @return #GNUNET_OK on success
  */
 int
-TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecret *secret_enc,
-                        const struct TALER_TransferSecret *trans_sec,
-                        struct TALER_LinkSecret *secret)
+TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecretP *secret_enc,
+                        const struct TALER_TransferSecretP *trans_sec,
+                        struct TALER_LinkSecretP *secret)
 {
   struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
   struct GNUNET_CRYPTO_SymmetricSessionKey skey;
 
-  GNUNET_assert (sizeof (struct TALER_EncryptedLinkSecret) ==
-                 sizeof (struct TALER_LinkSecret));
+  GNUNET_assert (sizeof (struct TALER_EncryptedLinkSecretP) ==
+                 sizeof (struct TALER_LinkSecretP));
   derive_transfer_key (trans_sec, &iv, &skey);
   return GNUNET_CRYPTO_symmetric_decrypt (secret_enc,
-                                          sizeof (struct TALER_LinkSecret),
+                                          sizeof (struct TALER_LinkSecretP),
                                           &skey,
                                           &iv,
                                           secret);
@@ -158,18 +158,18 @@ TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecret *secret_enc,
  * @return #GNUNET_OK on success
  */
 int
-TALER_transfer_encrypt (const struct TALER_LinkSecret *secret,
-                        const struct TALER_TransferSecret *trans_sec,
-                        struct TALER_EncryptedLinkSecret *secret_enc)
+TALER_transfer_encrypt (const struct TALER_LinkSecretP *secret,
+                        const struct TALER_TransferSecretP *trans_sec,
+                        struct TALER_EncryptedLinkSecretP *secret_enc)
 {
   struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
   struct GNUNET_CRYPTO_SymmetricSessionKey skey;
 
-  GNUNET_assert (sizeof (struct TALER_EncryptedLinkSecret) ==
-                 sizeof (struct TALER_LinkSecret));
+  GNUNET_assert (sizeof (struct TALER_EncryptedLinkSecretP) ==
+                 sizeof (struct TALER_LinkSecretP));
   derive_transfer_key (trans_sec, &iv, &skey);
   return GNUNET_CRYPTO_symmetric_encrypt (secret,
-                                          sizeof (struct TALER_LinkSecret),
+                                          sizeof (struct TALER_LinkSecretP),
                                           &skey,
                                           &iv,
                                           secret_enc);
@@ -183,11 +183,11 @@ TALER_transfer_encrypt (const struct TALER_LinkSecret *secret,
  * @param secret shared secret to use for decryption
  * @return NULL on error
  */
-struct TALER_RefreshLinkDecrypted *
+struct TALER_RefreshLinkDecryptedP *
 TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
-                       const struct TALER_LinkSecret *secret)
+                       const struct TALER_LinkSecretP *secret)
 {
-  struct TALER_RefreshLinkDecrypted *ret;
+  struct TALER_RefreshLinkDecryptedP *ret;
   struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
   struct GNUNET_CRYPTO_SymmetricSessionKey skey;
   size_t buf_size = input->blinding_key_enc_size
@@ -203,10 +203,10 @@ TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
                                        &iv,
                                        buf))
     return NULL;
-  ret = GNUNET_new (struct TALER_RefreshLinkDecrypted);
+  ret = GNUNET_new (struct TALER_RefreshLinkDecryptedP);
   memcpy (&ret->coin_priv,
           buf,
-          sizeof (struct TALER_CoinSpendPrivateKey));
+          sizeof (union TALER_CoinSpendPrivateKeyP));
   ret->blinding_key.rsa_blinding_key
     = GNUNET_CRYPTO_rsa_blinding_key_decode (&buf[sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey)],
                                              input->blinding_key_enc_size);
@@ -227,8 +227,8 @@ TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
  * @return NULL on error (should never happen)
  */
 struct TALER_RefreshLinkEncrypted *
-TALER_refresh_encrypt (const struct TALER_RefreshLinkDecrypted *input,
-                       const struct TALER_LinkSecret *secret)
+TALER_refresh_encrypt (const struct TALER_RefreshLinkDecryptedP *input,
+                       const struct TALER_LinkSecretP *secret)
 {
   char *b_buf;
   size_t b_buf_size;

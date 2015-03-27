@@ -98,29 +98,29 @@ calculate_transaction_list_totals (struct TALER_MINT_DB_TransactionList *tl,
  * @return MHD result code
  */
 int
-TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
+TMH_DB_execute_deposit (struct MHD_Connection *connection,
                                const struct Deposit *deposit)
 {
   struct TALER_MINTDB_Session *session;
   struct TALER_MINT_DB_TransactionList *tl;
   struct TALER_Amount spent;
   struct TALER_Amount value;
-  struct MintKeyState *mks;
-  struct TALER_MINT_DenomKeyIssuePriv *dki;
+  struct TMH_KS_StateHandle *mks;
+  struct TALER_DenominationKeyIssueInformation *dki;
   int ret;
 
   if (NULL == (session = plugin->get_session (plugin->cls,
                                               GNUNET_NO)))
   {
     GNUNET_break (0);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   if (GNUNET_YES ==
       plugin->have_deposit (plugin->cls,
                             session,
                             deposit))
   {
-    return TALER_MINT_reply_deposit_success (connection,
+    return TMH_RESPONSE_reply_deposit_success (connection,
                                              &deposit->coin.coin_pub,
                                              &deposit->h_wire,
                                              &deposit->h_contract,
@@ -128,19 +128,19 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                                              &deposit->merchant_pub,
                                              &deposit->amount_with_fee);
   }
-  mks = TALER_MINT_key_state_acquire ();
-  dki = TALER_MINT_get_denom_key (mks,
+  mks = TMH_KS_acquire ();
+  dki = TMH_KS_denomination_key_lookup (mks,
                                   &deposit->coin.denom_pub);
   TALER_amount_ntoh (&value,
                      &dki->issue.value);
-  TALER_MINT_key_state_release (mks);
+  TMH_KS_release (mks);
 
   if (GNUNET_OK !=
       plugin->start (plugin->cls,
                      session))
   {
     GNUNET_break (0);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   /* fee for THIS transaction */
   spent = deposit->amount_with_fee;
@@ -155,7 +155,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
   {
     plugin->free_coin_transaction_list (plugin->cls,
                                         tl);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   /* Check that cost of all transactions is smaller than
      the value of the coin. */
@@ -164,7 +164,7 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
   {
     plugin->rollback (plugin->cls,
                       session);
-    ret = TALER_MINT_reply_deposit_insufficient_funds (connection,
+    ret = TMH_RESPONSE_reply_deposit_insufficient_funds (connection,
                                                        tl);
     plugin->free_coin_transaction_list (plugin->cls,
                                         tl);
@@ -178,20 +178,20 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
                               session,
                               deposit))
   {
-    LOG_WARNING ("Failed to store /deposit information in database\n");
+    TALER_LOG_WARNING ("Failed to store /deposit information in database\n");
     plugin->rollback (plugin->cls,
                       session);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
 
   if (GNUNET_OK !=
       plugin->commit (plugin->cls,
                       session))
   {
-    LOG_WARNING ("/deposit transaction commit failed\n");
-    return TALER_MINT_reply_commit_error (connection);
+    TALER_LOG_WARNING ("/deposit transaction commit failed\n");
+    return TMH_RESPONSE_reply_commit_error (connection);
   }
-  return TALER_MINT_reply_deposit_success (connection,
+  return TMH_RESPONSE_reply_deposit_success (connection,
                                            &deposit->coin.coin_pub,
                                            &deposit->h_wire,
                                            &deposit->h_contract,
@@ -210,8 +210,8 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
-                                       const struct TALER_ReservePublicKey *reserve_pub)
+TMH_DB_execute_withdraw_status (struct MHD_Connection *connection,
+                                       const struct TALER_ReservePublicKeyP *reserve_pub)
 {
   struct TALER_MINTDB_Session *session;
   struct ReserveHistory *rh;
@@ -221,17 +221,17 @@ TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
                                               GNUNET_NO)))
   {
     GNUNET_break (0);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   rh = plugin->get_reserve_history (plugin->cls,
                                     session,
                                     reserve_pub);
   if (NULL == rh)
-    return TALER_MINT_reply_json_pack (connection,
+    return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s}",
                                        "error", "Reserve not found");
-  res = TALER_MINT_reply_withdraw_status_success (connection,
+  res = TMH_RESPONSE_reply_withdraw_status_success (connection,
                                                   rh);
   plugin->free_reserve_history (plugin->cls,
                                 rh);
@@ -254,20 +254,20 @@ TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
-                                     const struct TALER_ReservePublicKey *reserve,
+TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
+                                     const struct TALER_ReservePublicKeyP *reserve,
                                      const struct TALER_DenominationPublicKey *denomination_pub,
                                      const char *blinded_msg,
                                      size_t blinded_msg_len,
-                                     const struct TALER_ReserveSignature *signature)
+                                     const struct TALER_ReserveSignatureP *signature)
 {
   struct TALER_MINTDB_Session *session;
   struct ReserveHistory *rh;
   const struct ReserveHistory *pos;
-  struct MintKeyState *key_state;
+  struct TMH_KS_StateHandle *key_state;
   struct CollectableBlindcoin collectable;
-  struct TALER_MINT_DenomKeyIssuePriv *dki;
-  struct TALER_MINT_DenomKeyIssuePriv *tdki;
+  struct TALER_DenominationKeyIssueInformation *dki;
+  struct TALER_DenominationKeyIssueInformation *tdki;
   struct GNUNET_CRYPTO_rsa_Signature *sig;
   struct TALER_Amount amount_required;
   struct TALER_Amount deposit_total;
@@ -286,7 +286,7 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
                                               GNUNET_NO)))
   {
     GNUNET_break (0);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   res = plugin->get_collectable_blindcoin (plugin->cls,
                                            session,
@@ -295,13 +295,13 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
   if (GNUNET_SYSERR == res)
   {
     GNUNET_break (0);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
 
   /* Don't sign again if we have already signed the coin */
   if (GNUNET_YES == res)
   {
-    res = TALER_MINT_reply_withdraw_sign_success (connection,
+    res = TMH_RESPONSE_reply_withdraw_sign_success (connection,
                                                   &collectable);
     GNUNET_CRYPTO_rsa_signature_free (collectable.sig.rsa_signature);
     GNUNET_CRYPTO_rsa_public_key_free (collectable.denom_pub.rsa_public_key);
@@ -310,13 +310,13 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
   GNUNET_assert (GNUNET_NO == res);
 
   /* Check if balance is sufficient */
-  key_state = TALER_MINT_key_state_acquire ();
-  dki = TALER_MINT_get_denom_key (key_state,
+  key_state = TMH_KS_acquire ();
+  dki = TMH_KS_denomination_key_lookup (key_state,
                                   denomination_pub);
   if (NULL == dki)
   {
-    TALER_MINT_key_state_release (key_state);
-    return TALER_MINT_reply_json_pack (connection,
+    TMH_KS_release (key_state);
+    return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s}",
                                        "error",
@@ -327,8 +327,8 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
                      session))
   {
     GNUNET_break (0);
-    TALER_MINT_key_state_release (key_state);
-    return TALER_MINT_reply_internal_db_error (connection);
+    TMH_KS_release (key_state);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
 
   rh = plugin->get_reserve_history (plugin->cls,
@@ -338,8 +338,8 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
   {
     plugin->rollback (plugin->cls,
                       session);
-    TALER_MINT_key_state_release (key_state);
-    return TALER_MINT_reply_json_pack (connection,
+    TMH_KS_release (key_state);
+    return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s}",
                                        "error",
@@ -359,8 +359,8 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
   {
     plugin->rollback (plugin->cls,
                       session);
-    TALER_MINT_key_state_release (key_state);
-    return TALER_MINT_reply_internal_db_error (connection);
+    TMH_KS_release (key_state);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
 
   /* calculate balance of the reserve */
@@ -380,13 +380,13 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
         {
           plugin->rollback (plugin->cls,
                             session);
-          TALER_MINT_key_state_release (key_state);
-          return TALER_MINT_reply_internal_db_error (connection);
+          TMH_KS_release (key_state);
+          return TMH_RESPONSE_reply_internal_db_error (connection);
         }
       res |= 1;
       break;
     case TALER_MINT_DB_RO_WITHDRAW_COIN:
-      tdki = TALER_MINT_get_denom_key (key_state,
+      tdki = TMH_KS_denomination_key_lookup (key_state,
                                        &pos->details.withdraw->denom_pub);
       TALER_amount_ntoh (&value,
                          &tdki->issue.value);
@@ -400,8 +400,8 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
         {
           plugin->rollback (plugin->cls,
                             session);
-          TALER_MINT_key_state_release (key_state);
-          return TALER_MINT_reply_internal_db_error (connection);
+          TMH_KS_release (key_state);
+          return TMH_RESPONSE_reply_internal_db_error (connection);
         }
       res |= 2;
       break;
@@ -415,10 +415,10 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
   if (0 < TALER_amount_cmp (&amount_required,
                             &balance))
   {
-    TALER_MINT_key_state_release (key_state);
+    TMH_KS_release (key_state);
     plugin->rollback (plugin->cls,
                       session);
-    res = TALER_MINT_reply_withdraw_sign_insufficient_funds (connection,
+    res = TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (connection,
                                                              rh);
     plugin->free_reserve_history (plugin->cls,
                                   rh);
@@ -431,13 +431,13 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
   sig = GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
                                 blinded_msg,
                                 blinded_msg_len);
-  TALER_MINT_key_state_release (key_state);
+  TMH_KS_release (key_state);
   if (NULL == sig)
   {
     GNUNET_break (0);
     plugin->rollback (plugin->cls,
                       session);
-    return TALER_MINT_reply_internal_error (connection,
+    return TMH_RESPONSE_reply_internal_error (connection,
                                             "Internal error");
   }
   collectable.sig.rsa_signature = sig;
@@ -458,16 +458,16 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
     GNUNET_CRYPTO_rsa_signature_free (sig);
     plugin->rollback (plugin->cls,
                       session);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   if (GNUNET_OK !=
       plugin->commit (plugin->cls,
                       session))
   {
-    LOG_WARNING ("/withdraw/sign transaction commit failed\n");
-    return TALER_MINT_reply_commit_error (connection);
+    TALER_LOG_WARNING ("/withdraw/sign transaction commit failed\n");
+    return TMH_RESPONSE_reply_commit_error (connection);
   }
-  res = TALER_MINT_reply_withdraw_sign_success (connection,
+  res = TMH_RESPONSE_reply_withdraw_sign_success (connection,
                                                 &collectable);
   GNUNET_CRYPTO_rsa_signature_free (sig);
   return res;
@@ -492,13 +492,13 @@ TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
 static int
 refresh_accept_melts (struct MHD_Connection *connection,
                       struct TALER_MINTDB_Session *session,
-                      const struct MintKeyState *key_state,
+                      const struct TMH_KS_StateHandle *key_state,
                       const struct GNUNET_HashCode *session_hash,
                       const struct TALER_CoinPublicInfo *coin_public_info,
-                      const struct MeltDetails *coin_details,
+                      const struct TMH_DB_MeltDetails *coin_details,
                       uint16_t oldcoin_index)
 {
-  struct TALER_MINT_DenomKeyIssue *dki;
+  struct TALER_DenominationKeyValidityPS *dki;
   struct TALER_MINT_DB_TransactionList *tl;
   struct TALER_Amount coin_value;
   struct TALER_Amount coin_residual;
@@ -506,12 +506,12 @@ refresh_accept_melts (struct MHD_Connection *connection,
   struct RefreshMelt melt;
   int res;
 
-  dki = &TALER_MINT_get_denom_key (key_state,
+  dki = &TMH_KS_denomination_key_lookup (key_state,
                                    &coin_public_info->denom_pub)->issue;
 
   if (NULL == dki)
     return (MHD_YES ==
-            TALER_MINT_reply_json_pack (connection,
+            TMH_RESPONSE_reply_json_pack (connection,
                                         MHD_HTTP_NOT_FOUND,
                                         "{s:s}",
                                         "error",
@@ -534,7 +534,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
     GNUNET_break (0);
     plugin->free_coin_transaction_list (plugin->cls,
                                         tl);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   /* Refuse to refresh when the coin's value is insufficient
      for the cost of all transactions. */
@@ -546,7 +546,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
                                           &spent,
                                           &coin_details->melt_amount_with_fee));
     res = (MHD_YES ==
-           TALER_MINT_reply_refresh_melt_insufficient_funds (connection,
+           TMH_RESPONSE_reply_refresh_melt_insufficient_funds (connection,
                                                              &coin_public_info->coin_pub,
                                                              coin_value,
                                                              tl,
@@ -593,25 +593,25 @@ refresh_accept_melts (struct MHD_Connection *connection,
  * @param coin_melt_details signatures and (residual) value of the respective coin should be melted
  * @param commit_coin 2d array of coin commitments (what the mint is to sign
  *                    once the "/refres/reveal" of cut and choose is done),
- *                    x-dimension must be #KAPPA
+ *                    x-dimension must be #TALER_CNC_KAPPA
  * @param commit_link 2d array of coin link commitments (what the mint is
  *                    to return via "/refresh/link" to enable linkage in the
  *                    future)
- *                    x-dimension must be #KAPPA
+ *                    x-dimension must be #TALER_CNC_KAPPA
  * @return MHD result code
  */
 int
-TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
+TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                                     const struct GNUNET_HashCode *session_hash,
                                     unsigned int num_new_denoms,
                                     const struct TALER_DenominationPublicKey *denom_pubs,
                                     unsigned int coin_count,
                                     const struct TALER_CoinPublicInfo *coin_public_infos,
-                                    const struct MeltDetails *coin_melt_details,
+                                    const struct TMH_DB_MeltDetails *coin_melt_details,
                                     struct RefreshCommitCoin *const* commit_coin,
                                     struct RefreshCommitLink *const* commit_link)
 {
-  struct MintKeyState *key_state;
+  struct TMH_KS_StateHandle *key_state;
   struct RefreshSession refresh_session;
   struct TALER_MINTDB_Session *session;
   int res;
@@ -621,14 +621,14 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                               GNUNET_NO)))
   {
     GNUNET_break (0);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   if (GNUNET_OK !=
       plugin->start (plugin->cls,
                      session))
   {
     GNUNET_break (0);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   res = plugin->get_refresh_session (plugin->cls,
                                      session,
@@ -638,7 +638,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   {
     plugin->rollback (plugin->cls,
                       session);
-    res = TALER_MINT_reply_refresh_melt_success (connection,
+    res = TMH_RESPONSE_reply_refresh_melt_success (connection,
                                                  session_hash,
                                                  refresh_session.noreveal_index);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
@@ -647,11 +647,11 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   {
     plugin->rollback (plugin->cls,
                       session);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
 
   /* Melt old coins and check that they had enough residual value */
-  key_state = TALER_MINT_key_state_acquire ();
+  key_state = TMH_KS_acquire ();
   for (i=0;i<coin_count;i++)
   {
     if (GNUNET_OK !=
@@ -663,13 +663,13 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
                                      &coin_melt_details[i],
                                      i)))
     {
-      TALER_MINT_key_state_release (key_state);
+      TMH_KS_release (key_state);
       plugin->rollback (plugin->cls,
                         session);
       return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
     }
   }
-  TALER_MINT_key_state_release (key_state);
+  TMH_KS_release (key_state);
 
   /* store requested new denominations */
   if (GNUNET_OK !=
@@ -681,10 +681,10 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   {
     plugin->rollback (plugin->cls,
                       session);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
 
-  for (i = 0; i < KAPPA; i++)
+  for (i = 0; i < TALER_CNC_KAPPA; i++)
   {
     if (GNUNET_OK !=
         plugin->insert_refresh_commit_coins (plugin->cls,
@@ -696,10 +696,10 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
     {
       plugin->rollback (plugin->cls,
                         session);
-      return TALER_MINT_reply_internal_db_error (connection);
+      return TMH_RESPONSE_reply_internal_db_error (connection);
     }
   }
-  for (i = 0; i < KAPPA; i++)
+  for (i = 0; i < TALER_CNC_KAPPA; i++)
   {
     if (GNUNET_OK !=
         plugin->insert_refresh_commit_links (plugin->cls,
@@ -711,7 +711,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
     {
       plugin->rollback (plugin->cls,
                         session);
-      return TALER_MINT_reply_internal_db_error (connection);
+      return TMH_RESPONSE_reply_internal_db_error (connection);
     }
   }
 
@@ -721,7 +721,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   refresh_session.num_newcoins = num_new_denoms;
   refresh_session.noreveal_index
     = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG,
-                                KAPPA);
+                                TALER_CNC_KAPPA);
   if (GNUNET_OK !=
       (res = plugin->create_refresh_session (plugin->cls,
                                              session,
@@ -730,7 +730,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
   {
     plugin->rollback (plugin->cls,
                       session);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
 
 
@@ -739,10 +739,10 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
       plugin->commit (plugin->cls,
                       session))
   {
-    LOG_WARNING ("/refresh/melt transaction commit failed\n");
-    return TALER_MINT_reply_commit_error (connection);
+    TALER_LOG_WARNING ("/refresh/melt transaction commit failed\n");
+    return TMH_RESPONSE_reply_commit_error (connection);
   }
-  return TALER_MINT_reply_refresh_melt_success (connection,
+  return TMH_RESPONSE_reply_refresh_melt_success (connection,
                                                 session_hash,
                                                 refresh_session.noreveal_index);
 }
@@ -752,7 +752,7 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
  * Check if the given @a transfer_privs correspond to an honest
  * commitment for the given session.
  * Checks that the transfer private keys match their commitments.
- * Then derives the shared secret for each #KAPPA, and check that they match.
+ * Then derives the shared secret for each #TALER_CNC_KAPPA, and check that they match.
  *
  * @param connection the MHD connection to handle
  * @param session database connection to use
@@ -773,13 +773,13 @@ check_commitment (struct MHD_Connection *connection,
                   const struct GNUNET_HashCode *session_hash,
                   unsigned int off,
                   unsigned int num_oldcoins,
-                  const struct TALER_TransferPrivateKey *transfer_privs,
+                  const struct TALER_TransferPrivateKeyP *transfer_privs,
                   const struct RefreshMelt *melts,
                   unsigned int num_newcoins,
                   const struct TALER_DenominationPublicKey *denom_pubs)
 {
   unsigned int j;
-  struct TALER_LinkSecret last_shared_secret;
+  struct TALER_LinkSecretP last_shared_secret;
   int secret_initialized = GNUNET_NO;
   struct GNUNET_CRYPTO_EcdhePublicKey coin_ecdhe;
   struct GNUNET_CRYPTO_EcdhePrivateKey transfer_ecdhe;
@@ -798,29 +798,29 @@ check_commitment (struct MHD_Connection *connection,
   {
     GNUNET_break (0);
     GNUNET_free (commit_links);
-    return (MHD_YES == TALER_MINT_reply_internal_db_error (connection))
+    return (MHD_YES == TMH_RESPONSE_reply_internal_db_error (connection))
       ? GNUNET_NO : GNUNET_SYSERR;
   }
 
   for (j = 0; j < num_oldcoins; j++)
   {
-    struct TALER_TransferSecret transfer_secret;
-    struct TALER_LinkSecret shared_secret;
-    struct TALER_TransferPublicKey transfer_pub_check;
+    struct TALER_TransferSecretP transfer_secret;
+    struct TALER_LinkSecretP shared_secret;
+    struct TALER_TransferPublicKeyP transfer_pub_check;
 
     GNUNET_CRYPTO_ecdsa_key_get_public (&transfer_privs[j].ecdsa_priv,
                                         &transfer_pub_check.ecdsa_pub);
     if (0 !=
         memcmp (&transfer_pub_check,
                 &commit_links[j].transfer_pub,
-                sizeof (struct TALER_TransferPublicKey)))
+                sizeof (struct TALER_TransferPublicKeyP)))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "transfer keys do not match\n");
       GNUNET_free (commit_links);
       /* FIXME: return more specific error with original signature (#3712) */
       return (MHD_YES ==
-	      TALER_MINT_reply_refresh_reveal_missmatch (connection,
+	      TMH_RESPONSE_reply_refresh_reveal_missmatch (connection,
 							 off,
 							 j,
 							 "transfer key"))
@@ -841,7 +841,7 @@ check_commitment (struct MHD_Connection *connection,
       GNUNET_break (0);
       GNUNET_CRYPTO_ecdhe_key_clear (&transfer_ecdhe);
       GNUNET_free (commit_links);
-      return (MHD_YES == TALER_MINT_reply_internal_error (connection,
+      return (MHD_YES == TMH_RESPONSE_reply_internal_error (connection,
                                                           "ECDH error"))
         ? GNUNET_NO : GNUNET_SYSERR;
     }
@@ -854,7 +854,7 @@ check_commitment (struct MHD_Connection *connection,
       GNUNET_break (0);
       GNUNET_free (commit_links);
       return (MHD_YES ==
-	      TALER_MINT_reply_internal_error (connection,
+	      TMH_RESPONSE_reply_internal_error (connection,
 					       "Decryption error"))
         ? GNUNET_NO : GNUNET_SYSERR;
     }
@@ -873,7 +873,7 @@ check_commitment (struct MHD_Connection *connection,
       GNUNET_free (commit_links);
       /* FIXME: return more specific error with original signature (#3712) */
       return (MHD_YES ==
-	      TALER_MINT_reply_refresh_reveal_missmatch (connection,
+	      TMH_RESPONSE_reply_refresh_reveal_missmatch (connection,
 							 off,
 							 j,
 							 "transfer secret"))
@@ -897,14 +897,14 @@ check_commitment (struct MHD_Connection *connection,
   {
     GNUNET_break (0);
     GNUNET_free (commit_coins);
-    return (MHD_YES == TALER_MINT_reply_internal_db_error (connection))
+    return (MHD_YES == TMH_RESPONSE_reply_internal_db_error (connection))
       ? GNUNET_NO : GNUNET_SYSERR;
   }
 
   for (j = 0; j < num_newcoins; j++)
   {
-    struct TALER_RefreshLinkDecrypted *link_data;
-    struct TALER_CoinSpendPublicKey coin_pub;
+    struct TALER_RefreshLinkDecryptedP *link_data;
+    union TALER_CoinSpendPublicKeyP coin_pub;
     struct GNUNET_HashCode h_msg;
     char *buf;
     size_t buf_len;
@@ -915,7 +915,7 @@ check_commitment (struct MHD_Connection *connection,
     {
       GNUNET_break (0);
       GNUNET_free (commit_coins);
-      return (MHD_YES == TALER_MINT_reply_internal_error (connection,
+      return (MHD_YES == TMH_RESPONSE_reply_internal_error (connection,
                                                           "Decryption error"))
         ? GNUNET_NO : GNUNET_SYSERR;
     }
@@ -923,7 +923,7 @@ check_commitment (struct MHD_Connection *connection,
     GNUNET_CRYPTO_ecdsa_key_get_public (&link_data->coin_priv.ecdsa_priv,
                                         &coin_pub.ecdsa_pub);
     GNUNET_CRYPTO_hash (&coin_pub,
-                        sizeof (struct TALER_CoinSpendPublicKey),
+                        sizeof (union TALER_CoinSpendPublicKeyP),
                         &h_msg);
     if (0 == (buf_len =
               GNUNET_CRYPTO_rsa_blind (&h_msg,
@@ -934,7 +934,7 @@ check_commitment (struct MHD_Connection *connection,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "blind failed\n");
       GNUNET_free (commit_coins);
-      return (MHD_YES == TALER_MINT_reply_internal_error (connection,
+      return (MHD_YES == TMH_RESPONSE_reply_internal_error (connection,
                                                           "Blinding error"))
         ? GNUNET_NO : GNUNET_SYSERR;
     }
@@ -951,7 +951,7 @@ check_commitment (struct MHD_Connection *connection,
       /* FIXME: return more specific error with original signature (#3712) */
       GNUNET_free (commit_coins);
       return (MHD_YES ==
-	      TALER_MINT_reply_refresh_reveal_missmatch (connection,
+	      TMH_RESPONSE_reply_refresh_reveal_missmatch (connection,
 							 off,
 							 j,
 							 "envelope"))
@@ -982,15 +982,15 @@ static struct TALER_DenominationSignature
 refresh_mint_coin (struct MHD_Connection *connection,
                    struct TALER_MINTDB_Session *session,
                    const struct GNUNET_HashCode *session_hash,
-                   struct MintKeyState *key_state,
+                   struct TMH_KS_StateHandle *key_state,
                    const struct TALER_DenominationPublicKey *denom_pub,
                    const struct RefreshCommitCoin *commit_coin,
                    unsigned int coin_off)
 {
-  struct TALER_MINT_DenomKeyIssuePriv *dki;
+  struct TALER_DenominationKeyIssueInformation *dki;
   struct TALER_DenominationSignature ev_sig;
 
-  dki = TALER_MINT_get_denom_key (key_state,
+  dki = TMH_KS_denomination_key_lookup (key_state,
                                   denom_pub);
   if (NULL == dki)
   {
@@ -1024,7 +1024,7 @@ refresh_mint_coin (struct MHD_Connection *connection,
 
 /**
  * Execute a "/refresh/reveal".  The client is revealing to us the
- * transfer keys for @a #KAPPA-1 sets of coins.  Verify that the
+ * transfer keys for @a #TALER_CNC_KAPPA-1 sets of coins.  Verify that the
  * revealed transfer keys would allow linkage to the blinded coins,
  * and if so, return the signed coins for corresponding to the set of
  * coins that was not chosen.
@@ -1033,19 +1033,19 @@ refresh_mint_coin (struct MHD_Connection *connection,
  * @param session_hash hash identifying the refresh session
  * @param num_oldcoins size of y-dimension of @transfer_privs array
  * @param transfer_pubs array with the revealed transfer keys,
- *                      x-dimension must be #KAPPA - 1
+ *                      x-dimension must be #TALER_CNC_KAPPA - 1
  * @return MHD result code
  */
 int
-TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
+TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
                                       const struct GNUNET_HashCode *session_hash,
                                       unsigned int num_oldcoins,
-                                      struct TALER_TransferPrivateKey **transfer_privs)
+                                      struct TALER_TransferPrivateKeyP **transfer_privs)
 {
   int res;
   struct TALER_MINTDB_Session *session;
   struct RefreshSession refresh_session;
-  struct MintKeyState *key_state;
+  struct TMH_KS_StateHandle *key_state;
   struct RefreshMelt *melts;
   struct TALER_DenominationPublicKey *denom_pubs;
   struct TALER_DenominationSignature *ev_sigs;
@@ -1058,7 +1058,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
                                               GNUNET_NO)))
   {
     GNUNET_break (0);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
 
   res = plugin->get_refresh_session (plugin->cls,
@@ -1066,14 +1066,14 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
                                      session_hash,
                                      &refresh_session);
   if (GNUNET_NO == res)
-    return TALER_MINT_reply_arg_invalid (connection,
+    return TMH_RESPONSE_reply_arg_invalid (connection,
                                          "session_hash");
   if (GNUNET_SYSERR == res)
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   if (0 == refresh_session.num_oldcoins)
   {
     GNUNET_break (0);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
 
   melts = GNUNET_malloc (refresh_session.num_oldcoins *
@@ -1089,7 +1089,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     {
       GNUNET_break (0);
       GNUNET_free (melts);
-      return TALER_MINT_reply_internal_db_error (connection);
+      return TMH_RESPONSE_reply_internal_db_error (connection);
     }
   }
   denom_pubs = GNUNET_malloc (refresh_session.num_newcoins *
@@ -1104,13 +1104,13 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     GNUNET_break (0);
     GNUNET_free (denom_pubs);
     GNUNET_free (melts);
-    return (MHD_YES == TALER_MINT_reply_internal_db_error (connection))
+    return (MHD_YES == TMH_RESPONSE_reply_internal_db_error (connection))
       ? GNUNET_NO : GNUNET_SYSERR;
   }
 
 
   off = 0;
-  for (i=0;i<KAPPA - 1;i++)
+  for (i=0;i<TALER_CNC_KAPPA - 1;i++)
   {
     if (i == refresh_session.noreveal_index)
       off = 1;
@@ -1143,7 +1143,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     for (j=0;j<refresh_session.num_newcoins;j++)
       GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
     GNUNET_free (denom_pubs);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
 
   commit_coins = GNUNET_malloc (refresh_session.num_newcoins *
@@ -1161,11 +1161,11 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
     for (j=0;j<refresh_session.num_newcoins;j++)
       GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
     GNUNET_free (denom_pubs);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   ev_sigs = GNUNET_malloc (refresh_session.num_newcoins *
                            sizeof (struct TALER_DenominationSignature));
-  key_state = TALER_MINT_key_state_acquire ();
+  key_state = TMH_KS_acquire ();
   for (j=0;j<refresh_session.num_newcoins;j++)
   {
     ev_sigs[j] = refresh_mint_coin (connection,
@@ -1177,7 +1177,7 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
                                     j);
     if (NULL == ev_sigs[j].rsa_signature)
     {
-      TALER_MINT_key_state_release (key_state);
+      TMH_KS_release (key_state);
       for (i=0;i<j;i++)
         GNUNET_CRYPTO_rsa_signature_free (ev_sigs[i].rsa_signature);
       GNUNET_free (ev_sigs);
@@ -1185,10 +1185,10 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
         GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
       GNUNET_free (denom_pubs);
       GNUNET_free (commit_coins);
-      return TALER_MINT_reply_internal_db_error (connection);
+      return TMH_RESPONSE_reply_internal_db_error (connection);
     }
   }
-  TALER_MINT_key_state_release (key_state);
+  TMH_KS_release (key_state);
   for (j=0;j<refresh_session.num_newcoins;j++)
     GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
   GNUNET_free (denom_pubs);
@@ -1198,14 +1198,14 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
       plugin->commit (plugin->cls,
                       session))
   {
-    LOG_WARNING ("/refresh/reveal transaction commit failed\n");
+    TALER_LOG_WARNING ("/refresh/reveal transaction commit failed\n");
     for (i=0;i<refresh_session.num_newcoins;i++)
       GNUNET_CRYPTO_rsa_signature_free (ev_sigs[i].rsa_signature);
     GNUNET_free (ev_sigs);
-    return TALER_MINT_reply_commit_error (connection);
+    return TMH_RESPONSE_reply_commit_error (connection);
   }
 
-  res = TALER_MINT_reply_refresh_reveal_success (connection,
+  res = TMH_RESPONSE_reply_refresh_reveal_success (connection,
                                                  refresh_session.num_newcoins,
                                                  ev_sigs);
   for (i=0;i<refresh_session.num_newcoins;i++)
@@ -1225,20 +1225,20 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
-                                    const struct TALER_CoinSpendPublicKey *coin_pub)
+TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
+                                    const union TALER_CoinSpendPublicKeyP *coin_pub)
 {
   int res;
   struct TALER_MINTDB_Session *session;
-  struct TALER_TransferPublicKey transfer_pub;
-  struct TALER_EncryptedLinkSecret shared_secret_enc;
+  struct TALER_TransferPublicKeyP transfer_pub;
+  struct TALER_EncryptedLinkSecretP shared_secret_enc;
   struct LinkDataList *ldl;
 
   if (NULL == (session = plugin->get_session (plugin->cls,
                                               GNUNET_NO)))
   {
     GNUNET_break (0);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   res = plugin->get_transfer (plugin->cls,
                               session,
@@ -1248,11 +1248,11 @@ TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
   if (GNUNET_SYSERR == res)
   {
     GNUNET_break (0);
-    return TALER_MINT_reply_internal_db_error (connection);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   if (GNUNET_NO == res)
   {
-    return TALER_MINT_reply_json_pack (connection,
+    return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s}",
                                        "error",
@@ -1265,13 +1265,13 @@ TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
                                     coin_pub);
   if (NULL == ldl)
   {
-    return TALER_MINT_reply_json_pack (connection,
+    return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s}",
                                        "error",
                                        "link data not found (link)");
   }
-  res = TALER_MINT_reply_refresh_link_success (connection,
+  res = TMH_RESPONSE_reply_refresh_link_success (connection,
                                                &transfer_pub,
                                                &shared_secret_enc,
                                                ldl);

@@ -39,8 +39,8 @@
  * @return MHD result code
  */
 int
-TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
-                               const struct Deposit *deposit);
+TMH_DB_execute_deposit (struct MHD_Connection *connection,
+                        const struct Deposit *deposit);
 
 
 /**
@@ -52,8 +52,8 @@ TALER_MINT_db_execute_deposit (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
-                                       const struct TALER_ReservePublicKey *reserve_pub);
+TMH_DB_execute_withdraw_status (struct MHD_Connection *connection,
+                                const struct TALER_ReservePublicKeyP *reserve_pub);
 
 
 /**
@@ -71,24 +71,24 @@ TALER_MINT_db_execute_withdraw_status (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TALER_MINT_db_execute_withdraw_sign (struct MHD_Connection *connection,
-                                     const struct TALER_ReservePublicKey *reserve,
-                                     const struct TALER_DenominationPublicKey *denomination_pub,
-                                     const char *blinded_msg,
-                                     size_t blinded_msg_len,
-                                     const struct TALER_ReserveSignature *signature);
+TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
+                              const struct TALER_ReservePublicKeyP *reserve,
+                              const struct TALER_DenominationPublicKey *denomination_pub,
+                              const char *blinded_msg,
+                              size_t blinded_msg_len,
+                              const struct TALER_ReserveSignatureP *signature);
 
 
 /**
  * Details about a melt operation of an individual coin.
  */
-struct MeltDetails
+struct TMH_DB_MeltDetails
 {
   /**
    * Signature allowing the melt (using
    * a `struct RefreshMeltConfirmSignRequestBody`) to sign over.
    */
-  struct TALER_CoinSpendSignature melt_sig;
+  union TALER_CoinSpendSignatureP melt_sig;
 
   /**
    * How much of the coin's value did the client allow to be melted?
@@ -121,20 +121,20 @@ struct MeltDetails
  * @return MHD result code
  */
 int
-TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
-                                    const struct GNUNET_HashCode *session_hash,
-                                    unsigned int num_new_denoms,
-                                    const struct TALER_DenominationPublicKey *denom_pubs,
-                                    unsigned int coin_count,
-                                    const struct TALER_CoinPublicInfo *coin_public_infos,
-                                    const struct MeltDetails *coin_melt_details,
-                                    struct RefreshCommitCoin *const* commit_coin,
-                                    struct RefreshCommitLink *const* commit_link);
+TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
+                             const struct GNUNET_HashCode *session_hash,
+                             unsigned int num_new_denoms,
+                             const struct TALER_DenominationPublicKey *denom_pubs,
+                             unsigned int coin_count,
+                             const struct TALER_CoinPublicInfo *coin_public_infos,
+                             const struct TMH_DB_MeltDetails *coin_melt_details,
+                             struct RefreshCommitCoin *const* commit_coin,
+                             struct RefreshCommitLink *const* commit_link);
 
 
 /**
  * Execute a "/refresh/reveal".  The client is revealing to us the
- * transfer keys for #KAPPA-1 sets of coins.  Verify that the
+ * transfer keys for #TALER_CNC_KAPPA-1 sets of coins.  Verify that the
  * revealed transfer keys would allow linkage to the blinded coins,
  * and if so, return the signed coins for corresponding to the set of
  * coins that was not chosen.
@@ -142,14 +142,14 @@ TALER_MINT_db_execute_refresh_melt (struct MHD_Connection *connection,
  * @param connection the MHD connection to handle
  * @param session_hash hash over the refresh session
  * @param num_oldcoins size of y-dimension of @transfer_privs array
- * @param transfer_pubs array with the revealed transfer keys, #KAPPA is 1st-dimension
+ * @param transfer_pubs array with the revealed transfer keys, #TALER_CNC_KAPPA is 1st-dimension
  * @return MHD result code
  */
 int
-TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
-                                      const struct GNUNET_HashCode *session_hash,
-                                      unsigned int num_oldcoins,
-                                      struct TALER_TransferPrivateKey **transfer_privs);
+TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
+                               const struct GNUNET_HashCode *session_hash,
+                               unsigned int num_oldcoins,
+                               struct TALER_TransferPrivateKeyP **transfer_privs);
 
 
 /**
@@ -162,8 +162,8 @@ TALER_MINT_db_execute_refresh_reveal (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TALER_MINT_db_execute_refresh_link (struct MHD_Connection *connection,
-                                    const struct TALER_CoinSpendPublicKey *coin_pub);
+TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
+                             const union TALER_CoinSpendPublicKeyP *coin_pub);
 
 
 #endif

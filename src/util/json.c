@@ -36,7 +36,7 @@
  */
 #define UNPACK_EXITIF(cond)                                             \
   do {                                                                  \
-    if (cond) { TALER_JSON_warn (error); goto EXITIF_exit; }            \
+    if (cond) { TALER_json_warn (error); goto EXITIF_exit; }            \
   } while (0)
 
 
@@ -48,7 +48,7 @@
  * @return a json object describing the amount
  */
 json_t *
-TALER_JSON_from_amount (const struct TALER_Amount *amount)
+TALER_json_from_amount (const struct TALER_Amount *amount)
 {
   json_t *j;
 
@@ -79,7 +79,7 @@ TALER_JSON_from_amount (const struct TALER_Amount *amount)
  * @return a json string with the timestamp in @a stamp
  */
 json_t *
-TALER_JSON_from_abs (struct GNUNET_TIME_Absolute stamp)
+TALER_json_from_abs (struct GNUNET_TIME_Absolute stamp)
 {
   json_t *j;
   char *mystr;
@@ -101,7 +101,7 @@ TALER_JSON_from_abs (struct GNUNET_TIME_Absolute stamp)
  * @return the JSON reporesentation of the signature with purpose
  */
 json_t *
-TALER_JSON_from_eddsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+TALER_json_from_eddsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
                            const struct GNUNET_CRYPTO_EddsaSignature *signature)
 {
   json_t *root;
@@ -115,11 +115,11 @@ TALER_JSON_from_eddsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpo
   el = json_integer ((json_int_t) ntohl (purpose->purpose));
   json_object_set_new (root, "purpose", el);
 
-  el = TALER_JSON_from_data (purpose,
+  el = TALER_json_from_data (purpose,
                              ntohl (purpose->size));
   json_object_set_new (root, "eddsa-val", el);
 
-  el = TALER_JSON_from_data (signature,
+  el = TALER_json_from_data (signature,
                              sizeof (struct GNUNET_CRYPTO_EddsaSignature));
   json_object_set_new (root, "eddsa-sig", el);
 
@@ -135,7 +135,7 @@ TALER_JSON_from_eddsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpo
  * @return the JSON reporesentation of the signature with purpose
  */
 json_t *
-TALER_JSON_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+TALER_json_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
                            const struct GNUNET_CRYPTO_EcdsaSignature *signature)
 {
   json_t *root;
@@ -149,11 +149,11 @@ TALER_JSON_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpo
   el = json_integer ((json_int_t) ntohl (purpose->purpose));
   json_object_set_new (root, "purpose", el);
 
-  el = TALER_JSON_from_data (purpose,
+  el = TALER_json_from_data (purpose,
                              ntohl (purpose->size));
   json_object_set_new (root, "ecdsa-val", el);
 
-  el = TALER_JSON_from_data (signature,
+  el = TALER_json_from_data (signature,
                              sizeof (struct GNUNET_CRYPTO_EddsaSignature));
   json_object_set_new (root, "ecdsa-sig", el);
 
@@ -168,7 +168,7 @@ TALER_JSON_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpo
  * @return corresponding JSON encoding
  */
 json_t *
-TALER_JSON_from_rsa_public_key (struct GNUNET_CRYPTO_rsa_PublicKey *pk)
+TALER_json_from_rsa_public_key (struct GNUNET_CRYPTO_rsa_PublicKey *pk)
 {
   char *buf;
   size_t buf_len;
@@ -176,7 +176,7 @@ TALER_JSON_from_rsa_public_key (struct GNUNET_CRYPTO_rsa_PublicKey *pk)
 
   buf_len = GNUNET_CRYPTO_rsa_public_key_encode (pk,
                                                  &buf);
-  ret = TALER_JSON_from_data (buf,
+  ret = TALER_json_from_data (buf,
                               buf_len);
   GNUNET_free (buf);
   return ret;
@@ -190,7 +190,7 @@ TALER_JSON_from_rsa_public_key (struct GNUNET_CRYPTO_rsa_PublicKey *pk)
  * @return corresponding JSON encoding
  */
 json_t *
-TALER_JSON_from_rsa_signature (struct GNUNET_CRYPTO_rsa_Signature *sig)
+TALER_json_from_rsa_signature (struct GNUNET_CRYPTO_rsa_Signature *sig)
 {
   char *buf;
   size_t buf_len;
@@ -198,7 +198,7 @@ TALER_JSON_from_rsa_signature (struct GNUNET_CRYPTO_rsa_Signature *sig)
 
   buf_len = GNUNET_CRYPTO_rsa_signature_encode (sig,
                                                 &buf);
-  ret = TALER_JSON_from_data (buf,
+  ret = TALER_json_from_data (buf,
                               buf_len);
   GNUNET_free (buf);
   return ret;
@@ -214,7 +214,7 @@ TALER_JSON_from_rsa_signature (struct GNUNET_CRYPTO_rsa_Signature *sig)
  * @return json string that encodes @a data
  */
 json_t *
-TALER_JSON_from_data (const void *data, size_t size)
+TALER_json_from_data (const void *data, size_t size)
 {
   char *buf;
   json_t *json;
@@ -234,9 +234,9 @@ TALER_JSON_from_data (const void *data, size_t size)
  * @return json string that encodes @a hc
  */
 json_t *
-TALER_JSON_from_hash (const struct GNUNET_HashCode *hc)
+TALER_json_from_hash (const struct GNUNET_HashCode *hc)
 {
-  return TALER_JSON_from_data (hc, sizeof (struct GNUNET_HashCode));
+  return TALER_json_from_data (hc, sizeof (struct GNUNET_HashCode));
 }
 
 
@@ -248,7 +248,7 @@ TALER_JSON_from_hash (const struct GNUNET_HashCode *hc)
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 int
-TALER_JSON_to_amount (json_t *json,
+TALER_json_to_amount (json_t *json,
                       struct TALER_Amount *r_amount)
 {
   char *currency;
@@ -279,7 +279,7 @@ TALER_JSON_to_amount (json_t *json,
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 int
-TALER_JSON_to_abs (json_t *json,
+TALER_json_to_abs (json_t *json,
                    struct GNUNET_TIME_Absolute *abs)
 {
   const char *str;
@@ -304,7 +304,7 @@ TALER_JSON_to_abs (json_t *json,
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 int
-TALER_JSON_to_data (json_t *json,
+TALER_json_to_data (json_t *json,
                     void *out,
                     size_t out_size)
 {
@@ -563,7 +563,7 @@ validate_iban (const char *iban)
  * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
 int
-TALER_JSON_validate_wireformat (const char *type,
+TALER_json_validate_wireformat (const char *type,
 				const json_t *wire)
 {
   json_error_t error;

@@ -14,15 +14,14 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file pq/db_pq.h
+ * @file pq/taler_pq_lib.h
  * @brief helper functions for DB interactions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Florian Dold
  * @author Christian Grothoff
  */
-
-#ifndef TALER_DB_LIB_H_
-#define TALER_DB_LIB_H_
+#ifndef TALER_PQ_LIB_H_
+#define TALER_PQ_LIB_H_
 
 #include <libpq-fe.h>
 #include "taler_util.h"
@@ -30,7 +29,7 @@
 /**
  * Description of a DB query parameter.
  */
-struct TALER_DB_QueryParam
+struct TALER_PQ_QueryParam
 {
   /**
    * Data or NULL
@@ -52,7 +51,7 @@ struct TALER_DB_QueryParam
 /**
  * End of query parameter specification.
  */
-#define TALER_DB_QUERY_PARAM_END { NULL, 0, 0 }
+#define TALER_PQ_QUERY_PARAM_END { NULL, 0, 0 }
 
 /**
  * Generate fixed-size query parameter with size given explicitly.
@@ -60,7 +59,7 @@ struct TALER_DB_QueryParam
  * @param x pointer to the query parameter to pass
  * @param s number of bytes of @a x to use for the query
  */
-#define TALER_DB_QUERY_PARAM_PTR_SIZED(x, s) { (x), (s), 1 }
+#define TALER_PQ_QUERY_PARAM_PTR_SIZED(x, s) { (x), (s), 1 }
 
 /**
  * Generate fixed-size query parameter with size determined
@@ -68,13 +67,13 @@ struct TALER_DB_QueryParam
  *
  * @param x pointer to the query parameter to pass.
  */
-#define TALER_DB_QUERY_PARAM_PTR(x) TALER_DB_QUERY_PARAM_PTR_SIZED(x, sizeof (*(x)))
+#define TALER_PQ_QUERY_PARAM_PTR(x) TALER_PQ_QUERY_PARAM_PTR_SIZED(x, sizeof (*(x)))
 
 
 /**
  * Description of a DB result cell.
  */
-struct TALER_DB_ResultSpec
+struct TALER_PQ_ResultSpec
 {
   /**
    * Destination for the data.
@@ -104,7 +103,7 @@ struct TALER_DB_ResultSpec
 /**
  * End of result parameter specification.
  */
-#define TALER_DB_RESULT_SPEC_END { NULL, 0, NULL, NULL }
+#define TALER_PQ_RESULT_SPEC_END { NULL, 0, NULL, NULL }
 
 /**
  * We expect a fixed-size result, with size given explicitly
@@ -113,7 +112,7 @@ struct TALER_DB_ResultSpec
  * @param dst point to where to store the result
  * @param s number of bytes we should use in @a dst
  */
-#define TALER_DB_RESULT_SPEC_SIZED(name, dst, s) { (void *) (dst), (s), (name), NULL }
+#define TALER_PQ_RESULT_SPEC_SIZED(name, dst, s) { (void *) (dst), (s), (name), NULL }
 
 /**
  * We expect a fixed-size result, with size determined by the type of `* dst`
@@ -121,7 +120,7 @@ struct TALER_DB_ResultSpec
  * @param name name of the field in the table
  * @param dst point to where to store the result, type fits expected result size
  */
-#define TALER_DB_RESULT_SPEC(name, dst) TALER_DB_RESULT_SPEC_SIZED(name, dst, sizeof (*(dst)))
+#define TALER_PQ_RESULT_SPEC(name, dst) TALER_PQ_RESULT_SPEC_SIZED(name, dst, sizeof (*(dst)))
 
 /**
  * Variable-size result expected.
@@ -130,16 +129,16 @@ struct TALER_DB_ResultSpec
  * @param dst where to store the result (of type void **), to be allocated
  * @param sptr pointer to a `size_t` for where to store the size of @a dst
  */
-#define TALER_DB_RESULT_SPEC_VAR(name, dst, sptr) { (void *) (dst), 0, (name), sptr }
+#define TALER_PQ_RESULT_SPEC_VAR(name, dst, sptr) { (void *) (dst), 0, (name), sptr }
 
 
 /**
  * Execute a prepared statement.
  */
 PGresult *
-TALER_DB_exec_prepared (PGconn *db_conn,
+TALER_PQ_exec_prepared (PGconn *db_conn,
                         const char *name,
-                        const struct TALER_DB_QueryParam *params);
+                        const struct TALER_PQ_QueryParam *params);
 
 
 /**
@@ -153,19 +152,19 @@ TALER_DB_exec_prepared (PGconn *db_conn,
  *   #GNUNET_SYSERR if a result was invalid (non-existing field)
  */
 int
-TALER_DB_extract_result (PGresult *result,
-                         struct TALER_DB_ResultSpec *rs,
+TALER_PQ_extract_result (PGresult *result,
+                         struct TALER_PQ_ResultSpec *rs,
                          int row);
 
 
 int
-TALER_DB_field_isnull (PGresult *result,
+TALER_PQ_field_isnull (PGresult *result,
                        int row,
                        const char *fname);
 
 
 int
-TALER_DB_extract_amount_nbo (PGresult *result,
+TALER_PQ_extract_amount_nbo (PGresult *result,
                              int row,
                              const char *val_name,
                              const char *frac_name,
@@ -174,7 +173,7 @@ TALER_DB_extract_amount_nbo (PGresult *result,
 
 
 int
-TALER_DB_extract_amount (PGresult *result,
+TALER_PQ_extract_amount (PGresult *result,
                          int row,
                          const char *val_name,
                          const char *frac_name,
@@ -184,6 +183,6 @@ TALER_DB_extract_amount (PGresult *result,
 
 
 
-#endif  /* TALER_DB_LIB_H_ */
+#endif  /* TALER_PQ_LIB_H_ */
 
-/* end of db/db_pq.h */
+/* end of db/taler_pq_lib.h */

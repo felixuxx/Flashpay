@@ -60,12 +60,12 @@ signkeys_iterate_dir_iter (void *cls,
 {
   struct SignkeysIterateContext *skc = cls;
   ssize_t nread;
-  struct TALER_MINT_SignKeyIssuePriv issue;
+  struct TALER_MintSigningKeyValidityPSPriv issue;
 
   nread = GNUNET_DISK_fn_read (filename,
                                &issue,
-                               sizeof (struct TALER_MINT_SignKeyIssuePriv));
-  if (nread != sizeof (struct TALER_MINT_SignKeyIssuePriv))
+                               sizeof (struct TALER_MintSigningKeyValidityPSPriv));
+  if (nread != sizeof (struct TALER_MintSigningKeyValidityPSPriv))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Invalid signkey file `%s': wrong size\n",
@@ -122,7 +122,7 @@ TALER_MINT_signkeys_iterate (const char *mint_base_dir,
  */
 int
 TALER_MINT_read_denom_key (const char *filename,
-                           struct TALER_MINT_DenomKeyIssuePriv *dki)
+                           struct TALER_DenominationKeyIssueInformation *dki)
 {
   uint64_t size;
   size_t offset;
@@ -139,7 +139,7 @@ TALER_MINT_read_denom_key (const char *filename,
                 filename);
     return GNUNET_SYSERR;
   }
-  offset = sizeof (struct TALER_MINT_DenomKeyIssue);
+  offset = sizeof (struct TALER_DenominationKeyValidityPS);
   if (size <= offset)
   {
     GNUNET_break (0);
@@ -184,7 +184,7 @@ TALER_MINT_read_denom_key (const char *filename,
  */
 int
 TALER_MINT_write_denom_key (const char *filename,
-                            const struct TALER_MINT_DenomKeyIssuePriv *dki)
+                            const struct TALER_DenominationKeyIssueInformation *dki)
 {
   char *priv_enc;
   size_t priv_enc_size;
@@ -203,7 +203,7 @@ TALER_MINT_write_denom_key (const char *filename,
                 GNUNET_DISK_OPEN_WRITE | GNUNET_DISK_OPEN_CREATE | GNUNET_DISK_OPEN_TRUNCATE,
                 GNUNET_DISK_PERM_USER_READ | GNUNET_DISK_PERM_USER_WRITE)))
     goto cleanup;
-  wsize = sizeof (struct TALER_MINT_DenomKeyIssue);
+  wsize = sizeof (struct TALER_DenominationKeyValidityPS);
   if (GNUNET_SYSERR == (wrote = GNUNET_DISK_file_write (fh,
                                                         &dki->issue.signature,
                                                         wsize)))
@@ -267,7 +267,7 @@ denomkeys_iterate_keydir_iter (void *cls,
                                const char *filename)
 {
   struct DenomkeysIterateContext *dic = cls;
-  struct TALER_MINT_DenomKeyIssuePriv issue;
+  struct TALER_DenominationKeyIssueInformation issue;
 
   if (GNUNET_OK !=
       TALER_MINT_read_denom_key (filename,

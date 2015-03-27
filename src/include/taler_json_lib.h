@@ -18,15 +18,15 @@
  * @brief helper functions for JSON processing using libjansson
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
-#ifndef TALER_JSON_LIB_H_
-#define TALER_JSON_LIB_H_
+#ifndef TALER_json_LIB_H_
+#define TALER_json_LIB_H_
 
 #include <jansson.h>
 
 /**
  * Print JSON parsing related error information
  */
-#define TALER_JSON_warn(error)                                         \
+#define TALER_json_warn(error)                                         \
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,                                \
               "JSON parsing failed at %s:%u: %s (%s)\n",                  \
               __FILE__, __LINE__, error.text, error.source)
@@ -39,7 +39,7 @@
  * @return a json object describing the amount
  */
 json_t *
-TALER_JSON_from_amount (const struct TALER_Amount *amount);
+TALER_json_from_amount (const struct TALER_Amount *amount);
 
 
 /**
@@ -49,7 +49,7 @@ TALER_JSON_from_amount (const struct TALER_Amount *amount);
  * @return a json string with the timestamp in @a stamp
  */
 json_t *
-TALER_JSON_from_abs (struct GNUNET_TIME_Absolute stamp);
+TALER_json_from_abs (struct GNUNET_TIME_Absolute stamp);
 
 
 /**
@@ -60,7 +60,7 @@ TALER_JSON_from_abs (struct GNUNET_TIME_Absolute stamp);
  * @return the JSON reporesentation of the signature with purpose
  */
 json_t *
-TALER_JSON_from_eddsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+TALER_json_from_eddsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
                            const struct GNUNET_CRYPTO_EddsaSignature *signature);
 
 
@@ -72,7 +72,7 @@ TALER_JSON_from_eddsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpo
  * @return the JSON reporesentation of the signature with purpose
  */
 json_t *
-TALER_JSON_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+TALER_json_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
                            const struct GNUNET_CRYPTO_EcdsaSignature *signature);
 
 
@@ -83,7 +83,7 @@ TALER_JSON_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpo
  * @return corresponding JSON encoding
  */
 json_t *
-TALER_JSON_from_rsa_public_key (struct GNUNET_CRYPTO_rsa_PublicKey *pk);
+TALER_json_from_rsa_public_key (struct GNUNET_CRYPTO_rsa_PublicKey *pk);
 
 
 /**
@@ -93,7 +93,7 @@ TALER_JSON_from_rsa_public_key (struct GNUNET_CRYPTO_rsa_PublicKey *pk);
  * @return corresponding JSON encoding
  */
 json_t *
-TALER_JSON_from_rsa_signature (struct GNUNET_CRYPTO_rsa_Signature *sig);
+TALER_json_from_rsa_signature (struct GNUNET_CRYPTO_rsa_Signature *sig);
 
 
 /**
@@ -105,7 +105,7 @@ TALER_JSON_from_rsa_signature (struct GNUNET_CRYPTO_rsa_Signature *sig);
  * @return json string that encodes @a data
  */
 json_t *
-TALER_JSON_from_data (const void *data, size_t size);
+TALER_json_from_data (const void *data, size_t size);
 
 
 /**
@@ -116,7 +116,7 @@ TALER_JSON_from_data (const void *data, size_t size);
  * @return json string that encodes @a hc
  */
 json_t *
-TALER_JSON_from_hash (const struct GNUNET_HashCode *hc);
+TALER_json_from_hash (const struct GNUNET_HashCode *hc);
 
 
 /**
@@ -127,7 +127,7 @@ TALER_JSON_from_hash (const struct GNUNET_HashCode *hc);
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 int
-TALER_JSON_to_amount (json_t *json,
+TALER_json_to_amount (json_t *json,
                       struct TALER_Amount *r_amount);
 
 /**
@@ -138,7 +138,7 @@ TALER_JSON_to_amount (json_t *json,
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 int
-TALER_JSON_to_abs (json_t *json,
+TALER_json_to_abs (json_t *json,
                    struct GNUNET_TIME_Absolute *r_abs);
 
 /**
@@ -150,7 +150,7 @@ TALER_JSON_to_abs (json_t *json,
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 int
-TALER_JSON_to_data (json_t *json,
+TALER_json_to_data (json_t *json,
                     void *out,
                     size_t out_size);
 
@@ -162,10 +162,10 @@ TALER_JSON_to_data (json_t *json,
  * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
 int
-TALER_JSON_validate_wireformat (const char *type,
+TALER_json_validate_wireformat (const char *type,
                                 const json_t *wire);
 
 
-#endif /* TALER_JSON_LIB_H_ */
+#endif /* TALER_json_LIB_H_ */
 
 /* End of taler_json_lib.h */

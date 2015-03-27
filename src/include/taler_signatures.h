@@ -32,61 +32,61 @@
 
 /**
  * Cut-and-choose size for refreshing.  Client looses the gamble (of
- * unaccountable transfers) with probability 1/KAPPA.  Refresh cost
- * increases linearly with KAPPA, and 3 is sufficient up to a
+ * unaccountable transfers) with probability 1/TALER_CNC_KAPPA.  Refresh cost
+ * increases linearly with TALER_CNC_KAPPA, and 3 is sufficient up to a
  * income/sales tax of 66% of total transaction value.  As there is
  * no good reason to change this security parameter, we declare it
  * fixed and part of the protocol.
  */
-#define KAPPA 3
+#define TALER_CNC_KAPPA 3
 
 
 /**
  * Purpose for signing public keys signed
  * by the mint master key.
  */
-#define TALER_SIGNATURE_MASTER_SIGNKEY 1
+#define TALER_SIGNATURE_MINT_SIGNING_KEY_VALIDITY 1
 
 /**
  * Purpose for denomination keys signed
  * by the mint master key.
  */
-#define TALER_SIGNATURE_MASTER_DENOM 2
+#define TALER_SIGNATURE_MINT_DENOMINATION_KEY_VALIDITY 2
 
 /**
  * Purpose for the state of a reserve,
  * signed by the mint's signing key.
  */
-#define TALER_SIGNATURE_RESERVE_STATUS 3
+#define TALER_SIGNATURE_MINT_RESERVE_STATUS 3
 
 /**
  * Signature where the reserve key
  * confirms a withdraw request.
  */
-#define TALER_SIGNATURE_WITHDRAW 4
+#define TALER_SIGNATURE_RESERVE_WITHDRAW_REQUEST 4
 
 /**
  * Signature using a coin key confirming the melting of
  * a coin.
  */
-#define TALER_SIGNATURE_REFRESH_MELT_COIN 5
+#define TALER_SIGNATURE_COIN_MELT 5
 
 /**
  * Signature where the mint (current signing key)
  * confirms the no-reveal index for cut-and-choose and
  * the validity of the melted coins.
  */
-#define TALER_SIGNATURE_REFRESH_MELT_RESPONSE 6
+#define TALER_SIGNATURE_MINT_MELT_RESPONSE 6
 
 /**
  * Signature where the Mint confirms a deposit request.
  */
-#define TALER_SIGNATURE_MINT_DEPOSIT 7
+#define TALER_SIGNATURE_COIN_DEPOSIT 7
 
 /**
  * Signature where the Mint confirms the full /keys response set.
  */
-#define TALER_SIGNATURE_KEYS_SET 8
+#define TALER_SIGNATURE_MINT_KEY_SET 8
 
 
 /***********************/
@@ -104,11 +104,14 @@
 
 /**
  * Signature made by the wallet of a user to confirm a deposit permission
+ * FIXME: this is #TALER_SIGNATURE_COIN_DEPOSIT already!
  */
 #define TALER_SIGNATURE_WALLET_DEPOSIT 201
 
 /**
- * Signature made by the wallet of a user to confirm a incremental deposit permission
+ * Signature made by the wallet of a user to confirm a incremental
+ * deposit permission.
+ * FIXME: this MIGHT also be #TALER_SIGNATURE_COIN_DEPOSIT already!
  */
 #define TALER_SIGNATURE_INCREMENTAL_WALLET_DEPOSIT 202
 
@@ -120,11 +123,11 @@ GNUNET_NETWORK_STRUCT_BEGIN
  * Format used for to generate the signature on a request to withdraw
  * coins from a reserve.
  */
-struct TALER_WithdrawRequest
+struct TALER_WithdrawRequestPS
 {
 
   /**
-   * Purpose must be #TALER_SIGNATURE_WITHDRAW.
+   * Purpose must be #TALER_SIGNATURE_RESERVE_WITHDRAW_REQUEST.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -132,7 +135,7 @@ struct TALER_WithdrawRequest
    * Reserve public key (which reserve to withdraw from).  This is
    * the public key which must match the signature.
    */
-  struct TALER_ReservePublicKey reserve_pub;
+  struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
    * Value of the coin being minted (matching the denomination key)
@@ -159,7 +162,7 @@ struct TALER_WithdrawRequest
  * Format used to generate the signature on a request to deposit
  * a coin into the account of a merchant.
  */
-struct TALER_DepositRequest
+struct TALER_DepositRequestPS
 {
   /**
    * Purpose must be #TALER_SIGNATURE_WALLET_DEPOSIT
@@ -192,7 +195,7 @@ struct TALER_DepositRequest
   /**
    * The coin's public key.
    */
-  struct TALER_CoinSpendPublicKey coin_pub;
+  union TALER_CoinSpendPublicKeyP coin_pub;
 
 };
 
@@ -201,10 +204,10 @@ struct TALER_DepositRequest
  * Format used to generate the signature on a confirmation
  * from the mint that a deposit request succeeded.
  */
-struct TALER_DepositConfirmation
+struct TALER_DepositConfirmationPS
 {
   /**
-   * Purpose must be #TALER_SIGNATURE_MINT_DEPOSIT
+   * Purpose must be #TALER_SIGNATURE_COIN_DEPOSIT
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -235,12 +238,12 @@ struct TALER_DepositConfirmation
   /**
    * The coin's public key.
    */
-  struct TALER_CoinSpendPublicKey coin_pub;
+  union TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
    * The Merchant's public key.
    */
-  struct TALER_MerchantPublicKey merchant;
+  struct TALER_MerchantPublicKeyP merchant;
 
 };
 
@@ -249,10 +252,10 @@ struct TALER_DepositConfirmation
  * Message signed by a coin to indicate that the coin should
  * be melted.
  */
-struct RefreshMeltCoinSignature
+struct TALER_RefreshMeltCoinAffirmationPS
 {
   /**
-   * Purpose is #TALER_SIGNATURE_REFRESH_MELT_COIN.
+   * Purpose is #TALER_SIGNATURE_COIN_MELT.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -277,7 +280,7 @@ struct RefreshMeltCoinSignature
   /**
    * The coin's public key.
    */
-  struct TALER_CoinSpendPublicKey coin_pub;
+  union TALER_CoinSpendPublicKeyP coin_pub;
 };
 
 
@@ -287,10 +290,10 @@ struct RefreshMeltCoinSignature
  * coins were successfully melted.  This also commits the mint to a
  * particular index to not be revealed during the refresh.
  */
-struct RefreshMeltResponseSignatureBody
+struct TALER_RefreshMeltConfirmationPS
 {
   /**
-   * Purpose is #TALER_SIGNATURE_REFRESH_MELT_RESPONSE.
+   * Purpose is #TALER_SIGNATURE_MINT_MELT_RESPONSE.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -311,15 +314,15 @@ struct RefreshMeltResponseSignatureBody
  * to sign mint messages other than coins, i.e. to confirm that a
  * deposit was successful or that a refresh was accepted.
  */
-struct TALER_MINT_SignKeyIssue
+struct TALER_MintSigningKeyValidityPS
 {
   /**
    * Signature over the signing key (by the master key of the mint).
    */
-  struct TALER_MasterSignature signature;
+  struct TALER_MasterSignatureP signature;
 
   /**
-   * Purpose is #TALER_SIGNATURE_MASTER_SIGNKEY.
+   * Purpose is #TALER_SIGNATURE_MINT_SIGNING_KEY_VALIDITY.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -327,7 +330,7 @@ struct TALER_MINT_SignKeyIssue
    * Master public key of the mint corresponding to @e signature.
    * This is the long-term offline master key of the mint.
    */
-  struct TALER_MasterPublicKey master_pub;
+  struct TALER_MasterPublicKeyP master_public_key;
 
   /**
    * When does this signing key begin to be valid?
@@ -346,7 +349,7 @@ struct TALER_MINT_SignKeyIssue
    * The public online signing key that the mint will use
    * between @e start and @e expire.
    */
-  struct TALER_MintPublicKey signkey_pub;
+  struct TALER_MintPublicKeyP signkey_pub;
 };
 
 
@@ -355,11 +358,11 @@ struct TALER_MINT_SignKeyIssue
  * to detect cheating mints that give out different sets to
  * different users.
  */
-struct TALER_MINT_KeySetSignature
+struct TALER_MintKeySetPS
 {
 
   /**
-   * Purpose is #TALER_SIGNATURE_KEYS_SET
+   * Purpose is #TALER_SIGNATURE_MINT_KEY_SET
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -379,16 +382,16 @@ struct TALER_MINT_KeySetSignature
  * Information about a denomination key. Denomination keys
  * are used to sign coins of a certain value into existence.
  */
-struct TALER_MINT_DenomKeyIssue
+struct TALER_DenominationKeyValidityPS
 {
   /**
    * Signature over this struct to affirm the validity
    * of the key.
    */
-  struct TALER_MasterSignature signature;
+  struct TALER_MasterSignatureP signature;
 
   /**
-   * Purpose is #TALER_SIGNATURE_MASTER_DENOM.
+   * Purpose is #TALER_SIGNATURE_MINT_DENOMINATION_KEY_VALIDITY.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -396,7 +399,7 @@ struct TALER_MINT_DenomKeyIssue
    * The long-term offline master key of the mint that was
    * used to create @e signature.
    */
-  struct TALER_MasterPublicKey master;
+  struct TALER_MasterPublicKeyP master;
 
   /**
    * Start time of the validity period for this key.

@@ -56,13 +56,13 @@ static int
 verify_and_execute_deposit (struct MHD_Connection *connection,
                             const struct Deposit *deposit)
 {
-  struct MintKeyState *key_state;
-  struct TALER_DepositRequest dr;
-  struct TALER_MINT_DenomKeyIssuePriv *dki;
+  struct TMH_KS_StateHandle *key_state;
+  struct TALER_DepositRequestPS dr;
+  struct TALER_DenominationKeyIssueInformation *dki;
   struct TALER_Amount fee_deposit;
 
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_DEPOSIT);
-  dr.purpose.size = htonl (sizeof (struct TALER_DepositRequest));
+  dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
   dr.h_contract = deposit->h_contract;
   dr.h_wire = deposit->h_wire;
   dr.transaction_id = GNUNET_htonll (deposit->transaction_id);
@@ -75,43 +75,43 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
                                   &deposit->csig.ecdsa_signature,
                                   &deposit->coin.coin_pub.ecdsa_pub))
   {
-    LOG_WARNING ("Invalid signature on /deposit request\n");
-    return TALER_MINT_reply_arg_invalid (connection,
+    TALER_LOG_WARNING ("Invalid signature on /deposit request\n");
+    return TMH_RESPONSE_reply_arg_invalid (connection,
                                          "csig");
   }
   /* check denomination exists and is valid */
-  key_state = TALER_MINT_key_state_acquire ();
-  dki = TALER_MINT_get_denom_key (key_state,
+  key_state = TMH_KS_acquire ();
+  dki = TMH_KS_denomination_key_lookup (key_state,
                                   &deposit->coin.denom_pub);
   if (NULL == dki)
   {
-    TALER_MINT_key_state_release (key_state);
-    LOG_WARNING ("Unknown denomination key in /deposit request\n");
-    return TALER_MINT_reply_arg_invalid (connection,
+    TMH_KS_release (key_state);
+    TALER_LOG_WARNING ("Unknown denomination key in /deposit request\n");
+    return TMH_RESPONSE_reply_arg_invalid (connection,
                                          "denom_pub");
   }
   /* check coin signature */
   if (GNUNET_YES !=
       TALER_test_coin_valid (&deposit->coin))
   {
-    LOG_WARNING ("Invalid coin passed for /deposit\n");
-    TALER_MINT_key_state_release (key_state);
-    return TALER_MINT_reply_coin_invalid (connection);
+    TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
+    TMH_KS_release (key_state);
+    return TMH_RESPONSE_reply_coin_invalid (connection);
   }
   TALER_amount_ntoh (&fee_deposit,
                      &dki->issue.fee_deposit);
   if (TALER_amount_cmp (&fee_deposit,
                         &deposit->amount_with_fee) < 0)
   {
-    TALER_MINT_key_state_release (key_state);
+    TMH_KS_release (key_state);
     return (MHD_YES ==
-            TALER_MINT_reply_external_error (connection,
+            TMH_RESPONSE_reply_external_error (connection,
                                              "deposited amount smaller than depositing fee"))
       ? GNUNET_NO : GNUNET_SYSERR;
   }
-  TALER_MINT_key_state_release (key_state);
+  TMH_KS_release (key_state);
 
-  return TALER_MINT_db_execute_deposit (connection,
+  return TMH_DB_execute_deposit (connection,
                                         deposit);
 }
 
@@ -137,20 +137,20 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   struct Deposit deposit;
   char *wire_enc;
   size_t len;
-  struct GNUNET_MINT_ParseFieldSpec spec[] = {
-    TALER_MINT_PARSE_RSA_PUBLIC_KEY ("denom_pub", &deposit.coin.denom_pub),
-    TALER_MINT_PARSE_RSA_SIGNATURE ("ubsig", &deposit.coin.denom_sig),
-    TALER_MINT_PARSE_FIXED ("coin_pub", &deposit.coin.coin_pub),
-    TALER_MINT_PARSE_FIXED ("merchant_pub", &deposit.merchant_pub),
-    TALER_MINT_PARSE_FIXED ("H_a", &deposit.h_contract),
-    TALER_MINT_PARSE_FIXED ("H_wire", &deposit.h_wire),
-    TALER_MINT_PARSE_FIXED ("csig",  &deposit.csig),
-    TALER_MINT_PARSE_FIXED ("transaction_id", &deposit.transaction_id),
-    TALER_MINT_PARSE_END
+  struct TMH_PARSE_FieldSpecification spec[] = {
+    TMH_PARSE_MEMBER_RSA_PUBLIC_KEY ("denom_pub", &deposit.coin.denom_pub),
+    TMH_PARSE_MEMBER_RSA_SIGNATURE ("ubsig", &deposit.coin.denom_sig),
+    TMH_PARSE_MEMBER_FIXED ("coin_pub", &deposit.coin.coin_pub),
+    TMH_PARSE_MEMBER_FIXED ("merchant_pub", &deposit.merchant_pub),
+    TMH_PARSE_MEMBER_FIXED ("H_a", &deposit.h_contract),
+    TMH_PARSE_MEMBER_FIXED ("H_wire", &deposit.h_wire),
+    TMH_PARSE_MEMBER_FIXED ("csig",  &deposit.csig),
+    TMH_PARSE_MEMBER_FIXED ("transaction_id", &deposit.transaction_id),
+    TMH_PARSE_MEMBER_END
   };
 
   memset (&deposit, 0, sizeof (deposit));
-  res = TALER_MINT_parse_json_data (connection,
+  res = TMH_PARSE_json_data (connection,
                                     root,
                                     spec);
   if (GNUNET_SYSERR == res)
@@ -158,18 +158,18 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   if (GNUNET_NO == res)
     return MHD_YES; /* failure */
   if (GNUNET_YES !=
-      TALER_JSON_validate_wireformat (expected_wire_format,
+      TALER_json_validate_wireformat (TMH_expected_wire_format,
 				      wire))
   {
-    TALER_MINT_release_parsed_data (spec);
-    return TALER_MINT_reply_arg_invalid (connection,
+    TMH_PARSE_release_data (spec);
+    return TMH_RESPONSE_reply_arg_invalid (connection,
                                          "wire");
   }
   if (NULL == (wire_enc = json_dumps (wire, JSON_COMPACT | JSON_SORT_KEYS)))
   {
-    LOG_WARNING ("Failed to parse JSON wire format specification for /deposit request\n");
-    TALER_MINT_release_parsed_data (spec);
-    return TALER_MINT_reply_arg_invalid (connection,
+    TALER_LOG_WARNING ("Failed to parse JSON wire format specification for /deposit request\n");
+    TMH_PARSE_release_data (spec);
+    return TMH_RESPONSE_reply_arg_invalid (connection,
                                          "wire");
   }
   len = strlen (wire_enc) + 1;
@@ -182,7 +182,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   deposit.amount_with_fee = *amount;
   res = verify_and_execute_deposit (connection,
                                     &deposit);
-  TALER_MINT_release_parsed_data (spec);
+  TMH_PARSE_release_data (spec);
   return res;
 }
 
@@ -204,7 +204,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
  * @return MHD result code
   */
 int
-TALER_MINT_handler_deposit (struct RequestHandler *rh,
+TMH_DEPOSIT_handler_deposit (struct TMH_RequestHandler *rh,
                             struct MHD_Connection *connection,
                             void **connection_cls,
                             const char *upload_data,
@@ -216,7 +216,7 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
   struct TALER_Amount amount;
   json_t *f;
 
-  res = TALER_MINT_parse_post_json (connection,
+  res = TMH_PARSE_post_json (connection,
                                     connection_cls,
                                     upload_data,
                                     upload_data_size,
@@ -232,12 +232,12 @@ TALER_MINT_handler_deposit (struct RequestHandler *rh,
   {
     GNUNET_break_op (0);
     json_decref (json);
-    return TALER_MINT_reply_json_pack (connection,
+    return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        "{s:s}",
                                        "error", "Bad format");
   }
-  res = TALER_MINT_parse_amount_json (connection,
+  res = TMH_PARSE_amount_json (connection,
                                       f,
                                       &amount);
   json_decref (f);

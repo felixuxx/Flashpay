@@ -40,11 +40,11 @@
  * @return MHD result code
  */
 int
-TALER_MINT_handler_static_response (struct RequestHandler *rh,
-                                    struct MHD_Connection *connection,
-                                    void **connection_cls,
-                                    const char *upload_data,
-                                    size_t *upload_data_size);
+TMH_MHD_handler_static_response (struct TMH_RequestHandler *rh,
+                                 struct MHD_Connection *connection,
+                                 void **connection_cls,
+                                 const char *upload_data,
+                                 size_t *upload_data_size);
 
 
 /**
@@ -59,11 +59,11 @@ TALER_MINT_handler_static_response (struct RequestHandler *rh,
  * @return MHD result code
  */
 int
-TALER_MINT_handler_agpl_redirect (struct RequestHandler *rh,
-                                  struct MHD_Connection *connection,
-                                  void **connection_cls,
-                                  const char *upload_data,
-                                  size_t *upload_data_size);
+TMH_MHD_handler_agpl_redirect (struct TMH_RequestHandler *rh,
+                               struct MHD_Connection *connection,
+                               void **connection_cls,
+                               const char *upload_data,
+                               size_t *upload_data_size);
 
 
 /**
@@ -80,13 +80,13 @@ TALER_MINT_handler_agpl_redirect (struct RequestHandler *rh,
  * @return MHD result code
  */
 int
-TALER_MINT_helper_send_json_pack (struct RequestHandler *rh,
-                                  struct MHD_Connection *connection,
-                                  void *connection_cls,
-                                  int response_code,
-                                  int do_cache,
-                                  const char *fmt,
-                                  ...);
+TMH_MHD_helper_send_json_pack (struct TMH_RequestHandler *rh,
+                               struct MHD_Connection *connection,
+                               void *connection_cls,
+                               int response_code,
+                               int do_cache,
+                               const char *fmt,
+                               ...);
 
 
 /**
@@ -101,11 +101,11 @@ TALER_MINT_helper_send_json_pack (struct RequestHandler *rh,
  * @return MHD result code
  */
 int
-TALER_MINT_handler_send_json_pack_error (struct RequestHandler *rh,
-                                         struct MHD_Connection *connection,
-                                         void **connection_cls,
-                                         const char *upload_data,
-                                         size_t *upload_data_size);
+TMH_MHD_handler_send_json_pack_error (struct TMH_RequestHandler *rh,
+                                      struct MHD_Connection *connection,
+                                      void **connection_cls,
+                                      const char *upload_data,
+                                      size_t *upload_data_size);
 
 
 #endif

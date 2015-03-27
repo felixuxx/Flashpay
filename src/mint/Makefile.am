@@ -22,8 +22,7 @@ lib_LTLIBRARIES = \
 
 libtalermint_common_la_SOURCES = \
   key_io.c key_io.h \
-  plugin.c plugin.h \
-  taler_mintdb_plugin.h
+  plugin.c plugin.h
 
 libtalermint_common_la_LIBADD = \
   $(top_builddir)/src/util/libtalerutil.la \

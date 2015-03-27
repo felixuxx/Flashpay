@@ -29,7 +29,7 @@
 /**
  * Mint directory with the keys.
  */
-static char *mintdir;
+static char *mint_directory;
 
 /**
  * Our configuration.
@@ -50,7 +50,7 @@ static struct GNUNET_CONFIGURATION_Handle *kcfg;
 static int
 signkeys_iter (void *cls,
                const char *filename,
-               const struct TALER_MINT_SignKeyIssuePriv *ski)
+               const struct TALER_MintSigningKeyValidityPSPriv *ski)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Iterating over key `%s' for start time %s\n",
@@ -59,8 +59,8 @@ signkeys_iter (void *cls,
               (GNUNET_TIME_absolute_ntoh (ski->issue.start)));
 
   if (ntohl (ski->issue.purpose.size) !=
-      (sizeof (struct TALER_MINT_SignKeyIssue) -
-       offsetof (struct TALER_MINT_SignKeyIssue, purpose)))
+      (sizeof (struct TALER_MintSigningKeyValidityPS) -
+       offsetof (struct TALER_MintSigningKeyValidityPS, purpose)))
   {
     fprintf (stderr,
              "Signing key `%s' has invalid purpose size\n",
@@ -68,10 +68,10 @@ signkeys_iter (void *cls,
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNKEY,
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MINT_SIGNING_KEY_VALIDITY,
                                   &ski->issue.purpose,
                                   &ski->issue.signature.eddsa_signature,
-                                  &ski->issue.master_pub.eddsa_pub))
+                                  &ski->issue.master_public_key.eddsa_pub))
   {
     fprintf (stderr,
              "Signing key `%s' has invalid signature\n",
@@ -93,7 +93,7 @@ signkeys_iter (void *cls,
 static int
 mint_signkeys_check ()
 {
-  if (0 > TALER_MINT_signkeys_iterate (mintdir,
+  if (0 > TALER_MINT_signkeys_iterate (mint_directory,
                                        &signkeys_iter,
                                        NULL))
     return GNUNET_NO;
@@ -114,12 +114,12 @@ mint_signkeys_check ()
 static int
 denomkeys_iter (void *cls,
                 const char *alias,
-                const struct TALER_MINT_DenomKeyIssuePriv *dki)
+                const struct TALER_DenominationKeyIssueInformation *dki)
 {
   struct GNUNET_HashCode hc;
 
   if (ntohl (dki->issue.purpose.size) !=
-      sizeof (struct TALER_MINT_DenomKeyIssue))
+      sizeof (struct TALER_DenominationKeyValidityPS))
   {
     fprintf (stderr,
              "Denomination key for `%s' has invalid purpose size\n",
@@ -128,7 +128,7 @@ denomkeys_iter (void *cls,
   }
 
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOM,
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MINT_DENOMINATION_KEY_VALIDITY,
                                   &dki->issue.purpose,
                                   &dki->issue.signature.eddsa_signature,
                                   &dki->issue.master.eddsa_pub))
@@ -165,7 +165,7 @@ denomkeys_iter (void *cls,
 static int
 mint_denomkeys_check ()
 {
-  if (0 > TALER_MINT_denomkeys_iterate (mintdir,
+  if (0 > TALER_MINT_denomkeys_iterate (mint_directory,
                                         &denomkeys_iter,
                                         NULL))
     return GNUNET_NO;
@@ -187,7 +187,7 @@ main (int argc, char *const *argv)
     GNUNET_GETOPT_OPTION_HELP ("gnunet-mint-keycheck OPTIONS"),
     {'d', "directory", "DIRECTORY",
      "mint directory with keys to check", 1,
-     &GNUNET_GETOPT_set_filename, &mintdir},
+     &GNUNET_GETOPT_set_filename, &mint_directory},
     GNUNET_GETOPT_OPTION_END
   };
 
@@ -200,14 +200,14 @@ main (int argc, char *const *argv)
                          options,
                          argc, argv) < 0)
     return 1;
-  if (NULL == mintdir)
+  if (NULL == mint_directory)
   {
     fprintf (stderr,
              "Mint directory not given\n");
     return 1;
   }
 
-  kcfg = TALER_config_load (mintdir);
+  kcfg = TALER_config_load (mint_directory);
   if (NULL == kcfg)
   {
     fprintf (stderr,

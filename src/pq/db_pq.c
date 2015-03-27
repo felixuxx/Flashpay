@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file util/db_pq.c
+ * @file pq/db_pq.c
  * @brief helper functions for libpq (PostGres) interactions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Florian Dold
@@ -22,23 +22,23 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
-#include "db_pq.h"
+#include "taler_pq_lib.h"
 
 
 /**
  * Execute a prepared statement.
  */
 PGresult *
-TALER_DB_exec_prepared (PGconn *db_conn,
+TALER_PQ_exec_prepared (PGconn *db_conn,
                         const char *name,
-                        const struct TALER_DB_QueryParam *params)
+                        const struct TALER_PQ_QueryParam *params)
 {
   unsigned len;
   unsigned i;
 
   /* count the number of parameters */
   {
-    const struct TALER_DB_QueryParam *x;
+    const struct TALER_PQ_QueryParam *x;
     for (len = 0, x = params;
          x->more;
          len++, x++);
@@ -76,8 +76,8 @@ TALER_DB_exec_prepared (PGconn *db_conn,
  *   #GNUNET_SYSERR if a result was invalid (non-existing field)
  */
 int
-TALER_DB_extract_result (PGresult *result,
-                         struct TALER_DB_ResultSpec *rs,
+TALER_PQ_extract_result (PGresult *result,
+                         struct TALER_PQ_ResultSpec *rs,
                          int row)
 {
   int had_null = GNUNET_NO;
@@ -141,7 +141,7 @@ TALER_DB_extract_result (PGresult *result,
 
 
 int
-TALER_DB_field_isnull (PGresult *result,
+TALER_PQ_field_isnull (PGresult *result,
                        int row,
                        const char *fname)
 {
@@ -156,7 +156,7 @@ TALER_DB_field_isnull (PGresult *result,
 
 
 int
-TALER_DB_extract_amount_nbo (PGresult *result,
+TALER_PQ_extract_amount_nbo (PGresult *result,
                              int row,
                              const char *val_name,
                              const char *frac_name,
@@ -196,7 +196,7 @@ TALER_DB_extract_amount_nbo (PGresult *result,
 
 
 int
-TALER_DB_extract_amount (PGresult *result,
+TALER_PQ_extract_amount (PGresult *result,
                          int row,
                          const char *val_name,
                          const char *frac_name,
@@ -206,7 +206,7 @@ TALER_DB_extract_amount (PGresult *result,
   struct TALER_AmountNBO amount_nbo;
 
   (void)
-      TALER_DB_extract_amount_nbo (result,
+      TALER_PQ_extract_amount_nbo (result,
                                    row,
                                    val_name,
                                    frac_name,

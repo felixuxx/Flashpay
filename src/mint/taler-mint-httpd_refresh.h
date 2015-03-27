@@ -32,7 +32,7 @@
  * Handle a "/refresh/melt" request.  Parses the request into the JSON
  * components and then hands things of to #handle_referesh_melt_json()
  * to validate the melted coins, the signature and execute the melt
- * using TALER_MINT_db_execute_refresh_melt().
+ * using TMH_DB_execute_refresh_melt().
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
@@ -42,11 +42,11 @@
  * @return MHD result code
   */
 int
-TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
-                                 struct MHD_Connection *connection,
-                                 void **connection_cls,
-                                 const char *upload_data,
-                                 size_t *upload_data_size);
+TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
+                                  struct MHD_Connection *connection,
+                                  void **connection_cls,
+                                  const char *upload_data,
+                                  size_t *upload_data_size);
 
 
 /**
@@ -54,7 +54,7 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
  * the private transfer keys except for the cut-and-choose value
  * returned from "/refresh/commit".  This function parses the revealed
  * keys and secrets and ultimately passes everything to
- * #TALER_MINT_db_execute_refresh_reveal() which will verify that the
+ * #TMH_DB_execute_refresh_reveal() which will verify that the
  * revealed information is valid then returns the signed refreshed
  * coins.
  *
@@ -66,11 +66,11 @@ TALER_MINT_handler_refresh_melt (struct RequestHandler *rh,
  * @return MHD result code
   */
 int
-TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
-                                   struct MHD_Connection *connection,
-                                   void **connection_cls,
-                                   const char *upload_data,
-                                   size_t *upload_data_size);
+TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
+                                    struct MHD_Connection *connection,
+                                    void **connection_cls,
+                                    const char *upload_data,
+                                    size_t *upload_data_size);
 
 
 /**
@@ -84,11 +84,11 @@ TALER_MINT_handler_refresh_reveal (struct RequestHandler *rh,
  * @return MHD result code
   */
 int
-TALER_MINT_handler_refresh_link (struct RequestHandler *rh,
-                                 struct MHD_Connection *connection,
-                                 void **connection_cls,
-                                 const char *upload_data,
-                                 size_t *upload_data_size);
+TMH_REFRESH_handler_refresh_link (struct TMH_RequestHandler *rh,
+                                  struct MHD_Connection *connection,
+                                  void **connection_cls,
+                                  const char *upload_data,
+                                  size_t *upload_data_size);
 
 
 #endif

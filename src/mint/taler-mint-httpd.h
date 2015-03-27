@@ -29,7 +29,7 @@
  * For now, we just do EUR.  Should become configurable
  * in the future!
  */
-#define MINT_CURRENCY "EUR"
+#define TMH_MINT_CURRENCY "EUR"
 
 
 /**
@@ -41,29 +41,29 @@ extern struct GNUNET_CONFIGURATION_Handle *cfg;
  * Main directory with mint data.
  * FIXME: should we have those globals really here?
  */
-extern char *mintdir;
+extern char *TMH_mint_directory;
 
 /**
  * In which format does this MINT expect wiring instructions?
  */
-extern char *expected_wire_format;
+extern char *TMH_expected_wire_format;
 
 /**
  * Master public key (according to the
  * configuration in the mint directory).
  */
-extern struct GNUNET_CRYPTO_EddsaPublicKey master_pub;
+extern struct GNUNET_CRYPTO_EddsaPublicKey TMH_master_public_key;
 
 /**
  * Private key of the mint we use to sign messages.
  */
-extern struct GNUNET_CRYPTO_EddsaPrivateKey mint_priv;
+extern struct GNUNET_CRYPTO_EddsaPrivateKey TMH_mint_private_signing_key;
 
 
 /**
  * Struct describing an URL and the handler for it.
  */
-struct RequestHandler
+struct TMH_RequestHandler
 {
 
   /**
@@ -102,7 +102,7 @@ struct RequestHandler
    * @param[IN|OUT] upload_data_size number of bytes (left) in @a upload_data
    * @return MHD result code
    */
-  int (*handler)(struct RequestHandler *rh,
+  int (*handler)(struct TMH_RequestHandler *rh,
                  struct MHD_Connection *connection,
                  void **connection_cls,
                  const char *upload_data,

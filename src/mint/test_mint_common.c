@@ -36,10 +36,10 @@ int
 main (int argc,
       const char *const argv[])
 {
-  struct TALER_MINT_DenomKeyIssuePriv dki;
+  struct TALER_DenominationKeyIssueInformation dki;
   char *enc;
   size_t enc_size;
-  struct TALER_MINT_DenomKeyIssuePriv dki_read;
+  struct TALER_DenominationKeyIssueInformation dki_read;
   char *enc_read;
   size_t enc_read_size;
   char *tmpfile;
@@ -53,7 +53,7 @@ main (int argc,
   dki_read.denom_priv.rsa_private_key = NULL;
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &dki.issue.signature,
-                              sizeof (dki) - offsetof (struct TALER_MINT_DenomKeyIssue,
+                              sizeof (dki) - offsetof (struct TALER_DenominationKeyValidityPS,
                                                        signature));
   dki.denom_priv.rsa_private_key
     = GNUNET_CRYPTO_rsa_private_key_create (RSA_KEY_SIZE);

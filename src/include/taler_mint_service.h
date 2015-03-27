@@ -42,7 +42,7 @@ struct TALER_MINT_SigningPublicKey
   /**
    * The signing public key
    */
-  struct TALER_MintPublicKey key;
+  struct TALER_MintPublicKeyP key;
 
   /**
    * Validity start time
@@ -140,7 +140,7 @@ struct TALER_MINT_Handle *
 TALER_MINT_connect (struct TALER_MINT_Context *ctx,
                     const char *hostname,
                     uint16_t port,
-                    const struct TALER_MasterPublicKey *master_key);
+                    const struct TALER_MasterPublicKeyP *master_key);
 
 /**
  * Disconnect from the mint
@@ -287,7 +287,7 @@ TALER_MINT_deposit_submit_json_ (struct TALER_MINT_Handle *mint,
                                  struct TALER_BLIND_Signature *ubsig,
                                  uint64_t transaction_id,
                                  struct TALER_Amount *amount,
-                                 const struct TALER_MerchantPublicKey *merchant_pub,
+                                 const struct TALER_MerchantPublicKeyP *merchant_pub,
                                  const struct GNUNET_HashCode *h_contract,
                                  const struct GNUNET_HashCode *h_wire,
                                  const struct TALER_CoinSignature *csig,

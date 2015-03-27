@@ -32,7 +32,7 @@ GNUNET_NETWORK_STRUCT_BEGIN
 /**
  * Type of public keys for Taler reserves.
  */
-struct TALER_ReservePublicKey
+struct TALER_ReservePublicKeyP
 {
   /**
    * Taler uses EdDSA for reserves.
@@ -44,7 +44,7 @@ struct TALER_ReservePublicKey
 /**
  * Type of private keys for Taler reserves.
  */
-struct TALER_ReservePrivateKey
+struct TALER_ReservePrivateKeyP
 {
   /**
    * Taler uses EdDSA for reserves.
@@ -56,7 +56,7 @@ struct TALER_ReservePrivateKey
 /**
  * Type of signatures used with Taler reserves.
  */
-struct TALER_ReserveSignature
+struct TALER_ReserveSignatureP
 {
   /**
    * Taler uses EdDSA for reserves.
@@ -70,7 +70,7 @@ struct TALER_ReserveSignature
  * Merchants can issue refunds using the corresponding
  * private key.
  */
-struct TALER_MerchantPublicKey
+struct TALER_MerchantPublicKeyP
 {
   /**
    * Taler uses EdDSA for merchants.
@@ -84,7 +84,7 @@ struct TALER_MerchantPublicKey
  * Merchants can issue refunds using the corresponding
  * private key.
  */
-struct TALER_MerchantPrivateKey
+struct TALER_MerchantPrivateKeyP
 {
   /**
    * Taler uses EdDSA for merchants.
@@ -97,7 +97,7 @@ struct TALER_MerchantPrivateKey
  * Type of transfer public keys used during refresh
  * operations.
  */
-struct TALER_TransferPublicKey
+struct TALER_TransferPublicKeyP
 {
   /**
    * Taler uses ECDSA for transfer keys.
@@ -111,7 +111,7 @@ struct TALER_TransferPublicKey
  * Type of transfer public keys used during refresh
  * operations.
  */
-struct TALER_TransferPrivateKey
+struct TALER_TransferPrivateKeyP
 {
   /**
    * Taler uses ECDSA for melting session keys.
@@ -125,7 +125,7 @@ struct TALER_TransferPrivateKey
  * Type of online public keys used by the mint to sign
  * messages.
  */
-struct TALER_MintPublicKey
+struct TALER_MintPublicKeyP
 {
   /**
    * Taler uses EdDSA for online mint message signing.
@@ -138,7 +138,7 @@ struct TALER_MintPublicKey
  * Type of online public keys used by the mint to
  * sign messages.
  */
-struct TALER_MintPrivateKey
+struct TALER_MintPrivateKeyP
 {
   /**
    * Taler uses EdDSA for online signatures sessions.
@@ -150,7 +150,7 @@ struct TALER_MintPrivateKey
 /**
  * Type of signatures used by the mint to sign messages online.
  */
-struct TALER_MintSignature
+struct TALER_MintSignatureP
 {
   /**
    * Taler uses EdDSA for online signatures sessions.
@@ -162,7 +162,7 @@ struct TALER_MintSignature
 /**
  * Type of the offline master public key used by the mint.
  */
-struct TALER_MasterPublicKey
+struct TALER_MasterPublicKeyP
 {
   /**
    * Taler uses EdDSA for the long-term offline master key.
@@ -174,7 +174,7 @@ struct TALER_MasterPublicKey
 /**
  * Type of the offline master public keys used by the mint.
  */
-struct TALER_MasterPrivateKey
+struct TALER_MasterPrivateKeyP
 {
   /**
    * Taler uses EdDSA for the long-term offline master key.
@@ -186,7 +186,7 @@ struct TALER_MasterPrivateKey
 /**
  * Type of signatures by the offline master public key used by the mint.
  */
-struct TALER_MasterSignature
+struct TALER_MasterSignatureP
 {
   /**
    * Taler uses EdDSA for the long-term offline master key.
@@ -199,7 +199,7 @@ struct TALER_MasterSignature
 /**
  * Type of public keys for Taler coins.
  */
-struct TALER_CoinSpendPublicKey
+union TALER_CoinSpendPublicKeyP
 {
   /**
    * Taler uses ECDSA for coins.
@@ -211,7 +211,7 @@ struct TALER_CoinSpendPublicKey
 /**
  * Type of private keys for Taler coins.
  */
-struct TALER_CoinSpendPrivateKey
+union TALER_CoinSpendPrivateKeyP
 {
   /**
    * Taler uses ECDSA for coins.
@@ -223,7 +223,7 @@ struct TALER_CoinSpendPrivateKey
 /**
  * Type of signatures made with Taler coins.
  */
-struct TALER_CoinSpendSignature
+union TALER_CoinSpendSignatureP
 {
   /**
    * Taler uses ECDSA for coins.
@@ -294,7 +294,7 @@ struct TALER_CoinPublicInfo
   /**
    * The coin's public key.
    */
-  struct TALER_CoinSpendPublicKey coin_pub;
+  union TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
    * Public key representing the denomination of the coin
@@ -331,10 +331,10 @@ GNUNET_NETWORK_STRUCT_BEGIN
 /**
  * Secret used to decrypt the key to decrypt link secrets.
  */
-struct TALER_TransferSecret
+struct TALER_TransferSecretP
 {
   /**
-   * Secret used to encrypt/decrypt the `struct TALER_LinkSecret`.
+   * Secret used to encrypt/decrypt the `struct TALER_LinkSecretP`.
    * Must be (currently) a hash as this is what
    * #GNUNET_CRYPTO_ecc_ecdh() returns to us.
    */
@@ -345,7 +345,7 @@ struct TALER_TransferSecret
 /**
  * Secret used to decrypt refresh links.
  */
-struct TALER_LinkSecret
+struct TALER_LinkSecretP
 {
   /**
    * Secret used to decrypt the refresh link data.
@@ -357,25 +357,25 @@ struct TALER_LinkSecret
 /**
  * Encrypted secret used to decrypt refresh links.
  */
-struct TALER_EncryptedLinkSecret
+struct TALER_EncryptedLinkSecretP
 {
   /**
    * Encrypted secret, must be the given size!
    */
-  char enc[sizeof (struct TALER_LinkSecret)];
+  char enc[sizeof (struct TALER_LinkSecretP)];
 };
 
 
 /**
  * Representation of an refresh link in cleartext.
  */
-struct TALER_RefreshLinkDecrypted
+struct TALER_RefreshLinkDecryptedP
 {
 
   /**
    * Private key of the coin.
    */
-  struct TALER_CoinSpendPrivateKey coin_priv;
+  union TALER_CoinSpendPrivateKeyP coin_priv;
 
   /**
    * Blinding key.
@@ -408,7 +408,7 @@ struct TALER_RefreshLinkEncrypted
   /**
    * Encrypted private key of the coin.
    */
-  char coin_priv_enc[sizeof (struct TALER_CoinSpendPrivateKey)];
+  char coin_priv_enc[sizeof (union TALER_CoinSpendPrivateKeyP)];
 
 };
 
@@ -423,9 +423,9 @@ struct TALER_RefreshLinkEncrypted
  * @return #GNUNET_OK on success
  */
 int
-TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecret *secret_enc,
-                        const struct TALER_TransferSecret *trans_sec,
-                        struct TALER_LinkSecret *secret);
+TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecretP *secret_enc,
+                        const struct TALER_TransferSecretP *trans_sec,
+                        struct TALER_LinkSecretP *secret);
 
 
 /**
@@ -438,9 +438,9 @@ TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecret *secret_enc,
  * @return #GNUNET_OK on success
  */
 int
-TALER_transfer_encrypt (const struct TALER_LinkSecret *secret,
-                        const struct TALER_TransferSecret *trans_sec,
-                        struct TALER_EncryptedLinkSecret *secret_enc);
+TALER_transfer_encrypt (const struct TALER_LinkSecretP *secret,
+                        const struct TALER_TransferSecretP *trans_sec,
+                        struct TALER_EncryptedLinkSecretP *secret_enc);
 
 
 /**
@@ -450,9 +450,9 @@ TALER_transfer_encrypt (const struct TALER_LinkSecret *secret,
  * @param secret shared secret to use for decryption
  * @return NULL on error
  */
-struct TALER_RefreshLinkDecrypted *
+struct TALER_RefreshLinkDecryptedP *
 TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
-                       const struct TALER_LinkSecret *secret);
+                       const struct TALER_LinkSecretP *secret);
 
 
 /**
@@ -463,8 +463,8 @@ TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
  * @return NULL on error (should never happen)
  */
 struct TALER_RefreshLinkEncrypted *
-TALER_refresh_encrypt (const struct TALER_RefreshLinkDecrypted *input,
-                       const struct TALER_LinkSecret *secret);
+TALER_refresh_encrypt (const struct TALER_RefreshLinkDecryptedP *input,
+                       const struct TALER_LinkSecretP *secret);
 
 
 /**

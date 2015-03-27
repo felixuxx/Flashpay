@@ -25,13 +25,13 @@
 #include "taler_util.h"
 #include "taler_signatures.h"
 #include "taler_mintdb_plugin.h"
-#include "db_pq.h"
+#include "taler_pq_lib.h"
 
 
 /**
  * Director of the mint, containing the keys.
  */
-static char *mintdir;
+static char *mint_directory;
 
 /**
  * Public key of the reserve to manipulate.
@@ -156,7 +156,7 @@ reservemod_add (struct TALER_Amount denom)
     };
 
     GNUNET_assert (GNUNET_OK ==
-                   TALER_DB_extract_amount (result, 0,
+                   TALER_PQ_extract_amount (result, 0,
                                             "balance_value",
                                             "balance_fraction",
                                             "balance_currency",
@@ -214,7 +214,7 @@ main (int argc, char *const *argv)
     GNUNET_GETOPT_OPTION_HELP ("gnunet-mint-reservemod OPTIONS"),
     {'d', "mint-dir", "DIR",
      "mint directory with keys to update", 1,
-     &GNUNET_GETOPT_set_filename, &mintdir},
+     &GNUNET_GETOPT_set_filename, &mint_directory},
     {'R', "reserve", "KEY",
      "reserve (public key) to modify", 1,
      &GNUNET_GETOPT_set_string, &reserve_pub_str},
@@ -223,7 +223,7 @@ main (int argc, char *const *argv)
      &GNUNET_GETOPT_set_string, &add_str},
     GNUNET_GETOPT_OPTION_END
   };
-  char *TALER_MINT_db_connection_cfg_str;
+  char *connection_cfg_str;
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-mint-reservemod",
@@ -234,7 +234,7 @@ main (int argc, char *const *argv)
                          options,
                          argc, argv) < 0)
     return 1;
-  if (NULL == mintdir)
+  if (NULL == mint_directory)
   {
     fprintf (stderr,
              "Mint directory not given\n");
@@ -253,7 +253,7 @@ main (int argc, char *const *argv)
              "Parsing reserve key invalid\n");
     return 1;
   }
-  cfg = TALER_config_load (mintdir);
+  cfg = TALER_config_load (mint_directory);
   if (NULL == cfg)
   {
     fprintf (stderr,
@@ -264,13 +264,13 @@ main (int argc, char *const *argv)
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "mint",
                                              "db",
-                                             &TALER_MINT_db_connection_cfg_str))
+                                             &connection_cfg_str))
   {
     fprintf (stderr,
              "Database configuration string not found\n");
     return 1;
   }
-  db_conn = PQconnectdb (TALER_MINT_db_connection_cfg_str);
+  db_conn = PQconnectdb (connection_cfg_str);
   if (CONNECTION_OK != PQstatus (db_conn))
   {
     fprintf (stderr,

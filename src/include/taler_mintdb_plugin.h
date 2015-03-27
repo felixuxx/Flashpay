@@ -35,7 +35,7 @@ struct BankTransfer
   /**
    * Public key of the reserve that was filled.
    */
-  struct TALER_ReservePublicKey reserve_pub;
+  struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
    * Amount that was transferred to the mint.
@@ -58,7 +58,7 @@ struct Reserve
   /**
    * The reserve's public key.  This uniquely identifies the reserve
    */
-  struct TALER_ReservePublicKey pub;
+  struct TALER_ReservePublicKeyP pub;
 
   /**
    * The balance amount existing in the reserve
@@ -96,7 +96,7 @@ struct CollectableBlindcoin
   /**
    * Public key of the reserve that was drained.
    */
-  struct TALER_ReservePublicKey reserve_pub;
+  struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
    * Hash over the blinded message, needed to verify
@@ -108,7 +108,7 @@ struct CollectableBlindcoin
    * Signature confirming the withdrawl, matching @e reserve_pub,
    * @e denom_pub and @e h_coin_envelope.
    */
-  struct TALER_ReserveSignature reserve_sig;
+  struct TALER_ReserveSignatureP reserve_sig;
 };
 
 
@@ -186,13 +186,13 @@ struct Deposit
    * by @e h_wire in relation to the contract identified
    * by @e h_contract.
    */
-  struct TALER_CoinSpendSignature csig;
+  union TALER_CoinSpendSignatureP csig;
 
   /**
    * Public key of the merchant.  Enables later identification
    * of the merchant in case of a need to rollback transactions.
    */
-  struct TALER_MerchantPublicKey merchant_pub;
+  struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
    * Hash over the contract between merchant and customer
@@ -247,7 +247,7 @@ struct RefreshSession
   uint16_t num_newcoins;
 
   /**
-   * Index (smaller #KAPPA) which the mint has chosen to not
+   * Index (smaller #TALER_CNC_KAPPA) which the mint has chosen to not
    * have revealed during cut and choose.
    */
   uint16_t noreveal_index;
@@ -268,7 +268,7 @@ struct RefreshMelt
   /**
    * Signature over the melting operation.
    */
-  struct TALER_CoinSpendSignature coin_sig;
+  union TALER_CoinSpendSignatureP coin_sig;
 
   /**
    * Hash of the refresh session this coin is melted into.
@@ -290,7 +290,7 @@ struct RefreshMelt
 
 /**
  * We have as many `struct RefreshCommitCoin` as there are new
- * coins being created by the refresh (for each of the #KAPPA
+ * coins being created by the refresh (for each of the #TALER_CNC_KAPPA
  * sets).  These are the coins we ask the mint to sign if the
  * respective set is selected.
  */
@@ -331,12 +331,12 @@ struct RefreshCommitLink
    * in combintation with the corresponding private key of the
    * coin.
    */
-  struct TALER_TransferPublicKey transfer_pub;
+  struct TALER_TransferPublicKeyP transfer_pub;
 
   /**
    * Encrypted shared secret to decrypt the link.
    */
-  struct TALER_EncryptedLinkSecret shared_secret_enc;
+  struct TALER_EncryptedLinkSecretP shared_secret_enc;
 };
 
 GNUNET_NETWORK_STRUCT_END
@@ -384,7 +384,7 @@ struct Lock
   /**
    * Signature over the locking operation.
    */
-  struct TALER_CoinSpendSignature coin_sig;
+  union TALER_CoinSpendSignatureP coin_sig;
 
   /**
    * How much value is being locked?
@@ -650,7 +650,7 @@ struct TALER_MINTDB_Plugin
   struct ReserveHistory *
   (*get_reserve_history) (void *cls,
                           struct TALER_MINTDB_Session *sesssion,
-                          const struct TALER_ReservePublicKey *reserve_pub);
+                          const struct TALER_ReservePublicKeyP *reserve_pub);
 
 
   /**
@@ -814,7 +814,7 @@ struct TALER_MINTDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database connection to use
    * @param session_hash hash to identify refresh session
-   * @param i set index (1st dimension), relating to #KAPPA
+   * @param i set index (1st dimension), relating to #TALER_CNC_KAPPA
    * @param num_newcoins coin index size of the @a commit_coins array
    * @param commit_coin array of coin commitments to store
    * @return #GNUNET_OK on success
@@ -859,7 +859,7 @@ struct TALER_MINTDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database connection to use
    * @param session_hash hash to identify refresh session
-   * @param i set index (1st dimension), relating to #KAPPA
+   * @param i set index (1st dimension), relating to #TALER_CNC_KAPPA
    * @param num_links size of the @a commit_link array
    * @param commit_links array of link information to store
    * @return #GNUNET_SYSERR on internal error, #GNUNET_OK on success
@@ -928,7 +928,7 @@ struct TALER_MINTDB_Plugin
   struct LinkDataList *
   (*get_link_data_list) (void *cls,
                          struct TALER_MINTDB_Session *sesssion,
-                         const struct TALER_CoinSpendPublicKey *coin_pub);
+                         const union TALER_CoinSpendPublicKeyP *coin_pub);
 
 
   /**
@@ -961,9 +961,9 @@ struct TALER_MINTDB_Plugin
   int
   (*get_transfer) (void *cls,
                    struct TALER_MINTDB_Session *sesssion,
-                   const struct TALER_CoinSpendPublicKey *coin_pub,
-                   struct TALER_TransferPublicKey *transfer_pub,
-                   struct TALER_EncryptedLinkSecret *shared_secret_enc);
+                   const union TALER_CoinSpendPublicKeyP *coin_pub,
+                   struct TALER_TransferPublicKeyP *transfer_pub,
+                   struct TALER_EncryptedLinkSecretP *shared_secret_enc);
 
 
   /**
@@ -1009,7 +1009,7 @@ struct TALER_MINTDB_Plugin
   struct TALER_MINT_DB_TransactionList *
   (*get_coin_transactions) (void *cls,
                             struct TALER_MINTDB_Session *sesssion,
-                            const struct TALER_CoinSpendPublicKey *coin_pub);
+                            const union TALER_CoinSpendPublicKeyP *coin_pub);
 
 
   /**

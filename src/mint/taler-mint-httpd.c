@@ -42,7 +42,7 @@
 /**
  * Base directory of the mint (global)
  */
-char *mintdir;
+char *TMH_mint_directory;
 
 /**
  * The mint's configuration (global)
@@ -53,12 +53,12 @@ struct GNUNET_CONFIGURATION_Handle *cfg;
  * Master public key (according to the
  * configuration in the mint directory).
  */
-struct GNUNET_CRYPTO_EddsaPublicKey master_pub;
+struct GNUNET_CRYPTO_EddsaPublicKey TMH_master_public_key;
 
 /**
  * In which format does this MINT expect wiring instructions?
  */
-char *expected_wire_format = "sepa";
+char *TMH_expected_wire_format = "sepa";
 
 /**
  * The HTTP Daemon.
@@ -98,7 +98,7 @@ handle_mhd_completion_callback (void *cls,
 {
   if (NULL == *con_cls)
     return;
-  TALER_MINT_parse_post_cleanup_callback (*con_cls);
+  TMH_PARSE_post_cleanup_callback (*con_cls);
   *con_cls = NULL;
 }
 
@@ -125,71 +125,71 @@ handle_mhd_request (void *cls,
                     size_t *upload_data_size,
                     void **con_cls)
 {
-  static struct RequestHandler handlers[] =
+  static struct TMH_RequestHandler handlers[] =
     {
       { "/", MHD_HTTP_METHOD_GET, "text/plain",
         "Hello, I'm the mint\n", 0,
-        &TALER_MINT_handler_static_response, MHD_HTTP_OK },
+        &TMH_MHD_handler_static_response, MHD_HTTP_OK },
       { "/agpl", MHD_HTTP_METHOD_GET, "text/plain",
         NULL, 0,
-        &TALER_MINT_handler_agpl_redirect, MHD_HTTP_FOUND },
+        &TMH_MHD_handler_agpl_redirect, MHD_HTTP_FOUND },
       { "/keys", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
-        &TALER_MINT_handler_keys, MHD_HTTP_OK },
+        &TMH_KS_handler_keys, MHD_HTTP_OK },
       { "/keys", NULL, "text/plain",
         "Only GET is allowed", 0,
-        &TALER_MINT_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
       { "/withdraw/status", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
-        &TALER_MINT_handler_withdraw_status, MHD_HTTP_OK },
+        &TMH_WITHDRAW_handler_withdraw_status, MHD_HTTP_OK },
       { "/withdraw/status", NULL, "text/plain",
         "Only GET is allowed", 0,
-        &TALER_MINT_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
       { "/withdraw/sign", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
-        &TALER_MINT_handler_withdraw_sign, MHD_HTTP_OK },
+        &TMH_WITHDRAW_handler_withdraw_sign, MHD_HTTP_OK },
       { "/withdraw/sign", NULL, "text/plain",
         "Only GET is allowed", 0,
-        &TALER_MINT_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
       { "/refresh/melt", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-        &TALER_MINT_handler_refresh_melt, MHD_HTTP_OK },
+        &TMH_REFRESH_handler_refresh_melt, MHD_HTTP_OK },
       { "/refresh/melt", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TALER_MINT_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
       { "/refresh/reveal", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-        &TALER_MINT_handler_refresh_melt, MHD_HTTP_OK },
+        &TMH_REFRESH_handler_refresh_melt, MHD_HTTP_OK },
       { "/refresh/reveal", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TALER_MINT_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
       { "/refresh/link", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
-        &TALER_MINT_handler_refresh_link, MHD_HTTP_OK },
+        &TMH_REFRESH_handler_refresh_link, MHD_HTTP_OK },
       { "/refresh/link", NULL, "text/plain",
         "Only GET is allowed", 0,
-        &TALER_MINT_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
       { "/refresh/reveal", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
-        &TALER_MINT_handler_refresh_reveal, MHD_HTTP_OK },
+        &TMH_REFRESH_handler_refresh_reveal, MHD_HTTP_OK },
       { "/refresh/reveal", NULL, "text/plain",
         "Only GET is allowed", 0,
-        &TALER_MINT_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
       { "/deposit", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-        &TALER_MINT_handler_deposit, MHD_HTTP_OK },
+        &TMH_DEPOSIT_handler_deposit, MHD_HTTP_OK },
       { "/deposit", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TALER_MINT_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
       { NULL, NULL, NULL, NULL, 0, 0 }
     };
-  static struct RequestHandler h404 =
+  static struct TMH_RequestHandler h404 =
     {
       "", NULL, "text/html",
       "<html><title>404: not found</title></html>", 0,
-      &TALER_MINT_handler_static_response, MHD_HTTP_NOT_FOUND
+      &TMH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
     };
-  struct RequestHandler *rh;
+  struct TMH_RequestHandler *rh;
   unsigned int i;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -209,7 +209,7 @@ handle_mhd_request (void *cls,
                           upload_data,
                           upload_data_size);
   }
-  return TALER_MINT_handler_static_response (&h404,
+  return TMH_MHD_handler_static_response (&h404,
                                              connection,
                                              con_cls,
                                              upload_data,
@@ -229,7 +229,7 @@ mint_serve_process_config (const char *mint_directory)
 {
   unsigned long long port;
   unsigned long long kappa;
-  char *master_pub_str;
+  char *TMH_master_public_key_str;
 
   cfg = TALER_config_load (mint_directory);
   if (NULL == cfg)
@@ -240,24 +240,25 @@ mint_serve_process_config (const char *mint_directory)
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "mint", "master_pub",
-                                             &master_pub_str))
+                                             "mint",
+                                             "master_public_key",
+                                             &TMH_master_public_key_str))
   {
     fprintf (stderr,
              "No master public key given in mint configuration.");
     return GNUNET_NO;
   }
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_public_key_from_string (master_pub_str,
-                                                  strlen (master_pub_str),
-                                                  &master_pub))
+      GNUNET_CRYPTO_eddsa_public_key_from_string (TMH_master_public_key_str,
+                                                  strlen (TMH_master_public_key_str),
+                                                  &TMH_master_public_key))
   {
     fprintf (stderr,
              "Invalid master public key given in mint configuration.");
-    GNUNET_free (master_pub_str);
+    GNUNET_free (TMH_master_public_key_str);
     return GNUNET_NO;
   }
-  GNUNET_free (master_pub_str);
+  GNUNET_free (TMH_master_public_key_str);
 
   if (GNUNET_OK !=
       TALER_MINT_plugin_load (cfg))
@@ -314,7 +315,7 @@ main (int argc, char *const *argv)
     GNUNET_GETOPT_OPTION_HELP ("gnunet-mint-keyup OPTIONS"),
     {'d', "mint-dir", "DIR",
      "mint directory", 1,
-     &GNUNET_GETOPT_set_filename, &mintdir},
+     &GNUNET_GETOPT_set_filename, &TMH_mint_directory},
     GNUNET_GETOPT_OPTION_END
   };
   int ret;
@@ -327,14 +328,14 @@ main (int argc, char *const *argv)
                          options,
                          argc, argv) < 0)
     return 1;
-  if (NULL == mintdir)
+  if (NULL == TMH_mint_directory)
   {
     fprintf (stderr,
              "no mint dir given\n");
     return 1;
   }
 
-  if (GNUNET_OK != mint_serve_process_config (mintdir))
+  if (GNUNET_OK != mint_serve_process_config (TMH_mint_directory))
     return 1;
 
 
@@ -352,7 +353,7 @@ main (int argc, char *const *argv)
     return 1;
   }
 
-  ret = TALER_MINT_key_reload_loop ();
+  ret = TMH_KS_loop ();
   MHD_stop_daemon (mydaemon);
   return (GNUNET_OK == ret) ? 0 : 1;
 }
