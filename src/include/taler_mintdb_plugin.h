@@ -27,7 +27,7 @@
 
 
 /**
- * Information we keep on bank transfer(s) that established a reserve.
+ * @brief Information we keep on bank transfer(s) that established a reserve.
  */
 struct TALER_MINTDB_BankTransfer
 {
@@ -51,7 +51,7 @@ struct TALER_MINTDB_BankTransfer
 
 
 /**
- * A summary of a Reserve
+ * @brief A summary of a Reserve
  */
 struct TALER_MINTDB_Reserve
 {
@@ -73,7 +73,7 @@ struct TALER_MINTDB_Reserve
 
 
 /**
- * Information we keep for a withdrawn coin to reproduce
+ * @brief Information we keep for a withdrawn coin to reproduce
  * the /withdraw operation if needed, and to have proof
  * that a reserve was drained by this amount.
  */
@@ -114,7 +114,7 @@ struct TALER_MINTDB_CollectableBlindcoin
 
 
 /**
- * Types of operations on a reserved.
+ * @brief Types of operations on a reserved.
  */
 enum TALER_MINTDB_ReserveOperation
 {
@@ -131,7 +131,7 @@ enum TALER_MINTDB_ReserveOperation
 
 
 /**
- * Reserve history as a linked list.  Lists all of the transactions
+ * @brief Reserve history as a linked list.  Lists all of the transactions
  * associated with this reserve (such as the bank transfers that
  * established the reserve and all /withdraw operations we have done
  * since).
@@ -171,7 +171,7 @@ struct TALER_MINTDB_ReserveHistory
 
 
 /**
- * Specification for a /deposit operation.
+ * @brief Specification for a /deposit operation.
  */
 struct TALER_MINTDB_Deposit
 {
@@ -234,7 +234,7 @@ struct TALER_MINTDB_Deposit
 
 
 /**
- * Global information for a refreshing session.  Includes
+ * @brief Global information for a refreshing session.  Includes
  * dimensions of the operation, security parameters and
  * client signatures from "/refresh/melt" and "/refresh/commit".
  */
@@ -261,7 +261,7 @@ struct TALER_MINTDB_RefreshSession
 
 
 /**
- * Specification for coin in a /refresh/melt operation.
+ * @brief Specification for coin in a /refresh/melt operation.
  */
 struct TALER_MINTDB_RefreshMelt
 {
@@ -294,7 +294,7 @@ struct TALER_MINTDB_RefreshMelt
 
 
 /**
- * We have as many `struct TALER_MINTDB_RefreshCommitCoin` as there are new
+ * @brief We have as many `struct TALER_MINTDB_RefreshCommitCoin` as there are new
  * coins being created by the refresh (for each of the #TALER_CNC_KAPPA
  * sets).  These are the coins we ask the mint to sign if the
  * respective set is selected.
@@ -324,7 +324,7 @@ struct TALER_MINTDB_RefreshCommitCoin
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
- * For each (old) coin being melted, we have a `struct
+ * @brief For each (old) coin being melted, we have a `struct
  * RefreshCommitLink` that allows the user to find the shared secret
  * to decrypt the respective refresh links for the new coins in the
  * `struct TALER_MINTDB_RefreshCommitCoin`.
@@ -349,7 +349,7 @@ GNUNET_NETWORK_STRUCT_END
 
 
 /**
- * Linked list of refresh information linked to a coin.
+ * @brief Linked list of refresh information linked to a coin.
  */
 struct TALER_MINTDB_LinkDataList
 {
@@ -377,7 +377,7 @@ struct TALER_MINTDB_LinkDataList
 
 
 /**
- * Specification for a /lock operation.
+ * @brief Specification for a /lock operation.
  */
 struct TALER_MINTDB_LockOperation
 {
@@ -401,7 +401,7 @@ struct TALER_MINTDB_LockOperation
 
 
 /**
- * Enumeration to classify the different types of transactions
+ * @brief Enumeration to classify the different types of transactions
  * that can be done with a coin.
  */
 enum TALER_MINTDB_TransactionType
@@ -424,7 +424,7 @@ enum TALER_MINTDB_TransactionType
 
 
 /**
- * List of transactions we performed for a particular coin.
+ * @brief List of transactions we performed for a particular coin.
  */
 struct TALER_MINTDB_TransactionList
 {
@@ -466,13 +466,13 @@ struct TALER_MINTDB_TransactionList
 
 
 /**
- * Handle for a database session (per-thread, for transactions).
+ * @brief Handle for a database session (per-thread, for transactions).
  */
 struct TALER_MINTDB_Session;
 
 
 /**
- * The plugin API, returned from the plugin's "init" function.
+ * @brief The plugin API, returned from the plugin's "init" function.
  * The argument given to "init" is simply a configuration handle.
  */
 struct TALER_MINTDB_Plugin

@@ -122,7 +122,7 @@
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
- * Format used for to generate the signature on a request to withdraw
+ * @brief Format used for to generate the signature on a request to withdraw
  * coins from a reserve.
  */
 struct TALER_WithdrawRequestPS
@@ -175,7 +175,7 @@ struct TALER_WithdrawRequestPS
 
 
 /**
- * Format used to generate the signature on a request to deposit
+ * @brief Format used to generate the signature on a request to deposit
  * a coin into the account of a merchant.
  */
 struct TALER_DepositRequestPS
@@ -266,7 +266,7 @@ struct TALER_DepositRequestPS
 
 
 /**
- * Format used to generate the signature on a confirmation
+ * @brief Format used to generate the signature on a confirmation
  * from the mint that a deposit request succeeded.
  */
 struct TALER_DepositConfirmationPS
@@ -331,7 +331,7 @@ struct TALER_DepositConfirmationPS
 
 
 /**
- * Message signed by a coin to indicate that the coin should be
+ * @brief Message signed by a coin to indicate that the coin should be
  * melted.
  */
 struct TALER_RefreshMeltCoinAffirmationPS
@@ -378,7 +378,7 @@ struct TALER_RefreshMeltCoinAffirmationPS
 
 
 /**
- * Format of the block signed by the Mint in response to a successful
+ * @brief Format of the block signed by the Mint in response to a successful
  * "/refresh/melt" request.  Hereby the mint affirms that all of the
  * coins were successfully melted.  This also commits the mint to a
  * particular index to not be revealed during the refresh.
@@ -405,7 +405,7 @@ struct TALER_RefreshMeltConfirmationPS
 
 
 /**
- * Information about a signing key of the mint.  Signing keys are used
+ * @brief Information about a signing key of the mint.  Signing keys are used
  * to sign mint messages other than coins, i.e. to confirm that a
  * deposit was successful or that a refresh was accepted.
  */
@@ -460,7 +460,7 @@ struct TALER_MintSigningKeyValidityPS
 
 
 /**
- * Signature made by the mint over the full set of keys, used
+ * @brief Signature made by the mint over the full set of keys, used
  * to detect cheating mints that give out different sets to
  * different users.
  */
@@ -490,7 +490,7 @@ struct TALER_MintKeySetPS
 
 
 /**
- * Information about a denomination key. Denomination keys
+ * @brief Information about a denomination key. Denomination keys
  * are used to sign coins of a certain value into existence.
  */
 struct TALER_DenominationKeyValidityPS

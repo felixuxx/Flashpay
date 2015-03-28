@@ -42,7 +42,7 @@
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
- * On disk format used for a mint signing key.  Signing keys are used
+ * @brief On disk format used for a mint signing key.  Signing keys are used
  * by the mint to affirm its messages, but not to create coins.
  * Includes the private key followed by the public information about
  * the signing key.
@@ -65,7 +65,7 @@ GNUNET_NETWORK_STRUCT_END
 
 
 /**
- * All information about a denomination key (which is used to
+ * @brief All information about a denomination key (which is used to
  * sign coins into existence).
  */
 struct TALER_MINTDB_DenominationKeyIssueInformation
@@ -91,7 +91,7 @@ struct TALER_MINTDB_DenominationKeyIssueInformation
 
 
 /**
- * Iterator over signing keys.
+ * @brief Iterator over signing keys.
  *
  * @param cls closure
  * @param filename name of the file the key came from
@@ -107,7 +107,7 @@ typedef int
 
 
 /**
- * Iterator over denomination keys.
+ * @brief Iterator over denomination keys.
  *
  * @param cls closure
  * @param dki the denomination key

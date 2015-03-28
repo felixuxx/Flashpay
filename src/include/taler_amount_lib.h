@@ -23,7 +23,7 @@
 
 
 /**
- * Number of characters (plus 1 for 0-termination) we use to
+ * @brief Number of characters (plus 1 for 0-termination) we use to
  * represent currency names (i.e. EUR, USD, etc.).  We use
  * 4 for alignment as 3 characters are typical and we need a
  * 0-terminator. So do not change this.
@@ -31,7 +31,7 @@
 #define TALER_CURRENCY_LEN 4
 
 /**
- * The "fraction" value in a `struct TALER_Amount` represents which
+ * @brief The "fraction" value in a `struct TALER_Amount` represents which
  * fraction of the "main" value?
  *
  * Note that we need sub-cent precision here as transaction fees might
@@ -40,7 +40,7 @@
 #define TALER_AMOUNT_FRAC_BASE 1000000
 
 /**
- * How many digits behind the comma are required to represent the
+ * @brief How many digits behind the comma are required to represent the
  * fractional value in human readable decimal format?  Must match
  * lg(#TALER_AMOUNT_FRAC_BASE).
  */
@@ -51,7 +51,7 @@ GNUNET_NETWORK_STRUCT_BEGIN
 
 
 /**
- * Amount, encoded for network transmission.
+ * @brief Amount, encoded for network transmission.
  */
 struct TALER_AmountNBO
 {
@@ -75,7 +75,7 @@ GNUNET_NETWORK_STRUCT_END
 
 
 /**
- * Representation of monetary value in a given currency.
+ * @brief Representation of monetary value in a given currency.
  */
 struct TALER_Amount
 {

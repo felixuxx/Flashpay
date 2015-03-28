@@ -30,7 +30,7 @@
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
- * Type of public keys for Taler reserves.
+ * @brief Type of public keys for Taler reserves.
  */
 struct TALER_ReservePublicKeyP
 {
@@ -42,7 +42,7 @@ struct TALER_ReservePublicKeyP
 
 
 /**
- * Type of private keys for Taler reserves.
+ * @brief Type of private keys for Taler reserves.
  */
 struct TALER_ReservePrivateKeyP
 {
@@ -54,7 +54,7 @@ struct TALER_ReservePrivateKeyP
 
 
 /**
- * Type of signatures used with Taler reserves.
+ * @brief Type of signatures used with Taler reserves.
  */
 struct TALER_ReserveSignatureP
 {
@@ -66,7 +66,7 @@ struct TALER_ReserveSignatureP
 
 
 /**
- * Type of public keys to for merchant authorizations.
+ * @brief Type of public keys to for merchant authorizations.
  * Merchants can issue refunds using the corresponding
  * private key.
  */
@@ -80,7 +80,7 @@ struct TALER_MerchantPublicKeyP
 
 
 /**
- * Type of private keys for merchant authorizations.
+ * @brief Type of private keys for merchant authorizations.
  * Merchants can issue refunds using the corresponding
  * private key.
  */
@@ -94,7 +94,7 @@ struct TALER_MerchantPrivateKeyP
 
 
 /**
- * Type of transfer public keys used during refresh
+ * @brief Type of transfer public keys used during refresh
  * operations.
  */
 struct TALER_TransferPublicKeyP
@@ -108,7 +108,7 @@ struct TALER_TransferPublicKeyP
 
 
 /**
- * Type of transfer public keys used during refresh
+ * @brief Type of transfer public keys used during refresh
  * operations.
  */
 struct TALER_TransferPrivateKeyP
@@ -122,7 +122,7 @@ struct TALER_TransferPrivateKeyP
 
 
 /**
- * Type of online public keys used by the mint to sign
+ * @brief Type of online public keys used by the mint to sign
  * messages.
  */
 struct TALER_MintPublicKeyP
@@ -135,7 +135,7 @@ struct TALER_MintPublicKeyP
 
 
 /**
- * Type of online public keys used by the mint to
+ * @brief Type of online public keys used by the mint to
  * sign messages.
  */
 struct TALER_MintPrivateKeyP
@@ -148,7 +148,7 @@ struct TALER_MintPrivateKeyP
 
 
 /**
- * Type of signatures used by the mint to sign messages online.
+ * @brief Type of signatures used by the mint to sign messages online.
  */
 struct TALER_MintSignatureP
 {
@@ -160,7 +160,7 @@ struct TALER_MintSignatureP
 
 
 /**
- * Type of the offline master public key used by the mint.
+ * @brief Type of the offline master public key used by the mint.
  */
 struct TALER_MasterPublicKeyP
 {
@@ -172,7 +172,7 @@ struct TALER_MasterPublicKeyP
 
 
 /**
- * Type of the offline master public keys used by the mint.
+ * @brief Type of the offline master public keys used by the mint.
  */
 struct TALER_MasterPrivateKeyP
 {
@@ -184,7 +184,7 @@ struct TALER_MasterPrivateKeyP
 
 
 /**
- * Type of signatures by the offline master public key used by the mint.
+ * @brief Type of signatures by the offline master public key used by the mint.
  */
 struct TALER_MasterSignatureP
 {
@@ -197,7 +197,7 @@ struct TALER_MasterSignatureP
 
 
 /**
- * Type of public keys for Taler coins.  The same key material is used
+ * @brief Type of public keys for Taler coins.  The same key material is used
  * for ECDSA and ECDHE operations.
  */
 union TALER_CoinSpendPublicKeyP
@@ -215,7 +215,7 @@ union TALER_CoinSpendPublicKeyP
 
 
 /**
- * Type of private keys for Taler coins.  The same key material is used
+ * @brief Type of private keys for Taler coins.  The same key material is used
  * for ECDSA and ECDHE operations.
  */
 union TALER_CoinSpendPrivateKeyP
@@ -233,7 +233,7 @@ union TALER_CoinSpendPrivateKeyP
 
 
 /**
- * Type of signatures made with Taler coins.
+ * @brief Type of signatures made with Taler coins.
  */
 struct TALER_CoinSpendSignatureP
 {
@@ -249,7 +249,7 @@ GNUNET_NETWORK_STRUCT_END
 
 
 /**
- * Type of blinding keys for Taler.
+ * @brief Type of blinding keys for Taler.
  */
 struct TALER_DenominationBlindingKey
 {
@@ -261,7 +261,7 @@ struct TALER_DenominationBlindingKey
 
 
 /**
- * Type of (unblinded) coin signatures for Taler.
+ * @brief Type of (unblinded) coin signatures for Taler.
  */
 struct TALER_DenominationSignature
 {
@@ -273,7 +273,7 @@ struct TALER_DenominationSignature
 
 
 /**
- * Type of public signing keys for verifying blindly signed coins.
+ * @brief Type of public signing keys for verifying blindly signed coins.
  */
 struct TALER_DenominationPublicKey
 {
@@ -285,7 +285,7 @@ struct TALER_DenominationPublicKey
 
 
 /**
- * Type of private signing keys for blind signing of coins.
+ * @brief Type of private signing keys for blind signing of coins.
  */
 struct TALER_DenominationPrivateKey
 {
@@ -297,7 +297,7 @@ struct TALER_DenominationPrivateKey
 
 
 /**
- * Public information about a coin (including the public key
+ * @brief Public information about a coin (including the public key
  * of the coin, the denomination key and the signature with
  * the denomination key).
  */
@@ -341,7 +341,7 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info);
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
- * Secret used to decrypt the key to decrypt link secrets.
+ * @brief Secret used to decrypt the key to decrypt link secrets.
  */
 struct TALER_TransferSecretP
 {
@@ -355,7 +355,7 @@ struct TALER_TransferSecretP
 
 
 /**
- * Secret used to decrypt refresh links.
+ * @brief Secret used to decrypt refresh links.
  */
 struct TALER_LinkSecretP
 {
@@ -367,7 +367,7 @@ struct TALER_LinkSecretP
 
 
 /**
- * Encrypted secret used to decrypt refresh links.
+ * @brief Encrypted secret used to decrypt refresh links.
  */
 struct TALER_EncryptedLinkSecretP
 {
@@ -379,7 +379,7 @@ struct TALER_EncryptedLinkSecretP
 
 
 /**
- * Representation of an refresh link in cleartext.
+ * @brief Representation of an refresh link in cleartext.
  */
 struct TALER_RefreshLinkDecryptedP
 {
@@ -401,7 +401,7 @@ GNUNET_NETWORK_STRUCT_END
 
 
 /**
- * Representation of an encrypted refresh link.
+ * @brief Representation of an encrypted refresh link.
  */
 struct TALER_RefreshLinkEncrypted
 {
