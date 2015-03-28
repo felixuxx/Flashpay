@@ -20,9 +20,9 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  *
- * This file should define the constants and C structs that one
- * needs to know to implement Taler clients (wallets or merchants)
- * that need to produce or verify Taler signatures.
+ * This file should define the constants and C structs that one needs
+ * to know to implement Taler clients (wallets or merchants or
+ * auditor) that need to produce or verify Taler signatures.
  */
 
 #ifndef TALER_SIGNATURES_H
@@ -113,7 +113,7 @@
  * deposit permission.
  * FIXME: this MIGHT also be #TALER_SIGNATURE_COIN_DEPOSIT already!
  */
-#define TALER_SIGNATURE_INCREMENTAL_WALLET_DEPOSIT 202
+#define TALER_SIGNATURE_WALLET_DEPOSIT_INCREMENTAL 202
 
 
 
