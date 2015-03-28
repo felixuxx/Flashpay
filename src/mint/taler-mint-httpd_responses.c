@@ -501,6 +501,10 @@ compile_reserve_history (const struct TALER_MINTDB_ReserveHistory *rh,
       wr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
       wr.purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS));
       wr.reserve_pub = pos->details.withdraw->reserve_pub;
+      TALER_amount_hton (&wr.amount_with_fee,
+                         &pos->details.withdraw->amount_with_fee);
+      TALER_amount_hton (&wr.withdraw_fee,
+                         &pos->details.withdraw->withdraw_fee);
       GNUNET_CRYPTO_rsa_public_key_hash (pos->details.withdraw->denom_pub.rsa_public_key,
                                          &wr.h_denomination_pub);
       wr.h_coin_envelope = pos->details.withdraw->h_coin_envelope;

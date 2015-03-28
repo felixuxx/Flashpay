@@ -44,18 +44,18 @@
  */
 int
 TMH_WITHDRAW_handler_withdraw_status (struct TMH_RequestHandler *rh,
-                                    struct MHD_Connection *connection,
-                                    void **connection_cls,
-                                    const char *upload_data,
-                                    size_t *upload_data_size)
+                                      struct MHD_Connection *connection,
+                                      void **connection_cls,
+                                      const char *upload_data,
+                                      size_t *upload_data_size)
 {
   struct TALER_ReservePublicKeyP reserve_pub;
   int res;
 
   res = TMH_PARSE_mhd_request_arg_data (connection,
-                                         "reserve_pub",
-                                         &reserve_pub,
-                                         sizeof (struct TALER_ReservePublicKeyP));
+                                        "reserve_pub",
+                                        &reserve_pub,
+                                        sizeof (struct TALER_ReservePublicKeyP));
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
@@ -83,10 +83,10 @@ TMH_WITHDRAW_handler_withdraw_status (struct TMH_RequestHandler *rh,
  */
 int
 TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
-                                  struct MHD_Connection *connection,
-                                  void **connection_cls,
-                                  const char *upload_data,
-                                  size_t *upload_data_size)
+                                    struct MHD_Connection *connection,
+                                    void **connection_cls,
+                                    const char *upload_data,
+                                    size_t *upload_data_size)
 {
   struct TALER_WithdrawRequestPS wsrd;
   int res;
@@ -95,36 +95,41 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
   size_t denomination_pub_data_size;
   char *blinded_msg;
   size_t blinded_msg_len;
+  struct TALER_Amount amount;
+  struct TALER_Amount amount_with_fee;
+  struct TALER_Amount fee_withdraw;
   struct TALER_ReserveSignatureP signature;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
+  struct TMH_KS_StateHandle *ks;
 
   res = TMH_PARSE_mhd_request_arg_data (connection,
-                                         "reserve_pub",
-                                         &wsrd.reserve_pub,
-                                         sizeof (struct TALER_ReservePublicKeyP));
+                                        "reserve_pub",
+                                        &wsrd.reserve_pub,
+                                        sizeof (struct TALER_ReservePublicKeyP));
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
     return MHD_YES; /* invalid request */
   res = TMH_PARSE_mhd_request_arg_data (connection,
-                                         "reserve_sig",
-                                         &signature,
-                                         sizeof (struct TALER_ReserveSignatureP));
+                                        "reserve_sig",
+                                        &signature,
+                                        sizeof (struct TALER_ReserveSignatureP));
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
     return MHD_YES; /* invalid request */
   res = TMH_PARSE_mhd_request_var_arg_data (connection,
-                                             "denom_pub",
-                                             (void **) &denomination_pub_data,
-                                             &denomination_pub_data_size);
+                                            "denom_pub",
+                                            (void **) &denomination_pub_data,
+                                            &denomination_pub_data_size);
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
     return MHD_YES; /* invalid request */
   res = TMH_PARSE_mhd_request_var_arg_data (connection,
-                                             "coin_ev",
-                                             (void **) &blinded_msg,
-                                             &blinded_msg_len);
+                                            "coin_ev",
+                                            (void **) &blinded_msg,
+                                            &blinded_msg_len);
   if (GNUNET_SYSERR == res)
   {
     GNUNET_free (denomination_pub_data);
@@ -135,7 +140,25 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
     GNUNET_free (denomination_pub_data);
     return MHD_YES; /* invalid request */
   }
-
+  denomination_pub.rsa_public_key
+    = GNUNET_CRYPTO_rsa_public_key_decode (denomination_pub_data,
+                                           denomination_pub_data_size);
+  ks = TMH_KS_acquire ();
+  dki = TMH_KS_denomination_key_lookup (ks,
+                                        &denomination_pub);
+  TALER_amount_ntoh (&amount,
+                     &dki->issue.value);
+  TALER_amount_ntoh (&fee_withdraw,
+                     &dki->issue.fee_withdraw);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&amount_with_fee,
+                                   &amount,
+                                   &fee_withdraw));
+  TALER_amount_hton (&wsrd.amount_with_fee,
+                     &amount_with_fee);
+  TALER_amount_hton (&wsrd.withdraw_fee,
+                     &fee_withdraw);
+  TMH_KS_release (ks);
   /* verify signature! */
   wsrd.purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS));
   wsrd.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
@@ -154,26 +177,24 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
     TALER_LOG_WARNING ("Client supplied invalid signature for /withdraw/sign request\n");
     GNUNET_free (denomination_pub_data);
     GNUNET_free (blinded_msg);
+    GNUNET_CRYPTO_rsa_public_key_free (denomination_pub.rsa_public_key);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                          "reserve_sig");
   }
-  denomination_pub.rsa_public_key
-    = GNUNET_CRYPTO_rsa_public_key_decode (denomination_pub_data,
-                                           denomination_pub_data_size);
   GNUNET_free (denomination_pub_data);
   if (NULL == denomination_pub.rsa_public_key)
   {
     TALER_LOG_WARNING ("Client supplied ill-formed denomination public key for /withdraw/sign request\n");
     GNUNET_free (blinded_msg);
     return TMH_RESPONSE_reply_arg_invalid (connection,
-                                         "denom_pub");
+                                           "denom_pub");
   }
   res = TMH_DB_execute_withdraw_sign (connection,
-                                             &wsrd.reserve_pub,
-                                             &denomination_pub,
-                                             blinded_msg,
-                                             blinded_msg_len,
-                                             &signature);
+                                      &wsrd.reserve_pub,
+                                      &denomination_pub,
+                                      blinded_msg,
+                                      blinded_msg_len,
+                                      &signature);
   GNUNET_free (blinded_msg);
   GNUNET_CRYPTO_rsa_public_key_free (denomination_pub.rsa_public_key);
   return res;

@@ -87,11 +87,31 @@ struct TALER_MINTDB_CollectableBlindcoin
 
   /**
    * Denomination key (which coin was generated).
-   * FIXME: we should probably instead have the
-   * AMOUNT *including* fee in what is being signed
-   * as well!
    */
   struct TALER_DenominationPublicKey denom_pub;
+
+  /**
+   * Value of the coin being minted (matching the denomination key)
+   * plus the transaction fee.  We include this in what is being
+   * signed so that we can verify a reserve's remaining total balance
+   * without needing to access the respective denomination key
+   * information each time.
+   */
+  struct TALER_Amount amount_with_fee;
+
+  /**
+   * Withdrawl fee charged by the mint.  This must match the Mint's
+   * denomination key's withdrawl fee.  If the client puts in an
+   * invalid withdrawl fee (too high or too low) that does not match
+   * the Mint's denomination key, the withdraw operation is invalid
+   * and will be rejected by the mint.  The @e amount_with_fee minus
+   * the @e withdraw_fee is must match the value of the generated
+   * coin.  We include this in what is being signed so that we can
+   * verify a mint's accounting without needing to access the
+   * respective denomination key information each time.
+   */
+  struct TALER_Amount withdraw_fee;
+
 
   /**
    * Public key of the reserve that was drained.
