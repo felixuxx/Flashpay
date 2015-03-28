@@ -27,7 +27,7 @@
 #include "taler_util.h"
 
 /**
- * Description of a DB query parameter.
+ * @brief Description of a DB query parameter.
  */
 struct TALER_PQ_QueryParam
 {
@@ -71,7 +71,7 @@ struct TALER_PQ_QueryParam
 
 
 /**
- * Description of a DB result cell.
+ * @brief Description of a DB result cell.
  */
 struct TALER_PQ_ResultSpec
 {
@@ -134,6 +134,11 @@ struct TALER_PQ_ResultSpec
 
 /**
  * Execute a prepared statement.
+ *
+ * @param db_conn database connection
+ * @param name name of the prepared statement
+ * @param params parameters to the statement
+ * @return postgres result
  */
 PGresult *
 TALER_PQ_exec_prepared (PGconn *db_conn,
