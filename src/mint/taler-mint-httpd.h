@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 GNUnet e.V.
+  Copyright (C) 2014, 2015 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -19,6 +19,8 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
+ *
+ * FIXME: Consider which of these need to really be globals...
  */
 #ifndef TALER_MINT_HTTPD_H
 #define TALER_MINT_HTTPD_H
@@ -38,7 +40,6 @@ extern struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
  * Main directory with mint data.
- * FIXME: should we have those globals really here?
  */
 extern char *TMH_mint_directory;
 
