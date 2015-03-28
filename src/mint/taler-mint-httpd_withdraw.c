@@ -146,6 +146,12 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
   ks = TMH_KS_acquire ();
   dki = TMH_KS_denomination_key_lookup (ks,
                                         &denomination_pub);
+  if (NULL == dki)
+  {
+    GNUNET_free (denomination_pub_data);
+    return TMH_RESPONSE_reply_arg_invalid (connection,
+                                           "denom_pub");
+  }
   TALER_amount_ntoh (&amount,
                      &dki->issue.value);
   TALER_amount_ntoh (&fee_withdraw,

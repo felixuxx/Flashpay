@@ -141,6 +141,8 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   struct TALER_MINTDB_Deposit deposit;
   char *wire_enc;
   size_t len;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
+  struct TMH_KS_StateHandle *ks;
   struct TMH_PARSE_FieldSpecification spec[] = {
     TMH_PARSE_MEMBER_RSA_PUBLIC_KEY ("denom_pub", &deposit.coin.denom_pub),
     TMH_PARSE_MEMBER_RSA_SIGNATURE ("ubsig", &deposit.coin.denom_sig),
@@ -169,7 +171,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   {
     TMH_PARSE_release_data (spec);
     return TMH_RESPONSE_reply_arg_invalid (connection,
-                                         "wire");
+                                           "wire");
   }
   if (NULL == (wire_enc = json_dumps (wire, JSON_COMPACT | JSON_SORT_KEYS)))
   {
@@ -183,10 +185,29 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
                       len,
                       &deposit.h_wire);
   GNUNET_free (wire_enc);
-
+  ks = TMH_KS_acquire ();
+  dki = TMH_KS_denomination_key_lookup (ks,
+                                        &deposit.coin.denom_pub);
+  if (NULL == dki)
+  {
+    TMH_KS_release (ks);
+    TMH_PARSE_release_data (spec);
+    return TMH_RESPONSE_reply_arg_invalid (connection,
+                                           "denom_pub");
+  }
+  TALER_amount_ntoh (&deposit.deposit_fee,
+                     &dki->issue.fee_deposit);
+  TMH_KS_release (ks);
   deposit.wire = wire;
   deposit.amount_with_fee = *amount;
-  deposit.deposit_fee = *amount; // FIXME: get fee from denomination key!
+  if (-1 == TALER_amount_cmp (&deposit.amount_with_fee,
+                              &deposit.deposit_fee))
+  {
+    /* Total amount smaller than fee, invalid */
+    TMH_PARSE_release_data (spec);
+    return TMH_RESPONSE_reply_arg_invalid (connection,
+                                           "f");
+  }
   res = verify_and_execute_deposit (connection,
                                     &deposit);
   TMH_PARSE_release_data (spec);
