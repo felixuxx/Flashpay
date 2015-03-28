@@ -102,9 +102,9 @@ struct TMH_RequestHandler
    * @param rh this struct
    * @param mime_type the @e mime_type for the reply (hint, can be NULL)
    * @param connection the MHD connection to handle
-   * @param[IN|OUT] connection_cls the connection's closure (can be updated)
+   * @param[in,out] connection_cls the connection's closure (can be updated)
    * @param upload_data upload data
-   * @param[IN|OUT] upload_data_size number of bytes (left) in @a upload_data
+   * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
    * @return MHD result code
    */
   int (*handler)(struct TMH_RequestHandler *rh,

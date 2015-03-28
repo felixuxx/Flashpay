@@ -173,7 +173,7 @@ TALER_amount_hton (struct TALER_AmountNBO *res,
  * Convert amount from network to host representation.
  *
  * @param res where to store amount in host representation
- * @param d amount in network representation
+ * @param dn amount in network representation
  */
 void
 TALER_amount_ntoh (struct TALER_Amount *res,

@@ -446,7 +446,7 @@ TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecretP *secret_enc,
  *
  * @param secret shared secret for refresh link decryption
  * @param trans_sec transfer secret
- * @param secret_enc[out] encrypted secret
+ * @param[out] secret_enc encrypted secret
  * @return #GNUNET_OK on success
  */
 int

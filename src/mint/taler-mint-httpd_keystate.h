@@ -60,7 +60,7 @@ TMH_KS_release (struct TMH_KS_StateHandle *key_state);
  * Look up the issue for a denom public key.  Note that the result
  * is only valid while the @a key_state is not released!
  *
- * @param key state to look in
+ * @param key_state state to look in
  * @param denom_pub denomination public key
  * @return the denomination key issue,
  *         or NULL if denom_pub could not be found
@@ -86,7 +86,7 @@ TMH_KS_loop (void);
  * key.
  *
  * @param purpose the message to sign
- * @param[OUT] sig signature over purpose using current signing key
+ * @param[out] sig signature over purpose using current signing key
  */
 void
 TMH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
@@ -98,9 +98,9 @@ TMH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[IN|OUT] connection_cls the connection's closure (can be updated)
+ * @param[in,out] connection_cls the connection's closure (can be updated)
  * @param upload_data upload data
- * @param[IN|OUT] upload_data_size number of bytes (left) in @a upload_data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
  * @return MHD result code
   */
 int

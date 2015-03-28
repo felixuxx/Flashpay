@@ -449,7 +449,7 @@ os_get_exec_path ()
 
 /**
  * @brief get the path to a specific Taler installation directory or,
- * with #TALER_OS_IPK_SELF_PREFIX, the current running apps installation directory
+ * with #GNUNET_OS_IPK_SELF_PREFIX, the current running apps installation directory
  * @author Milan
  * @return a pointer to the dir path (to be freed by the caller)
  */

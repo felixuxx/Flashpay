@@ -108,7 +108,7 @@ buffer_deinit (struct Buffer *buf)
  *
  * @param buf the buffer to append to
  * @param data the data to append
- * @param size the size of @a data
+ * @param data_size the size of @a data
  * @param max_size maximum size that the buffer can grow to
  * @return #GNUNET_OK on success,
  *         #GNUNET_NO if the buffer can't accomodate for the new data
@@ -141,15 +141,14 @@ buffer_append (struct Buffer *buf,
 
 
 /**
- * Process a POST request containing a JSON object.  This
- * function realizes an MHD POST processor that will
- * (incrementally) process JSON data uploaded to the HTTP
- * server.  It will store the required state in the
- * "connection_cls", which must be cleaned up using
+ * Process a POST request containing a JSON object.  This function
+ * realizes an MHD POST processor that will (incrementally) process
+ * JSON data uploaded to the HTTP server.  It will store the required
+ * state in the @a con_cls, which must be cleaned up using
  * #TMH_PARSE_post_cleanup_callback().
  *
  * @param connection the MHD connection
- * @param con_cs the closure (points to a `struct Buffer *`)
+ * @param con_cls the closure (points to a `struct Buffer *`)
  * @param upload_data the POST data
  * @param upload_data_size number of bytes in @a upload_data
  * @param json the JSON object for a completed request
@@ -166,10 +165,10 @@ buffer_append (struct Buffer *buf,
  */
 int
 TMH_PARSE_post_json (struct MHD_Connection *connection,
-                            void **con_cls,
-                            const char *upload_data,
-                            size_t *upload_data_size,
-                            json_t **json)
+                     void **con_cls,
+                     const char *upload_data,
+                     size_t *upload_data_size,
+                     json_t **json)
 {
   struct Buffer *r = *con_cls;
 
@@ -881,7 +880,7 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec)
  *
  * @param connection the MHD connection (to report errors)
  * @param f json specification of the amount
- * @param amount[OUT] set to the amount specified in @a f
+ * @param[out] amount set to the amount specified in @a f
  * @return
  *    #GNUNET_YES if parsing was successful
  *    #GNUNET_NO if json is malformed, error response was generated

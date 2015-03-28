@@ -37,7 +37,7 @@
  * #TMH_PARSE_post_cleanup_callback().
  *
  * @param connection the MHD connection
- * @param con_cs the closure (points to a `struct Buffer *`)
+ * @param con_cls the closure (points to a `struct Buffer *`)
  * @param upload_data the POST data
  * @param upload_data_size number of bytes in @a upload_data
  * @param json the JSON object for a completed request
@@ -264,7 +264,7 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec);
  * Generate line in parser specification for RSA public key.
  *
  * @param field name of the field
- * @param ptraddr address of `struct GNUNET_CRYPTO_rsa_PublicKey *` initialize
+ * @param ptrpk address of `struct GNUNET_CRYPTO_rsa_PublicKey *` initialize
  */
 #define TMH_PARSE_MEMBER_RSA_PUBLIC_KEY(field,ptrpk) { field, ptrpk, 0, 0, TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY, 0 }
 
@@ -295,7 +295,7 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec);
  *
  * @param connection the MHD connection (to report errors)
  * @param f json specification of the amount
- * @param amount[OUT] set to the amount specified in @a f
+ * @param[out] amount set to the amount specified in @a f
  * @return
  *    #GNUNET_YES if parsing was successful
  *    #GNUNET_NO if json is malformed, error response was generated

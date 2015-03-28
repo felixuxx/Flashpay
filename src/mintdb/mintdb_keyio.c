@@ -116,7 +116,7 @@ TALER_MINTDB_signing_keys_iterate (const char *mint_base_dir,
  * Import a denomination key from the given file.
  *
  * @param filename the file to import the key from
- * @param[OUT] dki set to the imported denomination key
+ * @param[out] dki set to the imported denomination key
  * @return #GNUNET_OK upon success;
  *         #GNUNET_SYSERR upon failure
  */

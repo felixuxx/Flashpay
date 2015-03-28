@@ -243,7 +243,7 @@ typedef void
  *
  * @param mint the mint handle
  * @param cb the callback to call when a reply for this request is available
- * @param cls closure for the above callback
+ * @param cb_cls closure for the above callback
  * @param deposit_obj the deposit permission received from the customer along
  *         with the wireformat JSON object
  * @return a handle for this request; NULL if the JSON object could not be
@@ -253,7 +253,7 @@ typedef void
 struct TALER_MINT_DepositHandle *
 TALER_MINT_deposit_submit_json (struct TALER_MINT_Handle *mint,
                                 TALER_MINT_DepositResultCallback cb,
-                                void *cls,
+                                void *cb_cls,
                                 json_t *deposit_obj);
 
 
@@ -299,7 +299,7 @@ TALER_MINT_deposit_submit_json_ (struct TALER_MINT_Handle *mint,
  * Cancel a deposit permission request.  This function cannot be used on a
  * request handle if a response is already served for it.
  *
- * @param the deposit permission request handle
+ * @param deposit the deposit permission request handle
  */
 void
 TALER_MINT_deposit_submit_cancel (struct TALER_MINT_DepositHandle *deposit);

@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file mint/taler-mint_httpd_db.h
+ * @file mint/taler-mint-httpd_db.h
  * @brief High-level (transactional-layer) database operations for the mint
  * @author Chrisitan Grothoff
  */
@@ -107,9 +107,9 @@ struct TMH_DB_MeltDetails
  *
  * @param connection the MHD connection to handle
  * @param session_hash hash code of the session the coins are melted into
- * @param num_new_denoms number of entries in @a denom_pubs, size of y-dimension of @commit_coin array
- * @param denum_pubs array of public denomination keys for the refresh (?)
- * @param coin_count number of entries in @a coin_public_infos and @ a coin_melt_details, size of y-dimension of @commit_link array
+ * @param num_new_denoms number of entries in @a denom_pubs, size of y-dimension of @a commit_coin array
+ * @param denom_pubs array of public denomination keys for the refresh (?)
+ * @param coin_count number of entries in @a coin_public_infos and @ a coin_melt_details, size of y-dimension of @a commit_link array
  * @param coin_public_infos information about the coins to melt
  * @param coin_melt_details signatures and (residual) value of the respective coin should be melted
  * @param commit_coin 2d array of coin commitments (what the mint is to sign
@@ -140,8 +140,8 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection to handle
  * @param session_hash hash over the refresh session
- * @param num_oldcoins size of y-dimension of @transfer_privs array
- * @param transfer_pubs array with the revealed transfer keys, #TALER_CNC_KAPPA is 1st-dimension
+ * @param num_oldcoins size of y-dimension of @a transfer_privs array
+ * @param transfer_privs array with the revealed transfer keys, #TALER_CNC_KAPPA is 1st-dimension
  * @return MHD result code
  */
 int

@@ -113,6 +113,7 @@ handle_mhd_completion_callback (void *cls,
  * @param connection the connection
  * @param url the requested url
  * @param method the method (POST, GET, ...)
+ * @param version HTTP version (ignored)
  * @param upload_data request data
  * @param upload_data_size size of @a upload_data in bytes
  * @param con_cls closure for request (a `struct Buffer *`)
@@ -224,7 +225,7 @@ handle_mhd_request (void *cls,
  * Load configuration parameters for the mint
  * server into the corresponding global variables.
  *
- * @param param mint_directory the mint's directory
+ * @param mint_directory the mint's directory
  * @return #GNUNET_OK on success
  */
 static int

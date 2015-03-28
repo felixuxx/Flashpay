@@ -75,7 +75,7 @@ TALER_json_from_amount (const struct TALER_Amount *amount)
 /**
  * Convert absolute timestamp to a json string.
  *
- * @param the time stamp
+ * @param stamp the time stamp
  * @return a json string with the timestamp in @a stamp
  */
 json_t *
@@ -214,7 +214,8 @@ TALER_json_from_rsa_signature (struct GNUNET_CRYPTO_rsa_Signature *sig)
  * @return json string that encodes @a data
  */
 json_t *
-TALER_json_from_data (const void *data, size_t size)
+TALER_json_from_data (const void *data,
+                      size_t size)
 {
   char *buf;
   json_t *json;
@@ -244,7 +245,7 @@ TALER_json_from_hash (const struct GNUNET_HashCode *hc)
  * Parse given JSON object to Amount
  *
  * @param json the json object representing Amount
- * @param r_amount where the amount has to be written
+ * @param[out] r_amount where the amount has to be written
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 int
@@ -275,7 +276,7 @@ TALER_json_to_amount (json_t *json,
  * Parse given JSON object to Amount
  *
  * @param json the json object representing Amount
- * @param r_amount where the amount has to be written
+ * @param[out] abs where the amount has to be written
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
 int

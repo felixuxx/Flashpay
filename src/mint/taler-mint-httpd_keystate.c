@@ -322,7 +322,7 @@ reload_keys_sign_iter (void *cls,
  *
  * @param cls closure with the `struct TMH_KS_StateHandle`
  * @param key key for the denomination key
- * @param alias coin alias
+ * @param value coin details
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -447,14 +447,14 @@ TMH_KS_acquire (void)
 /**
  * Look up the issue for a denom public key.
  *
- * @param key state to look in
+ * @param key_state state to look in
  * @param denom_pub denomination public key
  * @return the denomination key issue,
  *         or NULL if denom_pub could not be found
  */
 struct TALER_MINTDB_DenominationKeyIssueInformation *
 TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
-                          const struct TALER_DenominationPublicKey *denom_pub)
+                                const struct TALER_DenominationPublicKey *denom_pub)
 {
   struct GNUNET_HashCode hc;
 
@@ -579,7 +579,7 @@ read_again:
  * Sign the message in @a purpose with the mint's signing key.
  *
  * @param purpose the message to sign
- * @param[OUT] sig signature over purpose using current signing key
+ * @param[out] sig signature over purpose using current signing key
  */
 void
 TMH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
@@ -603,17 +603,17 @@ TMH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[IN|OUT] connection_cls the connection's closure (can be updated)
+ * @param[in,out] connection_cls the connection's closure (can be updated)
  * @param upload_data upload data
- * @param[IN|OUT] upload_data_size number of bytes (left) in @a upload_data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
  * @return MHD result code
  */
 int
 TMH_KS_handler_keys (struct TMH_RequestHandler *rh,
-                         struct MHD_Connection *connection,
-                         void **connection_cls,
-                         const char *upload_data,
-                         size_t *upload_data_size)
+                     struct MHD_Connection *connection,
+                     void **connection_cls,
+                     const char *upload_data,
+                     size_t *upload_data_size)
 {
   struct TMH_KS_StateHandle *key_state;
   struct MHD_Response *response;

@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file mint/taler_mintdb_plugin.h
+ * @file include/taler_mintdb_plugin.h
  * @brief Low-level (statement-level) database access for the mint
  * @author Florian Dold
  * @author Christian Grothoff
@@ -707,7 +707,7 @@ struct TALER_MINTDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database handle to use
    * @param session_hash hash over the melt to use for the lookup
-   * @param refresh_session[OUT] where to store the result
+   * @param[out] refresh_session where to store the result
    * @return #GNUNET_YES on success,
    *         #GNUNET_NO if not found,
    *         #GNUNET_SYSERR on DB failure
@@ -801,7 +801,7 @@ struct TALER_MINTDB_Plugin
    * @param sesssion database connection
    * @param session_hash hash to identify refresh session
    * @param num_newcoins size of the @a denom_pubs array
-   * @param denom_pubs[OUT] where to write @a num_newcoins denomination keys
+   * @param[out] denom_pubs where to write @a num_newcoins denomination keys
    * @return #GNUNET_OK on success
    *         #GNUNET_SYSERR on internal error
    */
@@ -844,7 +844,7 @@ struct TALER_MINTDB_Plugin
    * @param session_hash hash to identify refresh session
    * @param i set index (1st dimension)
    * @param num_coins size of the @a commit_coins array
-   * @param commit_coin[OUT] array of coin commitments to return
+   * @param[out] commit_coin array of coin commitments to return
    * @return #GNUNET_OK on success
    *         #GNUNET_NO if not found
    *         #GNUNET_SYSERR on error
@@ -886,8 +886,8 @@ struct TALER_MINTDB_Plugin
    * @param sesssion database connection to use
    * @param session_hash hash to identify refresh session
    * @param i set index (1st dimension)
-   * @param num_links size of the @links array to return
-   * @param links[OUT] array link information to return
+   * @param num_links size of the @a links array to return
+   * @param[out] links array link information to return
    * @return #GNUNET_SYSERR on internal error,
    *         #GNUNET_NO if commitment was not found
    *         #GNUNET_OK on success
@@ -958,8 +958,8 @@ struct TALER_MINTDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database connection
    * @param coin_pub public key of the coin
-   * @param transfer_pub[OUT] public transfer key
-   * @param shared_secret_enc[OUT] set to shared secret
+   * @param[out] transfer_pub public transfer key
+   * @param[out] shared_secret_enc set to shared secret
    * @return #GNUNET_OK on success,
    *         #GNUNET_NO on failure (not found)
    *         #GNUNET_SYSERR on internal failure (database issue)

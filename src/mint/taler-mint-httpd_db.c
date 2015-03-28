@@ -34,7 +34,7 @@
  * Stores @a off plus the cost of all transactions in @a tl
  * in @a ret.
  *
- * @param pos transaction list to process
+ * @param tl transaction list to process
  * @param off offset to use as the starting value
  * @param ret where the resulting total is to be stored
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
@@ -591,9 +591,9 @@ refresh_accept_melts (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection to handle
  * @param session_hash hash code of the session the coins are melted into
- * @param num_new_denoms number of entries in @a denom_pubs, size of y-dimension of @commit_coin array
- * @param denum_pubs public keys of the coins we want to withdraw in the end
- * @param coin_count number of entries in @a coin_public_infos and @a coin_melt_details, size of y-dimension of @commit_link array
+ * @param num_new_denoms number of entries in @a denom_pubs, size of y-dimension of @a commit_coin array
+ * @param denom_pubs public keys of the coins we want to withdraw in the end
+ * @param coin_count number of entries in @a coin_public_infos and @a coin_melt_details, size of y-dimension of @a commit_link array
  * @param coin_public_infos information about the coins to melt
  * @param coin_melt_details signatures and (residual) value of the respective coin should be melted
  * @param commit_coin 2d array of coin commitments (what the mint is to sign
@@ -607,14 +607,14 @@ refresh_accept_melts (struct MHD_Connection *connection,
  */
 int
 TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
-                                    const struct GNUNET_HashCode *session_hash,
-                                    unsigned int num_new_denoms,
-                                    const struct TALER_DenominationPublicKey *denom_pubs,
-                                    unsigned int coin_count,
-                                    const struct TALER_CoinPublicInfo *coin_public_infos,
-                                    const struct TMH_DB_MeltDetails *coin_melt_details,
-                                    struct TALER_MINTDB_RefreshCommitCoin *const* commit_coin,
-                                    struct TALER_MINTDB_RefreshCommitLinkP *const* commit_link)
+                             const struct GNUNET_HashCode *session_hash,
+                             unsigned int num_new_denoms,
+                             const struct TALER_DenominationPublicKey *denom_pubs,
+                             unsigned int coin_count,
+                             const struct TALER_CoinPublicInfo *coin_public_infos,
+                             const struct TMH_DB_MeltDetails *coin_melt_details,
+                             struct TALER_MINTDB_RefreshCommitCoin *const* commit_coin,
+                             struct TALER_MINTDB_RefreshCommitLinkP *const* commit_link)
 {
   struct TMH_KS_StateHandle *key_state;
   struct TALER_MINTDB_RefreshSession refresh_session;
@@ -1036,8 +1036,8 @@ refresh_mint_coin (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection to handle
  * @param session_hash hash identifying the refresh session
- * @param num_oldcoins size of y-dimension of @transfer_privs array
- * @param transfer_pubs array with the revealed transfer keys,
+ * @param num_oldcoins size of y-dimension of @a transfer_privs array
+ * @param transfer_privs array with the revealed transfer keys,
  *                      x-dimension must be #TALER_CNC_KAPPA - 1
  * @return MHD result code
  */

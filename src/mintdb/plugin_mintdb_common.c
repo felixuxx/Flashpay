@@ -14,9 +14,9 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file mint/plugin_mintdb_common.c
+ * @file mintdb/plugin_mintdb_common.c
  * @brief Functions shared across plugins, this file is meant to be
- *        #include-d in each plugin.
+ *        included in each plugin.
  * @author Christian Grothoff
  */
 

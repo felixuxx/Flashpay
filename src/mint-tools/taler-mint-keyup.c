@@ -40,7 +40,7 @@
  * Macro to round microseconds to seconds in GNUNET_TIME_* structs.
  *
  * @param name value to round
- * @param field rel_value_us or abs_value_us
+ * @param us_field rel_value_us or abs_value_us
  */
 #define ROUND_TO_SECS(name,us_field) name.us_field -= name.us_field % (1000 * 1000);
 
@@ -220,7 +220,7 @@ get_signkey_file (struct GNUNET_TIME_Absolute start)
  * anchor, overlap).
  *
  * @param p coin parameters to convert to a hash
- * @param hash[OUT] set to the hash matching @a p
+ * @param[out] hash set to the hash matching @a p
  */
 static void
 hash_coin_type (const struct CoinTypeParams *p,
@@ -429,7 +429,7 @@ get_anchor (const char *dir,
  *
  * @param start start time of the validity period for the key
  * @param duration how long should the key be valid
- * @param pi[OUT] set to the signing key information
+ * @param[out] pi set to the signing key information
  */
 static void
 create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
@@ -542,7 +542,7 @@ mint_keys_update_signkeys ()
  * our anchor by looking at the existing coins of the same type.
  *
  * @param ct section in the configuration file giving the coin type parameters
- * @param params[OUT] set to the coin parameters from the configuration
+ * @param[out] params set to the coin parameters from the configuration
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if the configuration is invalid
  */
 static int
@@ -672,7 +672,7 @@ get_cointype_params (const char *ct,
  * signing key.
  *
  * @param params parameters used to initialize the @a dki
- * @param dki[OUT] initialized according to @a params
+ * @param[out] dki initialized according to @a params
  */
 static void
 create_denomkey_issue (const struct CoinTypeParams *params,

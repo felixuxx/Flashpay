@@ -89,7 +89,7 @@ TALER_config_load (const char *base_dir);
  *
  * @param section section of the configuration to access
  * @param option option of the configuration to access
- * @param denom[OUT] set to the amount found in configuration
+ * @param[out] denom set to the amount found in configuration
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 int

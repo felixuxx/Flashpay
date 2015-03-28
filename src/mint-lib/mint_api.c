@@ -16,7 +16,7 @@
 */
 
 /**
- * @file mint/mint_api.c
+ * @file mint-lib/mint_api.c
  * @brief Implementation of the client interface to mint's HTTP API
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
@@ -908,7 +908,7 @@ download (char *bufptr, size_t size, size_t nitems, void *cls)
  * @param ctx the context
  * @param hostname the hostname of the mint
  * @param port the point where the mint's HTTP service is running.
- * @param mint_key the offline master public key of the mint.
+ * @param master_key the offline master public key of the mint.
  *                 This is used to verify the responses of the mint.
  * @return the mint handle; NULL upon error
  */
@@ -916,7 +916,7 @@ struct TALER_MINT_Handle *
 TALER_MINT_connect (struct TALER_MINT_Context *ctx,
                     const char *hostname,
                     uint16_t port,
-                    const struct TALER_MasterPublicKeyP *mint_key)
+                    const struct TALER_MasterPublicKeyP *master_key)
 {
   struct TALER_MINT_Handle *mint;
 
@@ -936,6 +936,7 @@ TALER_MINT_connect (struct TALER_MINT_Context *ctx,
   GNUNET_assert (CURLE_OK == curl_easy_setopt (mint->curl, CURLOPT_PRIVATE, mint));
   return mint;
 }
+
 
 /**
  * Disconnect from the mint
@@ -1064,7 +1065,7 @@ TALER_MINT_deposit_submit_json (struct TALER_MINT_Handle *mint,
  * Cancel a deposit permission request.  This function cannot be used on a
  * request handle if a response is already served for it.
  *
- * @param the deposit permission request handle
+ * @param deposit the deposit permission request handle
  */
 void
 TALER_MINT_deposit_submit_cancel (struct TALER_MINT_DepositHandle *deposit)

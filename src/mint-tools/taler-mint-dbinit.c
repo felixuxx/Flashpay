@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file mint/taler-mint-dbinit.c
+ * @file mint-tools/taler-mint-dbinit.c
  * @brief Create tables for the mint database.
  * @author Florian Dold
  */

@@ -423,7 +423,7 @@ TMH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection
  * and calculate the total balance.
  *
  * @param rh reserve history to JSON-ify
- * @param balance[OUT] set to current reserve balance
+ * @param[out] balance set to current reserve balance
  * @return json representation of the @a rh, NULL on error
  */
 static json_t *

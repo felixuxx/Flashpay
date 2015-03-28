@@ -137,8 +137,8 @@ typedef int
  */
 int
 TALER_MINTDB_signing_keys_iterate (const char *mint_base_dir,
-                                          TALER_MINTDB_SigningKeyIterator it,
-                                          void *it_cls);
+                                   TALER_MINTDB_SigningKeyIterator it,
+                                   void *it_cls);
 
 
 /**
@@ -156,8 +156,8 @@ TALER_MINTDB_signing_keys_iterate (const char *mint_base_dir,
  */
 int
 TALER_MINTDB_denomination_keys_iterate (const char *mint_base_dir,
-                                               TALER_MINTDB_DenominationKeyIterator it,
-                                               void *it_cls);
+                                        TALER_MINTDB_DenominationKeyIterator it,
+                                        void *it_cls);
 
 
 /**
@@ -169,19 +169,19 @@ TALER_MINTDB_denomination_keys_iterate (const char *mint_base_dir,
  */
 int
 TALER_MINTDB_denomination_key_write (const char *filename,
-                                            const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
+                                     const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
 
 
 /**
  * Import a denomination key from the given file.
  *
  * @param filename the file to import the key from
- * @param[OUT] dki set to the imported denomination key
+ * @param[out] dki set to the imported denomination key
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 int
 TALER_MINTDB_denomination_key_read (const char *filename,
-                                           struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
+                                    struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
 
 
 /**

@@ -129,6 +129,7 @@ set_temporary_schema (PGconn *db)
  * Drop the temporary taler schema.  This is only useful for testcases
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param session database session to use
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 static int
@@ -595,7 +596,7 @@ postgres_prepare (PGconn *db_conn)
 /**
  * Close thread-local database connection when a thread is destroyed.
  *
- * @param closure we get from pthreads (the db handle)
+ * @param cls closure we get from pthreads (the db handle)
  */
 static void
 db_conn_destroy (void *cls)
@@ -1439,7 +1440,7 @@ postgres_insert_deposit (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database handle to use
  * @param session_hash hash over the melt to use to locate the session
- * @param refresh_session[OUT] where to store the result
+ * @param[out] refresh_session where to store the result
  * @return #GNUNET_YES on success,
  *         #GNUNET_NO if not found,
  *         #GNUNET_SYSERR on DB failure
@@ -1605,7 +1606,7 @@ postgres_insert_refresh_melt (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
- * @param refresh_session session key of the melt operation
+ * @param session_hash  session hash of the melt operation
  * @param oldcoin_index index of the coin to retrieve
  * @param melt melt data to fill in
  * @return #GNUNET_OK on success
@@ -1687,7 +1688,7 @@ postgres_insert_refresh_order (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
  * @param session_hash hash to identify refresh session
- * @param newcoin_index array of the @a denom_pubs array
+ * @param num_newcoins size of the array of the @a denom_pubs array
  * @param denom_pubs where to store the deomination keys
  * @return #GNUNET_OK on success
  *         #GNUNET_SYSERR on internal error
@@ -1811,9 +1812,9 @@ postgres_insert_refresh_commit_coins (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection to use
  * @param session_hash hash to identify refresh session
- * @param i set index (1st dimension)
- * @param j coin index (2nd dimension), corresponds to refreshed (new) coins
- * @param commit_coin[OUT] coin commitment to return
+ * @param cnc_index set index (1st dimension)
+ * @param newcoin_index coin index (2nd dimension), corresponds to refreshed (new) coins
+ * @param[out] cc coin commitment to return
  * @return #GNUNET_OK on success
  *         #GNUNET_NO if not found
  *         #GNUNET_SYSERR on error
@@ -1947,7 +1948,7 @@ postgres_insert_refresh_commit_links (void *cls,
  * @param session_hash hash to identify refresh session
  * @param i set index (1st dimension)
  * @param num_links size of the @a commit_link array
- * @param links[OUT] array of link information to return
+ * @param[out] links array of link information to return
  * @return #GNUNET_SYSERR on internal error,
  *         #GNUNET_NO if commitment was not found
  *         #GNUNET_OK on success
@@ -2183,8 +2184,8 @@ postgres_get_link_data_list (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
  * @param coin_pub public key of the coin
- * @param transfer_pub[OUT] public transfer key
- * @param shared_secret_enc[OUT] set to shared secret
+ * @param[out] transfer_pub public transfer key
+ * @param[out] shared_secret_enc set to shared secret
  * @return #GNUNET_OK on success,
  *         #GNUNET_NO on failure (not found)
  *         #GNUNET_SYSERR on internal failure (database issue)

@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file pq/taler_pq_lib.h
+ * @file include/taler_pq_lib.h
  * @brief helper functions for DB interactions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Florian Dold

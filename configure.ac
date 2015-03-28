@@ -170,6 +170,7 @@ AC_CHECK_FUNCS([strdup])
 
 AC_CONFIG_FILES([Makefile
                  doc/Makefile
+                 doc/doxygen/Makefile
                  src/Makefile
                  src/include/Makefile
                  src/util/Makefile

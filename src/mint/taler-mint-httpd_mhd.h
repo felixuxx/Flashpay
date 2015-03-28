@@ -34,9 +34,9 @@
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[IN|OUT] connection_cls the connection's closure (can be updated)
+ * @param[in,out] connection_cls the connection's closure (can be updated)
  * @param upload_data upload data
- * @param[IN|OUT] upload_data_size number of bytes (left) in @a upload_data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
  * @return MHD result code
  */
 int
@@ -53,9 +53,9 @@ TMH_MHD_handler_static_response (struct TMH_RequestHandler *rh,
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[IN|OUT] connection_cls the connection's closure (can be updated)
+ * @param[in,out] connection_cls the connection's closure (can be updated)
  * @param upload_data upload data
- * @param[IN|OUT] upload_data_size number of bytes (left) in @a upload_data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
  * @return MHD result code
  */
 int
@@ -72,7 +72,7 @@ TMH_MHD_handler_agpl_redirect (struct TMH_RequestHandler *rh,
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[IN|OUT] connection_cls the connection's closure (can be updated)
+ * @param[in,out] connection_cls the connection's closure (can be updated)
  * @param response_code HTTP response code to use
  * @param do_cache can the response be cached? (0: no, 1: yes)
  * @param fmt format string for pack
@@ -95,9 +95,9 @@ TMH_MHD_helper_send_json_pack (struct TMH_RequestHandler *rh,
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[IN|OUT] connection_cls the connection's closure (can be updated)
+ * @param[in,out] connection_cls the connection's closure (can be updated)
  * @param upload_data upload data
- * @param[IN|OUT] upload_data_size number of bytes (left) in @a upload_data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
  * @return MHD result code
  */
 int

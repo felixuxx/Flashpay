@@ -40,13 +40,12 @@
  * and then hand things of to execute the melt operation.
  *
  * @param connection the MHD connection to handle
- * @param num_new_denoms number of coins to be created, size of y-dimension of @commit_link array
+ * @param num_new_denoms number of coins to be created, size of y-dimension of @a commit_link array
  * @param denom_pubs array of @a num_new_denoms keys
- * @param coin_count number of coins to be melted, size of y-dimension of @commit_coin array
+ * @param coin_count number of coins to be melted, size of y-dimension of @a commit_coin array
  * @param coin_public_infos array with @a coin_count entries about the coins
  * @param coin_melt_details array with @a coin_count entries with melting details
  * @param session_hash hash over the data that the client commits to
- * @param commit_client_sig signature of the client over this commitment
  * @param commit_coin 2d array of coin commitments (what the mint is to sign
  *                    once the "/refres/reveal" of cut and choose is done)
  * @param commit_link 2d array of coin link commitments (what the mint is
@@ -163,8 +162,8 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
  *
  * @param connection the connection to send error responses to
  * @param coin_info the JSON object to extract the coin info from
- * @param r_public_info[OUT] set to the coin's public information
- * @param r_melt_detail[OUT] set to details about the coin's melting permission (if valid)
+ * @param[out] r_public_info set to the coin's public information
+ * @param[out] r_melt_detail set to details about the coin's melting permission (if valid)
  * @return #GNUNET_YES if coin public info in JSON was valid
  *         #GNUNET_NO JSON was invalid, response was generated
  *         #GNUNET_SYSERR on internal error
@@ -324,7 +323,7 @@ free_commit_coins (struct TALER_MINTDB_RefreshCommitCoin **commit_coin,
 /**
  * Release memory from the @a commit_link array.
  *
- * @param commit_coin array to release
+ * @param commit_link array to release
  * @param kappa size of 1st dimension
  * @param num_old_coins size of 2nd dimension
  */
@@ -360,7 +359,7 @@ free_commit_links (struct TALER_MINTDB_RefreshCommitLinkP **commit_link,
  * @param transfer_pubs #TALER_CNC_KAPPA-dimensional array of @a num_oldcoins transfer keys
  * @param secret_encs #TALER_CNC_KAPPA-dimensional array of @a num_oldcoins secrets
  * @param num_newcoins number of coins that the refresh will generate
- * @param coin_envs #TALER_CNC_KAPPA-dimensional array of @a num_newcoins envelopes to sign
+ * @param coin_evs #TALER_CNC_KAPPA-dimensional array of @a num_newcoins envelopes to sign
  * @param link_encs #TALER_CNC_KAPPA-dimensional array of @a num_newcoins encrypted links
  * @return MHD result code
  */
@@ -500,12 +499,12 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
       struct TALER_MINTDB_RefreshCommitCoin *rcc = &commit_coin[i][j];
 
       res = TMH_PARSE_navigate_json (connection,
-                                             coin_evs,
-                                             TMH_PARSE_JNC_INDEX, (int) i,
-                                             TMH_PARSE_JNC_INDEX, (int) j,
-                                             TMH_PARSE_JNC_RET_DATA_VAR,
-                                             &rcc->coin_ev,
-                                             &rcc->coin_ev_size);
+                                     coin_evs,
+                                     TMH_PARSE_JNC_INDEX, (int) i,
+                                     TMH_PARSE_JNC_INDEX, (int) j,
+                                     TMH_PARSE_JNC_RET_DATA_VAR,
+                                     &rcc->coin_ev,
+                                     &rcc->coin_ev_size);
 
       if (GNUNET_OK != res)
       {
@@ -653,9 +652,9 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[IN|OUT] connection_cls the connection's closure (can be updated)
+ * @param[in,out] connection_cls the connection's closure (can be updated)
  * @param upload_data upload data
- * @param[IN|OUT] upload_data_size number of bytes (left) in @a upload_data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
  * @return MHD result code
  */
 int
@@ -830,9 +829,9 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[IN|OUT] connection_cls the connection's closure (can be updated)
+ * @param[in,out] connection_cls the connection's closure (can be updated)
  * @param upload_data upload data
- * @param[IN|OUT] upload_data_size number of bytes (left) in @a upload_data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
  * @return MHD result code
   */
 int
@@ -905,9 +904,9 @@ TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param[IN|OUT] connection_cls the connection's closure (can be updated)
+ * @param[in,out] connection_cls the connection's closure (can be updated)
  * @param upload_data upload data
- * @param[IN|OUT] upload_data_size number of bytes (left) in @a upload_data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
  * @return MHD result code
   */
 int
