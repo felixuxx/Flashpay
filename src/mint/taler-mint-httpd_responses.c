@@ -348,9 +348,14 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
         dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
         dr.h_contract = deposit->h_contract;
         dr.h_wire = deposit->h_wire;
+        dr.timestamp = GNUNET_TIME_absolute_hton (deposit->timestamp);
+        dr.refund_deadline = GNUNET_TIME_absolute_hton (deposit->refund_deadline);
         dr.transaction_id = GNUNET_htonll (deposit->transaction_id);
         TALER_amount_hton (&dr.amount_with_fee,
                            &deposit->amount_with_fee);
+        TALER_amount_hton (&dr.deposit_fee,
+                           &deposit->deposit_fee);
+        dr.merchant = deposit->merchant_pub;
         dr.coin_pub = deposit->coin.coin_pub;
         transaction = TALER_json_from_ecdsa_sig (&dr.purpose,
                                                  &deposit->csig.ecdsa_signature);

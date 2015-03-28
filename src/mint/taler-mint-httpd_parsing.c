@@ -320,9 +320,9 @@ TMH_PARSE_mhd_request_arg_data (struct MHD_Connection *connection,
  */
 int
 TMH_PARSE_mhd_request_var_arg_data (struct MHD_Connection *connection,
-                                     const char *param_name,
-                                     void **out_data,
-                                     size_t *out_size)
+                                    const char *param_name,
+                                    void **out_data,
+                                    size_t *out_size)
 {
   const char *str;
   size_t slen;
@@ -567,12 +567,12 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         {
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
-                                             MHD_HTTP_BAD_REQUEST,
-                                             "{s:s, s:o}",
-                                             "error",
-                                             "string expected",
-                                             "path",
-                                             path))
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:o}",
+                                               "error",
+                                               "string expected",
+                                               "path",
+                                               path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -587,12 +587,12 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
           GNUNET_free (buf);
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
-                                             MHD_HTTP_BAD_REQUEST,
-                                             "{s:s, s:o}",
-                                             "error",
-                                             "malformed binary data in JSON",
-                                             "path",
-                                             path))
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:o}",
+                                               "error",
+                                               "malformed binary data in JSON",
+                                               "path",
+                                               path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -603,12 +603,12 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         {
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
-                                             MHD_HTTP_BAD_REQUEST,
-                                             "{s:s, s:o}",
-                                             "error",
-                                             "malformed RSA public key in JSON",
-                                             "path",
-                                             path))
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:o}",
+                                               "error",
+                                               "malformed RSA public key in JSON",
+                                               "path",
+                                               path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -630,12 +630,12 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         {
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
-                                             MHD_HTTP_BAD_REQUEST,
-                                             "{s:s, s:o}",
-                                             "error",
-                                             "string expected",
-                                             "path",
-                                             path))
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:o}",
+                                               "error",
+                                               "string expected",
+                                               "path",
+                                               path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -650,12 +650,12 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
           GNUNET_free (buf);
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
-                                             MHD_HTTP_BAD_REQUEST,
-                                             "{s:s, s:o}",
-                                             "error",
-                                             "malformed binary data in JSON",
-                                             "path",
-                                             path))
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:o}",
+                                               "error",
+                                               "malformed binary data in JSON",
+                                               "path",
+                                               path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -666,12 +666,12 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         {
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
-                                             MHD_HTTP_BAD_REQUEST,
-                                             "{s:s, s:o}",
-                                             "error",
-                                             "malformed RSA signature in JSON",
-                                             "path",
-                                             path))
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:o}",
+                                               "error",
+                                               "malformed RSA signature in JSON",
+                                               "path",
+                                               path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -684,8 +684,22 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         struct TALER_Amount *where = va_arg (argp, void *);
 
         ret = TMH_PARSE_amount_json (connection,
-                                            (json_t *) root,
-                                            where);
+                                     (json_t *) root,
+                                     where);
+        break;
+      }
+
+    case TMH_PARSE_JNC_RET_TIME_ABSOLUTE:
+      {
+        struct GNUNET_TIME_Absolute *where = va_arg (argp, void *);
+#if 0
+        ret = TMH_PARSE_time_abs_json (connection,
+                                       (json_t *) root,
+                                       where);
+#endif
+        GNUNET_assert (0); /* FIXME: not implemented (#3741) */
+        (void) where;
+        ret = GNUNET_SYSERR;
         break;
       }
 
@@ -693,7 +707,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
       GNUNET_break (0);
       ret = (MHD_YES ==
              TMH_RESPONSE_reply_internal_error (connection,
-                                              "unhandled value in switch"))
+                                                "unhandled value in switch"))
         ? GNUNET_NO : GNUNET_SYSERR;
       break;
     }
@@ -742,64 +756,74 @@ TMH_PARSE_json_data (struct MHD_Connection *connection,
       return GNUNET_SYSERR;
     case TMH_PARSE_JNC_RET_DATA:
       ret = TMH_PARSE_navigate_json (connection,
-                                             root,
-                                             TMH_PARSE_JNC_FIELD,
-                                             spec[i].field_name,
-                                             TMH_PARSE_JNC_RET_DATA,
-                                             spec[i].destination,
-                                             spec[i].destination_size_in);
+                                     root,
+                                     TMH_PARSE_JNC_FIELD,
+                                     spec[i].field_name,
+                                     TMH_PARSE_JNC_RET_DATA,
+                                     spec[i].destination,
+                                     spec[i].destination_size_in);
       break;
     case TMH_PARSE_JNC_RET_DATA_VAR:
       ptr = NULL;
       ret = TMH_PARSE_navigate_json (connection,
-                                             root,
-                                             TMH_PARSE_JNC_FIELD,
-                                             spec[i].field_name,
-                                             TMH_PARSE_JNC_RET_DATA_VAR,
-                                             &ptr,
-                                             &spec[i].destination_size_out);
+                                     root,
+                                     TMH_PARSE_JNC_FIELD,
+                                     spec[i].field_name,
+                                     TMH_PARSE_JNC_RET_DATA_VAR,
+                                     &ptr,
+                                     &spec[i].destination_size_out);
       spec[i].destination = ptr;
       break;
     case TMH_PARSE_JNC_RET_TYPED_JSON:
       ptr = NULL;
       ret = TMH_PARSE_navigate_json (connection,
-                                             root,
-                                             TMH_PARSE_JNC_FIELD,
-                                             spec[i].field_name,
-                                             TMH_PARSE_JNC_RET_TYPED_JSON,
-                                             spec[i].type,
-                                             &ptr);
+                                     root,
+                                     TMH_PARSE_JNC_FIELD,
+                                     spec[i].field_name,
+                                     TMH_PARSE_JNC_RET_TYPED_JSON,
+                                     spec[i].type,
+                                     &ptr);
       *((void**)spec[i].destination) = ptr;
       break;
     case TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY:
       ptr = NULL;
       ret = TMH_PARSE_navigate_json (connection,
-                                             root,
-                                             TMH_PARSE_JNC_FIELD,
-                                             spec[i].field_name,
-                                             TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY,
-                                             &ptr);
+                                     root,
+                                     TMH_PARSE_JNC_FIELD,
+                                     spec[i].field_name,
+                                     TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY,
+                                     &ptr);
       spec[i].destination = ptr;
       break;
     case TMH_PARSE_JNC_RET_RSA_SIGNATURE:
       ptr = NULL;
       ret = TMH_PARSE_navigate_json (connection,
-                                             root,
-                                             TMH_PARSE_JNC_FIELD,
-                                             spec[i].field_name,
-                                             TMH_PARSE_JNC_RET_RSA_SIGNATURE,
-                                             &ptr);
+                                     root,
+                                     TMH_PARSE_JNC_FIELD,
+                                     spec[i].field_name,
+                                     TMH_PARSE_JNC_RET_RSA_SIGNATURE,
+                                     &ptr);
       spec[i].destination = ptr;
       break;
     case TMH_PARSE_JNC_RET_AMOUNT:
       GNUNET_assert (sizeof (struct TALER_Amount) ==
                      spec[i].destination_size_in);
       ret = TMH_PARSE_navigate_json (connection,
-                                             root,
-                                             TMH_PARSE_JNC_FIELD,
-                                             spec[i].field_name,
-                                             TMH_PARSE_JNC_RET_AMOUNT,
-                                             &spec[i].destination);
+                                     root,
+                                     TMH_PARSE_JNC_FIELD,
+                                     spec[i].field_name,
+                                     TMH_PARSE_JNC_RET_AMOUNT,
+                                     &spec[i].destination);
+      break;
+    case TMH_PARSE_JNC_RET_TIME_ABSOLUTE:
+      GNUNET_assert (sizeof (struct GNUNET_TIME_Absolute) ==
+                     spec[i].destination_size_in);
+      ret = TMH_PARSE_navigate_json (connection,
+                                     root,
+                                     TMH_PARSE_JNC_FIELD,
+                                     spec[i].field_name,
+                                     TMH_PARSE_JNC_RET_TIME_ABSOLUTE,
+                                     &spec[i].destination);
       break;
     }
   }
@@ -870,6 +894,8 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec)
               0,
               sizeof (struct TALER_Amount));
       break;
+    case TMH_PARSE_JNC_RET_TIME_ABSOLUTE:
+      break;
     }
   }
 }
@@ -888,8 +914,8 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec)
  */
 int
 TMH_PARSE_amount_json (struct MHD_Connection *connection,
-                              json_t *f,
-                              struct TALER_Amount *amount)
+                       json_t *f,
+                       struct TALER_Amount *amount)
 {
   json_int_t value;
   json_int_t fraction;
@@ -907,9 +933,9 @@ TMH_PARSE_amount_json (struct MHD_Connection *connection,
     TALER_LOG_WARNING ("Failed to parse JSON amount specification\n");
     if (MHD_YES !=
         TMH_RESPONSE_reply_json_pack (connection,
-                                    MHD_HTTP_BAD_REQUEST,
-                                    "{s:s}",
-                                    "error", "Bad format"))
+                                      MHD_HTTP_BAD_REQUEST,
+                                      "{s:s}",
+                                      "error", "Bad format"))
       return GNUNET_SYSERR;
     return GNUNET_NO;
   }
@@ -921,9 +947,9 @@ TMH_PARSE_amount_json (struct MHD_Connection *connection,
     TALER_LOG_WARNING ("Amount specified not in allowed range\n");
     if (MHD_YES !=
         TMH_RESPONSE_reply_json_pack (connection,
-                                    MHD_HTTP_BAD_REQUEST,
-                                    "{s:s}",
-                                    "error", "Amount outside of allowed range"))
+                                      MHD_HTTP_BAD_REQUEST,
+                                      "{s:s}",
+                                      "error", "Amount outside of allowed range"))
       return GNUNET_SYSERR;
     return GNUNET_NO;
   }
@@ -933,10 +959,10 @@ TMH_PARSE_amount_json (struct MHD_Connection *connection,
     TALER_LOG_WARNING ("Currency specified not supported by this mint\n");
     if (MHD_YES !=
         TMH_RESPONSE_reply_json_pack (connection,
-                                    MHD_HTTP_BAD_REQUEST,
-                                    "{s:s, s:s}",
-                                    "error", "Currency not supported",
-                                    "currency", currency))
+                                      MHD_HTTP_BAD_REQUEST,
+                                      "{s:s, s:s}",
+                                      "error", "Currency not supported",
+                                      "currency", currency))
       return GNUNET_SYSERR;
     return GNUNET_NO;
   }

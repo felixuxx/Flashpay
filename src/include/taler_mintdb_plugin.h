@@ -240,6 +240,28 @@ struct TALER_MINTDB_Deposit
   uint64_t transaction_id;
 
   /**
+   * Time when this request was generated.  Used, for example, to
+   * assess when (roughly) the income was achieved for tax purposes.
+   * Note that the Mint will only check that the timestamp is not "too
+   * far" into the future (i.e. several days).  The fact that the
+   * timestamp falls within the validity period of the coin's
+   * denomination key is irrelevant for the validity of the deposit
+   * request, as obviously the customer and merchant could conspire to
+   * set any timestamp.  Also, the Mint must accept very old deposit
+   * requests, as the merchant might have been unable to transmit the
+   * deposit request in a timely fashion (so back-dating is not
+   * prevented).
+   */
+  struct GNUNET_TIME_Absolute timestamp;
+
+  /**
+   * How much time does the merchant have to issue a refund request?
+   * Zero if refunds are not allowed.  After this time, the coin
+   * cannot be refunded.
+   */
+  struct GNUNET_TIME_Absolute refund_deadline;
+
+  /**
    * Fraction of the coin's remaining value to be deposited, including
    * depositing fee (if any).  The coin is identified by @e coin_pub.
    */

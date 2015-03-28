@@ -126,7 +126,14 @@ enum TMH_PARSE_JsonNavigationCommand
    * Return a `struct TALER_Amount` which was
    * encoded within its own json object.
    */
-  TMH_PARSE_JNC_RET_AMOUNT
+  TMH_PARSE_JNC_RET_AMOUNT,
+
+  /**
+   * Return a `struct GNUNET_TIME_Absolute` which was
+   * encoded within its own json object.
+   * Param: struct GNUNET_TIME_Absolute *
+   */
+  TMH_PARSE_JNC_RET_TIME_ABSOLUTE
 };
 
 
@@ -215,8 +222,8 @@ struct TMH_PARSE_FieldSpecification
  */
 int
 TMH_PARSE_json_data (struct MHD_Connection *connection,
-                            const json_t *root,
-                            struct TMH_PARSE_FieldSpecification *spec);
+                     const json_t *root,
+                     struct TMH_PARSE_FieldSpecification *spec);
 
 
 /**
@@ -283,6 +290,14 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec);
  * @param amount a `struct TALER_Amount *` to initialize
  */
 #define TMH_PARSE_MEMBER_AMOUNT(field,amount) { field, amount, sizeof(*amount), 0, TMH_PARSE_JNC_RET_AMOUNT, 0 }
+
+/**
+ * Generate line in parser specification for an absolute time.
+ *
+ * @param field name of the field
+ * @param atime a `struct GNUNET_TIME_Absolute *` to initialize
+ */
+#define TMH_PARSE_MEMBER_TIME_ABS(field,atime) { field, atime, sizeof(*atime), 0, TMH_PARSE_JNC_RET_TIME_ABSOLUTE, 0 }
 
 /**
  * Generate line in parser specification indicating the end of the spec.

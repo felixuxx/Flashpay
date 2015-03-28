@@ -64,9 +64,14 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
   dr.h_contract = deposit->h_contract;
   dr.h_wire = deposit->h_wire;
+  dr.timestamp = GNUNET_TIME_absolute_hton (deposit->timestamp);
+  dr.refund_deadline = GNUNET_TIME_absolute_hton (deposit->refund_deadline);
   dr.transaction_id = GNUNET_htonll (deposit->transaction_id);
   TALER_amount_hton (&dr.amount_with_fee,
                      &deposit->amount_with_fee);
+  TALER_amount_hton (&dr.deposit_fee,
+                     &deposit->deposit_fee);
+  dr.merchant = deposit->merchant_pub;
   dr.coin_pub = deposit->coin.coin_pub;
   if (GNUNET_OK !=
       GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
@@ -145,13 +150,15 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
     TMH_PARSE_MEMBER_FIXED ("H_wire", &deposit.h_wire),
     TMH_PARSE_MEMBER_FIXED ("csig",  &deposit.csig),
     TMH_PARSE_MEMBER_FIXED ("transaction_id", &deposit.transaction_id),
+    TMH_PARSE_MEMBER_TIME_ABS ("timestamp", &deposit.timestamp),
+    TMH_PARSE_MEMBER_TIME_ABS ("refund_deadline", &deposit.refund_deadline),
     TMH_PARSE_MEMBER_END
   };
 
   memset (&deposit, 0, sizeof (deposit));
   res = TMH_PARSE_json_data (connection,
-                                    root,
-                                    spec);
+                             root,
+                             spec);
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* hard failure */
   if (GNUNET_NO == res)
@@ -169,7 +176,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
     TALER_LOG_WARNING ("Failed to parse JSON wire format specification for /deposit request\n");
     TMH_PARSE_release_data (spec);
     return TMH_RESPONSE_reply_arg_invalid (connection,
-                                         "wire");
+                                           "wire");
   }
   len = strlen (wire_enc) + 1;
   GNUNET_CRYPTO_hash (wire_enc,
@@ -179,6 +186,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
 
   deposit.wire = wire;
   deposit.amount_with_fee = *amount;
+  deposit.deposit_fee = *amount; // FIXME: get fee from denomination key!
   res = verify_and_execute_deposit (connection,
                                     &deposit);
   TMH_PARSE_release_data (spec);
@@ -216,10 +224,10 @@ TMH_DEPOSIT_handler_deposit (struct TMH_RequestHandler *rh,
   json_t *f;
 
   res = TMH_PARSE_post_json (connection,
-                                    connection_cls,
-                                    upload_data,
-                                    upload_data_size,
-                                    &json);
+                             connection_cls,
+                             upload_data,
+                             upload_data_size,
+                             &json);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == json) )
@@ -232,13 +240,13 @@ TMH_DEPOSIT_handler_deposit (struct TMH_RequestHandler *rh,
     GNUNET_break_op (0);
     json_decref (json);
     return TMH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       "{s:s}",
-                                       "error", "Bad format");
+                                         MHD_HTTP_BAD_REQUEST,
+                                         "{s:s}",
+                                         "error", "Bad format");
   }
   res = TMH_PARSE_amount_json (connection,
-                                      f,
-                                      &amount);
+                               f,
+                               &amount);
   json_decref (f);
   if (GNUNET_SYSERR == res)
   {
