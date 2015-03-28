@@ -29,7 +29,7 @@
 /**
  * Information we keep on bank transfer(s) that established a reserve.
  */
-struct BankTransfer
+struct TALER_MINTDB_BankTransfer
 {
 
   /**
@@ -53,7 +53,7 @@ struct BankTransfer
 /**
  * A summary of a Reserve
  */
-struct Reserve
+struct TALER_MINTDB_Reserve
 {
   /**
    * The reserve's public key.  This uniquely identifies the reserve
@@ -77,7 +77,7 @@ struct Reserve
  * the /withdraw operation if needed, and to have proof
  * that a reserve was drained by this amount.
  */
-struct CollectableBlindcoin
+struct TALER_MINTDB_CollectableBlindcoin
 {
 
   /**
@@ -116,17 +116,17 @@ struct CollectableBlindcoin
 /**
  * Types of operations on a reserved.
  */
-enum TALER_MINT_DB_ReserveOperation
+enum TALER_MINTDB_ReserveOperation
 {
   /**
    * Money was deposited into the reserve via a bank transfer.
    */
-  TALER_MINT_DB_RO_BANK_TO_MINT = 0,
+  TALER_MINTDB_RO_BANK_TO_MINT = 0,
 
   /**
    * A Coin was withdrawn from the reserve using /withdraw.
    */
-  TALER_MINT_DB_RO_WITHDRAW_COIN = 1
+  TALER_MINTDB_RO_WITHDRAW_COIN = 1
 };
 
 
@@ -136,18 +136,18 @@ enum TALER_MINT_DB_ReserveOperation
  * established the reserve and all /withdraw operations we have done
  * since).
  */
-struct ReserveHistory
+struct TALER_MINTDB_ReserveHistory
 {
 
   /**
    * Next entry in the reserve history.
    */
-  struct ReserveHistory *next;
+  struct TALER_MINTDB_ReserveHistory *next;
 
   /**
    * Type of the event, determins @e details.
    */
-  enum TALER_MINT_DB_ReserveOperation type;
+  enum TALER_MINTDB_ReserveOperation type;
 
   /**
    * Details of the operation, depending on @e type.
@@ -158,12 +158,12 @@ struct ReserveHistory
     /**
      * Details about a bank transfer to the mint.
      */
-    struct BankTransfer *bank;
+    struct TALER_MINTDB_BankTransfer *bank;
 
     /**
      * Details about a /withdraw operation.
      */
-    struct CollectableBlindcoin *withdraw;
+    struct TALER_MINTDB_CollectableBlindcoin *withdraw;
 
   } details;
 
@@ -173,7 +173,7 @@ struct ReserveHistory
 /**
  * Specification for a /deposit operation.
  */
-struct Deposit
+struct TALER_MINTDB_Deposit
 {
   /**
    * Information about the coin that is being deposited.
@@ -225,6 +225,11 @@ struct Deposit
    */
   struct TALER_Amount amount_with_fee;
 
+  /**
+   * Depositing fee.
+   */
+  struct TALER_Amount deposit_fee;
+
 };
 
 
@@ -233,7 +238,7 @@ struct Deposit
  * dimensions of the operation, security parameters and
  * client signatures from "/refresh/melt" and "/refresh/commit".
  */
-struct RefreshSession
+struct TALER_MINTDB_RefreshSession
 {
 
   /**
@@ -258,7 +263,7 @@ struct RefreshSession
 /**
  * Specification for coin in a /refresh/melt operation.
  */
-struct RefreshMelt
+struct TALER_MINTDB_RefreshMelt
 {
   /**
    * Information about the coin that is being melted.
@@ -289,12 +294,12 @@ struct RefreshMelt
 
 
 /**
- * We have as many `struct RefreshCommitCoin` as there are new
+ * We have as many `struct TALER_MINTDB_RefreshCommitCoin` as there are new
  * coins being created by the refresh (for each of the #TALER_CNC_KAPPA
  * sets).  These are the coins we ask the mint to sign if the
  * respective set is selected.
  */
-struct RefreshCommitCoin
+struct TALER_MINTDB_RefreshCommitCoin
 {
 
   /**
@@ -322,9 +327,9 @@ GNUNET_NETWORK_STRUCT_BEGIN
  * For each (old) coin being melted, we have a `struct
  * RefreshCommitLink` that allows the user to find the shared secret
  * to decrypt the respective refresh links for the new coins in the
- * `struct RefreshCommitCoin`.
+ * `struct TALER_MINTDB_RefreshCommitCoin`.
  */
-struct RefreshCommitLink
+struct TALER_MINTDB_RefreshCommitLinkP
 {
   /**
    * Transfer public key, used to decrypt the @e shared_secret_enc
@@ -346,12 +351,12 @@ GNUNET_NETWORK_STRUCT_END
 /**
  * Linked list of refresh information linked to a coin.
  */
-struct LinkDataList
+struct TALER_MINTDB_LinkDataList
 {
   /**
    * Information is stored in a NULL-terminated linked list.
    */
-  struct LinkDataList *next;
+  struct TALER_MINTDB_LinkDataList *next;
 
   /**
    * Link data, used to recover the private key of the coin
@@ -374,7 +379,7 @@ struct LinkDataList
 /**
  * Specification for a /lock operation.
  */
-struct Lock
+struct TALER_MINTDB_LockOperation
 {
   /**
    * Information about the coin that is being locked.
@@ -399,40 +404,40 @@ struct Lock
  * Enumeration to classify the different types of transactions
  * that can be done with a coin.
  */
-enum TALER_MINT_DB_TransactionType
+enum TALER_MINTDB_TransactionType
 {
   /**
    * /deposit operation.
    */
-  TALER_MINT_DB_TT_DEPOSIT = 0,
+  TALER_MINTDB_TT_DEPOSIT = 0,
 
   /**
    * /refresh/melt operation.
    */
-  TALER_MINT_DB_TT_REFRESH_MELT = 1,
+  TALER_MINTDB_TT_REFRESH_MELT = 1,
 
   /**
    * /lock operation.
    */
-  TALER_MINT_DB_TT_LOCK = 2
+  TALER_MINTDB_TT_LOCK = 2
 };
 
 
 /**
  * List of transactions we performed for a particular coin.
  */
-struct TALER_MINT_DB_TransactionList
+struct TALER_MINTDB_TransactionList
 {
 
   /**
    * Next pointer in the NULL-terminated linked list.
    */
-  struct TALER_MINT_DB_TransactionList *next;
+  struct TALER_MINTDB_TransactionList *next;
 
   /**
    * Type of the transaction, determines what is stored in @e details.
    */
-  enum TALER_MINT_DB_TransactionType type;
+  enum TALER_MINTDB_TransactionType type;
 
   /**
    * Details about the transaction, depending on @e type.
@@ -443,17 +448,17 @@ struct TALER_MINT_DB_TransactionList
     /**
      * Details if transaction was a /deposit operation.
      */
-    struct Deposit *deposit;
+    struct TALER_MINTDB_Deposit *deposit;
 
     /**
      * Details if transaction was a /refresh/melt operation.
      */
-    struct RefreshMelt *melt;
+    struct TALER_MINTDB_RefreshMelt *melt;
 
     /**
      * Details if transaction was a /lock operation.
      */
-    struct Lock *lock;
+    struct TALER_MINTDB_LockOperation *lock;
 
   } details;
 
@@ -569,7 +574,7 @@ struct TALER_MINTDB_Plugin
   int
   (*reserve_get) (void *cls,
                   struct TALER_MINTDB_Session *db,
-                  struct Reserve *reserve);
+                  struct TALER_MINTDB_Reserve *reserve);
 
   /* FIXME: add functions to add bank transfers to our DB
      (and to test if we already did add one) (#3633/#3717) */
@@ -591,7 +596,7 @@ struct TALER_MINTDB_Plugin
   int
   (*reserves_in_insert) (void *cls,
                          struct TALER_MINTDB_Session *db,
-                         struct Reserve *reserve,
+                         struct TALER_MINTDB_Reserve *reserve,
                          const struct TALER_Amount *balance,
                          const struct GNUNET_TIME_Absolute expiry);
 
@@ -613,7 +618,7 @@ struct TALER_MINTDB_Plugin
   (*get_collectable_blindcoin) (void *cls,
                                 struct TALER_MINTDB_Session *sesssion,
                                 const struct GNUNET_HashCode *h_blind,
-                                struct CollectableBlindcoin *collectable);
+                                struct TALER_MINTDB_CollectableBlindcoin *collectable);
 
 
   /**
@@ -636,7 +641,7 @@ struct TALER_MINTDB_Plugin
                                    struct TALER_MINTDB_Session *sesssion,
                                    const struct GNUNET_HashCode *h_blind,
                                    struct TALER_Amount withdraw,
-                                   const struct CollectableBlindcoin *collectable);
+                                   const struct TALER_MINTDB_CollectableBlindcoin *collectable);
 
 
   /**
@@ -648,7 +653,7 @@ struct TALER_MINTDB_Plugin
    * @param reserve_pub public key of the reserve
    * @return known transaction history (NULL if reserve is unknown)
    */
-  struct ReserveHistory *
+  struct TALER_MINTDB_ReserveHistory *
   (*get_reserve_history) (void *cls,
                           struct TALER_MINTDB_Session *sesssion,
                           const struct TALER_ReservePublicKeyP *reserve_pub);
@@ -662,7 +667,7 @@ struct TALER_MINTDB_Plugin
    */
   void
   (*free_reserve_history) (void *cls,
-                           struct ReserveHistory *rh);
+                           struct TALER_MINTDB_ReserveHistory *rh);
 
 
   /**
@@ -678,7 +683,7 @@ struct TALER_MINTDB_Plugin
   int
   (*have_deposit) (void *cls,
                    struct TALER_MINTDB_Session *sesssion,
-                   const struct Deposit *deposit);
+                   const struct TALER_MINTDB_Deposit *deposit);
 
 
   /**
@@ -693,7 +698,7 @@ struct TALER_MINTDB_Plugin
   int
   (*insert_deposit) (void *cls,
                      struct TALER_MINTDB_Session *sesssion,
-                     const struct Deposit *deposit);
+                     const struct TALER_MINTDB_Deposit *deposit);
 
 
   /**
@@ -711,7 +716,7 @@ struct TALER_MINTDB_Plugin
   (*get_refresh_session) (void *cls,
                           struct TALER_MINTDB_Session *sesssion,
                           const struct GNUNET_HashCode *session_hash,
-                          struct RefreshSession *refresh_session);
+                          struct TALER_MINTDB_RefreshSession *refresh_session);
 
 
   /**
@@ -728,7 +733,7 @@ struct TALER_MINTDB_Plugin
   (*create_refresh_session) (void *cls,
                              struct TALER_MINTDB_Session *sesssion,
                              const struct GNUNET_HashCode *session_hash,
-                             const struct RefreshSession *refresh_session);
+                             const struct TALER_MINTDB_RefreshSession *refresh_session);
 
 
   /**
@@ -746,7 +751,7 @@ struct TALER_MINTDB_Plugin
   (*insert_refresh_melt) (void *cls,
                           struct TALER_MINTDB_Session *sesssion,
                           uint16_t oldcoin_index,
-                          const struct RefreshMelt *melt);
+                          const struct TALER_MINTDB_RefreshMelt *melt);
 
 
   /**
@@ -765,7 +770,7 @@ struct TALER_MINTDB_Plugin
                        struct TALER_MINTDB_Session *sesssion,
                        const struct GNUNET_HashCode *session_hash,
                        uint16_t oldcoin_index,
-                       struct RefreshMelt *melt);
+                       struct TALER_MINTDB_RefreshMelt *melt);
 
 
   /**
@@ -827,7 +832,7 @@ struct TALER_MINTDB_Plugin
                                   const struct GNUNET_HashCode *session_hash,
                                   unsigned int i,
                                   unsigned int num_newcoins,
-                                  const struct RefreshCommitCoin *commit_coins);
+                                  const struct TALER_MINTDB_RefreshCommitCoin *commit_coins);
 
 
   /**
@@ -850,7 +855,7 @@ struct TALER_MINTDB_Plugin
                                const struct GNUNET_HashCode *session_hash,
                                unsigned int i,
                                unsigned int num_coins,
-                               struct RefreshCommitCoin *commit_coins);
+                               struct TALER_MINTDB_RefreshCommitCoin *commit_coins);
 
 
   /**
@@ -871,7 +876,7 @@ struct TALER_MINTDB_Plugin
                                   const struct GNUNET_HashCode *session_hash,
                                   unsigned int i,
                                   unsigned int num_links,
-                                  const struct RefreshCommitLink *commit_links);
+                                  const struct TALER_MINTDB_RefreshCommitLinkP *commit_links);
 
   /**
    * Obtain the commited (encrypted) refresh link data
@@ -893,7 +898,7 @@ struct TALER_MINTDB_Plugin
                                const struct GNUNET_HashCode *session_hash,
                                unsigned int i,
                                unsigned int num_links,
-                               struct RefreshCommitLink *links);
+                               struct TALER_MINTDB_RefreshCommitLinkP *links);
 
 
   /**
@@ -926,7 +931,7 @@ struct TALER_MINTDB_Plugin
    * @param coin_pub public key to use to retrieve linkage data
    * @return all known link data for the coin
    */
-  struct LinkDataList *
+  struct TALER_MINTDB_LinkDataList *
   (*get_link_data_list) (void *cls,
                          struct TALER_MINTDB_Session *sesssion,
                          const union TALER_CoinSpendPublicKeyP *coin_pub);
@@ -940,7 +945,7 @@ struct TALER_MINTDB_Plugin
    */
   void
   (*free_link_data_list) (void *cls,
-                          struct LinkDataList *ldl);
+                          struct TALER_MINTDB_LinkDataList *ldl);
 
 
   /**
@@ -980,7 +985,7 @@ struct TALER_MINTDB_Plugin
   int
   (*have_lock) (void *cls,
                 struct TALER_MINTDB_Session *sesssion,
-                const struct Lock *lock);
+                const struct TALER_MINTDB_LockOperation *lock);
 
 
   /**
@@ -995,7 +1000,7 @@ struct TALER_MINTDB_Plugin
   int
   (*insert_lock) (void *cls,
                   struct TALER_MINTDB_Session *sesssion,
-                  const struct Lock *lock);
+                  const struct TALER_MINTDB_LockOperation *lock);
 
 
   /**
@@ -1007,7 +1012,7 @@ struct TALER_MINTDB_Plugin
    * @param coin_pub coin to investigate
    * @return list of transactions, NULL if coin is fresh
    */
-  struct TALER_MINT_DB_TransactionList *
+  struct TALER_MINTDB_TransactionList *
   (*get_coin_transactions) (void *cls,
                             struct TALER_MINTDB_Session *sesssion,
                             const union TALER_CoinSpendPublicKeyP *coin_pub);
@@ -1021,7 +1026,7 @@ struct TALER_MINTDB_Plugin
    */
   void
   (*free_coin_transaction_list) (void *cls,
-                                 struct TALER_MINT_DB_TransactionList *list);
+                                 struct TALER_MINTDB_TransactionList *list);
 
 
 };

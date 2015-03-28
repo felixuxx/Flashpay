@@ -63,7 +63,7 @@ check_reserve (struct TALER_MINTDB_Session *session,
                const char *currency,
                uint64_t expiry)
 {
-  struct Reserve reserve;
+  struct TALER_MINTDB_Reserve reserve;
 
   reserve.pub = *pub;
 
@@ -127,19 +127,19 @@ run (void *cls,
 {
   struct TALER_MINTDB_Session *session;
   struct TALER_ReservePublicKeyP reserve_pub;
-  struct Reserve reserve;
+  struct TALER_MINTDB_Reserve reserve;
   struct GNUNET_TIME_Absolute expiry;
   struct TALER_Amount amount;
   struct DenomKeyPair *dkp;
   struct GNUNET_HashCode h_blind;
-  struct CollectableBlindcoin cbc;
-  struct CollectableBlindcoin cbc2;
-  struct ReserveHistory *rh;
-  struct ReserveHistory *rh_head;
-  struct BankTransfer *bt;
-  struct CollectableBlindcoin *withdraw;
-  struct Deposit deposit;
-  struct Deposit deposit2;
+  struct TALER_MINTDB_CollectableBlindcoin cbc;
+  struct TALER_MINTDB_CollectableBlindcoin cbc2;
+  struct TALER_MINTDB_ReserveHistory *rh;
+  struct TALER_MINTDB_ReserveHistory *rh_head;
+  struct TALER_MINTDB_BankTransfer *bt;
+  struct TALER_MINTDB_CollectableBlindcoin *withdraw;
+  struct TALER_MINTDB_Deposit deposit;
+  struct TALER_MINTDB_Deposit deposit2;
   struct json_t *wire;
   const char * const json_wire_str =
       "{ \"type\":\"SEPA\", \
@@ -262,7 +262,7 @@ run (void *cls,
   {
     switch (rh_head->type)
     {
-    case TALER_MINT_DB_RO_BANK_TO_MINT:
+    case TALER_MINTDB_RO_BANK_TO_MINT:
       bt = rh_head->details.bank;
       FAILIF (0 != memcmp (&bt->reserve_pub,
                            &reserve_pub,
@@ -272,7 +272,7 @@ run (void *cls,
       FAILIF (0 != strcmp (CURRENCY, bt->amount.currency));
       FAILIF (NULL != bt->wire); /* FIXME: write wire details to db */
       break;
-    case TALER_MINT_DB_RO_WITHDRAW_COIN:
+    case TALER_MINTDB_RO_WITHDRAW_COIN:
       withdraw = rh_head->details.withdraw;
       FAILIF (0 != memcmp (&withdraw->reserve_pub,
                            &reserve_pub,

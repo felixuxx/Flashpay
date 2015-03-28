@@ -180,7 +180,7 @@ TMH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection);
  * @param h_contract hash of contract details
  * @param transaction_id transaction ID
  * @param merchant merchant public key
- * @param amount fraction of coin value to deposit
+ * @param amount_without_fee fraction of coin value to deposit (without fee)
  * @return MHD result code
  */
 int
@@ -190,7 +190,7 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
                                     const struct GNUNET_HashCode *h_contract,
                                     uint64_t transaction_id,
                                     const struct TALER_MerchantPublicKeyP *merchant,
-                                    const struct TALER_Amount *amount);
+                                    const struct TALER_Amount *amount_without_fee);
 
 
 /**
@@ -204,7 +204,7 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
  */
 int
 TMH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection,
-                                               const struct TALER_MINT_DB_TransactionList *tl);
+                                               const struct TALER_MINTDB_TransactionList *tl);
 
 
 /**
@@ -216,7 +216,7 @@ TMH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection
  */
 int
 TMH_RESPONSE_reply_withdraw_status_success (struct MHD_Connection *connection,
-                                            const struct ReserveHistory *rh);
+                                            const struct TALER_MINTDB_ReserveHistory *rh);
 
 
 /**
@@ -230,7 +230,7 @@ TMH_RESPONSE_reply_withdraw_status_success (struct MHD_Connection *connection,
  */
 int
 TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *connection,
-                                                     const struct ReserveHistory *rh);
+                                                     const struct TALER_MINTDB_ReserveHistory *rh);
 
 
 /**
@@ -242,7 +242,7 @@ TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *conn
  */
 int
 TMH_RESPONSE_reply_withdraw_sign_success (struct MHD_Connection *connection,
-                                          const struct CollectableBlindcoin *collectable);
+                                          const struct TALER_MINTDB_CollectableBlindcoin *collectable);
 
 
 /**
@@ -278,7 +278,7 @@ int
 TMH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
                                                     const union TALER_CoinSpendPublicKeyP *coin_pub,
                                                     struct TALER_Amount coin_value,
-                                                    struct TALER_MINT_DB_TransactionList *tl,
+                                                    struct TALER_MINTDB_TransactionList *tl,
                                                     struct TALER_Amount requested,
                                                     struct TALER_Amount residual);
 
@@ -334,7 +334,7 @@ int
 TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
                                          const struct TALER_TransferPublicKeyP *transfer_pub,
                                          const struct TALER_EncryptedLinkSecretP *shared_secret_enc,
-                                         const struct LinkDataList *ldl);
+                                         const struct TALER_MINTDB_LinkDataList *ldl);
 
 
 #endif

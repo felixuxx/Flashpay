@@ -53,7 +53,7 @@
  */
 static int
 verify_and_execute_deposit (struct MHD_Connection *connection,
-                            const struct Deposit *deposit)
+                            const struct TALER_MINTDB_Deposit *deposit)
 {
   struct TMH_KS_StateHandle *key_state;
   struct TALER_DepositRequestPS dr;
@@ -133,7 +133,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
                                   json_t *wire)
 {
   int res;
-  struct Deposit deposit;
+  struct TALER_MINTDB_Deposit deposit;
   char *wire_enc;
   size_t len;
   struct TMH_PARSE_FieldSpecification spec[] = {

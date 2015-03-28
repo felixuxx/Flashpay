@@ -277,7 +277,7 @@ TMH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection)
  * @param h_contract hash of contract details
  * @param transaction_id transaction ID
  * @param merchant merchant public key
- * @param amount fraction of coin value to deposit
+ * @param amount_without_fee fraction of coin value to deposit, without the fee
  * @return MHD result code
  */
 int
@@ -287,7 +287,7 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
                                   const struct GNUNET_HashCode *h_contract,
                                   uint64_t transaction_id,
                                   const struct TALER_MerchantPublicKeyP *merchant,
-                                  const struct TALER_Amount *amount)
+                                  const struct TALER_Amount *amount_without_fee)
 {
   struct TALER_DepositConfirmationPS dc;
   struct TALER_MintSignatureP sig;
@@ -299,8 +299,8 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
   dc.h_contract = *h_contract;
   dc.h_wire = *h_wire;
   dc.transaction_id = GNUNET_htonll (transaction_id);
-  TALER_amount_hton (&dc.amount_with_fee,
-                     amount);
+  TALER_amount_hton (&dc.amount_without_fee,
+                     amount_without_fee);
   dc.coin_pub = *coin_pub;
   dc.merchant = *merchant;
   TMH_KS_sign (&dc.purpose,
@@ -324,23 +324,23 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
  * @return json representation of the @a rh
  */
 static json_t *
-compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
+compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
 {
   json_t *transaction;
   const char *type;
   struct TALER_Amount value;
   json_t *history;
-  const struct TALER_MINT_DB_TransactionList *pos;
+  const struct TALER_MINTDB_TransactionList *pos;
 
   history = json_array ();
   for (pos = tl; NULL != pos; pos = pos->next)
   {
     switch (pos->type)
     {
-    case TALER_MINT_DB_TT_DEPOSIT:
+    case TALER_MINTDB_TT_DEPOSIT:
       {
         struct TALER_DepositRequestPS dr;
-        const struct Deposit *deposit = pos->details.deposit;
+        const struct TALER_MINTDB_Deposit *deposit = pos->details.deposit;
 
         type = "deposit";
         value = deposit->amount_with_fee;
@@ -356,10 +356,10 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
                                                  &deposit->csig.ecdsa_signature);
         break;
       }
-    case TALER_MINT_DB_TT_REFRESH_MELT:
+    case TALER_MINTDB_TT_REFRESH_MELT:
       {
         struct TALER_RefreshMeltCoinAffirmationPS ms;
-        const struct RefreshMelt *melt = pos->details.melt;
+        const struct TALER_MINTDB_RefreshMelt *melt = pos->details.melt;
 
         type = "melt";
         value = melt->amount_with_fee;
@@ -373,7 +373,7 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
                                                  &melt->coin_sig.ecdsa_signature);
       }
       break;
-    case TALER_MINT_DB_TT_LOCK:
+    case TALER_MINTDB_TT_LOCK:
       {
         type = "lock";
         value = pos->details.lock->amount;
@@ -405,7 +405,7 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
  */
 int
 TMH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection,
-                                             const struct TALER_MINT_DB_TransactionList *tl)
+                                             const struct TALER_MINTDB_TransactionList *tl)
 {
   json_t *history;
 
@@ -427,7 +427,7 @@ TMH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection
  * @return json representation of the @a rh, NULL on error
  */
 static json_t *
-compile_reserve_history (const struct ReserveHistory *rh,
+compile_reserve_history (const struct TALER_MINTDB_ReserveHistory *rh,
                          struct TALER_Amount *balance)
 {
   struct TALER_Amount deposit_total;
@@ -436,7 +436,7 @@ compile_reserve_history (const struct ReserveHistory *rh,
   json_t *json_history;
   json_t *transaction;
   int ret;
-  const struct ReserveHistory *pos;
+  const struct TALER_MINTDB_ReserveHistory *pos;
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct TMH_KS_StateHandle *key_state;
   struct TALER_WithdrawRequestPS wr;
@@ -447,7 +447,7 @@ compile_reserve_history (const struct ReserveHistory *rh,
   {
     switch (pos->type)
     {
-    case TALER_MINT_DB_RO_BANK_TO_MINT:
+    case TALER_MINTDB_RO_BANK_TO_MINT:
       if (0 == ret)
         deposit_total = pos->details.bank->amount;
       else
@@ -466,7 +466,7 @@ compile_reserve_history (const struct ReserveHistory *rh,
                                         "wire", pos->details.bank->wire,
                                         "amount", TALER_json_from_amount (&pos->details.bank->amount)));
       break;
-    case TALER_MINT_DB_RO_WITHDRAW_COIN:
+    case TALER_MINTDB_RO_WITHDRAW_COIN:
       break;
     }
   }
@@ -477,9 +477,9 @@ compile_reserve_history (const struct ReserveHistory *rh,
   {
     switch (pos->type)
     {
-    case TALER_MINT_DB_RO_BANK_TO_MINT:
+    case TALER_MINTDB_RO_BANK_TO_MINT:
       break;
-    case TALER_MINT_DB_RO_WITHDRAW_COIN:
+    case TALER_MINTDB_RO_WITHDRAW_COIN:
 
       dki = TMH_KS_denomination_key_lookup (key_state,
                                       &pos->details.withdraw->denom_pub);
@@ -541,7 +541,7 @@ compile_reserve_history (const struct ReserveHistory *rh,
  */
 int
 TMH_RESPONSE_reply_withdraw_status_success (struct MHD_Connection *connection,
-                                          const struct ReserveHistory *rh)
+                                          const struct TALER_MINTDB_ReserveHistory *rh)
 {
   json_t *json_balance;
   json_t *json_history;
@@ -576,7 +576,7 @@ TMH_RESPONSE_reply_withdraw_status_success (struct MHD_Connection *connection,
  */
 int
 TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *connection,
-                                                   const struct ReserveHistory *rh)
+                                                   const struct TALER_MINTDB_ReserveHistory *rh)
 {
   json_t *json_balance;
   json_t *json_history;
@@ -610,7 +610,7 @@ TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *conn
  */
 int
 TMH_RESPONSE_reply_withdraw_sign_success (struct MHD_Connection *connection,
-                                        const struct CollectableBlindcoin *collectable)
+                                        const struct TALER_MINTDB_CollectableBlindcoin *collectable)
 {
   json_t *sig_json;
   int ret;
@@ -644,7 +644,7 @@ int
 TMH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
                                                   const union TALER_CoinSpendPublicKeyP *coin_pub,
                                                   struct TALER_Amount coin_value,
-                                                  struct TALER_MINT_DB_TransactionList *tl,
+                                                  struct TALER_MINTDB_TransactionList *tl,
                                                   struct TALER_Amount requested,
                                                   struct TALER_Amount residual)
 {
@@ -781,9 +781,9 @@ int
 TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
                                        const struct TALER_TransferPublicKeyP *transfer_pub,
                                        const struct TALER_EncryptedLinkSecretP *shared_secret_enc,
-                                       const struct LinkDataList *ldl)
+                                       const struct TALER_MINTDB_LinkDataList *ldl)
 {
-  const struct LinkDataList *pos;
+  const struct TALER_MINTDB_LinkDataList *pos;
   json_t *root;
   json_t *list;
   int res;

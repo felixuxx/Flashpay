@@ -40,18 +40,18 @@
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static int
-calculate_transaction_list_totals (struct TALER_MINT_DB_TransactionList *tl,
+calculate_transaction_list_totals (struct TALER_MINTDB_TransactionList *tl,
                                    const struct TALER_Amount *off,
                                    struct TALER_Amount *ret)
 {
   struct TALER_Amount spent = *off;
-  struct TALER_MINT_DB_TransactionList *pos;
+  struct TALER_MINTDB_TransactionList *pos;
 
   for (pos = tl; NULL != pos; pos = pos->next)
   {
     switch (pos->type)
     {
-    case TALER_MINT_DB_TT_DEPOSIT:
+    case TALER_MINTDB_TT_DEPOSIT:
       if (GNUNET_OK !=
           TALER_amount_add (&spent,
                             &spent,
@@ -61,7 +61,7 @@ calculate_transaction_list_totals (struct TALER_MINT_DB_TransactionList *tl,
         return GNUNET_SYSERR;
       }
       break;
-    case TALER_MINT_DB_TT_REFRESH_MELT:
+    case TALER_MINTDB_TT_REFRESH_MELT:
       if (GNUNET_OK !=
           TALER_amount_add (&spent,
                             &spent,
@@ -71,7 +71,7 @@ calculate_transaction_list_totals (struct TALER_MINT_DB_TransactionList *tl,
         return GNUNET_SYSERR;
       }
       break;
-    case TALER_MINT_DB_TT_LOCK:
+    case TALER_MINTDB_TT_LOCK:
       /* should check if lock is still active,
          and if it is for THIS operation; if
          lock is inactive, delete it; if lock
@@ -99,34 +99,39 @@ calculate_transaction_list_totals (struct TALER_MINT_DB_TransactionList *tl,
  */
 int
 TMH_DB_execute_deposit (struct MHD_Connection *connection,
-                               const struct Deposit *deposit)
+                        const struct TALER_MINTDB_Deposit *deposit)
 {
   struct TALER_MINTDB_Session *session;
-  struct TALER_MINT_DB_TransactionList *tl;
+  struct TALER_MINTDB_TransactionList *tl;
   struct TALER_Amount spent;
   struct TALER_Amount value;
+  struct TALER_Amount amount_without_fee;
   struct TMH_KS_StateHandle *mks;
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   int ret;
 
   if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                              GNUNET_NO)))
+                                                  GNUNET_NO)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   if (GNUNET_YES ==
       TMH_plugin->have_deposit (TMH_plugin->cls,
-                            session,
-                            deposit))
+                                session,
+                                deposit))
   {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_subtract (&amount_without_fee,
+                                          &deposit->amount_with_fee,
+                                          &deposit->deposit_fee));
     return TMH_RESPONSE_reply_deposit_success (connection,
-                                             &deposit->coin.coin_pub,
-                                             &deposit->h_wire,
-                                             &deposit->h_contract,
-                                             deposit->transaction_id,
-                                             &deposit->merchant_pub,
-                                             &deposit->amount_with_fee);
+                                               &deposit->coin.coin_pub,
+                                               &deposit->h_wire,
+                                               &deposit->h_contract,
+                                               deposit->transaction_id,
+                                               &deposit->merchant_pub,
+                                               &amount_without_fee);
   }
   mks = TMH_KS_acquire ();
   dki = TMH_KS_denomination_key_lookup (mks,
@@ -214,7 +219,7 @@ TMH_DB_execute_withdraw_status (struct MHD_Connection *connection,
                                        const struct TALER_ReservePublicKeyP *reserve_pub)
 {
   struct TALER_MINTDB_Session *session;
-  struct ReserveHistory *rh;
+  struct TALER_MINTDB_ReserveHistory *rh;
   int res;
 
   if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
@@ -262,10 +267,10 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
                                      const struct TALER_ReserveSignatureP *signature)
 {
   struct TALER_MINTDB_Session *session;
-  struct ReserveHistory *rh;
-  const struct ReserveHistory *pos;
+  struct TALER_MINTDB_ReserveHistory *rh;
+  const struct TALER_MINTDB_ReserveHistory *pos;
   struct TMH_KS_StateHandle *key_state;
-  struct CollectableBlindcoin collectable;
+  struct TALER_MINTDB_CollectableBlindcoin collectable;
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct TALER_MINTDB_DenominationKeyIssueInformation *tdki;
   struct GNUNET_CRYPTO_rsa_Signature *sig;
@@ -369,7 +374,7 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
   {
     switch (pos->type)
     {
-    case TALER_MINT_DB_RO_BANK_TO_MINT:
+    case TALER_MINTDB_RO_BANK_TO_MINT:
       if (0 == (res & 1))
         deposit_total = pos->details.bank->amount;
       else
@@ -385,7 +390,7 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
         }
       res |= 1;
       break;
-    case TALER_MINT_DB_RO_WITHDRAW_COIN:
+    case TALER_MINTDB_RO_WITHDRAW_COIN:
       tdki = TMH_KS_denomination_key_lookup (key_state,
                                        &pos->details.withdraw->denom_pub);
       TALER_amount_ntoh (&value,
@@ -499,11 +504,11 @@ refresh_accept_melts (struct MHD_Connection *connection,
                       uint16_t oldcoin_index)
 {
   struct TALER_DenominationKeyValidityPS *dki;
-  struct TALER_MINT_DB_TransactionList *tl;
+  struct TALER_MINTDB_TransactionList *tl;
   struct TALER_Amount coin_value;
   struct TALER_Amount coin_residual;
   struct TALER_Amount spent;
-  struct RefreshMelt melt;
+  struct TALER_MINTDB_RefreshMelt melt;
   int res;
 
   dki = &TMH_KS_denomination_key_lookup (key_state,
@@ -608,11 +613,11 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                                     unsigned int coin_count,
                                     const struct TALER_CoinPublicInfo *coin_public_infos,
                                     const struct TMH_DB_MeltDetails *coin_melt_details,
-                                    struct RefreshCommitCoin *const* commit_coin,
-                                    struct RefreshCommitLink *const* commit_link)
+                                    struct TALER_MINTDB_RefreshCommitCoin *const* commit_coin,
+                                    struct TALER_MINTDB_RefreshCommitLinkP *const* commit_link)
 {
   struct TMH_KS_StateHandle *key_state;
-  struct RefreshSession refresh_session;
+  struct TALER_MINTDB_RefreshSession refresh_session;
   struct TALER_MINTDB_Session *session;
   int res;
   unsigned int i;
@@ -774,7 +779,7 @@ check_commitment (struct MHD_Connection *connection,
                   unsigned int off,
                   unsigned int num_oldcoins,
                   const struct TALER_TransferPrivateKeyP *transfer_privs,
-                  const struct RefreshMelt *melts,
+                  const struct TALER_MINTDB_RefreshMelt *melts,
                   unsigned int num_newcoins,
                   const struct TALER_DenominationPublicKey *denom_pubs)
 {
@@ -783,11 +788,11 @@ check_commitment (struct MHD_Connection *connection,
   int secret_initialized = GNUNET_NO;
   struct GNUNET_CRYPTO_EcdhePublicKey coin_ecdhe;
   struct GNUNET_CRYPTO_EcdhePrivateKey transfer_ecdhe;
-  struct RefreshCommitLink *commit_links;
-  struct RefreshCommitCoin *commit_coins;
+  struct TALER_MINTDB_RefreshCommitLinkP *commit_links;
+  struct TALER_MINTDB_RefreshCommitCoin *commit_coins;
 
   commit_links = GNUNET_malloc (num_oldcoins *
-                                sizeof (struct RefreshCommitLink));
+                                sizeof (struct TALER_MINTDB_RefreshCommitLinkP));
   if (GNUNET_OK !=
       TMH_plugin->get_refresh_commit_links (TMH_plugin->cls,
                                         session,
@@ -885,7 +890,7 @@ check_commitment (struct MHD_Connection *connection,
 
   /* Check that the commitments for all new coins were correct */
   commit_coins = GNUNET_malloc (num_newcoins *
-                                sizeof (struct RefreshCommitCoin));
+                                sizeof (struct TALER_MINTDB_RefreshCommitCoin));
 
   if (GNUNET_OK !=
       TMH_plugin->get_refresh_commit_coins (TMH_plugin->cls,
@@ -984,7 +989,7 @@ refresh_mint_coin (struct MHD_Connection *connection,
                    const struct GNUNET_HashCode *session_hash,
                    struct TMH_KS_StateHandle *key_state,
                    const struct TALER_DenominationPublicKey *denom_pub,
-                   const struct RefreshCommitCoin *commit_coin,
+                   const struct TALER_MINTDB_RefreshCommitCoin *commit_coin,
                    unsigned int coin_off)
 {
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
@@ -1044,12 +1049,12 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
 {
   int res;
   struct TALER_MINTDB_Session *session;
-  struct RefreshSession refresh_session;
+  struct TALER_MINTDB_RefreshSession refresh_session;
   struct TMH_KS_StateHandle *key_state;
-  struct RefreshMelt *melts;
+  struct TALER_MINTDB_RefreshMelt *melts;
   struct TALER_DenominationPublicKey *denom_pubs;
   struct TALER_DenominationSignature *ev_sigs;
-  struct RefreshCommitCoin *commit_coins;
+  struct TALER_MINTDB_RefreshCommitCoin *commit_coins;
   unsigned int i;
   unsigned int j;
   unsigned int off;
@@ -1077,7 +1082,7 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
   }
 
   melts = GNUNET_malloc (refresh_session.num_oldcoins *
-                         sizeof (struct RefreshMelt));
+                         sizeof (struct TALER_MINTDB_RefreshMelt));
   for (j=0;j<refresh_session.num_oldcoins;j++)
   {
     if (GNUNET_OK !=
@@ -1147,7 +1152,7 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
   }
 
   commit_coins = GNUNET_malloc (refresh_session.num_newcoins *
-                                sizeof (struct RefreshCommitCoin));
+                                sizeof (struct TALER_MINTDB_RefreshCommitCoin));
   if (GNUNET_OK !=
       TMH_plugin->get_refresh_commit_coins (TMH_plugin->cls,
                                         session,
@@ -1232,7 +1237,7 @@ TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
   struct TALER_MINTDB_Session *session;
   struct TALER_TransferPublicKeyP transfer_pub;
   struct TALER_EncryptedLinkSecretP shared_secret_enc;
-  struct LinkDataList *ldl;
+  struct TALER_MINTDB_LinkDataList *ldl;
 
   if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
                                               GNUNET_NO)))

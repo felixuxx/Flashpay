@@ -78,7 +78,7 @@ run (void *cls,
       "\"NAME\":\"GNUNET E.V\","
       "\"BIC\":\"GENODEF1SRL\""
       "}";
-  struct Deposit *deposit;
+  struct TALER_MINTDB_Deposit *deposit;
   uint64_t transaction_id;
   struct TALER_MINTDB_Session *session;
 
@@ -90,11 +90,11 @@ run (void *cls,
   session = plugin->get_session (plugin->cls,
                                  ! persistent);
   EXITIF (NULL == session);
-  deposit = GNUNET_malloc (sizeof (struct Deposit) + sizeof (wire));
+  deposit = GNUNET_malloc (sizeof (struct TALER_MINTDB_Deposit) + sizeof (wire));
   /* Makeup a random coin public key */
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               deposit,
-                              sizeof (struct Deposit));
+                              sizeof (struct TALER_MINTDB_Deposit));
   /* Makeup a random 64bit transaction ID */
   transaction_id = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
                                              UINT64_MAX);

@@ -28,23 +28,23 @@
  */
 static void
 common_free_reserve_history (void *cls,
-                             struct ReserveHistory *rh)
+                             struct TALER_MINTDB_ReserveHistory *rh)
 {
-  struct BankTransfer *bt;
-  struct CollectableBlindcoin *cbc;
-  struct ReserveHistory *backref;
+  struct TALER_MINTDB_BankTransfer *bt;
+  struct TALER_MINTDB_CollectableBlindcoin *cbc;
+  struct TALER_MINTDB_ReserveHistory *backref;
 
   while (NULL != rh)
   {
     switch(rh->type)
     {
-    case TALER_MINT_DB_RO_BANK_TO_MINT:
+    case TALER_MINTDB_RO_BANK_TO_MINT:
       bt = rh->details.bank;
       if (NULL != bt->wire)
         json_decref (bt->wire);
       GNUNET_free (bt);
       break;
-    case TALER_MINT_DB_RO_WITHDRAW_COIN:
+    case TALER_MINTDB_RO_WITHDRAW_COIN:
       cbc = rh->details.withdraw;
       GNUNET_CRYPTO_rsa_signature_free (cbc->sig.rsa_signature);
       GNUNET_CRYPTO_rsa_public_key_free (cbc->denom_pub.rsa_public_key);
@@ -66,9 +66,9 @@ common_free_reserve_history (void *cls,
  */
 static void
 common_free_link_data_list (void *cls,
-                            struct LinkDataList *ldl)
+                            struct TALER_MINTDB_LinkDataList *ldl)
 {
-  struct LinkDataList *next;
+  struct TALER_MINTDB_LinkDataList *next;
 
   while (NULL != ldl)
   {
@@ -88,9 +88,9 @@ common_free_link_data_list (void *cls,
  */
 static void
 common_free_coin_transaction_list (void *cls,
-                                   struct TALER_MINT_DB_TransactionList *list)
+                                   struct TALER_MINTDB_TransactionList *list)
 {
-  struct TALER_MINT_DB_TransactionList *next;
+  struct TALER_MINTDB_TransactionList *next;
 
   while (NULL != list)
   {
@@ -98,14 +98,14 @@ common_free_coin_transaction_list (void *cls,
 
     switch (list->type)
     {
-    case TALER_MINT_DB_TT_DEPOSIT:
+    case TALER_MINTDB_TT_DEPOSIT:
       json_decref (list->details.deposit->wire);
       GNUNET_free (list->details.deposit);
       break;
-    case TALER_MINT_DB_TT_REFRESH_MELT:
+    case TALER_MINTDB_TT_REFRESH_MELT:
       GNUNET_free (list->details.melt);
       break;
-    case TALER_MINT_DB_TT_LOCK:
+    case TALER_MINTDB_TT_LOCK:
       GNUNET_free (list->details.lock);
       /* FIXME: look at this again once locking is implemented (#3625) */
       break;

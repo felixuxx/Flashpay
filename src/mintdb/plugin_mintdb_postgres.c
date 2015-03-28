@@ -753,7 +753,7 @@ postgres_commit (void *cls,
 static int
 postgres_reserve_get (void *cls,
                       struct TALER_MINTDB_Session *session,
-                      struct Reserve *reserve)
+                      struct TALER_MINTDB_Reserve *reserve)
 {
   PGresult *result;
   uint64_t expiration_date_nbo;
@@ -809,7 +809,7 @@ postgres_reserve_get (void *cls,
 static int
 postgres_reserves_update (void *cls,
                           struct TALER_MINTDB_Session *session,
-                          struct Reserve *reserve)
+                          struct TALER_MINTDB_Reserve *reserve)
 {
   PGresult *result;
   struct TALER_AmountNBO balance_nbo;
@@ -858,7 +858,7 @@ postgres_reserves_update (void *cls,
 static int
 postgres_reserves_in_insert (void *cls,
                              struct TALER_MINTDB_Session *session,
-                             struct Reserve *reserve,
+                             struct TALER_MINTDB_Reserve *reserve,
                              const struct TALER_Amount *balance,
                              const struct GNUNET_TIME_Absolute expiry)
 {
@@ -946,7 +946,7 @@ postgres_reserves_in_insert (void *cls,
     return GNUNET_OK;
   }
   /* Update reserve */
-  struct Reserve updated_reserve;
+  struct TALER_MINTDB_Reserve updated_reserve;
   updated_reserve.pub = reserve->pub;
 
   if (GNUNET_OK !=
@@ -993,7 +993,7 @@ static int
 postgres_get_collectable_blindcoin (void *cls,
                                     struct TALER_MINTDB_Session *session,
                                     const struct GNUNET_HashCode *h_blind,
-                                    struct CollectableBlindcoin *collectable)
+                                    struct TALER_MINTDB_CollectableBlindcoin *collectable)
 {
   PGresult *result;
   struct TALER_PQ_QueryParam params[] = {
@@ -1086,10 +1086,10 @@ postgres_insert_collectable_blindcoin (void *cls,
                                        struct TALER_MINTDB_Session *session,
                                        const struct GNUNET_HashCode *h_blind,
                                        struct TALER_Amount withdraw,
-                                       const struct CollectableBlindcoin *collectable)
+                                       const struct TALER_MINTDB_CollectableBlindcoin *collectable)
 {
   PGresult *result;
-  struct Reserve reserve;
+  struct TALER_MINTDB_Reserve reserve;
   char *denom_pub_enc = NULL;
   char *denom_sig_enc = NULL;
   size_t denom_pub_enc_size;
@@ -1163,14 +1163,14 @@ postgres_insert_collectable_blindcoin (void *cls,
  * @param reserve_pub public key of the reserve
  * @return known transaction history (NULL if reserve is unknown)
  */
-static struct ReserveHistory *
+static struct TALER_MINTDB_ReserveHistory *
 postgres_get_reserve_history (void *cls,
                               struct TALER_MINTDB_Session *session,
                               const struct TALER_ReservePublicKeyP *reserve_pub)
 {
   PGresult *result;
-  struct ReserveHistory *rh;
-  struct ReserveHistory *rh_head;
+  struct TALER_MINTDB_ReserveHistory *rh;
+  struct TALER_MINTDB_ReserveHistory *rh_head;
   int rows;
   int ret;
 
@@ -1179,7 +1179,7 @@ postgres_get_reserve_history (void *cls,
   rh_head = NULL;
   ret = GNUNET_SYSERR;
   {
-    struct BankTransfer *bt;
+    struct TALER_MINTDB_BankTransfer *bt;
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_QUERY_PARAM_PTR (reserve_pub),
       TALER_PQ_QUERY_PARAM_END
@@ -1201,7 +1201,7 @@ postgres_get_reserve_history (void *cls,
     }
     while (0 < rows)
     {
-      bt = GNUNET_new (struct BankTransfer);
+      bt = GNUNET_new (struct TALER_MINTDB_BankTransfer);
       if (GNUNET_OK != TALER_PQ_extract_amount (result,
                                                 --rows,
                                                 "balance_value",
@@ -1216,15 +1216,15 @@ postgres_get_reserve_history (void *cls,
       bt->reserve_pub = *reserve_pub;
       if (NULL != rh_head)
       {
-        rh_head->next = GNUNET_new (struct ReserveHistory);
+        rh_head->next = GNUNET_new (struct TALER_MINTDB_ReserveHistory);
         rh_head = rh_head->next;
       }
       else
       {
-        rh_head = GNUNET_new (struct ReserveHistory);
+        rh_head = GNUNET_new (struct TALER_MINTDB_ReserveHistory);
         rh = rh_head;
       }
-      rh_head->type = TALER_MINT_DB_RO_BANK_TO_MINT;
+      rh_head->type = TALER_MINTDB_RO_BANK_TO_MINT;
       rh_head->details.bank = bt;
     }
   }
@@ -1233,7 +1233,7 @@ postgres_get_reserve_history (void *cls,
   {
     struct GNUNET_HashCode blind_ev;
     struct TALER_ReserveSignatureP reserve_sig;
-    struct CollectableBlindcoin *cbc;
+    struct TALER_MINTDB_CollectableBlindcoin *cbc;
     char *denom_pub_enc;
     char *denom_sig_enc;
     size_t denom_pub_enc_size;
@@ -1273,7 +1273,7 @@ postgres_get_reserve_history (void *cls,
         GNUNET_break (0);
         goto cleanup;
       }
-      cbc = GNUNET_new (struct CollectableBlindcoin);
+      cbc = GNUNET_new (struct TALER_MINTDB_CollectableBlindcoin);
       cbc->sig.rsa_signature
         = GNUNET_CRYPTO_rsa_signature_decode (denom_sig_enc,
                                               denom_sig_enc_size);
@@ -1298,9 +1298,9 @@ postgres_get_reserve_history (void *cls,
       (void) memcpy (&cbc->h_coin_envelope, &blind_ev, sizeof (blind_ev));
       (void) memcpy (&cbc->reserve_pub, reserve_pub, sizeof (cbc->reserve_pub));
       (void) memcpy (&cbc->reserve_sig, &reserve_sig, sizeof (cbc->reserve_sig));
-      rh_head->next = GNUNET_new (struct ReserveHistory);
+      rh_head->next = GNUNET_new (struct TALER_MINTDB_ReserveHistory);
       rh_head = rh_head->next;
-      rh_head->type = TALER_MINT_DB_RO_WITHDRAW_COIN;
+      rh_head->type = TALER_MINTDB_RO_WITHDRAW_COIN;
       rh_head->details.withdraw = cbc;
     }
   }
@@ -1331,7 +1331,7 @@ postgres_get_reserve_history (void *cls,
 static int
 postgres_have_deposit (void *cls,
                        struct TALER_MINTDB_Session *session,
-                       const struct Deposit *deposit)
+                       const struct TALER_MINTDB_Deposit *deposit)
 {
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_QUERY_PARAM_PTR (&deposit->coin.coin_pub),
@@ -1378,7 +1378,7 @@ postgres_have_deposit (void *cls,
 static int
 postgres_insert_deposit (void *cls,
                          struct TALER_MINTDB_Session *session,
-                         const struct Deposit *deposit)
+                         const struct TALER_MINTDB_Deposit *deposit)
 {
   char *denom_pub_enc;
   char *denom_sig_enc;
@@ -1448,7 +1448,7 @@ static int
 postgres_get_refresh_session (void *cls,
                               struct TALER_MINTDB_Session *session,
                               const struct GNUNET_HashCode *session_hash,
-                              struct RefreshSession *refresh_session)
+                              struct TALER_MINTDB_RefreshSession *refresh_session)
 {
   // FIXME: check logic!
   int res;
@@ -1481,7 +1481,7 @@ postgres_get_refresh_session (void *cls,
   if (NULL == refresh_session)
     return GNUNET_YES;
 
-  memset (session, 0, sizeof (struct RefreshSession));
+  memset (session, 0, sizeof (struct TALER_MINTDB_RefreshSession));
 
   struct TALER_PQ_ResultSpec rs[] = {
     TALER_PQ_RESULT_SPEC("num_oldcoins", &refresh_session->num_oldcoins),
@@ -1522,7 +1522,7 @@ static int
 postgres_create_refresh_session (void *cls,
                                  struct TALER_MINTDB_Session *session,
                                  const struct GNUNET_HashCode *session_hash,
-                                 const struct RefreshSession *refresh_session)
+                                 const struct TALER_MINTDB_RefreshSession *refresh_session)
 {
   // FIXME: actually store session data!
   uint16_t noreveal_index;
@@ -1566,7 +1566,7 @@ static int
 postgres_insert_refresh_melt (void *cls,
                               struct TALER_MINTDB_Session *session,
                               uint16_t oldcoin_index,
-                              const struct RefreshMelt *melt)
+                              const struct TALER_MINTDB_RefreshMelt *melt)
 {
   // FIXME: check logic!
   uint16_t oldcoin_index_nbo = htons (oldcoin_index);
@@ -1616,7 +1616,7 @@ postgres_get_refresh_melt (void *cls,
                            struct TALER_MINTDB_Session *session,
                            const struct GNUNET_HashCode *session_hash,
                            uint16_t oldcoin_index,
-                           struct RefreshMelt *melt)
+                           struct TALER_MINTDB_RefreshMelt *melt)
 {
   // FIXME: check logic!
   GNUNET_break (0);
@@ -1766,7 +1766,7 @@ postgres_insert_refresh_commit_coins (void *cls,
                                       const struct GNUNET_HashCode *session_hash,
                                       unsigned int i,
                                       unsigned int num_newcoins,
-                                      const struct RefreshCommitCoin *commit_coins)
+                                      const struct TALER_MINTDB_RefreshCommitCoin *commit_coins)
 {
   // FIXME: check logic! -- was written for single commit_coin!
   uint16_t cnc_index_nbo = htons (i);
@@ -1824,7 +1824,7 @@ postgres_get_refresh_commit_coins (void *cls,
                                    const struct GNUNET_HashCode *session_hash,
                                    unsigned int cnc_index,
                                    unsigned int newcoin_index,
-                                   struct RefreshCommitCoin *cc)
+                                   struct TALER_MINTDB_RefreshCommitCoin *cc)
 {
   // FIXME: check logic!
   uint16_t cnc_index_nbo = htons (cnc_index);
@@ -1903,7 +1903,7 @@ postgres_insert_refresh_commit_links (void *cls,
                                       const struct GNUNET_HashCode *session_hash,
                                       unsigned int i,
                                       unsigned int j,
-                                      const struct RefreshCommitLink *commit_link)
+                                      const struct TALER_MINTDB_RefreshCommitLinkP *commit_link)
 {
   // FIXME: check logic!
   uint16_t cnc_index_nbo = htons (i);
@@ -1958,7 +1958,7 @@ postgres_get_refresh_commit_links (void *cls,
                                    const struct GNUNET_HashCode *session_hash,
                                    unsigned int i,
                                    unsigned int num_links,
-                                   struct RefreshCommitLink *links)
+                                   struct TALER_MINTDB_RefreshCommitLinkP *links)
 {
   // FIXME: check logic: was written for a single link!
   uint16_t cnc_index_nbo = htons (i);
@@ -2064,14 +2064,14 @@ postgres_insert_refresh_collectable (void *cls,
  * @param coin_pub public key to use to retrieve linkage data
  * @return all known link data for the coin
  */
-static struct LinkDataList *
+static struct TALER_MINTDB_LinkDataList *
 postgres_get_link_data_list (void *cls,
                              struct TALER_MINTDB_Session *session,
                              const union TALER_CoinSpendPublicKeyP *coin_pub)
 {
   // FIXME: check logic!
-  struct LinkDataList *ldl;
-  struct LinkDataList *pos;
+  struct TALER_MINTDB_LinkDataList *ldl;
+  struct TALER_MINTDB_LinkDataList *pos;
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_QUERY_PARAM_PTR(coin_pub),
     TALER_PQ_QUERY_PARAM_END
@@ -2163,7 +2163,7 @@ postgres_get_link_data_list (void *cls,
                                   ldl);
       return NULL;
     }
-    pos = GNUNET_new (struct LinkDataList);
+    pos = GNUNET_new (struct TALER_MINTDB_LinkDataList);
     pos->next = ldl;
     pos->link_data_enc = link_enc;
     pos->denom_pub.rsa_public_key = denom_pub;
@@ -2253,7 +2253,7 @@ postgres_get_transfer (void *cls,
  * @param coin_pub coin to investigate
  * @return list of transactions, NULL if coin is fresh
  */
-static struct TALER_MINT_DB_TransactionList *
+static struct TALER_MINTDB_TransactionList *
 postgres_get_coin_transactions (void *cls,
                                 struct TALER_MINTDB_Session *session,
                                 const union TALER_CoinSpendPublicKeyP *coin_pub)

@@ -62,8 +62,8 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                             struct TALER_CoinPublicInfo *coin_public_infos,
                             const struct TMH_DB_MeltDetails *coin_melt_details,
                             const struct GNUNET_HashCode *session_hash,
-                            struct RefreshCommitCoin *const* commit_coin,
-                            struct RefreshCommitLink *const* commit_link)
+                            struct TALER_MINTDB_RefreshCommitCoin *const* commit_coin,
+                            struct TALER_MINTDB_RefreshCommitLinkP *const* commit_link)
 
 {
   unsigned int i;
@@ -300,7 +300,7 @@ verify_coin_public_info (struct MHD_Connection *connection,
  * @param num_new_coins size of 2nd dimension
  */
 static void
-free_commit_coins (struct RefreshCommitCoin **commit_coin,
+free_commit_coins (struct TALER_MINTDB_RefreshCommitCoin **commit_coin,
                    unsigned int kappa,
                    unsigned int num_new_coins)
 {
@@ -329,7 +329,7 @@ free_commit_coins (struct RefreshCommitCoin **commit_coin,
  * @param num_old_coins size of 2nd dimension
  */
 static void
-free_commit_links (struct RefreshCommitLink **commit_link,
+free_commit_links (struct TALER_MINTDB_RefreshCommitLinkP **commit_link,
                    unsigned int kappa,
                    unsigned int num_old_coins)
 {
@@ -388,8 +388,8 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   unsigned int coin_count;
   struct GNUNET_HashCode session_hash;
   struct GNUNET_HashContext *hash_context;
-  struct RefreshCommitCoin *commit_coin[TALER_CNC_KAPPA];
-  struct RefreshCommitLink *commit_link[TALER_CNC_KAPPA];
+  struct TALER_MINTDB_RefreshCommitCoin *commit_coin[TALER_CNC_KAPPA];
+  struct TALER_MINTDB_RefreshCommitLinkP *commit_link[TALER_CNC_KAPPA];
 
   /* For the signature check, we hash most of the inputs together
      (except for the signatures on the coins). */
@@ -492,12 +492,12 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   for (i = 0; i < TALER_CNC_KAPPA; i++)
   {
     commit_coin[i] = GNUNET_malloc (num_newcoins *
-                                    sizeof (struct RefreshCommitCoin));
+                                    sizeof (struct TALER_MINTDB_RefreshCommitCoin));
     for (j = 0; j < num_newcoins; j++)
     {
       char *link_enc;
       size_t link_enc_size;
-      struct RefreshCommitCoin *rcc = &commit_coin[i][j];
+      struct TALER_MINTDB_RefreshCommitCoin *rcc = &commit_coin[i][j];
 
       res = TMH_PARSE_navigate_json (connection,
                                              coin_evs,
@@ -545,10 +545,10 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   for (i = 0; i < TALER_CNC_KAPPA; i++)
   {
     commit_link[i] = GNUNET_malloc (num_oldcoins *
-                                    sizeof (struct RefreshCommitLink));
+                                    sizeof (struct TALER_MINTDB_RefreshCommitLinkP));
     for (j = 0; j < num_oldcoins; j++)
     {
-      struct RefreshCommitLink *rcl = &commit_link[i][j];
+      struct TALER_MINTDB_RefreshCommitLinkP *rcl = &commit_link[i][j];
 
       res = TMH_PARSE_navigate_json (connection,
                                              transfer_pubs,
@@ -593,7 +593,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
 
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        rcl,
-                                       sizeof (struct RefreshCommitLink));
+                                       sizeof (struct TALER_MINTDB_RefreshCommitLinkP));
     }
 
   }

@@ -39,7 +39,7 @@
  */
 int
 TMH_DB_execute_deposit (struct MHD_Connection *connection,
-                        const struct Deposit *deposit);
+                        const struct TALER_MINTDB_Deposit *deposit);
 
 
 /**
@@ -85,7 +85,7 @@ struct TMH_DB_MeltDetails
 {
   /**
    * Signature allowing the melt (using
-   * a `struct RefreshMeltConfirmSignRequestBody`) to sign over.
+   * a `struct TALER_MINTDB_RefreshMeltConfirmSignRequestBody`) to sign over.
    */
   struct TALER_CoinSpendSignatureP melt_sig;
 
@@ -127,8 +127,8 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                              unsigned int coin_count,
                              const struct TALER_CoinPublicInfo *coin_public_infos,
                              const struct TMH_DB_MeltDetails *coin_melt_details,
-                             struct RefreshCommitCoin *const* commit_coin,
-                             struct RefreshCommitLink *const* commit_link);
+                             struct TALER_MINTDB_RefreshCommitCoin *const* commit_coin,
+                             struct TALER_MINTDB_RefreshCommitLinkP *const* commit_link);
 
 
 /**
