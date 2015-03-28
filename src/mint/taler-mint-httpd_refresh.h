@@ -30,7 +30,7 @@
 
 /**
  * Handle a "/refresh/melt" request.  Parses the request into the JSON
- * components and then hands things of to #handle_referesh_melt_json()
+ * components and then hands things of to #handle_refresh_melt_json()
  * to validate the melted coins, the signature and execute the melt
  * using TMH_DB_execute_refresh_melt().
  *
