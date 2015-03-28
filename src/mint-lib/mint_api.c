@@ -286,7 +286,7 @@ parse_json_signkey (struct TALER_MINT_SigningPublicKey **_sign_key,
           GNUNET_CRYPTO_eddsa_public_key_from_string (key_enc,
                                                       52,
                                                       &sign_key_issue.signkey_pub.eddsa_pub));
-  sign_key_issue.purpose.purpose = htonl (TALER_SIGNATURE_MINT_SIGNING_KEY_VALIDITY);
+  sign_key_issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
   sign_key_issue.purpose.size =
       htonl (sizeof (sign_key_issue)
              - offsetof (struct TALER_MintSigningKeyValidityPS, purpose));
@@ -294,7 +294,7 @@ parse_json_signkey (struct TALER_MINT_SigningPublicKey **_sign_key,
   sign_key_issue.start = GNUNET_TIME_absolute_hton (valid_from);
   sign_key_issue.expire = GNUNET_TIME_absolute_hton (valid_until);
   EXITIF (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MINT_SIGNING_KEY_VALIDITY,
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
                                       &sign_key_issue.purpose,
                                       &sig,
                                       &master_key->eddsa_pub));
@@ -408,7 +408,7 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
   EXITIF (GNUNET_SYSERR == parse_json_amount (obj, &fee_deposit));
   EXITIF (NULL == (obj = json_object_get (denom_key_obj, "fee_refresh")));
   EXITIF (GNUNET_SYSERR == parse_json_amount (obj, &fee_refresh));
-  denom_key_issue.purpose.purpose = htonl (TALER_SIGNATURE_MINT_DENOMINATION_KEY_VALIDITY);
+  denom_key_issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
   denom_key_issue.purpose.size = htonl
       (sizeof (struct TALER_DenominationKeyValidityPS) -
        offsetof (struct TALER_DenominationKeyValidityPS, purpose));
@@ -425,7 +425,7 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey **_denom_key,
   TALER_amount_hton (&denom_key_issue.fee_refresh,
                      &fee_refresh);
   EXITIF (GNUNET_SYSERR ==
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MINT_DENOMINATION_KEY_VALIDITY,
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
                                       &denom_key_issue.purpose,
                                       &sig,
                                       &master_key->eddsa_pub));

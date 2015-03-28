@@ -294,7 +294,7 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
   json_t *sig_json;
   int ret;
 
-  dc.purpose.purpose = htonl (TALER_SIGNATURE_COIN_DEPOSIT);
+  dc.purpose.purpose = htonl (TALER_SIGNATURE_MINT_CONFIRM_DEPOSIT);
   dc.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
   dc.h_contract = *h_contract;
   dc.h_wire = *h_wire;
@@ -344,7 +344,7 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
 
         type = "deposit";
         value = deposit->amount_with_fee;
-        dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_DEPOSIT);
+        dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
         dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
         dr.h_contract = deposit->h_contract;
         dr.h_wire = deposit->h_wire;
@@ -363,7 +363,7 @@ compile_transaction_history (const struct TALER_MINT_DB_TransactionList *tl)
 
         type = "melt";
         value = melt->amount_with_fee;
-        ms.purpose.purpose = htonl (TALER_SIGNATURE_COIN_MELT);
+        ms.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
         ms.purpose.size = htonl (sizeof (struct TALER_RefreshMeltCoinAffirmationPS));
         ms.session_hash = melt->session_hash;
         TALER_amount_hton (&ms.amount_with_fee,
@@ -498,7 +498,7 @@ compile_reserve_history (const struct ReserveHistory *rh,
           return NULL;
         }
       ret = 1;
-      wr.purpose.purpose = htonl (TALER_SIGNATURE_RESERVE_WITHDRAW_REQUEST);
+      wr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
       wr.purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS));
       wr.reserve_pub = pos->details.withdraw->reserve_pub;
       GNUNET_CRYPTO_rsa_public_key_hash (pos->details.withdraw->denom_pub.rsa_public_key,
@@ -683,7 +683,7 @@ TMH_RESPONSE_reply_refresh_melt_success (struct MHD_Connection *connection,
   int ret;
 
   body.purpose.size = htonl (sizeof (struct TALER_RefreshMeltConfirmationPS));
-  body.purpose.purpose = htonl (TALER_SIGNATURE_MINT_MELT_RESPONSE);
+  body.purpose.purpose = htonl (TALER_SIGNATURE_MINT_CONFIRM_MELT);
   body.session_hash = *session_hash;
   body.noreveal_index = htons (noreveal_index);
   TMH_KS_sign (&body.purpose,

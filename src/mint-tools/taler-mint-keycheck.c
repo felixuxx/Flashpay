@@ -68,7 +68,7 @@ signkeys_iter (void *cls,
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MINT_SIGNING_KEY_VALIDITY,
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
                                   &ski->issue.purpose,
                                   &ski->issue.signature.eddsa_signature,
                                   &ski->issue.master_public_key.eddsa_pub))
@@ -128,7 +128,7 @@ denomkeys_iter (void *cls,
   }
 
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MINT_DENOMINATION_KEY_VALIDITY,
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
                                   &dki->issue.purpose,
                                   &dki->issue.signature.eddsa_signature,
                                   &dki->issue.master.eddsa_pub))

@@ -60,7 +60,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct TALER_Amount fee_deposit;
 
-  dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_DEPOSIT);
+  dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
   dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
   dr.h_contract = deposit->h_contract;
   dr.h_wire = deposit->h_wire;
@@ -69,7 +69,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
                      &deposit->amount_with_fee);
   dr.coin_pub = deposit->coin.coin_pub;
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_WALLET_DEPOSIT,
+      GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
                                   &dr.purpose,
                                   &deposit->csig.ecdsa_signature,
                                   &deposit->coin.coin_pub.ecdsa_pub))

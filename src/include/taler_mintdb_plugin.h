@@ -186,7 +186,7 @@ struct Deposit
    * by @e h_wire in relation to the contract identified
    * by @e h_contract.
    */
-  union TALER_CoinSpendSignatureP csig;
+  struct TALER_CoinSpendSignatureP csig;
 
   /**
    * Public key of the merchant.  Enables later identification
@@ -268,7 +268,7 @@ struct RefreshMelt
   /**
    * Signature over the melting operation.
    */
-  union TALER_CoinSpendSignatureP coin_sig;
+  struct TALER_CoinSpendSignatureP coin_sig;
 
   /**
    * Hash of the refresh session this coin is melted into.
@@ -384,7 +384,7 @@ struct Lock
   /**
    * Signature over the locking operation.
    */
-  union TALER_CoinSpendSignatureP coin_sig;
+  struct TALER_CoinSpendSignatureP coin_sig;
 
   /**
    * How much value is being locked?

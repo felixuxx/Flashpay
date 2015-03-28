@@ -448,7 +448,7 @@ create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
                                                                        duration));
   GNUNET_CRYPTO_eddsa_key_get_public (&pi->signkey_priv.eddsa_priv,
                                       &issue->signkey_pub.eddsa_pub);
-  issue->purpose.purpose = htonl (TALER_SIGNATURE_MINT_SIGNING_KEY_VALIDITY);
+  issue->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
   issue->purpose.size = htonl (sizeof (struct TALER_MintSigningKeyValidityPS) -
                                offsetof (struct TALER_MintSigningKeyValidityPS,
                                          purpose));
@@ -701,7 +701,7 @@ create_denomkey_issue (const struct CoinTypeParams *params,
                      &params->fee_deposit);
   TALER_amount_hton (&dki->issue.fee_refresh,
                      &params->fee_refresh);
-  dki->issue.purpose.purpose = htonl (TALER_SIGNATURE_MINT_DENOMINATION_KEY_VALIDITY);
+  dki->issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
   dki->issue.purpose.size = htonl (sizeof (struct TALER_MINTDB_DenominationKeyIssueInformation) -
                                    offsetof (struct TALER_MINTDB_DenominationKeyIssueInformation,
                                              issue.purpose));

@@ -197,33 +197,45 @@ struct TALER_MasterSignatureP
 
 
 /**
- * Type of public keys for Taler coins.
+ * Type of public keys for Taler coins.  The same key material is used
+ * for ECDSA and ECDHE operations.
  */
 union TALER_CoinSpendPublicKeyP
 {
   /**
-   * Taler uses ECDSA for coins.
+   * Taler uses ECDSA for coins when signing deposit requests.
    */
   struct GNUNET_CRYPTO_EcdsaPublicKey ecdsa_pub;
+
+  /**
+   * Taler uses ECDH(E) for coin linkage during refresh operations.
+   */
+  struct GNUNET_CRYPTO_EcdhePublicKey ecdhe_pub;
 };
 
 
 /**
- * Type of private keys for Taler coins.
+ * Type of private keys for Taler coins.  The same key material is used
+ * for ECDSA and ECDHE operations.
  */
 union TALER_CoinSpendPrivateKeyP
 {
   /**
-   * Taler uses ECDSA for coins.
+   * Taler uses ECDSA for coins when signing deposit requests.
    */
   struct GNUNET_CRYPTO_EcdsaPrivateKey ecdsa_priv;
+
+  /**
+   * Taler uses ECDHE for coin linkage during refresh operations.
+   */
+  struct GNUNET_CRYPTO_EcdhePrivateKey ecdhe_priv;
 };
 
 
 /**
  * Type of signatures made with Taler coins.
  */
-union TALER_CoinSpendSignatureP
+struct TALER_CoinSpendSignatureP
 {
   /**
    * Taler uses ECDSA for coins.

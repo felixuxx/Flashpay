@@ -138,7 +138,7 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
 
   /* verify signature! */
   wsrd.purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS));
-  wsrd.purpose.purpose = htonl (TALER_SIGNATURE_RESERVE_WITHDRAW_REQUEST);
+  wsrd.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
   GNUNET_CRYPTO_hash (denomination_pub_data,
                       denomination_pub_data_size,
                       &wsrd.h_denomination_pub);
@@ -146,7 +146,7 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
                       blinded_msg_len,
                       &wsrd.h_coin_envelope);
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_RESERVE_WITHDRAW_REQUEST,
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW,
                                   &wsrd.purpose,
                                   &signature.eddsa_signature,
                                   &wsrd.reserve_pub.eddsa_pub))

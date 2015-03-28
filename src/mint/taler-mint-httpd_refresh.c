@@ -176,7 +176,7 @@ get_coin_public_info (struct MHD_Connection *connection,
                       struct TMH_DB_MeltDetails *r_melt_detail)
 {
   int ret;
-  union TALER_CoinSpendSignatureP melt_sig;
+  struct TALER_CoinSpendSignatureP melt_sig;
   struct TALER_DenominationSignature sig;
   struct TALER_DenominationPublicKey pk;
   struct TALER_Amount amount;
@@ -244,13 +244,13 @@ verify_coin_public_info (struct MHD_Connection *connection,
   struct TALER_Amount fee_refresh;
 
   body.purpose.size = htonl (sizeof (struct TALER_RefreshMeltCoinAffirmationPS));
-  body.purpose.purpose = htonl (TALER_SIGNATURE_COIN_MELT);
+  body.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
   body.session_hash = *session_hash;
   TALER_amount_hton (&body.amount_with_fee,
                      &r_melt_detail->melt_amount_with_fee);
   body.coin_pub = r_public_info->coin_pub;
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_COIN_MELT,
+      GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
                                   &body.purpose,
                                   &r_melt_detail->melt_sig.ecdsa_signature,
                                   &r_public_info->coin_pub.ecdsa_pub))

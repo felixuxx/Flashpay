@@ -87,7 +87,7 @@ struct TMH_DB_MeltDetails
    * Signature allowing the melt (using
    * a `struct RefreshMeltConfirmSignRequestBody`) to sign over.
    */
-  union TALER_CoinSpendSignatureP melt_sig;
+  struct TALER_CoinSpendSignatureP melt_sig;
 
   /**
    * How much of the coin's value did the client allow to be melted?
