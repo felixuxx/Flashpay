@@ -130,12 +130,13 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
                                                &deposit->h_wire,
                                                &deposit->h_contract,
                                                deposit->transaction_id,
+                                               deposit->refund_deadline,
                                                &deposit->merchant_pub,
                                                &amount_without_fee);
   }
   mks = TMH_KS_acquire ();
   dki = TMH_KS_denomination_key_lookup (mks,
-                                  &deposit->coin.denom_pub);
+                                        &deposit->coin.denom_pub);
   TALER_amount_ntoh (&value,
                      &dki->issue.value);
   TMH_KS_release (mks);
@@ -151,15 +152,15 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
   spent = deposit->amount_with_fee;
   /* add cost of all previous transactions */
   tl = TMH_plugin->get_coin_transactions (TMH_plugin->cls,
-                                      session,
-                                      &deposit->coin.coin_pub);
+                                          session,
+                                          &deposit->coin.coin_pub);
   if (GNUNET_OK !=
       calculate_transaction_list_totals (tl,
                                          &spent,
                                          &spent))
   {
     TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
-                                        tl);
+                                            tl);
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   /* Check that cost of all transactions is smaller than
@@ -170,18 +171,18 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
     TMH_plugin->rollback (TMH_plugin->cls,
                       session);
     ret = TMH_RESPONSE_reply_deposit_insufficient_funds (connection,
-                                                       tl);
+                                                         tl);
     TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
-                                        tl);
+                                            tl);
     return ret;
   }
   TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
-                                      tl);
+                                          tl);
 
   if (GNUNET_OK !=
       TMH_plugin->insert_deposit (TMH_plugin->cls,
-                              session,
-                              deposit))
+                                  session,
+                                  deposit))
   {
     TALER_LOG_WARNING ("Failed to store /deposit information in database\n");
     TMH_plugin->rollback (TMH_plugin->cls,
@@ -197,12 +198,13 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
     return TMH_RESPONSE_reply_commit_error (connection);
   }
   return TMH_RESPONSE_reply_deposit_success (connection,
-                                           &deposit->coin.coin_pub,
-                                           &deposit->h_wire,
-                                           &deposit->h_contract,
-                                           deposit->transaction_id,
-                                           &deposit->merchant_pub,
-                                           &deposit->amount_with_fee);
+                                             &deposit->coin.coin_pub,
+                                             &deposit->h_wire,
+                                             &deposit->h_contract,
+                                             deposit->transaction_id,
+                                             deposit->refund_deadline,
+                                             &deposit->merchant_pub,
+                                             &deposit->amount_with_fee);
 }
 
 

@@ -276,18 +276,20 @@ TMH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection)
  * @param h_wire hash of wire details
  * @param h_contract hash of contract details
  * @param transaction_id transaction ID
+ * @param refund_deadline until when this deposit be refunded
  * @param merchant merchant public key
  * @param amount_without_fee fraction of coin value to deposit, without the fee
  * @return MHD result code
  */
 int
 TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
-                                  const union TALER_CoinSpendPublicKeyP *coin_pub,
-                                  const struct GNUNET_HashCode *h_wire,
-                                  const struct GNUNET_HashCode *h_contract,
-                                  uint64_t transaction_id,
-                                  const struct TALER_MerchantPublicKeyP *merchant,
-                                  const struct TALER_Amount *amount_without_fee)
+                                    const union TALER_CoinSpendPublicKeyP *coin_pub,
+                                    const struct GNUNET_HashCode *h_wire,
+                                    const struct GNUNET_HashCode *h_contract,
+                                    uint64_t transaction_id,
+                                    struct GNUNET_TIME_Absolute refund_deadline,
+                                    const struct TALER_MerchantPublicKeyP *merchant,
+                                    const struct TALER_Amount *amount_without_fee)
 {
   struct TALER_DepositConfirmationPS dc;
   struct TALER_MintSignatureP sig;
@@ -299,12 +301,14 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
   dc.h_contract = *h_contract;
   dc.h_wire = *h_wire;
   dc.transaction_id = GNUNET_htonll (transaction_id);
+  dc.timestamp = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get ());
+  dc.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
   TALER_amount_hton (&dc.amount_without_fee,
                      amount_without_fee);
   dc.coin_pub = *coin_pub;
   dc.merchant = *merchant;
   TMH_KS_sign (&dc.purpose,
-                        &sig);
+               &sig);
   sig_json = TALER_json_from_eddsa_sig (&dc.purpose,
                                         &sig.eddsa_signature);
   ret = TMH_RESPONSE_reply_json_pack (connection,

@@ -179,6 +179,7 @@ TMH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection);
  * @param h_wire hash of wire details
  * @param h_contract hash of contract details
  * @param transaction_id transaction ID
+ * @param refund_deadline until when this deposit be refunded
  * @param merchant merchant public key
  * @param amount_without_fee fraction of coin value to deposit (without fee)
  * @return MHD result code
@@ -189,7 +190,7 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
                                     const struct GNUNET_HashCode *h_wire,
                                     const struct GNUNET_HashCode *h_contract,
                                     uint64_t transaction_id,
-                                    const struct TALER_MerchantPublicKeyP *merchant,
+                                    struct GNUNET_TIME_Absolute refund_deadline,                                    const struct TALER_MerchantPublicKeyP *merchant,
                                     const struct TALER_Amount *amount_without_fee);
 
 
