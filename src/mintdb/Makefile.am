@@ -6,7 +6,9 @@ plugindir = $(libdir)/taler
 plugin_LTLIBRARIES = \
   libtaler_plugin_mintdb_postgres.la
 
-EXTRA_DIST = plugin_mintdb_common.c
+EXTRA_DIST = \
+  plugin_mintdb_common.c \
+  test-mint-db-postgres.conf
 
 libtaler_plugin_mintdb_postgres_la_SOURCES = \
   plugin_mintdb_postgres.c
