@@ -25,17 +25,17 @@
 #include <jansson.h>
 
 /**
- * Handle to this library context
+ * @brief Handle to this library context
  */
 struct TALER_MINT_Context;
 
 /**
- * Handle to the mint
+ * @brief Handle to the mint
  */
 struct TALER_MINT_Handle;
 
 /**
- * Mint's signature key
+ * @brief Mint's signature key
  */
 struct TALER_MINT_SigningPublicKey
 {
@@ -57,7 +57,7 @@ struct TALER_MINT_SigningPublicKey
 
 
 /**
- * Mint's denomination key
+ * @brief Mint's denomination key
  */
 struct TALER_MINT_DenomPublicKey
 {
@@ -152,12 +152,12 @@ TALER_MINT_disconnect (struct TALER_MINT_Handle *mint);
 
 
 /**
- * A handle to get the keys of a mint
+ * @brief A handle to get the keys of a mint
  */
 struct TALER_MINT_KeysGetHandle;
 
 /**
- * Functions of this type are called to signal completion of an asynchronous call.
+ * @brief Functions of this type are called to signal completion of an asynchronous call.
  *
  * @param cls closure
  * @param emsg if the asynchronous call could not be completed due to an error,
@@ -168,7 +168,7 @@ typedef void
                                     const char *emsg);
 
 /**
- * Functions of this type are called to provide the retrieved signing and
+ * @brief Functions of this type are called to provide the retrieved signing and
  * denomination keys of the mint.  No TALER_MINT_*() functions should be called
  * in this callback.
  *
@@ -215,7 +215,7 @@ TALER_MINT_keys_get_cancel (struct TALER_MINT_KeysGetHandle *get);
 
 
 /**
- * A Deposit Handle
+ * @brief A Deposit Handle
  */
 struct TALER_MINT_DepositHandle;
 
