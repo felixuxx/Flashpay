@@ -250,10 +250,12 @@ parse_json_signkey (struct TALER_MINT_SigningPublicKey **_sign_key,
 {
   json_t *valid_from_obj;
   json_t *valid_until_obj;
+  json_t *valid_legal_obj;
   json_t *key_obj;
   json_t *sig_obj;
   const char *valid_from_enc;
   const char *valid_until_enc;
+  const char *valid_legal_enc;
   const char *key_enc;
   const char *sig_enc;
   struct TALER_MINT_SigningPublicKey *sign_key;
@@ -261,27 +263,35 @@ parse_json_signkey (struct TALER_MINT_SigningPublicKey **_sign_key,
   struct GNUNET_CRYPTO_EddsaSignature sig;
   struct GNUNET_TIME_Absolute valid_from;
   struct GNUNET_TIME_Absolute valid_until;
+  struct GNUNET_TIME_Absolute valid_legal;
 
   EXITIF (JSON_OBJECT != json_typeof (sign_key_obj));
   EXITIF (NULL == (valid_from_obj = json_object_get (sign_key_obj,
                                                      "stamp_start")));
   EXITIF (NULL == (valid_until_obj = json_object_get (sign_key_obj,
                                                      "stamp_expire")));
+  EXITIF (NULL == (valid_legal_obj = json_object_get (sign_key_obj,
+                                                      "stamp_end")));
   EXITIF (NULL == (key_obj = json_object_get (sign_key_obj, "key")));
   EXITIF (NULL == (sig_obj = json_object_get (sign_key_obj, "master_sig")));
   EXITIF (NULL == (valid_from_enc = json_string_value (valid_from_obj)));
   EXITIF (NULL == (valid_until_enc = json_string_value (valid_until_obj)));
+  EXITIF (NULL == (valid_legal_enc = json_string_value (valid_legal_obj)));
   EXITIF (NULL == (key_enc = json_string_value (key_obj)));
   EXITIF (NULL == (sig_enc = json_string_value (sig_obj)));
   EXITIF (GNUNET_SYSERR == parse_timestamp (&valid_from,
                                             valid_from_enc));
   EXITIF (GNUNET_SYSERR == parse_timestamp (&valid_until,
                                             valid_until_enc));
+  EXITIF (GNUNET_SYSERR == parse_timestamp (&valid_legal,
+                                            valid_legal_enc));
   EXITIF (52 != strlen (key_enc));  /* strlen(base32(char[32])) = 52 */
   EXITIF (103 != strlen (sig_enc)); /* strlen(base32(char[64])) = 103 */
   EXITIF (GNUNET_OK != GNUNET_STRINGS_string_to_data (sig_enc, 103,
                                                       &sig, sizeof (sig)));
-  (void) memset (&sign_key_issue, 0, sizeof (sign_key_issue));
+  memset (&sign_key_issue,
+          0,
+          sizeof (sign_key_issue));
   EXITIF (GNUNET_SYSERR ==
           GNUNET_CRYPTO_eddsa_public_key_from_string (key_enc,
                                                       52,
@@ -293,6 +303,7 @@ parse_json_signkey (struct TALER_MINT_SigningPublicKey **_sign_key,
   sign_key_issue.master_public_key = *master_key;
   sign_key_issue.start = GNUNET_TIME_absolute_hton (valid_from);
   sign_key_issue.expire = GNUNET_TIME_absolute_hton (valid_until);
+  sign_key_issue.end = GNUNET_TIME_absolute_hton (valid_legal);
   EXITIF (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
                                       &sign_key_issue.purpose,

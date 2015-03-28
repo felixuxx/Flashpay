@@ -429,11 +429,13 @@ get_anchor (const char *dir,
  *
  * @param start start time of the validity period for the key
  * @param duration how long should the key be valid
+ * @param end when do all signatures by this key expire
  * @param[out] pi set to the signing key information
  */
 static void
 create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
                            struct GNUNET_TIME_Relative duration,
+                           struct GNUNET_TIME_Absolute end,
                            struct TALER_MINTDB_PrivateSigningKeyInformationP *pi)
 {
   struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
@@ -446,6 +448,7 @@ create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
   issue->start = GNUNET_TIME_absolute_hton (start);
   issue->expire = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (start,
                                                                        duration));
+  issue->end = GNUNET_TIME_absolute_hton (end);
   GNUNET_CRYPTO_eddsa_key_get_public (&pi->signkey_priv.eddsa_priv,
                                       &issue->signkey_pub.eddsa_pub);
   issue->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
@@ -470,6 +473,7 @@ static int
 mint_keys_update_signkeys ()
 {
   struct GNUNET_TIME_Relative signkey_duration;
+  struct GNUNET_TIME_Relative legal_duration;
   struct GNUNET_TIME_Absolute anchor;
   char *signkey_dir;
 
@@ -482,6 +486,25 @@ mint_keys_update_signkeys ()
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "mint_keys",
                                "signkey_duration");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (kcfg,
+                                           "mint_keys",
+                                           "legal_duration",
+                                           &legal_duration))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "mint_keys",
+                               "legal_duration");
+    return GNUNET_SYSERR;
+  }
+  if (signkey_duration.rel_value_us < legal_duration.rel_value_us)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "mint_keys",
+                               "legal_duration",
+                               "must be longer than signkey_duration");
     return GNUNET_SYSERR;
   }
   ROUND_TO_SECS (signkey_duration,
@@ -508,8 +531,11 @@ mint_keys_update_signkeys ()
     const char *skf;
     struct TALER_MINTDB_PrivateSigningKeyInformationP signkey_issue;
     ssize_t nwrite;
+    struct GNUNET_TIME_Absolute end;
 
     skf = get_signkey_file (anchor);
+    end = GNUNET_TIME_absolute_add (anchor,
+                                    legal_duration);
     GNUNET_break (GNUNET_YES !=
                   GNUNET_DISK_file_test (skf));
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -517,6 +543,7 @@ mint_keys_update_signkeys ()
                 GNUNET_STRINGS_absolute_time_to_string (anchor));
     create_signkey_issue_priv (anchor,
                                signkey_duration,
+                               end,
                                &signkey_issue);
     nwrite = GNUNET_DISK_fn_write (skf,
                                    &signkey_issue,

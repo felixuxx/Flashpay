@@ -60,7 +60,8 @@ signkeys_iter (void *cls,
 
   if (ntohl (ski->issue.purpose.size) !=
       (sizeof (struct TALER_MintSigningKeyValidityPS) -
-       offsetof (struct TALER_MintSigningKeyValidityPS, purpose)))
+       offsetof (struct TALER_MintSigningKeyValidityPS,
+                 purpose)))
   {
     fprintf (stderr,
              "Signing key `%s' has invalid purpose size\n",

@@ -250,17 +250,22 @@ static json_t *
 sign_key_issue_to_json (const struct TALER_MintSigningKeyValidityPS *ski)
 {
   return
-    json_pack ("{s:o, s:o, s:o, s:o}",
+    json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
                "stamp_start",
                TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (ski->start)),
                "stamp_expire",
                TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (ski->expire)),
+               "stamp_end",
+               TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (ski->end)),
+               "master_pub",
+               TALER_json_from_data (&ski->master_public_key,
+                                     sizeof (struct TALER_MasterPublicKeyP)),
                "master_sig",
                TALER_json_from_data (&ski->signature,
-                                     sizeof (struct GNUNET_CRYPTO_EddsaSignature)),
+                                     sizeof (struct TALER_MasterSignatureP)),
                "key",
                TALER_json_from_data (&ski->signkey_pub,
-                                     sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)));
+                                     sizeof (struct TALER_MintPublicKeyP)));
 }
 
 
