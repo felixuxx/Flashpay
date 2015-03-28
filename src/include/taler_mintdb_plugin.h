@@ -332,6 +332,17 @@ struct TALER_MINTDB_RefreshMelt
    */
   struct TALER_Amount amount_with_fee;
 
+  /**
+   * Melting fee charged by the mint.  This must match the Mint's
+   * denomination key's melting fee.  If the client puts in an invalid
+   * melting fee (too high or too low) that does not match the Mint's
+   * denomination key, the melting operation is invalid and will be
+   * rejected by the mint.  The @e amount_with_fee minus the @e
+   * melt_fee is the amount that will be credited to the melting
+   * session.
+   */
+  struct TALER_Amount melt_fee;
+
 };
 
 

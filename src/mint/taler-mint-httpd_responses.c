@@ -377,6 +377,8 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
         ms.session_hash = melt->session_hash;
         TALER_amount_hton (&ms.amount_with_fee,
                            &melt->amount_with_fee);
+        TALER_amount_hton (&ms.melt_fee,
+                           &melt->melt_fee);
         ms.coin_pub = melt->coin.coin_pub;
         transaction = TALER_json_from_ecdsa_sig (&ms.purpose,
                                                  &melt->coin_sig.ecdsa_signature);
@@ -414,16 +416,16 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
  */
 int
 TMH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection,
-                                             const struct TALER_MINTDB_TransactionList *tl)
+                                               const struct TALER_MINTDB_TransactionList *tl)
 {
   json_t *history;
 
   history = compile_transaction_history (tl);
   return TMH_RESPONSE_reply_json_pack (connection,
-                                     MHD_HTTP_FORBIDDEN,
-                                     "{s:s, s:o}",
-                                     "error", "insufficient funds",
-                                     "history", history);
+                                       MHD_HTTP_FORBIDDEN,
+                                       "{s:s, s:o}",
+                                       "error", "insufficient funds",
+                                       "history", history);
 }
 
 

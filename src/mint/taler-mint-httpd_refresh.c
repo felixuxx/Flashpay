@@ -242,12 +242,39 @@ verify_coin_public_info (struct MHD_Connection *connection,
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct TALER_Amount fee_refresh;
 
+  key_state = TMH_KS_acquire ();
+  dki = TMH_KS_denomination_key_lookup (key_state,
+                                        &r_public_info->denom_pub);
+  if (NULL == dki)
+  {
+    TMH_KS_release (key_state);
+    TALER_LOG_WARNING ("Unknown denomination key in /refresh/melt request\n");
+    return TMH_RESPONSE_reply_arg_invalid (connection,
+                                           "denom_pub");
+  }
+  /* FIXME: need to check if denomination key is still
+     valid for issuing! (#3634) */
+  TALER_amount_ntoh (&fee_refresh,
+                     &dki->issue.fee_refresh);
   body.purpose.size = htonl (sizeof (struct TALER_RefreshMeltCoinAffirmationPS));
   body.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
   body.session_hash = *session_hash;
   TALER_amount_hton (&body.amount_with_fee,
                      &r_melt_detail->melt_amount_with_fee);
+  TALER_amount_hton (&body.melt_fee,
+                     &fee_refresh);
   body.coin_pub = r_public_info->coin_pub;
+  if (TALER_amount_cmp (&fee_refresh,
+                        &r_melt_detail->melt_amount_with_fee) < 0)
+  {
+    TMH_KS_release (key_state);
+    return (MHD_YES ==
+            TMH_RESPONSE_reply_external_error (connection,
+                                               "melt amount smaller than melting fee"))
+      ? GNUNET_NO : GNUNET_SYSERR;
+  }
+
+  TMH_KS_release (key_state);
   if (GNUNET_OK !=
       GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
                                   &body.purpose,
@@ -256,37 +283,12 @@ verify_coin_public_info (struct MHD_Connection *connection,
   {
     if (MHD_YES !=
         TMH_RESPONSE_reply_json_pack (connection,
-                                    MHD_HTTP_UNAUTHORIZED,
-                                    "{s:s}",
-                                    "error", "signature invalid"))
+                                      MHD_HTTP_UNAUTHORIZED,
+                                      "{s:s}",
+                                      "error", "signature invalid"))
       return GNUNET_SYSERR;
     return GNUNET_NO;
   }
-  key_state = TMH_KS_acquire ();
-  dki = TMH_KS_denomination_key_lookup (key_state,
-                                  &r_public_info->denom_pub);
-  if (NULL == dki)
-  {
-    TMH_KS_release (key_state);
-    TALER_LOG_WARNING ("Unknown denomination key in /refresh/melt request\n");
-    return TMH_RESPONSE_reply_arg_invalid (connection,
-                                         "denom_pub");
-  }
-  /* FIXME: need to check if denomination key is still
-     valid for issuing! (#3634) */
-  TALER_amount_ntoh (&fee_refresh,
-                     &dki->issue.fee_refresh);
-  if (TALER_amount_cmp (&fee_refresh,
-                        &r_melt_detail->melt_amount_with_fee) < 0)
-  {
-    TMH_KS_release (key_state);
-    return (MHD_YES ==
-            TMH_RESPONSE_reply_external_error (connection,
-                                             "melt amount smaller than melting fee"))
-      ? GNUNET_NO : GNUNET_SYSERR;
-  }
-
-  TMH_KS_release (key_state);
   return GNUNET_OK;
 }
 
