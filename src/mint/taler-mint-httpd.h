@@ -26,8 +26,7 @@
 #include <microhttpd.h>
 
 /**
- * For now, we just do EUR.  Should become configurable
- * in the future!
+ * For now, we just do EUR.  Should become configurable in the future! (#3740)
  */
 #define TMH_MINT_CURRENCY "EUR"
 
