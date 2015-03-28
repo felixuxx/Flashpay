@@ -151,7 +151,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
 
 
 /**
- * Specification for how to parse a JSON field.
+ * @brief Specification for how to parse a JSON field.
  */
 struct TMH_PARSE_FieldSpecification
 {

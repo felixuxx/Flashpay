@@ -79,7 +79,7 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
 
 
 /**
- * Details about a melt operation of an individual coin.
+ * @brief Details about a melt operation of an individual coin.
  */
 struct TMH_DB_MeltDetails
 {

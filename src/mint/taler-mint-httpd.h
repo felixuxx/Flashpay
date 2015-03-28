@@ -66,7 +66,7 @@ extern struct TALER_MINTDB_Plugin *TMH_plugin;
 
 
 /**
- * Struct describing an URL and the handler for it.
+ * @brief Struct describing an URL and the handler for it.
  */
 struct TMH_RequestHandler
 {
