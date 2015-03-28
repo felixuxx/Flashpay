@@ -54,6 +54,11 @@ GNUNET_NETWORK_STRUCT_BEGIN
 struct CoinTypeNBOP
 {
   /**
+   * How long are the signatures legally valid?
+   */
+  struct GNUNET_TIME_RelativeNBO duration_legal;
+
+  /**
    * How long can the coin be spend?
    */
   struct GNUNET_TIME_RelativeNBO duration_spend;
@@ -96,6 +101,13 @@ GNUNET_NETWORK_STRUCT_END
  */
 struct CoinTypeParams
 {
+
+  /**
+   * How long are the signatures legally valid?  Should be
+   * significantly larger than @e duration_spend (i.e. years).
+   */
+  struct GNUNET_TIME_Relative duration_legal;
+
 
   /**
    * How long can the coin be spend?  Should be significantly
@@ -232,6 +244,7 @@ hash_coin_type (const struct CoinTypeParams *p,
           0,
           sizeof (struct CoinTypeNBOP));
   p_nbo.duration_spend = GNUNET_TIME_relative_hton (p->duration_spend);
+  p_nbo.duration_legal = GNUNET_TIME_relative_hton (p->duration_legal);
   p_nbo.duration_withdraw = GNUNET_TIME_relative_hton (p->duration_withdraw);
   TALER_amount_hton (&p_nbo.value,
                      &p->value);
@@ -608,6 +621,19 @@ get_cointype_params (const char *ct,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            ct,
+                                           "duration_legal",
+                                           &params->duration_legal))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "duration_legal");
+    return GNUNET_SYSERR;
+  }
+  ROUND_TO_SECS (params->duration_legal,
+                 rel_value_us);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (kcfg,
+                                           ct,
                                            "duration_overlap",
                                            &params->duration_overlap))
   {
@@ -719,7 +745,10 @@ create_denomkey_issue (const struct CoinTypeParams *params,
                                                            params->duration_withdraw));
   dki->issue.expire_spend =
     GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
-                                                           params->duration_spend));
+                                                         params->duration_spend));
+  dki->issue.expire_legal =
+    GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
+                                                         params->duration_legal));
   TALER_amount_hton (&dki->issue.value,
                      &params->value);
   TALER_amount_hton (&dki->issue.fee_withdraw,
