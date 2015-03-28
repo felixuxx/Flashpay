@@ -150,6 +150,19 @@ struct TALER_WithdrawRequestPS
   struct TALER_AmountNBO amount_with_fee;
 
   /**
+   * Withdrawl fee charged by the mint.  This must match the Mint's
+   * denomination key's withdrawl fee.  If the client puts in an
+   * invalid withdrawl fee (too high or too low) that does not match
+   * the Mint's denomination key, the withdraw operation is invalid
+   * and will be rejected by the mint.  The @e amount_with_fee minus
+   * the @e withdraw_fee is must match the value of the generated
+   * coin.  We include this in what is being signed so that we can
+   * verify a mint's accounting without needing to access the
+   * respective denomination key information each time.
+   */
+  struct TALER_AmountNBO withdraw_fee;
+
+  /**
    * Hash of the denomination public key for the coin that is withdrawn.
    */
   struct GNUNET_HashCode h_denomination_pub;
