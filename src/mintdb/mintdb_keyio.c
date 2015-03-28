@@ -34,7 +34,7 @@ struct SignkeysIterateContext
   /**
    * Function to call on each signing key.
    */
-  TALER_MINT_SignkeyIterator it;
+  TALER_MINTDB_SigningKeyIterator it;
 
   /**
    * Closure for @e it.
@@ -60,12 +60,12 @@ signkeys_iterate_dir_iter (void *cls,
 {
   struct SignkeysIterateContext *skc = cls;
   ssize_t nread;
-  struct TALER_MintSigningKeyValidityPSPriv issue;
+  struct TALER_MINTDB_PrivateSigningKeyInformationP issue;
 
   nread = GNUNET_DISK_fn_read (filename,
                                &issue,
-                               sizeof (struct TALER_MintSigningKeyValidityPSPriv));
-  if (nread != sizeof (struct TALER_MintSigningKeyValidityPSPriv))
+                               sizeof (struct TALER_MINTDB_PrivateSigningKeyInformationP));
+  if (nread != sizeof (struct TALER_MINTDB_PrivateSigningKeyInformationP))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Invalid signkey file `%s': wrong size\n",
@@ -82,7 +82,7 @@ signkeys_iterate_dir_iter (void *cls,
  * Call @a it for each signing key found in the @a mint_base_dir.
  *
  * @param mint_base_dir base directory for the mint,
- *                      the signing keys must be in the #DIR_SIGNKEYS
+ *                      the signing keys must be in the #TALER_MINTDB_DIR_SIGNING_KEYS
  *                      subdirectory
  * @param it function to call on each signing key
  * @param it_cls closure for @a it
@@ -91,16 +91,16 @@ signkeys_iterate_dir_iter (void *cls,
  *         files are simply skipped), -1 on error
  */
 int
-TALER_MINT_signkeys_iterate (const char *mint_base_dir,
-                             TALER_MINT_SignkeyIterator it,
-                             void *it_cls)
+TALER_MINTDB_signing_keys_iterate (const char *mint_base_dir,
+                                   TALER_MINTDB_SigningKeyIterator it,
+                                   void *it_cls)
 {
   char *signkey_dir;
   struct SignkeysIterateContext skc;
   int ret;
 
   GNUNET_asprintf (&signkey_dir,
-                   "%s" DIR_SEPARATOR_STR DIR_SIGNKEYS,
+                   "%s" DIR_SEPARATOR_STR TALER_MINTDB_DIR_SIGNING_KEYS,
                    mint_base_dir);
   skc.it = it;
   skc.it_cls = it_cls;
@@ -121,8 +121,8 @@ TALER_MINT_signkeys_iterate (const char *mint_base_dir,
  *         #GNUNET_SYSERR upon failure
  */
 int
-TALER_MINT_read_denom_key (const char *filename,
-                           struct TALER_DenominationKeyIssueInformation *dki)
+TALER_MINTDB_denomination_key_read (const char *filename,
+                                    struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
 {
   uint64_t size;
   size_t offset;
@@ -183,8 +183,8 @@ TALER_MINT_read_denom_key (const char *filename,
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
  */
 int
-TALER_MINT_write_denom_key (const char *filename,
-                            const struct TALER_DenominationKeyIssueInformation *dki)
+TALER_MINTDB_denomination_key_write (const char *filename,
+                                     const struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
 {
   char *priv_enc;
   size_t priv_enc_size;
@@ -242,7 +242,7 @@ struct DenomkeysIterateContext
   /**
    * Function to call on each denomination key.
    */
-  TALER_MINT_DenomkeyIterator it;
+  TALER_MINTDB_DenominationKeyIterator it;
 
   /**
    * Closure for @e it.
@@ -267,10 +267,10 @@ denomkeys_iterate_keydir_iter (void *cls,
                                const char *filename)
 {
   struct DenomkeysIterateContext *dic = cls;
-  struct TALER_DenominationKeyIssueInformation issue;
+  struct TALER_MINTDB_DenominationKeyIssueInformation issue;
 
   if (GNUNET_OK !=
-      TALER_MINT_read_denom_key (filename,
+      TALER_MINTDB_denomination_key_read (filename,
                                  &issue))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -285,7 +285,7 @@ denomkeys_iterate_keydir_iter (void *cls,
 
 
 /**
- * Function called on each subdirectory in the #DIR_DENOMKEYS.  Will
+ * Function called on each subdirectory in the #TALER_MINTDB_DIR_DENOMINATION_KEYS.  Will
  * call the #denomkeys_iterate_keydir_iter() on each file in the
  * subdirectory.
  *
@@ -313,7 +313,7 @@ denomkeys_iterate_topdir_iter (void *cls,
  * Call @a it for each denomination key found in the @a mint_base_dir.
  *
  * @param mint_base_dir base directory for the mint,
- *                      the signing keys must be in the #DIR_DENOMKEYS
+ *                      the signing keys must be in the #TALER_MINTDB_DIR_DENOMINATION_KEYS
  *                      subdirectory
  * @param it function to call on each denomination key found
  * @param it_cls closure for @a it
@@ -323,16 +323,16 @@ denomkeys_iterate_topdir_iter (void *cls,
  *         as maybe none of the files were well-formed)
  */
 int
-TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
-                              TALER_MINT_DenomkeyIterator it,
-                              void *it_cls)
+TALER_MINTDB_denomination_keys_iterate (const char *mint_base_dir,
+                                        TALER_MINTDB_DenominationKeyIterator it,
+                                        void *it_cls)
 {
   char *dir;
   struct DenomkeysIterateContext dic;
   int ret;
 
   GNUNET_asprintf (&dir,
-                   "%s" DIR_SEPARATOR_STR DIR_DENOMKEYS,
+                   "%s" DIR_SEPARATOR_STR TALER_MINTDB_DIR_DENOMINATION_KEYS,
                    mint_base_dir);
   dic.it = it;
   dic.it_cls = it_cls;
@@ -344,4 +344,4 @@ TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
 }
 
 
-/* end of key_io.c */
+/* end of mintdb_keyio.c */

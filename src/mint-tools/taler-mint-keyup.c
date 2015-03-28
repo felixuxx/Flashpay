@@ -207,7 +207,7 @@ get_signkey_file (struct GNUNET_TIME_Absolute start)
 
   GNUNET_snprintf (dir,
                    sizeof (dir),
-                   "%s" DIR_SEPARATOR_STR DIR_SIGNKEYS DIR_SEPARATOR_STR "%llu",
+                   "%s" DIR_SEPARATOR_STR TALER_MINTDB_DIR_SIGNING_KEYS DIR_SEPARATOR_STR "%llu",
                    mint_directory,
                    (unsigned long long) start.abs_value_us);
   return dir;
@@ -285,7 +285,7 @@ get_cointype_dir (const struct CoinTypeParams *p)
 
   GNUNET_snprintf (dir,
                    sizeof (dir),
-                   "%s" DIR_SEPARATOR_STR DIR_DENOMKEYS DIR_SEPARATOR_STR "%s-%s",
+                   "%s" DIR_SEPARATOR_STR TALER_MINTDB_DIR_DENOMINATION_KEYS DIR_SEPARATOR_STR "%s-%s",
                    mint_directory,
                    val_str,
                    hash_str);
@@ -434,7 +434,7 @@ get_anchor (const char *dir,
 static void
 create_signkey_issue_priv (struct GNUNET_TIME_Absolute start,
                            struct GNUNET_TIME_Relative duration,
-                           struct TALER_MintSigningKeyValidityPSPriv *pi)
+                           struct TALER_MINTDB_PrivateSigningKeyInformationP *pi)
 {
   struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
   struct TALER_MintSigningKeyValidityPS *issue = &pi->issue;
@@ -487,7 +487,7 @@ mint_keys_update_signkeys ()
   ROUND_TO_SECS (signkey_duration,
                  rel_value_us);
   GNUNET_asprintf (&signkey_dir,
-                   "%s" DIR_SEPARATOR_STR DIR_SIGNKEYS,
+                   "%s" DIR_SEPARATOR_STR TALER_MINTDB_DIR_SIGNING_KEYS,
                    mint_directory);
   /* make sure the directory exists */
   if (GNUNET_OK !=
@@ -506,7 +506,7 @@ mint_keys_update_signkeys ()
   while (anchor.abs_value_us < lookahead_sign_stamp.abs_value_us)
   {
     const char *skf;
-    struct TALER_MintSigningKeyValidityPSPriv signkey_issue;
+    struct TALER_MINTDB_PrivateSigningKeyInformationP signkey_issue;
     ssize_t nwrite;
 
     skf = get_signkey_file (anchor);
@@ -676,7 +676,7 @@ get_cointype_params (const char *ct,
  */
 static void
 create_denomkey_issue (const struct CoinTypeParams *params,
-                       struct TALER_DenominationKeyIssueInformation *dki)
+                       struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
 {
   dki->denom_priv.rsa_private_key
     = GNUNET_CRYPTO_rsa_private_key_create (params->rsa_keysize);
@@ -702,8 +702,8 @@ create_denomkey_issue (const struct CoinTypeParams *params,
   TALER_amount_hton (&dki->issue.fee_refresh,
                      &params->fee_refresh);
   dki->issue.purpose.purpose = htonl (TALER_SIGNATURE_MINT_DENOMINATION_KEY_VALIDITY);
-  dki->issue.purpose.size = htonl (sizeof (struct TALER_DenominationKeyIssueInformation) -
-                                   offsetof (struct TALER_DenominationKeyIssueInformation,
+  dki->issue.purpose.size = htonl (sizeof (struct TALER_MINTDB_DenominationKeyIssueInformation) -
+                                   offsetof (struct TALER_MINTDB_DenominationKeyIssueInformation,
                                              issue.purpose));
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
@@ -726,7 +726,7 @@ mint_keys_update_cointype (void *cls,
   int *ret = cls;
   struct CoinTypeParams p;
   const char *dkf;
-  struct TALER_DenominationKeyIssueInformation denomkey_issue;
+  struct TALER_MINTDB_DenominationKeyIssueInformation denomkey_issue;
 
   if (0 != strncasecmp (coin_alias,
                         "coin_",
@@ -759,7 +759,7 @@ mint_keys_update_cointype (void *cls,
     create_denomkey_issue (&p,
                            &denomkey_issue);
     if (GNUNET_OK !=
-        TALER_MINT_write_denom_key (dkf,
+        TALER_MINTDB_denomination_key_write (dkf,
                                     &denomkey_issue))
     {
       fprintf (stderr,

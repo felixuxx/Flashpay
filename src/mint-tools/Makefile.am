@@ -14,7 +14,7 @@ taler_mint_keyup_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/pq/libtalerpq.la \
-  $(top_builddir)/src/mint/libtalermint_common.la \
+  $(top_builddir)/src/mintdb/libtalermintdb.la \
   -lgnunetutil
 taler_mint_keyup_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 
@@ -25,8 +25,7 @@ taler_mint_keycheck_SOURCES = \
 taler_mint_keycheck_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/pq/libtalerpq.la \
-  $(top_builddir)/src/mint/libtalermint_common.la \
+  $(top_builddir)/src/mintdb/libtalermintdb.la \
   -lgnunetutil
 taler_mint_keycheck_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 
@@ -36,7 +35,7 @@ taler_mint_reservemod_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/pq/libtalerpq.la \
-  $(top_builddir)/src/mint/libtalermint_common.la \
+  $(top_builddir)/src/mintdb/libtalermintdb.la \
   -lpq \
   -lgnunetutil
 taler_mint_reservemod_LDFLAGS = \
@@ -52,7 +51,7 @@ taler_mint_dbinit_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/pq/libtalerpq.la \
-  $(top_builddir)/src/mint/libtalermint_common.la \
+  $(top_builddir)/src/mintdb/libtalermintdb.la \
   -lpq \
   -lgnunetutil
 taler_mint_dbinit_LDFLAGS = \

@@ -76,7 +76,7 @@ struct TMH_KS_StateHandle
   /**
    * Mint signing key that should be used currently.
    */
-  struct TALER_MintSigningKeyValidityPSPriv current_sign_key_issue;
+  struct TALER_MINTDB_PrivateSigningKeyInformationP current_sign_key_issue;
 
   /**
    * Reference count.  The struct is released when the RC hits zero.
@@ -189,13 +189,13 @@ TALER_MINT_conf_duration_provide ()
 static int
 reload_keys_denom_iter (void *cls,
                         const char *alias,
-                        const struct TALER_DenominationKeyIssueInformation *dki)
+                        const struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
 {
   struct TMH_KS_StateHandle *ctx = cls;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute horizon;
   struct GNUNET_HashCode denom_key_hash;
-  struct TALER_DenominationKeyIssueInformation *d2;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *d2;
   int res;
 
   horizon = GNUNET_TIME_relative_to_absolute (TALER_MINT_conf_duration_provide ());
@@ -220,7 +220,7 @@ reload_keys_denom_iter (void *cls,
   GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
                                      &denom_key_hash);
   d2 = GNUNET_memdup (dki,
-                      sizeof (struct TALER_DenominationKeyIssueInformation));
+                      sizeof (struct TALER_MINTDB_DenominationKeyIssueInformation));
   res = GNUNET_CONTAINER_multihashmap_put (ctx->denomkey_map,
                                            &denom_key_hash,
                                            d2,
@@ -277,7 +277,7 @@ sign_key_issue_to_json (const struct TALER_MintSigningKeyValidityPS *ski)
 static int
 reload_keys_sign_iter (void *cls,
                        const char *filename,
-                       const struct TALER_MintSigningKeyValidityPSPriv *ski)
+                       const struct TALER_MINTDB_PrivateSigningKeyInformationP *ski)
 {
   struct TMH_KS_StateHandle *ctx = cls;
   struct GNUNET_TIME_Absolute now;
@@ -332,7 +332,7 @@ free_denom_key (void *cls,
                 const struct GNUNET_HashCode *key,
                 void *value)
 {
-  struct TALER_DenominationKeyIssueInformation *dki = value;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dki = value;
 
   GNUNET_free (dki);
   return GNUNET_OK;
@@ -398,10 +398,10 @@ TMH_KS_acquire (void)
     key_state->denomkey_map = GNUNET_CONTAINER_multihashmap_create (32,
                                                                     GNUNET_NO);
     key_state->reload_time = GNUNET_TIME_absolute_get ();
-    TALER_MINT_denomkeys_iterate (TMH_mint_directory,
+    TALER_MINTDB_denomination_keys_iterate (TMH_mint_directory,
                                   &reload_keys_denom_iter,
                                   key_state);
-    TALER_MINT_signkeys_iterate (TMH_mint_directory,
+    TALER_MINTDB_signing_keys_iterate (TMH_mint_directory,
                                  &reload_keys_sign_iter,
                                  key_state);
     key_state->next_reload = GNUNET_TIME_absolute_ntoh (key_state->current_sign_key_issue.issue.expire);
@@ -452,7 +452,7 @@ TMH_KS_acquire (void)
  * @return the denomination key issue,
  *         or NULL if denom_pub could not be found
  */
-struct TALER_DenominationKeyIssueInformation *
+struct TALER_MINTDB_DenominationKeyIssueInformation *
 TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
                           const struct TALER_DenominationPublicKey *denom_pub)
 {

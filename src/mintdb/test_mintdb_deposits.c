@@ -21,9 +21,11 @@
 #include "platform.h"
 #include <libpq-fe.h>
 #include <gnunet/gnunet_util_lib.h>
-#include "plugin.h"
 #include "taler_pq_lib.h"
-#include "taler-mint-httpd.h"
+#include "taler_mintdb_lib.h"
+#include "taler_mintdb_plugin.h"
+
+#define MINT_CURRENCY "EUR"
 
 #define DB_URI "postgres:///taler"
 
@@ -51,6 +53,10 @@ static int persistent;
  */
 static int result;
 
+/**
+ * The plugin.
+ */
+static struct TALER_MINTDB_Plugin *plugin;
 
 /**
  * Main function that will be run by the scheduler.
@@ -77,7 +83,7 @@ run (void *cls,
   struct TALER_MINTDB_Session *session;
 
   deposit = NULL;
-  EXITIF (GNUNET_OK != TALER_MINT_plugin_load (cfg));
+  EXITIF (NULL == (plugin = TALER_MINTDB_plugin_load (cfg)));
   EXITIF (GNUNET_OK !=
           plugin->create_tables (plugin->cls,
                                  ! persistent));
@@ -98,8 +104,8 @@ run (void *cls,
       htonl (GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, UINT32_MAX));
   deposit->amount_with_fee.fraction =
       htonl (GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, UINT32_MAX));
-  GNUNET_assert (strlen (TMH_MINT_CURRENCY) < sizeof (deposit->amount_with_fee.currency));
-  strcpy (deposit->amount_with_fee.currency, TMH_MINT_CURRENCY);
+  GNUNET_assert (strlen (MINT_CURRENCY) < sizeof (deposit->amount_with_fee.currency));
+  strcpy (deposit->amount_with_fee.currency, MINT_CURRENCY);
   /* Copy wireformat */
   deposit->wire = json_loads (wire, 0, NULL);
   EXITIF (GNUNET_OK !=
@@ -114,7 +120,11 @@ run (void *cls,
 
  EXITIF_exit:
   GNUNET_free_non_null (deposit);
-  return;
+  if (NULL != plugin)
+  {
+    TALER_MINTDB_plugin_unload (plugin);
+    plugin = NULL;
+  }
 }
 
 

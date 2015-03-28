@@ -264,7 +264,7 @@ mint_serve_process_config (const char *mint_directory)
   GNUNET_free (TMH_master_public_key_str);
 
   if (NULL ==
-      (TMH_plugin = TALER_MINT_plugin_load (cfg)))
+      (TMH_plugin = TALER_MINTDB_plugin_load (cfg)))
   {
     fprintf (stderr,
              "failed to initialize DB subsystem\n");
@@ -358,6 +358,6 @@ main (int argc, char *const *argv)
 
   ret = TMH_KS_loop ();
   MHD_stop_daemon (mydaemon);
-  TALER_MINT_plugin_unload (TMH_plugin);
+  TALER_MINTDB_plugin_unload (TMH_plugin);
   return (GNUNET_OK == ret) ? 0 : 1;
 }

@@ -50,7 +50,7 @@ static struct GNUNET_CONFIGURATION_Handle *kcfg;
 static int
 signkeys_iter (void *cls,
                const char *filename,
-               const struct TALER_MintSigningKeyValidityPSPriv *ski)
+               const struct TALER_MINTDB_PrivateSigningKeyInformationP *ski)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Iterating over key `%s' for start time %s\n",
@@ -93,7 +93,7 @@ signkeys_iter (void *cls,
 static int
 mint_signkeys_check ()
 {
-  if (0 > TALER_MINT_signkeys_iterate (mint_directory,
+  if (0 > TALER_MINTDB_signing_keys_iterate (mint_directory,
                                        &signkeys_iter,
                                        NULL))
     return GNUNET_NO;
@@ -114,7 +114,7 @@ mint_signkeys_check ()
 static int
 denomkeys_iter (void *cls,
                 const char *alias,
-                const struct TALER_DenominationKeyIssueInformation *dki)
+                const struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
 {
   struct GNUNET_HashCode hc;
 
@@ -165,7 +165,7 @@ denomkeys_iter (void *cls,
 static int
 mint_denomkeys_check ()
 {
-  if (0 > TALER_MINT_denomkeys_iterate (mint_directory,
+  if (0 > TALER_MINTDB_denomination_keys_iterate (mint_directory,
                                         &denomkeys_iter,
                                         NULL))
     return GNUNET_NO;

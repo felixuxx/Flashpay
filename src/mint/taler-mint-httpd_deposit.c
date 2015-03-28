@@ -57,7 +57,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
 {
   struct TMH_KS_StateHandle *key_state;
   struct TALER_DepositRequestPS dr;
-  struct TALER_DenominationKeyIssueInformation *dki;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct TALER_Amount fee_deposit;
 
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_DEPOSIT);

@@ -25,19 +25,13 @@
 
 
 /**
- * Libtool search path before we started.
- */
-static char *old_dlsearchpath;
-
-
-/**
  * Initialize the plugin.
  *
  * @param cfg configuration to use
  * @return #GNUNET_OK on success
  */
 struct TALER_MINTDB_Plugin *
-TALER_MINT_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
+TALER_MINTDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   char *plugin_name;
   char *lib_name;
@@ -76,7 +70,7 @@ TALER_MINT_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
  * @param plugin the plugin to unload
  */
 void
-TALER_MINT_plugin_unload (struct TALER_MINTDB_Plugin *plugin)
+TALER_MINTDB_plugin_unload (struct TALER_MINTDB_Plugin *plugin)
 {
   char *lib_name;
 
@@ -87,6 +81,12 @@ TALER_MINT_plugin_unload (struct TALER_MINTDB_Plugin *plugin)
                                                plugin));
   GNUNET_free (lib_name);
 }
+
+
+/**
+ * Libtool search path before we started.
+ */
+static char *old_dlsearchpath;
 
 
 /**
@@ -146,4 +146,4 @@ plugin_fini ()
 }
 
 
-/* end of plugin.c */
+/* end of mintdb_plugin.c */

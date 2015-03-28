@@ -106,7 +106,7 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
   struct TALER_Amount spent;
   struct TALER_Amount value;
   struct TMH_KS_StateHandle *mks;
-  struct TALER_DenominationKeyIssueInformation *dki;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   int ret;
 
   if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
@@ -266,8 +266,8 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
   const struct ReserveHistory *pos;
   struct TMH_KS_StateHandle *key_state;
   struct CollectableBlindcoin collectable;
-  struct TALER_DenominationKeyIssueInformation *dki;
-  struct TALER_DenominationKeyIssueInformation *tdki;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *tdki;
   struct GNUNET_CRYPTO_rsa_Signature *sig;
   struct TALER_Amount amount_required;
   struct TALER_Amount deposit_total;
@@ -987,7 +987,7 @@ refresh_mint_coin (struct MHD_Connection *connection,
                    const struct RefreshCommitCoin *commit_coin,
                    unsigned int coin_off)
 {
-  struct TALER_DenominationKeyIssueInformation *dki;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct TALER_DenominationSignature ev_sig;
 
   dki = TMH_KS_denomination_key_lookup (key_state,

@@ -84,7 +84,7 @@ main (int argc,
     return 1;
   }
   if (NULL ==
-      (plugin = TALER_MINT_plugin_load (cfg)))
+      (plugin = TALER_MINTDB_plugin_load (cfg)))
   {
     fprintf (stderr,
              "Failed to initialize database plugin.\n");
@@ -96,10 +96,10 @@ main (int argc,
   {
     fprintf (stderr,
              "Failed to initialize database.\n");
-    TALER_MINT_plugin_unload (plugin);
+    TALER_MINTDB_plugin_unload (plugin);
     return 1;
   }
-  TALER_MINT_plugin_unload (plugin);
+  TALER_MINTDB_plugin_unload (plugin);
   return 0;
 }
 

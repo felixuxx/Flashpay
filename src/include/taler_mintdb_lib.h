@@ -30,13 +30,13 @@
  * Subdirectroy under the mint's base directory which contains
  * the mint's signing keys.
  */
-#define DIR_SIGNKEYS "signkeys"
+#define TALER_MINTDB_DIR_SIGNING_KEYS "signkeys"
 
 /**
  * Subdirectory under the mint's base directory which contains
  * the mint's denomination keys.
  */
-#define DIR_DENOMKEYS "denomkeys"
+#define TALER_MINTDB_DIR_DENOMINATION_KEYS "denomkeys"
 
 
 GNUNET_NETWORK_STRUCT_BEGIN
@@ -47,7 +47,7 @@ GNUNET_NETWORK_STRUCT_BEGIN
  * Includes the private key followed by the public information about
  * the signing key.
  */
-struct TALER_MintSigningKeyValidityPSPriv
+struct TALER_MINTDB_PrivateSigningKeyInformationP
 {
   /**
    * Private key part of the mint's signing key.
@@ -68,7 +68,7 @@ GNUNET_NETWORK_STRUCT_END
  * All information about a denomination key (which is used to
  * sign coins into existence).
  */
-struct TALER_DenominationKeyIssueInformation
+struct TALER_MINTDB_DenominationKeyIssueInformation
 {
   /**
    * The private key of the denomination.  Will be NULL if the private
@@ -101,9 +101,9 @@ struct TALER_DenominationKeyIssueInformation
  *  #GNUNET_SYSERR to abort iteration with error!
  */
 typedef int
-(*TALER_MINT_SignkeyIterator)(void *cls,
-                              const char *filename,
-                              const struct TALER_MintSigningKeyValidityPSPriv *ski);
+(*TALER_MINTDB_SigningKeyIterator)(void *cls,
+                                   const char *filename,
+                                   const struct TALER_MINTDB_PrivateSigningKeyInformationP *ski);
 
 
 /**
@@ -117,9 +117,9 @@ typedef int
  *  #GNUNET_SYSERR to abort iteration with error!
  */
 typedef int
-(*TALER_MINT_DenomkeyIterator)(void *cls,
-                               const char *alias,
-                               const struct TALER_DenominationKeyIssueInformation *dki);
+(*TALER_MINTDB_DenominationKeyIterator)(void *cls,
+                                        const char *alias,
+                                        const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
 
 
 
@@ -127,7 +127,7 @@ typedef int
  * Call @a it for each signing key found in the @a mint_base_dir.
  *
  * @param mint_base_dir base directory for the mint,
- *                      the signing keys must be in the #DIR_SIGNKEYS
+ *                      the signing keys must be in the #TALER_MINTDB_DIR_SIGNING_KEYS
  *                      subdirectory
  * @param it function to call on each signing key
  * @param it_cls closure for @a it
@@ -136,16 +136,16 @@ typedef int
  *         files are simply skipped), -1 on error
  */
 int
-TALER_MINT_signkeys_iterate (const char *mint_base_dir,
-                             TALER_MINT_SignkeyIterator it,
-                             void *it_cls);
+TALER_MINTDB_signing_keys_iterate (const char *mint_base_dir,
+                                          TALER_MINTDB_SigningKeyIterator it,
+                                          void *it_cls);
 
 
 /**
  * Call @a it for each denomination key found in the @a mint_base_dir.
  *
  * @param mint_base_dir base directory for the mint,
- *                      the signing keys must be in the #DIR_DENOMKEYS
+ *                      the signing keys must be in the #TALER_MINTDB_DIR_DENOMINATION_KEYS
  *                      subdirectory
  * @param it function to call on each denomination key found
  * @param it_cls closure for @a it
@@ -155,9 +155,9 @@ TALER_MINT_signkeys_iterate (const char *mint_base_dir,
  *         as maybe none of the files were well-formed)
  */
 int
-TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
-                              TALER_MINT_DenomkeyIterator it,
-                              void *it_cls);
+TALER_MINTDB_denomination_keys_iterate (const char *mint_base_dir,
+                                               TALER_MINTDB_DenominationKeyIterator it,
+                                               void *it_cls);
 
 
 /**
@@ -168,8 +168,8 @@ TALER_MINT_denomkeys_iterate (const char *mint_base_dir,
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
  */
 int
-TALER_MINT_write_denom_key (const char *filename,
-                            const struct TALER_DenominationKeyIssueInformation *dki);
+TALER_MINTDB_denomination_key_write (const char *filename,
+                                            const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
 
 
 /**
@@ -180,8 +180,8 @@ TALER_MINT_write_denom_key (const char *filename,
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 int
-TALER_MINT_read_denom_key (const char *filename,
-                           struct TALER_DenominationKeyIssueInformation *dki);
+TALER_MINTDB_denomination_key_read (const char *filename,
+                                           struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
 
 
 /**
@@ -191,7 +191,7 @@ TALER_MINT_read_denom_key (const char *filename,
  * @return NULL on failure
  */
 struct TALER_MINTDB_Plugin *
-TALER_MINT_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg);
+TALER_MINTDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg);
 
 
 /**
@@ -200,7 +200,7 @@ TALER_MINT_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg);
  * @param plugin plugin to unload
  */
 void
-TALER_MINT_plugin_unload (struct TALER_MINTDB_Plugin *plugin);
+TALER_MINTDB_plugin_unload (struct TALER_MINTDB_Plugin *plugin);
 
 
 

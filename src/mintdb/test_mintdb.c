@@ -19,7 +19,8 @@
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
 #include "platform.h"
-#include "plugin.h"
+#include "taler_mintdb_lib.h"
+#include "taler_mintdb_plugin.h"
 
 static int result;
 
@@ -39,6 +40,8 @@ static int result;
 
 
 #define CURRENCY "EUR"
+
+static struct TALER_MINTDB_Plugin *plugin;
 
 /**
  * Checks if the given reserve has the given amount of balance and expiry
@@ -154,8 +157,8 @@ run (void *cls,
   session = NULL;
   ZR_BLK (&cbc);
   ZR_BLK (&cbc2);
-  if (GNUNET_OK !=
-      TALER_MINT_plugin_load (cfg))
+  if (NULL ==
+      (plugin = TALER_MINTDB_plugin_load (cfg)))
   {
     result = 1;
     return;
@@ -344,7 +347,8 @@ run (void *cls,
   if (NULL != cbc2.sig.rsa_signature)
     GNUNET_CRYPTO_rsa_signature_free (cbc2.sig.rsa_signature);
   dkp = NULL;
-  TALER_MINT_plugin_unload ();
+  TALER_MINTDB_plugin_unload (plugin);
+  plugin = NULL;
 }
 
 

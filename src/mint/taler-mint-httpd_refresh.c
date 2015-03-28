@@ -240,7 +240,7 @@ verify_coin_public_info (struct MHD_Connection *connection,
 {
   struct TALER_RefreshMeltCoinAffirmationPS body;
   struct TMH_KS_StateHandle *key_state;
-  struct TALER_DenominationKeyIssueInformation *dki;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct TALER_Amount fee_refresh;
 
   body.purpose.size = htonl (sizeof (struct TALER_RefreshMeltCoinAffirmationPS));

@@ -21,7 +21,7 @@
 #include "platform.h"
 #include "gnunet/gnunet_util_lib.h"
 #include "taler_signatures.h"
-#include "key_io.h"
+#include "taler_mintdb_lib.h"
 
 #define RSA_KEY_SIZE 1024
 
@@ -36,10 +36,10 @@ int
 main (int argc,
       const char *const argv[])
 {
-  struct TALER_DenominationKeyIssueInformation dki;
+  struct TALER_MINTDB_DenominationKeyIssueInformation dki;
   char *enc;
   size_t enc_size;
-  struct TALER_DenominationKeyIssueInformation dki_read;
+  struct TALER_MINTDB_DenominationKeyIssueInformation dki_read;
   char *enc_read;
   size_t enc_read_size;
   char *tmpfile;
@@ -60,8 +60,8 @@ main (int argc,
   enc_size = GNUNET_CRYPTO_rsa_private_key_encode (dki.denom_priv.rsa_private_key,
                                                    &enc);
   EXITIF (NULL == (tmpfile = GNUNET_DISK_mktemp ("test_mint_common")));
-  EXITIF (GNUNET_OK != TALER_MINT_write_denom_key (tmpfile, &dki));
-  EXITIF (GNUNET_OK != TALER_MINT_read_denom_key (tmpfile, &dki_read));
+  EXITIF (GNUNET_OK != TALER_MINTDB_denomination_key_write (tmpfile, &dki));
+  EXITIF (GNUNET_OK != TALER_MINTDB_denomination_key_read (tmpfile, &dki_read));
   enc_read_size = GNUNET_CRYPTO_rsa_private_key_encode (dki_read.denom_priv.rsa_private_key,
                                                         &enc_read);
   EXITIF (enc_size != enc_read_size);

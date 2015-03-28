@@ -437,7 +437,7 @@ compile_reserve_history (const struct ReserveHistory *rh,
   json_t *transaction;
   int ret;
   const struct ReserveHistory *pos;
-  struct TALER_DenominationKeyIssueInformation *dki;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct TMH_KS_StateHandle *key_state;
   struct TALER_WithdrawRequestPS wr;
 

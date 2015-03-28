@@ -65,7 +65,7 @@ TMH_KS_release (struct TMH_KS_StateHandle *key_state);
  * @return the denomination key issue,
  *         or NULL if denom_pub could not be found
  */
-struct TALER_DenominationKeyIssueInformation *
+struct TALER_MINTDB_DenominationKeyIssueInformation *
 TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
                                 const struct TALER_DenominationPublicKey *denom_pub);
 
