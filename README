@@ -48,8 +48,14 @@ src/util/
 src/pq/
   -- Postgres-specific utility functions
 
-src/mint/
-  -- taler mint server and helper binaries
+src/mintdb/
+  -- Mint database backend (with DB-specific plugins)
 
-src/lib/
-  -- libtalermint: C API to issue HTTP requests to mint, including testcases
+src/mint/
+  -- taler mint server
+
+src/mint-tools/
+  -- taler mint helper programs
+
+src/mint-lib/
+  -- libtalermint: C API to issue HTTP requests to mint
