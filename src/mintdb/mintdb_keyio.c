@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file mint/key_io.c
+ * @file mintdb/mintdb_keyio.c
  * @brief I/O operations for the Mint's private keys
  * @author Florian Dold
  * @author Benedikt Mueller
@@ -22,7 +22,7 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
-#include "key_io.h"
+#include "taler_mintdb_lib.h"
 
 
 /**

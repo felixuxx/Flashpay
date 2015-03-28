@@ -24,7 +24,7 @@
 #include <platform.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
-#include "key_io.h"
+#include "taler_mintdb_lib.h"
 
 /**
  * When generating filenames from a cryptographic hash, we do not use

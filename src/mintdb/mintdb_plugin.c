@@ -14,19 +14,15 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file mint/plugin.c
+ * @file mintdb/mintdb_plugin.c
  * @brief Logic to load database plugin
  * @author Christian Grothoff
  */
 #include "platform.h"
-#include "plugin.h"
+#include "taler_mintdb_lib.h"
+#include "taler_mintdb_plugin.h"
 #include <ltdl.h>
 
-
-/**
- * Global variable with the plugin (once loaded).
- */
-struct TALER_MINTDB_Plugin *plugin;
 
 /**
  * Libtool search path before we started.
@@ -40,15 +36,14 @@ static char *old_dlsearchpath;
  * @param cfg configuration to use
  * @return #GNUNET_OK on success
  */
-int
+struct TALER_MINTDB_Plugin *
 TALER_MINT_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   char *plugin_name;
   char *lib_name;
   struct GNUNET_CONFIGURATION_Handle *cfg_dup;
+  struct TALER_MINTDB_Plugin *plugin;
 
-  if (NULL != plugin)
-    return GNUNET_OK;
   if (GNUNET_SYSERR ==
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "mint",
@@ -58,7 +53,7 @@ TALER_MINT_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "mint",
                                "db");
-    return GNUNET_SYSERR;
+    return NULL;
   }
   (void) GNUNET_asprintf (&lib_name,
                           "libtaler_plugin_mintdb_%s",
@@ -66,24 +61,31 @@ TALER_MINT_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
   GNUNET_free (plugin_name);
   cfg_dup = GNUNET_CONFIGURATION_dup (cfg);
   plugin = GNUNET_PLUGIN_load (lib_name, cfg_dup);
+  if (NULL != plugin)
+    plugin->library_name = lib_name;
+  else
+    GNUNET_free (lib_name);
   GNUNET_CONFIGURATION_destroy (cfg_dup);
-  GNUNET_free (lib_name);
-  if (NULL == plugin)
-    return GNUNET_SYSERR;
-  return GNUNET_OK;
+  return plugin;
 }
 
 
 /**
  * Shutdown the plugin.
+ *
+ * @param plugin the plugin to unload
  */
 void
-TALER_MINT_plugin_unload ()
+TALER_MINT_plugin_unload (struct TALER_MINTDB_Plugin *plugin)
 {
+  char *lib_name;
+
   if (NULL == plugin)
     return;
-  GNUNET_assert (NULL == GNUNET_PLUGIN_unload (plugin->library_name,
+  lib_name = plugin->library_name;
+  GNUNET_assert (NULL == GNUNET_PLUGIN_unload (lib_name,
                                                plugin));
+  GNUNET_free (lib_name);
 }
 
 

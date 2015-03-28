@@ -59,6 +59,11 @@ extern struct GNUNET_CRYPTO_EddsaPublicKey TMH_master_public_key;
  */
 extern struct GNUNET_CRYPTO_EddsaPrivateKey TMH_mint_private_signing_key;
 
+/**
+ * Our DB plugin.
+ */
+extern struct TALER_MINTDB_Plugin *TMH_plugin;
+
 
 /**
  * Struct describing an URL and the handler for it.

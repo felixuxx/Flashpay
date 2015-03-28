@@ -14,14 +14,14 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file mint/key_io.h
+ * @file include/taler_mintdb_lib.h
  * @brief IO operations for the mint's private keys
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
  */
-#ifndef KEY_IO_H
-#define KEY_IO_H
+#ifndef TALER_MINTDB_LIB_H
+#define TALER_MINTDB_LIB_H
 
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_signatures.h"
@@ -182,6 +182,26 @@ TALER_MINT_write_denom_key (const char *filename,
 int
 TALER_MINT_read_denom_key (const char *filename,
                            struct TALER_DenominationKeyIssueInformation *dki);
+
+
+/**
+ * Initialize the plugin.
+ *
+ * @param cfg configuration to use
+ * @return NULL on failure
+ */
+struct TALER_MINTDB_Plugin *
+TALER_MINT_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg);
+
+
+/**
+ * Shutdown the plugin.
+ *
+ * @param plugin plugin to unload
+ */
+void
+TALER_MINT_plugin_unload (struct TALER_MINTDB_Plugin *plugin);
+
 
 
 #endif

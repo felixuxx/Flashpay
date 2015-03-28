@@ -23,7 +23,7 @@
 #include <libpq-fe.h>
 #include "taler_util.h"
 #include "taler_mintdb_plugin.h"
-#include "plugin.h"
+#include "taler_mintdb_lib.h"
 
 /**
  * Mint directory with the keys.
@@ -34,6 +34,11 @@ static char *mint_base_dir;
  * Our configuration.
  */
 static struct GNUNET_CONFIGURATION_Handle *cfg;
+
+/**
+ * Our DB plugin.
+ */
+static struct TALER_MINTDB_Plugin *plugin;
 
 
 /**
@@ -78,8 +83,8 @@ main (int argc,
              "Failed to load mint configuration.\n");
     return 1;
   }
-  if (GNUNET_OK !=
-      TALER_MINT_plugin_load (cfg))
+  if (NULL ==
+      (plugin = TALER_MINT_plugin_load (cfg)))
   {
     fprintf (stderr,
              "Failed to initialize database plugin.\n");
@@ -91,10 +96,10 @@ main (int argc,
   {
     fprintf (stderr,
              "Failed to initialize database.\n");
-    TALER_MINT_plugin_unload ();
+    TALER_MINT_plugin_unload (plugin);
     return 1;
   }
-  TALER_MINT_plugin_unload ();
+  TALER_MINT_plugin_unload (plugin);
   return 0;
 }
 

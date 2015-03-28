@@ -174,7 +174,9 @@ AC_CONFIG_FILES([Makefile
                  src/include/Makefile
                  src/util/Makefile
                  src/pq/Makefile
+                 src/mintdb/Makefile
                  src/mint/Makefile
-                 src/lib/Makefile
+                 src/mint-tools/Makefile
+                 src/mint-lib/Makefile
                  ])
 AC_OUTPUT

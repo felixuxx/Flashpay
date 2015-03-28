@@ -25,7 +25,6 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
-#include <libpq-fe.h>
 #include <pthread.h>
 #include "taler_signatures.h"
 #include "taler_util.h"
@@ -36,7 +35,6 @@
 #include "taler-mint-httpd_refresh.h"
 #include "taler-mint-httpd_keystate.h"
 #include "taler_mintdb_plugin.h"
-#include "plugin.h"
 
 
 /**
@@ -59,6 +57,11 @@ struct GNUNET_CRYPTO_EddsaPublicKey TMH_master_public_key;
  * In which format does this MINT expect wiring instructions?
  */
 char *TMH_expected_wire_format = "sepa";
+
+/**
+ * Our DB plugin.
+ */
+struct TALER_MINTDB_Plugin *TMH_plugin;
 
 /**
  * The HTTP Daemon.
@@ -260,8 +263,8 @@ mint_serve_process_config (const char *mint_directory)
   }
   GNUNET_free (TMH_master_public_key_str);
 
-  if (GNUNET_OK !=
-      TALER_MINT_plugin_load (cfg))
+  if (NULL ==
+      (TMH_plugin = TALER_MINT_plugin_load (cfg)))
   {
     fprintf (stderr,
              "failed to initialize DB subsystem\n");
@@ -355,5 +358,6 @@ main (int argc, char *const *argv)
 
   ret = TMH_KS_loop ();
   MHD_stop_daemon (mydaemon);
+  TALER_MINT_plugin_unload (TMH_plugin);
   return (GNUNET_OK == ret) ? 0 : 1;
 }

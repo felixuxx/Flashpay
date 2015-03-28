@@ -479,9 +479,10 @@ struct TALER_MINTDB_Plugin
   void *cls;
 
   /**
-   * Name of the library which generated this plugin
+   * Name of the library which generated this plugin.  Set by the
+   * plugin loader.
    */
-  const char *library_name;
+  char *library_name;
 
   /**
    * Get the thread-local database-handle.

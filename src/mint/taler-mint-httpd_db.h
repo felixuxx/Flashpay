@@ -21,7 +21,6 @@
 #ifndef TALER_MINT_HTTPD_DB_H
 #define TALER_MINT_HTTPD_DB_H
 
-#include <libpq-fe.h>
 #include <microhttpd.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"

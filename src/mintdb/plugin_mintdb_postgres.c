@@ -2299,7 +2299,6 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   }
   plugin = GNUNET_new (struct TALER_MINTDB_Plugin);
   plugin->cls = pg;
-  plugin->library_name = "libtaler_plugin_mintdb_postgres";
   plugin->get_session = &postgres_get_session;
   plugin->drop_temporary = &postgres_drop_temporary;
   plugin->create_tables = &postgres_create_tables;

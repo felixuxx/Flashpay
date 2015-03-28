@@ -24,7 +24,7 @@
  */
 #include <platform.h>
 #include <gnunet/gnunet_util_lib.h>
-#include "key_io.h"
+#include "taler_mintdb_lib.h"
 
 /**
  * Mint directory with the keys.

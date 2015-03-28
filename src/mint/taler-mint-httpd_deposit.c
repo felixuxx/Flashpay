@@ -30,7 +30,6 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
-#include <libpq-fe.h>
 #include <pthread.h>
 #include "taler_mintdb_plugin.h"
 #include "taler_signatures.h"
