@@ -83,6 +83,12 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
  */
 struct TMH_DB_MeltDetails
 {
+
+  /**
+   * Information about the coin being melted.
+   */
+  struct TALER_CoinPublicInfo coin_info;
+
   /**
    * Signature allowing the melt (using
    * a `struct TALER_MINTDB_RefreshMeltConfirmSignRequestBody`) to sign over.
@@ -109,9 +115,8 @@ struct TMH_DB_MeltDetails
  * @param session_hash hash code of the session the coins are melted into
  * @param num_new_denoms number of entries in @a denom_pubs, size of y-dimension of @a commit_coin array
  * @param denom_pubs array of public denomination keys for the refresh (?)
- * @param coin_count number of entries in @a coin_public_infos and @ a coin_melt_details, size of y-dimension of @a commit_link array
- * @param coin_public_infos information about the coins to melt
- * @param coin_melt_details signatures and (residual) value of the respective coin should be melted
+ * @param coin_count number of entries in @ a coin_melt_details, size of y-dimension of @a commit_link array
+ * @param coin_melt_details signatures and (residual) value of and information about the respective coin to be melted
  * @param commit_coin 2d array of coin commitments (what the mint is to sign
  *                    once the "/refres/reveal" of cut and choose is done)
  * @param commit_link 2d array of coin link commitments (what the mint is
@@ -125,7 +130,6 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                              unsigned int num_new_denoms,
                              const struct TALER_DenominationPublicKey *denom_pubs,
                              unsigned int coin_count,
-                             const struct TALER_CoinPublicInfo *coin_public_infos,
                              const struct TMH_DB_MeltDetails *coin_melt_details,
                              struct TALER_MINTDB_RefreshCommitCoin *const* commit_coin,
                              struct TALER_MINTDB_RefreshCommitLinkP *const* commit_link);

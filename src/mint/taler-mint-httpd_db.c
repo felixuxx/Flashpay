@@ -489,7 +489,6 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
  * @param session the database connection
  * @param key_state the mint's key state
  * @param session_hash hash identifying the refresh session
- * @param coin_public_info the coin to melt
  * @param coin_details details about the coin being melted
  * @param oldcoin_index what is the number assigned to this coin
  * @return #GNUNET_OK on success,
@@ -501,7 +500,6 @@ refresh_accept_melts (struct MHD_Connection *connection,
                       struct TALER_MINTDB_Session *session,
                       const struct TMH_KS_StateHandle *key_state,
                       const struct GNUNET_HashCode *session_hash,
-                      const struct TALER_CoinPublicInfo *coin_public_info,
                       const struct TMH_DB_MeltDetails *coin_details,
                       uint16_t oldcoin_index)
 {
@@ -514,15 +512,15 @@ refresh_accept_melts (struct MHD_Connection *connection,
   int res;
 
   dki = &TMH_KS_denomination_key_lookup (key_state,
-                                   &coin_public_info->denom_pub)->issue;
+                                         &coin_details->coin_info.denom_pub)->issue;
 
   if (NULL == dki)
     return (MHD_YES ==
             TMH_RESPONSE_reply_json_pack (connection,
-                                        MHD_HTTP_NOT_FOUND,
-                                        "{s:s}",
-                                        "error",
-                                        "denom not found"))
+                                          MHD_HTTP_NOT_FOUND,
+                                          "{s:s}",
+                                          "error",
+                                          "denom not found"))
       ? GNUNET_NO : GNUNET_SYSERR;
 
   TALER_amount_ntoh (&coin_value,
@@ -531,8 +529,8 @@ refresh_accept_melts (struct MHD_Connection *connection,
   spent = coin_details->melt_amount_with_fee;
   /* add historic transaction costs of this coin */
   tl = TMH_plugin->get_coin_transactions (TMH_plugin->cls,
-                                      session,
-                                      &coin_public_info->coin_pub);
+                                          session,
+                                          &coin_details->coin_info.coin_pub);
   if (GNUNET_OK !=
       calculate_transaction_list_totals (tl,
                                          &spent,
@@ -540,7 +538,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
   {
     GNUNET_break (0);
     TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
-                                        tl);
+                                            tl);
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   /* Refuse to refresh when the coin's value is insufficient
@@ -554,28 +552,28 @@ refresh_accept_melts (struct MHD_Connection *connection,
                                           &coin_details->melt_amount_with_fee));
     res = (MHD_YES ==
            TMH_RESPONSE_reply_refresh_melt_insufficient_funds (connection,
-                                                             &coin_public_info->coin_pub,
-                                                             coin_value,
-                                                             tl,
-                                                             coin_details->melt_amount_with_fee,
-                                                             coin_residual))
+                                                               &coin_details->coin_info.coin_pub,
+                                                               coin_value,
+                                                               tl,
+                                                               coin_details->melt_amount_with_fee,
+                                                               coin_residual))
       ? GNUNET_NO : GNUNET_SYSERR;
     TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
-                                        tl);
+                                            tl);
     return res;
   }
   TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
-                                      tl);
+                                          tl);
 
-  melt.coin = *coin_public_info;
+  melt.coin = coin_details->coin_info;
   melt.coin_sig = coin_details->melt_sig;
   melt.session_hash = *session_hash;
   melt.amount_with_fee = coin_details->melt_amount_with_fee;
   if (GNUNET_OK !=
       TMH_plugin->insert_refresh_melt (TMH_plugin->cls,
-                                   session,
-                                   oldcoin_index,
-                                   &melt))
+                                       session,
+                                       oldcoin_index,
+                                       &melt))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -595,8 +593,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
  * @param session_hash hash code of the session the coins are melted into
  * @param num_new_denoms number of entries in @a denom_pubs, size of y-dimension of @a commit_coin array
  * @param denom_pubs public keys of the coins we want to withdraw in the end
- * @param coin_count number of entries in @a coin_public_infos and @a coin_melt_details, size of y-dimension of @a commit_link array
- * @param coin_public_infos information about the coins to melt
+ * @param coin_count number of entries in @a coin_melt_details, size of y-dimension of @a commit_link array
  * @param coin_melt_details signatures and (residual) value of the respective coin should be melted
  * @param commit_coin 2d array of coin commitments (what the mint is to sign
  *                    once the "/refres/reveal" of cut and choose is done),
@@ -613,7 +610,6 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                              unsigned int num_new_denoms,
                              const struct TALER_DenominationPublicKey *denom_pubs,
                              unsigned int coin_count,
-                             const struct TALER_CoinPublicInfo *coin_public_infos,
                              const struct TMH_DB_MeltDetails *coin_melt_details,
                              struct TALER_MINTDB_RefreshCommitCoin *const* commit_coin,
                              struct TALER_MINTDB_RefreshCommitLinkP *const* commit_link)
@@ -624,9 +620,10 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
   int res;
   unsigned int i;
 
-  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                              GNUNET_NO)))
-  {
+  if (NULL ==
+      (session = TMH_plugin->get_session (TMH_plugin->cls,
+                                          GNUNET_NO)))
+    {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
@@ -638,16 +635,16 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   res = TMH_plugin->get_refresh_session (TMH_plugin->cls,
-                                     session,
-                                     session_hash,
-                                     &refresh_session);
+                                         session,
+                                         session_hash,
+                                         &refresh_session);
   if (GNUNET_YES == res)
   {
     TMH_plugin->rollback (TMH_plugin->cls,
                       session);
     res = TMH_RESPONSE_reply_refresh_melt_success (connection,
-                                                 session_hash,
-                                                 refresh_session.noreveal_index);
+                                                   session_hash,
+                                                   refresh_session.noreveal_index);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   if (GNUNET_SYSERR == res)
@@ -666,7 +663,6 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                                      session,
                                      key_state,
                                      session_hash,
-                                     &coin_public_infos[i],
                                      &coin_melt_details[i],
                                      i)))
     {
