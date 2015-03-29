@@ -176,8 +176,8 @@ get_coin_public_info (struct MHD_Connection *connection,
   struct TALER_Amount amount;
   struct TMH_PARSE_FieldSpecification spec[] = {
     TMH_PARSE_MEMBER_FIXED ("coin_pub", &r_melt_detail->coin_info.coin_pub),
-    TMH_PARSE_MEMBER_RSA_SIGNATURE ("denom_sig", &sig.rsa_signature),
-    TMH_PARSE_MEMBER_RSA_PUBLIC_KEY ("denom_pub", &pk.rsa_public_key),
+    TMH_PARSE_MEMBER_DENOMINATION_SIGNATURE ("denom_sig", &sig.rsa_signature),
+    TMH_PARSE_MEMBER_DENOMINATION_PUBLIC_KEY ("denom_pub", &pk.rsa_public_key),
     TMH_PARSE_MEMBER_FIXED ("confirm_sig", &melt_sig),
     TMH_PARSE_MEMBER_AMOUNT ("value_with_fee", &amount),
     TMH_PARSE_MEMBER_END
@@ -396,10 +396,10 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
     size_t buf_size;
 
     res = TMH_PARSE_navigate_json (connection,
-                                           new_denoms,
-                                           TMH_PARSE_JNC_INDEX, (int) i,
-                                           TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY,
-                                           &denom_pubs[i].rsa_public_key);
+                                   new_denoms,
+                                   TMH_PARSE_JNC_INDEX, (int) i,
+                                   TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY,
+                                   &denom_pubs[i].rsa_public_key);
     if (GNUNET_OK != res)
     {
       for (j=0;j<i;j++)
@@ -413,7 +413,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                                      buf,
                                      buf_size);
     GNUNET_free (buf);
- }
+  }
 
   coin_count = json_array_size (melt_coins);
   coin_melt_details = GNUNET_malloc (coin_count *
@@ -674,10 +674,10 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
   };
 
   res = TMH_PARSE_post_json (connection,
-                                    connection_cls,
-                                    upload_data,
-                                    upload_data_size,
-                                    &root);
+                             connection_cls,
+                             upload_data,
+                             upload_data_size,
+                             &root);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == root) )
@@ -838,10 +838,10 @@ TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
   };
 
   res = TMH_PARSE_post_json (connection,
-                                    connection_cls,
-                                    upload_data,
-                                    upload_data_size,
-                                    &root);
+                             connection_cls,
+                             upload_data,
+                             upload_data_size,
+                             &root);
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == root) )
@@ -884,7 +884,8 @@ TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
 
 
 /**
- * Handle a "/refresh/link" request
+ * Handle a "/refresh/link" request.  Note that for "/refresh/link"
+ * we do use a simple HTTP GET, and a HTTP POST!
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
@@ -904,16 +905,15 @@ TMH_REFRESH_handler_refresh_link (struct TMH_RequestHandler *rh,
   int res;
 
   res = TMH_PARSE_mhd_request_arg_data (connection,
-                                         "coin_pub",
-                                         &coin_pub,
-                                         sizeof (union TALER_CoinSpendPublicKeyP));
+                                        "coin_pub",
+                                        &coin_pub,
+                                        sizeof (union TALER_CoinSpendPublicKeyP));
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if (GNUNET_OK != res)
     return MHD_YES;
-
   return TMH_DB_execute_refresh_link (connection,
-                                             &coin_pub);
+                                      &coin_pub);
 }
 
 

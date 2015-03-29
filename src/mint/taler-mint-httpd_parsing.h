@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 GNUnet e.V.
+  Copyright (C) 2014, 2015 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -271,17 +271,17 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec);
  * Generate line in parser specification for RSA public key.
  *
  * @param field name of the field
- * @param ptrpk address of `struct GNUNET_CRYPTO_rsa_PublicKey *` initialize
+ * @param ptrpk address of `struct TALER_DenominationPublicKey` initialize
  */
-#define TMH_PARSE_MEMBER_RSA_PUBLIC_KEY(field,ptrpk) { field, ptrpk, 0, 0, TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY, 0 }
+#define TMH_PARSE_MEMBER_DENOMINATION_PUBLIC_KEY(field,ptrpk) { field, ptrpk, 0, 0, TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY, 0 }
 
 /**
  * Generate line in parser specification for RSA public key.
  *
  * @param field name of the field
- * @param ptrsig address of `struct GNUNET_CRYPTO_rsa_Signature *` initialize
+ * @param ptrsig address of `struct TALER_DenominationSignature *` initialize
  */
-#define TMH_PARSE_MEMBER_RSA_SIGNATURE(field,ptrsig) { field, ptrsig, 0, 0, TMH_PARSE_JNC_RET_RSA_SIGNATURE, 0 }
+#define TMH_PARSE_MEMBER_DENOMINATION_SIGNATURE(field,ptrsig) { field, ptrsig, 0, 0, TMH_PARSE_JNC_RET_RSA_SIGNATURE, 0 }
 
 /**
  * Generate line in parser specification for an amount.

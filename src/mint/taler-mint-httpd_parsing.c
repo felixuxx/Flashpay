@@ -189,7 +189,7 @@ TMH_PARSE_post_json (struct MHD_Connection *connection,
       GNUNET_free (r);
       return (MHD_NO ==
               TMH_RESPONSE_reply_internal_error (connection,
-                                               "out of memory"))
+                                                 "out of memory"))
         ? GNUNET_SYSERR : GNUNET_NO;
     }
     /* everything OK, wait for more POST data */
@@ -376,8 +376,8 @@ TMH_PARSE_mhd_request_var_arg_data (struct MHD_Connection *connection,
  */
 int
 TMH_PARSE_navigate_json (struct MHD_Connection *connection,
-                                 const json_t *root,
-                                 ...)
+                         const json_t *root,
+                         ...)
 {
   va_list argp;
   int ret;
@@ -555,13 +555,14 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
 
     case TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY:
       {
-        void **where = va_arg (argp, void **);
+        struct TALER_DenominationPublicKey *where;
         size_t len;
         const char *str;
         int res;
         void *buf;
 
-        // FIXME: avoidable code duplication here...
+        where = va_arg (argp,
+                        struct TALER_DenominationPublicKey *);
         str = json_string_value (root);
         if (NULL == str)
         {
@@ -596,10 +597,10 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
-        *where = GNUNET_CRYPTO_rsa_public_key_decode (buf,
-                                                      len);
+        where->rsa_public_key = GNUNET_CRYPTO_rsa_public_key_decode (buf,
+                                                                     len);
         GNUNET_free (buf);
-        if (NULL == *where)
+        if (NULL == where->rsa_public_key)
         {
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
@@ -618,13 +619,14 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
 
     case TMH_PARSE_JNC_RET_RSA_SIGNATURE:
       {
-        void **where = va_arg (argp, void **);
+        struct TALER_DenominationSignature *where;
         size_t len;
         const char *str;
         int res;
         void *buf;
 
-        // FIXME: avoidable code duplication here...
+        where = va_arg (argp,
+                        struct TALER_DenominationSignature *);
         str = json_string_value (root);
         if (NULL == str)
         {
@@ -659,10 +661,10 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
-        *where = GNUNET_CRYPTO_rsa_signature_decode (buf,
-                                                     len);
+        where->rsa_signature = GNUNET_CRYPTO_rsa_signature_decode (buf,
+                                                                   len);
         GNUNET_free (buf);
-        if (NULL == *where)
+        if (NULL == where->rsa_signature)
         {
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
@@ -874,19 +876,27 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec)
       }
       break;
     case TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY:
-      ptr = *(void **) spec[i].destination;
-      if (NULL != ptr)
       {
-        GNUNET_CRYPTO_rsa_public_key_free (ptr);
-        *(void**) spec[i].destination = NULL;
+        struct TALER_DenominationPublicKey pk;
+
+        pk = *(struct TALER_DenominationPublicKey *) spec[i].destination;
+        if (NULL != pk.rsa_public_key)
+        {
+          GNUNET_CRYPTO_rsa_public_key_free (pk.rsa_public_key);
+          pk.rsa_public_key = NULL;
+        }
       }
       break;
     case TMH_PARSE_JNC_RET_RSA_SIGNATURE:
-      ptr = *(void **) spec[i].destination;
-      if (NULL != ptr)
       {
-        GNUNET_CRYPTO_rsa_signature_free (ptr);
-        *(void**) spec[i].destination = NULL;
+        struct TALER_DenominationSignature sig;
+
+        sig = *(struct TALER_DenominationSignature *) spec[i].destination;
+        if (NULL != sig.rsa_signature)
+        {
+          GNUNET_CRYPTO_rsa_signature_free (sig.rsa_signature);
+          sig.rsa_signature = NULL;
+        }
       }
       break;
     case TMH_PARSE_JNC_RET_AMOUNT:
