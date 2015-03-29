@@ -414,9 +414,6 @@ get_anchor (const char *dir,
     return;
   }
 
-  /* FIXME: this check is a bit dubious, as 'now'
-     may be way into the future if we want to generate
-     many keys... #3727*/
   if ((GNUNET_TIME_absolute_add (*anchor,
                                  duration)).abs_value_us < now.abs_value_us)
   {
