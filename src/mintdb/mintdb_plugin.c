@@ -17,6 +17,7 @@
  * @file mintdb/mintdb_plugin.c
  * @brief Logic to load database plugin
  * @author Christian Grothoff
+ * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
 #include "platform.h"
 #include "taler_mintdb_lib.h"
