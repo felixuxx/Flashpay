@@ -348,8 +348,6 @@ free_commit_links (struct TALER_MINTDB_RefreshCommitLinkP **commit_link,
  * @param connection the MHD connection to handle
  * @param new_denoms array of denomination keys
  * @param melt_coins array of coins to melt
- * @param melt_sig_json signature affirming the melt operation
- * @param commit_signature signature over the commit
  * @param num_oldcoins number of coins that are being melted
  * @param transfer_pubs #TALER_CNC_KAPPA-dimensional array of @a num_oldcoins transfer keys
  * @param secret_encs #TALER_CNC_KAPPA-dimensional array of @a num_oldcoins secrets
@@ -362,8 +360,6 @@ static int
 handle_refresh_melt_json (struct MHD_Connection *connection,
                           const json_t *new_denoms,
                           const json_t *melt_coins,
-                          const json_t *melt_sig_json,
-                          const json_t *commit_signature,
                           unsigned int num_oldcoins,
                           const json_t *transfer_pubs,
                           const json_t *secret_encs,
@@ -651,12 +647,10 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
   json_t *root;
   json_t *new_denoms;
   json_t *melt_coins;
-  json_t *melt_sig_json;
   json_t *coin_evs;
   json_t *link_encs;
   json_t *transfer_pubs;
   json_t *secret_encs;
-  json_t *commit_sig_json;
   unsigned int num_oldcoins;
   unsigned int num_newcoins;
   json_t *coin_detail;
@@ -664,12 +658,10 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
   struct TMH_PARSE_FieldSpecification spec[] = {
     TMH_PARSE_MEMBER_ARRAY ("new_denoms", &new_denoms),
     TMH_PARSE_MEMBER_ARRAY ("melt_coins", &melt_coins),
-    TMH_PARSE_MEMBER_ARRAY ("melt_signature", &melt_sig_json),
     TMH_PARSE_MEMBER_ARRAY ("coin_evs", &coin_evs),
     TMH_PARSE_MEMBER_ARRAY ("link_encs", &link_encs),
     TMH_PARSE_MEMBER_ARRAY ("transfer_pubs", &transfer_pubs),
     TMH_PARSE_MEMBER_ARRAY ("secret_encs", &secret_encs),
-    TMH_PARSE_MEMBER_OBJECT ("commit_signature", &commit_sig_json),
     TMH_PARSE_MEMBER_END
   };
 
@@ -730,8 +722,6 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
   res = handle_refresh_melt_json (connection,
                                   new_denoms,
                                   melt_coins,
-                                  melt_sig_json,
-                                  commit_sig_json,
                                   num_oldcoins,
                                   transfer_pubs,
                                   secret_encs,
