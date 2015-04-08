@@ -276,9 +276,9 @@ TMH_PARSE_post_cleanup_callback (void *con_cls)
  */
 int
 TMH_PARSE_mhd_request_arg_data (struct MHD_Connection *connection,
-                                 const char *param_name,
-                                 void *out_data,
-                                 size_t out_size)
+                                const char *param_name,
+                                void *out_data,
+                                size_t out_size)
 {
   const char *str;
 
@@ -406,14 +406,11 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         {
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
-                                             MHD_HTTP_BAD_REQUEST,
-                                             "{s:s, s:s, s:o}",
-                                             "error",
-                                             "missing field in JSON",
-                                             "field",
-                                             fname,
-                                             "path",
-                                             path))
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:s, s:o}",
+                                               "error", "missing field in JSON",
+                                               "field", fname,
+                                               "path", path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -432,11 +429,10 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         {
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
-                                             MHD_HTTP_BAD_REQUEST,
-                                             "{s:s, s:o}",
-                                             "error",
-                                             "missing index in JSON",
-                                             "path", path))
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:o}",
+                                               "error", "missing index in JSON",
+                                               "path", path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -458,10 +454,8 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                  TMH_RESPONSE_reply_json_pack (connection,
                                              MHD_HTTP_BAD_REQUEST,
                                              "{s:s, s:o}",
-                                             "error",
-                                             "string expected",
-                                             "path",
-                                             path))
+                                             "error", "string expected",
+                                             "path", path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -471,12 +465,10 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         {
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
-                                             MHD_HTTP_BAD_REQUEST,
-                                             "{s:s, s:o}",
-                                             "error",
-                                             "malformed binary data in JSON",
-                                             "path",
-                                             path))
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:o}",
+                                               "error", "malformed binary data in JSON",
+                                               "path", path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -517,11 +509,10 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
             *len = 0;
             ret = (MHD_YES ==
                    TMH_RESPONSE_reply_json_pack (connection,
-                                               MHD_HTTP_BAD_REQUEST,
-                                               "{s:s, s:o}",
-                                               "error",
-                                               "malformed binary data in JSON",
-                                               "path", path))
+                                                 MHD_HTTP_BAD_REQUEST,
+                                                 "{s:s, s:o}",
+                                                 "error", "malformed binary data in JSON",
+                                                 "path", path))
               ? GNUNET_NO : GNUNET_SYSERR;
             break;
           }
@@ -539,12 +530,12 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         {
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
-                                             MHD_HTTP_BAD_REQUEST,
-                                             "{s:s, s:i, s:i, s:o}",
-                                             "error", "wrong JSON field type",
-                                             "type_expected", typ,
-                                             "type_actual", json_typeof (root),
-                                             "path", path))
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:i, s:i, s:o}",
+                                               "error", "wrong JSON field type",
+                                               "type_expected", typ,
+                                               "type_actual", json_typeof (root),
+                                               "path", path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -570,10 +561,8 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                  TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
                                                "{s:s, s:o}",
-                                               "error",
-                                               "string expected",
-                                               "path",
-                                               path))
+                                               "error", "string expected",
+                                               "path", path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -590,10 +579,8 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                  TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
                                                "{s:s, s:o}",
-                                               "error",
-                                               "malformed binary data in JSON",
-                                               "path",
-                                               path))
+                                               "error", "malformed binary data in JSON",
+                                               "path", path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -606,10 +593,8 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                  TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
                                                "{s:s, s:o}",
-                                               "error",
-                                               "malformed RSA public key in JSON",
-                                               "path",
-                                               path))
+                                               "error", "malformed RSA public key in JSON",
+                                               "path", path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -634,10 +619,8 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                  TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
                                                "{s:s, s:o}",
-                                               "error",
-                                               "string expected",
-                                               "path",
-                                               path))
+                                               "error", "string expected",
+                                               "path", path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -654,10 +637,8 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                  TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
                                                "{s:s, s:o}",
-                                               "error",
-                                               "malformed binary data in JSON",
-                                               "path",
-                                               path))
+                                               "error", "malformed binary data in JSON",
+                                               "path", path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -670,10 +651,8 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                  TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
                                                "{s:s, s:o}",
-                                               "error",
-                                               "malformed RSA signature in JSON",
-                                               "path",
-                                               path))
+                                               "error", "malformed RSA signature in JSON",
+                                               "path", path))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }

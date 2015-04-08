@@ -39,8 +39,8 @@
  */
 int
 TMH_RESPONSE_reply_json (struct MHD_Connection *connection,
-                       const json_t *json,
-                       unsigned int response_code)
+                         const json_t *json,
+                         unsigned int response_code)
 {
   struct MHD_Response *resp;
   char *json_str;
@@ -72,9 +72,9 @@ TMH_RESPONSE_reply_json (struct MHD_Connection *connection,
  */
 int
 TMH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
-                            unsigned int response_code,
-                            const char *fmt,
-                            ...)
+                              unsigned int response_code,
+                              const char *fmt,
+                              ...)
 {
   json_t *json;
   va_list argp;
@@ -86,8 +86,8 @@ TMH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
   if (NULL == json)
     return MHD_NO;
   ret = TMH_RESPONSE_reply_json (connection,
-                               json,
-                               response_code);
+                                 json,
+                                 response_code);
   json_decref (json);
   return ret;
 }
@@ -102,33 +102,53 @@ TMH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
  */
 int
 TMH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
-                              const char *param_name)
+                                const char *param_name)
 {
   return TMH_RESPONSE_reply_json_pack (connection,
-                                     MHD_HTTP_BAD_REQUEST,
-                                     "{s:s, s:s}",
-                                     "error", "invalid parameter",
-                                     "parameter", param_name);
+                                       MHD_HTTP_BAD_REQUEST,
+                                       "{s:s, s:s}",
+                                       "error", "invalid parameter",
+                                       "parameter", param_name);
 }
 
 
 /**
- * Send a response indicating an invalid coin.  (I.e. the signature
- * over the public key of the coin does not match a valid signing key
- * of this mint).
+ * Send a response indicating an argument refering to a
+ * resource unknown to the mint (i.e. unknown reserve or
+ * denomination key).
  *
  * @param connection the MHD connection to use
- * @return MHD result code
+ * @param param_name the parameter that is invalid
+ * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_coin_invalid (struct MHD_Connection *connection)
+TMH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
+                                const char *param_name)
 {
-  /* TODO: may want to be more precise in the future and
-     distinguish bogus signatures from bogus public keys. */
   return TMH_RESPONSE_reply_json_pack (connection,
-                                     MHD_HTTP_NOT_FOUND,
-                                     "{s:s}",
-                                     "error", "Coin is not valid");
+                                       MHD_HTTP_NOT_FOUND,
+                                       "{s:s, s:s}",
+                                       "error", "unknown entity referenced",
+                                       "parameter", param_name);
+}
+
+
+/**
+ * Send a response indicating an invalid signature.
+ *
+ * @param connection the MHD connection to use
+ * @param param_name the parameter that is invalid
+ * @return a MHD result code
+ */
+int
+TMH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
+                                      const char *param_name)
+{
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_UNAUTHORIZED,
+                                       "{s:s, s:s}",
+                                       "error", "invalid signature",
+                                       "parameter", param_name);
 }
 
 
@@ -141,13 +161,13 @@ TMH_RESPONSE_reply_coin_invalid (struct MHD_Connection *connection)
  */
 int
 TMH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
-                              const char *param_name)
+                                const char *param_name)
 {
   return TMH_RESPONSE_reply_json_pack (connection,
-                                     MHD_HTTP_BAD_REQUEST,
-                                     "{ s:s, s:s}",
-                                     "error", "missing parameter",
-                                     "parameter", param_name);
+                                       MHD_HTTP_BAD_REQUEST,
+                                       "{ s:s, s:s}",
+                                       "error", "missing parameter",
+                                       "parameter", param_name);
 }
 
 
@@ -160,13 +180,13 @@ TMH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
  */
 int
 TMH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
-                                 const char *hint)
+                                   const char *hint)
 {
   return TMH_RESPONSE_reply_json_pack (connection,
-                                     MHD_HTTP_BAD_REQUEST,
-                                     "{s:s, s:s}",
-                                     "error", "internal error",
-                                     "hint", hint);
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       "{s:s, s:s}",
+                                       "error", "internal error",
+                                       "hint", hint);
 }
 
 
@@ -256,10 +276,10 @@ int
 TMH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection)
 {
   return TMH_RESPONSE_reply_json_pack (connection,
-                                     MHD_HTTP_BAD_REQUEST,
-                                     "{s:s}",
-                                     "error",
-                                     "invalid json");
+                                       MHD_HTTP_BAD_REQUEST,
+                                       "{s:s}",
+                                       "error",
+                                       "invalid json");
 }
 
 
@@ -312,10 +332,10 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
   sig_json = TALER_json_from_eddsa_sig (&dc.purpose,
                                         &sig.eddsa_signature);
   ret = TMH_RESPONSE_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:s, s:o}",
-                                    "status", "DEPOSIT_OK",
-                                    "signature", sig_json);
+                                      MHD_HTTP_OK,
+                                      "{s:s, s:o}",
+                                      "status", "DEPOSIT_OK",
+                                      "signature", sig_json);
   json_decref (sig_json);
   return ret;
 }
@@ -369,7 +389,7 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
       {
         struct TALER_RefreshMeltCoinAffirmationPS ms;
         const struct TALER_MINTDB_RefreshMelt *melt = pos->details.melt;
-
+t
         type = "melt";
         value = melt->amount_with_fee;
         ms.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
@@ -493,7 +513,7 @@ compile_reserve_history (const struct TALER_MINTDB_ReserveHistory *rh,
     case TALER_MINTDB_RO_WITHDRAW_COIN:
 
       dki = TMH_KS_denomination_key_lookup (key_state,
-                                      &pos->details.withdraw->denom_pub);
+                                            &pos->details.withdraw->denom_pub);
       TALER_amount_ntoh (&value,
                          &dki->issue.value);
       if (0 == ret)
@@ -556,7 +576,7 @@ compile_reserve_history (const struct TALER_MINTDB_ReserveHistory *rh,
  */
 int
 TMH_RESPONSE_reply_withdraw_status_success (struct MHD_Connection *connection,
-                                          const struct TALER_MINTDB_ReserveHistory *rh)
+                                            const struct TALER_MINTDB_ReserveHistory *rh)
 {
   json_t *json_balance;
   json_t *json_history;
@@ -567,13 +587,13 @@ TMH_RESPONSE_reply_withdraw_status_success (struct MHD_Connection *connection,
                                           &balance);
   if (NULL == json_history)
     return TMH_RESPONSE_reply_internal_error (connection,
-                                            "balance calculation failure");
+                                              "balance calculation failure");
   json_balance = TALER_json_from_amount (&balance);
   ret = TMH_RESPONSE_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:o, s:o}",
-                                    "balance", json_balance,
-                                    "history", json_history);
+                                      MHD_HTTP_OK,
+                                      "{s:o, s:o}",
+                                      "balance", json_balance,
+                                      "history", json_history);
   json_decref (json_history);
   json_decref (json_balance);
   return ret;
@@ -591,7 +611,7 @@ TMH_RESPONSE_reply_withdraw_status_success (struct MHD_Connection *connection,
  */
 int
 TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *connection,
-                                                   const struct TALER_MINTDB_ReserveHistory *rh)
+                                                     const struct TALER_MINTDB_ReserveHistory *rh)
 {
   json_t *json_balance;
   json_t *json_history;
@@ -602,14 +622,14 @@ TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *conn
                                           &balance);
   if (NULL == json_history)
     return TMH_RESPONSE_reply_internal_error (connection,
-                                            "balance calculation failure");
+                                              "balance calculation failure");
   json_balance = TALER_json_from_amount (&balance);
   ret = TMH_RESPONSE_reply_json_pack (connection,
-                                    MHD_HTTP_PAYMENT_REQUIRED,
-                                    "{s:s, s:o, s:o}",
-                                    "error", "Insufficient funds"
-                                    "balance", json_balance,
-                                    "history", json_history);
+                                      MHD_HTTP_PAYMENT_REQUIRED,
+                                      "{s:s, s:o, s:o}",
+                                      "error", "Insufficient funds"
+                                      "balance", json_balance,
+                                      "history", json_history);
   json_decref (json_history);
   json_decref (json_balance);
   return ret;
@@ -625,16 +645,16 @@ TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *conn
  */
 int
 TMH_RESPONSE_reply_withdraw_sign_success (struct MHD_Connection *connection,
-                                        const struct TALER_MINTDB_CollectableBlindcoin *collectable)
+                                          const struct TALER_MINTDB_CollectableBlindcoin *collectable)
 {
   json_t *sig_json;
   int ret;
 
   sig_json = TALER_json_from_rsa_signature (collectable->sig.rsa_signature);
   ret = TMH_RESPONSE_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:o}",
-                                    "ev_sig", sig_json);
+                                      MHD_HTTP_OK,
+                                      "{s:o}",
+                                      "ev_sig", sig_json);
   json_decref (sig_json);
   return ret;
 }
@@ -774,12 +794,12 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
 					   const char *missmatch_object)
 {
   return TMH_RESPONSE_reply_json_pack (connection,
-				     MHD_HTTP_BAD_REQUEST,
-				     "{s:s, s:i, s:i, s:s}",
-				     "error", "commitment violation",
-				     "offset", (int) off,
-				     "index", (int) j,
-				     "object", missmatch_object);
+                                       MHD_HTTP_BAD_REQUEST,
+                                       "{s:s, s:i, s:i, s:s}",
+                                       "error", "commitment violation",
+                                       "offset", (int) off,
+                                       "index", (int) j,
+                                       "object", missmatch_object);
 }
 
 

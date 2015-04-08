@@ -24,11 +24,13 @@
 
 /**
  * @brief Number of characters (plus 1 for 0-termination) we use to
- * represent currency names (i.e. EUR, USD, etc.).  We use
- * 4 for alignment as 3 characters are typical and we need a
- * 0-terminator. So do not change this.
+ * represent currency names (i.e. EUR, USD, etc.).  We use 8+4 for
+ * alignment in the `struct TALER_Amount`.  The amount is typically an
+ * ISO 4217 currency code when an alpha-numeric 3-digit code is used.
+ * For regional currencies, the first character should be a "*" followed
+ * by a region-specific name (i.e. "*BRETAGNEFR").
  */
-#define TALER_CURRENCY_LEN 4
+#define TALER_CURRENCY_LEN 12
 
 /**
  * @brief The "fraction" value in a `struct TALER_Amount` represents which

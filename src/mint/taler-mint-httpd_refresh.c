@@ -139,9 +139,9 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
     /* We require total value of coins being melted and
        total value of coins being generated to match! */
     return TMH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       "{s:s}",
-                                       "error", "value mismatch");
+                                         MHD_HTTP_BAD_REQUEST,
+                                         "{s:s}",
+                                         "error", "value mismatch");
   }
   return TMH_DB_execute_refresh_melt (connection,
                                       session_hash,

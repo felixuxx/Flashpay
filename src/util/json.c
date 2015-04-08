@@ -84,7 +84,8 @@ TALER_json_from_abs (struct GNUNET_TIME_Absolute stamp)
   json_t *j;
   char *mystr;
   int ret;
-  ret = GNUNET_asprintf (&mystr, "%llu",
+  ret = GNUNET_asprintf (&mystr,
+                         "%llu",
                          (long long) (stamp.abs_value_us / (1000 * 1000)));
   GNUNET_assert (ret > 0);
   j = json_string (mystr);
@@ -117,11 +118,11 @@ TALER_json_from_eddsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpo
 
   el = TALER_json_from_data (purpose,
                              ntohl (purpose->size));
-  json_object_set_new (root, "eddsa-val", el);
+  json_object_set_new (root, "eddsa_val", el);
 
   el = TALER_json_from_data (signature,
                              sizeof (struct GNUNET_CRYPTO_EddsaSignature));
-  json_object_set_new (root, "eddsa-sig", el);
+  json_object_set_new (root, "eddsa_sig", el);
 
   return root;
 }
@@ -151,11 +152,11 @@ TALER_json_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpo
 
   el = TALER_json_from_data (purpose,
                              ntohl (purpose->size));
-  json_object_set_new (root, "ecdsa-val", el);
+  json_object_set_new (root, "ecdsa_val", el);
 
   el = TALER_json_from_data (signature,
                              sizeof (struct GNUNET_CRYPTO_EddsaSignature));
-  json_object_set_new (root, "ecdsa-sig", el);
+  json_object_set_new (root, "ecdsa_sig", el);
 
   return root;
 }

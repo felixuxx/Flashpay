@@ -65,6 +65,18 @@ TMH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
 
 
 /**
+ * Send a response indicating an invalid signature.
+ *
+ * @param connection the MHD connection to use
+ * @param param_name the parameter that is invalid
+ * @return a MHD result code
+ */
+int
+TMH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
+                                      const char *param_name);
+
+
+/**
  * Send a response indicating an invalid argument.
  *
  * @param connection the MHD connection to use
@@ -77,15 +89,17 @@ TMH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
 
 
 /**
- * Send a response indicating an invalid coin.  (I.e. the signature
- * over the public key of the coin does not match a valid signing key
- * of this mint).
+ * Send a response indicating an argument refering to a
+ * resource unknown to the mint (i.e. unknown reserve or
+ * denomination key).
  *
  * @param connection the MHD connection to use
- * @return MHD result code
+ * @param param_name the parameter that is invalid
+ * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_coin_invalid (struct MHD_Connection *connection);
+TMH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
+                                const char *param_name);
 
 
 /**

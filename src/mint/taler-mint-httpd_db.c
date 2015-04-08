@@ -186,7 +186,7 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
   {
     TALER_LOG_WARNING ("Failed to store /deposit information in database\n");
     TMH_plugin->rollback (TMH_plugin->cls,
-                      session);
+                          session);
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
 
@@ -218,30 +218,31 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
  */
 int
 TMH_DB_execute_withdraw_status (struct MHD_Connection *connection,
-                                       const struct TALER_ReservePublicKeyP *reserve_pub)
+                                const struct TALER_ReservePublicKeyP *reserve_pub)
 {
   struct TALER_MINTDB_Session *session;
   struct TALER_MINTDB_ReserveHistory *rh;
   int res;
 
   if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                              GNUNET_NO)))
+                                                  GNUNET_NO)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   rh = TMH_plugin->get_reserve_history (TMH_plugin->cls,
-                                    session,
-                                    reserve_pub);
+                                        session,
+                                        reserve_pub);
   if (NULL == rh)
     return TMH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       "{s:s}",
-                                       "error", "Reserve not found");
+                                         MHD_HTTP_NOT_FOUND,
+                                         "{s:s, s:s}",
+                                         "error", "Reserve not found",
+                                         "parameter", "withdraw_pub");
   res = TMH_RESPONSE_reply_withdraw_status_success (connection,
-                                                  rh);
+                                                    rh);
   TMH_plugin->free_reserve_history (TMH_plugin->cls,
-                                rh);
+                                    rh);
   return res;
 }
 
@@ -262,11 +263,11 @@ TMH_DB_execute_withdraw_status (struct MHD_Connection *connection,
  */
 int
 TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
-                                     const struct TALER_ReservePublicKeyP *reserve,
-                                     const struct TALER_DenominationPublicKey *denomination_pub,
-                                     const char *blinded_msg,
-                                     size_t blinded_msg_len,
-                                     const struct TALER_ReserveSignatureP *signature)
+                              const struct TALER_ReservePublicKeyP *reserve,
+                              const struct TALER_DenominationPublicKey *denomination_pub,
+                              const char *blinded_msg,
+                              size_t blinded_msg_len,
+                              const struct TALER_ReserveSignatureP *signature)
 {
   struct TALER_MINTDB_Session *session;
   struct TALER_MINTDB_ReserveHistory *rh;
@@ -290,15 +291,15 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
                       &h_blind);
 
   if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                              GNUNET_NO)))
+                                                  GNUNET_NO)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   res = TMH_plugin->get_collectable_blindcoin (TMH_plugin->cls,
-                                           session,
-                                           &h_blind,
-                                           &collectable);
+                                               session,
+                                               &h_blind,
+                                               &collectable);
   if (GNUNET_SYSERR == res)
   {
     GNUNET_break (0);
@@ -319,15 +320,15 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
   /* Check if balance is sufficient */
   key_state = TMH_KS_acquire ();
   dki = TMH_KS_denomination_key_lookup (key_state,
-                                  denomination_pub);
+                                        denomination_pub);
   if (NULL == dki)
   {
     TMH_KS_release (key_state);
     return TMH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       "{s:s}",
-                                       "error",
-                                       "Denomination not found");
+                                         MHD_HTTP_NOT_FOUND,
+                                         "{s:s}",
+                                         "error",
+                                         "Denomination not found");
   }
   if (GNUNET_OK !=
       TMH_plugin->start (TMH_plugin->cls,
@@ -339,18 +340,15 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
   }
 
   rh = TMH_plugin->get_reserve_history (TMH_plugin->cls,
-                                    session,
-                                    reserve);
+                                        session,
+                                        reserve);
   if (NULL == rh)
   {
     TMH_plugin->rollback (TMH_plugin->cls,
                       session);
     TMH_KS_release (key_state);
-    return TMH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       "{s:s}",
-                                       "error",
-                                       "Reserve not found");
+    return TMH_RESPONSE_reply_arg_unknown (connection,
+                                           "reserve_pub");
   }
 
   /* calculate amount required including fees */
@@ -386,7 +384,7 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
                               &pos->details.bank->amount))
         {
           TMH_plugin->rollback (TMH_plugin->cls,
-                            session);
+                                session);
           TMH_KS_release (key_state);
           return TMH_RESPONSE_reply_internal_db_error (connection);
         }
@@ -394,7 +392,7 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
       break;
     case TALER_MINTDB_RO_WITHDRAW_COIN:
       tdki = TMH_KS_denomination_key_lookup (key_state,
-                                       &pos->details.withdraw->denom_pub);
+                                             &pos->details.withdraw->denom_pub);
       TALER_amount_ntoh (&value,
                          &tdki->issue.value);
       if (0 == (res & 2))
@@ -406,7 +404,7 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
                               &value))
         {
           TMH_plugin->rollback (TMH_plugin->cls,
-                            session);
+                                session);
           TMH_KS_release (key_state);
           return TMH_RESPONSE_reply_internal_db_error (connection);
         }
@@ -426,13 +424,13 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
     TMH_plugin->rollback (TMH_plugin->cls,
                       session);
     res = TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (connection,
-                                                             rh);
+                                                               rh);
     TMH_plugin->free_reserve_history (TMH_plugin->cls,
-                                  rh);
+                                      rh);
     return res;
   }
   TMH_plugin->free_reserve_history (TMH_plugin->cls,
-                                rh);
+                                    rh);
 
   /* Balance is good, sign the coin! */
   sig = GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,

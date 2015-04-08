@@ -61,7 +61,7 @@ TMH_WITHDRAW_handler_withdraw_status (struct TMH_RequestHandler *rh,
   if (GNUNET_NO == res)
     return MHD_YES; /* parse error */
   return TMH_DB_execute_withdraw_status (connection,
-                                                &reserve_pub);
+                                         &reserve_pub);
 }
 
 
@@ -132,7 +132,7 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
   if (NULL == dki)
   {
     TMH_PARSE_release_data (spec);
-    return TMH_RESPONSE_reply_arg_invalid (connection,
+    return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "denom_pub");
   }
   TALER_amount_ntoh (&amount,
@@ -165,8 +165,8 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
   {
     TALER_LOG_WARNING ("Client supplied invalid signature for /withdraw/sign request\n");
     TMH_PARSE_release_data (spec);
-    return TMH_RESPONSE_reply_arg_invalid (connection,
-                                         "reserve_sig");
+    return TMH_RESPONSE_reply_signature_invalid (connection,
+                                                 "reserve_sig");
   }
   res = TMH_DB_execute_withdraw_sign (connection,
                                       &wsrd.reserve_pub,

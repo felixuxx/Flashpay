@@ -406,18 +406,18 @@ TMH_KS_acquire (void)
                                                                     GNUNET_NO);
     key_state->reload_time = GNUNET_TIME_absolute_get ();
     TALER_MINTDB_denomination_keys_iterate (TMH_mint_directory,
-                                  &reload_keys_denom_iter,
-                                  key_state);
+                                            &reload_keys_denom_iter,
+                                            key_state);
     TALER_MINTDB_signing_keys_iterate (TMH_mint_directory,
-                                 &reload_keys_sign_iter,
-                                 key_state);
+                                       &reload_keys_sign_iter,
+                                       key_state);
     key_state->next_reload = GNUNET_TIME_absolute_ntoh (key_state->current_sign_key_issue.issue.expire);
     if (0 == key_state->next_reload.abs_value_us)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "No valid signing key found!\n");
 
     keys = json_pack ("{s:o, s:o, s:o, s:o}",
-                      "TMH_master_public_key",
+                      "master_public_key",
                       TALER_json_from_data (&TMH_master_public_key,
                                             sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)),
                       "signkeys", key_state->sign_keys_array,
@@ -436,8 +436,8 @@ TMH_KS_acquire (void)
                           &sig);
     keys = json_pack ("{s:o, s:o}",
                       "keys", keys,
-                      "eddsa-signature", TALER_json_from_eddsa_sig (&ks.purpose,
-                                                                    &sig.eddsa_signature));
+                      "eddsa_sig", TALER_json_from_eddsa_sig (&ks.purpose,
+                                                              &sig.eddsa_signature));
     key_state->keys_json = json_dumps (keys,
                                        JSON_INDENT (2));
     json_decref (keys);

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 GNUnet e.V.
+  Copyright (C) 2014, 2015 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -23,8 +23,8 @@
  * @author Christian Grothoff
  *
  * TODO:
- * - missing 'wire' format check (well-formed SEPA-details)
- * - ugliy if-construction for deposit type
+ * - missing 'wire' format check (well-formed SEPA-details) (#3624)
+ * - ugly if-construction for deposit type
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -80,19 +80,19 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
                                   &deposit->coin.coin_pub.ecdsa_pub))
   {
     TALER_LOG_WARNING ("Invalid signature on /deposit request\n");
-    return TMH_RESPONSE_reply_arg_invalid (connection,
-                                         "csig");
+    return TMH_RESPONSE_reply_signature_invalid (connection,
+                                                 "coin_sig");
   }
   /* check denomination exists and is valid */
   key_state = TMH_KS_acquire ();
   dki = TMH_KS_denomination_key_lookup (key_state,
-                                  &deposit->coin.denom_pub);
+                                        &deposit->coin.denom_pub);
   if (NULL == dki)
   {
     TMH_KS_release (key_state);
     TALER_LOG_WARNING ("Unknown denomination key in /deposit request\n");
-    return TMH_RESPONSE_reply_arg_invalid (connection,
-                                         "denom_pub");
+    return TMH_RESPONSE_reply_arg_unknown (connection,
+                                           "denom_pub");
   }
   /* check coin signature */
   if (GNUNET_YES !=
@@ -100,7 +100,8 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   {
     TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
     TMH_KS_release (key_state);
-    return TMH_RESPONSE_reply_coin_invalid (connection);
+    return TMH_RESPONSE_reply_signature_invalid (connection,
+                                                 "ub_sig");
   }
   TALER_amount_ntoh (&fee_deposit,
                      &dki->issue.fee_deposit);
@@ -110,7 +111,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
     TMH_KS_release (key_state);
     return (MHD_YES ==
             TMH_RESPONSE_reply_external_error (connection,
-                                             "deposited amount smaller than depositing fee"))
+                                               "deposited amount smaller than depositing fee"))
       ? GNUNET_NO : GNUNET_SYSERR;
   }
   TMH_KS_release (key_state);
@@ -145,12 +146,12 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   struct TMH_KS_StateHandle *ks;
   struct TMH_PARSE_FieldSpecification spec[] = {
     TMH_PARSE_MEMBER_DENOMINATION_PUBLIC_KEY ("denom_pub", &deposit.coin.denom_pub),
-    TMH_PARSE_MEMBER_DENOMINATION_SIGNATURE ("ubsig", &deposit.coin.denom_sig),
+    TMH_PARSE_MEMBER_DENOMINATION_SIGNATURE ("ub_sig", &deposit.coin.denom_sig),
     TMH_PARSE_MEMBER_FIXED ("coin_pub", &deposit.coin.coin_pub),
     TMH_PARSE_MEMBER_FIXED ("merchant_pub", &deposit.merchant_pub),
-    TMH_PARSE_MEMBER_FIXED ("H_a", &deposit.h_contract),
+    TMH_PARSE_MEMBER_FIXED ("H_contract", &deposit.h_contract),
     TMH_PARSE_MEMBER_FIXED ("H_wire", &deposit.h_wire),
-    TMH_PARSE_MEMBER_FIXED ("csig",  &deposit.csig),
+    TMH_PARSE_MEMBER_FIXED ("coin_sig",  &deposit.csig),
     TMH_PARSE_MEMBER_FIXED ("transaction_id", &deposit.transaction_id),
     TMH_PARSE_MEMBER_TIME_ABS ("timestamp", &deposit.timestamp),
     TMH_PARSE_MEMBER_TIME_ABS ("refund_deadline", &deposit.refund_deadline),
@@ -170,7 +171,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
 				      wire))
   {
     TMH_PARSE_release_data (spec);
-    return TMH_RESPONSE_reply_arg_invalid (connection,
+    return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "wire");
   }
   if (NULL == (wire_enc = json_dumps (wire, JSON_COMPACT | JSON_SORT_KEYS)))
@@ -192,7 +193,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   {
     TMH_KS_release (ks);
     TMH_PARSE_release_data (spec);
-    return TMH_RESPONSE_reply_arg_invalid (connection,
+    return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "denom_pub");
   }
   TALER_amount_ntoh (&deposit.deposit_fee,
