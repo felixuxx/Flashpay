@@ -389,7 +389,7 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
       {
         struct TALER_RefreshMeltCoinAffirmationPS ms;
         const struct TALER_MINTDB_RefreshMelt *melt = pos->details.melt;
-t
+
         type = "melt";
         value = melt->amount_with_fee;
         ms.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
