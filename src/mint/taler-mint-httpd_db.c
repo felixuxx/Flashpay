@@ -649,6 +649,23 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
 
+  /* store 'global' session data */
+  refresh_session.num_oldcoins = coin_count;
+  refresh_session.num_newcoins = num_new_denoms;
+  refresh_session.noreveal_index
+      = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG,
+                                  TALER_CNC_KAPPA);
+  if (GNUNET_OK !=
+      (res = TMH_plugin->create_refresh_session (TMH_plugin->cls,
+                                                 session,
+                                                 session_hash,
+                                                 &refresh_session)))
+  {
+    TMH_plugin->rollback (TMH_plugin->cls,
+                          session);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
+
   /* Melt old coins and check that they had enough residual value */
   key_state = TMH_KS_acquire ();
   for (i=0;i<coin_count;i++)
@@ -712,26 +729,6 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
       return TMH_RESPONSE_reply_internal_db_error (connection);
     }
   }
-
-
-  /* store 'global' session data */
-  refresh_session.num_oldcoins = coin_count;
-  refresh_session.num_newcoins = num_new_denoms;
-  refresh_session.noreveal_index
-      = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG,
-                                  TALER_CNC_KAPPA);
-  if (GNUNET_OK !=
-      (res = TMH_plugin->create_refresh_session (TMH_plugin->cls,
-                                                 session,
-                                                 session_hash,
-                                                 &refresh_session)))
-  {
-    TMH_plugin->rollback (TMH_plugin->cls,
-                          session);
-    return TMH_RESPONSE_reply_internal_db_error (connection);
-  }
-
-
 
   if (GNUNET_OK !=
       TMH_plugin->commit (TMH_plugin->cls,
