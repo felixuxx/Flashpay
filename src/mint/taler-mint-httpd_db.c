@@ -514,11 +514,8 @@ refresh_accept_melts (struct MHD_Connection *connection,
 
   if (NULL == dki)
     return (MHD_YES ==
-            TMH_RESPONSE_reply_json_pack (connection,
-                                          MHD_HTTP_NOT_FOUND,
-                                          "{s:s}",
-                                          "error",
-                                          "denom not found"))
+            TMH_RESPONSE_reply_arg_unknown (connection,
+                                            "denom_pub"))
       ? GNUNET_NO : GNUNET_SYSERR;
 
   TALER_amount_ntoh (&coin_value,
@@ -681,7 +678,7 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                                     denom_pubs))
   {
     TMH_plugin->rollback (TMH_plugin->cls,
-                      session);
+                          session);
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
 
@@ -917,7 +914,7 @@ check_commitment (struct MHD_Connection *connection,
       GNUNET_break (0);
       GNUNET_free (commit_coins);
       return (MHD_YES == TMH_RESPONSE_reply_internal_error (connection,
-                                                          "Decryption error"))
+                                                            "Decryption error"))
         ? GNUNET_NO : GNUNET_SYSERR;
     }
 
@@ -1227,7 +1224,7 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
  */
 int
 TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
-                                    const union TALER_CoinSpendPublicKeyP *coin_pub)
+                             const union TALER_CoinSpendPublicKeyP *coin_pub)
 {
   int res;
   struct TALER_MINTDB_Session *session;
@@ -1236,16 +1233,16 @@ TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
   struct TALER_MINTDB_LinkDataList *ldl;
 
   if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                              GNUNET_NO)))
+                                                  GNUNET_NO)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   res = TMH_plugin->get_transfer (TMH_plugin->cls,
-                              session,
-                              coin_pub,
-                              &transfer_pub,
-                              &shared_secret_enc);
+                                  session,
+                                  coin_pub,
+                                  &transfer_pub,
+                                  &shared_secret_enc);
   if (GNUNET_SYSERR == res)
   {
     GNUNET_break (0);
@@ -1253,11 +1250,8 @@ TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
   }
   if (GNUNET_NO == res)
   {
-    return TMH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       "{s:s}",
-                                       "error",
-                                       "link data not found (transfer)");
+    return TMH_RESPONSE_reply_arg_unknown (connection,
+                                           "coin_pub");
   }
   GNUNET_assert (GNUNET_OK == res);
 
@@ -1273,11 +1267,11 @@ TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
                                        "link data not found (link)");
   }
   res = TMH_RESPONSE_reply_refresh_link_success (connection,
-                                               &transfer_pub,
-                                               &shared_secret_enc,
-                                               ldl);
+                                                 &transfer_pub,
+                                                 &shared_secret_enc,
+                                                 ldl);
   TMH_plugin->free_link_data_list (TMH_plugin->cls,
-                               ldl);
+                                   ldl);
   return res;
 }
 
