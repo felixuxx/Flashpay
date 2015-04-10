@@ -48,6 +48,9 @@ check_PROGRAMS = \
   test-mintdb-keyio \
   test-mintdb-postgres
 
+TESTS = \
+  test-mintdb-postgres
+
 test_mintdb_deposits_SOURCES = \
   test_mintdb_deposits.c
 test_mintdb_deposits_LDADD = \
