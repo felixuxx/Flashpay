@@ -624,6 +624,22 @@ postgres_prepare (PGconn *db_conn)
            "(merchant_pub = $3)"
            ")",
            3, NULL);
+  PREPARE ("get_deposit_with_coin_pub",
+           "SELECT "
+           "coin_pub,"
+           "denom_pub,"
+           "transaction_id,"
+           "amount_value,"
+           "amount_fraction,"
+           "amount_currency,"
+           "merchant_pub,"
+           "h_contract,"
+           "h_wire,"
+           "wire,"
+           "coin_sig"
+           " FROM deposits WHERE "
+           " coin_pub = $1",
+           1, NULL);
   return GNUNET_OK;
 #undef PREPARE
 }
@@ -2399,8 +2415,99 @@ postgres_get_coin_transactions (void *cls,
                                 struct TALER_MINTDB_Session *session,
                                 const union TALER_CoinSpendPublicKeyP *coin_pub)
 {
+  PGresult *result;
+  struct TALER_MINTDB_TransactionList *head;
+  struct TALER_MINTDB_TransactionList *tl;
+  int nrows;
+  int ret;
+
+  result = NULL;
+  head = NULL;
+  tl = NULL;
+  nrows = 0;
+  ret = GNUNET_SYSERR;
+
+  /* check deposits */
+  {
+    struct TALER_MINTDB_Deposit *deposit;
+    struct TALER_PQ_QueryParam params[] = {
+      TALER_PQ_QUERY_PARAM_PTR (&coin_pub->ecdsa_pub),
+      TALER_PQ_QUERY_PARAM_END
+    };
+    json_error_t json_error;
+    char *json_wire_enc;
+    size_t json_wire_enc_size;
+    int i;
+    result = TALER_PQ_exec_prepared (session->conn,
+                                     "get_deposit_with_coin_pub",
+                                     params);
+    if (PGRES_TUPLES_OK != PQresultStatus (result))
+    {
+      QUERY_ERR (result);
+      goto cleanup;
+    }
+    nrows = PQntuples (result);
+    for (i=0; i < nrows; i++)
+    {
+      deposit = GNUNET_new (struct TALER_MINTDB_Deposit);
+      struct TALER_PQ_ResultSpec rs[] = {
+        TALER_PQ_RESULT_SPEC ("coin_pub", &deposit->coin),
+        TALER_PQ_RESULT_SPEC ("coin_sig", &deposit->csig),
+        TALER_PQ_RESULT_SPEC ("merchant_pub", &deposit->merchant_pub),
+        TALER_PQ_RESULT_SPEC ("h_contract", &deposit->h_contract),
+        TALER_PQ_RESULT_SPEC ("h_wire", &deposit->h_wire),
+        TALER_PQ_RESULT_SPEC_VAR ("wire", &json_wire_enc, &json_wire_enc_size),
+        TALER_PQ_RESULT_SPEC ("transaction_id", &deposit->transaction_id),
+        /**  FIXME:
+         * TALER_PQ_RESULT_SPEC ("timestamp", &deposit->timestamp),
+         * TALER_PQ_RESULT_SPEC ("refund_deadline", &deposit->refund_deadline),
+         * TALER_PQ_RESULT_SPEC ("deposit_fee", &deposit->deposit_fee)
+         */
+        TALER_PQ_RESULT_SPEC_END
+      };
+      if ((GNUNET_OK != TALER_PQ_extract_result (result, rs, i))
+          || (GNUNET_OK != TALER_PQ_extract_amount (result,
+                                                    i,
+                                                    "amount_value",
+                                                    "amount_fraction",
+                                                    "amount_currency",
+                                                    &deposit->amount_with_fee)))
+      {
+        GNUNET_break (0);
+        goto cleanup_deposit;
+      }
+      deposit->wire = json_loads (json_wire_enc,
+                                  JSON_REJECT_DUPLICATES,
+                                  &json_error);
+      if (NULL == deposit->wire)
+      {
+        TALER_json_warn (json_error);
+        goto cleanup_deposit;
+      }
+      GNUNET_free (json_wire_enc);
+      json_wire_enc = NULL;
+      deposit->transaction_id = GNUNET_ntohll (deposit->transaction_id);
+      tl = GNUNET_new (struct TALER_MINTDB_TransactionList);
+      tl->type = TALER_MINTDB_TT_DEPOSIT;
+      tl->details.deposit = deposit;
+      deposit = NULL;
+      continue;
+    cleanup_deposit:
+      GNUNET_free_non_null (json_wire_enc);
+      GNUNET_free_non_null (deposit);
+      goto cleanup;
+    }
+  }
   // FIXME: check logic!
-  GNUNET_break (0); // FIXME: implement!
+  /* We need to get this information from 3 tables:
+   1. Deposits
+   2. Coins used in for refreshing
+   3. locked coins (locking is not implemented as of now) */
+ cleanup:
+  if (GNUNET_OK == ret)
+    return head;
+  if (NULL != head)
+    common_free_coin_transaction_list (cls, head);
   return NULL;
 }
 
