@@ -782,8 +782,6 @@ check_commitment (struct MHD_Connection *connection,
   unsigned int j;
   struct TALER_LinkSecretP last_shared_secret;
   int secret_initialized = GNUNET_NO;
-  struct GNUNET_CRYPTO_EcdhePublicKey coin_ecdhe;
-  struct GNUNET_CRYPTO_EcdhePrivateKey transfer_ecdhe;
   struct TALER_MINTDB_RefreshCommitLinkP *commit_links;
   struct TALER_MINTDB_RefreshCommitCoin *commit_coins;
 
@@ -809,8 +807,8 @@ check_commitment (struct MHD_Connection *connection,
     struct TALER_LinkSecretP shared_secret;
     struct TALER_TransferPublicKeyP transfer_pub_check;
 
-    GNUNET_CRYPTO_ecdsa_key_get_public (&transfer_privs[j].ecdsa_priv,
-                                        &transfer_pub_check.ecdsa_pub);
+    GNUNET_CRYPTO_ecdhe_key_get_public (&transfer_privs[j].ecdhe_priv,
+                                        &transfer_pub_check.ecdhe_pub);
     if (0 !=
         memcmp (&transfer_pub_check,
                 &commit_links[j].transfer_pub,
@@ -822,31 +820,25 @@ check_commitment (struct MHD_Connection *connection,
       /* FIXME: return more specific error with original signature (#3712) */
       return (MHD_YES ==
 	      TMH_RESPONSE_reply_refresh_reveal_missmatch (connection,
-							 off,
-							 j,
-							 "transfer key"))
+                                                           off,
+                                                           j,
+                                                           "transfer key"))
         ? GNUNET_NO : GNUNET_SYSERR;
     }
 
     /* We're converting key types here, which is not very nice
      * but necessary and harmless (keys will be thrown away later). */
-    GNUNET_CRYPTO_ecdsa_public_to_ecdhe (&melts[j].coin.coin_pub.ecdsa_pub,
-                                         &coin_ecdhe);
-    GNUNET_CRYPTO_ecdsa_private_to_ecdhe (&transfer_privs[j].ecdsa_priv,
-                                          &transfer_ecdhe);
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_ecc_ecdh (&transfer_ecdhe,
-                                &coin_ecdhe,
+        GNUNET_CRYPTO_ecc_ecdh (&transfer_privs[j].ecdhe_priv,
+                                &melts[j].coin.coin_pub.ecdhe_pub,
                                 &transfer_secret.key))
     {
       GNUNET_break (0);
-      GNUNET_CRYPTO_ecdhe_key_clear (&transfer_ecdhe);
       GNUNET_free (commit_links);
       return (MHD_YES == TMH_RESPONSE_reply_internal_error (connection,
                                                           "ECDH error"))
         ? GNUNET_NO : GNUNET_SYSERR;
     }
-    GNUNET_CRYPTO_ecdhe_key_clear (&transfer_ecdhe);
     if (GNUNET_OK !=
         TALER_transfer_decrypt (&commit_links[j].shared_secret_enc,
                                 &transfer_secret,

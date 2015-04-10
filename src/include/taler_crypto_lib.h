@@ -101,9 +101,8 @@ struct TALER_TransferPublicKeyP
 {
   /**
    * Taler uses ECDSA for transfer keys.
-   * FIXME: should this not be ECDHE?
    */
-  struct GNUNET_CRYPTO_EcdsaPublicKey ecdsa_pub;
+  struct GNUNET_CRYPTO_EcdhePublicKey ecdhe_pub;
 };
 
 
@@ -115,9 +114,8 @@ struct TALER_TransferPrivateKeyP
 {
   /**
    * Taler uses ECDSA for melting session keys.
-   * FIXME: should this not be ECDHE?
    */
-  struct GNUNET_CRYPTO_EcdsaPrivateKey ecdsa_priv;
+  struct GNUNET_CRYPTO_EcdhePrivateKey ecdhe_priv;
 };
 
 
