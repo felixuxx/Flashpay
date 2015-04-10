@@ -405,6 +405,15 @@ postgres_prepare (PGconn *db_conn)
            " FROM refresh_sessions "
            " WHERE session_hash = $1 ",
            1, NULL);
+  PREPARE ("insert_refresh_session",
+           "INSERT INTO refresh_sessions ( "
+           " session_hash "
+           ",num_oldcoins "
+           ",num_newcoins "
+           ",noreveal_index "
+           ") "
+           "VALUES ($1, $2, $3, $4) ",
+           4, NULL);
 
   PREPARE ("get_known_coin",
            "SELECT "
@@ -483,13 +492,6 @@ postgres_prepare (PGconn *db_conn)
            "SELECT coin_pub "
            "FROM refresh_melt "
            "WHERE session_hash = $1 AND oldcoin_index = $2",
-           2, NULL);
-  PREPARE ("insert_refresh_session",
-           "INSERT INTO refresh_sessions ( "
-           " session_hash "
-           ",noreveal_index "
-           ") "
-           "VALUES ($1, $2) ",
            2, NULL);
   PREPARE ("insert_refresh_commit_link",
            "INSERT INTO refresh_commit_link ( "
@@ -1522,28 +1524,29 @@ postgres_create_refresh_session (void *cls,
                                  const struct GNUNET_HashCode *session_hash,
                                  const struct TALER_MINTDB_RefreshSession *refresh_session)
 {
-  // FIXME: actually store session data!
+  PGresult *result;
+  uint16_t num_oldcoins;
+  uint16_t num_newcoins;
   uint16_t noreveal_index;
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_QUERY_PARAM_PTR(session_hash),
+    TALER_PQ_QUERY_PARAM_PTR(&num_oldcoins),
+    TALER_PQ_QUERY_PARAM_PTR(&num_newcoins),
     TALER_PQ_QUERY_PARAM_PTR(&noreveal_index),
     TALER_PQ_QUERY_PARAM_END
   };
-
-  noreveal_index = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, 1<<15);
-  noreveal_index = htonl (noreveal_index);
-
-  PGresult *result = TALER_PQ_exec_prepared (session->conn,
-                                             "insert_refresh_session",
-                                             params);
-
+  num_oldcoins = htons (refresh_session->num_oldcoins);
+  num_newcoins = htons (refresh_session->num_newcoins);
+  noreveal_index = htons (refresh_session->noreveal_index);
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "insert_refresh_session",
+                                   params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
-
   PQclear (result);
   return GNUNET_OK;
 }
