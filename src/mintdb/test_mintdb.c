@@ -325,6 +325,28 @@ run (void *cls,
           plugin->have_deposit (plugin->cls,
                                 session,
                                 &deposit2));
+  /* Tests for refreshing */
+  {
+    struct TALER_MINTDB_RefreshSession refresh_session;
+    struct TALER_MINTDB_RefreshSession ret_refresh_session;
+    struct GNUNET_HashCode session_hash;
+    RND_BLK (&refresh_session);
+    RND_BLK (&session_hash);
+    refresh_session.num_oldcoins = UINT16_MAX;
+    refresh_session.num_newcoins = 1;
+    refresh_session.noreveal_index = 1;
+    FAILIF (GNUNET_OK != plugin->create_refresh_session (plugin->cls,
+                                                         session,
+                                                         &session_hash,
+                                                         &refresh_session));
+    FAILIF (GNUNET_OK != plugin->get_refresh_session (plugin->cls,
+                                                      session,
+                                                      &session_hash,
+                                                      &ret_refresh_session));
+    FAILIF (0 != memcmp (&ret_refresh_session,
+                         &refresh_session,
+                         sizeof (refresh_session)));
+  }
   result = 0;
 
  drop:
