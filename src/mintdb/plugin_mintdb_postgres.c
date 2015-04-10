@@ -232,7 +232,7 @@ postgres_create_tables (void *cls,
    */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_sessions "
           "("
-          " session_hash BYTEA PRIMARY KEY CHECK (length(session_hash) = 32)"
+          " session_hash BYTEA PRIMARY KEY CHECK (length(session_hash) = 64)"
           ",num_oldcoins INT2 NOT NULL"
           ",num_newcoins INT2 NOT NULL"
           ",noreveal_index INT2 NOT NULL"
