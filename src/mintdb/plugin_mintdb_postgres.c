@@ -223,11 +223,18 @@ postgres_create_tables (void *cls,
           ",expended_currency VARCHAR(4) NOT NULL"
           ",refresh_session_hash BYTEA"
           ")");
+  /**
+   * The DB will show negative values for some values of the following fields as
+   * we use them as 16 bit unsigned integers
+   *   @a num_oldcoins
+   *   @a num_newcoins
+   * Do not do arithmetic in SQL on these fields
+   */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_sessions "
           "("
           " session_hash BYTEA PRIMARY KEY CHECK (length(session_hash) = 32)"
-          ",session_melt_sig BYTEA"
-          ",session_commit_sig BYTEA"
+          ",num_oldcoins INT2 NOT NULL"
+          ",num_newcoins INT2 NOT NULL"
           ",noreveal_index INT2 NOT NULL"
           // non-zero if all reveals were ok
           // and the new coin signatures are ready
@@ -389,23 +396,24 @@ postgres_prepare (PGconn *db_conn)
            " FROM collectable_blindcoins"
            " WHERE reserve_pub=$1;",
            1, NULL);
-
-  /* FIXME: does it make sense to store these computed values in the DB? */
-#if 0
+  /* refreshing */
   PREPARE ("get_refresh_session",
            "SELECT "
-           " (SELECT count(*) FROM refresh_melt WHERE session_hash = $1)::INT2 as num_oldcoins "
-           ",(SELECT count(*) FROM refresh_blind_session_keys "
-           "  WHERE session_hash = $1 and cnc_index = 0)::INT2 as num_newcoins "
-           ",(SELECT count(*) FROM refresh_blind_session_keys "
-           "  WHERE session_hash = $1 and newcoin_index = 0)::INT2 as kappa "
+           " num_oldcoins"
+           ",num_newcoins"
            ",noreveal_index"
-           ",session_commit_sig "
-           ",reveal_ok "
-           "FROM refresh_sessions "
-           "WHERE session_hash = $1",
+           " FROM refresh_sessions "
+           " WHERE session_hash = $1 ",
            1, NULL);
-#endif
+  PREPARE ("insert_refresh_session",
+           "INSERT INTO refresh_sessions ( "
+           " session_hash "
+           ",num_oldcoins "
+           ",num_newcoins "
+           ",noreveal_index "
+           ") "
+           "VALUES ($1, $2, $3, $4) ",
+           4, NULL);
 
   PREPARE ("get_known_coin",
            "SELECT "
@@ -484,13 +492,6 @@ postgres_prepare (PGconn *db_conn)
            "SELECT coin_pub "
            "FROM refresh_melt "
            "WHERE session_hash = $1 AND oldcoin_index = $2",
-           2, NULL);
-  PREPARE ("insert_refresh_session",
-           "INSERT INTO refresh_sessions ( "
-           " session_hash "
-           ",noreveal_index "
-           ") "
-           "VALUES ($1, $2) ",
            2, NULL);
   PREPARE ("insert_refresh_commit_link",
            "INSERT INTO refresh_commit_link ( "
@@ -1451,61 +1452,59 @@ postgres_get_refresh_session (void *cls,
                               const struct GNUNET_HashCode *session_hash,
                               struct TALER_MINTDB_RefreshSession *refresh_session)
 {
-  // FIXME: check logic!
-  int res;
+  PGresult *result;
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_QUERY_PARAM_PTR(session_hash),
     TALER_PQ_QUERY_PARAM_END
   };
+  int ret;
+  uint16_t num_oldcoins;
+  uint16_t num_newcoins;
+  uint16_t noreveal_index;
 
-  PGresult *result = TALER_PQ_exec_prepared (session->conn,
-                                             "get_refresh_session",
-                                             params);
-
+  ret = GNUNET_SYSERR;
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "get_refresh_session",
+                                   params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Query failed: %s\n",
-                PQresultErrorMessage (result));
-    PQclear (result);
-    return GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+    goto cleanup;
   }
-
   if (0 == PQntuples (result))
-    return GNUNET_NO;
-
+  {
+    ret = GNUNET_NO;
+    goto cleanup;
+  }
   GNUNET_assert (1 == PQntuples (result));
-
-  /* We're done if the caller is only interested in
-   * whether the session exists or not */
-
+  /* We're done if the caller is only interested in whether the session exists
+   * or not */
   if (NULL == refresh_session)
-    return GNUNET_YES;
-
-  memset (session, 0, sizeof (struct TALER_MINTDB_RefreshSession));
-
+  {
+    ret = GNUNET_YES;
+    goto cleanup;
+  }
+  memset (refresh_session, 0, sizeof (struct TALER_MINTDB_RefreshSession));
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC("num_oldcoins", &refresh_session->num_oldcoins),
-    TALER_PQ_RESULT_SPEC("num_newcoins", &refresh_session->num_newcoins),
-    TALER_PQ_RESULT_SPEC("noreveal_index", &refresh_session->noreveal_index),
+    TALER_PQ_RESULT_SPEC("num_oldcoins", &num_oldcoins),
+    TALER_PQ_RESULT_SPEC("num_newcoins", &num_newcoins),
+    TALER_PQ_RESULT_SPEC("noreveal_index", &noreveal_index),
     TALER_PQ_RESULT_SPEC_END
   };
-
-  res = TALER_PQ_extract_result (result, rs, 0);
-
-  if (GNUNET_OK != res)
+  if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
   {
     GNUNET_break (0);
-    PQclear (result);
-    return GNUNET_SYSERR;
+    goto cleanup;
   }
+  refresh_session->num_oldcoins = ntohs (num_oldcoins);
+  refresh_session->num_newcoins = ntohs (num_newcoins);
+  refresh_session->noreveal_index = ntohs (noreveal_index);
+  ret = GNUNET_YES;
 
-  refresh_session->num_oldcoins = ntohs (refresh_session->num_oldcoins);
-  refresh_session->num_newcoins = ntohs (refresh_session->num_newcoins);
-  refresh_session->noreveal_index = ntohs (refresh_session->noreveal_index);
-
-  PQclear (result);
-  return GNUNET_YES;
+ cleanup:
+  if (NULL != result)
+    PQclear (result);
+  return ret;
 }
 
 
@@ -1525,28 +1524,29 @@ postgres_create_refresh_session (void *cls,
                                  const struct GNUNET_HashCode *session_hash,
                                  const struct TALER_MINTDB_RefreshSession *refresh_session)
 {
-  // FIXME: actually store session data!
+  PGresult *result;
+  uint16_t num_oldcoins;
+  uint16_t num_newcoins;
   uint16_t noreveal_index;
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_QUERY_PARAM_PTR(session_hash),
+    TALER_PQ_QUERY_PARAM_PTR(&num_oldcoins),
+    TALER_PQ_QUERY_PARAM_PTR(&num_newcoins),
     TALER_PQ_QUERY_PARAM_PTR(&noreveal_index),
     TALER_PQ_QUERY_PARAM_END
   };
-
-  noreveal_index = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, 1<<15);
-  noreveal_index = htonl (noreveal_index);
-
-  PGresult *result = TALER_PQ_exec_prepared (session->conn,
-                                             "insert_refresh_session",
-                                             params);
-
+  num_oldcoins = htons (refresh_session->num_oldcoins);
+  num_newcoins = htons (refresh_session->num_newcoins);
+  noreveal_index = htons (refresh_session->noreveal_index);
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "insert_refresh_session",
+                                   params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
-
   PQclear (result);
   return GNUNET_OK;
 }
