@@ -795,12 +795,114 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
                                              unsigned int j,
                                              const char *missmatch_object)
 {
+  json_t *info_old;
+  json_t *info_new;
+  json_t *info_commit;
+  json_t *info_links;
+  unsigned int i;
+  unsigned int k;
+
+  info_old = json_array ();
+  for (i=0;i<mc->num_oldcoins;i++)
+  {
+    const struct TALER_MINTDB_RefreshMelt *rm;
+    json_t *rm_json;
+
+    rm = &mc->melts[i];
+    rm_json = json_object ();
+    json_object_set_new (rm_json,
+                         "coin_sig",
+                         TALER_json_from_data (&rm->coin_sig,
+                                               sizeof (struct TALER_CoinSpendSignatureP)));
+    json_object_set_new (rm_json,
+                         "coin_pub",
+                         TALER_json_from_data (&rm->coin.coin_pub,
+                                               sizeof (union TALER_CoinSpendPublicKeyP)));
+    json_object_set_new (rm_json,
+                         "melt_amount_with_fee",
+                         TALER_json_from_amount (&rm->amount_with_fee));
+    json_object_set_new (rm_json,
+                         "melt_fee",
+                         TALER_json_from_amount (&rm->melt_fee));
+    json_array_append_new (info_old,
+                           rm_json);
+  }
+  info_new = json_array ();
+  for (i=0;i<mc->num_newcoins;i++)
+  {
+    const struct TALER_DenominationPublicKey *pk;
+
+    pk = &mc->denom_pubs[i];
+    json_array_append_new (info_new,
+                           TALER_json_from_rsa_public_key (pk->rsa_public_key));
+
+  }
+  info_commit = json_array ();
+  info_links = json_array ();
+  for (k=0;k<TALER_CNC_KAPPA;k++)
+  {
+    json_t *info_commit_k;
+    json_t *info_link_k;
+
+    info_commit_k = json_array ();
+    for (i=0;i<mc->num_newcoins;i++)
+    {
+      const struct TALER_MINTDB_RefreshCommitCoin *cc;
+      json_t *cc_json;
+
+      cc = &mc->commit_coins[k][i];
+      cc_json = json_object ();
+      json_object_set_new (cc_json,
+                           "coin_ev",
+                           TALER_json_from_data (cc->coin_ev,
+                                                 cc->coin_ev_size));
+      json_object_set_new (cc_json,
+                           "coin_priv_enc",
+                           TALER_json_from_data (cc->refresh_link->coin_priv_enc,
+                                                 sizeof (union TALER_CoinSpendPrivateKeyP)));
+      json_object_set_new (cc_json,
+                           "blinding_key_enc",
+                           TALER_json_from_data (cc->refresh_link->blinding_key_enc,
+                                                 cc->refresh_link->blinding_key_enc_size));
+
+      json_array_append_new (info_commit_k,
+                             cc_json);
+    }
+    json_array_append_new (info_commit,
+                           info_commit_k);
+    info_link_k = json_array ();
+    for (i=0;i<mc->num_newcoins;i++)
+    {
+      const struct TALER_MINTDB_RefreshCommitLinkP *cl;
+      json_t *cl_json;
+
+      cl = &mc->commit_links[k][i];
+      cl_json = json_object ();
+      json_object_set_new (cl_json,
+                           "transfer_pub",
+                           TALER_json_from_data (&cl->transfer_pub,
+                                                 sizeof (struct TALER_TransferPublicKeyP)));
+      json_object_set_new (cl_json,
+                           "shared_secret_enc",
+                           TALER_json_from_data (&cl->shared_secret_enc,
+                                                 sizeof (struct TALER_EncryptedLinkSecretP)));
+      json_array_append_new (info_link_k,
+                             cl_json);
+    }
+    json_array_append_new (info_links,
+                           info_link_k);
+  }
+
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_CONFLICT,
-                                       "{s:s, s:i, s:i, s:s}",
+                                       "{s:s, s:i, s:i, s:o, s:o, s:o, s:o, s:s}",
                                        "error", "commitment violation",
                                        "offset", (int) off,
                                        "index", (int) j,
+                                       "oldcoin_infos", info_old,
+                                       "newcoin_infos", info_new,
+                                       "commit_infos", info_commit,
+                                       "link_infos", info_links,
                                        "object", missmatch_object);
 }
 
