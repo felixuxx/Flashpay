@@ -744,6 +744,54 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
 
 
 /**
+ * Send an error response with the details of the original melt
+ * commitment and the location of the mismatch.
+ *
+ * @param connection the MHD connection to handle
+ * @param session database connection to use
+ * @param session_hash hash of session to query
+ * @param off commitment offset to check
+ * @param index index of the mismatch
+ * @param object_name name of the object with the problem
+ * @return #GNUNET_NO if we generated the error message
+ *         #GNUNET_SYSERR if we could not even generate an error message
+ */
+static int
+send_melt_commitment_error (struct MHD_Connection *connection,
+                            struct TALER_MINTDB_Session *session,
+                            const struct GNUNET_HashCode *session_hash,
+                            unsigned int off,
+                            unsigned int index,
+                            const char *object_name)
+{
+  struct TALER_MINTDB_MeltCommitment *mc;
+  int ret;
+
+  mc = TMH_plugin->get_melt_commitment (TMH_plugin->cls,
+                                        session,
+                                        session_hash);
+  if (NULL == mc)
+  {
+    GNUNET_break (0);
+    return (MHD_YES ==
+            TMH_RESPONSE_reply_internal_error (connection,
+                                               "Melt commitment assembly"))
+      ? GNUNET_NO : GNUNET_SYSERR;
+  }
+  ret = (MHD_YES ==
+         TMH_RESPONSE_reply_refresh_reveal_missmatch (connection,
+                                                      mc,
+                                                      off,
+                                                      index,
+                                                      object_name))
+    ? GNUNET_NO : GNUNET_SYSERR;
+  TMH_plugin->free_melt_commitment (TMH_plugin->cls,
+                                    mc);
+  return ret;
+}
+
+
+/**
  * Check if the given @a transfer_privs correspond to an honest
  * commitment for the given session.
  * Checks that the transfer private keys match their commitments.
@@ -811,13 +859,12 @@ check_commitment (struct MHD_Connection *connection,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "transfer keys do not match\n");
       GNUNET_free (commit_links);
-      /* FIXME: return more specific error with original signature (#3712) */
-      return (MHD_YES ==
-	      TMH_RESPONSE_reply_refresh_reveal_missmatch (connection,
-                                                           off,
-                                                           j,
-                                                           "transfer key"))
-        ? GNUNET_NO : GNUNET_SYSERR;
+      return send_melt_commitment_error (connection,
+                                         session,
+                                         session_hash,
+                                         off,
+                                         j,
+                                         "transfer key");
     }
 
     /* We're converting key types here, which is not very nice
@@ -858,13 +905,12 @@ check_commitment (struct MHD_Connection *connection,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "shared secrets do not match\n");
       GNUNET_free (commit_links);
-      /* FIXME: return more specific error with original signature (#3712) */
-      return (MHD_YES ==
-              TMH_RESPONSE_reply_refresh_reveal_missmatch (connection,
-                                                           off,
-                                                           j,
-                                                           "transfer secret"))
-          ? GNUNET_NO : GNUNET_SYSERR;
+      return send_melt_commitment_error (connection,
+                                         session,
+                                         session_hash,
+                                         off,
+                                         j,
+                                         "transfer secret");
     }
   }
   GNUNET_break (GNUNET_YES == secret_initialized);
@@ -935,14 +981,13 @@ check_commitment (struct MHD_Connection *connection,
                   "blind envelope does not match for k=%u, old=%d\n",
                   off,
                   (int) j);
-      /* FIXME: return more specific error with original signature (#3712) */
       GNUNET_free (commit_coins);
-      return (MHD_YES ==
-              TMH_RESPONSE_reply_refresh_reveal_missmatch (connection,
-                                                           off,
-                                                           j,
-                                                           "envelope"))
-          ? GNUNET_NO : GNUNET_SYSERR;
+      return send_melt_commitment_error (connection,
+                                         session,
+                                         session_hash,
+                                         off,
+                                         j,
+                                         "envelope");
     }
     GNUNET_free (buf);
   }

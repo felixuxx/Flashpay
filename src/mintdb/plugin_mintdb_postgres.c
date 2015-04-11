@@ -2006,6 +2006,52 @@ postgres_get_refresh_commit_links (void *cls,
 
 
 /**
+ * Get all of the information from the given melt commit operation.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param sesssion database connection to use
+ * @param session_hash hash to identify refresh session
+ * @return NULL if the @a session_hash does not correspond to any known melt
+ *         operation
+ */
+static struct TALER_MINTDB_MeltCommitment *
+postgres_get_melt_commitment (void *cls,
+                              struct TALER_MINTDB_Session *sesssion,
+                              const struct GNUNET_HashCode *session_hash)
+{
+  // FIXME: needs to be implemented!
+#if 0
+  struct TALER_MINTDB_MeltCommitment *mc;
+  unsigned int k;
+  unsigned int i;
+
+  mc = GNUNET_new (struct TALER_MINTDB_MeltCommitment);
+  mc->num_newcoins = ;
+  mc->num_oldcoins = ;
+  mc->denom_pubs = GNUNET_malloc (mc->num_newcoins *
+                                  sizeof (struct TALER_DenominationPublicKey));
+  mc->melts = GNUNET_malloc (mc->num_oldcoins *
+                             sizeof (struct TALER_MINTDB_RefreshMelt));
+  for (k=0;k<TALER_CNC_KAPPA;k++)
+  {
+    mc->commit_coins[k] = GNUNET_malloc (mc->num_newcoins *
+                                         sizeof (struct TALER_MINTDB_RefreshCommitCoin));
+    for (i=0;i<mc->num_newcoins;i++)
+    {
+      mc->commit_coins[k][i].refresh_link = ; // malloc...
+      mc->commit_coins[k][i].coin_ev = ; // malloc...
+    }
+    mc->commit_links[k] = GNUNET_malloc (mc->num_oldcoins *
+                                         sizeof (struct TALER_MINTDB_RefreshCommitLinkP));
+  }
+
+  return mc;
+#endif
+  return NULL;
+}
+
+
+/**
  * Insert signature of a new coin generated during refresh into
  * the database indexed by the refresh session and the index
  * of the coin.  This data is later used should an old coin
@@ -2324,6 +2370,8 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->get_refresh_commit_coins = &postgres_get_refresh_commit_coins;
   plugin->insert_refresh_commit_links = &postgres_insert_refresh_commit_links;
   plugin->get_refresh_commit_links = &postgres_get_refresh_commit_links;
+  plugin->get_melt_commitment = &postgres_get_melt_commitment;
+  plugin->free_melt_commitment = &common_free_melt_commitment;
   plugin->insert_refresh_collectable = &postgres_insert_refresh_collectable;
   plugin->get_link_data_list = &postgres_get_link_data_list;
   plugin->free_link_data_list = &common_free_link_data_list;

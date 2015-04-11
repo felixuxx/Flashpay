@@ -61,7 +61,6 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                             const struct GNUNET_HashCode *session_hash,
                             struct TALER_MINTDB_RefreshCommitCoin *const* commit_coin,
                             struct TALER_MINTDB_RefreshCommitLinkP *const* commit_link)
-
 {
   unsigned int i;
   struct TMH_KS_StateHandle *key_state;
@@ -509,6 +508,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
         free_commit_coins (commit_coin,
                            TALER_CNC_KAPPA,
                            num_newcoins);
+        GNUNET_free (link_enc);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
       rcc->refresh_link
@@ -517,6 +517,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        link_enc,
                                        link_enc_size);
+      GNUNET_free (link_enc);
     }
   }
 

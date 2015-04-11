@@ -115,4 +115,35 @@ common_free_coin_transaction_list (void *cls,
   }
 }
 
+
+/**
+ * Free melt commitment data.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state (unused)
+ * @param mc data structure to free
+ */
+static void
+common_free_melt_commitment (void *cls,
+                             struct TALER_MINTDB_MeltCommitment *mc)
+{
+  unsigned int i;
+  unsigned int k;
+
+  GNUNET_free (mc->melts);
+  for (i=0;i<mc->num_newcoins;i++)
+    GNUNET_CRYPTO_rsa_public_key_free (mc->denom_pubs[i].rsa_public_key);
+  GNUNET_free (mc->denom_pubs);
+  for (k=0;k<TALER_CNC_KAPPA;k++)
+  {
+    for (i=0;i<mc->num_newcoins;i++)
+    {
+      GNUNET_free (mc->commit_coins[k][i].refresh_link);
+      GNUNET_free (mc->commit_coins[k][i].coin_ev);
+    }
+    GNUNET_free (mc->commit_coins[k]);
+    GNUNET_free (mc->commit_links[k]);
+  }
+  GNUNET_free (mc);
+}
+
 /* end of plugin_mintdb_common.c */

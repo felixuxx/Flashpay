@@ -24,6 +24,7 @@
 
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
+#include "taler_signatures.h"
 
 
 /**
@@ -378,7 +379,7 @@ GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
  * @brief For each (old) coin being melted, we have a `struct
- * RefreshCommitLink` that allows the user to find the shared secret
+ * RefreshCommitLinkP` that allows the user to find the shared secret
  * to decrypt the respective refresh links for the new coins in the
  * `struct TALER_MINTDB_RefreshCommitCoin`.
  */
@@ -515,6 +516,44 @@ struct TALER_MINTDB_TransactionList
 
   } details;
 
+};
+
+
+/**
+ * @brief All of the information from a /refresh/melt commitment.
+ */
+struct TALER_MINTDB_MeltCommitment
+{
+
+  /**
+   * Number of coins we are melting.
+   */
+  uint16_t num_oldcoins;
+
+  /**
+   * Number of new coins we are creating.
+   */
+  uint16_t num_newcoins;
+
+  /**
+   * Array of @e num_oldcoins melt operation details.
+   */
+  struct TALER_MINTDB_RefreshMelt *melts;
+
+  /**
+   * Array of @e num_newcoins denomination keys
+   */
+  struct TALER_DenominationPublicKey *denom_pubs;
+
+  /**
+   * 2D-Array of #TALER_CNC_KAPPA and @e num_newcoins commitments.
+   */
+  struct TALER_MINTDB_RefreshCommitCoin *commit_coins[TALER_CNC_KAPPA];
+
+  /**
+   * 2D-Array of #TALER_CNC_KAPPA and @e new_oldcoins links.
+   */
+  struct TALER_MINTDB_RefreshCommitLinkP *commit_links[TALER_CNC_KAPPA];
 };
 
 
@@ -952,6 +991,32 @@ struct TALER_MINTDB_Plugin
                                unsigned int i,
                                unsigned int num_links,
                                struct TALER_MINTDB_RefreshCommitLinkP *links);
+
+
+  /**
+   * Get all of the information from the given melt commit operation.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param sesssion database connection to use
+   * @param session_hash hash to identify refresh session
+   * @return NULL if the @a session_hash does not correspond to any known melt
+   *         operation
+   */
+  struct TALER_MINTDB_MeltCommitment *
+  (*get_melt_commitment) (void *cls,
+                          struct TALER_MINTDB_Session *sesssion,
+                          const struct GNUNET_HashCode *session_hash);
+
+
+  /**
+   * Free information about a melt commitment.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param mc melt commitment data to free
+   */
+  void
+  (*free_melt_commitment) (void *cls,
+                           struct TALER_MINTDB_MeltCommitment *mc);
 
 
   /**
