@@ -323,6 +323,23 @@ TMH_PARSE_amount_json (struct MHD_Connection *connection,
 
 
 /**
+ * Parse absolute time specified in JSON format.
+ *
+ * @param connection the MHD connection (to report errors)
+ * @param f json specification of the amount
+ * @param[out] time set to the time specified in @a f
+ * @return
+ *    #GNUNET_YES if parsing was successful
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error, error response was not generated
+ */
+int
+TMH_PARSE_time_abs_json (struct MHD_Connection *connection,
+                         json_t *f,
+                         struct GNUNET_TIME_Absolute *time);
+
+
+/**
  * Extraxt fixed-size base32crockford encoded data from request.
  *
  * Queues an error response to the connection if the parameter is missing or

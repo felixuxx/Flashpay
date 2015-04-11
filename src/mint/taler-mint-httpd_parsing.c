@@ -673,14 +673,10 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
     case TMH_PARSE_JNC_RET_TIME_ABSOLUTE:
       {
         struct GNUNET_TIME_Absolute *where = va_arg (argp, void *);
-#if 0
+
         ret = TMH_PARSE_time_abs_json (connection,
                                        (json_t *) root,
                                        where);
-#endif
-        GNUNET_assert (0); /* FIXME: not implemented (#3741) */
-        (void) where;
-        ret = GNUNET_SYSERR;
         break;
       }
 
@@ -887,6 +883,90 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec)
       break;
     }
   }
+}
+
+
+/**
+ * Parse absolute time specified in JSON format.
+ *
+ * @param connection the MHD connection (to report errors)
+ * @param f json specification of the amount
+ * @param[out] time set to the time specified in @a f
+ * @return
+ *    #GNUNET_YES if parsing was successful
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error, error response was not generated
+ */
+int
+TMH_PARSE_time_abs_json (struct MHD_Connection *connection,
+                         json_t *f,
+                         struct GNUNET_TIME_Absolute *time)
+{
+  const char *val;
+  size_t slen;
+  unsigned long long int tval;
+  char *endp;
+
+  val = json_string_value (f);
+  if (NULL == val)
+  {
+    if (MHD_YES !=
+        TMH_RESPONSE_reply_json_pack (connection,
+                                      MHD_HTTP_BAD_REQUEST,
+                                      "{s:s}",
+                                      "error", "string expected"))
+      return GNUNET_SYSERR;
+    return GNUNET_NO;
+  }
+  slen = strlen (val);
+  if ( (slen <= 2) ||
+       ('/' != val[0]) ||
+       ('/' != val[slen - 1]) )
+  {
+    if (MHD_YES !=
+        TMH_RESPONSE_reply_json_pack (connection,
+                                      MHD_HTTP_BAD_REQUEST,
+                                      "{s:s, s:s}",
+                                      "error", "timestamp expected",
+                                      "value", val))
+      return GNUNET_SYSERR;
+    return GNUNET_NO;
+  }
+  if (0 == strcasecmp (val,
+                       "/forever/"))
+  {
+    *time = GNUNET_TIME_UNIT_FOREVER_ABS;
+    return GNUNET_OK;
+  }
+  tval = strtoull (&val[1],
+                   &endp,
+                   10);
+  if (&val[slen - 1] != endp)
+  {
+    if (MHD_YES !=
+        TMH_RESPONSE_reply_json_pack (connection,
+                                      MHD_HTTP_BAD_REQUEST,
+                                      "{s:s, s:s}",
+                                      "error", "timestamp expected",
+                                      "value", val))
+      return GNUNET_SYSERR;
+    return GNUNET_NO;
+  }
+  /* Time is in 'ms' in JSON, but in microseconds in GNUNET_TIME_Absolute */
+  time->abs_value_us = tval * 1000LL;
+  if ( (time->abs_value_us) / 1000LL != tval)
+  {
+    /* Integer overflow */
+    if (MHD_YES !=
+        TMH_RESPONSE_reply_json_pack (connection,
+                                      MHD_HTTP_BAD_REQUEST,
+                                      "{s:s, s:s}",
+                                      "error", "timestamp outside of legal range",
+                                      "value", val))
+      return GNUNET_SYSERR;
+    return GNUNET_NO;
+  }
+  return GNUNET_OK;
 }
 
 
