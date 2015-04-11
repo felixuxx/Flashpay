@@ -75,7 +75,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   struct TALER_Amount total_melt;
 
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TMH_MINT_CURRENCY,
+                 TALER_amount_get_zero (TMH_mint_currency_string,
                                         &total_cost));
   key_state = TMH_KS_acquire ();
   for (i=0;i<num_new_denoms;i++)
@@ -102,7 +102,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   }
 
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TMH_MINT_CURRENCY,
+                 TALER_amount_get_zero (TMH_mint_currency_string,
                                         &total_melt));
   for (i=0;i<coin_count;i++)
   {

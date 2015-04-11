@@ -28,10 +28,9 @@
 #include <microhttpd.h>
 
 /**
- * For now, we just do EUR.  Should become configurable in the future! (#3740)
+ * Which currency is used by this mint?
  */
-#define TMH_MINT_CURRENCY "EUR"
-
+extern char *TMH_mint_currency_string;
 
 /**
  * The mint's configuration.

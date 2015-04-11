@@ -36,6 +36,10 @@
 #include "taler-mint-httpd_keystate.h"
 #include "taler_mintdb_plugin.h"
 
+/**
+ * Which currency is used by this mint?
+ */
+char *TMH_mint_currency_string;
 
 /**
  * Base directory of the mint (global)
@@ -248,8 +252,26 @@ mint_serve_process_config (const char *mint_directory)
   if (NULL == cfg)
   {
     fprintf (stderr,
-             "can't load mint configuration\n");
+             "Failed to load mint configuration\n");
     return 1;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "mint",
+                                             "currency",
+                                             &TMH_mint_currency_string))
+  {
+    fprintf (stderr,
+             "No currency given in mint configuration.");
+    return GNUNET_NO;
+  }
+  if (strlen (TMH_mint_currency_string) >= TALER_CURRENCY_LEN)
+  {
+    fprintf (stderr,
+             "Currency `%s' longer than the allowed limit of %u characters.",
+             TMH_mint_currency_string,
+             (unsigned int) TALER_CURRENCY_LEN);
+    return GNUNET_NO;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,

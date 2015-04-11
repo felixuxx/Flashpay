@@ -1025,7 +1025,7 @@ TMH_PARSE_amount_json (struct MHD_Connection *connection,
     return GNUNET_NO;
   }
   if (0 != strcmp (currency,
-                   TMH_MINT_CURRENCY))
+                   TMH_mint_currency_string))
   {
     TALER_LOG_WARNING ("Currency specified not supported by this mint\n");
     if (MHD_YES !=
@@ -1039,8 +1039,8 @@ TMH_PARSE_amount_json (struct MHD_Connection *connection,
   }
   amount->value = (uint64_t) value;
   amount->fraction = (uint32_t) fraction;
-  GNUNET_assert (strlen (TMH_MINT_CURRENCY) < TALER_CURRENCY_LEN);
-  strcpy (amount->currency, TMH_MINT_CURRENCY);
+  GNUNET_assert (strlen (TMH_mint_currency_string) < TALER_CURRENCY_LEN);
+  strcpy (amount->currency, TMH_mint_currency_string);
   TALER_amount_normalize (amount);
   return GNUNET_OK;
 }
