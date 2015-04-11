@@ -887,7 +887,9 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec)
 
 
 /**
- * Parse absolute time specified in JSON format.
+ * Parse absolute time specified in JSON format.  The JSON format is
+ * "/TIMEVAL/" where TIMEVAL is in milliseconds.  Additionally, we
+ * support "/forever/" to represent the end of time.
  *
  * @param connection the MHD connection (to report errors)
  * @param f json specification of the amount

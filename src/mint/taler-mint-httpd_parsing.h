@@ -323,7 +323,9 @@ TMH_PARSE_amount_json (struct MHD_Connection *connection,
 
 
 /**
- * Parse absolute time specified in JSON format.
+ * Parse absolute time specified in JSON format.  The JSON format is
+ * "/TIMEVAL/" where TIMEVAL is in milliseconds.  Additionally, we
+ * support "/forever/" to represent the end of time.
  *
  * @param connection the MHD connection (to report errors)
  * @param f json specification of the amount
