@@ -104,7 +104,7 @@ create_denom_key_pair (unsigned int size)
 
 
 static void
-destroy_denon_key_pair (struct DenomKeyPair *dkp)
+destroy_denom_key_pair (struct DenomKeyPair *dkp)
 {
   GNUNET_CRYPTO_rsa_public_key_free (dkp->pub.rsa_public_key);
   GNUNET_CRYPTO_rsa_private_key_free (dkp->priv.rsa_private_key);
@@ -212,6 +212,33 @@ run (void *cls,
                          amount.currency,
                          expiry.abs_value_us));
   dkp = create_denom_key_pair (1024);
+  {
+    struct TALER_MINTDB_DenominationKeyIssueInformation dki;
+    dki.denom_pub = dkp->pub;
+    dki.issue.start = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get ());
+    dki.issue.expire_withdraw = GNUNET_TIME_absolute_hton
+        (GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
+                                   GNUNET_TIME_UNIT_HOURS));
+    dki.issue.expire_spend = GNUNET_TIME_absolute_hton
+        (GNUNET_TIME_absolute_add
+         (GNUNET_TIME_absolute_get (),
+          GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 2)));
+    dki.issue.expire_legal = GNUNET_TIME_absolute_hton
+        (GNUNET_TIME_absolute_add
+         (GNUNET_TIME_absolute_get (),
+          GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 3)));
+    dki.issue.value.value = GNUNET_htonll (1);
+    dki.issue.value.fraction = htonl (100);
+    (void) strcpy (dki.issue.value.currency, CURRENCY);
+    dki.issue.fee_withdraw.value = 0;
+    dki.issue.fee_withdraw.fraction = htonl (100);
+    (void) strcpy (dki.issue.value.currency, CURRENCY);
+    dki.issue.fee_refresh = dki.issue.fee_withdraw;
+    FAILIF (GNUNET_OK !=
+            plugin->insert_denomination (plugin->cls,
+                                         session,
+                                         &dki));
+  }
   RND_BLK(&h_blind);
   RND_BLK(&cbc.reserve_sig);
   cbc.denom_pub = dkp->pub;
@@ -361,7 +388,7 @@ run (void *cls,
                   plugin->drop_temporary (plugin->cls,
                                           session));
   if (NULL != dkp)
-    destroy_denon_key_pair (dkp);
+    destroy_denom_key_pair (dkp);
   if (NULL != cbc.sig.rsa_signature)
     GNUNET_CRYPTO_rsa_signature_free (cbc.sig.rsa_signature);
   if (NULL != cbc2.denom_pub.rsa_public_key)
