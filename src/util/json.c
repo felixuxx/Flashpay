@@ -258,7 +258,9 @@ TALER_json_to_amount (json_t *json,
   json_int_t fraction;
   json_error_t error;
 
-  UNPACK_EXITIF (0 != json_unpack_ex (json, &error, JSON_STRICT,
+  UNPACK_EXITIF (0 != json_unpack_ex (json,
+                                      &error,
+                                      JSON_STRICT,
                                       "{s:s, s:I, s:I}",
                                       "curreny", &currency,
                                       "value", &value,

@@ -17,20 +17,53 @@
  * @file util/wireformats.c
  * @brief helper functions for JSON processing using libjansson
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
+ * @author Christian Grothoff
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
 #include "taler_json_lib.h"
 
+/**
+ * Shorthand for exit jumps.
+ */
+#define EXITIF(cond)                                              \
+  do {                                                            \
+    if (cond) { GNUNET_break (0); goto EXITIF_exit; }             \
+  } while (0)
+
+/**
+ * Shorthand for JSON parsing related exit jumps.
+ */
+#define UNPACK_EXITIF(cond)                                             \
+  do {                                                                  \
+    if (cond) { TALER_json_warn (error); goto EXITIF_exit; }            \
+  } while (0)
+
+
 /* Taken from GNU gettext */
+
+/**
+ * Entry in the country table.
+ */
 struct table_entry
 {
+  /**
+   * 2-Character international country code.
+   */
   const char *code;
+
+  /**
+   * Long English name of the country.
+   */
   const char *english;
 };
+
 /* Keep the following table in sync with gettext.
    WARNING: the entries should stay sorted according to the code */
+/**
+ * List of country codes.
+ */
 static const struct table_entry country_table[] =
   {
     { "AE", "U.A.E." },
@@ -178,8 +211,17 @@ static const struct table_entry country_table[] =
     { "ZW", "Zimbabwe" }
   };
 
+
+/**
+ * Country code comparator function, for binary search with bsearch().
+ *
+ * @param ptr1 pointer to a `struct table_entry`
+ * @param ptr2 pointer to a `struct table_entry`
+ * @return result of strncmp()'ing the 2-digit country codes of the entries
+ */
 static int
-cmp_country_code (const void *ptr1, const void *ptr2)
+cmp_country_code (const void *ptr1,
+                  const void *ptr2)
 {
   const struct table_entry *cc1 = ptr1;
   const struct table_entry *cc2 = ptr2;
@@ -187,12 +229,13 @@ cmp_country_code (const void *ptr1, const void *ptr2)
   return strncmp (cc1->code, cc2->code, 2);
 }
 
+
 /**
  * Validates given IBAN according to the European Banking Standards.  See:
  * http://www.europeanpaymentscouncil.eu/documents/ECBS%20IBAN%20standard%20EBS204_V3.2.pdf
  *
  * @param iban the IBAN number to validate
- * @return 1 is validated successfully; 0 if not.
+ * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
 static int
 validate_iban (const char *iban)
@@ -202,66 +245,138 @@ validate_iban (const char *iban)
   struct table_entry cc_entry;
   unsigned int len;
   char *nbuf;
-  int i,j;
+  unsigned int i;
+  unsigned int j;
+  unsigned long long dividend;
+  unsigned long long remainder;
+  int nread;
+  int ret;
 
-  len = strlen(iban);
+  len = strlen (iban);
   if (len > 34)
-    return 0;
-  (void) strncpy (cc, iban, 2);
-  (void) strncpy (ibancpy, iban+4, len - 4);
-  (void) strncpy (ibancpy + len - 4, iban, 4);
+    return GNUNET_NO;
+  strncpy (cc, iban, 2);
+  strncpy (ibancpy, iban + 4, len - 4);
+  strncpy (ibancpy + len - 4, iban, 4);
   ibancpy[len] = '\0';
   cc_entry.code = cc;
   cc_entry.english = NULL;
   if (NULL ==
-      bsearch (&cc_entry, country_table,
-               sizeof(country_table)/sizeof(struct table_entry),
+      bsearch (&cc_entry,
+               country_table,
+               sizeof (country_table) / sizeof (struct table_entry),
                sizeof (struct table_entry),
                &cmp_country_code))
-    return 0;
-  nbuf = GNUNET_malloc((len * 2) + 1);
+    return GNUNET_NO;
+  nbuf = GNUNET_malloc ((len * 2) + 1);
   for (i=0, j=0; i < len; i++)
   {
-    if(isalpha(ibancpy[i]))
+    if (isalpha ((int) ibancpy[i]))
     {
-      EXITIF(2 != snprintf(&nbuf[j], 3, "%2u", (ibancpy[i] - 'A' + 10)));
-      j+=2;
+      EXITIF(2 != snprintf(&nbuf[j],
+                           3,
+                           "%2u",
+                           (ibancpy[i] - 'A' + 10)));
+      j += 2;
       continue;
     }
     nbuf[j] = ibancpy[i];
     j++;
   }
-  for (j=0; ;j++)
-  {
-    if ('\0' == nbuf[j])
-      break;
+  for (j=0;'\0' != nbuf[j];j++)
     GNUNET_assert (isdigit(nbuf[j]));
-  }
-  unsigned long long dividend;
-  unsigned long long remainder = 0;
-  int nread;
-  int ret;
   GNUNET_assert (sizeof(dividend) >= 8);
+  remainder = 0;
   for (i=0; i<j; i+=16)
   {
-    EXITIF (1 != (ret = sscanf(&nbuf[i], "%16llu %n", &dividend, &nread)));
+    EXITIF (1 !=
+            (ret = sscanf (&nbuf[i],
+                           "%16llu %n",
+                           &dividend,
+                           &nread)));
     if (0 != remainder)
       dividend += remainder * (pow (10, nread));
     remainder = dividend % 97;
   }
   EXITIF (1 != remainder);
   GNUNET_free (nbuf);
-  return 1;
+  return GNUNET_YES;
 
  EXITIF_exit:
   GNUNET_free (nbuf);
-  return 0;
+  return GNUNET_NO;
 }
+
+
+/**
+ * Validate SEPA account details.
+ *
+ * @param wire JSON with the SEPA details
+ * @return  #GNUNET_YES if correctly formatted; #GNUNET_NO if not
+ */
+static int
+validate_sepa (const json_t *wire)
+{
+  json_error_t error;
+  const char *type;
+  const char *iban;
+  const char *name;
+  const char *bic;
+  const char *edate;
+  uint64_t r;
+  const char *address;
+
+  UNPACK_EXITIF (0 != json_unpack_ex
+                 ((json_t *) wire,
+                  &error, JSON_STRICT,
+                  "{"
+                  "s:s " /* type: "SEPA" */
+                  "s:s " /* IBAN: iban */
+                  "s:s " /* name: beneficiary name */
+                  "s:s " /* BIC: beneficiary bank's BIC */
+                  "s:s " /* edate: transfer execution date */
+                  "s:i " /* r: random 64-bit integer nounce */
+                  "s?s " /* address: address of the beneficiary */
+                  "}",
+                  "type", &type,
+                  "IBAN", &iban,
+                  "name", &name,
+                  "bic", &bic,
+                  "edate", &edate,
+                  "r", &r,
+                  "address", &address));
+  EXITIF (0 != strcmp (type, "SEPA"));
+  EXITIF (1 != validate_iban (iban));
+  return GNUNET_YES;
+ EXITIF_exit:
+  return GNUNET_NO;
+}
+
+
+/**
+ * Handler for a wire format.
+ */
+struct FormatHandler
+{
+  /**
+   * Type handled by this format handler.
+   */
+  const char *type;
+
+  /**
+   * Function to call to evaluate the format.
+   *
+   * @param wire the JSON to evaluate
+   * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
+   */
+  int (*handler)(const json_t *wire);
+};
+
 
 /**
  * Check if the given wire format JSON object is correctly formatted
  *
- * @param type the type of the wire format
+ * @param type the expected type of the wire format
  * @param wire the JSON wire format object
  * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
@@ -269,42 +384,19 @@ int
 TALER_json_validate_wireformat (const char *type,
 				const json_t *wire)
 {
-  json_error_t error;
+  static const struct FormatHandler format_handlers[] = {
+    { "SEPA", &validate_sepa },
+    { NULL, NULL}
+  };
+  unsigned int i;
 
-  if (0 == strcasecmp ("SEPA", type))
-  {
-    const char *type;
-    const char *iban;
-    const char *name;
-    const char *bic;
-    const char *edate;
-    uint64_t r;
-    const char *address;
-    UNPACK_EXITIF (0 != json_unpack_ex
-                   ((json_t *) wire,
-		    &error, JSON_STRICT,
-                    "{"
-                    "s:s " /* type: "SEPA" */
-                    "s:s " /* IBAN: iban */
-                    "s:s " /* name: beneficiary name */
-                    "s:s " /* BIC: beneficiary bank's BIC */
-                    "s:s " /* edate: transfer execution date */
-                    "s:i " /* r: random 64-bit integer nounce */
-                    "s?s " /* address: address of the beneficiary */
-                    "}",
-                    "type", &type,
-                    "IBAN", &iban,
-                    "name", &name,
-                    "bic", &bic,
-                    "edate", &edate,
-                    "r", &r,
-                    "address", &address));
-    EXITIF (0 != strcmp (type, "SEPA"));
-    EXITIF (1 != validate_iban (iban));
-    return GNUNET_YES;
-  }
-
- EXITIF_exit:
+  for (i=0;NULL != format_handlers[i].type;i++)
+    if (0 == strcasecmp (format_handlers[i].type,
+                         type))
+      return format_handlers[i].handler (wire);
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Wireformat `%s' not supported\n",
+              type);
   return GNUNET_NO;
 }
 
