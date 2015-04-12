@@ -232,7 +232,7 @@ postgres_create_tables (void *cls,
    */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_sessions "
           "("
-          " session_hash BYTEA PRIMARY KEY CHECK (length(session_hash) = 32)"
+          " session_hash BYTEA PRIMARY KEY CHECK (length(session_hash) = 64)"
           ",num_oldcoins INT2 NOT NULL"
           ",num_newcoins INT2 NOT NULL"
           ",noreveal_index INT2 NOT NULL"
@@ -283,6 +283,7 @@ postgres_create_tables (void *cls,
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
           "( "
+          /* FIXME #3769: the following primary key may be too restrictive */
           " coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (length(coin_pub)=32)"
           ",denom_pub BYTEA NOT NULL" /* FIXME: Link this as a foreign key? */
           ",denom_sig BYTEA NOT NULL"
@@ -1409,7 +1410,7 @@ postgres_insert_deposit (void *cls,
     TALER_PQ_QUERY_PARAM_PTR (&amount_nbo.value),
     TALER_PQ_QUERY_PARAM_PTR (&amount_nbo.fraction),
     TALER_PQ_QUERY_PARAM_PTR_SIZED (amount_nbo.currency,
-                                    TALER_CURRENCY_LEN - 1),
+                                    3),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->merchant_pub),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->h_contract),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->h_wire),
