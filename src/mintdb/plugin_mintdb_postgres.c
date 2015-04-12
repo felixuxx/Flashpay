@@ -283,6 +283,7 @@ postgres_create_tables (void *cls,
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
           "( "
+          /* FIXME #3769: the following primary key may be too restrictive */
           " coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (length(coin_pub)=32)"
           ",denom_pub BYTEA NOT NULL" /* FIXME: Link this as a foreign key? */
           ",denom_sig BYTEA NOT NULL"
