@@ -25,6 +25,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
 #include "taler_signatures.h"
+#include "taler_mintdb_lib.h"
 
 
 /**
@@ -651,6 +652,19 @@ struct TALER_MINTDB_Plugin
   void
   (*rollback) (void *cls,
                struct TALER_MINTDB_Session *sesssion);
+
+  /**
+   * Insert a denomination key
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param sesssion connection to use
+   * @param dki the denomination key information
+   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   */
+  int
+  (*insert_denomination) (void *cls,
+                          struct TALER_MINTDB_Session *session,
+                          const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
 
 
   /**
