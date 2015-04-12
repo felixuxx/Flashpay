@@ -60,7 +60,7 @@ struct GNUNET_CRYPTO_EddsaPublicKey TMH_master_public_key;
 /**
  * In which format does this MINT expect wiring instructions?
  */
-char *TMH_expected_wire_format = "sepa";
+char *TMH_expected_wire_format;
 
 /**
  * Our DB plugin.
@@ -71,11 +71,6 @@ struct TALER_MINTDB_Plugin *TMH_plugin;
  * The HTTP Daemon.
  */
 static struct MHD_Daemon *mydaemon;
-
-/**
- * The kappa value for refreshing.
- */
-static unsigned int refresh_security_parameter;
 
 /**
  * Port to run the daemon on.
@@ -245,7 +240,6 @@ static int
 mint_serve_process_config (const char *mint_directory)
 {
   unsigned long long port;
-  unsigned long long kappa;
   char *TMH_master_public_key_str;
 
   cfg = TALER_config_load (mint_directory);
@@ -271,6 +265,16 @@ mint_serve_process_config (const char *mint_directory)
              "Currency `%s' longer than the allowed limit of %u characters.",
              TMH_mint_currency_string,
              (unsigned int) TALER_CURRENCY_LEN);
+    return GNUNET_NO;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "mint",
+                                             "wireformat",
+                                             &TMH_expected_wire_format))
+  {
+    fprintf (stderr,
+             "No wireformat given in mint configuration.");
     return GNUNET_NO;
   }
   if (GNUNET_OK !=
@@ -305,32 +309,24 @@ mint_serve_process_config (const char *mint_directory)
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (cfg,
-                                             "mint", "port",
+                                             "mint",
+                                             "port",
                                              &port))
   {
     fprintf (stderr,
-             "invalid configuration: mint.port\n");
+             "Missing or invalid configuration for the port of the mint\n");
     return GNUNET_NO;
   }
 
-  if ((port == 0) || (port > UINT16_MAX))
+  if ( (0 == port) ||
+       (port > UINT16_MAX) )
   {
     fprintf (stderr,
-             "invalid configuration (value out of range): mint.port\n");
+             "Invalid configuration (value out of range): %llu is not a valid port\n",
+             port);
     return GNUNET_NO;
   }
-  serve_port = port;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_number (cfg,
-                                             "mint", "refresh_security_parameter",
-                                             &kappa))
-  {
-    fprintf (stderr,
-             "invalid configuration: mint.refresh_security_parameter\n");
-    return GNUNET_NO;
-  }
-  refresh_security_parameter = kappa;
+  serve_port = (uint16_t) port;
 
   return GNUNET_OK;
 }
