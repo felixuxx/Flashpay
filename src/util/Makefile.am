@@ -9,7 +9,8 @@ libtalerutil_la_SOURCES = \
   crypto.c \
   util.c \
   json.c \
-  os_installation.c
+  os_installation.c \
+  wireformats.c
 
 libtalerutil_la_LIBADD = \
   -lgnunetutil \

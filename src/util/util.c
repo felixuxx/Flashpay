@@ -85,7 +85,4 @@ TALER_config_load (const char *base_dir)
   return cfg;
 }
 
-
-
-
 /* end of util.c */
