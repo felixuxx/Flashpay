@@ -63,6 +63,12 @@ struct TMH_KS_StateHandle
   struct GNUNET_CONTAINER_MultiHashMap *denomkey_map;
 
   /**
+   * Hash context we used to combine the hashes of all denomination
+   * keys into one big hash.
+   */
+  struct GNUNET_HashContext *hash_context;
+
+  /**
    * When did we initiate the key reloading?
    */
   struct GNUNET_TIME_Absolute reload_time;
@@ -221,6 +227,10 @@ reload_keys_denom_iter (void *cls,
 
   GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
                                      &denom_key_hash);
+  GNUNET_CRYPTO_hash_context_read (ctx->hash_context,
+                                   &denom_key_hash,
+                                   sizeof (struct GNUNET_HashCode));
+
   d2 = GNUNET_memdup (dki,
                       sizeof (struct TALER_MINTDB_DenominationKeyIssueInformation));
   res = GNUNET_CONTAINER_multihashmap_put (ctx->denomkey_map,
@@ -385,7 +395,6 @@ TMH_KS_acquire (void)
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct TMH_KS_StateHandle *key_state;
   json_t *keys;
-  char *inner;
   struct TALER_MintKeySetPS ks;
   struct TALER_MintSignatureP sig;
 
@@ -398,6 +407,7 @@ TMH_KS_acquire (void)
   if (NULL == internal_key_state)
   {
     key_state = GNUNET_new (struct TMH_KS_StateHandle);
+    key_state->hash_context = GNUNET_CRYPTO_hash_context_start ();
     key_state->denom_keys_array = json_array ();
     GNUNET_assert (NULL != key_state->denom_keys_array);
     key_state->sign_keys_array = json_array ();
@@ -411,31 +421,26 @@ TMH_KS_acquire (void)
     TALER_MINTDB_signing_keys_iterate (TMH_mint_directory,
                                        &reload_keys_sign_iter,
                                        key_state);
+    ks.purpose.size = htonl (sizeof (ks));
+    ks.purpose.purpose = htonl (TALER_SIGNATURE_MINT_KEY_SET);
+    ks.list_issue_date = GNUNET_TIME_absolute_hton (key_state->reload_time);
+    GNUNET_CRYPTO_hash_context_finish (key_state->hash_context,
+                                       &ks.hc);
+    key_state->hash_context = NULL;
+    TMH_KS_sign (&ks.purpose,
+                 &sig);
     key_state->next_reload = GNUNET_TIME_absolute_ntoh (key_state->current_sign_key_issue.issue.expire);
     if (0 == key_state->next_reload.abs_value_us)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "No valid signing key found!\n");
 
-    keys = json_pack ("{s:o, s:o, s:o, s:o}",
+    keys = json_pack ("{s:o, s:o, s:o, s:o, s:o}",
                       "master_public_key",
                       TALER_json_from_data (&TMH_master_public_key,
                                             sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)),
                       "signkeys", key_state->sign_keys_array,
                       "denoms", key_state->denom_keys_array,
-                      "list_issue_date", TALER_json_from_abs (key_state->reload_time));
-    inner = json_dumps (keys,
-                        JSON_INDENT(2));
-    ks.purpose.size = htonl (sizeof (ks));
-    ks.purpose.purpose = htonl (TALER_SIGNATURE_MINT_KEY_SET);
-    ks.list_issue_date = GNUNET_TIME_absolute_hton (key_state->reload_time);
-    GNUNET_CRYPTO_hash (inner,
-                        strlen (inner),
-                        &ks.hc);
-    GNUNET_free (inner);
-    TMH_KS_sign (&ks.purpose,
-                          &sig);
-    keys = json_pack ("{s:o, s:o}",
-                      "keys", keys,
+                      "list_issue_date", TALER_json_from_abs (key_state->reload_time),
                       "eddsa_sig", TALER_json_from_eddsa_sig (&ks.purpose,
                                                               &sig.eddsa_signature));
     key_state->keys_json = json_dumps (keys,
