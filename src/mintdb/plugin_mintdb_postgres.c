@@ -1017,7 +1017,7 @@ postgres_reserves_in_insert (void *cls,
     TALER_PQ_QUERY_PARAM_PTR (&reserve->pub),
     TALER_PQ_QUERY_PARAM_PTR (&balance_nbo.value),
     TALER_PQ_QUERY_PARAM_PTR (&balance_nbo.fraction),
-    TALER_PQ_QUERY_PARAM_PTR_SIZED (&balance_nbo.currency,
+    TALER_PQ_QUERY_PARAM_PTR_SIZED (balance_nbo.currency,
                                     TALER_PQ_CURRENCY_LEN),
     TALER_PQ_QUERY_PARAM_PTR (&expiry_nbo),
     TALER_PQ_QUERY_PARAM_END
