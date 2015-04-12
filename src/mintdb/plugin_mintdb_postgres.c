@@ -63,9 +63,8 @@
   } while (0)
 
 /**
- * This the length of the currency strings (without 0-termination) we use.  Note
- * that we need to use this at the DB layer instead of TALER_CURRENCY_LEN as the
- * DB only needs to store 3 bytes instead of 8 bytes.
+ * This the length of the currency strings (without 0-termination) we use.
+ * FIXME: #3768: we should eventually store 12 bytes here
  */
 #define TALER_PQ_CURRENCY_LEN 3
 
@@ -178,6 +177,23 @@ postgres_create_tables (void *cls,
     return GNUNET_SYSERR;
   }
 #define SQLEXEC(sql) SQLEXEC_(conn, sql, result);
+  /* Denomination table for holding the publicly available information of
+     denominations keys */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS denominations"
+           "("
+           " pub BYTEA PRIMARY KEY"
+           ",valid_from INT8 NOT NULL"
+           ",expire_withdraw INT8 NOT NULL"
+           ",expire_spend INT8 NOT NULL"
+           ",expire_legal INT8 NOT NULL"
+           ",value INT8 NOT NULL" /* value of this denom */
+           ",fraction INT4 NOT NULL" /* fractional value of this denom */
+           ",currency VARCHAR(4) NOT NULL" /* assuming same currency for fees */
+           ",fee_withdraw_value INT8 NOT NULL"
+           ",fee_withdraw_fraction INT4 NOT NULL"
+           ",fee_refresh_value INT8 NOT NULL"
+           ",fee_refresh_fraction INT4 NOT NULL"
+           ")");
   /* reserves table is for summarization of a reserve.  It is updated when new
      funds are added and existing funds are withdrawn */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS reserves"
@@ -331,6 +347,24 @@ postgres_prepare (PGconn *db_conn)
     PQclear (result); result = NULL;                            \
   } while (0);
 
+  PREPARE ("insert_denomination",
+           "INSERT INTO denominations ("
+           " pub"
+           ",valid_from"
+           ",expire_withdraw"
+           ",expire_spend"
+           ",expire_legal"
+           ",value" /* value of this denom */
+           ",fraction" /* fractional value of this denom */
+           ",currency" /* assuming same currency for fees */
+           ",fee_withdraw_value"
+           ",fee_withdraw_fraction"
+           ",fee_refresh_value"
+           ",fee_refresh_fraction"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6,"
+            "$7, $8, $9, $10, $11, $12);",
+           12, NULL);
   PREPARE ("get_reserve",
            "SELECT "
            "current_balance_value"
@@ -740,6 +774,65 @@ postgres_commit (void *cls,
 
   PQclear (result);
   return GNUNET_OK;
+}
+
+
+/**
+ * Insert a denomination key
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param sesssion connection to use
+ * @param dki the denomination key information
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_insert_denomination (void *cls,
+                              struct TALER_MINTDB_Session *session,
+                              const struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
+{
+  PGresult *result;
+  char *pub_enc;
+  const struct TALER_DenominationKeyValidityPS *issue;
+  size_t pub_enc_size;
+  int ret;
+
+  ret = GNUNET_SYSERR;
+  pub_enc = NULL;
+  issue = &dki->issue;
+  pub_enc_size = GNUNET_CRYPTO_rsa_public_key_encode (dki->denom_pub.rsa_public_key,
+                                                     &pub_enc);
+  if (NULL == pub_enc)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_QUERY_PARAM_PTR_SIZED (pub_enc, pub_enc_size - 1),
+    TALER_PQ_QUERY_PARAM_PTR (&issue->start.abs_value_us__),
+    TALER_PQ_QUERY_PARAM_PTR (&issue->expire_withdraw.abs_value_us__),
+    TALER_PQ_QUERY_PARAM_PTR (&issue->expire_spend.abs_value_us__),
+    TALER_PQ_QUERY_PARAM_PTR (&issue->expire_legal.abs_value_us__),
+    TALER_PQ_QUERY_PARAM_PTR (&issue->value.value),
+    TALER_PQ_QUERY_PARAM_PTR (&issue->value.fraction),
+    TALER_PQ_QUERY_PARAM_PTR_SIZED (issue->value.currency, TALER_PQ_CURRENCY_LEN),
+    TALER_PQ_QUERY_PARAM_PTR (&issue->fee_withdraw.value),
+    TALER_PQ_QUERY_PARAM_PTR (&issue->fee_withdraw.fraction),
+    TALER_PQ_QUERY_PARAM_PTR (&issue->fee_refresh.value),
+    TALER_PQ_QUERY_PARAM_PTR (&issue->fee_refresh.fraction),
+    TALER_PQ_QUERY_PARAM_END
+  };
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "insert_denomination",
+                                   params);
+  GNUNET_free (pub_enc);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+  }
+  else
+    ret = GNUNET_OK;
+  PQclear (result);
+  return ret;
 }
 
 
@@ -2353,6 +2446,7 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->start = &postgres_start;
   plugin->commit = &postgres_commit;
   plugin->rollback = &postgres_rollback;
+  plugin->insert_denomination = &postgres_insert_denomination;
   plugin->reserve_get = &postgres_reserve_get;
   plugin->reserves_in_insert = &postgres_reserves_in_insert;
   plugin->get_collectable_blindcoin = &postgres_get_collectable_blindcoin;
