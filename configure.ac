@@ -94,14 +94,12 @@ AS_IF([test $microhttpd = 0],
 *** ]])])
 
 
-# check for libpq (postgresql)
+# test for postgres
 AX_LIB_POSTGRESQL([9.3])
-AS_IF([test ! "$found_postgresql" = "yes"],
-  [AC_MSG_ERROR([[
-***
-*** You need postgresql / libpq to build this program.
-*** ]])])
-
+if test "$found_postgresql" = "yes"; then
+  postgres=true
+fi
+AM_CONDITIONAL(HAVE_POSTGRESQL, test x$postgres = xtrue)
 
 # check for libjansson (Jansson JSON library)
 jansson=0
@@ -125,7 +123,8 @@ AS_IF([test $jansson = 0],
 *** ]])])
 
 # check for libgnurl
-LIBGNURL_CHECK_CONFIG([], [7.34.0], [gnurl=1], [gnurl=0])
+# libgnurl
+LIBGNURL_CHECK_CONFIG(,7.34.0,gnurl=1,gnurl=0)
 if test "$gnurl" = 1
 then
 	AM_CONDITIONAL(HAVE_LIBGNURL, true)
@@ -133,11 +132,43 @@ then
 else
 	AM_CONDITIONAL(HAVE_LIBGNURL, false)
 fi
-AS_IF([test $gnurl = 0],
-  [AC_MSG_ERROR([[
-***
-*** You need libgnurl to build this program.
-*** ]])])
+
+# libcurl-gnutls
+LIBCURL_CHECK_CONFIG(,7.34.0,[curl=true],[curl=false])
+if test "x$curl" = xtrue
+then
+ AC_CHECK_HEADERS([curl/curl.h],
+   AC_CHECK_DECLS(CURLINFO_TLS_SESSION,[curl=true],[curl=false],[[#include <curl/curl.h>]]),
+   [curl=false])
+ # need libcurl-gnutls.so, everything else is not acceptable
+ AC_CHECK_LIB([curl-gnutls],[curl_easy_getinfo],,[curl=false])
+ # cURL must support CURLINFO_TLS_SESSION, version >= 7.34
+
+fi
+if test x$curl = xfalse
+then
+	AM_CONDITIONAL(HAVE_LIBCURL, false)
+if test "$gnurl" = 0
+then
+	AC_MSG_WARN([GNUnet requires libcurl-gnutls  >= 7.34])
+fi
+else
+	AM_CONDITIONAL(HAVE_LIBCURL, true)
+	AC_DEFINE([HAVE_LIBCURL],[1],[Have CURL])
+fi
+
+# libgnurl
+if test "x$gnurl" = "x0"
+then
+  if test "x$curl" = "x0"
+  then
+    AC_MSG_NOTICE([NOTICE: libgnurl not found.  http client support will not be compiled.])
+    AC_MSG_WARN([ERROR: libgnurl not found.  hostlist daemon will not be compiled, and you probably WANT the hostlist daemon])
+  else
+    AC_MSG_NOTICE([WARNING: libgnurl not found, trying to use libcurl-gnutls instead.])
+  fi
+fi
+
 
 # Require minimum libgcrypt version
 need_libgcrypt_version=1.6.1

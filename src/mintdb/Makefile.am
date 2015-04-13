@@ -3,8 +3,10 @@ AM_CPPFLAGS = -I$(top_srcdir)/src/include -I$(top_srcdir)/src/pq/ $(POSTGRESQL_C
 
 plugindir = $(libdir)/taler
 
+if HAVE_POSTGRESQL
 plugin_LTLIBRARIES = \
   libtaler_plugin_mintdb_postgres.la
+endif
 
 EXTRA_DIST = \
   plugin_mintdb_common.c \
