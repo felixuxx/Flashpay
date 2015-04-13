@@ -111,4 +111,28 @@ char *
 TALER_os_installation_get_path (enum GNUNET_OS_InstallationPathKind dirkind);
 
 
+/**
+ * Print out details on command line options (implements --help).
+ *
+ * @param ctx command line processing context
+ * @param scls additional closure (points to about text)
+ * @param option name of the option
+ * @param value not used (NULL)
+ * @return #GNUNET_NO (do not continue, not an error)
+ */
+int
+TALER_GETOPT_format_help_ (struct GNUNET_GETOPT_CommandLineProcessorContext *ctx,
+			   void *scls,
+			   const char *option,
+			   const char *value);
+
+/**
+ * Macro defining the option to print the command line
+ * help text (-h option).
+ *
+ * @param about string with brief description of the application
+ */
+#define TALER_GETOPT_OPTION_HELP(about) \
+  { 'h', "help", (const char *) NULL, gettext_noop("print this help"), 0, &TALER_GETOPT_format_help_, (void *) about }
+
 #endif

@@ -54,10 +54,11 @@ main (int argc,
       char *const *argv)
 {
   static const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_HELP ("gnunet-mint-dbinit OPTIONS"),
     {'d', "mint-dir", "DIR",
      "mint directory", 1,
      &GNUNET_GETOPT_set_filename, &mint_base_dir},
+    GNUNET_GETOPT_OPTION_HELP ("Initialize Taler Mint database"),
+    GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION,)
     GNUNET_GETOPT_OPTION_END
   };
 

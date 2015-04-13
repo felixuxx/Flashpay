@@ -212,16 +212,17 @@ main (int argc, char *const *argv)
   static char *reserve_pub_str;
   static char *add_str;
   static const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_HELP ("gnunet-mint-reservemod OPTIONS"),
-    {'d', "mint-dir", "DIR",
-     "mint directory with keys to update", 1,
-     &GNUNET_GETOPT_set_filename, &mint_directory},
-    {'R', "reserve", "KEY",
-     "reserve (public key) to modify", 1,
-     &GNUNET_GETOPT_set_string, &reserve_pub_str},
     {'a', "add", "DENOM",
      "value to add", 1,
      &GNUNET_GETOPT_set_string, &add_str},
+    {'d', "mint-dir", "DIR",
+     "mint directory with keys to update", 1,
+     &GNUNET_GETOPT_set_filename, &mint_directory},
+    TALER_GETOPT_OPTION_HELP ("Deposit funds into a Taler reserve"),
+    {'R', "reserve", "KEY",
+     "reserve (public key) to modify", 1,
+     &GNUNET_GETOPT_set_string, &reserve_pub_str},
+    GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
   char *connection_cfg_str;

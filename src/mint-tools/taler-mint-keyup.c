@@ -867,16 +867,17 @@ main (int argc,
       char *const *argv)
 {
   static const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_HELP ("gnunet-mint-keyup OPTIONS"),
-    {'m', "master-key", "FILE",
-     "master key file (private key)", 1,
-     &GNUNET_GETOPT_set_filename, &masterkeyfile},
     {'d', "mint-dir", "DIR",
      "mint directory with keys to update", 1,
      &GNUNET_GETOPT_set_filename, &mint_directory},
+    TALER_GETOPT_OPTION_HELP ("Setup signing and denomination keys for a Taler mint"),
+    {'m', "master-key", "FILE",
+     "master key file (private key)", 1,
+     &GNUNET_GETOPT_set_filename, &masterkeyfile},
     {'t', "time", "TIMESTAMP",
      "pretend it is a different time for the update", 0,
      &GNUNET_GETOPT_set_string, &pretend_time_str},
+    GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
   struct GNUNET_TIME_Relative lookahead_sign;

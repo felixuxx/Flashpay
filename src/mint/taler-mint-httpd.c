@@ -247,7 +247,7 @@ mint_serve_process_config (const char *mint_directory)
   {
     fprintf (stderr,
              "Failed to load mint configuration\n");
-    return 1;
+    return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
@@ -257,7 +257,7 @@ mint_serve_process_config (const char *mint_directory)
   {
     fprintf (stderr,
              "No currency given in mint configuration.");
-    return GNUNET_NO;
+    return GNUNET_SYSERR;
   }
   if (strlen (TMH_mint_currency_string) >= TALER_CURRENCY_LEN)
   {
@@ -265,7 +265,7 @@ mint_serve_process_config (const char *mint_directory)
              "Currency `%s' longer than the allowed limit of %u characters.",
              TMH_mint_currency_string,
              (unsigned int) TALER_CURRENCY_LEN);
-    return GNUNET_NO;
+    return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
@@ -275,7 +275,7 @@ mint_serve_process_config (const char *mint_directory)
   {
     fprintf (stderr,
              "No wireformat given in mint configuration.");
-    return GNUNET_NO;
+    return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
@@ -285,7 +285,7 @@ mint_serve_process_config (const char *mint_directory)
   {
     fprintf (stderr,
              "No master public key given in mint configuration.");
-    return GNUNET_NO;
+    return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_public_key_from_string (TMH_master_public_key_str,
@@ -295,7 +295,7 @@ mint_serve_process_config (const char *mint_directory)
     fprintf (stderr,
              "Invalid master public key given in mint configuration.");
     GNUNET_free (TMH_master_public_key_str);
-    return GNUNET_NO;
+    return GNUNET_SYSERR;
   }
   GNUNET_free (TMH_master_public_key_str);
 
@@ -303,8 +303,8 @@ mint_serve_process_config (const char *mint_directory)
       (TMH_plugin = TALER_MINTDB_plugin_load (cfg)))
   {
     fprintf (stderr,
-             "failed to initialize DB subsystem\n");
-    return GNUNET_NO;
+             "Failed to initialize DB subsystem\n");
+    return GNUNET_SYSERR;
   }
 
   if (GNUNET_OK !=
@@ -315,7 +315,7 @@ mint_serve_process_config (const char *mint_directory)
   {
     fprintf (stderr,
              "Missing or invalid configuration for the port of the mint\n");
-    return GNUNET_NO;
+    return GNUNET_SYSERR;
   }
 
   if ( (0 == port) ||
@@ -324,7 +324,7 @@ mint_serve_process_config (const char *mint_directory)
     fprintf (stderr,
              "Invalid configuration (value out of range): %llu is not a valid port\n",
              port);
-    return GNUNET_NO;
+    return GNUNET_SYSERR;
   }
   serve_port = (uint16_t) port;
 
@@ -343,44 +343,46 @@ int
 main (int argc, char *const *argv)
 {
   static const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_HELP ("gnunet-mint-keyup OPTIONS"),
     {'d', "mint-dir", "DIR",
      "mint directory", 1,
      &GNUNET_GETOPT_set_filename, &TMH_mint_directory},
+    TALER_GETOPT_OPTION_HELP ("HTTP server providing a RESTful API to access a Taler mint"),
+    GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
   int ret;
 
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-mint-serve",
+                 GNUNET_log_setup ("taler-mint-httpd",
                                    "INFO",
                                    NULL));
-  if (GNUNET_GETOPT_run ("taler-mint-serve",
+  if (0 >=
+      GNUNET_GETOPT_run ("taler-mint-httpd",
                          options,
-                         argc, argv) < 0)
+                         argc, argv))
     return 1;
   if (NULL == TMH_mint_directory)
   {
     fprintf (stderr,
-             "no mint dir given\n");
+             "Mint directory not specified\n");
     return 1;
   }
 
-  if (GNUNET_OK != mint_serve_process_config (TMH_mint_directory))
+  if (GNUNET_OK !=
+      mint_serve_process_config (TMH_mint_directory))
     return 1;
-
 
   mydaemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
                                serve_port,
                                NULL, NULL,
                                &handle_mhd_request, NULL,
-                               MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback,
+                               MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
                                MHD_OPTION_END);
 
   if (NULL == mydaemon)
   {
     fprintf (stderr,
-             "Failed to start MHD.\n");
+             "Failed to start HTTP server.\n");
     return 1;
   }
 
