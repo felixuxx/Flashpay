@@ -1,6 +1,11 @@
 # This Makefile.am is in the public domain
 AM_CPPFLAGS = -I$(top_srcdir)/src/include -I$(top_srcdir)/src/pq/ $(POSTGRESQL_CPPFLAGS)
 
+if USE_COVERAGE
+  AM_CFLAGS = --coverage -O0
+  XLIB = -lgcov
+endif
+
 plugindir = $(libdir)/taler
 
 if HAVE_POSTGRESQL
@@ -19,7 +24,7 @@ libtaler_plugin_mintdb_postgres_la_LIBADD = \
 libtaler_plugin_mintdb_postgres_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
   -lpq \
-  -lgnunetutil
+  -lgnunetutil $(XLIB)
 
 lib_LTLIBRARIES = \
   libtalermintdb.la
@@ -30,7 +35,7 @@ libtalermintdb_la_SOURCES = \
 
 libtalermintdb_la_LIBADD = \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetutil
+  -lgnunetutil  $(XLIB)
 
 libtalermintdb_la_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS) \
@@ -51,7 +56,7 @@ test_mintdb_deposits_LDADD = \
   $(top_srcdir)/src/pq/libtalerpq.la \
   -lgnunetutil \
   -ljansson \
-  -lpq
+  -lpq  
 
 test_mintdb_keyio_SOURCES = \
   test_mintdb_keyio.c
@@ -59,7 +64,7 @@ test_mintdb_keyio_LDADD = \
   libtalermintdb.la \
   $(top_srcdir)/src/util/libtalerutil.la \
   $(top_srcdir)/src/pq/libtalerpq.la \
-  -lgnunetutil
+  -lgnunetutil 
 
 test_mintdb_postgres_SOURCES = \
   test_mintdb.c

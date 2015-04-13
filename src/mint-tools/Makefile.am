@@ -1,6 +1,11 @@
 # This Makefile.am is in the public domain
 AM_CPPFLAGS = -I$(top_srcdir)/src/include
 
+if USE_COVERAGE
+  AM_CFLAGS = --coverage -O0
+  XLIB = -lgcov
+endif
+
 bin_PROGRAMS = \
   taler-mint-keyup \
   taler-mint-keycheck \
@@ -15,7 +20,7 @@ taler_mint_keyup_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/mintdb/libtalermintdb.la \
-  -lgnunetutil
+  -lgnunetutil $(XLIB)
 taler_mint_keyup_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 
 
@@ -26,7 +31,7 @@ taler_mint_keycheck_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/mintdb/libtalermintdb.la \
-  -lgnunetutil
+  -lgnunetutil  $(XLIB)
 taler_mint_keycheck_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 
 taler_mint_reservemod_SOURCES = \
@@ -37,7 +42,7 @@ taler_mint_reservemod_LDADD = \
   $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/mintdb/libtalermintdb.la \
   -lpq \
-  -lgnunetutil
+  -lgnunetutil  $(XLIB)
 taler_mint_reservemod_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS)
 taler_mint_reservemod_CPPFLAGS = \
@@ -53,7 +58,7 @@ taler_mint_dbinit_LDADD = \
   $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/mintdb/libtalermintdb.la \
   -lpq \
-  -lgnunetutil
+  -lgnunetutil  $(XLIB)
 taler_mint_dbinit_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS)
 taler_mint_dbinit_CPPFLAGS = \

@@ -1,6 +1,11 @@
 # This Makefile.am is in the public domain
 AM_CPPFLAGS = -I$(top_srcdir)/src/include
 
+if USE_COVERAGE
+  AM_CFLAGS = --coverage -O0
+  XLIB = -lgcov
+endif
+
 lib_LTLIBRARIES = \
   libtalermint.la
 
@@ -14,7 +19,7 @@ libtalermint_la_SOURCES = \
 libtalermint_la_LIBADD = \
   -lgnunetutil \
   -ljansson \
-  -lcurl
+  -lcurl $(XLIB)
 
 check_PROGRAMS = \
   test_mint_api
