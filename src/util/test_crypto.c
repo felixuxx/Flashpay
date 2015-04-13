@@ -31,10 +31,10 @@ main(int argc,
   struct TALER_EncryptedLinkSecretP secret_enc;
   struct TALER_TransferSecretP trans_sec;
   struct TALER_LinkSecretP secret;
+  struct TALER_LinkSecretP secret2;
   struct TALER_RefreshLinkEncrypted *rl_enc;
   struct TALER_RefreshLinkDecrypted rl;
-  struct GNUNET_CRYPTO_EcdhePrivateKey *pk;
-  
+  struct TALER_RefreshLinkDecrypted *rld;
                        
   GNUNET_log_setup ("test-crypto",
 		    "WARNING",
@@ -44,25 +44,37 @@ main(int argc,
 			      &secret,
 			      sizeof (secret));
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-			      &trans_sec,
-			      sizeof (trans_sec));
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
 			      &rl.coin_priv,
 			      sizeof (rl.coin_priv));
-  rl.blinding_key.rsa_blinding_key = GNUNET_CRYPTO_rsa_blinding_key_create ();
-  rl_enc = TALER_refresh_link_encrypt (&rl,
-				       &secret);
+  rl.blinding_key.rsa_blinding_key = GNUNET_CRYPTO_rsa_blinding_key_create (1024);
+  rl_enc = TALER_refresh_encrypt (&rl,
+				  &secret);
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+			      &trans_sec,
+			      sizeof (trans_sec));
   GNUNET_assert (GNUNET_OK ==
 		 TALER_transfer_encrypt (&secret,
 					 &trans_sec,
 					 &secret_enc));
-  pk = GNUNET_CRYPTO_ecdhe_key_create ();
-#if 0
-  .../.ecdhe_private_key = *pk;
-#endif
-  
-  GNUNET_CRYPTO_rsa_blinding_key_free (rl.blinding_key);
-  GNUNET_free (pk);
+  GNUNET_assert (GNUNET_OK ==
+		 TALER_transfer_decrypt (&secret_enc,
+					 &trans_sec,
+					 &secret2));
+  GNUNET_assert (0 == memcmp (&secret,
+			      &secret2,
+			      sizeof (secret)));
+  rld = TALER_refresh_decrypt (rl_enc,
+			       &secret2);
+  GNUNET_assert (NULL != rld);
+  GNUNET_assert (0 == memcmp (&rld->coin_priv,
+			      &rl.coin_priv,
+			      sizeof (union TALER_CoinSpendPrivateKeyP)));
+  GNUNET_assert (0 ==
+		 GNUNET_CRYPTO_rsa_blinding_key_cmp (rl.blinding_key.rsa_blinding_key,
+						     rld->blinding_key.rsa_blinding_key));
+  GNUNET_CRYPTO_rsa_blinding_key_free (rld->blinding_key.rsa_blinding_key);
+  GNUNET_free (rld);
+  GNUNET_CRYPTO_rsa_blinding_key_free (rl.blinding_key.rsa_blinding_key);
   return 0;
 }
 

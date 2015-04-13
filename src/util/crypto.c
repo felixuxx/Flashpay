@@ -136,15 +136,19 @@ TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecretP *secret_enc,
 {
   struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
   struct GNUNET_CRYPTO_SymmetricSessionKey skey;
+  ssize_t s;
 
   GNUNET_assert (sizeof (struct TALER_EncryptedLinkSecretP) ==
                  sizeof (struct TALER_LinkSecretP));
   derive_transfer_key (trans_sec, &iv, &skey);
-  return GNUNET_CRYPTO_symmetric_decrypt (secret_enc,
-                                          sizeof (struct TALER_LinkSecretP),
-                                          &skey,
-                                          &iv,
-                                          secret);
+  s = GNUNET_CRYPTO_symmetric_decrypt (secret_enc,
+				       sizeof (struct TALER_LinkSecretP),
+				       &skey,
+				       &iv,
+				       secret);
+  if (sizeof (struct TALER_LinkSecretP) != s)
+    return GNUNET_SYSERR;
+  return GNUNET_OK;
 }
 
 
@@ -164,15 +168,19 @@ TALER_transfer_encrypt (const struct TALER_LinkSecretP *secret,
 {
   struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
   struct GNUNET_CRYPTO_SymmetricSessionKey skey;
+  ssize_t s;
 
   GNUNET_assert (sizeof (struct TALER_EncryptedLinkSecretP) ==
                  sizeof (struct TALER_LinkSecretP));
   derive_transfer_key (trans_sec, &iv, &skey);
-  return GNUNET_CRYPTO_symmetric_encrypt (secret,
-                                          sizeof (struct TALER_LinkSecretP),
-                                          &skey,
-                                          &iv,
-                                          secret_enc);
+  s = GNUNET_CRYPTO_symmetric_encrypt (secret,
+				       sizeof (struct TALER_LinkSecretP),
+				       &skey,
+				       &iv,
+				       secret_enc);
+  if (sizeof (struct TALER_LinkSecretP) != s)
+    return GNUNET_SYSERR;
+  return GNUNET_OK;
 }
 
 
@@ -196,7 +204,7 @@ TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
 
   GNUNET_assert (input->blinding_key_enc == (const char *) &input[1]);
   derive_refresh_key (secret, &iv, &skey);
-  if (GNUNET_OK !=
+  if (buf_size !=
       GNUNET_CRYPTO_symmetric_decrypt (input->coin_priv_enc,
                                        buf_size,
                                        &skey,
@@ -254,7 +262,7 @@ TALER_refresh_encrypt (const struct TALER_RefreshLinkDecrypted *input,
             b_buf,
             b_buf_size);
 
-    if (GNUNET_OK !=
+    if (buf_size !=
         GNUNET_CRYPTO_symmetric_encrypt (buf,
                                          buf_size,
                                          &skey,
