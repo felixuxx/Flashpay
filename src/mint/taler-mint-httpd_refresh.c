@@ -80,7 +80,8 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   for (i=0;i<num_new_denoms;i++)
   {
     dki = &TMH_KS_denomination_key_lookup (key_state,
-                                           &denom_pubs[i])->issue;
+                                           &denom_pubs[i],
+					   TMH_KS_DKU_WITHDRAW)->issue;
     TALER_amount_ntoh (&value,
                        &dki->value);
     TALER_amount_ntoh (&fee_withdraw,
@@ -108,7 +109,8 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
     /* calculate contribution of the i-th melt by subtracting
        the fee; add the rest to the total_melt value */
     dki = &TMH_KS_denomination_key_lookup (key_state,
-                                           &coin_melt_details[i].coin_info.denom_pub)->issue;
+                                           &coin_melt_details[i].coin_info.denom_pub,
+					   TMH_KS_DKU_DEPOSIT)->issue;
     TALER_amount_ntoh (&fee_melt,
                        &dki->fee_refresh);
     if (GNUNET_OK !=
@@ -234,7 +236,8 @@ verify_coin_public_info (struct MHD_Connection *connection,
 
   key_state = TMH_KS_acquire ();
   dki = TMH_KS_denomination_key_lookup (key_state,
-                                        &melt_detail->coin_info.denom_pub);
+                                        &melt_detail->coin_info.denom_pub,
+					TMH_KS_DKU_DEPOSIT);
   if (NULL == dki)
   {
     TMH_KS_release (key_state);

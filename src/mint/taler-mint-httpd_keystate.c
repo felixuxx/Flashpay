@@ -461,19 +461,56 @@ TMH_KS_acquire (void)
  *
  * @param key_state state to look in
  * @param denom_pub denomination public key
+ * @param use purpose for which the key is being located
  * @return the denomination key issue,
  *         or NULL if denom_pub could not be found
  */
 struct TALER_MINTDB_DenominationKeyIssueInformation *
 TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
-                                const struct TALER_DenominationPublicKey *denom_pub)
+                                const struct TALER_DenominationPublicKey *denom_pub,
+				enum TMH_KS_DenominationKeyUse use)
 {
   struct GNUNET_HashCode hc;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
+  struct GNUNET_TIME_Absolute now;
 
   GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
                                      &hc);
-  return GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map,
-                                            &hc);
+  dki = GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map,
+					   &hc);
+  if (now.abs_value_us <
+      GNUNET_TIME_absolute_ntoh (dki->issue.start).abs_value_us)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+		"Not returning DKI for %s, as start time is in the future\n",
+		GNUNET_h2s (&hc));
+    return NULL;
+  }
+  now = GNUNET_TIME_absolute_get ();
+  switch (use)
+  {
+  case TMH_KS_DKU_WITHDRAW:
+    if (now.abs_value_us >
+	GNUNET_TIME_absolute_ntoh (dki->issue.expire_withdraw).abs_value_us)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+		  "Not returning DKI for %s, as time to create coins has passed\n",
+		  GNUNET_h2s (&hc));
+      return NULL;
+    }
+    break;
+  case TMH_KS_DKU_DEPOSIT:
+    if (now.abs_value_us >
+	GNUNET_TIME_absolute_ntoh (dki->issue.expire_spend).abs_value_us)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+		  "Not returning DKI for %s, as time to spend coin has passed\n",
+		  GNUNET_h2s (&hc));
+      return NULL;
+    }
+    break;
+  }
+  return dki;
 }
 
 

@@ -128,7 +128,8 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
   blinded_msg_len = spec[0].destination_size_out;
   ks = TMH_KS_acquire ();
   dki = TMH_KS_denomination_key_lookup (ks,
-                                        &denomination_pub);
+                                        &denomination_pub,
+					TMH_KS_DKU_WITHDRAW);
   if (NULL == dki)
   {
     TMH_PARSE_release_data (spec);

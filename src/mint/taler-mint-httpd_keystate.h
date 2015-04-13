@@ -57,17 +57,41 @@ TMH_KS_release (struct TMH_KS_StateHandle *key_state);
 
 
 /**
+ * Denomination key lookups can be for signing of fresh coins
+ * or to validate signatures on existing coins.  As the validity
+ * periods for a key differ, the caller must specify which
+ * use is relevant for the current operation.
+ */
+enum TMH_KS_DenominationKeyUse {
+
+  /**
+   * The key is to be used for a /withdraw/sign or /refresh (mint)
+   * operation.
+   */
+  TMH_KS_DKU_WITHDRAW,
+
+  /**
+   * The key is to be usd for a /deposit or /refresh (melt) operation.
+   */
+  TMH_KS_DKU_DEPOSIT
+  
+};
+
+
+/**
  * Look up the issue for a denom public key.  Note that the result
  * is only valid while the @a key_state is not released!
  *
  * @param key_state state to look in
  * @param denom_pub denomination public key
+ * @param use purpose for which the key is being located
  * @return the denomination key issue,
- *         or NULL if denom_pub could not be found
+ *         or NULL if denom_pub could not be found (or is not valid at this time for the given @a use)
  */
 struct TALER_MINTDB_DenominationKeyIssueInformation *
 TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
-                                const struct TALER_DenominationPublicKey *denom_pub);
+                                const struct TALER_DenominationPublicKey *denom_pub,
+				enum TMH_KS_DenominationKeyUse use);
 
 
 /**

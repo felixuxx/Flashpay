@@ -468,8 +468,6 @@ compile_reserve_history (const struct TALER_MINTDB_ReserveHistory *rh,
   json_t *transaction;
   int ret;
   const struct TALER_MINTDB_ReserveHistory *pos;
-  struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
-  struct TMH_KS_StateHandle *key_state;
   struct TALER_WithdrawRequestPS wr;
 
   json_history = json_array ();
@@ -502,7 +500,6 @@ compile_reserve_history (const struct TALER_MINTDB_ReserveHistory *rh,
     }
   }
 
-  key_state = TMH_KS_acquire ();
   ret = 0;
   for (pos = rh; NULL != pos; pos = pos->next)
   {
@@ -511,29 +508,28 @@ compile_reserve_history (const struct TALER_MINTDB_ReserveHistory *rh,
     case TALER_MINTDB_RO_BANK_TO_MINT:
       break;
     case TALER_MINTDB_RO_WITHDRAW_COIN:
-
-      dki = TMH_KS_denomination_key_lookup (key_state,
-                                            &pos->details.withdraw->denom_pub);
-      TALER_amount_ntoh (&value,
-                         &dki->issue.value);
+      value = pos->details.withdraw->amount_with_fee;
       if (0 == ret)
+      {
         withdraw_total = value;
+      }
       else
+      {
         if (GNUNET_OK !=
             TALER_amount_add (&withdraw_total,
                               &withdraw_total,
                               &value))
         {
-          TMH_KS_release (key_state);
           json_decref (json_history);
           return NULL;
         }
+      }
       ret = 1;
       wr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
       wr.purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS));
       wr.reserve_pub = pos->details.withdraw->reserve_pub;
       TALER_amount_hton (&wr.amount_with_fee,
-                         &pos->details.withdraw->amount_with_fee);
+                         &value);
       TALER_amount_hton (&wr.withdraw_fee,
                          &pos->details.withdraw->withdraw_fee);
       GNUNET_CRYPTO_rsa_public_key_hash (pos->details.withdraw->denom_pub.rsa_public_key,
@@ -552,7 +548,6 @@ compile_reserve_history (const struct TALER_MINTDB_ReserveHistory *rh,
       break;
     }
   }
-  TMH_KS_release (key_state);
 
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (balance,

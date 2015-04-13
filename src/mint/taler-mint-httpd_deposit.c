@@ -86,7 +86,8 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   /* check denomination exists and is valid */
   key_state = TMH_KS_acquire ();
   dki = TMH_KS_denomination_key_lookup (key_state,
-                                        &deposit->coin.denom_pub);
+                                        &deposit->coin.denom_pub,
+					TMH_KS_DKU_DEPOSIT);
   if (NULL == dki)
   {
     TMH_KS_release (key_state);
@@ -188,7 +189,8 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   GNUNET_free (wire_enc);
   ks = TMH_KS_acquire ();
   dki = TMH_KS_denomination_key_lookup (ks,
-                                        &deposit.coin.denom_pub);
+                                        &deposit.coin.denom_pub,
+					TMH_KS_DKU_DEPOSIT);
   if (NULL == dki)
   {
     TMH_KS_release (ks);

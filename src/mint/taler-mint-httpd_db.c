@@ -136,7 +136,8 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
   }
   mks = TMH_KS_acquire ();
   dki = TMH_KS_denomination_key_lookup (mks,
-                                        &deposit->coin.denom_pub);
+                                        &deposit->coin.denom_pub,
+					TMH_KS_DKU_DEPOSIT);
   TALER_amount_ntoh (&value,
                      &dki->issue.value);
   TMH_KS_release (mks);
@@ -320,7 +321,8 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
   /* Check if balance is sufficient */
   key_state = TMH_KS_acquire ();
   dki = TMH_KS_denomination_key_lookup (key_state,
-                                        denomination_pub);
+                                        denomination_pub,
+					TMH_KS_DKU_WITHDRAW);
   if (NULL == dki)
   {
     TMH_KS_release (key_state);
@@ -392,7 +394,8 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
       break;
     case TALER_MINTDB_RO_WITHDRAW_COIN:
       tdki = TMH_KS_denomination_key_lookup (key_state,
-                                             &pos->details.withdraw->denom_pub);
+                                             &pos->details.withdraw->denom_pub,
+					     TMH_KS_DKU_WITHDRAW);
       TALER_amount_ntoh (&value,
                          &tdki->issue.value);
       if (0 == (res & 2))
@@ -510,7 +513,8 @@ refresh_accept_melts (struct MHD_Connection *connection,
   int res;
 
   dki = &TMH_KS_denomination_key_lookup (key_state,
-                                         &coin_details->coin_info.denom_pub)->issue;
+                                         &coin_details->coin_info.denom_pub,
+					 TMH_KS_DKU_DEPOSIT)->issue;
 
   if (NULL == dki)
     return (MHD_YES ==
@@ -1023,7 +1027,8 @@ refresh_mint_coin (struct MHD_Connection *connection,
   struct TALER_DenominationSignature ev_sig;
 
   dki = TMH_KS_denomination_key_lookup (key_state,
-                                        denom_pub);
+                                        denom_pub,
+					TMH_KS_DKU_WITHDRAW);
   if (NULL == dki)
   {
     GNUNET_break (0);
