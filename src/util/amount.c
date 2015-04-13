@@ -19,12 +19,7 @@
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Florian Dold
  * @author Benedikt Mueller
- *
- * TODO:
- * - the way this library currently deals with underflow/overflow
- *   is insufficient; just going for UINT32_MAX on overflow
- *   will not do; similar issues for incompatible currencies;
- *   we need some more explicit logic to say 'bogus value',
+ * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_util.h"
@@ -91,14 +86,14 @@ TALER_string_to_amount (const char *str,
     {
       return GNUNET_OK;
     }
-    if ( (str[i] < '0') || (str[i] > '9') )
+    if ( (value[i] < '0') || (value[i] > '9') )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Invalid character `%c'\n",
-                  str[i]);
+                  value[i]);
       goto fail;
     }
-    n = str[i] - '0';
+    n = value[i] - '0';
     if (denom->value * 10 + n < denom->value)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -113,29 +108,29 @@ TALER_string_to_amount (const char *str,
   i++;
 
   /* parse fraction */
-  if ('\0' == str[i])
+  if ('\0' == value[i])
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Null after dot");
+                "Null after dot\n");
     goto fail;
   }
   b = TALER_AMOUNT_FRAC_BASE / 10;
-  while ('\0' != str[i])
+  while ('\0' != value[i])
   {
     if (0 == b)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Fractional value too small (only %u digits supported)",
+                  "Fractional value too small (only %u digits supported)\n",
                   (unsigned int) TALER_AMOUNT_FRAC_LEN);
       goto fail;
     }
-    if ( (str[i] < '0') || (str[i] > '9') )
+    if ( (value[i] < '0') || (value[i] > '9') )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Error after comma");
+                  "Error after dot\n");
       goto fail;
     }
-    n = str[i] - '0';
+    n = value[i] - '0';
     denom->fraction += n * b;
     b /= 10;
     i++;
@@ -258,8 +253,8 @@ TALER_amount_cmp_currency (const struct TALER_Amount *a1,
   if ( (GNUNET_NO == test_valid (a1)) ||
        (GNUNET_NO == test_valid (a2)) )
     return GNUNET_SYSERR;
-  if (0 == strcmp (a1->currency,
-                   a2->currency))
+  if (0 == strcasecmp (a1->currency,
+		       a2->currency))
     return GNUNET_YES;
   return GNUNET_NO;
 }
@@ -286,8 +281,10 @@ TALER_amount_cmp (const struct TALER_Amount *a1,
                  TALER_amount_cmp_currency (a1, a2));
   n1 = *a1;
   n2 = *a2;
-  TALER_amount_normalize (&n1);
-  TALER_amount_normalize (&n2);
+  GNUNET_assert (GNUNET_SYSERR !=
+		 TALER_amount_normalize (&n1));
+  GNUNET_assert (GNUNET_SYSERR !=
+		 TALER_amount_normalize (&n2));
   if (n1.value == n2.value)
   {
     if (n1.fraction < n2.fraction)
@@ -329,8 +326,12 @@ TALER_amount_subtract (struct TALER_Amount *diff,
   }
   n1 = *a1;
   n2 = *a2;
-  TALER_amount_normalize (&n1);
-  TALER_amount_normalize (&n2);
+  if ( (GNUNET_SYSERR == TALER_amount_normalize (&n1)) ||
+       (GNUNET_SYSERR == TALER_amount_normalize (&n2)) )
+  {
+    invalidate (diff);
+    return GNUNET_SYSERR;
+  }
 
   if (n1.fraction < n2.fraction)
   {
@@ -377,6 +378,7 @@ TALER_amount_add (struct TALER_Amount *sum,
 {
   struct TALER_Amount n1;
   struct TALER_Amount n2;
+  struct TALER_Amount res;
 
   if (GNUNET_YES !=
       TALER_amount_cmp_currency (a1, a2))
@@ -386,27 +388,32 @@ TALER_amount_add (struct TALER_Amount *sum,
   }
   n1 = *a1;
   n2 = *a2;
-  TALER_amount_normalize (&n1);
-  TALER_amount_normalize (&n2);
+  if ( (GNUNET_SYSERR == TALER_amount_normalize (&n1)) ||
+       (GNUNET_SYSERR == TALER_amount_normalize (&n2)) )
+  {
+    invalidate (sum);
+    return GNUNET_SYSERR;
+  }
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (a1->currency,
-                                        sum));
-  sum->value = n1.value + n2.value;
-  if (sum->value < n1.value)
+                                        &res));
+  res.value = n1.value + n2.value;
+  if (res.value < n1.value)
   {
     /* integer overflow */
     invalidate (sum);
     return GNUNET_SYSERR;
   }
-  sum->fraction = n1.fraction + n2.fraction;
+  res.fraction = n1.fraction + n2.fraction;
   if (GNUNET_SYSERR ==
-      TALER_amount_normalize (sum))
+      TALER_amount_normalize (&res))
   {
     /* integer overflow via carry from fraction */
     invalidate (sum);
     return GNUNET_SYSERR;
   }
+  *sum = res;
   return GNUNET_OK;
 }
 
@@ -438,6 +445,7 @@ TALER_amount_normalize (struct TALER_Amount *amount)
   {
     /* failed to normalize, adding up fractions caused
        main value to overflow! */
+    invalidate (amount);
     return GNUNET_SYSERR;
   }
   return ret;

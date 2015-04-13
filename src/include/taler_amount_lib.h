@@ -100,7 +100,7 @@ struct TALER_Amount
 
 
 /**
- * Parse denomination description, in the format "T : V : F".
+ * Parse denomination description, in the format "T:V.F".
  *
  * @param str denomination description
  * @param denom denomination to write the result to

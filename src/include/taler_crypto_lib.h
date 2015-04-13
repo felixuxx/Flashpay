@@ -489,5 +489,6 @@ TALER_refresh_link_encrypted_decode (const char *buf,
                                      size_t buf_len);
 
 
+/* FIXME: should also have _encode API... */
 
 #endif

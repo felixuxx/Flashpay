@@ -28,14 +28,40 @@ libtalerutil_la_LDFLAGS = \
   -export-dynamic -no-undefined
 
 TESTS = \
- test-json-validations
+ test_amount \
+ test_crypto \
+ test_json \
+ test_wireformats
 
-check_PROGRAMS=\
- test-json-validations
+check_PROGRAMS= \
+ test_amount \
+ test_crypto \
+ test_json \
+ test_wireformats
 
-test_json_validations_SOURCES = \
-  test_json_validations.c
-test_json_validations_LDADD = \
+
+test_amount_SOURCES = \
+  test_amount.c
+test_amount_LDADD = \
+  -lgnunetutil \
+  libtalerutil.la
+
+test_crypto_SOURCES = \
+  test_crypto.c
+test_crypto_LDADD = \
+  -lgnunetutil \
+  libtalerutil.la
+
+test_json_SOURCES = \
+  test_json.c
+test_json_LDADD = \
+  -lgnunetutil \
+  -ljansson \
+  libtalerutil.la
+
+test_wireformats_SOURCES = \
+  test_wireformats.c
+test_wireformats_LDADD = \
   -lgnunetutil \
   -ljansson \
   libtalerutil.la
