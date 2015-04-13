@@ -379,7 +379,7 @@ struct TALER_EncryptedLinkSecretP
 /**
  * @brief Representation of an refresh link in cleartext.
  */
-struct TALER_RefreshLinkDecryptedP
+struct TALER_RefreshLinkDecrypted
 {
 
   /**
@@ -460,7 +460,7 @@ TALER_transfer_encrypt (const struct TALER_LinkSecretP *secret,
  * @param secret shared secret to use for decryption
  * @return NULL on error
  */
-struct TALER_RefreshLinkDecryptedP *
+struct TALER_RefreshLinkDecrypted *
 TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
                        const struct TALER_LinkSecretP *secret);
 
@@ -473,7 +473,7 @@ TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
  * @return NULL on error (should never happen)
  */
 struct TALER_RefreshLinkEncrypted *
-TALER_refresh_encrypt (const struct TALER_RefreshLinkDecryptedP *input,
+TALER_refresh_encrypt (const struct TALER_RefreshLinkDecrypted *input,
                        const struct TALER_LinkSecretP *secret);
 
 

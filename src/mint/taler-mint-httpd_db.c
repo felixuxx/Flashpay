@@ -940,7 +940,7 @@ check_commitment (struct MHD_Connection *connection,
 
   for (j = 0; j < num_newcoins; j++)
   {
-    struct TALER_RefreshLinkDecryptedP *link_data;
+    struct TALER_RefreshLinkDecrypted *link_data;
     union TALER_CoinSpendPublicKeyP coin_pub;
     struct GNUNET_HashCode h_msg;
     char *buf;

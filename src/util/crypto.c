@@ -183,11 +183,11 @@ TALER_transfer_encrypt (const struct TALER_LinkSecretP *secret,
  * @param secret shared secret to use for decryption
  * @return NULL on error
  */
-struct TALER_RefreshLinkDecryptedP *
+struct TALER_RefreshLinkDecrypted *
 TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
                        const struct TALER_LinkSecretP *secret)
 {
-  struct TALER_RefreshLinkDecryptedP *ret;
+  struct TALER_RefreshLinkDecrypted *ret;
   struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
   struct GNUNET_CRYPTO_SymmetricSessionKey skey;
   size_t buf_size = input->blinding_key_enc_size
@@ -203,7 +203,7 @@ TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
                                        &iv,
                                        buf))
     return NULL;
-  ret = GNUNET_new (struct TALER_RefreshLinkDecryptedP);
+  ret = GNUNET_new (struct TALER_RefreshLinkDecrypted);
   memcpy (&ret->coin_priv,
           buf,
           sizeof (union TALER_CoinSpendPrivateKeyP));
@@ -227,7 +227,7 @@ TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
  * @return NULL on error (should never happen)
  */
 struct TALER_RefreshLinkEncrypted *
-TALER_refresh_encrypt (const struct TALER_RefreshLinkDecryptedP *input,
+TALER_refresh_encrypt (const struct TALER_RefreshLinkDecrypted *input,
                        const struct TALER_LinkSecretP *secret)
 {
   char *b_buf;

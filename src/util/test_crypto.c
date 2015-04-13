@@ -28,10 +28,41 @@ int
 main(int argc,
      const char *const argv[])
 {
+  struct TALER_EncryptedLinkSecretP secret_enc;
+  struct TALER_TransferSecretP trans_sec;
+  struct TALER_LinkSecretP secret;
+  struct TALER_RefreshLinkEncrypted *rl_enc;
+  struct TALER_RefreshLinkDecrypted rl;
+  struct GNUNET_CRYPTO_EcdhePrivateKey *pk;
+  
+                       
   GNUNET_log_setup ("test-crypto",
 		    "WARNING",
 		    NULL);
   /* FIXME: implement test... */
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+			      &secret,
+			      sizeof (secret));
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+			      &trans_sec,
+			      sizeof (trans_sec));
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+			      &rl.coin_priv,
+			      sizeof (rl.coin_priv));
+  rl.blinding_key.rsa_blinding_key = GNUNET_CRYPTO_rsa_blinding_key_create ();
+  rl_enc = TALER_refresh_link_encrypt (&rl,
+				       &secret);
+  GNUNET_assert (GNUNET_OK ==
+		 TALER_transfer_encrypt (&secret,
+					 &trans_sec,
+					 &secret_enc));
+  pk = GNUNET_CRYPTO_ecdhe_key_create ();
+#if 0
+  .../.ecdhe_private_key = *pk;
+#endif
+  
+  GNUNET_CRYPTO_rsa_blinding_key_free (rl.blinding_key);
+  GNUNET_free (pk);
   return 0;
 }
 
