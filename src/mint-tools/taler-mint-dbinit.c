@@ -58,7 +58,7 @@ main (int argc,
      "mint directory", 1,
      &GNUNET_GETOPT_set_filename, &mint_base_dir},
     GNUNET_GETOPT_OPTION_HELP ("Initialize Taler Mint database"),
-    GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION,)
+    GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
 
