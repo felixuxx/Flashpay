@@ -200,19 +200,19 @@ AM_CONDITIONAL([USE_COVERAGE], [test "x$use_gcov" = "xyes"])
 # version info
 AC_PATH_PROG(gitcommand, git)
 AC_MSG_CHECKING(for source being under a VCS)
-gitsvn_version=
+git_version=
 AS_IF([test ! "X$gitcommand" = "X"],
 [
-  gitsvn_version=$(cd $srcdir ; git log -1 2>/dev/null | grep "git-svn-id" | sed -e 's/.*@\([[0-9]]\+\) .*/\1/')
+  git_version=$(cd $srcdir ; git rev-list --full-history --all --abbrev-commit | head -n 1 2>/dev/null)
 ])
-AS_IF([test "X$gitsvn_version" = "X"],
+AS_IF([test "X$git_version" = "X"],
   [
     vcs_name="no"
     vcs_version="\"release\""
   ],
   [
     vcs_name="yes, git-svn"
-    vcs_version="\"svn-r$gitsvn_version\""
+    vcs_version="\"git-$git_version\""
   ])
 AC_MSG_RESULT($vcs_name)
 
