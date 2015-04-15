@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -32,7 +32,7 @@
 struct TALER_PQ_QueryParam
 {
   /**
-   * Data or NULL
+   * Data or NULL.
    */
   const void *data;
 
@@ -43,10 +43,11 @@ struct TALER_PQ_QueryParam
 
   /**
    * Non-null if this is not the last parameter.
-   * This allows for null as sentinal value.
+   * This allows us to detect the end of the list.
    */
   int more;
 };
+
 
 /**
  * End of query parameter specification.
@@ -93,7 +94,7 @@ struct TALER_PQ_ResultSpec
   char *fname;
 
   /**
-   * Actual size of the result.
+   * Where to store actual size of the result.
    */
   size_t *result_size;
 
@@ -114,6 +115,7 @@ struct TALER_PQ_ResultSpec
  */
 #define TALER_PQ_RESULT_SPEC_SIZED(name, dst, s) { (void *) (dst), (s), (name), NULL }
 
+
 /**
  * We expect a fixed-size result, with size determined by the type of `* dst`
  *
@@ -121,6 +123,7 @@ struct TALER_PQ_ResultSpec
  * @param dst point to where to store the result, type fits expected result size
  */
 #define TALER_PQ_RESULT_SPEC(name, dst) TALER_PQ_RESULT_SPEC_SIZED(name, dst, sizeof (*(dst)))
+
 
 /**
  * Variable-size result expected.
@@ -151,6 +154,9 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
  * If colums are NULL, the destination is not modified, and GNUNET_NO
  * is returned.
  *
+ * @param result result to process
+ * @param[in|out] rs result specification to extract for
+ * @param row row from the result to extract
  * @return
  *   #GNUNET_YES if all results could be extracted
  *   #GNUNET_NO if at least one result was NULL
@@ -162,12 +168,21 @@ TALER_PQ_extract_result (PGresult *result,
                          int row);
 
 
-int
-TALER_PQ_field_isnull (PGresult *result,
-                       int row,
-                       const char *fname);
-
-
+/**
+ * Extract a currency amount from a query result according to the
+ * given specification.  
+ *
+ * @param result the result to extract the amount from
+ * @param row which row of the result to extract the amount from (needed as results can have multiple rows)
+ * @param val_name name of the column with the amount's "value", must include the substring "_val".
+ * @param frac_name name of the column with the amount's "fractional" value, must include the substring "_frac".
+ * @param curr_name name of the column with the amount's currency name, must include the substring "_curr".
+ * @param[out] r_amount_nbo where to store the amount, in network byte order
+ * @return
+ *   #GNUNET_YES if all results could be extracted
+ *   #GNUNET_NO if at least one result was NULL
+ *   #GNUNET_SYSERR if a result was invalid (non-existing field)
+ */
 int
 TALER_PQ_extract_amount_nbo (PGresult *result,
                              int row,
@@ -177,6 +192,21 @@ TALER_PQ_extract_amount_nbo (PGresult *result,
                              struct TALER_AmountNBO *r_amount_nbo);
 
 
+/**
+ * Extract a currency amount from a query result according to the
+ * given specification.  
+ *
+ * @param result the result to extract the amount from
+ * @param row which row of the result to extract the amount from (needed as results can have multiple rows)
+ * @param val_name name of the column with the amount's "value", must include the substring "_val".
+ * @param frac_name name of the column with the amount's "fractional" value, must include the substring "_frac".
+ * @param curr_name name of the column with the amount's currency name, must include the substring "_curr".
+ * @param[out] r_amount where to store the amount, in host byte order
+ * @return
+ *   #GNUNET_YES if all results could be extracted
+ *   #GNUNET_NO if at least one result was NULL
+ *   #GNUNET_SYSERR if a result was invalid (non-existing field)
+ */
 int
 TALER_PQ_extract_amount (PGresult *result,
                          int row,
