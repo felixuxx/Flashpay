@@ -176,6 +176,19 @@ AC_DEFINE_UNQUOTED([NEED_LIBGCRYPT_VERSION], ["$need_libgcrypt_version"],
                                              [minimum version of libgcrypt required])
 AM_PATH_LIBGCRYPT([$need_libgcrypt_version])
 
+# should developer logic be compiled (not-for-production code)?
+AC_MSG_CHECKING(whether to compile developer logic)
+AC_ARG_ENABLE([developer-mode],
+   [AS_HELP_STRING([--enable-developer-mode], [enable compiling developer code])],
+   [enable_developer=${enableval}],
+   [enable_developer=yes])
+AC_MSG_RESULT($enable_developer)
+AM_CONDITIONAL([HAVE_DEVELOPER], [test "x$enable_developer" = "xyes"])
+enable_dev=1
+AS_IF([test "x$enableval" = "xno"], [enable_dev=0])
+AC_DEFINE_UNQUOTED([HAVE_DEVELOPER],[$enable_dev],[1 if developer logic is enabled, 0 otherwise])
+
+
 # logging
 extra_logging=0
 AC_ARG_ENABLE([logging],

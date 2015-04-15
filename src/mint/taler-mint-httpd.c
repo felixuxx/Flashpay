@@ -193,6 +193,9 @@ handle_mhd_request (void *cls,
         "Only GET is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
+#if HAVE_DEVELOPER
+#endif
+      
       { NULL, NULL, NULL, NULL, 0, 0 }
     };
   static struct TMH_RequestHandler h404 =

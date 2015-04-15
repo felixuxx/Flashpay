@@ -5,15 +5,15 @@ bin_PROGRAMS = \
   taler-mint-httpd
 
 taler_mint_httpd_SOURCES = \
-  taler-mint-httpd.c \
+  taler-mint-httpd.c taler-mint-httpd.h \
   taler-mint-httpd_keystate.c taler-mint-httpd_keystate.h \
   taler-mint-httpd_db.c taler-mint-httpd_db.h \
   taler-mint-httpd_parsing.c taler-mint-httpd_parsing.h \
   taler-mint-httpd_responses.c taler-mint-httpd_responses.h \
-  taler-mint-httpd_mhd.c \
-  taler-mint-httpd_deposit.c \
-  taler-mint-httpd_withdraw.c \
-  taler-mint-httpd_refresh.c
+  taler-mint-httpd_mhd.c taler-mint-httpd_mhd.h \
+  taler-mint-httpd_deposit.c taler-mint-httpd_deposit.h \
+  taler-mint-httpd_withdraw.c taler-mint-httpd_withdraw.h \
+  taler-mint-httpd_refresh.c taler-mint-httpd_refresh.h
 taler_mint_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
@@ -22,3 +22,8 @@ taler_mint_httpd_LDADD = \
   -ljansson \
   -lgnunetutil \
   -lpthread
+
+if HAVE_DEVELOPER
+taler_mint_httpd_SOURCES += \
+  taler-mint-httpd_test.c taler-mint-httpd_test.h
+endif

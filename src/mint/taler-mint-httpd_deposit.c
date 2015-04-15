@@ -23,7 +23,6 @@
  * @author Christian Grothoff
  *
  * TODO:
- * - missing 'wire' format check (well-formed SEPA-details) (#3624)
  * - ugly if-construction for deposit type
  */
 #include "platform.h"
