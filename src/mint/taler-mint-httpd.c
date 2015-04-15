@@ -34,6 +34,9 @@
 #include "taler-mint-httpd_withdraw.h"
 #include "taler-mint-httpd_refresh.h"
 #include "taler-mint-httpd_keystate.h"
+#if HAVE_DEVELOPER
+#include "taler-mint-httpd_test.h"
+#endif
 #include "taler_mintdb_plugin.h"
 
 /**
@@ -194,6 +197,12 @@ handle_mhd_request (void *cls,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
 #if HAVE_DEVELOPER
+      { "/test", MHD_HTTP_METHOD_POST, "application/json",
+	NULL, 0,
+	&TMH_TEST_handler_test, MHD_HTTP_OK },
+      { "/test", NULL, "text/plain",
+        "Only POST is allowed", 0,
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 #endif
       
       { NULL, NULL, NULL, NULL, 0, 0 }
