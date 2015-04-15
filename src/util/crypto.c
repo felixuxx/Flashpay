@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -330,6 +330,93 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info)
     return GNUNET_NO;
   }
   return GNUNET_YES;
+}
+
+
+
+/**
+ * Decrypt the shared @a secret from the information in the
+ * encrypted link secret @e secret_enc using the transfer
+ * private key and the coin's public key.
+ * 
+ * @param secret_enc encrypted link secret
+ * @param transfer_priv transfer private key
+ * @param coin_pub coin public key
+ * @param[out] secret set to the shared secret
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+TALER_link_decrypt_secret (const struct TALER_EncryptedLinkSecretP *secret_enc,
+			   const struct TALER_TransferPrivateKeyP *trans_priv,
+			   const union TALER_CoinSpendPublicKeyP *coin_pub,
+			   struct TALER_LinkSecretP *secret)
+{
+  struct TALER_TransferSecretP transfer_secret;
+
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_ecc_ecdh (&trans_priv->ecdhe_priv,
+			      &coin_pub->ecdhe_pub,
+			      &transfer_secret.key))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_transfer_decrypt (secret_enc,
+			      &transfer_secret,
+			      secret))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Encrypt the shared @a secret to generate the encrypted link secret.
+ * Also creates the transfer key.
+ * 
+ * @param secret link secret to encrypt 
+ * @param coin_pub coin public key
+ * @param transfer_priv[out] set to transfer private key
+ * @param transfer_pub[out] set to transfer public key
+ * @param[out] secret_enc set to the encryptd @a secret
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+TALER_link_encrypt_secret (const struct TALER_LinkSecretP *secret,
+			   const union TALER_CoinSpendPublicKeyP *coin_pub,
+			   struct TALER_TransferPrivateKeyP *trans_priv,
+			   struct TALER_TransferPublicKeyP *trans_pub,
+			   struct TALER_EncryptedLinkSecretP *secret_enc)
+{
+  struct TALER_TransferSecretP transfer_secret;
+  struct GNUNET_CRYPTO_EcdhePrivateKey *pk;
+
+  pk = GNUNET_CRYPTO_ecdhe_key_create ();
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_ecc_ecdh (pk,
+			      &coin_pub->ecdhe_pub,
+			      &transfer_secret.key))
+  {
+    GNUNET_break (0);
+    GNUNET_free (pk);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_transfer_encrypt (secret,
+			      &transfer_secret,
+			      secret_enc))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  trans_priv->ecdhe_priv = *pk;
+  GNUNET_CRYPTO_ecdhe_key_get_public (pk,
+				      &trans_pub->ecdhe_pub);
+  GNUNET_free (pk);
+  return GNUNET_OK;
 }
 
 

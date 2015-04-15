@@ -783,9 +783,9 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
     res = (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   else
     res = TMH_DB_execute_refresh_reveal (connection,
-                                                session_hash,
-                                                num_oldcoins,
-                                                transfer_privs);
+					 session_hash,
+					 num_oldcoins,
+					 transfer_privs);
   for (i = 0; i < TALER_CNC_KAPPA - 1; i++)
     GNUNET_free (transfer_privs[i]);
   return res;

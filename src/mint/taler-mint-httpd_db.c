@@ -849,7 +849,6 @@ check_commitment (struct MHD_Connection *connection,
 
   for (j = 0; j < num_oldcoins; j++)
   {
-    struct TALER_TransferSecretP transfer_secret;
     struct TALER_LinkSecretP shared_secret;
     struct TALER_TransferPublicKeyP transfer_pub_check;
 
@@ -871,32 +870,18 @@ check_commitment (struct MHD_Connection *connection,
                                          "transfer key");
     }
 
-    /* We're converting key types here, which is not very nice
-     * but necessary and harmless (keys will be thrown away later). */
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_ecc_ecdh (&transfer_privs[j].ecdhe_priv,
-                                &melts[j].coin.coin_pub.ecdhe_pub,
-                                &transfer_secret.key))
-    {
-      GNUNET_break (0);
-      GNUNET_free (commit_links);
-      return (MHD_YES == TMH_RESPONSE_reply_internal_error (connection,
-                                                            "ECDH error"))
-          ? GNUNET_NO : GNUNET_SYSERR;
-    }
-    if (GNUNET_OK !=
-        TALER_transfer_decrypt (&commit_links[j].shared_secret_enc,
-                                &transfer_secret,
-                                &shared_secret))
-    {
-      GNUNET_break (0);
+	TALER_link_decrypt_secret (&commit_links[j].shared_secret_enc,
+				   &transfer_privs[j],
+				   &melts[j].coin.coin_pub,
+				   &shared_secret))
+    { 
       GNUNET_free (commit_links);
       return (MHD_YES ==
-              TMH_RESPONSE_reply_internal_error (connection,
-                                                 "Decryption error"))
-          ? GNUNET_NO : GNUNET_SYSERR;
+	      TMH_RESPONSE_reply_internal_error (connection,
+						 "Transfer secret decryption error"))
+	? GNUNET_NO : GNUNET_SYSERR;
     }
-
     if (GNUNET_NO == secret_initialized)
     {
       secret_initialized = GNUNET_YES;
