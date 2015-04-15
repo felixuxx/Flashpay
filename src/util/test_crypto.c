@@ -24,9 +24,8 @@
 #include "taler_crypto_lib.h"
 
 
-int
-main(int argc,
-     const char *const argv[])
+static int
+test_basics ()
 {
   struct TALER_EncryptedLinkSecretP secret_enc;
   struct TALER_TransferSecretP trans_sec;
@@ -39,7 +38,6 @@ main(int argc,
   GNUNET_log_setup ("test-crypto",
 		    "WARNING",
 		    NULL);
-  /* FIXME: implement test... */
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
 			      &secret,
 			      sizeof (secret));
@@ -76,6 +74,66 @@ main(int argc,
   GNUNET_free (rld);
   GNUNET_CRYPTO_rsa_blinding_key_free (rl.blinding_key.rsa_blinding_key);
   return 0;
+}
+
+
+static int
+test_high_level ()
+{
+  struct GNUNET_CRYPTO_EcdsaPrivateKey *pk;
+  struct TALER_LinkSecretP secret;
+  struct TALER_LinkSecretP secret2;
+  union TALER_CoinSpendPublicKeyP coin_pub;
+  union TALER_CoinSpendPrivateKeyP coin_priv;
+  struct TALER_TransferPrivateKeyP trans_priv;
+  struct TALER_TransferPublicKeyP trans_pub;
+  struct TALER_EncryptedLinkSecretP secret_enc;
+
+  pk = GNUNET_CRYPTO_ecdsa_key_create ();
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+			      &secret,
+			      sizeof (secret));
+  GNUNET_CRYPTO_ecdsa_key_get_public (pk,
+				      &coin_pub.ecdsa_pub);
+  GNUNET_assert (GNUNET_OK == 
+		 TALER_link_encrypt_secret (&secret,
+					    &coin_pub,
+					    &trans_priv,
+					    &trans_pub,
+					    &secret_enc));
+  GNUNET_assert (GNUNET_OK == 
+		 TALER_link_decrypt_secret (&secret_enc,
+					    &trans_priv,
+					    &coin_pub,
+					    &secret2));
+  GNUNET_assert (0 ==
+		 memcmp (&secret,
+			 &secret2,
+			 sizeof (secret)));
+  coin_priv.ecdsa_priv = *pk;
+  GNUNET_assert (GNUNET_OK == 
+		 TALER_link_decrypt_secret2 (&secret_enc,
+					     &trans_pub,
+					     &coin_priv,
+					     &secret2));
+  GNUNET_assert (0 ==
+		 memcmp (&secret,
+			 &secret2,
+			 sizeof (secret)));
+  GNUNET_free (pk);
+  return 0;
+}
+
+
+int
+main(int argc,
+     const char *const argv[])
+{
+  if (0 != test_basics ())
+    return 1;
+  if (0 != test_high_level ())
+    return 1;
+  return 0;  
 }
 
 /* end of test_crypto.c */

@@ -333,7 +333,6 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info)
 }
 
 
-
 /**
  * Decrypt the shared @a secret from the information in the
  * encrypted link secret @e secret_enc using the transfer
@@ -356,6 +355,45 @@ TALER_link_decrypt_secret (const struct TALER_EncryptedLinkSecretP *secret_enc,
   if (GNUNET_OK !=
       GNUNET_CRYPTO_ecc_ecdh (&trans_priv->ecdhe_priv,
 			      &coin_pub->ecdhe_pub,
+			      &transfer_secret.key))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_transfer_decrypt (secret_enc,
+			      &transfer_secret,
+			      secret))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Decrypt the shared @a secret from the information in the
+ * encrypted link secret @e secret_enc using the transfer
+ * public key and the coin's private key.
+ * 
+ * @param secret_enc encrypted link secret
+ * @param transfer_pub transfer public key
+ * @param coin_priv coin private key
+ * @param[out] secret set to the shared secret
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+TALER_link_decrypt_secret2 (const struct TALER_EncryptedLinkSecretP *secret_enc,
+			    const struct TALER_TransferPublicKeyP *trans_pub,
+			    const union TALER_CoinSpendPrivateKeyP *coin_priv,
+			    struct TALER_LinkSecretP *secret)
+{
+  struct TALER_TransferSecretP transfer_secret;
+
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_ecc_ecdh (&coin_priv->ecdhe_priv,
+			      &trans_pub->ecdhe_pub,			      
 			      &transfer_secret.key))
   {
     GNUNET_break (0);

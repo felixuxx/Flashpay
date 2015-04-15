@@ -442,6 +442,24 @@ TALER_link_decrypt_secret (const struct TALER_EncryptedLinkSecretP *secret_enc,
 
 
 /**
+ * Decrypt the shared @a secret from the information in the
+ * encrypted link secret @e secret_enc using the transfer
+ * public key and the coin's private key.
+ * 
+ * @param secret_enc encrypted link secret
+ * @param transfer_pub transfer public key
+ * @param coin_priv coin private key
+ * @param[out] secret set to the shared secret
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+TALER_link_decrypt_secret2 (const struct TALER_EncryptedLinkSecretP *secret_enc,
+			    const struct TALER_TransferPublicKeyP *trans_pub,
+			    const union TALER_CoinSpendPrivateKeyP *coin_priv,
+			    struct TALER_LinkSecretP *secret);
+
+
+/**
  * Encrypt the shared @a secret to generate the encrypted link secret.
  * Also creates the transfer key.
  * 
