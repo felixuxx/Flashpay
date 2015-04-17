@@ -20,7 +20,6 @@
  * @author Christian Grothoff
  *
  * TODO:
- * - ECDHE operations
  * - HKDF operations
  * - Symmetric encryption/decryption
  * - high-level transfer key logic
@@ -91,6 +90,72 @@ TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
 				 MHD_HTTP_OK);
   json_decref (json);
   return res;
+}
+
+
+/**
+ * Handle a "/test/ecdhe" request.  Parses the JSON in the post, which
+ * must contain a "ecdhe_pub" with a public key and an "ecdhe_priv"
+ * with a private key.  The reply is the resulting JSON is an object
+ * with the field "ecdh_hash" containing a Crockford Base32-encoded
+ * string representing the hash derived via ECDH of the two keys.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+  */
+int
+TMH_TEST_handler_test_ecdhe (struct TMH_RequestHandler *rh,
+			     struct MHD_Connection *connection,
+			     void **connection_cls,
+			     const char *upload_data,
+			     size_t *upload_data_size)
+{
+  json_t *json;
+  int res;
+  struct GNUNET_CRYPTO_EcdhePublicKey pub;
+  struct GNUNET_CRYPTO_EcdhePrivateKey priv;
+  struct GNUNET_HashCode hc;
+  struct TMH_PARSE_FieldSpecification spec[] = {
+    TMH_PARSE_MEMBER_FIXED ("ecdhe_pub", &pub),
+    TMH_PARSE_MEMBER_FIXED ("ecdhe_priv", &priv),
+    TMH_PARSE_MEMBER_END
+  };
+
+  res = TMH_PARSE_post_json (connection,
+                             connection_cls,
+                             upload_data,
+                             upload_data_size,
+                             &json);
+  if (GNUNET_SYSERR == res)
+    return MHD_NO;
+  if ( (GNUNET_NO == res) || (NULL == json) )
+    return MHD_YES;
+  res = TMH_PARSE_json_data (connection,
+			     json,
+			     spec);
+  json_decref (json);
+  if (GNUNET_YES != res)
+    return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_ecc_ecdh (&priv,
+			      &pub,
+			      &hc))
+  {
+    TMH_PARSE_release_data (spec);
+    return TMH_RESPONSE_reply_internal_error (connection,
+					      "Failed to perform ECDH");
+  }
+  TMH_PARSE_release_data (spec);
+  return TMH_RESPONSE_reply_json_pack (connection,
+				       MHD_HTTP_OK,
+				       "{s:o}",
+				       "ecdh_hash",
+				       TALER_json_from_data (&hc,
+							     sizeof (hc)));
 }
 
 

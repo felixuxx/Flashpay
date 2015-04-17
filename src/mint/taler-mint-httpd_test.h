@@ -50,6 +50,28 @@ TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
 
 
 /**
+ * Handle a "/test/ecdhe" request.  Parses the JSON in the post, which
+ * must contain a "ecdhe_pub" with a public key and an "ecdhe_priv"
+ * with a private key.  The reply is the resulting JSON is an object
+ * with the field "ecdh_hash" containing a Crockford Base32-encoded
+ * string representing the hash derived via ECDH of the two keys.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+  */
+int
+TMH_TEST_handler_test_ecdhe (struct TMH_RequestHandler *rh,
+			     struct MHD_Connection *connection,
+			     void **connection_cls,
+			     const char *upload_data,
+			     size_t *upload_data_size);
+
+
+/**
  * Handle a "/test/ecdsa" request.  Parses the JSON in the post, 
  * which must contain a "ecdsa_pub" with a public key and an
  *"ecdsa_sig" with the corresponding signature for a purpose
