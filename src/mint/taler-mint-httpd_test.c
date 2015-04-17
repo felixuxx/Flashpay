@@ -20,8 +20,7 @@
  * @author Christian Grothoff
  *
  * TODO:
- * - Symmetric encryption/decryption
- * - high-level transfer key logic
+ * - /test/transfer for high-level transfer key logic
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -93,6 +92,86 @@ TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
 
 
 /**
+ * Handle a "/test/encrypt" request.  Parses the JSON in the post,
+ * runs the Crockford Base32 decoder on the "input" field in the JSON,
+ * and encrypts the result with a shared secret derived using the HKDF
+ * function with salt "skey" and IV derived with salt "iv" of the
+ * Crockford Base32-encoded "key_hash" field in the JSON.  The
+ * symmetric encryption is the AES/Twofish double-encryption used in
+ * Taler/GNUnet.  The resulting ciphertext is returned as a Crockford
+ * Base32 encoded JSON string.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+ */
+int
+TMH_TEST_handler_test_encrypt (struct TMH_RequestHandler *rh,
+			       struct MHD_Connection *connection,
+			       void **connection_cls,
+			       const char *upload_data,
+			       size_t *upload_data_size)
+{
+  json_t *json;
+  int res;
+  struct GNUNET_HashCode key;
+  struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
+  struct GNUNET_CRYPTO_SymmetricSessionKey skey;
+  struct TMH_PARSE_FieldSpecification spec[] = {
+    TMH_PARSE_MEMBER_VARIABLE ("input"),
+    TMH_PARSE_MEMBER_FIXED ("key_hash", &key),
+    TMH_PARSE_MEMBER_END
+  };
+  char *out;
+
+  res = TMH_PARSE_post_json (connection,
+                             connection_cls,
+                             upload_data,
+                             upload_data_size,
+                             &json);
+  if (GNUNET_SYSERR == res)
+    return MHD_NO;
+  if ( (GNUNET_NO == res) || (NULL == json) )
+    return MHD_YES;
+  res = TMH_PARSE_json_data (connection,
+			     json,
+			     spec);
+  json_decref (json);
+  if (GNUNET_YES != res)
+    return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+  GNUNET_assert (GNUNET_YES ==
+		 GNUNET_CRYPTO_kdf (&skey, sizeof (struct GNUNET_CRYPTO_SymmetricSessionKey),
+				    "skey", strlen ("skey"),
+				    &key, sizeof (key),
+				    NULL, 0));
+  GNUNET_assert (GNUNET_YES ==
+		 GNUNET_CRYPTO_kdf (&iv, sizeof (struct GNUNET_CRYPTO_SymmetricInitializationVector),
+				    "iv", strlen ("iv"),
+				    &key, sizeof (key),
+				    NULL, 0));
+  out = GNUNET_malloc (spec[0].destination_size_out);
+  GNUNET_break (spec[0].destination_size_out ==
+		GNUNET_CRYPTO_symmetric_encrypt (spec[0].destination,
+						 spec[0].destination_size_out,
+						 &skey,
+						 &iv,
+						 out));
+  json = TALER_json_from_data (out,
+			       spec[0].destination_size_out);
+  GNUNET_free (out);
+  TMH_PARSE_release_data (spec);
+  res = TMH_RESPONSE_reply_json (connection,
+				 json,
+				 MHD_HTTP_OK);
+  json_decref (json);
+  return res;
+}
+
+
+/**
  * Handle a "/test/hkdf" request.  Parses the JSON in the post, runs
  * the Crockford Base32 decoder on the "input" field in the JSON,
  * computes `HKDF(input, "salty")` and sends the result back as a JSON
@@ -123,7 +202,7 @@ TMH_TEST_handler_test_hkdf (struct TMH_RequestHandler *rh,
     TMH_PARSE_MEMBER_VARIABLE ("input"),
     TMH_PARSE_MEMBER_END
   };
-
+  
   res = TMH_PARSE_post_json (connection,
                              connection_cls,
                              upload_data,
@@ -136,6 +215,7 @@ TMH_TEST_handler_test_hkdf (struct TMH_RequestHandler *rh,
   res = TMH_PARSE_json_data (connection,
 			     json,
 			     spec);
+  json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   GNUNET_CRYPTO_kdf (&hc, sizeof (hc),
@@ -144,7 +224,6 @@ TMH_TEST_handler_test_hkdf (struct TMH_RequestHandler *rh,
 		     spec[0].destination_size_out,
 		     NULL, 0);
   TMH_PARSE_release_data (spec);
-  json_decref (json);
   json = TALER_json_from_data (&hc, sizeof (struct GNUNET_HashCode));
   res = TMH_RESPONSE_reply_json (connection,
 				 json,

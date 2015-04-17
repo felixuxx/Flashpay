@@ -50,6 +50,31 @@ TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
 
 
 /**
+ * Handle a "/test/encrypt" request.  Parses the JSON in the post,
+ * runs the Crockford Base32 decoder on the "input" field in the JSON,
+ * and encrypts the result with a shared secret derived using the HKDF
+ * function with salt "skey" and IV derived with salt "iv" of the
+ * Crockford Base32-encoded "key_hash" field in the JSON.  The
+ * symmetric encryption is the AES/Twofish double-encryption used in
+ * Taler/GNUnet.  The resulting ciphertext is returned as a Crockford
+ * Base32 encoded JSON string.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+ */
+int
+TMH_TEST_handler_test_encrypt (struct TMH_RequestHandler *rh,
+			       struct MHD_Connection *connection,
+			       void **connection_cls,
+			       const char *upload_data,
+			       size_t *upload_data_size);
+
+
+/**
  * Handle a "/test/hkdf" request.  Parses the JSON in the post, runs
  * the Crockford Base32 decoder on the "input" field in the JSON,
  * computes `HKDF(input, "salty")` and sends the result back as a JSON
