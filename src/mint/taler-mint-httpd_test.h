@@ -50,6 +50,31 @@ TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
 
 
 /**
+ * Handle a "/test/hkdf" request.  Parses the JSON in the post, runs
+ * the Crockford Base32 decoder on the "input" field in the JSON,
+ * computes `HKDF(input, "salty")` and sends the result back as a JSON
+ * string with in Base32 Crockford encoding.  Thus, this API allows
+ * testing the use of the (H)KDF.  Note that the test fixes the
+ * input and output sizes and the salt (and the hash functions used
+ * by the HKDF), so this is only useful to test the HKDF in the
+ * same way it will be used within Taler/GNUnet.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+ */
+int
+TMH_TEST_handler_test_hkdf (struct TMH_RequestHandler *rh,
+			    struct MHD_Connection *connection,
+			    void **connection_cls,
+			    const char *upload_data,
+			    size_t *upload_data_size);
+
+
+/**
  * Handle a "/test/ecdhe" request.  Parses the JSON in the post, which
  * must contain a "ecdhe_pub" with a public key and an "ecdhe_priv"
  * with a private key.  The reply is the resulting JSON is an object
