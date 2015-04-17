@@ -50,6 +50,52 @@ TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
 
 
 /**
+ * Handle a "/test/ecdsa" request.  Parses the JSON in the post, 
+ * which must contain a "ecdsa_pub" with a public key and an
+ *"ecdsa_sig" with the corresponding signature for a purpose
+ * of #TALER_SIGNATURE_CLIENT_TEST_ECDSA.  If the signature is
+ * valid, a reply with a #TALER_SIGNATURE_MINT_TEST_ECDSA is 
+ * returned using the same JSON format.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+  */
+int
+TMH_TEST_handler_test_ecdsa (struct TMH_RequestHandler *rh,
+			     struct MHD_Connection *connection,
+			     void **connection_cls,
+			     const char *upload_data,
+			     size_t *upload_data_size);
+
+
+/**
+ * Handle a "/test/eddsa" request.  Parses the JSON in the post, 
+ * which must contain a "eddsa_pub" with a public key and an
+ *"ecdsa_sig" with the corresponding signature for a purpose
+ * of #TALER_SIGNATURE_CLIENT_TEST_EDDSA.  If the signature is
+ * valid, a reply with a #TALER_SIGNATURE_MINT_TEST_EDDSA is 
+ * returned using the same JSON format.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+  */
+int
+TMH_TEST_handler_test_eddsa (struct TMH_RequestHandler *rh,
+			     struct MHD_Connection *connection,
+			     void **connection_cls,
+			     const char *upload_data,
+			     size_t *upload_data_size);
+
+
+/**
  * Handle a "/test" request.  Parses the JSON in the post.
  *
  * @param rh context of the handler

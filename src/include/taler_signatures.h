@@ -47,12 +47,12 @@
 /**
  * Purpose for signing public keys signed by the mint master key.
  */
-#define TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY 1
+#define TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY 1024
 
 /**
  * Purpose for denomination keys signed by the mint master key.
  */
-#define TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY 2
+#define TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY 1025
 
 
 /*********************************************/
@@ -63,24 +63,24 @@
  * Purpose for the state of a reserve, signed by the mint's signing
  * key.
  */
-#define TALER_SIGNATURE_MINT_RESERVE_STATUS 32
+#define TALER_SIGNATURE_MINT_RESERVE_STATUS 1032
 
 /**
  * Signature where the Mint confirms a deposit request.
  */
-#define TALER_SIGNATURE_MINT_CONFIRM_DEPOSIT 33
+#define TALER_SIGNATURE_MINT_CONFIRM_DEPOSIT 1033
 
 /**
  * Signature where the mint (current signing key) confirms the
  * no-reveal index for cut-and-choose and the validity of the melted
  * coins.
  */
-#define TALER_SIGNATURE_MINT_CONFIRM_MELT 34
+#define TALER_SIGNATURE_MINT_CONFIRM_MELT 1034
 
 /**
  * Signature where the Mint confirms the full /keys response set.
  */
-#define TALER_SIGNATURE_MINT_KEY_SET 35
+#define TALER_SIGNATURE_MINT_KEY_SET 1035
 
 
 /***********************/
@@ -90,12 +90,12 @@
 /**
  * Signature where the merchant confirms a contract (to the customer).
  */
-#define TALER_SIGNATURE_MERCHANT_CONTRACT 101
+#define TALER_SIGNATURE_MERCHANT_CONTRACT 1101
 
 /**
  * Signature where the merchant confirms a refund (of a coin).
  */
-#define TALER_SIGNATURE_MERCHANT_REFUND 102
+#define TALER_SIGNATURE_MERCHANT_REFUND 1102
 
 
 /*********************/
@@ -105,17 +105,42 @@
 /**
  * Signature where the reserve key confirms a withdraw request.
  */
-#define TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW 200
+#define TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW 1200
 
 /**
  * Signature made by the wallet of a user to confirm a deposit of a coin.
  */
-#define TALER_SIGNATURE_WALLET_COIN_DEPOSIT 201
+#define TALER_SIGNATURE_WALLET_COIN_DEPOSIT 1201
 
 /**
  * Signature using a coin key confirming the melting of a coin.
  */
-#define TALER_SIGNATURE_WALLET_COIN_MELT 202
+#define TALER_SIGNATURE_WALLET_COIN_MELT 1202
+
+/*******************/
+/* Test signatures */
+/*******************/
+
+
+/**
+ * ECDSA test signature.
+ */
+#define TALER_SIGNATURE_CLIENT_TEST_ECDSA 1300
+
+/**
+ * ECDSA test signature.
+ */
+#define TALER_SIGNATURE_MINT_TEST_ECDSA 1301
+
+/**
+ * EdDSA test signature.
+ */
+#define TALER_SIGNATURE_CLIENT_TEST_EDDSA 1302
+
+/**
+ * EdDSA test signature.
+ */
+#define TALER_SIGNATURE_MINT_TEST_EDDSA 1303
 
 
 

@@ -89,6 +89,185 @@ TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
 
 
 /**
+ * Handle a "/test/ecdsa" request.  Parses the JSON in the post, 
+ * which must contain a "ecdsa_pub" with a public key and an
+ *"ecdsa_sig" with the corresponding signature for a purpose
+ * of #TALER_SIGNATURE_CLIENT_TEST_ECDSA.  If the signature is
+ * valid, a reply with a #TALER_SIGNATURE_MINT_TEST_ECDSA is 
+ * returned using the same JSON format.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+  */
+int
+TMH_TEST_handler_test_ecdsa (struct TMH_RequestHandler *rh,
+			     struct MHD_Connection *connection,
+			     void **connection_cls,
+			     const char *upload_data,
+			     size_t *upload_data_size)
+{
+  json_t *json;
+  int res;
+  struct GNUNET_CRYPTO_EcdsaPublicKey pub;
+  struct GNUNET_CRYPTO_EcdsaSignature sig;
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+  struct TMH_PARSE_FieldSpecification spec[] = {
+    TMH_PARSE_MEMBER_FIXED ("ecdsa_pub", &pub),
+    TMH_PARSE_MEMBER_FIXED ("ecdsa_sig", &sig),
+    TMH_PARSE_MEMBER_END
+  };
+  struct GNUNET_CRYPTO_EcdsaPrivateKey *pk;
+
+  res = TMH_PARSE_post_json (connection,
+                             connection_cls,
+                             upload_data,
+                             upload_data_size,
+                             &json);
+  if (GNUNET_SYSERR == res)
+    return MHD_NO;
+  if ( (GNUNET_NO == res) || (NULL == json) )
+    return MHD_YES;
+  res = TMH_PARSE_json_data (connection,
+			     json,
+			     spec);
+  if (GNUNET_YES != res)
+    return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+  purpose.size = htonl (sizeof (struct GNUNET_CRYPTO_EccSignaturePurpose));
+  purpose.purpose = htonl (TALER_SIGNATURE_CLIENT_TEST_ECDSA);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_CLIENT_TEST_ECDSA,
+				  &purpose,
+				  &sig,
+				  &pub))
+  {
+    TMH_PARSE_release_data (spec);
+    json_decref (json);
+    return TMH_RESPONSE_reply_signature_invalid (connection,
+						 "ecdsa_sig");
+  }
+  TMH_PARSE_release_data (spec);
+  json_decref (json);
+  pk = GNUNET_CRYPTO_ecdsa_key_create ();
+  purpose.purpose = htonl (TALER_SIGNATURE_MINT_TEST_ECDSA);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_ecdsa_sign (pk,
+				&purpose,
+				&sig))
+  {
+    GNUNET_free (pk);
+    return TMH_RESPONSE_reply_internal_error (connection,
+					      "Failed to ECDSA-sign");
+  }
+  GNUNET_CRYPTO_ecdsa_key_get_public (pk,
+				      &pub);
+  GNUNET_free (pk);
+  return TMH_RESPONSE_reply_json_pack (connection,
+				       MHD_HTTP_OK,
+				       "{s:o, s:o}",
+				       "ecdsa_pub",
+				       TALER_json_from_data (&pub,
+							     sizeof (pub)),
+				       "ecdsa_sig",
+				       TALER_json_from_data (&sig,
+							     sizeof (sig)));
+}
+
+
+/**
+ * Handle a "/test/eddsa" request.  Parses the JSON in the post, 
+ * which must contain a "eddsa_pub" with a public key and an
+ *"ecdsa_sig" with the corresponding signature for a purpose
+ * of #TALER_SIGNATURE_CLIENT_TEST_EDDSA.  If the signature is
+ * valid, a reply with a #TALER_SIGNATURE_MINT_TEST_EDDSA is 
+ * returned using the same JSON format.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+  */
+int
+TMH_TEST_handler_test_eddsa (struct TMH_RequestHandler *rh,
+			     struct MHD_Connection *connection,
+			     void **connection_cls,
+			     const char *upload_data,
+			     size_t *upload_data_size)
+{
+  json_t *json;
+  int res;
+  struct GNUNET_CRYPTO_EddsaPublicKey pub;
+  struct GNUNET_CRYPTO_EddsaSignature sig;
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+  struct TMH_PARSE_FieldSpecification spec[] = {
+    TMH_PARSE_MEMBER_FIXED ("eddsa_pub", &pub),
+    TMH_PARSE_MEMBER_FIXED ("eddsa_sig", &sig),
+    TMH_PARSE_MEMBER_END
+  };
+  struct GNUNET_CRYPTO_EddsaPrivateKey *pk;
+
+  res = TMH_PARSE_post_json (connection,
+                             connection_cls,
+                             upload_data,
+                             upload_data_size,
+                             &json);
+  if (GNUNET_SYSERR == res)
+    return MHD_NO;
+  if ( (GNUNET_NO == res) || (NULL == json) )
+    return MHD_YES;
+  res = TMH_PARSE_json_data (connection,
+			     json,
+			     spec);
+  if (GNUNET_YES != res)
+    return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+  purpose.size = htonl (sizeof (struct GNUNET_CRYPTO_EccSignaturePurpose));
+  purpose.purpose = htonl (TALER_SIGNATURE_CLIENT_TEST_EDDSA);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_CLIENT_TEST_EDDSA,
+				  &purpose,
+				  &sig,
+				  &pub))
+  {
+    TMH_PARSE_release_data (spec);
+    json_decref (json);
+    return TMH_RESPONSE_reply_signature_invalid (connection,
+						 "eddsa_sig");
+  }
+  TMH_PARSE_release_data (spec);
+  json_decref (json);
+  pk = GNUNET_CRYPTO_eddsa_key_create ();
+  purpose.purpose = htonl (TALER_SIGNATURE_MINT_TEST_EDDSA);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_sign (pk,
+				&purpose,
+				&sig))
+  {
+    GNUNET_free (pk);
+    return TMH_RESPONSE_reply_internal_error (connection,
+					      "Failed to EdDSA-sign");
+  }
+  GNUNET_CRYPTO_eddsa_key_get_public (pk,
+				      &pub);
+  GNUNET_free (pk);
+  return TMH_RESPONSE_reply_json_pack (connection,
+				       MHD_HTTP_OK,
+				       "{s:o, s:o}",
+				       "eddsa_pub",
+				       TALER_json_from_data (&pub,
+							     sizeof (pub)),
+				       "eddsa_sig",
+				       TALER_json_from_data (&sig,
+							     sizeof (sig)));
+}
+
+
+
+/**
  * Handle a "/test" request.  Parses the JSON in the post.
  *
  * @param rh context of the handler
