@@ -94,6 +94,25 @@ TMH_TEST_handler_test_eddsa (struct TMH_RequestHandler *rh,
 			     const char *upload_data,
 			     size_t *upload_data_size);
 
+/**
+ * Handle a "/test/rsa" request.  Parses the JSON in the post, which
+ * must contain an "blind_ev" blinded value.  An RSA public key
+ * ("rsa_pub") and a blinded signature ("rsa_blind_sig") are returned.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+  */
+int
+TMH_TEST_handler_test_rsa (struct TMH_RequestHandler *rh,
+			   struct MHD_Connection *connection,
+			   void **connection_cls,
+			   const char *upload_data,
+			   size_t *upload_data_size);
+
 
 /**
  * Handle a "/test" request.  Parses the JSON in the post.

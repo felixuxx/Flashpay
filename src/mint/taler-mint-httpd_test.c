@@ -20,7 +20,6 @@
  * @author Christian Grothoff
  *
  * TODO:
- * - RSA operations
  * - ECDHE operations
  * - HKDF operations
  * - Symmetric encryption/decryption
@@ -141,6 +140,7 @@ TMH_TEST_handler_test_ecdsa (struct TMH_RequestHandler *rh,
   res = TMH_PARSE_json_data (connection,
 			     json,
 			     spec);
+  json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   purpose.size = htonl (sizeof (struct GNUNET_CRYPTO_EccSignaturePurpose));
@@ -152,12 +152,10 @@ TMH_TEST_handler_test_ecdsa (struct TMH_RequestHandler *rh,
 				  &pub))
   {
     TMH_PARSE_release_data (spec);
-    json_decref (json);
     return TMH_RESPONSE_reply_signature_invalid (connection,
 						 "ecdsa_sig");
   }
   TMH_PARSE_release_data (spec);
-  json_decref (json);
   pk = GNUNET_CRYPTO_ecdsa_key_create ();
   purpose.purpose = htonl (TALER_SIGNATURE_MINT_TEST_ECDSA);
   if (GNUNET_OK !=
@@ -230,6 +228,7 @@ TMH_TEST_handler_test_eddsa (struct TMH_RequestHandler *rh,
   res = TMH_PARSE_json_data (connection,
 			     json,
 			     spec);
+  json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   purpose.size = htonl (sizeof (struct GNUNET_CRYPTO_EccSignaturePurpose));
@@ -241,12 +240,10 @@ TMH_TEST_handler_test_eddsa (struct TMH_RequestHandler *rh,
 				  &pub))
   {
     TMH_PARSE_release_data (spec);
-    json_decref (json);
     return TMH_RESPONSE_reply_signature_invalid (connection,
 						 "eddsa_sig");
   }
   TMH_PARSE_release_data (spec);
-  json_decref (json);
   pk = GNUNET_CRYPTO_eddsa_key_create ();
   purpose.purpose = htonl (TALER_SIGNATURE_MINT_TEST_EDDSA);
   if (GNUNET_OK !=
@@ -270,6 +267,92 @@ TMH_TEST_handler_test_eddsa (struct TMH_RequestHandler *rh,
 				       "eddsa_sig",
 				       TALER_json_from_data (&sig,
 							     sizeof (sig)));
+}
+
+
+/**
+ * Handle a "/test/rsa" request.  Parses the JSON in the post, which
+ * must contain an "blind_ev" blinded value.  An RSA public key
+ * ("rsa_pub") and a blinded signature ("rsa_blind_sig") are returned.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+  */
+int
+TMH_TEST_handler_test_rsa (struct TMH_RequestHandler *rh,
+			   struct MHD_Connection *connection,
+			   void **connection_cls,
+			   const char *upload_data,
+			   size_t *upload_data_size)
+{
+  json_t *json;
+  int res;
+  struct GNUNET_CRYPTO_rsa_PublicKey *pub;
+  struct GNUNET_CRYPTO_rsa_Signature *sig;
+  struct TMH_PARSE_FieldSpecification spec[] = {
+    TMH_PARSE_MEMBER_VARIABLE ("blind_ev"),
+    TMH_PARSE_MEMBER_END
+  };
+  struct GNUNET_CRYPTO_rsa_PrivateKey *pk;
+
+  res = TMH_PARSE_post_json (connection,
+                             connection_cls,
+                             upload_data,
+                             upload_data_size,
+                             &json);
+  if (GNUNET_SYSERR == res)
+    return MHD_NO;
+  if ( (GNUNET_NO == res) || (NULL == json) )
+    return MHD_YES;
+  res = TMH_PARSE_json_data (connection,
+			     json,
+			     spec);
+  json_decref (json);
+  if (GNUNET_YES != res)
+    return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+  pk = GNUNET_CRYPTO_rsa_private_key_create (1024);
+  if (NULL == pk)
+  {
+    GNUNET_break (0);
+    TMH_PARSE_release_data (spec);
+    return TMH_RESPONSE_reply_internal_error (connection,
+					      "Failed to create RSA key");
+  }
+  sig = GNUNET_CRYPTO_rsa_sign (pk,
+				spec[0].destination,
+				spec[0].destination_size_out);
+  if (NULL == sig)
+  {
+    GNUNET_break (0);
+    GNUNET_CRYPTO_rsa_private_key_free (pk);
+    TMH_PARSE_release_data (spec);
+    return TMH_RESPONSE_reply_internal_error (connection,
+					      "Failed to RSA-sign");
+  }
+  TMH_PARSE_release_data (spec);
+  pub = GNUNET_CRYPTO_rsa_private_key_get_public (pk);
+  GNUNET_CRYPTO_rsa_private_key_free (pk);
+  if (NULL == pub)
+  {
+    GNUNET_break (0);
+    GNUNET_CRYPTO_rsa_signature_free (sig);
+    return TMH_RESPONSE_reply_internal_error (connection,
+					      "Failed to get public RSA key");
+  }
+  res = TMH_RESPONSE_reply_json_pack (connection,
+				      MHD_HTTP_OK,
+				      "{s:o, s:o}",
+				      "rsa_pub",
+				      TALER_json_from_rsa_public_key (pub),
+				      "rsa_blind_sig",
+				      TALER_json_from_rsa_signature (sig));
+  GNUNET_CRYPTO_rsa_signature_free (sig);
+  GNUNET_CRYPTO_rsa_public_key_free (pub);
+  return res;
 }
 
 
