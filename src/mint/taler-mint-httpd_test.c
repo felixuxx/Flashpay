@@ -27,6 +27,65 @@
 #include "taler_util.h"
 #include "taler-mint-httpd_test.h"
 #include "taler-mint-httpd_parsing.h"
+#include "taler-mint-httpd_responses.h"
+
+
+/**
+ * Handle a "/test/base32" request.  Parses the JSON in the post, runs
+ * the Crockford Base32 decoder on the "input" field in the JSON,
+ * hashes the result and sends the hashed value back as a JSON 
+ * string with in Base32 Crockford encoding.  Thus, this API
+ * allows testing the hashing and Crockford encoding/decoding
+ * functions.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+  */
+int
+TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
+			      struct MHD_Connection *connection,
+			      void **connection_cls,
+			      const char *upload_data,
+			      size_t *upload_data_size)
+{
+  json_t *json;
+  int res;
+  struct GNUNET_HashCode hc;
+  struct TMH_PARSE_FieldSpecification spec[] = {
+    TMH_PARSE_MEMBER_VARIABLE ("input"),
+    TMH_PARSE_MEMBER_END
+  };
+
+  res = TMH_PARSE_post_json (connection,
+                             connection_cls,
+                             upload_data,
+                             upload_data_size,
+                             &json);
+  if (GNUNET_SYSERR == res)
+    return MHD_NO;
+  if ( (GNUNET_NO == res) || (NULL == json) )
+    return MHD_YES;
+  res = TMH_PARSE_json_data (connection,
+			     json,
+			     spec);
+  if (GNUNET_YES != res)
+    return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+  GNUNET_CRYPTO_hash (spec[0].destination,
+		      spec[0].destination_size_out,
+		      &hc);
+  TMH_PARSE_release_data (spec);
+  json_decref (json);
+  json = TALER_json_from_data (&hc, sizeof (struct GNUNET_HashCode));
+  res = TMH_RESPONSE_reply_json (connection,
+				 json,
+				 MHD_HTTP_OK);
+  json_decref (json);
+  return res;
+}
 
 
 /**
