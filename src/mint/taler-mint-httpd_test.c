@@ -18,6 +18,13 @@
  * @brief Handle /test requests; parses the POST and JSON and
  *        checks that the client is binary-compatible
  * @author Christian Grothoff
+ *
+ * TODO:
+ * - RSA operations
+ * - ECDHE operations
+ * - HKDF operations
+ * - Symmetric encryption/decryption
+ * - high-level transfer key logic
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
