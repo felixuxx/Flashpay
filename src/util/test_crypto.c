@@ -24,6 +24,11 @@
 #include "taler_crypto_lib.h"
 
 
+/**
+ * Test low-level link encryption/decryption APIs.
+ *
+ * @return 0 on success
+ */
 static int
 test_basics ()
 {
@@ -77,6 +82,42 @@ test_basics ()
 }
 
 
+/**
+ * Test #TALER_refresh_link_encrypted_decode().
+ *
+ * @return 0 on success
+ */
+static int
+test_rled ()
+{
+  struct TALER_RefreshLinkEncrypted *rle;
+  char buf[512];
+  char *buf2;
+  size_t buf_len = sizeof (buf);
+
+  memset (buf, 42, sizeof (buf));
+  rle = TALER_refresh_link_encrypted_decode (buf,
+					     buf_len);
+  GNUNET_assert (NULL != rle);
+  buf_len = 42;
+  buf2 = TALER_refresh_link_encrypted_encode (rle,
+					      &buf_len);
+  GNUNET_assert (NULL != buf2);
+  GNUNET_assert (buf_len == sizeof (buf));
+  GNUNET_assert (0 == memcmp (buf,
+			      buf2,
+			      buf_len));
+  GNUNET_free (rle);
+  GNUNET_free (buf2);
+  return 0;
+}
+
+
+/**
+ * Test high-level link encryption/decryption API.
+ *
+ * @return 0 on success
+ */
 static int
 test_high_level ()
 {
@@ -130,6 +171,8 @@ main(int argc,
      const char *const argv[])
 {
   if (0 != test_basics ())
+    return 1;
+  if (0 != test_rled ())
     return 1;
   if (0 != test_high_level ())
     return 1;

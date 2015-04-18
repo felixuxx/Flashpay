@@ -544,6 +544,17 @@ TALER_refresh_link_encrypted_decode (const char *buf,
                                      size_t buf_len);
 
 
-/* FIXME: should also have _encode API... */
+/**
+ * Encode encrypted refresh link information to buffer.
+ *
+ * @param rle refresh link to encode
+ * @param[out] buf_len set number of bytes returned
+ * @return NULL on error, otherwise buffer with encoded @a rle
+ */
+char *
+TALER_refresh_link_encrypted_encode (const struct TALER_RefreshLinkEncrypted *rle,
+                                     size_t *buf_len);
+
+
 
 #endif

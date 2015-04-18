@@ -292,6 +292,11 @@ TALER_refresh_link_encrypted_decode (const char *buf,
 
   if (buf_len < sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey))
     return NULL;
+  if (buf_len >= GNUNET_MAX_MALLOC_CHECKED)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   rle = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) +
                        buf_len - sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey));
   rle->blinding_key_enc = (const char *) &rle[1];
@@ -300,6 +305,33 @@ TALER_refresh_link_encrypted_decode (const char *buf,
           buf,
           buf_len);
   return rle;
+}
+
+
+/**
+ * Encode encrypted refresh link information to buffer.
+ *
+ * @param rle refresh link to encode
+ * @param[out] buf_len set number of bytes returned
+ * @return NULL on error, otherwise buffer with encoded @a rle
+ */
+char *
+TALER_refresh_link_encrypted_encode (const struct TALER_RefreshLinkEncrypted *rle,
+                                     size_t *buf_len)
+{
+  char *buf;
+
+  if (rle->blinding_key_enc_size >= GNUNET_MAX_MALLOC_CHECKED - sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  *buf_len = sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey) + rle->blinding_key_enc_size;
+  buf = GNUNET_malloc (*buf_len);
+  memcpy (buf,
+	  rle->coin_priv_enc,
+          *buf_len);
+  return buf;
 }
 
 
