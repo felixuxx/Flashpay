@@ -18,9 +18,6 @@
  * @brief Handle /test requests; parses the POST and JSON and
  *        checks that the client is binary-compatible
  * @author Christian Grothoff
- *
- * TODO:
- * - /test/transfer for high-level transfer key logic
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -561,6 +558,73 @@ TMH_TEST_handler_test_rsa (struct TMH_RequestHandler *rh,
 }
 
 
+/**
+ * Handle a "/test/transfer" request.  Parses the JSON in the post, 
+ * which must contain a "secret_enc" with the encrypted link secret,
+ * a "trans_priv" with the transfer private key, a "coin_pub" with
+ * a coin public key.  A reply with the decrypted "secret" is
+ * returned.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+  */
+int
+TMH_TEST_handler_test_transfer (struct TMH_RequestHandler *rh,
+				struct MHD_Connection *connection,
+				void **connection_cls,
+				const char *upload_data,
+				size_t *upload_data_size)
+{
+  json_t *json;
+  int res;
+  struct TALER_EncryptedLinkSecretP secret_enc;
+  struct TALER_TransferPrivateKeyP trans_priv;
+  union TALER_CoinSpendPublicKeyP coin_pub;
+  struct TMH_PARSE_FieldSpecification spec[] = {
+    TMH_PARSE_MEMBER_FIXED ("secret_enc", &secret_enc),
+    TMH_PARSE_MEMBER_FIXED ("trans_priv", &trans_priv),
+    TMH_PARSE_MEMBER_FIXED ("coin_pub", &coin_pub),
+    TMH_PARSE_MEMBER_END
+  };
+  struct TALER_LinkSecretP secret;
+
+  res = TMH_PARSE_post_json (connection,
+                             connection_cls,
+                             upload_data,
+                             upload_data_size,
+                             &json);
+  if (GNUNET_SYSERR == res)
+    return MHD_NO;
+  if ( (GNUNET_NO == res) || (NULL == json) )
+    return MHD_YES;
+  res = TMH_PARSE_json_data (connection,
+			     json,
+			     spec);
+  json_decref (json);
+  if (GNUNET_YES != res)
+    return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+  if (GNUNET_OK !=
+      TALER_link_decrypt_secret (&secret_enc,
+				 &trans_priv,
+				 &coin_pub,
+				 &secret))
+  {
+    TMH_PARSE_release_data (spec);
+    return TMH_RESPONSE_reply_internal_error (connection,
+					      "Failed to decrypt secret");
+  }
+  return TMH_RESPONSE_reply_json_pack (connection,
+				       MHD_HTTP_OK,
+				       "{s:o}",
+				       "secret",
+				       TALER_json_from_data (&secret,
+							     sizeof (secret)));
+}
+
 
 /**
  * Handle a "/test" request.  Parses the JSON in the post.
@@ -593,7 +657,7 @@ TMH_TEST_handler_test (struct TMH_RequestHandler *rh,
     return MHD_YES;
 
   json_decref (json);
-  return res;
+  return MHD_NO;
 }
 
 

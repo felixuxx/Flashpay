@@ -187,6 +187,28 @@ TMH_TEST_handler_test_rsa (struct TMH_RequestHandler *rh,
 
 
 /**
+ * Handle a "/test/transfer" request.  Parses the JSON in the post, 
+ * which must contain a "secret_enc" with the encrypted link secret,
+ * a "trans_priv" with the transfer private key, a "coin_pub" with
+ * a coin public key.  A reply with the decrypted "secret" is
+ * returned.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+  */
+int
+TMH_TEST_handler_test_transfer (struct TMH_RequestHandler *rh,
+				struct MHD_Connection *connection,
+				void **connection_cls,
+				const char *upload_data,
+				size_t *upload_data_size);
+
+
+/**
  * Handle a "/test" request.  Parses the JSON in the post.
  *
  * @param rh context of the handler
