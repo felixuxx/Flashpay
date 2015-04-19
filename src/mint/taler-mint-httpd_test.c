@@ -79,12 +79,11 @@ TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
 		      &hc);
   TMH_PARSE_release_data (spec);
   json_decref (json);
-  json = TALER_json_from_data (&hc, sizeof (struct GNUNET_HashCode));
-  res = TMH_RESPONSE_reply_json (connection,
-				 json,
-				 MHD_HTTP_OK);
-  json_decref (json);
-  return res;
+  return TMH_RESPONSE_reply_json_pack (connection,
+				       MHD_HTTP_OK,
+				       "{s:o}",
+				       "output",
+				       TALER_json_from_data (&hc, sizeof (struct GNUNET_HashCode)));
 }
 
 
@@ -160,11 +159,11 @@ TMH_TEST_handler_test_encrypt (struct TMH_RequestHandler *rh,
 			       spec[0].destination_size_out);
   GNUNET_free (out);
   TMH_PARSE_release_data (spec);
-  res = TMH_RESPONSE_reply_json (connection,
-				 json,
-				 MHD_HTTP_OK);
-  json_decref (json);
-  return res;
+  return TMH_RESPONSE_reply_json_pack (connection,
+				       MHD_HTTP_OK,
+				       "{s:o}",
+				       "output",
+				       json);
 }
 
 
@@ -221,12 +220,13 @@ TMH_TEST_handler_test_hkdf (struct TMH_RequestHandler *rh,
 		     spec[0].destination_size_out,
 		     NULL, 0);
   TMH_PARSE_release_data (spec);
-  json = TALER_json_from_data (&hc, sizeof (struct GNUNET_HashCode));
-  res = TMH_RESPONSE_reply_json (connection,
-				 json,
-				 MHD_HTTP_OK);
-  json_decref (json);
-  return res;
+  json = TALER_json_from_data (&hc,
+			       sizeof (struct GNUNET_HashCode));
+  return TMH_RESPONSE_reply_json_pack (connection,
+				       MHD_HTTP_OK,
+				       "{s:o}",
+				       "output",
+				       json);
 }
 
 

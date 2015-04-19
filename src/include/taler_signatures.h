@@ -504,11 +504,7 @@ struct TALER_MintKeySetPS
   struct GNUNET_TIME_AbsoluteNBO list_issue_date;
 
   /**
-   * Hash over the "inner" JSON with the key set.  FIXME: The use of
-   * JSON as what is being signed here is a bit of a hack, as the
-   * result depends on the JSON indentation and being canonical.
-   * We should consider using a more well-defined binary format to
-   * sign. (#3739)
+   * Hash over the various denomination signing keys returned.
    */
   struct GNUNET_HashCode hc;
 };
