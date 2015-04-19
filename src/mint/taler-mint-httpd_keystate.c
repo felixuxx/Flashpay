@@ -399,7 +399,8 @@ TMH_KS_acquire (void)
   struct TALER_MintSignatureP sig;
 
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
-  if (internal_key_state->next_reload.abs_value_us <= now.abs_value_us)
+  if ( (NULL != internal_key_state) &&
+       (internal_key_state->next_reload.abs_value_us <= now.abs_value_us) )
   {
     TMH_KS_release (internal_key_state);
     internal_key_state = NULL;
