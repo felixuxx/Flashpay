@@ -1,0 +1,35 @@
+.TH TALER\-MINT\-KEYUP 1 "Apr 22, 2015" "GNU Taler"
+
+.SH NAME
+taler\-mint\-keyup \- Setup Taler mint denomination and signing keys.
+
+.SH SYNOPSIS
+.B taler\-mint\-keyup
+.RI [ options ]
+.br
+
+.SH DESCRIPTION
+\fBtaler\-mint\-keyup\fP is a command line tool to setup Taler denomination and signing keys.  This tool requires access to the mint's long-term offline signing key and should be run in a secure (offline) environment under strict controls. The resulting keys can then be copied to the main online directory where the Taler HTTP server operates.
+
+.SH OPTIONS
+.B
+.IP "\-d DIRNAME,  \-\-mint-dir=DIRNAME"
+Use the configuration and other resources for the mint to operate from DIRNAME.
+.B
+.IP "\-h, \-\-help"
+Print short help on options.
+.B
+.IP "\-m FILE,  \-\-master-key=FILE"
+Location of the private EdDSA offline master key of the mint.
+.B
+.IP "\-t TIMESTAMP,  \-\-time=TIMESTAMP"
+Operate as if the current time was TIMESTAMP.
+.B
+.IP "\-v, \-\-version"
+Print version information.
+
+.SH BUGS
+Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
+
+.SH "SEE ALSO"
+\fBtaler\-mint\-httpd\fP(1), \fBtaler\-mint\-keyup\fP(1), \fBtaler\-mint\-keycheck\fP(1), \fBtaler.conf\fP(5)
