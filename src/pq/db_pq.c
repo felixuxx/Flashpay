@@ -90,6 +90,7 @@ TALER_PQ_extract_result (PGresult *result,
   unsigned int i;
   unsigned int j;
   const char *res;
+  void *dst;
   int fnum;
 
   for (i=0; NULL != rs[i].fname; i++)
@@ -145,10 +146,12 @@ TALER_PQ_extract_result (PGresult *result,
       if (NULL != rs[i].result_size)
         *rs[i].result_size = len;
       rs[i].dst_size = len;
-      *((void **) rs[i].dst) = GNUNET_malloc (len);
-      rs[i].dst = * ((void **) rs[i].dst);
+      dst = GNUNET_malloc (len);
+      *((void **) rs[i].dst) = dst;
     }
-    memcpy (rs[i].dst,
+    else
+      dst = rs[i].dst;
+    memcpy (dst,
             res,
             len);
   }
