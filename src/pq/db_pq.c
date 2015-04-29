@@ -57,12 +57,12 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
       param_formats[i] = 1;
     }
     return PQexecPrepared (db_conn,
-			   name,
-			   len,
+                           name,
+                           len,
                            (const char **) param_values,
                            param_lengths,
                            param_formats,
-			   1);
+                           1);
   }
 }
 
@@ -95,7 +95,7 @@ TALER_PQ_extract_result (PGresult *result,
   for (i=0; NULL != rs[i].fname; i++)
   {
     fnum = PQfnumber (result,
-		      rs[i].fname);
+                      rs[i].fname);
     if (fnum < 0)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -107,15 +107,15 @@ TALER_PQ_extract_result (PGresult *result,
     /* if a field is null, continue but
      * remember that we now return a different result */
     if (PQgetisnull (result,
-		     row,
-		     fnum))
+                     row,
+                     fnum))
     {
       had_null = GNUNET_YES;
       continue;
     }
     len = PQgetlength (result,
-		       row,
-		       fnum);
+                       row,
+                       fnum);
     if ( (0 != rs[i].dst_size) &&
          (rs[i].dst_size != len) )
     {
@@ -131,26 +131,26 @@ TALER_PQ_extract_result (PGresult *result,
           GNUNET_free (rs[j].dst);
           rs[j].dst = NULL;
           if (NULL != rs[j].result_size)
-	    *rs[j].result_size = 0;
+            *rs[j].result_size = 0;
         }
       }
       return GNUNET_SYSERR;
     }
     res = PQgetvalue (result,
-		      row,
-		      fnum);
+                      row,
+                      fnum);
     GNUNET_assert (NULL != res);
     if (0 == rs[i].dst_size)
     {
       if (NULL != rs[i].result_size)
-	*rs[i].result_size = len;
+        *rs[i].result_size = len;
       rs[i].dst_size = len;
       *((void **) rs[i].dst) = GNUNET_malloc (len);
       rs[i].dst = * ((void **) rs[i].dst);
     }
     memcpy (rs[i].dst,
-	    res,
-	    len);
+            res,
+            len);
   }
   if (GNUNET_YES == had_null)
     return GNUNET_NO;
@@ -160,7 +160,7 @@ TALER_PQ_extract_result (PGresult *result,
 
 /**
  * Extract a currency amount from a query result according to the
- * given specification.  
+ * given specification.
  *
  * @param result the result to extract the amount from
  * @param row which row of the result to extract the amount from (needed as results can have multiple rows)
@@ -189,24 +189,24 @@ TALER_PQ_extract_amount_nbo (PGresult *result,
   /* These checks are simply to check that clients obey by our naming
      conventions, and not for any functional reason */
   GNUNET_assert (NULL !=
-		 strstr (val_name,
-			 "_val"));
+                 strstr (val_name,
+                         "_val"));
   GNUNET_assert (NULL !=
-		 strstr (frac_name,
-			 "_frac"));
+                 strstr (frac_name,
+                         "_frac"));
   GNUNET_assert (NULL !=
-		 strstr (curr_name,
-			 "_curr"));
+                 strstr (curr_name,
+                         "_curr"));
   /* Set return value to invalid in case we don't finish */
   memset (r_amount_nbo,
-	  0,
-	  sizeof (struct TALER_AmountNBO));
+          0,
+          sizeof (struct TALER_AmountNBO));
   val_num = PQfnumber (result,
-		       val_name);
+                       val_name);
   frac_num = PQfnumber (result,
-			frac_name);
+                        frac_name);
   curr_num = PQfnumber (result,
-			curr_name);
+                        curr_name);
   if ( (val_num < 0) ||
        (frac_num < 0) ||
        (curr_num < 0) )
@@ -215,14 +215,14 @@ TALER_PQ_extract_amount_nbo (PGresult *result,
     return GNUNET_SYSERR;
   }
   if ( (PQgetisnull (result,
-		     row,
-		     val_num)) ||
+                     row,
+                     val_num)) ||
        (PQgetisnull (result,
-		     row,
-		     frac_num)) ||
+                     row,
+                     frac_num)) ||
        (PQgetisnull (result,
-		     row,
-		     curr_num)) )
+                     row,
+                     curr_num)) )
   {
     GNUNET_break (0);
     return GNUNET_NO;
@@ -230,19 +230,19 @@ TALER_PQ_extract_amount_nbo (PGresult *result,
   /* Note that Postgres stores value in NBO internally,
      so no conversion needed in this case */
   r_amount_nbo->value = *(uint64_t *) PQgetvalue (result,
-						  row,
-						  val_num); 
+                                                  row,
+                                                  val_num);
   r_amount_nbo->fraction = *(uint32_t *) PQgetvalue (result,
-						     row,
-						     frac_num);
+                                                     row,
+                                                     frac_num);
   len = GNUNET_MIN (TALER_CURRENCY_LEN - 1,
                     PQgetlength (result,
-				 row,
-				 curr_num));
+                                 row,
+                                 curr_num));
   memcpy (r_amount_nbo->currency,
-	  PQgetvalue (result,
-		      row,
-		      curr_num),
+          PQgetvalue (result,
+                      row,
+                      curr_num),
           len);
   return GNUNET_OK;
 }
@@ -250,13 +250,17 @@ TALER_PQ_extract_amount_nbo (PGresult *result,
 
 /**
  * Extract a currency amount from a query result according to the
- * given specification.  
+ * given specification.
  *
  * @param result the result to extract the amount from
- * @param row which row of the result to extract the amount from (needed as results can have multiple rows)
- * @param val_name name of the column with the amount's "value", must include the substring "_val".
- * @param frac_name name of the column with the amount's "fractional" value, must include the substring "_frac".
- * @param curr_name name of the column with the amount's currency name, must include the substring "_curr".
+ * @param row which row of the result to extract the amount from (needed as
+ *          results can have multiple rows)
+ * @param val_name name of the column with the amount's "value", must include
+ *          the substring "_val".
+ * @param frac_name name of the column with the amount's "fractional" value,
+ *          must include the substring "_frac".
+ * @param curr_name name of the column with the amount's currency name, must
+ *          include the substring "_curr".
  * @param[out] r_amount where to store the amount, in host byte order
  * @return
  *   #GNUNET_YES if all results could be extracted
@@ -275,13 +279,13 @@ TALER_PQ_extract_amount (PGresult *result,
   int ret;
 
   ret = TALER_PQ_extract_amount_nbo (result,
-				     row,
-				     val_name,
-				     frac_name,
-				     curr_name,
-				     &amount_nbo);
+                                     row,
+                                     val_name,
+                                     frac_name,
+                                     curr_name,
+                                     &amount_nbo);
   TALER_amount_ntoh (r_amount,
-		     &amount_nbo);
+                     &amount_nbo);
   return ret;
 }
 
