@@ -178,7 +178,10 @@ postgres_create_tables (void *cls,
   }
 #define SQLEXEC(sql) SQLEXEC_(conn, sql, result);
   /* Denomination table for holding the publicly available information of
-     denominations keys */
+     denominations keys.  The denominations are to be referred to by using
+     foreign keys.  The denominations are deleted by a housekeeping tool;
+     hence, do not use `ON DELETE CASCASE' on these rows in the tables
+     referencing these rows */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS denominations"
            "("
            " pub BYTEA PRIMARY KEY"
@@ -222,17 +225,18 @@ postgres_create_tables (void *cls,
   SQLEXEC ("CREATE TABLE IF NOT EXISTS collectable_blindcoins"
            "("
            "blind_ev BYTEA PRIMARY KEY"
-           ",denom_pub BYTEA NOT NULL" /* FIXME: Make this a foreign key? */
+           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
            ",denom_sig BYTEA NOT NULL"
            ",reserve_pub BYTEA REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
            ",reserve_sig BYTEA NOT NULL"
            ");");
+  /* Index blindcoins(reserve_pub) for get_reserves_blindcoins statement */
   SQLEXEC ("CREATE INDEX collectable_blindcoins_reserve_pub_index ON"
            " collectable_blindcoins (reserve_pub)");
   SQLEXEC("CREATE TABLE IF NOT EXISTS known_coins "
           "("
           " coin_pub BYTEA NOT NULL PRIMARY KEY"
-          ",denom_pub BYTEA NOT NULL"
+          ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",denom_sig BYTEA NOT NULL"
           ",expended_value INT8 NOT NULL"
           ",expended_fraction INT4 NOT NULL"
@@ -301,7 +305,7 @@ postgres_create_tables (void *cls,
           "( "
           /* FIXME #3769: the following primary key may be too restrictive */
           " coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (length(coin_pub)=32)"
-          ",denom_pub BYTEA NOT NULL" /* FIXME: Link this as a foreign key? */
+          ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",denom_sig BYTEA NOT NULL"
           ",transaction_id INT8 NOT NULL"
           ",amount_currency VARCHAR(4) NOT NULL"
@@ -1513,8 +1517,8 @@ postgres_insert_deposit (void *cls,
                      &deposit->amount_with_fee);
   struct TALER_PQ_QueryParam params[]= {
     TALER_PQ_QUERY_PARAM_PTR (&deposit->coin.coin_pub),
-    TALER_PQ_QUERY_PARAM_PTR_SIZED (denom_pub_enc, denom_pub_enc_size),
-    TALER_PQ_QUERY_PARAM_PTR_SIZED (denom_sig_enc, denom_sig_enc_size),
+    TALER_PQ_QUERY_PARAM_PTR_SIZED (denom_pub_enc, denom_pub_enc_size -1),
+    TALER_PQ_QUERY_PARAM_PTR_SIZED (denom_sig_enc, denom_sig_enc_size -1),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->transaction_id),
     TALER_PQ_QUERY_PARAM_PTR (&amount_nbo.value),
     TALER_PQ_QUERY_PARAM_PTR (&amount_nbo.fraction),
