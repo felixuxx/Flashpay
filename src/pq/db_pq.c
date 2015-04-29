@@ -145,7 +145,8 @@ TALER_PQ_extract_result (PGresult *result,
       if (NULL != rs[i].result_size)
 	*rs[i].result_size = len;
       rs[i].dst_size = len;
-      rs[i].dst = GNUNET_malloc (len);
+      *((void **) rs[i].dst) = GNUNET_malloc (len);
+      rs[i].dst = * ((void **) rs[i].dst);
     }
     memcpy (rs[i].dst,
 	    res,
