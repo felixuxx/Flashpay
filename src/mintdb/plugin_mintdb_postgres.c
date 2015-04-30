@@ -1127,6 +1127,7 @@ postgres_get_collectable_blindcoin (void *cls,
   ret = GNUNET_SYSERR;
   denom_pub = NULL;
   denom_pub_enc = NULL;
+  denom_sig = NULL;
   denom_sig_enc = NULL;
   result = TALER_PQ_exec_prepared (session->conn,
                                    "get_collectable_blindcoin",
@@ -1159,7 +1160,8 @@ postgres_get_collectable_blindcoin (void *cls,
                                                    denom_pub_enc_size);
   denom_sig = GNUNET_CRYPTO_rsa_signature_decode (denom_sig_enc,
                                                   denom_sig_enc_size);
-  if ((NULL == denom_pub) || (NULL == denom_sig))
+  if ( (NULL == denom_pub) ||
+       (NULL == denom_sig) )
   {
     GNUNET_break (0);
     goto cleanup;
@@ -1173,7 +1175,8 @@ postgres_get_collectable_blindcoin (void *cls,
   GNUNET_free_non_null (denom_pub_enc);
   GNUNET_free_non_null (denom_sig_enc);
   if (GNUNET_YES != ret)
-  { if (NULL != denom_pub)
+  {
+    if (NULL != denom_pub)
       GNUNET_CRYPTO_rsa_public_key_free (denom_pub);
     if (NULL != denom_sig)
       GNUNET_CRYPTO_rsa_signature_free (denom_sig);
@@ -1229,7 +1232,11 @@ postgres_insert_collectable_blindcoin (void *cls,
   };
   if (GNUNET_OK != postgres_start (cls,
                                    session))
-    goto cleanup;
+  {
+    GNUNET_free_non_null (denom_pub_enc);
+    GNUNET_free_non_null (denom_sig_enc);
+    return GNUNET_SYSERR;
+  }
   result = TALER_PQ_exec_prepared (session->conn,
                                    "insert_collectable_blindcoin",
                                    params);
