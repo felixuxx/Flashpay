@@ -479,6 +479,7 @@ TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
                                      &hc);
   dki = GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map,
 					   &hc);
+  now = GNUNET_TIME_absolute_get ();
   if (now.abs_value_us <
       GNUNET_TIME_absolute_ntoh (dki->issue.start).abs_value_us)
   {
