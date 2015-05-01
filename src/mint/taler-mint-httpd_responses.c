@@ -548,7 +548,13 @@ compile_reserve_history (const struct TALER_MINTDB_ReserveHistory *rh,
       break;
     }
   }
-
+  if (0 == ret)
+  {
+    /* history is empty!? */
+    GNUNET_break (0);
+    json_decref (json_history);
+    return NULL;
+  }
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (balance,
                              &deposit_total,

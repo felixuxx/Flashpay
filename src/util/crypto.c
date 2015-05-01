@@ -290,7 +290,7 @@ TALER_refresh_link_encrypted_decode (const char *buf,
 {
   struct TALER_RefreshLinkEncrypted *rle;
 
-  if (buf_len < sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey))
+  if (buf_len < sizeof (union TALER_CoinSpendPrivateKeyP))
     return NULL;
   if (buf_len >= GNUNET_MAX_MALLOC_CHECKED)
   {
@@ -298,9 +298,9 @@ TALER_refresh_link_encrypted_decode (const char *buf,
     return NULL;
   }
   rle = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) +
-                       buf_len - sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey));
+                       buf_len - sizeof (union TALER_CoinSpendPrivateKeyP));
   rle->blinding_key_enc = (const char *) &rle[1];
-  rle->blinding_key_enc_size = buf_len - sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey);
+  rle->blinding_key_enc_size = buf_len - sizeof (union TALER_CoinSpendPrivateKeyP);
   memcpy (rle->coin_priv_enc,
           buf,
           buf_len);
@@ -321,12 +321,12 @@ TALER_refresh_link_encrypted_encode (const struct TALER_RefreshLinkEncrypted *rl
 {
   char *buf;
 
-  if (rle->blinding_key_enc_size >= GNUNET_MAX_MALLOC_CHECKED - sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey))
+  if (rle->blinding_key_enc_size >= GNUNET_MAX_MALLOC_CHECKED - sizeof (union TALER_CoinSpendPrivateKeyP))
   {
     GNUNET_break (0);
     return NULL;
   }
-  *buf_len = sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey) + rle->blinding_key_enc_size;
+  *buf_len = sizeof (union TALER_CoinSpendPrivateKeyP) + rle->blinding_key_enc_size;
   buf = GNUNET_malloc (*buf_len);
   memcpy (buf,
 	  rle->coin_priv_enc,
@@ -369,7 +369,7 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info)
  * Decrypt the shared @a secret from the information in the
  * encrypted link secret @e secret_enc using the transfer
  * private key and the coin's public key.
- * 
+ *
  * @param secret_enc encrypted link secret
  * @param transfer_priv transfer private key
  * @param coin_pub coin public key
@@ -408,7 +408,7 @@ TALER_link_decrypt_secret (const struct TALER_EncryptedLinkSecretP *secret_enc,
  * Decrypt the shared @a secret from the information in the
  * encrypted link secret @e secret_enc using the transfer
  * public key and the coin's private key.
- * 
+ *
  * @param secret_enc encrypted link secret
  * @param transfer_pub transfer public key
  * @param coin_priv coin private key
@@ -425,7 +425,7 @@ TALER_link_decrypt_secret2 (const struct TALER_EncryptedLinkSecretP *secret_enc,
 
   if (GNUNET_OK !=
       GNUNET_CRYPTO_ecc_ecdh (&coin_priv->ecdhe_priv,
-			      &trans_pub->ecdhe_pub,			      
+			      &trans_pub->ecdhe_pub,
 			      &transfer_secret.key))
   {
     GNUNET_break (0);
@@ -446,8 +446,8 @@ TALER_link_decrypt_secret2 (const struct TALER_EncryptedLinkSecretP *secret_enc,
 /**
  * Encrypt the shared @a secret to generate the encrypted link secret.
  * Also creates the transfer key.
- * 
- * @param secret link secret to encrypt 
+ *
+ * @param secret link secret to encrypt
  * @param coin_pub coin public key
  * @param transfer_priv[out] set to transfer private key
  * @param transfer_pub[out] set to transfer public key
