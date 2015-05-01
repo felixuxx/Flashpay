@@ -162,9 +162,15 @@ reservemod_add (struct TALER_Amount denom)
                                             "balance_fraction",
                                             "balance_currency",
                                             &old_denom));
-    TALER_amount_add (&new_denom,
-                      &old_denom,
-                      &denom);
+    if (GNUNET_OK !=
+        TALER_amount_add (&new_denom,
+                          &old_denom,
+                          &denom))
+    {
+      fprintf (stderr,
+               "Integer overflow when computing new balance!\n");
+      return GNUNET_SYSERR;
+    }
     TALER_amount_hton (&new_denom_nbo,
                        &new_denom);
     result = PQexecParams (db_conn,

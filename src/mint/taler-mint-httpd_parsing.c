@@ -1041,7 +1041,7 @@ TMH_PARSE_amount_json (struct MHD_Connection *connection,
   amount->fraction = (uint32_t) fraction;
   GNUNET_assert (strlen (TMH_mint_currency_string) < TALER_CURRENCY_LEN);
   strcpy (amount->currency, TMH_mint_currency_string);
-  TALER_amount_normalize (amount);
+  (void) TALER_amount_normalize (amount);
   return GNUNET_OK;
 }
 
