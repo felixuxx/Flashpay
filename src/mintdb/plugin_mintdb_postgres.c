@@ -292,7 +292,15 @@ postgres_create_tables (void *cls,
           "("
           " session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) "
           ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) "
+          ",coin_sig BYTEA NOT NULL "
           ",denom_pub BYTEA NOT NULL "
+          ",denom_sig BYTEA NOT NULL "
+          ",amount_value INT8 NOT NULL "
+          ",amount_fraction INT8 NOT NULL "
+          ",amount_currency VARCHAR(4) NOT NULL "
+          ",fee_value INT8 NOT NULL "
+          ",fee_fraction INT8 NOT NULL "
+          ",fee_currency VARCHAR(4) NOT NULL "
           ",oldcoin_index INT2 NOT NULL"
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_collectable"
@@ -513,7 +521,15 @@ postgres_prepare (PGconn *db_conn)
            " session_hash "
            ",oldcoin_index "
            ",coin_pub "
+           ",coin_sig "
            ",denom_pub "
+           ",denom_sig "
+           ",amount_value "
+           ",amount_fraction "
+           ",amount_currency "
+           ",fee_value "
+           ",fee_fraction "
+           ",fee_currency "
            ") "
            "VALUES ($1, $2, $3, $4) ",
            3, NULL);
@@ -528,7 +544,7 @@ postgres_prepare (PGconn *db_conn)
            "WHERE session_hash = $1 AND newcoin_index = $2",
            2, NULL);
   PREPARE ("get_refresh_melt",
-           "SELECT coin_pub "
+           "SELECT coin_pub,coin_sig,denom_pub,denom_sig,amount_value,amount_fraction,amount_currency,free_value,fee_fraction,fee_currency "
            "FROM refresh_melt "
            "WHERE session_hash = $1 AND oldcoin_index = $2",
            2, NULL);
@@ -1740,7 +1756,41 @@ postgres_get_refresh_melt (void *cls,
                            uint16_t oldcoin_index,
                            struct TALER_MINTDB_RefreshMelt *melt)
 {
+#if 0
   // FIXME: check logic!
+  uint16_t oldcoin_index_nbo = htons (oldcoin_index);
+  struct TALER_PQ_Query params[] = {
+    TALER_PQ_QUERY_PARAM_PTR (session_hash),
+    TALER_PQ_QUERY_PARAM_PTR (&oldcoin_index_nbo),
+    TALER_PQ_QUERY_PARAM_END
+  };
+  struct TALER_PQ_ResultSpec rs[] = {
+    TALER_PQ_RESULT_SPEC ("coin_pub", &melt->coin),
+    TALER_PQ_RESULT_SPEC ("coin_sig", &melt->coin_sig),
+    TALER_PQ_RESULT_SPEC ("denom_pub", &melt->coin),
+    TALER_PQ_RESULT_SPEC ("denom_sig", &melt->coin),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("amount", &melt->amount_with_fee),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee", &melt->melt_fee),
+    TALER_PQ_RESULT_SPEC_END
+  };
+
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "get_refresh_melt",
+                                   params);
+  if (0 == PQntuples (result))
+  {
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  if (1 != PQntuples (result))
+  {
+    PQclear (result);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+#endif
+  melt->session_hash = *session_hash;
+
   GNUNET_break (0);
   return GNUNET_SYSERR;
 }

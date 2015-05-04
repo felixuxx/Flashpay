@@ -72,10 +72,45 @@ struct TALER_PQ_QueryParam
 
 
 /**
+ * Different formats of results that can be extracted.
+ */
+enum TALER_PQ_ResultFormat
+{
+
+  /**
+   * List terminator.
+   */
+  TALER_PQ_RF_END,
+
+  /**
+   * We have a fixed-size result (binary blob, no endianess conversion).
+   */
+  TALER_PQ_RF_FIXED_BLOB,
+
+  /**
+   * We have a variable-size result (binary blob, no endianess conversion).
+   */
+  TALER_PQ_RF_VARSIZE_BLOB,
+
+  /**
+   * We have a currency amount (with endianess conversion).
+   * Data points to a `struct TALER_Amount`, size is not used.
+   */
+  TALER_PQ_RF_AMOUNT
+};
+
+
+/**
  * @brief Description of a DB result cell.
  */
 struct TALER_PQ_ResultSpec
 {
+
+  /**
+   * What is the format of the result?
+   */
+  enum TALER_PQ_ResultFormat format;
+
   /**
    * Destination for the data.
    */
@@ -104,7 +139,7 @@ struct TALER_PQ_ResultSpec
 /**
  * End of result parameter specification.
  */
-#define TALER_PQ_RESULT_SPEC_END { NULL, 0, NULL, NULL }
+#define TALER_PQ_RESULT_SPEC_END { TALER_PQ_RF_END, NULL, 0, NULL, NULL }
 
 /**
  * We expect a fixed-size result, with size given explicitly
@@ -113,7 +148,7 @@ struct TALER_PQ_ResultSpec
  * @param dst point to where to store the result
  * @param s number of bytes we should use in @a dst
  */
-#define TALER_PQ_RESULT_SPEC_SIZED(name, dst, s) { (void *) (dst), (s), (name), NULL }
+#define TALER_PQ_RESULT_SPEC_SIZED(name, dst, s) { TALER_PQ_RF_FIXED_BLOB,  (void *) (dst), (s), (name), NULL }
 
 
 /**
@@ -132,7 +167,16 @@ struct TALER_PQ_ResultSpec
  * @param dst where to store the result (of type void **), to be allocated
  * @param sptr pointer to a `size_t` for where to store the size of @a dst
  */
-#define TALER_PQ_RESULT_SPEC_VAR(name, dst, sptr) { (void *) (dst), 0, (name), sptr }
+#define TALER_PQ_RESULT_SPEC_VAR(name, dst, sptr) {TALER_PQ_RF_VARSIZE_BLOB, (void *) (dst), 0, (name), sptr }
+
+
+/**
+ * Currency amount expected.
+ *
+ * @param name name of the field in the table
+ * @param amount a `struct TALER_Amount` where to store the result
+ */
+#define TALER_PQ_RESULT_SPEC_AMOUNT(name, amount) {TALER_PQ_RF_AMOUNT, (void *) (&dst), 0, (name), sptr }
 
 
 /**
@@ -170,7 +214,7 @@ TALER_PQ_extract_result (PGresult *result,
 
 /**
  * Extract a currency amount from a query result according to the
- * given specification.  
+ * given specification.
  *
  * @param result the result to extract the amount from
  * @param row which row of the result to extract the amount from (needed as results can have multiple rows)
@@ -194,7 +238,7 @@ TALER_PQ_extract_amount_nbo (PGresult *result,
 
 /**
  * Extract a currency amount from a query result according to the
- * given specification.  
+ * given specification.
  *
  * @param result the result to extract the amount from
  * @param row which row of the result to extract the amount from (needed as results can have multiple rows)
