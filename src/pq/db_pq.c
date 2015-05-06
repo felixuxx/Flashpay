@@ -123,6 +123,31 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
 
 
 /**
+ * Free all memory that was allocated in @a rs during
+ * #TALER_PQ_extract_result().
+ *
+ * @param rs reult specification to clean up
+ */
+void
+TALER_PQ_cleanup_result (struct TALER_PQ_ResultSpec *rs)
+{
+  unsigned int i;
+
+  for (i=0; TALER_PQ_RF_END != rs[i].format; i++)
+  {
+    if ( (0 == rs[i].dst_size) &&
+         (NULL != rs[i].dst) )
+    {
+      GNUNET_free (rs[i].dst);
+      rs[i].dst = NULL;
+      if (NULL != rs[i].result_size)
+        *rs[i].result_size = 0;
+    }
+  }
+}
+
+
+/**
  * Extract results from a query result according to the given specification.
  * If colums are NULL, the destination is not modified, and #GNUNET_NO
  * is returned.
@@ -154,7 +179,6 @@ TALER_PQ_extract_result (PGresult *result,
     case TALER_PQ_RF_VARSIZE_BLOB:
       {
         size_t len;
-        unsigned int j;
         const char *res;
         void *dst;
         int fnum;
@@ -181,40 +205,31 @@ TALER_PQ_extract_result (PGresult *result,
         len = PQgetlength (result,
                            row,
                            fnum);
-        if ( (0 != rs[i].dst_size) &&
-             (rs[i].dst_size != len) )
+        if ( (0 != spec->dst_size) &&
+             (spec->dst_size != len) )
         {
           GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                       "Field `%s' has wrong size (got %u, expected %u)\n",
-                      rs[i].fname,
+                      spec->fname,
                       (unsigned int) len,
-                      (unsigned int) rs[i].dst_size);
-          for (j=0; j<i; j++)
-          {
-            if (0 == rs[j].dst_size)
-            {
-              GNUNET_free (rs[j].dst);
-              rs[j].dst = NULL;
-              if (NULL != rs[j].result_size)
-                *rs[j].result_size = 0;
-            }
-          }
+                      (unsigned int) spec->dst_size);
+          TALER_PQ_cleanup_result (rs);
           return GNUNET_SYSERR;
         }
         res = PQgetvalue (result,
                           row,
                           fnum);
         GNUNET_assert (NULL != res);
-        if (0 == rs[i].dst_size)
+        if (0 == spec->dst_size)
         {
-          if (NULL != rs[i].result_size)
-            *rs[i].result_size = len;
-          rs[i].dst_size = len;
+          if (NULL != spec->result_size)
+            *spec->result_size = len;
+          spec->dst_size = len;
           dst = GNUNET_malloc (len);
-          *((void **) rs[i].dst) = dst;
+          *((void **) spec->dst) = dst;
         }
         else
-          dst = rs[i].dst;
+          dst = spec->dst;
         memcpy (dst,
                 res,
                 len);
@@ -226,8 +241,11 @@ TALER_PQ_extract_result (PGresult *result,
         char *frac_name;
         char *curr_name;
         const char *name = spec->fname;
+        int ret;
 
-        GNUNET_assert (NULL != rs[i].dst);
+        GNUNET_assert (NULL != spec->dst);
+        GNUNET_assert (sizeof (struct TALER_AmountNBO) ==
+                       spec->dst_size);
         GNUNET_asprintf (&val_name,
                          "%s_val",
                          name);
@@ -237,18 +255,19 @@ TALER_PQ_extract_result (PGresult *result,
         GNUNET_asprintf (&curr_name,
                          "%s_curr",
                          name);
-
-        if (GNUNET_YES !=
-            TALER_PQ_extract_amount_nbo (result,
-                                         row,
-                                         val_name,
-                                         frac_name,
-                                         curr_name,
-                                         rs[i].dst))
-          had_null = GNUNET_YES;
+        ret = TALER_PQ_extract_amount_nbo (result,
+                                           row,
+                                           val_name,
+                                           frac_name,
+                                           curr_name,
+                                           spec->dst);
         GNUNET_free (val_name);
         GNUNET_free (frac_name);
         GNUNET_free (curr_name);
+        if (GNUNET_SYSERR == ret)
+          return GNUNET_SYSERR;
+        if (GNUNET_OK != ret)
+          had_null = GNUNET_YES;
         break;
       }
     default:

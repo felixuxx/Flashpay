@@ -133,7 +133,7 @@ enum TALER_PQ_ResultFormat
 
   /**
    * We have a currency amount.
-   * Data points to a `struct TALER_AmountNBO`, size is not used.
+   * Data points to a `struct TALER_AmountNBO`, size only used for checking.
    */
   TALER_PQ_RF_AMOUNT_NBO
 };
@@ -249,6 +249,16 @@ int
 TALER_PQ_extract_result (PGresult *result,
                          struct TALER_PQ_ResultSpec *rs,
                          int row);
+
+
+/**
+ * Free all memory that was allocated in @a rs during
+ * #TALER_PQ_extract_result().
+ *
+ * @param rs reult specification to clean up
+ */
+void
+TALER_PQ_cleanup_result (struct TALER_PQ_ResultSpec *rs);
 
 
 /**
