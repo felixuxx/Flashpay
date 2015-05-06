@@ -1108,19 +1108,11 @@ postgres_get_collectable_blindcoin (void *cls,
     TALER_PQ_QUERY_PARAM_PTR (h_blind),
     TALER_PQ_QUERY_PARAM_END
   };
-  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
-  struct GNUNET_CRYPTO_rsa_Signature *denom_sig;
-  char *denom_pub_enc;
-  char *denom_sig_enc;
-  size_t denom_pub_enc_size;
-  size_t denom_sig_enc_size;
+  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub = NULL;
+  struct GNUNET_CRYPTO_rsa_Signature *denom_sig = NULL;
   int ret;
 
   ret = GNUNET_SYSERR;
-  denom_pub = NULL;
-  denom_pub_enc = NULL;
-  denom_sig = NULL;
-  denom_sig_enc = NULL;
   result = TALER_PQ_exec_prepared (session->conn,
                                    "get_collectable_blindcoin",
                                    params);
@@ -1136,8 +1128,8 @@ postgres_get_collectable_blindcoin (void *cls,
     goto cleanup;
   }
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_VAR("denom_pub", &denom_pub_enc, &denom_pub_enc_size),
-    TALER_PQ_RESULT_SPEC_VAR("denom_sig", &denom_sig_enc, &denom_sig_enc_size),
+    TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY("denom_pub", denom_pub),
+    TALER_PQ_RESULT_SPEC_RSA_SIGNATURE("denom_sig", denom_sig),
     TALER_PQ_RESULT_SPEC("reserve_sig", &collectable->reserve_sig),
     TALER_PQ_RESULT_SPEC("reserve_pub", &collectable->reserve_pub),
     TALER_PQ_RESULT_SPEC_END
@@ -1148,24 +1140,12 @@ postgres_get_collectable_blindcoin (void *cls,
     GNUNET_break (0);
     goto cleanup;
   }
-  denom_pub = GNUNET_CRYPTO_rsa_public_key_decode (denom_pub_enc,
-                                                   denom_pub_enc_size);
-  denom_sig = GNUNET_CRYPTO_rsa_signature_decode (denom_sig_enc,
-                                                  denom_sig_enc_size);
-  if ( (NULL == denom_pub) ||
-       (NULL == denom_sig) )
-  {
-    GNUNET_break (0);
-    goto cleanup;
-  }
   collectable->denom_pub.rsa_public_key = denom_pub;
   collectable->sig.rsa_signature = denom_sig;
   ret = GNUNET_YES;
 
  cleanup:
   PQclear (result);
-  GNUNET_free_non_null (denom_pub_enc);
-  GNUNET_free_non_null (denom_sig_enc);
   if (GNUNET_YES != ret)
   {
     if (NULL != denom_pub)
@@ -1334,10 +1314,8 @@ postgres_get_reserve_history (void *cls,
     struct GNUNET_HashCode blind_ev;
     struct TALER_ReserveSignatureP reserve_sig;
     struct TALER_MINTDB_CollectableBlindcoin *cbc;
-    char *denom_pub_enc;
-    char *denom_sig_enc;
-    size_t denom_pub_enc_size;
-    size_t denom_sig_enc_size;
+    struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+    struct GNUNET_CRYPTO_rsa_Signature *denom_sig;
 
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_QUERY_PARAM_PTR (reserve_pub),
@@ -1358,8 +1336,8 @@ postgres_get_reserve_history (void *cls,
     }
     struct TALER_PQ_ResultSpec rs[] = {
       TALER_PQ_RESULT_SPEC ("blind_ev", &blind_ev),
-      TALER_PQ_RESULT_SPEC_VAR ("denom_pub", &denom_pub_enc, &denom_pub_enc_size),
-      TALER_PQ_RESULT_SPEC_VAR ("denom_sig", &denom_sig_enc, &denom_sig_enc_size),
+      TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY ("denom_pub", denom_pub),
+      TALER_PQ_RESULT_SPEC_RSA_SIGNATURE ("denom_sig", denom_sig),
       TALER_PQ_RESULT_SPEC ("reserve_sig", &reserve_sig),
       TALER_PQ_RESULT_SPEC_END
     };
@@ -1368,36 +1346,19 @@ postgres_get_reserve_history (void *cls,
     GNUNET_assert (NULL == rh_head->next);
     while (0 < rows)
     {
+      denom_sig = NULL;
+      denom_pub = NULL;
       if (GNUNET_YES != TALER_PQ_extract_result (result, rs, --rows))
       {
         GNUNET_break (0);
         goto cleanup;
       }
       cbc = GNUNET_new (struct TALER_MINTDB_CollectableBlindcoin);
-      cbc->sig.rsa_signature
-        = GNUNET_CRYPTO_rsa_signature_decode (denom_sig_enc,
-                                              denom_sig_enc_size);
-      GNUNET_free (denom_sig_enc);
-      denom_sig_enc = NULL;
-      cbc->denom_pub.rsa_public_key
-        = GNUNET_CRYPTO_rsa_public_key_decode (denom_pub_enc,
-                                               denom_pub_enc_size);
-      GNUNET_free (denom_pub_enc);
-      denom_pub_enc = NULL;
-      if ( (NULL == cbc->sig.rsa_signature) ||
-           (NULL == cbc->denom_pub.rsa_public_key) )
-      {
-        if (NULL != cbc->sig.rsa_signature)
-          GNUNET_CRYPTO_rsa_signature_free (cbc->sig.rsa_signature);
-        if (NULL != cbc->denom_pub.rsa_public_key)
-          GNUNET_CRYPTO_rsa_public_key_free (cbc->denom_pub.rsa_public_key);
-        GNUNET_free (cbc);
-        GNUNET_break (0);
-        goto cleanup;
-      }
-      (void) memcpy (&cbc->h_coin_envelope, &blind_ev, sizeof (blind_ev));
-      (void) memcpy (&cbc->reserve_pub, reserve_pub, sizeof (cbc->reserve_pub));
-      (void) memcpy (&cbc->reserve_sig, &reserve_sig, sizeof (cbc->reserve_sig));
+      cbc->sig.rsa_signature = denom_sig;
+      cbc->denom_pub.rsa_public_key = denom_pub;
+      cbc->h_coin_envelope =  blind_ev;
+      cbc->reserve_pub = *reserve_pub;
+      cbc->reserve_sig = reserve_sig;
       rh_head->next = GNUNET_new (struct TALER_MINTDB_ReserveHistory);
       rh_head = rh_head->next;
       rh_head->type = TALER_MINTDB_RO_WITHDRAW_COIN;
@@ -1807,8 +1768,6 @@ postgres_get_refresh_order (void *cls,
                             struct TALER_DenominationPublicKey *denom_pubs)
 {
   // FIXME: check logic -- was written for just one coin!
-  char *buf;
-  size_t buf_size;
   uint16_t newcoin_index_nbo = htons (num_newcoins);
 
   struct TALER_PQ_QueryParam params[] = {
@@ -1835,7 +1794,7 @@ postgres_get_refresh_order (void *cls,
   }
   GNUNET_assert (1 == PQntuples (result));
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_VAR ("denom_pub", &buf, &buf_size),
+    TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY ("denom_pub", denom_pubs->rsa_public_key),
     TALER_PQ_RESULT_SPEC_END
   };
   if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
@@ -1845,10 +1804,6 @@ postgres_get_refresh_order (void *cls,
     return GNUNET_SYSERR;
   }
   PQclear (result);
-  denom_pubs->rsa_public_key
-    = GNUNET_CRYPTO_rsa_public_key_decode (buf,
-                                           buf_size);
-  GNUNET_free (buf);
   return GNUNET_OK;
 }
 
@@ -2240,24 +2195,18 @@ postgres_get_link_data_list (void *cls,
     return NULL;
   }
 
-
   int i = 0;
-
   for (i = 0; i < PQntuples (result); i++)
   {
     struct TALER_RefreshLinkEncrypted *link_enc;
-    struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
-    struct GNUNET_CRYPTO_rsa_Signature *sig;
+    struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub = NULL;
+    struct GNUNET_CRYPTO_rsa_Signature *sig = NULL;
     char *ld_buf;
     size_t ld_buf_size;
-    char *pk_buf;
-    size_t pk_buf_size;
-    char *sig_buf;
-    size_t sig_buf_size;
     struct TALER_PQ_ResultSpec rs[] = {
       TALER_PQ_RESULT_SPEC_VAR("link_vector_enc", &ld_buf, &ld_buf_size),
-      TALER_PQ_RESULT_SPEC_VAR("denom_pub", &pk_buf, &pk_buf_size),
-      TALER_PQ_RESULT_SPEC_VAR("ev_sig", &sig_buf, &sig_buf_size),
+      TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY("denom_pub", denom_pub),
+      TALER_PQ_RESULT_SPEC_RSA_SIGNATURE("ev_sig", sig),
       TALER_PQ_RESULT_SPEC_END
     };
 
@@ -2272,8 +2221,6 @@ postgres_get_link_data_list (void *cls,
     if (ld_buf_size < sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey))
     {
       PQclear (result);
-      GNUNET_free (pk_buf);
-      GNUNET_free (sig_buf);
       GNUNET_free (ld_buf);
       common_free_link_data_list (cls,
                                   ldl);
@@ -2287,30 +2234,7 @@ postgres_get_link_data_list (void *cls,
     memcpy (link_enc->coin_priv_enc,
             ld_buf,
             ld_buf_size);
-
-    sig
-      = GNUNET_CRYPTO_rsa_signature_decode (sig_buf,
-                                            sig_buf_size);
-    denom_pub
-      = GNUNET_CRYPTO_rsa_public_key_decode (pk_buf,
-                                             pk_buf_size);
-    GNUNET_free (pk_buf);
-    GNUNET_free (sig_buf);
     GNUNET_free (ld_buf);
-    if ( (NULL == sig) ||
-         (NULL == denom_pub) )
-    {
-      if (NULL != denom_pub)
-        GNUNET_CRYPTO_rsa_public_key_free (denom_pub);
-      if (NULL != sig)
-        GNUNET_CRYPTO_rsa_signature_free (sig);
-      GNUNET_free (link_enc);
-      GNUNET_break (0);
-      PQclear (result);
-      common_free_link_data_list (cls,
-                                  ldl);
-      return NULL;
-    }
     pos = GNUNET_new (struct TALER_MINTDB_LinkDataList);
     pos->next = ldl;
     pos->link_data_enc = link_enc;

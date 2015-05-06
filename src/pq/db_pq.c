@@ -203,13 +203,32 @@ TALER_PQ_cleanup_result (struct TALER_PQ_ResultSpec *rs)
 
   for (i=0; TALER_PQ_RF_END != rs[i].format; i++)
   {
-    if ( (0 == rs[i].dst_size) &&
-         (NULL != rs[i].dst) )
+    switch (rs[i].format)
     {
-      GNUNET_free (rs[i].dst);
-      rs[i].dst = NULL;
-      if (NULL != rs[i].result_size)
+    case TALER_PQ_RF_VARSIZE_BLOB:
+      if (NULL != rs[i].dst)
+      {
+        GNUNET_free (rs[i].dst);
+        rs[i].dst = NULL;
         *rs[i].result_size = 0;
+      }
+      break;
+    case TALER_PQ_RF_RSA_PUBLIC_KEY:
+      if (NULL != rs[i].dst)
+      {
+        GNUNET_CRYPTO_rsa_public_key_free (rs[i].dst);
+        rs[i].dst = NULL;
+      }
+      break;
+    case TALER_PQ_RF_RSA_SIGNATURE:
+      if (NULL != rs[i].dst)
+      {
+        GNUNET_CRYPTO_rsa_signature_free (rs[i].dst);
+        rs[i].dst = NULL;
+      }
+      break;
+    default:
+      break;
     }
   }
 }
@@ -371,6 +390,94 @@ TALER_PQ_extract_result (PGresult *result,
           return GNUNET_SYSERR;
         if (GNUNET_OK != ret)
           had_null = GNUNET_YES;
+        break;
+      }
+    case TALER_PQ_RF_RSA_PUBLIC_KEY:
+      {
+        struct GNUNET_CRYPTO_rsa_PublicKey **pk = spec->dst;
+        size_t len;
+        const char *res;
+        int fnum;
+
+        GNUNET_break (NULL == *pk);
+        fnum = PQfnumber (result,
+                          spec->fname);
+        if (fnum < 0)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Field `%s' does not exist in result\n",
+                      spec->fname);
+          return GNUNET_SYSERR;
+        }
+        if (PQgetisnull (result,
+                         row,
+                         fnum))
+        {
+          had_null = GNUNET_YES;
+          continue;
+        }
+
+        /* if a field is null, continue but
+         * remember that we now return a different result */
+        len = PQgetlength (result,
+                           row,
+                           fnum);
+        res = PQgetvalue (result,
+                          row,
+                          fnum);
+        *pk = GNUNET_CRYPTO_rsa_public_key_decode (res,
+                                                   len);
+        if (NULL == *pk)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Field `%s' contains bogus value (fails to decode)\n",
+                      spec->fname);
+          return GNUNET_SYSERR;
+        }
+        break;
+      }
+    case TALER_PQ_RF_RSA_SIGNATURE:
+      {
+        struct GNUNET_CRYPTO_rsa_Signature **sig = spec->dst;
+        size_t len;
+        const char *res;
+        int fnum;
+
+        GNUNET_break (NULL == *sig);
+        fnum = PQfnumber (result,
+                          spec->fname);
+        if (fnum < 0)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Field `%s' does not exist in result\n",
+                      spec->fname);
+          return GNUNET_SYSERR;
+        }
+        if (PQgetisnull (result,
+                         row,
+                         fnum))
+        {
+          had_null = GNUNET_YES;
+          continue;
+        }
+
+        /* if a field is null, continue but
+         * remember that we now return a different result */
+        len = PQgetlength (result,
+                           row,
+                           fnum);
+        res = PQgetvalue (result,
+                          row,
+                          fnum);
+        *sig = GNUNET_CRYPTO_rsa_signature_decode (res,
+                                                   len);
+        if (NULL == *sig)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Field `%s' contains bogus value (fails to decode)\n",
+                      spec->fname);
+          return GNUNET_SYSERR;
+        }
         break;
       }
     default:

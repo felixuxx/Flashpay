@@ -151,7 +151,7 @@ struct TALER_PQ_QueryParam
  * @param x the query parameter to pass, must be
  *          a variable of type `struct GNUNET_CRYPTO_rsa_PublicKey *`.
  */
-#define TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY(x) { TALER_PQ_QF_RSA_PUBLIC_KEY, (x),0 }
+#define TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY(x) { TALER_PQ_QF_RSA_PUBLIC_KEY, (x), 0 }
 
 /**
  * Generate query parameter for an RSA signature.  The
@@ -160,7 +160,7 @@ struct TALER_PQ_QueryParam
  * @param x the query parameter to pass, must be
  *          a variable of type `struct GNUNET_CRYPTO_rsa_Signature *`.
  */
-#define TALER_PQ_QUERY_PARAM_RSA_SIGNATURE(x) { TALER_PQ_QF_RSA_SIGNATURE, (x),0 }
+#define TALER_PQ_QUERY_PARAM_RSA_SIGNATURE(x) { TALER_PQ_QF_RSA_SIGNATURE, (x), 0 }
 
 
 /**
@@ -175,26 +175,39 @@ enum TALER_PQ_ResultFormat
   TALER_PQ_RF_END,
 
   /**
-   * We have a fixed-size result (binary blob, no endianess conversion).
+   * We expect a fixed-size result (binary blob, no endianess conversion).
    */
   TALER_PQ_RF_FIXED_BLOB,
 
   /**
-   * We have a variable-size result (binary blob, no endianess conversion).
+   * We expect a variable-size result (binary blob, no endianess conversion).
    */
   TALER_PQ_RF_VARSIZE_BLOB,
 
   /**
-   * We have a currency amount.
+   * We expect a currency amount.
    * Data points to a `struct TALER_AmountNBO`, size only used for checking.
    */
   TALER_PQ_RF_AMOUNT_NBO,
 
   /**
-   * We have a currency amount.
+   * We expect a currency amount.
    * Data points to a `struct TALER_Amount`, size only used for checking.
    */
-  TALER_PQ_RF_AMOUNT
+  TALER_PQ_RF_AMOUNT,
+
+  /**
+   * We expect an RSA public key.
+   * Data points to a `struct GNUNET_CRYPTO_rsa_PublicKey **`, size is not used.
+   */
+  TALER_PQ_RF_RSA_PUBLIC_KEY,
+
+  /**
+   * We expect an RSA signature.
+   * Data points to a `struct GNUNET_CRYPTO_rsa_Signature **`, size is not used.
+   */
+  TALER_PQ_RF_RSA_SIGNATURE
+
 };
 
 
@@ -255,7 +268,7 @@ struct TALER_PQ_ResultSpec
  * @param name name of the field in the table
  * @param dst point to where to store the result, type fits expected result size
  */
-#define TALER_PQ_RESULT_SPEC(name, dst) TALER_PQ_RESULT_SPEC_SIZED(name, dst, sizeof (*(dst)))
+#define TALER_PQ_RESULT_SPEC(name, dst) { TALER_PQ_RF_VARSIZE_BLOB, (void *) dst, sizeof (*(dst)), name, NULL }
 
 
 /**
@@ -283,6 +296,25 @@ struct TALER_PQ_ResultSpec
  * @param amount a `struct TALER_Amount` where to store the result
  */
 #define TALER_PQ_RESULT_SPEC_AMOUNT(name, amount) {TALER_PQ_RF_AMOUNT, (void *) (&dst), sizeof (amount), (name), NULL }
+
+/**
+ * RSA public key expected.
+ *
+ * @param name name of the field in the table
+ * @param rsa a `struct GNUNET_CRYPTO_rsa_PublicKey *` where to store the result;
+ *            the R-value must be NULL at the time of the call
+ */
+#define TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY(name, rsa) {TALER_PQ_RF_RSA_PUBLIC_KEY, (void *) &(rsa), 0, (name), NULL }
+
+/**
+ * RSA signature expected.
+ *
+ * @param name name of the field in the table
+ * @param sig a `struct GNUNET_CRYPTO_rsa_Signature *` where to store the result;
+ *            the R-value must be NULL at the time of the call
+ */
+#define TALER_PQ_RESULT_SPEC_RSA_SIGNATURE(name, sig) {TALER_PQ_RF_RSA_SIGNATURE, (void *) &(sig), 0, (name), NULL }
+
 
 
 /**
