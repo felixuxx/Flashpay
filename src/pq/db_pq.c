@@ -270,6 +270,41 @@ TALER_PQ_extract_result (PGresult *result,
           had_null = GNUNET_YES;
         break;
       }
+    case TALER_PQ_RF_AMOUNT:
+      {
+        char *val_name;
+        char *frac_name;
+        char *curr_name;
+        const char *name = spec->fname;
+        int ret;
+
+        GNUNET_assert (NULL != spec->dst);
+        GNUNET_assert (sizeof (struct TALER_Amount) ==
+                       spec->dst_size);
+        GNUNET_asprintf (&val_name,
+                         "%s_val",
+                         name);
+        GNUNET_asprintf (&frac_name,
+                         "%s_frac",
+                         name);
+        GNUNET_asprintf (&curr_name,
+                         "%s_curr",
+                         name);
+        ret = TALER_PQ_extract_amount (result,
+                                       row,
+                                       val_name,
+                                       frac_name,
+                                       curr_name,
+                                       spec->dst);
+        GNUNET_free (val_name);
+        GNUNET_free (frac_name);
+        GNUNET_free (curr_name);
+        if (GNUNET_SYSERR == ret)
+          return GNUNET_SYSERR;
+        if (GNUNET_OK != ret)
+          had_null = GNUNET_YES;
+        break;
+      }
     default:
       GNUNET_assert (0);
       break;

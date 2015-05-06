@@ -33,6 +33,11 @@
 #define TALER_CURRENCY_LEN 12
 
 /**
+ * Taler currency length as a string.
+ */
+#define TALER_CURRENCY_LEN_STR "12"
+
+/**
  * @brief The "fraction" value in a `struct TALER_Amount` represents which
  * fraction of the "main" value?
  *

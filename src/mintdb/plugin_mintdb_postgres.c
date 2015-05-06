@@ -62,12 +62,6 @@
     PQclear (result); result = NULL;                                    \
   } while (0)
 
-/**
- * This the length of the currency strings (without 0-termination) we use.
- * FIXME: #3768: we should eventually store 12 bytes here
- */
-#define TALER_PQ_CURRENCY_LEN 3
-
 
 /**
  * Handle for a database session (per-thread, for transactions).
@@ -189,22 +183,24 @@ postgres_create_tables (void *cls,
            ",expire_withdraw INT8 NOT NULL"
            ",expire_spend INT8 NOT NULL"
            ",expire_legal INT8 NOT NULL"
-           ",value INT8 NOT NULL" /* value of this denom */
-           ",fraction INT4 NOT NULL" /* fractional value of this denom */
-           ",currency VARCHAR(4) NOT NULL" /* assuming same currency for fees */
-           ",fee_withdraw_value INT8 NOT NULL"
-           ",fee_withdraw_fraction INT4 NOT NULL"
-           ",fee_refresh_value INT8 NOT NULL"
-           ",fee_refresh_fraction INT4 NOT NULL"
+           ",coin_val INT8 NOT NULL" /* value of this denom */
+           ",coin_frac INT4 NOT NULL" /* fractional value of this denom */
+           ",coin_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL" /* assuming same currency for fees */
+           ",fee_withdraw_val INT8 NOT NULL"
+           ",fee_withdraw_frac INT4 NOT NULL"
+           ",fee_withdraw_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",fee_refresh_val INT8 NOT NULL"
+           ",fee_refresh_frac INT4 NOT NULL"
+           ",fee_refresh_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
            ")");
   /* reserves table is for summarization of a reserve.  It is updated when new
      funds are added and existing funds are withdrawn */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS reserves"
            "("
            " reserve_pub BYTEA PRIMARY KEY"
-           ",current_balance_value INT8 NOT NULL"
-           ",current_balance_fraction INT4 NOT NULL"
-           ",balance_currency VARCHAR(4) NOT NULL"
+           ",current_balance_val INT8 NOT NULL"
+           ",current_balance_frac INT4 NOT NULL"
+           ",current_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
            ",expiration_date INT8 NOT NULL"
            ")");
   /* reserves_in table collects the transactions which transfer funds into the
@@ -214,9 +210,9 @@ postgres_create_tables (void *cls,
   SQLEXEC("CREATE TABLE IF NOT EXISTS reserves_in"
           "("
           " reserve_pub BYTEA REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
-          ",balance_value INT8 NOT NULL"
-          ",balance_fraction INT4 NOT NULL"
-          ",balance_currency VARCHAR(4) NOT NULL"
+          ",balance_val INT8 NOT NULL"
+          ",balance_frac INT4 NOT NULL"
+          ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",expiration_date INT8 NOT NULL"
           ");");
   /* Create an index on the foreign key as it is not created automatically by PSQL */
@@ -238,9 +234,9 @@ postgres_create_tables (void *cls,
           " coin_pub BYTEA NOT NULL PRIMARY KEY"
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",denom_sig BYTEA NOT NULL"
-          ",expended_value INT8 NOT NULL"
-          ",expended_fraction INT4 NOT NULL"
-          ",expended_currency VARCHAR(4) NOT NULL"
+          ",expended_val INT8 NOT NULL"
+          ",expended_frac INT4 NOT NULL"
+          ",expended_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",refresh_session_hash BYTEA"
           ")");
   /**
@@ -295,12 +291,12 @@ postgres_create_tables (void *cls,
           ",coin_sig BYTEA NOT NULL "
           ",denom_pub BYTEA NOT NULL "
           ",denom_sig BYTEA NOT NULL "
-          ",amount_value INT8 NOT NULL "
-          ",amount_fraction INT8 NOT NULL "
-          ",amount_currency VARCHAR(4) NOT NULL "
-          ",fee_value INT8 NOT NULL "
-          ",fee_fraction INT8 NOT NULL "
-          ",fee_currency VARCHAR(4) NOT NULL "
+          ",amount_val INT8 NOT NULL "
+          ",amount_frac INT8 NOT NULL "
+          ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL "
+          ",fee_val INT8 NOT NULL "
+          ",fee_frac INT8 NOT NULL "
+          ",fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL "
           ",oldcoin_index INT2 NOT NULL"
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_collectable"
@@ -316,9 +312,9 @@ postgres_create_tables (void *cls,
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",denom_sig BYTEA NOT NULL"
           ",transaction_id INT8 NOT NULL"
-          ",amount_currency VARCHAR(4) NOT NULL"
-          ",amount_value INT8 NOT NULL"
-          ",amount_fraction INT4 NOT NULL"
+          ",amount_val INT8 NOT NULL"
+          ",amount_frac INT4 NOT NULL"
+          ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",merchant_pub BYTEA NOT NULL CHECK (length(merchant_pub)=32)"
           ",h_contract BYTEA NOT NULL CHECK (length(h_contract)=64)"
           ",h_wire BYTEA NOT NULL CHECK (length(h_wire)=64)"
@@ -366,22 +362,24 @@ postgres_prepare (PGconn *db_conn)
            ",expire_withdraw"
            ",expire_spend"
            ",expire_legal"
-           ",value" /* value of this denom */
-           ",fraction" /* fractional value of this denom */
-           ",currency" /* assuming same currency for fees */
-           ",fee_withdraw_value"
-           ",fee_withdraw_fraction"
-           ",fee_refresh_value"
-           ",fee_refresh_fraction"
+           ",coin_val" /* value of this denom */
+           ",coin_frac" /* fractional value of this denom */
+           ",coin_curr" /* assuming same currency for fees */
+           ",fee_withdraw_val"
+           ",fee_withdraw_frac"
+           ",fee_withdraw_curr" /* must match coin_currency */
+           ",fee_refresh_val"
+           ",fee_refresh_frac"
+           ",fee_refresh_curr" /* must match coin_currency */
            ") VALUES "
            "($1, $2, $3, $4, $5, $6,"
-            "$7, $8, $9, $10, $11, $12);",
+            "$7, $8, $9, $10, $11, $12, $13, $14);",
            12, NULL);
   PREPARE ("get_reserve",
            "SELECT "
-           "current_balance_value"
-           ",current_balance_fraction"
-           ",balance_currency "
+           "current_balance_val"
+           ",current_balance_frac"
+           ",current_balance_curr"
            ",expiration_date "
            "FROM reserves "
            "WHERE reserve_pub=$1 "
@@ -390,34 +388,34 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("create_reserve",
            "INSERT INTO reserves ("
            " reserve_pub,"
-           " current_balance_value,"
-           " current_balance_fraction,"
-           " balance_currency,"
+           " current_balance_val,"
+           " current_balance_frac,"
+           " current_balance_curr,"
            " expiration_date) VALUES ("
            "$1, $2, $3, $4, $5);",
            5, NULL);
   PREPARE ("update_reserve",
            "UPDATE reserves "
            "SET"
-           " current_balance_value=$2 "
-           ",current_balance_fraction=$3 "
-           ",expiration_date=$4 "
-           "WHERE reserve_pub=$1 ",
+           "expiration_date=$1 "
+           ",current_balance_val=$2 "
+           ",current_balance_frac=$3 "
+           "WHERE current_balance_curr=$4 AND reserve_pub=$5 ",
            4, NULL);
   PREPARE ("create_reserves_in_transaction",
            "INSERT INTO reserves_in ("
            " reserve_pub,"
-           " balance_value,"
-           " balance_fraction,"
-           " balance_currency,"
+           " balance_val,"
+           " balance_frac,"
+           " balance_curr,"
            " expiration_date) VALUES ("
            " $1, $2, $3, $4, $5);",
            5, NULL);
   PREPARE ("get_reserves_in_transactions",
            "SELECT"
-           " balance_value"
-           ",balance_fraction"
-           ",balance_currency"
+           " balance_val"
+           ",balance_frac"
+           ",balance_curr"
            ",expiration_date"
            " FROM reserves_in WHERE reserve_pub=$1",
            1, NULL);
@@ -465,7 +463,7 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("get_known_coin",
            "SELECT "
            " coin_pub, denom_pub, denom_sig "
-           ",expended_value, expended_fraction, expended_currency "
+           ",expended_val, expended_frac, expended_curr "
            ",refresh_session_hash "
            "FROM known_coins "
            "WHERE coin_pub = $1",
@@ -475,9 +473,9 @@ postgres_prepare (PGconn *db_conn)
            "SET "
            " denom_pub = $2 "
            ",denom_sig = $3 "
-           ",expended_value = $4 "
-           ",expended_fraction = $5 "
-           ",expended_currency = $6 "
+           ",expended_val = $4 "
+           ",expended_frac = $5 "
+           ",expended_curr = $6 "
            ",refresh_session_hash = $7 "
            "WHERE "
            " coin_pub = $1 ",
@@ -487,9 +485,9 @@ postgres_prepare (PGconn *db_conn)
            " coin_pub"
            ",denom_pub"
            ",denom_sig"
-           ",expended_value"
-           ",expended_fraction"
-           ",expended_currency"
+           ",expended_val"
+           ",expended_frac"
+           ",expended_curr"
            ",refresh_session_hash"
            ")"
            "VALUES ($1,$2,$3,$4,$5,$6,$7)",
@@ -524,12 +522,12 @@ postgres_prepare (PGconn *db_conn)
            ",coin_sig "
            ",denom_pub "
            ",denom_sig "
-           ",amount_value "
-           ",amount_fraction "
-           ",amount_currency "
-           ",fee_value "
-           ",fee_fraction "
-           ",fee_currency "
+           ",amount_val "
+           ",amount_frac "
+           ",amount_curr "
+           ",fee_val "
+           ",fee_frac "
+           ",fee_curr "
            ") "
            "VALUES ($1, $2, $3, $4) ",
            3, NULL);
@@ -544,7 +542,7 @@ postgres_prepare (PGconn *db_conn)
            "WHERE session_hash = $1 AND newcoin_index = $2",
            2, NULL);
   PREPARE ("get_refresh_melt",
-           "SELECT coin_pub,coin_sig,denom_pub,denom_sig,amount_value,amount_fraction,amount_currency,free_value,fee_fraction,fee_currency "
+           "SELECT coin_pub,coin_sig,denom_pub,denom_sig,amount_val,amount_frac,amount_curr,fee_val,fee_frac,fee_curr "
            "FROM refresh_melt "
            "WHERE session_hash = $1 AND oldcoin_index = $2",
            2, NULL);
@@ -614,9 +612,9 @@ postgres_prepare (PGconn *db_conn)
            "denom_pub,"
            "denom_sig,"
            "transaction_id,"
-           "amount_value,"
-           "amount_fraction,"
-           "amount_currency,"
+           "amount_val,"
+           "amount_frac,"
+           "amount_curr,"
            "merchant_pub,"
            "h_contract,"
            "h_wire,"
@@ -631,9 +629,9 @@ postgres_prepare (PGconn *db_conn)
            "coin_pub,"
            "denom_pub,"
            "transaction_id,"
-           "amount_value,"
-           "amount_fraction,"
-           "amount_currency,"
+           "amount_val,"
+           "amount_frac,"
+           "amount_curr,"
            "merchant_pub,"
            "h_contract,"
            "h_wire,"
@@ -649,9 +647,9 @@ postgres_prepare (PGconn *db_conn)
            "coin_pub,"
            "denom_pub,"
            "transaction_id,"
-           "amount_value,"
-           "amount_fraction,"
-           "amount_currency,"
+           "amount_val,"
+           "amount_frac,"
+           "amount_curr,"
            "merchant_pub,"
            "h_contract,"
            "h_wire,"
@@ -848,13 +846,9 @@ postgres_insert_denomination (void *cls,
     TALER_PQ_QUERY_PARAM_PTR (&issue->expire_withdraw.abs_value_us__),
     TALER_PQ_QUERY_PARAM_PTR (&issue->expire_spend.abs_value_us__),
     TALER_PQ_QUERY_PARAM_PTR (&issue->expire_legal.abs_value_us__),
-    TALER_PQ_QUERY_PARAM_PTR (&issue->value.value),
-    TALER_PQ_QUERY_PARAM_PTR (&issue->value.fraction),
-    TALER_PQ_QUERY_PARAM_PTR_SIZED (issue->value.currency, TALER_PQ_CURRENCY_LEN),
-    TALER_PQ_QUERY_PARAM_PTR (&issue->fee_withdraw.value),
-    TALER_PQ_QUERY_PARAM_PTR (&issue->fee_withdraw.fraction),
-    TALER_PQ_QUERY_PARAM_PTR (&issue->fee_refresh.value),
-    TALER_PQ_QUERY_PARAM_PTR (&issue->fee_refresh.fraction),
+    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (issue->value),
+    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (issue->fee_withdraw),
+    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (issue->fee_refresh),
     TALER_PQ_QUERY_PARAM_END
   };
   result = TALER_PQ_exec_prepared (session->conn,
@@ -915,9 +909,9 @@ postgres_reserve_get (void *cls,
   EXITIF (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0));
   EXITIF (GNUNET_OK !=
           TALER_PQ_extract_amount (result, 0,
-                                   "current_balance_value",
-                                   "current_balance_fraction",
-                                   "balance_currency",
+                                   "current_balance_val",
+                                   "current_balance_frac",
+                                   "current_balance_curr",
                                    &reserve->balance));
   reserve->expiry.abs_value_us = GNUNET_ntohll (expiration_date_nbo);
   PQclear (result);
@@ -952,10 +946,9 @@ postgres_reserves_update (void *cls,
     return GNUNET_SYSERR;
   ret = GNUNET_OK;
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR (&reserve->pub),
-    TALER_PQ_QUERY_PARAM_PTR (&balance_nbo.value),
-    TALER_PQ_QUERY_PARAM_PTR (&balance_nbo.fraction),
     TALER_PQ_QUERY_PARAM_PTR (&expiry_nbo),
+    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (balance_nbo),
+    TALER_PQ_QUERY_PARAM_PTR (&reserve->pub),
     TALER_PQ_QUERY_PARAM_END
   };
   TALER_amount_hton (&balance_nbo,
@@ -1029,10 +1022,7 @@ postgres_reserves_in_insert (void *cls,
                 "Reserve does not exist; creating a new one\n");
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_QUERY_PARAM_PTR (&reserve->pub),
-      TALER_PQ_QUERY_PARAM_PTR (&balance_nbo.value),
-      TALER_PQ_QUERY_PARAM_PTR (&balance_nbo.fraction),
-      TALER_PQ_QUERY_PARAM_PTR_SIZED (balance_nbo.currency,
-                                      TALER_PQ_CURRENCY_LEN),
+      TALER_PQ_QUERY_PARAM_AMOUNT_NBO (balance_nbo),
       TALER_PQ_QUERY_PARAM_PTR (&expiry_nbo),
       TALER_PQ_QUERY_PARAM_END
     };
@@ -1051,10 +1041,7 @@ postgres_reserves_in_insert (void *cls,
   /* create new incoming transaction */
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_QUERY_PARAM_PTR (&reserve->pub),
-    TALER_PQ_QUERY_PARAM_PTR (&balance_nbo.value),
-    TALER_PQ_QUERY_PARAM_PTR (&balance_nbo.fraction),
-    TALER_PQ_QUERY_PARAM_PTR_SIZED (balance_nbo.currency,
-                                    TALER_PQ_CURRENCY_LEN),
+    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (balance_nbo),
     TALER_PQ_QUERY_PARAM_PTR (&expiry_nbo),
     TALER_PQ_QUERY_PARAM_END
   };
@@ -1343,9 +1330,9 @@ postgres_get_reserve_history (void *cls,
       bt = GNUNET_new (struct TALER_MINTDB_BankTransfer);
       if (GNUNET_OK != TALER_PQ_extract_amount (result,
                                                 --rows,
-                                                "balance_value",
-                                                "balance_fraction",
-                                                "balance_currency",
+                                                "balance_val",
+                                                "balance_frac",
+                                                "balance_curr",
                                                 &bt->amount))
       {
         GNUNET_free (bt);
@@ -1543,10 +1530,7 @@ postgres_insert_deposit (void *cls,
     TALER_PQ_QUERY_PARAM_PTR_SIZED (denom_pub_enc, denom_pub_enc_size -1),
     TALER_PQ_QUERY_PARAM_PTR_SIZED (denom_sig_enc, denom_sig_enc_size -1),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->transaction_id),
-    TALER_PQ_QUERY_PARAM_PTR (&amount_nbo.value),
-    TALER_PQ_QUERY_PARAM_PTR (&amount_nbo.fraction),
-    TALER_PQ_QUERY_PARAM_PTR_SIZED (amount_nbo.currency,
-                                    3),
+    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (amount_nbo),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->merchant_pub),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->h_contract),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->h_wire),
@@ -1769,8 +1753,8 @@ postgres_get_refresh_melt (void *cls,
     TALER_PQ_RESULT_SPEC ("coin_sig", &melt->coin_sig),
     TALER_PQ_RESULT_SPEC ("denom_pub", &melt->coin),
     TALER_PQ_RESULT_SPEC ("denom_sig", &melt->coin),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("amount", &melt->amount_with_fee),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("fee", &melt->melt_fee),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("amount", melt->amount_with_fee),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee", melt->melt_fee),
     TALER_PQ_RESULT_SPEC_END
   };
 
@@ -2529,9 +2513,9 @@ postgres_get_coin_transactions (void *cls,
       if ((GNUNET_OK != TALER_PQ_extract_result (result, rs, i))
           || (GNUNET_OK != TALER_PQ_extract_amount (result,
                                                     i,
-                                                    "amount_value",
-                                                    "amount_fraction",
-                                                    "amount_currency",
+                                                    "amount_val",
+                                                    "amount_frac",
+                                                    "amount_curr",
                                                     &deposit->amount_with_fee)))
       {
         GNUNET_break (0);

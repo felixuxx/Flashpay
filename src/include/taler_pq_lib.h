@@ -102,12 +102,15 @@ struct TALER_PQ_QueryParam
 #define TALER_PQ_QUERY_PARAM_PTR(x) { TALER_PQ_QF_VARSIZE_BLOB, x, sizeof (*(x)) }
 
 /**
- * Generate fixed-size query parameter with size determined
- * by variable type.
+ * Generate query parameter for a currency, consisting of the three
+ * components "value", "fraction" and "currency" in this order. The
+ * types must be a 64-bit integer, 32-bit integer and a
+ * TALER_CURRENCY_LEN-sized BLOB/VARCHAR respectively.
  *
- * @param x pointer to the query parameter to pass.
+ * @param x pointer to the query parameter to pass, must be
+ *          a variable of type `struct TALER_AmountNBO`.
  */
-#define TALER_PQ_QUERY_PARAM_AMOUNT_NBO(x) { TALER_PQ_QF_AMOUNT_NBO, x, sizeof (*(x)) }
+#define TALER_PQ_QUERY_PARAM_AMOUNT_NBO(x) { TALER_PQ_QF_AMOUNT_NBO, &(x), sizeof (x) }
 
 
 /**
@@ -135,7 +138,13 @@ enum TALER_PQ_ResultFormat
    * We have a currency amount.
    * Data points to a `struct TALER_AmountNBO`, size only used for checking.
    */
-  TALER_PQ_RF_AMOUNT_NBO
+  TALER_PQ_RF_AMOUNT_NBO,
+
+  /**
+   * We have a currency amount.
+   * Data points to a `struct TALER_Amount`, size only used for checking.
+   */
+  TALER_PQ_RF_AMOUNT
 };
 
 
@@ -208,6 +217,14 @@ struct TALER_PQ_ResultSpec
  */
 #define TALER_PQ_RESULT_SPEC_VAR(name, dst, sptr) {TALER_PQ_RF_VARSIZE_BLOB, (void *) (dst), 0, (name), sptr }
 
+
+/**
+ * Currency amount expected.
+ *
+ * @param name name of the field in the table
+ * @param amount a `struct TALER_AmountNBO` where to store the result
+ */
+#define TALER_PQ_RESULT_SPEC_AMOUNT_NBO(name, amount) {TALER_PQ_RF_AMOUNT_NBO, (void *) (&dst), sizeof (amount), (name), NULL }
 
 /**
  * Currency amount expected.
