@@ -49,9 +49,28 @@ enum TALER_PQ_QueryFormat
 
   /**
    * We have a currency amount (with endianess conversion).
-   * Data points to a `struct TALER_AmountNBO`, size is not used.
+   * Data points to a `struct TALER_AmountNBO`, size is only used to check.
    */
-  TALER_PQ_QF_AMOUNT_NBO
+  TALER_PQ_QF_AMOUNT_NBO,
+
+  /**
+   * We have a currency amount (with endianess conversion).
+   * Data points to a `struct TALER_Amount`, size is only used to check.
+   */
+  TALER_PQ_QF_AMOUNT,
+
+  /**
+   * We have an RSA public key.
+   * Data points to a `struct GNUNET_CRYPTO_rsa_PublicKey`, size is not used.
+   */
+  TALER_PQ_QF_RSA_PUBLIC_KEY,
+
+  /**
+   * We have an RSA signature.
+   * Data points to a `struct GNUNET_CRYPTO_rsa_Signature`, size is not used.
+   */
+  TALER_PQ_QF_RSA_SIGNATURE
+
 };
 
 
@@ -111,6 +130,37 @@ struct TALER_PQ_QueryParam
  *          a variable of type `struct TALER_AmountNBO`.
  */
 #define TALER_PQ_QUERY_PARAM_AMOUNT_NBO(x) { TALER_PQ_QF_AMOUNT_NBO, &(x), sizeof (x) }
+
+
+/**
+ * Generate query parameter for a currency, consisting of the three
+ * components "value", "fraction" and "currency" in this order. The
+ * types must be a 64-bit integer, 32-bit integer and a
+ * TALER_CURRENCY_LEN-sized BLOB/VARCHAR respectively.
+ *
+ * @param x pointer to the query parameter to pass, must be
+ *          a variable of type `struct TALER_Amount`.
+ */
+#define TALER_PQ_QUERY_PARAM_AMOUNT(x) { TALER_PQ_QF_AMOUNT, &(x), sizeof (x) }
+
+
+/**
+ * Generate query parameter for an RSA public key.  The
+ * database must contain a BLOB type in the respective position.
+ *
+ * @param x the query parameter to pass, must be
+ *          a variable of type `struct GNUNET_CRYPTO_rsa_PublicKey *`.
+ */
+#define TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY(x) { TALER_PQ_QF_RSA_PUBLIC_KEY, (x),0 }
+
+/**
+ * Generate query parameter for an RSA signature.  The
+ * database must contain a BLOB type in the respective position.
+ *
+ * @param x the query parameter to pass, must be
+ *          a variable of type `struct GNUNET_CRYPTO_rsa_Signature *`.
+ */
+#define TALER_PQ_QUERY_PARAM_RSA_SIGNATURE(x) { TALER_PQ_QF_RSA_SIGNATURE, (x),0 }
 
 
 /**

@@ -825,23 +825,13 @@ postgres_insert_denomination (void *cls,
                               const struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
 {
   PGresult *result;
-  char *pub_enc;
   const struct TALER_DenominationKeyValidityPS *issue;
-  size_t pub_enc_size;
   int ret;
 
   ret = GNUNET_SYSERR;
-  pub_enc = NULL;
   issue = &dki->issue;
-  pub_enc_size = GNUNET_CRYPTO_rsa_public_key_encode (dki->denom_pub.rsa_public_key,
-                                                     &pub_enc);
-  if (NULL == pub_enc)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR_SIZED (pub_enc, pub_enc_size - 1),
+    TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (dki->denom_pub.rsa_public_key),
     TALER_PQ_QUERY_PARAM_PTR (&issue->start.abs_value_us__),
     TALER_PQ_QUERY_PARAM_PTR (&issue->expire_withdraw.abs_value_us__),
     TALER_PQ_QUERY_PARAM_PTR (&issue->expire_spend.abs_value_us__),
@@ -854,7 +844,6 @@ postgres_insert_denomination (void *cls,
   result = TALER_PQ_exec_prepared (session->conn,
                                    "insert_denomination",
                                    params);
-  GNUNET_free (pub_enc);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
@@ -1212,32 +1201,19 @@ postgres_insert_collectable_blindcoin (void *cls,
 {
   PGresult *result;
   struct TALER_MINTDB_Reserve reserve;
-  char *denom_pub_enc = NULL;
-  char *denom_sig_enc = NULL;
-  size_t denom_pub_enc_size;
-  size_t denom_sig_enc_size;
-  int ret;
-
-  ret = GNUNET_SYSERR;
-  denom_pub_enc_size =
-      GNUNET_CRYPTO_rsa_public_key_encode (collectable->denom_pub.rsa_public_key,
-                                           &denom_pub_enc);
-  denom_sig_enc_size =
-      GNUNET_CRYPTO_rsa_signature_encode (collectable->sig.rsa_signature,
-                                          &denom_sig_enc);
+  int ret = GNUNET_SYSERR;
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_QUERY_PARAM_PTR (h_blind),
-    TALER_PQ_QUERY_PARAM_PTR_SIZED (denom_pub_enc, denom_pub_enc_size - 1),
-    TALER_PQ_QUERY_PARAM_PTR_SIZED (denom_sig_enc, denom_sig_enc_size - 1), /* DB doesn't like the trailing \0 */
+    TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (collectable->denom_pub.rsa_public_key),
+    TALER_PQ_QUERY_PARAM_RSA_SIGNATURE (collectable->sig.rsa_signature),
     TALER_PQ_QUERY_PARAM_PTR (&collectable->reserve_pub),
     TALER_PQ_QUERY_PARAM_PTR (&collectable->reserve_sig),
     TALER_PQ_QUERY_PARAM_END
   };
+
   if (GNUNET_OK != postgres_start (cls,
                                    session))
   {
-    GNUNET_free_non_null (denom_pub_enc);
-    GNUNET_free_non_null (denom_sig_enc);
     return GNUNET_SYSERR;
   }
   result = TALER_PQ_exec_prepared (session->conn,
@@ -1274,8 +1250,6 @@ postgres_insert_collectable_blindcoin (void *cls,
                      session);
  cleanup:
   PQclear (result);
-  GNUNET_free_non_null (denom_pub_enc);
-  GNUNET_free_non_null (denom_sig_enc);
   return ret;
 }
 
@@ -1506,29 +1480,19 @@ postgres_insert_deposit (void *cls,
                          struct TALER_MINTDB_Session *session,
                          const struct TALER_MINTDB_Deposit *deposit)
 {
-  char *denom_pub_enc;
-  char *denom_sig_enc;
   char *json_wire_enc;
   PGresult *result;
   struct TALER_AmountNBO amount_nbo;
-  size_t denom_pub_enc_size;
-  size_t denom_sig_enc_size;
   int ret;
 
   ret = GNUNET_SYSERR;
-  denom_pub_enc_size =
-      GNUNET_CRYPTO_rsa_public_key_encode (deposit->coin.denom_pub.rsa_public_key,
-                                           &denom_pub_enc);
-  denom_sig_enc_size =
-      GNUNET_CRYPTO_rsa_signature_encode (deposit->coin.denom_sig.rsa_signature,
-                                          &denom_sig_enc);
   json_wire_enc = json_dumps (deposit->wire, JSON_COMPACT);
   TALER_amount_hton (&amount_nbo,
                      &deposit->amount_with_fee);
   struct TALER_PQ_QueryParam params[]= {
     TALER_PQ_QUERY_PARAM_PTR (&deposit->coin.coin_pub),
-    TALER_PQ_QUERY_PARAM_PTR_SIZED (denom_pub_enc, denom_pub_enc_size -1),
-    TALER_PQ_QUERY_PARAM_PTR_SIZED (denom_sig_enc, denom_sig_enc_size -1),
+    TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (deposit->coin.denom_pub.rsa_public_key),
+    TALER_PQ_QUERY_PARAM_RSA_SIGNATURE (deposit->coin.denom_sig.rsa_signature),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->transaction_id),
     TALER_PQ_QUERY_PARAM_AMOUNT_NBO (amount_nbo),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->merchant_pub),
@@ -1549,8 +1513,6 @@ postgres_insert_deposit (void *cls,
 
  cleanup:
   PQclear (result);
-  GNUNET_free_non_null (denom_pub_enc);
-  GNUNET_free_non_null (denom_sig_enc);
   GNUNET_free_non_null (json_wire_enc);
   return ret;
 }
@@ -1692,25 +1654,20 @@ postgres_insert_refresh_melt (void *cls,
 {
   // FIXME: check logic!
   uint16_t oldcoin_index_nbo = htons (oldcoin_index);
-  char *buf;
-  size_t buf_size;
   PGresult *result;
 
-  buf_size = GNUNET_CRYPTO_rsa_public_key_encode (melt->coin.denom_pub.rsa_public_key,
-                                                  &buf);
   {
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_QUERY_PARAM_PTR(&melt->session_hash),
       TALER_PQ_QUERY_PARAM_PTR(&oldcoin_index_nbo),
       TALER_PQ_QUERY_PARAM_PTR(&melt->coin.coin_pub),
-      TALER_PQ_QUERY_PARAM_PTR_SIZED(buf, buf_size),
+      TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY(melt->coin.denom_pub.rsa_public_key),
       TALER_PQ_QUERY_PARAM_END
     };
     result = TALER_PQ_exec_prepared (session->conn,
                                      "insert_refresh_melt",
                                      params);
   }
-  GNUNET_free (buf);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
@@ -1801,25 +1758,19 @@ postgres_insert_refresh_order (void *cls,
 {
   // FIXME: check logic: was written for just one COIN!
   uint16_t newcoin_index_nbo = htons (num_newcoins);
-  char *buf;
-  size_t buf_size;
   PGresult *result;
-
-  buf_size = GNUNET_CRYPTO_rsa_public_key_encode (denom_pubs->rsa_public_key,
-                                                  &buf);
 
   {
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_QUERY_PARAM_PTR (&newcoin_index_nbo),
       TALER_PQ_QUERY_PARAM_PTR (session_hash),
-      TALER_PQ_QUERY_PARAM_PTR_SIZED (buf, buf_size),
+      TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (denom_pubs->rsa_public_key),
       TALER_PQ_QUERY_PARAM_END
     };
     result = TALER_PQ_exec_prepared (session->conn,
                                      "insert_refresh_order",
                                      params);
   }
-  GNUNET_free (buf);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
@@ -2228,24 +2179,19 @@ postgres_insert_refresh_collectable (void *cls,
 {
   // FIXME: check logic!
   uint16_t newcoin_index_nbo = htons (newcoin_index);
-  char *buf;
-  size_t buf_size;
   PGresult *result;
 
-  buf_size = GNUNET_CRYPTO_rsa_signature_encode (ev_sig->rsa_signature,
-                                                 &buf);
   {
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_QUERY_PARAM_PTR(session_hash),
       TALER_PQ_QUERY_PARAM_PTR(&newcoin_index_nbo),
-      TALER_PQ_QUERY_PARAM_PTR_SIZED(buf, buf_size),
+      TALER_PQ_QUERY_PARAM_RSA_SIGNATURE(ev_sig->rsa_signature),
       TALER_PQ_QUERY_PARAM_END
     };
     result = TALER_PQ_exec_prepared (session->conn,
                                      "insert_refresh_collectable",
                                      params);
   }
-  GNUNET_free (buf);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);

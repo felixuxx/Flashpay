@@ -244,8 +244,6 @@ struct TALER_CoinSpendSignatureP
 
 GNUNET_NETWORK_STRUCT_END
 
-
-
 /**
  * @brief Type of blinding keys for Taler.
  */
@@ -427,7 +425,7 @@ struct TALER_RefreshLinkEncrypted
  * Decrypt the shared @a secret from the information in the
  * encrypted link secret @e secret_enc using the transfer
  * private key and the coin's public key.
- * 
+ *
  * @param secret_enc encrypted link secret
  * @param transfer_priv transfer private key
  * @param coin_pub coin public key
@@ -445,7 +443,7 @@ TALER_link_decrypt_secret (const struct TALER_EncryptedLinkSecretP *secret_enc,
  * Decrypt the shared @a secret from the information in the
  * encrypted link secret @e secret_enc using the transfer
  * public key and the coin's private key.
- * 
+ *
  * @param secret_enc encrypted link secret
  * @param transfer_pub transfer public key
  * @param coin_priv coin private key
@@ -462,8 +460,8 @@ TALER_link_decrypt_secret2 (const struct TALER_EncryptedLinkSecretP *secret_enc,
 /**
  * Encrypt the shared @a secret to generate the encrypted link secret.
  * Also creates the transfer key.
- * 
- * @param secret link secret to encrypt 
+ *
+ * @param secret link secret to encrypt
  * @param coin_pub coin public key
  * @param transfer_priv[out] set to transfer private key
  * @param transfer_pub[out] set to transfer public key

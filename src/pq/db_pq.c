@@ -50,12 +50,17 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
 
     switch (x->format)
     {
-    case TALER_PQ_RF_FIXED_BLOB:
-    case TALER_PQ_RF_VARSIZE_BLOB:
+    case TALER_PQ_QF_FIXED_BLOB:
+    case TALER_PQ_QF_VARSIZE_BLOB:
       len++;
       break;
-    case TALER_PQ_RF_AMOUNT_NBO:
+    case TALER_PQ_QF_AMOUNT_NBO:
+    case TALER_PQ_QF_AMOUNT:
       len += 3;
+      break;
+    case TALER_PQ_QF_RSA_PUBLIC_KEY:
+    case TALER_PQ_QF_RSA_SIGNATURE:
+      len++;
       break;
     default:
       /* format not supported */
@@ -66,27 +71,34 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
 
   /* new scope to allow stack allocation without alloca */
   {
+    /* Scratch buffer for temporary storage */
+    void *scratch[len];
+    /* Parameter array we are building for the query */
     void *param_values[len];
     int param_lengths[len];
     int param_formats[len];
     unsigned int off;
+    /* How many entries in the scratch buffer are in use? */
+    unsigned int soff;
+    PGresult *res;
 
     i = 0;
     off = 0;
+    soff = 0;
     while (TALER_PQ_QF_END != params[i].format)
     {
       const struct TALER_PQ_QueryParam *x = &params[i];
 
       switch (x->format)
       {
-      case TALER_PQ_RF_FIXED_BLOB:
-      case TALER_PQ_RF_VARSIZE_BLOB:
+      case TALER_PQ_QF_FIXED_BLOB:
+      case TALER_PQ_QF_VARSIZE_BLOB:
         param_values[off] = (void *) x->data;
         param_lengths[off] = x->size;
         param_formats[off] = 1;
         off++;
         break;
-      case TALER_PQ_RF_AMOUNT_NBO:
+      case TALER_PQ_QF_AMOUNT_NBO:
         {
           const struct TALER_Amount *amount = x->data;
 
@@ -104,6 +116,59 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
           off++;
         }
         break;
+      case TALER_PQ_QF_AMOUNT:
+        {
+          const struct TALER_Amount *amount_hbo = x->data;
+          struct TALER_AmountNBO *amount;
+
+          amount = GNUNET_new (struct TALER_AmountNBO);
+          scratch[soff++] = amount;
+          TALER_amount_hton (amount,
+                             amount_hbo);
+          param_values[off] = (void *) &amount->value;
+          param_lengths[off] = sizeof (amount->value);
+          param_formats[off] = 1;
+          off++;
+          param_values[off] = (void *) &amount->fraction;
+          param_lengths[off] = sizeof (amount->fraction);
+          param_formats[off] = 1;
+          off++;
+          param_values[off] = (void *) amount->currency;
+          param_lengths[off] = strlen (amount->currency) + 1;
+          param_formats[off] = 1;
+          off++;
+        }
+        break;
+      case TALER_PQ_QF_RSA_PUBLIC_KEY:
+        {
+          const struct GNUNET_CRYPTO_rsa_PublicKey *rsa = x->data;
+          char *buf;
+          size_t buf_size;
+
+          buf_size = GNUNET_CRYPTO_rsa_public_key_encode (rsa,
+                                                          &buf);
+          scratch[soff++] = buf;
+          param_values[off] = (void *) buf;
+          param_lengths[off] = buf_size - 1; /* DB doesn't like the trailing \0 */
+          param_formats[off] = 1;
+          off++;
+        }
+        break;
+      case TALER_PQ_QF_RSA_SIGNATURE:
+        {
+          const struct GNUNET_CRYPTO_rsa_Signature *sig = x->data;
+          char *buf;
+          size_t buf_size;
+
+          buf_size = GNUNET_CRYPTO_rsa_signature_encode (sig,
+                                                         &buf);
+          scratch[soff++] = buf;
+          param_values[off] = (void *) buf;
+          param_lengths[off] = buf_size - 1; /* DB doesn't like the trailing \0 */
+          param_formats[off] = 1;
+          off++;
+        }
+        break;
       default:
         /* format not supported */
         GNUNET_assert (0);
@@ -111,13 +176,16 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
       }
     }
     GNUNET_assert (off == len);
-    return PQexecPrepared (db_conn,
-                           name,
-                           len,
-                           (const char **) param_values,
-                           param_lengths,
-                           param_formats,
-                           1);
+    res = PQexecPrepared (db_conn,
+                          name,
+                          len,
+                          (const char **) param_values,
+                          param_lengths,
+                          param_formats,
+                          1);
+    for (off = 0; off < soff; off++)
+      GNUNET_free (scratch[soff]);
+    return res;
   }
 }
 
