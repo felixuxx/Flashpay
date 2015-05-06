@@ -27,6 +27,11 @@
 
 /**
  * Execute a prepared statement.
+ *
+ * @param db_conn database connection
+ * @param name name of the prepared statement
+ * @param params parameters to the statement
+ * @return postgres result
  */
 PGresult *
 TALER_PQ_exec_prepared (PGconn *db_conn,
@@ -37,11 +42,26 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
   unsigned int i;
 
   /* count the number of parameters */
+  i = 0;
+  len = 0;
+  while (TALER_PQ_QF_END != params[i].format)
   {
-    const struct TALER_PQ_QueryParam *x;
-    for (len = 0, x = params;
-         x->more;
-         len++, x++);
+    const struct TALER_PQ_QueryParam *x = &params[i];
+
+    switch (x->format)
+    {
+    case TALER_PQ_RF_FIXED_BLOB:
+    case TALER_PQ_RF_VARSIZE_BLOB:
+      len++;
+      break;
+    case TALER_PQ_RF_AMOUNT_NBO:
+      len += 3;
+      break;
+    default:
+      /* format not supported */
+      GNUNET_assert (0);
+      break;
+    }
   }
 
   /* new scope to allow stack allocation without alloca */
@@ -49,13 +69,48 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
     void *param_values[len];
     int param_lengths[len];
     int param_formats[len];
+    unsigned int off;
 
-    for (i = 0; i < len; i += 1)
+    i = 0;
+    off = 0;
+    while (TALER_PQ_QF_END != params[i].format)
     {
-      param_values[i] = (void *) params[i].data;
-      param_lengths[i] = params[i].size;
-      param_formats[i] = 1;
+      const struct TALER_PQ_QueryParam *x = &params[i];
+
+      switch (x->format)
+      {
+      case TALER_PQ_RF_FIXED_BLOB:
+      case TALER_PQ_RF_VARSIZE_BLOB:
+        param_values[off] = (void *) x->data;
+        param_lengths[off] = x->size;
+        param_formats[off] = 1;
+        off++;
+        break;
+      case TALER_PQ_RF_AMOUNT_NBO:
+        {
+          const struct TALER_Amount *amount = x->data;
+
+          param_values[off] = (void *) &amount->value;
+          param_lengths[off] = sizeof (amount->value);
+          param_formats[off] = 1;
+          off++;
+          param_values[off] = (void *) &amount->fraction;
+          param_lengths[off] = sizeof (amount->fraction);
+          param_formats[off] = 1;
+          off++;
+          param_values[off] = (void *) amount->currency;
+          param_lengths[off] = strlen (amount->currency) + 1;
+          param_formats[off] = 1;
+          off++;
+        }
+        break;
+      default:
+        /* format not supported */
+        GNUNET_assert (0);
+        break;
+      }
     }
+    GNUNET_assert (off == len);
     return PQexecPrepared (db_conn,
                            name,
                            len,
@@ -85,75 +140,121 @@ TALER_PQ_extract_result (PGresult *result,
                          struct TALER_PQ_ResultSpec *rs,
                          int row)
 {
-  int had_null = GNUNET_NO;
-  size_t len;
   unsigned int i;
-  unsigned int j;
-  const char *res;
-  void *dst;
-  int fnum;
+  int had_null = GNUNET_NO;
 
-  for (i=0; NULL != rs[i].fname; i++)
+  for (i=0; TALER_PQ_RF_END != rs[i].format; i++)
   {
-    fnum = PQfnumber (result,
-                      rs[i].fname);
-    if (fnum < 0)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Field `%s' does not exist in result\n",
-                  rs[i].fname);
-      return GNUNET_SYSERR;
-    }
+    struct TALER_PQ_ResultSpec *spec;
 
-    /* if a field is null, continue but
-     * remember that we now return a different result */
-    if (PQgetisnull (result,
-                     row,
-                     fnum))
+    spec = &rs[i];
+    switch (spec->format)
     {
-      had_null = GNUNET_YES;
-      continue;
-    }
-    len = PQgetlength (result,
-                       row,
-                       fnum);
-    if ( (0 != rs[i].dst_size) &&
-         (rs[i].dst_size != len) )
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Field `%s' has wrong size (got %u, expected %u)\n",
-                  rs[i].fname,
-                  (unsigned int) len,
-                  (unsigned int) rs[i].dst_size);
-      for (j=0; j<i; j++)
+    case TALER_PQ_RF_FIXED_BLOB:
+    case TALER_PQ_RF_VARSIZE_BLOB:
       {
-        if (0 == rs[j].dst_size)
+        size_t len;
+        unsigned int j;
+        const char *res;
+        void *dst;
+        int fnum;
+
+        fnum = PQfnumber (result,
+                          spec->fname);
+        if (fnum < 0)
         {
-          GNUNET_free (rs[j].dst);
-          rs[j].dst = NULL;
-          if (NULL != rs[j].result_size)
-            *rs[j].result_size = 0;
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Field `%s' does not exist in result\n",
+                      spec->fname);
+          return GNUNET_SYSERR;
         }
+        if (PQgetisnull (result,
+                         row,
+                         fnum))
+        {
+          had_null = GNUNET_YES;
+          continue;
+        }
+
+        /* if a field is null, continue but
+         * remember that we now return a different result */
+        len = PQgetlength (result,
+                           row,
+                           fnum);
+        if ( (0 != rs[i].dst_size) &&
+             (rs[i].dst_size != len) )
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Field `%s' has wrong size (got %u, expected %u)\n",
+                      rs[i].fname,
+                      (unsigned int) len,
+                      (unsigned int) rs[i].dst_size);
+          for (j=0; j<i; j++)
+          {
+            if (0 == rs[j].dst_size)
+            {
+              GNUNET_free (rs[j].dst);
+              rs[j].dst = NULL;
+              if (NULL != rs[j].result_size)
+                *rs[j].result_size = 0;
+            }
+          }
+          return GNUNET_SYSERR;
+        }
+        res = PQgetvalue (result,
+                          row,
+                          fnum);
+        GNUNET_assert (NULL != res);
+        if (0 == rs[i].dst_size)
+        {
+          if (NULL != rs[i].result_size)
+            *rs[i].result_size = len;
+          rs[i].dst_size = len;
+          dst = GNUNET_malloc (len);
+          *((void **) rs[i].dst) = dst;
+        }
+        else
+          dst = rs[i].dst;
+        memcpy (dst,
+                res,
+                len);
+        break;
       }
-      return GNUNET_SYSERR;
+    case TALER_PQ_RF_AMOUNT_NBO:
+      {
+        char *val_name;
+        char *frac_name;
+        char *curr_name;
+        const char *name = spec->fname;
+
+        GNUNET_assert (NULL != rs[i].dst);
+        GNUNET_asprintf (&val_name,
+                         "%s_val",
+                         name);
+        GNUNET_asprintf (&frac_name,
+                         "%s_frac",
+                         name);
+        GNUNET_asprintf (&curr_name,
+                         "%s_curr",
+                         name);
+
+        if (GNUNET_YES !=
+            TALER_PQ_extract_amount_nbo (result,
+                                         row,
+                                         val_name,
+                                         frac_name,
+                                         curr_name,
+                                         rs[i].dst))
+          had_null = GNUNET_YES;
+        GNUNET_free (val_name);
+        GNUNET_free (frac_name);
+        GNUNET_free (curr_name);
+        break;
+      }
+    default:
+      GNUNET_assert (0);
+      break;
     }
-    res = PQgetvalue (result,
-                      row,
-                      fnum);
-    GNUNET_assert (NULL != res);
-    if (0 == rs[i].dst_size)
-    {
-      if (NULL != rs[i].result_size)
-        *rs[i].result_size = len;
-      rs[i].dst_size = len;
-      dst = GNUNET_malloc (len);
-      *((void **) rs[i].dst) = dst;
-    }
-    else
-      dst = rs[i].dst;
-    memcpy (dst,
-            res,
-            len);
   }
   if (GNUNET_YES == had_null)
     return GNUNET_NO;

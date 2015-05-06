@@ -27,10 +27,46 @@
 #include "taler_util.h"
 
 /**
+ * Different formats of results that can be added to a query.
+ */
+enum TALER_PQ_QueryFormat
+{
+
+  /**
+   * List terminator.
+   */
+  TALER_PQ_QF_END,
+
+  /**
+   * We have a fixed-size result (binary blob, no endianess conversion).
+   */
+  TALER_PQ_QF_FIXED_BLOB,
+
+  /**
+   * We have a variable-size result (binary blob, no endianess conversion).
+   */
+  TALER_PQ_QF_VARSIZE_BLOB,
+
+  /**
+   * We have a currency amount (with endianess conversion).
+   * Data points to a `struct TALER_AmountNBO`, size is not used.
+   */
+  TALER_PQ_QF_AMOUNT_NBO
+};
+
+
+/**
  * @brief Description of a DB query parameter.
  */
 struct TALER_PQ_QueryParam
 {
+
+  /**
+   * Format of the rest of the entry, determines the data
+   * type that is being added to the query.
+   */
+  enum TALER_PQ_QueryFormat format;
+
   /**
    * Data or NULL.
    */
@@ -41,18 +77,13 @@ struct TALER_PQ_QueryParam
    */
   size_t size;
 
-  /**
-   * Non-null if this is not the last parameter.
-   * This allows us to detect the end of the list.
-   */
-  int more;
 };
 
 
 /**
  * End of query parameter specification.
  */
-#define TALER_PQ_QUERY_PARAM_END { NULL, 0, 0 }
+#define TALER_PQ_QUERY_PARAM_END { TALER_PQ_QF_END, NULL, 0 }
 
 /**
  * Generate fixed-size query parameter with size given explicitly.
@@ -60,7 +91,7 @@ struct TALER_PQ_QueryParam
  * @param x pointer to the query parameter to pass
  * @param s number of bytes of @a x to use for the query
  */
-#define TALER_PQ_QUERY_PARAM_PTR_SIZED(x, s) { (x), (s), 1 }
+#define TALER_PQ_QUERY_PARAM_PTR_SIZED(x, s) { TALER_PQ_QF_FIXED_BLOB, (x), (s) }
 
 /**
  * Generate fixed-size query parameter with size determined
@@ -68,7 +99,15 @@ struct TALER_PQ_QueryParam
  *
  * @param x pointer to the query parameter to pass.
  */
-#define TALER_PQ_QUERY_PARAM_PTR(x) TALER_PQ_QUERY_PARAM_PTR_SIZED(x, sizeof (*(x)))
+#define TALER_PQ_QUERY_PARAM_PTR(x) { TALER_PQ_QF_VARSIZE_BLOB, x, sizeof (*(x)) }
+
+/**
+ * Generate fixed-size query parameter with size determined
+ * by variable type.
+ *
+ * @param x pointer to the query parameter to pass.
+ */
+#define TALER_PQ_QUERY_PARAM_AMOUNT_NBO(x) { TALER_PQ_QF_AMOUNT_NBO, x, sizeof (*(x)) }
 
 
 /**
@@ -93,10 +132,10 @@ enum TALER_PQ_ResultFormat
   TALER_PQ_RF_VARSIZE_BLOB,
 
   /**
-   * We have a currency amount (with endianess conversion).
-   * Data points to a `struct TALER_Amount`, size is not used.
+   * We have a currency amount.
+   * Data points to a `struct TALER_AmountNBO`, size is not used.
    */
-  TALER_PQ_RF_AMOUNT
+  TALER_PQ_RF_AMOUNT_NBO
 };
 
 
@@ -176,7 +215,7 @@ struct TALER_PQ_ResultSpec
  * @param name name of the field in the table
  * @param amount a `struct TALER_Amount` where to store the result
  */
-#define TALER_PQ_RESULT_SPEC_AMOUNT(name, amount) {TALER_PQ_RF_AMOUNT, (void *) (&dst), 0, (name), sptr }
+#define TALER_PQ_RESULT_SPEC_AMOUNT(name, amount) {TALER_PQ_RF_AMOUNT, (void *) (&dst), sizeof (amount), (name), NULL }
 
 
 /**
@@ -264,4 +303,4 @@ TALER_PQ_extract_amount (PGresult *result,
 
 #endif  /* TALER_PQ_LIB_H_ */
 
-/* end of db/taler_pq_lib.h */
+/* end of include/taler_pq_lib.h */
