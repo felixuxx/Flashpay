@@ -2376,7 +2376,7 @@ postgres_get_coin_transactions (void *cls,
         /**  FIXME:
          * TALER_PQ_RESULT_SPEC ("timestamp", &deposit->timestamp),
          * TALER_PQ_RESULT_SPEC ("refund_deadline", &deposit->refund_deadline),
-         * TALER_PQ_RESULT_SPEC ("deposit_fee", &deposit->deposit_fee)
+         * TALER_PQ_RESULT_AMOUNT_NBO ("deposit_fee", &deposit->deposit_fee)
          */
         TALER_PQ_RESULT_SPEC_END
       };
