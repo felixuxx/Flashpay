@@ -15,6 +15,7 @@ libtalerpq_la_SOURCES = \
   db_pq.c
 
 libtalerpq_la_LIBADD = \
+  $(top_builddir)/src/util/libtalerutil.la  \
   -lgnunetutil \
   -lpq $(XLIB)
 
@@ -22,3 +23,17 @@ libtalerpq_la_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS) \
   -version-info 0:0:0 \
   -export-dynamic -no-undefined
+
+TESTS = \
+ test_pq
+
+check_PROGRAMS= \
+ test_pq
+
+test_pq_SOURCES = \
+  test_pq.c
+test_pq_LDADD = \
+  libtalerpq.la \
+  $(top_builddir)/src/util/libtalerutil.la  \
+  -lgnunetutil \
+  -lpq $(XLIB)

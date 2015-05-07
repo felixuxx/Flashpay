@@ -162,6 +162,7 @@ postgres_create_tables (void *cls,
     TALER_LOG_ERROR ("Database connection failed: %s\n",
                PQerrorMessage (conn));
     GNUNET_break (0);
+    PQfinish (conn);
     return GNUNET_SYSERR;
   }
   if ( (GNUNET_YES == temporary) &&
