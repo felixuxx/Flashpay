@@ -434,7 +434,7 @@ postgres_prepare (PGconn *db_conn)
            "WHERE blind_ev = $1",
            1, NULL);
   PREPARE ("get_reserves_blindcoins",
-           "select"
+           "SELECT"
            " blind_ev"
            ",denom_pub, denom_sig"
            ",reserve_sig"
