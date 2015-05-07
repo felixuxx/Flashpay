@@ -391,7 +391,7 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5, $6,"
             "$7, $8, $9, $10, $11, $12, $13, $14);",
-           12, NULL);
+           14, NULL);
   PREPARE ("get_reserve",
            "SELECT "
            "current_balance_val"
@@ -418,7 +418,7 @@ postgres_prepare (PGconn *db_conn)
            ",current_balance_val=$2 "
            ",current_balance_frac=$3 "
            "WHERE current_balance_curr=$4 AND reserve_pub=$5 ",
-           4, NULL);
+           5, NULL);
   PREPARE ("create_reserves_in_transaction",
            "INSERT INTO reserves_in ("
            " reserve_pub,"
@@ -448,7 +448,7 @@ postgres_prepare (PGconn *db_conn)
            " denom_pub, denom_sig"
            ",reserve_sig, reserve_pub "
            "FROM collectable_blindcoins "
-           "WHERE blind_ev = $1",
+           "WHERE blind_ev=$1",
            1, NULL);
   PREPARE ("get_reserves_blindcoins",
            "SELECT"
@@ -465,7 +465,7 @@ postgres_prepare (PGconn *db_conn)
            ",num_newcoins"
            ",noreveal_index"
            " FROM refresh_sessions "
-           " WHERE session_hash = $1 ",
+           " WHERE session_hash=$1 ",
            1, NULL);
   PREPARE ("insert_refresh_session",
            "INSERT INTO refresh_sessions ( "
@@ -478,7 +478,7 @@ postgres_prepare (PGconn *db_conn)
            4, NULL);
 
   PREPARE ("get_known_coin",
-           "SELECT "
+           "SELECT"
            " coin_pub, denom_pub, denom_sig "
            ",expended_val, expended_frac, expended_curr "
            ",refresh_session_hash "
@@ -487,7 +487,7 @@ postgres_prepare (PGconn *db_conn)
            1, NULL);
   PREPARE ("update_known_coin",
            "UPDATE known_coins "
-           "SET "
+           "SET"
            " denom_pub = $2 "
            ",denom_sig = $3 "
            ",expended_val = $4 "
@@ -495,7 +495,7 @@ postgres_prepare (PGconn *db_conn)
            ",expended_curr = $6 "
            ",refresh_session_hash = $7 "
            "WHERE "
-           " coin_pub = $1 ",
+           " coin_pub = $1",
            7, NULL);
   PREPARE ("insert_known_coin",
            "INSERT INTO known_coins ("
@@ -510,29 +510,29 @@ postgres_prepare (PGconn *db_conn)
            "VALUES ($1,$2,$3,$4,$5,$6,$7)",
            7, NULL);
   PREPARE ("get_refresh_commit_link",
-           "SELECT "
+           "SELECT"
            " transfer_pub "
            ",link_secret_enc "
            "FROM refresh_commit_link "
            "WHERE session_hash = $1 AND cnc_index = $2 AND oldcoin_index = $3",
            3, NULL);
   PREPARE ("get_refresh_commit_coin",
-           "SELECT "
+           "SELECT"
            " link_vector_enc "
            ",coin_ev "
            "FROM refresh_commit_coin "
            "WHERE session_hash = $1 AND cnc_index = $2 AND newcoin_index = $3",
            3, NULL);
   PREPARE ("insert_refresh_order",
-           "INSERT INTO refresh_order ( "
+           "INSERT INTO refresh_order ("
            " newcoin_index "
            ",session_hash "
            ",denom_pub "
            ") "
-           "VALUES ($1, $2, $3) ",
+           "VALUES ($1, $2, $3)",
            3, NULL);
   PREPARE ("insert_refresh_melt",
-           "INSERT INTO refresh_melt ( "
+           "INSERT INTO refresh_melt ("
            " session_hash "
            ",oldcoin_index "
            ",coin_pub "
@@ -546,8 +546,8 @@ postgres_prepare (PGconn *db_conn)
            ",fee_frac "
            ",fee_curr "
            ") "
-           "VALUES ($1, $2, $3, $4) ",
-           3, NULL);
+           "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+           12, NULL);
   PREPARE ("get_refresh_order",
            "SELECT denom_pub "
            "FROM refresh_order "
@@ -564,7 +564,7 @@ postgres_prepare (PGconn *db_conn)
            "WHERE session_hash = $1 AND oldcoin_index = $2",
            2, NULL);
   PREPARE ("insert_refresh_commit_link",
-           "INSERT INTO refresh_commit_link ( "
+           "INSERT INTO refresh_commit_link ("
            " session_hash "
            ",transfer_pub "
            ",cnc_index "
@@ -574,27 +574,27 @@ postgres_prepare (PGconn *db_conn)
            "VALUES ($1, $2, $3, $4, $5) ",
            5, NULL);
   PREPARE ("insert_refresh_commit_coin",
-           "INSERT INTO refresh_commit_coin ( "
+           "INSERT INTO refresh_commit_coin ("
            " session_hash "
            ",coin_ev "
            ",cnc_index "
            ",newcoin_index "
            ",link_vector_enc "
            ") "
-           "VALUES ($1, $2, $3, $4, $5) ",
+           "VALUES ($1, $2, $3, $4, $5)",
            5, NULL);
   PREPARE ("insert_refresh_collectable",
-           "INSERT INTO refresh_collectable ( "
+           "INSERT INTO refresh_collectable ("
            " session_hash "
            ",newcoin_index "
            ",ev_sig "
            ") "
-           "VALUES ($1, $2, $3) ",
+           "VALUES ($1, $2, $3)",
            3, NULL);
   PREPARE ("set_reveal_ok",
            "UPDATE refresh_sessions "
            "SET reveal_ok = TRUE "
-           "WHERE session_hash = $1 ",
+           "WHERE session_hash = $1",
            1, NULL);
   PREPARE ("get_link",
            "SELECT link_vector_enc, ro.denom_pub, ev_sig "
