@@ -218,17 +218,24 @@ postgres_create_tables (void *cls,
   /* Create an index on the foreign key as it is not created automatically by PSQL */
   SQLEXEC ("CREATE INDEX reserves_in_reserve_pub_index"
            " ON reserves_in (reserve_pub);");
+  /* Table with the withdraw operations that have been performed on a reserve.
+     TODO: maybe rename to "reserves_out"?
+     TODO: is blind_ev really a _primary key_? Is this constraint useful? */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS collectable_blindcoins"
            "("
            "blind_ev BYTEA PRIMARY KEY"
            ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
            ",denom_sig BYTEA NOT NULL"
-           ",reserve_pub BYTEA REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
-           ",reserve_sig BYTEA NOT NULL"
+           ",reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32) REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
+           ",reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)"
            ");");
   /* Index blindcoins(reserve_pub) for get_reserves_blindcoins statement */
   SQLEXEC ("CREATE INDEX collectable_blindcoins_reserve_pub_index ON"
            " collectable_blindcoins (reserve_pub)");
+  /* Table with coins that have been (partially) spent, used to detect
+     double-spending.  
+     TODO: maybe rename to "spent_coins"?
+     TODO: maybe have two tables, one for spending and one for refreshing, instead of optional refresh_session_hash? */
   SQLEXEC("CREATE TABLE IF NOT EXISTS known_coins "
           "("
           " coin_pub BYTEA NOT NULL PRIMARY KEY"
@@ -244,11 +251,13 @@ postgres_create_tables (void *cls,
    * we use them as 16 bit unsigned integers
    *   @a num_oldcoins
    *   @a num_newcoins
-   * Do not do arithmetic in SQL on these fields
+   * Do not do arithmetic in SQL on these fields.
+   *
+   * TODO: isn't "reveal_ok" no longer interesting / required / used?
    */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_sessions "
           "("
-          " session_hash BYTEA PRIMARY KEY CHECK (length(session_hash) = 64)"
+          " session_hash BYTEA PRIMARY KEY CHECK (LENGTH(session_hash)=64)"
           ",num_oldcoins INT2 NOT NULL"
           ",num_newcoins INT2 NOT NULL"
           ",noreveal_index INT2 NOT NULL"
@@ -258,7 +267,7 @@ postgres_create_tables (void *cls,
           ") ");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_order "
           "( "
-          " session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
+          " session_hash BYTEA NOT NULL CHECK (LENGTH(session_hash)=64) REFERENCES refresh_sessions (session_hash)"
           ",newcoin_index INT2 NOT NULL "
           ",denom_pub BYTEA NOT NULL "
           ",PRIMARY KEY (session_hash, newcoin_index)"
@@ -266,7 +275,7 @@ postgres_create_tables (void *cls,
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_link"
           "("
           " session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
-          ",transfer_pub BYTEA NOT NULL"
+          ",transfer_pub BYTEA NOT NULL CHECK(LENGTH(transfer_pub)=32)"
           ",link_secret_enc BYTEA NOT NULL"
           // index of the old coin in the customer's request
           ",oldcoin_index INT2 NOT NULL"
@@ -286,9 +295,9 @@ postgres_create_tables (void *cls,
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_melt"
           "("
-          " session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) "
-          ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) "
-          ",coin_sig BYTEA NOT NULL "
+          " session_hash BYTEA NOT NULL CHECK(LENGTH(session_hash=64)) REFERENCES refresh_sessions (session_hash) "
+          ",coin_pub BYTEA NOT NULL CHECK(LENGTH(coin_pub)=32) REFERENCES known_coins (coin_pub) "
+          ",coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)"
           ",denom_pub BYTEA NOT NULL "
           ",denom_sig BYTEA NOT NULL "
           ",amount_val INT8 NOT NULL "
@@ -301,24 +310,32 @@ postgres_create_tables (void *cls,
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_collectable"
           "("
-          " session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) "
+          " session_hash BYTEA NOT NULL CHECK(LENGTH(session_hash)=64) REFERENCES refresh_sessions (session_hash) "
           ",ev_sig BYTEA NOT NULL"
           ",newcoin_index INT2 NOT NULL"
           ")");
+  /* This table contains the wire transfers the mint is supposed to
+     execute to transmit funds to the merchants (and manage refunds).
+     TODO: we might want to generate some other primary key
+     to internally identify outgoing transactions, as "coin_pub"
+     may not be unique if a wallet chooses not to refresh.  The
+     resulting transaction ID should then be returned to the merchant
+     and could be used by the mearchant for further inquriries about
+     the deposit's execution. */
   SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
           "( "
           /* FIXME #3769: the following primary key may be too restrictive */
-          " coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (length(coin_pub)=32)"
+          " coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",denom_sig BYTEA NOT NULL"
           ",transaction_id INT8 NOT NULL"
           ",amount_val INT8 NOT NULL"
           ",amount_frac INT4 NOT NULL"
           ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ",merchant_pub BYTEA NOT NULL CHECK (length(merchant_pub)=32)"
-          ",h_contract BYTEA NOT NULL CHECK (length(h_contract)=64)"
-          ",h_wire BYTEA NOT NULL CHECK (length(h_wire)=64)"
-          ",coin_sig BYTEA NOT NULL CHECK (length(coin_sig)=64)"
+          ",merchant_pub BYTEA NOT NULL CHECK (LENGTH(merchant_pub)=32)"
+          ",h_contract BYTEA NOT NULL CHECK (LENGTH(h_contract)=64)"
+          ",h_wire BYTEA NOT NULL CHECK (LENGTH(h_wire)=64)"
+          ",coin_sig BYTEA NOT NULL CHECK (LENGTH(coin_sig)=64)"
           ",wire TEXT NOT NULL"
           ")");
 #undef SQLEXEC
