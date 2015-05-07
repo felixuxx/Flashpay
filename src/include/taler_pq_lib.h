@@ -69,7 +69,13 @@ enum TALER_PQ_QueryFormat
    * We have an RSA signature.
    * Data points to a `struct GNUNET_CRYPTO_rsa_Signature`, size is not used.
    */
-  TALER_PQ_QF_RSA_SIGNATURE
+  TALER_PQ_QF_RSA_SIGNATURE,
+
+  /**
+   * We have an absolute time.
+   * Data points to a `struct GNUNET_TIME_Absolute`, size is only used to check.
+   */
+  TALER_PQ_QF_TIME_ABSOLUTE
 
 };
 
@@ -164,6 +170,16 @@ struct TALER_PQ_QueryParam
 
 
 /**
+ * Generate query parameter for an absolute time value.
+ * The database must store a 64-bit integer.
+ *
+ * @param x pointer to the query parameter to pass, must be
+ *          a variable of type `struct GNUNET_TIME_Absolute`.
+ */
+#define TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME(x) { TALER_PQ_QF_TIME_ABSOLUTE, &(x), sizeof (x) }
+
+
+/**
  * Different formats of results that can be extracted.
  */
 enum TALER_PQ_ResultFormat
@@ -206,7 +222,13 @@ enum TALER_PQ_ResultFormat
    * We expect an RSA signature.
    * Data points to a `struct GNUNET_CRYPTO_rsa_Signature **`, size is not used.
    */
-  TALER_PQ_RF_RSA_SIGNATURE
+  TALER_PQ_RF_RSA_SIGNATURE,
+
+  /**
+   * We expect an absolute time.
+   * Data points to a `struct GNUNET_TIME_Absolute`, size is only used for checking.
+   */
+  TALER_PQ_RF_TIME_ABSOLUTE
 
 };
 
@@ -287,7 +309,7 @@ struct TALER_PQ_ResultSpec
  * @param name name of the field in the table
  * @param amount a `struct TALER_AmountNBO` where to store the result
  */
-#define TALER_PQ_RESULT_SPEC_AMOUNT_NBO(name, amount) {TALER_PQ_RF_AMOUNT_NBO, (void *) (&dst), sizeof (amount), (name), NULL }
+#define TALER_PQ_RESULT_SPEC_AMOUNT_NBO(name, amount) {TALER_PQ_RF_AMOUNT_NBO, (void *) (&amount), sizeof (amount), (name), NULL }
 
 /**
  * Currency amount expected.
@@ -295,7 +317,7 @@ struct TALER_PQ_ResultSpec
  * @param name name of the field in the table
  * @param amount a `struct TALER_Amount` where to store the result
  */
-#define TALER_PQ_RESULT_SPEC_AMOUNT(name, amount) {TALER_PQ_RF_AMOUNT, (void *) (&dst), sizeof (amount), (name), NULL }
+#define TALER_PQ_RESULT_SPEC_AMOUNT(name, amount) {TALER_PQ_RF_AMOUNT, (void *) (&amount), sizeof (amount), (name), NULL }
 
 /**
  * RSA public key expected.
@@ -315,6 +337,13 @@ struct TALER_PQ_ResultSpec
  */
 #define TALER_PQ_RESULT_SPEC_RSA_SIGNATURE(name, sig) {TALER_PQ_RF_RSA_SIGNATURE, (void *) &(sig), 0, (name), NULL }
 
+/**
+ * Absolute time expected.
+ *
+ * @param name name of the field in the table
+ * @param at a `struct GNUNET_TIME_Absolute` where to store the result
+ */
+#define TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME(name,at) {TALER_PQ_RF_TIME_ABSOLUTE, (void *) (&at), sizeof (at), (name), NULL }
 
 
 /**

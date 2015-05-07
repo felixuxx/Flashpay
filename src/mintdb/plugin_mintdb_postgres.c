@@ -723,8 +723,8 @@ postgres_get_session (void *cls,
     GNUNET_break (0);
     return NULL;
   }
-  if ((GNUNET_YES == temporary)
-      && (GNUNET_SYSERR == set_temporary_schema(db_conn)))
+  if ( (GNUNET_YES == temporary) &&
+       (GNUNET_SYSERR == set_temporary_schema(db_conn)) )
   {
     GNUNET_break (0);
     return NULL;
@@ -741,7 +741,7 @@ postgres_get_session (void *cls,
                                 session))
   {
     GNUNET_break (0);
-    // FIXME: close db_conn!
+    PQfinish (db_conn);
     GNUNET_free (session);
     return NULL;
   }
@@ -822,7 +822,6 @@ postgres_commit (void *cls,
     PQclear (result);
     return GNUNET_SYSERR;
   }
-
   PQclear (result);
   return GNUNET_OK;
 }
@@ -841,12 +840,10 @@ postgres_insert_denomination (void *cls,
                               struct TALER_MINTDB_Session *session,
                               const struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
 {
+  const struct TALER_DenominationKeyValidityPS *issue = &dki->issue;
   PGresult *result;
-  const struct TALER_DenominationKeyValidityPS *issue;
   int ret;
 
-  ret = GNUNET_SYSERR;
-  issue = &dki->issue;
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (dki->denom_pub.rsa_public_key),
     TALER_PQ_QUERY_PARAM_PTR (&issue->start.abs_value_us__),
@@ -863,10 +860,13 @@ postgres_insert_denomination (void *cls,
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
+    ret = GNUNET_SYSERR;
     BREAK_DB_ERR (result);
   }
   else
+  {
     ret = GNUNET_OK;
+  }
   PQclear (result);
   return ret;
 }
@@ -888,10 +888,14 @@ postgres_reserve_get (void *cls,
                       struct TALER_MINTDB_Reserve *reserve)
 {
   PGresult *result;
-  uint64_t expiration_date_nbo;
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_QUERY_PARAM_PTR(&reserve->pub),
     TALER_PQ_QUERY_PARAM_END
+  };
+  struct TALER_PQ_ResultSpec rs[] = {
+    TALER_PQ_RESULT_SPEC_AMOUNT("current_balance", reserve->balance),
+    TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME("expiration_date", reserve->expiry),
+    TALER_PQ_RESULT_SPEC_END
   };
 
   result = TALER_PQ_exec_prepared (session->conn,
@@ -908,18 +912,10 @@ postgres_reserve_get (void *cls,
     PQclear (result);
     return GNUNET_NO;
   }
-  struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC("expiration_date", &expiration_date_nbo),
-    TALER_PQ_RESULT_SPEC_END
-  };
-  EXITIF (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0));
   EXITIF (GNUNET_OK !=
-          TALER_PQ_extract_amount (result, 0,
-                                   "current_balance_val",
-                                   "current_balance_frac",
-                                   "current_balance_curr",
-                                   &reserve->balance));
-  reserve->expiry.abs_value_us = GNUNET_ntohll (expiration_date_nbo);
+	  TALER_PQ_extract_result (result, 
+				   rs, 
+				   0));
   PQclear (result);
   return GNUNET_OK;
 
@@ -944,22 +940,16 @@ postgres_reserves_update (void *cls,
                           struct TALER_MINTDB_Reserve *reserve)
 {
   PGresult *result;
-  struct TALER_AmountNBO balance_nbo;
-  struct GNUNET_TIME_AbsoluteNBO expiry_nbo;
   int ret;
 
   if (NULL == reserve)
     return GNUNET_SYSERR;
-  ret = GNUNET_OK;
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR (&expiry_nbo),
-    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (balance_nbo),
+    TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (reserve->expiry),
+    TALER_PQ_QUERY_PARAM_AMOUNT (reserve->balance),
     TALER_PQ_QUERY_PARAM_PTR (&reserve->pub),
     TALER_PQ_QUERY_PARAM_END
   };
-  TALER_amount_hton (&balance_nbo,
-                     &reserve->balance);
-  expiry_nbo = GNUNET_TIME_absolute_hton (reserve->expiry);
   result = TALER_PQ_exec_prepared (session->conn,
                                    "update_reserve",
                                    params);
@@ -967,6 +957,10 @@ postgres_reserves_update (void *cls,
   {
     QUERY_ERR (result);
     ret = GNUNET_SYSERR;
+  }
+  else
+  {
+    ret = GNUNET_OK;
   }
   PQclear (result);
   return ret;
@@ -993,8 +987,6 @@ postgres_reserves_in_insert (void *cls,
                              const struct TALER_Amount *balance,
                              const struct GNUNET_TIME_Absolute expiry)
 {
-  struct TALER_AmountNBO balance_nbo;
-  struct GNUNET_TIME_AbsoluteNBO expiry_nbo;
   PGresult *result;
   int reserve_exists;
 
@@ -1019,17 +1011,14 @@ postgres_reserves_in_insert (void *cls,
                        session);
     return GNUNET_SYSERR;
   }
-  TALER_amount_hton (&balance_nbo,
-                     balance);
-  expiry_nbo = GNUNET_TIME_absolute_hton (expiry);
   if (GNUNET_NO == reserve_exists)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Reserve does not exist; creating a new one\n");
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_QUERY_PARAM_PTR (&reserve->pub),
-      TALER_PQ_QUERY_PARAM_AMOUNT_NBO (balance_nbo),
-      TALER_PQ_QUERY_PARAM_PTR (&expiry_nbo),
+      TALER_PQ_QUERY_PARAM_AMOUNT (balance),
+      TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (expiry),
       TALER_PQ_QUERY_PARAM_END
     };
     result = TALER_PQ_exec_prepared (session->conn,
@@ -1047,8 +1036,8 @@ postgres_reserves_in_insert (void *cls,
   /* create new incoming transaction */
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_QUERY_PARAM_PTR (&reserve->pub),
-    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (balance_nbo),
-    TALER_PQ_QUERY_PARAM_PTR (&expiry_nbo),
+    TALER_PQ_QUERY_PARAM_AMOUNT (balance),
+    TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (expiry),
     TALER_PQ_QUERY_PARAM_END
   };
   result = TALER_PQ_exec_prepared (session->conn,
@@ -1081,7 +1070,8 @@ postgres_reserves_in_insert (void *cls,
   {
     return GNUNET_SYSERR;
   }
-  updated_reserve.expiry = GNUNET_TIME_absolute_max (expiry, reserve->expiry);
+  updated_reserve.expiry = GNUNET_TIME_absolute_max (expiry,
+						     reserve->expiry);
   if (GNUNET_OK != postgres_reserves_update (cls,
                                              session,
                                              &updated_reserve))
@@ -1460,19 +1450,16 @@ postgres_insert_deposit (void *cls,
 {
   char *json_wire_enc;
   PGresult *result;
-  struct TALER_AmountNBO amount_nbo;
   int ret;
 
   ret = GNUNET_SYSERR;
   json_wire_enc = json_dumps (deposit->wire, JSON_COMPACT);
-  TALER_amount_hton (&amount_nbo,
-                     &deposit->amount_with_fee);
   struct TALER_PQ_QueryParam params[]= {
     TALER_PQ_QUERY_PARAM_PTR (&deposit->coin.coin_pub),
     TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (deposit->coin.denom_pub.rsa_public_key),
     TALER_PQ_QUERY_PARAM_RSA_SIGNATURE (deposit->coin.denom_sig.rsa_signature),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->transaction_id),
-    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (amount_nbo),
+    TALER_PQ_QUERY_PARAM_AMOUNT (deposit->amount_with_fee),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->merchant_pub),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->h_contract),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->h_wire),

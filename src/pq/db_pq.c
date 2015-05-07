@@ -169,6 +169,20 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
           off++;
         }
         break;
+      case TALER_PQ_QF_TIME_ABSOLUTE:
+        {
+          const struct GNUNET_TIME_Absolute *at_hbo = x->data;
+          struct GNUNET_TIME_AbsoluteNBO *at_nbo;
+	  
+          at_nbo = GNUNET_new (struct GNUNET_TIME_AbsoluteNBO);
+          scratch[soff++] = at_nbo;
+          *at_nbo = GNUNET_TIME_absolute_hton (*at_hbo);
+          param_values[off] = (void *) at_nbo;
+          param_lengths[off] = sizeof (struct GNUNET_TIME_AbsoluteNBO);
+          param_formats[off] = 1;
+          off++;
+        }
+        break;
       default:
         /* format not supported */
         GNUNET_assert (0);
@@ -480,6 +494,39 @@ TALER_PQ_extract_result (PGresult *result,
         }
         break;
       }
+    case TALER_PQ_RF_TIME_ABSOLUTE:
+      {
+        struct GNUNET_TIME_Absolute *dst = spec->dst;
+	const struct GNUNET_TIME_AbsoluteNBO *res;
+	int fnum;
+
+        fnum = PQfnumber (result,
+                          spec->fname);
+        if (fnum < 0)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Field `%s' does not exist in result\n",
+                      spec->fname);
+          return GNUNET_SYSERR;
+        }
+        if (PQgetisnull (result,
+                         row,
+                         fnum))
+        {
+          had_null = GNUNET_YES;
+          continue;
+        }
+        GNUNET_assert (NULL != dst);
+        GNUNET_assert (sizeof (struct GNUNET_TIME_AbsoluteNBO) ==
+                       spec->dst_size);
+        res = (const struct GNUNET_TIME_AbsoluteNBO *)
+	  PQgetvalue (result,
+		      row,
+		      fnum);
+	*dst = GNUNET_TIME_absolute_ntoh (*res);
+        break;
+      }
+
     default:
       GNUNET_assert (0);
       break;
