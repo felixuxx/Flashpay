@@ -116,7 +116,8 @@ struct TALER_PQ_QueryParam
  * @param x pointer to the query parameter to pass
  * @param s number of bytes of @a x to use for the query
  */
-#define TALER_PQ_QUERY_PARAM_PTR_SIZED(x, s) { TALER_PQ_QF_FIXED_BLOB, (x), (s) }
+#define TALER_PQ_QUERY_PARAM_PTR_SIZED(x,s) { TALER_PQ_QF_FIXED_BLOB, (x), (s) }
+
 
 /**
  * Generate fixed-size query parameter with size determined
@@ -126,16 +127,17 @@ struct TALER_PQ_QueryParam
  */
 #define TALER_PQ_QUERY_PARAM_PTR(x) { TALER_PQ_QF_VARSIZE_BLOB, x, sizeof (*(x)) }
 
+
 /**
  * Generate query parameter for a currency, consisting of the three
  * components "value", "fraction" and "currency" in this order. The
  * types must be a 64-bit integer, 32-bit integer and a
  * TALER_CURRENCY_LEN-sized BLOB/VARCHAR respectively.
  *
- * @param x pointer to the query parameter to pass, must be
- *          a variable of type `struct TALER_AmountNBO`.
+ * @param x pointer to the query parameter to pass
  */
-#define TALER_PQ_QUERY_PARAM_AMOUNT_NBO(x) { TALER_PQ_QF_AMOUNT_NBO, &(x), sizeof (x) }
+struct TALER_PQ_QueryParam
+TALER_PQ_QUERY_PARAM_AMOUNT_NBO(const struct TALER_AmountNBO *x);
 
 
 /**
@@ -144,39 +146,40 @@ struct TALER_PQ_QueryParam
  * types must be a 64-bit integer, 32-bit integer and a
  * TALER_CURRENCY_LEN-sized BLOB/VARCHAR respectively.
  *
- * @param x pointer to the query parameter to pass, must be
- *          a variable of type `struct TALER_Amount`.
+ * @param x pointer to the query parameter to pass
  */
-#define TALER_PQ_QUERY_PARAM_AMOUNT(x) { TALER_PQ_QF_AMOUNT, &(x), sizeof (x) }
+struct TALER_PQ_QueryParam
+TALER_PQ_QUERY_PARAM_AMOUNT(const struct TALER_Amount *x);
 
 
 /**
  * Generate query parameter for an RSA public key.  The
  * database must contain a BLOB type in the respective position.
  *
- * @param x the query parameter to pass, must be
- *          a variable of type `struct GNUNET_CRYPTO_rsa_PublicKey *`.
+ * @param x the query parameter to pass.
  */
-#define TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY(x) { TALER_PQ_QF_RSA_PUBLIC_KEY, (x), 0 }
+struct TALER_PQ_QueryParam
+TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY(const struct GNUNET_CRYPTO_rsa_PublicKey *x);
+
 
 /**
  * Generate query parameter for an RSA signature.  The
  * database must contain a BLOB type in the respective position.
  *
- * @param x the query parameter to pass, must be
- *          a variable of type `struct GNUNET_CRYPTO_rsa_Signature *`.
+ * @param x the query parameter to pass
  */
-#define TALER_PQ_QUERY_PARAM_RSA_SIGNATURE(x) { TALER_PQ_QF_RSA_SIGNATURE, (x), 0 }
+struct TALER_PQ_QueryParam
+TALER_PQ_QUERY_PARAM_RSA_SIGNATURE(const struct GNUNET_CRYPTO_rsa_Signature *x);
 
 
 /**
  * Generate query parameter for an absolute time value.
  * The database must store a 64-bit integer.
  *
- * @param x pointer to the query parameter to pass, must be
- *          a variable of type `struct GNUNET_TIME_Absolute`.
+ * @param x pointer to the query parameter to pass
  */
-#define TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME(x) { TALER_PQ_QF_TIME_ABSOLUTE, &(x), sizeof (x) }
+struct TALER_PQ_QueryParam
+TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME(struct GNUNET_TIME_Absolute x);
 
 
 /**

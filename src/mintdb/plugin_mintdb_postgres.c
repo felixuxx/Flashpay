@@ -851,9 +851,9 @@ postgres_insert_denomination (void *cls,
     TALER_PQ_QUERY_PARAM_PTR (&issue->expire_withdraw.abs_value_us__),
     TALER_PQ_QUERY_PARAM_PTR (&issue->expire_spend.abs_value_us__),
     TALER_PQ_QUERY_PARAM_PTR (&issue->expire_legal.abs_value_us__),
-    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (issue->value),
-    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (issue->fee_withdraw),
-    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (issue->fee_refresh),
+    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (&issue->value),
+    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (&issue->fee_withdraw),
+    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (&issue->fee_refresh),
     TALER_PQ_QUERY_PARAM_END
   };
   result = TALER_PQ_exec_prepared (session->conn,
@@ -947,7 +947,7 @@ postgres_reserves_update (void *cls,
     return GNUNET_SYSERR;
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (reserve->expiry),
-    TALER_PQ_QUERY_PARAM_AMOUNT (reserve->balance),
+    TALER_PQ_QUERY_PARAM_AMOUNT (&reserve->balance),
     TALER_PQ_QUERY_PARAM_PTR (&reserve->pub),
     TALER_PQ_QUERY_PARAM_END
   };
@@ -1460,7 +1460,7 @@ postgres_insert_deposit (void *cls,
     TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (deposit->coin.denom_pub.rsa_public_key),
     TALER_PQ_QUERY_PARAM_RSA_SIGNATURE (deposit->coin.denom_sig.rsa_signature),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->transaction_id),
-    TALER_PQ_QUERY_PARAM_AMOUNT (deposit->amount_with_fee),
+    TALER_PQ_QUERY_PARAM_AMOUNT (&deposit->amount_with_fee),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->merchant_pub),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->h_contract),
     TALER_PQ_QUERY_PARAM_PTR (&deposit->h_wire),

@@ -12,7 +12,8 @@ lib_LTLIBRARIES = \
   libtalerpq.la
 
 libtalerpq_la_SOURCES = \
-  db_pq.c
+  db_pq.c \
+  pq_helper.c
 
 libtalerpq_la_LIBADD = \
   $(top_builddir)/src/util/libtalerutil.la  \
