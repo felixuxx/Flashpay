@@ -866,11 +866,11 @@ a fresh coin $\widetilde{C}$ with the same denomination. In the protocol, $\kapp
       \item randomly generates blinding factors $b_i$,
       \item computes $E_i := E_{K_i}\left(c_s^{(i)}, b_i\right)$ where $K_i := c'_s \cdot T_p^{(i)}$ (The encryption key $K_i$ is
             computed by multiplying the private key $c'_s$ of the original coin with the point on the curve
-            that represents the public key of the transfer key $T^{(i)}$.),
+            that represents the public key $T^{(i)}_p$ of the transfer key $T^{(i)}$.),
     \end{itemize}
     and commits $\langle C', \vec{T}, \vec{C}, \vec{b} \rangle$ to disk.
-  \item The customer computes $B_i := E_{b_i}(C^{(i)}_p)$ and sends commitments
-    $S_{C'}(\vec{E}, \vec{B}, \vec{T}))$ for $i=1,\ldots,\kappa$ to the mint;
+  \item The customer computes $B_i := E_{b_i}(C^{(i)}_p)$  for $i=1,\ldots,\kappa$ and sends a commitment
+    $S_{C'}(\vec{E}, \vec{B}, \vec{T_p}))$ to the mint;
     here $E_{b_i}$ denotes Chaum-style blinding with blinding factor $b_i$.
   \item The mint generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
     marks $C'_p$ as spent by committing
