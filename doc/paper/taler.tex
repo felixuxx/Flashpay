@@ -522,67 +522,6 @@ been spent.
 %deposit permission signed by the coin's owner with the mint, and then
 %proceeds with the contract.
 
-\paragraph{Incremental payments.}
-
-For services that include pay-as-you-go billing, customers can over
-time sign deposit permissions for an increasing fraction of the value
-of a coin to be paid to a particular merchant.  As checking with the
-mint for each increment might be expensive, the coin's owner can
-instead sign a {\em lock permission}, which allows the merchant to get
-an exclusive right to redeem deposit permissions for the coin for a
-limited duration.  The merchant uses the lock permission to determine
-if the coin has already been spent and to ensure that it cannot be
-spent by another merchant for the {\em duration} of the lock as
-specified in the lock permission.  If the coin has been spent or is
-already locked, the mint provides the owner's deposit or locking
-request and signature to prove the attempted fraud by the customer.
-Otherwise, the mint locks the coin for the expected duration of the
-transaction (and remembers the lock permission).  The merchant and the
-customer can then finalize the business transaction, possibly
-exchanging a series of incremental payment permissions for services.
-Finally, the merchant then redeems the coin at the mint before the
-lock permission expires to ensure that no other merchant spends the
-coin first.
-
-
-\paragraph{Probabilistic spending.}
-
-Similar to Peppercoin, Taler supports probabilistic spending of coins to
-support cost-effective transactions for small amounts.  Here, an
-ordinary transaction is performed based on the result of a biased coin
-flip with a probability related to the desired transaction amount in
-relation to the value of the coin.  Unlike Peppercoin, in Taler either
-the merchant wins and the customer looses the coin, or the merchant
-looses and the customer keeps the coin.  Thus, there is no opportunity
-for the merchant and the customer to conspire against the mint.  To
-determine if the coin is to be transferred, merchant and customer
-execute a secure coin flipping protocol~\cite{blum1981}.  The commit
-values are included in the business contract and are revealed after
-the contract has been signed using the private key of the coin.  If
-the coin flip is decided in favor of the merchant, the merchant can
-redeem the coin at the mint.
-
-One issue in this protocol is that the customer may use a worthless
-coin by offering a coin that has already been spent.  This kind of
-fraud would only be detected if the customer actually lost the coin
-flip, and at this point the merchant might not be able to recover from
-the loss.  A fradulent anonymous customer may run the protocol using
-already spent coins until the coin flip is in his favor.  As with
-incremental spending, lock permissions could be used to ensure that
-the customer cannot defraud the merchant by offering a coin that has
-already been spent.  However, as this means involving the mint even if
-the merchant looses the coin flip, such a scheme is unsuitable for
-microdonations as the transaction costs from involving the mint might
-be disproportionate to the value of the transaction, and thus with
-locking the probabilistic scheme has no advantage over simply using
-fractional payments.
-
-Hence, Taler uses probabilistic transactions {\em without} the online
-double-spending detection.  This enables the customer to defraud the
-merchant by paying with a coin that was already spent.  However, as,
-by definition, such microdonations are for tiny amounts, the incentive
-for customers to pursue this kind of fraud is limited.
-
 
 \subsection{Refreshing Coins}
 
@@ -694,7 +633,8 @@ following interaction with the mint:
         local wallet) for future use.
 \end{enumerate}
 
-\subsection{Exact, partial and incremental spending}
+
+\subsection{Exact and partial spending}
 
 A customer can spend coins at a merchant, under the condition that the
 merchant trusts the mint that minted the coin.  Merchants are
@@ -707,103 +647,47 @@ by a mint's denomination key $K$, i.e. the customer posses
 $\widetilde{C} := S_K(C_p)$:
 
 \begin{enumerate}
-\item\label{offer} The merchant sends an \emph{offer:} $\langle S_M(m, f),
-  \vec{D} \rangle$ containing the price of the offer $f$, a transaction
-  ID $m$ and the list of mints $D_1, \ldots, D_n$ accepted by the merchant
-  where each $D_i$ is a mint's public key.
-\item\label{lock} The customer must possess or acquire a coin minted by a mint that is
+\item\label{contract} Let $\vec{D} := D_1, \ldots, D_n$ be the list of
+  mints accepted by the merchant where each $D_i$ is a mint's public
+  key.  The merchant creates a digitally signed contract $\mathcal{A}
+  := S_M(m, f, a, H(p, r), \vec{D})$ where $a$ is data relevant to the
+  contract indicating which services or goods the merchant will
+  deliver to the customer, $f$ is the price of the offer, and $p$ is
+  the merchant's payment information (e.g. his IBAN number) and $r$ is
+  an random nounce.  The merchant commits $\langle \mathcal{A}
+  \rangle$ to disk and sends $\mathcal{A}$ it to the customer.
+\item\label{deposit} The customer must possess or acquire a coin minted by a mint that is
   accepted by the merchant, i.e. $K$ should be publicly signed by some $D_i
-  \in \{D_1, D_2, \ldots, D_n\}$, and has a value $\geq f$.
+  \in \{D_1, D_2, \ldots, D_n\}$, and has a value $\geq f$. (The customer
+  can of course also use multiple coins where the total value adds up to
+  the cost of the transaction and run the following steps for each of
+  the coins. However, for simplicity of the description here we will
+  assume that one coin is sufficient.)
 
-  Customer then generates a \emph{lock-permission} $\mathcal{L} :=
-  S_c(\widetilde{C}, t, m, f, M_p)$ where $t$ specifies the time until which the
-  lock is valid and sends $\langle \mathcal{L}, D_i\rangle$ to the merchant,
+  The customer then generates a \emph{deposit-permission} $\mathcal{D} :=
+  S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$ 
+  and sends $\langle \mathcal{D}, D_i\rangle$ to the merchant,
   where $D_i$ is the mint which signed $K$.
-\item The merchant asks the mint to apply the lock by sending $\langle
-  \mathcal{L} \rangle$ to the mint.
-\item The mint validates $\widetilde{C}$ and detects double spending if there is
-  a lock-permission record $S_c(\widetilde{C}, t', m', f', M_p')$ where $(t',
-  m', f', M_p') \neq (t, m, f, M_p)$ or a \emph{deposit-permission} record for
-  $C$ and sends it to the merchant, who can then use it prove to the customer
-  and subsequently ask the customer to issue a new lock-permission.
-
-  If double spending is not found, the mint commits $\langle \mathcal{L} \rangle$ to disk
-  and notifies the merchant that locking was successful.
-\item\label{contract} The merchant creates a digitally signed contract
-  $\mathcal{A} := S_M(m, f, a, H(p, r))$ where $a$ is data relevant to the contract
-  indicating which services or goods the merchant will deliver to the customer, and $p$ is the
-  merchant's payment information (e.g. his IBAN number) and $r$ is an random nounce.
-  The merchant commits $\langle \mathcal{A} \rangle$ to disk and sends it to the customer.
-\item The customer creates a
-  \emph{deposit-permission} $\mathcal{D} := S_c(\widetilde{C}, f, m, M_p, H(a), H(p, r))$, commits
-  $\langle \mathcal{A}, \mathcal{D} \rangle$ to disk and sends $\mathcal{D}$ to the merchant.
-\item\label{invoice_paid} The merchant commits the received $\langle \mathcal{D} \rangle$ to disk.
 \item The merchant gives $(\mathcal{D}, p, r)$ to the mint, revealing his
   payment information.
-\item The mint verifies $(\mathcal{D}, p, r)$ for its validity.  A
-  \emph{deposit-permission} for a coin $C$ is valid if:
-  \begin{itemize}
-  \item $C$ is not refreshed already
-  \item there exists no other \emph{deposit-permission} on disk for \\
-    $\mathcal{D'} := S_c(\widetilde{C}, f', m', M_p', H(a'), H(p', r'))$ for $C$
-    such that \\ $(f', m',M_p', H(a')) \neq (f, m, M_p, H(a))$
-  \item  $H(p, r) := H(p', r')$
-  \end{itemize}
-  If $C$ is valid and no other \emph{deposit-permission} for $C$ exists on disk, the
-  mint does the following:
-  \begin{enumerate}
-    \item if a \emph{lock-permission} exists for $C$, it is deleted from disk
-    \item\label{transfer} transfers an amount of $f$ to the merchant's bank account
-      given in $p$.  The subject line of the transaction to $p$ must contain
-      $H(\mathcal{D})$.
-    \item $\langle \mathcal{D}, p, r \rangle$ is commited to disk.
-  \end{enumerate}
-  If the deposit record $\langle \mathcal{D}, p, r \rangle$ already exists,
-  the mint sends it to the merchant, but does not transfer money to $p$ again.
+
+\item The mint validates $\mathcal{D}$ and detects double spending.
+  If the coin has been involved in previous transactions, it sends an error
+  with the records from the previous transactions back to the merchant.
+
+  If double spending is not found, the mint commits $\langle \mathcal{D} \rangle$ to disk
+  and notifies the merchant that deposit operation was successful.
+
+\item The merchant commits and forwards the notification from the mint to the
+  customer, confirming the success or failure of the operation.
 \end{enumerate}
 
-To facilitate incremental spending of a coin $C$ in a single transaction, the
-merchant makes an offer in Step~\ref{offer} with a maximum amount $f_{max}$ he
-is willing to charge in this transaction from the coin $C$.  After obtaining the
-lock on $C$ for $f_{max}$, the merchant makes a contract in Step~\ref{contract}
-with an amount $f \leq f_{max}$.  The protocol follows with the following steps
-repeated after Step~\ref{invoice_paid} whenever the merchant wants to charge an
-incremental amount up to $f_{max}$:
-
-\begin{enumerate}
-  \setcounter{enumi}{4}
-\item The merchant generates a new contract $ \mathcal{A}' := S_M(m, f', a', H(p,
-  r)) $ after obtaining the deposit-permission for a previous contract.  Here
-  $f'$ is the accumulated sum the merchant is charging the customer, of which
-  the merchant has received a deposit-permission for $f$ from the previous
-  contract \textit{i.e.}~$f <f' \leq f_{max}$.  Similarly $a'$ is the new
-  contract data appended to older contract data $a$.
-  The merchant commits $\langle \mathcal{A}' \rangle$ to disk and sends it to the customer.
-\item Customer commits $\langle \mathcal{A}' \rangle$ to disk, creates
-  $\mathcal{D}' := S_c(\widetilde{C}, f', m, M_p, H(a'), H(p, r))$, commits
-  $\langle \mathcal{D'} \rangle$ and sends it to the merchant.
-\item The merchant commits the received $\langle \mathcal{D'} \rangle$ and
-  deletes the older $\mathcal{D}$
-\end{enumerate}
-
-%Figure~\ref{fig:spending_protocol_interactions} summarizes the interactions of the
-%coin spending protocol.
-
-For transactions with multiple coins, the steps of the protocol are executed in
-parallel for each coin.
-
-During the time a coin is locked, it may not be spent at a
-different merchant.  To make the storage costs of the mint more predictable,
-only one lock per coin can be active at any time, even if the lock only covers a
-fraction of the coin's denomination.  The mint will delete the locks when they
-expire.  Thus the coins can be reused once their locks expire.  However, doing
-so may link the new transaction to older transaction.
-
-Similarly, if a transaction is aborted after Step 2, subsequent transactions
-with the same coin can be linked to the coin, but not directly to the coin's
-owner.  The same applies to partially spent coins.  To unlink subsequent
-transactions from a coin, the customer has to execute the coin refreshing
-protocol with the mint.
+Similarly, if a transaction is aborted after Step~\ref{deposit},
+subsequent transactions with the same coin can be linked to the coin,
+but not directly to the coin's owner.  The same applies to partially
+spent coins (where $f$ is smaller than the actual value of the coin).
+To unlink subsequent transactions from a coin, the customer has to
+execute the coin refreshing protocol with the mint.
 
 %\begin{figure}[h]
 %\centering
@@ -838,33 +722,20 @@ protocol with the mint.
 %\end{figure}
 
 
-\subsection{Probabilistic spending}
-
-The following steps are executed for microdonations with upgrade probability $p$:
-\begin{enumerate}
-  \item The merchant sends an offer to the customer.
-  \item The customer sends a commitment $H(r_c)$ to a random
-    value $r_c \in [0,2^R)$, where $R$ is a system parameter.
-  \item The merchant sends random $r_m \in [0,2^R)$ to the customer.
-    \item The customer computes $p' := (|r_c - r_m|) / (2^R)$.
-    If $p' < p$, the customer sends a coin with deposit-permission to the merchant.
-    Otherwise, the customer sends $r_c$ to the merchant.
-  \item The merchant deposits the coin, or checks if $r_c$ is consistent
-    with $H(r_c)$.
-\end{enumerate}
-
 \subsection{Refreshing}
 
-The following protocol is executed in order to refresh a coin $C'$ of denomination $K$ to
-a fresh coin $\widetilde{C}$ with the same denomination. In the protocol, $\kappa \ge 3$ is a security parameter and $G$ is the generator of the elliptic curve.
+The following protocol is executed in order to refresh a coin $C'$ of
+denomination $K$ to a fresh coin $\widetilde{C}$ with the same
+denomination. In the protocol, $\kappa \ge 3$ is a security parameter
+and $G$ is the generator of the elliptic curve.
 
 \begin{enumerate}
   \item For each $i = 1,\ldots,\kappa$, the customer
     \begin{itemize}
-      \item randomly generates transfer key $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$ where $T^{(i)}_p := t^{(i)}_s \cdot G$,
-      \item randomly generates coin key pair $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$ where $C^{(i)}_p := c^{(i)}_s \cdot G$,
+      \item randomly generates transfer key $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$ where $T^{(i)}_p := t^{(i)}_s G$,
+      \item randomly generates coin key pair $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$ where $C^{(i)}_p := c^{(i)}_s G$,
       \item randomly generates blinding factors $b_i$,
-      \item computes $E_i := E_{K_i}\left(c_s^{(i)}, b_i\right)$ where $K_i := c'_s \cdot T_p^{(i)}$ (The encryption key $K_i$ is
+      \item computes $E_i := E_{K_i}\left(c_s^{(i)}, b_i\right)$ where $K_i := H(c'_s T_p^{(i)})$. (The encryption key $K_i$ is
             computed by multiplying the private key $c'_s$ of the original coin with the point on the curve
             that represents the public key $T^{(i)}_p$ of the transfer key $T^{(i)}$.),
     \end{itemize}
@@ -874,7 +745,7 @@ a fresh coin $\widetilde{C}$ with the same denomination. In the protocol, $\kapp
     here $E_{b_i}$ denotes Chaum-style blinding with blinding factor $b_i$.
   \item The mint generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
     marks $C'_p$ as spent by committing
-    $\langle C', \gamma, S_{C'}(\vec{E}, \vec{B}, \vec{T}) \rangle$ to disk
+    $\langle C', \gamma, S_{C'}(\vec{E}, \vec{B}, \vec{T}) \rangle$ to disk.
   \item The mint sends $S_K(C'_p, \gamma)$ to the customer.\footnote{Instead of $K$, it is also
     possible to use any equivalent mint signing key known to the customer here, as $K$ merely
     serves as proof to the customer that the mint selected this particular $\gamma$.}
@@ -884,19 +755,19 @@ a fresh coin $\widetilde{C}$ with the same denomination. In the protocol, $\kapp
   \item \label{step:refresh-ccheck} The mint checks whether $\mathfrak{R}$ is consistent with the commitments;
         specifically, it computes for $i \not= \gamma$:
     \begin{itemize}
-      \item $\overline{K}_i := t_s^{(i)} \cdot C_p'$,
+      \item $\overline{K}_i := H(t_s^{(i)} C_p')$,
       \item $(\overline{c}_s^{(i)}, \overline{b}_i) := D_{\overline{K}_i}(E_i)$,
-      \item $\overline{C}^{(i)}_p := \overline{c}_s^{(i)} \cdot G$,
+      \item $\overline{C}^{(i)}_p := \overline{c}_s^{(i)} G$,
       \item $\overline{B}_i := E_{b_i}(C_p^{(i)})$,
       \item $\overline{T}_i := t_s^{(i)} G$,
     \end{itemize}
     and checks if $\overline{C}^{(i)}_p = C^{(i)}_p$ and $H(E_i, \overline{B}_i, \overline{T}^{(i)}_p) = H(E_i, B_i, T^{(i)}_p)$
     and $\overline{T}_i = T_i$.
 
-  \item \label{step:refresh-done} If the commitments were consistent, the mint sends the blind signature
-    $\widetilde{C} := S_{K}(B_\gamma)$ to the customer.
-    Otherwise, the mint responds with an error and confiscates the value of $C'$,
-    committing $\langle C', \gamma, S_{C'}(\mathfrak{R}) \rangle$ to disk as proof for the attempted fraud.
+  \item \label{step:refresh-done} If the commitments were consistent,
+    the mint sends the blind signature $\widetilde{C} :=
+    S_{K}(B_\gamma)$ to the customer.  Otherwise, the mint responds
+    with an error the value of $C'$.
 \end{enumerate}
 
 %\subsection{N-to-M Refreshing}
@@ -905,6 +776,7 @@ a fresh coin $\widetilde{C}$ with the same denomination. In the protocol, $\kapp
 
 \subsection{Linking}
 
+% FIXME: explain better...
 For a coin that was successfully refreshed, the mint responds to
 a request $S_{C'}(\mathtt{link})$ with $(T^{(\gamma)}_p$, $E_{\gamma}, \widetilde{C})$.
 
@@ -992,4 +864,225 @@ transactions.
 
 \bibliographystyle{alpha}
 \bibliography{taler}
+
+\appendix
+
+\section{Optional features}
+
+In this appendix we detail various optional features that can
+be added to the basic protocol.
+
+\subsection{Refunds}
+
+
+\subsection{Incremental spending}
+
+For services that include pay-as-you-go billing, customers can over
+time sign deposit permissions for an increasing fraction of the value
+of a coin to be paid to a particular merchant.  As checking with the
+mint for each increment might be expensive, the coin's owner can
+instead sign a {\em lock permission}, which allows the merchant to get
+an exclusive right to redeem deposit permissions for the coin for a
+limited duration.  The merchant uses the lock permission to determine
+if the coin has already been spent and to ensure that it cannot be
+spent by another merchant for the {\em duration} of the lock as
+specified in the lock permission.  If the coin has been spent or is
+already locked, the mint provides the owner's deposit or locking
+request and signature to prove the attempted fraud by the customer.
+Otherwise, the mint locks the coin for the expected duration of the
+transaction (and remembers the lock permission).  The merchant and the
+customer can then finalize the business transaction, possibly
+exchanging a series of incremental payment permissions for services.
+Finally, the merchant then redeems the coin at the mint before the
+lock permission expires to ensure that no other merchant spends the
+coin first.
+
+\begin{enumerate}
+\item\label{offer2} The merchant sends an \emph{offer:} $\langle S_M(m, f),
+  \vec{D} \rangle$ containing the price of the offer $f$, a transaction
+  ID $m$ and the list of mints $D_1, \ldots, D_n$ accepted by the merchant
+  where each $D_i$ is a mint's public key.
+\item\label{lock2} The customer must possess or acquire a coin minted by a mint that is
+  accepted by the merchant, i.e. $K$ should be publicly signed by some $D_i
+  \in \{D_1, D_2, \ldots, D_n\}$, and has a value $\geq f$.
+
+  Customer then generates a \emph{lock-permission} $\mathcal{L} :=
+  S_c(\widetilde{C}, t, m, f, M_p)$ where $t$ specifies the time until which the
+  lock is valid and sends $\langle \mathcal{L}, D_i\rangle$ to the merchant,
+  where $D_i$ is the mint which signed $K$.
+\item The merchant asks the mint to apply the lock by sending $\langle
+  \mathcal{L} \rangle$ to the mint.
+\item The mint validates $\widetilde{C}$ and detects double spending if there is
+  a lock-permission record $S_c(\widetilde{C}, t', m', f', M_p')$ where $(t',
+  m', f', M_p') \neq (t, m, f, M_p)$ or a \emph{deposit-permission} record for
+  $C$ and sends it to the merchant, who can then use it prove to the customer
+  and subsequently ask the customer to issue a new lock-permission.
+
+  If double spending is not found, the mint commits $\langle \mathcal{L} \rangle$ to disk
+  and notifies the merchant that locking was successful.
+\item\label{contract2} The merchant creates a digitally signed contract
+  $\mathcal{A} := S_M(m, f, a, H(p, r))$ where $a$ is data relevant to the contract
+  indicating which services or goods the merchant will deliver to the customer, and $p$ is the
+  merchant's payment information (e.g. his IBAN number) and $r$ is an random nounce.
+  The merchant commits $\langle \mathcal{A} \rangle$ to disk and sends it to the customer.
+\item The customer creates a
+  \emph{deposit-permission} $\mathcal{D} := S_c(\widetilde{C}, f, m, M_p, H(a), H(p, r))$, commits
+  $\langle \mathcal{A}, \mathcal{D} \rangle$ to disk and sends $\mathcal{D}$ to the merchant.
+\item\label{invoice_paid2} The merchant commits the received $\langle \mathcal{D} \rangle$ to disk.
+\item The merchant gives $(\mathcal{D}, p, r)$ to the mint, revealing his
+  payment information.
+\item The mint verifies $(\mathcal{D}, p, r)$ for its validity.  A
+  \emph{deposit-permission} for a coin $C$ is valid if:
+  \begin{itemize}
+  \item $C$ is not refreshed already
+  \item there exists no other \emph{deposit-permission} on disk for \\
+    $\mathcal{D'} := S_c(\widetilde{C}, f', m', M_p', H(a'), H(p', r'))$ for $C$
+    such that \\ $(f', m',M_p', H(a')) \neq (f, m, M_p, H(a))$
+  \item  $H(p, r) := H(p', r')$
+  \end{itemize}
+  If $C$ is valid and no other \emph{deposit-permission} for $C$ exists on disk, the
+  mint does the following:
+  \begin{enumerate}
+    \item if a \emph{lock-permission} exists for $C$, it is deleted from disk.
+    \item\label{transfer2} transfers an amount of $f$ to the merchant's bank account
+      given in $p$.  The subject line of the transaction to $p$ must contain
+      $H(\mathcal{D})$.
+    \item $\langle \mathcal{D}, p, r \rangle$ is commited to disk.
+  \end{enumerate}
+  If the deposit record $\langle \mathcal{D}, p, r \rangle$ already exists,
+  the mint sends it to the merchant, but does not transfer money to $p$ again.
+\end{enumerate}
+
+To facilitate incremental spending of a coin $C$ in a single transaction, the
+merchant makes an offer in Step~\ref{offer2} with a maximum amount $f_{max}$ he
+is willing to charge in this transaction from the coin $C$.  After obtaining the
+lock on $C$ for $f_{max}$, the merchant makes a contract in Step~\ref{contract2}
+with an amount $f \leq f_{max}$.  The protocol follows with the following steps
+repeated after Step~\ref{invoice_paid2} whenever the merchant wants to charge an
+incremental amount up to $f_{max}$:
+
+\begin{enumerate}
+  \setcounter{enumi}{4}
+\item The merchant generates a new contract $ \mathcal{A}' := S_M(m, f', a', H(p,
+  r)) $ after obtaining the deposit-permission for a previous contract.  Here
+  $f'$ is the accumulated sum the merchant is charging the customer, of which
+  the merchant has received a deposit-permission for $f$ from the previous
+  contract \textit{i.e.}~$f <f' \leq f_{max}$.  Similarly $a'$ is the new
+  contract data appended to older contract data $a$.
+  The merchant commits $\langle \mathcal{A}' \rangle$ to disk and sends it to the customer.
+\item Customer commits $\langle \mathcal{A}' \rangle$ to disk, creates
+  $\mathcal{D}' := S_c(\widetilde{C}, f', m, M_p, H(a'), H(p, r))$, commits
+  $\langle \mathcal{D'} \rangle$ and sends it to the merchant.
+\item The merchant commits the received $\langle \mathcal{D'} \rangle$ and
+  deletes the older $\mathcal{D}$
+\end{enumerate}
+
+%Figure~\ref{fig:spending_protocol_interactions} summarizes the interactions of the
+%coin spending protocol.
+
+For transactions with multiple coins, the steps of the protocol are executed in
+parallel for each coin.
+
+During the time a coin is locked, it may not be spent at a
+different merchant.  To make the storage costs of the mint more predictable,
+only one lock per coin can be active at any time, even if the lock only covers a
+fraction of the coin's denomination.  The mint will delete the locks when they
+expire.  Thus the coins can be reused once their locks expire.  However, doing
+so may link the new transaction to older transaction.
+
+Similarly, if a transaction is aborted after Step 2, subsequent transactions
+with the same coin can be linked to the coin, but not directly to the coin's
+owner.  The same applies to partially spent coins.  To unlink subsequent
+transactions from a coin, the customer has to execute the coin refreshing
+protocol with the mint.
+
+%\begin{figure}[h]
+%\centering
+%\begin{tikzpicture}
+%
+%\tikzstyle{def} = [node distance= 1em, inner sep=.5em, outer sep=.3em];
+%\node (origin) at (0,0) {};
+%\node (offer) [def,below=of origin]{make offer (merchant $\rightarrow$ customer)};
+%\node (A) [def,below=of offer]{permit lock (customer $\rightarrow$ merchant)};
+%\node (B) [def,below=of A]{apply lock (merchant $\rightarrow$ mint)};
+%\node (C) [def,below=of B]{confirm (or refuse) lock (mint $\rightarrow$ merchant)};
+%\node (D) [def,below=of C]{sign contract (merchant $\rightarrow$ customer)};
+%\node (E) [def,below=of D]{permit deposit (customer $\rightarrow$ merchant)};
+%\node (F) [def,below=of E]{make deposit (merchant $\rightarrow$ mint)};
+%\node (G) [def,below=of F]{transfer confirmation (mint $\rightarrow$ merchant)};
+%
+%\tikzstyle{C} = [color=black, line width=1pt]
+%\draw [->,C](offer) -- (A);
+%\draw [->,C](A) -- (B);
+%\draw [->,C](B) -- (C);
+%\draw [->,C](C) -- (D);
+%\draw [->,C](D) -- (E);
+%\draw [->,C](E) -- (F);
+%\draw [->,C](F) -- (G);
+%
+%\draw [->,C, bend right, shorten <=2mm] (E.east)
+%      to[out=-135,in=-45,distance=3.8cm] node[left] {aggregate} (D.east);
+%\end{tikzpicture}
+%\caption{Interactions between a customer, merchant and mint in the coin spending
+%  protocol}
+%\label{fig:spending_protocol_interactions}
+%\end{figure}
+
+
+
+\subsection{Probabilistic spending}
+
+Similar to Peppercoin, Taler supports probabilistic spending of coins to
+support cost-effective transactions for small amounts.  Here, an
+ordinary transaction is performed based on the result of a biased coin
+flip with a probability related to the desired transaction amount in
+relation to the value of the coin.  Unlike Peppercoin, in Taler either
+the merchant wins and the customer looses the coin, or the merchant
+looses and the customer keeps the coin.  Thus, there is no opportunity
+for the merchant and the customer to conspire against the mint.  To
+determine if the coin is to be transferred, merchant and customer
+execute a secure coin flipping protocol~\cite{blum1981}.  The commit
+values are included in the business contract and are revealed after
+the contract has been signed using the private key of the coin.  If
+the coin flip is decided in favor of the merchant, the merchant can
+redeem the coin at the mint.
+
+One issue in this protocol is that the customer may use a worthless
+coin by offering a coin that has already been spent.  This kind of
+fraud would only be detected if the customer actually lost the coin
+flip, and at this point the merchant might not be able to recover from
+the loss.  A fradulent anonymous customer may run the protocol using
+already spent coins until the coin flip is in his favor.  As with
+incremental spending, lock permissions could be used to ensure that
+the customer cannot defraud the merchant by offering a coin that has
+already been spent.  However, as this means involving the mint even if
+the merchant looses the coin flip, such a scheme is unsuitable for
+microdonations as the transaction costs from involving the mint might
+be disproportionate to the value of the transaction, and thus with
+locking the probabilistic scheme has no advantage over simply using
+fractional payments.
+
+Hence, Taler uses probabilistic transactions {\em without} the online
+double-spending detection.  This enables the customer to defraud the
+merchant by paying with a coin that was already spent.  However, as,
+by definition, such microdonations are for tiny amounts, the incentive
+for customers to pursue this kind of fraud is limited.
+
+
+
+The following steps are executed for microdonations with upgrade probability $p$:
+\begin{enumerate}
+  \item The merchant sends an offer to the customer.
+  \item The customer sends a commitment $H(r_c)$ to a random
+    value $r_c \in [0,2^R)$, where $R$ is a system parameter.
+  \item The merchant sends random $r_m \in [0,2^R)$ to the customer.
+    \item The customer computes $p' := (|r_c - r_m|) / (2^R)$.
+    If $p' < p$, the customer sends a coin with deposit-permission to the merchant.
+    Otherwise, the customer sends $r_c$ to the merchant.
+  \item The merchant deposits the coin, or checks if $r_c$ is consistent
+    with $H(r_c)$.
+\end{enumerate}
+
+
+
 \end{document}
