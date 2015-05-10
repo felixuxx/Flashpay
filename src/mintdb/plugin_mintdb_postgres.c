@@ -894,8 +894,8 @@ postgres_reserve_get (void *cls,
     TALER_PQ_QUERY_PARAM_END
   };
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_AMOUNT("current_balance", reserve->balance),
-    TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME("expiration_date", reserve->expiry),
+    TALER_PQ_RESULT_SPEC_AMOUNT("current_balance", &reserve->balance),
+    TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME("expiration_date", &reserve->expiry),
     TALER_PQ_RESULT_SPEC_END
   };
 
@@ -1116,8 +1116,8 @@ postgres_get_collectable_blindcoin (void *cls,
     TALER_PQ_QUERY_PARAM_PTR (h_blind),
     TALER_PQ_QUERY_PARAM_END
   };
-  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub = NULL;
-  struct GNUNET_CRYPTO_rsa_Signature *denom_sig = NULL;
+  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+  struct GNUNET_CRYPTO_rsa_Signature *denom_sig;
   int ret;
 
   ret = GNUNET_SYSERR;
@@ -1136,8 +1136,8 @@ postgres_get_collectable_blindcoin (void *cls,
     goto cleanup;
   }
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY("denom_pub", denom_pub),
-    TALER_PQ_RESULT_SPEC_RSA_SIGNATURE("denom_sig", denom_sig),
+    TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY("denom_pub", &denom_pub),
+    TALER_PQ_RESULT_SPEC_RSA_SIGNATURE("denom_sig", &denom_sig),
     TALER_PQ_RESULT_SPEC("reserve_sig", &collectable->reserve_sig),
     TALER_PQ_RESULT_SPEC("reserve_pub", &collectable->reserve_pub),
     TALER_PQ_RESULT_SPEC_END
@@ -1155,12 +1155,7 @@ postgres_get_collectable_blindcoin (void *cls,
  cleanup:
   PQclear (result);
   if (GNUNET_YES != ret)
-  {
-    if (NULL != denom_pub)
-      GNUNET_CRYPTO_rsa_public_key_free (denom_pub);
-    if (NULL != denom_sig)
-      GNUNET_CRYPTO_rsa_signature_free (denom_sig);
-  }
+    TALER_PQ_cleanup_result (rs);
   return ret;
 }
 
@@ -1344,8 +1339,8 @@ postgres_get_reserve_history (void *cls,
     }
     struct TALER_PQ_ResultSpec rs[] = {
       TALER_PQ_RESULT_SPEC ("blind_ev", &blind_ev),
-      TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY ("denom_pub", denom_pub),
-      TALER_PQ_RESULT_SPEC_RSA_SIGNATURE ("denom_sig", denom_sig),
+      TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY ("denom_pub", &denom_pub),
+      TALER_PQ_RESULT_SPEC_RSA_SIGNATURE ("denom_sig", &denom_sig),
       TALER_PQ_RESULT_SPEC ("reserve_sig", &reserve_sig),
       TALER_PQ_RESULT_SPEC_END
     };
@@ -1354,9 +1349,8 @@ postgres_get_reserve_history (void *cls,
     GNUNET_assert (NULL == rh_head->next);
     while (0 < rows)
     {
-      denom_sig = NULL;
-      denom_pub = NULL;
-      if (GNUNET_YES != TALER_PQ_extract_result (result, rs, --rows))
+      if (GNUNET_YES !=
+	  TALER_PQ_extract_result (result, rs, --rows))
       {
         GNUNET_break (0);
         goto cleanup;
@@ -1799,7 +1793,7 @@ postgres_get_refresh_order (void *cls,
   }
   GNUNET_assert (1 == PQntuples (result));
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY ("denom_pub", denom_pubs->rsa_public_key),
+    TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY ("denom_pub", &denom_pubs->rsa_public_key),
     TALER_PQ_RESULT_SPEC_END
   };
   if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
@@ -1902,9 +1896,9 @@ postgres_get_refresh_commit_coins (void *cls,
     TALER_PQ_QUERY_PARAM_PTR(&newcoin_index_nbo),
     TALER_PQ_QUERY_PARAM_END
   };
-  char *c_buf;
+  void *c_buf;
   size_t c_buf_size;
-  char *rl_buf;
+  void *rl_buf;
   size_t rl_buf_size;
   struct TALER_RefreshLinkEncrypted *rl;
 
@@ -2204,14 +2198,14 @@ postgres_get_link_data_list (void *cls,
   for (i = 0; i < PQntuples (result); i++)
   {
     struct TALER_RefreshLinkEncrypted *link_enc;
-    struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub = NULL;
-    struct GNUNET_CRYPTO_rsa_Signature *sig = NULL;
-    char *ld_buf;
+    struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
+    struct GNUNET_CRYPTO_rsa_Signature *sig;
+    void *ld_buf;
     size_t ld_buf_size;
     struct TALER_PQ_ResultSpec rs[] = {
       TALER_PQ_RESULT_SPEC_VAR("link_vector_enc", &ld_buf, &ld_buf_size),
-      TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY("denom_pub", denom_pub),
-      TALER_PQ_RESULT_SPEC_RSA_SIGNATURE("ev_sig", sig),
+      TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY("denom_pub", &denom_pub),
+      TALER_PQ_RESULT_SPEC_RSA_SIGNATURE("ev_sig", &sig),
       TALER_PQ_RESULT_SPEC_END
     };
 
@@ -2355,7 +2349,7 @@ postgres_get_coin_transactions (void *cls,
       TALER_PQ_QUERY_PARAM_END
     };
     json_error_t json_error;
-    char *json_wire_enc;
+    void *json_wire_enc;
     size_t json_wire_enc_size;
     int i;
     result = TALER_PQ_exec_prepared (session->conn,
@@ -2385,13 +2379,13 @@ postgres_get_coin_transactions (void *cls,
          */
         TALER_PQ_RESULT_SPEC_END
       };
-      if ((GNUNET_OK != TALER_PQ_extract_result (result, rs, i))
-          || (GNUNET_OK != TALER_PQ_extract_amount (result,
-                                                    i,
-                                                    "amount_val",
-                                                    "amount_frac",
-                                                    "amount_curr",
-                                                    &deposit->amount_with_fee)))
+      if ((GNUNET_OK != TALER_PQ_extract_result (result, rs, i)) ||
+	  (GNUNET_OK != TALER_PQ_extract_amount (result,
+						 i,
+						 "amount_val",
+						 "amount_frac",
+						 "amount_curr",
+						 &deposit->amount_with_fee)))
       {
         GNUNET_break (0);
         goto cleanup_deposit;

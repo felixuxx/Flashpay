@@ -262,7 +262,7 @@ struct TALER_PQ_ResultSpec
   /**
    * Field name of the desired result.
    */
-  char *fname;
+  const char *fname;
 
   /**
    * Where to store actual size of the result.
@@ -274,6 +274,8 @@ struct TALER_PQ_ResultSpec
 
 /**
  * End of result parameter specification.
+ *
+ * @return array last entry for the result specification to use
  */
 #define TALER_PQ_RESULT_SPEC_END { TALER_PQ_RF_END, NULL, 0, NULL, NULL }
 
@@ -283,6 +285,7 @@ struct TALER_PQ_ResultSpec
  * @param name name of the field in the table
  * @param dst point to where to store the result
  * @param s number of bytes we should use in @a dst
+ * @return array entry for the result specification to use
  */
 #define TALER_PQ_RESULT_SPEC_SIZED(name, dst, s) { TALER_PQ_RF_FIXED_BLOB,  (void *) (dst), (s), (name), NULL }
 
@@ -292,6 +295,7 @@ struct TALER_PQ_ResultSpec
  *
  * @param name name of the field in the table
  * @param dst point to where to store the result, type fits expected result size
+ * @return array entry for the result specification to use
  */
 #define TALER_PQ_RESULT_SPEC(name, dst) { TALER_PQ_RF_VARSIZE_BLOB, (void *) dst, sizeof (*(dst)), name, NULL }
 
@@ -300,53 +304,74 @@ struct TALER_PQ_ResultSpec
  * Variable-size result expected.
  *
  * @param name name of the field in the table
- * @param dst where to store the result (of type void **), to be allocated
- * @param sptr pointer to a `size_t` for where to store the size of @a dst
+ * @param[out] dst where to store the result, allocated
+ * @param[out] sptr where to store the size of @a dst
+ * @return array entry for the result specification to use
  */
-#define TALER_PQ_RESULT_SPEC_VAR(name, dst, sptr) {TALER_PQ_RF_VARSIZE_BLOB, (void *) (dst), 0, (name), sptr }
+struct TALER_PQ_ResultSpec
+TALER_PQ_RESULT_SPEC_VAR (const char *name,
+			  void **dst,
+			  size_t *sptr);
 
 
 /**
  * Currency amount expected.
  *
  * @param name name of the field in the table
- * @param amount a `struct TALER_AmountNBO` where to store the result
+ * @param[out] amount where to store the result
+ * @return array entry for the result specification to use
  */
-#define TALER_PQ_RESULT_SPEC_AMOUNT_NBO(name, amount) {TALER_PQ_RF_AMOUNT_NBO, (void *) (&amount), sizeof (amount), (name), NULL }
+struct TALER_PQ_ResultSpec
+TALER_PQ_RESULT_SPEC_AMOUNT_NBO (const char *name,
+				 struct TALER_AmountNBO *amount);
+
 
 /**
  * Currency amount expected.
  *
  * @param name name of the field in the table
- * @param amount a `struct TALER_Amount` where to store the result
+ * @param[out] amount where to store the result
+ * @return array entry for the result specification to use
  */
-#define TALER_PQ_RESULT_SPEC_AMOUNT(name, amount) {TALER_PQ_RF_AMOUNT, (void *) (&amount), sizeof (amount), (name), NULL }
+struct TALER_PQ_ResultSpec
+TALER_PQ_RESULT_SPEC_AMOUNT (const char *name,
+			     struct TALER_Amount *amount);
+
 
 /**
  * RSA public key expected.
  *
  * @param name name of the field in the table
- * @param rsa a `struct GNUNET_CRYPTO_rsa_PublicKey *` where to store the result;
- *            the R-value must be NULL at the time of the call
+ * @param[out] rsa where to store the result
+ * @return array entry for the result specification to use
  */
-#define TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY(name, rsa) {TALER_PQ_RF_RSA_PUBLIC_KEY, (void *) &(rsa), 0, (name), NULL }
+struct TALER_PQ_ResultSpec
+TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY (const char *name,
+				     struct GNUNET_CRYPTO_rsa_PublicKey **rsa);
+
 
 /**
  * RSA signature expected.
  *
  * @param name name of the field in the table
- * @param sig a `struct GNUNET_CRYPTO_rsa_Signature *` where to store the result;
- *            the R-value must be NULL at the time of the call
+ * @param[out] sig where to store the result;
+ * @return array entry for the result specification to use
  */
-#define TALER_PQ_RESULT_SPEC_RSA_SIGNATURE(name, sig) {TALER_PQ_RF_RSA_SIGNATURE, (void *) &(sig), 0, (name), NULL }
+struct TALER_PQ_ResultSpec
+TALER_PQ_RESULT_SPEC_RSA_SIGNATURE (const char *name,
+				    struct GNUNET_CRYPTO_rsa_Signature **sig);
+
 
 /**
  * Absolute time expected.
  *
  * @param name name of the field in the table
- * @param at a `struct GNUNET_TIME_Absolute` where to store the result
+ * @param[out] at where to store the result
+ * @return array entry for the result specification to use
  */
-#define TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME(name,at) {TALER_PQ_RF_TIME_ABSOLUTE, (void *) (&at), sizeof (at), (name), NULL }
+struct TALER_PQ_ResultSpec
+TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME (const char *name,
+				    struct GNUNET_TIME_Absolute *at);
 
 
 /**

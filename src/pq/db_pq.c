@@ -415,7 +415,7 @@ TALER_PQ_extract_result (PGresult *result,
         const char *res;
         int fnum;
 
-        GNUNET_break (NULL == *pk);
+	*pk = NULL;
         fnum = PQfnumber (result,
                           spec->fname);
         if (fnum < 0)
@@ -459,7 +459,7 @@ TALER_PQ_extract_result (PGresult *result,
         const char *res;
         int fnum;
 
-        GNUNET_break (NULL == *sig);
+	*sig = NULL;
         fnum = PQfnumber (result,
                           spec->fname);
         if (fnum < 0)
