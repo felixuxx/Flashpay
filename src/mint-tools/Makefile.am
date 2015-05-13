@@ -41,7 +41,6 @@ taler_mint_reservemod_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/mintdb/libtalermintdb.la \
-  -lpq \
   -lgnunetutil  $(XLIB)
 taler_mint_reservemod_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS)
@@ -57,7 +56,6 @@ taler_mint_dbinit_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/mintdb/libtalermintdb.la \
-  -lpq \
   -lgnunetutil  $(XLIB)
 taler_mint_dbinit_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS)
