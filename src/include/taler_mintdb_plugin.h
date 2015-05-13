@@ -682,28 +682,28 @@ struct TALER_MINTDB_Plugin
                   struct TALER_MINTDB_Session *db,
                   struct TALER_MINTDB_Reserve *reserve);
 
-  /* FIXME: add functions to add bank transfers to our DB
-     (and to test if we already did add one) (#3633/#3717) */
-
 
   /**
-   * Insert a incoming transaction into reserves.  New reserves are also created
-   * through this function.
+   * Insert a incoming transaction into reserves.  New reserves are
+   * also created through this function.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param db the database connection handle
-   * @param reserve the reserve structure.  The public key of the reserve should
-   *          be set here.  Upon successful execution of this function, the
-   *          balance and expiration of the reserve will be updated.
+   * @param reserve_pub public key of the reserve
    * @param balance the amount that has to be added to the reserve
+   * @param details bank transaction details justifying the increment,
+   *        must be unique for each incoming transaction
    * @param expiry the new expiration time for the reserve
-   * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failures
+   * @return #GNUNET_OK upon success; #GNUNET_NO if the given
+   *         @a details are already known for this @a reserve_pub,
+   *         #GNUNET_SYSERR upon failures (DB error, incompatible currency)
    */
   int
   (*reserves_in_insert) (void *cls,
                          struct TALER_MINTDB_Session *db,
-                         struct TALER_MINTDB_Reserve *reserve,
+                         const struct TALER_ReservePublicKeyP *reserve_pub,
                          const struct TALER_Amount *balance,
+                         const char *details,
                          const struct GNUNET_TIME_Absolute expiry);
 
 

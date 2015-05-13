@@ -28,6 +28,10 @@
 #include "taler_mintdb_plugin.h"
 #include "taler_mintdb_lib.h"
 
+/**
+ * After what time to inactive reserves expire?
+ */
+#define RESERVE_EXPIRATION GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_YEARS, 5)
 
 /**
  * Director of the mint, containing the keys.
@@ -35,174 +39,14 @@
 static char *mint_directory;
 
 /**
- * Public key of the reserve to manipulate.
- */
-static struct GNUNET_CRYPTO_EddsaPublicKey *reserve_pub;
-
-/**
  * Handle to the mint's configuration
  */
 static struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
- * Database connection handle.
+ * Our DB plugin.
  */
-static PGconn *db_conn;
-
-
-/**
- * Create a new or add to existing reserve.  Fails if currencies do
- * not match.
- *
- * @param denom denomination to add
- * @return #GNUNET_OK on success,
- *         #GNUNET_SYSERR on error
- */
-// FIXME: this should use the DB abstraction layer. (#3717)
-// FIXME: this should be done by adding an inbound transaction
-//        to the table with the transactions for this reserve,
-//        not by modifying some 'total' value for the reserve!
-//        (we should in fact probably never modify, always just append!) (#3633)
-static int
-reservemod_add (struct TALER_Amount denom)
-{
-  PGresult *result;
-  const void *param_values[] = {
-    reserve_pub
-  };
-  int param_lengths[] = {
-    sizeof(struct GNUNET_CRYPTO_EddsaPublicKey)
-  };
-  int param_formats[] = {
-    1
-  };
-  struct TALER_Amount old_denom;
-  struct TALER_Amount new_denom;
-  struct TALER_AmountNBO new_denom_nbo;
-
-  result = PQexecParams (db_conn,
-                         "SELECT balance_value, balance_fraction, balance_currency"
-                         " FROM reserves"
-                         " WHERE reserve_pub=$1"
-                         " LIMIT 1;",
-                         1,
-                         NULL,
-                         (const char * const *) param_values,
-                         param_lengths,
-                         param_formats,
-                         1);
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    fprintf (stderr,
-             "Select failed: %s\n",
-             PQresultErrorMessage (result));
-    return GNUNET_SYSERR;
-  }
-  if (0 == PQntuples (result))
-  {
-    struct GNUNET_TIME_AbsoluteNBO exnbo;
-    uint32_t value = htonl (denom.value);
-    uint32_t fraction = htonl (denom.fraction);
-    const void *param_values[] = {
-      reserve_pub,
-      &value,
-      &fraction,
-      denom.currency,
-      &exnbo
-    };
-    int param_lengths[] = {
-      sizeof (struct GNUNET_CRYPTO_EddsaPublicKey),
-      sizeof (uint32_t),
-      sizeof (uint32_t),
-      strlen (denom.currency),
-      sizeof (struct GNUNET_TIME_AbsoluteNBO)
-    };
-    int param_formats[] = {
-      1, 1, 1, 1, 1
-    };
-
-    exnbo = GNUNET_TIME_absolute_hton (GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_YEARS));
-    result = PQexecParams (db_conn,
-                           "INSERT INTO reserves (reserve_pub, balance_value, balance_fraction, balance_currency, expiration_date)"
-                           " VALUES ($1,$2,$3,$4,$5);",
-                           5,
-                           NULL,
-                           (const char **) param_values,
-                           param_lengths,
-                           param_formats,
-                           1);
-
-    if (PGRES_COMMAND_OK != PQresultStatus (result))
-    {
-      fprintf (stderr,
-               "Insert failed: %s\n",
-               PQresultErrorMessage (result));
-      return GNUNET_SYSERR;
-    }
-  }
-  else
-  {
-    const void *param_values[] = {
-      &new_denom_nbo.value,
-      &new_denom_nbo.fraction,
-      reserve_pub
-    };
-    int param_lengths[] = {
-      sizeof (new_denom_nbo.value),
-      sizeof (new_denom_nbo.fraction),
-      sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)
-    };
-    int param_formats[] = {
-      1, 1, 1
-    };
-
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_PQ_extract_amount (result, 0,
-                                            "balance_value",
-                                            "balance_fraction",
-                                            "balance_currency",
-                                            &old_denom));
-    if (GNUNET_OK !=
-        TALER_amount_add (&new_denom,
-                          &old_denom,
-                          &denom))
-    {
-      fprintf (stderr,
-               "Integer overflow when computing new balance!\n");
-      return GNUNET_SYSERR;
-    }
-    TALER_amount_hton (&new_denom_nbo,
-                       &new_denom);
-    result = PQexecParams (db_conn,
-                           "UPDATE reserves"
-                           " SET balance_value = $1, balance_fraction = $2, status_sig = NULL, status_sign_pub = NULL"
-                           " WHERE reserve_pub = $3;",
-                           3,
-                           NULL,
-                           (const char **) param_values,
-                           param_lengths,
-                           param_formats,
-                           1);
-
-    if (PGRES_COMMAND_OK != PQresultStatus (result))
-    {
-      fprintf (stderr,
-               "Update failed: %s\n",
-               PQresultErrorMessage (result));
-      return GNUNET_SYSERR;
-    }
-    /* Yes, for historic reasons libpq returns a 'const char *'... */
-    if (0 != strcmp ("1",
-                     PQcmdTuples (result)))
-    {
-      fprintf (stderr,
-               "Update failed (updated `%s' tupes instead of '1')\n",
-               PQcmdTuples (result));
-      return GNUNET_SYSERR;
-    }
-  }
-  return GNUNET_OK;
-}
+static struct TALER_MINTDB_Plugin *plugin;
 
 
 /**
@@ -215,15 +59,23 @@ reservemod_add (struct TALER_Amount denom)
 int
 main (int argc, char *const *argv)
 {
-  static char *reserve_pub_str;
-  static char *add_str;
-  static const struct GNUNET_GETOPT_CommandLineOption options[] = {
+  char *reserve_pub_str = NULL;
+  char *add_str = NULL;
+  struct TALER_Amount add_value;
+  char *details = NULL;
+  struct TALER_ReservePublicKeyP reserve_pub;
+  struct GNUNET_TIME_Absolute expiration;
+  struct TALER_MINTDB_Session *session;
+  const struct GNUNET_GETOPT_CommandLineOption options[] = {
     {'a', "add", "DENOM",
      "value to add", 1,
      &GNUNET_GETOPT_set_string, &add_str},
     {'d', "mint-dir", "DIR",
      "mint directory with keys to update", 1,
      &GNUNET_GETOPT_set_filename, &mint_directory},
+    {'D', "details", "JSON",
+     "details about the bank transaction which justify why we add this amount", 1,
+     &GNUNET_GETOPT_set_string, &details},
     TALER_GETOPT_OPTION_HELP ("Deposit funds into a Taler reserve"),
     {'R', "reserve", "KEY",
      "reserve (public key) to modify", 1,
@@ -231,7 +83,7 @@ main (int argc, char *const *argv)
     GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
-  char *connection_cfg_str;
+  int ret;
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-mint-reservemod",
@@ -248,19 +100,35 @@ main (int argc, char *const *argv)
              "Mint directory not given\n");
     return 1;
   }
-
-  reserve_pub = GNUNET_new (struct GNUNET_CRYPTO_EddsaPublicKey);
   if ((NULL == reserve_pub_str) ||
       (GNUNET_OK !=
        GNUNET_STRINGS_string_to_data (reserve_pub_str,
                                       strlen (reserve_pub_str),
-                                      reserve_pub,
-                                      sizeof (struct GNUNET_CRYPTO_EddsaPublicKey))))
+                                      &reserve_pub,
+                                      sizeof (struct TALER_ReservePublicKeyP))))
   {
     fprintf (stderr,
              "Parsing reserve key invalid\n");
     return 1;
   }
+  if ( (NULL == add_str) ||
+       (GNUNET_OK !=
+        TALER_string_to_amount (add_str,
+                                &add_value)) )
+  {
+    fprintf (stderr,
+             "Failed to parse currency amount `%s'\n",
+             add_str);
+    return 1;
+  }
+
+  if (NULL == details)
+  {
+    fprintf (stderr,
+             "No wiring details given (justification required)\n");
+    return 1;
+  }
+
   cfg = TALER_config_load (mint_directory);
   if (NULL == cfg)
   {
@@ -268,46 +136,59 @@ main (int argc, char *const *argv)
              "Failed to load mint configuration\n");
     return 1;
   }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "mint",
-                                             "db",
-                                             &connection_cfg_str))
+  ret = 1;
+  if (NULL ==
+      (plugin = TALER_MINTDB_plugin_load (cfg)))
   {
     fprintf (stderr,
-             "Database configuration string not found\n");
-    return 1;
+             "Failed to initialize database plugin.\n");
+    goto cleanup;
   }
-  db_conn = PQconnectdb (connection_cfg_str);
-  if (CONNECTION_OK != PQstatus (db_conn))
-  {
-    fprintf (stderr,
-             "Database connection failed: %s\n",
-             PQerrorMessage (db_conn));
-    return 1;
-  }
-  if (NULL != add_str)
-  {
-    struct TALER_Amount add_value;
 
-    if (GNUNET_OK !=
-        TALER_string_to_amount (add_str,
-                                &add_value))
-    {
-      fprintf (stderr,
-               "Failed to parse currency amount `%s'\n",
-               add_str);
-      return 1;
-    }
-    if (GNUNET_OK !=
-        reservemod_add (add_value))
-    {
-      fprintf (stderr,
-               "Failed to update reserve.\n");
-      return 1;
-    }
+  session = plugin->get_session (plugin->cls,
+                                 GNUNET_NO);
+  if (NULL == session)
+  {
+    fprintf (stderr,
+             "Failed to initialize DB session\n");
+    goto cleanup;
   }
-  return 0;
+  if (GNUNET_OK !=
+      plugin->start (plugin->cls,
+                     session))
+  {
+    fprintf (stderr,
+             "Failed to start transaction\n");
+    goto cleanup;
+  }
+  expiration = GNUNET_TIME_relative_to_absolute (RESERVE_EXPIRATION);
+  if (GNUNET_OK !=
+      plugin->reserves_in_insert (plugin->cls,
+                                  session,
+                                  &reserve_pub,
+                                  &add_value,
+                                  details,
+                                  expiration))
+  {
+    fprintf (stderr,
+             "Failed to update reserve.\n");
+    goto cleanup;
+  }
+  if (GNUNET_OK !=
+      plugin->commit (plugin->cls,
+                     session))
+  {
+    fprintf (stderr,
+             "Failed to commit transaction\n");
+    goto cleanup;
+  }
+  ret = 0;
+ cleanup:
+  if (NULL != plugin)
+    TALER_MINTDB_plugin_unload (plugin);
+  if (NULL != cfg)
+    GNUNET_CONFIGURATION_destroy (cfg);
+  return ret;
 }
 
 /* end taler-mint-reservemod.c */

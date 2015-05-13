@@ -214,11 +214,17 @@ postgres_create_tables (void *cls,
           ",balance_val INT8 NOT NULL"
           ",balance_frac INT4 NOT NULL"
           ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",details VARCHAR NOT NULL "
           ",expiration_date INT8 NOT NULL"
+          " CONSTRAINT unique_details PRIMARY KEY (reserve_pub,details)"
           ");");
-  /* Create an index on the foreign key as it is not created automatically by PSQL */
+  /* Create indices on reserves_in */
   SQLEXEC ("CREATE INDEX reserves_in_reserve_pub_index"
            " ON reserves_in (reserve_pub);");
+  SQLEXEC ("CREATE INDEX reserves_in_reserve_pub_details_index"
+           " ON reserves_in (reserve_pub,details);");
+  SQLEXEC ("CREATE INDEX expiration_index"
+           " ON reserves_in (expiration_date);");
   /* Table with the withdraw operations that have been performed on a reserve.
      TODO: maybe rename to "reserves_out"?
      TODO: is blind_ev really a _primary key_? Is this constraint useful? */
@@ -234,7 +240,7 @@ postgres_create_tables (void *cls,
   SQLEXEC ("CREATE INDEX collectable_blindcoins_reserve_pub_index ON"
            " collectable_blindcoins (reserve_pub)");
   /* Table with coins that have been (partially) spent, used to detect
-     double-spending.  
+     double-spending.
      TODO: maybe rename to "spent_coins"?
      TODO: maybe have two tables, one for spending and one for refreshing, instead of optional refresh_session_hash? */
   SQLEXEC("CREATE TABLE IF NOT EXISTS known_coins "
@@ -426,8 +432,9 @@ postgres_prepare (PGconn *db_conn)
            " balance_val,"
            " balance_frac,"
            " balance_curr,"
+           " details,"
            " expiration_date) VALUES ("
-           " $1, $2, $3, $4, $5);",
+           " $1, $2, $3, $4, $5, $6);",
            5, NULL);
   PREPARE ("get_reserves_in_transactions",
            "SELECT"
@@ -435,6 +442,7 @@ postgres_prepare (PGconn *db_conn)
            ",balance_frac"
            ",balance_curr"
            ",expiration_date"
+           ",details"
            " FROM reserves_in WHERE reserve_pub=$1",
            1, NULL);
   PREPARE ("insert_collectable_blindcoin",
@@ -676,6 +684,7 @@ postgres_prepare (PGconn *db_conn)
            " FROM deposits WHERE "
            " coin_pub = $1",
            1, NULL);
+
   return GNUNET_OK;
 #undef PREPARE
 }
@@ -905,7 +914,7 @@ postgres_reserve_get (void *cls,
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
     QUERY_ERR (result);
-    PQclear (result);
+    PQclear (resultE);
     return GNUNET_SYSERR;
   }
   if (0 == PQntuples (result))
@@ -914,8 +923,8 @@ postgres_reserve_get (void *cls,
     return GNUNET_NO;
   }
   EXITIF (GNUNET_OK !=
-	  TALER_PQ_extract_result (result, 
-				   rs, 
+	  TALER_PQ_extract_result (result,
+				   rs,
 				   0));
   PQclear (result);
   return GNUNET_OK;
@@ -974,38 +983,39 @@ postgres_reserves_update (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session the database connection handle
- * @param reserve the reserve structure.  The public key of the reserve should
- *          be set here.  Upon successful execution of this function, the
- *          balance and expiration of the reserve will be updated.
+ * @param reserve_pub public key of the reserve
  * @param balance the amount that has to be added to the reserve
+ * @param details bank transaction details justifying the increment,
+ *        must be unique for each incoming transaction
  * @param expiry the new expiration time for the reserve
- * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failures
+ * @return #GNUNET_OK upon success; #GNUNET_NO if the given
+ *         @a details are already known for this @a reserve_pub,
+ *         #GNUNET_SYSERR upon failures (DB error, incompatible currency)
  */
 static int
 postgres_reserves_in_insert (void *cls,
                              struct TALER_MINTDB_Session *session,
-                             struct TALER_MINTDB_Reserve *reserve,
+                             struct TALER_ReservePublicKeyP *reserve_pub,
                              const struct TALER_Amount *balance,
+                             const char *details,
                              const struct GNUNET_TIME_Absolute expiry)
 {
   PGresult *result;
   int reserve_exists;
+  struct TALER_MINTDB_Reserve reserve;
+  struct TALER_MINTDB_Reserve updated_reserve;
 
   result = NULL;
-  if (NULL == reserve)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
   if (GNUNET_OK != postgres_start (cls,
                                    session))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+  reserve.pub = *reserve_pub;
   reserve_exists = postgres_reserve_get (cls,
                                          session,
-                                         reserve);
+                                         &reserve);
   if (GNUNET_SYSERR == reserve_exists)
   {
     postgres_rollback (cls,
@@ -1017,7 +1027,7 @@ postgres_reserves_in_insert (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Reserve does not exist; creating a new one\n");
     struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_QUERY_PARAM_PTR (&reserve->pub),
+      TALER_PQ_QUERY_PARAM_PTR (reserve_pub),
       TALER_PQ_QUERY_PARAM_AMOUNT (balance),
       TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (expiry),
       TALER_PQ_QUERY_PARAM_END
@@ -1031,13 +1041,34 @@ postgres_reserves_in_insert (void *cls,
       goto rollback;
     }
   }
+  else
+  {
+    /* Update reserve */
+    updated_reserve.pub = reserve->pub;
+
+    if (GNUNET_OK !=
+        TALER_amount_add (&updated_reserve.balance,
+                          &reserve->balance,
+                          balance))
+    {
+      /* currency overflow or incompatible currency */
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Attempt to deposit incompatible amount into reserve\n");
+      goto rollback;
+    }
+    updated_reserve.expiry = GNUNET_TIME_absolute_max (expiry,
+                                                       reserve->expiry);
+
+  }
   if (NULL != result)
     PQclear (result);
   result = NULL;
-  /* create new incoming transaction */
+  /* create new incoming transaction, SQL "primary key" logic
+     is used to guard against duplicates! */
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_QUERY_PARAM_PTR (&reserve->pub),
     TALER_PQ_QUERY_PARAM_AMOUNT (balance),
+    TALER_PQ_QUERY_PARAM_PTR_SIZED (details, strlen (details)),
     TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (expiry),
     TALER_PQ_QUERY_PARAM_END
   };
@@ -1051,41 +1082,18 @@ postgres_reserves_in_insert (void *cls,
   }
   PQclear (result);
   result = NULL;
-  if (GNUNET_NO == reserve_exists)
-  {
-    if (GNUNET_OK != postgres_commit (cls,
-                                      session))
-      return GNUNET_SYSERR;
-    reserve->balance = *balance;
-    reserve->expiry = expiry;
-    return GNUNET_OK;
-  }
-  /* Update reserve */
-  struct TALER_MINTDB_Reserve updated_reserve;
-  updated_reserve.pub = reserve->pub;
-
-  if (GNUNET_OK !=
-      TALER_amount_add (&updated_reserve.balance,
-                        &reserve->balance,
-                        balance))
-  {
-    return GNUNET_SYSERR;
-  }
-  updated_reserve.expiry = GNUNET_TIME_absolute_max (expiry,
-						     reserve->expiry);
-  if (GNUNET_OK != postgres_reserves_update (cls,
-                                             session,
-                                             &updated_reserve))
+  if ( (GNUNET_YES == reserve_exists) &&
+       (GNUNET_OK != postgres_reserves_update (cls,
+                                               session,
+                                               &updated_reserve)) )
     goto rollback;
   if (GNUNET_OK != postgres_commit (cls,
                                     session))
     return GNUNET_SYSERR;
-  reserve->balance = updated_reserve.balance;
-  reserve->expiry = updated_reserve.expiry;
   return GNUNET_OK;
-
  rollback:
-  PQclear (result);
+  if (NULL != result)
+    PQclear (result);
   postgres_rollback (cls,
                      session);
   return GNUNET_SYSERR;
@@ -2424,7 +2432,6 @@ postgres_get_coin_transactions (void *cls,
     common_free_coin_transaction_list (cls, head);
   return NULL;
 }
-
 
 
 /**
