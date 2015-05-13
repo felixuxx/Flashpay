@@ -914,7 +914,7 @@ postgres_reserve_get (void *cls,
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
     QUERY_ERR (result);
-    PQclear (resultE);
+    PQclear (result);
     return GNUNET_SYSERR;
   }
   if (0 == PQntuples (result))
@@ -995,10 +995,10 @@ postgres_reserves_update (void *cls,
 static int
 postgres_reserves_in_insert (void *cls,
                              struct TALER_MINTDB_Session *session,
-                             struct TALER_ReservePublicKeyP *reserve_pub,
+                             const struct TALER_ReservePublicKeyP *reserve_pub,
                              const struct TALER_Amount *balance,
                              const char *details,
-                             const struct GNUNET_TIME_Absolute expiry)
+                             struct GNUNET_TIME_Absolute expiry)
 {
   PGresult *result;
   int reserve_exists;
@@ -1044,11 +1044,11 @@ postgres_reserves_in_insert (void *cls,
   else
   {
     /* Update reserve */
-    updated_reserve.pub = reserve->pub;
+    updated_reserve.pub = reserve.pub;
 
     if (GNUNET_OK !=
         TALER_amount_add (&updated_reserve.balance,
-                          &reserve->balance,
+                          &reserve.balance,
                           balance))
     {
       /* currency overflow or incompatible currency */
@@ -1057,7 +1057,7 @@ postgres_reserves_in_insert (void *cls,
       goto rollback;
     }
     updated_reserve.expiry = GNUNET_TIME_absolute_max (expiry,
-                                                       reserve->expiry);
+                                                       reserve.expiry);
 
   }
   if (NULL != result)
@@ -1066,7 +1066,7 @@ postgres_reserves_in_insert (void *cls,
   /* create new incoming transaction, SQL "primary key" logic
      is used to guard against duplicates! */
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR (&reserve->pub),
+    TALER_PQ_QUERY_PARAM_PTR (&reserve.pub),
     TALER_PQ_QUERY_PARAM_AMOUNT (balance),
     TALER_PQ_QUERY_PARAM_PTR_SIZED (details, strlen (details)),
     TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (expiry),

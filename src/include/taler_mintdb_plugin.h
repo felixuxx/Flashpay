@@ -704,7 +704,7 @@ struct TALER_MINTDB_Plugin
                          const struct TALER_ReservePublicKeyP *reserve_pub,
                          const struct TALER_Amount *balance,
                          const char *details,
-                         const struct GNUNET_TIME_Absolute expiry);
+                         struct GNUNET_TIME_Absolute expiry);
 
 
   /**
