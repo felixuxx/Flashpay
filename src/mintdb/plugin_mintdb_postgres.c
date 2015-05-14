@@ -226,11 +226,11 @@ postgres_create_tables (void *cls,
           ",PRIMARY KEY (reserve_pub,details)"
           ");");
   /* Create indices on reserves_in */
-  SQLEXEC_INDEX ("CREATE INDEX IF NOT EXISTS reserves_in_reserve_pub_index"
+  SQLEXEC_INDEX ("CREATE INDEX reserves_in_reserve_pub_index"
 		 " ON reserves_in (reserve_pub);");
-  SQLEXEC_INDEX ("CREATE INDEX IF NOT EXISTS reserves_in_reserve_pub_details_index"
+  SQLEXEC_INDEX ("CREATE INDEX reserves_in_reserve_pub_details_index"
 		 " ON reserves_in (reserve_pub,details);");
-  SQLEXEC_INDEX ("CREATE INDEX IF NOT EXISTS expiration_index"
+  SQLEXEC_INDEX ("CREATE INDEX expiration_index"
 		 " ON reserves_in (expiration_date);");
   /* Table with the withdraw operations that have been performed on a reserve.
      TODO: maybe rename to "reserves_out"?
