@@ -127,7 +127,6 @@ run (void *cls,
 {
   struct TALER_MINTDB_Session *session;
   struct TALER_ReservePublicKeyP reserve_pub;
-  struct TALER_MINTDB_Reserve reserve;
   struct GNUNET_TIME_Absolute expiry;
   struct TALER_Amount amount;
   struct DenomKeyPair *dkp;
@@ -178,7 +177,6 @@ run (void *cls,
     goto drop;
   }
   RND_BLK (&reserve_pub);
-  reserve.pub = reserve_pub;
   amount.value = 1;
   amount.fraction = 1;
   strcpy (amount.currency, CURRENCY);
@@ -188,8 +186,9 @@ run (void *cls,
   FAILIF (GNUNET_OK !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
-                                      &reserve,
+                                      &reserve_pub,
                                       &amount,
+				      "justification 1",
                                       expiry));
   FAILIF (GNUNET_OK !=
           check_reserve (session,
@@ -201,8 +200,9 @@ run (void *cls,
   FAILIF (GNUNET_OK !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
-                                      &reserve,
+                                      &reserve_pub,
                                       &amount,
+				      "justification 2",
                                       expiry));
   FAILIF (GNUNET_OK !=
           check_reserve (session,
