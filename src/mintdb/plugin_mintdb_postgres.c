@@ -62,6 +62,12 @@
     PQclear (result); result = NULL;                                    \
   } while (0)
 
+#define SQLEXEC_IGNORE_ERROR_(conn, sql, result)                         \
+  do {                                                                  \
+    result = PQexec (conn, sql);                                        \
+    PQclear (result); result = NULL;                                    \
+  } while (0)
+
 
 /**
  * Handle for a database session (per-thread, for transactions).
@@ -172,6 +178,7 @@ postgres_create_tables (void *cls,
     return GNUNET_SYSERR;
   }
 #define SQLEXEC(sql) SQLEXEC_(conn, sql, result);
+#define SQLEXEC_INDEX(sql) SQLEXEC_IGNORE_ERROR_(conn, sql, result);
   /* Denomination table for holding the publicly available information of
      denominations keys.  The denominations are to be referred to by using
      foreign keys.  The denominations are deleted by a housekeeping tool;
@@ -216,15 +223,15 @@ postgres_create_tables (void *cls,
           ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",details VARCHAR NOT NULL "
           ",expiration_date INT8 NOT NULL"
-          " CONSTRAINT unique_details PRIMARY KEY (reserve_pub,details)"
+          ",PRIMARY KEY (reserve_pub,details)"
           ");");
   /* Create indices on reserves_in */
-  SQLEXEC ("CREATE INDEX reserves_in_reserve_pub_index"
-           " ON reserves_in (reserve_pub);");
-  SQLEXEC ("CREATE INDEX reserves_in_reserve_pub_details_index"
-           " ON reserves_in (reserve_pub,details);");
-  SQLEXEC ("CREATE INDEX expiration_index"
-           " ON reserves_in (expiration_date);");
+  SQLEXEC_INDEX ("CREATE INDEX IF NOT EXISTS reserves_in_reserve_pub_index"
+		 " ON reserves_in (reserve_pub);");
+  SQLEXEC_INDEX ("CREATE INDEX IF NOT EXISTS reserves_in_reserve_pub_details_index"
+		 " ON reserves_in (reserve_pub,details);");
+  SQLEXEC_INDEX ("CREATE INDEX IF NOT EXISTS expiration_index"
+		 " ON reserves_in (expiration_date);");
   /* Table with the withdraw operations that have been performed on a reserve.
      TODO: maybe rename to "reserves_out"?
      TODO: is blind_ev really a _primary key_? Is this constraint useful? */
@@ -237,8 +244,8 @@ postgres_create_tables (void *cls,
            ",reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)"
            ");");
   /* Index blindcoins(reserve_pub) for get_reserves_blindcoins statement */
-  SQLEXEC ("CREATE INDEX collectable_blindcoins_reserve_pub_index ON"
-           " collectable_blindcoins (reserve_pub)");
+  SQLEXEC_INDEX ("CREATE INDEX collectable_blindcoins_reserve_pub_index ON"
+		 " collectable_blindcoins (reserve_pub)");
   /* Table with coins that have been (partially) spent, used to detect
      double-spending.
      TODO: maybe rename to "spent_coins"?
@@ -302,7 +309,7 @@ postgres_create_tables (void *cls,
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_melt"
           "("
-          " session_hash BYTEA NOT NULL CHECK(LENGTH(session_hash=64)) REFERENCES refresh_sessions (session_hash) "
+          " session_hash BYTEA NOT NULL CHECK(LENGTH(session_hash)=64) REFERENCES refresh_sessions (session_hash) "
           ",coin_pub BYTEA NOT NULL CHECK(LENGTH(coin_pub)=32) REFERENCES known_coins (coin_pub) "
           ",coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)"
           ",denom_pub BYTEA NOT NULL "
@@ -421,10 +428,10 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("update_reserve",
            "UPDATE reserves "
            "SET"
-           "expiration_date=$1 "
+           " expiration_date=$1 "
            ",current_balance_val=$2 "
            ",current_balance_frac=$3 "
-           "WHERE current_balance_curr=$4 AND reserve_pub=$5 ",
+           "WHERE current_balance_curr=$4 AND reserve_pub=$5",
            5, NULL);
   PREPARE ("create_reserves_in_transaction",
            "INSERT INTO reserves_in ("
