@@ -114,21 +114,21 @@ run_queries (PGconn *conn)
     TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (abs_time),
     TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (forever),
     TALER_PQ_QUERY_PARAM_PTR (&hc),
-    TALER_PQ_QUERY_PARAM_AMOUNT (hamount),
-    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (namount),
+    TALER_PQ_QUERY_PARAM_AMOUNT (&hamount),
+    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (&namount),
     TALER_PQ_QUERY_PARAM_END
   };
   struct TALER_PQ_QueryParam params_select[] = {
     TALER_PQ_QUERY_PARAM_END
   };
   struct TALER_PQ_ResultSpec results_select[] = {
-    TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY ("pub", pub2),
-    TALER_PQ_RESULT_SPEC_RSA_SIGNATURE ("sig", sig2),
-    TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME ("abs_time", abs_time2),
-    TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME ("forever", forever2),
+    TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY ("pub", &pub2),
+    TALER_PQ_RESULT_SPEC_RSA_SIGNATURE ("sig", &sig2),
+    TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME ("abs_time", &abs_time2),
+    TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME ("forever", &forever2),
     TALER_PQ_RESULT_SPEC ("hash", &hc2),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("hamount", hamount2),
-    TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("namount", namount2),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("hamount", &hamount2),
+    TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("namount", &namount2),
     TALER_PQ_RESULT_SPEC_END
   };
   PGresult *result;
