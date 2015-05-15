@@ -113,7 +113,7 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
           param_formats[off] = 1;
           off++;
           param_values[off] = (void *) amount->currency;
-          param_lengths[off] = strlen (amount->currency) + 1;
+          param_lengths[off] = strlen (amount->currency);
           param_formats[off] = 1;
           off++;
         }
@@ -136,7 +136,7 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
           param_formats[off] = 1;
           off++;
           param_values[off] = (void *) amount->currency;
-          param_lengths[off] = strlen (amount->currency) + 1;
+          param_lengths[off] = strlen (amount->currency);
           param_formats[off] = 1;
           off++;
         }

@@ -118,6 +118,12 @@ run_queries (PGconn *conn)
   sig = GNUNET_CRYPTO_rsa_sign (priv,
 				msg,
 				sizeof (msg));
+  TALER_string_to_amount ("EUR:5.5",
+			  &hamount);
+  TALER_amount_hton (&namount,
+		     &hamount);		     
+  TALER_string_to_amount ("EUR:4.4",
+			  &hamount);
   {
     struct TALER_PQ_QueryParam params_insert[] = {
       TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (pub),
@@ -143,19 +149,68 @@ run_queries (PGconn *conn)
       TALER_PQ_RESULT_SPEC_END
     };
     
-    
+    fprintf (stderr,
+	     "Inserting\n");
     result = TALER_PQ_exec_prepared (conn,
 				     "test_insert",
 				     params_insert);
+    if (PGRES_COMMAND_OK != PQresultStatus (result))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		  "Database failure: %s\n",
+		  PQresultErrorMessage (result));
+      PQclear (result);
+      GNUNET_CRYPTO_rsa_signature_free (sig);
+      GNUNET_CRYPTO_rsa_private_key_free (priv);
+      GNUNET_CRYPTO_rsa_public_key_free (pub);
+      return 1;
+    }
+    
     PQclear (result);
+    fprintf (stderr,
+	     "Selecting\n");
     result = TALER_PQ_exec_prepared (conn,
 				     "test_select",
 				     params_select);
+    if (1 !=
+	PQntuples (result))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      GNUNET_CRYPTO_rsa_signature_free (sig);
+      GNUNET_CRYPTO_rsa_private_key_free (priv);
+      GNUNET_CRYPTO_rsa_public_key_free (pub);
+      return 1;
+    }
     ret = TALER_PQ_extract_result (result,
 				   results_select,
 				   0);
-    // FIXME: cmp results!
-    
+    GNUNET_break (GNUNET_YES == ret);
+    fprintf (stderr,
+	     "Verifying\n");
+    GNUNET_break (abs_time.abs_value_us == abs_time2.abs_value_us);
+    GNUNET_break (forever.abs_value_us == forever2.abs_value_us);
+    GNUNET_break (0 ==
+		  memcmp (&hc,
+			  &hc2,
+			  sizeof (struct GNUNET_HashCode)));
+    GNUNET_break (0 ==
+		  TALER_amount_cmp (&hamount,
+				    &hamount2));
+    TALER_string_to_amount ("EUR:5.5",
+			    &hamount);
+    TALER_amount_ntoh (&hamount2,
+		       &namount2);		         
+    GNUNET_break (0 ==
+		  TALER_amount_cmp (&hamount,
+				    &hamount2));
+    GNUNET_break (0 ==
+		  GNUNET_CRYPTO_rsa_signature_cmp (sig,
+						   sig2));
+    GNUNET_break (0 ==
+		  GNUNET_CRYPTO_rsa_public_key_cmp (pub,
+						    pub2));
+
     TALER_PQ_cleanup_result (results_select);
     PQclear (result);
   }

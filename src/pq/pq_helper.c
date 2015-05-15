@@ -138,7 +138,7 @@ TALER_PQ_RESULT_SPEC_AMOUNT_NBO (const char *name,
 				 struct TALER_AmountNBO *amount)
 {
   struct TALER_PQ_ResultSpec res = 
-    {TALER_PQ_RF_AMOUNT_NBO, (void *) (&amount), sizeof (amount), (name), NULL };
+    {TALER_PQ_RF_AMOUNT_NBO, (void *) (&amount), sizeof (*amount), (name), NULL };
   return res;
 }
 
