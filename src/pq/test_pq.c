@@ -77,9 +77,9 @@ postgres_prepare (PGconn *db_conn)
            ",namount_val" 
            ",namount_frac"
            ",namount_curr"
-           "FROM test_pq"
-           "ORDER BY abs_time DESC "
-           "LIMIT 1;",
+           " FROM test_pq"
+           " ORDER BY abs_time DESC "
+           " LIMIT 1;",
            0, NULL);
   return GNUNET_OK;
 #undef PREPARE
@@ -108,47 +108,60 @@ run_queries (PGconn *conn)
   struct TALER_Amount hamount2;
   struct TALER_AmountNBO namount;
   struct TALER_AmountNBO namount2;
-  struct TALER_PQ_QueryParam params_insert[] = {
-    TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (pub),
-    TALER_PQ_QUERY_PARAM_RSA_SIGNATURE (sig),
-    TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (abs_time),
-    TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (forever),
-    TALER_PQ_QUERY_PARAM_PTR (&hc),
-    TALER_PQ_QUERY_PARAM_AMOUNT (&hamount),
-    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (&namount),
-    TALER_PQ_QUERY_PARAM_END
-  };
-  struct TALER_PQ_QueryParam params_select[] = {
-    TALER_PQ_QUERY_PARAM_END
-  };
-  struct TALER_PQ_ResultSpec results_select[] = {
-    TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY ("pub", &pub2),
-    TALER_PQ_RESULT_SPEC_RSA_SIGNATURE ("sig", &sig2),
-    TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME ("abs_time", &abs_time2),
-    TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME ("forever", &forever2),
-    TALER_PQ_RESULT_SPEC ("hash", &hc2),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("hamount", &hamount2),
-    TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("namount", &namount2),
-    TALER_PQ_RESULT_SPEC_END
-  };
   PGresult *result;
   int ret;
-
-  // FIXME: init pub, sig
-  result = TALER_PQ_exec_prepared (conn,
-				   "test_insert",
-				   params_insert);
-  PQclear (result);
-  result = TALER_PQ_exec_prepared (conn,
-				   "test_select",
-				   params_select);
-  ret = TALER_PQ_extract_result (result,
-				 results_select,
-				 0);
-  // FIXME: cmp results!
-  TALER_PQ_cleanup_result (results_select);
-  PQclear (result);
-
+  struct GNUNET_CRYPTO_rsa_PrivateKey *priv;
+  char msg[] = "Hello";
+  
+  priv = GNUNET_CRYPTO_rsa_private_key_create (1024);
+  pub = GNUNET_CRYPTO_rsa_private_key_get_public (priv);
+  sig = GNUNET_CRYPTO_rsa_sign (priv,
+				msg,
+				sizeof (msg));
+  {
+    struct TALER_PQ_QueryParam params_insert[] = {
+      TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (pub),
+      TALER_PQ_QUERY_PARAM_RSA_SIGNATURE (sig),
+      TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (abs_time),
+      TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (forever),
+      TALER_PQ_QUERY_PARAM_PTR (&hc),
+      TALER_PQ_QUERY_PARAM_AMOUNT (&hamount),
+      TALER_PQ_QUERY_PARAM_AMOUNT_NBO (&namount),
+      TALER_PQ_QUERY_PARAM_END
+    };
+    struct TALER_PQ_QueryParam params_select[] = {
+      TALER_PQ_QUERY_PARAM_END
+    };
+    struct TALER_PQ_ResultSpec results_select[] = {
+      TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY ("pub", &pub2),
+      TALER_PQ_RESULT_SPEC_RSA_SIGNATURE ("sig", &sig2),
+      TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME ("abs_time", &abs_time2),
+      TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME ("forever", &forever2),
+      TALER_PQ_RESULT_SPEC ("hash", &hc2),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("hamount", &hamount2),
+      TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("namount", &namount2),
+      TALER_PQ_RESULT_SPEC_END
+    };
+    
+    
+    result = TALER_PQ_exec_prepared (conn,
+				     "test_insert",
+				     params_insert);
+    PQclear (result);
+    result = TALER_PQ_exec_prepared (conn,
+				     "test_select",
+				     params_select);
+    ret = TALER_PQ_extract_result (result,
+				   results_select,
+				   0);
+    // FIXME: cmp results!
+    
+    TALER_PQ_cleanup_result (results_select);
+    PQclear (result);
+  }
+  GNUNET_CRYPTO_rsa_signature_free (sig);
+  GNUNET_CRYPTO_rsa_private_key_free (priv);
+  GNUNET_CRYPTO_rsa_public_key_free (pub);
   if (GNUNET_OK != ret)
     return 1;
   
@@ -165,6 +178,9 @@ main(int argc,
   int ret;
 
   // FIXME: pass valid connect string for tests...
+  GNUNET_log_setup ("test-pq",
+		    "WARNING",
+		    NULL);
   conn = PQconnectdb ("postgres:///talercheck");
   if (CONNECTION_OK != PQstatus (conn))
   {
@@ -204,7 +220,6 @@ main(int argc,
       postgres_prepare (conn))
   {
     GNUNET_break (0);
-    PQclear (result);
     PQfinish (conn);
     return 1;
   }

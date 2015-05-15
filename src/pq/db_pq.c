@@ -60,6 +60,7 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
       break;
     case TALER_PQ_QF_RSA_PUBLIC_KEY:
     case TALER_PQ_QF_RSA_SIGNATURE:
+    case TALER_PQ_QF_TIME_ABSOLUTE:
       len++;
       break;
     default:
@@ -67,6 +68,7 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
       GNUNET_assert (0);
       break;
     }
+    i++;
   }
 
   /* new scope to allow stack allocation without alloca */
@@ -190,6 +192,7 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
         GNUNET_assert (0);
         break;
       }
+      i++;
     }
     GNUNET_assert (off == len);
     res = PQexecPrepared (db_conn,
@@ -200,7 +203,7 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
                           param_formats,
                           1);
     for (off = 0; off < soff; off++)
-      GNUNET_free (scratch[soff]);
+      GNUNET_free (scratch[off]);
     return res;
   }
 }
