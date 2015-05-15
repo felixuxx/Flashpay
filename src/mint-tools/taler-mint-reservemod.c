@@ -153,14 +153,6 @@ main (int argc, char *const *argv)
              "Failed to initialize DB session\n");
     goto cleanup;
   }
-  if (GNUNET_OK !=
-      plugin->start (plugin->cls,
-                     session))
-  {
-    fprintf (stderr,
-             "Failed to start transaction\n");
-    goto cleanup;
-  }
   expiration = GNUNET_TIME_relative_to_absolute (RESERVE_EXPIRATION);
   if (GNUNET_OK !=
       plugin->reserves_in_insert (plugin->cls,
@@ -172,14 +164,6 @@ main (int argc, char *const *argv)
   {
     fprintf (stderr,
              "Failed to update reserve.\n");
-    goto cleanup;
-  }
-  if (GNUNET_OK !=
-      plugin->commit (plugin->cls,
-                     session))
-  {
-    fprintf (stderr,
-             "Failed to commit transaction\n");
     goto cleanup;
   }
   ret = 0;
