@@ -986,7 +986,8 @@ postgres_reserves_update (void *cls,
 
 /**
  * Insert a incoming transaction into reserves.  New reserves are also created
- * through this function.
+ * through this function.  Note that this API call starts (and stops) its
+ * own transaction scope (so the application must not do so).
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session the database connection handle
@@ -1025,9 +1026,8 @@ postgres_reserves_in_insert (void *cls,
                                          &reserve);
   if (GNUNET_SYSERR == reserve_exists)
   {
-    postgres_rollback (cls,
-                       session);
-    return GNUNET_SYSERR;
+    GNUNET_break (0);
+    goto rollback;
   }
   if (GNUNET_NO == reserve_exists)
   {
@@ -1084,6 +1084,21 @@ postgres_reserves_in_insert (void *cls,
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus(result))
   {
+    const char *efield;
+    
+    efield = PQresultErrorField (result,
+				 PG_DIAG_SQLSTATE);
+    if ( (PGRES_FATAL_ERROR == PQresultStatus(result)) &&
+	 (NULL != strstr ("23505", /* unique violation */
+			  efield)) )
+    {
+      /* This means we had the same reserve/justification/details
+	 before */
+      PQclear (result);
+      postgres_rollback (cls,
+			 session);
+      return GNUNET_NO;
+    }
     QUERY_ERR (result);
     goto rollback;
   }

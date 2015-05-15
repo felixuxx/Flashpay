@@ -98,6 +98,9 @@ main (int argc, char *const *argv)
   {
     fprintf (stderr,
              "Mint directory not given\n");
+    GNUNET_free_non_null (add_str);
+    GNUNET_free_non_null (details);
+    GNUNET_free_non_null (reserve_pub_str);
     return 1;
   }
   if ((NULL == reserve_pub_str) ||
@@ -109,6 +112,9 @@ main (int argc, char *const *argv)
   {
     fprintf (stderr,
              "Parsing reserve key invalid\n");
+    GNUNET_free_non_null (add_str);
+    GNUNET_free_non_null (details);
+    GNUNET_free_non_null (reserve_pub_str);
     return 1;
   }
   if ( (NULL == add_str) ||
@@ -119,6 +125,9 @@ main (int argc, char *const *argv)
     fprintf (stderr,
              "Failed to parse currency amount `%s'\n",
              add_str);
+    GNUNET_free_non_null (add_str);
+    GNUNET_free_non_null (details);
+    GNUNET_free_non_null (reserve_pub_str);
     return 1;
   }
 
@@ -126,7 +135,9 @@ main (int argc, char *const *argv)
   {
     fprintf (stderr,
              "No wiring details given (justification required)\n");
-    return 1;
+   GNUNET_free_non_null (add_str);
+   GNUNET_free_non_null (reserve_pub_str);
+   return 1;
   }
 
   cfg = TALER_config_load (mint_directory);
@@ -134,7 +145,10 @@ main (int argc, char *const *argv)
   {
     fprintf (stderr,
              "Failed to load mint configuration\n");
-    return 1;
+    GNUNET_free_non_null (add_str);
+    GNUNET_free_non_null (details);
+    GNUNET_free_non_null (reserve_pub_str);
+   return 1;
   }
   ret = 1;
   if (NULL ==
@@ -154,17 +168,22 @@ main (int argc, char *const *argv)
     goto cleanup;
   }
   expiration = GNUNET_TIME_relative_to_absolute (RESERVE_EXPIRATION);
-  if (GNUNET_OK !=
-      plugin->reserves_in_insert (plugin->cls,
-                                  session,
-                                  &reserve_pub,
-                                  &add_value,
-                                  details,
-                                  expiration))
+  ret = plugin->reserves_in_insert (plugin->cls,
+				    session,
+				    &reserve_pub,
+				    &add_value,
+				    details,
+				    expiration);
+  if (GNUNET_SYSERR == ret)
   {
     fprintf (stderr,
              "Failed to update reserve.\n");
     goto cleanup;
+  }
+  if (GNUNET_NO == ret)
+  {
+    fprintf (stderr,
+             "Record exists, reserve not updated.\n");
   }
   ret = 0;
  cleanup:
@@ -172,6 +191,9 @@ main (int argc, char *const *argv)
     TALER_MINTDB_plugin_unload (plugin);
   if (NULL != cfg)
     GNUNET_CONFIGURATION_destroy (cfg);
+  GNUNET_free_non_null (add_str);
+  GNUNET_free_non_null (details);
+  GNUNET_free_non_null (reserve_pub_str);
   return ret;
 }
 
