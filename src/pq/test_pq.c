@@ -165,7 +165,7 @@ main(int argc,
   int ret;
 
   // FIXME: pass valid connect string for tests...
-  conn = PQconnectdb ("");
+  conn = PQconnectdb ("postgres:///talercheck");
   if (CONNECTION_OK != PQstatus (conn))
   {
     fprintf (stderr,
@@ -177,7 +177,7 @@ main(int argc,
   }
 
   result = PQexec (conn,
-		   "CREATE TABLE test_pq ("
+		   "CREATE TEMPORARY TABLE IF NOT EXISTS test_pq ("
 		   " pub BYTEA NOT NULL"
 		   ",sig BYTEA NOT NULL"
 		   ",abs_time INT8 NOT NULL"
