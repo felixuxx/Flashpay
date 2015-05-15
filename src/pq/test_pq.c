@@ -129,8 +129,8 @@ run_queries (PGconn *conn)
     struct TALER_PQ_QueryParam params_insert[] = {
       TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (pub),
       TALER_PQ_QUERY_PARAM_RSA_SIGNATURE (sig),
-      TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (abs_time),
-      TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (forever),
+      TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (&abs_time),
+      TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (&forever),
       TALER_PQ_QUERY_PARAM_PTR (&hc),
       TALER_PQ_QUERY_PARAM_AMOUNT (&hamount),
       TALER_PQ_QUERY_PARAM_AMOUNT_NBO (&namount),
@@ -150,8 +150,6 @@ run_queries (PGconn *conn)
       TALER_PQ_RESULT_SPEC_END
     };
     
-    fprintf (stderr,
-	     "Inserting\n");
     result = TALER_PQ_exec_prepared (conn,
 				     "test_insert",
 				     params_insert);
@@ -168,8 +166,6 @@ run_queries (PGconn *conn)
     }
     
     PQclear (result);
-    fprintf (stderr,
-	     "Selecting\n");
     result = TALER_PQ_exec_prepared (conn,
 				     "test_select",
 				     params_select);
@@ -187,8 +183,6 @@ run_queries (PGconn *conn)
 				   results_select,
 				   0);
     GNUNET_break (GNUNET_YES == ret);
-    fprintf (stderr,
-	     "Verifying\n");
     GNUNET_break (abs_time.abs_value_us == abs_time2.abs_value_us);
     GNUNET_break (forever.abs_value_us == forever2.abs_value_us);
     GNUNET_break (0 ==
@@ -233,7 +227,6 @@ main(int argc,
   PGresult *result;
   int ret;
 
-  // FIXME: pass valid connect string for tests...
   GNUNET_log_setup ("test-pq",
 		    "WARNING",
 		    NULL);

@@ -178,8 +178,6 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
 	  
           at_nbo = GNUNET_new (struct GNUNET_TIME_AbsoluteNBO);
           scratch[soff++] = at_nbo;
-	  /* FIXME: this does not work for 'forever' as PQ uses 63-bit integers;
-	     should check and handle! (Need testcase!) */
           *at_nbo = GNUNET_TIME_absolute_hton (*at_hbo);
           param_values[off] = (void *) at_nbo;
           param_lengths[off] = sizeof (struct GNUNET_TIME_AbsoluteNBO);
@@ -537,8 +535,6 @@ TALER_PQ_extract_result (PGresult *result,
 	  PQgetvalue (result,
 		      row,
 		      fnum);
-	/* FIXME: this does not work for 'forever' as PQ uses 63-bit integers;
-	   should check and handle! (Need testcase!) */
 	*dst = GNUNET_TIME_absolute_ntoh (*res);
         break;
       }

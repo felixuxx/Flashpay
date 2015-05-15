@@ -179,7 +179,7 @@ TALER_PQ_QUERY_PARAM_RSA_SIGNATURE(const struct GNUNET_CRYPTO_rsa_Signature *x);
  * @param x pointer to the query parameter to pass
  */
 struct TALER_PQ_QueryParam
-TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME(struct GNUNET_TIME_Absolute x);
+TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME(const struct GNUNET_TIME_Absolute *x);
 
 
 /**
