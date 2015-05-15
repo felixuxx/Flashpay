@@ -962,7 +962,7 @@ postgres_reserves_update (void *cls,
   if (NULL == reserve)
     return GNUNET_SYSERR;
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (reserve->expiry),
+    TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (&reserve->expiry),
     TALER_PQ_QUERY_PARAM_AMOUNT (&reserve->balance),
     TALER_PQ_QUERY_PARAM_PTR (&reserve->pub),
     TALER_PQ_QUERY_PARAM_END
@@ -1036,7 +1036,7 @@ postgres_reserves_in_insert (void *cls,
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_QUERY_PARAM_PTR (reserve_pub),
       TALER_PQ_QUERY_PARAM_AMOUNT (balance),
-      TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (expiry),
+      TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (&expiry),
       TALER_PQ_QUERY_PARAM_END
     };
     result = TALER_PQ_exec_prepared (session->conn,
@@ -1076,7 +1076,7 @@ postgres_reserves_in_insert (void *cls,
     TALER_PQ_QUERY_PARAM_PTR (&reserve.pub),
     TALER_PQ_QUERY_PARAM_AMOUNT (balance),
     TALER_PQ_QUERY_PARAM_PTR_SIZED (details, strlen (details)),
-    TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (expiry),
+    TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (&expiry),
     TALER_PQ_QUERY_PARAM_END
   };
   result = TALER_PQ_exec_prepared (session->conn,
