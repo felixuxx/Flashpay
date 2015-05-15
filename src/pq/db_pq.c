@@ -225,25 +225,34 @@ TALER_PQ_cleanup_result (struct TALER_PQ_ResultSpec *rs)
     switch (rs[i].format)
     {
     case TALER_PQ_RF_VARSIZE_BLOB:
-      if (NULL != rs[i].dst)
       {
-        GNUNET_free (rs[i].dst);
-        rs[i].dst = NULL;
-        *rs[i].result_size = 0;
+	void **dst = rs[i].dst;
+	if (NULL != *dst)
+	{
+	  GNUNET_free (*dst);
+	  *dst = NULL;
+	  *rs[i].result_size = 0;
+	}
+	break;
       }
-      break;
     case TALER_PQ_RF_RSA_PUBLIC_KEY:
-      if (NULL != rs[i].dst)
       {
-        GNUNET_CRYPTO_rsa_public_key_free (rs[i].dst);
-        rs[i].dst = NULL;
+	void **dst = rs[i].dst;
+	if (NULL != *dst)
+	{
+	  GNUNET_CRYPTO_rsa_public_key_free (*dst);
+	  *dst = NULL;
+	}
+	break;
       }
-      break;
     case TALER_PQ_RF_RSA_SIGNATURE:
-      if (NULL != rs[i].dst)
       {
-        GNUNET_CRYPTO_rsa_signature_free (rs[i].dst);
-        rs[i].dst = NULL;
+	void **dst = rs[i].dst;
+	if (NULL != *dst)
+	{
+	  GNUNET_CRYPTO_rsa_signature_free (*dst);
+	  *dst = NULL;
+	}
       }
       break;
     default:

@@ -124,6 +124,7 @@ run_queries (PGconn *conn)
 		     &hamount);		     
   TALER_string_to_amount ("EUR:4.4",
 			  &hamount);
+  /* FIXME: test TALER_PQ_RESULT_SPEC_VAR */
   {
     struct TALER_PQ_QueryParam params_insert[] = {
       TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (pub),

@@ -297,7 +297,7 @@ struct TALER_PQ_ResultSpec
  * @param dst point to where to store the result, type fits expected result size
  * @return array entry for the result specification to use
  */
-#define TALER_PQ_RESULT_SPEC(name, dst) { TALER_PQ_RF_VARSIZE_BLOB, (void *) dst, sizeof (*(dst)), name, NULL }
+#define TALER_PQ_RESULT_SPEC(name, dst) { TALER_PQ_RF_FIXED_BLOB, (void *) (dst), sizeof (*(dst)), name, NULL }
 
 
 /**

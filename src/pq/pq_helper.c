@@ -121,7 +121,7 @@ TALER_PQ_RESULT_SPEC_VAR (const char *name,
 			  size_t *sptr)
 {
   struct TALER_PQ_ResultSpec res = 
-    { TALER_PQ_RF_VARSIZE_BLOB, (void *) (dst), 0, (name), sptr };
+    { TALER_PQ_RF_VARSIZE_BLOB, (void *) (dst), 0, name, sptr };
   return res;
 }
 
@@ -138,7 +138,7 @@ TALER_PQ_RESULT_SPEC_AMOUNT_NBO (const char *name,
 				 struct TALER_AmountNBO *amount)
 {
   struct TALER_PQ_ResultSpec res = 
-    {TALER_PQ_RF_AMOUNT_NBO, (void *) (&amount), sizeof (*amount), (name), NULL };
+    {TALER_PQ_RF_AMOUNT_NBO, (void *) amount, sizeof (*amount), name, NULL };
   return res;
 }
 
@@ -155,7 +155,7 @@ TALER_PQ_RESULT_SPEC_AMOUNT (const char *name,
 			     struct TALER_Amount *amount)
 {
   struct TALER_PQ_ResultSpec res = 
-    {TALER_PQ_RF_AMOUNT, (void *) (&amount), sizeof (*amount), (name), NULL };
+    {TALER_PQ_RF_AMOUNT, (void *) amount, sizeof (*amount), name, NULL };
   return res;
 }
 
@@ -172,7 +172,7 @@ TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY (const char *name,
 				     struct GNUNET_CRYPTO_rsa_PublicKey **rsa)
 {
   struct TALER_PQ_ResultSpec res = 
-    {TALER_PQ_RF_RSA_PUBLIC_KEY, (void *) &(rsa), 0, (name), NULL };
+    {TALER_PQ_RF_RSA_PUBLIC_KEY, (void *) rsa, 0, name, NULL };
   return res;
 }
  
@@ -189,7 +189,7 @@ TALER_PQ_RESULT_SPEC_RSA_SIGNATURE (const char *name,
 				    struct GNUNET_CRYPTO_rsa_Signature **sig)
 {
   struct TALER_PQ_ResultSpec res = 
-    {TALER_PQ_RF_RSA_SIGNATURE, (void *) &(sig), 0, (name), NULL };
+    {TALER_PQ_RF_RSA_SIGNATURE, (void *) sig, 0, (name), NULL };
   return res;
 }
 
@@ -206,7 +206,7 @@ TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME (const char *name,
 				    struct GNUNET_TIME_Absolute *at)
 {
   struct TALER_PQ_ResultSpec res = 
-    {TALER_PQ_RF_TIME_ABSOLUTE, (void *) (&at), sizeof (at), (name), NULL };
+    {TALER_PQ_RF_TIME_ABSOLUTE, (void *) at, sizeof (*at), (name), NULL };
   return res;
 }
   
