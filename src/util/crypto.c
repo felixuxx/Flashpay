@@ -371,7 +371,7 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info)
  * private key and the coin's public key.
  *
  * @param secret_enc encrypted link secret
- * @param transfer_priv transfer private key
+ * @param trans_priv transfer private key
  * @param coin_pub coin public key
  * @param[out] secret set to the shared secret
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
@@ -410,7 +410,7 @@ TALER_link_decrypt_secret (const struct TALER_EncryptedLinkSecretP *secret_enc,
  * public key and the coin's private key.
  *
  * @param secret_enc encrypted link secret
- * @param transfer_pub transfer public key
+ * @param trans_pub transfer public key
  * @param coin_priv coin private key
  * @param[out] secret set to the shared secret
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
@@ -449,8 +449,8 @@ TALER_link_decrypt_secret2 (const struct TALER_EncryptedLinkSecretP *secret_enc,
  *
  * @param secret link secret to encrypt
  * @param coin_pub coin public key
- * @param transfer_priv[out] set to transfer private key
- * @param transfer_pub[out] set to transfer public key
+ * @param[out] trans_priv set to transfer private key
+ * @param[out] trans_pub set to transfer public key
  * @param[out] secret_enc set to the encryptd @a secret
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */

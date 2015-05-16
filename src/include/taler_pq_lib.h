@@ -394,7 +394,7 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
  * is returned.
  *
  * @param result result to process
- * @param[in|out] rs result specification to extract for
+ * @param[in,out] rs result specification to extract for
  * @param row row from the result to extract
  * @return
  *   #GNUNET_YES if all results could be extracted

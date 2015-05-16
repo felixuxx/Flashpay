@@ -848,7 +848,7 @@ postgres_commit (void *cls,
  * Insert a denomination key
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param sesssion connection to use
+ * @param session connection to use
  * @param dki the denomination key information
  * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
  */
@@ -2099,14 +2099,14 @@ postgres_get_refresh_commit_links (void *cls,
  * Get all of the information from the given melt commit operation.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param sesssion database connection to use
+ * @param session database connection to use
  * @param session_hash hash to identify refresh session
  * @return NULL if the @a session_hash does not correspond to any known melt
  *         operation
  */
 static struct TALER_MINTDB_MeltCommitment *
 postgres_get_melt_commitment (void *cls,
-                              struct TALER_MINTDB_Session *sesssion,
+                              struct TALER_MINTDB_Session *session,
                               const struct GNUNET_HashCode *session_hash)
 {
   // FIXME: needs to be implemented!

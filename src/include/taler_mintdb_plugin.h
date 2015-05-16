@@ -1085,7 +1085,7 @@ struct TALER_MINTDB_Plugin
   /**
    * Obtain shared secret and transfer public key from the public key of
    * the coin.  This information and the link information returned by
-   * #TALER_db_get_link() enable the owner of an old coin to determine
+   * @e get_link_data_list() enable the owner of an old coin to determine
    * the private keys of the new coins after the melt.
    *
    *
@@ -1113,7 +1113,7 @@ struct TALER_MINTDB_Plugin
    * @param sesssion database connection
    * @param lock lock operation
    * @return #GNUNET_YES if known,
-   *         #GNUENT_NO if not,
+   *         #GNUNET_NO if not,
    *         #GNUNET_SYSERR on internal error
    */
   int
