@@ -200,7 +200,7 @@ TMH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection);
  */
 int
 TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
-                                    const union TALER_CoinSpendPublicKeyP *coin_pub,
+                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     const struct GNUNET_HashCode *h_wire,
                                     const struct GNUNET_HashCode *h_contract,
                                     uint64_t transaction_id,
@@ -291,7 +291,7 @@ TMH_RESPONSE_reply_refresh_melt_success (struct MHD_Connection *connection,
  */
 int
 TMH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
-                                                    const union TALER_CoinSpendPublicKeyP *coin_pub,
+                                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                                     struct TALER_Amount coin_value,
                                                     struct TALER_MINTDB_TransactionList *tl,
                                                     struct TALER_Amount requested,

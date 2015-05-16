@@ -1869,7 +1869,7 @@ postgres_insert_refresh_commit_coins (void *cls,
     TALER_PQ_QUERY_PARAM_PTR(&newcoin_index_nbo),
     TALER_PQ_QUERY_PARAM_PTR_SIZED (commit_coins->refresh_link->coin_priv_enc,
                                     commit_coins->refresh_link->blinding_key_enc_size +
-                                    sizeof (union TALER_CoinSpendPrivateKeyP)),
+                                    sizeof (struct TALER_CoinSpendPrivateKeyP)),
     TALER_PQ_QUERY_PARAM_END
   };
 
@@ -1960,7 +1960,7 @@ postgres_get_refresh_commit_coins (void *cls,
     return GNUNET_SYSERR;
   }
   PQclear (result);
-  if (rl_buf_size < sizeof (union TALER_CoinSpendPrivateKeyP))
+  if (rl_buf_size < sizeof (struct TALER_CoinSpendPrivateKeyP))
   {
     GNUNET_free (c_buf);
     GNUNET_free (rl_buf);
@@ -2199,7 +2199,7 @@ postgres_insert_refresh_collectable (void *cls,
 static struct TALER_MINTDB_LinkDataList *
 postgres_get_link_data_list (void *cls,
                              struct TALER_MINTDB_Session *session,
-                             const union TALER_CoinSpendPublicKeyP *coin_pub)
+                             const struct TALER_CoinSpendPublicKeyP *coin_pub)
 {
   // FIXME: check logic!
   struct TALER_MINTDB_LinkDataList *ldl;
@@ -2247,7 +2247,7 @@ postgres_get_link_data_list (void *cls,
                                   ldl);
       return NULL;
     }
-    if (ld_buf_size < sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey))
+    if (ld_buf_size < sizeof (struct GNUNET_CRYPTO_EddsaPrivateKey))
     {
       PQclear (result);
       GNUNET_free (ld_buf);
@@ -2257,9 +2257,9 @@ postgres_get_link_data_list (void *cls,
     }
     // FIXME: use util API for this!
     link_enc = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) +
-                              ld_buf_size - sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey));
+                              ld_buf_size - sizeof (struct GNUNET_CRYPTO_EddsaPrivateKey));
     link_enc->blinding_key_enc = (const char *) &link_enc[1];
-    link_enc->blinding_key_enc_size = ld_buf_size - sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey);
+    link_enc->blinding_key_enc_size = ld_buf_size - sizeof (struct GNUNET_CRYPTO_EddsaPrivateKey);
     memcpy (link_enc->coin_priv_enc,
             ld_buf,
             ld_buf_size);
@@ -2293,7 +2293,7 @@ postgres_get_link_data_list (void *cls,
 static int
 postgres_get_transfer (void *cls,
                        struct TALER_MINTDB_Session *session,
-                       const union TALER_CoinSpendPublicKeyP *coin_pub,
+                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
                        struct TALER_TransferPublicKeyP *transfer_pub,
                        struct TALER_EncryptedLinkSecretP *shared_secret_enc)
 {
@@ -2357,7 +2357,7 @@ postgres_get_transfer (void *cls,
 static struct TALER_MINTDB_TransactionList *
 postgres_get_coin_transactions (void *cls,
                                 struct TALER_MINTDB_Session *session,
-                                const union TALER_CoinSpendPublicKeyP *coin_pub)
+                                const struct TALER_CoinSpendPublicKeyP *coin_pub)
 {
   PGresult *result;
   struct TALER_MINTDB_TransactionList *head;
@@ -2375,7 +2375,7 @@ postgres_get_coin_transactions (void *cls,
   {
     struct TALER_MINTDB_Deposit *deposit;
     struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_QUERY_PARAM_PTR (&coin_pub->ecdsa_pub),
+      TALER_PQ_QUERY_PARAM_PTR (&coin_pub->eddsa_pub),
       TALER_PQ_QUERY_PARAM_END
     };
     json_error_t json_error;

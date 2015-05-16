@@ -166,7 +166,7 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
  */
 int
 TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
-                             const union TALER_CoinSpendPublicKeyP *coin_pub);
+                             const struct TALER_CoinSpendPublicKeyP *coin_pub);
 
 
 #endif

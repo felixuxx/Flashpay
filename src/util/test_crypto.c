@@ -71,7 +71,7 @@ test_basics ()
   GNUNET_assert (NULL != rld);
   GNUNET_assert (0 == memcmp (&rld->coin_priv,
 			      &rl.coin_priv,
-			      sizeof (union TALER_CoinSpendPrivateKeyP)));
+			      sizeof (struct TALER_CoinSpendPrivateKeyP)));
   GNUNET_assert (0 ==
 		 GNUNET_CRYPTO_rsa_blinding_key_cmp (rl.blinding_key.rsa_blinding_key,
 						     rld->blinding_key.rsa_blinding_key));
@@ -121,21 +121,21 @@ test_rled ()
 static int
 test_high_level ()
 {
-  struct GNUNET_CRYPTO_EcdsaPrivateKey *pk;
+  struct GNUNET_CRYPTO_EddsaPrivateKey *pk;
   struct TALER_LinkSecretP secret;
   struct TALER_LinkSecretP secret2;
-  union TALER_CoinSpendPublicKeyP coin_pub;
-  union TALER_CoinSpendPrivateKeyP coin_priv;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
   struct TALER_TransferPrivateKeyP trans_priv;
   struct TALER_TransferPublicKeyP trans_pub;
   struct TALER_EncryptedLinkSecretP secret_enc;
 
-  pk = GNUNET_CRYPTO_ecdsa_key_create ();
+  pk = GNUNET_CRYPTO_eddsa_key_create ();
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
 			      &secret,
 			      sizeof (secret));
-  GNUNET_CRYPTO_ecdsa_key_get_public (pk,
-				      &coin_pub.ecdsa_pub);
+  GNUNET_CRYPTO_eddsa_key_get_public (pk,
+				      &coin_pub.eddsa_pub);
   GNUNET_assert (GNUNET_OK == 
 		 TALER_link_encrypt_secret (&secret,
 					    &coin_pub,
@@ -151,7 +151,7 @@ test_high_level ()
 		 memcmp (&secret,
 			 &secret2,
 			 sizeof (secret)));
-  coin_priv.ecdsa_priv = *pk;
+  coin_priv.eddsa_priv = *pk;
   GNUNET_assert (GNUNET_OK == 
 		 TALER_link_decrypt_secret2 (&secret_enc,
 					     &trans_pub,

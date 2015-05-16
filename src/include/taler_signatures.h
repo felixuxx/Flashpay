@@ -123,16 +123,6 @@
 
 
 /**
- * ECDSA test signature.
- */
-#define TALER_SIGNATURE_CLIENT_TEST_ECDSA 1300
-
-/**
- * ECDSA test signature.
- */
-#define TALER_SIGNATURE_MINT_TEST_ECDSA 1301
-
-/**
  * EdDSA test signature.
  */
 #define TALER_SIGNATURE_CLIENT_TEST_EDDSA 1302
@@ -207,7 +197,7 @@ struct TALER_DepositRequestPS
 {
   /**
    * Purpose must be #TALER_SIGNATURE_WALLET_COIN_DEPOSIT.
-   * Used for an ECDSA signature with the `union TALER_CoinSpendPublicKeyP`.
+   * Used for an EdDSA signature with the `struct TALER_CoinSpendPublicKeyP`.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -283,9 +273,9 @@ struct TALER_DepositRequestPS
   /**
    * The coin's public key.  This is the value that must have been
    * signed (blindly) by the Mint.  The deposit request is to be
-   * signed by the corresponding private key (using ECDSA).
+   * signed by the corresponding private key (using EdDSA).
    */
-  union TALER_CoinSpendPublicKeyP coin_pub;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
 
 };
 
@@ -341,9 +331,9 @@ struct TALER_DepositConfirmationPS
   /**
    * The coin's public key.  This is the value that must have been
    * signed (blindly) by the Mint.  The deposit request is to be
-   * signed by the corresponding private key (using ECDSA).
+   * signed by the corresponding private key (using EdDSA).
    */
-  union TALER_CoinSpendPublicKeyP coin_pub;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
    * The Merchant's public key.  Allows the merchant to later refund
@@ -363,7 +353,7 @@ struct TALER_RefreshMeltCoinAffirmationPS
 {
   /**
    * Purpose is #TALER_SIGNATURE_WALLET_COIN_MELT.
-   * Used for an ECDSA signature with the `union TALER_CoinSpendPublicKeyP`.
+   * Used for an EdDSA signature with the `struct TALER_CoinSpendPublicKeyP`.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -396,9 +386,9 @@ struct TALER_RefreshMeltCoinAffirmationPS
   /**
    * The coin's public key.  This is the value that must have been
    * signed (blindly) by the Mint.  The deposit request is to be
-   * signed by the corresponding private key (using ECDSA).
+   * signed by the corresponding private key (using EdDSA).
    */
-  union TALER_CoinSpendPublicKeyP coin_pub;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
 };
 
 

@@ -17,6 +17,7 @@
  * @file include/taler_crypto_lib.h
  * @brief taler-specific crypto functions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
+ * @author Christian Grothoff <christian@grothoff.org>
  */
 #ifndef TALER_CRYPTO_LIB_H
 #define TALER_CRYPTO_LIB_H
@@ -100,7 +101,7 @@ struct TALER_MerchantPrivateKeyP
 struct TALER_TransferPublicKeyP
 {
   /**
-   * Taler uses ECDSA for transfer keys.
+   * Taler uses ECDHE for transfer keys.
    */
   struct GNUNET_CRYPTO_EcdhePublicKey ecdhe_pub;
 };
@@ -113,7 +114,7 @@ struct TALER_TransferPublicKeyP
 struct TALER_TransferPrivateKeyP
 {
   /**
-   * Taler uses ECDSA for melting session keys.
+   * Taler uses ECDHE for melting session keys.
    */
   struct GNUNET_CRYPTO_EcdhePrivateKey ecdhe_priv;
 };
@@ -196,37 +197,28 @@ struct TALER_MasterSignatureP
 
 /**
  * @brief Type of public keys for Taler coins.  The same key material is used
- * for ECDSA and ECDHE operations.
+ * for EdDSA and ECDHE operations.
  */
-union TALER_CoinSpendPublicKeyP
+struct TALER_CoinSpendPublicKeyP
 {
   /**
-   * Taler uses ECDSA for coins when signing deposit requests.
+   * Taler uses EdDSA for coins when signing deposit requests.
    */
-  struct GNUNET_CRYPTO_EcdsaPublicKey ecdsa_pub;
+  struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
 
-  /**
-   * Taler uses ECDH(E) for coin linkage during refresh operations.
-   */
-  struct GNUNET_CRYPTO_EcdhePublicKey ecdhe_pub;
 };
 
 
 /**
  * @brief Type of private keys for Taler coins.  The same key material is used
- * for ECDSA and ECDHE operations.
+ * for EdDSA and ECDHE operations.
  */
-union TALER_CoinSpendPrivateKeyP
+struct TALER_CoinSpendPrivateKeyP
 {
   /**
-   * Taler uses ECDSA for coins when signing deposit requests.
+   * Taler uses EdDSA for coins when signing deposit requests.
    */
-  struct GNUNET_CRYPTO_EcdsaPrivateKey ecdsa_priv;
-
-  /**
-   * Taler uses ECDHE for coin linkage during refresh operations.
-   */
-  struct GNUNET_CRYPTO_EcdhePrivateKey ecdhe_priv;
+  struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
 };
 
 
@@ -236,9 +228,9 @@ union TALER_CoinSpendPrivateKeyP
 struct TALER_CoinSpendSignatureP
 {
   /**
-   * Taler uses ECDSA for coins.
+   * Taler uses EdDSA for coins.
    */
-  struct GNUNET_CRYPTO_EcdsaSignature ecdsa_signature;
+  struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
 };
 
 
@@ -302,7 +294,7 @@ struct TALER_CoinPublicInfo
   /**
    * The coin's public key.
    */
-  union TALER_CoinSpendPublicKeyP coin_pub;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
    * Public key representing the denomination of the coin
@@ -383,7 +375,7 @@ struct TALER_RefreshLinkDecrypted
   /**
    * Private key of the coin.
    */
-  union TALER_CoinSpendPrivateKeyP coin_priv;
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
 
   /**
    * Blinding key.
@@ -416,7 +408,7 @@ struct TALER_RefreshLinkEncrypted
   /**
    * Encrypted private key of the coin.
    */
-  char coin_priv_enc[sizeof (union TALER_CoinSpendPrivateKeyP)];
+  char coin_priv_enc[sizeof (struct TALER_CoinSpendPrivateKeyP)];
 
 };
 
@@ -435,7 +427,7 @@ struct TALER_RefreshLinkEncrypted
 int
 TALER_link_decrypt_secret (const struct TALER_EncryptedLinkSecretP *secret_enc,
 			   const struct TALER_TransferPrivateKeyP *trans_priv,
-			   const union TALER_CoinSpendPublicKeyP *coin_pub,
+			   const struct TALER_CoinSpendPublicKeyP *coin_pub,
 			   struct TALER_LinkSecretP *secret);
 
 
@@ -453,7 +445,7 @@ TALER_link_decrypt_secret (const struct TALER_EncryptedLinkSecretP *secret_enc,
 int
 TALER_link_decrypt_secret2 (const struct TALER_EncryptedLinkSecretP *secret_enc,
 			    const struct TALER_TransferPublicKeyP *trans_pub,
-			    const union TALER_CoinSpendPrivateKeyP *coin_priv,
+			    const struct TALER_CoinSpendPrivateKeyP *coin_priv,
 			    struct TALER_LinkSecretP *secret);
 
 
@@ -470,7 +462,7 @@ TALER_link_decrypt_secret2 (const struct TALER_EncryptedLinkSecretP *secret_enc,
  */
 int
 TALER_link_encrypt_secret (const struct TALER_LinkSecretP *secret,
-			   const union TALER_CoinSpendPublicKeyP *coin_pub,
+			   const struct TALER_CoinSpendPublicKeyP *coin_pub,
 			   struct TALER_TransferPrivateKeyP *trans_priv,
 			   struct TALER_TransferPublicKeyP *trans_pub,
 			   struct TALER_EncryptedLinkSecretP *secret_enc);

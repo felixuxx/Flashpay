@@ -1068,7 +1068,7 @@ struct TALER_MINTDB_Plugin
   struct TALER_MINTDB_LinkDataList *
   (*get_link_data_list) (void *cls,
                          struct TALER_MINTDB_Session *sesssion,
-                         const union TALER_CoinSpendPublicKeyP *coin_pub);
+                         const struct TALER_CoinSpendPublicKeyP *coin_pub);
 
 
   /**
@@ -1101,7 +1101,7 @@ struct TALER_MINTDB_Plugin
   int
   (*get_transfer) (void *cls,
                    struct TALER_MINTDB_Session *sesssion,
-                   const union TALER_CoinSpendPublicKeyP *coin_pub,
+                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    struct TALER_TransferPublicKeyP *transfer_pub,
                    struct TALER_EncryptedLinkSecretP *shared_secret_enc);
 
@@ -1149,7 +1149,7 @@ struct TALER_MINTDB_Plugin
   struct TALER_MINTDB_TransactionList *
   (*get_coin_transactions) (void *cls,
                             struct TALER_MINTDB_Session *sesssion,
-                            const union TALER_CoinSpendPublicKeyP *coin_pub);
+                            const struct TALER_CoinSpendPublicKeyP *coin_pub);
 
 
   /**

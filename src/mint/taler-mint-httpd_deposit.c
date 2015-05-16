@@ -73,10 +73,10 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   dr.merchant = deposit->merchant_pub;
   dr.coin_pub = deposit->coin.coin_pub;
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
                                   &dr.purpose,
-                                  &deposit->csig.ecdsa_signature,
-                                  &deposit->coin.coin_pub.ecdsa_pub))
+                                  &deposit->csig.eddsa_signature,
+                                  &deposit->coin.coin_pub.eddsa_pub))
   {
     TALER_LOG_WARNING ("Invalid signature on /deposit request\n");
     return TMH_RESPONSE_reply_signature_invalid (connection,
