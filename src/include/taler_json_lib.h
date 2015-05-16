@@ -65,18 +65,6 @@ TALER_json_from_eddsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpo
 
 
 /**
- * Convert a signature (with purpose) to a JSON object representation.
- *
- * @param purpose purpose of the signature
- * @param signature the signature
- * @return the JSON reporesentation of the signature with purpose
- */
-json_t *
-TALER_json_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-                           const struct GNUNET_CRYPTO_EcdsaSignature *signature);
-
-
-/**
  * Convert RSA public key to JSON.
  *
  * @param pk public key to convert
