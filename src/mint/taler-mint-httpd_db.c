@@ -21,12 +21,8 @@
 #include "platform.h"
 #include <pthread.h>
 #include <jansson.h>
-#include "taler-mint-httpd_db.h"
-#include "taler_signatures.h"
 #include "taler-mint-httpd_responses.h"
-#include "taler_util.h"
 #include "taler-mint-httpd_keystate.h"
-#include "taler_mintdb_lib.h"
 
 
 /**

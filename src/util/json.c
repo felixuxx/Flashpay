@@ -21,7 +21,6 @@
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
-#include "taler_json_lib.h"
 
 /**
  * Shorthand for exit jumps.

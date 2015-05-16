@@ -124,30 +124,30 @@ run_queries (PGconn *conn)
 		     &hamount);		     
   TALER_string_to_amount ("EUR:4.4",
 			  &hamount);
-  /* FIXME: test TALER_PQ_RESULT_SPEC_VAR */
+  /* FIXME: test TALER_PQ_result_spec_variable_size */
   {
     struct TALER_PQ_QueryParam params_insert[] = {
-      TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (pub),
-      TALER_PQ_QUERY_PARAM_RSA_SIGNATURE (sig),
-      TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (&abs_time),
-      TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (&forever),
-      TALER_PQ_QUERY_PARAM_PTR (&hc),
-      TALER_PQ_QUERY_PARAM_AMOUNT (&hamount),
-      TALER_PQ_QUERY_PARAM_AMOUNT_NBO (&namount),
-      TALER_PQ_QUERY_PARAM_END
+      TALER_PQ_query_param_rsa_public_key (pub),
+      TALER_PQ_query_param_rsa_signature (sig),
+      TALER_PQ_query_param_absolute_time (&abs_time),
+      TALER_PQ_query_param_absolute_time (&forever),
+      TALER_PQ_query_param_auto_from_type (&hc),
+      TALER_PQ_query_param_amount (&hamount),
+      TALER_PQ_query_param_amount_nbo (&namount),
+      TALER_PQ_query_param_end
     };
     struct TALER_PQ_QueryParam params_select[] = {
-      TALER_PQ_QUERY_PARAM_END
+      TALER_PQ_query_param_end
     };
     struct TALER_PQ_ResultSpec results_select[] = {
-      TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY ("pub", &pub2),
-      TALER_PQ_RESULT_SPEC_RSA_SIGNATURE ("sig", &sig2),
-      TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME ("abs_time", &abs_time2),
-      TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME ("forever", &forever2),
-      TALER_PQ_RESULT_SPEC ("hash", &hc2),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("hamount", &hamount2),
-      TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("namount", &namount2),
-      TALER_PQ_RESULT_SPEC_END
+      TALER_PQ_result_spec_rsa_public_key ("pub", &pub2),
+      TALER_PQ_result_spec_rsa_signature ("sig", &sig2),
+      TALER_PQ_result_spec_absolute_time ("abs_time", &abs_time2),
+      TALER_PQ_result_spec_absolute_time ("forever", &forever2),
+      TALER_PQ_result_spec_auto_from_type ("hash", &hc2),
+      TALER_PQ_result_spec_amount ("hamount", &hamount2),
+      TALER_PQ_result_spec_amount_nbo ("namount", &namount2),
+      TALER_PQ_result_spec_end
     };
     
     result = TALER_PQ_exec_prepared (conn,

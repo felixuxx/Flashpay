@@ -30,11 +30,7 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include <pthread.h>
-#include "taler_mintdb_plugin.h"
-#include "taler_signatures.h"
-#include "taler_util.h"
 #include "taler-mint-httpd_parsing.h"
-#include "taler-mint-httpd_db.h"
 #include "taler-mint-httpd_deposit.h"
 #include "taler-mint-httpd_responses.h"
 #include "taler-mint-httpd_keystate.h"

@@ -21,9 +21,7 @@
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <libpq-fe.h>
-#include "taler_util.h"
 #include "taler_mintdb_plugin.h"
-#include "taler_mintdb_lib.h"
 
 /**
  * Mint directory with the keys.

@@ -22,7 +22,6 @@
 #define _TALER_MINT_SERVICE_H
 
 #include "taler_util.h"
-#include <jansson.h>
 
 /**
  * @brief Handle to this library context

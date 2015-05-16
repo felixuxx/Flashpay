@@ -23,7 +23,6 @@
  */
 #include "platform.h"
 #include "taler_pq_lib.h"
-#include "taler_signatures.h"
 #include "taler_mintdb_plugin.h"
 #include <pthread.h>
 #include <libpq-fe.h>
@@ -862,15 +861,15 @@ postgres_insert_denomination (void *cls,
   int ret;
 
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (dki->denom_pub.rsa_public_key),
-    TALER_PQ_QUERY_PARAM_PTR (&issue->start.abs_value_us__),
-    TALER_PQ_QUERY_PARAM_PTR (&issue->expire_withdraw.abs_value_us__),
-    TALER_PQ_QUERY_PARAM_PTR (&issue->expire_spend.abs_value_us__),
-    TALER_PQ_QUERY_PARAM_PTR (&issue->expire_legal.abs_value_us__),
-    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (&issue->value),
-    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (&issue->fee_withdraw),
-    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (&issue->fee_refresh),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_rsa_public_key (dki->denom_pub.rsa_public_key),
+    TALER_PQ_query_param_auto_from_type (&issue->start.abs_value_us__),
+    TALER_PQ_query_param_auto_from_type (&issue->expire_withdraw.abs_value_us__),
+    TALER_PQ_query_param_auto_from_type (&issue->expire_spend.abs_value_us__),
+    TALER_PQ_query_param_auto_from_type (&issue->expire_legal.abs_value_us__),
+    TALER_PQ_query_param_amount_nbo (&issue->value),
+    TALER_PQ_query_param_amount_nbo (&issue->fee_withdraw),
+    TALER_PQ_query_param_amount_nbo (&issue->fee_refresh),
+    TALER_PQ_query_param_end
   };
   result = TALER_PQ_exec_prepared (session->conn,
                                    "insert_denomination",
@@ -906,13 +905,13 @@ postgres_reserve_get (void *cls,
 {
   PGresult *result;
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR(&reserve->pub),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_auto_from_type(&reserve->pub),
+    TALER_PQ_query_param_end
   };
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_AMOUNT("current_balance", &reserve->balance),
-    TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME("expiration_date", &reserve->expiry),
-    TALER_PQ_RESULT_SPEC_END
+    TALER_PQ_result_spec_amount("current_balance", &reserve->balance),
+    TALER_PQ_result_spec_absolute_time("expiration_date", &reserve->expiry),
+    TALER_PQ_result_spec_end
   };
 
   result = TALER_PQ_exec_prepared (session->conn,
@@ -962,10 +961,10 @@ postgres_reserves_update (void *cls,
   if (NULL == reserve)
     return GNUNET_SYSERR;
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (&reserve->expiry),
-    TALER_PQ_QUERY_PARAM_AMOUNT (&reserve->balance),
-    TALER_PQ_QUERY_PARAM_PTR (&reserve->pub),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_absolute_time (&reserve->expiry),
+    TALER_PQ_query_param_amount (&reserve->balance),
+    TALER_PQ_query_param_auto_from_type (&reserve->pub),
+    TALER_PQ_query_param_end
   };
   result = TALER_PQ_exec_prepared (session->conn,
                                    "update_reserve",
@@ -1034,10 +1033,10 @@ postgres_reserves_in_insert (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Reserve does not exist; creating a new one\n");
     struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_QUERY_PARAM_PTR (reserve_pub),
-      TALER_PQ_QUERY_PARAM_AMOUNT (balance),
-      TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (&expiry),
-      TALER_PQ_QUERY_PARAM_END
+      TALER_PQ_query_param_auto_from_type (reserve_pub),
+      TALER_PQ_query_param_amount (balance),
+      TALER_PQ_query_param_absolute_time (&expiry),
+      TALER_PQ_query_param_end
     };
     result = TALER_PQ_exec_prepared (session->conn,
                                      "create_reserve",
@@ -1073,11 +1072,11 @@ postgres_reserves_in_insert (void *cls,
   /* create new incoming transaction, SQL "primary key" logic
      is used to guard against duplicates! */
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR (&reserve.pub),
-    TALER_PQ_QUERY_PARAM_AMOUNT (balance),
-    TALER_PQ_QUERY_PARAM_PTR_SIZED (details, strlen (details)),
-    TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (&expiry),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_auto_from_type (&reserve.pub),
+    TALER_PQ_query_param_amount (balance),
+    TALER_PQ_query_param_fixed_size (details, strlen (details)),
+    TALER_PQ_query_param_absolute_time (&expiry),
+    TALER_PQ_query_param_end
   };
   result = TALER_PQ_exec_prepared (session->conn,
                                    "create_reserves_in_transaction",
@@ -1143,8 +1142,8 @@ postgres_get_collectable_blindcoin (void *cls,
 {
   PGresult *result;
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR (h_blind),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_auto_from_type (h_blind),
+    TALER_PQ_query_param_end
   };
   struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
   struct GNUNET_CRYPTO_rsa_Signature *denom_sig;
@@ -1166,11 +1165,11 @@ postgres_get_collectable_blindcoin (void *cls,
     goto cleanup;
   }
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY("denom_pub", &denom_pub),
-    TALER_PQ_RESULT_SPEC_RSA_SIGNATURE("denom_sig", &denom_sig),
-    TALER_PQ_RESULT_SPEC("reserve_sig", &collectable->reserve_sig),
-    TALER_PQ_RESULT_SPEC("reserve_pub", &collectable->reserve_pub),
-    TALER_PQ_RESULT_SPEC_END
+    TALER_PQ_result_spec_rsa_public_key("denom_pub", &denom_pub),
+    TALER_PQ_result_spec_rsa_signature("denom_sig", &denom_sig),
+    TALER_PQ_result_spec_auto_from_type("reserve_sig", &collectable->reserve_sig),
+    TALER_PQ_result_spec_auto_from_type("reserve_pub", &collectable->reserve_pub),
+    TALER_PQ_result_spec_end
   };
 
   if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
@@ -1216,12 +1215,12 @@ postgres_insert_collectable_blindcoin (void *cls,
   struct TALER_MINTDB_Reserve reserve;
   int ret = GNUNET_SYSERR;
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR (h_blind),
-    TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (collectable->denom_pub.rsa_public_key),
-    TALER_PQ_QUERY_PARAM_RSA_SIGNATURE (collectable->sig.rsa_signature),
-    TALER_PQ_QUERY_PARAM_PTR (&collectable->reserve_pub),
-    TALER_PQ_QUERY_PARAM_PTR (&collectable->reserve_sig),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_auto_from_type (h_blind),
+    TALER_PQ_query_param_rsa_public_key (collectable->denom_pub.rsa_public_key),
+    TALER_PQ_query_param_rsa_signature (collectable->sig.rsa_signature),
+    TALER_PQ_query_param_auto_from_type (&collectable->reserve_pub),
+    TALER_PQ_query_param_auto_from_type (&collectable->reserve_sig),
+    TALER_PQ_query_param_end
   };
 
   if (GNUNET_OK != postgres_start (cls,
@@ -1294,8 +1293,8 @@ postgres_get_reserve_history (void *cls,
   {
     struct TALER_MINTDB_BankTransfer *bt;
     struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_QUERY_PARAM_PTR (reserve_pub),
-      TALER_PQ_QUERY_PARAM_END
+      TALER_PQ_query_param_auto_from_type (reserve_pub),
+      TALER_PQ_query_param_end
     };
 
     result = TALER_PQ_exec_prepared (session->conn,
@@ -1351,8 +1350,8 @@ postgres_get_reserve_history (void *cls,
     struct GNUNET_CRYPTO_rsa_Signature *denom_sig;
 
     struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_QUERY_PARAM_PTR (reserve_pub),
-      TALER_PQ_QUERY_PARAM_END
+      TALER_PQ_query_param_auto_from_type (reserve_pub),
+      TALER_PQ_query_param_end
     };
     result = TALER_PQ_exec_prepared (session->conn,
                                      "get_reserves_blindcoins",
@@ -1368,11 +1367,11 @@ postgres_get_reserve_history (void *cls,
       goto cleanup;
     }
     struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_RESULT_SPEC ("blind_ev", &blind_ev),
-      TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY ("denom_pub", &denom_pub),
-      TALER_PQ_RESULT_SPEC_RSA_SIGNATURE ("denom_sig", &denom_sig),
-      TALER_PQ_RESULT_SPEC ("reserve_sig", &reserve_sig),
-      TALER_PQ_RESULT_SPEC_END
+      TALER_PQ_result_spec_auto_from_type ("blind_ev", &blind_ev),
+      TALER_PQ_result_spec_rsa_public_key ("denom_pub", &denom_pub),
+      TALER_PQ_result_spec_rsa_signature ("denom_sig", &denom_sig),
+      TALER_PQ_result_spec_auto_from_type ("reserve_sig", &reserve_sig),
+      TALER_PQ_result_spec_end
     };
     GNUNET_assert (NULL != rh);
     GNUNET_assert (NULL != rh_head);
@@ -1427,10 +1426,10 @@ postgres_have_deposit (void *cls,
                        const struct TALER_MINTDB_Deposit *deposit)
 {
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR (&deposit->coin.coin_pub),
-    TALER_PQ_QUERY_PARAM_PTR (&deposit->transaction_id),
-    TALER_PQ_QUERY_PARAM_PTR (&deposit->merchant_pub),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
+    TALER_PQ_query_param_auto_from_type (&deposit->transaction_id),
+    TALER_PQ_query_param_auto_from_type (&deposit->merchant_pub),
+    TALER_PQ_query_param_end
   };
   PGresult *result;
   int ret;
@@ -1480,18 +1479,18 @@ postgres_insert_deposit (void *cls,
   ret = GNUNET_SYSERR;
   json_wire_enc = json_dumps (deposit->wire, JSON_COMPACT);
   struct TALER_PQ_QueryParam params[]= {
-    TALER_PQ_QUERY_PARAM_PTR (&deposit->coin.coin_pub),
-    TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (deposit->coin.denom_pub.rsa_public_key),
-    TALER_PQ_QUERY_PARAM_RSA_SIGNATURE (deposit->coin.denom_sig.rsa_signature),
-    TALER_PQ_QUERY_PARAM_PTR (&deposit->transaction_id),
-    TALER_PQ_QUERY_PARAM_AMOUNT (&deposit->amount_with_fee),
-    TALER_PQ_QUERY_PARAM_PTR (&deposit->merchant_pub),
-    TALER_PQ_QUERY_PARAM_PTR (&deposit->h_contract),
-    TALER_PQ_QUERY_PARAM_PTR (&deposit->h_wire),
-    TALER_PQ_QUERY_PARAM_PTR (&deposit->csig),
-    TALER_PQ_QUERY_PARAM_PTR_SIZED (json_wire_enc,
+    TALER_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
+    TALER_PQ_query_param_rsa_public_key (deposit->coin.denom_pub.rsa_public_key),
+    TALER_PQ_query_param_rsa_signature (deposit->coin.denom_sig.rsa_signature),
+    TALER_PQ_query_param_auto_from_type (&deposit->transaction_id),
+    TALER_PQ_query_param_amount (&deposit->amount_with_fee),
+    TALER_PQ_query_param_auto_from_type (&deposit->merchant_pub),
+    TALER_PQ_query_param_auto_from_type (&deposit->h_contract),
+    TALER_PQ_query_param_auto_from_type (&deposit->h_wire),
+    TALER_PQ_query_param_auto_from_type (&deposit->csig),
+    TALER_PQ_query_param_fixed_size (json_wire_enc,
                                     strlen (json_wire_enc)),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_end
   };
   result = TALER_PQ_exec_prepared (session->conn, "insert_deposit", params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
@@ -1527,8 +1526,8 @@ postgres_get_refresh_session (void *cls,
 {
   PGresult *result;
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR(session_hash),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_auto_from_type(session_hash),
+    TALER_PQ_query_param_end
   };
   int ret;
   uint16_t num_oldcoins;
@@ -1559,10 +1558,10 @@ postgres_get_refresh_session (void *cls,
   }
   memset (refresh_session, 0, sizeof (struct TALER_MINTDB_RefreshSession));
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC("num_oldcoins", &num_oldcoins),
-    TALER_PQ_RESULT_SPEC("num_newcoins", &num_newcoins),
-    TALER_PQ_RESULT_SPEC("noreveal_index", &noreveal_index),
-    TALER_PQ_RESULT_SPEC_END
+    TALER_PQ_result_spec_auto_from_type("num_oldcoins", &num_oldcoins),
+    TALER_PQ_result_spec_auto_from_type("num_newcoins", &num_newcoins),
+    TALER_PQ_result_spec_auto_from_type("noreveal_index", &noreveal_index),
+    TALER_PQ_result_spec_end
   };
   if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
   {
@@ -1602,11 +1601,11 @@ postgres_create_refresh_session (void *cls,
   uint16_t num_newcoins;
   uint16_t noreveal_index;
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR(session_hash),
-    TALER_PQ_QUERY_PARAM_PTR(&num_oldcoins),
-    TALER_PQ_QUERY_PARAM_PTR(&num_newcoins),
-    TALER_PQ_QUERY_PARAM_PTR(&noreveal_index),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_auto_from_type(session_hash),
+    TALER_PQ_query_param_auto_from_type(&num_oldcoins),
+    TALER_PQ_query_param_auto_from_type(&num_newcoins),
+    TALER_PQ_query_param_auto_from_type(&noreveal_index),
+    TALER_PQ_query_param_end
   };
   num_oldcoins = htons (refresh_session->num_oldcoins);
   num_newcoins = htons (refresh_session->num_newcoins);
@@ -1648,11 +1647,11 @@ postgres_insert_refresh_melt (void *cls,
 
   {
     struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_QUERY_PARAM_PTR(&melt->session_hash),
-      TALER_PQ_QUERY_PARAM_PTR(&oldcoin_index_nbo),
-      TALER_PQ_QUERY_PARAM_PTR(&melt->coin.coin_pub),
-      TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY(melt->coin.denom_pub.rsa_public_key),
-      TALER_PQ_QUERY_PARAM_END
+      TALER_PQ_query_param_auto_from_type(&melt->session_hash),
+      TALER_PQ_query_param_auto_from_type(&oldcoin_index_nbo),
+      TALER_PQ_query_param_auto_from_type(&melt->coin.coin_pub),
+      TALER_PQ_query_param_rsa_public_key(melt->coin.denom_pub.rsa_public_key),
+      TALER_PQ_query_param_end
     };
     result = TALER_PQ_exec_prepared (session->conn,
                                      "insert_refresh_melt",
@@ -1691,18 +1690,18 @@ postgres_get_refresh_melt (void *cls,
   // FIXME: check logic!
   uint16_t oldcoin_index_nbo = htons (oldcoin_index);
   struct TALER_PQ_Query params[] = {
-    TALER_PQ_QUERY_PARAM_PTR (session_hash),
-    TALER_PQ_QUERY_PARAM_PTR (&oldcoin_index_nbo),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_auto_from_type (session_hash),
+    TALER_PQ_query_param_auto_from_type (&oldcoin_index_nbo),
+    TALER_PQ_query_param_end
   };
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC ("coin_pub", &melt->coin),
-    TALER_PQ_RESULT_SPEC ("coin_sig", &melt->coin_sig),
-    TALER_PQ_RESULT_SPEC ("denom_pub", &melt->coin),
-    TALER_PQ_RESULT_SPEC ("denom_sig", &melt->coin),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("amount", melt->amount_with_fee),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("fee", melt->melt_fee),
-    TALER_PQ_RESULT_SPEC_END
+    TALER_PQ_result_spec_auto_from_type ("coin_pub", &melt->coin),
+    TALER_PQ_result_spec_auto_from_type ("coin_sig", &melt->coin_sig),
+    TALER_PQ_result_spec_auto_from_type ("denom_pub", &melt->coin),
+    TALER_PQ_result_spec_auto_from_type ("denom_sig", &melt->coin),
+    TALER_PQ_result_spec_amount ("amount", melt->amount_with_fee),
+    TALER_PQ_result_spec_amount ("fee", melt->melt_fee),
+    TALER_PQ_result_spec_end
   };
 
   result = TALER_PQ_exec_prepared (session->conn,
@@ -1752,10 +1751,10 @@ postgres_insert_refresh_order (void *cls,
 
   {
     struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_QUERY_PARAM_PTR (&newcoin_index_nbo),
-      TALER_PQ_QUERY_PARAM_PTR (session_hash),
-      TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (denom_pubs->rsa_public_key),
-      TALER_PQ_QUERY_PARAM_END
+      TALER_PQ_query_param_auto_from_type (&newcoin_index_nbo),
+      TALER_PQ_query_param_auto_from_type (session_hash),
+      TALER_PQ_query_param_rsa_public_key (denom_pubs->rsa_public_key),
+      TALER_PQ_query_param_end
     };
     result = TALER_PQ_exec_prepared (session->conn,
                                      "insert_refresh_order",
@@ -1800,9 +1799,9 @@ postgres_get_refresh_order (void *cls,
   uint16_t newcoin_index_nbo = htons (num_newcoins);
 
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR(session_hash),
-    TALER_PQ_QUERY_PARAM_PTR(&newcoin_index_nbo),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_auto_from_type(session_hash),
+    TALER_PQ_query_param_auto_from_type(&newcoin_index_nbo),
+    TALER_PQ_query_param_end
   };
 
   PGresult *result = TALER_PQ_exec_prepared (session->conn,
@@ -1823,8 +1822,8 @@ postgres_get_refresh_order (void *cls,
   }
   GNUNET_assert (1 == PQntuples (result));
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY ("denom_pub", &denom_pubs->rsa_public_key),
-    TALER_PQ_RESULT_SPEC_END
+    TALER_PQ_result_spec_rsa_public_key ("denom_pub", &denom_pubs->rsa_public_key),
+    TALER_PQ_result_spec_end
   };
   if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
   {
@@ -1863,14 +1862,14 @@ postgres_insert_refresh_commit_coins (void *cls,
   uint16_t cnc_index_nbo = htons (i);
   uint16_t newcoin_index_nbo = htons (num_newcoins);
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR(session_hash),
-    TALER_PQ_QUERY_PARAM_PTR_SIZED(commit_coins->coin_ev, commit_coins->coin_ev_size),
-    TALER_PQ_QUERY_PARAM_PTR(&cnc_index_nbo),
-    TALER_PQ_QUERY_PARAM_PTR(&newcoin_index_nbo),
-    TALER_PQ_QUERY_PARAM_PTR_SIZED (commit_coins->refresh_link->coin_priv_enc,
+    TALER_PQ_query_param_auto_from_type(session_hash),
+    TALER_PQ_query_param_fixed_size(commit_coins->coin_ev, commit_coins->coin_ev_size),
+    TALER_PQ_query_param_auto_from_type(&cnc_index_nbo),
+    TALER_PQ_query_param_auto_from_type(&newcoin_index_nbo),
+    TALER_PQ_query_param_fixed_size (commit_coins->refresh_link->coin_priv_enc,
                                     commit_coins->refresh_link->blinding_key_enc_size +
                                     sizeof (struct TALER_CoinSpendPrivateKeyP)),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_end
   };
 
   PGresult *result = TALER_PQ_exec_prepared (session->conn,
@@ -1921,10 +1920,10 @@ postgres_get_refresh_commit_coins (void *cls,
   uint16_t cnc_index_nbo = htons (cnc_index);
   uint16_t newcoin_index_nbo = htons (newcoin_index);
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR(session_hash),
-    TALER_PQ_QUERY_PARAM_PTR(&cnc_index_nbo),
-    TALER_PQ_QUERY_PARAM_PTR(&newcoin_index_nbo),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_auto_from_type(session_hash),
+    TALER_PQ_query_param_auto_from_type(&cnc_index_nbo),
+    TALER_PQ_query_param_auto_from_type(&newcoin_index_nbo),
+    TALER_PQ_query_param_end
   };
   void *c_buf;
   size_t c_buf_size;
@@ -1950,9 +1949,9 @@ postgres_get_refresh_commit_coins (void *cls,
   }
 
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_VAR("coin_ev", &c_buf, &c_buf_size),
-    TALER_PQ_RESULT_SPEC_VAR("link_vector_enc", &rl_buf, &rl_buf_size),
-    TALER_PQ_RESULT_SPEC_END
+    TALER_PQ_result_spec_variable_size("coin_ev", &c_buf, &c_buf_size),
+    TALER_PQ_result_spec_variable_size("link_vector_enc", &rl_buf, &rl_buf_size),
+    TALER_PQ_result_spec_end
   };
   if (GNUNET_YES != TALER_PQ_extract_result (result, rs, 0))
   {
@@ -2000,12 +1999,12 @@ postgres_insert_refresh_commit_links (void *cls,
   uint16_t cnc_index_nbo = htons (i);
   uint16_t oldcoin_index_nbo = htons (j);
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR(session_hash),
-    TALER_PQ_QUERY_PARAM_PTR(&commit_link->transfer_pub),
-    TALER_PQ_QUERY_PARAM_PTR(&cnc_index_nbo),
-    TALER_PQ_QUERY_PARAM_PTR(&oldcoin_index_nbo),
-    TALER_PQ_QUERY_PARAM_PTR(&commit_link->shared_secret_enc),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_auto_from_type(session_hash),
+    TALER_PQ_query_param_auto_from_type(&commit_link->transfer_pub),
+    TALER_PQ_query_param_auto_from_type(&cnc_index_nbo),
+    TALER_PQ_query_param_auto_from_type(&oldcoin_index_nbo),
+    TALER_PQ_query_param_auto_from_type(&commit_link->shared_secret_enc),
+    TALER_PQ_query_param_end
   };
 
   PGresult *result = TALER_PQ_exec_prepared (session->conn,
@@ -2056,10 +2055,10 @@ postgres_get_refresh_commit_links (void *cls,
   uint16_t oldcoin_index_nbo = htons (num_links);
 
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR(session_hash),
-    TALER_PQ_QUERY_PARAM_PTR(&cnc_index_nbo),
-    TALER_PQ_QUERY_PARAM_PTR(&oldcoin_index_nbo),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_auto_from_type(session_hash),
+    TALER_PQ_query_param_auto_from_type(&cnc_index_nbo),
+    TALER_PQ_query_param_auto_from_type(&oldcoin_index_nbo),
+    TALER_PQ_query_param_end
   };
 
   PGresult *result = TALER_PQ_exec_prepared (session->conn,
@@ -2079,9 +2078,9 @@ postgres_get_refresh_commit_links (void *cls,
   }
 
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC("transfer_pub", &links->transfer_pub),
-    TALER_PQ_RESULT_SPEC("link_secret_enc", &links->shared_secret_enc),
-    TALER_PQ_RESULT_SPEC_END
+    TALER_PQ_result_spec_auto_from_type("transfer_pub", &links->transfer_pub),
+    TALER_PQ_result_spec_auto_from_type("link_secret_enc", &links->shared_secret_enc),
+    TALER_PQ_result_spec_end
   };
 
   if (GNUNET_YES != TALER_PQ_extract_result (result, rs, 0))
@@ -2167,10 +2166,10 @@ postgres_insert_refresh_collectable (void *cls,
 
   {
     struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_QUERY_PARAM_PTR(session_hash),
-      TALER_PQ_QUERY_PARAM_PTR(&newcoin_index_nbo),
-      TALER_PQ_QUERY_PARAM_RSA_SIGNATURE(ev_sig->rsa_signature),
-      TALER_PQ_QUERY_PARAM_END
+      TALER_PQ_query_param_auto_from_type(session_hash),
+      TALER_PQ_query_param_auto_from_type(&newcoin_index_nbo),
+      TALER_PQ_query_param_rsa_signature(ev_sig->rsa_signature),
+      TALER_PQ_query_param_end
     };
     result = TALER_PQ_exec_prepared (session->conn,
                                      "insert_refresh_collectable",
@@ -2205,8 +2204,8 @@ postgres_get_link_data_list (void *cls,
   struct TALER_MINTDB_LinkDataList *ldl;
   struct TALER_MINTDB_LinkDataList *pos;
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR(coin_pub),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_auto_from_type(coin_pub),
+    TALER_PQ_query_param_end
   };
   PGresult *result = TALER_PQ_exec_prepared (session->conn, "get_link", params);
 
@@ -2233,10 +2232,10 @@ postgres_get_link_data_list (void *cls,
     void *ld_buf;
     size_t ld_buf_size;
     struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_RESULT_SPEC_VAR("link_vector_enc", &ld_buf, &ld_buf_size),
-      TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY("denom_pub", &denom_pub),
-      TALER_PQ_RESULT_SPEC_RSA_SIGNATURE("ev_sig", &sig),
-      TALER_PQ_RESULT_SPEC_END
+      TALER_PQ_result_spec_variable_size("link_vector_enc", &ld_buf, &ld_buf_size),
+      TALER_PQ_result_spec_rsa_public_key("denom_pub", &denom_pub),
+      TALER_PQ_result_spec_rsa_signature("ev_sig", &sig),
+      TALER_PQ_result_spec_end
     };
 
     if (GNUNET_OK != TALER_PQ_extract_result (result, rs, i))
@@ -2299,8 +2298,8 @@ postgres_get_transfer (void *cls,
 {
   // FIXME: check logic!
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_QUERY_PARAM_PTR(coin_pub),
-    TALER_PQ_QUERY_PARAM_END
+    TALER_PQ_query_param_auto_from_type(coin_pub),
+    TALER_PQ_query_param_end
   };
 
   PGresult *result = TALER_PQ_exec_prepared (session->conn, "get_transfer", params);
@@ -2328,9 +2327,9 @@ postgres_get_transfer (void *cls,
   }
 
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC("transfer_pub", transfer_pub),
-    TALER_PQ_RESULT_SPEC("link_secret_enc", shared_secret_enc),
-    TALER_PQ_RESULT_SPEC_END
+    TALER_PQ_result_spec_auto_from_type("transfer_pub", transfer_pub),
+    TALER_PQ_result_spec_auto_from_type("link_secret_enc", shared_secret_enc),
+    TALER_PQ_result_spec_end
   };
 
   if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
@@ -2375,8 +2374,8 @@ postgres_get_coin_transactions (void *cls,
   {
     struct TALER_MINTDB_Deposit *deposit;
     struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_QUERY_PARAM_PTR (&coin_pub->eddsa_pub),
-      TALER_PQ_QUERY_PARAM_END
+      TALER_PQ_query_param_auto_from_type (&coin_pub->eddsa_pub),
+      TALER_PQ_query_param_end
     };
     json_error_t json_error;
     void *json_wire_enc;
@@ -2395,19 +2394,19 @@ postgres_get_coin_transactions (void *cls,
     {
       deposit = GNUNET_new (struct TALER_MINTDB_Deposit);
       struct TALER_PQ_ResultSpec rs[] = {
-        TALER_PQ_RESULT_SPEC ("coin_pub", &deposit->coin),
-        TALER_PQ_RESULT_SPEC ("coin_sig", &deposit->csig),
-        TALER_PQ_RESULT_SPEC ("merchant_pub", &deposit->merchant_pub),
-        TALER_PQ_RESULT_SPEC ("h_contract", &deposit->h_contract),
-        TALER_PQ_RESULT_SPEC ("h_wire", &deposit->h_wire),
-        TALER_PQ_RESULT_SPEC_VAR ("wire", &json_wire_enc, &json_wire_enc_size),
-        TALER_PQ_RESULT_SPEC ("transaction_id", &deposit->transaction_id),
+        TALER_PQ_result_spec_auto_from_type ("coin_pub", &deposit->coin),
+        TALER_PQ_result_spec_auto_from_type ("coin_sig", &deposit->csig),
+        TALER_PQ_result_spec_auto_from_type ("merchant_pub", &deposit->merchant_pub),
+        TALER_PQ_result_spec_auto_from_type ("h_contract", &deposit->h_contract),
+        TALER_PQ_result_spec_auto_from_type ("h_wire", &deposit->h_wire),
+        TALER_PQ_result_spec_variable_size ("wire", &json_wire_enc, &json_wire_enc_size),
+        TALER_PQ_result_spec_auto_from_type ("transaction_id", &deposit->transaction_id),
         /**  FIXME:
-         * TALER_PQ_RESULT_SPEC ("timestamp", &deposit->timestamp),
-         * TALER_PQ_RESULT_SPEC ("refund_deadline", &deposit->refund_deadline),
+         * TALER_PQ_result_spec_auto_from_type ("timestamp", &deposit->timestamp),
+         * TALER_PQ_result_spec_auto_from_type ("refund_deadline", &deposit->refund_deadline),
          * TALER_PQ_RESULT_AMOUNT_NBO ("deposit_fee", &deposit->deposit_fee)
          */
-        TALER_PQ_RESULT_SPEC_END
+        TALER_PQ_result_spec_end
       };
       if ((GNUNET_OK != TALER_PQ_extract_result (result, rs, i)) ||
 	  (GNUNET_OK != TALER_PQ_extract_amount (result,

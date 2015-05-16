@@ -23,7 +23,6 @@
 #ifndef TALER_MINTDB_LIB_H
 #define TALER_MINTDB_LIB_H
 
-#include <gnunet/gnunet_util_lib.h>
 #include "taler_signatures.h"
 
 /**

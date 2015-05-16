@@ -24,7 +24,6 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include "taler_signatures.h"
-#include "taler_util.h"
 #include "taler-mint-httpd_test.h"
 #include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_responses.h"

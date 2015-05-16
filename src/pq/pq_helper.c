@@ -33,7 +33,7 @@
  * @return array entry for the query parameters to use
  */
 struct TALER_PQ_QueryParam
-TALER_PQ_QUERY_PARAM_AMOUNT_NBO (const struct TALER_AmountNBO *x)
+TALER_PQ_query_param_amount_nbo (const struct TALER_AmountNBO *x)
 {
   struct TALER_PQ_QueryParam res =
     { TALER_PQ_QF_AMOUNT_NBO, x, sizeof (*x) };
@@ -51,7 +51,7 @@ TALER_PQ_QUERY_PARAM_AMOUNT_NBO (const struct TALER_AmountNBO *x)
  * @return array entry for the query parameters to use
  */
 struct TALER_PQ_QueryParam
-TALER_PQ_QUERY_PARAM_AMOUNT (const struct TALER_Amount *x)
+TALER_PQ_query_param_amount (const struct TALER_Amount *x)
 {
   struct TALER_PQ_QueryParam res =
     { TALER_PQ_QF_AMOUNT, x, sizeof (*x) };
@@ -67,7 +67,7 @@ TALER_PQ_QUERY_PARAM_AMOUNT (const struct TALER_Amount *x)
  * @return array entry for the query parameters to use
  */
 struct TALER_PQ_QueryParam
-TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (const struct GNUNET_CRYPTO_rsa_PublicKey *x)
+TALER_PQ_query_param_rsa_public_key (const struct GNUNET_CRYPTO_rsa_PublicKey *x)
 {
   struct TALER_PQ_QueryParam res =
     { TALER_PQ_QF_RSA_PUBLIC_KEY, (x), 0 };
@@ -83,7 +83,7 @@ TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (const struct GNUNET_CRYPTO_rsa_PublicKey *x
  * @return array entry for the query parameters to use
  */
 struct TALER_PQ_QueryParam
-TALER_PQ_QUERY_PARAM_RSA_SIGNATURE (const struct GNUNET_CRYPTO_rsa_Signature *x)
+TALER_PQ_query_param_rsa_signature (const struct GNUNET_CRYPTO_rsa_Signature *x)
 {
   struct TALER_PQ_QueryParam res =
     { TALER_PQ_QF_RSA_SIGNATURE, (x), 0 };
@@ -99,7 +99,7 @@ TALER_PQ_QUERY_PARAM_RSA_SIGNATURE (const struct GNUNET_CRYPTO_rsa_Signature *x)
  * @return array entry for the query parameters to use
  */
 struct TALER_PQ_QueryParam
-TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (const struct GNUNET_TIME_Absolute *x)
+TALER_PQ_query_param_absolute_time (const struct GNUNET_TIME_Absolute *x)
 {
   struct TALER_PQ_QueryParam res =
     { TALER_PQ_QF_TIME_ABSOLUTE, x, sizeof (*x) };
@@ -116,7 +116,7 @@ TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (const struct GNUNET_TIME_Absolute *x)
  * @return array entry for the result specification to use
  */
 struct TALER_PQ_ResultSpec
-TALER_PQ_RESULT_SPEC_VAR (const char *name,
+TALER_PQ_result_spec_variable_size (const char *name,
 			  void **dst,
 			  size_t *sptr)
 {
@@ -134,7 +134,7 @@ TALER_PQ_RESULT_SPEC_VAR (const char *name,
  * @return array entry for the result specification to use
  */
 struct TALER_PQ_ResultSpec
-TALER_PQ_RESULT_SPEC_AMOUNT_NBO (const char *name,
+TALER_PQ_result_spec_amount_nbo (const char *name,
 				 struct TALER_AmountNBO *amount)
 {
   struct TALER_PQ_ResultSpec res = 
@@ -151,7 +151,7 @@ TALER_PQ_RESULT_SPEC_AMOUNT_NBO (const char *name,
  * @return array entry for the result specification to use
  */
 struct TALER_PQ_ResultSpec
-TALER_PQ_RESULT_SPEC_AMOUNT (const char *name,
+TALER_PQ_result_spec_amount (const char *name,
 			     struct TALER_Amount *amount)
 {
   struct TALER_PQ_ResultSpec res = 
@@ -168,7 +168,7 @@ TALER_PQ_RESULT_SPEC_AMOUNT (const char *name,
  * @return array entry for the result specification to use
  */
 struct TALER_PQ_ResultSpec
-TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY (const char *name,
+TALER_PQ_result_spec_rsa_public_key (const char *name,
 				     struct GNUNET_CRYPTO_rsa_PublicKey **rsa)
 {
   struct TALER_PQ_ResultSpec res = 
@@ -185,7 +185,7 @@ TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY (const char *name,
  * @return array entry for the result specification to use
  */
 struct TALER_PQ_ResultSpec
-TALER_PQ_RESULT_SPEC_RSA_SIGNATURE (const char *name,
+TALER_PQ_result_spec_rsa_signature (const char *name,
 				    struct GNUNET_CRYPTO_rsa_Signature **sig)
 {
   struct TALER_PQ_ResultSpec res = 
@@ -202,7 +202,7 @@ TALER_PQ_RESULT_SPEC_RSA_SIGNATURE (const char *name,
  * @return array entry for the result specification to use
  */
 struct TALER_PQ_ResultSpec
-TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME (const char *name,
+TALER_PQ_result_spec_absolute_time (const char *name,
 				    struct GNUNET_TIME_Absolute *at)
 {
   struct TALER_PQ_ResultSpec res = 

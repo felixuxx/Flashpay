@@ -22,8 +22,6 @@
 #define TALER_MINT_HTTPD_DB_H
 
 #include <microhttpd.h>
-#include <gnunet/gnunet_util_lib.h>
-#include "taler_util.h"
 #include "taler_mintdb_plugin.h"
 
 

@@ -23,8 +23,6 @@
 #define TALER_MINTDB_PLUGIN_H
 
 #include <gnunet/gnunet_util_lib.h>
-#include "taler_util.h"
-#include "taler_signatures.h"
 #include "taler_mintdb_lib.h"
 
 
