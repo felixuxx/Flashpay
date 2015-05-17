@@ -24,6 +24,11 @@
 #include "taler_json_lib.h"
 
 
+/**
+ * Test amount conversion from/to JSON.
+ *
+ * @return 0 on success
+ */
 static int
 test_amount ()
 {
@@ -47,6 +52,42 @@ test_amount ()
 }
 
 
+/**
+ * Test time conversion from/to JSON.
+ *
+ * @return 0 on success
+ */
+static int
+test_time ()
+{
+  json_t *j;
+  struct GNUNET_TIME_Absolute a1;
+  struct GNUNET_TIME_Absolute a2;
+
+  a1 = GNUNET_TIME_absolute_get ();
+  a1.abs_value_us -= a1.abs_value_us % 1000000; /* round! */
+  j = TALER_json_from_abs (a1);
+  GNUNET_assert (NULL != j);
+  GNUNET_assert (GNUNET_OK ==
+		 TALER_json_to_abs (j,
+				    &a2));
+  GNUNET_assert (a1.abs_value_us ==
+		 a2.abs_value_us);
+  json_decref (j);
+
+  a1 = GNUNET_TIME_UNIT_FOREVER_ABS;
+  j = TALER_json_from_abs (a1);
+  GNUNET_assert (NULL != j);
+  GNUNET_assert (GNUNET_OK ==
+		 TALER_json_to_abs (j,
+				    &a2));
+  GNUNET_assert (a1.abs_value_us ==
+		 a2.abs_value_us);
+  json_decref (j);
+  return 0;
+}
+
+
 int
 main(int argc,
      const char *const argv[])
@@ -55,6 +96,8 @@ main(int argc,
 		    "WARNING",
 		    NULL);
   if (0 != test_amount ())
+    return 1;
+  if (0 != test_time ())
     return 1;
   /* FIXME: implement test... */
   return 0;

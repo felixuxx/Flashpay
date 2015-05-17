@@ -83,6 +83,9 @@ TALER_json_from_abs (struct GNUNET_TIME_Absolute stamp)
   json_t *j;
   char *mystr;
   int ret;
+
+  if (stamp.abs_value_us == GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us)
+    return json_string ("never");
   ret = GNUNET_asprintf (&mystr,
                          "%llu",
                          (long long) (stamp.abs_value_us / (1000 * 1000)));
@@ -259,6 +262,12 @@ TALER_json_to_abs (json_t *json,
 
   GNUNET_assert (NULL != abs);
   EXITIF (NULL == (str = json_string_value (json)));
+  if (0 == strcasecmp (str,
+		       "never"))
+  {
+    *abs = GNUNET_TIME_UNIT_FOREVER_ABS;
+    return GNUNET_OK;
+  }
   EXITIF (1 > sscanf (str, "%llu", &abs_value_s));
   abs->abs_value_us = abs_value_s * 1000 * 1000;
   return GNUNET_OK;
