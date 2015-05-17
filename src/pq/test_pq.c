@@ -60,9 +60,10 @@ postgres_prepare (PGconn *db_conn)
            ",namount_val" 
            ",namount_frac"
            ",namount_curr"
+           ",vsize"
            ") VALUES "
            "($1, $2, $3, $4, $5, $6,"
-            "$7, $8, $9, $10, $11);",
+            "$7, $8, $9, $10, $11, $12);",
            11, NULL);
   PREPARE ("test_select",
            "SELECT"
@@ -77,6 +78,7 @@ postgres_prepare (PGconn *db_conn)
            ",namount_val" 
            ",namount_frac"
            ",namount_curr"
+	   ",vsize"
            " FROM test_pq"
            " ORDER BY abs_time DESC "
            " LIMIT 1;",
@@ -112,6 +114,8 @@ run_queries (PGconn *conn)
   int ret;
   struct GNUNET_CRYPTO_rsa_PrivateKey *priv;
   char msg[] = "Hello";
+  void *msg2;
+  size_t msg2_len;
   
   priv = GNUNET_CRYPTO_rsa_private_key_create (1024);
   pub = GNUNET_CRYPTO_rsa_private_key_get_public (priv);
@@ -134,6 +138,7 @@ run_queries (PGconn *conn)
       TALER_PQ_query_param_auto_from_type (&hc),
       TALER_PQ_query_param_amount (&hamount),
       TALER_PQ_query_param_amount_nbo (&namount),
+      TALER_PQ_query_param_fixed_size (msg, strlen (msg)),
       TALER_PQ_query_param_end
     };
     struct TALER_PQ_QueryParam params_select[] = {
@@ -147,6 +152,7 @@ run_queries (PGconn *conn)
       TALER_PQ_result_spec_auto_from_type ("hash", &hc2),
       TALER_PQ_result_spec_amount ("hamount", &hamount2),
       TALER_PQ_result_spec_amount_nbo ("namount", &namount2),
+      TALER_PQ_result_spec_variable_size ("vsize", &msg2, &msg2_len),
       TALER_PQ_result_spec_end
     };
     
@@ -205,6 +211,11 @@ run_queries (PGconn *conn)
     GNUNET_break (0 ==
 		  GNUNET_CRYPTO_rsa_public_key_cmp (pub,
 						    pub2));
+    GNUNET_break (strlen (msg) == msg2_len);
+    GNUNET_break (0 ==
+		  strncmp (msg,
+			   msg2,
+			   msg2_len));
 
     TALER_PQ_cleanup_result (results_select);
     PQclear (result);
@@ -254,6 +265,7 @@ main(int argc,
 		   ",namount_val INT8 NOT NULL"
 		   ",namount_frac INT4 NOT NULL"
 		   ",namount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+		   ",vsize VARCHAR NOT NULL"
 		   ")");
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {

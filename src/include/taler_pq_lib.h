@@ -310,8 +310,8 @@ struct TALER_PQ_ResultSpec
  */
 struct TALER_PQ_ResultSpec
 TALER_PQ_result_spec_variable_size (const char *name,
-			  void **dst,
-			  size_t *sptr);
+				    void **dst,
+				    size_t *sptr);
 
 
 /**

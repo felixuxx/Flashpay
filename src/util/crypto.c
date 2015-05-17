@@ -49,7 +49,7 @@ fatal_error_handler (void *cls,
 /**
  * Initialize libgcrypt.
  */
-void
+void  __attribute__ ((constructor))
 TALER_gcrypt_init ()
 {
   gcry_set_fatalerror_handler (&fatal_error_handler,
