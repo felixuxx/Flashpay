@@ -119,6 +119,47 @@ test_raw ()
 }
 
 
+/**
+ * Test rsa conversions from/to JSON.
+ *
+ * @return 0 on success
+ */
+static int
+test_rsa ()
+{
+  struct GNUNET_CRYPTO_rsa_PublicKey *pub;
+  struct GNUNET_CRYPTO_rsa_PublicKey *pub2;
+  struct GNUNET_CRYPTO_rsa_Signature *sig;
+  struct GNUNET_CRYPTO_rsa_Signature *sig2;
+  struct GNUNET_CRYPTO_rsa_PrivateKey *priv;
+  char msg[] = "Hello";
+  json_t *jp;
+  json_t *js;
+
+  priv = GNUNET_CRYPTO_rsa_private_key_create (1024);
+  pub = GNUNET_CRYPTO_rsa_private_key_get_public (priv);
+  sig = GNUNET_CRYPTO_rsa_sign (priv,
+				msg,
+				sizeof (msg));
+  GNUNET_assert (NULL != (jp = TALER_json_from_rsa_public_key (pub)));
+  GNUNET_assert (NULL != (js = TALER_json_from_rsa_signature (sig)));
+  GNUNET_assert (NULL != (pub2 = TALER_json_to_rsa_public_key (jp)));
+  GNUNET_assert (NULL != (sig2 = TALER_json_to_rsa_signature (js)));
+  GNUNET_break (0 ==
+		GNUNET_CRYPTO_rsa_signature_cmp (sig,
+						 sig2));
+  GNUNET_break (0 ==
+		GNUNET_CRYPTO_rsa_public_key_cmp (pub,
+						  pub2));
+  GNUNET_CRYPTO_rsa_signature_free (sig);
+  GNUNET_CRYPTO_rsa_signature_free (sig2);
+  GNUNET_CRYPTO_rsa_private_key_free (priv);
+  GNUNET_CRYPTO_rsa_public_key_free (pub);
+  GNUNET_CRYPTO_rsa_public_key_free (pub2);
+  return 0;
+}
+
+
 int
 main(int argc,
      const char *const argv[])
@@ -132,7 +173,9 @@ main(int argc,
     return 1;
   if (0 != test_raw ())
     return 1;
-  /* FIXME: implement test... */
+  if (0 != test_rsa ())
+    return 1;
+  /* FIXME: test EdDSA signature conversion... */
   return 0;
 }
 
