@@ -88,6 +88,37 @@ test_time ()
 }
 
 
+/**
+ * Test raw (binary) conversion from/to JSON.
+ *
+ * @return 0 on success
+ */
+static int
+test_raw ()
+{
+  char blob[256];
+  char blob2[256];
+  unsigned int i;
+  json_t *j;
+
+  for (i=0;i<=256;i++)
+  {
+    memset (blob, i, i);
+    j = TALER_json_from_data (blob, i);
+    GNUNET_assert (NULL != j);
+    GNUNET_assert (GNUNET_OK ==
+		   TALER_json_to_data (j,
+				       blob2,
+				       i));
+    GNUNET_assert (0 == 
+		   memcmp (blob,
+			   blob2,
+			   i));
+  }
+  return 0;
+}
+
+
 int
 main(int argc,
      const char *const argv[])
@@ -98,6 +129,8 @@ main(int argc,
   if (0 != test_amount ())
     return 1;
   if (0 != test_time ())
+    return 1;
+  if (0 != test_raw ())
     return 1;
   /* FIXME: implement test... */
   return 0;

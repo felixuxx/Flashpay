@@ -294,7 +294,7 @@ TALER_json_to_data (json_t *json,
 
   EXITIF (NULL == (enc = json_string_value (json)));
   len = strlen (enc);
-  EXITIF ((((len * 5) / 8) + ((((len * 5) % 8) == 0) ? 0 : 1)) == out_size);
+  EXITIF (((len * 5) / 8) != out_size);
   EXITIF (GNUNET_OK != GNUNET_STRINGS_string_to_data (enc, len, out, out_size));
   return GNUNET_OK;
  EXITIF_exit:
