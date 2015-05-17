@@ -153,6 +153,76 @@ TALER_json_from_rsa_public_key (struct GNUNET_CRYPTO_rsa_PublicKey *pk)
 
 
 /**
+ * Convert JSON to RSA public key.
+ *
+ * @param pk JSON encoding to convert 
+ * @return corresponding public key
+ */
+struct GNUNET_CRYPTO_rsa_PublicKey *
+TALER_json_to_rsa_public_key (json_t *json)
+{
+  const char *enc;
+  char *buf;
+  size_t len;
+  size_t buf_len;
+  struct GNUNET_CRYPTO_rsa_PublicKey *pk;
+
+  buf = NULL;
+  EXITIF (NULL == (enc = json_string_value (json)));
+  len = strlen (enc);
+  buf_len =  (len * 5) / 8;
+  buf = GNUNET_malloc (buf_len);
+  EXITIF (GNUNET_OK != 
+	  GNUNET_STRINGS_string_to_data (enc, 
+					 len, 
+					 buf, 
+					 buf_len));
+  EXITIF (NULL == (pk = GNUNET_CRYPTO_rsa_public_key_decode (buf,
+							     buf_len)));
+  GNUNET_free (buf);
+  return pk;
+ EXITIF_exit:
+  GNUNET_free_non_null (buf);
+  return NULL;
+}
+
+
+/**
+ * Convert JSON to RSA signature.
+ *
+ * @param pk JSON encoding to convert 
+ * @return corresponding signature
+ */
+struct GNUNET_CRYPTO_rsa_Signature *
+TALER_json_to_rsa_signature (json_t *json)
+{
+  const char *enc;
+  char *buf;
+  size_t len;
+  size_t buf_len;
+  struct GNUNET_CRYPTO_rsa_Signature *sig;
+
+  buf = NULL;
+  EXITIF (NULL == (enc = json_string_value (json)));
+  len = strlen (enc);
+  buf_len =  (len * 5) / 8;
+  buf = GNUNET_malloc (buf_len);
+  EXITIF (GNUNET_OK != 
+	  GNUNET_STRINGS_string_to_data (enc, 
+					 len, 
+					 buf, 
+					 buf_len));
+  EXITIF (NULL == (sig = GNUNET_CRYPTO_rsa_signature_decode (buf,
+							     buf_len)));
+  GNUNET_free (buf);
+  return sig;
+ EXITIF_exit:
+  GNUNET_free_non_null (buf);
+  return NULL;
+}
+
+
+/**
  * Convert RSA signature to JSON.
  *
  * @param sig signature to convert
@@ -193,20 +263,6 @@ TALER_json_from_data (const void *data,
   json = json_string (buf);
   GNUNET_free (buf);
   return json;
-}
-
-
-/**
- * Convert binary hash to a JSON string with the base32crockford
- * encoding.
- *
- * @param hc binary data
- * @return json string that encodes @a hc
- */
-json_t *
-TALER_json_from_hash (const struct GNUNET_HashCode *hc)
-{
-  return TALER_json_from_data (hc, sizeof (struct GNUNET_HashCode));
 }
 
 

@@ -97,17 +97,6 @@ TALER_json_from_data (const void *data, size_t size);
 
 
 /**
- * Convert binary hash to a JSON string with the base32crockford
- * encoding.
- *
- * @param hc binary data
- * @return json string that encodes @a hc
- */
-json_t *
-TALER_json_from_hash (const struct GNUNET_HashCode *hc);
-
-
-/**
  * Parse given JSON object to Amount
  *
  * @param json the json object representing Amount
@@ -141,6 +130,27 @@ int
 TALER_json_to_data (json_t *json,
                     void *out,
                     size_t out_size);
+
+
+/**
+ * Convert JSON to RSA public key.
+ *
+ * @param pk JSON encoding to convert 
+ * @return corresponding public key
+ */
+struct GNUNET_CRYPTO_rsa_PublicKey *
+TALER_json_to_rsa_public_key (json_t *json);
+
+
+/**
+ * Convert JSON to RSA signature.
+ *
+ * @param pk JSON encoding to convert 
+ * @return corresponding signature
+ */
+struct GNUNET_CRYPTO_rsa_Signature *
+TALER_json_to_rsa_signature (json_t *json);
+
 
 /**
  * Check if the given wire format JSON object is correctly formatted
