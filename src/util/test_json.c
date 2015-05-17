@@ -24,6 +24,29 @@
 #include "taler_json_lib.h"
 
 
+static int
+test_amount ()
+{
+  json_t *j;
+  struct TALER_Amount a1;
+  struct TALER_Amount a2;
+
+  GNUNET_assert (GNUNET_OK ==
+		 TALER_string_to_amount ("EUR:4.3",
+					 &a1));
+  j = TALER_json_from_amount (&a1);
+  GNUNET_assert (NULL != j);
+  GNUNET_assert (GNUNET_OK ==
+		 TALER_json_to_amount (j,
+				       &a2));
+  GNUNET_assert (0 ==
+		 TALER_amount_cmp (&a1,
+				   &a2));
+  json_decref (j);
+  return 0;
+}
+
+
 int
 main(int argc,
      const char *const argv[])
@@ -31,6 +54,8 @@ main(int argc,
   GNUNET_log_setup ("test-json",
 		    "WARNING",
 		    NULL);
+  if (0 != test_amount ())
+    return 1;
   /* FIXME: implement test... */
   return 0;
 }

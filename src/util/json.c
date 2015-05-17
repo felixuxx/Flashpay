@@ -227,10 +227,13 @@ TALER_json_to_amount (json_t *json,
                                       &error,
                                       JSON_STRICT,
                                       "{s:s, s:I, s:I}",
-                                      "curreny", &currency,
+                                      "currency", &currency,
                                       "value", &value,
                                       "fraction", &fraction));
   EXITIF (3 < strlen (currency));
+  EXITIF (TALER_CURRENCY_LEN <= strlen (currency));
+  strcpy (r_amount->currency,
+	  currency);
   r_amount->value = (uint32_t) value;
   r_amount->fraction = (uint32_t) fraction;
   return GNUNET_OK;
