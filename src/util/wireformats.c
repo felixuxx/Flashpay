@@ -297,10 +297,11 @@ validate_iban (const char *iban)
       dividend += remainder * (pow (10, nread));
     remainder = dividend % 97;
   }
-  EXITIF (1 != remainder);
-  GNUNET_free (nbuf);
-  return GNUNET_YES;
-
+  if (1 == remainder)
+  {
+    GNUNET_free (nbuf);
+    return GNUNET_YES;
+  }
  EXITIF_exit:
   GNUNET_free (nbuf);
   return GNUNET_NO;
@@ -345,7 +346,13 @@ validate_sepa (const json_t *wire)
                   "r", &r,
                   "address", &address));
   EXITIF (0 != strcmp (type, "SEPA"));
-  EXITIF (1 != validate_iban (iban));
+  if (1 != validate_iban (iban))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+		"IBAN `%s' invalid\n",
+		iban);
+    return GNUNET_NO;
+  }
   return GNUNET_YES;
  EXITIF_exit:
   return GNUNET_NO;
@@ -393,7 +400,7 @@ TALER_json_validate_wireformat (const char *type,
     if (0 == strcasecmp (format_handlers[i].type,
                          type))
       return format_handlers[i].handler (wire);
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Wireformat `%s' not supported\n",
               type);
   return GNUNET_NO;
