@@ -303,7 +303,7 @@ TMH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection)
  */
 int
 TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
-                                    const union TALER_CoinSpendPublicKeyP *coin_pub,
+                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     const struct GNUNET_HashCode *h_wire,
                                     const struct GNUNET_HashCode *h_contract,
                                     uint64_t transaction_id,
@@ -381,8 +381,8 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
                            &deposit->deposit_fee);
         dr.merchant = deposit->merchant_pub;
         dr.coin_pub = deposit->coin.coin_pub;
-        transaction = TALER_json_from_ecdsa_sig (&dr.purpose,
-                                                 &deposit->csig.ecdsa_signature);
+        transaction = TALER_json_from_eddsa_sig (&dr.purpose,
+                                                 &deposit->csig.eddsa_signature);
         break;
       }
     case TALER_MINTDB_TT_REFRESH_MELT:
@@ -400,8 +400,8 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
         TALER_amount_hton (&ms.melt_fee,
                            &melt->melt_fee);
         ms.coin_pub = melt->coin.coin_pub;
-        transaction = TALER_json_from_ecdsa_sig (&ms.purpose,
-                                                 &melt->coin_sig.ecdsa_signature);
+        transaction = TALER_json_from_eddsa_sig (&ms.purpose,
+                                                 &melt->coin_sig.eddsa_signature);
       }
       break;
     case TALER_MINTDB_TT_LOCK:
@@ -678,7 +678,7 @@ TMH_RESPONSE_reply_withdraw_sign_success (struct MHD_Connection *connection,
  */
 int
 TMH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
-                                                    const union TALER_CoinSpendPublicKeyP *coin_pub,
+                                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                                     struct TALER_Amount coin_value,
                                                     struct TALER_MINTDB_TransactionList *tl,
                                                     struct TALER_Amount requested,
@@ -692,7 +692,7 @@ TMH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *conne
                                        "{s:s, s:o, s:o, s:o, s:o, s:o}",
                                        "error", "insufficient funds",
                                        "coin-pub", TALER_json_from_data (coin_pub,
-                                                                         sizeof (union TALER_CoinSpendPublicKeyP)),
+                                                                         sizeof (struct TALER_CoinSpendPublicKeyP)),
                                        "original-value", TALER_json_from_amount (&coin_value),
                                        "residual-value", TALER_json_from_amount (&residual),
                                        "requested-value", TALER_json_from_amount (&requested),
@@ -814,7 +814,7 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
     json_object_set_new (rm_json,
                          "coin_pub",
                          TALER_json_from_data (&rm->coin.coin_pub,
-                                               sizeof (union TALER_CoinSpendPublicKeyP)));
+                                               sizeof (struct TALER_CoinSpendPublicKeyP)));
     json_object_set_new (rm_json,
                          "melt_amount_with_fee",
                          TALER_json_from_amount (&rm->amount_with_fee));
@@ -856,7 +856,7 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
       json_object_set_new (cc_json,
                            "coin_priv_enc",
                            TALER_json_from_data (cc->refresh_link->coin_priv_enc,
-                                                 sizeof (union TALER_CoinSpendPrivateKeyP)));
+                                                 sizeof (struct TALER_CoinSpendPrivateKeyP)));
       json_object_set_new (cc_json,
                            "blinding_key_enc",
                            TALER_json_from_data (cc->refresh_link->blinding_key_enc,
@@ -933,7 +933,7 @@ TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
     json_object_set_new (obj,
                          "link_enc",
                          TALER_json_from_data (ldl->link_data_enc->coin_priv_enc,
-                                               sizeof (union TALER_CoinSpendPrivateKeyP) +
+                                               sizeof (struct TALER_CoinSpendPrivateKeyP) +
                                                ldl->link_data_enc->blinding_key_enc_size));
     json_object_set_new (obj,
                          "denom_pub",

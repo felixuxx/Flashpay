@@ -60,6 +60,7 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
       break;
     case TALER_PQ_QF_RSA_PUBLIC_KEY:
     case TALER_PQ_QF_RSA_SIGNATURE:
+    case TALER_PQ_QF_TIME_ABSOLUTE:
       len++;
       break;
     default:
@@ -67,6 +68,7 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
       GNUNET_assert (0);
       break;
     }
+    i++;
   }
 
   /* new scope to allow stack allocation without alloca */
@@ -111,7 +113,7 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
           param_formats[off] = 1;
           off++;
           param_values[off] = (void *) amount->currency;
-          param_lengths[off] = strlen (amount->currency) + 1;
+          param_lengths[off] = strlen (amount->currency);
           param_formats[off] = 1;
           off++;
         }
@@ -134,7 +136,7 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
           param_formats[off] = 1;
           off++;
           param_values[off] = (void *) amount->currency;
-          param_lengths[off] = strlen (amount->currency) + 1;
+          param_lengths[off] = strlen (amount->currency);
           param_formats[off] = 1;
           off++;
         }
@@ -176,8 +178,6 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
 	  
           at_nbo = GNUNET_new (struct GNUNET_TIME_AbsoluteNBO);
           scratch[soff++] = at_nbo;
-	  /* FIXME: this does not work for 'forever' as PQ uses 63-bit integers;
-	     should check and handle! (Need testcase!) */
           *at_nbo = GNUNET_TIME_absolute_hton (*at_hbo);
           param_values[off] = (void *) at_nbo;
           param_lengths[off] = sizeof (struct GNUNET_TIME_AbsoluteNBO);
@@ -190,6 +190,7 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
         GNUNET_assert (0);
         break;
       }
+      i++;
     }
     GNUNET_assert (off == len);
     res = PQexecPrepared (db_conn,
@@ -200,7 +201,7 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
                           param_formats,
                           1);
     for (off = 0; off < soff; off++)
-      GNUNET_free (scratch[soff]);
+      GNUNET_free (scratch[off]);
     return res;
   }
 }
@@ -222,25 +223,34 @@ TALER_PQ_cleanup_result (struct TALER_PQ_ResultSpec *rs)
     switch (rs[i].format)
     {
     case TALER_PQ_RF_VARSIZE_BLOB:
-      if (NULL != rs[i].dst)
       {
-        GNUNET_free (rs[i].dst);
-        rs[i].dst = NULL;
-        *rs[i].result_size = 0;
+	void **dst = rs[i].dst;
+	if (NULL != *dst)
+	{
+	  GNUNET_free (*dst);
+	  *dst = NULL;
+	  *rs[i].result_size = 0;
+	}
+	break;
       }
-      break;
     case TALER_PQ_RF_RSA_PUBLIC_KEY:
-      if (NULL != rs[i].dst)
       {
-        GNUNET_CRYPTO_rsa_public_key_free (rs[i].dst);
-        rs[i].dst = NULL;
+	void **dst = rs[i].dst;
+	if (NULL != *dst)
+	{
+	  GNUNET_CRYPTO_rsa_public_key_free (*dst);
+	  *dst = NULL;
+	}
+	break;
       }
-      break;
     case TALER_PQ_RF_RSA_SIGNATURE:
-      if (NULL != rs[i].dst)
       {
-        GNUNET_CRYPTO_rsa_signature_free (rs[i].dst);
-        rs[i].dst = NULL;
+	void **dst = rs[i].dst;
+	if (NULL != *dst)
+	{
+	  GNUNET_CRYPTO_rsa_signature_free (*dst);
+	  *dst = NULL;
+	}
       }
       break;
     default:
@@ -256,7 +266,7 @@ TALER_PQ_cleanup_result (struct TALER_PQ_ResultSpec *rs)
  * is returned.
  *
  * @param result result to process
- * @param[in|out] rs result specification to extract for
+ * @param[in,out] rs result specification to extract for
  * @param row row from the result to extract
  * @return
  *   #GNUNET_YES if all results could be extracted
@@ -525,8 +535,6 @@ TALER_PQ_extract_result (PGresult *result,
 	  PQgetvalue (result,
 		      row,
 		      fnum);
-	/* FIXME: this does not work for 'forever' as PQ uses 63-bit integers;
-	   should check and handle! (Need testcase!) */
 	*dst = GNUNET_TIME_absolute_ntoh (*res);
         break;
       }

@@ -60,9 +60,10 @@ postgres_prepare (PGconn *db_conn)
            ",namount_val" 
            ",namount_frac"
            ",namount_curr"
+           ",vsize"
            ") VALUES "
            "($1, $2, $3, $4, $5, $6,"
-            "$7, $8, $9, $10, $11);",
+            "$7, $8, $9, $10, $11, $12);",
            11, NULL);
   PREPARE ("test_select",
            "SELECT"
@@ -77,9 +78,10 @@ postgres_prepare (PGconn *db_conn)
            ",namount_val" 
            ",namount_frac"
            ",namount_curr"
-           "FROM test_pq"
-           "ORDER BY abs_time DESC "
-           "LIMIT 1;",
+	   ",vsize"
+           " FROM test_pq"
+           " ORDER BY abs_time DESC "
+           " LIMIT 1;",
            0, NULL);
   return GNUNET_OK;
 #undef PREPARE
@@ -108,47 +110,119 @@ run_queries (PGconn *conn)
   struct TALER_Amount hamount2;
   struct TALER_AmountNBO namount;
   struct TALER_AmountNBO namount2;
-  struct TALER_PQ_QueryParam params_insert[] = {
-    TALER_PQ_QUERY_PARAM_RSA_PUBLIC_KEY (pub),
-    TALER_PQ_QUERY_PARAM_RSA_SIGNATURE (sig),
-    TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (abs_time),
-    TALER_PQ_QUERY_PARAM_ABSOLUTE_TIME (forever),
-    TALER_PQ_QUERY_PARAM_PTR (&hc),
-    TALER_PQ_QUERY_PARAM_AMOUNT (hamount),
-    TALER_PQ_QUERY_PARAM_AMOUNT_NBO (namount),
-    TALER_PQ_QUERY_PARAM_END
-  };
-  struct TALER_PQ_QueryParam params_select[] = {
-    TALER_PQ_QUERY_PARAM_END
-  };
-  struct TALER_PQ_ResultSpec results_select[] = {
-    TALER_PQ_RESULT_SPEC_RSA_PUBLIC_KEY ("pub", pub2),
-    TALER_PQ_RESULT_SPEC_RSA_SIGNATURE ("sig", sig2),
-    TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME ("abs_time", abs_time2),
-    TALER_PQ_RESULT_SPEC_ABSOLUTE_TIME ("forever", forever2),
-    TALER_PQ_RESULT_SPEC ("hash", &hc2),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("hamount", hamount2),
-    TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("namount", namount2),
-    TALER_PQ_RESULT_SPEC_END
-  };
   PGresult *result;
   int ret;
+  struct GNUNET_CRYPTO_rsa_PrivateKey *priv;
+  char msg[] = "Hello";
+  void *msg2;
+  size_t msg2_len;
+  
+  priv = GNUNET_CRYPTO_rsa_private_key_create (1024);
+  pub = GNUNET_CRYPTO_rsa_private_key_get_public (priv);
+  sig = GNUNET_CRYPTO_rsa_sign (priv,
+				msg,
+				sizeof (msg));
+  TALER_string_to_amount ("EUR:5.5",
+			  &hamount);
+  TALER_amount_hton (&namount,
+		     &hamount);		     
+  TALER_string_to_amount ("EUR:4.4",
+			  &hamount);
+  /* FIXME: test TALER_PQ_result_spec_variable_size */
+  {
+    struct TALER_PQ_QueryParam params_insert[] = {
+      TALER_PQ_query_param_rsa_public_key (pub),
+      TALER_PQ_query_param_rsa_signature (sig),
+      TALER_PQ_query_param_absolute_time (&abs_time),
+      TALER_PQ_query_param_absolute_time (&forever),
+      TALER_PQ_query_param_auto_from_type (&hc),
+      TALER_PQ_query_param_amount (&hamount),
+      TALER_PQ_query_param_amount_nbo (&namount),
+      TALER_PQ_query_param_fixed_size (msg, strlen (msg)),
+      TALER_PQ_query_param_end
+    };
+    struct TALER_PQ_QueryParam params_select[] = {
+      TALER_PQ_query_param_end
+    };
+    struct TALER_PQ_ResultSpec results_select[] = {
+      TALER_PQ_result_spec_rsa_public_key ("pub", &pub2),
+      TALER_PQ_result_spec_rsa_signature ("sig", &sig2),
+      TALER_PQ_result_spec_absolute_time ("abs_time", &abs_time2),
+      TALER_PQ_result_spec_absolute_time ("forever", &forever2),
+      TALER_PQ_result_spec_auto_from_type ("hash", &hc2),
+      TALER_PQ_result_spec_amount ("hamount", &hamount2),
+      TALER_PQ_result_spec_amount_nbo ("namount", &namount2),
+      TALER_PQ_result_spec_variable_size ("vsize", &msg2, &msg2_len),
+      TALER_PQ_result_spec_end
+    };
+    
+    result = TALER_PQ_exec_prepared (conn,
+				     "test_insert",
+				     params_insert);
+    if (PGRES_COMMAND_OK != PQresultStatus (result))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		  "Database failure: %s\n",
+		  PQresultErrorMessage (result));
+      PQclear (result);
+      GNUNET_CRYPTO_rsa_signature_free (sig);
+      GNUNET_CRYPTO_rsa_private_key_free (priv);
+      GNUNET_CRYPTO_rsa_public_key_free (pub);
+      return 1;
+    }
+    
+    PQclear (result);
+    result = TALER_PQ_exec_prepared (conn,
+				     "test_select",
+				     params_select);
+    if (1 !=
+	PQntuples (result))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      GNUNET_CRYPTO_rsa_signature_free (sig);
+      GNUNET_CRYPTO_rsa_private_key_free (priv);
+      GNUNET_CRYPTO_rsa_public_key_free (pub);
+      return 1;
+    }
+    ret = TALER_PQ_extract_result (result,
+				   results_select,
+				   0);
+    GNUNET_break (GNUNET_YES == ret);
+    GNUNET_break (abs_time.abs_value_us == abs_time2.abs_value_us);
+    GNUNET_break (forever.abs_value_us == forever2.abs_value_us);
+    GNUNET_break (0 ==
+		  memcmp (&hc,
+			  &hc2,
+			  sizeof (struct GNUNET_HashCode)));
+    GNUNET_break (0 ==
+		  TALER_amount_cmp (&hamount,
+				    &hamount2));
+    TALER_string_to_amount ("EUR:5.5",
+			    &hamount);
+    TALER_amount_ntoh (&hamount2,
+		       &namount2);		         
+    GNUNET_break (0 ==
+		  TALER_amount_cmp (&hamount,
+				    &hamount2));
+    GNUNET_break (0 ==
+		  GNUNET_CRYPTO_rsa_signature_cmp (sig,
+						   sig2));
+    GNUNET_break (0 ==
+		  GNUNET_CRYPTO_rsa_public_key_cmp (pub,
+						    pub2));
+    GNUNET_break (strlen (msg) == msg2_len);
+    GNUNET_break (0 ==
+		  strncmp (msg,
+			   msg2,
+			   msg2_len));
 
-  // FIXME: init pub, sig
-  result = TALER_PQ_exec_prepared (conn,
-				   "test_insert",
-				   params_insert);
-  PQclear (result);
-  result = TALER_PQ_exec_prepared (conn,
-				   "test_select",
-				   params_select);
-  ret = TALER_PQ_extract_result (result,
-				 results_select,
-				 0);
-  // FIXME: cmp results!
-  TALER_PQ_cleanup_result (results_select);
-  PQclear (result);
-
+    TALER_PQ_cleanup_result (results_select);
+    PQclear (result);
+  }
+  GNUNET_CRYPTO_rsa_signature_free (sig);
+  GNUNET_CRYPTO_rsa_private_key_free (priv);
+  GNUNET_CRYPTO_rsa_public_key_free (pub);
   if (GNUNET_OK != ret)
     return 1;
   
@@ -164,8 +238,10 @@ main(int argc,
   PGresult *result;
   int ret;
 
-  // FIXME: pass valid connect string for tests...
-  conn = PQconnectdb ("");
+  GNUNET_log_setup ("test-pq",
+		    "WARNING",
+		    NULL);
+  conn = PQconnectdb ("postgres:///talercheck");
   if (CONNECTION_OK != PQstatus (conn))
   {
     fprintf (stderr,
@@ -177,7 +253,7 @@ main(int argc,
   }
 
   result = PQexec (conn,
-		   "CREATE TABLE test_pq ("
+		   "CREATE TEMPORARY TABLE IF NOT EXISTS test_pq ("
 		   " pub BYTEA NOT NULL"
 		   ",sig BYTEA NOT NULL"
 		   ",abs_time INT8 NOT NULL"
@@ -189,6 +265,7 @@ main(int argc,
 		   ",namount_val INT8 NOT NULL"
 		   ",namount_frac INT4 NOT NULL"
 		   ",namount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+		   ",vsize VARCHAR NOT NULL"
 		   ")");
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
@@ -204,7 +281,6 @@ main(int argc,
       postgres_prepare (conn))
   {
     GNUNET_break (0);
-    PQclear (result);
     PQfinish (conn);
     return 1;
   }

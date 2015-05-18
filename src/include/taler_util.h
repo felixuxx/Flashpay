@@ -108,7 +108,7 @@ TALER_config_get_denom (struct GNUNET_CONFIGURATION_Handle *cfg,
  * @return a pointer to the dir path (to be freed by the caller)
  */
 char *
-TALER_os_installation_get_path (enum GNUNET_OS_InstallationPathKind dirkind);
+TALER_OS_installation_get_path (enum GNUNET_OS_InstallationPathKind dirkind);
 
 
 /**

@@ -24,7 +24,8 @@
 #include "taler_util.h"
 #include "taler_json_lib.h"
 
-static const char * const json_wire_str =
+/* Valid SEPA data */
+static const char * const valid_wire_str =
     "{ \"type\":\"SEPA\", \
 \"IBAN\":\"DE67830654080004822650\",                 \
 \"name\":\"GNUnet e.V.\",                               \
@@ -33,7 +34,40 @@ static const char * const json_wire_str =
 \"r\":123456789,                                     \
 \"address\": \"foobar\"}";
 
-int main(int argc, const char *const argv[])
+/* IBAN has wrong country code */
+static const char * const invalid_wire_str =
+    "{ \"type\":\"SEPA\", \
+\"IBAN\":\"XX67830654080004822650\",                 \
+\"name\":\"GNUnet e.V.\",                               \
+\"bic\":\"GENODEF1SLR\",                                 \
+\"edate\":\"1449930207000\",                                \
+\"r\":123456789,                                     \
+\"address\": \"foobar\"}";
+
+/* IBAN has wrong checksum */
+static const char * const invalid_wire_str2 =
+    "{ \"type\":\"SEPA\", \
+\"IBAN\":\"DE67830654080004822651\",                 \
+\"name\":\"GNUnet e.V.\",                               \
+\"bic\":\"GENODEF1SLR\",                                 \
+\"edate\":\"1449930207000\",                                \
+\"r\":123456789,                                     \
+\"address\": \"foobar\"}";
+
+/* Unsupported wireformat type */
+static const char * const unsupported_wire_str =
+    "{ \"type\":\"unsupported\", \
+\"IBAN\":\"DE67830654080004822650\",                 \
+\"name\":\"GNUnet e.V.\",                               \
+\"bic\":\"GENODEF1SLR\",                                 \
+\"edate\":\"1449930207000\",                                \
+\"r\":123456789,                                     \
+\"address\": \"foobar\"}";
+
+
+int 
+main(int argc, 
+     const char *const argv[])
 {
   json_t *wire;
   json_error_t error;
@@ -41,13 +75,18 @@ int main(int argc, const char *const argv[])
 
   GNUNET_log_setup ("test-json-validations", "WARNING", NULL);
   (void) memset(&error, 0, sizeof(error));
-  wire = json_loads (json_wire_str, 0, &error);
-  if (NULL == wire)
-  {
-    TALER_json_warn (error);
-    return 2;
-  }
+  GNUNET_assert (NULL != (wire = json_loads (unsupported_wire_str, 0, NULL)));
+  GNUNET_assert (1 != TALER_json_validate_wireformat ("unsupported", wire));
+  json_decref (wire);
+  GNUNET_assert (NULL != (wire = json_loads (invalid_wire_str, 0, NULL)));
+  GNUNET_assert (1 != TALER_json_validate_wireformat ("SEPA", wire));
+  json_decref (wire);
+  GNUNET_assert (NULL != (wire = json_loads (invalid_wire_str2, 0, NULL)));
+  GNUNET_assert (1 != TALER_json_validate_wireformat ("SEPA", wire));
+  json_decref (wire);
+  GNUNET_assert (NULL != (wire = json_loads (valid_wire_str, 0, &error)));
   ret = TALER_json_validate_wireformat ("SEPA", wire);
+  json_decref (wire);
   if (1 == ret)
     return 0;
   return 1;

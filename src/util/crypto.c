@@ -50,7 +50,7 @@ fatal_error_handler (void *cls,
 /**
  * Initialize libgcrypt.
  */
-void
+void  __attribute__ ((constructor))
 TALER_gcrypt_init ()
 {
   gcry_set_fatalerror_handler (&fatal_error_handler,
@@ -219,7 +219,7 @@ TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
   ret = GNUNET_new (struct TALER_RefreshLinkDecrypted);
   memcpy (&ret->coin_priv,
           buf,
-          sizeof (union TALER_CoinSpendPrivateKeyP));
+          sizeof (struct TALER_CoinSpendPrivateKeyP));
   ret->blinding_key.rsa_blinding_key
     = GNUNET_CRYPTO_rsa_blinding_key_decode (&buf[sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey)],
                                              input->blinding_key_enc_size);
@@ -295,7 +295,7 @@ TALER_refresh_link_encrypted_decode (const char *buf,
 {
   struct TALER_RefreshLinkEncrypted *rle;
 
-  if (buf_len < sizeof (union TALER_CoinSpendPrivateKeyP))
+  if (buf_len < sizeof (struct TALER_CoinSpendPrivateKeyP))
     return NULL;
   if (buf_len >= GNUNET_MAX_MALLOC_CHECKED)
   {
@@ -303,9 +303,9 @@ TALER_refresh_link_encrypted_decode (const char *buf,
     return NULL;
   }
   rle = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) +
-                       buf_len - sizeof (union TALER_CoinSpendPrivateKeyP));
+                       buf_len - sizeof (struct TALER_CoinSpendPrivateKeyP));
   rle->blinding_key_enc = (const char *) &rle[1];
-  rle->blinding_key_enc_size = buf_len - sizeof (union TALER_CoinSpendPrivateKeyP);
+  rle->blinding_key_enc_size = buf_len - sizeof (struct TALER_CoinSpendPrivateKeyP);
   memcpy (rle->coin_priv_enc,
           buf,
           buf_len);
@@ -326,12 +326,12 @@ TALER_refresh_link_encrypted_encode (const struct TALER_RefreshLinkEncrypted *rl
 {
   char *buf;
 
-  if (rle->blinding_key_enc_size >= GNUNET_MAX_MALLOC_CHECKED - sizeof (union TALER_CoinSpendPrivateKeyP))
+  if (rle->blinding_key_enc_size >= GNUNET_MAX_MALLOC_CHECKED - sizeof (struct TALER_CoinSpendPrivateKeyP))
   {
     GNUNET_break (0);
     return NULL;
   }
-  *buf_len = sizeof (union TALER_CoinSpendPrivateKeyP) + rle->blinding_key_enc_size;
+  *buf_len = sizeof (struct TALER_CoinSpendPrivateKeyP) + rle->blinding_key_enc_size;
   buf = GNUNET_malloc (*buf_len);
   memcpy (buf,
 	  rle->coin_priv_enc,
@@ -376,7 +376,7 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info)
  * private key and the coin's public key.
  *
  * @param secret_enc encrypted link secret
- * @param transfer_priv transfer private key
+ * @param trans_priv transfer private key
  * @param coin_pub coin public key
  * @param[out] secret set to the shared secret
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
@@ -384,15 +384,15 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info)
 int
 TALER_link_decrypt_secret (const struct TALER_EncryptedLinkSecretP *secret_enc,
 			   const struct TALER_TransferPrivateKeyP *trans_priv,
-			   const union TALER_CoinSpendPublicKeyP *coin_pub,
+			   const struct TALER_CoinSpendPublicKeyP *coin_pub,
 			   struct TALER_LinkSecretP *secret)
 {
   struct TALER_TransferSecretP transfer_secret;
 
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_ecc_ecdh (&trans_priv->ecdhe_priv,
-			      &coin_pub->ecdhe_pub,
-			      &transfer_secret.key))
+      GNUNET_CRYPTO_ecdh_eddsa (&trans_priv->ecdhe_priv,
+				&coin_pub->eddsa_pub,
+				&transfer_secret.key))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -415,7 +415,7 @@ TALER_link_decrypt_secret (const struct TALER_EncryptedLinkSecretP *secret_enc,
  * public key and the coin's private key.
  *
  * @param secret_enc encrypted link secret
- * @param transfer_pub transfer public key
+ * @param trans_pub transfer public key
  * @param coin_priv coin private key
  * @param[out] secret set to the shared secret
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
@@ -423,15 +423,15 @@ TALER_link_decrypt_secret (const struct TALER_EncryptedLinkSecretP *secret_enc,
 int
 TALER_link_decrypt_secret2 (const struct TALER_EncryptedLinkSecretP *secret_enc,
 			    const struct TALER_TransferPublicKeyP *trans_pub,
-			    const union TALER_CoinSpendPrivateKeyP *coin_priv,
+			    const struct TALER_CoinSpendPrivateKeyP *coin_priv,
 			    struct TALER_LinkSecretP *secret)
 {
   struct TALER_TransferSecretP transfer_secret;
 
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_ecc_ecdh (&coin_priv->ecdhe_priv,
-			      &trans_pub->ecdhe_pub,
-			      &transfer_secret.key))
+      GNUNET_CRYPTO_eddsa_ecdh (&coin_priv->eddsa_priv,
+				&trans_pub->ecdhe_pub,
+				&transfer_secret.key))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -454,14 +454,14 @@ TALER_link_decrypt_secret2 (const struct TALER_EncryptedLinkSecretP *secret_enc,
  *
  * @param secret link secret to encrypt
  * @param coin_pub coin public key
- * @param transfer_priv[out] set to transfer private key
- * @param transfer_pub[out] set to transfer public key
+ * @param[out] trans_priv set to transfer private key
+ * @param[out] trans_pub set to transfer public key
  * @param[out] secret_enc set to the encryptd @a secret
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 int
 TALER_link_encrypt_secret (const struct TALER_LinkSecretP *secret,
-			   const union TALER_CoinSpendPublicKeyP *coin_pub,
+			   const struct TALER_CoinSpendPublicKeyP *coin_pub,
 			   struct TALER_TransferPrivateKeyP *trans_priv,
 			   struct TALER_TransferPublicKeyP *trans_pub,
 			   struct TALER_EncryptedLinkSecretP *secret_enc)
@@ -471,9 +471,9 @@ TALER_link_encrypt_secret (const struct TALER_LinkSecretP *secret,
 
   pk = GNUNET_CRYPTO_ecdhe_key_create ();
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_ecc_ecdh (pk,
-			      &coin_pub->ecdhe_pub,
-			      &transfer_secret.key))
+      GNUNET_CRYPTO_ecdh_eddsa (pk,
+				&coin_pub->eddsa_pub,
+				&transfer_secret.key))
   {
     GNUNET_break (0);
     GNUNET_free (pk);

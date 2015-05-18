@@ -21,7 +21,6 @@
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
-#include "taler_json_lib.h"
 
 /**
  * Shorthand for exit jumps.
@@ -84,6 +83,9 @@ TALER_json_from_abs (struct GNUNET_TIME_Absolute stamp)
   json_t *j;
   char *mystr;
   int ret;
+
+  if (stamp.abs_value_us == GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us)
+    return json_string ("never");
   ret = GNUNET_asprintf (&mystr,
                          "%llu",
                          (long long) (stamp.abs_value_us / (1000 * 1000)));
@@ -129,40 +131,6 @@ TALER_json_from_eddsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpo
 
 
 /**
- * Convert a signature (with purpose) to a JSON object representation.
- *
- * @param purpose purpose of the signature
- * @param signature the signature
- * @return the JSON reporesentation of the signature with purpose
- */
-json_t *
-TALER_json_from_ecdsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-                           const struct GNUNET_CRYPTO_EcdsaSignature *signature)
-{
-  json_t *root;
-  json_t *el;
-
-  root = json_object ();
-
-  el = json_integer ((json_int_t) ntohl (purpose->size));
-  json_object_set_new (root, "size", el);
-
-  el = json_integer ((json_int_t) ntohl (purpose->purpose));
-  json_object_set_new (root, "purpose", el);
-
-  el = TALER_json_from_data (purpose,
-                             ntohl (purpose->size));
-  json_object_set_new (root, "ecdsa_val", el);
-
-  el = TALER_json_from_data (signature,
-                             sizeof (struct GNUNET_CRYPTO_EddsaSignature));
-  json_object_set_new (root, "ecdsa_sig", el);
-
-  return root;
-}
-
-
-/**
  * Convert RSA public key to JSON.
  *
  * @param pk public key to convert
@@ -181,6 +149,76 @@ TALER_json_from_rsa_public_key (struct GNUNET_CRYPTO_rsa_PublicKey *pk)
                               buf_len);
   GNUNET_free (buf);
   return ret;
+}
+
+
+/**
+ * Convert JSON to RSA public key.
+ *
+ * @param pk JSON encoding to convert 
+ * @return corresponding public key
+ */
+struct GNUNET_CRYPTO_rsa_PublicKey *
+TALER_json_to_rsa_public_key (json_t *json)
+{
+  const char *enc;
+  char *buf;
+  size_t len;
+  size_t buf_len;
+  struct GNUNET_CRYPTO_rsa_PublicKey *pk;
+
+  buf = NULL;
+  EXITIF (NULL == (enc = json_string_value (json)));
+  len = strlen (enc);
+  buf_len =  (len * 5) / 8;
+  buf = GNUNET_malloc (buf_len);
+  EXITIF (GNUNET_OK != 
+	  GNUNET_STRINGS_string_to_data (enc, 
+					 len, 
+					 buf, 
+					 buf_len));
+  EXITIF (NULL == (pk = GNUNET_CRYPTO_rsa_public_key_decode (buf,
+							     buf_len)));
+  GNUNET_free (buf);
+  return pk;
+ EXITIF_exit:
+  GNUNET_free_non_null (buf);
+  return NULL;
+}
+
+
+/**
+ * Convert JSON to RSA signature.
+ *
+ * @param pk JSON encoding to convert 
+ * @return corresponding signature
+ */
+struct GNUNET_CRYPTO_rsa_Signature *
+TALER_json_to_rsa_signature (json_t *json)
+{
+  const char *enc;
+  char *buf;
+  size_t len;
+  size_t buf_len;
+  struct GNUNET_CRYPTO_rsa_Signature *sig;
+
+  buf = NULL;
+  EXITIF (NULL == (enc = json_string_value (json)));
+  len = strlen (enc);
+  buf_len =  (len * 5) / 8;
+  buf = GNUNET_malloc (buf_len);
+  EXITIF (GNUNET_OK != 
+	  GNUNET_STRINGS_string_to_data (enc, 
+					 len, 
+					 buf, 
+					 buf_len));
+  EXITIF (NULL == (sig = GNUNET_CRYPTO_rsa_signature_decode (buf,
+							     buf_len)));
+  GNUNET_free (buf);
+  return sig;
+ EXITIF_exit:
+  GNUNET_free_non_null (buf);
+  return NULL;
 }
 
 
@@ -229,20 +267,6 @@ TALER_json_from_data (const void *data,
 
 
 /**
- * Convert binary hash to a JSON string with the base32crockford
- * encoding.
- *
- * @param hc binary data
- * @return json string that encodes @a hc
- */
-json_t *
-TALER_json_from_hash (const struct GNUNET_HashCode *hc)
-{
-  return TALER_json_from_data (hc, sizeof (struct GNUNET_HashCode));
-}
-
-
-/**
  * Parse given JSON object to Amount
  *
  * @param json the json object representing Amount
@@ -262,10 +286,13 @@ TALER_json_to_amount (json_t *json,
                                       &error,
                                       JSON_STRICT,
                                       "{s:s, s:I, s:I}",
-                                      "curreny", &currency,
+                                      "currency", &currency,
                                       "value", &value,
                                       "fraction", &fraction));
   EXITIF (3 < strlen (currency));
+  EXITIF (TALER_CURRENCY_LEN <= strlen (currency));
+  strcpy (r_amount->currency,
+	  currency);
   r_amount->value = (uint32_t) value;
   r_amount->fraction = (uint32_t) fraction;
   return GNUNET_OK;
@@ -291,6 +318,12 @@ TALER_json_to_abs (json_t *json,
 
   GNUNET_assert (NULL != abs);
   EXITIF (NULL == (str = json_string_value (json)));
+  if (0 == strcasecmp (str,
+		       "never"))
+  {
+    *abs = GNUNET_TIME_UNIT_FOREVER_ABS;
+    return GNUNET_OK;
+  }
   EXITIF (1 > sscanf (str, "%llu", &abs_value_s));
   abs->abs_value_us = abs_value_s * 1000 * 1000;
   return GNUNET_OK;
@@ -317,7 +350,7 @@ TALER_json_to_data (json_t *json,
 
   EXITIF (NULL == (enc = json_string_value (json)));
   len = strlen (enc);
-  EXITIF ((((len * 5) / 8) + ((((len * 5) % 8) == 0) ? 0 : 1)) == out_size);
+  EXITIF (((len * 5) / 8) != out_size);
   EXITIF (GNUNET_OK != GNUNET_STRINGS_string_to_data (enc, len, out, out_size));
   return GNUNET_OK;
  EXITIF_exit:

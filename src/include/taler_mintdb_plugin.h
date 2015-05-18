@@ -23,8 +23,6 @@
 #define TALER_MINTDB_PLUGIN_H
 
 #include <gnunet/gnunet_util_lib.h>
-#include "taler_util.h"
-#include "taler_signatures.h"
 #include "taler_mintdb_lib.h"
 
 
@@ -685,7 +683,9 @@ struct TALER_MINTDB_Plugin
 
   /**
    * Insert a incoming transaction into reserves.  New reserves are
-   * also created through this function.
+   * also created through this function.  Note that this API call
+   * starts (and stops) its own transaction scope (so the application
+   * must not do so).
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param db the database connection handle
@@ -704,7 +704,7 @@ struct TALER_MINTDB_Plugin
                          const struct TALER_ReservePublicKeyP *reserve_pub,
                          const struct TALER_Amount *balance,
                          const char *details,
-                         const struct GNUNET_TIME_Absolute expiry);
+                         struct GNUNET_TIME_Absolute expiry);
 
 
   /**
@@ -1066,7 +1066,7 @@ struct TALER_MINTDB_Plugin
   struct TALER_MINTDB_LinkDataList *
   (*get_link_data_list) (void *cls,
                          struct TALER_MINTDB_Session *sesssion,
-                         const union TALER_CoinSpendPublicKeyP *coin_pub);
+                         const struct TALER_CoinSpendPublicKeyP *coin_pub);
 
 
   /**
@@ -1083,7 +1083,7 @@ struct TALER_MINTDB_Plugin
   /**
    * Obtain shared secret and transfer public key from the public key of
    * the coin.  This information and the link information returned by
-   * #TALER_db_get_link() enable the owner of an old coin to determine
+   * @e get_link_data_list() enable the owner of an old coin to determine
    * the private keys of the new coins after the melt.
    *
    *
@@ -1099,7 +1099,7 @@ struct TALER_MINTDB_Plugin
   int
   (*get_transfer) (void *cls,
                    struct TALER_MINTDB_Session *sesssion,
-                   const union TALER_CoinSpendPublicKeyP *coin_pub,
+                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    struct TALER_TransferPublicKeyP *transfer_pub,
                    struct TALER_EncryptedLinkSecretP *shared_secret_enc);
 
@@ -1111,7 +1111,7 @@ struct TALER_MINTDB_Plugin
    * @param sesssion database connection
    * @param lock lock operation
    * @return #GNUNET_YES if known,
-   *         #GNUENT_NO if not,
+   *         #GNUNET_NO if not,
    *         #GNUNET_SYSERR on internal error
    */
   int
@@ -1147,7 +1147,7 @@ struct TALER_MINTDB_Plugin
   struct TALER_MINTDB_TransactionList *
   (*get_coin_transactions) (void *cls,
                             struct TALER_MINTDB_Session *sesssion,
-                            const union TALER_CoinSpendPublicKeyP *coin_pub);
+                            const struct TALER_CoinSpendPublicKeyP *coin_pub);
 
 
   /**

@@ -874,6 +874,23 @@ be added to the basic protocol.
 
 \subsection{Refunds}
 
+The refresh protocol offers an easy way to enable refunds to
+customers, even if they are anonymous.  Refunds can be supported
+by including a public signing key of the mechant in the transaction
+details, and having the customer keep the private key of the spent
+coins on file.  
+
+Given this, the merchant can simply sign a {\em refund confirmation}
+and share it with the mint (and the customer).  Assuming the mint has
+a way to recover the funds from the merchant (or simply not performed
+the transfer yet), the mint can simply add the value of the refunded
+transaction back to the original coin, re-enabling those funds to be
+spent again by the original customer.
+
+The (anonymous) customer -- but nobody else -- can then use the
+refresh protocol to melt the refunded coin and create a fresh coin
+that is unlinkable to the previous transaction.
+
 
 \subsection{Incremental spending}
 
@@ -1029,45 +1046,57 @@ protocol with the mint.
 %\end{figure}
 
 
+\subsection{Probabilistic donations}
 
-\subsection{Probabilistic spending}
+Similar to Peppercoin, Taler supports probabilistic {\em micro}donations of coins to
+support cost-effective transactions for small amounts.  We consider
+amounts to be ``micro'' if the value of the transaction is close or
+even below the business cost of an individual transaction to the mint.
 
-Similar to Peppercoin, Taler supports probabilistic spending of coins to
-support cost-effective transactions for small amounts.  Here, an
-ordinary transaction is performed based on the result of a biased coin
-flip with a probability related to the desired transaction amount in
-relation to the value of the coin.  Unlike Peppercoin, in Taler either
-the merchant wins and the customer looses the coin, or the merchant
-looses and the customer keeps the coin.  Thus, there is no opportunity
-for the merchant and the customer to conspire against the mint.  To
-determine if the coin is to be transferred, merchant and customer
-execute a secure coin flipping protocol~\cite{blum1981}.  The commit
-values are included in the business contract and are revealed after
-the contract has been signed using the private key of the coin.  If
-the coin flip is decided in favor of the merchant, the merchant can
-redeem the coin at the mint.
+To support microdonations, an ordinary transaction is performed based
+on the result of a biased coin flip with a probability related to the
+desired transaction amount in relation to the value of the coin.  More
+specifically, a microdonation of value $\epsilon$ is upgraded to a
+macropayment of value $m$ with a probability of $\frac{\epsilon}{m}$.
+Here, $m$ is chosen such that the business transaction cost at the
+mint is small in relation to $m$.  The mint is only involved in the
+tiny fraction of transactions that are upgraded.  On average both
+customers and merchants end up paying (or receiving) the expected
+amount $\epsilon$ per microdonation.
+
+Unlike Peppercoin, in Taler either the merchant wins and the customer
+looses the coin, or the merchant looses and the customer keeps the
+coin.  Thus, there is no opportunity for the merchant and the customer
+to conspire against the mint.  To determine if the coin is to be
+transferred, merchant and customer execute a secure coin flipping
+protocol~\cite{blum1981}.  The commit values are included in the
+business contract and are revealed after the contract has been signed
+using the private key of the coin.  If the coin flip is decided in
+favor of the merchant, the merchant can redeem the coin at the mint.
 
 One issue in this protocol is that the customer may use a worthless
 coin by offering a coin that has already been spent.  This kind of
 fraud would only be detected if the customer actually lost the coin
 flip, and at this point the merchant might not be able to recover from
 the loss.  A fradulent anonymous customer may run the protocol using
-already spent coins until the coin flip is in his favor.  As with
-incremental spending, lock permissions could be used to ensure that
-the customer cannot defraud the merchant by offering a coin that has
-already been spent.  However, as this means involving the mint even if
-the merchant looses the coin flip, such a scheme is unsuitable for
-microdonations as the transaction costs from involving the mint might
-be disproportionate to the value of the transaction, and thus with
-locking the probabilistic scheme has no advantage over simply using
-fractional payments.
+already spent coins until the coin flip is in his favor.  
 
-Hence, Taler uses probabilistic transactions {\em without} the online
+As with incremental spending, lock permissions could be used to ensure
+that the customer cannot defraud the merchant by offering a coin that
+has already been spent.  However, as this means involving the mint
+even if the merchant looses the coin flip, such a scheme is unsuitable
+for microdonations as the transaction costs from involving the mint
+might be disproportionate to the value of the transaction, and thus
+with locking the probabilistic scheme has no advantage over simply
+using fractional payments.
+
+Hence, Taler uses probabilistic transactions {\em without} online
 double-spending detection.  This enables the customer to defraud the
 merchant by paying with a coin that was already spent.  However, as,
 by definition, such microdonations are for tiny amounts, the incentive
-for customers to pursue this kind of fraud is limited.
-
+for customers to pursue this kind of fraud is limited.  Still, to
+clarify that the customer must be honest, we prefer the term
+micro{\em donations} over micro{\em payments} for this scheme.
 
 
 The following steps are executed for microdonations with upgrade probability $p$:
@@ -1082,7 +1111,5 @@ The following steps are executed for microdonations with upgrade probability $p$
   \item The merchant deposits the coin, or checks if $r_c$ is consistent
     with $H(r_c)$.
 \end{enumerate}
-
-
 
 \end{document}

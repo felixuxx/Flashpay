@@ -22,8 +22,6 @@
 #define TALER_MINT_HTTPD_DB_H
 
 #include <microhttpd.h>
-#include <gnunet/gnunet_util_lib.h>
-#include "taler_util.h"
 #include "taler_mintdb_plugin.h"
 
 
@@ -166,7 +164,7 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
  */
 int
 TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
-                             const union TALER_CoinSpendPublicKeyP *coin_pub);
+                             const struct TALER_CoinSpendPublicKeyP *coin_pub);
 
 
 #endif

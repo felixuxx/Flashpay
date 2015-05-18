@@ -21,12 +21,8 @@
 #include "platform.h"
 #include <pthread.h>
 #include <jansson.h>
-#include "taler-mint-httpd_db.h"
-#include "taler_signatures.h"
 #include "taler-mint-httpd_responses.h"
-#include "taler_util.h"
 #include "taler-mint-httpd_keystate.h"
-#include "taler_mintdb_lib.h"
 
 
 /**
@@ -926,7 +922,7 @@ check_commitment (struct MHD_Connection *connection,
   for (j = 0; j < num_newcoins; j++)
   {
     struct TALER_RefreshLinkDecrypted *link_data;
-    union TALER_CoinSpendPublicKeyP coin_pub;
+    struct TALER_CoinSpendPublicKeyP coin_pub;
     struct GNUNET_HashCode h_msg;
     char *buf;
     size_t buf_len;
@@ -942,10 +938,10 @@ check_commitment (struct MHD_Connection *connection,
           ? GNUNET_NO : GNUNET_SYSERR;
     }
 
-    GNUNET_CRYPTO_ecdsa_key_get_public (&link_data->coin_priv.ecdsa_priv,
-                                        &coin_pub.ecdsa_pub);
+    GNUNET_CRYPTO_eddsa_key_get_public (&link_data->coin_priv.eddsa_priv,
+                                        &coin_pub.eddsa_pub);
     GNUNET_CRYPTO_hash (&coin_pub,
-                        sizeof (union TALER_CoinSpendPublicKeyP),
+                        sizeof (struct TALER_CoinSpendPublicKeyP),
                         &h_msg);
     if (0 == (buf_len =
               GNUNET_CRYPTO_rsa_blind (&h_msg,
@@ -1248,7 +1244,7 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
  */
 int
 TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
-                             const union TALER_CoinSpendPublicKeyP *coin_pub)
+                             const struct TALER_CoinSpendPublicKeyP *coin_pub)
 {
   int res;
   struct TALER_MINTDB_Session *session;

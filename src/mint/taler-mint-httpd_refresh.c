@@ -24,9 +24,6 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
-#include "taler_mintdb_plugin.h"
-#include "taler_signatures.h"
-#include "taler_util.h"
 #include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_mhd.h"
 #include "taler-mint-httpd_refresh.h"
@@ -269,10 +266,10 @@ verify_coin_public_info (struct MHD_Connection *connection,
 
   TMH_KS_release (key_state);
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
                                   &body.purpose,
-                                  &melt_detail->melt_sig.ecdsa_signature,
-                                  &melt_detail->coin_info.coin_pub.ecdsa_pub))
+                                  &melt_detail->melt_sig.eddsa_signature,
+                                  &melt_detail->coin_info.coin_pub.eddsa_pub))
   {
     if (MHD_YES !=
         TMH_RESPONSE_reply_signature_invalid (connection,
@@ -439,7 +436,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
     {
       if (0 == memcmp (&coin_melt_details[i].coin_info.coin_pub,
                        &coin_melt_details[j].coin_info.coin_pub,
-                       sizeof (union TALER_CoinSpendPublicKeyP)))
+                       sizeof (struct TALER_CoinSpendPublicKeyP)))
       {
         for (j=0;j<i;j++)
         {
@@ -458,7 +455,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                        &coin_melt_details[i].melt_amount_with_fee);
     GNUNET_CRYPTO_hash_context_read (hash_context,
                                      &coin_melt_details[i].coin_info.coin_pub,
-                                     sizeof (union TALER_CoinSpendPublicKeyP));
+                                     sizeof (struct TALER_CoinSpendPublicKeyP));
     GNUNET_CRYPTO_hash_context_read (hash_context,
                                      &melt_amount,
                                      sizeof (struct TALER_AmountNBO));
@@ -891,13 +888,13 @@ TMH_REFRESH_handler_refresh_link (struct TMH_RequestHandler *rh,
                                   const char *upload_data,
                                   size_t *upload_data_size)
 {
-  union TALER_CoinSpendPublicKeyP coin_pub;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
   int res;
 
   res = TMH_PARSE_mhd_request_arg_data (connection,
                                         "coin_pub",
                                         &coin_pub,
-                                        sizeof (union TALER_CoinSpendPublicKeyP));
+                                        sizeof (struct TALER_CoinSpendPublicKeyP));
   if (GNUNET_SYSERR == res)
     return MHD_NO;
   if (GNUNET_OK != res)

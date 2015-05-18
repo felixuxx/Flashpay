@@ -26,8 +26,6 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include <pthread.h>
-#include "taler_signatures.h"
-#include "taler_util.h"
 #include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_mhd.h"
 #include "taler-mint-httpd_deposit.h"
@@ -229,13 +227,6 @@ handle_mhd_request (void *cls,
 	NULL, 0,
 	&TMH_TEST_handler_test_ecdhe, MHD_HTTP_OK },
       { "/test/ecdhe", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-      { "/test/ecdsa", MHD_HTTP_METHOD_POST, "application/json",
-	NULL, 0,
-	&TMH_TEST_handler_test_ecdsa, MHD_HTTP_OK },
-      { "/test/ecdsa", NULL, "text/plain",
         "Only POST is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 

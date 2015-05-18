@@ -20,7 +20,6 @@
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
 #include "platform.h"
-#include "taler_mintdb_lib.h"
 #include "taler_mintdb_plugin.h"
 #include <ltdl.h>
 
@@ -112,7 +111,7 @@ plugin_init ()
   opath = lt_dlgetsearchpath ();
   if (NULL != opath)
     old_dlsearchpath = GNUNET_strdup (opath);
-  path = TALER_os_installation_get_path (GNUNET_OS_IPK_LIBDIR);
+  path = TALER_OS_installation_get_path (GNUNET_OS_IPK_LIBDIR);
   if (NULL != path)
   {
     if (NULL != opath)
