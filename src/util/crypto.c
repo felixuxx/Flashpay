@@ -40,8 +40,9 @@ fatal_error_handler (void *cls,
                      int wtf,
                      const char *msg)
 {
-  TALER_LOG_ERROR ("Fatal error in libgcrypt: %s\n",
-             msg);
+  fprintf (stderr,
+           "Fatal error in libgcrypt: %s\n",
+           msg);
   abort();
 }
 
@@ -54,8 +55,12 @@ TALER_gcrypt_init ()
 {
   gcry_set_fatalerror_handler (&fatal_error_handler,
                                NULL);
-  TALER_assert_as (gcry_check_version (NEED_LIBGCRYPT_VERSION),
-                   "libgcrypt version mismatch");
+  if (! gcry_check_version (NEED_LIBGCRYPT_VERSION))
+  {
+    fprintf (stderr,
+             "libgcrypt version mismatch\n");
+    abort ();
+  }
   /* Disable secure memory.  */
   gcry_control (GCRYCTL_DISABLE_SECMEM, 0);
   gcry_control (GCRYCTL_INITIALIZATION_FINISHED, 0);
