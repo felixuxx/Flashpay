@@ -54,10 +54,10 @@ postgres_prepare (PGconn *db_conn)
            ",abs_time"
            ",forever"
            ",hash"
-           ",hamount_val" 
+           ",hamount_val"
            ",hamount_frac"
            ",hamount_curr"
-           ",namount_val" 
+           ",namount_val"
            ",namount_frac"
            ",namount_curr"
            ",vsize"
@@ -72,10 +72,10 @@ postgres_prepare (PGconn *db_conn)
            ",abs_time"
            ",forever"
            ",hash"
-           ",hamount_val" 
+           ",hamount_val"
            ",hamount_frac"
            ",hamount_curr"
-           ",namount_val" 
+           ",namount_val"
            ",namount_frac"
            ",namount_curr"
 	   ",vsize"
@@ -116,18 +116,20 @@ run_queries (PGconn *conn)
   char msg[] = "Hello";
   void *msg2;
   size_t msg2_len;
-  
+
   priv = GNUNET_CRYPTO_rsa_private_key_create (1024);
   pub = GNUNET_CRYPTO_rsa_private_key_get_public (priv);
   sig = GNUNET_CRYPTO_rsa_sign (priv,
 				msg,
 				sizeof (msg));
-  TALER_string_to_amount ("EUR:5.5",
-			  &hamount);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("EUR:5.5",
+                                         &hamount));
   TALER_amount_hton (&namount,
-		     &hamount);		     
-  TALER_string_to_amount ("EUR:4.4",
-			  &hamount);
+		     &hamount);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("EUR:4.4",
+                                         &hamount));
   /* FIXME: test TALER_PQ_result_spec_variable_size */
   {
     struct TALER_PQ_QueryParam params_insert[] = {
@@ -155,7 +157,7 @@ run_queries (PGconn *conn)
       TALER_PQ_result_spec_variable_size ("vsize", &msg2, &msg2_len),
       TALER_PQ_result_spec_end
     };
-    
+
     result = TALER_PQ_exec_prepared (conn,
 				     "test_insert",
 				     params_insert);
@@ -170,7 +172,7 @@ run_queries (PGconn *conn)
       GNUNET_CRYPTO_rsa_public_key_free (pub);
       return 1;
     }
-    
+
     PQclear (result);
     result = TALER_PQ_exec_prepared (conn,
 				     "test_select",
@@ -198,10 +200,11 @@ run_queries (PGconn *conn)
     GNUNET_break (0 ==
 		  TALER_amount_cmp (&hamount,
 				    &hamount2));
-    TALER_string_to_amount ("EUR:5.5",
-			    &hamount);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_string_to_amount ("EUR:5.5",
+                                           &hamount));
     TALER_amount_ntoh (&hamount2,
-		       &namount2);		         
+		       &namount2);
     GNUNET_break (0 ==
 		  TALER_amount_cmp (&hamount,
 				    &hamount2));
@@ -225,7 +228,7 @@ run_queries (PGconn *conn)
   GNUNET_CRYPTO_rsa_public_key_free (pub);
   if (GNUNET_OK != ret)
     return 1;
-  
+
   return 0;
 }
 
