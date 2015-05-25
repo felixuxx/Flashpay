@@ -139,6 +139,7 @@ test_known_coins (struct TALER_MINTDB_Session *session)
   dki.issue.fee_withdraw.value = 0;
   dki.issue.fee_withdraw.fraction = htonl (100);
   (void) strcpy (dki.issue.fee_withdraw.currency, CURRENCY);
+  dki.issue.fee_deposit = dki.issue.fee_withdraw;
   dki.issue.fee_refresh = dki.issue.fee_withdraw;
   FAILIF (GNUNET_OK !=
           plugin->insert_denomination (plugin->cls,
@@ -308,6 +309,7 @@ run (void *cls,
     dki.issue.fee_withdraw.value = 0;
     dki.issue.fee_withdraw.fraction = htonl (100);
     (void) strcpy (dki.issue.fee_withdraw.currency, CURRENCY);
+    dki.issue.fee_deposit = dki.issue.fee_withdraw;
     dki.issue.fee_refresh = dki.issue.fee_withdraw;
     FAILIF (GNUNET_OK !=
             plugin->insert_denomination (plugin->cls,

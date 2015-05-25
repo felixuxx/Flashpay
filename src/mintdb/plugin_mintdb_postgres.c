@@ -196,6 +196,9 @@ postgres_create_tables (void *cls,
            ",fee_withdraw_val INT8 NOT NULL"
            ",fee_withdraw_frac INT4 NOT NULL"
            ",fee_withdraw_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",fee_deposit_val INT8 NOT NULL"
+           ",fee_deposit_frac INT4 NOT NULL"
+           ",fee_deposit_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
            ",fee_refresh_val INT8 NOT NULL"
            ",fee_refresh_frac INT4 NOT NULL"
            ",fee_refresh_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -393,13 +396,16 @@ postgres_prepare (PGconn *db_conn)
            ",coin_curr" /* assuming same currency for fees */
            ",fee_withdraw_val"
            ",fee_withdraw_frac"
-           ",fee_withdraw_curr" /* must match coin_currency */
+           ",fee_withdraw_curr" /* must match coin_curr */
+           ",fee_deposit_val"
+           ",fee_deposit_frac"
+           ",fee_deposit_curr"  /* must match coin_curr */
            ",fee_refresh_val"
            ",fee_refresh_frac"
-           ",fee_refresh_curr" /* must match coin_currency */
+           ",fee_refresh_curr" /* must match coin_curr */
            ") VALUES "
            "($1, $2, $3, $4, $5, $6,"
-            "$7, $8, $9, $10, $11, $12, $13, $14);",
+            "$7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);",
            14, NULL);
   PREPARE ("get_reserve",
            "SELECT "
@@ -845,6 +851,7 @@ postgres_insert_denomination (void *cls,
     TALER_PQ_query_param_auto_from_type (&issue->expire_legal.abs_value_us__),
     TALER_PQ_query_param_amount_nbo (&issue->value),
     TALER_PQ_query_param_amount_nbo (&issue->fee_withdraw),
+    TALER_PQ_query_param_amount_nbo (&issue->fee_deposit),
     TALER_PQ_query_param_amount_nbo (&issue->fee_refresh),
     TALER_PQ_query_param_end
   };
