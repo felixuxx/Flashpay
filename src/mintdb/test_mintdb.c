@@ -232,7 +232,7 @@ run (void *cls,
     (void) strcpy (dki.issue.value.currency, CURRENCY);
     dki.issue.fee_withdraw.value = 0;
     dki.issue.fee_withdraw.fraction = htonl (100);
-    (void) strcpy (dki.issue.value.currency, CURRENCY);
+    (void) strcpy (dki.issue.fee_withdraw.currency, CURRENCY);
     dki.issue.fee_refresh = dki.issue.fee_withdraw;
     FAILIF (GNUNET_OK !=
             plugin->insert_denomination (plugin->cls,
