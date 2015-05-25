@@ -277,6 +277,16 @@ postgres_create_tables (void *cls,
           // and the new coin signatures are ready
           ",reveal_ok BOOLEAN NOT NULL DEFAULT false"
           ") ");
+  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_melts "
+          "("
+          " coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)"
+          ",session BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
+          ",oldcoin_index INT2 NOT NULL"
+          ",coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)"
+          ",melt_val INT8 NOT NULL"
+          ",melt_frac INT8 NOT NULL"
+          ",melt_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ") ");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_order "
           "( "
           " session_hash BYTEA NOT NULL CHECK (LENGTH(session_hash)=64) REFERENCES refresh_sessions (session_hash)"
@@ -304,21 +314,6 @@ postgres_create_tables (void *cls,
           // index for cut and choose,
           ",cnc_index INT2 NOT NULL"
           ",coin_ev BYTEA NOT NULL"
-          ")");
-  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_melt"
-          "("
-          " session_hash BYTEA NOT NULL CHECK(LENGTH(session_hash)=64) REFERENCES refresh_sessions (session_hash) "
-          ",coin_pub BYTEA NOT NULL CHECK(LENGTH(coin_pub)=32) REFERENCES known_coins (coin_pub) "
-          ",coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)"
-          ",denom_pub BYTEA NOT NULL "
-          ",denom_sig BYTEA NOT NULL "
-          ",amount_val INT8 NOT NULL "
-          ",amount_frac INT8 NOT NULL "
-          ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL "
-          ",fee_val INT8 NOT NULL "
-          ",fee_frac INT8 NOT NULL "
-          ",fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL "
-          ",oldcoin_index INT2 NOT NULL"
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_collectable"
           "("
@@ -530,22 +525,17 @@ postgres_prepare (PGconn *db_conn)
            "VALUES ($1, $2, $3)",
            3, NULL);
   PREPARE ("insert_refresh_melt",
-           "INSERT INTO refresh_melt ("
-           " session_hash "
+           "INSERT INTO refresh_melts ("
+           " coin_pub "
+           ",session"
            ",oldcoin_index "
-           ",coin_pub "
            ",coin_sig "
-           ",denom_pub "
-           ",denom_sig "
-           ",amount_val "
-           ",amount_frac "
-           ",amount_curr "
-           ",fee_val "
-           ",fee_frac "
-           ",fee_curr "
+           ",melt_val "
+           ",melt_frac "
+           ",melt_curr "
            ") "
-           "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
-           12, NULL);
+           "VALUES ($1, $2, $3, $4, $5, $6, $7)",
+           7, NULL);
   PREPARE ("get_refresh_order",
            "SELECT denom_pub "
            "FROM refresh_order "
@@ -556,6 +546,7 @@ postgres_prepare (PGconn *db_conn)
            "FROM refresh_collectable "
            "WHERE session_hash = $1 AND newcoin_index = $2",
            2, NULL);
+#if 0                           /* FIXME: not complete yet */
   PREPARE ("get_refresh_melt",
            "SELECT coin_pub,coin_sig,denom_pub,denom_sig,amount_val,amount_frac,amount_curr,fee_val,fee_frac,fee_curr "
            "FROM refresh_melt "
@@ -621,6 +612,7 @@ postgres_prepare (PGconn *db_conn)
            "         WHERE newcoin_index = 0 AND rcc2.session_hash = rm.session_hash "
            "     ) ",
            1, NULL);
+#endif
   PREPARE ("insert_deposit",
            "INSERT INTO deposits ("
            "coin_pub,"
@@ -1724,22 +1716,38 @@ postgres_insert_refresh_melt (void *cls,
                               uint16_t oldcoin_index,
                               const struct TALER_MINTDB_RefreshMelt *melt)
 {
-  // FIXME: check logic!
-  uint16_t oldcoin_index_nbo = htons (oldcoin_index);
+  uint16_t oldcoin_index_nbo;
   PGresult *result;
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_auto_from_type(&melt->coin.coin_pub),
+    TALER_PQ_query_param_auto_from_type(&melt->session_hash),
+    TALER_PQ_query_param_auto_from_type(&oldcoin_index_nbo),
+    TALER_PQ_query_param_auto_from_type (&melt->coin_sig),
+    TALER_PQ_query_param_amount (&melt->amount_with_fee),
+    TALER_PQ_query_param_end
+  };
+  int ret;
 
+  /* check if the coin is already known */
+  ret = postgres_get_known_coin (cls,
+                                 session,
+                                 &melt->coin.coin_pub,
+                                 NULL);
+  if (GNUNET_SYSERR == ret)
+    return GNUNET_SYSERR;
+  if (GNUNET_NO == ret)         /* if not, insert it */
   {
-    struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_query_param_auto_from_type(&melt->session_hash),
-      TALER_PQ_query_param_auto_from_type(&oldcoin_index_nbo),
-      TALER_PQ_query_param_auto_from_type(&melt->coin.coin_pub),
-      TALER_PQ_query_param_rsa_public_key(melt->coin.denom_pub.rsa_public_key),
-      TALER_PQ_query_param_end
-    };
-    result = TALER_PQ_exec_prepared (session->conn,
-                                     "insert_refresh_melt",
-                                     params);
+    ret = postgres_insert_known_coin (cls,
+                                      session,
+                                      &melt->coin);
+    if (ret == GNUNET_SYSERR)
+      return GNUNET_SYSERR;
   }
+  /* insert the melt */
+  oldcoin_index_nbo = htons (oldcoin_index);
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "insert_refresh_melt",
+                                   params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
