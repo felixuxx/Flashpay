@@ -111,6 +111,81 @@ destroy_denom_key_pair (struct DenomKeyPair *dkp)
   GNUNET_free (dkp);
 }
 
+static int
+test_known_coins (struct TALER_MINTDB_Session *session)
+{
+  struct TALER_CoinPublicInfo coin_info;
+  struct TALER_CoinPublicInfo *ret_coin_info;
+  struct DenomKeyPair *dkp;
+  struct TALER_MINTDB_DenominationKeyIssueInformation dki;
+  int ret = GNUNET_SYSERR;
+  dkp = create_denom_key_pair (1024);
+  dki.denom_pub = dkp->pub;
+  dki.issue.start = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get ());
+  dki.issue.expire_withdraw = GNUNET_TIME_absolute_hton
+      (GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
+                                 GNUNET_TIME_UNIT_HOURS));
+  dki.issue.expire_spend = GNUNET_TIME_absolute_hton
+      (GNUNET_TIME_absolute_add
+       (GNUNET_TIME_absolute_get (),
+        GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 2)));
+  dki.issue.expire_legal = GNUNET_TIME_absolute_hton
+      (GNUNET_TIME_absolute_add
+       (GNUNET_TIME_absolute_get (),
+        GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 3)));
+  dki.issue.value.value = GNUNET_htonll (1);
+  dki.issue.value.fraction = htonl (100);
+  (void) strcpy (dki.issue.value.currency, CURRENCY);
+  dki.issue.fee_withdraw.value = 0;
+  dki.issue.fee_withdraw.fraction = htonl (100);
+  (void) strcpy (dki.issue.fee_withdraw.currency, CURRENCY);
+  dki.issue.fee_refresh = dki.issue.fee_withdraw;
+  FAILIF (GNUNET_OK !=
+          plugin->insert_denomination (plugin->cls,
+                                       session,
+                                       &dki));
+  RND_BLK (&coin_info);
+  coin_info.denom_pub = dkp->pub;
+  coin_info.denom_sig.rsa_signature =
+      GNUNET_CRYPTO_rsa_sign (dkp->priv.rsa_private_key,
+                              "foobar", 6);
+  ret_coin_info = NULL;
+  FAILIF (GNUNET_NO !=
+          plugin->get_known_coin (plugin->cls,
+                                  session,
+                                  &coin_info.coin_pub,
+                                  &ret_coin_info));
+  FAILIF (NULL != ret_coin_info);
+  FAILIF (GNUNET_OK !=
+          plugin->insert_known_coin (plugin->cls,
+                                     session,
+                                     &coin_info));
+  FAILIF (GNUNET_YES !=
+          plugin->get_known_coin (plugin->cls,
+                                  session,
+                                  &coin_info.coin_pub,
+                                  &ret_coin_info));
+  FAILIF (NULL == ret_coin_info);
+  FAILIF (0 != GNUNET_CRYPTO_rsa_public_key_cmp
+          (ret_coin_info->denom_pub.rsa_public_key,
+           coin_info.denom_pub.rsa_public_key));
+  FAILIF (0 != GNUNET_CRYPTO_rsa_signature_cmp
+          (ret_coin_info->denom_sig.rsa_signature,
+           coin_info.denom_sig.rsa_signature));
+  ret = GNUNET_OK;
+ drop:
+  destroy_denom_key_pair (dkp);
+  GNUNET_CRYPTO_rsa_signature_free (coin_info.denom_sig.rsa_signature);
+  if (NULL != ret_coin_info)
+  {
+    GNUNET_CRYPTO_rsa_public_key_free (ret_coin_info->denom_pub.rsa_public_key);
+    GNUNET_CRYPTO_rsa_signature_free (ret_coin_info->denom_sig.rsa_signature);
+    GNUNET_free (ret_coin_info);
+  }
+  return ret;
+}
+
+
 /**
  * Main function that will be run by the scheduler.
  *
@@ -374,6 +449,7 @@ run (void *cls,
                          &refresh_session,
                          sizeof (refresh_session)));
   }
+  FAILIF (GNUNET_OK != test_known_coins (session));
   result = 0;
 
  drop:

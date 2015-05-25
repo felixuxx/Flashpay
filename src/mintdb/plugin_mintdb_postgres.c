@@ -254,10 +254,6 @@ postgres_create_tables (void *cls,
           " coin_pub BYTEA NOT NULL PRIMARY KEY"
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",denom_sig BYTEA NOT NULL"
-          ",expended_val INT8 NOT NULL"
-          ",expended_frac INT4 NOT NULL"
-          ",expended_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ",refresh_session_hash BYTEA"
           ")");
   /**
    * The DB will show negative values for some values of the following fields as
@@ -491,39 +487,20 @@ postgres_prepare (PGconn *db_conn)
            ") "
            "VALUES ($1, $2, $3, $4) ",
            4, NULL);
-
   PREPARE ("get_known_coin",
            "SELECT"
-           " coin_pub, denom_pub, denom_sig "
-           ",expended_val, expended_frac, expended_curr "
-           ",refresh_session_hash "
+           " denom_pub, denom_sig "
            "FROM known_coins "
            "WHERE coin_pub = $1",
            1, NULL);
-  PREPARE ("update_known_coin",
-           "UPDATE known_coins "
-           "SET"
-           " denom_pub = $2 "
-           ",denom_sig = $3 "
-           ",expended_val = $4 "
-           ",expended_frac = $5 "
-           ",expended_curr = $6 "
-           ",refresh_session_hash = $7 "
-           "WHERE "
-           " coin_pub = $1",
-           7, NULL);
   PREPARE ("insert_known_coin",
            "INSERT INTO known_coins ("
            " coin_pub"
            ",denom_pub"
            ",denom_sig"
-           ",expended_val"
-           ",expended_frac"
-           ",expended_curr"
-           ",refresh_session_hash"
            ")"
-           "VALUES ($1,$2,$3,$4,$5,$6,$7)",
-           7, NULL);
+           "VALUES ($1,$2,$3)",
+           3, NULL);
   PREPARE ("get_refresh_commit_link",
            "SELECT"
            " transfer_pub "
@@ -1625,6 +1602,105 @@ postgres_create_refresh_session (void *cls,
 
 
 /**
+ * Insert a coin we know of into the DB.  The coin can then be referenced by
+ * tables for deposits, lock and refresh functionality.
+ *
+ * @param cls plugin closure
+ * @param session the shared database session
+ * @param coin_info the public coin info
+ * @return #GNUNET_SYSERR upon error; #GNUNET_OK upon success
+ */
+static int
+postgres_insert_known_coin (void *cls,
+                            struct TALER_MINTDB_Session *session,
+                            const struct TALER_CoinPublicInfo *coin_info)
+{
+  PGresult *result;
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_auto_from_type (&coin_info->coin_pub),
+    TALER_PQ_query_param_rsa_public_key (coin_info->denom_pub.rsa_public_key),
+    TALER_PQ_query_param_rsa_signature (coin_info->denom_sig.rsa_signature),
+    TALER_PQ_query_param_end
+  };
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "insert_known_coin",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Retrieve the record for a known coin.
+ *
+ * @param cls the plugin closure
+ * @param session the database session handle
+ * @param coin_pub the public key of the coin to search for
+ * @param ret_coin_info place holder for the returned coin information object
+ * @return #GNUNET_SYSERR upon error; #GNUNET_NO if no coin is found; #GNUNET_OK
+ *           if upon succesfullying retrieving the record data info @a
+ *           ret_coin_info
+ */
+static int
+postgres_get_known_coin (void *cls,
+                         struct TALER_MINTDB_Session *session,
+                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                         struct TALER_CoinPublicInfo **ret_coin_info)
+{
+  PGresult *result;
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_auto_from_type (coin_pub),
+    TALER_PQ_query_param_end
+  };
+  struct TALER_CoinPublicInfo *coin_info;
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "get_known_coin",
+                                   params);
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  if (0 == PQntuples (result))
+  {
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  if ((NULL == ret_coin_info) && (1 == PQntuples (result)))
+  {
+    PQclear (result);
+    return GNUNET_OK;
+  }
+  coin_info = GNUNET_new (struct TALER_CoinPublicInfo);
+  struct TALER_PQ_ResultSpec rs[] = {
+    TALER_PQ_result_spec_rsa_public_key ("denom_pub", &coin_info->denom_pub.rsa_public_key),
+    TALER_PQ_result_spec_rsa_signature ("denom_sig", &coin_info->denom_sig.rsa_signature),
+    TALER_PQ_result_spec_end
+  };
+  if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
+  {
+    PQclear (result);
+    GNUNET_break (0);
+    GNUNET_free (coin_info);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  (void) memcpy (&coin_info->coin_pub,
+                 coin_pub,
+                 sizeof (struct TALER_CoinSpendPublicKeyP));
+  *ret_coin_info = coin_info;
+  return GNUNET_OK;
+}
+
+
+/**
  * Store the given /refresh/melt request in the database.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -2506,6 +2582,8 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->insert_deposit = &postgres_insert_deposit;
   plugin->get_refresh_session = &postgres_get_refresh_session;
   plugin->create_refresh_session = &postgres_create_refresh_session;
+  plugin->get_known_coin = &postgres_get_known_coin;
+  plugin->insert_known_coin = &postgres_insert_known_coin;
   plugin->insert_refresh_melt = &postgres_insert_refresh_melt;
   plugin->get_refresh_melt = &postgres_get_refresh_melt;
   plugin->insert_refresh_order = &postgres_insert_refresh_order;
