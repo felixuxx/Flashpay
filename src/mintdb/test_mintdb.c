@@ -89,38 +89,19 @@ struct DenomKeyPair
 };
 
 
-static struct DenomKeyPair *
-create_denom_key_pair (unsigned int size)
-{
-  struct DenomKeyPair *dkp;
-
-  dkp = GNUNET_new (struct DenomKeyPair);
-  dkp->priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (size);
-  GNUNET_assert (NULL != dkp->priv.rsa_private_key);
-  dkp->pub.rsa_public_key
-    = GNUNET_CRYPTO_rsa_private_key_get_public (dkp->priv.rsa_private_key);
-  return dkp;
-}
-
-
-static void
-destroy_denom_key_pair (struct DenomKeyPair *dkp)
-{
-  GNUNET_CRYPTO_rsa_public_key_free (dkp->pub.rsa_public_key);
-  GNUNET_CRYPTO_rsa_private_key_free (dkp->priv.rsa_private_key);
-  GNUNET_free (dkp);
-}
-
+/**
+ * Register a denomination in the DB.
+ *
+ * @param dkp the denomination key pair
+ * @param session the DB session
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
+ */
 static int
-test_known_coins (struct TALER_MINTDB_Session *session)
+register_denomination(struct TALER_DenominationPublicKey denom_pub,
+                      struct TALER_MINTDB_Session *session)
 {
-  struct TALER_CoinPublicInfo coin_info;
-  struct TALER_CoinPublicInfo *ret_coin_info;
-  struct DenomKeyPair *dkp;
   struct TALER_MINTDB_DenominationKeyIssueInformation dki;
-  int ret = GNUNET_SYSERR;
-  dkp = create_denom_key_pair (1024);
-  dki.denom_pub = dkp->pub;
+  dki.denom_pub = denom_pub;
   dki.issue.start = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get ());
   dki.issue.expire_withdraw = GNUNET_TIME_absolute_hton
       (GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
@@ -141,10 +122,69 @@ test_known_coins (struct TALER_MINTDB_Session *session)
   (void) strcpy (dki.issue.fee_withdraw.currency, CURRENCY);
   dki.issue.fee_deposit = dki.issue.fee_withdraw;
   dki.issue.fee_refresh = dki.issue.fee_withdraw;
-  FAILIF (GNUNET_OK !=
-          plugin->insert_denomination (plugin->cls,
-                                       session,
-                                       &dki));
+  if (GNUNET_OK !=
+      plugin->insert_denomination (plugin->cls,
+                                   session,
+                                   &dki))
+  {
+    GNUNET_break(0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Create a denominaiton key pair
+ *
+ * @param size the size of the denomination key
+ * @param session the DB session
+ * @return the denominaiton key pair; NULL upon error
+ */
+static struct DenomKeyPair *
+create_denom_key_pair (unsigned int size, struct TALER_MINTDB_Session *session)
+{
+  struct DenomKeyPair *dkp;
+
+  dkp = GNUNET_new (struct DenomKeyPair);
+  dkp->priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (size);
+  GNUNET_assert (NULL != dkp->priv.rsa_private_key);
+  dkp->pub.rsa_public_key
+    = GNUNET_CRYPTO_rsa_private_key_get_public (dkp->priv.rsa_private_key);
+  (void) register_denomination (dkp->pub, session);
+  return dkp;
+}
+
+
+/**
+ * Destroy a denomination key pair.  The key is not necessarily removed from the DB.
+ *
+ * @param dkp the keypair to destroy
+ */
+static void
+destroy_denom_key_pair (struct DenomKeyPair *dkp)
+{
+  GNUNET_CRYPTO_rsa_public_key_free (dkp->pub.rsa_public_key);
+  GNUNET_CRYPTO_rsa_private_key_free (dkp->priv.rsa_private_key);
+  GNUNET_free (dkp);
+}
+
+
+/**
+ * Tests on the known_coins relation
+ *
+ * @param session the DB session
+ * @return #GNUNET_OK if the tests are successful; #GNUNET_SYSERR if not.
+ */
+static int
+test_known_coins (struct TALER_MINTDB_Session *session)
+{
+  struct TALER_CoinPublicInfo coin_info;
+  struct TALER_CoinPublicInfo *ret_coin_info;
+  struct DenomKeyPair *dkp;
+  int ret = GNUNET_SYSERR;
+
+  dkp = create_denom_key_pair (1024, session);
   RND_BLK (&coin_info);
   coin_info.denom_pub = dkp->pub;
   coin_info.denom_sig.rsa_signature =
@@ -287,35 +327,7 @@ run (void *cls,
                          ++amount.fraction,
                          amount.currency,
                          expiry.abs_value_us));
-  dkp = create_denom_key_pair (1024);
-  {
-    struct TALER_MINTDB_DenominationKeyIssueInformation dki;
-    dki.denom_pub = dkp->pub;
-    dki.issue.start = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get ());
-    dki.issue.expire_withdraw = GNUNET_TIME_absolute_hton
-        (GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
-                                   GNUNET_TIME_UNIT_HOURS));
-    dki.issue.expire_spend = GNUNET_TIME_absolute_hton
-        (GNUNET_TIME_absolute_add
-         (GNUNET_TIME_absolute_get (),
-          GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 2)));
-    dki.issue.expire_legal = GNUNET_TIME_absolute_hton
-        (GNUNET_TIME_absolute_add
-         (GNUNET_TIME_absolute_get (),
-          GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 3)));
-    dki.issue.value.value = GNUNET_htonll (1);
-    dki.issue.value.fraction = htonl (100);
-    (void) strcpy (dki.issue.value.currency, CURRENCY);
-    dki.issue.fee_withdraw.value = 0;
-    dki.issue.fee_withdraw.fraction = htonl (100);
-    (void) strcpy (dki.issue.fee_withdraw.currency, CURRENCY);
-    dki.issue.fee_deposit = dki.issue.fee_withdraw;
-    dki.issue.fee_refresh = dki.issue.fee_withdraw;
-    FAILIF (GNUNET_OK !=
-            plugin->insert_denomination (plugin->cls,
-                                         session,
-                                         &dki));
-  }
+  dkp = create_denom_key_pair (1024, session);
   RND_BLK(&h_blind);
   RND_BLK(&cbc.reserve_sig);
   cbc.denom_pub = dkp->pub;
