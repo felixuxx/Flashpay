@@ -180,7 +180,7 @@ static int
 test_known_coins (struct TALER_MINTDB_Session *session)
 {
   struct TALER_CoinPublicInfo coin_info;
-  struct TALER_CoinPublicInfo *ret_coin_info;
+  struct TALER_CoinPublicInfo ret_coin_info;
   struct DenomKeyPair *dkp;
   int ret = GNUNET_SYSERR;
 
@@ -190,13 +190,11 @@ test_known_coins (struct TALER_MINTDB_Session *session)
   coin_info.denom_sig.rsa_signature =
       GNUNET_CRYPTO_rsa_sign (dkp->priv.rsa_private_key,
                               "foobar", 6);
-  ret_coin_info = NULL;
   FAILIF (GNUNET_NO !=
           plugin->get_known_coin (plugin->cls,
                                   session,
                                   &coin_info.coin_pub,
                                   &ret_coin_info));
-  FAILIF (NULL != ret_coin_info);
   FAILIF (GNUNET_OK !=
           plugin->insert_known_coin (plugin->cls,
                                      session,
@@ -206,23 +204,18 @@ test_known_coins (struct TALER_MINTDB_Session *session)
                                   session,
                                   &coin_info.coin_pub,
                                   &ret_coin_info));
-  FAILIF (NULL == ret_coin_info);
   FAILIF (0 != GNUNET_CRYPTO_rsa_public_key_cmp
-          (ret_coin_info->denom_pub.rsa_public_key,
+          (ret_coin_info.denom_pub.rsa_public_key,
            coin_info.denom_pub.rsa_public_key));
   FAILIF (0 != GNUNET_CRYPTO_rsa_signature_cmp
-          (ret_coin_info->denom_sig.rsa_signature,
+          (ret_coin_info.denom_sig.rsa_signature,
            coin_info.denom_sig.rsa_signature));
+  GNUNET_CRYPTO_rsa_public_key_free (ret_coin_info.denom_pub.rsa_public_key);
+  GNUNET_CRYPTO_rsa_signature_free (ret_coin_info.denom_sig.rsa_signature);
   ret = GNUNET_OK;
  drop:
   destroy_denom_key_pair (dkp);
   GNUNET_CRYPTO_rsa_signature_free (coin_info.denom_sig.rsa_signature);
-  if (NULL != ret_coin_info)
-  {
-    GNUNET_CRYPTO_rsa_public_key_free (ret_coin_info->denom_pub.rsa_public_key);
-    GNUNET_CRYPTO_rsa_signature_free (ret_coin_info->denom_sig.rsa_signature);
-    GNUNET_free (ret_coin_info);
-  }
   return ret;
 }
 

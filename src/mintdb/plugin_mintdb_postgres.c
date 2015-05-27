@@ -1641,23 +1641,24 @@ postgres_insert_known_coin (void *cls,
  * @param cls the plugin closure
  * @param session the database session handle
  * @param coin_pub the public key of the coin to search for
- * @param ret_coin_info place holder for the returned coin information object
+ * @param coin_info place holder for the returned coin information object
  * @return #GNUNET_SYSERR upon error; #GNUNET_NO if no coin is found; #GNUNET_OK
  *           if upon succesfullying retrieving the record data info @a
- *           ret_coin_info
+ *           coin_info
  */
 static int
 postgres_get_known_coin (void *cls,
                          struct TALER_MINTDB_Session *session,
                          const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                         struct TALER_CoinPublicInfo **ret_coin_info)
+                         struct TALER_CoinPublicInfo *coin_info)
 {
   PGresult *result;
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type (coin_pub),
     TALER_PQ_query_param_end
   };
-  struct TALER_CoinPublicInfo *coin_info;
+  int nrows;
+
   result = TALER_PQ_exec_prepared (session->conn,
                                    "get_known_coin",
                                    params);
@@ -1667,17 +1668,13 @@ postgres_get_known_coin (void *cls,
     PQclear (result);
     return GNUNET_SYSERR;
   }
-  if (0 == PQntuples (result))
+  nrows = PQntuples (result);
+  if (0 == nrows)
   {
     PQclear (result);
     return GNUNET_NO;
   }
-  if ((NULL == ret_coin_info) && (1 == PQntuples (result)))
-  {
-    PQclear (result);
-    return GNUNET_OK;
-  }
-  coin_info = GNUNET_new (struct TALER_CoinPublicInfo);
+  GNUNET_assert (1 == nrows);   /* due to primary key */
   struct TALER_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_rsa_public_key ("denom_pub", &coin_info->denom_pub.rsa_public_key),
     TALER_PQ_result_spec_rsa_signature ("denom_sig", &coin_info->denom_sig.rsa_signature),
@@ -1691,10 +1688,11 @@ postgres_get_known_coin (void *cls,
     return GNUNET_SYSERR;
   }
   PQclear (result);
-  (void) memcpy (&coin_info->coin_pub,
-                 coin_pub,
-                 sizeof (struct TALER_CoinSpendPublicKeyP));
-  *ret_coin_info = coin_info;
+  /* no need to copy if the src and dest are same */
+  if (coin_pub != &coin_info->coin_pub)
+    (void) memcpy (&coin_info->coin_pub,
+                   coin_pub,
+                   sizeof (struct TALER_CoinSpendPublicKeyP));
   return GNUNET_OK;
 }
 
