@@ -283,9 +283,11 @@ postgres_create_tables (void *cls,
           ",session BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
           ",oldcoin_index INT2 NOT NULL"
           ",coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)"
-          ",melt_val INT8 NOT NULL"
-          ",melt_frac INT8 NOT NULL"
-          ",melt_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",amount_val INT8 NOT NULL"
+          ",amount_frac INT8 NOT NULL"
+          ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ", PRIMARY KEY (session, oldcoin_index)" /* a coin can be used only
+                                                 once in a refresh session */
           ") ");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_order "
           "( "
@@ -530,12 +532,22 @@ postgres_prepare (PGconn *db_conn)
            ",session"
            ",oldcoin_index "
            ",coin_sig "
-           ",melt_val "
-           ",melt_frac "
-           ",melt_curr "
+           ",amount_val "
+           ",amount_frac "
+           ",amount_curr "
            ") "
            "VALUES ($1, $2, $3, $4, $5, $6, $7)",
            7, NULL);
+  PREPARE ("get_refresh_melt",
+           "SELECT"
+           " coin_pub"
+           ",coin_sig"
+           ",amount_val"
+           ",amount_frac"
+           ",amount_curr"
+           " FROM refresh_melts "
+           "WHERE session = $1 AND oldcoin_index = $2",
+           2, NULL);
   PREPARE ("get_refresh_order",
            "SELECT denom_pub "
            "FROM refresh_order "
@@ -547,11 +559,6 @@ postgres_prepare (PGconn *db_conn)
            "WHERE session_hash = $1 AND newcoin_index = $2",
            2, NULL);
 #if 0                           /* FIXME: not complete yet */
-  PREPARE ("get_refresh_melt",
-           "SELECT coin_pub,coin_sig,denom_pub,denom_sig,amount_val,amount_frac,amount_curr,fee_val,fee_frac,fee_curr "
-           "FROM refresh_melt "
-           "WHERE session_hash = $1 AND oldcoin_index = $2",
-           2, NULL);
   PREPARE ("insert_refresh_commit_link",
            "INSERT INTO refresh_commit_link ("
            " session_hash "
@@ -1775,43 +1782,64 @@ postgres_get_refresh_melt (void *cls,
                            uint16_t oldcoin_index,
                            struct TALER_MINTDB_RefreshMelt *melt)
 {
-#if 0
-  // FIXME: check logic!
+  PGresult *result;
+  struct TALER_CoinPublicInfo coin;
+  struct TALER_CoinSpendSignatureP coin_sig;
+  struct TALER_Amount amount;
   uint16_t oldcoin_index_nbo = htons (oldcoin_index);
-  struct TALER_PQ_Query params[] = {
+  struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type (session_hash),
     TALER_PQ_query_param_auto_from_type (&oldcoin_index_nbo),
     TALER_PQ_query_param_end
   };
-  struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_auto_from_type ("coin_pub", &melt->coin),
-    TALER_PQ_result_spec_auto_from_type ("coin_sig", &melt->coin_sig),
-    TALER_PQ_result_spec_auto_from_type ("denom_pub", &melt->coin),
-    TALER_PQ_result_spec_auto_from_type ("denom_sig", &melt->coin),
-    TALER_PQ_result_spec_amount ("amount", melt->amount_with_fee),
-    TALER_PQ_result_spec_amount ("fee", melt->melt_fee),
-    TALER_PQ_result_spec_end
-  };
+  int nrows;
 
+  /* check if the melt record exists and get it */
   result = TALER_PQ_exec_prepared (session->conn,
                                    "get_refresh_melt",
                                    params);
-  if (0 == PQntuples (result))
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  nrows =  PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "get_refresh_melt() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  GNUNET_assert (1 == nrows);    /* due to primary key constraint */
+  struct TALER_PQ_ResultSpec rs[] = {
+    TALER_PQ_result_spec_auto_from_type ("coin_pub", &coin.coin_pub),
+    TALER_PQ_result_spec_auto_from_type ("coin_sig", &coin_sig),
+    TALER_PQ_result_spec_amount ("amount", &amount),
+    TALER_PQ_result_spec_end
+  };
+  if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
   {
     PQclear (result);
     return GNUNET_SYSERR;
   }
-  if (1 != PQntuples (result))
-  {
-    PQclear (result);
-    GNUNET_break (0);
+  PQclear (result);
+  /* fetch the coin info and denomination info */
+  if (GNUNET_OK != postgres_get_known_coin (cls,
+                                            session,
+                                            &coin.coin_pub,
+                                            &coin))
     return GNUNET_SYSERR;
-  }
-#endif
-  melt->session_hash = *session_hash;
-
-  GNUNET_break (0);
-  return GNUNET_SYSERR;
+  if (NULL == melt)
+    return GNUNET_OK;
+  melt->coin = coin;
+  melt->coin_sig = coin_sig;
+  if (session_hash != &melt->session_hash)
+    melt->session_hash = *session_hash;
+  melt->amount_with_fee = amount;
+  /* FIXME: melt->melt_fee = ?? */
+  return GNUNET_OK;
 }
 
 

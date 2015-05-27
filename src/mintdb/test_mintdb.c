@@ -459,6 +459,7 @@ run (void *cls,
   FAILIF (GNUNET_OK != test_known_coins (session));
   result = 0;
 
+  /* FIXME: test_refresh_melts */
  drop:
   if (NULL != wire)
     json_decref (wire);
