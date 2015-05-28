@@ -43,7 +43,7 @@ AC_CHECK_HEADERS([stdint.h stdlib.h string.h unistd.h])
 # for GNU Taler wallets?
 AC_MSG_CHECKING(whether to compile GNU Taler Wallet library ONLY)
 AC_ARG_ENABLE([wallet],
-   [AS_HELP_STRING([--wallet], [only compile for Taler wallet])],
+   [AS_HELP_STRING([--enable-wallet], [only compile for Taler wallet])],
    [wallet_only=${enableval}],
    [wallet_only=no])
 AC_MSG_RESULT($wallet_only)
