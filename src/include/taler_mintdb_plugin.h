@@ -332,7 +332,7 @@ struct TALER_MINTDB_RefreshMelt
    */
   struct TALER_Amount amount_with_fee;
 
-  /**
+  /** FIXME: This can be retrieved from the Denomination? Do we need this?
    * Melting fee charged by the mint.  This must match the Mint's
    * denomination key's melting fee.  If the client puts in an invalid
    * melting fee (too high or too low) that does not match the Mint's
@@ -840,6 +840,39 @@ struct TALER_MINTDB_Plugin
                              struct TALER_MINTDB_Session *sesssion,
                              const struct GNUNET_HashCode *session_hash,
                              const struct TALER_MINTDB_RefreshSession *refresh_session);
+
+
+  /**
+   * Retrieve the record for a known coin.
+   *
+   * @param cls the plugin closure
+   * @param session the database session handle
+   * @param coin_pub the public key of the coin to search for
+   * @param coin_info place holder for the returned coin information object
+   * @return #GNUNET_SYSERR upon error; #GNUNET_NO if no coin is found; #GNUNET_OK
+   *           if upon succesfullying retrieving the record data info @a
+   *           ret_coin_info
+   */
+  int
+  (*get_known_coin) (void *cls,
+                     struct TALER_MINTDB_Session *session,
+                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                     struct TALER_CoinPublicInfo *coin_info);
+
+
+  /**
+   * Insert a coin we know of into the DB.  The coin can then be referenced by
+   * tables for deposits, lock and refresh functionality.
+   *
+   * @param cls plugin closure
+   * @param session the shared database session
+   * @param coin_info the public coin info
+   * @return #GNUNET_SYSERR upon error; #GNUNET_OK upon success
+   */
+  int
+  (*insert_known_coin) (void *cls,
+                        struct TALER_MINTDB_Session *session,
+                        const struct TALER_CoinPublicInfo *coin_info);
 
 
   /**
