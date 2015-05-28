@@ -6,8 +6,27 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
+if WALLET_ONLY
+lib_LTLIBRARIES = \
+  libtalerutil_wallet.la
+else
 lib_LTLIBRARIES = \
   libtalerutil.la
+endif
+
+libtalerutil_wallet_la_SOURCES = \
+  amount.c \
+  crypto.c \
+  util.c
+
+libtalerutil_wallet_la_LIBADD = \
+  -lgnunetutil_taler_wallet \
+  $(LIBGCRYPT_LIBS) \
+  $(XLIB)
+
+libtalerutil_wallet_la_LDFLAGS = \
+  -version-info 0:0:0 \
+  -export-dynamic -no-undefined
 
 libtalerutil_la_SOURCES = \
   amount.c \

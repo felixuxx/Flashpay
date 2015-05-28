@@ -38,6 +38,21 @@ CFLAGS="-Wall $CFLAGS"
 # Checks for header files.
 AC_CHECK_HEADERS([stdint.h stdlib.h string.h unistd.h])
 
+
+# should the build process be restricted to the code required
+# for GNU Taler wallets?
+AC_MSG_CHECKING(whether to compile GNU Taler Wallet library ONLY)
+AC_ARG_ENABLE([wallet],
+   [AS_HELP_STRING([--wallet], [only compile for Taler wallet])],
+   [wallet_only=${enableval}],
+   [wallet_only=no])
+AC_MSG_RESULT($wallet_only)
+AM_CONDITIONAL([WALLET_ONLY], [test "x$wallet_only" = "xyes"])
+
+if test "$wallet_only" != yes
+then
+
+
 # Check for GNUnet's libgnunetutil.
 libgnunetutil=0
 AC_MSG_CHECKING([for libgnunetutil])
@@ -64,14 +79,6 @@ AS_IF([test $libgnunetutil != 1],
 ***   https://gnunet.org
 *** ]])])
 
-
-TALER_LIB_LDFLAGS="-export-dynamic -no-undefined"
-TALER_PLUGIN_LDFLAGS="-export-dynamic -avoid-version -module -no-undefined"
-
-AC_SUBST(TALER_LIB_LDFLAGS)
-AC_SUBST(TALER_PLUGIN_LDFLAGS)
-
-
 # check for libmicrohttpd
 microhttpd=0
 AC_MSG_CHECKING([for microhttpd])
@@ -94,13 +101,6 @@ AS_IF([test $microhttpd = 0],
 *** ]])])
 
 
-# test for postgres
-AX_LIB_POSTGRESQL([9.3])
-if test "$found_postgresql" = "yes"; then
-  postgres=true
-fi
-AM_CONDITIONAL(HAVE_POSTGRESQL, test x$postgres = xtrue)
-
 # check for libjansson (Jansson JSON library)
 jansson=0
 AC_MSG_CHECKING([for jansson])
@@ -121,6 +121,53 @@ AS_IF([test $jansson = 0],
 ***
 *** You need libjansson to build this program.
 *** ]])])
+
+
+
+else
+
+# Check for GNUnet's libgnunetutil_taler_wallet.
+libgnunetutil_taler_wallet=0
+AC_MSG_CHECKING([for libgnunetutil_taler_wallet])
+AC_ARG_WITH(gnunet,
+            [AS_HELP_STRING([--with-gnunet=PFX], [base of GNUnet installation])],
+            [AC_MSG_RESULT([given as $with_gnunet])],
+            [AC_MSG_RESULT(not given)
+             with_gnunet=yes])
+AS_CASE([$with_gnunet],
+        [yes], [],
+        [no], [AC_MSG_ERROR([--with-gnunet is required])],
+        [LDFLAGS="-L$with_gnunet/lib $LDFLAGS"
+         CPPFLAGS="-I$with_gnunet/include $CPPFLAGS"])
+AC_CHECK_HEADERS([gnunet/platform.h gnunet/gnunet_util_taler_wallet_lib.h],
+ [AC_CHECK_LIB([gnunetutil_taler_wallet], [GNUNET_CRYPTO_hash], libgnunetutil_taler_wallet=1)],
+  [], [#ifdef HAVE_GNUNET_PLATFORM_H
+        #include <gnunet/platform.h>
+       #endif])
+AS_IF([test $libgnunetutil_taler_wallet != 1],
+  [AC_MSG_ERROR([[
+***
+*** You need libgnunetutil_taler_wallet to build this program.
+*** This library is part of GNUnet, available at
+***   https://gnunet.org/
+*** Run GNUnet's configure with --enable-taler-wallet as well!
+*** ]])])
+
+fi
+
+TALER_LIB_LDFLAGS="-export-dynamic -no-undefined"
+TALER_PLUGIN_LDFLAGS="-export-dynamic -avoid-version -module -no-undefined"
+
+AC_SUBST(TALER_LIB_LDFLAGS)
+AC_SUBST(TALER_PLUGIN_LDFLAGS)
+
+
+# test for postgres
+AX_LIB_POSTGRESQL([9.3])
+if test "$found_postgresql" = "yes"; then
+  postgres=true
+fi
+AM_CONDITIONAL(HAVE_POSTGRESQL, test x$postgres = xtrue)
 
 # check for libgnurl
 # libgnurl
