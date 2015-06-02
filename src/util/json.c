@@ -19,7 +19,12 @@
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
 #include "platform.h"
+#if HAVE_GNUNET_GNUNET_UTIL_TALER_WALLET_LIB_H
+#include <gnunet/gnunet_util_taler_wallet_lib.h>
+#endif
+#if HAVE_GNUNET_GNUNET_UTIL_LIB_H
 #include <gnunet/gnunet_util_lib.h>
+#endif
 #include "taler_util.h"
 
 /**
@@ -155,7 +160,7 @@ TALER_json_from_rsa_public_key (struct GNUNET_CRYPTO_rsa_PublicKey *pk)
 /**
  * Convert JSON to RSA public key.
  *
- * @param pk JSON encoding to convert 
+ * @param pk JSON encoding to convert
  * @return corresponding public key
  */
 struct GNUNET_CRYPTO_rsa_PublicKey *
@@ -172,10 +177,10 @@ TALER_json_to_rsa_public_key (json_t *json)
   len = strlen (enc);
   buf_len =  (len * 5) / 8;
   buf = GNUNET_malloc (buf_len);
-  EXITIF (GNUNET_OK != 
-	  GNUNET_STRINGS_string_to_data (enc, 
-					 len, 
-					 buf, 
+  EXITIF (GNUNET_OK !=
+	  GNUNET_STRINGS_string_to_data (enc,
+					 len,
+					 buf,
 					 buf_len));
   EXITIF (NULL == (pk = GNUNET_CRYPTO_rsa_public_key_decode (buf,
 							     buf_len)));
@@ -190,7 +195,7 @@ TALER_json_to_rsa_public_key (json_t *json)
 /**
  * Convert JSON to RSA signature.
  *
- * @param pk JSON encoding to convert 
+ * @param pk JSON encoding to convert
  * @return corresponding signature
  */
 struct GNUNET_CRYPTO_rsa_Signature *
@@ -207,10 +212,10 @@ TALER_json_to_rsa_signature (json_t *json)
   len = strlen (enc);
   buf_len =  (len * 5) / 8;
   buf = GNUNET_malloc (buf_len);
-  EXITIF (GNUNET_OK != 
-	  GNUNET_STRINGS_string_to_data (enc, 
-					 len, 
-					 buf, 
+  EXITIF (GNUNET_OK !=
+	  GNUNET_STRINGS_string_to_data (enc,
+					 len,
+					 buf,
 					 buf_len));
   EXITIF (NULL == (sig = GNUNET_CRYPTO_rsa_signature_decode (buf,
 							     buf_len)));

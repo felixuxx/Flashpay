@@ -20,7 +20,6 @@
  */
 #ifndef TALER_UTIL_H
 #define TALER_UTIL_H
-
 #include <gnunet/gnunet_util_taler_wallet_lib.h>
 #include "taler_amount_lib.h"
 #include "taler_crypto_lib.h"

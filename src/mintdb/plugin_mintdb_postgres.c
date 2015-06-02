@@ -165,7 +165,7 @@ postgres_create_tables (void *cls,
   if (CONNECTION_OK != PQstatus (conn))
   {
     TALER_LOG_ERROR ("Database connection failed: %s\n",
-               PQerrorMessage (conn));
+                     PQerrorMessage (conn));
     GNUNET_break (0);
     PQfinish (conn);
     return GNUNET_SYSERR;
@@ -1067,7 +1067,7 @@ postgres_reserves_in_insert (void *cls,
   if (PGRES_COMMAND_OK != PQresultStatus(result))
   {
     const char *efield;
-    
+
     efield = PQresultErrorField (result,
 				 PG_DIAG_SQLSTATE);
     if ( (PGRES_FATAL_ERROR == PQresultStatus(result)) &&
