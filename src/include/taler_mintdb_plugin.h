@@ -651,8 +651,16 @@ struct TALER_MINTDB_Plugin
   (*rollback) (void *cls,
                struct TALER_MINTDB_Session *sesssion);
 
+
   /**
-   * Insert a denomination key
+   * Insert a denomination key.
+   *
+   * FIXME: Note that the main mint currently does NOT use this API at
+   * all.  Furthermore, the function to retrieve denomination keys
+   * from the DB is still missing.  The main mint should check if its
+   * denomination keys are in the DB, and if not, insert them (when it
+   * loads them).  The auditor will (presumably) need the denomination
+   * key information to audit the DB. (#3808).
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion connection to use
@@ -663,6 +671,8 @@ struct TALER_MINTDB_Plugin
   (*insert_denomination) (void *cls,
                           struct TALER_MINTDB_Session *session,
                           const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
+
+
 
 
   /**

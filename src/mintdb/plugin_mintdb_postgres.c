@@ -89,6 +89,7 @@
     PQclear (result);                                                   \
   } while (0)
 
+
 /**
  * Run an SQL statement, ignoring errors and clearing the result.
  *
@@ -123,7 +124,7 @@ struct PostgresClosure
 
   /**
    * Thread-local database connection.
-   * Contains a pointer to PGconn or NULL.
+   * Contains a pointer to `PGconn` or NULL.
    */
   pthread_key_t db_conn_threadlocal;
 
@@ -374,6 +375,7 @@ postgres_create_tables (void *cls,
           ",wire TEXT NOT NULL"
           ")");
 #undef SQLEXEC
+#undef SQLEXEC_INDEX
 
   PQfinish (conn);
   return GNUNET_OK;
