@@ -378,16 +378,17 @@ postgres_create_tables (void *cls,
      may not be unique if a wallet chooses not to refresh.  The
      resulting transaction ID should then be returned to the merchant
      and could be used by the mearchant for further inquriries about
-     the deposit's execution. (#3816) */
+     the deposit's execution. (#3816);
+     Also, we may want to store more information (#3820) */
   SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
           /* FIXME #3769: the following primary key may be too restrictive */
           "(coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",denom_sig BYTEA NOT NULL"
           ",transaction_id INT8 NOT NULL"
-          ",amount_val INT8 NOT NULL"
-          ",amount_frac INT4 NOT NULL"
-          ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",amount_with_fee_val INT8 NOT NULL"
+          ",amount_with_fee_frac INT4 NOT NULL"
+          ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",merchant_pub BYTEA NOT NULL CHECK (LENGTH(merchant_pub)=32)"
           ",h_contract BYTEA NOT NULL CHECK (LENGTH(h_contract)=64)"
           ",h_wire BYTEA NOT NULL CHECK (LENGTH(h_wire)=64)"
@@ -693,16 +694,18 @@ postgres_prepare (PGconn *db_conn)
            " FROM refresh_commit_coin"
            " WHERE session_hash=$1 AND cnc_index=$2 AND newcoin_index=$3",
            3, NULL);
-
+  /* Store information about a /deposit the mint is to execute.
+     Used in #postgres_insert_deposit(); Note: we may want to
+     store more information (#3820)*/
   PREPARE ("insert_deposit",
            "INSERT INTO deposits "
            "(coin_pub"
            ",denom_pub"
            ",denom_sig"
            ",transaction_id"
-           ",amount_val"
-           ",amount_frac"
-           ",amount_curr"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
            ",merchant_pub"
            ",h_contract"
            ",h_wire"
@@ -711,18 +714,17 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
            12, NULL);
+  /* Fetch an existing deposit request, used to ensure idempotency
+     during /deposit processing. Used in #postgres_have_deposit(). */
   PREPARE ("get_deposit",
            "SELECT"
-           " coin_pub"
-           ",denom_pub"
-           ",transaction_id"
-           ",amount_val"
-           ",amount_frac"
-           ",amount_curr"
-           ",merchant_pub"
-           ",h_contract"
-           ",h_wire"
-           ",coin_sig"
+           ",denom_pub"               /* Note: not actually used (yet), #3819 */
+           ",amount_with_fee_val"     /* Note: not actually used (yet), #3819 */
+           ",amount_with_fee_frac"    /* Note: not actually used (yet), #3819 */
+           ",amount_with_fee_curr"    /* Note: not actually used (yet), #3819 */
+           ",h_contract"              /* Note: not actually used (yet), #3819 */
+           ",h_wire"                  /* Note: not actually used (yet), #3819 */
+           ",coin_sig"                /* Note: not actually used (yet), #3819 */
            " FROM deposits"
            " WHERE ("
            "  (coin_pub=$1) AND"
@@ -730,19 +732,21 @@ postgres_prepare (PGconn *db_conn)
            "  (merchant_pub=$3)"
            " )",
            3, NULL);
+  /* Used in #postgres_get_coin_transactions() to obtain information
+     about how a coin has been spend with /deposit requests. */
   PREPARE ("get_deposit_with_coin_pub",
            "SELECT"
-           " coin_pub"
-           ",denom_pub"
+           " denom_pub"            /* not used (yet), #3820 */
+           ",denom_sig"            /* not used (yet), #3820 */
            ",transaction_id"
-           ",amount_val"
-           ",amount_frac"
-           ",amount_curr"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
            ",merchant_pub"
            ",h_contract"
            ",h_wire"
            ",wire"
-           ",coin_sig"
+           ",coin_sig"             /* not used (yet), #3820 */
            " FROM deposits"
            " WHERE coin_pub=$1",
            1, NULL);
@@ -1565,7 +1569,10 @@ postgres_have_deposit (void *cls,
     goto cleanup;
   }
   ret = GNUNET_YES;
-
+  /* NOTE: maybe check that the other information in @a deposit
+     also matches, and if not report inconsistencies? Right now,
+     if the merchant re-uses a transaction ID, the mint silently
+     ignores the second request (not ideal..., #3819) */
  cleanup:
   PQclear (result);
   return ret;
@@ -1606,7 +1613,9 @@ postgres_insert_deposit (void *cls,
                                     strlen (json_wire_enc)),
     TALER_PQ_query_param_end
   };
-  result = TALER_PQ_exec_prepared (session->conn, "insert_deposit", params);
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "insert_deposit",
+                                   params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
@@ -2646,26 +2655,30 @@ postgres_get_coin_transactions (void *cls,
     {
       deposit = GNUNET_new (struct TALER_MINTDB_Deposit);
       struct TALER_PQ_ResultSpec rs[] = {
-        TALER_PQ_result_spec_auto_from_type ("coin_pub", &deposit->coin),
+      /* FIXME: deposit->coin needs to be initialized,
+         but 'coin_pub' from 'deposits' is not the (only) info we need here...
+         (#3820) */
+        TALER_PQ_result_spec_auto_from_type ("transaction_id", &deposit->transaction_id),
         TALER_PQ_result_spec_auto_from_type ("coin_sig", &deposit->csig),
+        /* FIXME: do 'amount_with_fee' here! */
         TALER_PQ_result_spec_auto_from_type ("merchant_pub", &deposit->merchant_pub),
         TALER_PQ_result_spec_auto_from_type ("h_contract", &deposit->h_contract),
         TALER_PQ_result_spec_auto_from_type ("h_wire", &deposit->h_wire),
         TALER_PQ_result_spec_variable_size ("wire", &json_wire_enc, &json_wire_enc_size),
-        TALER_PQ_result_spec_auto_from_type ("transaction_id", &deposit->transaction_id),
-        /**  FIXME:
+        /**  FIXME: , #3820
          * TALER_PQ_result_spec_auto_from_type ("timestamp", &deposit->timestamp),
          * TALER_PQ_result_spec_auto_from_type ("refund_deadline", &deposit->refund_deadline),
          * TALER_PQ_RESULT_AMOUNT_NBO ("deposit_fee", &deposit->deposit_fee)
          */
+        /* FIXME: probably want 'coin_sig' as well, #3820 */
         TALER_PQ_result_spec_end
       };
       if ((GNUNET_OK != TALER_PQ_extract_result (result, rs, i)) ||
 	  (GNUNET_OK != TALER_PQ_extract_amount (result,
 						 i,
-						 "amount_val",
-						 "amount_frac",
-						 "amount_curr",
+						 "amount_with_fee_val",
+						 "amount_with_fee_frac",
+						 "amount_with_fee_curr",
 						 &deposit->amount_with_fee)))
       {
         GNUNET_break (0);
