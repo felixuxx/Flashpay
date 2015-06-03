@@ -208,7 +208,7 @@ postgres_create_tables (void *cls,
   /* Denomination table for holding the publicly available information of
      denominations keys.  The denominations are to be referred to by using
      foreign keys.  The denominations are deleted by a housekeeping tool;
-     hence, do not use `ON DELETE CASCASE' on these rows in the tables
+     hence, do not use `ON DELETE CASCADE' on these rows in the tables
      referencing these rows */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS denominations"
            "(pub BYTEA PRIMARY KEY"
@@ -267,9 +267,9 @@ postgres_create_tables (void *cls,
      TODO: maybe add timestamp of when the operation was performed, so we
            can influence the reserves' expiration_date not just based on
            incoming but also based on outgoing transactions?
-     TODO: is blind_ev really a _primary key_? Is this constraint useful? */
+     TODO: is h_blind_ev really a _primary key_? Is this constraint useful? */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS collectable_blindcoins"
-           "(blind_ev BYTEA PRIMARY KEY"
+           "(h_blind_ev BYTEA PRIMARY KEY"
            ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
            ",denom_sig BYTEA NOT NULL"
            ",reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32) REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
@@ -431,6 +431,7 @@ postgres_prepare (PGconn *db_conn)
     PQclear (result); result = NULL;                            \
   } while (0);
 
+  /* Used in #postgres_insert_denomination() */
   PREPARE ("insert_denomination",
            "INSERT INTO denominations "
            "(pub"
@@ -454,17 +455,23 @@ postgres_prepare (PGconn *db_conn)
            "($1, $2, $3, $4, $5, $6,"
             "$7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);",
            14, NULL);
-  PREPARE ("get_reserve",
+
+  /* FIXME: #3808: need a 'select_denominations' for auditor */
+
+  /* Used in #postgres_reserve_get() */
+  PREPARE ("reserve_get",
            "SELECT"
            " current_balance_val"
            ",current_balance_frac"
            ",current_balance_curr"
-           ",expiration_date "
-           "FROM reserves "
-           "WHERE reserve_pub=$1 "
-           "LIMIT 1; ",
+           ",expiration_date"
+           " FROM reserves"
+           " WHERE reserve_pub=$1"
+           " LIMIT 1;",
            1, NULL);
-  PREPARE ("create_reserve",
+
+  /* Used in #postgres_reserves_in_insert() when the reserve is new */
+  PREPARE ("reserve_create",
            "INSERT INTO reserves "
            "(reserve_pub"
            ",current_balance_val"
@@ -474,7 +481,8 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5);",
            5, NULL);
-  PREPARE ("update_reserve",
+  /* Used in #postgres_reserves_update() when the reserve is updated */
+  PREPARE ("reserve_update",
            "UPDATE reserves"
            " SET"
            " expiration_date=$1 "
@@ -482,7 +490,8 @@ postgres_prepare (PGconn *db_conn)
            ",current_balance_frac=$3 "
            "WHERE current_balance_curr=$4 AND reserve_pub=$5",
            5, NULL);
-  PREPARE ("create_reserves_in_transaction",
+  /* Used in #postgres_reserves_in_insert() to store transaction details */
+  PREPARE ("reserves_in_add_transaction",
            "INSERT INTO reserves_in "
            "(reserve_pub"
            ",balance_val"
@@ -493,19 +502,28 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5, $6);",
            6, NULL);
-  PREPARE ("get_reserves_in_transactions",
+  /* Used in #postgres_get_reserve_history() to obtain inbound transactions
+     for a reserve */
+  PREPARE ("reserves_in_get_transactions",
            "SELECT"
            " balance_val"
            ",balance_frac"
            ",balance_curr"
-           ",expiration_date"
-           ",details"
+           ",expiration_date" /* NOTE: not used (yet), #3817 */
+           ",details"         /* NOTE: not used (yet), #3817 */
            " FROM reserves_in"
            " WHERE reserve_pub=$1",
            1, NULL);
+  /* Used in #postgres_insert_collectable_blindcoin() to store
+     the signature of a blinded coin with the blinded coin's
+     details before returning it during /withdraw/sign. We store
+     the coin's denomination information (public key, signature)
+     and the blinded message as well as the reserve that the coin
+     is being withdrawn from and the signature of the message
+     authorizing the withdrawal. */
   PREPARE ("insert_collectable_blindcoin",
            "INSERT INTO collectable_blindcoins "
-           "(blind_ev"
+           "(h_blind_ev"
            ",denom_pub"
            ",denom_sig"
            ",reserve_pub"
@@ -513,6 +531,10 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5);",
            5, NULL);
+  /* Used in #postgres_get_collectable_blindcoin() to
+     locate the response for a /withdraw/sign request
+     using the hash of the blinded message.  Used to
+     make sure /withdraw/sign requests are idempotent. */
   PREPARE ("get_collectable_blindcoin",
            "SELECT"
            " denom_pub"
@@ -520,17 +542,23 @@ postgres_prepare (PGconn *db_conn)
            ",reserve_sig"
            ",reserve_pub"
            " FROM collectable_blindcoins"
-           " WHERE blind_ev=$1",
+           " WHERE h_blind_ev=$1",
            1, NULL);
+  /* Used during #postgres_get_reserve_history() to
+     obtain all of the /withdraw/sign operations that
+     have been performed on a given reserve. (i.e. to
+     demonstrate double-spending) */
   PREPARE ("get_reserves_blindcoins",
            "SELECT"
-           " blind_ev"
+           " h_blind_ev"
            ",denom_pub"
            ",denom_sig"
            ",reserve_sig"
            " FROM collectable_blindcoins"
            " WHERE reserve_pub=$1;",
            1, NULL);
+
+
   /* refreshing */
   PREPARE ("get_refresh_session",
            "SELECT"
@@ -914,6 +942,17 @@ postgres_insert_denomination (void *cls,
     TALER_PQ_query_param_amount_nbo (&issue->fee_refresh),
     TALER_PQ_query_param_end
   };
+  /* check fees match coin currency */
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency_nbo (&issue->value,
+                                                &issue->fee_withdraw));
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency_nbo (&issue->value,
+                                                &issue->fee_deposit));
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency_nbo (&issue->value,
+                                                &issue->fee_refresh));
+
   result = TALER_PQ_exec_prepared (session->conn,
                                    "insert_denomination",
                                    params);
@@ -958,7 +997,7 @@ postgres_reserve_get (void *cls,
   };
 
   result = TALER_PQ_exec_prepared (session->conn,
-                                   "get_reserve",
+                                   "reserve_get",
                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
@@ -1010,7 +1049,7 @@ postgres_reserves_update (void *cls,
     TALER_PQ_query_param_end
   };
   result = TALER_PQ_exec_prepared (session->conn,
-                                   "update_reserve",
+                                   "reserve_update",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus(result))
   {
@@ -1082,7 +1121,7 @@ postgres_reserves_in_insert (void *cls,
       TALER_PQ_query_param_end
     };
     result = TALER_PQ_exec_prepared (session->conn,
-                                     "create_reserve",
+                                     "reserve_create",
                                      params);
     if (PGRES_COMMAND_OK != PQresultStatus(result))
     {
@@ -1122,7 +1161,7 @@ postgres_reserves_in_insert (void *cls,
     TALER_PQ_query_param_end
   };
   result = TALER_PQ_exec_prepared (session->conn,
-                                   "create_reserves_in_transaction",
+                                   "reserves_in_add_transaction",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus(result))
   {
@@ -1165,7 +1204,7 @@ postgres_reserves_in_insert (void *cls,
 
 
 /**
- * Locate the response for a /withdraw request under the
+ * Locate the response for a /withdraw/sign request under the
  * key of the hash of the blinded message.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -1239,8 +1278,8 @@ postgres_get_collectable_blindcoin (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection to use
  * @param h_blind hash of the blinded message
- * @param withdraw amount by which the reserve will be withdrawn with this
- *          transaction
+ * @param withdraw amount by which the reserve will be reduced with this
+ *          transaction (coin value plus fee)
  * @param collectable corresponding collectable coin (blind signature)
  *                    if a coin is found
  * @return #GNUNET_SYSERR on internal error
@@ -1341,7 +1380,7 @@ postgres_get_reserve_history (void *cls,
     };
 
     result = TALER_PQ_exec_prepared (session->conn,
-                                     "get_reserves_in_transactions",
+                                     "reserves_in_get_transactions",
                                      params);
     if (PGRES_TUPLES_OK != PQresultStatus (result))
     {
@@ -1354,6 +1393,12 @@ postgres_get_reserve_history (void *cls,
                   "Asked to fetch history for an unknown reserve.\n");
       goto cleanup;
     }
+    /* FIXME: maybe also use the 'expiration_date' and 'details'
+       values and return those as well? While right now they
+       are unnecessary, the 'expiration_date' should become the
+       original transfer date, and then it will be useful;
+       similarly, 'details' might become useful for reserve refunds
+       in the future. (#3817) */
     while (0 < rows)
     {
       bt = GNUNET_new (struct TALER_MINTDB_BankTransfer);
@@ -1386,7 +1431,7 @@ postgres_get_reserve_history (void *cls,
   PQclear (result);
   result = NULL;
   {
-    struct GNUNET_HashCode blind_ev;
+    struct GNUNET_HashCode h_blind_ev;
     struct TALER_ReserveSignatureP reserve_sig;
     struct TALER_MINTDB_CollectableBlindcoin *cbc;
     struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
@@ -1410,7 +1455,7 @@ postgres_get_reserve_history (void *cls,
       goto cleanup;
     }
     struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_auto_from_type ("blind_ev", &blind_ev),
+      TALER_PQ_result_spec_auto_from_type ("h_blind_ev", &h_blind_ev),
       TALER_PQ_result_spec_rsa_public_key ("denom_pub", &denom_pub),
       TALER_PQ_result_spec_rsa_signature ("denom_sig", &denom_sig),
       TALER_PQ_result_spec_auto_from_type ("reserve_sig", &reserve_sig),
@@ -1430,7 +1475,7 @@ postgres_get_reserve_history (void *cls,
       cbc = GNUNET_new (struct TALER_MINTDB_CollectableBlindcoin);
       cbc->sig.rsa_signature = denom_sig;
       cbc->denom_pub.rsa_public_key = denom_pub;
-      cbc->h_coin_envelope =  blind_ev;
+      cbc->h_coin_envelope =  h_blind_ev;
       cbc->reserve_pub = *reserve_pub;
       cbc->reserve_sig = reserve_sig;
       rh_head->next = GNUNET_new (struct TALER_MINTDB_ReserveHistory);

@@ -182,6 +182,20 @@ TALER_amount_cmp_currency (const struct TALER_Amount *a1,
 
 
 /**
+ * Test if @a a1 and @a a2 are the same currency, NBO variant.
+ *
+ * @param a1 amount to test
+ * @param a2 amount to test
+ * @return #GNUNET_YES if @a a1 and @a a2 are the same currency
+ *         #GNUNET_NO if the currencies are different
+ *         #GNUNET_SYSERR if either amount is invalid
+ */
+int
+TALER_amount_cmp_currency_nbo (const struct TALER_AmountNBO *a1,
+                               const struct TALER_AmountNBO *a2);
+
+
+/**
  * Perform saturating subtraction of amounts.
  *
  * @param diff where to store (@a a1 - @a a2), or invalid if @a a2 > @a a1

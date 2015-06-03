@@ -238,6 +238,20 @@ test_valid (const struct TALER_Amount *a)
 
 
 /**
+ * Test if @a a is valid, NBO variant.
+ *
+ * @param a amount to test
+ * @return #GNUNET_YES if valid,
+ *         #GNUNET_NO if invalid
+ */
+static int
+test_valid_nbo (const struct TALER_AmountNBO *a)
+{
+  return ('\0' != a->currency[0]);
+}
+
+
+/**
  * Test if @a a1 and @a a2 are the same currency.
  *
  * @param a1 amount to test
@@ -252,6 +266,29 @@ TALER_amount_cmp_currency (const struct TALER_Amount *a1,
 {
   if ( (GNUNET_NO == test_valid (a1)) ||
        (GNUNET_NO == test_valid (a2)) )
+    return GNUNET_SYSERR;
+  if (0 == strcasecmp (a1->currency,
+		       a2->currency))
+    return GNUNET_YES;
+  return GNUNET_NO;
+}
+
+
+/**
+ * Test if @a a1 and @a a2 are the same currency, NBO variant.
+ *
+ * @param a1 amount to test
+ * @param a2 amount to test
+ * @return #GNUNET_YES if @a a1 and @a a2 are the same currency
+ *         #GNUNET_NO if the currencies are different,
+ *         #GNUNET_SYSERR if either amount is invalid
+ */
+int
+TALER_amount_cmp_currency_nbo (const struct TALER_AmountNBO *a1,
+                               const struct TALER_AmountNBO *a2)
+{
+  if ( (GNUNET_NO == test_valid_nbo (a1)) ||
+       (GNUNET_NO == test_valid_nbo (a2)) )
     return GNUNET_SYSERR;
   if (0 == strcasecmp (a1->currency,
 		       a2->currency))
