@@ -211,8 +211,7 @@ postgres_create_tables (void *cls,
      hence, do not use `ON DELETE CASCASE' on these rows in the tables
      referencing these rows */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS denominations"
-           "("
-           " pub BYTEA PRIMARY KEY"
+           "(pub BYTEA PRIMARY KEY"
            ",valid_from INT8 NOT NULL"
            ",expire_withdraw INT8 NOT NULL"
            ",expire_spend INT8 NOT NULL"
@@ -231,22 +230,24 @@ postgres_create_tables (void *cls,
            ",fee_refresh_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
            ")");
   /* reserves table is for summarization of a reserve.  It is updated when new
-     funds are added and existing funds are withdrawn */
+     funds are added and existing funds are withdrawn.  The 'expiration_date'
+     can be used to eventually get rid of reserves that have not been used
+     for a very long time (either by refunding the owner or by greedily
+     grabbing the money, depending on the Mint's terms of service) */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS reserves"
-           "("
-           " reserve_pub BYTEA PRIMARY KEY"
+           "(reserve_pub BYTEA PRIMARY KEY"
            ",current_balance_val INT8 NOT NULL"
            ",current_balance_frac INT4 NOT NULL"
            ",current_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
            ",expiration_date INT8 NOT NULL"
            ")");
   /* reserves_in table collects the transactions which transfer funds into the
-     reserve.  The amount and expiration date for the corresponding reserve are
-     updated when new transfer funds are added.  The rows of this table
-     correspond to each incoming transaction. */
+     reserve.  The rows of this table
+     correspond to each incoming transaction.
+     FIXME: instead of an 'expiration_date', an 'execution_date'
+     would be more appropriate here (#3809). */
   SQLEXEC("CREATE TABLE IF NOT EXISTS reserves_in"
-          "("
-          " reserve_pub BYTEA REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
+          "(reserve_pub BYTEA REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
           ",balance_val INT8 NOT NULL"
           ",balance_frac INT4 NOT NULL"
           ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -265,8 +266,7 @@ postgres_create_tables (void *cls,
      TODO: maybe rename to "reserves_out"?
      TODO: is blind_ev really a _primary key_? Is this constraint useful? */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS collectable_blindcoins"
-           "("
-           "blind_ev BYTEA PRIMARY KEY"
+           "(blind_ev BYTEA PRIMARY KEY"
            ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
            ",denom_sig BYTEA NOT NULL"
            ",reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32) REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
@@ -280,8 +280,7 @@ postgres_create_tables (void *cls,
      TODO: maybe rename to "spent_coins"?
      TODO: maybe have two tables, one for spending and one for refreshing, instead of optional refresh_session_hash? */
   SQLEXEC("CREATE TABLE IF NOT EXISTS known_coins "
-          "("
-          " coin_pub BYTEA NOT NULL PRIMARY KEY"
+          "(coin_pub BYTEA NOT NULL PRIMARY KEY"
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",denom_sig BYTEA NOT NULL"
           ")");
@@ -295,18 +294,16 @@ postgres_create_tables (void *cls,
    * TODO: isn't "reveal_ok" no longer interesting / required / used?
    */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_sessions "
-          "("
-          " session_hash BYTEA PRIMARY KEY CHECK (LENGTH(session_hash)=64)"
+          "(session_hash BYTEA PRIMARY KEY CHECK (LENGTH(session_hash)=64)"
           ",num_oldcoins INT2 NOT NULL"
           ",num_newcoins INT2 NOT NULL"
           ",noreveal_index INT2 NOT NULL"
           // non-zero if all reveals were ok
           // and the new coin signatures are ready
           ",reveal_ok BOOLEAN NOT NULL DEFAULT false"
-          ") ");
+          ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_melts "
-          "("
-          " coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)"
+          "(coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)"
           ",session BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
           ",oldcoin_index INT2 NOT NULL"
           ",coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)"
@@ -317,15 +314,13 @@ postgres_create_tables (void *cls,
                                                  once in a refresh session */
           ") ");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_order "
-          "( "
-          " session_hash BYTEA NOT NULL CHECK (LENGTH(session_hash)=64) REFERENCES refresh_sessions (session_hash)"
+          "(session_hash BYTEA NOT NULL CHECK (LENGTH(session_hash)=64) REFERENCES refresh_sessions (session_hash)"
           ",newcoin_index INT2 NOT NULL "
           ",denom_pub BYTEA NOT NULL "
           ",PRIMARY KEY (session_hash, newcoin_index)"
-          ") ");
+          ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_link"
-          "("
-          " session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
+          "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
           ",transfer_pub BYTEA NOT NULL CHECK(LENGTH(transfer_pub)=32)"
           ",link_secret_enc BYTEA NOT NULL"
           // index of the old coin in the customer's request
@@ -335,8 +330,7 @@ postgres_create_tables (void *cls,
           ",cnc_index INT2 NOT NULL"
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_coin"
-          "("
-          " session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) "
+          "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) "
           ",link_vector_enc BYTEA NOT NULL"
           // index of the new coin in the customer's request
           ",newcoin_index INT2 NOT NULL"
@@ -345,8 +339,7 @@ postgres_create_tables (void *cls,
           ",coin_ev BYTEA NOT NULL"
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_collectable"
-          "("
-          " session_hash BYTEA NOT NULL CHECK(LENGTH(session_hash)=64) REFERENCES refresh_sessions (session_hash) "
+          "(session_hash BYTEA NOT NULL CHECK(LENGTH(session_hash)=64) REFERENCES refresh_sessions (session_hash) "
           ",ev_sig BYTEA NOT NULL"
           ",newcoin_index INT2 NOT NULL"
           ")");
@@ -359,9 +352,8 @@ postgres_create_tables (void *cls,
      and could be used by the mearchant for further inquriries about
      the deposit's execution. */
   SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
-          "( "
           /* FIXME #3769: the following primary key may be too restrictive */
-          " coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
+          "(coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",denom_sig BYTEA NOT NULL"
           ",transaction_id INT8 NOT NULL"
@@ -443,13 +435,14 @@ postgres_prepare (PGconn *db_conn)
            "LIMIT 1; ",
            1, NULL);
   PREPARE ("create_reserve",
-           "INSERT INTO reserves ("
-           " reserve_pub,"
-           " current_balance_val,"
-           " current_balance_frac,"
-           " current_balance_curr,"
-           " expiration_date) VALUES ("
-           "$1, $2, $3, $4, $5);",
+           "INSERT INTO reserves "
+           "(reserve_pub"
+           ",current_balance_val"
+           ",current_balance_frac"
+           ",current_balance_curr"
+           ",expiration_date"
+           ") VALUES "
+           "($1, $2, $3, $4, $5);",
            5, NULL);
   PREPARE ("update_reserve",
            "UPDATE reserves "
@@ -460,15 +453,16 @@ postgres_prepare (PGconn *db_conn)
            "WHERE current_balance_curr=$4 AND reserve_pub=$5",
            5, NULL);
   PREPARE ("create_reserves_in_transaction",
-           "INSERT INTO reserves_in ("
-           " reserve_pub,"
-           " balance_val,"
-           " balance_frac,"
-           " balance_curr,"
-           " details,"
-           " expiration_date) VALUES ("
-           " $1, $2, $3, $4, $5, $6);",
-           5, NULL);
+           "INSERT INTO reserves_in "
+           "(reserve_pub"
+           ",balance_val"
+           ",balance_frac"
+           ",balance_curr"
+           ",details"
+           ",expiration_date"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6);",
+           6, NULL);
   PREPARE ("get_reserves_in_transactions",
            "SELECT"
            " balance_val"
