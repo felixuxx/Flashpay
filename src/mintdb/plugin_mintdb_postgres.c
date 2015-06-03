@@ -557,9 +557,8 @@ postgres_prepare (PGconn *db_conn)
            " FROM collectable_blindcoins"
            " WHERE reserve_pub=$1;",
            1, NULL);
-
-
-  /* refreshing */
+  /* Used in #postgres_get_refresh_session() to fetch
+     high-level information about a refresh session */
   PREPARE ("get_refresh_session",
            "SELECT"
            " num_oldcoins"
@@ -568,6 +567,8 @@ postgres_prepare (PGconn *db_conn)
            " FROM refresh_sessions "
            " WHERE session_hash=$1 ",
            1, NULL);
+  /* Used in #postgres_create_refresh_session() to store
+     high-level information about a refresh session */
   PREPARE ("insert_refresh_session",
            "INSERT INTO refresh_sessions "
            "(session_hash "
@@ -577,6 +578,9 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4);",
            4, NULL);
+  /* Used in #postgres_get_known_coin() to fetch
+     the denomination public key and signature for
+     a coin known to the mint. */
   PREPARE ("get_known_coin",
            "SELECT"
            " denom_pub"
@@ -584,14 +588,19 @@ postgres_prepare (PGconn *db_conn)
            " FROM known_coins "
            " WHERE coin_pub=$1",
            1, NULL);
+  /* Used in #postgres_insert_known_coin() to store
+     the denomination public key and signature for
+     a coin known to the mint. */
   PREPARE ("insert_known_coin",
            "INSERT INTO known_coins "
            "(coin_pub"
            ",denom_pub"
            ",denom_sig"
            ") VALUES "
-           "($1,$2,$3)",
+           "($1,$2,$3);",
            3, NULL);
+
+
   PREPARE ("get_refresh_commit_link",
            "SELECT"
            " transfer_pub"
@@ -1618,9 +1627,9 @@ postgres_get_refresh_session (void *cls,
     TALER_PQ_query_param_end
   };
   int ret;
-  uint16_t num_oldcoins;
-  uint16_t num_newcoins;
-  uint16_t noreveal_index;
+  uint16_t num_oldcoins_nbo;
+  uint16_t num_newcoins_nbo;
+  uint16_t noreveal_index_nbo;
 
   ret = GNUNET_SYSERR;
   result = TALER_PQ_exec_prepared (session->conn,
@@ -1646,9 +1655,10 @@ postgres_get_refresh_session (void *cls,
   }
   memset (refresh_session, 0, sizeof (struct TALER_MINTDB_RefreshSession));
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_auto_from_type("num_oldcoins", &num_oldcoins),
-    TALER_PQ_result_spec_auto_from_type("num_newcoins", &num_newcoins),
-    TALER_PQ_result_spec_auto_from_type("noreveal_index", &noreveal_index),
+    /* NOTE: maybe create a TALER_PQ_RS type for 16-bit numbers? */
+    TALER_PQ_result_spec_auto_from_type("num_oldcoins", &num_oldcoins_nbo),
+    TALER_PQ_result_spec_auto_from_type("num_newcoins", &num_newcoins_nbo),
+    TALER_PQ_result_spec_auto_from_type("noreveal_index", &noreveal_index_nbo),
     TALER_PQ_result_spec_end
   };
   if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
@@ -1656,9 +1666,9 @@ postgres_get_refresh_session (void *cls,
     GNUNET_break (0);
     goto cleanup;
   }
-  refresh_session->num_oldcoins = ntohs (num_oldcoins);
-  refresh_session->num_newcoins = ntohs (num_newcoins);
-  refresh_session->noreveal_index = ntohs (noreveal_index);
+  refresh_session->num_oldcoins = ntohs (num_oldcoins_nbo);
+  refresh_session->num_newcoins = ntohs (num_newcoins_nbo);
+  refresh_session->noreveal_index = ntohs (noreveal_index_nbo);
   ret = GNUNET_YES;
 
  cleanup:
@@ -1685,19 +1695,20 @@ postgres_create_refresh_session (void *cls,
                                  const struct TALER_MINTDB_RefreshSession *refresh_session)
 {
   PGresult *result;
-  uint16_t num_oldcoins;
-  uint16_t num_newcoins;
-  uint16_t noreveal_index;
+  uint16_t num_oldcoins_nbo;
+  uint16_t num_newcoins_nbo;
+  uint16_t noreveal_index_nbo;
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type(session_hash),
-    TALER_PQ_query_param_auto_from_type(&num_oldcoins),
-    TALER_PQ_query_param_auto_from_type(&num_newcoins),
-    TALER_PQ_query_param_auto_from_type(&noreveal_index),
+    /* Note: Maybe create a TALER_PQ_QP for 16-bit numbers? */
+    TALER_PQ_query_param_auto_from_type(&num_oldcoins_nbo),
+    TALER_PQ_query_param_auto_from_type(&num_newcoins_nbo),
+    TALER_PQ_query_param_auto_from_type(&noreveal_index_nbo),
     TALER_PQ_query_param_end
   };
-  num_oldcoins = htons (refresh_session->num_oldcoins);
-  num_newcoins = htons (refresh_session->num_newcoins);
-  noreveal_index = htons (refresh_session->noreveal_index);
+  num_oldcoins_nbo = htons (refresh_session->num_oldcoins);
+  num_newcoins_nbo = htons (refresh_session->num_newcoins);
+  noreveal_index_nbo = htons (refresh_session->noreveal_index);
   result = TALER_PQ_exec_prepared (session->conn,
                                    "insert_refresh_session",
                                    params);
