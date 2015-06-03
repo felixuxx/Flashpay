@@ -292,17 +292,13 @@ postgres_create_tables (void *cls,
    *   @a num_oldcoins
    *   @a num_newcoins
    * Do not do arithmetic in SQL on these fields.
-   *
-   * TODO: isn't "reveal_ok" no longer interesting / required / used?
+   * NOTE: maybe we should instead forbid values >= 2^15 categorically?
    */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_sessions "
           "(session_hash BYTEA PRIMARY KEY CHECK (LENGTH(session_hash)=64)"
           ",num_oldcoins INT2 NOT NULL"
           ",num_newcoins INT2 NOT NULL"
           ",noreveal_index INT2 NOT NULL"
-          // non-zero if all reveals were ok
-          // and the new coin signatures are ready
-          ",reveal_ok BOOLEAN NOT NULL DEFAULT false"
           ")");
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_melts "
           "(coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)"
@@ -619,11 +615,6 @@ postgres_prepare (PGconn *db_conn)
            ") "
            "VALUES ($1, $2, $3)",
            3, NULL);
-  PREPARE ("set_reveal_ok",
-           "UPDATE refresh_sessions "
-           "SET reveal_ok = TRUE "
-           "WHERE session_hash = $1",
-           1, NULL);
   PREPARE ("get_link",
            "SELECT link_vector_enc, ro.denom_pub, ev_sig "
            "FROM refresh_melt rm "
