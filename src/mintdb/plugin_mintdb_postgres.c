@@ -308,7 +308,7 @@ postgres_create_tables (void *cls,
            be total (with fee), but then we should make that explicit
            in the name.  Also should we not include
            both amounts (or also the fee explicitly) in the table
-           to ease auditing of operations?
+           to ease auditing of operations? (#3812)
   */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_melts "
           "(coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)"
