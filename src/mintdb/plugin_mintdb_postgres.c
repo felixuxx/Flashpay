@@ -278,8 +278,8 @@ postgres_create_tables (void *cls,
   /* Index blindcoins(reserve_pub) for get_reserves_blindcoins statement */
   SQLEXEC_INDEX ("CREATE INDEX collectable_blindcoins_reserve_pub_index ON"
 		 " collectable_blindcoins (reserve_pub)");
-  /* Table with coins that have been (partially) spent, used to detect
-     double-spending.
+  /* Table with coins that have been (partially) spent, used to track
+     coin information only once.
      TODO: maybe eliminate, this might be over-normalization (#3811) */
   SQLEXEC("CREATE TABLE IF NOT EXISTS known_coins "
           "(coin_pub BYTEA NOT NULL PRIMARY KEY"
@@ -300,6 +300,16 @@ postgres_create_tables (void *cls,
           ",num_newcoins INT2 NOT NULL"
           ",noreveal_index INT2 NOT NULL"
           ")");
+  /* Table with coins that have been melted.  Gives the coin's public
+     key (coin_pub), the melting session, the index of this coin in that
+     session, the signature affirming the melting and the amount that
+     this coin contributed to the melting session.
+     TODO: is this amount with or without fees? Should probably
+           be total (with fee), but then we should make that explicit
+           in the name.  Also should we not include
+           both amounts (or also the fee explicitly) in the table
+           to ease auditing of operations?
+  */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_melts "
           "(coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)"
           ",session BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
