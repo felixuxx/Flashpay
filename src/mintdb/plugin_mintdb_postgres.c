@@ -304,10 +304,8 @@ postgres_create_tables (void *cls,
      key (coin_pub), the melting session, the index of this coin in that
      session, the signature affirming the melting and the amount that
      this coin contributed to the melting session.
-     TODO: is this amount with or without fees? Should probably
-           be total (with fee), but then we should make that explicit
-           in the name.  Also should we not include
-           both amounts (or also the fee explicitly) in the table
+     TODO: Should we include
+           both amounts (also the fee explicitly) in the table
            to ease auditing of operations? (#3812)
   */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_melts "
@@ -315,10 +313,10 @@ postgres_create_tables (void *cls,
           ",session BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
           ",oldcoin_index INT2 NOT NULL"
           ",coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)"
-          ",amount_val INT8 NOT NULL"
-          ",amount_frac INT8 NOT NULL"
-          ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ", PRIMARY KEY (session, oldcoin_index)" /* a coin can be used only
+          ",amount_with_fee_val INT8 NOT NULL"
+          ",amount_with_fee_frac INT8 NOT NULL"
+          ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",PRIMARY KEY (session, oldcoin_index)" /* a coin can be used only
                                                  once in a refresh session */
           ") ");
   /* Table with information about the desired denominations to be created
@@ -359,9 +357,9 @@ postgres_create_tables (void *cls,
      (#3815) */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_coin "
           "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) "
-          ",link_vector_enc BYTEA NOT NULL"
-          ",newcoin_index INT2 NOT NULL"
           ",cnc_index INT2 NOT NULL"
+          ",newcoin_index INT2 NOT NULL"
+          ",link_vector_enc BYTEA NOT NULL"
           ",coin_ev BYTEA NOT NULL"
           ")");
   /* Table with the signatures over coins generated during a refresh
@@ -599,22 +597,8 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1,$2,$3);",
            3, NULL);
-
-
-  PREPARE ("get_refresh_commit_link",
-           "SELECT"
-           " transfer_pub"
-           ",link_secret_enc"
-           " FROM refresh_commit_link"
-           " WHERE session_hash=$1 AND cnc_index=$2 AND oldcoin_index=$3",
-           3, NULL);
-  PREPARE ("get_refresh_commit_coin",
-           "SELECT"
-           " link_vector_enc"
-           ",coin_ev"
-           " FROM refresh_commit_coin"
-           " WHERE session_hash=$1 AND cnc_index=$2 AND newcoin_index=$3",
-           3, NULL);
+  /* Store information about the desired denominations for a
+     refresh operation, used in #postgres_insert_refresh_order() */
   PREPARE ("insert_refresh_order",
            "INSERT INTO refresh_order "
            "(newcoin_index "
@@ -623,40 +607,51 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3);",
            3, NULL);
+  /* Obtain information about the desired denominations for a
+     refresh operation, used in #postgres_get_refresh_order() */
+  PREPARE ("get_refresh_order",
+           "SELECT denom_pub"
+           " FROM refresh_order"
+           " WHERE session_hash=$1 AND newcoin_index=$2",
+           2, NULL);
+
+  /* Used in #postgres_insert_refresh_melt to store information
+     about melted coins */
   PREPARE ("insert_refresh_melt",
            "INSERT INTO refresh_melts "
            "(coin_pub "
            ",session"
            ",oldcoin_index "
            ",coin_sig "
-           ",amount_val "
-           ",amount_frac "
-           ",amount_curr "
+           ",amount_with_fee_val "
+           ",amount_with_fee_frac "
+           ",amount_with_fee_curr "
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7);",
            7, NULL);
+  /* Used in #postgres_get_refresh_melt to obtain information
+     about melted coins */
   PREPARE ("get_refresh_melt",
            "SELECT"
            " coin_pub"
            ",coin_sig"
-           ",amount_val"
-           ",amount_frac"
-           ",amount_curr"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
            " FROM refresh_melts "
            "WHERE session=$1 AND oldcoin_index=$2",
            2, NULL);
   /* FIXME: should have a way to query the 'refresh_melts' by
      coin public key (#3813) */
-  PREPARE ("get_refresh_order",
-           "SELECT denom_pub "
-           "FROM refresh_order "
-           "WHERE session_hash=$1 AND newcoin_index=$2",
-           2, NULL);
+  /* FIXME: 'get_refresh_collectable' is not used anywhere!
+     Should be needed for /refresh/link at least. */
   PREPARE ("get_refresh_collectable",
            "SELECT ev_sig "
            "FROM refresh_collectable "
-           "WHERE session_hash = $1 AND newcoin_index = $2",
+           "WHERE session_hash=$1 AND newcoin_index=$2",
            2, NULL);
+  /* Used in #postgres_insert_refresh_commit_links() to
+     store commitments */
   PREPARE ("insert_refresh_commit_link",
            "INSERT INTO refresh_commit_link "
            "(session_hash"
@@ -667,56 +662,38 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5);",
            5, NULL);
-  /* NOTE: order differs from 'CREATE TABLE' statement, might want to fix */
+  /* Used in #postgres_get_refresh_commit_links() to
+     retrieve original commitments during /refresh/reveal */
+  PREPARE ("get_refresh_commit_link",
+           "SELECT"
+           " transfer_pub"
+           ",link_secret_enc"
+           " FROM refresh_commit_link"
+           " WHERE session_hash=$1 AND cnc_index=$2 AND oldcoin_index=$3",
+           3, NULL);
+  /* Used in #postgres_insert_refresh_commit_coins() to
+     store coin commitments. */
   PREPARE ("insert_refresh_commit_coin",
            "INSERT INTO refresh_commit_coin "
            "(session_hash"
-           ",coin_ev"
            ",cnc_index"
            ",newcoin_index"
            ",link_vector_enc"
+           ",coin_ev"
            ") VALUES "
            "($1, $2, $3, $4, $5);",
            5, NULL);
-#if 0                           /* FIXME: not complete yet */
-  PREPARE ("insert_refresh_collectable",
-           "INSERT INTO refresh_collectable "
-           "(session_hash"
-           ",newcoin_index"
-           ",ev_sig"
-           ") VALUES "
-           "($1, $2, $3)",
+  /* Used in #postgres_get_refresh_commit_coins() to
+     retrieve the original coin envelopes, to either be
+     verified or signed. */
+  PREPARE ("get_refresh_commit_coin",
+           "SELECT"
+           " link_vector_enc"
+           ",coin_ev"
+           " FROM refresh_commit_coin"
+           " WHERE session_hash=$1 AND cnc_index=$2 AND newcoin_index=$3",
            3, NULL);
-  PREPARE ("get_link",
-           "SELECT link_vector_enc, ro.denom_pub, ev_sig "
-           "FROM refresh_melt rm "
-           "     JOIN refresh_order ro USING (session_hash) "
-           "     JOIN refresh_commit_coin rcc USING (session_hash) "
-           "     JOIN refresh_sessions rs USING (session_hash) "
-           "     JOIN refresh_collectable rc USING (session_hash) "
-           "WHERE rm.coin_pub=$1"
-           " AND ro.newcoin_index=rcc.newcoin_index"
-           " AND ro.newcoin_index=rc.newcoin_index"
-           " AND  rcc.cnc_index=rs.noreveal_index % ("
-           "         SELECT count(*) FROM refresh_commit_coin rcc2"
-           "         WHERE rcc2.newcoin_index=0"
-           "           AND rcc2.session_hash=rs.session_hash"
-           "     ) ",
-           1, NULL);
-  PREPARE ("get_transfer",
-           "SELECT transfer_pub, link_secret_enc "
-           "FROM refresh_melt rm "
-           "     JOIN refresh_commit_link rcl USING (session_hash) "
-           "     JOIN refresh_sessions rs USING (session_hash) "
-           "WHERE rm.coin_pub=$1"
-           " AND rm.oldcoin_index = rcl.oldcoin_index"
-           " AND rcl.cnc_index=rs.noreveal_index % ("
-           "         SELECT count(*) FROM refresh_commit_coin rcc2"
-           "         WHERE newcoin_index=0"
-           "           AND rcc2.session_hash=rm.session_hash"
-           "     ) ",
-           1, NULL);
-#endif
+
   PREPARE ("insert_deposit",
            "INSERT INTO deposits "
            "(coin_pub"
@@ -769,6 +746,46 @@ postgres_prepare (PGconn *db_conn)
            " FROM deposits"
            " WHERE coin_pub=$1",
            1, NULL);
+
+#if 0                           /* FIXME: not complete yet */
+  PREPARE ("insert_refresh_collectable",
+           "INSERT INTO refresh_collectable "
+           "(session_hash"
+           ",newcoin_index"
+           ",ev_sig"
+           ") VALUES "
+           "($1, $2, $3)",
+           3, NULL);
+  PREPARE ("get_link",
+           "SELECT link_vector_enc, ro.denom_pub, ev_sig "
+           "FROM refresh_melt rm "
+           "     JOIN refresh_order ro USING (session_hash) "
+           "     JOIN refresh_commit_coin rcc USING (session_hash) "
+           "     JOIN refresh_sessions rs USING (session_hash) "
+           "     JOIN refresh_collectable rc USING (session_hash) "
+           "WHERE rm.coin_pub=$1"
+           " AND ro.newcoin_index=rcc.newcoin_index"
+           " AND ro.newcoin_index=rc.newcoin_index"
+           " AND  rcc.cnc_index=rs.noreveal_index % ("
+           "         SELECT count(*) FROM refresh_commit_coin rcc2"
+           "         WHERE rcc2.newcoin_index=0"
+           "           AND rcc2.session_hash=rs.session_hash"
+           "     ) ",
+           1, NULL);
+  PREPARE ("get_transfer",
+           "SELECT transfer_pub, link_secret_enc "
+           "FROM refresh_melt rm "
+           "     JOIN refresh_commit_link rcl USING (session_hash) "
+           "     JOIN refresh_sessions rs USING (session_hash) "
+           "WHERE rm.coin_pub=$1"
+           " AND rm.oldcoin_index = rcl.oldcoin_index"
+           " AND rcl.cnc_index=rs.noreveal_index % ("
+           "         SELECT count(*) FROM refresh_commit_coin rcc2"
+           "         WHERE newcoin_index=0"
+           "           AND rcc2.session_hash=rm.session_hash"
+           "     ) ",
+           1, NULL);
+#endif
 
   return GNUNET_OK;
 #undef PREPARE
@@ -1827,7 +1844,7 @@ postgres_get_known_coin (void *cls,
  * @param session database connection
  * @param oldcoin_index index of the coin to store
  * @param melt melt operation details to store; includes
-   *             the session hash of the melt
+ *             the session hash of the melt
  * @return #GNUNET_OK on success
  *         #GNUNET_SYSERR on internal error
  */
@@ -1840,9 +1857,9 @@ postgres_insert_refresh_melt (void *cls,
   uint16_t oldcoin_index_nbo;
   PGresult *result;
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type(&melt->coin.coin_pub),
-    TALER_PQ_query_param_auto_from_type(&melt->session_hash),
-    TALER_PQ_query_param_auto_from_type(&oldcoin_index_nbo),
+    TALER_PQ_query_param_auto_from_type (&melt->coin.coin_pub),
+    TALER_PQ_query_param_auto_from_type (&melt->session_hash),
+    TALER_PQ_query_param_auto_from_type (&oldcoin_index_nbo),
     TALER_PQ_query_param_auto_from_type (&melt->coin_sig),
     TALER_PQ_query_param_amount (&melt->amount_with_fee),
     TALER_PQ_query_param_end
@@ -1901,7 +1918,7 @@ postgres_get_refresh_melt (void *cls,
   PGresult *result;
   struct TALER_CoinPublicInfo coin;
   struct TALER_CoinSpendSignatureP coin_sig;
-  struct TALER_Amount amount;
+  struct TALER_Amount amount_with_fee;
   uint16_t oldcoin_index_nbo = htons (oldcoin_index);
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type (session_hash),
@@ -1932,7 +1949,7 @@ postgres_get_refresh_melt (void *cls,
   struct TALER_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_auto_from_type ("coin_pub", &coin.coin_pub),
     TALER_PQ_result_spec_auto_from_type ("coin_sig", &coin_sig),
-    TALER_PQ_result_spec_amount ("amount", &amount),
+    TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
     TALER_PQ_result_spec_end
   };
   if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
@@ -1953,8 +1970,8 @@ postgres_get_refresh_melt (void *cls,
   melt->coin_sig = coin_sig;
   if (session_hash != &melt->session_hash)
     melt->session_hash = *session_hash;
-  melt->amount_with_fee = amount;
-  /* FIXME: melt->melt_fee = ?? */
+  melt->amount_with_fee = amount_with_fee;
+  /* FIXME: melt->melt_fee = ??, #3812 */
   return GNUNET_OK;
 }
 
@@ -2032,8 +2049,8 @@ postgres_get_refresh_order (void *cls,
   uint16_t newcoin_index_nbo = htons (num_newcoins);
 
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type(session_hash),
-    TALER_PQ_query_param_auto_from_type(&newcoin_index_nbo),
+    TALER_PQ_query_param_auto_from_type (session_hash),
+    TALER_PQ_query_param_auto_from_type (&newcoin_index_nbo),
     TALER_PQ_query_param_end
   };
 
@@ -2096,12 +2113,12 @@ postgres_insert_refresh_commit_coins (void *cls,
   uint16_t newcoin_index_nbo = htons (num_newcoins);
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type(session_hash),
-    TALER_PQ_query_param_fixed_size(commit_coins->coin_ev, commit_coins->coin_ev_size),
     TALER_PQ_query_param_auto_from_type(&cnc_index_nbo),
     TALER_PQ_query_param_auto_from_type(&newcoin_index_nbo),
     TALER_PQ_query_param_fixed_size (commit_coins->refresh_link->coin_priv_enc,
-                                    commit_coins->refresh_link->blinding_key_enc_size +
-                                    sizeof (struct TALER_CoinSpendPrivateKeyP)),
+                                     commit_coins->refresh_link->blinding_key_enc_size +
+                                     sizeof (struct TALER_CoinSpendPrivateKeyP)),
+    TALER_PQ_query_param_fixed_size(commit_coins->coin_ev, commit_coins->coin_ev_size),
     TALER_PQ_query_param_end
   };
 
@@ -2137,6 +2154,7 @@ postgres_insert_refresh_commit_coins (void *cls,
  * @param cnc_index set index (1st dimension)
  * @param newcoin_index coin index (2nd dimension), corresponds to refreshed (new) coins
  * @param[out] cc coin commitment to return
+ * FIXME: should we not take an array of 'cc's and return all at once?
  * @return #GNUNET_OK on success
  *         #GNUNET_NO if not found
  *         #GNUNET_SYSERR on error
@@ -2182,8 +2200,8 @@ postgres_get_refresh_commit_coins (void *cls,
   }
 
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_variable_size("coin_ev", &c_buf, &c_buf_size),
     TALER_PQ_result_spec_variable_size("link_vector_enc", &rl_buf, &rl_buf_size),
+    TALER_PQ_result_spec_variable_size("coin_ev", &c_buf, &c_buf_size),
     TALER_PQ_result_spec_end
   };
   if (GNUNET_YES != TALER_PQ_extract_result (result, rs, 0))
@@ -2215,6 +2233,7 @@ postgres_get_refresh_commit_coins (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection to use
  * @param session_hash hash to identify refresh session
+ * FIXME: i/j -- better names, please!
  * @param i set index (1st dimension)
  * @param j coin index (2nd dimension), corresponds to melted (old) coins
  * @param commit_link link information to store
