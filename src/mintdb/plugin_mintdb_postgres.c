@@ -368,8 +368,8 @@ postgres_create_tables (void *cls,
      NOTE: maybe rename the table to explain better what it is for? (#3810) */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_collectable "
           "(session_hash BYTEA NOT NULL CHECK(LENGTH(session_hash)=64) REFERENCES refresh_sessions (session_hash) "
-          ",ev_sig BYTEA NOT NULL"
           ",newcoin_index INT2 NOT NULL"
+          ",ev_sig BYTEA NOT NULL"
           ")");
   /* This table contains the wire transfers the mint is supposed to
      execute to transmit funds to the merchants (and manage refunds).
@@ -751,7 +751,8 @@ postgres_prepare (PGconn *db_conn)
            " WHERE coin_pub=$1",
            1, NULL);
 
-#if 0                           /* FIXME: not complete yet */
+  /* Used in #postgres_insert_refresh_collectable() to store the
+     generated signature(s) for future requests, i.e. /refresh/link */
   PREPARE ("insert_refresh_collectable",
            "INSERT INTO refresh_collectable "
            "(session_hash"
@@ -760,34 +761,40 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3)",
            3, NULL);
+#if 0
+  /* FIXME: not complete yet */
+  /* Used in #postgres_get_link_data_list().
+     FIXME: document how this is supposed to work... */
   PREPARE ("get_link",
-           "SELECT link_vector_enc, ro.denom_pub, ev_sig "
-           "FROM refresh_melt rm "
-           "     JOIN refresh_order ro USING (session_hash) "
-           "     JOIN refresh_commit_coin rcc USING (session_hash) "
-           "     JOIN refresh_sessions rs USING (session_hash) "
-           "     JOIN refresh_collectable rc USING (session_hash) "
-           "WHERE rm.coin_pub=$1"
-           " AND ro.newcoin_index=rcc.newcoin_index"
-           " AND ro.newcoin_index=rc.newcoin_index"
-           " AND  rcc.cnc_index=rs.noreveal_index % ("
+           "SELECT link_vector_enc,ro.denom_pub,ev_sig"
+           " FROM refresh_melt rm "
+           "     JOIN refresh_order ro USING (session_hash)"
+           "     JOIN refresh_commit_coin rcc USING (session_hash)"
+           "     JOIN refresh_sessions rs USING (session_hash)"
+           "     JOIN refresh_collectable rc USING (session_hash)"
+           " WHERE rm.coin_pub=$1"
+           "  AND ro.newcoin_index=rcc.newcoin_index"
+           "  AND ro.newcoin_index=rc.newcoin_index"
+           "  AND rcc.cnc_index=rs.noreveal_index % ("
            "         SELECT count(*) FROM refresh_commit_coin rcc2"
            "         WHERE rcc2.newcoin_index=0"
            "           AND rcc2.session_hash=rs.session_hash"
            "     ) ",
            1, NULL);
+  /* Used in #postgres_get_transfer().
+     FIXME: document how this is supposed to work... */
   PREPARE ("get_transfer",
-           "SELECT transfer_pub, link_secret_enc "
-           "FROM refresh_melt rm "
-           "     JOIN refresh_commit_link rcl USING (session_hash) "
-           "     JOIN refresh_sessions rs USING (session_hash) "
-           "WHERE rm.coin_pub=$1"
-           " AND rm.oldcoin_index = rcl.oldcoin_index"
-           " AND rcl.cnc_index=rs.noreveal_index % ("
+           "SELECT transfer_pub,link_secret_enc"
+           " FROM refresh_melt rm"
+           "     JOIN refresh_commit_link rcl USING (session_hash)"
+           "     JOIN refresh_sessions rs USING (session_hash)"
+           " WHERE rm.coin_pub=$1"
+           "  AND rm.oldcoin_index = rcl.oldcoin_index"
+           "  AND rcl.cnc_index=rs.noreveal_index % ("
            "         SELECT count(*) FROM refresh_commit_coin rcc2"
            "         WHERE newcoin_index=0"
            "           AND rcc2.session_hash=rm.session_hash"
-           "     ) ",
+           "     )",
            1, NULL);
 #endif
 
@@ -2468,7 +2475,9 @@ postgres_get_link_data_list (void *cls,
     TALER_PQ_query_param_auto_from_type(coin_pub),
     TALER_PQ_query_param_end
   };
-  PGresult *result = TALER_PQ_exec_prepared (session->conn, "get_link", params);
+  PGresult *result = TALER_PQ_exec_prepared (session->conn,
+                                             "get_link",
+                                             params);
 
   ldl = NULL;
   if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -2563,7 +2572,9 @@ postgres_get_transfer (void *cls,
     TALER_PQ_query_param_end
   };
 
-  PGresult *result = TALER_PQ_exec_prepared (session->conn, "get_transfer", params);
+  PGresult *result = TALER_PQ_exec_prepared (session->conn,
+                                             "get_transfer",
+                                             params);
 
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
