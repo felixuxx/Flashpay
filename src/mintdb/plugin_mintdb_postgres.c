@@ -710,10 +710,10 @@ postgres_prepare (PGconn *db_conn)
            ",h_wire"
            ",coin_sig"
            " FROM deposits"
-           "WHERE ("
-           "  (coin_pub = $1) AND"
-           "  (transaction_id = $2) AND"
-           "  (merchant_pub = $3)"
+           " WHERE ("
+           "  (coin_pub=$1) AND"
+           "  (transaction_id=$2) AND"
+           "  (merchant_pub=$3)"
            " )",
            3, NULL);
   PREPARE ("get_deposit_with_coin_pub",
