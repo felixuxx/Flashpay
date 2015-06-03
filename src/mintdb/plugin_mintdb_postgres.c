@@ -263,7 +263,7 @@ postgres_create_tables (void *cls,
   SQLEXEC_INDEX ("CREATE INDEX expiration_index"
 		 " ON reserves_in (expiration_date);");
   /* Table with the withdraw operations that have been performed on a reserve.
-     TODO: maybe rename to "reserves_out"?
+     TODO: maybe rename to "reserves_out"? #3810
      TODO: is blind_ev really a _primary key_? Is this constraint useful? */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS collectable_blindcoins"
            "(blind_ev BYTEA PRIMARY KEY"
