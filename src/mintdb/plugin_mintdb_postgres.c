@@ -264,6 +264,9 @@ postgres_create_tables (void *cls,
 		 " ON reserves_in (expiration_date);");
   /* Table with the withdraw operations that have been performed on a reserve.
      TODO: maybe rename to "reserves_out"? #3810
+     TODO: maybe add timestamp of when the operation was performed, so we
+           can influence the reserves' expiration_date not just based on
+           incoming but also based on outgoing transactions?
      TODO: is blind_ev really a _primary key_? Is this constraint useful? */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS collectable_blindcoins"
            "(blind_ev BYTEA PRIMARY KEY"
@@ -277,8 +280,7 @@ postgres_create_tables (void *cls,
 		 " collectable_blindcoins (reserve_pub)");
   /* Table with coins that have been (partially) spent, used to detect
      double-spending.
-     TODO: maybe rename to "spent_coins"?
-     TODO: maybe have two tables, one for spending and one for refreshing, instead of optional refresh_session_hash? */
+     TODO: maybe rename to "spent_coins"? (#3811) */
   SQLEXEC("CREATE TABLE IF NOT EXISTS known_coins "
           "(coin_pub BYTEA NOT NULL PRIMARY KEY"
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
@@ -470,26 +472,33 @@ postgres_prepare (PGconn *db_conn)
            ",balance_curr"
            ",expiration_date"
            ",details"
-           " FROM reserves_in WHERE reserve_pub=$1",
+           " FROM reserves_in"
+           " WHERE reserve_pub=$1",
            1, NULL);
   PREPARE ("insert_collectable_blindcoin",
-           "INSERT INTO collectable_blindcoins ( "
-           " blind_ev"
-           ",denom_pub, denom_sig"
-           ",reserve_pub, reserve_sig) "
-           "VALUES ($1, $2, $3, $4, $5)",
+           "INSERT INTO collectable_blindcoins "
+           "(blind_ev"
+           ",denom_pub"
+           ",denom_sig"
+           ",reserve_pub"
+           ",reserve_sig"
+           ") VALUES "
+           "($1, $2, $3, $4, $5);",
            5, NULL);
   PREPARE ("get_collectable_blindcoin",
            "SELECT "
-           " denom_pub, denom_sig"
-           ",reserve_sig, reserve_pub "
-           "FROM collectable_blindcoins "
-           "WHERE blind_ev=$1",
+           " denom_pub"
+           ",denom_sig"
+           ",reserve_sig"
+           ",reserve_pub"
+           " FROM collectable_blindcoins"
+           " WHERE blind_ev=$1",
            1, NULL);
   PREPARE ("get_reserves_blindcoins",
            "SELECT"
            " blind_ev"
-           ",denom_pub, denom_sig"
+           ",denom_pub"
+           ",denom_sig"
            ",reserve_sig"
            " FROM collectable_blindcoins"
            " WHERE reserve_pub=$1;",
