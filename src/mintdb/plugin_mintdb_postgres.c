@@ -13,7 +13,6 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file plugin_mintdb_postgres.c
  * @brief Low-level (statement-level) Postgres database access for the mint
@@ -29,19 +28,40 @@
 
 #include "plugin_mintdb_common.c"
 
+/**
+ * For testing / experiments, we set the Postgres schema to
+ * #TALER_TEMP_SCHEMA_NAME so we can easily purge everything
+ * associated with a test.  We *also* should use the database
+ * "talercheck" instead of "taler" for testing, but we're doing
+ * both: better safe than sorry.
+ */
 #define TALER_TEMP_SCHEMA_NAME "taler_temporary"
 
+/**
+ * Log a query error.
+ *
+ * @param result PQ result object of the query that failed
+ */
 #define QUERY_ERR(result)                          \
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Query failed at %s:%u: %s\n", __FILE__, __LINE__, PQresultErrorMessage (result))
 
 
+/**
+ * Log a really unexpected PQ error.
+ *
+ * @param result PQ result object of the PQ operation that failed
+ */
 #define BREAK_DB_ERR(result) do { \
-    GNUNET_break(0); \
+    GNUNET_break (0); \
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Database failure: %s\n", PQresultErrorMessage (result)); \
   } while (0)
 
+
 /**
- * Shorthand for exit jumps.
+ * Shorthand for exit jumps.  Logs the current line number
+ * and jumps to the "EXITIF_exit" label.
+ *
+ * @param cond condition that must be TRUE to exit with an error
  */
 #define EXITIF(cond)                                              \
   do {                                                            \
@@ -49,22 +69,36 @@
   } while (0)
 
 
-#define SQLEXEC_(conn, sql, result)                                     \
+/**
+ * Execute an SQL statement and log errors on failure. Must be
+ * run in a function that has an "SQLEXEC_fail" label to jump
+ * to in case the SQL statement failed.
+ *
+ * @param conn database connection
+ * @param sql SQL statement to run
+ */
+#define SQLEXEC_(conn, sql)                                             \
   do {                                                                  \
-    result = PQexec (conn, sql);                                        \
+    PGresult *result = PQexec (conn, sql);                              \
     if (PGRES_COMMAND_OK != PQresultStatus (result))                    \
     {                                                                   \
       BREAK_DB_ERR (result);                                            \
-      PQclear (result); result = NULL;                                  \
+      PQclear (result);                                                 \
       goto SQLEXEC_fail;                                                \
     }                                                                   \
-    PQclear (result); result = NULL;                                    \
+    PQclear (result);                                                   \
   } while (0)
 
-#define SQLEXEC_IGNORE_ERROR_(conn, sql, result)                         \
+/**
+ * Run an SQL statement, ignoring errors and clearing the result.
+ *
+ * @param conn database connection
+ * @param sql SQL statement to run
+ */
+#define SQLEXEC_IGNORE_ERROR_(conn, sql)                                \
   do {                                                                  \
-    result = PQexec (conn, sql);                                        \
-    PQclear (result); result = NULL;                                    \
+    PGresult *result = PQexec (conn, sql);                              \
+    PQclear (result);                                                   \
   } while (0)
 
 
@@ -111,12 +145,9 @@ struct PostgresClosure
 static int
 set_temporary_schema (PGconn *db)
 {
-  PGresult *result;
-
   SQLEXEC_(db,
            "CREATE SCHEMA IF NOT EXISTS " TALER_TEMP_SCHEMA_NAME ";"
-           "SET search_path to " TALER_TEMP_SCHEMA_NAME ";",
-           result);
+           "SET search_path to " TALER_TEMP_SCHEMA_NAME ";");
   return GNUNET_OK;
  SQLEXEC_fail:
   return GNUNET_SYSERR;
@@ -134,11 +165,8 @@ static int
 postgres_drop_temporary (void *cls,
                          struct TALER_MINTDB_Session *session)
 {
-  PGresult *result;
-
   SQLEXEC_ (session->conn,
-            "DROP SCHEMA " TALER_TEMP_SCHEMA_NAME " CASCADE;",
-            result);
+            "DROP SCHEMA " TALER_TEMP_SCHEMA_NAME " CASCADE;");
   return GNUNET_OK;
  SQLEXEC_fail:
   return GNUNET_SYSERR;
@@ -157,10 +185,8 @@ postgres_create_tables (void *cls,
                         int temporary)
 {
   struct PostgresClosure *pc = cls;
-  PGresult *result;
   PGconn *conn;
 
-  result = NULL;
   conn = PQconnectdb (pc->connection_cfg_str);
   if (CONNECTION_OK != PQstatus (conn))
   {
@@ -176,8 +202,8 @@ postgres_create_tables (void *cls,
     PQfinish (conn);
     return GNUNET_SYSERR;
   }
-#define SQLEXEC(sql) SQLEXEC_(conn, sql, result);
-#define SQLEXEC_INDEX(sql) SQLEXEC_IGNORE_ERROR_(conn, sql, result);
+#define SQLEXEC(sql) SQLEXEC_(conn, sql);
+#define SQLEXEC_INDEX(sql) SQLEXEC_IGNORE_ERROR_(conn, sql);
   /* Denomination table for holding the publicly available information of
      denominations keys.  The denominations are to be referred to by using
      foreign keys.  The denominations are deleted by a housekeeping tool;
