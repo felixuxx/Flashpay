@@ -280,7 +280,7 @@ postgres_create_tables (void *cls,
 		 " collectable_blindcoins (reserve_pub)");
   /* Table with coins that have been (partially) spent, used to detect
      double-spending.
-     TODO: maybe rename to "spent_coins"? (#3811) */
+     TODO: maybe eliminate, this might be over-normalization (#3811) */
   SQLEXEC("CREATE TABLE IF NOT EXISTS known_coins "
           "(coin_pub BYTEA NOT NULL PRIMARY KEY"
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
@@ -523,9 +523,10 @@ postgres_prepare (PGconn *db_conn)
            4, NULL);
   PREPARE ("get_known_coin",
            "SELECT"
-           " denom_pub, denom_sig "
-           "FROM known_coins "
-           "WHERE coin_pub = $1",
+           " denom_pub"
+           ",denom_sig"
+           " FROM known_coins "
+           " WHERE coin_pub=$1",
            1, NULL);
   PREPARE ("insert_known_coin",
            "INSERT INTO known_coins ("

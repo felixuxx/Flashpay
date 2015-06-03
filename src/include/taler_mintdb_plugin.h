@@ -862,6 +862,7 @@ struct TALER_MINTDB_Plugin
    * @return #GNUNET_SYSERR upon error; #GNUNET_NO if no coin is found; #GNUNET_OK
    *           if upon succesfullying retrieving the record data info @a
    *           ret_coin_info
+   * @deprecated (#3811)
    */
   int
   (*get_known_coin) (void *cls,
@@ -878,6 +879,7 @@ struct TALER_MINTDB_Plugin
    * @param session the shared database session
    * @param coin_info the public coin info
    * @return #GNUNET_SYSERR upon error; #GNUNET_OK upon success
+   * @deprecated (#3811)
    */
   int
   (*insert_known_coin) (void *cls,
