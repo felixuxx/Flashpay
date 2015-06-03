@@ -339,7 +339,7 @@ postgres_create_tables (void *cls,
      NOTE: We might want to simplify this and not have the oldcoin_index
      and instead store all link secrets, one after the other, in one big BYTEA.
      (#3814) */
-  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_link"
+  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_link "
           "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
           ",transfer_pub BYTEA NOT NULL CHECK(LENGTH(transfer_pub)=32)"
           ",link_secret_enc BYTEA NOT NULL"
@@ -357,14 +357,18 @@ postgres_create_tables (void *cls,
      newcoin_index and instead store all coin_evs and
      link_vector_encs, one after the other, in two big BYTEAs.
      (#3815) */
-  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_coin"
+  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_coin "
           "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) "
           ",link_vector_enc BYTEA NOT NULL"
           ",newcoin_index INT2 NOT NULL"
           ",cnc_index INT2 NOT NULL"
           ",coin_ev BYTEA NOT NULL"
           ")");
-  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_collectable"
+  /* Table with the signatures over coins generated during a refresh
+     operation. Needed to answer /refresh/link queries later.  Stores
+     the coin signatures under the respective session hash and index.
+     NOTE: maybe rename the table to explain better what it is for? (#3810) */
+  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_collectable "
           "(session_hash BYTEA NOT NULL CHECK(LENGTH(session_hash)=64) REFERENCES refresh_sessions (session_hash) "
           ",ev_sig BYTEA NOT NULL"
           ",newcoin_index INT2 NOT NULL"
@@ -376,7 +380,7 @@ postgres_create_tables (void *cls,
      may not be unique if a wallet chooses not to refresh.  The
      resulting transaction ID should then be returned to the merchant
      and could be used by the mearchant for further inquriries about
-     the deposit's execution. */
+     the deposit's execution. (#3816) */
   SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
           /* FIXME #3769: the following primary key may be too restrictive */
           "(coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
@@ -626,7 +630,7 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5);",
            5, NULL);
-#if 0                           /* FIXME: not complete yet */
+  /* NOTE: order differs from 'CREATE TABLE' statement, might want to fix */
   PREPARE ("insert_refresh_commit_coin",
            "INSERT INTO refresh_commit_coin "
            "(session_hash"
@@ -637,6 +641,7 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5);",
            5, NULL);
+#if 0                           /* FIXME: not complete yet */
   PREPARE ("insert_refresh_collectable",
            "INSERT INTO refresh_collectable "
            "(session_hash"
