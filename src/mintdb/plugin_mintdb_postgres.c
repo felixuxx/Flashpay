@@ -547,34 +547,34 @@ postgres_prepare (PGconn *db_conn)
            " transfer_pub "
            ",link_secret_enc "
            "FROM refresh_commit_link "
-           "WHERE session_hash = $1 AND cnc_index = $2 AND oldcoin_index = $3",
+           "WHERE session_hash=$1 AND cnc_index=$2 AND oldcoin_index=$3",
            3, NULL);
   PREPARE ("get_refresh_commit_coin",
            "SELECT"
            " link_vector_enc "
            ",coin_ev "
            "FROM refresh_commit_coin "
-           "WHERE session_hash = $1 AND cnc_index = $2 AND newcoin_index = $3",
+           "WHERE session_hash=$1 AND cnc_index=$2 AND newcoin_index=$3",
            3, NULL);
   PREPARE ("insert_refresh_order",
-           "INSERT INTO refresh_order ("
-           " newcoin_index "
+           "INSERT INTO refresh_order "
+           "(newcoin_index "
            ",session_hash "
            ",denom_pub "
-           ") "
-           "VALUES ($1, $2, $3)",
+           ") VALUES "
+           "($1, $2, $3);",
            3, NULL);
   PREPARE ("insert_refresh_melt",
-           "INSERT INTO refresh_melts ("
-           " coin_pub "
+           "INSERT INTO refresh_melts "
+           "(coin_pub "
            ",session"
            ",oldcoin_index "
            ",coin_sig "
            ",amount_val "
            ",amount_frac "
            ",amount_curr "
-           ") "
-           "VALUES ($1, $2, $3, $4, $5, $6, $7)",
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7);",
            7, NULL);
   PREPARE ("get_refresh_melt",
            "SELECT"
@@ -584,8 +584,10 @@ postgres_prepare (PGconn *db_conn)
            ",amount_frac"
            ",amount_curr"
            " FROM refresh_melts "
-           "WHERE session = $1 AND oldcoin_index = $2",
+           "WHERE session=$1 AND oldcoin_index=$2",
            2, NULL);
+  /* FIXME: should have a way to query the 'refresh_melts' by
+     coin public key (#3813) */
   PREPARE ("get_refresh_order",
            "SELECT denom_pub "
            "FROM refresh_order "
