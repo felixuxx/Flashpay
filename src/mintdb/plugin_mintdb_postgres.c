@@ -1118,7 +1118,7 @@ reserves_update (void *cls,
  * @param balance the amount that has to be added to the reserve
  * @param details bank transaction details justifying the increment,
  *        must be unique for each incoming transaction
- * @param expiry the new expiration time for the reserve
+ * @param expiry the new expiration time for the reserve (#3809)
  * @return #GNUNET_OK upon success; #GNUNET_NO if the given
  *         @a details are already known for this @a reserve_pub,
  *         #GNUNET_SYSERR upon failures (DB error, incompatible currency)
@@ -1154,14 +1154,16 @@ postgres_reserves_in_insert (void *cls,
   }
   if (GNUNET_NO == reserve_exists)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Reserve does not exist; creating a new one\n");
+    /* New reserve, create balance for the first time */
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_query_param_auto_from_type (reserve_pub),
       TALER_PQ_query_param_amount (balance),
       TALER_PQ_query_param_absolute_time (&expiry),
       TALER_PQ_query_param_end
     };
+
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Reserve does not exist; creating a new one\n");
     result = TALER_PQ_exec_prepared (session->conn,
                                      "reserve_create",
                                      params);
@@ -1173,7 +1175,7 @@ postgres_reserves_in_insert (void *cls,
   }
   else
   {
-    /* Update reserve */
+    /* Update reserve balance */
     updated_reserve.pub = reserve.pub;
 
     if (GNUNET_OK !=
@@ -1195,16 +1197,19 @@ postgres_reserves_in_insert (void *cls,
   result = NULL;
   /* create new incoming transaction, SQL "primary key" logic
      is used to guard against duplicates! */
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (&reserve.pub),
-    TALER_PQ_query_param_amount (balance),
-    TALER_PQ_query_param_fixed_size (details, strlen (details)),
-    TALER_PQ_query_param_absolute_time (&expiry),
-    TALER_PQ_query_param_end
-  };
-  result = TALER_PQ_exec_prepared (session->conn,
-                                   "reserves_in_add_transaction",
-                                   params);
+  {
+    struct TALER_PQ_QueryParam params[] = {
+      TALER_PQ_query_param_auto_from_type (&reserve.pub),
+      TALER_PQ_query_param_amount (balance),
+      TALER_PQ_query_param_fixed_size (details, strlen (details)),
+      TALER_PQ_query_param_absolute_time (&expiry),
+      TALER_PQ_query_param_end
+    };
+
+    result = TALER_PQ_exec_prepared (session->conn,
+                                     "reserves_in_add_transaction",
+                                     params);
+  }
   if (PGRES_COMMAND_OK != PQresultStatus(result))
   {
     const char *efield;
