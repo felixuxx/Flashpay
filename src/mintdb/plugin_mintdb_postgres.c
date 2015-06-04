@@ -951,11 +951,14 @@ postgres_commit (void *cls,
 
 
 /**
- * Insert a denomination key
+ * Insert a denomination key's public information into the database for
+ * reference by auditors and other consistency checks.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to use
- * @param dki the denomination key information
+ * @param dki the denomination key information;
+ *            NOTE: we might want to avoid passing the RSA private key here,
+ *                  as we do not want that in the DB (#3823)
  * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
  */
 static int
