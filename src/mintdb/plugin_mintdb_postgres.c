@@ -969,6 +969,8 @@ postgres_insert_denomination (void *cls,
 
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_rsa_public_key (dki->denom_pub.rsa_public_key),
+    /* FIXME: MasterSignature not stored (required for audit), #3823 */
+    /* FIXME: MasterPublicKey not stored (required for audit), #3823 */
     TALER_PQ_query_param_auto_from_type (&issue->start.abs_value_us__),
     TALER_PQ_query_param_auto_from_type (&issue->expire_withdraw.abs_value_us__),
     TALER_PQ_query_param_auto_from_type (&issue->expire_spend.abs_value_us__),
