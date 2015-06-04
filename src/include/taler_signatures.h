@@ -587,7 +587,7 @@ struct TALER_DenominationKeyValidityPS
 
   /**
    * Hash code of the denomination public key. (Used to avoid having
-   * the variable-size RSA key this struct.)
+   * the variable-size RSA key in this struct.)
    */
   struct GNUNET_HashCode denom_hash;
 

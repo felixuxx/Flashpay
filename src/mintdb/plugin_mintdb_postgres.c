@@ -1017,8 +1017,8 @@ postgres_insert_denomination (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session the database connection handle
- * @param reserve the reserve data.  The public key of the reserve should be set
- *          in this structure; it is used to query the database.  The balance
+ * @param[in,out] reserve the reserve data.  The public key of the reserve should be
+ *          set in this structure; it is used to query the database.  The balance
  *          and expiration are then filled accordingly.
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
@@ -1075,9 +1075,9 @@ postgres_reserve_get (void *cls,
  * @return #GNUNET_OK upon successful update; #GNUNET_SYSERR upon any error
  */
 static int
-postgres_reserves_update (void *cls,
-                          struct TALER_MINTDB_Session *session,
-                          struct TALER_MINTDB_Reserve *reserve)
+reserves_update (void *cls,
+                 struct TALER_MINTDB_Session *session,
+                 const struct TALER_MINTDB_Reserve *reserve)
 {
   PGresult *result;
   int ret;
@@ -1228,9 +1228,9 @@ postgres_reserves_in_insert (void *cls,
   PQclear (result);
   result = NULL;
   if ( (GNUNET_YES == reserve_exists) &&
-       (GNUNET_OK != postgres_reserves_update (cls,
-                                               session,
-                                               &updated_reserve)) )
+       (GNUNET_OK != reserves_update (cls,
+                                      session,
+                                      &updated_reserve)) )
     goto rollback;
   if (GNUNET_OK != postgres_commit (cls,
                                     session))
@@ -1370,9 +1370,9 @@ postgres_insert_collectable_blindcoin (void *cls,
                              &reserve.balance,
                              &withdraw))
     goto rollback;
-  if (GNUNET_OK != postgres_reserves_update (cls,
-                                             session,
-                                             &reserve))
+  if (GNUNET_OK != reserves_update (cls,
+                                    session,
+                                    &reserve))
     goto rollback;
   if (GNUNET_OK == postgres_commit (cls,
                                     session))

@@ -664,7 +664,7 @@ struct TALER_MINTDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion connection to use
-   * @param dki the denomination key information
+   * @param dki the denomination key information (#3823)
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
@@ -680,7 +680,7 @@ struct TALER_MINTDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param db the database connection handle
-   * @param reserve the reserve data.  The public key of the reserve should be set
+   * @param[in,out] reserve the reserve data.  The public key of the reserve should be set
    *          in this structure; it is used to query the database.  The balance
    *          and expiration are then filled accordingly.
    * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
