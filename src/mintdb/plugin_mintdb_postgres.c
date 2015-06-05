@@ -1527,7 +1527,7 @@ postgres_get_reserve_history (void *cls,
     {
       PQclear (result);
       ret = GNUNET_OK;          /* It is OK if there are no withdrawls yet */
-      break;
+      goto cleanup;
     }
     GNUNET_assert (NULL != rh);
     GNUNET_assert (NULL != rh_tail);
@@ -1564,7 +1564,6 @@ postgres_get_reserve_history (void *cls,
     ret = GNUNET_OK;
     PQclear (result);
   }
-
  cleanup:
   if (GNUNET_SYSERR == ret)
   {
