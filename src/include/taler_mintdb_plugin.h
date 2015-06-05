@@ -723,7 +723,7 @@ struct TALER_MINTDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database connection to use
-   * @param h_blind hash of the blinded message
+   * @param h_blind hash of the blinded message to be signed
    * @param collectable corresponding collectable coin (blind signature)
    *                    if a coin is found
    * @return #GNUNET_SYSERR on internal error
@@ -743,9 +743,11 @@ struct TALER_MINTDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database connection to use
-   * @param h_blind hash of the blinded message
+   * @param h_blind hash of the blinded message which is (blindly) signed by the
+   *                signature in @a collectable
    * @param withdraw amount by which the reserve will be withdrawn with this
-   *          transaction
+   *                transaction (based on the value of the denomination key
+   *                used for the signature); coin value plus fee.
    * @param collectable corresponding collectable coin (blind signature)
    *                    if a coin is found
    * @return #GNUNET_SYSERR on internal error

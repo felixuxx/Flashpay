@@ -1108,7 +1108,7 @@ reserves_update (void *cls,
 
 
 /**
- * Insert a incoming transaction into reserves.  New reserves are also created
+ * Insert an incoming transaction into reserves.  New reserves are also created
  * through this function.  Note that this API call starts (and stops) its
  * own transaction scope (so the application must not do so).
  *
@@ -1134,9 +1134,7 @@ postgres_reserves_in_insert (void *cls,
   PGresult *result;
   int reserve_exists;
   struct TALER_MINTDB_Reserve reserve;
-  struct TALER_MINTDB_Reserve updated_reserve;
 
-  result = NULL;
   if (GNUNET_OK != postgres_start (cls,
                                    session))
   {
@@ -1154,7 +1152,11 @@ postgres_reserves_in_insert (void *cls,
   }
   if (GNUNET_NO == reserve_exists)
   {
-    /* New reserve, create balance for the first time */
+    /* New reserve, create balance for the first time; we do this
+       before adding the actual transaction to "reserves_in", as
+       for a new reserve it can't be a duplicate 'add' operation,
+       and as the 'add' operation may need the reserve entry
+       as a foreign key. */
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_query_param_auto_from_type (reserve_pub),
       TALER_PQ_query_param_amount (balance),
@@ -1170,33 +1172,16 @@ postgres_reserves_in_insert (void *cls,
     if (PGRES_COMMAND_OK != PQresultStatus(result))
     {
       QUERY_ERR (result);
+      PQclear (result);
       goto rollback;
     }
-  }
-  else
-  {
-    /* Update reserve balance */
-    updated_reserve.pub = reserve.pub;
-
-    if (GNUNET_OK !=
-        TALER_amount_add (&updated_reserve.balance,
-                          &reserve.balance,
-                          balance))
-    {
-      /* currency overflow or incompatible currency */
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Attempt to deposit incompatible amount into reserve\n");
-      goto rollback;
-    }
-    updated_reserve.expiry = GNUNET_TIME_absolute_max (expiry,
-                                                       reserve.expiry);
-
-  }
-  if (NULL != result)
     PQclear (result);
-  result = NULL;
-  /* create new incoming transaction, SQL "primary key" logic
-     is used to guard against duplicates! */
+  }
+  /* Create new incoming transaction, SQL "primary key" logic
+     is used to guard against duplicates.  If a duplicate is
+     detected, we rollback (which really shouldn't undo
+     anything) and return #GNUNET_NO to indicate that this failure
+     is kind-of harmless (already executed). */
   {
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_query_param_auto_from_type (&reserve.pub),
@@ -1231,19 +1216,40 @@ postgres_reserves_in_insert (void *cls,
     goto rollback;
   }
   PQclear (result);
-  result = NULL;
-  if ( (GNUNET_YES == reserve_exists) &&
-       (GNUNET_OK != reserves_update (cls,
+
+  if (GNUNET_YES == reserve_exists)
+  {
+    /* If the reserve already existed, we need to still update the
+       balance; we do this after checking for duplication, as
+       otherwise we might have to actually pay the cost to roll this
+       back for duplicate transactions; like this, we should virtually
+       never actually have to rollback anything. */
+    struct TALER_MINTDB_Reserve updated_reserve;
+
+    updated_reserve.pub = reserve.pub;
+    if (GNUNET_OK !=
+        TALER_amount_add (&updated_reserve.balance,
+                          &reserve.balance,
+                          balance))
+    {
+      /* currency overflow or incompatible currency */
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Attempt to deposit incompatible amount into reserve\n");
+      goto rollback;
+    }
+    updated_reserve.expiry = GNUNET_TIME_absolute_max (expiry,
+                                                       reserve.expiry);
+    if (GNUNET_OK != reserves_update (cls,
                                       session,
-                                      &updated_reserve)) )
-    goto rollback;
+                                      &updated_reserve))
+      goto rollback;
+  }
   if (GNUNET_OK != postgres_commit (cls,
                                     session))
     return GNUNET_SYSERR;
   return GNUNET_OK;
+
  rollback:
-  if (NULL != result)
-    PQclear (result);
   postgres_rollback (cls,
                      session);
   return GNUNET_SYSERR;
@@ -1256,7 +1262,7 @@ postgres_reserves_in_insert (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection to use
- * @param h_blind hash of the blinded message
+ * @param h_blind hash of the blinded message to be signed
  * @param collectable corresponding collectable coin (blind signature)
  *                    if a coin is found
  * @return #GNUNET_SYSERR on internal error
