@@ -263,12 +263,17 @@ postgres_create_tables (void *cls,
   SQLEXEC_INDEX ("CREATE INDEX expiration_index"
 		 " ON reserves_in (expiration_date);");
   /* Table with the withdraw operations that have been performed on a reserve.
-     TODO: maybe rename to "reserves_out"? #3810
+     The 'h_blind_ev' is the hash of the blinded coin. It serves as a primary
+     key, as (broken) clients that use a non-random coin and blinding factor
+     should fail to even withdraw, as otherwise the coins will fail to deposit
+     (as they really must be unique). */
+  /* TODO: maybe rename to "reserves_out"? #3810
+     TODO: maybe add withdraw fee and amount_with_fee explicitly to table,
+           so we can init those fields on select? #3825
      TODO: maybe add timestamp of when the operation was performed, so we
            can influence the reserves' expiration_date not just based on
-           incoming but also based on outgoing transactions?
-     TODO: is h_blind_ev really a _primary key_? Is this constraint useful? */
-  SQLEXEC ("CREATE TABLE IF NOT EXISTS collectable_blindcoins"
+           incoming but also based on outgoing transactions? */
+    SQLEXEC ("CREATE TABLE IF NOT EXISTS collectable_blindcoins"
            "(h_blind_ev BYTEA PRIMARY KEY"
            ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
            ",denom_sig BYTEA NOT NULL"
@@ -1304,6 +1309,8 @@ postgres_get_collectable_blindcoin (void *cls,
     TALER_PQ_result_spec_rsa_signature("denom_sig", &denom_sig),
     TALER_PQ_result_spec_auto_from_type("reserve_sig", &collectable->reserve_sig),
     TALER_PQ_result_spec_auto_from_type("reserve_pub", &collectable->reserve_pub),
+    /* FIXME: collectable->amount_with_fee and
+       collectable->withdraw_fee not initialized! (#3825) */
     TALER_PQ_result_spec_end
   };
 
@@ -1312,8 +1319,10 @@ postgres_get_collectable_blindcoin (void *cls,
     GNUNET_break (0);
     goto cleanup;
   }
+  /* FIXME: why do we bother with the temporary variables? */
   collectable->denom_pub.rsa_public_key = denom_pub;
   collectable->sig.rsa_signature = denom_sig;
+  collectable->h_coin_envelope = *h_blind;
   ret = GNUNET_YES;
 
  cleanup:
@@ -1330,9 +1339,11 @@ postgres_get_collectable_blindcoin (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection to use
- * @param h_blind hash of the blinded message
+ * @param h_blind hash of the blinded message. FIXME:
+ *          redundant information given @a collectable's h_coin_envelope, right? #3825
  * @param withdraw amount by which the reserve will be reduced with this
- *          transaction (coin value plus fee)
+ *          transaction (coin value plus fee). FIXME:
+ *          redundant information given @a collectable's amount_with_fee! #3825
  * @param collectable corresponding collectable coin (blind signature)
  *                    if a coin is found
  * @return #GNUNET_SYSERR on internal error
@@ -1355,6 +1366,7 @@ postgres_insert_collectable_blindcoin (void *cls,
     TALER_PQ_query_param_rsa_signature (collectable->sig.rsa_signature),
     TALER_PQ_query_param_auto_from_type (&collectable->reserve_pub),
     TALER_PQ_query_param_auto_from_type (&collectable->reserve_sig),
+    /* FIXME: store fees? #3825 */
     TALER_PQ_query_param_end
   };
 
@@ -1375,12 +1387,20 @@ postgres_insert_collectable_blindcoin (void *cls,
   if (GNUNET_OK != postgres_reserve_get (cls,
                                          session,
                                          &reserve))
+  {
+    /* Should have been checked before we got here... */
+    GNUNET_break (0);
     goto rollback;
+  }
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&reserve.balance,
                              &reserve.balance,
                              &withdraw))
+  {
+    /* Should have been checked before we got here... */
+    GNUNET_break (0);
     goto rollback;
+  }
   if (GNUNET_OK != reserves_update (cls,
                                     session,
                                     &reserve))
@@ -1417,13 +1437,12 @@ postgres_get_reserve_history (void *cls,
 {
   PGresult *result;
   struct TALER_MINTDB_ReserveHistory *rh;
-  struct TALER_MINTDB_ReserveHistory *rh_head;
+  struct TALER_MINTDB_ReserveHistory *rh_tail;
   int rows;
   int ret;
 
-  result = NULL;
   rh = NULL;
-  rh_head = NULL;
+  rh_tail = NULL;
   ret = GNUNET_SYSERR;
   {
     struct TALER_MINTDB_BankTransfer *bt;
@@ -1455,6 +1474,7 @@ postgres_get_reserve_history (void *cls,
     while (0 < rows)
     {
       bt = GNUNET_new (struct TALER_MINTDB_BankTransfer);
+      /* FIXME: use higher-level libtalerpq API here? */
       if (GNUNET_OK != TALER_PQ_extract_amount (result,
                                                 --rows,
                                                 "balance_val",
@@ -1467,22 +1487,22 @@ postgres_get_reserve_history (void *cls,
         goto cleanup;
       }
       bt->reserve_pub = *reserve_pub;
-      if (NULL != rh_head)
+      /* FIXME: bt->wire not initialized! (#3817) */
+      if (NULL != rh_tail)
       {
-        rh_head->next = GNUNET_new (struct TALER_MINTDB_ReserveHistory);
-        rh_head = rh_head->next;
+        rh_tail->next = GNUNET_new (struct TALER_MINTDB_ReserveHistory);
+        rh_tail = rh_tail->next;
       }
       else
       {
-        rh_head = GNUNET_new (struct TALER_MINTDB_ReserveHistory);
-        rh = rh_head;
+        rh_tail = GNUNET_new (struct TALER_MINTDB_ReserveHistory);
+        rh = rh_tail;
       }
-      rh_head->type = TALER_MINTDB_RO_BANK_TO_MINT;
-      rh_head->details.bank = bt;
+      rh_tail->type = TALER_MINTDB_RO_BANK_TO_MINT;
+      rh_tail->details.bank = bt;
     }
+    PQclear (result);
   }
-  PQclear (result);
-  result = NULL;
   {
     struct GNUNET_HashCode h_blind_ev;
     struct TALER_ReserveSignatureP reserve_sig;
@@ -1500,48 +1520,52 @@ postgres_get_reserve_history (void *cls,
     if (PGRES_TUPLES_OK != PQresultStatus (result))
     {
       QUERY_ERR (result);
+      PQclear (result);
       goto cleanup;
     }
     if (0 == (rows = PQntuples (result)))
     {
-      ret = GNUNET_OK;          /* Its OK if there are no withdrawls yet */
-      goto cleanup;
+      PQclear (result);
+      ret = GNUNET_OK;          /* It is OK if there are no withdrawls yet */
+      break;
     }
-    struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_auto_from_type ("h_blind_ev", &h_blind_ev),
-      TALER_PQ_result_spec_rsa_public_key ("denom_pub", &denom_pub),
-      TALER_PQ_result_spec_rsa_signature ("denom_sig", &denom_sig),
-      TALER_PQ_result_spec_auto_from_type ("reserve_sig", &reserve_sig),
-      TALER_PQ_result_spec_end
-    };
     GNUNET_assert (NULL != rh);
-    GNUNET_assert (NULL != rh_head);
-    GNUNET_assert (NULL == rh_head->next);
+    GNUNET_assert (NULL != rh_tail);
+    GNUNET_assert (NULL == rh_tail->next);
     while (0 < rows)
     {
+      struct TALER_PQ_ResultSpec rs[] = {
+        TALER_PQ_result_spec_auto_from_type ("h_blind_ev", &h_blind_ev),
+        TALER_PQ_result_spec_rsa_public_key ("denom_pub", &denom_pub),
+        TALER_PQ_result_spec_rsa_signature ("denom_sig", &denom_sig),
+        TALER_PQ_result_spec_auto_from_type ("reserve_sig", &reserve_sig),
+        TALER_PQ_result_spec_end
+      };
+
       if (GNUNET_YES !=
 	  TALER_PQ_extract_result (result, rs, --rows))
       {
         GNUNET_break (0);
+        PQclear (result);
         goto cleanup;
       }
       cbc = GNUNET_new (struct TALER_MINTDB_CollectableBlindcoin);
       cbc->sig.rsa_signature = denom_sig;
       cbc->denom_pub.rsa_public_key = denom_pub;
-      cbc->h_coin_envelope =  h_blind_ev;
+      /* FIXME: amount_with_fee and withdraw_fee not initialized! #3825 */
+      cbc->h_coin_envelope = h_blind_ev;
       cbc->reserve_pub = *reserve_pub;
       cbc->reserve_sig = reserve_sig;
-      rh_head->next = GNUNET_new (struct TALER_MINTDB_ReserveHistory);
-      rh_head = rh_head->next;
-      rh_head->type = TALER_MINTDB_RO_WITHDRAW_COIN;
-      rh_head->details.withdraw = cbc;
+      rh_tail->next = GNUNET_new (struct TALER_MINTDB_ReserveHistory);
+      rh_tail = rh_tail->next;
+      rh_tail->type = TALER_MINTDB_RO_WITHDRAW_COIN;
+      rh_tail->details.withdraw = cbc;
     }
+    ret = GNUNET_OK;
+    PQclear (result);
   }
-  ret = GNUNET_OK;
 
  cleanup:
-  if (NULL != result)
-    PQclear (result);
   if (GNUNET_SYSERR == ret)
   {
     common_free_reserve_history (cls,

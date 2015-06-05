@@ -112,7 +112,6 @@ struct TALER_MINTDB_CollectableBlindcoin
    */
   struct TALER_Amount withdraw_fee;
 
-
   /**
    * Public key of the reserve that was drained.
    */
