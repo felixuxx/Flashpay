@@ -1910,6 +1910,7 @@ postgres_insert_refresh_melt (void *cls,
     TALER_PQ_query_param_auto_from_type (&oldcoin_index_nbo),
     TALER_PQ_query_param_auto_from_type (&melt->coin_sig),
     TALER_PQ_query_param_amount (&melt->amount_with_fee),
+    /* FIXME: melt_fee not stored, #3828 */
     TALER_PQ_query_param_end
   };
   int ret;
@@ -1920,17 +1921,23 @@ postgres_insert_refresh_melt (void *cls,
                                  &melt->coin.coin_pub,
                                  NULL);
   if (GNUNET_SYSERR == ret)
+  {
+    GNUNET_break (0);
     return GNUNET_SYSERR;
+  }
   if (GNUNET_NO == ret)         /* if not, insert it */
   {
     ret = postgres_insert_known_coin (cls,
                                       session,
                                       &melt->coin);
     if (ret == GNUNET_SYSERR)
+    {
+      GNUNET_break (0);
       return GNUNET_SYSERR;
+    }
   }
   /* insert the melt */
-  oldcoin_index_nbo = htons (oldcoin_index);
+  oldcoin_index_nbo = htons (oldcoin_index); /* 3827 */
   result = TALER_PQ_exec_prepared (session->conn,
                                    "insert_refresh_melt",
                                    params);
@@ -1985,7 +1992,7 @@ postgres_get_refresh_melt (void *cls,
     PQclear (result);
     return GNUNET_SYSERR;
   }
-  nrows =  PQntuples (result);
+  nrows = PQntuples (result);
   if (0 == nrows)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -1994,18 +2001,22 @@ postgres_get_refresh_melt (void *cls,
     return GNUNET_NO;
   }
   GNUNET_assert (1 == nrows);    /* due to primary key constraint */
-  struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_auto_from_type ("coin_pub", &coin.coin_pub),
-    TALER_PQ_result_spec_auto_from_type ("coin_sig", &coin_sig),
-    TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
-    TALER_PQ_result_spec_end
-  };
-  if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
   {
+    struct TALER_PQ_ResultSpec rs[] = {
+      TALER_PQ_result_spec_auto_from_type ("coin_pub", &coin.coin_pub),
+      TALER_PQ_result_spec_auto_from_type ("coin_sig", &coin_sig),
+      TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
+      /* 'melt_fee' not initialized (#3828) */
+      TALER_PQ_result_spec_end
+    };
+    if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
     PQclear (result);
-    return GNUNET_SYSERR;
   }
-  PQclear (result);
   /* fetch the coin info and denomination info */
   if (GNUNET_OK != postgres_get_known_coin (cls,
                                             session,
@@ -2016,10 +2027,9 @@ postgres_get_refresh_melt (void *cls,
     return GNUNET_OK;
   melt->coin = coin;
   melt->coin_sig = coin_sig;
-  if (session_hash != &melt->session_hash)
-    melt->session_hash = *session_hash;
+  melt->session_hash = *session_hash;
   melt->amount_with_fee = amount_with_fee;
-  /* FIXME: melt->melt_fee = ??, #3812 */
+  /* FIXME: melt->melt_fee = ??, #3812 / #3828 */
   return GNUNET_OK;
 }
 

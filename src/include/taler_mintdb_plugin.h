@@ -340,6 +340,11 @@ struct TALER_MINTDB_RefreshMelt
   struct TALER_Amount amount_with_fee;
 
   /** FIXME: This can be retrieved from the Denomination? Do we need this?
+   * (Yes, it can be derived from coin's denomination, but the extra
+   * lookup/indirection also costs and is inconvenient.  And when
+   * checking signatures and balances, do we really always want this
+   * extra step of going to the denominations? (#3828)
+   *
    * Melting fee charged by the mint.  This must match the Mint's
    * denomination key's melting fee.  If the client puts in an invalid
    * melting fee (too high or too low) that does not match the Mint's
