@@ -1603,13 +1603,7 @@ postgres_have_deposit (void *cls,
     BREAK_DB_ERR (result);
     goto cleanup;
   }
-
-  if (0 == PQntuples (result))
-  {
-    ret = GNUNET_NO;
-    goto cleanup;
-  }
-  ret = GNUNET_YES;
+  ret = (0 == PQntuples (result)) ? GNUNET_NO : GNUNET_YES;
   /* NOTE: maybe check that the other information in @a deposit
      also matches, and if not report inconsistencies? Right now,
      if the merchant re-uses a transaction ID, the mint silently
@@ -1621,8 +1615,7 @@ postgres_have_deposit (void *cls,
 
 
 /**
- * Insert information about deposited coin into the
- * database.
+ * Insert information about deposited coin into the database.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session connection to the database
@@ -1638,33 +1631,37 @@ postgres_insert_deposit (void *cls,
   PGresult *result;
   int ret;
 
-  ret = GNUNET_SYSERR;
   json_wire_enc = json_dumps (deposit->wire, JSON_COMPACT);
-  struct TALER_PQ_QueryParam params[]= {
-    TALER_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
-    TALER_PQ_query_param_rsa_public_key (deposit->coin.denom_pub.rsa_public_key),
-    TALER_PQ_query_param_rsa_signature (deposit->coin.denom_sig.rsa_signature),
-    TALER_PQ_query_param_auto_from_type (&deposit->transaction_id),
-    TALER_PQ_query_param_amount (&deposit->amount_with_fee),
-    TALER_PQ_query_param_auto_from_type (&deposit->merchant_pub),
-    TALER_PQ_query_param_auto_from_type (&deposit->h_contract),
-    TALER_PQ_query_param_auto_from_type (&deposit->h_wire),
-    TALER_PQ_query_param_auto_from_type (&deposit->csig),
-    TALER_PQ_query_param_fixed_size (json_wire_enc,
-                                    strlen (json_wire_enc)),
-    TALER_PQ_query_param_end
-  };
-  result = TALER_PQ_exec_prepared (session->conn,
-                                   "insert_deposit",
-                                   params);
+  {
+    struct TALER_PQ_QueryParam params[] = {
+      TALER_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
+      TALER_PQ_query_param_rsa_public_key (deposit->coin.denom_pub.rsa_public_key),
+      TALER_PQ_query_param_rsa_signature (deposit->coin.denom_sig.rsa_signature),
+      TALER_PQ_query_param_auto_from_type (&deposit->transaction_id),
+      TALER_PQ_query_param_amount (&deposit->amount_with_fee),
+      TALER_PQ_query_param_auto_from_type (&deposit->merchant_pub),
+      TALER_PQ_query_param_auto_from_type (&deposit->h_contract),
+      TALER_PQ_query_param_auto_from_type (&deposit->h_wire),
+      TALER_PQ_query_param_auto_from_type (&deposit->csig),
+      TALER_PQ_query_param_fixed_size (json_wire_enc,
+                                       strlen (json_wire_enc)),
+      /* FIXME: refund_deadline, timestamp, deposit_fee and 'wire' details
+         not stored! #3826 */
+      TALER_PQ_query_param_end
+    };
+    result = TALER_PQ_exec_prepared (session->conn,
+                                     "insert_deposit",
+                                     params);
+  }
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
-    goto cleanup;
+    ret = GNUNET_SYSERR;
   }
-  ret = GNUNET_OK;
-
- cleanup:
+  else
+  {
+    ret = GNUNET_OK;
+  }
   PQclear (result);
   GNUNET_free_non_null (json_wire_enc);
   return ret;
@@ -2705,7 +2702,7 @@ postgres_get_coin_transactions (void *cls,
          (#3820) */
         TALER_PQ_result_spec_auto_from_type ("transaction_id", &deposit->transaction_id),
         TALER_PQ_result_spec_auto_from_type ("coin_sig", &deposit->csig),
-        /* FIXME: do 'amount_with_fee' here! */
+        /* FIXME: do 'amount_with_fee' here! #3826 */
         TALER_PQ_result_spec_auto_from_type ("merchant_pub", &deposit->merchant_pub),
         TALER_PQ_result_spec_auto_from_type ("h_contract", &deposit->h_contract),
         TALER_PQ_result_spec_auto_from_type ("h_wire", &deposit->h_wire),

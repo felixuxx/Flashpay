@@ -190,7 +190,15 @@ struct TALER_MINTDB_ReserveHistory
 
 
 /**
- * @brief Specification for a /deposit operation.
+ * @brief Specification for a /deposit operation.  The combination of
+ * the coin's public key, the merchant's public key and the
+ * transaction ID must be unique.  While a coin can (theoretically) be
+ * deposited at the same merchant twice (with partial spending), the
+ * merchant must either use a different public key or a different
+ * transaction ID for the two transactions.  The same coin must not
+ * be used twice at the same merchant for the same transaction
+ * (as determined by transaction ID).  (Note: we might want to
+ * fix #3819 and include at least h_contract as well.)
  */
 struct TALER_MINTDB_Deposit
 {
