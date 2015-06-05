@@ -1674,7 +1674,8 @@ postgres_insert_deposit (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database handle to use
  * @param session_hash hash over the melt to use to locate the session
- * @param[out] refresh_session where to store the result
+ * @param[out] refresh_session where to store the result, can be NULL
+ *             to just check if the session exists
  * @return #GNUNET_YES on success,
  *         #GNUNET_NO if not found,
  *         #GNUNET_SYSERR on DB failure
@@ -1690,55 +1691,53 @@ postgres_get_refresh_session (void *cls,
     TALER_PQ_query_param_auto_from_type(session_hash),
     TALER_PQ_query_param_end
   };
-  int ret;
   uint16_t num_oldcoins_nbo;
   uint16_t num_newcoins_nbo;
   uint16_t noreveal_index_nbo;
 
-  ret = GNUNET_SYSERR;
   result = TALER_PQ_exec_prepared (session->conn,
                                    "get_refresh_session",
                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
-    goto cleanup;
+    PQclear (result);
+    return GNUNET_SYSERR;
   }
   if (0 == PQntuples (result))
   {
-    ret = GNUNET_NO;
-    goto cleanup;
+    PQclear (result);
+    return GNUNET_NO;
   }
   GNUNET_assert (1 == PQntuples (result));
-  /* We're done if the caller is only interested in whether the session exists
-   * or not */
   if (NULL == refresh_session)
   {
-    ret = GNUNET_YES;
-    goto cleanup;
+    /* We're done if the caller is only interested in whether the
+     * session exists or not */
+    PQclear (result);
+    return GNUNET_YES;
   }
   memset (refresh_session, 0, sizeof (struct TALER_MINTDB_RefreshSession));
-  struct TALER_PQ_ResultSpec rs[] = {
-    /* NOTE: maybe create a TALER_PQ_RS type for 16-bit numbers? */
-    TALER_PQ_result_spec_auto_from_type("num_oldcoins", &num_oldcoins_nbo),
-    TALER_PQ_result_spec_auto_from_type("num_newcoins", &num_newcoins_nbo),
-    TALER_PQ_result_spec_auto_from_type("noreveal_index", &noreveal_index_nbo),
-    TALER_PQ_result_spec_end
-  };
-  if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
   {
-    GNUNET_break (0);
-    goto cleanup;
+    struct TALER_PQ_ResultSpec rs[] = {
+      /* NOTE: maybe create a TALER_PQ_RS type for 16-bit numbers? #3827 */
+      TALER_PQ_result_spec_auto_from_type("num_oldcoins", &num_oldcoins_nbo),
+      TALER_PQ_result_spec_auto_from_type("num_newcoins", &num_newcoins_nbo),
+      TALER_PQ_result_spec_auto_from_type("noreveal_index", &noreveal_index_nbo),
+      TALER_PQ_result_spec_end
+    };
+    if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
   }
   refresh_session->num_oldcoins = ntohs (num_oldcoins_nbo);
   refresh_session->num_newcoins = ntohs (num_newcoins_nbo);
   refresh_session->noreveal_index = ntohs (noreveal_index_nbo);
-  ret = GNUNET_YES;
-
- cleanup:
-  if (NULL != result)
-    PQclear (result);
-  return ret;
+  PQclear (result);
+  return GNUNET_YES;
 }
 
 
@@ -1764,7 +1763,7 @@ postgres_create_refresh_session (void *cls,
   uint16_t noreveal_index_nbo;
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type(session_hash),
-    /* Note: Maybe create a TALER_PQ_QP for 16-bit numbers? */
+    /* Note: Maybe create a TALER_PQ_QP for 16-bit numbers? #3827 */
     TALER_PQ_query_param_auto_from_type(&num_oldcoins_nbo),
     TALER_PQ_query_param_auto_from_type(&num_newcoins_nbo),
     TALER_PQ_query_param_auto_from_type(&noreveal_index_nbo),
@@ -1795,6 +1794,8 @@ postgres_create_refresh_session (void *cls,
  * @param session the shared database session
  * @param coin_info the public coin info
  * @return #GNUNET_SYSERR upon error; #GNUNET_OK upon success
+ * @deprecated (certainly should not be in public API, not sure if
+ *              we want to keep this normalization internally, #3811)
  */
 static int
 postgres_insert_known_coin (void *cls,
@@ -1832,6 +1833,8 @@ postgres_insert_known_coin (void *cls,
  * @return #GNUNET_SYSERR upon error; #GNUNET_NO if no coin is found; #GNUNET_OK
  *           if upon succesfullying retrieving the record data info @a
  *           coin_info
+ * @deprecated (certainly should not be in public API, not sure if
+ *              we want to keep this normalization internally, #3811)
  */
 static int
 postgres_get_known_coin (void *cls,
@@ -1862,24 +1865,22 @@ postgres_get_known_coin (void *cls,
     return GNUNET_NO;
   }
   GNUNET_assert (1 == nrows);   /* due to primary key */
-  struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_rsa_public_key ("denom_pub", &coin_info->denom_pub.rsa_public_key),
-    TALER_PQ_result_spec_rsa_signature ("denom_sig", &coin_info->denom_sig.rsa_signature),
-    TALER_PQ_result_spec_end
-  };
-  if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
   {
-    PQclear (result);
-    GNUNET_break (0);
-    GNUNET_free (coin_info);
-    return GNUNET_SYSERR;
+    struct TALER_PQ_ResultSpec rs[] = {
+      TALER_PQ_result_spec_rsa_public_key ("denom_pub", &coin_info->denom_pub.rsa_public_key),
+      TALER_PQ_result_spec_rsa_signature ("denom_sig", &coin_info->denom_sig.rsa_signature),
+      TALER_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
+    {
+      PQclear (result);
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
   }
   PQclear (result);
-  /* no need to copy if the src and dest are same */
-  if (coin_pub != &coin_info->coin_pub)
-    (void) memcpy (&coin_info->coin_pub,
-                   coin_pub,
-                   sizeof (struct TALER_CoinSpendPublicKeyP));
+  coin_info->coin_pub = *coin_pub;
   return GNUNET_OK;
 }
 
