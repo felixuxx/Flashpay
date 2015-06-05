@@ -1509,11 +1509,14 @@ postgres_get_reserve_history (void *cls,
     struct TALER_MINTDB_CollectableBlindcoin *cbc;
     struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
     struct GNUNET_CRYPTO_rsa_Signature *denom_sig;
-
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_query_param_auto_from_type (reserve_pub),
       TALER_PQ_query_param_end
     };
+
+    GNUNET_assert (NULL != rh);
+    GNUNET_assert (NULL != rh_tail);
+    GNUNET_assert (NULL == rh_tail->next);
     result = TALER_PQ_exec_prepared (session->conn,
                                      "get_reserves_blindcoins",
                                      params);
@@ -1523,15 +1526,7 @@ postgres_get_reserve_history (void *cls,
       PQclear (result);
       goto cleanup;
     }
-    if (0 == (rows = PQntuples (result)))
-    {
-      PQclear (result);
-      ret = GNUNET_OK;          /* It is OK if there are no withdrawls yet */
-      goto cleanup;
-    }
-    GNUNET_assert (NULL != rh);
-    GNUNET_assert (NULL != rh_tail);
-    GNUNET_assert (NULL == rh_tail->next);
+    rows = PQntuples (result);
     while (0 < rows)
     {
       struct TALER_PQ_ResultSpec rs[] = {
