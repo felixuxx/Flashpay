@@ -1,153 +1,360 @@
+/*
+  This file is part of TALER
+  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
+
+  TALER is free software; you can redistribute it and/or modify it under the
+  terms of the GNU General Public License as published by the Free Software
+  Foundation; either version 3, or (at your option) any later version.
+
+  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License along with
+  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
+*/
+/**
+ * @file mintdb/perf_taler_mintdb_interpreter.h
+ * @brief Library for performance analysis of taler database
+ * @author Nicolas Fournier
+ */
+
 #ifndef __PERF_TALER_MINTDB_INTERPRETER_H__
 #define __PERF_TALER_MINTDB_INTERPRETER_H__
 
 #include <sys/time.h>
-
 #include <gnunet/platform.h>
-#include <taler/taler_mintdb_lib.h>
-#include <taler/taler_mintdb_plugin.h>
+#include "taler_mintdb_lib.h"
+#include "taler_mintdb_plugin.h"
 
+/**
+ * Marks the end of the command chain
+ * @param _label
+ */
+#define INIT_CMD_END(label) {.command = PERF_TALER_MINTDB_CMD_END, .label = _label}
 
-#define INIT_CMD_END(label) {.command = CMD_END, .name = label}
-
-#define INIT_CMD_LOOP(label, _iter) { \
-    .command = CMD_LOOP, \
-    .name = label, \
+/**
+ * The begining of a loop
+ * @param _label the name of the loop
+ * @param _iter the number of iteration of the loop
+ */
+#define INIT_CMD_LOOP(_label, _iter) \
+  { \
+    .command = PERF_TALER_MINTDB_CMD_LOOP, \
+    .label = _label, \
+    .exposed_type = PERF_TALER_MINTDB_NONE, \
     .details.loop = { \
        .max_iterations = _iter, \
        .curr_iteration = -1} \
-    }
+  }
 
-#define INIT_CMD_END_LOOP(label, _loopname) {.command = CMD_END_LOOP, .name = label, .details.end_loop.loop_start = _loopname}
+/**
+ * Marks the end of the loop @_label_loop
+ */
+#define INIT_CMD_END_LOOP(_label, _label_loop) \
+  {\
+    .command = PERF_TALER_MINTDB_CMD_END_LOOP,\
+    .label = _label,\
+    .exposed_type = PERF_TALER_MINTDB_NONE, \
+    .details.end_loop.label_loop = _label_loop \
+  }
+
+/**
+ * Saves the time of execution to use for logging with gauger
+ */
+#define INIT_CMD_GET_TIME(_label) \
+  { \
+    .command = PERF_TALER_MINTDB_CMD_GET_TIME, \
+    .label = _label \
+    .exposed_type = PERF_TALER_MINTDB_NONE, \
+  }
+
+/**
+ * Commits the duration between @a _label_start and @a _label_stop
+ * to Gauger with @a _description explaining
+ */
+#define INIT_CMD_GAUGER(_label, _start_time, _stop_time, _description) \
+  { \
+    .command = PERF_TALER_MINTDB_CMD_GAUGER, \
+    .label = _label, \
+    .exposed_type = PERF_TALER_MINTDB_NONE, \
+    .details.gauger = { \
+         .label_start = _label_start, \
+         .label_end = _label_end, \
+         .description = _description \
+    } \
+  }
+
+/**
+ * Initiate a database transaction
+ */
+#define INIT_CMD_START_TRANSACTION(_label) \
+  { \
+    .command = PERF_TALER_MINTDB_CMD_START_TRANSACTION, \
+    .label = _label \
+    .exposed_type = PERF_TALER_MINTDB_NONE, \
+  }
+
+/**
+ * Commits a database connection
+ */
+#define INIT_CMD_COMMIT_TRANSACTION(_label) \
+  { \
+    .command = PERF_TALER_MINTDB_CMD_COMMIT_TRANSACTION, \
+    .label = _label \
+    .exposed_type = PERF_TALER_MINTDB_NONE, \
+  }
+
+/**
+ * Insert a deposit into the database
+ */
+#define INIT_CMD_INSERT_DEPOSIT(_label) \
+  { \
+    .command = PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT,\
+    .label = label \
+    .exposed_type = PERF_TALER_MINTDB_NONE, \
+  }
+
+/**
+ * Check if a deposit is in the database
+ * @param _label_deposit Label of the deposit to use
+ */
+#define INIT_CMD_GET_DEPOSIT(_label, _label_deposit) \
+  { \
+    .command = PERF_TALER_MINTDB_CMD_GET_DEPOSIT, \
+    .label = _label, \
+    .exposed_type = PERF_TALER_MINTDB_NONE, \
+    .details.label_deposit.saved = _label_deposit \
+  }
+
+/**
+ * Extracts @a _nb_saved items of type @a _save_type 
+ * from the command @a _label_save during the loop @a _label_loop
+ */
+#define INIT_CMD_SAMPLE_ARRAY(_label, _label_loop, _label_save, _nb_saved, _save_type) \
+  { \
+    .command = PERF_TALER_MINTDB_CMD_SAVE_ARRAY, \
+    .label = _label, \
+    .exposed_type = PERF_TALER_MINTDB_NONE, \
+    .details.save_array = { \
+        .label_loop = _label_loop, \
+        .label_save = _label_save, \
+        .nb_saved = _nb_saved, \
+        .save_type = _save_type \
+      } \
+  }
+
+/**
+ * Loads @a _nb_saved previously sampled data of type @a _saved_type
+ * from @a _label_save during the loop @a _label_loop 
+ */
+#define INIT_CMD_LOAD_ARRAY(_label, _label_loop, _label_save, _nb_saved, _save_type) \
+  { \
+    .command = PERF_TALER_MINTDB_CMD_LOAD_ARRAY, \
+    .label = _label, \
+    .exposed_type = _saved_type_, \
+    .details.load_array = { \
+      .label_loop = _label_loop, \
+      .label_save = _label_save \
+      .nb_saved = _nb_saved, \
+     } \
+  }
 
 
-#define INIT_CMD_GET_TIME(label) {.command = CMD_GET_TIME, .name = label}
 
-#define INIT_CMD_GAUGER(label, _start_time, _stop_time, _description) {.command = CMD_GAUGER, .name = label, .details.gauger = {.start_time = _start_time, .end_time = _endtime, .description = _description} }
-
-#define INIT_CMD_START_TRANSACTION(label) {.command = CMD_START_TRANSACTION, .name = label}
-
-#define INIT_CMD_COMMIT_TRANSACTION(label) {.command = CMD_COMMIT_TRANSACTION, .name = label}
-
-
-
-#define INIT_CMD_INSERT_DEPOSIT(label) {.command = CMD_INSERT_DEPOSIT, .name = label}
-
-#define INIT_CMD_GET_DEPOSIT(label, _saved) {.command = CMD_GET_DEPOSIT, .name = label, .details.get_deposit.saved = _source }
-
-#define INIT_CMD_SAVE_DEPOSIT(label, _loop, _save, _nb) {.command = CMD_SAVE_ARRAY, .name = label, .details.save_array = {.loop = _loop, .nb = _nb, .saved = _save, saved_type = DEPOSIT} }
-
-#define INIT_CMD_LOAD_DEPOSIT(label, _loop, _save, _nb) {.command = CMD_LOAD_ARRAY, .name = label, .details.load_array = {.loop = _loop, .nb = _nb, .saved = _save} }
-
-
-
-enum PERF_TALER_MINTDB_TYPE {
-  DEPOSIT,
-  TIME,
+/**
+ * The type of data stored
+ */
+enum PERF_TALER_MINTDB_Type 
+{
+  PERF_TALER_MINTDB_NONE,
+  PERF_TALER_MINTDB_DEPOSIT,
+  PERF_TALER_MINTDB_TIME,
 };
 
 /**
- * Command to be interpreted.
- *
+ * Storage for a variety of data type
  */
-struct PERF_TALER_MINTDB_CMD{
+union PERF_TALER_MINTDB_Data 
+{
+  struct TALER_MINTDB_Deposit *deposit;
+  struct timespec time; 
+};
 
-    enum {
+/**
+ * Name of the command
+ */
+enum PERF_TALER_MINTDB_CMD_Name
+{
+  // All comand chain must hace this as their last command
+  PERF_TALER_MINTDB_CMD_END,
 
-        // Define the start of al command chain loop
-        CMD_LOOP,
-        // Define the end of a command chain loop
-        CMD_END_LOOP,
+  // Define the start of al command chain loop
+  PERF_TALER_MINTDB_CMD_LOOP,
+  //
+  // Define the end of a command chain loop
+  PERF_TALER_MINTDB_CMD_END_LOOP,
 
-        // All comand chain must hace this as their last command
-        CMD_END,
+  // Save the time at which the command was executed
+  PERF_TALER_MINTDB_CMD_GET_TIME,
 
-        // Save the time at which the command was executed
-        CMD_GET_TIME,
+  // Upload performance to Gauger
+  PERF_TALER_MINTDB_CMD_GAUGER,
 
-        // Upload performance to Gauger
-        CMD_GAUGER,
+  // Start a database transaction
+  PERF_TALER_MINTDB_CMD_START_TRANSACTION,
 
-        // Start a database transaction
-        CMD_START_TRANSACTION,
+  // End a database transaction
+  PERF_TALER_MINTDB_CMD_COMMIT_TRANSACTION,
 
-        // End a database transaction
-        CMD_COMMIT_TRANSACTION,
+  // Insert a deposit into the database
+  PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT,
 
-        // Insert a deposit into the database
-        CMD_INSERT_DEPOSIT,
+  // Check if a deposit is in the database
+  PERF_TALER_MINTDB_CMD_GET_DEPOSIT,
 
-        // Check if a deposit is in the database
-        CMD_GET_DEPOSIT,
+  // Saves random deposits from a loop
+  PERF_TALER_MINTDB_CMD_SAVE_ARRAY,
 
-        // Saves random deposits from a loop
-        CMD_SAVE_ARRAY,
+  // Load deposits saved earlier
+  PERF_TALER_MINTDB_CMD_LOAD_ARRAY,
 
-        // Load deposits saved earlyer
-        CMD_LOAD_ARRAY,
-
-    } command;
-
-    const char *name; // label!
-
-    // Contains command specific data.
-    union {
-        struct {
-            const int max_iterations;
-            int curr_iteration;
-        } loop;
-
-        struct {
-            char loop_start[40];
-        } end_loop;
-
-        struct {
-            char start_time[40];
-            char stop_time[40];
-
-            char description[40];
-        } gauger;
-
-        struct {
-          /**
-           * Comment!
-           */
-            unsigned int nb; // Number of deposits to save
-            unsigned int index; // The number of deposits already saved
-            char loop[40]; // The loop from which the data will be extracted
-            char saved[40]; // The deposit saved
-            enum PERF_TALER_MINTDB_TYPE saved_type;
-            union NAME_IT_TOP_LEVEL {
-              struct TALER_MINTDB_Deposit *deposit;
-              struct timespec time;
-            } *samples;
-        } save_array;
-
-        struct {
-            int nb; //the number of deposits to save
-            char loop[40];
-            char saved[40]; // The command where the deposit were saved
-            enum PERF_TALER_MINTDB_TYPE loaded_type;
-            unsigned int *permutation; // A permutation array to randomize the order the deposits are loaded in
-        } load_array;
-
-        struct {
-            char source[40];
-        } get_deposit;
+} command;
 
 
-    } details;
-    union  NAME_IT_TOP_LEVEL {
-        struct TALER_MINTDB_Deposit *deposit;
-        struct timespec time;
-    } exposed;
+struct PERF_TALER_MINTDB_loop_details
+{
+  // Maximum number of iteration in the loop
+  const unsigned int max_iterations;
+  int curr_iteration;
+};
 
-    int exposed_used;
+struct PERF_TALER_MINTDB_loop_end_details  
+{
+  /**
+   * Label of the loop closed by the command
+   */
+  const char *label_loop;
+};
+
+/**
+ * Details about the GAUGER command
+ */
+struct PERF_TALER_MINTDB_gauger_details
+{
+  /**
+   * Label of the starting timestamp
+   */
+  const char *label_start;
+  /**
+   * Label of the ending timestamp
+   */
+  const char *label_stop;
+  /**
+   * Description of the metric, used in GAUGER
+   */
+  const char *description;
+};
+
+/**
+ * Contains details about a command
+ */
+struct PERF_TALER_MINTDB_save_array_details
+{
+  /**
+   * Number of items to save
+   */
+  unsigned int nb_saved;
+  /**
+   * Number of items already saved
+   */
+  unsigned int index;
+  /**
+   * Label of the loop it is attached to
+   */
+  const char *label_loop;
+  /**
+   * Label of the command exposing the item
+   */
+  const char *label_save;
+  /**
+   * Type of data saved
+   */
+  enum PERF_TALER_MINTDB_TYPE type_saved;
+  /**
+   * Array of data saved
+   */
+  union PERF_TALER_MINTDB_Data *data_saved;
+};
+
+struct PERF_TALER_MINTDB_load_array_details
+{
+  /**
+   * TODO Remove references to nb and use the link to the loop to initialize
+   */
+  int nb;
+  /**
+   * The loop in which the comand is located
+   */
+  const char *label_loop;
+  /**
+   * Label of the command where the items were saved
+   */
+  const char *label_saved;
+  /**
+   * A permutation array used to randomize the order the items are loaded in
+   */
+  unsigned int *permutation; // A permutation array to randomize the order the deposits are loaded in
+};
+
+struct PERF_TALER_MINTDB_get_deposit_details
+{
+  const char *source;
+};
+
+union PERF_TALER_MINTDB_Details
+{
+  struct PERF_TALER_MINTDB_LOOP_DETAILS loop,
+  struct PERF_TALER_MINTDB_LOOP_END_DETAILS end_loop,
+  struct PERF_TALER_MINTDB_GAUGER_DETAILS gauger,
+  struct PERF_TALER_MINTDB_SAVE_ARRAY save_array,
+  struct PERF_TALER_MINTDB_LOAD_ARRAY_DETAILS load_array,
+};
+
+
+/**
+ * Command to be interpreted.
+ */
+struct PERF_TALER_MINTDB_Cmd
+{
+  enum PERF_TALER_MINTDB_CMD_Name command;
+
+  /**
+   * Label to refer to the command
+   */
+  const char *label;
+
+  /**
+   * Command specific data
+   */
+  union PERF_TALER_MINTDB_Details details;
+
+  /**
+   * Type of the data exposed
+   */
+  enum PERF_TALER_MINTDB_Type exposed_type;
+
+  /**
+   * Data easily accessible
+   */
+  union PERF_TALER_MINTDB_Data exposed;
+
+  int exposed_saved;
 };
 
 
 int
-PERF_TALER_MINTDB_interprete(
+PERF_TALER_MINTDB_interpret(
     struct TALER_MINTDB_Plugin *db_plugin,
     struct TALER_MINTDB_Session *session, // add START_SESSION CMD
     struct PERF_TALER_MINTDB_CMD cmd[]);

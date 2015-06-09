@@ -1,16 +1,35 @@
-#include <gnunet/platform.h>
+/*
+  This file is part of TALER
+  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
+
+  TALER is free software; you can redistribute it and/or modify it under the
+  terms of the GNU General Public License as published by the Free Software
+  Foundation; either version 3, or (at your option) any later version.
+
+  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License along with
+  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
+*/
+/**
+ * @file mintdb/perf_taler_mintdb_init.c
+ * @brief Interpreter library for mint database performance analysis
+ * @author Nicolas Fournier
+ */
+#include "platform.h"
 #include <gnunet/gnunet_crypto_lib.h>
 #include <gnunet/gnunet_signatures.h>
+#include "taler_mintdb_plugin.h"
+#include "taler_signatures.h"
+#include "taler_amount_lib.h"
 
-#include <taler/taler_mintdb_plugin.h>
-#include <taler/taler_signatures.h>
-#include <taler/taler_amount_lib.h>
 
-
-#define CURRENCY "EUR\0\0\0\0\0\0\0\0"
+#define CURRENCY "EUR"
 
 struct TALER_MINTDB_CollectableBlindcoin *
-init_CollectableBlindcoin ()
+collectable_blindcoin_init ()
 {
   // indent by 2 spaces
   struct TALER_MINTDB_CollectableBlindcoin *coin = GNUNET_new (*coin);
@@ -52,9 +71,27 @@ init_CollectableBlindcoin ()
     return coin;
 }
 
+/**
+ * @return a randomly generated blindcoin
+ */
+int
+collectable_blindcoin_free(struct TALER_MINTDB_CollectableBlindcoin *coin)
+{
+  GNUNET_free(coin->sig.rsa_signature);
+  GNUNET_free(coin->denom_pub.rsa_public_key);
 
+  GNUNET_free(coin);
+
+  return GNUNET_OK;
+}
+
+
+/**
+ * @return a randomly generated reserve
+ */
 struct TALER_MINTDB_Reserve *
-init_Reserve(){
+reserve_init()
+{
     struct TALER_MINTDB_Reserve *reserve = GNUNET_malloc(sizeof(*reserve));
     struct GNUNET_CRYPTO_EddsaPrivateKey *reserve_priv = GNUNET_CRYPTO_eddsa_key_create();
 
@@ -70,7 +107,8 @@ init_Reserve(){
 
 
 struct TALER_MINTDB_RefreshSession *
-init_Refresh_session(){
+refresh_session_init()
+{
     struct TALER_MINTDB_RefreshSession *refresh_session = GNUNET_malloc(sizeof(*refresh_session));
 
     refresh_session->noreveal_index = 1;
@@ -82,7 +120,8 @@ init_Refresh_session(){
 
 
 struct TALER_MINTDB_Deposit *
-init_Deposit(){
+deposit_init()
+{
     static int transaction_id = 0;
 
     struct TALER_MINTDB_Deposit *deposit = GNUNET_malloc(sizeof(*deposit));
@@ -167,8 +206,21 @@ init_Deposit(){
 }
 
 
+int
+deposit_free(struct TALER_MINTDB_Deposit *deposit)
+{
+  GNUNET_free(deposit->coin.denom_pub.rsa_public_key);
+  GNUNET_free(deposit->coin.denom_sig.rsa_signature);
+
+  GNUNET_free(deposit);
+
+  return GNUNET_OK;
+}
+
+
 struct TALER_MINTDB_DenominationKeyIssueInformation *
-init_denomination(){
+denomination_init()
+{
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki = GNUNET_malloc(sizeof(&dki));
 
 
@@ -220,38 +272,9 @@ init_denomination(){
 }
 
 
-
-
-
-
-
-// Destructors
-
-
 int
-free_deposit(struct TALER_MINTDB_Deposit *deposit){
-  GNUNET_free(deposit->coin.denom_pub.rsa_public_key);
-  GNUNET_free(deposit->coin.denom_sig.rsa_signature);
-
-  GNUNET_free(deposit);
-
-  return GNUNET_OK;
-}
-
-
-int
-free_coin(struct TALER_MINTDB_CollectableBlindcoin *coin){
-  GNUNET_free(coin->sig.rsa_signature);
-  GNUNET_free(coin->denom_pub.rsa_public_key);
-
-  GNUNET_free(coin);
-
-  return GNUNET_OK;
-}
-
-
-int
-free_denomination(struct TALER_MINTDB_DenominationKeyIssueInformation *dki){
+denomination_free(struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
+{
   GNUNET_free(dki->denom_priv.rsa_private_key);
   GNUNET_free(dki->denom_pub.rsa_public_key);
 
