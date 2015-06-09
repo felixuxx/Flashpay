@@ -8,12 +8,18 @@
 #include <taler/taler_mintdb_plugin.h>
 
 
+#define INIT_CMD_END(label) {.command = CMD_END, .name = label}
 
-#define INIT_CMD_LOOP(label, _iter) {.command = CMD_LOOP, .name = label, .details.loop = {.max_iterations = _iter, .curr_iteration = -1} }
+#define INIT_CMD_LOOP(label, _iter) { \
+    .command = CMD_LOOP, \
+    .name = label, \
+    .details.loop = { \
+       .max_iterations = _iter, \
+       .curr_iteration = -1} \
+    }
 
 #define INIT_CMD_END_LOOP(label, _loopname) {.command = CMD_END_LOOP, .name = label, .details.end_loop.loop_start = _loopname}
 
-#define INIT_CMD_END(label) {.command = CMD_END, .name = label}
 
 #define INIT_CMD_GET_TIME(label) {.command = CMD_GET_TIME, .name = label}
 
@@ -82,7 +88,7 @@ struct PERF_TALER_MINTDB_CMD{
 
     } command;
 
-    char name[40];
+    const char *name; // label!
 
     // Contains command specific data.
     union {
@@ -100,25 +106,28 @@ struct PERF_TALER_MINTDB_CMD{
             char stop_time[40];
 
             char description[40];
-        } gauger; 
+        } gauger;
 
         struct {
-            int nb; // Number of deposits to save
-            int index; // The number of deposits already saved
+          /**
+           * Comment!
+           */
+            unsigned int nb; // Number of deposits to save
+            unsigned int index; // The number of deposits already saved
             char loop[40]; // The loop from which the data will be extracted
             char saved[40]; // The deposit saved
             enum PERF_TALER_MINTDB_TYPE saved_type;
-            union {
-              struct TALER_MINTDB_Deposit **deposit;
-              struct timespec *time;
-            } saved_data;
+            union NAME_IT_TOP_LEVEL {
+              struct TALER_MINTDB_Deposit *deposit;
+              struct timespec time;
+            } *samples;
         } save_array;
 
         struct {
             int nb; //the number of deposits to save
             char loop[40];
             char saved[40]; // The command where the deposit were saved
-            enum PERF_TALER_MINTDB_TYPE loaded_type; 
+            enum PERF_TALER_MINTDB_TYPE loaded_type;
             unsigned int *permutation; // A permutation array to randomize the order the deposits are loaded in
         } load_array;
 
@@ -128,10 +137,10 @@ struct PERF_TALER_MINTDB_CMD{
 
 
     } details;
-    union {
+    union  NAME_IT_TOP_LEVEL {
         struct TALER_MINTDB_Deposit *deposit;
         struct timespec time;
-    } exposed; 
+    } exposed;
 
     int exposed_used;
 };
@@ -140,7 +149,7 @@ struct PERF_TALER_MINTDB_CMD{
 int
 PERF_TALER_MINTDB_interprete(
     struct TALER_MINTDB_Plugin *db_plugin,
-    struct TALER_MINTDB_Session *session,
+    struct TALER_MINTDB_Session *session, // add START_SESSION CMD
     struct PERF_TALER_MINTDB_CMD cmd[]);
 
 

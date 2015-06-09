@@ -59,7 +59,7 @@ test_mintdb_deposits_LDADD = \
   $(top_srcdir)/src/pq/libtalerpq.la \
   -lgnunetutil \
   -ljansson \
-  -lpq  
+  -lpq
 
 test_mintdb_keyio_SOURCES = \
   test_mintdb_keyio.c
@@ -67,7 +67,7 @@ test_mintdb_keyio_LDADD = \
   libtalermintdb.la \
   $(top_srcdir)/src/util/libtalerutil.la \
   $(top_srcdir)/src/pq/libtalerpq.la \
-  -lgnunetutil 
+  -lgnunetutil
 
 test_mintdb_postgres_SOURCES = \
   test_mintdb.c

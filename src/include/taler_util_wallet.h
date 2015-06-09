@@ -25,6 +25,14 @@
 #include "taler_crypto_lib.h"
 
 
+#ifdef __cplusplus
+extern "C"
+{
+#if 0                           /* keep Emacsens' auto-indent happy */
+}
+#endif
+#endif
+
 
 /* Define logging functions */
 #define TALER_LOG_DEBUG(...)                                  \
@@ -84,6 +92,14 @@ TALER_config_get_denom (struct GNUNET_CONFIGURATION_Handle *cfg,
                         const char *section,
                         const char *option,
                         struct TALER_Amount *denom);
+
+
+#if 0                           /* keep Emacsens' auto-indent happy */
+{
+#endif
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

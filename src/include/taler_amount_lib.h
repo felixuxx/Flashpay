@@ -21,6 +21,14 @@
 #ifndef TALER_AMOUNT_LIB_H
 #define TALER_AMOUNT_LIB_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#if 0                           /* keep Emacsens' auto-indent happy */
+}
+#endif
+#endif
+
 
 /**
  * @brief Number of characters (plus 1 for 0-termination) we use to
@@ -248,6 +256,13 @@ TALER_amount_normalize (struct TALER_Amount *amount);
  */
 char *
 TALER_amount_to_string (const struct TALER_Amount *amount);
+
+#if 0                           /* keep Emacsens' auto-indent happy */
+{
+#endif
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

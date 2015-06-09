@@ -8,20 +8,20 @@
 #include <taler/taler_mintdb_plugin.h>
 
 
-#define CURRENCY "EUR\0\0\0\0\0\0\0\0"
+#define CURRENCY "EUR"
 
 
 struct TALER_MINTDB_CollectableBlindcoin *
-init_collectableBlindcoin();
+init_collectable_blindcoin(void);
 
 struct TALER_MINTDB_RefreshSession *
-init_refresh_session();
+init_refresh_session(void);
 
 struct TALER_MINTDB_Deposit *
 init_deposit(int transaction_id);
 
 struct TALER_MINTDB_DenominationKeyIssueInformation *
-init_denomination();
+init_denomination(void);
 
 
 
@@ -29,9 +29,9 @@ int
 free_deposit(struct TALER_MINTDB_Deposit *deposit);
 
 int
-free_collectableBlindcoin(struct TALER_MINTDB_CollectableBlindcoin);
+free_collectable_blindcoin(struct TALER_MINTDB_CollectableBlindcoin *NAME);
 
-int 
+int
 free_denomination(struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
 
 

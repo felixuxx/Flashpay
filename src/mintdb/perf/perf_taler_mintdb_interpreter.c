@@ -8,26 +8,18 @@
 /**
  * Finds the first command in cmd with the name search
  *
- * \return the index of the first command with name search 
+ * \return the index of the first command with name search
  * GNUNET_SYSERR if none found
  */
   static int
 cmd_find(const struct  PERF_TALER_MINTDB_CMD *cmd, const char *search)
 {
-  int i = 0;
-  while (0)
-  {
-    if (cmd[i].command == CMD_END)
-    {
-      return GNUNET_SYSERR;
-    }
+  int i;
 
-    if (0 != strcmp(cmd[i].name, search))
-    {
+  for (i=0; CMD_END != cmd[i].command; i++)
+    if (0 == strcmp (cmd[i].name, search))
       return i;
-    }
-    i++;
-  }
+  return GNUNET_SYSERR;
 }
 
 
@@ -36,22 +28,21 @@ cmd_find(const struct  PERF_TALER_MINTDB_CMD *cmd, const char *search)
 cmd_init(struct PERF_TALER_MINTDB_CMD cmd[])
 {
   int i = 0;
-  while (cmd[i].command != CMD_END)
+  while (CMD_END != cmd[i].command)
   {
     switch (cmd[i].command)
     {
       case CMD_SAVE_ARRAY:
-
         // Initialization is done differently depending of the type saved
-        switch (cmd[i].details.save_array.saved_type) 
+        switch (cmd[i].details.save_array.saved_type)
         {
-          case DEPOSIT: 
-            cmd[i].details.save_array.saved_data.deposit = 
+          case DEPOSIT:
+            cmd[i].details.save_array.saved_data.deposit =
               GNUNET_malloc(cmd[i].details.save_array.nb*
                   sizeof(*cmd[i].details.save_array.saved_data.deposit));
             break;
           case TIME:
-            cmd[i].details.save_array.saved_data.time = 
+            cmd[i].details.save_array.saved_data.time =
               GNUNET_malloc(cmd[i].details.save_array.nb*
                   sizeof(*cmd[i].details.save_array.saved_data.time));
 
@@ -61,9 +52,9 @@ cmd_init(struct PERF_TALER_MINTDB_CMD cmd[])
         break;
 
       case CMD_LOAD_ARRAY:
-        cmd[i].details.load_array.permutation = 
+        cmd[i].details.load_array.permutation =
           GNUNET_CRYPTO_random_permute(
-              GNUNET_CRYPTO_QUALITY_WEAK, 
+              GNUNET_CRYPTO_QUALITY_WEAK,
               cmd[i].details.load_array.nb);
         break;
       default:
@@ -129,7 +120,7 @@ cmd_clean(struct PERF_TALER_MINTDB_CMD cmd[])
 
 
 /**
- * 
+ *
  */
   static int
 interprete(struct TALER_MINTDB_Plugin *db_plugin,
@@ -142,7 +133,6 @@ interprete(struct TALER_MINTDB_Plugin *db_plugin,
     {
       case CMD_END:
         return GNUNET_YES;
-        break;
 
       case CMD_LOOP:
         cmd[i].details.loop.curr_iteration++;
@@ -171,7 +161,7 @@ interprete(struct TALER_MINTDB_Plugin *db_plugin,
 
                   default:
                     break;
-                } 
+                }
               }
             }
           }
@@ -210,7 +200,7 @@ interprete(struct TALER_MINTDB_Plugin *db_plugin,
       case CMD_INSERT_DEPOSIT:
         {
           struct TALER_MINTDB_Deposit *deposit = init_deposit(0);
-          db_plugin->insert_deposit(db_plugin->cls, session, deposit);          
+          db_plugin->insert_deposit(db_plugin->cls, session, deposit);
 
           cmd[i].exposed.deposit = deposit;
         }
@@ -238,8 +228,8 @@ interprete(struct TALER_MINTDB_Plugin *db_plugin,
           int proba = cmd[loop_index].details.loop.max_iterations / cmd[i].details.save_array.nb;
           int rnd = GNUNET_CRYPTO_random_u32(GNUNET_CRYPTO_QUALITY_WEAK, proba);
 
-          // If there is a lesser or equal number of iteration next than room remain in the array 
-          if ((cmd[loop_index].details.loop.max_iterations - cmd[loop_index].details.loop.curr_iteration <= 
+          // If there is a lesser or equal number of iteration next than room remain in the array
+          if ((cmd[loop_index].details.loop.max_iterations - cmd[loop_index].details.loop.curr_iteration <=
                 cmd[i].details.save_array.nb - cmd[i].details.save_array.index) ||
               (rnd == 0 && cmd[i].details.save_array.index < cmd[i].details.save_array.nb))
           {
@@ -247,11 +237,11 @@ interprete(struct TALER_MINTDB_Plugin *db_plugin,
             // We automaticly save the whatever we need to
             switch (cmd[i].details.save_array.saved_type){
               case DEPOSIT:
-                cmd[i].details.save_array.saved_data.deposit[cmd[i].details.save_array.index] = 
+                cmd[i].details.save_array.saved_data.deposit[cmd[i].details.save_array.index] =
                   cmd[cmd_find(cmd, cmd[i].details.save_array.saved)].exposed.deposit;
                 break;
               case TIME:
-                cmd[i].details.save_array.saved_data.deposit[cmd[i].details.save_array.index] = 
+                cmd[i].details.save_array.saved_data.deposit[cmd[i].details.save_array.index] =
                   cmd[cmd_find(cmd, cmd[i].details.save_array.saved)].exposed.deposit;
                 break;
             }
@@ -264,8 +254,8 @@ interprete(struct TALER_MINTDB_Plugin *db_plugin,
       case CMD_LOAD_ARRAY:
         {
 
-          int loop_index = cmd_find(cmd, cmd[i].details.load_array.loop);  
-          int save_index = cmd_find(cmd, cmd[i].details.load_array.saved);  
+          int loop_index = cmd_find(cmd, cmd[i].details.load_array.loop);
+          int save_index = cmd_find(cmd, cmd[i].details.load_array.saved);
           switch (cmd[i].details.load_array.loaded_type){
             case DEPOSIT:
               cmd[i].exposed.deposit = cmd[save_index].details.save_array.saved_data.deposit[
@@ -294,11 +284,11 @@ interprete(struct TALER_MINTDB_Plugin *db_plugin,
 }
 
 /**
- * Runs the commands given in cmd, working with 
- * the database referenced by db_plugin
+ * Runs the commands given in @a cmd, working with
+ * the database referenced by @a db_plugin
  */
   int
-PERF_TALER_MINTDB_interprete(struct TALER_MINTDB_Plugin *db_plugin, 
+PERF_TALER_MINTDB_interprete(struct TALER_MINTDB_Plugin *db_plugin,
     struct TALER_MINTDB_Session *session,
     struct PERF_TALER_MINTDB_CMD cmd[])
 {

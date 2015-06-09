@@ -10,28 +10,35 @@
 #define CURRENCY "EUR\0\0\0\0\0\0\0\0"
 
 struct TALER_MINTDB_CollectableBlindcoin *
-init_CollectableBlindcoin(){
-    struct TALER_MINTDB_CollectableBlindcoin *coin = GNUNET_malloc(sizeof(*coin));
-    
-    struct GNUNET_CRYPTO_EddsaPrivateKey *reserve_sig_key  = GNUNET_CRYPTO_eddsa_key_create();
-    struct GNUNET_CRYPTO_rsa_PrivateKey  *denomination_key = GNUNET_CRYPTO_rsa_private_key_create(512);
+init_CollectableBlindcoin ()
+{
+  // indent by 2 spaces
+  struct TALER_MINTDB_CollectableBlindcoin *coin = GNUNET_new (*coin);
 
-    
-    coin->denom_pub.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public(denomination_key);
-    GNUNET_CRYPTO_eddsa_key_get_public(reserve_sig_key, &(coin->reserve_pub.eddsa_pub));
-    
-    
+    struct GNUNET_CRYPTO_EddsaPrivateKey *reserve_sig_key = GNUNET_CRYPTO_eddsa_key_create ();
+    struct GNUNET_CRYPTO_rsa_PrivateKey  *denomination_key = GNUNET_CRYPTO_rsa_private_key_create (512);
+
+
+    coin->denom_pub.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (denomination_key);
+    GNUNET_CRYPTO_eddsa_key_get_public (reserve_sig_key,
+                                        &coin->reserve_pub.eddsa_pub);
+
+
     //TODO Randomise the amount that is deposited and apply a fee subsequently
-    
+
+    // GNUNET_assert (GNUNET_OK ==
+    //                TALER_string_to_amount (CURRENCY ":1.1",
+    //                                        &coin->amount_with_fee));
+
     coin->amount_with_fee = (struct TALER_Amount) {1, 1, CURRENCY};
     coin->withdraw_fee    = (struct TALER_Amount) {0, 1, CURRENCY};
 
 
-    int random_int = rand();
+    int random_int = rand(); // GNUNET_CRYPTO_random_u32
     coin->sig.rsa_signature = GNUNET_CRYPTO_rsa_sign(denomination_key, &random_int, sizeof(random_int));
-    GNUNET_CRYPTO_hash_create_random(GNUNET_CRYPTO_QUALITY_WEAK , &(coin->h_coin_envelope));
+    GNUNET_CRYPTO_hash_create_random(GNUNET_CRYPTO_QUALITY_WEAK, &coin->h_coin_envelope);
 
-    void *purpose = GNUNET_malloc(sizeof(struct GNUNET_CRYPTO_EccSignaturePurpose) + sizeof(int));
+    void *purpose = GNUNET_malloc (sizeof(struct GNUNET_CRYPTO_EccSignaturePurpose) + sizeof(int));
     ((struct GNUNET_CRYPTO_EccSignaturePurpose *)purpose)->size = sizeof(struct GNUNET_CRYPTO_EccSignaturePurpose) + sizeof(int);
     ((struct GNUNET_CRYPTO_EccSignaturePurpose *)purpose)->purpose = GNUNET_SIGNATURE_PURPOSE_TEST;
     *((int *)(purpose + sizeof(struct GNUNET_CRYPTO_EccSignaturePurpose))) = random_int;
@@ -39,7 +46,7 @@ init_CollectableBlindcoin(){
     GNUNET_CRYPTO_eddsa_sign(reserve_sig_key, purpose, &coin->reserve_sig.eddsa_signature);
 
 
-    
+
     GNUNET_free(reserve_sig_key);
     GNUNET_CRYPTO_rsa_private_key_free(denomination_key);
     return coin;
@@ -52,11 +59,11 @@ init_Reserve(){
     struct GNUNET_CRYPTO_EddsaPrivateKey *reserve_priv = GNUNET_CRYPTO_eddsa_key_create();
 
     GNUNET_CRYPTO_eddsa_key_get_public(reserve_priv , &(reserve->pub.eddsa_pub));
-    
+
 
     reserve->balance = (struct TALER_Amount){1, 1, CURRENCY};
     reserve->expiry = GNUNET_TIME_absolute_get_forever_();
-    
+
     GNUNET_free(reserve_priv);
     return reserve;
 }
@@ -82,7 +89,7 @@ init_Deposit(){
 
     deposit-> transaction_id = transaction_id;
     transaction_id++;
-    
+
 
     //TODO Randomize the amount that is deposited
 
@@ -94,11 +101,11 @@ init_Deposit(){
 
     GNUNET_CRYPTO_hash_create_random(GNUNET_CRYPTO_QUALITY_WEAK, &deposit->h_contract);
     GNUNET_CRYPTO_hash_create_random(GNUNET_CRYPTO_QUALITY_WEAK, &deposit->h_wire);
-    
+
     // Coin Spend Signature
     {
         struct GNUNET_CRYPTO_EddsaSignature sig;
-        
+
         struct GNUNET_CRYPTO_EddsaPrivateKey *p_eddsa_prvt = GNUNET_CRYPTO_eddsa_key_create();
         void *prp = GNUNET_malloc(sizeof(struct GNUNET_CRYPTO_EccSignaturePurpose)+sizeof(int));
         *((struct GNUNET_CRYPTO_EccSignaturePurpose *)prp) =(struct GNUNET_CRYPTO_EccSignaturePurpose) {sizeof(struct GNUNET_CRYPTO_EccSignaturePurpose)+sizeof(int), GNUNET_SIGNATURE_PURPOSE_TEST};
@@ -117,45 +124,45 @@ init_Deposit(){
         struct GNUNET_CRYPTO_EddsaPrivateKey *p_eddsa_prv = GNUNET_CRYPTO_eddsa_key_create();
 
         GNUNET_CRYPTO_eddsa_key_get_public(p_eddsa_prv, &eddsa_pub);
-        
+
         deposit->merchant_pub.eddsa_pub = eddsa_pub;
-           
+
         GNUNET_free(p_eddsa_prv);
     }
 
-    // Coin 
+    // Coin
     {
-        
+
 
         {
             struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
             struct GNUNET_CRYPTO_EddsaPrivateKey *p_eddsa_prvt = GNUNET_CRYPTO_eddsa_key_create();
-        
+
             GNUNET_CRYPTO_eddsa_key_get_public(p_eddsa_prvt, &eddsa_pub);
-        
+
             deposit->coin.coin_pub.eddsa_pub = eddsa_pub;
-            
+
             GNUNET_free(p_eddsa_prvt);
         }
 
         {
             struct GNUNET_CRYPTO_rsa_PrivateKey *p_rsa_prv = GNUNET_CRYPTO_rsa_private_key_create(128);
             struct GNUNET_CRYPTO_rsa_PublicKey *p_rsa_pub = GNUNET_CRYPTO_rsa_private_key_get_public(p_rsa_prv);
-            
-            deposit->coin.denom_pub.rsa_public_key = p_rsa_pub;
-            
-            
 
-            deposit->coin.denom_sig.rsa_signature = GNUNET_CRYPTO_rsa_sign(p_rsa_prv, 
-                                                            (void *) &(deposit->coin.coin_pub.eddsa_pub), 
+            deposit->coin.denom_pub.rsa_public_key = p_rsa_pub;
+
+
+
+            deposit->coin.denom_sig.rsa_signature = GNUNET_CRYPTO_rsa_sign(p_rsa_prv,
+                                                            (void *) &(deposit->coin.coin_pub.eddsa_pub),
                                                             sizeof(&(deposit->coin.coin_pub.eddsa_pub)));
 
             GNUNET_CRYPTO_rsa_private_key_free(p_rsa_prv);
-        }       
+        }
 
     }
 
-   
+
     return deposit;
 }
 
@@ -173,7 +180,7 @@ init_denomination(){
   GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
       &dki->issue.denom_hash);
 
-  struct GNUNET_CRYPTO_EddsaPrivateKey *master_prvt = 
+  struct GNUNET_CRYPTO_EddsaPrivateKey *master_prvt =
     GNUNET_CRYPTO_eddsa_key_create();
 
   struct GNUNET_CRYPTO_EddsaPublicKey master_pub;
@@ -225,7 +232,7 @@ int
 free_deposit(struct TALER_MINTDB_Deposit *deposit){
   GNUNET_free(deposit->coin.denom_pub.rsa_public_key);
   GNUNET_free(deposit->coin.denom_sig.rsa_signature);
-  
+
   GNUNET_free(deposit);
 
   return GNUNET_OK;
@@ -249,10 +256,6 @@ free_denomination(struct TALER_MINTDB_DenominationKeyIssueInformation *dki){
   GNUNET_free(dki->denom_pub.rsa_public_key);
 
   GNUNET_free(dki);
-  
+
   return GNUNET_OK;
 }
-
-
-
-
