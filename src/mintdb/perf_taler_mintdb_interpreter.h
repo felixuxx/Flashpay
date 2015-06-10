@@ -23,9 +23,9 @@
 #define __PERF_TALER_MINTDB_INTERPRETER_H__
 
 #include <sys/time.h>
-#include <gnunet/platform.h>
-#include "taler_mintdb_lib.h"
-#include "taler_mintdb_plugin.h"
+#include "../include/platform.h"
+#include "../include/taler_mintdb_lib.h"
+#include "../include/taler_mintdb_plugin.h"
 
 /**
  * Marks the end of the command chain
@@ -172,6 +172,7 @@ enum PERF_TALER_MINTDB_Type
   PERF_TALER_MINTDB_TIME,
 };
 
+
 /**
  * Storage for a variety of data type
  */
@@ -180,6 +181,7 @@ union PERF_TALER_MINTDB_Data
   struct TALER_MINTDB_Deposit *deposit;
   struct timespec time; 
 };
+
 
 /**
  * Name of the command
@@ -229,6 +231,7 @@ struct PERF_TALER_MINTDB_loop_details
   int curr_iteration;
 };
 
+
 struct PERF_TALER_MINTDB_loop_end_details  
 {
   /**
@@ -236,6 +239,7 @@ struct PERF_TALER_MINTDB_loop_end_details
    */
   const char *label_loop;
 };
+
 
 /**
  * Details about the GAUGER command
@@ -255,6 +259,7 @@ struct PERF_TALER_MINTDB_gauger_details
    */
   const char *description;
 };
+
 
 /**
  * Contains details about a command
@@ -280,12 +285,13 @@ struct PERF_TALER_MINTDB_save_array_details
   /**
    * Type of data saved
    */
-  enum PERF_TALER_MINTDB_TYPE type_saved;
+  enum PERF_TALER_MINTDB_Type type_saved;
   /**
    * Array of data saved
    */
   union PERF_TALER_MINTDB_Data *data_saved;
 };
+
 
 struct PERF_TALER_MINTDB_load_array_details
 {
@@ -300,7 +306,7 @@ struct PERF_TALER_MINTDB_load_array_details
   /**
    * Label of the command where the items were saved
    */
-  const char *label_saved;
+  const char *label_save;
   /**
    * A permutation array used to randomize the order the items are loaded in
    */
@@ -314,11 +320,12 @@ struct PERF_TALER_MINTDB_get_deposit_details
 
 union PERF_TALER_MINTDB_Details
 {
-  struct PERF_TALER_MINTDB_LOOP_DETAILS loop,
-  struct PERF_TALER_MINTDB_LOOP_END_DETAILS end_loop,
-  struct PERF_TALER_MINTDB_GAUGER_DETAILS gauger,
-  struct PERF_TALER_MINTDB_SAVE_ARRAY save_array,
-  struct PERF_TALER_MINTDB_LOAD_ARRAY_DETAILS load_array,
+  struct PERF_TALER_MINTDB_loop_details loop;
+  struct PERF_TALER_MINTDB_loop_end_details end_loop;
+  struct PERF_TALER_MINTDB_gauger_details gauger;
+  struct PERF_TALER_MINTDB_save_array_details save_array;
+  struct PERF_TALER_MINTDB_load_array_details load_array;
+  struct PERF_TALER_MINTDB_get_deposit_details get_deposit;
 };
 
 
@@ -357,7 +364,7 @@ int
 PERF_TALER_MINTDB_interpret(
     struct TALER_MINTDB_Plugin *db_plugin,
     struct TALER_MINTDB_Session *session, // add START_SESSION CMD
-    struct PERF_TALER_MINTDB_CMD cmd[]);
+    struct PERF_TALER_MINTDB_Cmd cmd[]);
 
 
 #endif

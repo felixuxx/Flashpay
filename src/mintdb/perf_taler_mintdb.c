@@ -19,6 +19,7 @@
  * @author Nicolas Fournier
  */
 #include "perf_taler_mintdb_interpreter.h"
+#include "perf_taler_mintdb_values.h"
 
 /**
  * Runs the performances tests for the mint database
@@ -39,17 +40,17 @@ main(int argc, char ** argv)
     INIT_CMD_END("end")
   };
 
-  struct GNUNET_CONFIGURATION_Handle *config = GNUNET_CONFIGURATION_create();
+  struct GNUNET_CONFIGURATION_Handle config ;
+  GNUNET_CONFIGURATION_load(*config "./test-mint-db-postgres.conf");
 
-  // FIXME Add data to the config handler to be able to connect to the database
-
-  struct TALER_MINTDB_Plugin *plugin = TALER_MINTDB_plugin_load(config);
+  struct TALER_MINTDB_Plugin *plugin = TALER_MINTDB_plugin_load(&config);
   struct TALER_MINTDB_Session *session = plugin->get_session(plugin->cls, GNUNET_YES);
-
+  
+  // creation of temporary tables
   plugin->create_tables(plugin->cls, GNUNET_YES);
 
 
-  PERF_TALER_MINTDB_interprete(plugin, session, test);
+  PERF_TALER_MINTDB_interpret(plugin, session, test);
 
 
   plugin->drop_temporary(plugin->cls, session);

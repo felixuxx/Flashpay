@@ -22,36 +22,49 @@
 #define __PERF_TALER_MINTDB_INIT_H___
 
 
-#include <gnunet/platform.h>
-#include "taler_mintdb_lib.h"
-#include "taler_mintdb_plugin.h"
+#include "../include/platform.h"
+#include "../include/taler_mintdb_lib.h"
+#include "../include/taler_mintdb_plugin.h"
 
 
 #define CURRENCY "EUR"
 
 
 struct TALER_MINTDB_CollectableBlindcoin *
-init_collectable_blindcoin(void);
+collectable_blindcoin_init (void);
+
+
+int
+collectable_blindcoin_free (struct TALER_MINTDB_CollectableBlindcoin *NAME);
+
+
+struct TALER_MINTDB_Reserve *
+reserve_init (void);
+
+
+int
+reserve_free (struct TALER_MINTDB_Reserve);
+
 
 struct TALER_MINTDB_RefreshSession *
-init_refresh_session(void);
+refresh_session_init (void);
+
 
 struct TALER_MINTDB_Deposit *
-init_deposit(int transaction_id);
+deposit_init (int transaction_id);
+
 
 struct TALER_MINTDB_DenominationKeyIssueInformation *
 init_denomination(void);
 
 
+int
+deposit_free (struct TALER_MINTDB_Deposit *deposit);
+
 
 int
-free_deposit(struct TALER_MINTDB_Deposit *deposit);
+denomination_free (struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
 
-int
-free_collectable_blindcoin(struct TALER_MINTDB_CollectableBlindcoin *NAME);
-
-int
-free_denomination(struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
 
 
 #endif
