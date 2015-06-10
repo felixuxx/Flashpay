@@ -61,6 +61,10 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
     case TALER_PQ_QF_RSA_PUBLIC_KEY:
     case TALER_PQ_QF_RSA_SIGNATURE:
     case TALER_PQ_QF_TIME_ABSOLUTE:
+    case TALER_PQ_QF_UINT16:
+    case TALER_PQ_QF_UINT32:
+    case TALER_PQ_QF_UINT64:
+    case TALER_PQ_QF_JSON:
       len++;
       break;
     default:
@@ -175,12 +179,67 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
         {
           const struct GNUNET_TIME_Absolute *at_hbo = x->data;
           struct GNUNET_TIME_AbsoluteNBO *at_nbo;
-	  
+
           at_nbo = GNUNET_new (struct GNUNET_TIME_AbsoluteNBO);
           scratch[soff++] = at_nbo;
           *at_nbo = GNUNET_TIME_absolute_hton (*at_hbo);
           param_values[off] = (void *) at_nbo;
           param_lengths[off] = sizeof (struct GNUNET_TIME_AbsoluteNBO);
+          param_formats[off] = 1;
+          off++;
+        }
+        break;
+      case TALER_PQ_QF_UINT16:
+        {
+          const uint16_t *u_hbo = x->data;
+          uint16_t *u_nbo;
+
+          u_nbo = GNUNET_new (uint16_t);
+          scratch[soff++] = u_nbo;
+          *u_nbo = htons (*u_hbo);
+          param_values[off] = (void *) u_nbo;
+          param_lengths[off] = sizeof (uint16_t);
+          param_formats[off] = 1;
+          off++;
+        }
+        break;
+      case TALER_PQ_QF_UINT32:
+        {
+          const uint32_t *u_hbo = x->data;
+          uint32_t *u_nbo;
+
+          u_nbo = GNUNET_new (uint32_t);
+          scratch[soff++] = u_nbo;
+          *u_nbo = htonl (*u_hbo);
+          param_values[off] = (void *) u_nbo;
+          param_lengths[off] = sizeof (uint32_t);
+          param_formats[off] = 1;
+          off++;
+        }
+        break;
+      case TALER_PQ_QF_UINT64:
+        {
+          const uint64_t *u_hbo = x->data;
+          uint64_t *u_nbo;
+
+          u_nbo = GNUNET_new (uint64_t);
+          scratch[soff++] = u_nbo;
+          *u_nbo = GNUNET_htonll (*u_hbo);
+          param_values[off] = (void *) u_nbo;
+          param_lengths[off] = sizeof (uint64_t);
+          param_formats[off] = 1;
+          off++;
+        }
+        break;
+      case TALER_PQ_QF_JSON:
+        {
+          const json_t *json = x->data;
+          char *str;
+
+          str = json_dumps (json, JSON_COMPACT);
+          scratch[soff++] = str;
+          param_values[off] = (void *) str;
+          param_lengths[off] = strlen (str);
           param_formats[off] = 1;
           off++;
         }
@@ -538,7 +597,145 @@ TALER_PQ_extract_result (PGresult *result,
 	*dst = GNUNET_TIME_absolute_ntoh (*res);
         break;
       }
+    case TALER_PQ_RF_UINT16:
+      {
+        uint16_t *dst = spec->dst;
+	const uint16_t *res;
+	int fnum;
 
+        fnum = PQfnumber (result,
+                          spec->fname);
+        if (fnum < 0)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Field `%s' does not exist in result\n",
+                      spec->fname);
+          return GNUNET_SYSERR;
+        }
+        if (PQgetisnull (result,
+                         row,
+                         fnum))
+        {
+          had_null = GNUNET_YES;
+          continue;
+        }
+        GNUNET_assert (NULL != dst);
+        GNUNET_assert (sizeof (uint16_t) ==
+                       spec->dst_size);
+        res = (uint16_t *) PQgetvalue (result,
+                                       row,
+                                       fnum);
+	*dst = ntohs (*res);
+        break;
+      }
+    case TALER_PQ_RF_UINT32:
+      {
+        uint32_t *dst = spec->dst;
+	const uint32_t *res;
+	int fnum;
+
+        fnum = PQfnumber (result,
+                          spec->fname);
+        if (fnum < 0)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Field `%s' does not exist in result\n",
+                      spec->fname);
+          return GNUNET_SYSERR;
+        }
+        if (PQgetisnull (result,
+                         row,
+                         fnum))
+        {
+          had_null = GNUNET_YES;
+          continue;
+        }
+        GNUNET_assert (NULL != dst);
+        GNUNET_assert (sizeof (uint32_t) ==
+                       spec->dst_size);
+        res = (uint32_t *) PQgetvalue (result,
+                                       row,
+                                       fnum);
+	*dst = ntohl (*res);
+        break;
+      }
+    case TALER_PQ_RF_UINT64:
+      {
+        uint64_t *dst = spec->dst;
+	const uint64_t *res;
+	int fnum;
+
+        fnum = PQfnumber (result,
+                          spec->fname);
+        if (fnum < 0)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Field `%s' does not exist in result\n",
+                      spec->fname);
+          return GNUNET_SYSERR;
+        }
+        if (PQgetisnull (result,
+                         row,
+                         fnum))
+        {
+          had_null = GNUNET_YES;
+          continue;
+        }
+        GNUNET_assert (NULL != dst);
+        GNUNET_assert (sizeof (uint64_t) ==
+                       spec->dst_size);
+        res = (uint64_t *) PQgetvalue (result,
+                                       row,
+                                       fnum);
+	*dst = GNUNET_ntohll (*res);
+        break;
+      }
+    case TALER_PQ_RF_JSON:
+      {
+        json_t **dst = spec->dst;
+        char *res;
+	int fnum;
+        json_error_t json_error;
+        size_t slen;
+
+        fnum = PQfnumber (result,
+                          spec->fname);
+        if (fnum < 0)
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Field `%s' does not exist in result\n",
+                      spec->fname);
+          return GNUNET_SYSERR;
+        }
+        if (PQgetisnull (result,
+                         row,
+                         fnum))
+        {
+          had_null = GNUNET_YES;
+          continue;
+        }
+        GNUNET_assert (NULL != dst);
+        GNUNET_break (0 == spec->dst_size);
+        slen = PQgetlength (result,
+                            row,
+                            fnum);
+        res = (char *) PQgetvalue (result,
+                                   row,
+                                   fnum);
+	*dst = json_loadb (res,
+                           slen,
+                           JSON_REJECT_DUPLICATES,
+                           &json_error);
+        if (NULL == *dst)
+        {
+          TALER_json_warn (json_error);
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Failed to parse JSON result for field `%s'\n",
+                      spec->fname);
+          return GNUNET_SYSERR;
+        }
+        break;
+      }
     default:
       GNUNET_assert (0);
       break;

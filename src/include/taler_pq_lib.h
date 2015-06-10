@@ -75,8 +75,27 @@ enum TALER_PQ_QueryFormat
    * We have an absolute time.
    * Data points to a `struct GNUNET_TIME_Absolute`, size is only used to check.
    */
-  TALER_PQ_QF_TIME_ABSOLUTE
+  TALER_PQ_QF_TIME_ABSOLUTE,
 
+  /**
+   * We expect an uint16_t (in host byte order).
+   */
+  TALER_PQ_QF_UINT16,
+
+  /**
+   * We expect an uint32_t (in host byte order).
+   */
+  TALER_PQ_QF_UINT32,
+
+  /**
+   * We expect an uint64_t (in host byte order).
+   */
+  TALER_PQ_QF_UINT64,
+
+  /**
+   * We expect a JSON object (json_t).
+   */
+  TALER_PQ_QF_JSON
 };
 
 
@@ -132,7 +151,7 @@ struct TALER_PQ_QueryParam
  * Generate query parameter for a currency, consisting of the three
  * components "value", "fraction" and "currency" in this order. The
  * types must be a 64-bit integer, 32-bit integer and a
- * TALER_CURRENCY_LEN-sized BLOB/VARCHAR respectively.
+ * #TALER_CURRENCY_LEN-sized BLOB/VARCHAR respectively.
  *
  * @param x pointer to the query parameter to pass
  */
@@ -144,7 +163,7 @@ TALER_PQ_query_param_amount_nbo(const struct TALER_AmountNBO *x);
  * Generate query parameter for a currency, consisting of the three
  * components "value", "fraction" and "currency" in this order. The
  * types must be a 64-bit integer, 32-bit integer and a
- * TALER_CURRENCY_LEN-sized BLOB/VARCHAR respectively.
+ * #TALER_CURRENCY_LEN-sized BLOB/VARCHAR respectively.
  *
  * @param x pointer to the query parameter to pass
  */
@@ -180,6 +199,43 @@ TALER_PQ_query_param_rsa_signature(const struct GNUNET_CRYPTO_rsa_Signature *x);
  */
 struct TALER_PQ_QueryParam
 TALER_PQ_query_param_absolute_time(const struct GNUNET_TIME_Absolute *x);
+
+
+/**
+ * Generate query parameter for an uint16_t in host byte order.
+ *
+ * @param x pointer to the query parameter to pass
+ */
+struct TALER_PQ_QueryParam
+TALER_PQ_query_param_uint16 (const uint16_t *x);
+
+
+/**
+ * Generate query parameter for an uint32_t in host byte order.
+ *
+ * @param x pointer to the query parameter to pass
+ */
+struct TALER_PQ_QueryParam
+TALER_PQ_query_param_uint32 (const uint32_t *x);
+
+
+/**
+ * Generate query parameter for an uint16_t in host byte order.
+ *
+ * @param x pointer to the query parameter to pass
+ */
+struct TALER_PQ_QueryParam
+TALER_PQ_query_param_uint64 (const uint64_t *x);
+
+
+/**
+ * Generate query parameter for a JSON object (stored as a string
+ * in the DB).
+ *
+ * @param x pointer to the json object to pass
+ */
+struct TALER_PQ_QueryParam
+TALER_PQ_query_param_json (const json_t *x);
 
 
 /**
@@ -231,7 +287,27 @@ enum TALER_PQ_ResultFormat
    * We expect an absolute time.
    * Data points to a `struct GNUNET_TIME_Absolute`, size is only used for checking.
    */
-  TALER_PQ_RF_TIME_ABSOLUTE
+  TALER_PQ_RF_TIME_ABSOLUTE,
+
+  /**
+   * We expect an uint16_t (in host byte order).
+   */
+  TALER_PQ_RF_UINT16,
+
+  /**
+   * We expect an uint32_t (in host byte order).
+   */
+  TALER_PQ_RF_UINT32,
+
+  /**
+   * We expect an uint64_t (in host byte order).
+   */
+  TALER_PQ_RF_UINT64,
+
+  /**
+   * We expect a JSON object (json_t).
+   */
+  TALER_PQ_RF_JSON
 
 };
 
@@ -375,6 +451,54 @@ TALER_PQ_result_spec_absolute_time (const char *name,
 
 
 /**
+ * uint16_t expected.
+ *
+ * @param name name of the field in the table
+ * @param[out] u16 where to store the result
+ * @return array entry for the result specification to use
+ */
+struct TALER_PQ_ResultSpec
+TALER_PQ_result_spec_uint16 (const char *name,
+                             uint16_t *u16);
+
+
+/**
+ * uint32_t expected.
+ *
+ * @param name name of the field in the table
+ * @param[out] u32 where to store the result
+ * @return array entry for the result specification to use
+ */
+struct TALER_PQ_ResultSpec
+TALER_PQ_result_spec_uint32 (const char *name,
+                             uint16_t *u32);
+
+
+/**
+ * uint64_t expected.
+ *
+ * @param name name of the field in the table
+ * @param[out] u64 where to store the result
+ * @return array entry for the result specification to use
+ */
+struct TALER_PQ_ResultSpec
+TALER_PQ_result_spec_uint64 (const char *name,
+                             uint64_t *u64);
+
+
+/**
+ * json_t expected.
+ *
+ * @param name name of the field in the table
+ * @param[out] jp where to store the result
+ * @return array entry for the result specification to use
+ */
+struct TALER_PQ_ResultSpec
+TALER_PQ_result_spec_json (const char *name,
+                           json_t **jp);
+
+
+/**
  * Execute a prepared statement.
  *
  * @param db_conn database connection
@@ -390,7 +514,7 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
 
 /**
  * Extract results from a query result according to the given specification.
- * If colums are NULL, the destination is not modified, and GNUNET_NO
+ * If colums are NULL, the destination is not modified, and #GNUNET_NO
  * is returned.
  *
  * @param result result to process
