@@ -2524,6 +2524,7 @@ postgres_get_link_data_list (void *cls,
   struct TALER_MINTDB_LinkDataList *ldl;
   struct TALER_MINTDB_LinkDataList *pos;
   int i;
+  int nrows;
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type (coin_pub),
     TALER_PQ_query_param_end
@@ -2539,14 +2540,14 @@ postgres_get_link_data_list (void *cls,
     PQclear (result);
     return NULL;
   }
-
-  if (0 == PQntuples (result))
+  nrows = PQntuples (result);
+  if (0 == nrows)
   {
     PQclear (result);
     return NULL;
   }
 
-  for (i = 0; i < PQntuples (result); i++)
+  for (i = 0; i < nrows; i++)
   {
     struct TALER_RefreshLinkEncrypted *link_enc;
     struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
@@ -2676,29 +2677,20 @@ postgres_get_coin_transactions (void *cls,
                                 struct TALER_MINTDB_Session *session,
                                 const struct TALER_CoinSpendPublicKeyP *coin_pub)
 {
-  PGresult *result;
   struct TALER_MINTDB_TransactionList *head;
-  struct TALER_MINTDB_TransactionList *tl;
-  int nrows;
-  int ret;
 
-  result = NULL;
   head = NULL;
-  tl = NULL;
-  nrows = 0;
-  ret = GNUNET_SYSERR;
-
   /* check deposits */
   {
-    struct TALER_MINTDB_Deposit *deposit;
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_query_param_auto_from_type (&coin_pub->eddsa_pub),
       TALER_PQ_query_param_end
     };
-    json_error_t json_error;
-    void *json_wire_enc;
-    size_t json_wire_enc_size;
+    int nrows;
     int i;
+    PGresult *result;
+    struct TALER_MINTDB_TransactionList *tl;
+
     result = TALER_PQ_exec_prepared (session->conn,
                                      "get_deposit_with_coin_pub",
                                      params);
@@ -2708,71 +2700,75 @@ postgres_get_coin_transactions (void *cls,
       goto cleanup;
     }
     nrows = PQntuples (result);
-    for (i=0; i < nrows; i++)
+    for (i = 0; i < nrows; i++)
     {
+      struct TALER_MINTDB_Deposit *deposit;
+      json_error_t json_error;
+      void *json_wire_enc;
+      size_t json_wire_enc_size;
+
       deposit = GNUNET_new (struct TALER_MINTDB_Deposit);
-      struct TALER_PQ_ResultSpec rs[] = {
-      /* FIXME: deposit->coin needs to be initialized,
-         but 'coin_pub' from 'deposits' is not the (only) info we need here...
-         (#3820) */
-        TALER_PQ_result_spec_auto_from_type ("transaction_id", &deposit->transaction_id),
-        TALER_PQ_result_spec_auto_from_type ("coin_sig", &deposit->csig),
-        /* FIXME: do 'amount_with_fee' here! #3826 */
-        TALER_PQ_result_spec_auto_from_type ("merchant_pub", &deposit->merchant_pub),
-        TALER_PQ_result_spec_auto_from_type ("h_contract", &deposit->h_contract),
-        TALER_PQ_result_spec_auto_from_type ("h_wire", &deposit->h_wire),
-        TALER_PQ_result_spec_variable_size ("wire", &json_wire_enc, &json_wire_enc_size),
-        /**  FIXME: , #3820
-         * TALER_PQ_result_spec_auto_from_type ("timestamp", &deposit->timestamp),
-         * TALER_PQ_result_spec_auto_from_type ("refund_deadline", &deposit->refund_deadline),
-         * TALER_PQ_RESULT_AMOUNT_NBO ("deposit_fee", &deposit->deposit_fee)
-         */
-        /* FIXME: probably want 'coin_sig' as well, #3820 */
-        TALER_PQ_result_spec_end
-      };
-      if ((GNUNET_OK != TALER_PQ_extract_result (result, rs, i)) ||
-	  (GNUNET_OK != TALER_PQ_extract_amount (result,
-						 i,
-						 "amount_with_fee_val",
-						 "amount_with_fee_frac",
-						 "amount_with_fee_curr",
-						 &deposit->amount_with_fee)))
       {
-        GNUNET_break (0);
-        goto cleanup_deposit;
+        struct TALER_PQ_ResultSpec rs[] = {
+          /* FIXME: deposit->coin needs to be initialized,
+             but 'coin_pub' from 'deposits' is not the (only) info we need here...
+             (#3820) */
+          TALER_PQ_result_spec_auto_from_type ("transaction_id", &deposit->transaction_id), /* FIXME: #3827 */
+          TALER_PQ_result_spec_auto_from_type ("coin_sig", &deposit->csig),
+          TALER_PQ_result_spec_auto_from_type ("merchant_pub", &deposit->merchant_pub),
+          TALER_PQ_result_spec_auto_from_type ("h_contract", &deposit->h_contract),
+          TALER_PQ_result_spec_auto_from_type ("h_wire", &deposit->h_wire),
+          TALER_PQ_result_spec_variable_size ("wire", &json_wire_enc, &json_wire_enc_size), /* FIXME: #3833 */
+          /**  FIXME: , #3820
+           * TALER_PQ_result_spec_auto_from_type ("timestamp", &deposit->timestamp),
+           * TALER_PQ_result_spec_auto_from_type ("refund_deadline", &deposit->refund_deadline),
+           * TALER_PQ_RESULT_AMOUNT_NBO ("deposit_fee", &deposit->deposit_fee)
+           */
+          /* FIXME: probably want 'coin_sig' as well, #3820 */
+          TALER_PQ_result_spec_amount ("amount_with_fee",
+                                       &deposit->amount_with_fee), /* FIXME: #3826? */
+          TALER_PQ_result_spec_end
+        };
+
+        if (GNUNET_OK !=
+            TALER_PQ_extract_result (result, rs, i))
+        {
+          GNUNET_break (0);
+          GNUNET_free (deposit);
+          goto cleanup;
+        }
       }
       deposit->wire = json_loads (json_wire_enc,
                                   JSON_REJECT_DUPLICATES,
-                                  &json_error);
+                                  &json_error); /* FIXME: #3833 */
       if (NULL == deposit->wire)
       {
         TALER_json_warn (json_error);
-        goto cleanup_deposit;
+        GNUNET_free (json_wire_enc);
+        GNUNET_free (deposit);
+        goto cleanup;
       }
       GNUNET_free (json_wire_enc);
-      json_wire_enc = NULL;
-      deposit->transaction_id = GNUNET_ntohll (deposit->transaction_id);
+      deposit->transaction_id = GNUNET_ntohll (deposit->transaction_id); /* FIXME: #3827 */
       tl = GNUNET_new (struct TALER_MINTDB_TransactionList);
+      tl->next = head;
       tl->type = TALER_MINTDB_TT_DEPOSIT;
       tl->details.deposit = deposit;
-      deposit = NULL;
+      head = tl;
       continue;
-    cleanup_deposit:
-      GNUNET_free_non_null (json_wire_enc);
-      GNUNET_free_non_null (deposit);
-      goto cleanup;
     }
   }
-  // FIXME: check logic!
-  /* We need to get this information from 3 tables:
-   1. Deposits
-   2. Coins used in for refreshing
-   3. locked coins (locking is not implemented as of now) */
+  /* Handle refreshing */
+  {
+    /* FIXME: #3834 */
+  }
+  /* FIXME: support fetching information about locked coins
+     (locking is not implemented as of now, #3625) */
+  return head;
  cleanup:
-  if (GNUNET_OK == ret)
-    return head;
   if (NULL != head)
-    common_free_coin_transaction_list (cls, head);
+    common_free_coin_transaction_list (cls,
+                                       head);
   return NULL;
 }
 
