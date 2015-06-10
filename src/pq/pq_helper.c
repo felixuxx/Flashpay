@@ -294,7 +294,7 @@ TALER_PQ_result_spec_uint16 (const char *name,
  */
 struct TALER_PQ_ResultSpec
 TALER_PQ_result_spec_uint32 (const char *name,
-                             uint16_t *u32)
+                             uint32_t *u32)
 {
   struct TALER_PQ_ResultSpec res =
     {TALER_PQ_RF_UINT32, (void *) u32, sizeof (*u32), (name), NULL };

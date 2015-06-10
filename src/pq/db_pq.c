@@ -237,6 +237,7 @@ TALER_PQ_exec_prepared (PGconn *db_conn,
           char *str;
 
           str = json_dumps (json, JSON_COMPACT);
+          GNUNET_assert (NULL != str);
           scratch[soff++] = str;
           param_values[off] = (void *) str;
           param_lengths[off] = strlen (str);

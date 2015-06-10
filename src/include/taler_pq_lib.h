@@ -230,7 +230,9 @@ TALER_PQ_query_param_uint64 (const uint64_t *x);
 
 /**
  * Generate query parameter for a JSON object (stored as a string
- * in the DB).
+ * in the DB).  Note that @a x must really be a JSON object or array,
+ * passing just a value (string, integer) is not supported and will
+ * result in an abort.
  *
  * @param x pointer to the json object to pass
  */
@@ -471,7 +473,7 @@ TALER_PQ_result_spec_uint16 (const char *name,
  */
 struct TALER_PQ_ResultSpec
 TALER_PQ_result_spec_uint32 (const char *name,
-                             uint16_t *u32);
+                             uint32_t *u32);
 
 
 /**
