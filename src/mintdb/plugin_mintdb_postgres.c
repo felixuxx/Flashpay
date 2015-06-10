@@ -2053,8 +2053,8 @@ postgres_insert_refresh_order (void *cls,
                                uint16_t num_newcoins,
                                const struct TALER_DenominationPublicKey *denom_pubs)
 {
-  // FIXME: check logic: was written for just one COIN!
-  uint16_t newcoin_index_nbo = htons (num_newcoins);
+  // FIXME: check logic: was written for just one COIN! (#3830)
+  uint16_t newcoin_index_nbo = htons (num_newcoins); // FIXME: #3827
   PGresult *result;
 
   {
@@ -2103,8 +2103,8 @@ postgres_get_refresh_order (void *cls,
                             uint16_t num_newcoins,
                             struct TALER_DenominationPublicKey *denom_pubs)
 {
-  // FIXME: check logic -- was written for just one coin!
-  uint16_t newcoin_index_nbo = htons (num_newcoins);
+  // FIXME: check logic -- was written for just one coin! (#3830)
+  uint16_t newcoin_index_nbo = htons (num_newcoins); // FIXME: #3827
 
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type (session_hash),
@@ -2166,37 +2166,48 @@ postgres_insert_refresh_commit_coins (void *cls,
                                       unsigned int num_newcoins,
                                       const struct TALER_MINTDB_RefreshCommitCoin *commit_coins)
 {
-  // FIXME: check logic! -- was written for single commit_coin!
-  uint16_t cnc_index_nbo = htons (i);
-  uint16_t newcoin_index_nbo = htons (num_newcoins);
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type(session_hash),
-    TALER_PQ_query_param_auto_from_type(&cnc_index_nbo),
-    TALER_PQ_query_param_auto_from_type(&newcoin_index_nbo),
-    TALER_PQ_query_param_fixed_size (commit_coins->refresh_link->coin_priv_enc,
-                                     commit_coins->refresh_link->blinding_key_enc_size +
-                                     sizeof (struct TALER_CoinSpendPrivateKeyP)),
-    TALER_PQ_query_param_fixed_size(commit_coins->coin_ev, commit_coins->coin_ev_size),
-    TALER_PQ_query_param_end
-  };
+  // FIXME: check logic! -- was written for single commit_coin! // #3831
+  uint16_t cnc_index_nbo = htons (i); // #3827
+  uint16_t newcoin_index_nbo = htons (num_newcoins); // #3827
+  char *rle;
+  size_t rle_size;
+  PGresult *result;
 
-  PGresult *result = TALER_PQ_exec_prepared (session->conn,
-                                             "insert_refresh_commit_coin",
-                                             params);
+  rle = TALER_refresh_link_encrypted_encode (commit_coins->refresh_link,
+                                             &rle_size);
+  if (NULL == rle)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  {
+    struct TALER_PQ_QueryParam params[] = {
+      TALER_PQ_query_param_auto_from_type (session_hash),
+      TALER_PQ_query_param_auto_from_type (&cnc_index_nbo),
+      TALER_PQ_query_param_auto_from_type (&newcoin_index_nbo),
+      TALER_PQ_query_param_fixed_size (rle, rle_size),
+      TALER_PQ_query_param_fixed_size (commit_coins->coin_ev,
+                                       commit_coins->coin_ev_size),
+      TALER_PQ_query_param_end
+    };
 
+    result = TALER_PQ_exec_prepared (session->conn,
+                                     "insert_refresh_commit_coin",
+                                     params);
+  }
+  GNUNET_free (rle);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
-
   if (0 != strcmp ("1", PQcmdTuples (result)))
   {
     GNUNET_break (0);
+    PQclear (result);
     return GNUNET_SYSERR;
   }
-
   PQclear (result);
   return GNUNET_OK;
 }
@@ -2212,7 +2223,7 @@ postgres_insert_refresh_commit_coins (void *cls,
  * @param cnc_index set index (1st dimension)
  * @param newcoin_index coin index (2nd dimension), corresponds to refreshed (new) coins
  * @param[out] cc coin commitment to return
- * FIXME: should we not take an array of 'cc's and return all at once?
+ * FIXME: should we not take an array of 'cc's and return all at once? // #3831
  * @return #GNUNET_OK on success
  *         #GNUNET_NO if not found
  *         #GNUNET_SYSERR on error
@@ -2225,9 +2236,9 @@ postgres_get_refresh_commit_coins (void *cls,
                                    unsigned int newcoin_index,
                                    struct TALER_MINTDB_RefreshCommitCoin *cc)
 {
-  // FIXME: check logic!
-  uint16_t cnc_index_nbo = htons (cnc_index);
-  uint16_t newcoin_index_nbo = htons (newcoin_index);
+  // FIXME: check logic! // #3831
+  uint16_t cnc_index_nbo = htons (cnc_index); // #3827
+  uint16_t newcoin_index_nbo = htons (newcoin_index); // #3827
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type(session_hash),
     TALER_PQ_query_param_auto_from_type(&cnc_index_nbo),
@@ -2258,8 +2269,12 @@ postgres_get_refresh_commit_coins (void *cls,
   }
 
   struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_variable_size("link_vector_enc", &rl_buf, &rl_buf_size),
-    TALER_PQ_result_spec_variable_size("coin_ev", &c_buf, &c_buf_size),
+    TALER_PQ_result_spec_variable_size ("link_vector_enc",
+                                        &rl_buf,
+                                        &rl_buf_size),
+    TALER_PQ_result_spec_variable_size ("coin_ev",
+                                        &c_buf,
+                                        &c_buf_size),
     TALER_PQ_result_spec_end
   };
   if (GNUNET_YES != TALER_PQ_extract_result (result, rs, 0))
@@ -2306,8 +2321,8 @@ postgres_insert_refresh_commit_links (void *cls,
                                       const struct TALER_MINTDB_RefreshCommitLinkP *commit_link)
 {
   // FIXME: check logic!
-  uint16_t cnc_index_nbo = htons (i);
-  uint16_t oldcoin_index_nbo = htons (j);
+  uint16_t cnc_index_nbo = htons (i); // #3827
+  uint16_t oldcoin_index_nbo = htons (j); // #3827
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type(session_hash),
     TALER_PQ_query_param_auto_from_type(&commit_link->transfer_pub),
@@ -2361,8 +2376,8 @@ postgres_get_refresh_commit_links (void *cls,
                                    struct TALER_MINTDB_RefreshCommitLinkP *links)
 {
   // FIXME: check logic: was written for a single link!
-  uint16_t cnc_index_nbo = htons (i);
-  uint16_t oldcoin_index_nbo = htons (num_links);
+  uint16_t cnc_index_nbo = htons (i); // #3827
+  uint16_t oldcoin_index_nbo = htons (num_links); // #3827
 
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type(session_hash),
@@ -2471,7 +2486,7 @@ postgres_insert_refresh_collectable (void *cls,
                                      const struct TALER_DenominationSignature *ev_sig)
 {
   // FIXME: check logic!
-  uint16_t newcoin_index_nbo = htons (newcoin_index);
+  uint16_t newcoin_index_nbo = htons (newcoin_index); // #3827
   PGresult *result;
 
   {
