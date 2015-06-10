@@ -2432,7 +2432,7 @@ postgres_get_melt_commitment (void *cls,
                               struct TALER_MINTDB_Session *session,
                               const struct GNUNET_HashCode *session_hash)
 {
-  // FIXME: needs to be implemented!
+  // FIXME: needs to be implemented! (#3832)
 #if 0
   struct TALER_MINTDB_MeltCommitment *mc;
   unsigned int k;
@@ -2484,21 +2484,18 @@ postgres_insert_refresh_collectable (void *cls,
                                      uint16_t newcoin_index,
                                      const struct TALER_DenominationSignature *ev_sig)
 {
-  // FIXME: check logic!
   uint16_t newcoin_index_nbo = htons (newcoin_index); // #3827
   PGresult *result;
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_auto_from_type (session_hash),
+    TALER_PQ_query_param_auto_from_type (&newcoin_index_nbo),
+    TALER_PQ_query_param_rsa_signature (ev_sig->rsa_signature),
+    TALER_PQ_query_param_end
+  };
 
-  {
-    struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_query_param_auto_from_type(session_hash),
-      TALER_PQ_query_param_auto_from_type(&newcoin_index_nbo),
-      TALER_PQ_query_param_rsa_signature(ev_sig->rsa_signature),
-      TALER_PQ_query_param_end
-    };
-    result = TALER_PQ_exec_prepared (session->conn,
-                                     "insert_refresh_collectable",
-                                     params);
-  }
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "insert_refresh_collectable",
+                                   params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
@@ -2527,6 +2524,7 @@ postgres_get_link_data_list (void *cls,
   // FIXME: check logic!
   struct TALER_MINTDB_LinkDataList *ldl;
   struct TALER_MINTDB_LinkDataList *pos;
+  int i;
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type(coin_pub),
     TALER_PQ_query_param_end
@@ -2549,7 +2547,6 @@ postgres_get_link_data_list (void *cls,
     return NULL;
   }
 
-  int i = 0;
   for (i = 0; i < PQntuples (result); i++)
   {
     struct TALER_RefreshLinkEncrypted *link_enc;
@@ -2580,14 +2577,8 @@ postgres_get_link_data_list (void *cls,
                                   ldl);
       return NULL;
     }
-    // FIXME: use util API for this!
-    link_enc = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) +
-                              ld_buf_size - sizeof (struct GNUNET_CRYPTO_EddsaPrivateKey));
-    link_enc->blinding_key_enc = (const char *) &link_enc[1];
-    link_enc->blinding_key_enc_size = ld_buf_size - sizeof (struct GNUNET_CRYPTO_EddsaPrivateKey);
-    memcpy (link_enc->coin_priv_enc,
-            ld_buf,
-            ld_buf_size);
+    link_enc = TALER_refresh_link_encrypted_decode (ld_buf,
+                                                    ld_buf_size);
     GNUNET_free (ld_buf);
     pos = GNUNET_new (struct TALER_MINTDB_LinkDataList);
     pos->next = ldl;
