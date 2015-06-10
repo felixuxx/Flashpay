@@ -723,7 +723,7 @@ postgres_prepare (PGconn *db_conn)
      during /deposit processing. Used in #postgres_have_deposit(). */
   PREPARE ("get_deposit",
            "SELECT"
-           ",denom_pub"               /* Note: not actually used (yet), #3819 */
+           " denom_pub"               /* Note: not actually used (yet), #3819 */
            ",amount_with_fee_val"     /* Note: not actually used (yet), #3819 */
            ",amount_with_fee_frac"    /* Note: not actually used (yet), #3819 */
            ",amount_with_fee_curr"    /* Note: not actually used (yet), #3819 */
