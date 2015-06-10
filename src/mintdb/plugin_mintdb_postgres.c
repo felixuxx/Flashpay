@@ -2521,12 +2521,11 @@ postgres_get_link_data_list (void *cls,
                              struct TALER_MINTDB_Session *session,
                              const struct TALER_CoinSpendPublicKeyP *coin_pub)
 {
-  // FIXME: check logic!
   struct TALER_MINTDB_LinkDataList *ldl;
   struct TALER_MINTDB_LinkDataList *pos;
   int i;
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type(coin_pub),
+    TALER_PQ_query_param_auto_from_type (coin_pub),
     TALER_PQ_query_param_end
   };
   PGresult *result = TALER_PQ_exec_prepared (session->conn,
@@ -2555,13 +2554,14 @@ postgres_get_link_data_list (void *cls,
     void *ld_buf;
     size_t ld_buf_size;
     struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_variable_size("link_vector_enc", &ld_buf, &ld_buf_size),
-      TALER_PQ_result_spec_rsa_public_key("denom_pub", &denom_pub),
-      TALER_PQ_result_spec_rsa_signature("ev_sig", &sig),
+      TALER_PQ_result_spec_variable_size ("link_vector_enc", &ld_buf, &ld_buf_size),
+      TALER_PQ_result_spec_rsa_public_key ("denom_pub", &denom_pub),
+      TALER_PQ_result_spec_rsa_signature ("ev_sig", &sig),
       TALER_PQ_result_spec_end
     };
 
-    if (GNUNET_OK != TALER_PQ_extract_result (result, rs, i))
+    if (GNUNET_OK !=
+        TALER_PQ_extract_result (result, rs, i))
     {
       PQclear (result);
       GNUNET_break (0);
@@ -2613,51 +2613,50 @@ postgres_get_transfer (void *cls,
                        struct TALER_TransferPublicKeyP *transfer_pub,
                        struct TALER_EncryptedLinkSecretP *shared_secret_enc)
 {
-  // FIXME: check logic!
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type(coin_pub),
+    TALER_PQ_query_param_auto_from_type (coin_pub),
     TALER_PQ_query_param_end
   };
+  PGresult *result;
 
-  PGresult *result = TALER_PQ_exec_prepared (session->conn,
-                                             "get_transfer",
-                                             params);
-
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "get_transfer",
+                                   params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
     PQclear (result);
     return GNUNET_SYSERR;
   }
-
   if (0 == PQntuples (result))
   {
     PQclear (result);
     return GNUNET_NO;
   }
-
   if (1 != PQntuples (result))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "got %d tuples for get_transfer\n",
+                "got %d tuples from get_transfer\n",
                 PQntuples (result));
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-
-  struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_auto_from_type("transfer_pub", transfer_pub),
-    TALER_PQ_result_spec_auto_from_type("link_secret_enc", shared_secret_enc),
-    TALER_PQ_result_spec_end
-  };
-
-  if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
   {
-    PQclear (result);
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
+    struct TALER_PQ_ResultSpec rs[] = {
+      TALER_PQ_result_spec_auto_from_type ("transfer_pub", transfer_pub),
+      TALER_PQ_result_spec_auto_from_type ("link_secret_enc", shared_secret_enc),
+      TALER_PQ_result_spec_end
+    };
 
+    if (GNUNET_OK !=
+        TALER_PQ_extract_result (result, rs, 0))
+    {
+      PQclear (result);
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+  }
   PQclear (result);
   return GNUNET_OK;
 }
