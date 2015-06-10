@@ -2794,10 +2794,11 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
     TALER_LOG_ERROR ("Cannnot create pthread key.\n");
     return NULL;
   }
-  /* FIXME: use configuration section with "postgres" in its name... */
+  /* FIXME: use configuration section with "postgres" in its name. #3835 */
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "mint", "db_conn_str",
+                                             "mint",
+                                             "db_conn_str",
                                              &pg->connection_cfg_str))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
@@ -2840,8 +2841,8 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->get_link_data_list = &postgres_get_link_data_list;
   plugin->free_link_data_list = &common_free_link_data_list;
   plugin->get_transfer = &postgres_get_transfer;
-  // plugin->have_lock = &postgres_have_lock;
-  // plugin->insert_lock = &postgres_insert_lock;
+  // plugin->have_lock = &postgres_have_lock; /* #3625 */
+  // plugin->insert_lock = &postgres_insert_lock; /* #3625 */
   plugin->get_coin_transactions = &postgres_get_coin_transactions;
   plugin->free_coin_transaction_list = &common_free_coin_transaction_list;
   return plugin;
