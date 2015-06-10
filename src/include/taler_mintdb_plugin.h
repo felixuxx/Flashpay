@@ -985,7 +985,7 @@ struct TALER_MINTDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database connection to use
    * @param session_hash hash to identify refresh session
-   * @param i set index (1st dimension), relating to #TALER_CNC_KAPPA
+   * @param cnc_index cut and choose index (1st dimension), relating to #TALER_CNC_KAPPA
    * @param num_newcoins coin index size of the @a commit_coins array
    * @param commit_coin array of coin commitments to store
    * @return #GNUNET_OK on success
@@ -995,7 +995,7 @@ struct TALER_MINTDB_Plugin
   (*insert_refresh_commit_coins) (void *cls,
                                   struct TALER_MINTDB_Session *sesssion,
                                   const struct GNUNET_HashCode *session_hash,
-                                  unsigned int i,
+                                  unsigned int cnc_index,
                                   unsigned int num_newcoins,
                                   const struct TALER_MINTDB_RefreshCommitCoin *commit_coins);
 
@@ -1007,7 +1007,7 @@ struct TALER_MINTDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database connection to use
    * @param session_hash hash to identify refresh session
-   * @param i set index (1st dimension)
+   * @param cnc_index cut and choose set index (1st dimension)
    * @param num_coins size of the @a commit_coins array
    * @param[out] commit_coin array of coin commitments to return
    * @return #GNUNET_OK on success
@@ -1018,7 +1018,7 @@ struct TALER_MINTDB_Plugin
   (*get_refresh_commit_coins) (void *cls,
                                struct TALER_MINTDB_Session *sesssion,
                                const struct GNUNET_HashCode *session_hash,
-                               unsigned int i,
+                               unsigned int cnc_index,
                                unsigned int num_coins,
                                struct TALER_MINTDB_RefreshCommitCoin *commit_coins);
 
@@ -1030,7 +1030,7 @@ struct TALER_MINTDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database connection to use
    * @param session_hash hash to identify refresh session
-   * @param i set index (1st dimension), relating to #TALER_CNC_KAPPA
+   * @param cnc_index cut and choose index (1st dimension), relating to #TALER_CNC_KAPPA
    * @param num_links size of the @a commit_link array
    * @param commit_links array of link information to store
    * @return #GNUNET_SYSERR on internal error, #GNUNET_OK on success
@@ -1039,7 +1039,7 @@ struct TALER_MINTDB_Plugin
   (*insert_refresh_commit_links) (void *cls,
                                   struct TALER_MINTDB_Session *sesssion,
                                   const struct GNUNET_HashCode *session_hash,
-                                  unsigned int i,
+                                  unsigned int cnc_index,
                                   unsigned int num_links,
                                   const struct TALER_MINTDB_RefreshCommitLinkP *commit_links);
 
@@ -1050,7 +1050,7 @@ struct TALER_MINTDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database connection to use
    * @param session_hash hash to identify refresh session
-   * @param i set index (1st dimension)
+   * @param cnc_index cut and choose index (1st dimension)
    * @param num_links size of the @a links array to return
    * @param[out] links array link information to return
    * @return #GNUNET_SYSERR on internal error,
@@ -1061,7 +1061,7 @@ struct TALER_MINTDB_Plugin
   (*get_refresh_commit_links) (void *cls,
                                struct TALER_MINTDB_Session *sesssion,
                                const struct GNUNET_HashCode *session_hash,
-                               unsigned int i,
+                               unsigned int cnc_index,
                                unsigned int num_links,
                                struct TALER_MINTDB_RefreshCommitLinkP *links);
 
