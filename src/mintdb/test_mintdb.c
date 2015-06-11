@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file mint/test_mint_db.c
+ * @file mint/test_mintdb.c
  * @brief test cases for DB interaction functions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
@@ -239,7 +239,6 @@ run (void *cls,
   struct GNUNET_TIME_Absolute expiry;
   struct TALER_Amount amount;
   struct DenomKeyPair *dkp;
-  struct GNUNET_HashCode h_blind;
   struct TALER_MINTDB_CollectableBlindcoin cbc;
   struct TALER_MINTDB_CollectableBlindcoin cbc2;
   struct TALER_MINTDB_ReserveHistory *rh;
@@ -321,24 +320,25 @@ run (void *cls,
                          amount.currency,
                          expiry.abs_value_us));
   dkp = create_denom_key_pair (1024, session);
-  RND_BLK(&h_blind);
+  RND_BLK(&cbc.h_coin_envelope);
   RND_BLK(&cbc.reserve_sig);
   cbc.denom_pub = dkp->pub;
   cbc.sig.rsa_signature
     = GNUNET_CRYPTO_rsa_sign (dkp->priv.rsa_private_key,
-                              &h_blind,
-                              sizeof (h_blind));
+                              &cbc.h_coin_envelope,
+                              sizeof (cbc.h_coin_envelope));
   (void) memcpy (&cbc.reserve_pub,
                  &reserve_pub,
                  sizeof (reserve_pub));
   amount.value--;
   amount.fraction--;
+  cbc.amount_with_fee = amount;
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (CURRENCY, &cbc.withdraw_fee));
   FAILIF (GNUNET_OK !=
           plugin->insert_withdraw_info (plugin->cls,
-                                                session,
-                                                &h_blind,
-                                                amount,
-                                                &cbc));
+                                        session,
+                                        &cbc));
   FAILIF (GNUNET_OK !=
           check_reserve (session,
                          &reserve_pub,
@@ -348,9 +348,9 @@ run (void *cls,
                          expiry.abs_value_us));
   FAILIF (GNUNET_YES !=
           plugin->get_withdraw_info (plugin->cls,
-                                             session,
-                                             &h_blind,
-                                             &cbc2));
+                                     session,
+                                     &cbc.h_coin_envelope,
+                                     &cbc2));
   FAILIF (NULL == cbc2.denom_pub.rsa_public_key);
   FAILIF (0 != memcmp (&cbc2.reserve_sig,
                        &cbc.reserve_sig,
@@ -359,7 +359,7 @@ run (void *cls,
                        &cbc.reserve_pub,
                        sizeof (cbc2.reserve_pub)));
   FAILIF (GNUNET_OK !=
-          GNUNET_CRYPTO_rsa_verify (&h_blind,
+          GNUNET_CRYPTO_rsa_verify (&cbc.h_coin_envelope,
                                     cbc2.sig.rsa_signature,
                                     dkp->pub.rsa_public_key));
   rh = plugin->get_reserve_history (plugin->cls,
@@ -387,7 +387,8 @@ run (void *cls,
                            &reserve_pub,
                            sizeof (reserve_pub)));
       FAILIF (0 != memcmp (&withdraw->h_coin_envelope,
-                           &h_blind, sizeof (h_blind)));
+                           &cbc.h_coin_envelope,
+                           sizeof (cbc.h_coin_envelope)));
       break;
     }
   }

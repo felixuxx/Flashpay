@@ -744,9 +744,9 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*get_withdraw_info) (void *cls,
-                                struct TALER_MINTDB_Session *sesssion,
-                                const struct GNUNET_HashCode *h_blind,
-                                struct TALER_MINTDB_CollectableBlindcoin *collectable);
+                        struct TALER_MINTDB_Session *sesssion,
+                        const struct GNUNET_HashCode *h_blind,
+                        struct TALER_MINTDB_CollectableBlindcoin *collectable);
 
 
   /**
@@ -755,11 +755,6 @@ struct TALER_MINTDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database connection to use
-   * @param h_blind hash of the blinded message which is (blindly) signed by the
-   *                signature in @a collectable
-   * @param withdraw amount by which the reserve will be withdrawn with this
-   *                transaction (based on the value of the denomination key
-   *                used for the signature); coin value plus fee.
    * @param collectable corresponding collectable coin (blind signature)
    *                    if a coin is found
    * @return #GNUNET_SYSERR on internal error
@@ -768,10 +763,8 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*insert_withdraw_info) (void *cls,
-                                   struct TALER_MINTDB_Session *sesssion,
-                                   const struct GNUNET_HashCode *h_blind,
-                                   struct TALER_Amount withdraw,
-                                   const struct TALER_MINTDB_CollectableBlindcoin *collectable);
+                           struct TALER_MINTDB_Session *sesssion,
+                           const struct TALER_MINTDB_CollectableBlindcoin *collectable);
 
 
   /**

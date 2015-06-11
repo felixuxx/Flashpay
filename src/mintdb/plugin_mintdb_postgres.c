@@ -266,19 +266,21 @@ postgres_create_tables (void *cls,
      key, as (broken) clients that use a non-random coin and blinding factor
      should fail to even withdraw, as otherwise the coins will fail to deposit
      (as they really must be unique). */
-  /* TODO: maybe add withdraw fee and amount_with_fee explicitly to table,
-           so we can init those fields on select? #3825
-     TODO: maybe add timestamp of when the operation was performed, so we
-           can influence the reserves' expiration_date not just based on
-           incoming but also based on outgoing transactions? */
-    SQLEXEC ("CREATE TABLE IF NOT EXISTS reserves_out"
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS reserves_out"
            "(h_blind_ev BYTEA PRIMARY KEY"
            ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
            ",denom_sig BYTEA NOT NULL"
            ",reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32) REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
            ",reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)"
+           ",execution_date INT8 NOT NULL"
+           ",amount_with_fee_val INT8 NOT NULL"
+           ",amount_with_fee_frac INT4 NOT NULL"
+           ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",withdraw_fee_val INT8 NOT NULL"
+           ",withdraw_fee_frac INT4 NOT NULL"
+           ",withdraw_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
            ");");
-  /* Index blindcoins(reserve_pub) for get_reserves_blindcoins statement */
+  /* Index blindcoins(reserve_pub) for get_reserves_out statement */
   SQLEXEC_INDEX ("CREATE INDEX reserves_out_reserve_pub_index ON"
 		 " reserves_out (reserve_pub)");
   /* Table with coins that have been (partially) spent, used to track
@@ -529,9 +531,16 @@ postgres_prepare (PGconn *db_conn)
            ",denom_sig"
            ",reserve_pub"
            ",reserve_sig"
+           ",execution_date"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           ",withdraw_fee_val"
+           ",withdraw_fee_frac"
+           ",withdraw_fee_curr"
            ") VALUES "
-           "($1, $2, $3, $4, $5);",
-           5, NULL);
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);",
+           12, NULL);
   /* Used in #postgres_get_withdraw_info() to
      locate the response for a /withdraw/sign request
      using the hash of the blinded message.  Used to
@@ -542,6 +551,13 @@ postgres_prepare (PGconn *db_conn)
            ",denom_sig"
            ",reserve_sig"
            ",reserve_pub"
+           ",execution_date"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           ",withdraw_fee_val"
+           ",withdraw_fee_frac"
+           ",withdraw_fee_curr"
            " FROM reserves_out"
            " WHERE h_blind_ev=$1",
            1, NULL);
@@ -549,12 +565,19 @@ postgres_prepare (PGconn *db_conn)
      obtain all of the /withdraw/sign operations that
      have been performed on a given reserve. (i.e. to
      demonstrate double-spending) */
-  PREPARE ("get_reserves_blindcoins",
+  PREPARE ("get_reserves_out",
            "SELECT"
            " h_blind_ev"
            ",denom_pub"
            ",denom_sig"
            ",reserve_sig"
+           ",execution_date"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           ",withdraw_fee_val"
+           ",withdraw_fee_frac"
+           ",withdraw_fee_curr"
            " FROM reserves_out"
            " WHERE reserve_pub=$1;",
            1, NULL);
@@ -1273,17 +1296,15 @@ postgres_reserves_in_insert (void *cls,
  */
 static int
 postgres_get_withdraw_info (void *cls,
-                                    struct TALER_MINTDB_Session *session,
-                                    const struct GNUNET_HashCode *h_blind,
-                                    struct TALER_MINTDB_CollectableBlindcoin *collectable)
+                            struct TALER_MINTDB_Session *session,
+                            const struct GNUNET_HashCode *h_blind,
+                            struct TALER_MINTDB_CollectableBlindcoin *collectable)
 {
   PGresult *result;
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type (h_blind),
     TALER_PQ_query_param_end
   };
-  struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
-  struct GNUNET_CRYPTO_rsa_Signature *denom_sig;
   int ret;
 
   ret = GNUNET_SYSERR;
@@ -1301,31 +1322,35 @@ postgres_get_withdraw_info (void *cls,
     ret = GNUNET_NO;
     goto cleanup;
   }
-  struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_rsa_public_key("denom_pub", &denom_pub),
-    TALER_PQ_result_spec_rsa_signature("denom_sig", &denom_sig),
-    TALER_PQ_result_spec_auto_from_type("reserve_sig", &collectable->reserve_sig),
-    TALER_PQ_result_spec_auto_from_type("reserve_pub", &collectable->reserve_pub),
-    /* FIXME: collectable->amount_with_fee and
-       collectable->withdraw_fee not initialized! (#3825) */
-    TALER_PQ_result_spec_end
-  };
-
-  if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
   {
-    GNUNET_break (0);
-    goto cleanup;
+    struct TALER_PQ_ResultSpec rs[] = {
+      TALER_PQ_result_spec_rsa_public_key ("denom_pub",
+                                           &collectable->denom_pub.rsa_public_key),
+      TALER_PQ_result_spec_rsa_signature ("denom_sig",
+                                          &collectable->sig.rsa_signature),
+      TALER_PQ_result_spec_auto_from_type ("reserve_sig",
+                                           &collectable->reserve_sig),
+      TALER_PQ_result_spec_auto_from_type ("reserve_pub",
+                                           &collectable->reserve_pub),
+      TALER_PQ_result_spec_amount ("amount_with_fee",
+                                   &collectable->amount_with_fee),
+      TALER_PQ_result_spec_amount ("withdraw_fee",
+                                   &collectable->withdraw_fee),
+      TALER_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        TALER_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      goto cleanup;
+    }
   }
-  /* FIXME: why do we bother with the temporary variables? */
-  collectable->denom_pub.rsa_public_key = denom_pub;
-  collectable->sig.rsa_signature = denom_sig;
   collectable->h_coin_envelope = *h_blind;
   ret = GNUNET_YES;
 
  cleanup:
   PQclear (result);
-  if (GNUNET_YES != ret)
-    TALER_PQ_cleanup_result (rs);
   return ret;
 }
 
@@ -1336,11 +1361,6 @@ postgres_get_withdraw_info (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection to use
- * @param h_blind hash of the blinded message. FIXME:
- *          redundant information given @a collectable's h_coin_envelope, right? #3825
- * @param withdraw amount by which the reserve will be reduced with this
- *          transaction (coin value plus fee). FIXME:
- *          redundant information given @a collectable's amount_with_fee! #3825
  * @param collectable corresponding collectable coin (blind signature)
  *                    if a coin is found
  * @return #GNUNET_SYSERR on internal error
@@ -1349,21 +1369,22 @@ postgres_get_withdraw_info (void *cls,
  */
 static int
 postgres_insert_withdraw_info (void *cls,
-                                       struct TALER_MINTDB_Session *session,
-                                       const struct GNUNET_HashCode *h_blind,
-                                       struct TALER_Amount withdraw,
-                                       const struct TALER_MINTDB_CollectableBlindcoin *collectable)
+                               struct TALER_MINTDB_Session *session,
+                               const struct TALER_MINTDB_CollectableBlindcoin *collectable)
 {
   PGresult *result;
   struct TALER_MINTDB_Reserve reserve;
   int ret = GNUNET_SYSERR;
+  struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (h_blind),
+    TALER_PQ_query_param_auto_from_type (&collectable->h_coin_envelope),
     TALER_PQ_query_param_rsa_public_key (collectable->denom_pub.rsa_public_key),
     TALER_PQ_query_param_rsa_signature (collectable->sig.rsa_signature),
     TALER_PQ_query_param_auto_from_type (&collectable->reserve_pub),
     TALER_PQ_query_param_auto_from_type (&collectable->reserve_sig),
-    /* FIXME: store fees? #3825 */
+    TALER_PQ_query_param_absolute_time (&now),
+    TALER_PQ_query_param_amount (&collectable->amount_with_fee),
+    TALER_PQ_query_param_amount (&collectable->withdraw_fee),
     TALER_PQ_query_param_end
   };
 
@@ -1392,7 +1413,7 @@ postgres_insert_withdraw_info (void *cls,
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&reserve.balance,
                              &reserve.balance,
-                             &withdraw))
+                             &collectable->amount_with_fee))
   {
     /* Should have been checked before we got here... */
     GNUNET_break (0);
@@ -1501,11 +1522,6 @@ postgres_get_reserve_history (void *cls,
     PQclear (result);
   }
   {
-    struct GNUNET_HashCode h_blind_ev;
-    struct TALER_ReserveSignatureP reserve_sig;
-    struct TALER_MINTDB_CollectableBlindcoin *cbc;
-    struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
-    struct GNUNET_CRYPTO_rsa_Signature *denom_sig;
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_query_param_auto_from_type (reserve_pub),
       TALER_PQ_query_param_end
@@ -1515,7 +1531,7 @@ postgres_get_reserve_history (void *cls,
     GNUNET_assert (NULL != rh_tail);
     GNUNET_assert (NULL == rh_tail->next);
     result = TALER_PQ_exec_prepared (session->conn,
-                                     "get_reserves_blindcoins",
+                                     "get_reserves_out",
                                      params);
     if (PGRES_TUPLES_OK != PQresultStatus (result))
     {
@@ -1526,28 +1542,35 @@ postgres_get_reserve_history (void *cls,
     rows = PQntuples (result);
     while (0 < rows)
     {
-      struct TALER_PQ_ResultSpec rs[] = {
-        TALER_PQ_result_spec_auto_from_type ("h_blind_ev", &h_blind_ev),
-        TALER_PQ_result_spec_rsa_public_key ("denom_pub", &denom_pub),
-        TALER_PQ_result_spec_rsa_signature ("denom_sig", &denom_sig),
-        TALER_PQ_result_spec_auto_from_type ("reserve_sig", &reserve_sig),
-        TALER_PQ_result_spec_end
-      };
+      struct TALER_MINTDB_CollectableBlindcoin *cbc;
 
-      if (GNUNET_YES !=
-	  TALER_PQ_extract_result (result, rs, --rows))
-      {
-        GNUNET_break (0);
-        PQclear (result);
-        goto cleanup;
-      }
       cbc = GNUNET_new (struct TALER_MINTDB_CollectableBlindcoin);
-      cbc->sig.rsa_signature = denom_sig;
-      cbc->denom_pub.rsa_public_key = denom_pub;
-      /* FIXME: amount_with_fee and withdraw_fee not initialized! #3825 */
-      cbc->h_coin_envelope = h_blind_ev;
-      cbc->reserve_pub = *reserve_pub;
-      cbc->reserve_sig = reserve_sig;
+      {
+        struct TALER_PQ_ResultSpec rs[] = {
+          TALER_PQ_result_spec_auto_from_type ("h_blind_ev",
+                                               &cbc->h_coin_envelope),
+          TALER_PQ_result_spec_rsa_public_key ("denom_pub",
+                                               &cbc->denom_pub.rsa_public_key),
+          TALER_PQ_result_spec_rsa_signature ("denom_sig",
+                                              &cbc->sig.rsa_signature),
+          TALER_PQ_result_spec_auto_from_type ("reserve_sig",
+                                               &cbc->reserve_sig),
+          TALER_PQ_result_spec_amount ("amount_with_fee",
+                                       &cbc->amount_with_fee),
+          TALER_PQ_result_spec_amount ("withdraw_fee",
+                                       &cbc->withdraw_fee),
+          TALER_PQ_result_spec_end
+        };
+        if (GNUNET_YES !=
+            TALER_PQ_extract_result (result, rs, --rows))
+        {
+          GNUNET_break (0);
+          GNUNET_free (cbc);
+          PQclear (result);
+          goto cleanup;
+        }
+        cbc->reserve_pub = *reserve_pub;
+      }
       rh_tail->next = GNUNET_new (struct TALER_MINTDB_ReserveHistory);
       rh_tail = rh_tail->next;
       rh_tail->type = TALER_MINTDB_RO_WITHDRAW_COIN;

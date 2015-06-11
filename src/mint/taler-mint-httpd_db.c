@@ -294,9 +294,9 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   res = TMH_plugin->get_withdraw_info (TMH_plugin->cls,
-                                               session,
-                                               &h_blind,
-                                               &collectable);
+                                       session,
+                                       &h_blind,
+                                       &collectable);
   if (GNUNET_SYSERR == res)
   {
     GNUNET_break (0);
@@ -446,17 +446,15 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
   }
   collectable.sig.rsa_signature = sig;
   collectable.denom_pub = *denomination_pub;
+  collectable.amount_with_fee = amount_required;
+  collectable.withdraw_fee = fee_withdraw;
   collectable.reserve_pub = *reserve;
-  GNUNET_CRYPTO_hash (blinded_msg,
-                      blinded_msg_len,
-                      &collectable.h_coin_envelope);
+  collectable.h_coin_envelope = h_blind;
   collectable.reserve_sig = *signature;
   if (GNUNET_OK !=
       TMH_plugin->insert_withdraw_info (TMH_plugin->cls,
-                                                session,
-                                                &h_blind,
-                                                amount_required,
-                                                &collectable))
+                                        session,
+                                        &collectable))
   {
     GNUNET_break (0);
     GNUNET_CRYPTO_rsa_signature_free (sig);
@@ -871,7 +869,7 @@ check_commitment (struct MHD_Connection *connection,
 				   &transfer_privs[j],
 				   &melts[j].coin.coin_pub,
 				   &shared_secret))
-    { 
+    {
       GNUNET_free (commit_links);
       return (MHD_YES ==
 	      TMH_RESPONSE_reply_internal_error (connection,
