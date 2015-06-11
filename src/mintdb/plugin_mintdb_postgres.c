@@ -307,9 +307,6 @@ postgres_create_tables (void *cls,
      key (coin_pub), the melting session, the index of this coin in that
      session, the signature affirming the melting and the amount that
      this coin contributed to the melting session.
-     TODO: Should we include
-           both amounts (also the fee explicitly) in the table
-           to ease auditing of operations? (#3812)
   */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_melts "
           "(coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)"
@@ -319,6 +316,9 @@ postgres_create_tables (void *cls,
           ",amount_with_fee_val INT8 NOT NULL"
           ",amount_with_fee_frac INT8 NOT NULL"
           ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",melt_fee_val INT8 NOT NULL"
+          ",melt_fee_frac INT8 NOT NULL"
+          ",melt_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",PRIMARY KEY (session, oldcoin_index)" /* a coin can be used only
                                                  once in a refresh session */
           ") ");
@@ -650,9 +650,12 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val "
            ",amount_with_fee_frac "
            ",amount_with_fee_curr "
+           ",melt_fee_val "
+           ",melt_fee_frac "
+           ",melt_fee_curr "
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7);",
-           7, NULL);
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);",
+           10, NULL);
   /* Used in #postgres_get_refresh_melt to obtain information
      about melted coins */
   PREPARE ("get_refresh_melt",
@@ -662,8 +665,11 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
-           " FROM refresh_melts "
-           "WHERE session=$1 AND oldcoin_index=$2",
+           ",melt_fee_val "
+           ",melt_fee_frac "
+           ",melt_fee_curr "
+           " FROM refresh_melts"
+           " WHERE session=$1 AND oldcoin_index=$2",
            2, NULL);
   /* FIXME: should have a way to query the 'refresh_melts' by
      coin public key (#3813) */
@@ -1926,7 +1932,7 @@ postgres_insert_refresh_melt (void *cls,
     TALER_PQ_query_param_uint16 (&oldcoin_index),
     TALER_PQ_query_param_auto_from_type (&melt->coin_sig),
     TALER_PQ_query_param_amount (&melt->amount_with_fee),
-    /* FIXME: melt_fee not stored, #3828 */
+    TALER_PQ_query_param_amount (&melt->melt_fee),
     TALER_PQ_query_param_end
   };
   int ret;
@@ -1974,7 +1980,7 @@ postgres_insert_refresh_melt (void *cls,
  * @param session database connection
  * @param session_hash  session hash of the melt operation
  * @param oldcoin_index index of the coin to retrieve
- * @param melt melt data to fill in
+ * @param melt melt data to fill in, can be NULL
  * @return #GNUNET_OK on success
  *         #GNUNET_SYSERR on internal error
  */
@@ -1989,6 +1995,7 @@ postgres_get_refresh_melt (void *cls,
   struct TALER_CoinPublicInfo coin;
   struct TALER_CoinSpendSignatureP coin_sig;
   struct TALER_Amount amount_with_fee;
+  struct TALER_Amount melt_fee;
   uint16_t oldcoin_index_nbo = htons (oldcoin_index);
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type (session_hash),
@@ -2021,7 +2028,7 @@ postgres_get_refresh_melt (void *cls,
       TALER_PQ_result_spec_auto_from_type ("coin_pub", &coin.coin_pub),
       TALER_PQ_result_spec_auto_from_type ("coin_sig", &coin_sig),
       TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
-      /* 'melt_fee' not initialized (#3828) */
+      TALER_PQ_result_spec_amount ("amount_with_fee", &melt_fee),
       TALER_PQ_result_spec_end
     };
     if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
@@ -2044,7 +2051,7 @@ postgres_get_refresh_melt (void *cls,
   melt->coin_sig = coin_sig;
   melt->session_hash = *session_hash;
   melt->amount_with_fee = amount_with_fee;
-  /* FIXME: melt->melt_fee = ??, #3812 / #3828 */
+  melt->melt_fee = melt_fee;
   return GNUNET_OK;
 }
 
