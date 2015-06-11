@@ -740,7 +740,8 @@ struct TALER_MINTDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database connection to use
-   * @param h_blind hash of the blinded message to be signed
+   * @param h_blind hash of the blinded coin to be signed (will match
+   *                `h_coin_envelope` in the @a collectable to be returned)
    * @param collectable corresponding collectable coin (blind signature)
    *                    if a coin is found
    * @return #GNUNET_SYSERR on internal error

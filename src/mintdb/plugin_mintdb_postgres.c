@@ -1288,7 +1288,8 @@ postgres_reserves_in_insert (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection to use
- * @param h_blind hash of the blinded message to be signed
+ * @param h_blind hash of the blinded coin to be signed (will match
+ *                `h_coin_envelope` in the @a collectable to be returned)
  * @param collectable corresponding collectable coin (blind signature)
  *                    if a coin is found
  * @return #GNUNET_SYSERR on internal error
