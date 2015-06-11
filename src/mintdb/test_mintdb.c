@@ -98,6 +98,12 @@ register_denomination(struct TALER_DenominationPublicKey denom_pub,
                       struct TALER_MINTDB_Session *session)
 {
   struct TALER_MINTDB_DenominationKeyIssueInformation dki;
+
+  /* Using memset() as fields like master key and signature
+     are not properly initialized for this test. */
+  memset (&dki,
+          0,
+          sizeof (struct TALER_MINTDB_DenominationKeyIssueInformation));
   dki.denom_pub = denom_pub;
   dki.issue.start = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get ());
   dki.issue.expire_withdraw = GNUNET_TIME_absolute_hton
@@ -122,7 +128,8 @@ register_denomination(struct TALER_DenominationPublicKey denom_pub,
   if (GNUNET_OK !=
       plugin->insert_denomination (plugin->cls,
                                    session,
-                                   &dki))
+                                   &denom_pub,
+                                   &dki.issue))
   {
     GNUNET_break(0);
     return GNUNET_SYSERR;

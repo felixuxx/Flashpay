@@ -211,6 +211,8 @@ postgres_create_tables (void *cls,
      referencing these rows */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS denominations"
            "(pub BYTEA PRIMARY KEY"
+           ",master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+           ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
            ",valid_from INT8 NOT NULL"
            ",expire_withdraw INT8 NOT NULL"
            ",expire_spend INT8 NOT NULL"
@@ -440,6 +442,8 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("insert_denomination",
            "INSERT INTO denominations "
            "(pub"
+           ",master_pub"
+           ",master_sig"
            ",valid_from"
            ",expire_withdraw"
            ",expire_spend"
@@ -457,9 +461,9 @@ postgres_prepare (PGconn *db_conn)
            ",fee_refresh_frac"
            ",fee_refresh_curr" /* must match coin_curr */
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6,"
-            "$7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);",
-           14, NULL);
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
+           " $11, $12, $13, $14, $15, $16, $17, $18, $19);",
+           19, NULL);
 
   /* FIXME: #3808: need a 'select_denominations' for auditor */
 
@@ -1004,24 +1008,23 @@ postgres_commit (void *cls,
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to use
- * @param dki the denomination key information;
- *            NOTE: we might want to avoid passing the RSA private key here,
- *                  as we do not want that in the DB (#3823)
+ * @param denom_pub the public key used for signing coins of this denomination
+ * @param issue issuing information with value, fees and other info about the coin
  * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
  */
 static int
 postgres_insert_denomination (void *cls,
                               struct TALER_MINTDB_Session *session,
-                              const struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
+                              const struct TALER_DenominationPublicKey *denom_pub,
+                              const struct TALER_DenominationKeyValidityPS *issue)
 {
-  const struct TALER_DenominationKeyValidityPS *issue = &dki->issue;
   PGresult *result;
   int ret;
 
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_rsa_public_key (dki->denom_pub.rsa_public_key),
-    /* FIXME: MasterSignature not stored (required for audit), #3823 */
-    /* FIXME: MasterPublicKey not stored (required for audit), #3823 */
+    TALER_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
+    TALER_PQ_query_param_auto_from_type (&issue->master),
+    TALER_PQ_query_param_auto_from_type (&issue->signature),
     TALER_PQ_query_param_auto_from_type (&issue->start.abs_value_us__),
     TALER_PQ_query_param_auto_from_type (&issue->expire_withdraw.abs_value_us__),
     TALER_PQ_query_param_auto_from_type (&issue->expire_spend.abs_value_us__),

@@ -678,15 +678,15 @@ struct TALER_MINTDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion connection to use
-   * @param dki the denomination key information (#3823)
+   * @param denom_pub the public key used for signing coins of this denomination
+   * @param issue issuing information with value, fees and other info about the coin
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
   (*insert_denomination) (void *cls,
                           struct TALER_MINTDB_Session *session,
-                          const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
-
-
+                          const struct TALER_DenominationPublicKey *denom_pub,
+                          const struct TALER_DenominationKeyValidityPS *issue);
 
 
   /**
