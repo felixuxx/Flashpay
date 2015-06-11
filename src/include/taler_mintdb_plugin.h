@@ -1003,7 +1003,7 @@ struct TALER_MINTDB_Plugin
    * @param session_hash hash to identify refresh session
    * @param cnc_index cut and choose set index (1st dimension)
    * @param num_coins size of the @a commit_coins array
-   * @param[out] commit_coin array of coin commitments to return
+   * @param[out] commit_coins array of coin commitments to return
    * @return #GNUNET_OK on success
    *         #GNUNET_NO if not found
    *         #GNUNET_SYSERR on error

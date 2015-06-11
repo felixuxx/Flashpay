@@ -2205,48 +2205,78 @@ postgres_insert_refresh_commit_coins (void *cls,
                                       uint16_t num_newcoins,
                                       const struct TALER_MINTDB_RefreshCommitCoin *commit_coins)
 {
-  // FIXME: check logic! -- was written for single commit_coin! // #3831
   char *rle;
   size_t rle_size;
   PGresult *result;
+  unsigned int i;
+  uint16_t coin_off;
 
-  rle = TALER_refresh_link_encrypted_encode (commit_coins->refresh_link,
-                                             &rle_size);
-  if (NULL == rle)
+  for (i=0;i<(unsigned int) num_newcoins;i++)
   {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  {
-    struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_query_param_auto_from_type (session_hash),
-      TALER_PQ_query_param_uint16 (&cnc_index),
-      TALER_PQ_query_param_uint16 (&num_newcoins),
-      TALER_PQ_query_param_fixed_size (rle, rle_size),
-      TALER_PQ_query_param_fixed_size (commit_coins->coin_ev,
-                                       commit_coins->coin_ev_size),
-      TALER_PQ_query_param_end
-    };
+    rle = TALER_refresh_link_encrypted_encode (commit_coins[i].refresh_link,
+                                               &rle_size);
+    if (NULL == rle)
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    coin_off = (uint16_t) i;
+    {
+      struct TALER_PQ_QueryParam params[] = {
+        TALER_PQ_query_param_auto_from_type (session_hash),
+        TALER_PQ_query_param_uint16 (&cnc_index),
+        TALER_PQ_query_param_uint16 (&coin_off),
+        TALER_PQ_query_param_fixed_size (rle,
+                                         rle_size),
+        TALER_PQ_query_param_fixed_size (commit_coins->coin_ev,
+                                         commit_coins->coin_ev_size),
+        TALER_PQ_query_param_end
+      };
 
-    result = TALER_PQ_exec_prepared (session->conn,
-                                     "insert_refresh_commit_coin",
-                                     params);
-  }
-  GNUNET_free (rle);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result);
+      result = TALER_PQ_exec_prepared (session->conn,
+                                       "insert_refresh_commit_coin",
+                                       params);
+    }
+    GNUNET_free (rle);
+    if (PGRES_COMMAND_OK != PQresultStatus (result))
+    {
+      BREAK_DB_ERR (result);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    if (0 != strcmp ("1", PQcmdTuples (result)))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
     PQclear (result);
-    return GNUNET_SYSERR;
   }
-  if (0 != strcmp ("1", PQcmdTuples (result)))
-  {
-    GNUNET_break (0);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
   return GNUNET_OK;
+}
+
+
+/**
+ * We allocated some @a commit_coin information, but now need
+ * to abort. Free allocated memory.
+ *
+ * @param commit_coins data to free (but not the array itself)
+ * @param commit_coins_len length of @a commit_coins array
+ */
+static void
+free_cc_result (struct TALER_MINTDB_RefreshCommitCoin *commit_coins,
+                unsigned int commit_coins_len)
+{
+  unsigned int i;
+
+  for (i=0;i<commit_coins_len;i++)
+  {
+    GNUNET_free (commit_coins[i].refresh_link);
+    commit_coins[i].refresh_link = NULL;
+    GNUNET_free (commit_coins[i].coin_ev);
+    commit_coins[i].coin_ev = NULL;
+    commit_coins[i].coin_ev_size = 0;
+  }
 }
 
 
@@ -2258,9 +2288,8 @@ postgres_insert_refresh_commit_coins (void *cls,
  * @param session database connection to use
  * @param session_hash hash to identify refresh session
  * @param cnc_index set index (1st dimension)
- * @param newcoin_index coin index (2nd dimension), corresponds to refreshed (new) coins
- * @param[out] cc coin commitment to return
- * FIXME: should we not take an array of 'cc's and return all at once? // #3831
+ * @param num_newcoins size of the @a commit_coins array
+ * @param[out] commit_coins array of coin commitments to return
  * @return #GNUNET_OK on success
  *         #GNUNET_NO if not found
  *         #GNUNET_SYSERR on error
@@ -2270,66 +2299,77 @@ postgres_get_refresh_commit_coins (void *cls,
                                    struct TALER_MINTDB_Session *session,
                                    const struct GNUNET_HashCode *session_hash,
                                    uint16_t cnc_index,
-                                   uint16_t newcoin_index,
-                                   struct TALER_MINTDB_RefreshCommitCoin *cc)
+                                   uint16_t num_newcoins,
+                                   struct TALER_MINTDB_RefreshCommitCoin *commit_coins)
 {
-  // FIXME: check logic! // #3831
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (session_hash),
-    TALER_PQ_query_param_uint16 (&cnc_index),
-    TALER_PQ_query_param_uint16 (&newcoin_index),
-    TALER_PQ_query_param_end
-  };
-  void *c_buf;
-  size_t c_buf_size;
-  void *rl_buf;
-  size_t rl_buf_size;
-  struct TALER_RefreshLinkEncrypted *rl;
+  unsigned int i;
 
-  PGresult *result = TALER_PQ_exec_prepared (session->conn,
-                                             "get_refresh_commit_coin",
-                                             params);
-
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  for (i=0;i<(unsigned int) num_newcoins;i++)
   {
-    BREAK_DB_ERR (result);
+    uint16_t newcoin_off = (uint16_t) i;
+    struct TALER_PQ_QueryParam params[] = {
+      TALER_PQ_query_param_auto_from_type (session_hash),
+      TALER_PQ_query_param_uint16 (&cnc_index),
+      TALER_PQ_query_param_uint16 (&newcoin_off),
+      TALER_PQ_query_param_end
+    };
+    void *c_buf;
+    size_t c_buf_size;
+    void *rl_buf;
+    size_t rl_buf_size;
+    struct TALER_RefreshLinkEncrypted *rl;
+    PGresult *result;
+
+    result = TALER_PQ_exec_prepared (session->conn,
+                                     "get_refresh_commit_coin",
+                                     params);
+    if (PGRES_TUPLES_OK != PQresultStatus (result))
+    {
+      BREAK_DB_ERR (result);
+      PQclear (result);
+      free_cc_result (commit_coins, i);
+      return GNUNET_SYSERR;
+    }
+    if (0 == PQntuples (result))
+    {
+      PQclear (result);
+      free_cc_result (commit_coins, i);
+      return GNUNET_NO;
+    }
+    {
+      struct TALER_PQ_ResultSpec rs[] = {
+        TALER_PQ_result_spec_variable_size ("link_vector_enc",
+                                            &rl_buf,
+                                            &rl_buf_size),
+        TALER_PQ_result_spec_variable_size ("coin_ev",
+                                            &c_buf,
+                                            &c_buf_size),
+        TALER_PQ_result_spec_end
+      };
+
+      if (GNUNET_YES !=
+          TALER_PQ_extract_result (result, rs, 0))
+      {
+        PQclear (result);
+        free_cc_result (commit_coins, i);
+        return GNUNET_SYSERR;
+      }
+    }
     PQclear (result);
-    return GNUNET_SYSERR;
-  }
-
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    return GNUNET_NO;
-  }
-
-  struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_variable_size ("link_vector_enc",
-                                        &rl_buf,
-                                        &rl_buf_size),
-    TALER_PQ_result_spec_variable_size ("coin_ev",
-                                        &c_buf,
-                                        &c_buf_size),
-    TALER_PQ_result_spec_end
-  };
-  if (GNUNET_YES != TALER_PQ_extract_result (result, rs, 0))
-  {
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  if (rl_buf_size < sizeof (struct TALER_CoinSpendPrivateKeyP))
-  {
-    GNUNET_free (c_buf);
+    if (rl_buf_size < sizeof (struct TALER_CoinSpendPrivateKeyP))
+    {
+      GNUNET_free (c_buf);
+      GNUNET_free (rl_buf);
+      free_cc_result (commit_coins, i);
+      return GNUNET_SYSERR;
+    }
+    rl = TALER_refresh_link_encrypted_decode (rl_buf,
+                                              rl_buf_size);
     GNUNET_free (rl_buf);
-    return GNUNET_SYSERR;
+    commit_coins[i].refresh_link = rl;
+    commit_coins[i].coin_ev = c_buf;
+    commit_coins[i].coin_ev_size = c_buf_size;
   }
-  rl = TALER_refresh_link_encrypted_decode (rl_buf,
-                                            rl_buf_size);
-  GNUNET_free (rl_buf);
-  cc->refresh_link = rl;
-  cc->coin_ev = c_buf;
-  cc->coin_ev_size = c_buf_size;
   return GNUNET_YES;
 }
 
