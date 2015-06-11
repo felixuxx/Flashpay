@@ -679,8 +679,22 @@ postgres_prepare (PGconn *db_conn)
            " FROM refresh_melts"
            " WHERE session=$1 AND oldcoin_index=$2",
            2, NULL);
-  /* FIXME: should have a way to query the 'refresh_melts' by
-     coin public key (#3813) */
+  /* Query the 'refresh_melts' by coin public key */
+  PREPARE ("get_refresh_melt_by_coin",
+           "SELECT"
+           " session"
+           /* ",oldcoin_index" // not needed */
+           ",coin_sig"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           ",melt_fee_val "
+           ",melt_fee_frac "
+           ",melt_fee_curr "
+           " FROM refresh_melts"
+           " WHERE coin_pub=$1",
+           1, NULL);
+
   /* FIXME: 'get_refresh_out' is not used anywhere!
      Should be needed for /refresh/link at least. */
   PREPARE ("get_refresh_out",
@@ -2923,10 +2937,61 @@ postgres_get_coin_transactions (void *cls,
   }
   /* Handle refreshing */
   {
-    /* FIXME: #3834 */
+    struct TALER_PQ_QueryParam params[] = {
+      TALER_PQ_query_param_auto_from_type (&coin_pub->eddsa_pub),
+      TALER_PQ_query_param_end
+    };
+    int nrows;
+    int i;
+    PGresult *result;
+    struct TALER_MINTDB_TransactionList *tl;
+
+    /* check if the melt record exists and get it */
+    result = TALER_PQ_exec_prepared (session->conn,
+                                     "get_refresh_melt_by_coin",
+                                     params);
+    if (PGRES_TUPLES_OK != PQresultStatus (result))
+    {
+      BREAK_DB_ERR (result);
+      PQclear (result);
+      goto cleanup;
+    }
+    nrows = PQntuples (result);
+    for (i=0;i<nrows;i++)
+    {
+      struct TALER_MINTDB_RefreshMelt *melt;
+
+      melt = GNUNET_new (struct TALER_MINTDB_RefreshMelt);
+      {
+        struct TALER_PQ_ResultSpec rs[] = {
+          TALER_PQ_result_spec_auto_from_type ("session",
+                                               &melt->session_hash),
+          /* oldcoin_index not needed */
+          TALER_PQ_result_spec_auto_from_type ("coin_sig",
+                                               &melt->coin_sig),
+          TALER_PQ_result_spec_amount ("amount_with_fee",
+                                       &melt->amount_with_fee),
+          TALER_PQ_result_spec_amount ("amount_with_fee",
+                                       &melt->melt_fee),
+          TALER_PQ_result_spec_end
+        };
+        if (GNUNET_OK !=
+            TALER_PQ_extract_result (result, rs, 0))
+        {
+          GNUNET_break (0);
+          GNUNET_free (melt);
+          goto cleanup;
+        }
+      }
+      tl = GNUNET_new (struct TALER_MINTDB_TransactionList);
+      tl->next = head;
+      tl->type = TALER_MINTDB_TT_REFRESH_MELT;
+      tl->details.melt = melt;
+      head = tl;
+      continue;
+    }
   }
-  /* FIXME: support fetching information about locked coins
-     (locking is not implemented as of now, #3625) */
+  /* FIXME: Handle locked coins (#3625) */
   return head;
  cleanup:
   if (NULL != head)
