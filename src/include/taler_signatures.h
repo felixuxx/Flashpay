@@ -40,6 +40,12 @@
  */
 #define TALER_CNC_KAPPA 3
 
+/**
+ * After what time do idle reserves "expire"?  We might want to make
+ * this a configuration option (eventually).
+ */
+#define TALER_IDLE_RESERVE_EXPIRATION_TIME GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_YEARS, 5)
+
 /*********************************************/
 /* Mint offline signatures (with master key) */
 /*********************************************/

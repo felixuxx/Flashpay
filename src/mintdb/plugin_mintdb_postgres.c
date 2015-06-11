@@ -240,18 +240,16 @@ postgres_create_tables (void *cls,
            ",current_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
            ",expiration_date INT8 NOT NULL"
            ")");
-  /* reserves_in table collects the transactions which transfer funds into the
-     reserve.  The rows of this table
-     correspond to each incoming transaction.
-     FIXME: instead of an 'expiration_date', an 'execution_date'
-     would be more appropriate here (#3809). */
+  /* reserves_in table collects the transactions which transfer funds
+     into the reserve.  The rows of this table correspond to each
+     incoming transaction. */
   SQLEXEC("CREATE TABLE IF NOT EXISTS reserves_in"
           "(reserve_pub BYTEA REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
           ",balance_val INT8 NOT NULL"
           ",balance_frac INT4 NOT NULL"
           ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",details VARCHAR NOT NULL "
-          ",expiration_date INT8 NOT NULL"
+          ",execution_date INT8 NOT NULL"
           ",PRIMARY KEY (reserve_pub,details)"
           ");");
   /* Create indices on reserves_in */
@@ -259,8 +257,8 @@ postgres_create_tables (void *cls,
 		 " ON reserves_in (reserve_pub);");
   SQLEXEC_INDEX ("CREATE INDEX reserves_in_reserve_pub_details_index"
 		 " ON reserves_in (reserve_pub,details);");
-  SQLEXEC_INDEX ("CREATE INDEX expiration_index"
-		 " ON reserves_in (expiration_date);");
+  SQLEXEC_INDEX ("CREATE INDEX execution_index"
+		 " ON reserves_in (execution_date);");
   /* Table with the withdraw operations that have been performed on a reserve.
      The 'h_blind_ev' is the hash of the blinded coin. It serves as a primary
      key, as (broken) clients that use a non-random coin and blinding factor
@@ -501,7 +499,7 @@ postgres_prepare (PGconn *db_conn)
            ",balance_frac"
            ",balance_curr"
            ",details"
-           ",expiration_date"
+           ",execution_date"
            ") VALUES "
            "($1, $2, $3, $4, $5, $6);",
            6, NULL);
@@ -512,7 +510,7 @@ postgres_prepare (PGconn *db_conn)
            " balance_val"
            ",balance_frac"
            ",balance_curr"
-           ",expiration_date" /* NOTE: not used (yet), #3817 */
+           ",execution_date" /* NOTE: not used (yet), #3817 */
            ",details"         /* NOTE: not used (yet), #3817 */
            " FROM reserves_in"
            " WHERE reserve_pub=$1",
@@ -1143,7 +1141,6 @@ reserves_update (void *cls,
  * @param balance the amount that has to be added to the reserve
  * @param details bank transaction details justifying the increment,
  *        must be unique for each incoming transaction
- * @param expiry the new expiration time for the reserve (#3809)
  * @return #GNUNET_OK upon success; #GNUNET_NO if the given
  *         @a details are already known for this @a reserve_pub,
  *         #GNUNET_SYSERR upon failures (DB error, incompatible currency)
@@ -1153,12 +1150,13 @@ postgres_reserves_in_insert (void *cls,
                              struct TALER_MINTDB_Session *session,
                              const struct TALER_ReservePublicKeyP *reserve_pub,
                              const struct TALER_Amount *balance,
-                             const char *details,
-                             struct GNUNET_TIME_Absolute expiry)
+                             const char *details)
 {
   PGresult *result;
   int reserve_exists;
   struct TALER_MINTDB_Reserve reserve;
+  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Absolute expiry;
 
   if (GNUNET_OK != postgres_start (cls,
                                    session))
@@ -1175,6 +1173,9 @@ postgres_reserves_in_insert (void *cls,
     GNUNET_break (0);
     goto rollback;
   }
+  now = GNUNET_TIME_absolute_get ();
+  expiry = GNUNET_TIME_absolute_add (now,
+                                     TALER_IDLE_RESERVE_EXPIRATION_TIME);
   if (GNUNET_NO == reserve_exists)
   {
     /* New reserve, create balance for the first time; we do this
@@ -1212,7 +1213,7 @@ postgres_reserves_in_insert (void *cls,
       TALER_PQ_query_param_auto_from_type (&reserve.pub),
       TALER_PQ_query_param_amount (balance),
       TALER_PQ_query_param_fixed_size (details, strlen (details)),
-      TALER_PQ_query_param_absolute_time (&expiry),
+      TALER_PQ_query_param_absolute_time (&now),
       TALER_PQ_query_param_end
     };
 
@@ -1375,7 +1376,8 @@ postgres_insert_withdraw_info (void *cls,
   PGresult *result;
   struct TALER_MINTDB_Reserve reserve;
   int ret = GNUNET_SYSERR;
-  struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
+  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Absolute expiry;
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type (&collectable->h_coin_envelope),
     TALER_PQ_query_param_rsa_public_key (collectable->denom_pub.rsa_public_key),
@@ -1393,6 +1395,7 @@ postgres_insert_withdraw_info (void *cls,
   {
     return GNUNET_SYSERR;
   }
+  now = GNUNET_TIME_absolute_get ();
   result = TALER_PQ_exec_prepared (session->conn,
                                    "insert_withdraw_info",
                                    params);
@@ -1419,6 +1422,10 @@ postgres_insert_withdraw_info (void *cls,
     GNUNET_break (0);
     goto rollback;
   }
+  expiry = GNUNET_TIME_absolute_add (now,
+                                     TALER_IDLE_RESERVE_EXPIRATION_TIME);
+  reserve.expiry = GNUNET_TIME_absolute_max (expiry,
+                                             reserve.expiry);
   if (GNUNET_OK != reserves_update (cls,
                                     session,
                                     &reserve))

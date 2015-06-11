@@ -715,7 +715,6 @@ struct TALER_MINTDB_Plugin
    * @param balance the amount that has to be added to the reserve
    * @param details bank transaction details justifying the increment,
    *        must be unique for each incoming transaction
-   * @param expiry the new expiration time for the reserve (#3809)
    * @return #GNUNET_OK upon success; #GNUNET_NO if the given
    *         @a details are already known for this @a reserve_pub,
    *         #GNUNET_SYSERR upon failures (DB error, incompatible currency)
@@ -725,8 +724,7 @@ struct TALER_MINTDB_Plugin
                          struct TALER_MINTDB_Session *db,
                          const struct TALER_ReservePublicKeyP *reserve_pub,
                          const struct TALER_Amount *balance,
-                         const char *details,
-                         struct GNUNET_TIME_Absolute expiry);
+                         const char *details);
 
 
   /**

@@ -51,7 +51,6 @@ static struct TALER_MINTDB_Plugin *plugin;
  * @param value balance value
  * @param fraction balance fraction
  * @param currency currency of the reserve
- * @param expiry expiration of the reserve
  * @return #GNUNET_OK if the given reserve has the same balance and expiration
  *           as the given parameters; #GNUNET_SYSERR if not
  */
@@ -60,8 +59,7 @@ check_reserve (struct TALER_MINTDB_Session *session,
                const struct TALER_ReservePublicKeyP *pub,
                uint64_t value,
                uint32_t fraction,
-               const char *currency,
-               uint64_t expiry)
+               const char *currency)
 {
   struct TALER_MINTDB_Reserve reserve;
 
@@ -74,7 +72,6 @@ check_reserve (struct TALER_MINTDB_Session *session,
   FAILIF (value != reserve.balance.value);
   FAILIF (fraction != reserve.balance.fraction);
   FAILIF (0 != strcmp (currency, reserve.balance.currency));
-  FAILIF (expiry != reserve.expiry.abs_value_us);
 
   return GNUNET_OK;
  drop:
@@ -236,7 +233,6 @@ run (void *cls,
 {
   struct TALER_MINTDB_Session *session;
   struct TALER_ReservePublicKeyP reserve_pub;
-  struct GNUNET_TIME_Absolute expiry;
   struct TALER_Amount amount;
   struct DenomKeyPair *dkp;
   struct TALER_MINTDB_CollectableBlindcoin cbc;
@@ -288,37 +284,31 @@ run (void *cls,
   amount.value = 1;
   amount.fraction = 1;
   strcpy (amount.currency, CURRENCY);
-  expiry = GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
-                                     GNUNET_TIME_UNIT_HOURS);
   result = 4;
   FAILIF (GNUNET_OK !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
                                       &reserve_pub,
                                       &amount,
-				      "justification 1",
-                                      expiry));
+				      "justification 1"));
   FAILIF (GNUNET_OK !=
           check_reserve (session,
                          &reserve_pub,
                          amount.value,
                          amount.fraction,
-                         amount.currency,
-                         expiry.abs_value_us));
+                         amount.currency));
   FAILIF (GNUNET_OK !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
                                       &reserve_pub,
                                       &amount,
-				      "justification 2",
-                                      expiry));
+				      "justification 2"));
   FAILIF (GNUNET_OK !=
           check_reserve (session,
                          &reserve_pub,
                          ++amount.value,
                          ++amount.fraction,
-                         amount.currency,
-                         expiry.abs_value_us));
+                         amount.currency));
   dkp = create_denom_key_pair (1024, session);
   RND_BLK(&cbc.h_coin_envelope);
   RND_BLK(&cbc.reserve_sig);
@@ -344,8 +334,7 @@ run (void *cls,
                          &reserve_pub,
                          amount.value,
                          amount.fraction,
-                         amount.currency,
-                         expiry.abs_value_us));
+                         amount.currency));
   FAILIF (GNUNET_YES !=
           plugin->get_withdraw_info (plugin->cls,
                                      session,

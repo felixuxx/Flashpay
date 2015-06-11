@@ -25,11 +25,6 @@
 #include "taler_mintdb_plugin.h"
 
 /**
- * After what time to inactive reserves expire?
- */
-#define RESERVE_EXPIRATION GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_YEARS, 5)
-
-/**
  * Director of the mint, containing the keys.
  */
 static char *mint_directory;
@@ -60,7 +55,6 @@ main (int argc, char *const *argv)
   struct TALER_Amount add_value;
   char *details = NULL;
   struct TALER_ReservePublicKeyP reserve_pub;
-  struct GNUNET_TIME_Absolute expiration;
   struct TALER_MINTDB_Session *session;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     {'a', "add", "DENOM",
@@ -163,13 +157,11 @@ main (int argc, char *const *argv)
              "Failed to initialize DB session\n");
     goto cleanup;
   }
-  expiration = GNUNET_TIME_relative_to_absolute (RESERVE_EXPIRATION);
   ret = plugin->reserves_in_insert (plugin->cls,
 				    session,
 				    &reserve_pub,
 				    &add_value,
-				    details,
-				    expiration);
+				    details);
   if (GNUNET_SYSERR == ret)
   {
     fprintf (stderr,
