@@ -995,8 +995,8 @@ struct TALER_MINTDB_Plugin
   (*insert_refresh_commit_coins) (void *cls,
                                   struct TALER_MINTDB_Session *sesssion,
                                   const struct GNUNET_HashCode *session_hash,
-                                  unsigned int cnc_index,
-                                  unsigned int num_newcoins,
+                                  uint16_t cnc_index,
+                                  uint16_t num_newcoins,
                                   const struct TALER_MINTDB_RefreshCommitCoin *commit_coins);
 
 
@@ -1018,8 +1018,8 @@ struct TALER_MINTDB_Plugin
   (*get_refresh_commit_coins) (void *cls,
                                struct TALER_MINTDB_Session *sesssion,
                                const struct GNUNET_HashCode *session_hash,
-                               unsigned int cnc_index,
-                               unsigned int num_coins,
+                               uint16_t cnc_index,
+                               uint16_t num_coins,
                                struct TALER_MINTDB_RefreshCommitCoin *commit_coins);
 
 
@@ -1039,8 +1039,8 @@ struct TALER_MINTDB_Plugin
   (*insert_refresh_commit_links) (void *cls,
                                   struct TALER_MINTDB_Session *sesssion,
                                   const struct GNUNET_HashCode *session_hash,
-                                  unsigned int cnc_index,
-                                  unsigned int num_links,
+                                  uint16_t cnc_index,
+                                  uint16_t num_links,
                                   const struct TALER_MINTDB_RefreshCommitLinkP *commit_links);
 
   /**
@@ -1061,8 +1061,8 @@ struct TALER_MINTDB_Plugin
   (*get_refresh_commit_links) (void *cls,
                                struct TALER_MINTDB_Session *sesssion,
                                const struct GNUNET_HashCode *session_hash,
-                               unsigned int cnc_index,
-                               unsigned int num_links,
+                               uint16_t cnc_index,
+                               uint16_t num_links,
                                struct TALER_MINTDB_RefreshCommitLinkP *links);
 
 
