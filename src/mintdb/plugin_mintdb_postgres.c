@@ -1627,11 +1627,9 @@ postgres_insert_deposit (void *cls,
                          struct TALER_MINTDB_Session *session,
                          const struct TALER_MINTDB_Deposit *deposit)
 {
-  char *json_wire_enc;
   PGresult *result;
   int ret;
 
-  json_wire_enc = json_dumps (deposit->wire, JSON_COMPACT);
   {
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
@@ -1643,9 +1641,8 @@ postgres_insert_deposit (void *cls,
       TALER_PQ_query_param_auto_from_type (&deposit->h_contract),
       TALER_PQ_query_param_auto_from_type (&deposit->h_wire),
       TALER_PQ_query_param_auto_from_type (&deposit->csig),
-      TALER_PQ_query_param_fixed_size (json_wire_enc,
-                                       strlen (json_wire_enc)),
-      /* FIXME: refund_deadline, timestamp, deposit_fee and 'wire' details
+      TALER_PQ_query_param_json (deposit->wire),
+      /* FIXME: refund_deadline, timestamp, deposit_fee
          not stored! #3826 */
       TALER_PQ_query_param_end
     };
@@ -1663,7 +1660,6 @@ postgres_insert_deposit (void *cls,
     ret = GNUNET_OK;
   }
   PQclear (result);
-  GNUNET_free_non_null (json_wire_enc);
   return ret;
 }
 
@@ -2684,9 +2680,6 @@ postgres_get_coin_transactions (void *cls,
     for (i = 0; i < nrows; i++)
     {
       struct TALER_MINTDB_Deposit *deposit;
-      json_error_t json_error;
-      void *json_wire_enc;
-      size_t json_wire_enc_size;
 
       deposit = GNUNET_new (struct TALER_MINTDB_Deposit);
       {
@@ -2704,9 +2697,8 @@ postgres_get_coin_transactions (void *cls,
                                                &deposit->h_contract),
           TALER_PQ_result_spec_auto_from_type ("h_wire",
                                                &deposit->h_wire),
-          TALER_PQ_result_spec_variable_size ("wire",
-                                              &json_wire_enc,
-                                              &json_wire_enc_size), /* FIXME: #3833 */
+          TALER_PQ_result_spec_json ("wire",
+                                     &deposit->wire),
           /**  FIXME: , #3820
            * TALER_PQ_result_spec_auto_from_type ("timestamp", &deposit->timestamp),
            * TALER_PQ_result_spec_auto_from_type ("refund_deadline", &deposit->refund_deadline),
@@ -2726,17 +2718,6 @@ postgres_get_coin_transactions (void *cls,
           goto cleanup;
         }
       }
-      deposit->wire = json_loads (json_wire_enc,
-                                  JSON_REJECT_DUPLICATES,
-                                  &json_error); /* FIXME: #3833 */
-      if (NULL == deposit->wire)
-      {
-        TALER_json_warn (json_error);
-        GNUNET_free (json_wire_enc);
-        GNUNET_free (deposit);
-        goto cleanup;
-      }
-      GNUNET_free (json_wire_enc);
       tl = GNUNET_new (struct TALER_MINTDB_TransactionList);
       tl->next = head;
       tl->type = TALER_MINTDB_TT_DEPOSIT;
