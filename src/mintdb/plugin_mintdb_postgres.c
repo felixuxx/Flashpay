@@ -2957,7 +2957,6 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
     TALER_LOG_ERROR ("Cannnot create pthread key.\n");
     return NULL;
   }
-  /* FIXME: use configuration section with "postgres" in its name. #3835 */
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "mintdb-postgres",
