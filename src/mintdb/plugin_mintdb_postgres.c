@@ -2960,7 +2960,7 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   /* FIXME: use configuration section with "postgres" in its name. #3835 */
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "mint",
+                                             "mintdb-postgres",
                                              "db_conn_str",
                                              &pg->connection_cfg_str))
   {

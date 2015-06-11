@@ -8,7 +8,7 @@ taler.conf \- Taler configuration file.
 
 .SH DESCRIPTION
 
-The basic structure of the configuration file is the following.  The file is split into sections.  Every section begins with "[SECTIONNAME]" and contains a number of options of the form "OPTION=VALUE".  Empty lines and lines beginning with a "#" are treated as comments.  
+The basic structure of the configuration file is the following.  The file is split into sections.  Every section begins with "[SECTIONNAME]" and contains a number of options of the form "OPTION=VALUE".  Empty lines and lines beginning with a "#" are treated as comments.
 
 .SH MINT OPTIONS
 
@@ -19,11 +19,18 @@ The following options are from the "[mint]" section and used by most mint tools:
 .IP WIREFORMAT
     Format used for wire transfers to the merchant, i.e. "SEPA".
 .IP DB
-    How to access the database, i.e. "postgres:///taler"
+    Plugin to use for the database, i.e. "postgres"
 .IP PORT
     Port on which the HTTP server listens, i.e. 8080.
 .IP MASTER_PUBLIC_KEY
     Crockford Base32-encoded master public key, public version of the mint\'s long\-time offline signing key.
+
+.SH Postgres database options
+
+The following options must be in section "[mintdb-postgres]":
+
+.IP DB_CONN_STR
+    How to access the database, i.e. "postgres:///taler" to use the "taler" database. Testcases use "talercheck".
 
 .SH COIN OPTIONS
 
