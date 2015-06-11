@@ -2548,34 +2548,89 @@ postgres_get_melt_commitment (void *cls,
                               struct TALER_MINTDB_Session *session,
                               const struct GNUNET_HashCode *session_hash)
 {
-  // FIXME: needs to be implemented! (#3832)
-#if 0
+  struct TALER_MINTDB_RefreshSession rs;
   struct TALER_MINTDB_MeltCommitment *mc;
-  uint16_t k;
-  uint16_t i;
+  uint16_t cnc_index;
+  unsigned int i;
 
+  if (GNUNET_OK !=
+      postgres_get_refresh_session (cls,
+                                    session,
+                                    session_hash,
+                                    &rs))
+    return NULL;
   mc = GNUNET_new (struct TALER_MINTDB_MeltCommitment);
-  mc->num_newcoins = ;
-  mc->num_oldcoins = ;
-  mc->denom_pubs = GNUNET_malloc (mc->num_newcoins *
-                                  sizeof (struct TALER_DenominationPublicKey));
+  mc->num_newcoins = rs.num_newcoins;
+  mc->num_oldcoins = rs.num_oldcoins;
   mc->melts = GNUNET_malloc (mc->num_oldcoins *
                              sizeof (struct TALER_MINTDB_RefreshMelt));
-  for (k=0;k<TALER_CNC_KAPPA;k++)
+  for (i=0;i<mc->num_oldcoins;i++)
+    if (GNUNET_OK !=
+        postgres_get_refresh_melt (cls,
+                                   session,
+                                   session_hash,
+                                   (uint16_t) i,
+                                   &mc->melts[i]))
+      goto cleanup;
+  mc->denom_pubs = GNUNET_malloc (mc->num_newcoins *
+                                  sizeof (struct TALER_DenominationPublicKey));
+  if (GNUNET_OK !=
+      postgres_get_refresh_order (cls,
+                                  session,
+                                  session_hash,
+                                  mc->num_newcoins,
+                                  mc->denom_pubs))
+    goto cleanup;
+  for (cnc_index=0;cnc_index<TALER_CNC_KAPPA;cnc_index++)
   {
-    mc->commit_coins[k] = GNUNET_malloc (mc->num_newcoins *
-                                         sizeof (struct TALER_MINTDB_RefreshCommitCoin));
-    for (i=0;i<mc->num_newcoins;i++)
-    {
-      mc->commit_coins[k][i].refresh_link = ; // malloc...
-      mc->commit_coins[k][i].coin_ev = ; // malloc...
-    }
-    mc->commit_links[k] = GNUNET_malloc (mc->num_oldcoins *
-                                         sizeof (struct TALER_MINTDB_RefreshCommitLinkP));
+    mc->commit_coins[cnc_index]
+      = GNUNET_malloc (mc->num_newcoins *
+                       sizeof (struct TALER_MINTDB_RefreshCommitCoin));
+    if (GNUNET_OK !=
+        postgres_get_refresh_commit_coins (cls,
+                                           session,
+                                           session_hash,
+                                           cnc_index,
+                                           mc->num_newcoins,
+                                           mc->commit_coins[cnc_index]))
+      goto cleanup;
+    mc->commit_links[cnc_index]
+      = GNUNET_malloc (mc->num_oldcoins *
+                       sizeof (struct TALER_MINTDB_RefreshCommitLinkP));
+    if (GNUNET_OK !=
+        postgres_get_refresh_commit_links (cls,
+                                           session,
+                                           session_hash,
+                                           cnc_index,
+                                           mc->num_oldcoins,
+                                           mc->commit_links[cnc_index]))
+      goto cleanup;
   }
-
   return mc;
-#endif
+
+ cleanup:
+  GNUNET_free_non_null (mc->melts);
+  if (NULL != mc->denom_pubs)
+  {
+    for (i=0;i<(unsigned int) mc->num_newcoins;i++)
+      if (NULL != mc->denom_pubs[i].rsa_public_key)
+        GNUNET_CRYPTO_rsa_public_key_free (mc->denom_pubs[i].rsa_public_key);
+    GNUNET_free (mc->denom_pubs);
+  }
+  for (cnc_index=0;cnc_index<TALER_CNC_KAPPA;cnc_index++)
+  {
+    if (NULL != mc->commit_coins[cnc_index])
+    {
+      for (i=0;i<(unsigned int) mc->num_newcoins;i++)
+      {
+        GNUNET_free_non_null (mc->commit_coins[cnc_index][i].refresh_link);
+        GNUNET_free_non_null (mc->commit_coins[cnc_index][i].coin_ev);
+      }
+      GNUNET_free (mc->commit_coins[cnc_index]);
+    }
+    GNUNET_free_non_null (mc->commit_links[cnc_index]);
+  }
+  GNUNET_free (mc);
   return NULL;
 }
 
@@ -2931,6 +2986,7 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->free_reserve_history = &common_free_reserve_history;
   plugin->have_deposit = &postgres_have_deposit;
   plugin->insert_deposit = &postgres_insert_deposit;
+
   plugin->get_refresh_session = &postgres_get_refresh_session;
   plugin->create_refresh_session = &postgres_create_refresh_session;
   plugin->get_known_coin = &postgres_get_known_coin;
@@ -2943,6 +2999,7 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->get_refresh_commit_coins = &postgres_get_refresh_commit_coins;
   plugin->insert_refresh_commit_links = &postgres_insert_refresh_commit_links;
   plugin->get_refresh_commit_links = &postgres_get_refresh_commit_links;
+
   plugin->get_melt_commitment = &postgres_get_melt_commitment;
   plugin->free_melt_commitment = &common_free_melt_commitment;
   plugin->insert_refresh_out = &postgres_insert_refresh_out;
