@@ -1716,8 +1716,8 @@ postgres_get_refresh_session (void *cls,
                                    &refresh_session->num_oldcoins),
       TALER_PQ_result_spec_uint16 ("num_newcoins",
                                    &refresh_session->num_newcoins),
-      TALER_PQ_result_spec_auto_from_type ("noreveal_index",
-                                           &refresh_session->noreveal_index),
+      TALER_PQ_result_spec_uint16 ("noreveal_index",
+                                   &refresh_session->noreveal_index),
       TALER_PQ_result_spec_end
     };
     if (GNUNET_OK !=
