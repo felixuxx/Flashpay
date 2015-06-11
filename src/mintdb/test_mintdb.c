@@ -334,7 +334,7 @@ run (void *cls,
   amount.value--;
   amount.fraction--;
   FAILIF (GNUNET_OK !=
-          plugin->insert_collectable_blindcoin (plugin->cls,
+          plugin->insert_withdraw_info (plugin->cls,
                                                 session,
                                                 &h_blind,
                                                 amount,
@@ -347,7 +347,7 @@ run (void *cls,
                          amount.currency,
                          expiry.abs_value_us));
   FAILIF (GNUNET_YES !=
-          plugin->get_collectable_blindcoin (plugin->cls,
+          plugin->get_withdraw_info (plugin->cls,
                                              session,
                                              &h_blind,
                                              &cbc2));

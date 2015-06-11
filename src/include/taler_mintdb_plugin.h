@@ -743,7 +743,7 @@ struct TALER_MINTDB_Plugin
    *         #GNUNET_YES on success
    */
   int
-  (*get_collectable_blindcoin) (void *cls,
+  (*get_withdraw_info) (void *cls,
                                 struct TALER_MINTDB_Session *sesssion,
                                 const struct GNUNET_HashCode *h_blind,
                                 struct TALER_MINTDB_CollectableBlindcoin *collectable);
@@ -767,7 +767,7 @@ struct TALER_MINTDB_Plugin
    *         #GNUNET_YES on success
    */
   int
-  (*insert_collectable_blindcoin) (void *cls,
+  (*insert_withdraw_info) (void *cls,
                                    struct TALER_MINTDB_Session *sesssion,
                                    const struct GNUNET_HashCode *h_blind,
                                    struct TALER_Amount withdraw,
@@ -1106,7 +1106,7 @@ struct TALER_MINTDB_Plugin
    * @return #GNUNET_OK on success
    */
   int
-  (*insert_refresh_collectable) (void *cls,
+  (*insert_refresh_out) (void *cls,
                                  struct TALER_MINTDB_Session *sesssion,
                                  const struct GNUNET_HashCode *session_hash,
                                  uint16_t newcoin_index,

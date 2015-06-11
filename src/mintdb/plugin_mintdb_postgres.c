@@ -193,7 +193,6 @@ postgres_create_tables (void *cls,
   {
     TALER_LOG_ERROR ("Database connection failed: %s\n",
                      PQerrorMessage (conn));
-    GNUNET_break (0);
     PQfinish (conn);
     return GNUNET_SYSERR;
   }
@@ -267,13 +266,12 @@ postgres_create_tables (void *cls,
      key, as (broken) clients that use a non-random coin and blinding factor
      should fail to even withdraw, as otherwise the coins will fail to deposit
      (as they really must be unique). */
-  /* TODO: maybe rename to "reserves_out"? #3810
-     TODO: maybe add withdraw fee and amount_with_fee explicitly to table,
+  /* TODO: maybe add withdraw fee and amount_with_fee explicitly to table,
            so we can init those fields on select? #3825
      TODO: maybe add timestamp of when the operation was performed, so we
            can influence the reserves' expiration_date not just based on
            incoming but also based on outgoing transactions? */
-    SQLEXEC ("CREATE TABLE IF NOT EXISTS collectable_blindcoins"
+    SQLEXEC ("CREATE TABLE IF NOT EXISTS reserves_out"
            "(h_blind_ev BYTEA PRIMARY KEY"
            ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
            ",denom_sig BYTEA NOT NULL"
@@ -281,8 +279,8 @@ postgres_create_tables (void *cls,
            ",reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)"
            ");");
   /* Index blindcoins(reserve_pub) for get_reserves_blindcoins statement */
-  SQLEXEC_INDEX ("CREATE INDEX collectable_blindcoins_reserve_pub_index ON"
-		 " collectable_blindcoins (reserve_pub)");
+  SQLEXEC_INDEX ("CREATE INDEX reserves_out_reserve_pub_index ON"
+		 " reserves_out (reserve_pub)");
   /* Table with coins that have been (partially) spent, used to track
      coin information only once.
      TODO: maybe eliminate, this might be over-normalization (#3811) */
@@ -369,9 +367,8 @@ postgres_create_tables (void *cls,
           ")");
   /* Table with the signatures over coins generated during a refresh
      operation. Needed to answer /refresh/link queries later.  Stores
-     the coin signatures under the respective session hash and index.
-     NOTE: maybe rename the table to explain better what it is for? (#3810) */
-  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_collectable "
+     the coin signatures under the respective session hash and index. */
+  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_out "
           "(session_hash BYTEA NOT NULL CHECK(LENGTH(session_hash)=64) REFERENCES refresh_sessions (session_hash) "
           ",newcoin_index INT2 NOT NULL"
           ",ev_sig BYTEA NOT NULL"
@@ -518,15 +515,15 @@ postgres_prepare (PGconn *db_conn)
            " FROM reserves_in"
            " WHERE reserve_pub=$1",
            1, NULL);
-  /* Used in #postgres_insert_collectable_blindcoin() to store
+  /* Used in #postgres_insert_withdraw_info() to store
      the signature of a blinded coin with the blinded coin's
      details before returning it during /withdraw/sign. We store
      the coin's denomination information (public key, signature)
      and the blinded message as well as the reserve that the coin
      is being withdrawn from and the signature of the message
      authorizing the withdrawal. */
-  PREPARE ("insert_collectable_blindcoin",
-           "INSERT INTO collectable_blindcoins "
+  PREPARE ("insert_withdraw_info",
+           "INSERT INTO reserves_out "
            "(h_blind_ev"
            ",denom_pub"
            ",denom_sig"
@@ -535,17 +532,17 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5);",
            5, NULL);
-  /* Used in #postgres_get_collectable_blindcoin() to
+  /* Used in #postgres_get_withdraw_info() to
      locate the response for a /withdraw/sign request
      using the hash of the blinded message.  Used to
      make sure /withdraw/sign requests are idempotent. */
-  PREPARE ("get_collectable_blindcoin",
+  PREPARE ("get_withdraw_info",
            "SELECT"
            " denom_pub"
            ",denom_sig"
            ",reserve_sig"
            ",reserve_pub"
-           " FROM collectable_blindcoins"
+           " FROM reserves_out"
            " WHERE h_blind_ev=$1",
            1, NULL);
   /* Used during #postgres_get_reserve_history() to
@@ -558,7 +555,7 @@ postgres_prepare (PGconn *db_conn)
            ",denom_pub"
            ",denom_sig"
            ",reserve_sig"
-           " FROM collectable_blindcoins"
+           " FROM reserves_out"
            " WHERE reserve_pub=$1;",
            1, NULL);
   /* Used in #postgres_get_refresh_session() to fetch
@@ -649,11 +646,11 @@ postgres_prepare (PGconn *db_conn)
            2, NULL);
   /* FIXME: should have a way to query the 'refresh_melts' by
      coin public key (#3813) */
-  /* FIXME: 'get_refresh_collectable' is not used anywhere!
+  /* FIXME: 'get_refresh_out' is not used anywhere!
      Should be needed for /refresh/link at least. */
-  PREPARE ("get_refresh_collectable",
+  PREPARE ("get_refresh_out",
            "SELECT ev_sig "
-           "FROM refresh_collectable "
+           "FROM refresh_out "
            "WHERE session_hash=$1 AND newcoin_index=$2",
            2, NULL);
   /* Used in #postgres_insert_refresh_commit_links() to
@@ -756,10 +753,10 @@ postgres_prepare (PGconn *db_conn)
            " WHERE coin_pub=$1",
            1, NULL);
 
-  /* Used in #postgres_insert_refresh_collectable() to store the
+  /* Used in #postgres_insert_refresh_out() to store the
      generated signature(s) for future requests, i.e. /refresh/link */
-  PREPARE ("insert_refresh_collectable",
-           "INSERT INTO refresh_collectable "
+  PREPARE ("insert_refresh_out",
+           "INSERT INTO refresh_out "
            "(session_hash"
            ",newcoin_index"
            ",ev_sig"
@@ -776,7 +773,7 @@ postgres_prepare (PGconn *db_conn)
            "     JOIN refresh_order ro USING (session_hash)"
            "     JOIN refresh_commit_coin rcc USING (session_hash)"
            "     JOIN refresh_sessions rs USING (session_hash)"
-           "     JOIN refresh_collectable rc USING (session_hash)"
+           "     JOIN refresh_out rc USING (session_hash)"
            " WHERE rm.coin_pub=$1"
            "  AND ro.newcoin_index=rcc.newcoin_index"
            "  AND ro.newcoin_index=rc.newcoin_index"
@@ -1275,7 +1272,7 @@ postgres_reserves_in_insert (void *cls,
  *         #GNUNET_YES on success
  */
 static int
-postgres_get_collectable_blindcoin (void *cls,
+postgres_get_withdraw_info (void *cls,
                                     struct TALER_MINTDB_Session *session,
                                     const struct GNUNET_HashCode *h_blind,
                                     struct TALER_MINTDB_CollectableBlindcoin *collectable)
@@ -1291,7 +1288,7 @@ postgres_get_collectable_blindcoin (void *cls,
 
   ret = GNUNET_SYSERR;
   result = TALER_PQ_exec_prepared (session->conn,
-                                   "get_collectable_blindcoin",
+                                   "get_withdraw_info",
                                    params);
 
   if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -1351,7 +1348,7 @@ postgres_get_collectable_blindcoin (void *cls,
  *         #GNUNET_YES on success
  */
 static int
-postgres_insert_collectable_blindcoin (void *cls,
+postgres_insert_withdraw_info (void *cls,
                                        struct TALER_MINTDB_Session *session,
                                        const struct GNUNET_HashCode *h_blind,
                                        struct TALER_Amount withdraw,
@@ -1376,7 +1373,7 @@ postgres_insert_collectable_blindcoin (void *cls,
     return GNUNET_SYSERR;
   }
   result = TALER_PQ_exec_prepared (session->conn,
-                                   "insert_collectable_blindcoin",
+                                   "insert_withdraw_info",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
@@ -2456,11 +2453,11 @@ postgres_get_melt_commitment (void *cls,
  * @return #GNUNET_OK on success
  */
 static int
-postgres_insert_refresh_collectable (void *cls,
-                                     struct TALER_MINTDB_Session *session,
-                                     const struct GNUNET_HashCode *session_hash,
-                                     uint16_t newcoin_index,
-                                     const struct TALER_DenominationSignature *ev_sig)
+postgres_insert_refresh_out (void *cls,
+                             struct TALER_MINTDB_Session *session,
+                             const struct GNUNET_HashCode *session_hash,
+                             uint16_t newcoin_index,
+                             const struct TALER_DenominationSignature *ev_sig)
 {
   PGresult *result;
   struct TALER_PQ_QueryParam params[] = {
@@ -2471,7 +2468,7 @@ postgres_insert_refresh_collectable (void *cls,
   };
 
   result = TALER_PQ_exec_prepared (session->conn,
-                                   "insert_refresh_collectable",
+                                   "insert_refresh_out",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
@@ -2785,8 +2782,8 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->insert_denomination = &postgres_insert_denomination;
   plugin->reserve_get = &postgres_reserve_get;
   plugin->reserves_in_insert = &postgres_reserves_in_insert;
-  plugin->get_collectable_blindcoin = &postgres_get_collectable_blindcoin;
-  plugin->insert_collectable_blindcoin = &postgres_insert_collectable_blindcoin;
+  plugin->get_withdraw_info = &postgres_get_withdraw_info;
+  plugin->insert_withdraw_info = &postgres_insert_withdraw_info;
   plugin->get_reserve_history = &postgres_get_reserve_history;
   plugin->free_reserve_history = &common_free_reserve_history;
   plugin->have_deposit = &postgres_have_deposit;
@@ -2805,7 +2802,7 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->get_refresh_commit_links = &postgres_get_refresh_commit_links;
   plugin->get_melt_commitment = &postgres_get_melt_commitment;
   plugin->free_melt_commitment = &common_free_melt_commitment;
-  plugin->insert_refresh_collectable = &postgres_insert_refresh_collectable;
+  plugin->insert_refresh_out = &postgres_insert_refresh_out;
   plugin->get_link_data_list = &postgres_get_link_data_list;
   plugin->free_link_data_list = &common_free_link_data_list;
   plugin->get_transfer = &postgres_get_transfer;

@@ -293,7 +293,7 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
-  res = TMH_plugin->get_collectable_blindcoin (TMH_plugin->cls,
+  res = TMH_plugin->get_withdraw_info (TMH_plugin->cls,
                                                session,
                                                &h_blind,
                                                &collectable);
@@ -452,7 +452,7 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
                       &collectable.h_coin_envelope);
   collectable.reserve_sig = *signature;
   if (GNUNET_OK !=
-      TMH_plugin->insert_collectable_blindcoin (TMH_plugin->cls,
+      TMH_plugin->insert_withdraw_info (TMH_plugin->cls,
                                                 session,
                                                 &h_blind,
                                                 amount_required,
@@ -1026,7 +1026,7 @@ refresh_mint_coin (struct MHD_Connection *connection,
     return ev_sig;
   }
   if (GNUNET_OK !=
-      TMH_plugin->insert_refresh_collectable (TMH_plugin->cls,
+      TMH_plugin->insert_refresh_out (TMH_plugin->cls,
                                               session,
                                               session_hash,
                                               coin_off,
