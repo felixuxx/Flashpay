@@ -174,8 +174,8 @@ TALER_PQ_query_param_json (const json_t *x)
  */
 struct TALER_PQ_ResultSpec
 TALER_PQ_result_spec_variable_size (const char *name,
-			  void **dst,
-			  size_t *sptr)
+                                    void **dst,
+                                    size_t *sptr)
 {
   struct TALER_PQ_ResultSpec res =
     { TALER_PQ_RF_VARSIZE_BLOB, (void *) (dst), 0, name, sptr };

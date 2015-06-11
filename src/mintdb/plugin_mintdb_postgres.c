@@ -510,8 +510,8 @@ postgres_prepare (PGconn *db_conn)
            " balance_val"
            ",balance_frac"
            ",balance_curr"
-           ",execution_date" /* NOTE: not used (yet), #3817 */
-           ",details"         /* NOTE: not used (yet), #3817 */
+           ",execution_date"
+           ",details"
            " FROM reserves_in"
            " WHERE reserve_pub=$1",
            1, NULL);
@@ -1150,7 +1150,7 @@ postgres_reserves_in_insert (void *cls,
                              struct TALER_MINTDB_Session *session,
                              const struct TALER_ReservePublicKeyP *reserve_pub,
                              const struct TALER_Amount *balance,
-                             const char *details)
+                             const json_t *details)
 {
   PGresult *result;
   int reserve_exists;
@@ -1212,7 +1212,7 @@ postgres_reserves_in_insert (void *cls,
     struct TALER_PQ_QueryParam params[] = {
       TALER_PQ_query_param_auto_from_type (&reserve.pub),
       TALER_PQ_query_param_amount (balance),
-      TALER_PQ_query_param_fixed_size (details, strlen (details)),
+      TALER_PQ_query_param_json (details),
       TALER_PQ_query_param_absolute_time (&now),
       TALER_PQ_query_param_end
     };
@@ -1490,29 +1490,29 @@ postgres_get_reserve_history (void *cls,
                   "Asked to fetch history for an unknown reserve.\n");
       goto cleanup;
     }
-    /* FIXME: maybe also use the 'expiration_date' and 'details'
-       values and return those as well? While right now they
-       are unnecessary, the 'expiration_date' should become the
-       original transfer date, and then it will be useful;
-       similarly, 'details' might become useful for reserve refunds
-       in the future. (#3817) */
     while (0 < rows)
     {
       bt = GNUNET_new (struct TALER_MINTDB_BankTransfer);
-      /* FIXME: use higher-level libtalerpq API here? */
-      if (GNUNET_OK != TALER_PQ_extract_amount (result,
-                                                --rows,
-                                                "balance_val",
-                                                "balance_frac",
-                                                "balance_curr",
-                                                &bt->amount))
       {
-        GNUNET_free (bt);
-        GNUNET_break (0);
-        goto cleanup;
+        struct TALER_PQ_ResultSpec rs[] = {
+          TALER_PQ_result_spec_amount ("balance",
+                                       &bt->amount),
+          TALER_PQ_result_spec_absolute_time ("execution_date",
+                                              &bt->execution_date),
+          TALER_PQ_result_spec_json ("details",
+                                     &bt->wire),
+          TALER_PQ_result_spec_end
+        };
+        if (GNUNET_YES !=
+            TALER_PQ_extract_result (result, rs, --rows))
+        {
+          GNUNET_break (0);
+          GNUNET_free (bt);
+          PQclear (result);
+          goto cleanup;
+        }
       }
       bt->reserve_pub = *reserve_pub;
-      /* FIXME: bt->wire not initialized! (#3817) */
       if (NULL != rh_tail)
       {
         rh_tail->next = GNUNET_new (struct TALER_MINTDB_ReserveHistory);

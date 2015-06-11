@@ -243,7 +243,8 @@ run (void *cls,
   struct TALER_MINTDB_CollectableBlindcoin *withdraw;
   struct TALER_MINTDB_Deposit deposit;
   struct TALER_MINTDB_Deposit deposit2;
-  struct json_t *wire;
+  json_t *wire;
+  json_t *just;
   const char * const json_wire_str =
       "{ \"type\":\"SEPA\", \
 \"IBAN\":\"DE67830654080004822650\",                    \
@@ -285,24 +286,28 @@ run (void *cls,
   amount.fraction = 1;
   strcpy (amount.currency, CURRENCY);
   result = 4;
+  just = json_loads ("{ \"justification\":\"1\" }", 0, NULL);
   FAILIF (GNUNET_OK !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
                                       &reserve_pub,
                                       &amount,
-				      "justification 1"));
+				      just));
+  json_decref (just);
   FAILIF (GNUNET_OK !=
           check_reserve (session,
                          &reserve_pub,
                          amount.value,
                          amount.fraction,
                          amount.currency));
+  just = json_loads ("{ \"justification\":\"2\" }", 0, NULL);
   FAILIF (GNUNET_OK !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
                                       &reserve_pub,
                                       &amount,
-				      "justification 2"));
+				      just));
+  json_decref (just);
   FAILIF (GNUNET_OK !=
           check_reserve (session,
                          &reserve_pub,
@@ -368,7 +373,7 @@ run (void *cls,
       FAILIF (1 != bt->amount.value);
       FAILIF (1 != bt->amount.fraction);
       FAILIF (0 != strcmp (CURRENCY, bt->amount.currency));
-      FAILIF (NULL != bt->wire); /* FIXME: write wire details to db */
+      FAILIF (NULL == bt->wire);
       break;
     case TALER_MINTDB_RO_WITHDRAW_COIN:
       withdraw = rh_head->details.withdraw;

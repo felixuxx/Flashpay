@@ -43,6 +43,13 @@ struct TALER_MINTDB_BankTransfer
   struct TALER_Amount amount;
 
   /**
+   * When did the mint receive the incoming transaction?
+   * (This is the execution date of the mint's database,
+   * the execution date of the bank should be in @e wire).
+   */
+  struct GNUNET_TIME_Absolute execution_date;
+
+  /**
    * Detailed wire information about the transaction.
    */
   json_t *wire;
@@ -724,7 +731,7 @@ struct TALER_MINTDB_Plugin
                          struct TALER_MINTDB_Session *db,
                          const struct TALER_ReservePublicKeyP *reserve_pub,
                          const struct TALER_Amount *balance,
-                         const char *details);
+                         const json_t *details);
 
 
   /**

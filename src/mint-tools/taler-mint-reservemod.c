@@ -22,6 +22,7 @@
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <libpq-fe.h>
+#include <jansson.h>
 #include "taler_mintdb_plugin.h"
 
 /**
@@ -54,6 +55,8 @@ main (int argc, char *const *argv)
   char *add_str = NULL;
   struct TALER_Amount add_value;
   char *details = NULL;
+  json_t *jdetails;
+  json_error_t error;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_MINTDB_Session *session;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
@@ -157,11 +160,24 @@ main (int argc, char *const *argv)
              "Failed to initialize DB session\n");
     goto cleanup;
   }
+  jdetails = json_loads (details,
+                         JSON_REJECT_DUPLICATES,
+                         &error);
+  if (NULL == jdetails)
+  {
+    fprintf (stderr,
+             "Failed to parse JSON transaction details `%s': %s (%s)\n",
+             details,
+             error.text,
+             error.source);
+    goto cleanup;
+  }
   ret = plugin->reserves_in_insert (plugin->cls,
 				    session,
 				    &reserve_pub,
 				    &add_value,
-				    details);
+				    jdetails);
+  json_decref (jdetails);
   if (GNUNET_SYSERR == ret)
   {
     fprintf (stderr,
