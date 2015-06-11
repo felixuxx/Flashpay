@@ -695,7 +695,7 @@ postgres_prepare (PGconn *db_conn)
            " WHERE coin_pub=$1",
            1, NULL);
 
-  /* FIXME: 'get_refresh_out' is not used anywhere!
+  /* FIXME: 'get_refresh_out' is not used anywhere! (#3818)
      Should be needed for /refresh/link at least. */
   PREPARE ("get_refresh_out",
            "SELECT ev_sig "
@@ -828,7 +828,7 @@ postgres_prepare (PGconn *db_conn)
            "($1, $2, $3)",
            3, NULL);
 #if 0
-  /* FIXME: not complete yet */
+  /* FIXME: not complete yet -- #3818... */
   /* Used in #postgres_get_link_data_list().
      FIXME: document how this is supposed to work... */
   PREPARE ("get_link",
@@ -848,7 +848,7 @@ postgres_prepare (PGconn *db_conn)
            "     ) ",
            1, NULL);
   /* Used in #postgres_get_transfer().
-     FIXME: document how this is supposed to work... */
+     FIXME: document how this is supposed to work... -- #3818 */
   PREPARE ("get_transfer",
            "SELECT transfer_pub,link_secret_enc"
            " FROM refresh_melt rm"
@@ -2713,9 +2713,11 @@ postgres_get_link_data_list (void *cls,
     TALER_PQ_query_param_auto_from_type (coin_pub),
     TALER_PQ_query_param_end
   };
-  PGresult *result = TALER_PQ_exec_prepared (session->conn,
-                                             "get_link",
-                                             params);
+  PGresult *result;
+
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "get_link",
+                                   params);
 
   ldl = NULL;
   if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -2739,9 +2741,13 @@ postgres_get_link_data_list (void *cls,
     void *ld_buf;
     size_t ld_buf_size;
     struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_variable_size ("link_vector_enc", &ld_buf, &ld_buf_size),
-      TALER_PQ_result_spec_rsa_public_key ("denom_pub", &denom_pub),
-      TALER_PQ_result_spec_rsa_signature ("ev_sig", &sig),
+      TALER_PQ_result_spec_variable_size ("link_vector_enc",
+                                          &ld_buf,
+                                          &ld_buf_size),
+      TALER_PQ_result_spec_rsa_public_key ("denom_pub",
+                                           &denom_pub),
+      TALER_PQ_result_spec_rsa_signature ("ev_sig",
+                                          &sig),
       TALER_PQ_result_spec_end
     };
 
