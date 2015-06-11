@@ -23,3 +23,5 @@ talerinclude_HEADERS = \
   taler_signatures.h
 
 endif
+
+EXTRA_DIST = gauger.h
