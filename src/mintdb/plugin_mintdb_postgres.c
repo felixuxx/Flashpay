@@ -330,7 +330,7 @@ postgres_create_tables (void *cls,
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_order "
           "(session_hash BYTEA NOT NULL CHECK (LENGTH(session_hash)=64) REFERENCES refresh_sessions (session_hash)"
           ",newcoin_index INT2 NOT NULL "
-          ",denom_pub BYTEA NOT NULL "
+          ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",PRIMARY KEY (session_hash, newcoin_index)"
           ")");
 
