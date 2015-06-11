@@ -2095,33 +2095,59 @@ postgres_insert_refresh_order (void *cls,
                                uint16_t num_newcoins,
                                const struct TALER_DenominationPublicKey *denom_pubs)
 {
-  // FIXME: check logic: was written for just one COIN! (#3830)
-  PGresult *result;
+  unsigned int i;
 
+  for (i=0;i<(unsigned int) num_newcoins;i++)
   {
-    struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_query_param_uint16 (&num_newcoins),
-      TALER_PQ_query_param_auto_from_type (session_hash),
-      TALER_PQ_query_param_rsa_public_key (denom_pubs->rsa_public_key),
-      TALER_PQ_query_param_end
-    };
-    result = TALER_PQ_exec_prepared (session->conn,
-                                     "insert_refresh_order",
-                                     params);
-  }
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result);
+    uint16_t newcoin_off = (uint16_t) i;
+    PGresult *result;
+
+    {
+      struct TALER_PQ_QueryParam params[] = {
+        TALER_PQ_query_param_uint16 (&newcoin_off),
+        TALER_PQ_query_param_auto_from_type (session_hash),
+        TALER_PQ_query_param_rsa_public_key (denom_pubs->rsa_public_key),
+        TALER_PQ_query_param_end
+      };
+      result = TALER_PQ_exec_prepared (session->conn,
+                                       "insert_refresh_order",
+                                       params);
+    }
+    if (PGRES_COMMAND_OK != PQresultStatus (result))
+    {
+      BREAK_DB_ERR (result);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    if (0 != strcmp ("1", PQcmdTuples (result)))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
     PQclear (result);
-    return GNUNET_SYSERR;
   }
-  if (0 != strcmp ("1", PQcmdTuples (result)))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
   return GNUNET_OK;
+}
+
+
+/**
+ * We allocated some @a denom_pubs information, but now need
+ * to abort. Free allocated memory.
+ *
+ * @param denom_pubs data to free (but not the array itself)
+ * @param denom_pubs_len length of @a denom_pubs array
+ */
+static void
+free_dpk_result (struct TALER_DenominationPublicKey *denom_pubs,
+                 unsigned int denom_pubs_len)
+{
+  unsigned int i;
+
+  for (i=0;i<denom_pubs_len;i++)
+  {
+    GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[i].rsa_public_key);
+    denom_pubs[i].rsa_public_key = NULL;
+  }
 }
 
 
@@ -2144,44 +2170,58 @@ postgres_get_refresh_order (void *cls,
                             uint16_t num_newcoins,
                             struct TALER_DenominationPublicKey *denom_pubs)
 {
-  // FIXME: check logic -- was written for just one coin! (#3830)
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (session_hash),
-    TALER_PQ_query_param_uint16 (&num_newcoins),
-    TALER_PQ_query_param_end
-  };
+  unsigned int i;
 
-  PGresult *result = TALER_PQ_exec_prepared (session->conn,
-                                             "get_refresh_order", params);
+  for (i=0;i<(unsigned int) num_newcoins;i++)
+  {
+    uint16_t newcoin_off = (uint16_t) i;
+    PGresult *result;
 
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
+    {
+      struct TALER_PQ_QueryParam params[] = {
+        TALER_PQ_query_param_auto_from_type (session_hash),
+        TALER_PQ_query_param_uint16 (&newcoin_off),
+        TALER_PQ_query_param_end
+      };
 
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    /* FIXME: may want to distinguish between different error cases! */
-    return GNUNET_SYSERR;
+      result = TALER_PQ_exec_prepared (session->conn,
+                                       "get_refresh_order",
+                                       params);
+    }
+    if (PGRES_TUPLES_OK != PQresultStatus (result))
+    {
+      BREAK_DB_ERR (result);
+      PQclear (result);
+      free_dpk_result (denom_pubs, i);
+      return GNUNET_SYSERR;
+    }
+    if (0 == PQntuples (result))
+    {
+      PQclear (result);
+      /* FIXME: may want to distinguish between different error cases! */
+      free_dpk_result (denom_pubs, i);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_assert (1 == PQntuples (result));
+    {
+      struct TALER_PQ_ResultSpec rs[] = {
+        TALER_PQ_result_spec_rsa_public_key ("denom_pub",
+                                             &denom_pubs[i].rsa_public_key),
+        TALER_PQ_result_spec_end
+      };
+      if (GNUNET_OK !=
+          TALER_PQ_extract_result (result, rs, 0))
+      {
+        PQclear (result);
+        GNUNET_break (0);
+        free_dpk_result (denom_pubs, i);
+        return GNUNET_SYSERR;
+      }
+      PQclear (result);
+    }
   }
-  GNUNET_assert (1 == PQntuples (result));
-  struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_rsa_public_key ("denom_pub", &denom_pubs->rsa_public_key),
-    TALER_PQ_result_spec_end
-  };
-  if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
-  {
-    PQclear (result);
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
   return GNUNET_OK;
 }
-
 
 
 /**
