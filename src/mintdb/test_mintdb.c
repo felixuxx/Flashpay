@@ -388,6 +388,7 @@ run (void *cls,
   }
   FAILIF (3 != cnt);
   /* Tests for deposits */
+  memset (&deposit, 0, sizeof (deposit));
   RND_BLK (&deposit.coin.coin_pub);
   deposit.coin.denom_pub = dkp->pub;
   deposit.coin.denom_sig = cbc.sig;
@@ -400,6 +401,8 @@ run (void *cls,
   deposit.transaction_id =
       GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
   deposit.amount_with_fee = amount;
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (CURRENCY, &deposit.deposit_fee));
   FAILIF (GNUNET_OK !=
           plugin->insert_deposit (plugin->cls,
                                   session, &deposit));

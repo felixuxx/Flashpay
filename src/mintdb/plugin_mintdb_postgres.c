@@ -248,7 +248,7 @@ postgres_create_tables (void *cls,
           ",balance_val INT8 NOT NULL"
           ",balance_frac INT4 NOT NULL"
           ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ",details VARCHAR NOT NULL "
+          ",details TEXT NOT NULL "
           ",execution_date INT8 NOT NULL"
           ",PRIMARY KEY (reserve_pub,details)"
           ");");
@@ -380,8 +380,7 @@ postgres_create_tables (void *cls,
      may not be unique if a wallet chooses not to refresh.  The
      resulting transaction ID should then be returned to the merchant
      and could be used by the mearchant for further inquriries about
-     the deposit's execution. (#3816);
-     Also, we may want to store more information (#3820) */
+     the deposit's execution. (#3816); */
   SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
           /* FIXME #3769: the following primary key may be too restrictive */
           "(coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
@@ -391,6 +390,11 @@ postgres_create_tables (void *cls,
           ",amount_with_fee_val INT8 NOT NULL"
           ",amount_with_fee_frac INT4 NOT NULL"
           ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",deposit_fee_val INT8 NOT NULL"
+          ",deposit_fee_frac INT4 NOT NULL"
+          ",deposit_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",timestamp INT8 NOT NULL"
+          ",refund_deadline INT8 NOT NULL"
           ",merchant_pub BYTEA NOT NULL CHECK (LENGTH(merchant_pub)=32)"
           ",h_contract BYTEA NOT NULL CHECK (LENGTH(h_contract)=64)"
           ",h_wire BYTEA NOT NULL CHECK (LENGTH(h_wire)=64)"
@@ -724,8 +728,7 @@ postgres_prepare (PGconn *db_conn)
            " WHERE session_hash=$1 AND cnc_index=$2 AND newcoin_index=$3",
            3, NULL);
   /* Store information about a /deposit the mint is to execute.
-     Used in #postgres_insert_deposit(); Note: we may want to
-     store more information (#3820)*/
+     Used in #postgres_insert_deposit(). */
   PREPARE ("insert_deposit",
            "INSERT INTO deposits "
            "(coin_pub"
@@ -735,14 +738,20 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
+           ",deposit_fee_val"
+           ",deposit_fee_frac"
+           ",deposit_fee_curr"
+           ",timestamp"
+           ",refund_deadline"
            ",merchant_pub"
            ",h_contract"
            ",h_wire"
            ",coin_sig"
            ",wire"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
-           12, NULL);
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
+           " $11, $12, $13, $14, $15, $16, $17);",
+           17, NULL);
   /* Fetch an existing deposit request, used to ensure idempotency
      during /deposit processing. Used in #postgres_have_deposit(). */
   PREPARE ("get_deposit",
@@ -751,6 +760,11 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val"     /* Note: not actually used (yet), #3819 */
            ",amount_with_fee_frac"    /* Note: not actually used (yet), #3819 */
            ",amount_with_fee_curr"    /* Note: not actually used (yet), #3819 */
+           ",deposit_fee_val"         /* Note: not actually used (yet), #3819 */
+           ",deposit_fee_frac"        /* Note: not actually used (yet), #3819 */
+           ",deposit_fee_curr"        /* Note: not actually used (yet), #3819 */
+           ",timestamp"               /* Note: not actually used (yet), #3819 */
+           ",refund_deadline"         /* Note: not actually used (yet), #3819 */
            ",h_contract"              /* Note: not actually used (yet), #3819 */
            ",h_wire"                  /* Note: not actually used (yet), #3819 */
            ",coin_sig"                /* Note: not actually used (yet), #3819 */
@@ -765,17 +779,22 @@ postgres_prepare (PGconn *db_conn)
      about how a coin has been spend with /deposit requests. */
   PREPARE ("get_deposit_with_coin_pub",
            "SELECT"
-           " denom_pub"            /* not used (yet), #3820 */
-           ",denom_sig"            /* not used (yet), #3820 */
+           " denom_pub"
+           ",denom_sig"
            ",transaction_id"
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
+           ",deposit_fee_val"
+           ",deposit_fee_frac"
+           ",deposit_fee_curr"
+           ",timestamp"
+           ",refund_deadline"
            ",merchant_pub"
            ",h_contract"
            ",h_wire"
            ",wire"
-           ",coin_sig"             /* not used (yet), #3820 */
+           ",coin_sig"
            " FROM deposits"
            " WHERE coin_pub=$1",
            1, NULL);
@@ -1671,13 +1690,14 @@ postgres_insert_deposit (void *cls,
       TALER_PQ_query_param_rsa_signature (deposit->coin.denom_sig.rsa_signature),
       TALER_PQ_query_param_auto_from_type (&deposit->transaction_id),
       TALER_PQ_query_param_amount (&deposit->amount_with_fee),
+      TALER_PQ_query_param_amount (&deposit->deposit_fee),
+      TALER_PQ_query_param_absolute_time (&deposit->timestamp),
+      TALER_PQ_query_param_absolute_time (&deposit->refund_deadline),
       TALER_PQ_query_param_auto_from_type (&deposit->merchant_pub),
       TALER_PQ_query_param_auto_from_type (&deposit->h_contract),
       TALER_PQ_query_param_auto_from_type (&deposit->h_wire),
       TALER_PQ_query_param_auto_from_type (&deposit->csig),
       TALER_PQ_query_param_json (deposit->wire),
-      /* FIXME: refund_deadline, timestamp, deposit_fee
-         not stored! #3826 */
       TALER_PQ_query_param_end
     };
     result = TALER_PQ_exec_prepared (session->conn,
@@ -2719,13 +2739,20 @@ postgres_get_coin_transactions (void *cls,
       deposit = GNUNET_new (struct TALER_MINTDB_Deposit);
       {
         struct TALER_PQ_ResultSpec rs[] = {
-          /* FIXME: deposit->coin needs to be initialized,
-             but 'coin_pub' from 'deposits' is not the (only) info we need here...
-             (#3820) */
+          TALER_PQ_result_spec_rsa_public_key ("denom_pub",
+                                               &deposit->coin.denom_pub.rsa_public_key),
+          TALER_PQ_result_spec_rsa_signature ("denom_sig",
+                                              &deposit->coin.denom_sig.rsa_signature),
           TALER_PQ_result_spec_uint64 ("transaction_id",
                                        &deposit->transaction_id),
-          TALER_PQ_result_spec_auto_from_type ("coin_sig",
-                                               &deposit->csig),
+          TALER_PQ_result_spec_amount ("amount_with_fee",
+                                       &deposit->amount_with_fee),
+          TALER_PQ_result_spec_amount ("deposit_fee",
+                                       &deposit->deposit_fee),
+          TALER_PQ_result_spec_absolute_time ("timestamp",
+                                              &deposit->timestamp),
+          TALER_PQ_result_spec_absolute_time ("refund_deadline",
+                                              &deposit->refund_deadline),
           TALER_PQ_result_spec_auto_from_type ("merchant_pub",
                                                &deposit->merchant_pub),
           TALER_PQ_result_spec_auto_from_type ("h_contract",
@@ -2734,14 +2761,8 @@ postgres_get_coin_transactions (void *cls,
                                                &deposit->h_wire),
           TALER_PQ_result_spec_json ("wire",
                                      &deposit->wire),
-          /**  FIXME: , #3820
-           * TALER_PQ_result_spec_auto_from_type ("timestamp", &deposit->timestamp),
-           * TALER_PQ_result_spec_auto_from_type ("refund_deadline", &deposit->refund_deadline),
-           * TALER_PQ_RESULT_AMOUNT_NBO ("deposit_fee", &deposit->deposit_fee)
-           */
-          /* FIXME: probably want 'coin_sig' as well, #3820 */
-          TALER_PQ_result_spec_amount ("amount_with_fee",
-                                       &deposit->amount_with_fee), /* FIXME: #3826? */
+          TALER_PQ_result_spec_auto_from_type ("coin_sig",
+                                               &deposit->csig),
           TALER_PQ_result_spec_end
         };
 
@@ -2752,6 +2773,7 @@ postgres_get_coin_transactions (void *cls,
           GNUNET_free (deposit);
           goto cleanup;
         }
+        deposit->coin.coin_pub = *coin_pub;
       }
       tl = GNUNET_new (struct TALER_MINTDB_TransactionList);
       tl->next = head;
