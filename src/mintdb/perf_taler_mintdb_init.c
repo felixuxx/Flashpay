@@ -376,6 +376,8 @@ PERF_TALER_MINTDB_coin_public_info_init ()
 int
 PERF_TALER_MINTDB_coin_public_info_free (struct TALER_CoinPublicInfo *cpi)
 {
+  GNUNET_CRYPTO_rsa_signature_free (cpi->denom_sig.rsa_signature);
+  GNUNET_CRYPTO_rsa_public_key_free (cpi->denom_pub.rsa_public_key);
   GNUNET_free (cpi); 
   return GNUNET_OK;
 }

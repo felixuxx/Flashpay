@@ -36,6 +36,16 @@
   .exposed_type = PERF_TALER_MINTDB_NONE \
 }
 
+
+/**
+ *
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_DEBUG(_label) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_DEBUG, \
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_NONE \
+}
 /**
  * The begining of a loop
  * @param _label the name of the loop
@@ -48,7 +58,7 @@
   .exposed_type = PERF_TALER_MINTDB_NONE , \
   .details.loop = { \
     .max_iterations = _iter , \
-    .curr_iteration = -1} \
+    .curr_iteration = 0} \
 }
 
 /**
@@ -155,6 +165,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_LOAD_ARRAY, \
   .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_NONE, \
   .details.load_array = { \
     .label_loop = _label_loop, \
     .label_save = _label_save \
@@ -170,8 +181,8 @@
 enum PERF_TALER_MINTDB_Type 
 {
   PERF_TALER_MINTDB_NONE,
-  PERF_TALER_MINTDB_DEPOSIT,
   PERF_TALER_MINTDB_TIME,
+  PERF_TALER_MINTDB_DEPOSIT,
 };
 
 
@@ -192,7 +203,8 @@ enum PERF_TALER_MINTDB_CMD_Name
 {
   // All comand chain must hace this as their last command
   PERF_TALER_MINTDB_CMD_END,
-
+  // Prints it's label
+  PERF_TALER_MINTDB_CMD_DEBUG,
   // Define the start of al command chain loop
   PERF_TALER_MINTDB_CMD_LOOP,
   //
