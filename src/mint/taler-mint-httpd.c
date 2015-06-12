@@ -251,7 +251,7 @@ handle_mhd_request (void *cls,
         "Only POST is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 #endif
-      
+
       { NULL, NULL, NULL, NULL, 0, 0 }
     };
   static struct TMH_RequestHandler h404 =
@@ -314,8 +314,9 @@ mint_serve_process_config (const char *mint_directory)
                                              "currency",
                                              &TMH_mint_currency_string))
   {
-    fprintf (stderr,
-             "No currency given in mint configuration.");
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "mint",
+                               "currency");
     return GNUNET_SYSERR;
   }
   if (strlen (TMH_mint_currency_string) >= TALER_CURRENCY_LEN)
@@ -332,8 +333,9 @@ mint_serve_process_config (const char *mint_directory)
                                              "wireformat",
                                              &TMH_expected_wire_format))
   {
-    fprintf (stderr,
-             "No wireformat given in mint configuration.");
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "mint",
+                               "wireformat");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -342,8 +344,9 @@ mint_serve_process_config (const char *mint_directory)
                                              "master_public_key",
                                              &TMH_master_public_key_str))
   {
-    fprintf (stderr,
-             "No master public key given in mint configuration.");
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "mint",
+                               "master_public_key");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -372,8 +375,10 @@ mint_serve_process_config (const char *mint_directory)
                                              "port",
                                              &port))
   {
-    fprintf (stderr,
-             "Missing or invalid configuration for the port of the mint\n");
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "mint",
+                               "port",
+                               "port number required");
     return GNUNET_SYSERR;
   }
 

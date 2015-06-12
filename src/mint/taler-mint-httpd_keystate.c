@@ -23,6 +23,7 @@
 #include "platform.h"
 #include <pthread.h>
 #include "taler-mint-httpd_keystate.h"
+#include "taler_mintdb_plugin.h"
 
 
 /**
@@ -176,8 +177,10 @@ TALER_MINT_conf_duration_provide ()
                                            "lookahead_provide",
                                            &rel))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "mint_keys.lookahead_provide not valid or not given\n");
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "mint_keys",
+                               "lookahead_provide",
+                               "time value required");
     GNUNET_assert (0);
   }
   return rel;
@@ -204,6 +207,7 @@ reload_keys_denom_iter (void *cls,
   struct GNUNET_TIME_Absolute horizon;
   struct GNUNET_HashCode denom_key_hash;
   struct TALER_MINTDB_DenominationKeyIssueInformation *d2;
+  struct TALER_MINTDB_Session *session;
   int res;
 
   horizon = GNUNET_TIME_relative_to_absolute (TALER_MINT_conf_duration_provide ());
@@ -230,6 +234,62 @@ reload_keys_denom_iter (void *cls,
   GNUNET_CRYPTO_hash_context_read (ctx->hash_context,
                                    &denom_key_hash,
                                    sizeof (struct GNUNET_HashCode));
+  session = TMH_plugin->get_session (TMH_plugin->cls,
+                                     GNUNET_NO);
+  /* Try to insert DKI into DB until we succeed; note that if the DB
+     failure is persistent, this code may loop forever (as there is no
+     sane alternative, we cannot continue without the DKI being in the
+     DB). */
+  res = GNUNET_SYSERR;
+  while (GNUNET_OK != res)
+  {
+    res = TMH_plugin->start (TMH_plugin->cls,
+                             session);
+    if (GNUNET_OK != res)
+    {
+      /* Transaction start failed!? Very bad error, log and retry */
+      GNUNET_break (0);
+      continue;
+    }
+    res = TMH_plugin->get_denomination_info (TMH_plugin->cls,
+                                             session,
+                                             &dki->denom_pub,
+                                             NULL);
+    if (GNUNET_SYSERR == res)
+    {
+      /* Fetch failed!? Very bad error, log and retry */
+      GNUNET_break (0);
+      TMH_plugin->rollback (TMH_plugin->cls,
+                            session);
+      continue;
+    }
+    if (GNUNET_OK == res)
+    {
+      /* Record exists, we're good, just exit */
+      TMH_plugin->rollback (TMH_plugin->cls,
+                            session);
+      break;
+    }
+    res = TMH_plugin->insert_denomination_info (TMH_plugin->cls,
+                                                session,
+                                                &dki->denom_pub,
+                                                &dki->issue);
+    if (GNUNET_OK != res)
+    {
+      /* Insert failed!? Very bad error, log and retry */
+      GNUNET_break (0);
+      TMH_plugin->rollback (TMH_plugin->cls,
+                            session);
+      continue;
+    }
+    res = TMH_plugin->commit (TMH_plugin->cls,
+                              session);
+    /* If commit succeeded, we're done, otherwise we retry; this
+       time without logging, as theroetically commits can fail
+       in a transactional DB due to concurrent activities that
+       cannot be reconciled. This should be rare for DKIs, but
+       as it is possible we just retry until we succeed. */
+  }
 
   d2 = GNUNET_memdup (dki,
                       sizeof (struct TALER_MINTDB_DenominationKeyIssueInformation));

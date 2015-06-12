@@ -1105,7 +1105,7 @@ postgres_insert_denomination_info (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param sesssion connection to use
  * @param denom_pub the public key used for signing coins of this denomination
- * @param[out] issue set to issue information with value, fees and other info about the coin
+ * @param[out] issue set to issue information with value, fees and other info about the coin, can be NULL
  * @return #GNUNET_OK on success; #GNUNET_NO if no record was found, #GNUNET_SYSERR on failure
  */
 static int
@@ -1121,7 +1121,7 @@ postgres_get_denomination_info (void *cls,
   };
 
   result = TALER_PQ_exec_prepared (session->conn,
-                                   "reserve_get",
+                                   "denomination_get",
                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
@@ -1139,6 +1139,11 @@ postgres_get_denomination_info (void *cls,
     GNUNET_break (0);
     PQclear (result);
     return GNUNET_SYSERR;
+  }
+  if (NULL == issue)
+  {
+    PQclear (result);
+    return GNUNET_OK;
   }
   {
     struct TALER_PQ_ResultSpec rs[] = {
