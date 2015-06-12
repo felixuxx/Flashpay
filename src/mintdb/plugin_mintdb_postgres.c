@@ -797,13 +797,13 @@ postgres_prepare (PGconn *db_conn)
      during /deposit processing. Used in #postgres_have_deposit(). */
   PREPARE ("get_deposit",
            "SELECT"
-           " amount_with_fee_val"     /* Note: not actually used (yet), #3819 */
-           ",amount_with_fee_frac"    /* Note: not actually used (yet), #3819 */
-           ",amount_with_fee_curr"    /* Note: not actually used (yet), #3819 */
-           ",timestamp"               /* Note: not actually used (yet), #3819 */
-           ",refund_deadline"         /* Note: not actually used (yet), #3819 */
-           ",h_contract"              /* Note: not actually used (yet), #3819 */
-           ",h_wire"                  /* Note: not actually used (yet), #3819 */
+           " amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           ",timestamp"
+           ",refund_deadline"
+           ",h_contract"
+           ",h_wire"
            " FROM deposits"
            " WHERE ("
            "  (coin_pub=$1) AND"
@@ -1791,7 +1791,7 @@ postgres_have_deposit (void *cls,
   /* Now we check that the other information in @a deposit
      also matches, and if not report inconsistencies. */
   {
-    struct TALER_MINTDB_Deposit deposit2 = *deposit;
+    struct TALER_MINTDB_Deposit deposit2;
     struct TALER_PQ_ResultSpec rs[] = {
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &deposit2.amount_with_fee),
@@ -1812,9 +1812,18 @@ postgres_have_deposit (void *cls,
       PQclear (result);
       return GNUNET_SYSERR;
     }
-    if (0 != memcmp (&deposit2,
-                     deposit,
-                     sizeof (struct TALER_MINTDB_Deposit)))
+    if ( (0 != TALER_amount_cmp (&deposit->amount_with_fee,
+                                 &deposit2.amount_with_fee)) ||
+         (deposit->timestamp.abs_value_us !=
+          deposit2.timestamp.abs_value_us) ||
+         (deposit->refund_deadline.abs_value_us !=
+          deposit2.refund_deadline.abs_value_us) ||
+         (0 != memcmp (&deposit->h_contract,
+                       &deposit2.h_contract,
+                       sizeof (struct GNUNET_HashCode))) ||
+         (0 != memcmp (&deposit->h_wire,
+                       &deposit2.h_wire,
+                       sizeof (struct GNUNET_HashCode))) )
     {
       /* Inconsistencies detected! Bug in merchant!  (We might want to
          expand the API with a 'get_deposit' function to return the
