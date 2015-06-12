@@ -135,7 +135,7 @@ static int
 cmd_clean (struct PERF_TALER_MINTDB_Cmd cmd[])
 {
   int i = 0;
-  for (i=0; PERF_TALER_MINTDB_CMD_END != cmd[i].command; i++)
+  for (i = 0; PERF_TALER_MINTDB_CMD_END != cmd[i].command; i++)
   {
     switch (cmd[i].command)
     {
@@ -152,15 +152,12 @@ cmd_clean (struct PERF_TALER_MINTDB_Cmd cmd[])
           cmd[i].details.save_array.data_saved = NULL;
         }
 
-      case PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT:
-        PERF_TALER_MINTDB_deposit_free (cmd[i].exposed.deposit);
-        break;
-
       case PERF_TALER_MINTDB_CMD_LOAD_ARRAY:
         GNUNET_free (cmd[i].details.load_array.permutation);
         break;
 
       default:
+        data_free (&cmd[i].exposed, cmd[i].exposed_type);
         break;
 
     }
@@ -178,15 +175,17 @@ interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
   int jump = cmd_find (state->cmd, 
                        state->cmd[state->i].details.end_loop.label_loop);
+  
+  state->cmd[jump].details.loop.curr_iteration++;
   // If the loop is not finished
   if (state->cmd[jump].details.loop.max_iterations > 
       state->cmd[jump].details.loop.curr_iteration)
   {
     // jump back to the start
-    state->i = jump -1;
+    state->i = jump;
   }else{
     // Reset the loop counter and continue running
-    state->cmd[jump].details.loop.curr_iteration = -1;
+    state->cmd[jump].details.loop.curr_iteration = 0;
   }
   // Cleaning up the memory in the loop
   int j;
@@ -216,8 +215,11 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_END:
         return GNUNET_YES;
 
+      case PERF_TALER_MINTDB_CMD_DEBUG:
+        printf("%s\n", state->cmd[state->i].label);
+        break;
+
       case PERF_TALER_MINTDB_CMD_LOOP:
-        state->cmd[state->i].details.loop.curr_iteration++;
         break;
 
       case PERF_TALER_MINTDB_CMD_END_LOOP:
