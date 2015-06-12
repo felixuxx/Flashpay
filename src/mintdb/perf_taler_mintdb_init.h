@@ -40,7 +40,7 @@ reserve_init (void);
 
 
 int
-reserve_free (struct TALER_MINTDB_Reserve);
+reserve_free (struct TALER_MINTDB_Reserve *reserve);
 
 
 struct TALER_MINTDB_RefreshSession *
@@ -48,7 +48,11 @@ refresh_session_init (void);
 
 
 struct TALER_MINTDB_Deposit *
-deposit_init (int transaction_id);
+deposit_init ();
+
+
+int
+deposit_free (struct TALER_MINTDB_Deposit *deposit);
 
 
 struct TALER_MINTDB_DenominationKeyIssueInformation *
@@ -56,12 +60,7 @@ init_denomination(void);
 
 
 int
-deposit_free (struct TALER_MINTDB_Deposit *deposit);
-
-
-int
 denomination_free (struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
-
 
 
 #endif

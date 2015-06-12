@@ -23,9 +23,7 @@
 #define __PERF_TALER_MINTDB_INTERPRETER_H__
 
 #include <sys/time.h>
-#include "../include/platform.h"
-#include "../include/taler_mintdb_lib.h"
-#include "../include/taler_mintdb_plugin.h"
+#include "taler_mintdb_plugin.h"
 
 /**
  * Marks the end of the command chain
@@ -389,10 +387,18 @@ struct PERF_TALER_MINTDB_Cmd
    */
   union PERF_TALER_MINTDB_Data exposed;
 
+  /**
+   * GNUNET_YES if the exposed value hav been saved during last loop iteration
+   * GNUNET_NO if it hasn't
+   */
   int exposed_saved;
 };
 
 
+/**
+ * Runs the command array @a cmd
+ * using @a db_plugin to connect to the database
+ */
 int
 PERF_TALER_MINTDB_interpret(
   struct TALER_MINTDB_Plugin *db_plugin,
