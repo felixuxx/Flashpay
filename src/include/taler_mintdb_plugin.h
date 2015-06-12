@@ -872,41 +872,6 @@ struct TALER_MINTDB_Plugin
 
 
   /**
-   * Retrieve the record for a known coin.
-   *
-   * @param cls the plugin closure
-   * @param session the database session handle
-   * @param coin_pub the public key of the coin to search for
-   * @param coin_info place holder for the returned coin information object
-   * @return #GNUNET_SYSERR upon error; #GNUNET_NO if no coin is found; #GNUNET_OK
-   *           if upon succesfullying retrieving the record data info @a
-   *           ret_coin_info
-   * @deprecated (#3811)
-   */
-  int
-  (*get_known_coin) (void *cls,
-                     struct TALER_MINTDB_Session *session,
-                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                     struct TALER_CoinPublicInfo *coin_info);
-
-
-  /**
-   * Insert a coin we know of into the DB.  The coin can then be referenced by
-   * tables for deposits, lock and refresh functionality.
-   *
-   * @param cls plugin closure
-   * @param session the shared database session
-   * @param coin_info the public coin info
-   * @return #GNUNET_SYSERR upon error; #GNUNET_OK upon success
-   * @deprecated (#3811)
-   */
-  int
-  (*insert_known_coin) (void *cls,
-                        struct TALER_MINTDB_Session *session,
-                        const struct TALER_CoinPublicInfo *coin_info);
-
-
-  /**
    * Store the given /refresh/melt request in the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state

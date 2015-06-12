@@ -467,7 +467,7 @@ postgres_prepare (PGconn *db_conn)
 
   /* Used in #postgres_get_denomination_info() */
   PREPARE ("denomination_get",
-           "SELECT FROM denominations"
+           "SELECT"
            " master_pub"
            ",master_sig"
            ",valid_from"
@@ -486,6 +486,7 @@ postgres_prepare (PGconn *db_conn)
            ",fee_refresh_val"
            ",fee_refresh_frac"
            ",fee_refresh_curr" /* must match coin_curr */
+           " FROM denominations"
            " WHERE pub=$1;",
            1, NULL);
 
@@ -1964,13 +1965,11 @@ postgres_create_refresh_session (void *cls,
  * @param session the shared database session
  * @param coin_info the public coin info
  * @return #GNUNET_SYSERR upon error; #GNUNET_OK upon success
- * @deprecated (certainly should not be in public API, not sure if
- *              we want to keep this normalization internally, #3811)
  */
 static int
-postgres_insert_known_coin (void *cls,
-                            struct TALER_MINTDB_Session *session,
-                            const struct TALER_CoinPublicInfo *coin_info)
+insert_known_coin (void *cls,
+                   struct TALER_MINTDB_Session *session,
+                   const struct TALER_CoinPublicInfo *coin_info)
 {
   PGresult *result;
   struct TALER_PQ_QueryParam params[] = {
@@ -2003,14 +2002,12 @@ postgres_insert_known_coin (void *cls,
  * @return #GNUNET_SYSERR upon error; #GNUNET_NO if no coin is found; #GNUNET_OK
  *           if upon succesfullying retrieving the record data info @a
  *           coin_info
- * @deprecated (certainly should not be in public API, not sure if
- *              we want to keep this normalization internally, #3811)
  */
 static int
-postgres_get_known_coin (void *cls,
-                         struct TALER_MINTDB_Session *session,
-                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                         struct TALER_CoinPublicInfo *coin_info)
+get_known_coin (void *cls,
+                struct TALER_MINTDB_Session *session,
+                const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                struct TALER_CoinPublicInfo *coin_info)
 {
   PGresult *result;
   struct TALER_PQ_QueryParam params[] = {
@@ -2085,10 +2082,10 @@ postgres_insert_refresh_melt (void *cls,
   int ret;
 
   /* check if the coin is already known */
-  ret = postgres_get_known_coin (cls,
-                                 session,
-                                 &melt->coin.coin_pub,
-                                 NULL);
+  ret = get_known_coin (cls,
+                        session,
+                        &melt->coin.coin_pub,
+                        NULL);
   if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);
@@ -2096,9 +2093,9 @@ postgres_insert_refresh_melt (void *cls,
   }
   if (GNUNET_NO == ret)         /* if not, insert it */
   {
-    ret = postgres_insert_known_coin (cls,
-                                      session,
-                                      &melt->coin);
+    ret = insert_known_coin (cls,
+                             session,
+                             &melt->coin);
     if (ret == GNUNET_SYSERR)
     {
       GNUNET_break (0);
@@ -2187,10 +2184,10 @@ postgres_get_refresh_melt (void *cls,
     PQclear (result);
   }
   /* fetch the coin info and denomination info */
-  if (GNUNET_OK != postgres_get_known_coin (cls,
-                                            session,
-                                            &coin.coin_pub,
-                                            &coin))
+  if (GNUNET_OK != get_known_coin (cls,
+                                   session,
+                                   &coin.coin_pub,
+                                   &coin))
     return GNUNET_SYSERR;
   if (NULL == melt)
     return GNUNET_OK;
@@ -3170,8 +3167,6 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
 
   plugin->get_refresh_session = &postgres_get_refresh_session;
   plugin->create_refresh_session = &postgres_create_refresh_session;
-  plugin->get_known_coin = &postgres_get_known_coin;
-  plugin->insert_known_coin = &postgres_insert_known_coin;
   plugin->insert_refresh_melt = &postgres_insert_refresh_melt;
   plugin->get_refresh_melt = &postgres_get_refresh_melt;
   plugin->insert_refresh_order = &postgres_insert_refresh_order;
