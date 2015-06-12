@@ -202,6 +202,16 @@ TALER_PQ_query_param_absolute_time(const struct GNUNET_TIME_Absolute *x);
 
 
 /**
+ * Generate query parameter for an absolute time value.
+ * The database must store a 64-bit integer.
+ *
+ * @param x pointer to the query parameter to pass
+ */
+struct TALER_PQ_QueryParam
+TALER_PQ_query_param_absolute_time_nbo(const struct GNUNET_TIME_AbsoluteNBO *x);
+
+
+/**
  * Generate query parameter for an uint16_t in host byte order.
  *
  * @param x pointer to the query parameter to pass
@@ -450,6 +460,18 @@ TALER_PQ_result_spec_rsa_signature (const char *name,
 struct TALER_PQ_ResultSpec
 TALER_PQ_result_spec_absolute_time (const char *name,
 				    struct GNUNET_TIME_Absolute *at);
+
+
+/**
+ * Absolute time expected.
+ *
+ * @param name name of the field in the table
+ * @param[out] at where to store the result
+ * @return array entry for the result specification to use
+ */
+struct TALER_PQ_ResultSpec
+TALER_PQ_result_spec_absolute_time_nbo (const char *name,
+                                        struct GNUNET_TIME_AbsoluteNBO *at);
 
 
 /**
