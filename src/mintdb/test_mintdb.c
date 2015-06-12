@@ -239,9 +239,9 @@ run (void *cls,
     goto drop;
   }
   RND_BLK (&reserve_pub);
-  amount.value = 1;
-  amount.fraction = 1;
-  strcpy (amount.currency, CURRENCY);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":1.000001",
+                                         &amount));
   result = 4;
   just = json_loads ("{ \"justification\":\"1\" }", 0, NULL);
   FAILIF (GNUNET_OK !=

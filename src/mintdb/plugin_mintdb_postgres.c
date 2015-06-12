@@ -797,18 +797,13 @@ postgres_prepare (PGconn *db_conn)
      during /deposit processing. Used in #postgres_have_deposit(). */
   PREPARE ("get_deposit",
            "SELECT"
-           " denom_pub"               /* Note: not actually used (yet), #3819 */
-           ",amount_with_fee_val"     /* Note: not actually used (yet), #3819 */
-           ",amount_with_fee_frac"    /* Note: not actually used (yet), #3819 */
-           ",amount_with_fee_curr"    /* Note: not actually used (yet), #3819 */
-           ",deposit_fee_val"         /* Note: not actually used (yet), #3819 */
-           ",deposit_fee_frac"        /* Note: not actually used (yet), #3819 */
-           ",deposit_fee_curr"        /* Note: not actually used (yet), #3819 */
-           ",timestamp"               /* Note: not actually used (yet), #3819 */
-           ",refund_deadline"         /* Note: not actually used (yet), #3819 */
-           ",h_contract"              /* Note: not actually used (yet), #3819 */
-           ",h_wire"                  /* Note: not actually used (yet), #3819 */
-           ",coin_sig"                /* Note: not actually used (yet), #3819 */
+           " amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           ",timestamp"
+           ",refund_deadline"
+           ",h_contract"
+           ",h_wire"
            " FROM deposits"
            " WHERE ("
            "  (coin_pub=$1) AND"
@@ -1759,6 +1754,10 @@ postgres_get_reserve_history (void *cls,
  * @param deposit deposit to search for
  * @return #GNUNET_YES if we know this operation,
  *         #GNUNET_NO if this deposit is unknown to us
+ *         #GNUNET_SYSERR on DB error or if same coin(pub), merchant(pub) and
+ *                        transaction ID are already in DB, but for different
+ *                        other transaction details (contract, wiring details,
+ *                        amount, etc.)
  */
 static int
 postgres_have_deposit (void *cls,
@@ -1772,9 +1771,7 @@ postgres_have_deposit (void *cls,
     TALER_PQ_query_param_end
   };
   PGresult *result;
-  int ret;
 
-  ret = GNUNET_SYSERR;
   result = TALER_PQ_exec_prepared (session->conn,
                                    "get_deposit",
                                    params);
@@ -1782,16 +1779,63 @@ postgres_have_deposit (void *cls,
       PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
-    goto cleanup;
+    PQclear (result);
+    return GNUNET_SYSERR;
   }
-  ret = (0 == PQntuples (result)) ? GNUNET_NO : GNUNET_YES;
-  /* NOTE: maybe check that the other information in @a deposit
-     also matches, and if not report inconsistencies? Right now,
-     if the merchant re-uses a transaction ID, the mint silently
-     ignores the second request (not ideal..., #3819) */
- cleanup:
+  if (0 == PQntuples (result))
+  {
+    PQclear (result);
+    return GNUNET_NO;
+  }
+
+  /* Now we check that the other information in @a deposit
+     also matches, and if not report inconsistencies. */
+  {
+    struct TALER_MINTDB_Deposit deposit2;
+    struct TALER_PQ_ResultSpec rs[] = {
+      TALER_PQ_result_spec_amount ("amount_with_fee",
+                                   &deposit2.amount_with_fee),
+      TALER_PQ_result_spec_absolute_time ("timestamp",
+                                          &deposit2.timestamp),
+      TALER_PQ_result_spec_absolute_time ("refund_deadline",
+                                          &deposit2.refund_deadline),
+      TALER_PQ_result_spec_auto_from_type ("h_contract",
+                                           &deposit2.h_contract),
+      TALER_PQ_result_spec_auto_from_type ("h_wire",
+                                           &deposit2.h_wire),
+      TALER_PQ_result_spec_end
+    };
+    if (GNUNET_OK !=
+        TALER_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    if ( (0 != TALER_amount_cmp (&deposit->amount_with_fee,
+                                 &deposit2.amount_with_fee)) ||
+         (deposit->timestamp.abs_value_us !=
+          deposit2.timestamp.abs_value_us) ||
+         (deposit->refund_deadline.abs_value_us !=
+          deposit2.refund_deadline.abs_value_us) ||
+         (0 != memcmp (&deposit->h_contract,
+                       &deposit2.h_contract,
+                       sizeof (struct GNUNET_HashCode))) ||
+         (0 != memcmp (&deposit->h_wire,
+                       &deposit2.h_wire,
+                       sizeof (struct GNUNET_HashCode))) )
+    {
+      /* Inconsistencies detected! Bug in merchant!  (We might want to
+         expand the API with a 'get_deposit' function to return the
+         original transaction details to be used for an error message
+         in the future!) #3838 */
+      GNUNET_break_op (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+  }
   PQclear (result);
-  return ret;
+  return GNUNET_YES;
 }
 
 
