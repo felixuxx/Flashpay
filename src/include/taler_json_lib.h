@@ -135,7 +135,7 @@ TALER_json_to_data (json_t *json,
 /**
  * Convert JSON to RSA public key.
  *
- * @param pk JSON encoding to convert 
+ * @param json JSON encoding to convert
  * @return corresponding public key
  */
 struct GNUNET_CRYPTO_rsa_PublicKey *
@@ -145,7 +145,7 @@ TALER_json_to_rsa_public_key (json_t *json);
 /**
  * Convert JSON to RSA signature.
  *
- * @param pk JSON encoding to convert 
+ * @param json JSON encoding to convert
  * @return corresponding signature
  */
 struct GNUNET_CRYPTO_rsa_Signature *
