@@ -18,12 +18,11 @@
  * @brief Interpreter library for mint database performance analysis
  * @author Nicolas Fournier
  */
-#include "../include/platform.h"
-#include <gnunet/gnunet_crypto_lib.h>
+#include "platform.h"
+#include "perf_taler_mintdb_init.h"
 #include <gnunet/gnunet_signatures.h>
-#include "../include/taler_mintdb_plugin.h"
-#include "../include/taler_signatures.h"
-#include "../include/taler_amount_lib.h"
+#include "taler_signatures.h"
+#include "taler_amount_lib.h"
 
 
 #define CURRENCY "EUR"
@@ -35,22 +34,20 @@
 struct TALER_MINTDB_CollectableBlindcoin *
 collectable_blindcoin_init ()
 {
+  struct GNUNET_CRYPTO_rsa_PrivateKey  *denomination_key;
+  struct GNUNET_CRYPTO_EddsaPrivateKey *reserve_sig_key;
   // indent by 2 spaces
-  struct TALER_MINTDB_CollectableBlindcoin *coin = 
+  struct TALER_MINTDB_CollectableBlindcoin *coin =
     GNUNET_new (struct TALER_MINTDB_CollectableBlindcoin);
 
-  struct GNUNET_CRYPTO_EddsaPrivateKey *reserve_sig_key;
-  GNUNET_assert (NULL != 
+  GNUNET_assert (NULL !=
     (reserve_sig_key = GNUNET_CRYPTO_eddsa_key_create ())
     );
-
-  struct GNUNET_CRYPTO_rsa_PrivateKey  *denomination_key ;
-  GNUNET_assert (NULL != 
+  GNUNET_assert (NULL !=
     (denomination_key = GNUNET_CRYPTO_rsa_private_key_create (512))
     );
-
   GNUNET_assert (NULL ==
-    (coin->denom_pub.rsa_public_key = 
+    (coin->denom_pub.rsa_public_key =
      GNUNET_CRYPTO_rsa_private_key_get_public (denomination_key))
     );
 
@@ -67,17 +64,17 @@ collectable_blindcoin_init ()
 
 
 
-  uint32_t random_int = 
+  uint32_t random_int =
     GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, UINT32_MAX);
   GNUNET_assert (NULL !=
-    (coin->sig.rsa_signature = 
-     GNUNET_CRYPTO_rsa_sign (denomination_key, 
-       &random_int, 
+    (coin->sig.rsa_signature =
+     GNUNET_CRYPTO_rsa_sign (denomination_key,
+       &random_int,
        sizeof (random_int)
        ))
     );
 
-  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK, 
+  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
     &coin->h_coin_envelope);
 
   struct {
@@ -90,8 +87,8 @@ collectable_blindcoin_init ()
   unsigned_data.data = random_int;
 
   GNUNET_assert (GNUNET_OK ==
-    GNUNET_CRYPTO_eddsa_sign (reserve_sig_key, 
-      (struct GNUNET_CRYPTO_EccSignaturePurpose *) &unsigned_data, 
+    GNUNET_CRYPTO_eddsa_sign (reserve_sig_key,
+      (struct GNUNET_CRYPTO_EccSignaturePurpose *) &unsigned_data,
       &coin->reserve_sig.eddsa_signature)
     );
 
@@ -126,7 +123,7 @@ reserve_init ()
 {
   struct TALER_MINTDB_Reserve *reserve ;
 
-  GNUNET_assert (NULL != 
+  GNUNET_assert (NULL !=
     (reserve = GNUNET_new (struct TALER_MINTDB_Reserve)
     ));
 
@@ -136,10 +133,10 @@ reserve_init ()
     (reserve_priv = GNUNET_CRYPTO_eddsa_key_create ()
     ));
 
-  GNUNET_CRYPTO_eddsa_key_get_public (reserve_priv , 
+  GNUNET_CRYPTO_eddsa_key_get_public (reserve_priv ,
     &reserve->pub.eddsa_pub);
 
-  GNUNET_assert (GNUNET_OK == 
+  GNUNET_assert (GNUNET_OK ==
     TALER_string_to_amount (CURRENCY ":1.1", &reserve->balance)
     );
 
@@ -167,7 +164,7 @@ reserve_free (struct TALER_MINTDB_Reserve *reserve)
 struct TALER_MINTDB_RefreshSession *
 refresh_session_init ()
 {
-  struct TALER_MINTDB_RefreshSession *refresh_session; 
+  struct TALER_MINTDB_RefreshSession *refresh_session;
   GNUNET_assert (NULL !=
     (refresh_session = GNUNET_new (struct TALER_MINTDB_RefreshSession)
     ));
@@ -198,19 +195,17 @@ struct TALER_MINTDB_Deposit *
 deposit_init ()
 {
   static int transaction_id = 0;
+  struct TALER_MINTDB_Deposit *deposit;
 
-  struct TALER_MINTDB_Deposit *deposit ;
   GNUNET_assert (NULL !=
     (deposit = GNUNET_new (struct TALER_MINTDB_Deposit)
     ));
-
   deposit-> transaction_id = transaction_id;
-
-  GNUNET_assert (GNUNET_OK == 
+  GNUNET_assert (GNUNET_OK ==
     TALER_string_to_amount (CURRENCY ":1.1", &deposit->amount_with_fee)
     );
 
-  GNUNET_assert (GNUNET_OK == 
+  GNUNET_assert (GNUNET_OK ==
     TALER_string_to_amount (CURRENCY ":0.1", &deposit->deposit_fee)
     );
 
@@ -218,9 +213,9 @@ deposit_init ()
   deposit->timestamp = GNUNET_TIME_absolute_get ();
   deposit->refund_deadline = GNUNET_TIME_absolute_get ();
 
-  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK, 
+  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
     &deposit->h_contract);
-  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK, 
+  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
     &deposit->h_wire);
 
   // Coin Spend Signature
@@ -236,40 +231,38 @@ deposit_init ()
       (eddsa_prvt = GNUNET_CRYPTO_eddsa_key_create ()
       ));
 
-    uint32_t random_int = 
+    uint32_t random_int =
       GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, UINT32_MAX);
 
 
-    unsigned_data.purpose.size = sizeof (unsigned_data);
-
-    unsigned_data.purpose.purpose = GNUNET_SIGNATURE_PURPOSE_TEST;
+    unsigned_data.purpose.size = htonl (sizeof (struct u32_presign));
+    unsigned_data.purpose.purpose = htonl (GNUNET_SIGNATURE_PURPOSE_TEST);
     unsigned_data.data = random_int;
 
     GNUNET_assert (GNUNET_OK ==
-      GNUNET_CRYPTO_eddsa_sign (eddsa_prvt, 
-        (struct GNUNET_CRYPTO_EccSignaturePurpose *) &unsigned_data, 
-        &deposit->csig.eddsa_signature)
-      );
-    
+      GNUNET_CRYPTO_eddsa_sign (eddsa_prvt,
+                                &unsigned_data.purpose,
+                                &deposit->csig.eddsa_signature));
+
     GNUNET_CRYPTO_eddsa_key_clear (eddsa_prvt);
   }
 
   printf("coin signed");
   // Merchant Key
   {
-    struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_prv; 
+    struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_prv;
     GNUNET_assert(NULL !=
       (eddsa_prv = GNUNET_CRYPTO_eddsa_key_create ()
       ));
 
     GNUNET_CRYPTO_eddsa_key_get_public (
-      eddsa_prv, 
+      eddsa_prv,
       &deposit->merchant_pub.eddsa_pub);
 
 
     GNUNET_CRYPTO_eddsa_key_clear (eddsa_prv);
   }
-  
+
   printf("merchant ok");
   // Coin
   {
@@ -300,7 +293,7 @@ deposit_init ()
         ));
 
       GNUNET_assert (NULL !=
-        (deposit->coin.denom_sig.rsa_signature = 
+        (deposit->coin.denom_sig.rsa_signature =
          GNUNET_CRYPTO_rsa_sign (rsa_prv,
            (void *) &deposit->coin.coin_pub.eddsa_pub,
            sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)
@@ -342,7 +335,7 @@ denomination_init ()
   struct GNUNET_TIME_Absolute anchor;
   struct TALER_Amount amount;
 
-  GNUNET_assert (NULL != 
+  GNUNET_assert (NULL !=
     (dki = GNUNET_new (struct TALER_MINTDB_DenominationKeyIssueInformation)
     ));
 
@@ -364,7 +357,7 @@ denomination_init ()
 
 
   GNUNET_CRYPTO_eddsa_key_get_public (master_prvt,
-    &dki->issue.master.eddsa_pub); 
+    &dki->issue.master.eddsa_pub);
 
   anchor = GNUNET_TIME_absolute_get ();
 
@@ -388,7 +381,7 @@ denomination_init ()
   TALER_amount_hton (&dki->issue.fee_deposit, &amount);
   TALER_amount_hton (&dki->issue.fee_refresh, &amount);
   dki->issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
-  dki->issue.purpose.size = 
+  dki->issue.purpose.size =
     htonl (sizeof (struct TALER_MINTDB_DenominationKeyIssueInformation) -
       offsetof (struct TALER_MINTDB_DenominationKeyIssueInformation,
         issue.purpose));

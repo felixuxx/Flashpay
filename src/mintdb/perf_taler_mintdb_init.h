@@ -21,10 +21,7 @@
 #ifndef __PERF_TALER_MINTDB_INIT_H___
 #define __PERF_TALER_MINTDB_INIT_H___
 
-
-#include "../include/platform.h"
-#include "../include/taler_mintdb_lib.h"
-#include "../include/taler_mintdb_plugin.h"
+#include "taler_mintdb_plugin.h"
 
 
 #define CURRENCY "EUR"
