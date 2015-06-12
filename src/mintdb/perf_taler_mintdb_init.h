@@ -28,39 +28,39 @@
 
 
 struct TALER_MINTDB_CollectableBlindcoin *
-collectable_blindcoin_init (void);
+PERF_TALER_MINTDB_collectable_blindcoin_init (void);
 
 
 int
-collectable_blindcoin_free (struct TALER_MINTDB_CollectableBlindcoin *NAME);
+PERF_TALER_MINTDB_collectable_blindcoin_free (struct TALER_MINTDB_CollectableBlindcoin *NAME);
 
 
 struct TALER_MINTDB_Reserve *
-reserve_init (void);
+PERF_TALER_MINTDB_reserve_init (void);
 
 
 int
-reserve_free (struct TALER_MINTDB_Reserve *reserve);
+PERF_TALER_MINTDB_reserve_free (struct TALER_MINTDB_Reserve *reserve);
 
 
 struct TALER_MINTDB_RefreshSession *
-refresh_session_init (void);
+PERF_TALER_MINTDB_refresh_session_init (void);
 
 
 struct TALER_MINTDB_Deposit *
-deposit_init ();
+PERF_TALER_MINTDB_deposit_init ();
 
 
 int
-deposit_free (struct TALER_MINTDB_Deposit *deposit);
+PERF_TALER_MINTDB_deposit_free (struct TALER_MINTDB_Deposit *deposit);
 
 
 struct TALER_MINTDB_DenominationKeyIssueInformation *
-init_denomination(void);
+PERF_TALER_MINTDB_init_denomination(void);
 
 
 int
-denomination_free (struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
+PERF_TALER_MINTDB_denomination_free (struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
 
 
 #endif

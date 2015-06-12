@@ -58,7 +58,7 @@ data_free (union PERF_TALER_MINTDB_Data *data, enum PERF_TALER_MINTDB_Type type)
   switch (type)
   {
     case PERF_TALER_MINTDB_DEPOSIT:
-      deposit_free (data->deposit);
+      PERF_TALER_MINTDB_deposit_free (data->deposit);
       data->deposit = NULL;
       return;
 
@@ -153,7 +153,7 @@ cmd_clean (struct PERF_TALER_MINTDB_Cmd cmd[])
         }
 
       case PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT:
-        deposit_free (cmd[i].exposed.deposit);
+        PERF_TALER_MINTDB_deposit_free (cmd[i].exposed.deposit);
         break;
 
       case PERF_TALER_MINTDB_CMD_LOAD_ARRAY:
@@ -352,7 +352,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT:
         {
-          struct TALER_MINTDB_Deposit *deposit = deposit_init (-1);
+          struct TALER_MINTDB_Deposit *deposit = PERF_TALER_MINTDB_deposit_init (-1);
 
           state->plugin->insert_deposit (state->plugin->cls, state->session, deposit);
           state->cmd[state->i].exposed.deposit = deposit;

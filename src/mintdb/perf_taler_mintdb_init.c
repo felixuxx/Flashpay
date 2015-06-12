@@ -32,7 +32,7 @@
  * @return a randomly generated CollectableBlindcoin
  */
 struct TALER_MINTDB_CollectableBlindcoin *
-collectable_blindcoin_init ()
+PERF_TALER_MINTDB_collectable_blindcoin_init ()
 {
   uint32_t random_int;
   struct GNUNET_CRYPTO_rsa_PrivateKey  *denomination_key;
@@ -85,7 +85,7 @@ collectable_blindcoin_init ()
  * Liberate memory of @a coin
  */
 int
-collectable_blindcoin_free (struct TALER_MINTDB_CollectableBlindcoin *coin)
+PERF_TALER_MINTDB_collectable_blindcoin_free (struct TALER_MINTDB_CollectableBlindcoin *coin)
 {
   if (NULL == coin)
     return GNUNET_OK;
@@ -101,7 +101,7 @@ collectable_blindcoin_free (struct TALER_MINTDB_CollectableBlindcoin *coin)
  * @return a randomly generated reserve
  */
 struct TALER_MINTDB_Reserve *
-reserve_init ()
+PERF_TALER_MINTDB_reserve_init ()
 {
   struct TALER_MINTDB_Reserve *reserve;
   struct GNUNET_CRYPTO_EddsaPrivateKey *reserve_priv;
@@ -124,7 +124,7 @@ reserve_init ()
  * Free memory of a reserve
  */
 int
-reserve_free (struct TALER_MINTDB_Reserve *reserve)
+PERF_TALER_MINTDB_reserve_free (struct TALER_MINTDB_Reserve *reserve)
 {
   GNUNET_free (reserve);
   return GNUNET_OK;
@@ -135,7 +135,7 @@ reserve_free (struct TALER_MINTDB_Reserve *reserve)
  * @return a randomly generated refresh session
  */
 struct TALER_MINTDB_RefreshSession *
-refresh_session_init ()
+PERF_TALER_MINTDB_refresh_session_init ()
 {
   struct TALER_MINTDB_RefreshSession *refresh_session;
 
@@ -153,7 +153,7 @@ refresh_session_init ()
  * Free a refresh session
  */
 int
-refresh_session_free (struct TALER_MINTDB_RefreshSession *refresh_session)
+PERF_TALER_MINTDB_refresh_session_free (struct TALER_MINTDB_RefreshSession *refresh_session)
 {
   GNUNET_free (refresh_session);
   return GNUNET_OK;
@@ -164,7 +164,7 @@ refresh_session_free (struct TALER_MINTDB_RefreshSession *refresh_session)
  * Create a randomly generated deposit
  */
 struct TALER_MINTDB_Deposit *
-deposit_init ()
+PERF_TALER_MINTDB_deposit_init ()
 {
   static int transaction_id = 0;
   struct TALER_MINTDB_Deposit *deposit;
@@ -257,7 +257,7 @@ deposit_init ()
  * Free memory of a deposit
  */
 int
-deposit_free (struct TALER_MINTDB_Deposit *deposit)
+PERF_TALER_MINTDB_deposit_free (struct TALER_MINTDB_Deposit *deposit)
 {
   if ( NULL == deposit)
     return GNUNET_OK;
@@ -273,7 +273,7 @@ deposit_free (struct TALER_MINTDB_Deposit *deposit)
  * Generate a randomly generate DenominationKeyInformation
  */
 struct TALER_MINTDB_DenominationKeyIssueInformation *
-denomination_init ()
+PERF_TALER_MINTDB_denomination_init ()
 {
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct GNUNET_CRYPTO_EddsaPrivateKey *master_prvt;
@@ -330,7 +330,7 @@ denomination_init ()
  * Free memory for a DenominationKeyIssueInformation
  */
 int
-denomination_free (struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
+PERF_TALER_MINTDB_denomination_free (struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
 {
   if (NULL ==dki)
     return GNUNET_OK;
@@ -338,5 +338,44 @@ denomination_free (struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
   GNUNET_CRYPTO_rsa_public_key_free (dki->denom_pub.rsa_public_key);
   GNUNET_free (dki);
 
+  return GNUNET_OK;
+}
+
+
+/**
+ * Generate a random CoinPublicInfo
+ */
+struct TALER_CoinPublicInfo *
+PERF_TALER_MINTDB_coin_public_info_init ()
+{
+  struct GNUNET_CRYPTO_EddsaPrivateKey *coin_spent_prv;
+  struct GNUNET_CRYPTO_rsa_PrivateKey *denom_prv;
+  struct TALER_CoinPublicInfo *cpi;
+  
+  GNUNET_assert (NULL !=
+                 (denom_prv = GNUNET_CRYPTO_rsa_private_key_create (128)));
+  GNUNET_assert (NULL != 
+                 (coin_spent_prv = GNUNET_CRYPTO_eddsa_key_create ()));
+  GNUNET_assert (NULL !=
+                 (cpi = GNUNET_new (struct TALER_CoinPublicInfo)));
+  GNUNET_CRYPTO_eddsa_key_get_public (coin_spent_prv, &cpi->coin_pub.eddsa_pub);
+  GNUNET_assert (NULL !=
+                (cpi->denom_pub.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (denom_prv)));
+  GNUNET_assert (NULL !=
+                 (cpi->denom_sig.rsa_signature = GNUNET_CRYPTO_rsa_sign (denom_prv, 
+                                                                         &cpi->coin_pub, 
+                                                                         sizeof (struct TALER_CoinSpendPublicKeyP)))); 
+  GNUNET_free (coin_spent_prv);
+  GNUNET_CRYPTO_rsa_private_key_free (denom_prv);
+  return cpi;
+}
+
+/**
+ * Free a CoinPublicInfo
+ */
+int
+PERF_TALER_MINTDB_coin_public_info_free (struct TALER_CoinPublicInfo *cpi)
+{
+  GNUNET_free (cpi); 
   return GNUNET_OK;
 }
