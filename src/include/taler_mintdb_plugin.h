@@ -667,14 +667,9 @@ struct TALER_MINTDB_Plugin
 
 
   /**
-   * Insert a denomination key.
-   *
-   * FIXME: Note that the main mint currently does NOT use this API at
-   * all.  Furthermore, the function to retrieve denomination keys
-   * from the DB is still missing.  The main mint should check if its
-   * denomination keys are in the DB, and if not, insert them (when it
-   * loads them).  The auditor will (presumably) need the denomination
-   * key information to audit the DB. (#3808).
+   * Insert information about a denomination key and in particular
+   * the properties (value, fees, expiration times) the coins signed
+   * with this key have.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion connection to use
@@ -683,10 +678,26 @@ struct TALER_MINTDB_Plugin
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
-  (*insert_denomination) (void *cls,
-                          struct TALER_MINTDB_Session *session,
-                          const struct TALER_DenominationPublicKey *denom_pub,
-                          const struct TALER_DenominationKeyValidityPS *issue);
+  (*insert_denomination_info) (void *cls,
+                               struct TALER_MINTDB_Session *session,
+                               const struct TALER_DenominationPublicKey *denom_pub,
+                               const struct TALER_DenominationKeyValidityPS *issue);
+
+
+  /**
+   * Fetch information about a denomination key.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param sesssion connection to use
+   * @param denom_pub the public key used for signing coins of this denomination
+   * @param[out] issue set to issue information with value, fees and other info about the coin
+   * @return #GNUNET_OK on success; #GNUNET_NO if no record was found, #GNUNET_SYSERR on failure
+   */
+  int
+  (*get_denomination_info) (void *cls,
+                            struct TALER_MINTDB_Session *session,
+                            const struct TALER_DenominationPublicKey *denom_pub,
+                            struct TALER_DenominationKeyValidityPS *issue);
 
 
   /**

@@ -438,8 +438,8 @@ postgres_prepare (PGconn *db_conn)
     PQclear (result); result = NULL;                            \
   } while (0);
 
-  /* Used in #postgres_insert_denomination() */
-  PREPARE ("insert_denomination",
+  /* Used in #postgres_insert_denomination_info() */
+  PREPARE ("denomination_insert",
            "INSERT INTO denominations "
            "(pub"
            ",master_pub"
@@ -465,7 +465,29 @@ postgres_prepare (PGconn *db_conn)
            " $11, $12, $13, $14, $15, $16, $17, $18, $19);",
            19, NULL);
 
-  /* FIXME: #3808: need a 'select_denominations' for auditor */
+  /* Used in #postgres_get_denomination_info() */
+  PREPARE ("denomination_get",
+           "SELECT FROM denominations"
+           " master_pub"
+           ",master_sig"
+           ",valid_from"
+           ",expire_withdraw"
+           ",expire_spend"
+           ",expire_legal"
+           ",coin_val"  /* value of this denom */
+           ",coin_frac" /* fractional value of this denom */
+           ",coin_curr" /* assuming same currency for fees */
+           ",fee_withdraw_val"
+           ",fee_withdraw_frac"
+           ",fee_withdraw_curr" /* must match coin_curr */
+           ",fee_deposit_val"
+           ",fee_deposit_frac"
+           ",fee_deposit_curr"  /* must match coin_curr */
+           ",fee_refresh_val"
+           ",fee_refresh_frac"
+           ",fee_refresh_curr" /* must match coin_curr */
+           " WHERE pub=$1;",
+           1, NULL);
 
   /* Used in #postgres_reserve_get() */
   PREPARE ("reserve_get",
@@ -1027,10 +1049,10 @@ postgres_commit (void *cls,
  * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
  */
 static int
-postgres_insert_denomination (void *cls,
-                              struct TALER_MINTDB_Session *session,
-                              const struct TALER_DenominationPublicKey *denom_pub,
-                              const struct TALER_DenominationKeyValidityPS *issue)
+postgres_insert_denomination_info (void *cls,
+                                   struct TALER_MINTDB_Session *session,
+                                   const struct TALER_DenominationPublicKey *denom_pub,
+                                   const struct TALER_DenominationKeyValidityPS *issue)
 {
   PGresult *result;
   int ret;
@@ -1061,7 +1083,7 @@ postgres_insert_denomination (void *cls,
                                                 &issue->fee_refresh));
 
   result = TALER_PQ_exec_prepared (session->conn,
-                                   "insert_denomination",
+                                   "denomination_insert",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
@@ -1074,6 +1096,86 @@ postgres_insert_denomination (void *cls,
   }
   PQclear (result);
   return ret;
+}
+
+
+/**
+ * Fetch information about a denomination key.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param sesssion connection to use
+ * @param denom_pub the public key used for signing coins of this denomination
+ * @param[out] issue set to issue information with value, fees and other info about the coin
+ * @return #GNUNET_OK on success; #GNUNET_NO if no record was found, #GNUNET_SYSERR on failure
+ */
+static int
+postgres_get_denomination_info (void *cls,
+                                struct TALER_MINTDB_Session *session,
+                                const struct TALER_DenominationPublicKey *denom_pub,
+                                struct TALER_DenominationKeyValidityPS *issue)
+{
+  PGresult *result;
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
+    TALER_PQ_query_param_end
+  };
+
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "reserve_get",
+                                   params);
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    QUERY_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  if (0 == PQntuples (result))
+  {
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  if (1 != PQntuples (result))
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  {
+    struct TALER_PQ_ResultSpec rs[] = {
+      TALER_PQ_result_spec_auto_from_type ("master_pub",
+                                           &issue->master),
+      TALER_PQ_result_spec_auto_from_type ("master_sig",
+                                           &issue->signature),
+      TALER_PQ_result_spec_auto_from_type ("valid_from",
+                                           &issue->start.abs_value_us__),
+      TALER_PQ_result_spec_auto_from_type ("expire_withdraw",
+                                           &issue->expire_withdraw.abs_value_us__),
+      TALER_PQ_result_spec_auto_from_type ("expire_spend",
+                                           &issue->expire_spend.abs_value_us__),
+      TALER_PQ_result_spec_auto_from_type ("expire_legal",
+                                           &issue->expire_legal.abs_value_us__),
+      TALER_PQ_result_spec_amount_nbo ("coin",
+                                       &issue->value),
+      TALER_PQ_result_spec_amount_nbo ("fee_withdraw",
+                                       &issue->fee_withdraw),
+      TALER_PQ_result_spec_amount_nbo ("fee_deposit",
+                                       &issue->fee_deposit),
+      TALER_PQ_result_spec_amount_nbo ("fee_refresh",
+                                       &issue->fee_refresh),
+      TALER_PQ_result_spec_end
+    };
+
+    EXITIF (GNUNET_OK !=
+            TALER_PQ_extract_result (result,
+                                     rs,
+                                     0));
+  }
+  PQclear (result);
+  return GNUNET_OK;
+
+ EXITIF_exit:
+  PQclear (result);
+  return GNUNET_SYSERR;
 }
 
 
@@ -1097,11 +1199,6 @@ postgres_reserve_get (void *cls,
     TALER_PQ_query_param_auto_from_type(&reserve->pub),
     TALER_PQ_query_param_end
   };
-  struct TALER_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_amount("current_balance", &reserve->balance),
-    TALER_PQ_result_spec_absolute_time("expiration_date", &reserve->expiry),
-    TALER_PQ_result_spec_end
-  };
 
   result = TALER_PQ_exec_prepared (session->conn,
                                    "reserve_get",
@@ -1117,10 +1214,18 @@ postgres_reserve_get (void *cls,
     PQclear (result);
     return GNUNET_NO;
   }
-  EXITIF (GNUNET_OK !=
-	  TALER_PQ_extract_result (result,
-				   rs,
-				   0));
+  {
+    struct TALER_PQ_ResultSpec rs[] = {
+      TALER_PQ_result_spec_amount("current_balance", &reserve->balance),
+      TALER_PQ_result_spec_absolute_time("expiration_date", &reserve->expiry),
+      TALER_PQ_result_spec_end
+    };
+
+    EXITIF (GNUNET_OK !=
+            TALER_PQ_extract_result (result,
+                                     rs,
+                                     0));
+  }
   PQclear (result);
   return GNUNET_OK;
 
@@ -3047,7 +3152,8 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->start = &postgres_start;
   plugin->commit = &postgres_commit;
   plugin->rollback = &postgres_rollback;
-  plugin->insert_denomination = &postgres_insert_denomination;
+  plugin->insert_denomination_info = &postgres_insert_denomination_info;
+  plugin->get_denomination_info = &postgres_get_denomination_info;
   plugin->reserve_get = &postgres_reserve_get;
   plugin->reserves_in_insert = &postgres_reserves_in_insert;
   plugin->get_withdraw_info = &postgres_get_withdraw_info;
