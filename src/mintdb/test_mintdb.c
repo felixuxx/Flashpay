@@ -126,7 +126,7 @@ register_denomination(struct TALER_DenominationPublicKey denom_pub,
   dki.issue.fee_deposit = dki.issue.fee_withdraw;
   dki.issue.fee_refresh = dki.issue.fee_withdraw;
   if (GNUNET_OK !=
-      plugin->insert_denomination (plugin->cls,
+      plugin->denomination_insert (plugin->cls,
                                    session,
                                    &denom_pub,
                                    &dki.issue))
