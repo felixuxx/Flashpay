@@ -717,14 +717,6 @@ postgres_prepare (PGconn *db_conn)
            " FROM refresh_melts"
            " WHERE coin_pub=$1",
            1, NULL);
-
-  /* FIXME: 'get_refresh_out' is not used anywhere! (#3818)
-     Should be needed for /refresh/link at least. */
-  PREPARE ("get_refresh_out",
-           "SELECT ev_sig "
-           "FROM refresh_out "
-           "WHERE session_hash=$1 AND newcoin_index=$2",
-           2, NULL);
   /* Used in #postgres_insert_refresh_commit_links() to
      store commitments */
   PREPARE ("insert_refresh_commit_link",
