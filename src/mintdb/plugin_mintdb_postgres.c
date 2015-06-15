@@ -312,7 +312,7 @@ postgres_create_tables (void *cls,
   */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_melts "
           "(coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)"
-          ",session BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
+          ",session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
           ",oldcoin_index INT2 NOT NULL"
           ",coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)"
           ",amount_with_fee_val INT8 NOT NULL"
@@ -321,7 +321,7 @@ postgres_create_tables (void *cls,
           ",melt_fee_val INT8 NOT NULL"
           ",melt_fee_frac INT8 NOT NULL"
           ",melt_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ",PRIMARY KEY (session, oldcoin_index)" /* a coin can be used only
+          ",PRIMARY KEY (session_hash, oldcoin_index)" /* a coin can be used only
                                                  once in a refresh session */
           ") ");
   /* Table with information about the desired denominations to be created
@@ -675,7 +675,7 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("insert_refresh_melt",
            "INSERT INTO refresh_melts "
            "(coin_pub "
-           ",session"
+           ",session_hash"
            ",oldcoin_index "
            ",coin_sig "
            ",amount_with_fee_val "
@@ -700,12 +700,12 @@ postgres_prepare (PGconn *db_conn)
            ",melt_fee_frac "
            ",melt_fee_curr "
            " FROM refresh_melts"
-           " WHERE session=$1 AND oldcoin_index=$2",
+           " WHERE session_hash=$1 AND oldcoin_index=$2",
            2, NULL);
   /* Query the 'refresh_melts' by coin public key */
   PREPARE ("get_refresh_melt_by_coin",
            "SELECT"
-           " session"
+           " session_hash"
            /* ",oldcoin_index" // not needed */
            ",coin_sig"
            ",amount_with_fee_val"
@@ -845,43 +845,49 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3)",
            3, NULL);
-#if 0
-  /* FIXME: not complete yet -- #3818... */
-  /* Used in #postgres_get_link_data_list().
-     FIXME: document how this is supposed to work... */
+  /* Used in #postgres_get_link_data_list().  We use the session_hash
+     to obtain the "noreveal_index" for that session, and then select
+     the encrypted link vectors (link_vector_enc) and the
+     corresponding signatures (ev_sig) and the denomination keys from
+     the respective tables (namely refresh_melts and refresh_order)
+     using the session_hash as the primary filter (on join) and the
+     'noreveal_index' to constrain the selection on the commitment.
+     We also want to get the triplet for each of the newcoins, so we
+     have another constraint to ensure we get each triplet with
+     matching "newcoin_index" values.  NOTE: This may return many
+     results, both for different sessions and for the different coins
+     being minted in the refresh ops.  NOTE: There may be more
+     efficient ways to express the same query.  */
   PREPARE ("get_link",
-           "SELECT link_vector_enc,ro.denom_pub,ev_sig"
-           " FROM refresh_melt rm "
+           "SELECT link_vector_enc,ev_sig,ro.denom_pub"
+           " FROM refresh_melts rm "
            "     JOIN refresh_order ro USING (session_hash)"
            "     JOIN refresh_commit_coin rcc USING (session_hash)"
            "     JOIN refresh_sessions rs USING (session_hash)"
            "     JOIN refresh_out rc USING (session_hash)"
-           " WHERE rm.coin_pub=$1"
+           " WHERE ro.session_hash=$1"
            "  AND ro.newcoin_index=rcc.newcoin_index"
            "  AND ro.newcoin_index=rc.newcoin_index"
-           "  AND rcc.cnc_index=rs.noreveal_index % ("
-           "         SELECT count(*) FROM refresh_commit_coin rcc2"
-           "         WHERE rcc2.newcoin_index=0"
-           "           AND rcc2.session_hash=rs.session_hash"
-           "     ) ",
+           "  AND rcc.cnc_index=rs.noreveal_index",
            1, NULL);
-  /* Used in #postgres_get_transfer().
-     FIXME: document how this is supposed to work... -- #3818 */
+  /* Used in #postgres_get_transfer().  Given the public key of a
+     melted coin, we obtain the corresponding encrypted link secret
+     and the transfer public key.  This is done by first finding
+     the session_hash(es) of all sessions the coin was melted into,
+     and then constraining the result to the selected "noreveal_index"
+     and the transfer public key to the corresponding index of the
+     old coin.
+     NOTE: This may (in theory) return multiple results, one per session
+     that the old coin was melted into. */
   PREPARE ("get_transfer",
-           "SELECT transfer_pub,link_secret_enc"
-           " FROM refresh_melt rm"
+           "SELECT transfer_pub,link_secret_enc,session_hash"
+           " FROM refresh_melts rm"
            "     JOIN refresh_commit_link rcl USING (session_hash)"
            "     JOIN refresh_sessions rs USING (session_hash)"
            " WHERE rm.coin_pub=$1"
            "  AND rm.oldcoin_index = rcl.oldcoin_index"
-           "  AND rcl.cnc_index=rs.noreveal_index % ("
-           "         SELECT count(*) FROM refresh_commit_coin rcc2"
-           "         WHERE newcoin_index=0"
-           "           AND rcc2.session_hash=rm.session_hash"
-           "     )",
+           "  AND rcl.cnc_index=rs.noreveal_index",
            1, NULL);
-#endif
-
   return GNUNET_OK;
 #undef PREPARE
 }
@@ -2848,20 +2854,20 @@ postgres_insert_refresh_out (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
- * @param coin_pub public key to use to retrieve linkage data
- * @return all known link data for the coin
+ * @param session_hash refresh session to get linkage data for
+ * @return all known link data for the session
  */
 static struct TALER_MINTDB_LinkDataList *
 postgres_get_link_data_list (void *cls,
                              struct TALER_MINTDB_Session *session,
-                             const struct TALER_CoinSpendPublicKeyP *coin_pub)
+                             const struct GNUNET_HashCode *session_hash)
 {
   struct TALER_MINTDB_LinkDataList *ldl;
   struct TALER_MINTDB_LinkDataList *pos;
   int i;
   int nrows;
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (coin_pub),
+    TALER_PQ_query_param_auto_from_type (session_hash),
     TALER_PQ_query_param_end
   };
   PGresult *result;
@@ -2895,10 +2901,10 @@ postgres_get_link_data_list (void *cls,
       TALER_PQ_result_spec_variable_size ("link_vector_enc",
                                           &ld_buf,
                                           &ld_buf_size),
-      TALER_PQ_result_spec_rsa_public_key ("denom_pub",
-                                           &denom_pub),
       TALER_PQ_result_spec_rsa_signature ("ev_sig",
                                           &sig),
+      TALER_PQ_result_spec_rsa_public_key ("denom_pub",
+                                           &denom_pub),
       TALER_PQ_result_spec_end
     };
 
@@ -2942,8 +2948,8 @@ postgres_get_link_data_list (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
  * @param coin_pub public key of the coin
- * @param[out] transfer_pub public transfer key
- * @param[out] shared_secret_enc set to shared secret
+ * @param tdc function to call for each session the coin was melted into
+ * @param tdc_cls closure for @a tdc
  * @return #GNUNET_OK on success,
  *         #GNUNET_NO on failure (not found)
  *         #GNUNET_SYSERR on internal failure (database issue)
@@ -2952,14 +2958,16 @@ static int
 postgres_get_transfer (void *cls,
                        struct TALER_MINTDB_Session *session,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                       struct TALER_TransferPublicKeyP *transfer_pub,
-                       struct TALER_EncryptedLinkSecretP *shared_secret_enc)
+                       TALER_MINTDB_TransferDataCallback tdc,
+                       void *tdc_cls)
 {
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type (coin_pub),
     TALER_PQ_query_param_end
   };
   PGresult *result;
+  int nrows;
+  int i;
 
   result = TALER_PQ_exec_prepared (session->conn,
                                    "get_transfer",
@@ -2971,23 +2979,21 @@ postgres_get_transfer (void *cls,
     PQclear (result);
     return GNUNET_SYSERR;
   }
-  if (0 == PQntuples (result))
+  nrows = PQntuples (result);
+  if (0 == nrows)
   {
     PQclear (result);
     return GNUNET_NO;
   }
-  if (1 != PQntuples (result))
+  for (i=0;i<nrows;i++)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "got %d tuples from get_transfer\n",
-                PQntuples (result));
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  {
+    struct GNUNET_HashCode session_hash;
+    struct TALER_TransferPublicKeyP transfer_pub;
+    struct TALER_EncryptedLinkSecretP shared_secret_enc;
     struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_auto_from_type ("transfer_pub", transfer_pub),
-      TALER_PQ_result_spec_auto_from_type ("link_secret_enc", shared_secret_enc),
+      TALER_PQ_result_spec_auto_from_type ("transfer_pub", &transfer_pub),
+      TALER_PQ_result_spec_auto_from_type ("link_secret_enc", &shared_secret_enc),
+      TALER_PQ_result_spec_auto_from_type ("session_hash", &session_hash),
       TALER_PQ_result_spec_end
     };
 
@@ -2998,6 +3004,10 @@ postgres_get_transfer (void *cls,
       GNUNET_break (0);
       return GNUNET_SYSERR;
     }
+    tdc (tdc_cls,
+         &session_hash,
+         &transfer_pub,
+         &shared_secret_enc);
   }
   PQclear (result);
   return GNUNET_OK;
@@ -3121,7 +3131,7 @@ postgres_get_coin_transactions (void *cls,
       melt = GNUNET_new (struct TALER_MINTDB_RefreshMelt);
       {
         struct TALER_PQ_ResultSpec rs[] = {
-          TALER_PQ_result_spec_auto_from_type ("session",
+          TALER_PQ_result_spec_auto_from_type ("session_hash",
                                                &melt->session_hash),
           /* oldcoin_index not needed */
           TALER_PQ_result_spec_auto_from_type ("coin_sig",

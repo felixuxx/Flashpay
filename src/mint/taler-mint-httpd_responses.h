@@ -335,19 +335,41 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
 
 
 /**
+ * Information for each session a coin was melted into.
+ */
+struct TMH_RESPONSE_LinkSessionInfo
+{
+  /**
+   * Transfer public key of the coin.
+   */
+  struct TALER_TransferPublicKeyP transfer_pub;
+
+  /**
+   * Encrypted shared secret for decrypting the transfer secrets.
+   */
+  struct TALER_EncryptedLinkSecretP shared_secret_enc;
+
+  /**
+   * Linked data of coins being created in the session.
+   */
+  struct TALER_MINTDB_LinkDataList *ldl;
+
+};
+
+
+/**
  * Send a response for "/refresh/link".
  *
  * @param connection the connection to send the response to
- * @param transfer_pub transfer public key
- * @param shared_secret_enc encrypted shared secret
- * @param ldl linked list with link data
+ * @param num_sessions number of sessions the coin was used in
+ * @param sessions array of @a num_session entries with
+ *                  information for each session
  * @return a MHD result code
  */
 int
 TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
-                                         const struct TALER_TransferPublicKeyP *transfer_pub,
-                                         const struct TALER_EncryptedLinkSecretP *shared_secret_enc,
-                                         const struct TALER_MINTDB_LinkDataList *ldl);
+                                         unsigned int num_sessions,
+                                         const struct TMH_RESPONSE_LinkSessionInfo *sessions);
 
 
 #endif

@@ -1232,6 +1232,92 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
 
 
 /**
+ * Closure for #handle_transfer_data().
+ */
+struct HTD_Context
+{
+
+  /**
+   * Session link data we collect.
+   */
+  struct TMH_RESPONSE_LinkSessionInfo *sessions;
+
+  /**
+   * Database session. Nothing to do with @a sessions.
+   */
+  struct TALER_MINTDB_Session *session;
+
+  /**
+   * MHD connection, for queueing replies.
+   */
+  struct MHD_Connection *connection;
+
+  /**
+   * Number of sessions the coin was melted into.
+   */
+  unsigned int num_sessions;
+
+  /**
+   * How are we expected to proceed. #GNUNET_SYSERR if we
+   * failed to return an error (should return #MHD_NO).
+   * #GNUNET_NO if we succeeded in queueing an MHD error
+   * (should return #MHD_YES from #TMH_execute_refresh_link),
+   * #GNUNET_OK if we should call #TMH_RESPONSE_reply_refresh_link_success().
+   */
+  int status;
+};
+
+
+/**
+ * Function called with the session hashes and transfer secret
+ * information for a given coin.  Gets the linkage data and
+ * builds the reply for the client.
+ *
+ *
+ * @param cls closure, a `struct HTD_Context`
+ * @param session_hash a session the coin was melted in
+ * @param transfer_pub public transfer key for the session
+ * @param shared_secret_enc set to shared secret for the session
+ */
+static void
+handle_transfer_data (void *cls,
+                      const struct GNUNET_HashCode *session_hash,
+                      const struct TALER_TransferPublicKeyP *transfer_pub,
+                      const struct TALER_EncryptedLinkSecretP *shared_secret_enc)
+{
+  struct HTD_Context *ctx = cls;
+  struct TALER_MINTDB_LinkDataList *ldl;
+  struct TMH_RESPONSE_LinkSessionInfo *lsi;
+
+  if (GNUNET_OK != ctx->status)
+    return;
+  ldl = TMH_plugin->get_link_data_list (TMH_plugin->cls,
+                                        ctx->session,
+                                        session_hash);
+  if (NULL == ldl)
+  {
+    GNUNET_break (0);
+    ctx->status = GNUNET_NO;
+    if (MHD_NO ==
+        TMH_RESPONSE_reply_json_pack (ctx->connection,
+                                      MHD_HTTP_NOT_FOUND,
+                                      "{s:s}",
+                                      "error",
+                                      "link data not found (link)"))
+      ctx->status = GNUNET_SYSERR;
+    return;
+  }
+  GNUNET_array_grow (ctx->sessions,
+                     ctx->num_sessions,
+                     ctx->num_sessions + 1);
+  lsi = &ctx->sessions[ctx->num_sessions - 1];
+  lsi->transfer_pub = *transfer_pub;
+  lsi->shared_secret_enc = *shared_secret_enc;
+  lsi->ldl = ldl;
+}
+
+
+/**
  * Execute a "/refresh/link".  Returns the linkage information that
  * will allow the owner of a coin to follow the refresh trail to
  * the refreshed coin.
@@ -1244,52 +1330,47 @@ int
 TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
                              const struct TALER_CoinSpendPublicKeyP *coin_pub)
 {
+  struct HTD_Context ctx;
   int res;
-  struct TALER_MINTDB_Session *session;
-  struct TALER_TransferPublicKeyP transfer_pub;
-  struct TALER_EncryptedLinkSecretP shared_secret_enc;
-  struct TALER_MINTDB_LinkDataList *ldl;
+  unsigned int i;
 
-  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                  GNUNET_NO)))
+  if (NULL == (ctx.session = TMH_plugin->get_session (TMH_plugin->cls,
+                                                      GNUNET_NO)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
+  ctx.connection = connection;
+  ctx.num_sessions = 0;
+  ctx.sessions = NULL;
+  ctx.status = GNUNET_OK;
   res = TMH_plugin->get_transfer (TMH_plugin->cls,
-                                  session,
+                                  ctx.session,
                                   coin_pub,
-                                  &transfer_pub,
-                                  &shared_secret_enc);
-  if (GNUNET_SYSERR == res)
+                                  &handle_transfer_data,
+                                  &ctx);
+  if (GNUNET_SYSERR == ctx.status)
   {
-    GNUNET_break (0);
-    return TMH_RESPONSE_reply_internal_db_error (connection);
+    res = MHD_NO;
+    goto cleanup;
   }
-  if (GNUNET_NO == res)
+  if (GNUNET_NO == ctx.status)
   {
+    res = MHD_YES;
+    goto cleanup;
+  }
+  GNUNET_assert (GNUNET_OK == ctx.status);
+  if (0 == ctx.num_sessions)
     return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "coin_pub");
-  }
-  GNUNET_assert (GNUNET_OK == res);
-
-  ldl = TMH_plugin->get_link_data_list (TMH_plugin->cls,
-                                        session,
-                                        coin_pub);
-  if (NULL == ldl)
-  {
-    return TMH_RESPONSE_reply_json_pack (connection,
-                                         MHD_HTTP_NOT_FOUND,
-                                         "{s:s}",
-                                         "error",
-                                         "link data not found (link)");
-  }
   res = TMH_RESPONSE_reply_refresh_link_success (connection,
-                                                 &transfer_pub,
-                                                 &shared_secret_enc,
-                                                 ldl);
-  TMH_plugin->free_link_data_list (TMH_plugin->cls,
-                                   ldl);
+                                                 ctx.num_sessions,
+                                                 ctx.sessions);
+ cleanup:
+  for (i=0;i<ctx.num_sessions;i++)
+    TMH_plugin->free_link_data_list (TMH_plugin->cls,
+                                     ctx.sessions[i].ldl);
+  GNUNET_free (ctx.sessions);
   return res;
 }
 

@@ -908,58 +908,65 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
  * Send a response for "/refresh/link".
  *
  * @param connection the connection to send the response to
- * @param transfer_pub transfer public key
- * @param shared_secret_enc encrypted shared secret
- * @param ldl linked list with link data
+ * @param num_sessions number of sessions the coin was used in
+ * @param sessions array of @a num_session entries with
+ *                  information for each session
  * @return a MHD result code
  */
 int
 TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
-                                         const struct TALER_TransferPublicKeyP *transfer_pub,
-                                         const struct TALER_EncryptedLinkSecretP *shared_secret_enc,
-                                         const struct TALER_MINTDB_LinkDataList *ldl)
+                                         unsigned int num_sessions,
+                                         const struct TMH_RESPONSE_LinkSessionInfo *sessions)
 {
-  const struct TALER_MINTDB_LinkDataList *pos;
   json_t *root;
-  json_t *list;
+  json_t *mlist;
   int res;
+  unsigned int i;
 
-  list = json_array ();
-  for (pos = ldl; NULL != pos; pos = pos->next)
+  mlist = json_array ();
+  for (i=0;i<num_sessions;i++)
   {
-    json_t *obj;
+    const struct TALER_MINTDB_LinkDataList *pos;
+    json_t *list = json_array ();
 
-    obj = json_object ();
-    json_object_set_new (obj,
-                         "link_enc",
-                         TALER_json_from_data (ldl->link_data_enc->coin_priv_enc,
-                                               sizeof (struct TALER_CoinSpendPrivateKeyP) +
-                                               ldl->link_data_enc->blinding_key_enc_size));
-    json_object_set_new (obj,
-                         "denom_pub",
-                         TALER_json_from_rsa_public_key (ldl->denom_pub.rsa_public_key));
-    json_object_set_new (obj,
-                         "ev_sig",
-                         TALER_json_from_rsa_signature (ldl->ev_sig.rsa_signature));
-    json_array_append_new (list, obj);
+    for (pos = sessions[i].ldl; NULL != pos; pos = pos->next)
+    {
+      json_t *obj;
+
+      obj = json_object ();
+      json_object_set_new (obj,
+                           "link_enc",
+                           TALER_json_from_data (pos->link_data_enc->coin_priv_enc,
+                                                 sizeof (struct TALER_CoinSpendPrivateKeyP) +
+                                                 pos->link_data_enc->blinding_key_enc_size));
+      json_object_set_new (obj,
+                           "denom_pub",
+                           TALER_json_from_rsa_public_key (pos->denom_pub.rsa_public_key));
+      json_object_set_new (obj,
+                           "ev_sig",
+                           TALER_json_from_rsa_signature (pos->ev_sig.rsa_signature));
+      json_array_append_new (list,
+                             obj);
+    }
+    root = json_object ();
+    json_object_set_new (root,
+                         "new_coins",
+                         list);
+    json_object_set_new (root,
+                         "transfer_pub",
+                         TALER_json_from_data (&sessions[i].transfer_pub,
+                                               sizeof (struct TALER_TransferPublicKeyP)));
+    json_object_set_new (root,
+                         "secret_enc",
+                         TALER_json_from_data (&sessions[i].shared_secret_enc,
+                                               sizeof (struct TALER_EncryptedLinkSecretP)));
+    json_array_append_new (mlist,
+                           root);
   }
-
-  root = json_object ();
-  json_object_set_new (root,
-                       "new_coins",
-                       list);
-  json_object_set_new (root,
-                       "transfer_pub",
-                       TALER_json_from_data (transfer_pub,
-                                             sizeof (struct TALER_TransferPublicKeyP)));
-  json_object_set_new (root,
-                       "secret_enc",
-                       TALER_json_from_data (shared_secret_enc,
-                                             sizeof (struct TALER_EncryptedLinkSecretP)));
   res = TMH_RESPONSE_reply_json (connection,
-                               root,
-                               MHD_HTTP_OK);
-  json_decref (root);
+                                 mlist,
+                                 MHD_HTTP_OK);
+  json_decref (mlist);
   return res;
 }
 

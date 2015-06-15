@@ -577,6 +577,22 @@ struct TALER_MINTDB_Session;
 
 
 /**
+ * Function called with the session hashes and transfer secret
+ * information for a given coin.
+ *
+ * @param cls closure
+ * @param session_hash a session the coin was melted in
+ * @param transfer_pub public transfer key for the session
+ * @param shared_secret_enc set to shared secret for the session
+ */
+typedef void
+(*TALER_MINTDB_TransferDataCallback)(void *cls,
+                                     const struct GNUNET_HashCode *session_hash,
+                                     const struct TALER_TransferPublicKeyP *transfer_pub,
+                                     const struct TALER_EncryptedLinkSecretP *shared_secret_enc);
+
+
+/**
  * @brief The plugin API, returned from the plugin's "init" function.
  * The argument given to "init" is simply a configuration handle.
  */
@@ -1092,13 +1108,13 @@ struct TALER_MINTDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database connection
-   * @param coin_pub public key to use to retrieve linkage data
-   * @return all known link data for the coin
+   * @param session_hash session to get linkage data for
+   * @return all known link data for the session
    */
   struct TALER_MINTDB_LinkDataList *
   (*get_link_data_list) (void *cls,
                          struct TALER_MINTDB_Session *sesssion,
-                         const struct TALER_CoinSpendPublicKeyP *coin_pub);
+                         const struct GNUNET_HashCode *session_hash);
 
 
   /**
@@ -1122,8 +1138,8 @@ struct TALER_MINTDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion database connection
    * @param coin_pub public key of the coin
-   * @param[out] transfer_pub public transfer key
-   * @param[out] shared_secret_enc set to shared secret
+   * @param tdc function to call for each session the coin was melted into
+   * @param tdc_cls closure for @a tdc
    * @return #GNUNET_OK on success,
    *         #GNUNET_NO on failure (not found)
    *         #GNUNET_SYSERR on internal failure (database issue)
@@ -1132,8 +1148,9 @@ struct TALER_MINTDB_Plugin
   (*get_transfer) (void *cls,
                    struct TALER_MINTDB_Session *sesssion,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                   struct TALER_TransferPublicKeyP *transfer_pub,
-                   struct TALER_EncryptedLinkSecretP *shared_secret_enc);
+                   TALER_MINTDB_TransferDataCallback tdc,
+                   void *tdc_cls);
+
 
 
   /**
