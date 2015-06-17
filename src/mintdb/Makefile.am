@@ -86,6 +86,7 @@ perf_mintdb_SOURCES = \
 perf_mintdb_LDADD = \
 	libtalermintdb.la \
   $(top_srcdir)/src/util/libtalerutil.la \
+  $(top_srcdir)/src/pq/libtalerpq.la \
 	-lgnunetutil
 
 
