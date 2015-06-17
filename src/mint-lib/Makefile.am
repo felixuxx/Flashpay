@@ -14,7 +14,8 @@ libtalermint_la_LDFLAGS = \
   -no-undefined
 
 libtalermint_la_SOURCES = \
-  mint_api.c
+  mint_api_context.c mint_api_context.h \
+  mint_api_handle.c mint_api_handle.h
 
 libtalermint_la_LIBADD = \
   -lgnunetutil \
@@ -32,4 +33,3 @@ test_mint_api_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil \
   -ljansson
-

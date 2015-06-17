@@ -17,6 +17,7 @@
  * @file include/taler_mint_service.h
  * @brief C interface of libtalermint, a C library to use mint's HTTP API
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
+ * @author Christian Grothoff
  */
 #ifndef _TALER_MINT_SERVICE_H
 #define _TALER_MINT_SERVICE_H
@@ -24,14 +25,114 @@
 #include "taler_util.h"
 
 /**
- * @brief Handle to this library context
+ * @brief Handle to this library context.  This is where the
+ * main event loop logic lives.
  */
 struct TALER_MINT_Context;
 
+
 /**
- * @brief Handle to the mint
+ * Initialise a context.  A context should be used for each thread and should
+ * not be shared among multiple threads.
+ *
+ * @return the context, NULL on error (failure to initialize)
  */
-struct TALER_MINT_Handle;
+struct TALER_MINT_Context *
+TALER_MINT_init (void);
+
+
+/**
+ * Obtain the information for a select() call to wait until
+ * #TALER_MINT_perform() is ready again.  Note that calling
+ * any other TALER_MINT-API may also imply that the library
+ * is again ready for #TALER_MINT_perform().
+ *
+ * Basically, a client should use this API to prepare for select(),
+ * then block on select(), then call #TALER_MINT_perform() and then
+ * start again until the work with the context is done.
+ *
+ * This function will NOT zero out the sets and assumes that @a max_fd
+ * and @a timeout are already set to minimal applicable values.  It is
+ * safe to give this API FD-sets and @a max_fd and @a timeout that are
+ * already initialized to some other descriptors that need to go into
+ * the select() call.
+ *
+ * @param ctx context to get the event loop information for
+ * @param read_fd_set will be set for any pending read operations
+ * @param write_fd_set will be set for any pending write operations
+ * @param except_fd_set is here because curl_multi_fdset() has this argument
+ * @param max_fd set to the highest FD included in any set;
+ *        if the existing sets have no FDs in it, the initial
+ *        value should be "-1". (Note that `max_fd + 1` will need
+ *        to be passed to select().)
+ * @param timeout set to the timeout in milliseconds (!); -1 means
+ *        no timeout (NULL, blocking forever is OK), 0 means to
+ *        proceed immediately with #TALER_MINT_perform().
+ */
+void
+TALER_MINT_get_select_info (struct TALER_MINT_Context *ctx,
+                            fd_set *read_fd_set,
+                            fd_set *write_fd_set,
+                            fd_set *except_fd_set,
+                            int *max_fd,
+                            long *timeout);
+
+
+/**
+ * Run the main event loop for the Taler interaction.
+ *
+ * @param ctx the library context
+ */
+void
+TALER_MINT_perform (struct TALER_MINT_Context *ctx);
+
+
+/**
+ * Cleanup library initialisation resources.  This function should be called
+ * after using this library to cleanup the resources occupied during library's
+ * initialisation.
+ *
+ * @param ctx the library context
+ */
+void
+TALER_MINT_fini (struct TALER_MINT_Context *ctx);
+
+
+/**
+ * List of possible options to be passed to
+ * #TALER_MINT_connect().
+ */
+enum TALER_MINT_Option
+{
+  /**
+   * Terminator (end of option list).
+   */
+  TALER_MINT_OPTION_END = 0
+
+};
+
+
+/**
+ * Information we get from the mint about auditors.
+ */
+struct TALER_MINT_AuditorInformation
+{
+  /**
+   * Public key of the auditing institution.
+   */
+  struct TALER_AuditorPublicKeyP auditor_pub;
+
+  /**
+   * URL of the auditing institution.  The application must check that
+   * this is an acceptable auditor for its purpose and also verify
+   * that the @a auditor_pub matches the auditor's public key given at
+   * that website.  We expect that in practice software is going to
+   * often ship with an initial list of accepted auditors, just like
+   * browsers ship with a CA root store.
+   */
+  const char *auditor_url;
+};
+
 
 /**
  * @brief Mint's signature key
@@ -56,7 +157,7 @@ struct TALER_MINT_SigningPublicKey
 
 
 /**
- * @brief Mint's denomination key
+ * @brief Public information about a mint's denomination key
  */
 struct TALER_MINT_DenomPublicKey
 {
@@ -104,45 +205,94 @@ struct TALER_MINT_DenomPublicKey
 
 
 /**
- * Initialise a context.  A context should be used for each thread and should
- * not be shared among multiple threads.
- *
- * @return the context
+ * Information about keys from the mint.
  */
-struct TALER_MINT_Context *
-TALER_MINT_init (void);
+struct TALER_MINT_Keys
+{
+
+  /**
+   * Long-term offline signing key of the mint.
+   */
+  struct TALER_MasterPublicKeyP master_pub;
+
+  /**
+   * Array of the mint's online signing keys.
+   */
+  struct TALER_MINT_SigningPublicKey *sign_keys;
+
+  /**
+   * Array of the mint's denomination keys.
+   */
+  struct TALER_MINT_DenomPublicKey *denom_keys;
+
+  /**
+   * Array of the keys of the auditors of the mint.
+   */
+  struct TALER_AuditorPublicKeyP *auditors;
+
+  /**
+   * Length of the @e sign_keys array.
+   */
+  unsigned int num_sign_keys;
+
+  /**
+   * Length of the @e denom_keys array.
+   */
+  unsigned int num_denom_keys;
+
+  /**
+   * Length of the @e auditors array.
+   */
+  unsigned int num_auditors;
+
+};
 
 
 /**
- * Cleanup library initialisation resources.  This function should be called
- * after using this library to cleanup the resources occupied during library's
- * initialisation.
+ * Function called with information about who is auditing
+ * a particular mint and what key the mint is using.
  *
- * @param ctx the library context
+ * @param cls closure
+ * @param keys information about the various keys used
+ *        by the mint
  */
-void
-TALER_MINT_cleanup (struct TALER_MINT_Context *ctx);
+typedef void
+(*TALER_MINT_CertificationCallback) (void *cls,
+                                     const struct TALER_MINT_Keys *keys);
 
 
 /**
- * Initialise a connection to the mint.
+ * @brief Handle to the mint.  This is where we interact with
+ * a particular mint and keep the per-mint information.
+ */
+struct TALER_MINT_Handle;
+
+
+/**
+ * Initialise a connection to the mint.  Will connect to the
+ * mint and obtain information about the mint's master public
+ * key and the mint's auditor.  The respective information will
+ * be passed to the @a cert_cb once available, and all future
+ * interactions with the mint will be checked to be signed
+ * (where appropriate) by the respective master key.
  *
  * @param ctx the context
- * @param hostname the hostname of the mint
- * @param port the point where the mint's HTTP service is running.  If port is
- *             given as 0, ports 80 or 443 are chosen depending on @a url.
- * @param master_key the public master key of the mint.  This is used to verify the
- *                 responses of the mint.
+ * @param url HTTP base URL for the mint
+ * @param cert_cb function to call with the mint's certification information
+ * @param cert_cb_cls closure for @a cert_cb
+ * @param ... list of additional arguments, terminated by #TALER_MINT_OPTION_END.
  * @return the mint handle; NULL upon error
  */
 struct TALER_MINT_Handle *
 TALER_MINT_connect (struct TALER_MINT_Context *ctx,
-                    const char *hostname,
-                    uint16_t port,
-                    const struct TALER_MasterPublicKeyP *master_key);
+                    const char *url,
+                    TALER_MINT_CertificationCallback cert_cb,
+                    void *cert_cb_cls,
+                    ...);
+
 
 /**
- * Disconnect from the mint
+ * Disconnect from the mint.
  *
  * @param mint the mint handle
  */
@@ -150,69 +300,9 @@ void
 TALER_MINT_disconnect (struct TALER_MINT_Handle *mint);
 
 
-/**
- * @brief A handle to get the keys of a mint
- */
-struct TALER_MINT_KeysGetHandle;
+#if 0
 
-/**
- * @brief Functions of this type are called to signal completion of an asynchronous call.
- *
- * @param cls closure
- * @param emsg if the asynchronous call could not be completed due to an error,
- *        this parameter contains a human readable error message
- */
-typedef void
-(*TALER_MINT_ContinuationCallback) (void *cls,
-                                    const char *emsg);
-
-/**
- * @brief Functions of this type are called to provide the retrieved signing and
- * denomination keys of the mint.  No TALER_MINT_*() functions should be called
- * in this callback.
- *
- * @param cls closure passed to TALER_MINT_keys_get()
- * @param sign_keys NULL-terminated array of pointers to the mint's signing
- *          keys.  NULL if no signing keys are retrieved.
- * @param denom_keys NULL-terminated array of pointers to the mint's
- *          denomination keys; will be NULL if no signing keys are retrieved.
- */
-typedef void
-(*TALER_MINT_KeysGetCallback) (void *cls,
-                               struct TALER_MINT_SigningPublicKey **sign_keys,
-                               struct TALER_MINT_DenomPublicKey **denom_keys);
-
-
-/**
- * Get the signing and denomination key of the mint.
- *
- * @param mint handle to the mint
- * @param cb the callback to call with the keys
- * @param cb_cls closure for the @a cb callback
- * @param cont_cb the callback to call after completing this asynchronous call
- * @param cont_cls the closure for the @a cont_cb callback
- * @return a handle to this asynchronous call; NULL upon eror
- */
-struct TALER_MINT_KeysGetHandle *
-TALER_MINT_keys_get (struct TALER_MINT_Handle *mint,
-                     TALER_MINT_KeysGetCallback cb,
-                     void *cb_cls,
-                     TALER_MINT_ContinuationCallback cont_cb,
-                     void *cont_cls);
-
-
-/**
- * Cancel the asynchronous call initiated by TALER_MINT_keys_get().  This should
- * not be called if either of the @a TALER_MINT_KeysGetCallback or @a
- * TALER_MINT_ContinuationCallback passed to TALER_MINT_keys_get() have been
- * called.
- *
- * @param get the handle for retrieving the keys
- */
-void
-TALER_MINT_keys_get_cancel (struct TALER_MINT_KeysGetHandle *get);
-
-
+// FIXME: API below with json-crap is too low-level...
 /**
  * @brief A Deposit Handle
  */
@@ -221,7 +311,7 @@ struct TALER_MINT_DepositHandle;
 
 /**
  * Callbacks of this type are used to serve the result of submitting a deposit
- * permission object to a mint
+ * permission object to a mint.
  *
  * @param cls closure
  * @param status 1 for successful deposit, 2 for retry, 0 for failure
@@ -256,7 +346,6 @@ TALER_MINT_deposit_submit_json (struct TALER_MINT_Handle *mint,
                                 json_t *deposit_obj);
 
 
-#if 0
 /**
  * Submit a deposit permission to the mint and get the mint's response.
  *
@@ -291,7 +380,6 @@ TALER_MINT_deposit_submit_json_ (struct TALER_MINT_Handle *mint,
                                  const struct GNUNET_HashCode *h_wire,
                                  const struct TALER_CoinSignature *csig,
                                  json_t *wire_obj);
-#endif
 
 
 /**
@@ -302,5 +390,8 @@ TALER_MINT_deposit_submit_json_ (struct TALER_MINT_Handle *mint,
  */
 void
 TALER_MINT_deposit_submit_cancel (struct TALER_MINT_DepositHandle *deposit);
+
+#endif
+
 
 #endif  /* _TALER_MINT_SERVICE_H */

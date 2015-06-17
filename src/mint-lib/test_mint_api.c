@@ -49,7 +49,7 @@ do_shutdown (void *cls, const struct GNUNET_SCHEDULER_TaskContext *tc)
   dh = NULL;
   TALER_MINT_disconnect (mint);
   mint = NULL;
-  TALER_MINT_cleanup (ctx);
+  TALER_MINT_fini (ctx);
   ctx = NULL;
 }
 
