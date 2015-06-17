@@ -26,6 +26,7 @@
 
 
 #define CURRENCY "EUR"
+#define PERF_TALER_MINTDB_RSA_SIZE 256
 
 
 /**
@@ -193,7 +194,9 @@ PERF_TALER_MINTDB_deposit_init ()
     GNUNET_assert (NULL !=
                    (eddsa_prvt = GNUNET_CRYPTO_eddsa_key_create ()));
     GNUNET_assert (NULL !=
-                   (rsa_prv = GNUNET_CRYPTO_rsa_private_key_create (128)));
+                   (rsa_prv = GNUNET_CRYPTO_rsa_private_key_create (PERF_TALER_MINTDB_RSA_SIZE)));
+    GNUNET_CRYPTO_eddsa_key_get_public (eddsa_prvt,
+                                        &coin.coin_pub.eddsa_pub);    
     GNUNET_assert (NULL !=
                    (coin.denom_pub.rsa_public_key =
                     GNUNET_CRYPTO_rsa_private_key_get_public (rsa_prv)));
@@ -202,8 +205,7 @@ PERF_TALER_MINTDB_deposit_init ()
                     GNUNET_CRYPTO_rsa_sign (rsa_prv,
                                             &coin.coin_pub.eddsa_pub,
                                             sizeof (struct GNUNET_CRYPTO_EddsaPublicKey))));
-    GNUNET_CRYPTO_eddsa_key_get_public (eddsa_prvt,
-                                        &coin.coin_pub.eddsa_pub);
+
     GNUNET_CRYPTO_rsa_private_key_free (rsa_prv);
     GNUNET_free (eddsa_prvt);
   }
@@ -273,6 +275,7 @@ PERF_TALER_MINTDB_deposit_free (struct TALER_MINTDB_Deposit *deposit)
     return GNUNET_OK;
   GNUNET_CRYPTO_rsa_public_key_free (deposit->coin.denom_pub.rsa_public_key);
   GNUNET_CRYPTO_rsa_signature_free (deposit->coin.denom_sig.rsa_signature);
+  json_decref (deposit->wire);
   GNUNET_free (deposit);
 
   return GNUNET_OK;
@@ -294,7 +297,7 @@ PERF_TALER_MINTDB_denomination_init ()
                  (dki = GNUNET_new (struct TALER_MINTDB_DenominationKeyIssueInformation)));
   GNUNET_assert (NULL !=
                  (dki->denom_priv.rsa_private_key
-                  = GNUNET_CRYPTO_rsa_private_key_create (128)));
+                  = GNUNET_CRYPTO_rsa_private_key_create (PERF_TALER_MINTDB_RSA_SIZE)));
   GNUNET_assert (NULL !=
                  (dki->denom_pub.rsa_public_key =
                   GNUNET_CRYPTO_rsa_private_key_get_public (dki->denom_priv.rsa_private_key)));
@@ -363,7 +366,7 @@ PERF_TALER_MINTDB_coin_public_info_init ()
   struct TALER_CoinPublicInfo *cpi;
 
   GNUNET_assert (NULL !=
-                 (denom_prv = GNUNET_CRYPTO_rsa_private_key_create (128)));
+                 (denom_prv = GNUNET_CRYPTO_rsa_private_key_create (PERF_TALER_MINTDB_RSA_SIZE)));
   GNUNET_assert (NULL != 
                  (coin_spent_prv = GNUNET_CRYPTO_eddsa_key_create ()));
   GNUNET_assert (NULL !=

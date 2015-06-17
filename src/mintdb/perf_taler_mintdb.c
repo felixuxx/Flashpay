@@ -33,27 +33,30 @@ main (int argc, char ** argv)
   struct GNUNET_CONFIGURATION_Handle *config;
   struct PERF_TALER_MINTDB_Cmd test[] = 
   {
-    PERF_TALER_MINTDB_INIT_CMD_LOOP ("loop_db_init_deposit",100000),
+    PERF_TALER_MINTDB_INIT_CMD_LOOP ("loop_db_init_deposit",10),
     PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("start_transaction_init"),
     PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT ("init_deposit_insert"),
     PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION ("commit_transaction_init"),
-    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("endloop_init_deposit","loop_db_init_deposit"),
+    PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("array_depo", "loop_db_init_deposit", "init_deposit_insert", 10, PERF_TALER_MINTDB_DEPOSIT),
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("endloop_init_deposit",
+                                         "loop_db_init_deposit"),
     PERF_TALER_MINTDB_INIT_CMD_END("end")
   };
-
+ // Plugin init
   config = GNUNET_CONFIGURATION_create();
   GNUNET_CONFIGURATION_load(config, "./test-mint-db-postgres.conf");
   GNUNET_assert (NULL !=
                  (plugin = TALER_MINTDB_plugin_load (config)));
   plugin->create_tables (plugin->cls, GNUNET_YES);
+  // Run command
   PERF_TALER_MINTDB_interpret(plugin, test);
+  // Drop tables
   {
     struct TALER_MINTDB_Session *session;
 
     session = plugin->get_session (plugin->cls, GNUNET_YES);
     plugin->drop_temporary (plugin->cls, session);
   }
-
   TALER_MINTDB_plugin_unload(plugin);
   GNUNET_CONFIGURATION_destroy(config);
   return GNUNET_OK;
