@@ -166,89 +166,99 @@ PERF_TALER_MINTDB_refresh_session_free (struct TALER_MINTDB_RefreshSession *refr
 struct TALER_MINTDB_Deposit *
 PERF_TALER_MINTDB_deposit_init ()
 {
-  static int transaction_id = 0;
   struct TALER_MINTDB_Deposit *deposit;
+  struct TALER_CoinPublicInfo coin;
+  struct TALER_CoinSpendSignatureP csig;
+  struct TALER_MerchantPublicKeyP merchant_pub;
+  struct GNUNET_HashCode h_contract;
+  struct GNUNET_HashCode h_wire;
+  const char wire[] = "{"
+    "\"type\":\"SEPA\","
+    "\"IBAN\":\"DE67830654080004822650\","
+    "\"NAME\":\"GNUNET E.\","
+    "\"BIC\":\"GENODEF1SRL\""
+    "}";
+  static uint64_t transaction_id = 0;
+  struct GNUNET_TIME_Absolute timestamp;  
+  struct GNUNET_TIME_Absolute refund_deadline;  
+  struct TALER_Amount amount_with_fee;
+  struct TALER_Amount deposit_fee;
 
   GNUNET_assert (NULL !=
-                 (deposit = GNUNET_new (struct TALER_MINTDB_Deposit)));
-  deposit-> transaction_id = transaction_id;
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY ":1.1", 
-                                         &deposit->amount_with_fee));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY ":0.1", 
-                                         &deposit->deposit_fee));
-  deposit->timestamp = GNUNET_TIME_absolute_get ();
-  deposit->refund_deadline = GNUNET_TIME_absolute_get ();
-  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
-                                    &deposit->h_contract);
-  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
-                                    &deposit->h_wire);
-  // Coin Spend Signature
-  {
+                 (deposit = GNUNET_malloc (sizeof (struct TALER_MINTDB_Deposit) + sizeof (wire))));
+  { // coin
+    struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_prvt;
+    struct GNUNET_CRYPTO_rsa_PrivateKey *rsa_prv;
+
+    GNUNET_assert (NULL !=
+                   (eddsa_prvt = GNUNET_CRYPTO_eddsa_key_create ()));
+    GNUNET_assert (NULL !=
+                   (rsa_prv = GNUNET_CRYPTO_rsa_private_key_create (128)));
+    GNUNET_assert (NULL !=
+                   (coin.denom_pub.rsa_public_key =
+                    GNUNET_CRYPTO_rsa_private_key_get_public (rsa_prv)));
+    GNUNET_assert (NULL !=
+                   (coin.denom_sig.rsa_signature =
+                    GNUNET_CRYPTO_rsa_sign (rsa_prv,
+                                            &coin.coin_pub.eddsa_pub,
+                                            sizeof (struct GNUNET_CRYPTO_EddsaPublicKey))));
+    GNUNET_CRYPTO_eddsa_key_get_public (eddsa_prvt,
+                                        &coin.coin_pub.eddsa_pub);
+    GNUNET_CRYPTO_rsa_private_key_free (rsa_prv);
+    GNUNET_free (eddsa_prvt);
+  }
+  { //csig
     struct u32_presign
     {
       struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
       uint32_t data;
     } unsigned_data;
     struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_prvt;
-    uint32_t random_int;
 
     GNUNET_assert (NULL !=
                    (eddsa_prvt = GNUNET_CRYPTO_eddsa_key_create ()));
-
-    random_int = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, 
-                                           UINT32_MAX);
+    unsigned_data.data = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, 
+                                                   UINT32_MAX);
     unsigned_data.purpose.size = htonl (sizeof (struct u32_presign));
     unsigned_data.purpose.purpose = htonl (GNUNET_SIGNATURE_PURPOSE_TEST);
-    unsigned_data.data = random_int;
     GNUNET_assert (GNUNET_OK ==
                    GNUNET_CRYPTO_eddsa_sign (eddsa_prvt,
                                              &unsigned_data.purpose,
-                                             &deposit->csig.eddsa_signature));
-    // No need to clear as this is a dummy key
+                                             &csig.eddsa_signature));
     GNUNET_free (eddsa_prvt);
   }
-  // Merchant Key
-  {
+  { //merchant_pub
     struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_prv;
 
     GNUNET_assert(NULL !=
                   (eddsa_prv = GNUNET_CRYPTO_eddsa_key_create ()));
     GNUNET_CRYPTO_eddsa_key_get_public (
                                         eddsa_prv,
-                                        &deposit->merchant_pub.eddsa_pub);
+                                        &merchant_pub.eddsa_pub);
     GNUNET_free (eddsa_prv);
   }
-  // Coin
-  {
-    {
-      struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_prvt;
-
-      GNUNET_assert (NULL !=
-                     (eddsa_prvt = GNUNET_CRYPTO_eddsa_key_create ()));
-      GNUNET_CRYPTO_eddsa_key_get_public (
-                                          eddsa_prvt,
-                                          &deposit->coin.coin_pub.eddsa_pub);
-      GNUNET_free (eddsa_prvt);
-    }
-
-    {
-      struct GNUNET_CRYPTO_rsa_PrivateKey *rsa_prv;
-
-      GNUNET_assert (NULL !=
-                     (rsa_prv = GNUNET_CRYPTO_rsa_private_key_create (128)));
-      GNUNET_assert (NULL !=
-                     (deposit->coin.denom_pub.rsa_public_key =
-                      GNUNET_CRYPTO_rsa_private_key_get_public (rsa_prv)));
-      GNUNET_assert (NULL !=
-                     (deposit->coin.denom_sig.rsa_signature =
-                      GNUNET_CRYPTO_rsa_sign (rsa_prv,
-                                              &deposit->coin.coin_pub.eddsa_pub,
-                                              sizeof (struct GNUNET_CRYPTO_EddsaPublicKey))));
-      GNUNET_CRYPTO_rsa_private_key_free (rsa_prv);
-    }
-  }
+  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
+                                    &h_contract);
+  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
+                                    &h_wire);
+  timestamp = GNUNET_TIME_absolute_get ();
+  refund_deadline = GNUNET_TIME_absolute_get ();
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":1.1", 
+                                         &amount_with_fee));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":0.1", 
+                                         &deposit_fee));
+  deposit->coin = coin;
+  deposit->csig = csig;
+  deposit->h_contract = h_contract;
+  deposit->h_wire = h_wire;
+  deposit->wire = json_loads (wire, 0, NULL);
+  deposit->transaction_id = transaction_id++;
+  deposit->timestamp = timestamp;
+  deposit->refund_deadline = refund_deadline;
+  deposit->amount_with_fee = amount_with_fee;
+  deposit->deposit_fee = deposit_fee;
   return deposit;
 }
 
@@ -351,7 +361,7 @@ PERF_TALER_MINTDB_coin_public_info_init ()
   struct GNUNET_CRYPTO_EddsaPrivateKey *coin_spent_prv;
   struct GNUNET_CRYPTO_rsa_PrivateKey *denom_prv;
   struct TALER_CoinPublicInfo *cpi;
-  
+
   GNUNET_assert (NULL !=
                  (denom_prv = GNUNET_CRYPTO_rsa_private_key_create (128)));
   GNUNET_assert (NULL != 
@@ -360,7 +370,7 @@ PERF_TALER_MINTDB_coin_public_info_init ()
                  (cpi = GNUNET_new (struct TALER_CoinPublicInfo)));
   GNUNET_CRYPTO_eddsa_key_get_public (coin_spent_prv, &cpi->coin_pub.eddsa_pub);
   GNUNET_assert (NULL !=
-                (cpi->denom_pub.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (denom_prv)));
+                 (cpi->denom_pub.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (denom_prv)));
   GNUNET_assert (NULL !=
                  (cpi->denom_sig.rsa_signature = GNUNET_CRYPTO_rsa_sign (denom_prv, 
                                                                          &cpi->coin_pub, 

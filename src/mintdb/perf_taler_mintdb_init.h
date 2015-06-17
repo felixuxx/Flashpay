@@ -73,7 +73,7 @@ PERF_TALER_MINTDB_refresh_session_free (struct TALER_MINTDB_RefreshSession *refr
  * Create a randomly generated deposit
  */
 struct TALER_MINTDB_Deposit *
-PERF_TALER_MINTDB_deposit_init ();
+PERF_TALER_MINTDB_deposit_init (void);
 
 
 /**
