@@ -54,12 +54,33 @@ struct PERF_TALER_MINTDB_interpreter_state
  * Free the memory of @a data, with data of type @a type
  */
 static void
-data_free (union PERF_TALER_MINTDB_Data *data, enum PERF_TALER_MINTDB_Type type){
+data_free (union PERF_TALER_MINTDB_Data *data, enum PERF_TALER_MINTDB_Type type)
+{
   switch (type)
   {
     case PERF_TALER_MINTDB_DEPOSIT:
       PERF_TALER_MINTDB_deposit_free (data->deposit);
       data->deposit = NULL;
+      return;
+
+    case PERF_TALER_MINTDB_BLINDCOIN:
+      PERF_TALER_MINTDB_collectable_blindcoin_free (data->blindcoin);
+      data->blindcoin = NULL;
+      return;
+
+    case PERF_TALER_MINTDB_RESERVE:
+      PERF_TALER_MINTDB_reserve_free (data->reserve);
+      data->reserve = NULL;
+      return;
+
+    case PERF_TALER_MINTDB_DENOMINATION_INFO:
+      PERF_TALER_MINTDB_denomination_free (data->dki);
+      data->dki = NULL;
+      return;
+
+    case PERF_TALER_MINTDB_COIN_INFO:
+      PERF_TALER_MINTDB_coin_public_info_free (data->cpi);
+      data->cpi = NULL;
       return;
 
     default:
@@ -111,7 +132,8 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           GNUNET_CRYPTO_random_permute (
                                         GNUNET_CRYPTO_QUALITY_WEAK,
                                         cmd[cmd_find (cmd, 
-                                                      cmd[i].details.load_array.label_save)]
+                                                      cmd[i].details
+                                                        .load_array.label_save)]
                                         .details.save_array.nb_saved);
 
         // Initializing the type based on the type of the saved array
@@ -198,7 +220,83 @@ interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
   }
 }
 
+static void
+interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
+{
+  int loop_index;
+  int selection_chance;
+  // Array initialization on first loop iteration
+  // Alows for nested loops
+  if (0 == state->cmd[cmd_find (state->cmd, 
+                                state->cmd[state->i]
+                                .details.save_array.label_loop)]
+      .details.loop.curr_iteration)
+  {
+    state->cmd[state->i].details.save_array.index = 0;
+  }
+  loop_index = cmd_find (state->cmd, 
+                         state->cmd[state->i].details.save_array.label_loop);
+  // The probobility distribution of the saved items will be a little biased 
+  // against the few last items but it should not be a big problem.
+  selection_chance = state->cmd[loop_index].details.loop.max_iterations /
+    state->cmd[state->i].details.save_array.nb_saved;
+  /*
+   * If the remaining sapce is equal to the remaining number of
+   * iterations, the item is automaticly saved.
+   *
+   * Else it is saved only if rdn is 0
+   */
+  if (((state->cmd[loop_index].details.loop.max_iterations - 
+        state->cmd[loop_index].details.loop.curr_iteration) ==
+       (state->cmd[state->i].details.save_array.nb_saved - 
+        state->cmd[state->i].details.save_array.index))
+      || (0 == GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, 
+                                         selection_chance)))
+  {
+    union PERF_TALER_MINTDB_Data *save_location;
+    union PERF_TALER_MINTDB_Data *item_saved;
 
+    save_location = &state->cmd[state->i].details.save_array
+      .data_saved[state->cmd[state->i].details.save_array.index];
+    item_saved = &state->cmd[cmd_find (state->cmd, 
+                                       state->cmd[state->i]
+                                       .details.save_array.label_save)]
+      .exposed;
+    switch (state->cmd[state->i].details.save_array.type_saved)
+    {
+      case PERF_TALER_MINTDB_TIME:
+        save_location->time = item_saved->time;
+        break;
+
+      case PERF_TALER_MINTDB_DEPOSIT:
+        save_location->deposit = item_saved->deposit;
+        break;
+
+      case PERF_TALER_MINTDB_BLINDCOIN:
+        save_location->blindcoin = item_saved->blindcoin;
+        break;
+
+      case PERF_TALER_MINTDB_RESERVE:
+        save_location->reserve = item_saved->reserve;
+        break;
+
+      case PERF_TALER_MINTDB_DENOMINATION_INFO:
+        save_location->dki = item_saved->dki;
+        break;
+
+      case PERF_TALER_MINTDB_COIN_INFO:
+        save_location->cpi = item_saved->cpi;
+        break;
+
+      default:
+        break;
+    }
+    state->cmd[cmd_find (state->cmd,
+                         state->cmd[state->i].details.save_array.label_save)]
+      .exposed_saved = GNUNET_YES;
+    state->cmd[state->i].details.save_array.index++;
+  }
+}
 
 /**
  * Main interpreter loop.
@@ -216,7 +314,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         return GNUNET_YES;
 
       case PERF_TALER_MINTDB_CMD_DEBUG:
-        printf("%s\n", state->cmd[state->i].label);
+        printf ("%s\n", state->cmd[state->i].label);
         break;
 
       case PERF_TALER_MINTDB_CMD_LOOP:
@@ -241,9 +339,13 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
                                   state->cmd[state->i].details.gauger.label_stop);
           start = state->cmd [start_index].exposed.time;
           stop = state->cmd [stop_index].exposed.time;
-          elapsed_ms = (start.tv_sec - stop.tv_sec) * 1000 + (start.tv_nsec - stop.tv_nsec) / 1000000;
+          elapsed_ms = (start.tv_sec - stop.tv_sec) * 1000 + 
+            (start.tv_nsec - stop.tv_nsec) / 1000000;
 
-          GAUGER ("MINTDB", state->cmd[state->i].details.gauger.description, elapsed_ms, "milliseconds");
+          GAUGER ("MINTDB", 
+                  state->cmd[state->i].details.gauger.description, 
+                  elapsed_ms, 
+                  "milliseconds");
         }
         break;
 
@@ -263,62 +365,67 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         state->plugin->rollback (state->plugin->cls, state->session);
 
       case PERF_TALER_MINTDB_CMD_SAVE_ARRAY:
-        {
-          int loop_index;
-          int proba;
-          int rnd;
-          // Array initialization on first loop iteration
-          // Alows for nested loops
-          if (0 == state->cmd[cmd_find (state->cmd, 
-                                        state->cmd[state->i].details.save_array.label_loop)]
-              .details.loop.curr_iteration)
-          {
-            state->cmd[state->i].details.save_array.index = 0;
-          }
-          loop_index = cmd_find (state->cmd, 
-                                 state->cmd[state->i].details.save_array.label_loop);
-          // The probobility distribution of the saved items will be a little biased 
-          // against the few last items but it should not be a big problem.
-          proba = state->cmd[loop_index].details.loop.max_iterations /
-            state->cmd[state->i].details.save_array.nb_saved;
-          rnd = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, proba);
-          /*
-           * If the remaining sapce is equal to the remaining number of
-           * iterations, the item is automaticly saved.
-           *
-           * Else it is saved only if rdn is 0
-           */
-          if ((state->cmd[loop_index].details.loop.max_iterations - state->cmd[loop_index].details.loop.curr_iteration ==
-               state->cmd[state->i].details.save_array.nb_saved - state->cmd[state->i].details.save_array.index) ||
-              (rnd == 0))
-          {
-            union PERF_TALER_MINTDB_Data *save_location;
-            union PERF_TALER_MINTDB_Data *item_saved;
-
-            save_location = &state->cmd[state->i].details.save_array.data_saved[
-              state->cmd[state->i].details.save_array.index];
-            item_saved = &state->cmd[cmd_find (state->cmd, 
-                                               state->cmd[state->i].details.save_array.label_save)]
-              .exposed;
-            switch (state->cmd[state->i].details.save_array.type_saved)
-            {
-              case PERF_TALER_MINTDB_DEPOSIT:
-                save_location->deposit = item_saved->deposit;
-                break;
-
-              case PERF_TALER_MINTDB_TIME:
-                save_location->time = item_saved->time;
-                break;
-
-              default:
-                break;
-            }
-            state->cmd[cmd_find(state->cmd,
-                                state->cmd[state->i].details.save_array.label_save)]
-              .exposed_saved = GNUNET_YES;
-            state->cmd[state->i].details.save_array.index++;
-          }
-        }
+        interpret_save_array (state);
+//        {
+//          int loop_index;
+//          int proba;
+//          int rnd;
+//          // Array initialization on first loop iteration
+//          // Alows for nested loops
+//          if (0 == state->cmd[cmd_find (state->cmd, 
+//                                        state->cmd[state->i]
+//                                        .details.save_array.label_loop)]
+//              .details.loop.curr_iteration)
+//          {
+//            state->cmd[state->i].details.save_array.index = 0;
+//          }
+//          loop_index = cmd_find (state->cmd, 
+//                                 state->cmd[state->i].details.save_array.label_loop);
+//          // The probobility distribution of the saved items will be a little biased 
+//          // against the few last items but it should not be a big problem.
+//          proba = state->cmd[loop_index].details.loop.max_iterations /
+//            state->cmd[state->i].details.save_array.nb_saved;
+//          rnd = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, proba);
+//          /*
+//           * If the remaining sapce is equal to the remaining number of
+//           * iterations, the item is automaticly saved.
+//           *
+//           * Else it is saved only if rdn is 0
+//           */
+//          if (((state->cmd[loop_index].details.loop.max_iterations - 
+//                state->cmd[loop_index].details.loop.curr_iteration) ==
+//               (state->cmd[state->i].details.save_array.nb_saved - 
+//                state->cmd[state->i].details.save_array.index))
+//              || (rnd == 0))
+//          {
+//            union PERF_TALER_MINTDB_Data *save_location;
+//            union PERF_TALER_MINTDB_Data *item_saved;
+//
+//            save_location = &state->cmd[state->i].details.save_array
+//              .data_saved[state->cmd[state->i].details.save_array.index];
+//            item_saved = &state->cmd[cmd_find (state->cmd, 
+//                                               state->cmd[state->i]
+//                                                .details.save_array.label_save)]
+//              .exposed;
+//            switch (state->cmd[state->i].details.save_array.type_saved)
+//            {
+//              case PERF_TALER_MINTDB_DEPOSIT:
+//                save_location->deposit = item_saved->deposit;
+//                break;
+//
+//              case PERF_TALER_MINTDB_TIME:
+//                save_location->time = item_saved->time;
+//                break;
+//
+//              default:
+//                break;
+//            }
+//            state->cmd[cmd_find (state->cmd,
+//                                state->cmd[state->i].details.save_array.label_save)]
+//              .exposed_saved = GNUNET_YES;
+//            state->cmd[state->i].details.save_array.index++;
+//          }
+//        }
         break;
 
       case PERF_TALER_MINTDB_CMD_LOAD_ARRAY:
@@ -354,10 +461,14 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT:
         {
-          struct TALER_MINTDB_Deposit *deposit = PERF_TALER_MINTDB_deposit_init (-1);
+         struct TALER_MINTDB_Deposit *deposit =
+           PERF_TALER_MINTDB_deposit_init ();
 
-          state->plugin->insert_deposit (state->plugin->cls, state->session, deposit);
-          state->cmd[state->i].exposed.deposit = deposit;
+         GNUNET_assert (
+                        state->plugin->insert_deposit (state->plugin->cls, 
+                                                       state->session, 
+                                                       deposit));
+         state->cmd[state->i].exposed.deposit = deposit;
         }
         break;
 
@@ -365,9 +476,11 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         {
           struct TALER_MINTDB_Deposit *deposit = 
             state->cmd[cmd_find (state->cmd, 
-                                 state->cmd[state->i].details.get_deposit.label_source)]
+                                 state->cmd[state->i]
+                                 .details.get_deposit.label_source)]
             .exposed.deposit; // Get the deposit from the source
-          state->plugin->have_deposit (state->plugin->cls, state->session, deposit);
+          state->plugin->have_deposit (state->plugin->cls, 
+                                       state->session, deposit);
         }
         break;
 
@@ -387,12 +500,14 @@ int
 PERF_TALER_MINTDB_interpret (struct TALER_MINTDB_Plugin *db_plugin,
                              struct PERF_TALER_MINTDB_Cmd cmd[])
 {
-  struct PERF_TALER_MINTDB_interpreter_state state = {.i = 0, .cmd = cmd, .plugin = db_plugin};
+  struct PERF_TALER_MINTDB_interpreter_state state = 
+  {.i = 0, .cmd = cmd, .plugin = db_plugin};
 
   // Initializing commands
   cmd_init (state.cmd);
   // Running the interpreter
-  state.session = db_plugin->get_session (db_plugin->cls, GNUNET_YES);
+  GNUNET_assert(NULL !=
+                (state.session = db_plugin->get_session (db_plugin->cls, GNUNET_YES)));
   interpret (&state);
   // Cleaning the memory
   cmd_clean (cmd);

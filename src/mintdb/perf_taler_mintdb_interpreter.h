@@ -183,6 +183,10 @@ enum PERF_TALER_MINTDB_Type
   PERF_TALER_MINTDB_NONE,
   PERF_TALER_MINTDB_TIME,
   PERF_TALER_MINTDB_DEPOSIT,
+  PERF_TALER_MINTDB_BLINDCOIN,
+  PERF_TALER_MINTDB_RESERVE,
+  PERF_TALER_MINTDB_DENOMINATION_INFO,
+  PERF_TALER_MINTDB_COIN_INFO,
 };
 
 
@@ -193,6 +197,10 @@ union PERF_TALER_MINTDB_Data
 {
   struct TALER_MINTDB_Deposit *deposit;
   struct timespec time; 
+  struct TALER_MINTDB_CollectableBlindcoin *blindcoin;
+  struct TALER_MINTDB_Reserve *reserve;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
+  struct TALER_CoinPublicInfo *cpi;
 };
 
 
@@ -203,11 +211,13 @@ enum PERF_TALER_MINTDB_CMD_Name
 {
   // All comand chain must hace this as their last command
   PERF_TALER_MINTDB_CMD_END,
+  
   // Prints it's label
   PERF_TALER_MINTDB_CMD_DEBUG,
+
   // Define the start of al command chain loop
   PERF_TALER_MINTDB_CMD_LOOP,
-  //
+  
   // Define the end of a command chain loop
   PERF_TALER_MINTDB_CMD_END_LOOP,
 
