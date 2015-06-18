@@ -210,6 +210,9 @@ reload_keys_denom_iter (void *cls,
   struct TALER_MINTDB_Session *session;
   int res;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Loading denomination key `%s'\n",
+              alias);
   horizon = GNUNET_TIME_relative_to_absolute (TALER_MINT_conf_duration_provide ());
   if (GNUNET_TIME_absolute_ntoh (dki->issue.start).abs_value_us >
       horizon.abs_value_us)
