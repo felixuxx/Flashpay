@@ -176,16 +176,14 @@ context_task (void *cls,
  */
 static void
 run (void *cls,
-     char *const *args,
-     const char *cfgfile,
-     const struct GNUNET_CONFIGURATION_Handle *config)
+     const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   ctx = TALER_MINT_init ();
   GNUNET_assert (NULL != ctx);
   ctx_task = GNUNET_SCHEDULER_add_now (&context_task,
                                        ctx);
   mint = TALER_MINT_connect (ctx,
-                             "http://localhost:8080",
+                             "http://localhost:8081",
                              &cert_cb, NULL,
                              TALER_MINT_OPTION_END);
   GNUNET_assert (NULL != mint);
@@ -206,17 +204,26 @@ int
 main (int argc,
       char * const *argv)
 {
-  static struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_END
-  };
+  struct GNUNET_OS_Process *mintd;
 
+  GNUNET_log_setup ("test-mint-api",
+                    "WARNING",
+                    NULL);
+  mintd = GNUNET_OS_start_process (GNUNET_NO,
+                                   GNUNET_OS_INHERIT_STD_ALL,
+                                   NULL, NULL, NULL,
+                                   "taler-mint-httpd",
+                                   "taler-mint-httpd",
+                                   "-d", "test-mint-home",
+                                   NULL);
+  sleep (1);
   result = GNUNET_SYSERR;
-  if (GNUNET_OK !=
-      GNUNET_PROGRAM_run (argc, argv, "test-mint-api",
-                          gettext_noop ("Testcase to test mint's HTTP API interface"),
-                          options,
-                          &run, NULL))
-    return 3;
+  GNUNET_SCHEDULER_run (&run, NULL);
+  sleep (60);
+  GNUNET_OS_process_kill (mintd,
+                          SIGTERM);
+  GNUNET_OS_process_wait (mintd);
+  GNUNET_OS_process_destroy (mintd);
   return (GNUNET_OK == result) ? 0 : 1;
 }
 

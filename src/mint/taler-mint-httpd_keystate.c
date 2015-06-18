@@ -418,13 +418,13 @@ free_denom_key (void *cls,
 
 /**
  * Release key state, free if necessary (if reference count gets to zero).
+ * Internal method used when the mutex is already held.
  *
  * @param key_state the key state to release
  */
 void
-TMH_KS_release (struct TMH_KS_StateHandle *key_state)
+TMH_KS_release_ (struct TMH_KS_StateHandle *key_state)
 {
-  GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
   GNUNET_assert (0 < key_state->refcnt);
   key_state->refcnt--;
   if (0 == key_state->refcnt)
@@ -438,6 +438,19 @@ TMH_KS_release (struct TMH_KS_StateHandle *key_state)
     GNUNET_free (key_state->keys_json);
     GNUNET_free (key_state);
   }
+}
+
+
+/**
+ * Release key state, free if necessary (if reference count gets to zero).
+ *
+ * @param key_state the key state to release
+ */
+void
+TMH_KS_release (struct TMH_KS_StateHandle *key_state)
+{
+  GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
+  TMH_KS_release_ (key_state);
   GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
 }
 
@@ -462,7 +475,7 @@ TMH_KS_acquire (void)
   if ( (NULL != internal_key_state) &&
        (internal_key_state->next_reload.abs_value_us <= now.abs_value_us) )
   {
-    TMH_KS_release (internal_key_state);
+    TMH_KS_release_ (internal_key_state);
     internal_key_state = NULL;
   }
   if (NULL == internal_key_state)
@@ -488,8 +501,10 @@ TMH_KS_acquire (void)
     GNUNET_CRYPTO_hash_context_finish (key_state->hash_context,
                                        &ks.hc);
     key_state->hash_context = NULL;
-    TMH_KS_sign (&ks.purpose,
-                 &sig);
+    GNUNET_assert (GNUNET_OK ==
+                   GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
+                                             &ks.purpose,
+                                             &sig.eddsa_signature));
     key_state->next_reload = GNUNET_TIME_absolute_ntoh (key_state->current_sign_key_issue.issue.expire);
     if (0 == key_state->next_reload.abs_value_us)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
