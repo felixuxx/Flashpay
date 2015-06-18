@@ -33,3 +33,9 @@ test_mint_api_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil \
   -ljansson
+
+EXTRA_DIST = \
+  test-mint-home/config/mint-common.conf \
+  test-mint-home/master.priv \
+  test-mint-home/denomkeys/ \
+  test-mint-home/signkeys/

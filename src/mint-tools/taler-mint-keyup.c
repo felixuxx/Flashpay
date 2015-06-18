@@ -502,12 +502,13 @@ mint_keys_update_signkeys ()
                                            "legal_duration",
                                            &legal_duration))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                "mint_keys",
-                               "legal_duration");
+                               "legal_duration",
+                               "fails to specify valid timeframe");
     return GNUNET_SYSERR;
   }
-  if (signkey_duration.rel_value_us < legal_duration.rel_value_us)
+  if (signkey_duration.rel_value_us > legal_duration.rel_value_us)
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                "mint_keys",
