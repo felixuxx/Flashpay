@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -18,22 +18,45 @@
  * @file mint/test_mint_api.c
  * @brief testcase to test mint's HTTP API interface
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
+ * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_mint_service.h"
 
+/**
+ * Main execution context for the main loop.
+ */
 static struct TALER_MINT_Context *ctx;
 
+/**
+ * Handle to access the mint.
+ */
 static struct TALER_MINT_Handle *mint;
 
+/**
+ * Task run on shutdown.
+ */
 static struct GNUNET_SCHEDULER_Task *shutdown_task;
 
+/**
+ * Task that runs the main event loop.
+ */
 static struct GNUNET_SCHEDULER_Task *ctx_task;
 
+/**
+ * Result of the testcases, #GNUNET_OK on success
+ */
 static int result;
 
 
+/**
+ * Function run when the test terminates (good or bad).
+ * Cleans up our state.
+ *
+ * @param cls NULL
+ * @param tc unused
+ */
 static void
 do_shutdown (void *cls,
              const struct GNUNET_SCHEDULER_TaskContext *tc)
@@ -82,7 +105,8 @@ cert_cb (void *cls,
               keys->num_denom_keys);
 #undef ERR
   /* TODO: start running rest of test suite here! */
-  return;
+  result = GNUNET_OK;
+  GNUNET_SCHEDULER_shutdown ();
 }
 
 
@@ -195,3 +219,5 @@ main (int argc,
     return 3;
   return (GNUNET_OK == result) ? 0 : 1;
 }
+
+/* end of test_mint_api.c */

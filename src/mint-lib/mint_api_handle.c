@@ -761,6 +761,8 @@ TALER_MINT_connect (struct TALER_MINT_Context *ctx,
   mint = GNUNET_new (struct TALER_MINT_Handle);
   mint->ctx = ctx;
   mint->url = GNUNET_strdup (url);
+  mint->cert_cb = cert_cb;
+  mint->cert_cb_cls = cert_cb_cls;
   kr = GNUNET_new (struct KeysRequest);
   kr->mint = mint;
   kr->url = MAH_path_to_url (mint, "/keys");
