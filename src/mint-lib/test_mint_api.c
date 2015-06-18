@@ -216,10 +216,10 @@ main (int argc,
                                    "taler-mint-httpd",
                                    "-d", "test-mint-home",
                                    NULL);
+  /* give child time to start and bind against the socket */
   sleep (1);
   result = GNUNET_SYSERR;
   GNUNET_SCHEDULER_run (&run, NULL);
-  sleep (60);
   GNUNET_OS_process_kill (mintd,
                           SIGTERM);
   GNUNET_OS_process_wait (mintd);
