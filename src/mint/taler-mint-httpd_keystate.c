@@ -422,7 +422,7 @@ free_denom_key (void *cls,
  *
  * @param key_state the key state to release
  */
-void
+static void
 TMH_KS_release_ (struct TMH_KS_StateHandle *key_state)
 {
   GNUNET_assert (0 < key_state->refcnt);
