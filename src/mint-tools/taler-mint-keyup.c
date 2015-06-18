@@ -366,9 +366,8 @@ get_anchor_iter (void *cls,
             filename);
     return GNUNET_OK;
   }
-  if (stamp.abs_value_us <= now.abs_value_us)
-    *anchor = GNUNET_TIME_absolute_max (stamp,
-                                        *anchor);
+  *anchor = GNUNET_TIME_absolute_max (stamp,
+                                      *anchor);
   return GNUNET_OK;
 }
 
@@ -419,7 +418,7 @@ get_anchor (const char *dir,
                 "Existing keys are way too old, starting with fresh key set.\n");
     *anchor = now;
   }
-  else if (anchor->abs_value_us != now.abs_value_us) // Also odd...
+  else if (anchor->abs_value_us != now.abs_value_us)
   {
     /* Real starting time is the last start time + duration - overlap */
     *anchor = GNUNET_TIME_absolute_add (*anchor,
