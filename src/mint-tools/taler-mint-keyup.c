@@ -555,9 +555,9 @@ mint_keys_update_signkeys ()
                                &signkey_issue);
     nwrite = GNUNET_DISK_fn_write (skf,
                                    &signkey_issue,
-                                   sizeof (struct TALER_MintSigningKeyValidityPS),
+                                   sizeof (struct TALER_MINTDB_PrivateSigningKeyInformationP),
                                    GNUNET_DISK_PERM_USER_WRITE | GNUNET_DISK_PERM_USER_READ);
-    if (nwrite != sizeof (struct TALER_MintSigningKeyValidityPS))
+    if (sizeof (struct TALER_MINTDB_PrivateSigningKeyInformationP) != nwrite)
     {
       fprintf (stderr,
                "Failed to write to file `%s': %s\n",

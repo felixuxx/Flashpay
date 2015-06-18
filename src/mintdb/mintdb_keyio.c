@@ -44,9 +44,8 @@ struct SignkeysIterateContext
 
 
 /**
- * Function called on each file in the directory with
- * our signing keys. Parses the file and calls the
- * iterator from @a cls.
+ * Function called on each file in the directory with our signing
+ * keys. Parses the file and calls the iterator from @a cls.
  *
  * @param cls the `struct SignkeysIterateContext *`
  * @param filename name of the file to parse
@@ -68,8 +67,10 @@ signkeys_iterate_dir_iter (void *cls,
   if (nread != sizeof (struct TALER_MINTDB_PrivateSigningKeyInformationP))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Invalid signkey file `%s': wrong size\n",
-                filename);
+                "Invalid signkey file `%s': wrong size (%d, expected %u)\n",
+                filename,
+                (int) nread,
+                sizeof (struct TALER_MINTDB_PrivateSigningKeyInformationP));
     return GNUNET_OK;
   }
   return skc->it (skc->it_cls,
