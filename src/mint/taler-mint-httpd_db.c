@@ -613,9 +613,8 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
   int res;
   unsigned int i;
 
-  if (NULL ==
-      (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                          TMH_test_mode)))
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
+                                                  TMH_test_mode)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);

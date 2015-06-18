@@ -211,7 +211,7 @@ reload_keys_denom_iter (void *cls,
   int res;
 
   horizon = GNUNET_TIME_relative_to_absolute (TALER_MINT_conf_duration_provide ());
-  if (GNUNET_TIME_absolute_ntoh (dki->issue.expire_spend).abs_value_us >
+  if (GNUNET_TIME_absolute_ntoh (dki->issue.start).abs_value_us >
       horizon.abs_value_us)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -235,7 +235,9 @@ reload_keys_denom_iter (void *cls,
                                    &denom_key_hash,
                                    sizeof (struct GNUNET_HashCode));
   session = TMH_plugin->get_session (TMH_plugin->cls,
-                                     GNUNET_NO);
+                                     TMH_test_mode);
+  if (NULL == session)
+    return GNUNET_SYSERR;
   /* Try to insert DKI into DB until we succeed; note that if the DB
      failure is persistent, this code may loop forever (as there is no
      sane alternative, we cannot continue without the DKI being in the

@@ -474,8 +474,11 @@ main (int argc, char *const *argv)
 
     session = TMH_plugin->get_session (TMH_plugin->cls,
                                        GNUNET_YES);
-    TMH_plugin->drop_temporary (TMH_plugin->cls,
-                                session);
+    if (NULL == session)
+      GNUNET_break (0);
+    else
+      TMH_plugin->drop_temporary (TMH_plugin->cls,
+                                  session);
   }
 
   TALER_MINTDB_plugin_unload (TMH_plugin);

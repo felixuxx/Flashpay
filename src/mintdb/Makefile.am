@@ -23,6 +23,8 @@ libtaler_plugin_mintdb_postgres_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_mintdb_postgres_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  $(top_builddir)/src/util/libtalerutil.la \
   -lpq \
   -lgnunetutil $(XLIB)
 
