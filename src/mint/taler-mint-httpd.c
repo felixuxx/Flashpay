@@ -69,6 +69,11 @@ char *TMH_expected_wire_format;
 struct TALER_MINTDB_Plugin *TMH_plugin;
 
 /**
+ * Are we running in test mode?
+ */
+int TMH_test_mode;
+
+/**
  * The HTTP Daemon.
  */
 static struct MHD_Daemon *mydaemon;
@@ -368,6 +373,17 @@ mint_serve_process_config (const char *mint_directory)
              "Failed to initialize DB subsystem\n");
     return GNUNET_SYSERR;
   }
+  if (GNUNET_YES ==
+      GNUNET_CONFIGURATION_get_value_yesno (cfg,
+                                            "mint",
+                                            "TESTRUN"))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Running in TEST mode! Database contents will not persist!\n");
+    TMH_test_mode = GNUNET_YES;
+    TMH_plugin->create_tables (TMH_plugin->cls,
+                               GNUNET_YES);
+  }
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (cfg,
@@ -452,6 +468,16 @@ main (int argc, char *const *argv)
 
   ret = TMH_KS_loop ();
   MHD_stop_daemon (mydaemon);
+  if (GNUNET_YES == TMH_test_mode)
+  {
+    struct TALER_MINTDB_Session *session;
+
+    session = TMH_plugin->get_session (TMH_plugin->cls,
+                                       GNUNET_YES);
+    TMH_plugin->drop_temporary (TMH_plugin->cls,
+                                session);
+  }
+
   TALER_MINTDB_plugin_unload (TMH_plugin);
   return (GNUNET_OK == ret) ? 0 : 1;
 }

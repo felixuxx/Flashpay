@@ -107,7 +107,7 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
   int ret;
 
   if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                  GNUNET_NO)))
+                                                  TMH_test_mode)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
@@ -222,7 +222,7 @@ TMH_DB_execute_withdraw_status (struct MHD_Connection *connection,
   int res;
 
   if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                  GNUNET_NO)))
+                                                  TMH_test_mode)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
@@ -288,7 +288,7 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
                       &h_blind);
 
   if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                  GNUNET_NO)))
+                                                  TMH_test_mode)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
@@ -615,7 +615,7 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
 
   if (NULL ==
       (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                          GNUNET_NO)))
+                                          TMH_test_mode)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
@@ -1071,7 +1071,7 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
   unsigned int off;
 
   if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                  GNUNET_NO)))
+                                                  TMH_test_mode)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
@@ -1335,7 +1335,7 @@ TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
   unsigned int i;
 
   if (NULL == (ctx.session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                      GNUNET_NO)))
+                                                      TMH_test_mode)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);

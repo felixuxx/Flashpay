@@ -204,11 +204,22 @@ int
 main (int argc,
       char * const *argv)
 {
+  struct GNUNET_OS_Process *proc;
   struct GNUNET_OS_Process *mintd;
 
   GNUNET_log_setup ("test-mint-api",
                     "WARNING",
                     NULL);
+  proc = GNUNET_OS_start_process (GNUNET_NO,
+                                  GNUNET_OS_INHERIT_STD_ALL,
+                                  NULL, NULL, NULL,
+                                  "taler-mint-keyup",
+                                  "taler-mint-keyup",
+                                  "-d", "test-mint-home",
+                                  "-m", "test-mint-home/master.priv",
+                                  NULL);
+  GNUNET_OS_process_wait (proc);
+  GNUNET_OS_process_destroy (proc);
   mintd = GNUNET_OS_start_process (GNUNET_NO,
                                    GNUNET_OS_INHERIT_STD_ALL,
                                    NULL, NULL, NULL,

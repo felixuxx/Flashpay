@@ -38,6 +38,11 @@ extern char *TMH_mint_currency_string;
 extern struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
+ * Are we running in test mode?
+ */
+extern int TMH_test_mode;
+
+/**
  * Main directory with mint data.
  */
 extern char *TMH_mint_directory;
