@@ -135,7 +135,7 @@ denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
   TALER_amount_ntoh (&fee_refresh,
                      &dki->fee_refresh);
   return
-    json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+    json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                "master_sig",
                TALER_json_from_data (&dki->signature,
                                      sizeof (struct GNUNET_CRYPTO_EddsaSignature)),
