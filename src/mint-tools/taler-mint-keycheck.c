@@ -120,7 +120,9 @@ denomkeys_iter (void *cls,
   struct GNUNET_HashCode hc;
 
   if (ntohl (dki->issue.purpose.size) !=
-      sizeof (struct TALER_DenominationKeyValidityPS))
+      sizeof (struct TALER_DenominationKeyValidityPS) -
+      offsetof (struct TALER_DenominationKeyValidityPS,
+                purpose))
   {
     fprintf (stderr,
              "Denomination key for `%s' has invalid purpose size\n",

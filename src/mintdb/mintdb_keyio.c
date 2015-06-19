@@ -206,7 +206,7 @@ TALER_MINTDB_denomination_key_write (const char *filename,
     goto cleanup;
   wsize = sizeof (struct TALER_DenominationKeyValidityPS);
   if (GNUNET_SYSERR == (wrote = GNUNET_DISK_file_write (fh,
-                                                        &dki->issue.signature,
+                                                        &dki->issue,
                                                         wsize)))
     goto cleanup;
   if (wrote != wsize)

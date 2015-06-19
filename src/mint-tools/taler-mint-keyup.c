@@ -811,7 +811,7 @@ mint_keys_update_cointype (void *cls,
                            &denomkey_issue);
     if (GNUNET_OK !=
         TALER_MINTDB_denomination_key_write (dkf,
-                                    &denomkey_issue))
+                                             &denomkey_issue))
     {
       fprintf (stderr,
                "Failed to write denomination key information to file `%s'.\n",
