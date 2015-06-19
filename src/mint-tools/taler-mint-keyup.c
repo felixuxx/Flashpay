@@ -752,10 +752,12 @@ create_denomkey_issue (const struct CoinTypeParams *params,
                      &params->fee_deposit);
   TALER_amount_hton (&dki->issue.fee_refresh,
                      &params->fee_refresh);
-  dki->issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
-  dki->issue.purpose.size = htonl (sizeof (struct TALER_MINTDB_DenominationKeyIssueInformation) -
-                                   offsetof (struct TALER_MINTDB_DenominationKeyIssueInformation,
-                                             issue.purpose));
+  dki->issue.purpose.purpose
+    = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
+  dki->issue.purpose.size
+    = htonl (sizeof (struct TALER_DenominationKeyValidityPS) -
+             offsetof (struct TALER_DenominationKeyValidityPS,
+                       purpose));
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
                                            &dki->issue.purpose,

@@ -458,10 +458,12 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey *denom_key,
   EXITIF (GNUNET_SYSERR == parse_json_amount (obj, &fee_deposit));
   EXITIF (NULL == (obj = json_object_get (denom_key_obj, "fee_refresh")));
   EXITIF (GNUNET_SYSERR == parse_json_amount (obj, &fee_refresh));
-  denom_key_issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
-  denom_key_issue.purpose.size = htonl
-      (sizeof (struct TALER_DenominationKeyValidityPS) -
-       offsetof (struct TALER_DenominationKeyValidityPS, purpose));
+  denom_key_issue.purpose.purpose
+    = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
+  denom_key_issue.purpose.size
+    = htonl (sizeof (struct TALER_DenominationKeyValidityPS) -
+             offsetof (struct TALER_DenominationKeyValidityPS,
+                       purpose));
   denom_key_issue.master = *master_key;
   denom_key_issue.start = GNUNET_TIME_absolute_hton (valid_from);
   denom_key_issue.expire_withdraw = GNUNET_TIME_absolute_hton (withdraw_valid_until);
