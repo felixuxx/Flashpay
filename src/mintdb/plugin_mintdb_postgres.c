@@ -384,8 +384,7 @@ postgres_create_tables (void *cls,
      and could be used by the mearchant for further inquriries about
      the deposit's execution. (#3816); */
   SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
-          /* FIXME #3769: the following primary key may be too restrictive */
-          "(coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
+          "(coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)"
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",denom_sig BYTEA NOT NULL"
           ",transaction_id INT8 NOT NULL"
