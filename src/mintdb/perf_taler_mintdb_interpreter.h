@@ -137,7 +137,7 @@
   .command = PERF_TALER_MINTDB_CMD_GET_DEPOSIT, \
   .label = _label, \
   .exposed_type = PERF_TALER_MINTDB_NONE, \
-  .details.label_deposit.saved = _label_deposit \
+  .details.get_deposit.label_source = _label_deposit \
 }
 
 /**

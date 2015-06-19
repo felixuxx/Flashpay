@@ -33,13 +33,27 @@ main (int argc, char ** argv)
   struct GNUNET_CONFIGURATION_Handle *config;
   struct PERF_TALER_MINTDB_Cmd test[] = 
   {
-    PERF_TALER_MINTDB_INIT_CMD_LOOP ("loop_db_init_deposit",10),
-    PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("start_transaction_init"),
-    PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT ("init_deposit_insert"),
-    PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION ("commit_transaction_init"),
-    PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("array_depo", "loop_db_init_deposit", "init_deposit_insert", 10, PERF_TALER_MINTDB_DEPOSIT),
+    PERF_TALER_MINTDB_INIT_CMD_LOOP ("loop_db_init_deposit",10000),
+      PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("start_transaction_init"),
+        PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT ("init_deposit_insert"),
+      PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION ("commit_transaction_init"),
+      PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("array_depo", 
+                                             "loop_db_init_deposit", 
+                                             "init_deposit_insert", 
+                                             100, 
+                                             PERF_TALER_MINTDB_DEPOSIT),
     PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("endloop_init_deposit",
                                          "loop_db_init_deposit"),
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG("Fin loop 1"),
+    PERF_TALER_MINTDB_INIT_CMD_LOOP ("loop_deposit_get",100),
+      PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("start_transaction_get"),
+        PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY("load deposit", 
+                                              "loop_deposit_get", 
+                                              "array_depo"),
+        PERF_TALER_MINTDB_INIT_CMD_GET_DEPOSIT("get_deposit", 
+                                               "load_deposit"),
+      PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION ("commit_transaction_init"),
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP("stop2", "loop_deposit_get"),
     PERF_TALER_MINTDB_INIT_CMD_END("end")
   };
  // Plugin init
