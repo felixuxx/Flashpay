@@ -399,12 +399,14 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey *denom_key,
   const char *deposit_valid_until_enc;
   const char *withdraw_valid_until_enc;
   const char *valid_from_enc;
+  const char *expire_legal_enc;
   const char *key_enc;
   char *buf;
   size_t buf_size;
   struct GNUNET_TIME_Absolute valid_from;
   struct GNUNET_TIME_Absolute withdraw_valid_until;
   struct GNUNET_TIME_Absolute deposit_valid_until;
+  struct GNUNET_TIME_Absolute expire_legal;
   struct TALER_Amount value;
   struct TALER_Amount fee_withdraw;
   struct TALER_Amount fee_deposit;
@@ -425,6 +427,8 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey *denom_key,
   EXITIF (NULL == (withdraw_valid_until_enc = json_string_value (obj)));
   EXITIF (NULL == (obj = json_object_get (denom_key_obj, "stamp_start")));
   EXITIF (NULL == (valid_from_enc = json_string_value (obj)));
+  EXITIF (NULL == (obj = json_object_get (denom_key_obj, "stamp_expire_legal")));
+  EXITIF (NULL == (expire_legal_enc = json_string_value (obj)));
 
   EXITIF (NULL == (obj = json_object_get (denom_key_obj, "denom_pub")));
   EXITIF (NULL == (key_enc = json_string_value (obj)));
@@ -434,6 +438,8 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey *denom_key,
                                             withdraw_valid_until_enc));
   EXITIF (GNUNET_SYSERR == parse_timestamp (&deposit_valid_until,
                                             deposit_valid_until_enc));
+  EXITIF (GNUNET_SYSERR == parse_timestamp (&expire_legal,
+                                            expire_legal_enc));
 
   memset (&denom_key_issue, 0, sizeof (denom_key_issue));
 
@@ -468,6 +474,7 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey *denom_key,
   denom_key_issue.start = GNUNET_TIME_absolute_hton (valid_from);
   denom_key_issue.expire_withdraw = GNUNET_TIME_absolute_hton (withdraw_valid_until);
   denom_key_issue.expire_spend = GNUNET_TIME_absolute_hton (deposit_valid_until);
+  denom_key_issue.expire_legal = GNUNET_TIME_absolute_hton (expire_legal);
   TALER_amount_hton (&denom_key_issue.value,
                      &value);
   TALER_amount_hton (&denom_key_issue.fee_withdraw,
