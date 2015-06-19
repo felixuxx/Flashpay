@@ -169,8 +169,8 @@ static int
 mint_denomkeys_check ()
 {
   if (0 > TALER_MINTDB_denomination_keys_iterate (mint_directory,
-                                        &denomkeys_iter,
-                                        NULL))
+                                                  &denomkeys_iter,
+                                                  NULL))
     return GNUNET_NO;
   return GNUNET_OK;
 }

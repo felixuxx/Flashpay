@@ -494,6 +494,9 @@ TMH_KS_acquire (void)
     key_state->denomkey_map = GNUNET_CONTAINER_multihashmap_create (32,
                                                                     GNUNET_NO);
     key_state->reload_time = GNUNET_TIME_absolute_get ();
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Loading keys from `%s'\n",
+                TMH_mint_directory);
     TALER_MINTDB_denomination_keys_iterate (TMH_mint_directory,
                                             &reload_keys_denom_iter,
                                             key_state);
