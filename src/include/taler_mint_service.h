@@ -300,6 +300,17 @@ void
 TALER_MINT_disconnect (struct TALER_MINT_Handle *mint);
 
 
+/**
+ * Obtain the current signing key from the mint.
+ *
+ * @param keys the mint's key set
+ * @return sk current online signing key for the mint, NULL on error
+ */
+const struct TALER_MintPublicKeyP *
+TALER_MINT_get_signing_key (struct TALER_MINT_Keys *keys);
+
+
+
 #if 0
 
 // FIXME: API below with json-crap is too low-level...

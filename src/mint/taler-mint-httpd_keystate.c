@@ -525,8 +525,8 @@ TMH_KS_acquire (void)
                       "signkeys", key_state->sign_keys_array,
                       "denoms", key_state->denom_keys_array,
                       "list_issue_date", TALER_json_from_abs (key_state->reload_time),
-                      "eddsa_sig", TALER_json_from_eddsa_sig (&ks.purpose,
-                                                              &sig.eddsa_signature));
+                      "eddsa_sig", TALER_json_from_data (&sig,
+                                                         sizeof (struct TALER_MintSignatureP)));
     key_state->keys_json = json_dumps (keys,
                                        JSON_INDENT (2));
     json_decref (keys);

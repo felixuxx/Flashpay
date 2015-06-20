@@ -308,13 +308,15 @@ parse_json_signkey (struct TALER_MINT_SigningPublicKey *sign_key,
  * @param[out] denom_key where to return the result
  * @param[in] denom_key_obj json to parse
  * @param master_key master key to use to verify signature
+ * @param hash_context where to accumulate data for signature verification
  * @return #GNUNET_OK if all is fine, #GNUNET_SYSERR if the signature is
  *        invalid or the json malformed.
  */
 static int
 parse_json_denomkey (struct TALER_MINT_DenomPublicKey *denom_key,
                      json_t *denom_key_obj,
-                     struct TALER_MasterPublicKeyP *master_key)
+                     struct TALER_MasterPublicKeyP *master_key,
+                     struct GNUNET_HashContext *hash_context)
 {
   struct GNUNET_TIME_Absolute valid_from;
   struct GNUNET_TIME_Absolute withdraw_valid_until;
@@ -387,6 +389,9 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey *denom_key,
                                       &denom_key_issue.purpose,
                                       &sig,
                                       &master_key->eddsa_pub));
+  GNUNET_CRYPTO_hash_context_read (hash_context,
+                                   &denom_key_issue.denom_hash,
+                                   sizeof (struct GNUNET_HashCode));
   denom_key->key.rsa_public_key = pk;
   denom_key->valid_from = valid_from;
   denom_key->withdraw_valid_until = withdraw_valid_until;
@@ -416,15 +421,22 @@ decode_keys_json (json_t *resp_obj,
                   struct TALER_MINT_Keys *key_data)
 {
   struct GNUNET_TIME_Absolute list_issue_date;
+  struct TALER_MintSignatureP sig;
+  struct TALER_MintKeySetPS ks;
+  struct GNUNET_HashContext *hash_context;
+  const struct TALER_MintPublicKeyP *pub;
 
   if (JSON_OBJECT != json_typeof (resp_obj))
     return GNUNET_SYSERR;
 
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
   /* parse the master public key and issue date of the response */
   {
     struct MAJ_Specification spec[] = {
       MAJ_spec_fixed_auto ("master_public_key",
                            &key_data->master_pub),
+      MAJ_spec_fixed_auto ("eddsa_sig",
+                           &sig),
       MAJ_spec_absolute_time ("list_issue_date",
                               &list_issue_date),
       MAJ_spec_end
@@ -476,19 +488,34 @@ decode_keys_json (json_t *resp_obj,
       EXITIF (GNUNET_SYSERR ==
               parse_json_denomkey (&key_data->denom_keys[index],
                                    denom_key_obj,
-                                   &key_data->master_pub));
+                                   &key_data->master_pub,
+                                   hash_context));
     }
   }
   return GNUNET_OK;
 
-  /* FIXME: parse the auditor keys */
+  /* FIXME: parse the auditor keys (#3847) */
 
-  /* FIXME: parse 'eddsa_sig' */
-
-  /* FIXME: validate signature... */
-
- EXITIF_exit:
+  /* Validate signature... */
+  ks.purpose.size = htonl (sizeof (ks));
+  ks.purpose.purpose = htonl (TALER_SIGNATURE_MINT_KEY_SET);
+  ks.list_issue_date = GNUNET_TIME_absolute_hton (list_issue_date);
+  GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                     &ks.hc);
+  hash_context = NULL;
+  pub = TALER_MINT_get_signing_key (key_data);
+  EXITIF (NULL == pub);
+  EXITIF (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MINT_KEY_SET,
+                                      &ks.purpose,
+                                      &sig.eddsa_signature,
+                                      &pub->eddsa_pub));
   return GNUNET_OK;
+ EXITIF_exit:
+
+  if (NULL != hash_context)
+    GNUNET_CRYPTO_hash_context_abort (hash_context);
+  return GNUNET_SYSERR;
 }
 
 
@@ -712,6 +739,27 @@ TALER_MINT_disconnect (struct TALER_MINT_Handle *mint)
                      0);
   GNUNET_free (mint->url);
   GNUNET_free (mint);
+}
+
+
+/**
+ * Obtain the current signing key from the mint.
+ *
+ * @param keys the mint's key set
+ * @return sk current online signing key for the mint, NULL on error
+ */
+const struct TALER_MintPublicKeyP *
+TALER_MINT_get_signing_key (struct TALER_MINT_Keys *keys)
+{
+  struct GNUNET_TIME_Absolute now;
+  unsigned int i;
+
+  now = GNUNET_TIME_absolute_get ();
+  for (i=0;i<keys->num_sign_keys;i++)
+    if ( (keys->sign_keys[i].valid_from.abs_value_us <= now.abs_value_us) &&
+         (keys->sign_keys[i].valid_until.abs_value_us > now.abs_value_us) )
+      return &keys->sign_keys[i].key;
+  return NULL;
 }
 
 
