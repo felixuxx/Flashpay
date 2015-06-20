@@ -129,7 +129,7 @@ struct MAJ_Specification
       /**
        * How many bytes to write to @e dest.
        */
-      size_t dest_len;
+      size_t dest_size;
 
     } fixed_data;
 
@@ -145,7 +145,7 @@ struct MAJ_Specification
       /**
        * Where to store the number of bytes allocated at `*dest`.
        */
-      size_t *dest_len_p;
+      size_t *dest_size_p;
 
     } variable_data;
 
@@ -162,7 +162,6 @@ struct MAJ_Specification
   } details;
 
 };
-
 
 
 /**
@@ -185,6 +184,67 @@ MAJ_parse_json (const json_t *root,
  */
 void
 MAJ_parse_free (struct MAJ_Specification *spec);
+
+
+/**
+ * End of a parser specification.
+ */
+#define MAJ_spec_end { .cmd = MAJ_CMD_END }
+
+/**
+ * Fixed size object (in network byte order, encoded using Crockford
+ * Base32hex encoding).
+ *
+ * @param name name of the JSON field
+ * @param obj pointer where to write the data (type of `*obj` will determine size)
+ */
+#define MAJ_spec_fixed_auto(name,obj) { .cmd = MAJ_CMD_BINARY_FIXED, .field = name, .details.fixed_data.dest = obj, .details.fixed_data.dest_size = sizeof (*obj) }
+
+
+/**
+ * Absolute time.
+ *
+ * @param name name of the JSON field
+ * @param at where to store the absolute time found under @a name
+ */
+struct MAJ_Specification
+MAJ_spec_absolute_time (const char *name,
+                        struct GNUNET_TIME_Absolute *at);
+
+
+/**
+ * Specification for parsing an amount value.
+ *
+ * @param name name of the JSON field
+ * @param at where to store the absolute time found under @a name
+ */
+struct MAJ_Specification
+MAJ_spec_amount (const char *name,
+                 struct TALER_Amount *amount);
+
+
+/**
+ * Specification for parsing an RSA public key.
+ *
+ * @param name name of the JSON field
+ * @param pk where to store the RSA key found under @a name
+ */
+struct MAJ_Specification
+MAJ_spec_rsa_public_key (const char *name,
+                         struct GNUNET_CRYPTO_rsa_PublicKey **pk);
+
+
+/**
+ * Specification for parsing an RSA signature.
+ *
+ * @param name name of the JSON field
+ * @param sig where to store the RSA signature found under @a name
+ */
+struct MAJ_Specification
+MAJ_spec_rsa_signature (const char *name,
+                        struct GNUNET_CRYPTO_rsa_Signature **sig);
+
+
 
 
 /* end of mint_api_json.h */

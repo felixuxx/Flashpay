@@ -27,6 +27,7 @@
 #include "taler_mint_service.h"
 #include "taler_signatures.h"
 #include "mint_api_context.h"
+#include "mint_api_json.h"
 #include "mint_api_handle.h"
 
 
@@ -229,29 +230,6 @@ free_keys_request (struct KeysRequest *kr)
 }
 
 
-/**
- * Parses the timestamp encoded as ASCII string as UNIX timstamp.
- * FIXME: we might want to move this function into libtalerutil.
- *
- * @param[out] abs successfully parsed timestamp will be returned thru this parameter
- * @param tstamp_enc the ASCII encoding of the timestamp
- * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
- */
-static int
-parse_timestamp (struct GNUNET_TIME_Absolute *abs,
-                 const char *tstamp_enc)
-{
-  unsigned long tstamp;
-
-  if (1 != sscanf (tstamp_enc, "%lu", &tstamp))
-    return GNUNET_SYSERR;
-  *abs = GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get_zero_ (),
-                                   GNUNET_TIME_relative_multiply
-                                   (GNUNET_TIME_UNIT_SECONDS, tstamp));
-  return GNUNET_OK;
-}
-
-
 #define EXITIF(cond)                                              \
   do {                                                            \
     if (cond) { GNUNET_break (0); goto EXITIF_exit; }             \
@@ -272,110 +250,55 @@ parse_json_signkey (struct TALER_MINT_SigningPublicKey *sign_key,
                     json_t *sign_key_obj,
                     const struct TALER_MasterPublicKeyP *master_key)
 {
-  // TODO: try to simplify...
-  json_t *valid_from_obj;
-  json_t *valid_until_obj;
-  json_t *valid_legal_obj;
-  json_t *key_obj;
-  json_t *sig_obj;
-  const char *valid_from_enc;
-  const char *valid_until_enc;
-  const char *valid_legal_enc;
-  const char *key_enc;
-  const char *sig_enc;
   struct TALER_MintSigningKeyValidityPS sign_key_issue;
   struct GNUNET_CRYPTO_EddsaSignature sig;
   struct GNUNET_TIME_Absolute valid_from;
   struct GNUNET_TIME_Absolute valid_until;
   struct GNUNET_TIME_Absolute valid_legal;
+  struct MAJ_Specification spec[] = {
+    MAJ_spec_fixed_auto ("master_sig",
+                         &sig),
+    MAJ_spec_fixed_auto ("key",
+                         &sign_key_issue.signkey_pub),
+    MAJ_spec_absolute_time ("stamp_start",
+                            &valid_from),
+    MAJ_spec_absolute_time ("stamp_expire",
+                            &valid_until),
+    MAJ_spec_absolute_time ("stamp_end",
+                            &valid_legal),
+    MAJ_spec_end
+  };
 
-  EXITIF (JSON_OBJECT != json_typeof (sign_key_obj));
-  EXITIF (NULL == (valid_from_obj = json_object_get (sign_key_obj,
-                                                     "stamp_start")));
-  EXITIF (NULL == (valid_until_obj = json_object_get (sign_key_obj,
-                                                     "stamp_expire")));
-  EXITIF (NULL == (valid_legal_obj = json_object_get (sign_key_obj,
-                                                      "stamp_end")));
-  EXITIF (NULL == (key_obj = json_object_get (sign_key_obj, "key")));
-  EXITIF (NULL == (sig_obj = json_object_get (sign_key_obj, "master_sig")));
-  EXITIF (NULL == (valid_from_enc = json_string_value (valid_from_obj)));
-  EXITIF (NULL == (valid_until_enc = json_string_value (valid_until_obj)));
-  EXITIF (NULL == (valid_legal_enc = json_string_value (valid_legal_obj)));
-  EXITIF (NULL == (key_enc = json_string_value (key_obj)));
-  EXITIF (NULL == (sig_enc = json_string_value (sig_obj)));
-  EXITIF (GNUNET_SYSERR == parse_timestamp (&valid_from,
-                                            valid_from_enc));
-  EXITIF (GNUNET_SYSERR == parse_timestamp (&valid_until,
-                                            valid_until_enc));
-  EXITIF (GNUNET_SYSERR == parse_timestamp (&valid_legal,
-                                            valid_legal_enc));
-  EXITIF (52 != strlen (key_enc));  /* strlen(base32(char[32])) = 52 */
-  EXITIF (103 != strlen (sig_enc)); /* strlen(base32(char[64])) = 103 */
-  EXITIF (GNUNET_OK != GNUNET_STRINGS_string_to_data (sig_enc, 103,
-                                                      &sig, sizeof (sig)));
-  memset (&sign_key_issue,
-          0,
-          sizeof (sign_key_issue));
-  EXITIF (GNUNET_SYSERR ==
-          GNUNET_CRYPTO_eddsa_public_key_from_string (key_enc,
-                                                      52,
-                                                      &sign_key_issue.signkey_pub.eddsa_pub));
+  if (GNUNET_OK !=
+      MAJ_parse_json (sign_key_obj,
+                      spec))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
   sign_key_issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
   sign_key_issue.purpose.size =
       htonl (sizeof (sign_key_issue)
-             - offsetof (struct TALER_MintSigningKeyValidityPS, purpose));
+             - offsetof (struct TALER_MintSigningKeyValidityPS,
+                         purpose));
   sign_key_issue.master_public_key = *master_key;
   sign_key_issue.start = GNUNET_TIME_absolute_hton (valid_from);
   sign_key_issue.expire = GNUNET_TIME_absolute_hton (valid_until);
   sign_key_issue.end = GNUNET_TIME_absolute_hton (valid_legal);
-  EXITIF (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
-                                      &sign_key_issue.purpose,
-                                      &sig,
-                                      &master_key->eddsa_pub));
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
+                                  &sign_key_issue.purpose,
+                                  &sig,
+                                  &master_key->eddsa_pub))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
   sign_key->valid_from = valid_from;
   sign_key->valid_until = valid_until;
   sign_key->key = sign_key_issue.signkey_pub;
   return GNUNET_OK;
-
- EXITIF_exit:
-  return GNUNET_SYSERR;
-}
-
-
-/**
- * Parse an amount given in JSON encoding.
- *
- * @param[in] amount_obj the amount in json
- * @param[out] where to return the parsed amount
- * @return #GNUNET_OK if all is well, #GNUNET_SYSERR on parse errors
- */
-static int
-parse_json_amount (json_t *amount_obj,
-                   struct TALER_Amount *amt)
-{
-  // FIXME: check for correctness...
-  json_t *obj;
-  const char *currency_str;
-  int value; // FIXME: bad data type! (64 bit!)
-  int fraction;
-
-  EXITIF (NULL == (obj = json_object_get (amount_obj, "currency")));
-  EXITIF (NULL == (currency_str = json_string_value (obj)));
-  EXITIF (NULL == (obj = json_object_get (amount_obj, "value")));
-  EXITIF (JSON_INTEGER != json_typeof (obj));
-  EXITIF (0 > (value = json_integer_value (obj)));
-  EXITIF (NULL == (obj = json_object_get (amount_obj, "fraction")));
-  EXITIF (JSON_INTEGER != json_typeof (obj));
-  EXITIF (0 > (fraction = json_integer_value (obj)));
-  (void) memset (amt->currency, 0, sizeof (amt->currency));
-  (void) strncpy (amt->currency, currency_str, sizeof (amt->currency) - 1);
-  amt->value = (uint32_t) value;
-  amt->fraction = (uint32_t) fraction;
-  return GNUNET_OK;
-
- EXITIF_exit:
-  return GNUNET_SYSERR;
 }
 
 
@@ -393,16 +316,6 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey *denom_key,
                      json_t *denom_key_obj,
                      struct TALER_MasterPublicKeyP *master_key)
 {
-  // FIXME: check logic, try to simplify
-  json_t *obj;
-  const char *sig_enc;
-  const char *deposit_valid_until_enc;
-  const char *withdraw_valid_until_enc;
-  const char *valid_from_enc;
-  const char *expire_legal_enc;
-  const char *key_enc;
-  char *buf;
-  size_t buf_size;
   struct GNUNET_TIME_Absolute valid_from;
   struct GNUNET_TIME_Absolute withdraw_valid_until;
   struct GNUNET_TIME_Absolute deposit_valid_until;
@@ -415,55 +328,38 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey *denom_key,
   struct GNUNET_CRYPTO_rsa_PublicKey *pk;
   struct GNUNET_CRYPTO_EddsaSignature sig;
 
-  EXITIF (JSON_OBJECT != json_typeof (denom_key_obj));
-  EXITIF (NULL == (obj = json_object_get (denom_key_obj, "master_sig")));
-  EXITIF (NULL == (sig_enc = json_string_value (obj)));
-  EXITIF (103 != strlen (sig_enc));
-  EXITIF (GNUNET_OK != GNUNET_STRINGS_string_to_data (sig_enc, 103,
-                                                      &sig, sizeof (sig)));
-  EXITIF (NULL == (obj = json_object_get (denom_key_obj, "stamp_expire_deposit")));
-  EXITIF (NULL == (deposit_valid_until_enc = json_string_value (obj)));
-  EXITIF (NULL == (obj = json_object_get (denom_key_obj, "stamp_expire_withdraw")));
-  EXITIF (NULL == (withdraw_valid_until_enc = json_string_value (obj)));
-  EXITIF (NULL == (obj = json_object_get (denom_key_obj, "stamp_start")));
-  EXITIF (NULL == (valid_from_enc = json_string_value (obj)));
-  EXITIF (NULL == (obj = json_object_get (denom_key_obj, "stamp_expire_legal")));
-  EXITIF (NULL == (expire_legal_enc = json_string_value (obj)));
+  struct MAJ_Specification spec[] = {
+    MAJ_spec_fixed_auto ("master_sig",
+                         &sig),
+    MAJ_spec_absolute_time ("stamp_expire_deposit",
+                            &deposit_valid_until),
+    MAJ_spec_absolute_time ("stamp_expire_withdraw",
+                            &withdraw_valid_until),
+    MAJ_spec_absolute_time ("stamp_start",
+                            &valid_from),
+    MAJ_spec_absolute_time ("stamp_expire_legal",
+                            &expire_legal),
+    MAJ_spec_amount ("value",
+                     &value),
+    MAJ_spec_amount ("fee_withdraw",
+                     &fee_withdraw),
+    MAJ_spec_amount ("fee_deposit",
+                     &fee_deposit),
+    MAJ_spec_amount ("fee_refresh",
+                     &fee_refresh),
+    MAJ_spec_rsa_public_key ("denom_pub",
+                             &pk),
+    MAJ_spec_end
+  };
 
-  EXITIF (NULL == (obj = json_object_get (denom_key_obj, "denom_pub")));
-  EXITIF (NULL == (key_enc = json_string_value (obj)));
-
-  EXITIF (GNUNET_SYSERR == parse_timestamp (&valid_from, valid_from_enc));
-  EXITIF (GNUNET_SYSERR == parse_timestamp (&withdraw_valid_until,
-                                            withdraw_valid_until_enc));
-  EXITIF (GNUNET_SYSERR == parse_timestamp (&deposit_valid_until,
-                                            deposit_valid_until_enc));
-  EXITIF (GNUNET_SYSERR == parse_timestamp (&expire_legal,
-                                            expire_legal_enc));
+  if (GNUNET_OK !=
+      MAJ_parse_json (denom_key_obj,
+                      spec))
+    return GNUNET_SYSERR;
 
   memset (&denom_key_issue, 0, sizeof (denom_key_issue));
-
-  buf_size = (strlen (key_enc) * 5) / 8;
-  buf = GNUNET_malloc (buf_size);
-
-  EXITIF (GNUNET_OK !=
-          GNUNET_STRINGS_string_to_data (key_enc, strlen (key_enc),
-                                         buf,
-                                         buf_size));
-  pk = GNUNET_CRYPTO_rsa_public_key_decode (buf, buf_size);
-  GNUNET_free (buf);
-
-  EXITIF (NULL == pk);
   GNUNET_CRYPTO_rsa_public_key_hash (pk,
                                      &denom_key_issue.denom_hash);
-  EXITIF (NULL == (obj = json_object_get (denom_key_obj, "value")));
-  EXITIF (GNUNET_SYSERR == parse_json_amount (obj, &value));
-  EXITIF (NULL == (obj = json_object_get (denom_key_obj, "fee_withdraw")));
-  EXITIF (GNUNET_SYSERR == parse_json_amount (obj, &fee_withdraw));
-  EXITIF (NULL == (obj = json_object_get (denom_key_obj, "fee_deposit")));
-  EXITIF (GNUNET_SYSERR == parse_json_amount (obj, &fee_deposit));
-  EXITIF (NULL == (obj = json_object_get (denom_key_obj, "fee_refresh")));
-  EXITIF (GNUNET_SYSERR == parse_json_amount (obj, &fee_refresh));
   denom_key_issue.purpose.purpose
     = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
   denom_key_issue.purpose.size
@@ -499,6 +395,7 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey *denom_key,
   return GNUNET_OK;
 
  EXITIF_exit:
+  MAJ_parse_free (spec);
   return GNUNET_SYSERR;
 }
 
@@ -520,33 +417,19 @@ decode_keys_json (json_t *resp_obj,
   if (JSON_OBJECT != json_typeof (resp_obj))
     return GNUNET_SYSERR;
 
-  /* parse the master public key */
+  /* parse the master public key and issue date of the response */
   {
-    json_t *master_key_obj;
-    const char *master_key_enc;
+    struct MAJ_Specification spec[] = {
+      MAJ_spec_fixed_auto ("master_public_key",
+                           &key_data->master_pub),
+      MAJ_spec_absolute_time ("list_issue_date",
+                              &list_issue_date),
+      MAJ_spec_end
+    };
 
-    EXITIF (NULL == (master_key_obj =
-                     json_object_get (resp_obj,
-                                      "master_public_key")));
-    EXITIF (NULL == (master_key_enc =
-                     json_string_value (master_key_obj)));
     EXITIF (GNUNET_OK !=
-            GNUNET_CRYPTO_eddsa_public_key_from_string (master_key_enc,
-                                                        strlen (master_key_enc),
-                                                        &key_data->master_pub.eddsa_pub));
-  }
-
-  /* parse the issue date of the response */
-  {
-    json_t *list_issue_date_obj;
-    const char *tstamp_enc;
-
-    EXITIF (NULL == (list_issue_date_obj =
-                     json_object_get (resp_obj,
-                                      "list_issue_date")));
-    EXITIF (NULL == (tstamp_enc = json_string_value (list_issue_date_obj)));
-    EXITIF (GNUNET_SYSERR == parse_timestamp (&list_issue_date,
-                                              tstamp_enc));
+            MAJ_parse_json (resp_obj,
+                            spec));
   }
 
   /* parse the signing keys */

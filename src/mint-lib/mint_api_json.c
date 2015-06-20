@@ -72,9 +72,9 @@ parse_time_abs (json_t *f,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  /* Time is in 'ms' in JSON, but in microseconds in GNUNET_TIME_Absolute */
-  time->abs_value_us = tval * 1000LL;
-  if ( (time->abs_value_us) / 1000LL != tval)
+  /* Time is in seconds in JSON, but in microseconds in GNUNET_TIME_Absolute */
+  time->abs_value_us = tval * 1000LL * 1000LL;
+  if ( (time->abs_value_us) / 1000LL / 1000LL != tval)
   {
     /* Integer overflow */
     GNUNET_break_op (0);
@@ -189,7 +189,7 @@ parse_json (json_t *root,
         }
         res = GNUNET_STRINGS_string_to_data (str, strlen (str),
                                              spec[i].details.fixed_data.dest,
-                                             spec[i].details.fixed_data.dest_len);
+                                             spec[i].details.fixed_data.dest_size);
         if (GNUNET_OK != res)
         {
           GNUNET_break_op (0);
@@ -201,7 +201,7 @@ parse_json (json_t *root,
     case MAJ_CMD_BINARY_VARIABLE:
       {
         const char *str;
-        size_t len;
+        size_t size;
         void *data;
         int res;
 
@@ -211,16 +211,17 @@ parse_json (json_t *root,
           GNUNET_break_op (0);
           return i;
         }
-        len = (strlen (str) * 5) / 8;
-        if (len >= 1024)
+        size = (strlen (str) * 5) / 8;
+        if (size >= 1024)
         {
           GNUNET_break_op (0);
           return i;
         }
-        data = GNUNET_malloc (len);
-        res = GNUNET_STRINGS_string_to_data (str, strlen (str),
+        data = GNUNET_malloc (size);
+        res = GNUNET_STRINGS_string_to_data (str,
+                                             strlen (str),
                                              data,
-                                             len);
+                                             size);
         if (GNUNET_OK != res)
         {
           GNUNET_break_op (0);
@@ -228,13 +229,13 @@ parse_json (json_t *root,
           return i;
         }
         *spec[i].details.variable_data.dest_p = data;
-        *spec[i].details.variable_data.dest_len_p = len;
+        *spec[i].details.variable_data.dest_size_p = size;
       }
       break;
 
     case MAJ_CMD_RSA_PUBLIC_KEY:
       {
-        size_t len;
+        size_t size;
         const char *str;
         int res;
         void *buf;
@@ -245,12 +246,12 @@ parse_json (json_t *root,
           GNUNET_break_op (0);
           return i;
         }
-        len = (strlen (str) * 5) / 8;
-        buf = GNUNET_malloc (len);
+        size = (strlen (str) * 5) / 8;
+        buf = GNUNET_malloc (size);
         res = GNUNET_STRINGS_string_to_data (str,
                                              strlen (str),
                                              buf,
-                                             len);
+                                             size);
         if (GNUNET_OK != res)
         {
           GNUNET_free (buf);
@@ -259,7 +260,7 @@ parse_json (json_t *root,
         }
         *spec[i].details.rsa_public_key
           = GNUNET_CRYPTO_rsa_public_key_decode (buf,
-                                                 len);
+                                                 size);
         GNUNET_free (buf);
         if (NULL == spec[i].details.rsa_public_key)
         {
@@ -271,7 +272,7 @@ parse_json (json_t *root,
 
     case MAJ_CMD_RSA_SIGNATURE:
       {
-        size_t len;
+        size_t size;
         const char *str;
         int res;
         void *buf;
@@ -282,12 +283,12 @@ parse_json (json_t *root,
           GNUNET_break_op (0);
           return i;
         }
-        len = (strlen (str) * 5) / 8;
-        buf = GNUNET_malloc (len);
+        size = (strlen (str) * 5) / 8;
+        buf = GNUNET_malloc (size);
         res = GNUNET_STRINGS_string_to_data (str,
                                              strlen (str),
                                              buf,
-                                             len);
+                                             size);
         if (GNUNET_OK != res)
         {
           GNUNET_free (buf);
@@ -296,7 +297,7 @@ parse_json (json_t *root,
         }
         *spec[i].details.rsa_signature
           = GNUNET_CRYPTO_rsa_signature_decode (buf,
-                                                len);
+                                                size);
         GNUNET_free (buf);
         if (NULL == spec[i].details.rsa_signature)
           return i;
@@ -341,7 +342,7 @@ parse_free (struct MAJ_Specification *spec,
     case MAJ_CMD_BINARY_VARIABLE:
       GNUNET_free (*spec[i].details.variable_data.dest_p);
       *spec[i].details.variable_data.dest_p = NULL;
-      *spec[i].details.variable_data.dest_len_p = 0;
+      *spec[i].details.variable_data.dest_size_p = 0;
       break;
     case MAJ_CMD_RSA_PUBLIC_KEY:
       GNUNET_CRYPTO_rsa_public_key_free (*spec[i].details.rsa_public_key);
@@ -377,8 +378,9 @@ MAJ_parse_json (const json_t *root,
   if (-1 == ret)
     return GNUNET_OK;
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "JSON field `%s` had unexpected value\n",
-              spec[ret].field);
+              "JSON field `%s` (%d) had unexpected value\n",
+              spec[ret].field,
+              ret);
   parse_free (spec, ret);
   return GNUNET_SYSERR;
 }
@@ -399,6 +401,85 @@ MAJ_parse_free (struct MAJ_Specification *spec)
   parse_free (spec, i);
 }
 
+
+/**
+ * Specification for parsing an absolute time value.
+ *
+ * @param name name of the JSON field
+ * @param at where to store the absolute time found under @a name
+ */
+struct MAJ_Specification
+MAJ_spec_absolute_time (const char *name,
+                        struct GNUNET_TIME_Absolute *at)
+{
+  struct MAJ_Specification ret =
+    {
+      .cmd = MAJ_CMD_TIME_ABSOLUTE,
+      .field = name,
+      .details.abs_time = at
+    };
+  return ret;
+}
+
+
+/**
+ * Specification for parsing an amount value.
+ *
+ * @param name name of the JSON field
+ * @param at where to store the absolute time found under @a name
+ */
+struct MAJ_Specification
+MAJ_spec_amount (const char *name,
+                 struct TALER_Amount *amount)
+{
+  struct MAJ_Specification ret =
+    {
+      .cmd = MAJ_CMD_AMOUNT,
+      .field = name,
+      .details.amount = amount
+    };
+  return ret;
+}
+
+
+/**
+ * Specification for parsing an RSA public key.
+ *
+ * @param name name of the JSON field
+ * @param pk where to store the RSA key found under @a name
+ */
+struct MAJ_Specification
+MAJ_spec_rsa_public_key (const char *name,
+                         struct GNUNET_CRYPTO_rsa_PublicKey **pk)
+{
+  struct MAJ_Specification ret =
+    {
+      .cmd = MAJ_CMD_AMOUNT,
+      .field = name,
+      .details.rsa_public_key = pk
+    };
+  return ret;
+}
+
+
+/**
+ * Specification for parsing an RSA signature.
+ *
+ * @param name name of the JSON field
+ * @param sig where to store the RSA signature found under @a name
+ */
+struct MAJ_Specification
+MAJ_spec_rsa_signature (const char *name,
+                        struct GNUNET_CRYPTO_rsa_Signature **sig)
+{
+  struct MAJ_Specification ret =
+    {
+      .cmd = MAJ_CMD_AMOUNT,
+      .field = name,
+      .details.rsa_signature = sig
+    };
+  return ret;
+}
 
 
 /* end of mint_api_json.c */
