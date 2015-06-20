@@ -68,6 +68,15 @@ signkeys_iter (void *cls,
              filename);
     return GNUNET_SYSERR;
   }
+  if ( (0 != GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us % 1000000) ||
+       (0 != GNUNET_TIME_absolute_ntoh (ski->issue.expire).abs_value_us % 1000000) ||
+       (0 != GNUNET_TIME_absolute_ntoh (ski->issue.end).abs_value_us % 1000000) )
+  {
+    fprintf (stderr,
+             "Timestamps are not multiples of a round second\n");
+    return GNUNET_SYSERR;
+  }
+
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
                                   &ski->issue.purpose,
@@ -127,6 +136,16 @@ denomkeys_iter (void *cls,
     fprintf (stderr,
              "Denomination key for `%s' has invalid purpose size\n",
              alias);
+    return GNUNET_SYSERR;
+  }
+
+  if ( (0 != GNUNET_TIME_absolute_ntoh (dki->issue.start).abs_value_us % 1000000) ||
+       (0 != GNUNET_TIME_absolute_ntoh (dki->issue.expire_withdraw).abs_value_us % 1000000) ||
+       (0 != GNUNET_TIME_absolute_ntoh (dki->issue.expire_legal).abs_value_us % 1000000) ||
+       (0 != GNUNET_TIME_absolute_ntoh (dki->issue.expire_spend).abs_value_us % 1000000) )
+  {
+    fprintf (stderr,
+             "Timestamps are not multiples of a round second\n");
     return GNUNET_SYSERR;
   }
 
