@@ -15,6 +15,7 @@ libtalermint_la_LDFLAGS = \
 
 libtalermint_la_SOURCES = \
   mint_api_context.c mint_api_context.h \
+  mint_api_json.c mint_api_json.h \
   mint_api_handle.c mint_api_handle.h
 
 libtalermint_la_LIBADD = \

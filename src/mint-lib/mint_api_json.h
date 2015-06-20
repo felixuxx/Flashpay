@@ -1,0 +1,190 @@
+/*
+  This file is part of TALER
+  Copyright (C) 2014, 2015 GNUnet e.V.
+
+  TALER is free software; you can redistribute it and/or modify it under the
+  terms of the GNU Affero General Public License as published by the Free Software
+  Foundation; either version 3, or (at your option) any later version.
+
+  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+  A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License along with
+  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
+*/
+/**
+ * @file mint-lib/mint_api_json.h
+ * @brief functions to parse incoming requests (JSON snippets)
+ * @author Florian Dold
+ * @author Benedikt Mueller
+ * @author Christian Grothoff
+ */
+#include "platform.h"
+#include <gnunet/gnunet_util_lib.h>
+#include "taler_util.h"
+#include <jansson.h>
+
+
+/**
+ * Enumeration with the various commands for the
+ * #MAJ_parse_json interpreter.
+ */
+enum MAJ_Command
+{
+
+  /**
+   * End of command list.
+   */
+  MAJ_CMD_END,
+
+  /**
+   * Parse amount at current position.
+   */
+  MAJ_CMD_AMOUNT,
+
+  /**
+   * Parse absolute time at current position.
+   */
+  MAJ_CMD_TIME_ABSOLUTE,
+
+  /**
+   * Parse fixed binary value at current position.
+   */
+  MAJ_CMD_BINARY_FIXED,
+
+  /**
+   * Parse variable-size binary value at current position.
+   */
+  MAJ_CMD_BINARY_VARIABLE,
+
+  /**
+   * Parse RSA public key at current position.
+   */
+  MAJ_CMD_RSA_PUBLIC_KEY,
+
+  /**
+   * Parse RSA signature at current position.
+   */
+  MAJ_CMD_RSA_SIGNATURE,
+
+  /**
+   * Parse  at current position.
+   */
+  MAJ_CMD_A,
+
+  /**
+   * Parse  at current position.
+   */
+  MAJ_CMD_B,
+
+  /**
+   * Parse  at current position.
+   */
+  MAJ_CMD_C
+
+};
+
+
+/**
+ * Entry in parser specification for #MAJ_parse_json.
+ */
+struct MAJ_Specification
+{
+
+  /**
+   * Command to execute.
+   */
+  enum MAJ_Command cmd;
+
+  /**
+   * Name of the field to access.
+   */
+  const char *field;
+
+  /**
+   * Further details for the command.
+   */
+  union {
+
+    /**
+     * Where to store amount for #MAJ_CMD_AMOUNT.
+     */
+    struct TALER_Amount *amount;
+
+    /**
+     * Where to store time, for #MAJ_CMD_TIME_ABSOLUTE.
+     */
+    struct GNUNET_TIME_Absolute *abs_time;
+
+    /**
+     * Where to write binary data, for #MAJ_CMD_BINARY_FIXED.
+     */
+    struct {
+      /**
+       * Where to write the data.
+       */
+      void *dest;
+
+      /**
+       * How many bytes to write to @e dest.
+       */
+      size_t dest_len;
+
+    } fixed_data;
+
+    /**
+     * Where to write binary data, for #MAJ_CMD_BINARY_VARIABLE.
+     */
+    struct {
+      /**
+       * Where to store the pointer with the data (is allocated).
+       */
+      void **dest_p;
+
+      /**
+       * Where to store the number of bytes allocated at `*dest`.
+       */
+      size_t *dest_len_p;
+
+    } variable_data;
+
+    /**
+     * Where to store the RSA public key for #MAJ_CMD_RSA_PUBLIC_KEY
+     */
+    struct GNUNET_CRYPTO_rsa_PublicKey **rsa_public_key;
+
+    /**
+     * Where to store the RSA signature for #MAJ_CMD_RSA_SIGNATURE
+     */
+    struct GNUNET_CRYPTO_rsa_Signature **rsa_signature;
+
+  } details;
+
+};
+
+
+
+/**
+ * Navigate and parse data in a JSON tree.
+ *
+ * @param root the JSON node to start the navigation at.
+ * @param spec parse specification array
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+MAJ_parse_json (const json_t *root,
+                struct MAJ_Specification *spec);
+
+
+/**
+ * Free all elements allocated during a
+ * #MAJ_parse_json() operation.
+ *
+ * @param spec specification of the parse operation
+ */
+void
+MAJ_parse_free (struct MAJ_Specification *spec);
+
+
+/* end of mint_api_json.h */
