@@ -355,7 +355,10 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey *denom_key,
   if (GNUNET_OK !=
       MAJ_parse_json (denom_key_obj,
                       spec))
+  {
+    GNUNET_break_op (0);
     return GNUNET_SYSERR;
+  }
 
   memset (&denom_key_issue, 0, sizeof (denom_key_issue));
   GNUNET_CRYPTO_rsa_public_key_hash (pk,

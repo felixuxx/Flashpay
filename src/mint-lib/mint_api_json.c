@@ -25,116 +25,6 @@
 
 
 /**
- * Parse absolute time specified in JSON format.  The JSON format is
- * "/TIMEVAL/" where TIMEVAL is in milliseconds.  Additionally, we
- * support "/forever/" to represent the end of time.
- *
- * @param f json specification of the amount
- * @param[out] time set to the time specified in @a f
- * @return
- *    #GNUNET_YES if parsing was successful
- *    #GNUNET_SYSERR on errors
- */
-static int
-parse_time_abs (json_t *f,
-                struct GNUNET_TIME_Absolute *time)
-{
-  const char *val;
-  size_t slen;
-  unsigned long long int tval;
-  char *endp;
-
-  val = json_string_value (f);
-  if (NULL == val)
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  slen = strlen (val);
-  if ( (slen <= 2) ||
-       ('/' != val[0]) ||
-       ('/' != val[slen - 1]) )
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  if (0 == strcasecmp (val,
-                       "/forever/"))
-  {
-    *time = GNUNET_TIME_UNIT_FOREVER_ABS;
-    return GNUNET_OK;
-  }
-  tval = strtoull (&val[1],
-                   &endp,
-                   10);
-  if (&val[slen - 1] != endp)
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  /* Time is in seconds in JSON, but in microseconds in GNUNET_TIME_Absolute */
-  time->abs_value_us = tval * 1000LL * 1000LL;
-  if ( (time->abs_value_us) / 1000LL / 1000LL != tval)
-  {
-    /* Integer overflow */
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
-
-
-/**
- * Parse amount specified in JSON format.
- *
- * @param f json specification of the amount
- * @param[out] amount set to the amount specified in @a f
- * @return
- *    #GNUNET_OK if parsing was successful
- *    #GNUNET_SYSERR on error
- */
-static int
-parse_amount (json_t *f,
-              struct TALER_Amount *amount)
-{
-  json_int_t value;
-  json_int_t fraction;
-  const char *currency;
-
-  memset (amount,
-          0,
-          sizeof (struct TALER_Amount));
-  if (-1 == json_unpack (f,
-                         "{s:I, s:I, s:s}",
-                         "value", &value,
-                         "fraction", &fraction,
-                         "currency", &currency))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  if ( (value < 0) ||
-       (fraction < 0) ||
-       (value > UINT64_MAX) ||
-       (fraction > UINT32_MAX) )
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  if (strlen (currency) >= TALER_CURRENCY_LEN)
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  amount->value = (uint64_t) value;
-  amount->fraction = (uint32_t) fraction;
-  strcpy (amount->currency, currency);
-  (void) TALER_amount_normalize (amount);
-  return GNUNET_OK;
-}
-
-
-/**
  * Navigate and parse data in a JSON tree.
  *
  * @param root the JSON node to start the navigation at.
@@ -165,15 +55,21 @@ parse_json (json_t *root,
       return i;
     case MAJ_CMD_AMOUNT:
       if (GNUNET_OK !=
-          parse_amount (pos,
-                        spec[i].details.amount))
+          TALER_json_to_amount (pos,
+                                spec[i].details.amount))
+      {
+        GNUNET_break_op (0);
         return i;
+      }
       break;
     case MAJ_CMD_TIME_ABSOLUTE:
       if (GNUNET_OK !=
-          parse_time_abs (pos,
-                          spec[i].details.abs_time))
+          TALER_json_to_abs (pos,
+                             spec[i].details.abs_time))
+      {
+        GNUNET_break_op (0);
         return i;
+      }
       break;
 
     case MAJ_CMD_BINARY_FIXED:
@@ -240,7 +136,7 @@ parse_json (json_t *root,
         int res;
         void *buf;
 
-        str = json_string_value (root);
+        str = json_string_value (pos);
         if (NULL == str)
         {
           GNUNET_break_op (0);
@@ -277,7 +173,7 @@ parse_json (json_t *root,
         int res;
         void *buf;
 
-        str = json_string_value (root);
+        str = json_string_value (pos);
         if (NULL == str)
         {
           GNUNET_break_op (0);
@@ -454,7 +350,7 @@ MAJ_spec_rsa_public_key (const char *name,
 {
   struct MAJ_Specification ret =
     {
-      .cmd = MAJ_CMD_AMOUNT,
+      .cmd = MAJ_CMD_RSA_PUBLIC_KEY,
       .field = name,
       .details.rsa_public_key = pk
     };
@@ -474,7 +370,7 @@ MAJ_spec_rsa_signature (const char *name,
 {
   struct MAJ_Specification ret =
     {
-      .cmd = MAJ_CMD_AMOUNT,
+      .cmd = MAJ_CMD_RSA_SIGNATURE,
       .field = name,
       .details.rsa_signature = sig
     };

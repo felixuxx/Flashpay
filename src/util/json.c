@@ -90,7 +90,7 @@ TALER_json_from_abs (struct GNUNET_TIME_Absolute stamp)
   int ret;
 
   if (stamp.abs_value_us == GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us)
-    return json_string ("never");
+    return json_string ("/never/");
   ret = GNUNET_asprintf (&mystr,
                          "/%llu/",
                          (long long) (stamp.abs_value_us / (1000LL * 1000LL)));
@@ -282,28 +282,40 @@ int
 TALER_json_to_amount (json_t *json,
                       struct TALER_Amount *r_amount)
 {
-  char *currency;
   json_int_t value;
   json_int_t fraction;
-  json_error_t error;
+  const char *currency;
 
-  UNPACK_EXITIF (0 != json_unpack_ex (json,
-                                      &error,
-                                      JSON_STRICT,
-                                      "{s:s, s:I, s:I}",
-                                      "currency", &currency,
-                                      "value", &value,
-                                      "fraction", &fraction));
-  EXITIF (3 < strlen (currency));
-  EXITIF (TALER_CURRENCY_LEN <= strlen (currency));
-  strcpy (r_amount->currency,
-	  currency);
-  r_amount->value = (uint32_t) value;
+  memset (r_amount,
+          0,
+          sizeof (struct TALER_Amount));
+  if (-1 == json_unpack (json,
+                         "{s:I, s:I, s:s}",
+                         "value", &value,
+                         "fraction", &fraction,
+                         "currency", &currency))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if ( (value < 0) ||
+       (fraction < 0) ||
+       (value > UINT64_MAX) ||
+       (fraction > UINT32_MAX) )
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (strlen (currency) >= TALER_CURRENCY_LEN)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  r_amount->value = (uint64_t) value;
   r_amount->fraction = (uint32_t) fraction;
+  strcpy (r_amount->currency, currency);
+  (void) TALER_amount_normalize (r_amount);
   return GNUNET_OK;
-
- EXITIF_exit:
-  return GNUNET_SYSERR;
 }
 
 
@@ -318,24 +330,52 @@ int
 TALER_json_to_abs (json_t *json,
                    struct GNUNET_TIME_Absolute *abs)
 {
-  const char *str;
-  unsigned long long abs_value_s;
+  const char *val;
+  size_t slen;
+  unsigned long long int tval;
+  char *endp;
 
-  GNUNET_assert (NULL != abs);
-  EXITIF (NULL == (str = json_string_value (json)));
-  if (0 == strcasecmp (str,
-		       "never"))
+  val = json_string_value (json);
+  if (NULL == val)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  slen = strlen (val);
+  if ( (slen <= 2) ||
+       ('/' != val[0]) ||
+       ('/' != val[slen - 1]) )
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if ( (0 == strcasecmp (val,
+                         "/forever/")) ||
+       (0 == strcasecmp (val,
+                         "/never/")) )
   {
     *abs = GNUNET_TIME_UNIT_FOREVER_ABS;
     return GNUNET_OK;
   }
-  EXITIF (1 > sscanf (str, "%llu", &abs_value_s));
-  abs->abs_value_us = abs_value_s * 1000LL * 1000LL;
+  tval = strtoull (&val[1],
+                   &endp,
+                   10);
+  if (&val[slen - 1] != endp)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  /* Time is in seconds in JSON, but in microseconds in GNUNET_TIME_Absolute */
+  abs->abs_value_us = tval * 1000LL * 1000LL;
+  if ( (abs->abs_value_us) / 1000LL / 1000LL != tval)
+  {
+    /* Integer overflow */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
-
- EXITIF_exit:
-  return GNUNET_SYSERR;
 }
+
 
 /**
  * Parse given JSON object to data
