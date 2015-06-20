@@ -24,6 +24,8 @@
 
 #include "taler_util.h"
 
+/* ********************* event loop *********************** */
+
 /**
  * @brief Handle to this library context.  This is where the
  * main event loop logic lives.
@@ -96,6 +98,9 @@ TALER_MINT_perform (struct TALER_MINT_Context *ctx);
  */
 void
 TALER_MINT_fini (struct TALER_MINT_Context *ctx);
+
+
+/* *********************  /keys *********************** */
 
 
 /**
@@ -310,10 +315,9 @@ const struct TALER_MintPublicKeyP *
 TALER_MINT_get_signing_key (struct TALER_MINT_Keys *keys);
 
 
+/* *********************  /deposit *********************** */
 
-#if 0
 
-// FIXME: API below with json-crap is too low-level...
 /**
  * @brief A Deposit Handle
  */
@@ -321,88 +325,81 @@ struct TALER_MINT_DepositHandle;
 
 
 /**
- * Callbacks of this type are used to serve the result of submitting a deposit
- * permission object to a mint.
+ * Callbacks of this type are used to serve the result of submitting a
+ * deposit permission request to a mint.
  *
  * @param cls closure
- * @param status 1 for successful deposit, 2 for retry, 0 for failure
- * @param obj the received JSON object; can be NULL if it cannot be constructed
- *        from the reply
- * @param emsg in case of unsuccessful deposit, this contains a human readable
- *        explanation.
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful deposit;
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param obj the received JSON reply, should be kept as proof (and, in case of errors,
+ *            be forwarded to the customer)
  */
 typedef void
 (*TALER_MINT_DepositResultCallback) (void *cls,
-                                     int status,
-                                     json_t *obj,
-                                     char *emsg);
-
-
-/**
- * Submit a deposit permission to the mint and get the mint's response
- *
- * @param mint the mint handle
- * @param cb the callback to call when a reply for this request is available
- * @param cb_cls closure for the above callback
- * @param deposit_obj the deposit permission received from the customer along
- *         with the wireformat JSON object
- * @return a handle for this request; NULL if the JSON object could not be
- *         parsed or is of incorrect format or any other error.  In this case,
- *         the callback is not called.
- */
-struct TALER_MINT_DepositHandle *
-TALER_MINT_deposit_submit_json (struct TALER_MINT_Handle *mint,
-                                TALER_MINT_DepositResultCallback cb,
-                                void *cb_cls,
-                                json_t *deposit_obj);
+                                     unsigned int http_status,
+                                     json_t *obj);
 
 
 /**
  * Submit a deposit permission to the mint and get the mint's response.
+ * Note that while we return the response verbatim to the caller for
+ * further processing, we do already verify that the response is
+ * well-formed (i.e. that signatures included in the response are all
+ * valid).  If the mint's reply is not well-formed, we return an
+ * HTTP status code of zero to @a cb.
  *
- * @param mint the mint handle
+ * We also verify that the @a coin_sig is valid for this deposit
+ * request, and that the @a ub_sig is a valid signature for @a
+ * coin_pub.  Also, the @a mint must be ready to operate (i.e.  have
+ * finished processing the /keys reply).  If either check fails, we do
+ * NOT initiate the transaction with the mint and instead return NULL.
+ *
+ * @param mint the mint handle; the mint must be ready to operate
+ * @param amount the amount to be deposited
+ * @param wire the merchant’s account details, in a format supported by the mint
+ * @param h_contract hash of the contact of the merchant with the customer (further details are never disclosed to the mint)
+ * @param coin_pub coin’s public key
+ * @param denom_pub denomination key with which the coin is signed
+ * @param ub_sig mint’s unblinded signature of the coin
+ * @param timestamp timestamp when the contract was finalized, must match approximately the current time of the mint
+ * @param transaction_id transaction id for the transaction between merchant and customer
+ * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
+ * @param refund_deadline date until which the merchant can issue a refund to the customer via the mint (can be zero if refunds are not allowed)
+ * @param coin_sig the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT made by the customer with the coin’s private key.
  * @param cb the callback to call when a reply for this request is available
- * @param cls closure for the above callback
- * @param coin the public key of the coin
- * @param denom_key denomination key of the mint which is used to blind-sign the
- *         coin
- * @param ubsig the mint's unblinded signature
- * @param transaction_id transaction identifier
- * @param amount the amount to deposit
- * @param merchant_pub the public key of the merchant
- * @param h_contract hash of the contract
- * @param h_wire hash of the wire format used
- * @param csig signature of the coin over the transaction_id, amount,
- *         merchant_pub, h_contract and, h_wire
- * @param wire_obj the wireformat object corresponding to h_wire
- * @return a handle for this request
+ * @param cb_cls closure for the above callback
+ * @return a handle for this request; NULL if the inputs are invalid (i.e.
+ *         signatures fail to verify).  In this case, the callback is not called.
  */
 struct TALER_MINT_DepositHandle *
-TALER_MINT_deposit_submit_json_ (struct TALER_MINT_Handle *mint,
-                                 TALER_MINT_DepositResultCallback *cb,
-                                 void *cls,
-                                 const struct TALER_CoinPublicKey *coin_pub,
-                                 const struct TALER_BLIND_SigningPublicKey *denom_pub,
-                                 struct TALER_BLIND_Signature *ubsig,
-                                 uint64_t transaction_id,
-                                 struct TALER_Amount *amount,
-                                 const struct TALER_MerchantPublicKeyP *merchant_pub,
-                                 const struct GNUNET_HashCode *h_contract,
-                                 const struct GNUNET_HashCode *h_wire,
-                                 const struct TALER_CoinSignature *csig,
-                                 json_t *wire_obj);
+TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
+                    const struct TALER_Amount *amount,
+                    json_t *wire_details,
+                    const struct GNUNET_HashCode *h_contract,
+                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                    const struct TALER_DenominationSignature *denom_sig,
+                    const struct TALER_DenominationPublicKey *denom_pub,
+                    struct GNUNET_TIME_Absolute timestamp,
+                    uint64_t transaction_id,
+                    const struct TALER_MerchantPublicKeyP *merchant_pub,
+                    struct GNUNET_TIME_Absolute refund_deadline,
+                    const struct TALER_CoinSpendSignatureP *coin_sig,
+                    TALER_MINT_DepositResultCallback cb,
+                    void *cb_cls);
 
 
 /**
- * Cancel a deposit permission request.  This function cannot be used on a
- * request handle if a response is already served for it.
+ * Cancel a deposit permission request.  This function cannot be used
+ * on a request handle if a response is already served for it.
  *
  * @param deposit the deposit permission request handle
  */
 void
-TALER_MINT_deposit_submit_cancel (struct TALER_MINT_DepositHandle *deposit);
+TALER_MINT_deposit_cancel (struct TALER_MINT_DepositHandle *deposit);
 
-#endif
+
+/* ********************* /withdraw/xxx *********************** */
+
 
 
 #endif  /* _TALER_MINT_SERVICE_H */

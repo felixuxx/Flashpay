@@ -566,13 +566,16 @@ parse_response_keys_get (struct KeysRequest *kr)
  * is complete.
  *
  * @param cls the `struct KeysRequest`
+ * @param eh easy handle of the original request
  */
 static void
-keys_completed_cb (void *cls)
+keys_completed_cb (void *cls,
+                   CURL *eh)
 {
   struct KeysRequest *kr = cls;
   struct TALER_MINT_Handle *mint = kr->mint;
 
+  /* FIXME: might want to check response code? */
   if ( (0 != kr->eno) ||
        (GNUNET_OK !=
         parse_response_keys_get (kr)) )

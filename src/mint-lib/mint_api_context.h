@@ -34,9 +34,13 @@ struct MAC_Job;
 
 /**
  * Function to call upon completion of a job.
+ *
+ * @param cls closure
+ * @param eh original easy handle (for inspection)
  */
 typedef void
-(*MAC_JobCompletionCallback)(void *cls);
+(*MAC_JobCompletionCallback)(void *cls,
+                             CURL *eh);
 
 
 /**

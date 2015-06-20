@@ -261,7 +261,8 @@ TALER_MINT_perform (struct TALER_MINT_Context *ctx)
                                       CURLINFO_PRIVATE,
                                       (char *) &job));
     GNUNET_assert (job->ctx == ctx);
-    job->jcc (job->jcc_cls);
+    job->jcc (job->jcc_cls,
+              cmsg->easy_handle);
     MAC_job_cancel (job);
   }
 }
