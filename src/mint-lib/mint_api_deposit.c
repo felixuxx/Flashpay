@@ -25,7 +25,18 @@
 #include <jansson.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_mint_service.h"
+#include "mint_api_context.h"
+#include "mint_api_handle.h"
 #include "taler_signatures.h"
+
+
+/**
+ * Print JSON parsing related error information
+ */
+#define JSON_WARN(error)                                                \
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,                              \
+                "JSON parsing failed at %s:%u: %s (%s)",                \
+                __FILE__, __LINE__, error.text, error.source)
 
 
 /**
@@ -241,7 +252,9 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
   }
   GNUNET_break (0); /* FIXME: verify all sigs! */
 
-  deposit_obj = json_new (); /* FIXME: actually build JSON request */
+  /* FIXME: actually build JSON request */
+  deposit_obj = json_pack ("{s:s}",
+                           "hello", "world");
 
   dh = GNUNET_new (struct TALER_MINT_DepositHandle);
   dh->mint = mint;
@@ -266,13 +279,13 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (dh->json_enc)));
   GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (c,
+                 curl_easy_setopt (eh,
                                    CURLOPT_WRITEFUNCTION,
-                                   &keys_download_cb));
+                                   &deposit_download_cb));
   GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (c,
+                 curl_easy_setopt (eh,
                                    CURLOPT_WRITEDATA,
-                                   kr));
+                                   dh));
   GNUNET_assert (NULL != (dh->headers =
                           curl_slist_append (dh->headers,
                                              "Content-Type: application/json")));
@@ -283,7 +296,7 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
   ctx = MAH_handle_to_context (mint);
   dh->job = MAC_job_add (ctx,
                          eh,
-                         &handle_deposit_reply,
+                         &handle_deposit_finished,
                          dh);
   return dh;
 }
