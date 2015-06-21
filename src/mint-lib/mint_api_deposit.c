@@ -23,8 +23,10 @@
 #include "platform.h"
 #include <curl/curl.h>
 #include <jansson.h>
+#include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_mint_service.h"
+#include "mint_api_json.h"
 #include "mint_api_context.h"
 #include "mint_api_handle.h"
 #include "taler_signatures.h"
@@ -86,6 +88,11 @@ struct TALER_MINT_DepositHandle
   void *buf;
 
   /**
+   * Information the mint should sign in response.
+   */
+  struct TALER_DepositConfirmationPS depconf;
+
+  /**
    * The size of the download buffer
    */
   size_t buf_size;
@@ -100,6 +107,77 @@ struct TALER_MINT_DepositHandle
 
 
 /**
+ * Verify that the signature on the "200 OK" response
+ * from the mint is valid.
+ *
+ * @param dh deposit handle
+ * @param json json reply with the signature
+ * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
+ */
+static int
+verify_deposit_signature_ok (const struct TALER_MINT_DepositHandle *dh,
+                             json_t *json)
+{
+  struct TALER_MintSignatureP mint_sig;
+  const struct TALER_MINT_Keys *key_state;
+  const struct TALER_MintPublicKeyP *mint_pub;
+  struct MAJ_Specification spec[] = {
+    MAJ_spec_fixed_auto ("sig", &mint_sig),
+    MAJ_spec_end
+  };
+
+  if (GNUNET_OK !=
+      MAJ_parse_json (json,
+                      spec))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  key_state = TALER_MINT_get_keys (dh->mint);
+  mint_pub = TALER_MINT_get_signing_key (key_state);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MINT_CONFIRM_DEPOSIT,
+                                  &dh->depconf.purpose,
+                                  &mint_sig.eddsa_signature,
+                                  &mint_pub->eddsa_pub))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Verify that the signatures on the "403 FORBIDDEN" response from the
+ * mint demonstrating customer double-spending are valid.
+ *
+ * @param dh deposit handle
+ * @param json json reply with the signature(s) and transaction history
+ * @return #GNUNET_OK if the signature(s) is valid, #GNUNET_SYSERR if not
+ */
+static int
+verify_deposit_signature_forbidden (const struct TALER_MINT_DepositHandle *dh,
+                                    json_t *json)
+{
+  struct MAJ_Specification spec[] = {
+    MAJ_spec_end
+  };
+
+  if (GNUNET_OK !=
+      MAJ_parse_json (json,
+                      spec))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  GNUNET_break (0); // not implemented
+  return GNUNET_OK;
+}
+
+
+/**
  * Function called when we're done processing the
  * HTTP /deposit request.
  *
@@ -110,7 +188,7 @@ handle_deposit_finished (void *cls,
                          CURL *eh)
 {
   struct TALER_MINT_DepositHandle *dh = cls;
-  unsigned int response_code;
+  long response_code;
   json_error_t error;
   json_t *json;
 
@@ -129,13 +207,54 @@ handle_deposit_finished (void *cls,
   }
   if (NULL != json)
   {
-    GNUNET_break (0); // FIXME: obtain response code from eh!
-    response_code = 42;
+    if (CURLE_OK !=
+        curl_easy_getinfo (eh,
+                           CURLINFO_RESPONSE_CODE,
+                           &response_code))
+    {
+      /* unexpected error... */
+      GNUNET_break (0);
+      response_code = 0;
+    }
   }
   switch (response_code)
   {
-  /* FIXME: verify json response signatures
-     (and that format matches response_code) */
+  case MHD_HTTP_OK:
+    if (GNUNET_OK !=
+        verify_deposit_signature_ok (dh,
+                                     json))
+    {
+      GNUNET_break_op (0);
+      response_code = 0;
+    }
+    break;
+  case MHD_HTTP_BAD_REQUEST:
+    /* This should never happen, either us or the mint is buggy
+       (or API version conflict); just pass JSON reply to the application */
+    break;
+  case MHD_HTTP_FORBIDDEN:
+    /* Double spending; check signatures on transaction history */
+    if (GNUNET_OK !=
+        verify_deposit_signature_forbidden (dh,
+                                            json))
+    {
+      GNUNET_break_op (0);
+      response_code = 0;
+    }
+    break;
+  case MHD_HTTP_UNAUTHORIZED:
+    /* Nothing really to verify, mint says one of the signatures is
+       invalid; as we checked them, this should never happen, we
+       should pass the JSON reply to the application */
+    break;
+  case MHD_HTTP_NOT_FOUND:
+    /* Nothing really to verify, this should never
+       happen, we should pass the JSON reply to the application */
+    break;
+  case MHD_HTTP_INTERNAL_SERVER_ERROR:
+    /* Server had an internal issue; we should retry, but this API
+       leaves this to the application */
+    break;
   default:
     /* unexpected response code */
     GNUNET_break (0);
@@ -153,11 +272,22 @@ handle_deposit_finished (void *cls,
 /**
  * Verify signature information about the deposit.
  *
- * @param deposit information about the deposit
+ * @param dki public key information
+ * @param amount the amount to be deposited
+ * @param h_wire hash of the merchant’s account details
+ * @param h_contract hash of the contact of the merchant with the customer (further details are never disclosed to the mint)
+ * @param coin_pub coin’s public key
+ * @param denom_pub denomination key with which the coin is signed
+ * @param denom_sig mint’s unblinded signature of the coin
+ * @param timestamp timestamp when the contract was finalized, must match approximately the current time of the mint
+ * @param transaction_id transaction id for the transaction between merchant and customer
+ * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
+ * @param refund_deadline date until which the merchant can issue a refund to the customer via the mint (can be zero if refunds are not allowed)
+ * @param coin_sig the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT made by the customer with the coin’s private key.
  * @return #GNUNET_OK if signatures are OK, #GNUNET_SYSERR if not
  */
 static int
-verify_signatures (struct TALER_MINT_Handle *mint,
+verify_signatures (const struct TALER_MINT_DenomPublicKey *dki,
                    const struct TALER_Amount *amount,
                    const struct GNUNET_HashCode *h_wire,
                    const struct GNUNET_HashCode *h_contract,
@@ -170,19 +300,9 @@ verify_signatures (struct TALER_MINT_Handle *mint,
                    struct GNUNET_TIME_Absolute refund_deadline,
                    const struct TALER_CoinSpendSignatureP *coin_sig)
 {
-  const struct TALER_MINT_Keys *key_state;
   struct TALER_DepositRequestPS dr;
-  const struct TALER_MINT_DenomPublicKey *dki;
   struct TALER_CoinPublicInfo coin_info;
 
-  key_state = TALER_MINT_get_keys (mint);
-  dki = TALER_MINT_get_denomination_key (key_state,
-                                         denom_pub);
-  if (NULL == dki)
-  {
-    TALER_LOG_WARNING ("Denomination key unknown to mint\n");
-    return GNUNET_SYSERR;
-  }
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
   dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
   dr.h_contract = *h_contract;
@@ -289,7 +409,7 @@ deposit_download_cb (char *bufptr,
  * @param h_contract hash of the contact of the merchant with the customer (further details are never disclosed to the mint)
  * @param coin_pub coin’s public key
  * @param denom_pub denomination key with which the coin is signed
- * @param ub_sig mint’s unblinded signature of the coin
+ * @param denom_sig mint’s unblinded signature of the coin
  * @param timestamp timestamp when the contract was finalized, must match approximately the current time of the mint
  * @param transaction_id transaction id for the transaction between merchant and customer
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
@@ -316,11 +436,14 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
                     TALER_MINT_DepositResultCallback cb,
                     void *cb_cls)
 {
+  const struct TALER_MINT_Keys *key_state;
+  const struct TALER_MINT_DenomPublicKey *dki;
   struct TALER_MINT_DepositHandle *dh;
   struct TALER_MINT_Context *ctx;
   json_t *deposit_obj;
   CURL *eh;
   struct GNUNET_HashCode h_wire;
+  struct TALER_Amount amount_without_fee;
 
   if (GNUNET_YES !=
       MAH_handle_is_ready (mint))
@@ -336,9 +459,17 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
     GNUNET_break (0);
     return NULL;
   }
+  key_state = TALER_MINT_get_keys (mint);
+  dki = TALER_MINT_get_denomination_key (key_state,
+                                         denom_pub);
+  if (NULL == dki)
+  {
+    TALER_LOG_WARNING ("Denomination key unknown to mint\n");
+    return NULL;
+  }
 
   if (GNUNET_OK !=
-      verify_signatures (mint,
+      verify_signatures (dki,
                          amount,
                          &h_wire,
                          h_contract,
@@ -385,6 +516,22 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
   dh->cb = cb;
   dh->cb_cls = cb_cls;
   dh->url = MAH_path_to_url (mint, "/deposit");
+  dh->depconf.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
+  dh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_MINT_CONFIRM_DEPOSIT);
+  dh->depconf.h_contract = *h_contract;
+  dh->depconf.h_wire = h_wire;
+  dh->depconf.transaction_id = GNUNET_htonll (transaction_id);
+  dh->depconf.timestamp = GNUNET_TIME_absolute_hton (timestamp);
+  dh->depconf.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
+  TALER_amount_subtract (&amount_without_fee,
+                         amount,
+                         &dki->fee_deposit);
+  TALER_amount_hton (&dh->depconf.amount_without_fee,
+                     &amount_without_fee);
+  dh->depconf.coin_pub = *coin_pub;
+  dh->depconf.merchant = *merchant_pub;
+
+
   eh = curl_easy_init ();
   GNUNET_assert (NULL != (dh->json_enc =
                           json_dumps (deposit_obj,
