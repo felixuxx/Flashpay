@@ -85,7 +85,7 @@ gnunet-ecc -p master.priv
 
 4) Generate other mint related keys ('denomination' and 'signing' keys), by issuing:
 
-taler-mint-keyup -d `pwd`
+taler-mint-keyup -d `pwd` -m master.priv
 
 5) Check with:
 
