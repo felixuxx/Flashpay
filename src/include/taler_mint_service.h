@@ -306,13 +306,35 @@ TALER_MINT_disconnect (struct TALER_MINT_Handle *mint);
 
 
 /**
+ * Obtain the keys from the mint.
+ *
+ * @param mint the mint handle
+ * @return the mint's key set
+ */
+const struct TALER_MINT_Keys *
+TALER_MINT_get_keys (const struct TALER_MINT_Handle *mint);
+
+
+/**
  * Obtain the current signing key from the mint.
  *
  * @param keys the mint's key set
  * @return sk current online signing key for the mint, NULL on error
  */
 const struct TALER_MintPublicKeyP *
-TALER_MINT_get_signing_key (struct TALER_MINT_Keys *keys);
+TALER_MINT_get_signing_key (const struct TALER_MINT_Keys *keys);
+
+
+/**
+ * Obtain the denomination key details from the mint.
+ *
+ * @param keys the mint's key set
+ * @param pk public key of the denomination to lookup
+ * @return details about the given denomination key
+ */
+const struct TALER_MINT_DenomPublicKey *
+TALER_MINT_get_denomination_key (const struct TALER_MINT_Keys *keys,
+                                 const struct TALER_DenominationPublicKey *pk);
 
 
 /* *********************  /deposit *********************** */

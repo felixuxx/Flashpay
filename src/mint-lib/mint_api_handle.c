@@ -752,7 +752,7 @@ TALER_MINT_disconnect (struct TALER_MINT_Handle *mint)
  * @return sk current online signing key for the mint, NULL on error
  */
 const struct TALER_MintPublicKeyP *
-TALER_MINT_get_signing_key (struct TALER_MINT_Keys *keys)
+TALER_MINT_get_signing_key (const struct TALER_MINT_Keys *keys)
 {
   struct GNUNET_TIME_Absolute now;
   unsigned int i;
@@ -763,6 +763,40 @@ TALER_MINT_get_signing_key (struct TALER_MINT_Keys *keys)
          (keys->sign_keys[i].valid_until.abs_value_us > now.abs_value_us) )
       return &keys->sign_keys[i].key;
   return NULL;
+}
+
+
+/**
+ * Obtain the denomination key details from the mint.
+ *
+ * @param keys the mint's key set
+ * @param pk public key of the denomination to lookup
+ * @return details about the given denomination key
+ */
+const struct TALER_MINT_DenomPublicKey *
+TALER_MINT_get_denomination_key (const struct TALER_MINT_Keys *keys,
+                                 const struct TALER_DenominationPublicKey *pk)
+{
+  unsigned int i;
+
+  for (i=0;i<keys->num_denom_keys;i++)
+    if (0 == GNUNET_CRYPTO_rsa_public_key_cmp (pk->rsa_public_key,
+                                               keys->denom_keys[i].key.rsa_public_key))
+      return &keys->denom_keys[i];
+  return NULL;
+}
+
+
+/**
+ * Obtain the keys from the mint.
+ *
+ * @param mint the mint handle
+ * @return the mint's key set
+ */
+const struct TALER_MINT_Keys *
+TALER_MINT_get_keys (const struct TALER_MINT_Handle *mint)
+{
+  return &mint->key_data;
 }
 
 

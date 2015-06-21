@@ -151,6 +151,82 @@ handle_deposit_finished (void *cls,
 
 
 /**
+ * Verify signature information about the deposit.
+ *
+ * @param deposit information about the deposit
+ * @return #GNUNET_OK if signatures are OK, #GNUNET_SYSERR if not
+ */
+static int
+verify_signatures (struct TALER_MINT_Handle *mint,
+                   const struct TALER_Amount *amount,
+                   const struct GNUNET_HashCode *h_wire,
+                   const struct GNUNET_HashCode *h_contract,
+                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                   const struct TALER_DenominationSignature *denom_sig,
+                   const struct TALER_DenominationPublicKey *denom_pub,
+                   struct GNUNET_TIME_Absolute timestamp,
+                   uint64_t transaction_id,
+                   const struct TALER_MerchantPublicKeyP *merchant_pub,
+                   struct GNUNET_TIME_Absolute refund_deadline,
+                   const struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  const struct TALER_MINT_Keys *key_state;
+  struct TALER_DepositRequestPS dr;
+  const struct TALER_MINT_DenomPublicKey *dki;
+  struct TALER_CoinPublicInfo coin_info;
+
+  key_state = TALER_MINT_get_keys (mint);
+  dki = TALER_MINT_get_denomination_key (key_state,
+                                         denom_pub);
+  if (NULL == dki)
+  {
+    TALER_LOG_WARNING ("Denomination key unknown to mint\n");
+    return GNUNET_SYSERR;
+  }
+  dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
+  dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
+  dr.h_contract = *h_contract;
+  dr.h_wire = *h_wire;
+  dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
+  dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
+  dr.transaction_id = GNUNET_htonll (transaction_id);
+  TALER_amount_hton (&dr.amount_with_fee,
+                     amount);
+  TALER_amount_hton (&dr.deposit_fee,
+                     &dki->fee_deposit);
+  dr.merchant = *merchant_pub;
+  dr.coin_pub = *coin_pub;
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
+                                  &dr.purpose,
+                                  &coin_sig->eddsa_signature,
+                                  &coin_pub->eddsa_pub))
+  {
+    TALER_LOG_WARNING ("Invalid coin signature on /deposit request\n");
+    return GNUNET_SYSERR;
+  }
+
+  /* check coin signature */
+  coin_info.coin_pub = *coin_pub;
+  coin_info.denom_pub = *denom_pub;
+  coin_info.denom_sig = *denom_sig;
+  if (GNUNET_YES !=
+      TALER_test_coin_valid (&coin_info))
+  {
+    TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
+    return GNUNET_SYSERR;
+  }
+  if (TALER_amount_cmp (&dki->fee_deposit,
+                        amount) < 0)
+  {
+    TALER_LOG_WARNING ("Deposit amount smaller than fee\n");
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Callback used when downloading the reply to a /deposit request.
  * Just appends all of the data to the `buf` in the
  * `struct TALER_MINT_DepositHandle` for further processing. The size of
@@ -261,8 +337,23 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
     return NULL;
   }
 
-  GNUNET_break (0); /* FIXME: verify all sigs! */
-
+  if (GNUNET_OK !=
+      verify_signatures (mint,
+                         amount,
+                         &h_wire,
+                         h_contract,
+                         coin_pub,
+                         denom_sig,
+                         denom_pub,
+                         timestamp,
+                         transaction_id,
+                         merchant_pub,
+                         refund_deadline,
+                         coin_sig))
+  {
+    GNUNET_break_op (0);
+    return NULL;
+  }
 
   deposit_obj = json_pack ("{s:o, s:o," /* f/wire */
                            " s:s, s:s," /* H_wire, H_contract */
