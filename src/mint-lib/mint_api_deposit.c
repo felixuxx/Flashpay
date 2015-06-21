@@ -93,6 +93,16 @@ struct TALER_MINT_DepositHandle
   struct TALER_DepositConfirmationPS depconf;
 
   /**
+   * Value of the /deposit transaction, including fee.
+   */
+  struct TALER_Amount amount_with_fee;
+
+  /**
+   * Total value of the coin being transacted with.
+   */
+  struct TALER_Amount coin_value;
+
+  /**
    * The size of the download buffer
    */
   size_t buf_size;
@@ -160,19 +170,95 @@ static int
 verify_deposit_signature_forbidden (const struct TALER_MINT_DepositHandle *dh,
                                     json_t *json)
 {
-  struct MAJ_Specification spec[] = {
-    MAJ_spec_end
-  };
+  json_t *history;
+  size_t len;
+  size_t off;
+  struct TALER_Amount total;
 
-  if (GNUNET_OK !=
-      MAJ_parse_json (json,
-                      spec))
+  history = json_object_get (json,
+                             "history");
+  if (NULL == history)
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  len = json_array_size (history);
+  if (0 == len)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  TALER_amount_get_zero (dh->coin_value.currency,
+                         &total);
+  for (off=0;off<len;off++)
+  {
+    json_t *transaction;
+    struct TALER_Amount amount;
+    struct GNUNET_CRYPTO_EccSignaturePurpose *purpose;
+    struct MAJ_Specification spec[] = {
+      MAJ_spec_amount ("amount",
+                       &amount),
+      MAJ_spec_eddsa_signed_purpose ("signature",
+                                     &purpose,
+                                     &dh->depconf.coin_pub.eddsa_pub),
+      MAJ_spec_end
+    };
 
-  GNUNET_break (0); // not implemented
+    transaction = json_array_get (history,
+                                  off);
+    if (GNUNET_OK !=
+        MAJ_parse_json (transaction,
+                        spec))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    switch (purpose->purpose)
+    {
+    case TALER_SIGNATURE_WALLET_COIN_DEPOSIT:
+      GNUNET_break (0);
+      /* FIXME: check amount! #3516 */
+      break;
+    case TALER_SIGNATURE_WALLET_COIN_MELT:
+      GNUNET_break (0);
+      /* FIXME: check amount! #3516 */
+      break;
+    default:
+      /* signature not supported, new version on server? */
+      GNUNET_break (0);
+      MAJ_parse_free (spec);
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_OK !=
+        TALER_amount_add (&total,
+                          &total,
+                          &amount))
+    {
+      /* overflow in history already!? inconceivable! */
+      GNUNET_break_op (0);
+      MAJ_parse_free (spec);
+      return GNUNET_SYSERR;
+    }
+    MAJ_parse_free (spec);
+  }
+  if (GNUNET_OK !=
+      TALER_amount_add (&total,
+                        &total,
+                        &dh->amount_with_fee))
+  {
+    /* clearly not OK if our transaction would have caused
+       the overflow... */
+    return GNUNET_OK;
+  }
+
+  if (0 >= TALER_amount_cmp (&total,
+                             &dh->coin_value))
+  {
+    /* transaction should have still fit */
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  /* everything OK, proof of double-spending was provided */
   return GNUNET_OK;
 }
 
@@ -530,7 +616,8 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
                      &amount_without_fee);
   dh->depconf.coin_pub = *coin_pub;
   dh->depconf.merchant = *merchant_pub;
-
+  dh->amount_with_fee = *amount;
+  dh->coin_value = dki->value;
 
   eh = curl_easy_init ();
   GNUNET_assert (NULL != (dh->json_enc =

@@ -200,6 +200,17 @@ parse_json (json_t *root,
       }
       break;
 
+    case MAJ_CMD_EDDSA_SIGNATURE:
+      {
+        /* FIXME: parse the JSON signature
+           and the purpose, then check that the
+           signature is valid and the size field
+           is also correct; if all checks out,
+           return the purpose */
+        GNUNET_break (0); // FIXME: implement! #3516
+      }
+      break;
+
     default:
       GNUNET_break (0);
       return i;
@@ -248,6 +259,9 @@ parse_free (struct MAJ_Specification *spec,
       GNUNET_CRYPTO_rsa_signature_free (*spec[i].details.rsa_signature);
       *spec[i].details.rsa_signature = NULL;
       break;
+    case MAJ_CMD_EDDSA_SIGNATURE:
+      GNUNET_free (*spec[i].details.eddsa_signature.purpose_p);
+      *spec[i].details.eddsa_signature.purpose_p = NULL;
     default:
       GNUNET_break (0);
       break;
@@ -373,6 +387,30 @@ MAJ_spec_rsa_signature (const char *name,
       .cmd = MAJ_CMD_RSA_SIGNATURE,
       .field = name,
       .details.rsa_signature = sig
+    };
+  return ret;
+}
+
+
+/**
+ * Specification for parsing an EdDSA object signature with purpose.
+ * Also validates the signature (!).
+ *
+ * @param name name of the JSON field
+ * @param purpose_p where to store the purpose
+ * @param pub_key public key to use for validation
+ */
+struct MAJ_Specification
+MAJ_spec_eddsa_signed_purpose (const char *name,
+                               struct GNUNET_CRYPTO_EccSignaturePurpose **purpose_p,
+                               const struct GNUNET_CRYPTO_EddsaPublicKey *pub_key)
+{
+  struct MAJ_Specification ret =
+    {
+      .cmd = MAJ_CMD_EDDSA_SIGNATURE,
+      .field = name,
+      .details.eddsa_signature.purpose_p = purpose_p,
+      .details.eddsa_signature.pub_key = pub_key
     };
   return ret;
 }
