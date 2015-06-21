@@ -136,8 +136,6 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
 {
   int res;
   struct TALER_MINTDB_Deposit deposit;
-  char *wire_enc;
-  size_t len;
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct TMH_KS_StateHandle *ks;
   struct TMH_PARSE_FieldSpecification spec[] = {
@@ -170,18 +168,15 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
     return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "wire");
   }
-  if (NULL == (wire_enc = json_dumps (wire, JSON_COMPACT | JSON_SORT_KEYS)))
+  if (GNUNET_OK !=
+      TALER_hash_json (wire,
+                       &deposit.h_wire))
   {
     TALER_LOG_WARNING ("Failed to parse JSON wire format specification for /deposit request\n");
     TMH_PARSE_release_data (spec);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "wire");
   }
-  len = strlen (wire_enc) + 1;
-  GNUNET_CRYPTO_hash (wire_enc,
-                      len,
-                      &deposit.h_wire);
-  GNUNET_free (wire_enc);
   ks = TMH_KS_acquire ();
   dki = TMH_KS_denomination_key_lookup (ks,
                                         &deposit.coin.denom_pub,

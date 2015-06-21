@@ -129,6 +129,7 @@ handle_deposit_finished (void *cls,
   }
   if (NULL != json)
   {
+    GNUNET_break (0); // FIXME: obtain response code from eh!
     response_code = 42;
   }
   switch (response_code)
@@ -243,6 +244,7 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
   struct TALER_MINT_Context *ctx;
   json_t *deposit_obj;
   CURL *eh;
+  struct GNUNET_HashCode h_wire;
 
   if (GNUNET_YES !=
       MAH_handle_is_ready (mint))
@@ -250,11 +252,42 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
     GNUNET_break (0);
     return NULL;
   }
+  /* initialize h_wire */
+  if (GNUNET_OK !=
+      TALER_hash_json (wire_details,
+                       &h_wire))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+
   GNUNET_break (0); /* FIXME: verify all sigs! */
 
-  /* FIXME: actually build JSON request */
-  deposit_obj = json_pack ("{s:s}",
-                           "hello", "world");
+
+  deposit_obj = json_pack ("{s:o, s:o," /* f/wire */
+                           " s:s, s:s," /* H_wire, H_contract */
+                           " s:s, s:s," /* coin_pub, denom_pub */
+                           " s:s, s:s," /* ub_sig, timestamp */
+                           " s:I, s:s," /* transaction id, merchant_pub */
+                           " s:s, s:s}", /* refund_deadline, coin_sig */
+                           "f", TALER_json_from_amount (amount),
+                           "wire", wire_details,
+                           "H_wire", TALER_json_from_data (&h_wire,
+                                                           sizeof (h_wire)),
+                           "H_contract", TALER_json_from_data (&h_contract,
+                                                               sizeof (h_contract)),
+                           "coin_pub", TALER_json_from_data (coin_pub,
+                                                             sizeof (*coin_pub)),
+                           "denom_pub", TALER_json_from_rsa_public_key (denom_pub->rsa_public_key),
+                           "ub_sig", TALER_json_from_rsa_signature (denom_sig->rsa_signature),
+                           "timestamp", TALER_json_from_abs (timestamp),
+                           "transaction_id", (json_int_t) transaction_id,
+                           "merchant_pub", TALER_json_from_data (merchant_pub,
+                                                                 sizeof (*merchant_pub)),
+                           "refund_deadline", TALER_json_from_abs (refund_deadline),
+                           "coin_sig", TALER_json_from_data (coin_sig,
+                                                             sizeof (*coin_sig))
+                           );
 
   dh = GNUNET_new (struct TALER_MINT_DepositHandle);
   dh->mint = mint;
@@ -262,10 +295,10 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
   dh->cb_cls = cb_cls;
   dh->url = MAH_path_to_url (mint, "/deposit");
   eh = curl_easy_init ();
-  /* FIXME: strdup() json_enc? Free deposit_obj! */
   GNUNET_assert (NULL != (dh->json_enc =
                           json_dumps (deposit_obj,
                                       JSON_COMPACT)));
+  json_decref (deposit_obj);
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,

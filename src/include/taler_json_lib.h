@@ -153,6 +153,18 @@ TALER_json_to_rsa_signature (json_t *json);
 
 
 /**
+ * Hash a JSON for binary signing.
+ *
+ * @param[in] json some JSON value to hash
+ * @param[out] hc resulting hash code
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+TALER_hash_json (json_t *json,
+                 struct GNUNET_HashCode *hc);
+
+
+/**
  * Check if the given wire format JSON object is correctly formatted
  *
  * @param type the type of the wire format

@@ -402,4 +402,31 @@ TALER_json_to_data (json_t *json,
   return GNUNET_SYSERR;
 }
 
+
+/**
+ * Hash a JSON for binary signing.
+ *
+ * @param[in] json some JSON value
+ * @param[out] hc resulting hash code
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+TALER_hash_json (json_t *json,
+                 struct GNUNET_HashCode *hc)
+{
+  char *wire_enc;
+  size_t len;
+
+  if (NULL == (wire_enc = json_dumps (json,
+                                      JSON_COMPACT | JSON_SORT_KEYS)))
+    return GNUNET_SYSERR;
+  len = strlen (wire_enc) + 1;
+  GNUNET_CRYPTO_hash (wire_enc,
+                      len,
+                      hc);
+  GNUNET_free (wire_enc);
+  return GNUNET_OK;
+}
+
+
 /* End of util/json.c */
