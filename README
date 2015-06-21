@@ -59,3 +59,65 @@ src/mint-tools/
 
 src/mint-lib/
   -- libtalermint: C API to issue HTTP requests to mint
+
+
+Getting Started
+==============
+
+The following steps illustrate how to set up a mint HTTP server.
+They take as a stub for configuring the mint the content of 'contrib/mint-template/config/'.
+
+1) Create a 'test/' directory and copy the stubs in it:
+
+mkdir -p test/config/
+cp mint/contrib/mint-template/config/* test/config/
+cd test/
+
+2) Create the mint's master with the tool 'gnunet-ecc':
+
+gnunet-ecc -g1 master.priv
+
+3) Edit config/mint-common.conf by replacing the right value on the line with the
+MASTER_PUBLIC_KEY entry with the fresh generated (ASCII version of) master.priv.
+This ASCII version is obtained by issuing:
+
+gnunet-ecc -p master.priv
+
+4) Generate other mint related keys ('denomination' and 'signing' keys), by issuing:
+
+taler-mint-keyup -d `pwd`
+
+5) Check with:
+
+taler-mint-keycheck -d `pwd`
+
+6) A mint needs a database to operate, so the following instructions relate to
+how to set up PostgreSQL. On debian, the two packages needed are:
+
+* postgresql
+* postgresql-client
+
+For other operating systems, please refer to the relevant documentation.
+
+In this settlement, the mint wll use a database called 'talercheck' and will
+run under the username through which 'taler-mint-httpd' is launched. Thus assuming
+that this user is 'demo', we need to create a 'demo' role for postgresql and make
+him the owner of 'talercheck' database.
+
+To perform these administrative tasks we have to impersonate the 'postgres' (by default,
+postgres installation assigns privileges to such a user) user, then connect to the running DBMS.
+Issue the following:
+
+su # give your root password
+su - postgres
+psql # this is the command-line client to the DMBS
+# the following lines are SQL
+CREATE USER demo;
+CREATE DATABASE talercheck OWNER demo;
+# quit with CTRL-C
+
+7) If any previous step has been successful, it is now possbile to start up the
+mint web server (by default it will listen on port 4241); issue:
+
+
+taler-mint-httpd -d `pwd` # assuming we did not move outside of the 'test' directory
