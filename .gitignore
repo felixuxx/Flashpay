@@ -25,3 +25,15 @@ GRTAGS
 GTAGS
 *.swp
 src/lib/test_mint_api
+doc/doxygen/doxygen_sqlite3.db
+src/mint-lib/test_mint_api
+src/mint-tools/taler-mint-dbinit
+src/mint-tools/taler-mint-keycheck
+src/mint-tools/taler-mint-keyup
+src/mint-tools/taler-mint-reservemod
+src/mintdb/perf-mintdb
+src/pq/test_pq
+src/util/test_amount
+src/util/test_crypto
+src/util/test_json
+src/util/test_wireformats
