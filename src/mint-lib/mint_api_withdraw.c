@@ -40,6 +40,8 @@
                 __FILE__, __LINE__, error.text, error.source)
 
 
+/* ********************** /withdraw/status ********************** */
+
 /**
  * @brief A Withdraw Status Handle
  */
@@ -294,6 +296,192 @@ TALER_MINT_withdraw_status_cancel (struct TALER_MINT_WithdrawStatusHandle *wsh)
 }
 
 
+/* ********************** /withdraw/sign ********************** */
+
+/**
+ * @brief A Withdraw Sign Handle
+ */
+struct TALER_MINT_WithdrawSignHandle
+{
+
+  /**
+   * The connection to mint this request handle will use
+   */
+  struct TALER_MINT_Handle *mint;
+
+  /**
+   * The url for this request.
+   */
+  char *url;
+
+  /**
+   * JSON encoding of the request to POST.
+   */
+  char *json_enc;
+
+  /**
+   * Handle for the request.
+   */
+  struct MAC_Job *job;
+
+  /**
+   * HTTP headers for the request.
+   */
+  struct curl_slist *headers;
+
+  /**
+   * Function to call with the result.
+   */
+  TALER_MINT_WithdrawSignResultCallback cb;
+
+  /**
+   * Closure for @a cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Download buffer
+   */
+  void *buf;
+
+  /**
+   * The size of the download buffer
+   */
+  size_t buf_size;
+
+  /**
+   * Error code (based on libc errno) if we failed to download
+   * (i.e. response too large).
+   */
+  int eno;
+
+};
+
+
+
+/**
+ * Function called when we're done processing the
+ * HTTP /withdraw/sign request.
+ *
+ * @param cls the `struct TALER_MINT_WithdrawSignHandle`
+ */
+static void
+handle_withdraw_sign_finished (void *cls,
+                               CURL *eh)
+{
+  struct TALER_MINT_WithdrawSignHandle *wsh = cls;
+  long response_code;
+  json_error_t error;
+  json_t *json;
+
+  json = NULL;
+  if (0 == wsh->eno)
+  {
+    json = json_loadb (wsh->buf,
+                       wsh->buf_size,
+                       JSON_REJECT_DUPLICATES | JSON_DISABLE_EOF_CHECK,
+                       &error);
+    if (NULL == json)
+    {
+      JSON_WARN (error);
+      response_code = 0;
+    }
+  }
+  if (NULL != json)
+  {
+    if (CURLE_OK !=
+        curl_easy_getinfo (eh,
+                           CURLINFO_RESPONSE_CODE,
+                           &response_code))
+    {
+      /* unexpected error... */
+      GNUNET_break (0);
+      response_code = 0;
+    }
+  }
+  switch (response_code)
+  {
+  case MHD_HTTP_OK:
+    GNUNET_break (0); // FIXME: not implemented
+    break;
+  case MHD_HTTP_BAD_REQUEST:
+    /* This should never happen, either us or the mint is buggy
+       (or API version conflict); just pass JSON reply to the application */
+    break;
+  case MHD_HTTP_FORBIDDEN:
+    GNUNET_break (0); // FIXME: not implemented
+    break;
+  case MHD_HTTP_UNAUTHORIZED:
+    GNUNET_break (0); // FIXME: not implemented
+    /* Nothing really to verify, mint says one of the signatures is
+       invalid; as we checked them, this should never happen, we
+       should pass the JSON reply to the application */
+    break;
+  case MHD_HTTP_NOT_FOUND:
+    GNUNET_break (0); // FIXME: not implemented
+    /* Nothing really to verify, this should never
+       happen, we should pass the JSON reply to the application */
+    break;
+  case MHD_HTTP_INTERNAL_SERVER_ERROR:
+    /* Server had an internal issue; we should retry, but this API
+       leaves this to the application */
+    break;
+  default:
+    /* unexpected response code */
+    GNUNET_break (0);
+    response_code = 0;
+    break;
+  }
+  wsh->cb (wsh->cb_cls,
+           response_code,
+           NULL,
+           json);
+  json_decref (json);
+  TALER_MINT_withdraw_sign_cancel (wsh);
+}
+
+
+/**
+ * Callback used when downloading the reply to a /withdraw/sign request.
+ * Just appends all of the data to the `buf` in the
+ * `struct TALER_MINT_WithdrawSignHandle` for further processing. The size of
+ * the download is limited to #GNUNET_MAX_MALLOC_CHECKED, if
+ * the download exceeds this size, we abort with an error.
+ *
+ * @param bufptr data downloaded via HTTP
+ * @param size size of an item in @a bufptr
+ * @param nitems number of items in @a bufptr
+ * @param cls the `struct TALER_MINT_DepositHandle`
+ * @return number of bytes processed from @a bufptr
+ */
+static int
+withdraw_sign_download_cb (char *bufptr,
+                           size_t size,
+                           size_t nitems,
+                           void *cls)
+{
+  struct TALER_MINT_WithdrawSignHandle *wsh = cls;
+  size_t msize;
+  void *buf;
+
+  if (0 == size * nitems)
+  {
+    /* Nothing (left) to do */
+    return 0;
+  }
+  msize = size * nitems;
+  if ( (msize + wsh->buf_size) >= GNUNET_MAX_MALLOC_CHECKED)
+  {
+    wsh->eno = ENOMEM;
+    return 0; /* signals an error to curl */
+  }
+  wsh->buf = GNUNET_realloc (wsh->buf,
+                             wsh->buf_size + msize);
+  buf = wsh->buf + wsh->buf_size;
+  memcpy (buf, bufptr, msize);
+  wsh->buf_size += msize;
+  return msize;
+}
 
 
 /**
@@ -324,8 +512,111 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
                           TALER_MINT_WithdrawSignResultCallback res_cb,
                           void *res_cb_cls)
 {
-  GNUNET_break (0); // FIXME
-  return NULL;
+  struct TALER_MINT_WithdrawSignHandle *wsh;
+  struct TALER_WithdrawRequestPS req;
+  struct TALER_ReservePublicKeyP reserve_pub;
+  struct TALER_ReserveSignatureP reserve_sig;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+  struct TALER_MINT_Context *ctx;
+  struct TALER_Amount amount_with_fee;
+  char *coin_ev;
+  size_t coin_ev_size;
+  json_t *withdraw_obj;
+  CURL *eh;
+  struct GNUNET_HashCode c_hash;
+
+  GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
+                                      &coin_pub.eddsa_pub);
+  GNUNET_CRYPTO_hash (&coin_pub.eddsa_pub,
+                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
+                      &c_hash);
+  coin_ev_size = GNUNET_CRYPTO_rsa_blind (&c_hash,
+                                          blinding_key->rsa_blinding_key,
+                                          pk->key.rsa_public_key,
+                                          &coin_ev);
+  GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
+                                      &reserve_pub.eddsa_pub);
+  req.purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS));
+  req.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
+  req.reserve_pub = reserve_pub;
+  if (GNUNET_OK !=
+      TALER_amount_add (&amount_with_fee,
+                        &pk->fee_withdraw,
+                        &pk->value))
+  {
+    /* mint gave us denomination keys that overflow like this!? */
+    GNUNET_break_op (0);
+    GNUNET_free (coin_ev);
+    return NULL;
+  }
+  TALER_amount_hton (&req.amount_with_fee,
+                     &amount_with_fee);
+  TALER_amount_hton (&req.withdraw_fee,
+                     &pk->fee_withdraw);
+  GNUNET_CRYPTO_rsa_public_key_hash (pk->key.rsa_public_key,
+                                     &req.h_denomination_pub);
+  GNUNET_CRYPTO_hash (coin_ev,
+                      coin_ev_size,
+                      &req.h_coin_envelope);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
+                                           &req.purpose,
+                                           &reserve_sig.eddsa_signature));
+  withdraw_obj = json_pack ("{s:o, s:o," /* denom_pub and coin_ev */
+                            " s:o, s:o}",/* reserve_pub and reserve_sig */
+                            "denom_pub", TALER_json_from_rsa_public_key (pk->key.rsa_public_key),
+                            "coin_ev", TALER_json_from_data (coin_ev,
+                                                             coin_ev_size),
+                            "reserve_pub", TALER_json_from_data (&reserve_pub,
+                                                                 sizeof (reserve_pub)),
+                            "reserve_sig", TALER_json_from_data (&reserve_sig,
+                                                                 sizeof (reserve_sig)));
+  GNUNET_free (coin_ev);
+
+  wsh = GNUNET_new (struct TALER_MINT_WithdrawSignHandle);
+  wsh->mint = mint;
+  wsh->cb = res_cb;
+  wsh->cb_cls = res_cb_cls;
+  wsh->url = MAH_path_to_url (mint, "/withdraw/sign");
+
+  eh = curl_easy_init ();
+  GNUNET_assert (NULL != (wsh->json_enc =
+                          json_dumps (withdraw_obj,
+                                      JSON_COMPACT)));
+  json_decref (withdraw_obj);
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_URL,
+                                   wsh->url));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_POSTFIELDS,
+                                   wsh->json_enc));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_POSTFIELDSIZE,
+                                   strlen (wsh->json_enc)));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_WRITEFUNCTION,
+                                   &withdraw_sign_download_cb));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_WRITEDATA,
+                                   wsh));
+  GNUNET_assert (NULL != (wsh->headers =
+                          curl_slist_append (wsh->headers,
+                                             "Content-Type: application/json")));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_HTTPHEADER,
+                                   wsh->headers));
+  ctx = MAH_handle_to_context (mint);
+  wsh->job = MAC_job_add (ctx,
+                          eh,
+                          &handle_withdraw_sign_finished,
+                          wsh);
+  return wsh;
 }
 
 
@@ -338,7 +629,11 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
 void
 TALER_MINT_withdraw_sign_cancel (struct TALER_MINT_WithdrawSignHandle *sign)
 {
-  GNUNET_break (0); // FIXME
+  MAC_job_cancel (sign->job);
+  curl_slist_free_all (sign->headers);
+  GNUNET_free (sign->url);
+  GNUNET_free (sign->json_enc);
+  GNUNET_free (sign);
 }
 
 

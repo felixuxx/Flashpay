@@ -715,5 +715,4 @@ TALER_MINT_deposit_cancel (struct TALER_MINT_DepositHandle *deposit)
 }
 
 
-
 /* end of mint_api_deposit.c */
