@@ -17,7 +17,8 @@ libtalermint_la_SOURCES = \
   mint_api_context.c mint_api_context.h \
   mint_api_json.c mint_api_json.h \
   mint_api_handle.c mint_api_handle.h \
-  mint_api_deposit.c
+  mint_api_deposit.c \
+  mint_api_withdraw.c
 
 libtalermint_la_LIBADD = \
   -lgnunetutil \

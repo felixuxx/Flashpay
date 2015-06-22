@@ -106,10 +106,10 @@ handle_withdraw_status_finished (void *cls,
   json_t *json;
 
   json = NULL;
-  if (0 == dh->eno)
+  if (0 == wsh->eno)
   {
-    json = json_loadb (dh->buf,
-                       dh->buf_size,
+    json = json_loadb (wsh->buf,
+                       wsh->buf_size,
                        JSON_REJECT_DUPLICATES | JSON_DISABLE_EOF_CHECK,
                        &error);
     if (NULL == json)
@@ -162,7 +162,7 @@ handle_withdraw_status_finished (void *cls,
            NULL,
            0, NULL);
   json_decref (json);
-  TALER_MINT_withdraw_status_cancel (dh);
+  TALER_MINT_withdraw_status_cancel (wsh);
 }
 
 
@@ -229,11 +229,13 @@ struct TALER_MINT_WithdrawStatusHandle *
 TALER_MINT_withdraw_status (struct TALER_MINT_Handle *mint,
                             const struct TALER_ReservePublicKeyP *reserve_pub,
                             TALER_MINT_WithdrawStatusResultCallback cb,
-                            void *cb_cls);
+                            void *cb_cls)
 {
   struct TALER_MINT_WithdrawStatusHandle *wsh;
   struct TALER_MINT_Context *ctx;
   CURL *eh;
+  char *pub_str;
+  char *arg_str;
 
   if (GNUNET_YES !=
       MAH_handle_is_ready (mint))
@@ -241,55 +243,39 @@ TALER_MINT_withdraw_status (struct TALER_MINT_Handle *mint,
     GNUNET_break (0);
     return NULL;
   }
+  pub_str = GNUNET_STRINGS_data_to_string_alloc (reserve_pub,
+                                                 sizeof (struct TALER_ReservePublicKeyP));
+  GNUNET_asprintf (&arg_str,
+                   "/withdraw/status?reserve_pub=%s",
+                   pub_str);
+  GNUNET_free (pub_str);
   wsh = GNUNET_new (struct TALER_MINT_WithdrawStatusHandle);
   wsh->mint = mint;
   wsh->cb = cb;
   wsh->cb_cls = cb_cls;
-  wsh->url = MAH_path_to_url (mint, "/withdraw/status");
+  wsh->url = MAH_path_to_url (mint,
+                              arg_str);
+  GNUNET_free (arg_str);
 
   eh = curl_easy_init ();
-  GNUNET_assert (NULL != (dh->json_enc =
-                          json_dumps (deposit_obj,
-                                      JSON_COMPACT)));
-  json_decref (deposit_obj);
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    wsh->url));
-#if 0
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDS,
-                                   wsh->json_enc));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDSIZE,
-                                   strlen (wsh->json_enc)));
-#endif
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_WRITEFUNCTION,
-                                   &deposit_download_cb));
+                                   &withdraw_status_download_cb));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_WRITEDATA,
                                    wsh));
-#if 0
-  GNUNET_assert (NULL != (wsh->headers =
-                          curl_slist_append (wsh->headers,
-                                             "Content-Type: application/json")));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (wsh,
-                                   CURLOPT_HTTPHEADER,
-                                   wsh->headers));
-#endif
-  GNUNET_break (0); // FIXME
   ctx = MAH_handle_to_context (mint);
   wsh->job = MAC_job_add (ctx,
                           eh,
                           &handle_withdraw_status_finished,
                           wsh);
-  return dh;
+  return wsh;
 }
 
 
@@ -303,10 +289,6 @@ void
 TALER_MINT_withdraw_status_cancel (struct TALER_MINT_WithdrawStatusHandle *wsh)
 {
   MAC_job_cancel (wsh->job);
-#if 0
-  curl_slist_free_all (wsh->headers);
-  GNUNET_free (wsh->json_enc);
-#endif
   GNUNET_free (wsh->url);
   GNUNET_free (wsh);
 }
@@ -335,9 +317,9 @@ TALER_MINT_withdraw_status_cancel (struct TALER_MINT_WithdrawStatusHandle *wsh)
  */
 struct TALER_MINT_WithdrawSignHandle *
 TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
-                          const struct TALER_MINT_DenomPubKey *pk,
+                          const struct TALER_MINT_DenomPublicKey *pk,
                           const struct TALER_ReservePrivateKeyP *reserve_priv,
-                          const struct TALER_MINT_CoinSpendPrivateKeyP *coin_priv,
+                          const struct TALER_CoinSpendPrivateKeyP *coin_priv,
                           const struct TALER_DenominationBlindingKey *blinding_key,
                           TALER_MINT_WithdrawSignResultCallback res_cb,
                           void *res_cb_cls)
