@@ -335,6 +335,16 @@ struct TALER_MINT_WithdrawSignHandle
   TALER_MINT_WithdrawSignResultCallback cb;
 
   /**
+   * Key used to blind the value.
+   */
+  const struct TALER_DenominationBlindingKey *blinding_key;
+
+  /**
+   * Denomination key we are withdrawing.
+   */
+  const struct TALER_MINT_DenomPublicKey *pk;
+
+  /**
    * Closure for @a cb.
    */
   void *cb_cls;
@@ -343,6 +353,11 @@ struct TALER_MINT_WithdrawSignHandle
    * Download buffer
    */
   void *buf;
+
+  /**
+   * Hash of the public key of the coin we are signing.
+   */
+  struct GNUNET_HashCode c_hash;
 
   /**
    * The size of the download buffer
@@ -357,6 +372,64 @@ struct TALER_MINT_WithdrawSignHandle
 
 };
 
+
+/**
+ * We got a 200 OK response for the /withdraw/sign operation.
+ * Extract the coin's signature and return it to the caller.
+ * The signature we get from the mint is for the blinded value.
+ * Thus, we first must unblind it and then should verify its
+ * validity against our coin's hash.
+ *
+ * If everything checks out, we return the unblinded signature
+ * to the application via the callback.
+ *
+ * @param wsh operation handle
+ * @param json reply from the mint
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
+ */
+static int
+withdraw_sign_ok (struct TALER_MINT_WithdrawSignHandle *wsh,
+                  json_t *json)
+{
+  struct GNUNET_CRYPTO_rsa_Signature *blind_sig;
+  struct GNUNET_CRYPTO_rsa_Signature *sig;
+  struct TALER_DenominationSignature dsig;
+  struct MAJ_Specification spec[] = {
+    MAJ_spec_fixed_auto ("ev_sig", &blind_sig),
+    MAJ_spec_end
+  };
+
+  if (GNUNET_OK !=
+      MAJ_parse_json (json,
+                      spec))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  sig = GNUNET_CRYPTO_rsa_unblind (blind_sig,
+                                   wsh->blinding_key->rsa_blinding_key,
+                                   wsh->pk->key.rsa_public_key);
+  GNUNET_CRYPTO_rsa_signature_free (blind_sig);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_rsa_verify (&wsh->c_hash,
+                                sig,
+                                wsh->pk->key.rsa_public_key))
+  {
+    GNUNET_break_op (0);
+    GNUNET_CRYPTO_rsa_signature_free (sig);
+    return GNUNET_SYSERR;
+  }
+  /* signature is valid, return it to the application */
+  dsig.rsa_signature = sig;
+  wsh->cb (wsh->cb_cls,
+           MHD_HTTP_OK,
+           &dsig,
+           json);
+  /* make sure callback isn't called again after return */
+  wsh->cb = NULL;
+  GNUNET_CRYPTO_rsa_signature_free (sig);
+  return GNUNET_OK;
+}
 
 
 /**
@@ -402,7 +475,13 @@ handle_withdraw_sign_finished (void *cls,
   switch (response_code)
   {
   case MHD_HTTP_OK:
-    GNUNET_break (0); // FIXME: not implemented
+    if (GNUNET_OK !=
+        withdraw_sign_ok (wsh,
+                          json))
+    {
+      GNUNET_break_op (0);
+      response_code = 0;
+    }
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the mint is buggy
@@ -432,10 +511,11 @@ handle_withdraw_sign_finished (void *cls,
     response_code = 0;
     break;
   }
-  wsh->cb (wsh->cb_cls,
-           response_code,
-           NULL,
-           json);
+  if (NULL != wsh->cb)
+    wsh->cb (wsh->cb_cls,
+             response_code,
+             NULL,
+             json);
   json_decref (json);
   TALER_MINT_withdraw_sign_cancel (wsh);
 }
@@ -523,14 +603,18 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
   size_t coin_ev_size;
   json_t *withdraw_obj;
   CURL *eh;
-  struct GNUNET_HashCode c_hash;
+
+  wsh = GNUNET_new (struct TALER_MINT_WithdrawSignHandle);
+  wsh->mint = mint;
+  wsh->cb = res_cb;
+  wsh->cb_cls = res_cb_cls;
 
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
   GNUNET_CRYPTO_hash (&coin_pub.eddsa_pub,
                       sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                      &c_hash);
-  coin_ev_size = GNUNET_CRYPTO_rsa_blind (&c_hash,
+                      &wsh->c_hash);
+  coin_ev_size = GNUNET_CRYPTO_rsa_blind (&wsh->c_hash,
                                           blinding_key->rsa_blinding_key,
                                           pk->key.rsa_public_key,
                                           &coin_ev);
@@ -547,6 +631,7 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
     /* mint gave us denomination keys that overflow like this!? */
     GNUNET_break_op (0);
     GNUNET_free (coin_ev);
+    GNUNET_free (wsh);
     return NULL;
   }
   TALER_amount_hton (&req.amount_with_fee,
@@ -573,10 +658,7 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
                                                                  sizeof (reserve_sig)));
   GNUNET_free (coin_ev);
 
-  wsh = GNUNET_new (struct TALER_MINT_WithdrawSignHandle);
-  wsh->mint = mint;
-  wsh->cb = res_cb;
-  wsh->cb_cls = res_cb_cls;
+  wsh->blinding_key = blinding_key;
   wsh->url = MAH_path_to_url (mint, "/withdraw/sign");
 
   eh = curl_easy_init ();
