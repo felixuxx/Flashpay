@@ -226,8 +226,6 @@ TMH_PARSE_post_json (struct MHD_Connection *connection,
                       r->fill,
                       0,
                       NULL);
-  buffer_deinit (r);
-  GNUNET_free (r);
   if (NULL == *json)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -236,6 +234,8 @@ TMH_PARSE_post_json (struct MHD_Connection *connection,
             TMH_RESPONSE_reply_invalid_json (connection))
       ? GNUNET_NO : GNUNET_SYSERR;
   }
+  buffer_deinit (r);
+  GNUNET_free (r);
   *con_cls = NULL;
 
   return GNUNET_YES;
@@ -255,7 +255,10 @@ TMH_PARSE_post_cleanup_callback (void *con_cls)
   struct Buffer *r = con_cls;
 
   if (NULL != r)
+  {
     buffer_deinit (r);
+    GNUNET_free (r);
+  }
 }
 
 
