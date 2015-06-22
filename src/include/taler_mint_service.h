@@ -420,7 +420,184 @@ void
 TALER_MINT_deposit_cancel (struct TALER_MINT_DepositHandle *deposit);
 
 
-/* ********************* /withdraw/xxx *********************** */
+/* ********************* /withdraw/status *********************** */
+
+
+/**
+ * @brief A /withdraw/status Handle
+ */
+struct TALER_MINT_WithdrawStatusHandle;
+
+
+/**
+ * Ways how a reserve's balance may change.
+ */
+enum TALER_MINT_ReserveTransactionType {
+
+  /**
+   * Deposit into the reserve.
+   */
+  TALER_MINT_RTT_DEPOSIT,
+
+  /**
+   * Withdrawal from the reserve.
+   */
+  TALER_MINT_RTT_WITHDRAWAL
+
+};
+
+
+/**
+ * Entry in the reserve's transaction history.
+ */
+struct TALER_MINT_ReserveHistory
+{
+
+  /**
+   * Type of the transaction.
+   */
+  enum TALER_MINT_ReserveTransactionType type;
+
+  /**
+   * Amount transferred (in or out).
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * Details depending on @e type.
+   */
+  union {
+
+    /**
+     * Transaction details for the incoming transaction.
+     */
+    json_t *wire_in_details;
+
+    /**
+     * Signature authorizing the withdrawal for outgoing transaction.
+     */
+    struct TALER_ReserveSignatureP out_authorization_sig;
+
+  };
+
+};
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * deposit permission request to a mint.
+ *
+ * @param cls closure
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param balance current balance in the reserve
+ * @param history_length number of entries in the transaction history
+ * @param history detailed transaction history
+ */
+typedef void
+(*TALER_MINT_WithdrawStatusResultCallback) (void *cls,
+                                            unsigned int http_status,
+                                            const struct TALER_Amount *balance,
+                                            unsigned int history_length,
+                                            const struct TALER_MINT_ReserveHistory *history);
+
+
+/**
+ * Submit a request to obtain the transaction history of a reserve
+ * from the mint.  Note that while we return the full response to the
+ * caller for further processing, we do already verify that the
+ * response is well-formed (i.e. that signatures included in the
+ * response are all valid and add up to the balance).  If the mint's
+ * reply is not well-formed, we return an HTTP status code of zero to
+ * @a cb.
+ *
+ * @param mint the mint handle; the mint must be ready to operate
+ * @param reserve_pub public key of the reserve to inspect
+ * @param cb the callback to call when a reply for this request is available
+ * @param cb_cls closure for the above callback
+ * @return a handle for this request; NULL if the inputs are invalid (i.e.
+ *         signatures fail to verify).  In this case, the callback is not called.
+ */
+struct TALER_MINT_WithdrawStatusHandle *
+TALER_MINT_withdraw_status (struct TALER_MINT_Handle *mint,
+                            const struct TALER_ReservePublicKeyP *reserve_pub,
+                            TALER_MINT_WithdrawStatusResultCallback cb,
+                            void *cb_cls);
+
+
+/**
+ * Cancel a withdraw status request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param status the withdraw status request handle
+ */
+void
+TALER_MINT_withdraw_status_cancel (struct TALER_MINT_WithdrawStatusHandle *status);
+
+
+/* ********************* /withdraw/sign *********************** */
+
+
+/**
+ * @brief A /withdraw/sign Handle
+ */
+struct TALER_MINT_WithdrawSignHandle;
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * deposit permission request to a mint.
+ *
+ * @param cls closure
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param sig signature over the coin, NULL on error
+ * @param full_response full response from the mint (for logging, in case of errors)
+ */
+typedef void
+(*TALER_MINT_WithdrawSignResultCallback) (void *cls,
+                                          unsigned int http_status,
+                                          const struct TALER_DenominationSignature *sig,
+                                          json_t *full_response);
+
+
+/**
+ * Withdraw a coin from the mint using a /withdraw/sign request.  Note
+ * that to ensure that no money is lost in case of hardware failures,
+ * the caller must have committed (most of) the arguments to disk
+ * before calling, and be ready to repeat the request with the same
+ * arguments in case of failures.
+ *
+ * @param mint the mint handle; the mint must be ready to operate
+ * @param pk kind of coin to create
+ * @param coin_priv where to store the coin's private key,
+ *        caller must have committed this value to disk before the call (with @a pk)
+ * @param blinding_key where to store the coin's blinding key
+ *        caller must have committed this value to disk before the call (with @a pk)
+ * @param res_cb the callback to call when the final result for this request is available
+ * @param res_cb_cls closure for the above callback
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR
+ *         if the inputs are invalid (i.e. denomination key not with this mint).
+ *         In this case, the callback is not called.
+ */
+struct TALER_MINT_WithdrawSignHandle *
+TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
+                          const struct TALER_MINT_DenomPublicKey *pk,
+                          const struct TALER_ReservePrivateKeyP *reserve_priv,
+                          const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                          const struct TALER_DenominationBlindingKey *blinding_key,
+                          TALER_MINT_WithdrawSignResultCallback res_cb,
+                          void *res_cb_cls);
+
+
+/**
+ * Cancel a withdraw status request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param sign the withdraw sign request handle
+ */
+void
+TALER_MINT_withdraw_sign_cancel (struct TALER_MINT_WithdrawSignHandle *sign);
 
 
 
