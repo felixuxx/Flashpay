@@ -135,14 +135,14 @@ handle_withdraw_status_finished (void *cls,
   switch (response_code)
   {
   case MHD_HTTP_OK:
-    GNUNET_break (0); // FIXME
+    GNUNET_break (0); // FIXME: #3773
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the mint is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
   case MHD_HTTP_FORBIDDEN:
-    GNUNET_break (0); // FIXME
+    GNUNET_break (0); // FIXME: #3773
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
@@ -158,7 +158,7 @@ handle_withdraw_status_finished (void *cls,
     response_code = 0;
     break;
   }
-  GNUNET_break (0); // FIXME
+  GNUNET_break (0); // FIXME: #3773
   wsh->cb (wsh->cb_cls,
            response_code,
            NULL,
@@ -482,7 +482,7 @@ withdraw_sign_payment_required (struct TALER_MINT_WithdrawSignHandle *wsh,
   }
 
   /* FIXME: re-use/share this code with history processing
-     on /withdraw/status above! */
+     on /withdraw/status above! -- #3772-#9310 */
   /* go over transaction history and compute
      total incoming and outgoing amounts */
   len = json_array_size (history);
@@ -580,7 +580,7 @@ withdraw_sign_payment_required (struct TALER_MINT_WithdrawSignHandle *wsh,
       }
 
       /* FIXME: ought to also check that the same withdraw transaction
-         isn't listed twice by the mint... */
+         isn't listed twice by the mint... #3772-9310 */
       if (GNUNET_OK !=
           TALER_amount_add (&total_out,
                             &total_out,
