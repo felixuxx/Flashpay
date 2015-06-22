@@ -630,16 +630,14 @@ withdraw_sign_payment_required (struct TALER_MINT_WithdrawSignHandle *wsh,
     return GNUNET_SYSERR;
   }
   /* Check that funds were really insufficient */
-  if (0 < /* >= ??? -- FIXME: check operator! */
-      TALER_amount_cmp (&requested_amount,
-                        &balance))
+  if (0 < TALER_amount_cmp (&requested_amount,
+                            &balance))
   {
-    /* mint cannot add up balances!? */
+    /* Requested amount is smaller than reported balance,
+       so this should not have failed. */
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-
-
   return GNUNET_OK;
 }
 
