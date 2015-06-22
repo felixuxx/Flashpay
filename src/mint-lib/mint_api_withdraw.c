@@ -360,6 +360,11 @@ struct TALER_MINT_WithdrawSignHandle
   struct GNUNET_HashCode c_hash;
 
   /**
+   * Public key of the reserve we are withdrawing from.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
    * The size of the download buffer
    */
   size_t buf_size;
@@ -433,6 +438,213 @@ withdraw_sign_ok (struct TALER_MINT_WithdrawSignHandle *wsh,
 
 
 /**
+ * We got a 402 PAYMENT REQUIRED response for the /withdraw/sign operation.
+ * Check the signatures on the withdraw transactions in the provided
+ * history and that the balances add up.  We don't do anything directly
+ * with the information, as the JSON will be returned to the application.
+ * However, our job is ensuring that the mint followed the protocol, and
+ * this in particular means checking all of the signatures in the history.
+ *
+ * @param wsh operation handle
+ * @param json reply from the mint
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
+ */
+static int
+withdraw_sign_payment_required (struct TALER_MINT_WithdrawSignHandle *wsh,
+                                json_t *json)
+{
+  struct TALER_Amount balance;
+  struct TALER_Amount balance_from_history;
+  struct TALER_Amount total_in;
+  struct TALER_Amount total_out;
+  struct TALER_Amount requested_amount;
+  json_t *history;
+  size_t len;
+  size_t off;
+  struct MAJ_Specification spec[] = {
+    MAJ_spec_amount ("balance", &balance),
+    MAJ_spec_end
+  };
+
+  if (GNUNET_OK !=
+      MAJ_parse_json (json,
+                      spec))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  history = json_object_get (json,
+                             "history");
+  if (NULL == history)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  /* FIXME: re-use/share this code with history processing
+     on /withdraw/status above! */
+  /* go over transaction history and compute
+     total incoming and outgoing amounts */
+  len = json_array_size (history);
+  TALER_amount_get_zero (balance.currency,
+                         &total_in);
+  TALER_amount_get_zero (balance.currency,
+                         &total_out);
+  for (off=0;off<len;off++)
+  {
+    json_t *transaction;
+    struct TALER_Amount amount;
+    const char *type;
+    struct MAJ_Specification hist_spec[] = {
+      MAJ_spec_string ("type", &type),
+      MAJ_spec_amount ("amount",
+                       &amount),
+      /* 'wire' and 'signature' are optional depending on 'type'! */
+      MAJ_spec_end
+    };
+
+    transaction = json_array_get (history,
+                                  off);
+    if (GNUNET_OK !=
+        MAJ_parse_json (transaction,
+                        hist_spec))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+
+    if (0 == strcasecmp (type,
+                         "DEPOSIT"))
+    {
+      json_t *wire;
+
+      if (GNUNET_OK !=
+          TALER_amount_add (&total_in,
+                            &total_in,
+                            &amount))
+      {
+        /* overflow in history already!? inconceivable! Bad mint! */
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      wire = json_object_get (transaction,
+                              "wire");
+      /* check 'wire' is a JSON object (no need to check wireformat,
+         but we do at least expect "some" JSON object here) */
+      if ( (NULL == wire) ||
+           (! json_is_object (wire)) )
+      {
+        /* not even a JSON 'wire' specification, not acceptable */
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      /* end type==DEPOSIT */
+    }
+    else if (0 == strcasecmp (type,
+                              "WITHDRAW"))
+    {
+      struct GNUNET_CRYPTO_EccSignaturePurpose *purpose;
+      const struct TALER_WithdrawRequestPS *withdraw_purpose;
+      struct TALER_Amount amount_from_purpose;
+      struct MAJ_Specification withdraw_spec[] = {
+        MAJ_spec_eddsa_signed_purpose ("signature",
+                                       &purpose,
+                                       &wsh->reserve_pub.eddsa_pub),
+        MAJ_spec_end
+      };
+
+      if (GNUNET_OK !=
+          MAJ_parse_json (transaction,
+                          withdraw_spec))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      /* Check that the signature actually signed a withdraw request */
+      if ( (ntohl (purpose->purpose) != TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW) ||
+           (ntohl (purpose->size) != sizeof (struct TALER_WithdrawRequestPS)) )
+      {
+        GNUNET_break_op (0);
+        MAJ_parse_free (withdraw_spec);
+        return GNUNET_SYSERR;
+      }
+      withdraw_purpose = (const struct TALER_WithdrawRequestPS *) purpose;
+      TALER_amount_ntoh (&amount_from_purpose,
+                         &withdraw_purpose->amount_with_fee);
+      if (0 != TALER_amount_cmp (&amount,
+                                 &amount_from_purpose))
+      {
+        GNUNET_break_op (0);
+        MAJ_parse_free (withdraw_spec);
+        return GNUNET_SYSERR;
+      }
+
+      /* FIXME: ought to also check that the same withdraw transaction
+         isn't listed twice by the mint... */
+      if (GNUNET_OK !=
+          TALER_amount_add (&total_out,
+                            &total_out,
+                            &amount))
+      {
+        /* overflow in history already!? inconceivable! Bad mint! */
+        GNUNET_break_op (0);
+        MAJ_parse_free (withdraw_spec);
+        return GNUNET_SYSERR;
+      }
+      /* end type==WITHDRAW */
+    }
+    else
+    {
+      /* unexpected 'type', protocol incompatibility, complain! */
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+  }
+
+  /* check balance = total_in - total_out < withdraw-amount */
+  if (GNUNET_SYSERR ==
+      TALER_amount_subtract (&balance_from_history,
+                             &total_in,
+                             &total_out))
+  {
+    /* total_in < total_out, why did the mint ever allow this!? */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 !=
+      TALER_amount_cmp (&balance_from_history,
+                        &balance))
+  {
+    /* mint cannot add up balances!? */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  /* Compute how much we expected to charge to the reserve */
+  if (GNUNET_OK !=
+      TALER_amount_add (&requested_amount,
+                        &wsh->pk->value,
+                        &wsh->pk->fee_withdraw))
+  {
+    /* Overflow here? Very strange, our CPU must be fried... */
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  /* Check that funds were really insufficient */
+  if (0 < /* >= ??? -- FIXME: check operator! */
+      TALER_amount_cmp (&requested_amount,
+                        &balance))
+  {
+    /* mint cannot add up balances!? */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+
+  return GNUNET_OK;
+}
+
+
+/**
  * Function called when we're done processing the
  * HTTP /withdraw/sign request.
  *
@@ -487,19 +699,28 @@ handle_withdraw_sign_finished (void *cls,
     /* This should never happen, either us or the mint is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
-  case MHD_HTTP_FORBIDDEN:
-    GNUNET_break (0); // FIXME: not implemented
+  case MHD_HTTP_PAYMENT_REQUIRED:
+    /* The mint says that the reserve has insufficient funds;
+       check the signatures in the history... */
+    if (GNUNET_OK !=
+        withdraw_sign_payment_required (wsh,
+                                        json))
+    {
+      GNUNET_break_op (0);
+      response_code = 0;
+    }
     break;
   case MHD_HTTP_UNAUTHORIZED:
-    GNUNET_break (0); // FIXME: not implemented
+    GNUNET_break (0);
     /* Nothing really to verify, mint says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
     break;
   case MHD_HTTP_NOT_FOUND:
-    GNUNET_break (0); // FIXME: not implemented
-    /* Nothing really to verify, this should never
-       happen, we should pass the JSON reply to the application */
+    /* Nothing really to verify, the mint basically just says
+       that it doesn't know this reserve.  Can happen if we
+       query before the wire transfer went through.
+       We should simply pass the JSON reply to the application. */
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
@@ -594,7 +815,6 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
 {
   struct TALER_MINT_WithdrawSignHandle *wsh;
   struct TALER_WithdrawRequestPS req;
-  struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_ReserveSignatureP reserve_sig;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   struct TALER_MINT_Context *ctx;
@@ -619,10 +839,10 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
                                           pk->key.rsa_public_key,
                                           &coin_ev);
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
-                                      &reserve_pub.eddsa_pub);
+                                      &wsh->reserve_pub.eddsa_pub);
   req.purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS));
   req.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
-  req.reserve_pub = reserve_pub;
+  req.reserve_pub = wsh->reserve_pub;
   if (GNUNET_OK !=
       TALER_amount_add (&amount_with_fee,
                         &pk->fee_withdraw,
@@ -652,8 +872,8 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
                             "denom_pub", TALER_json_from_rsa_public_key (pk->key.rsa_public_key),
                             "coin_ev", TALER_json_from_data (coin_ev,
                                                              coin_ev_size),
-                            "reserve_pub", TALER_json_from_data (&reserve_pub,
-                                                                 sizeof (reserve_pub)),
+                            "reserve_pub", TALER_json_from_data (&wsh->reserve_pub,
+                                                                 sizeof (struct TALER_ReservePublicKeyP)),
                             "reserve_sig", TALER_json_from_data (&reserve_sig,
                                                                  sizeof (reserve_sig)));
   GNUNET_free (coin_ev);

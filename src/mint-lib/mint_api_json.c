@@ -72,6 +72,20 @@ parse_json (json_t *root,
       }
       break;
 
+    case MAJ_CMD_STRING:
+      {
+        const char *str;
+
+        str = json_string_value (pos);
+        if (NULL == str)
+        {
+          GNUNET_break_op (0);
+          return i;
+        }
+        *spec[i].details.strptr = str;
+      }
+      break;
+
     case MAJ_CMD_BINARY_FIXED:
       {
         const char *str;
@@ -274,6 +288,8 @@ parse_free (struct MAJ_Specification *spec,
       break;
     case MAJ_CMD_BINARY_FIXED:
       break;
+    case MAJ_CMD_STRING:
+      break;
     case MAJ_CMD_BINARY_VARIABLE:
       GNUNET_free (*spec[i].details.variable_data.dest_p);
       *spec[i].details.variable_data.dest_p = NULL;
@@ -337,6 +353,26 @@ MAJ_parse_free (struct MAJ_Specification *spec)
 
   for (i=0;MAJ_CMD_END != spec[i].cmd;i++) ;
   parse_free (spec, i);
+}
+
+
+/**
+ * The expected field stores a string.
+ *
+ * @param name name of the JSON field
+ * @param strptr where to store a pointer to the field
+ */
+struct MAJ_Specification
+MAJ_spec_string (const char *name,
+                 const char **strptr)
+{
+  struct MAJ_Specification ret =
+    {
+      .cmd = MAJ_CMD_STRING,
+      .field = name,
+      .details.strptr = strptr
+    };
+  return ret;
 }
 
 

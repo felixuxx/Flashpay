@@ -74,9 +74,9 @@ enum MAJ_Command
   MAJ_CMD_EDDSA_SIGNATURE,
 
   /**
-   * Parse  at current position.
+   * Parse `const char *` JSON string at current position.
    */
-  MAJ_CMD_B,
+  MAJ_CMD_STRING,
 
   /**
    * Parse  at current position.
@@ -176,6 +176,11 @@ struct MAJ_Specification
 
     } eddsa_signature;
 
+    /**
+     * Where to store a pointer to the string.
+     */
+    const char **strptr;
+
   } details;
 
 };
@@ -227,6 +232,17 @@ MAJ_parse_free (struct MAJ_Specification *spec);
  * @param size where to store the number of bytes allocated for @a obj (of type `size_t *`
  */
 #define MAJ_spec_varsize(name,obj,size) { .cmd = MAJ_CMD_BINARY_VARIABLE, .field = name, .details.variable_data.dest_p = obj, .details.variable_data.dest_size_p = size }
+
+
+/**
+ * The expected field stores a string.
+ *
+ * @param name name of the JSON field
+ * @param strptr where to store a pointer to the field
+ */
+struct MAJ_Specification
+MAJ_spec_string (const char *name,
+                 const char **strptr);
 
 
 /**
