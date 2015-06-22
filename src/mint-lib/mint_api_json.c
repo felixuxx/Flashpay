@@ -202,12 +202,40 @@ parse_json (json_t *root,
 
     case MAJ_CMD_EDDSA_SIGNATURE:
       {
-        /* FIXME: parse the JSON signature
-           and the purpose, then check that the
-           signature is valid and the size field
-           is also correct; if all checks out,
-           return the purpose */
-        GNUNET_break (0); // FIXME: implement! #3516
+        struct TALER_CoinSpendSignatureP sig;
+        struct GNUNET_CRYPTO_EccSignaturePurpose *purpose;
+        size_t size;
+        struct MAJ_Specification sig_spec[] = {
+          MAJ_spec_fixed_auto ("eddsa_sig", &sig),
+          MAJ_spec_varsize ("eddsa_val", (void**) &purpose, &size),
+          MAJ_spec_end
+        };
+
+        if (GNUNET_OK !=
+            MAJ_parse_json (pos,
+                            sig_spec))
+        {
+          GNUNET_break_op (0);
+          MAJ_parse_free (sig_spec);
+          return i;
+        }
+        if (size != ntohl (purpose->size))
+        {
+          GNUNET_break_op (0);
+          MAJ_parse_free (sig_spec);
+          return i;
+        }
+        if (GNUNET_OK !=
+            GNUNET_CRYPTO_eddsa_verify (ntohl (purpose->purpose),
+                                        purpose,
+                                        &sig.eddsa_signature,
+                                        spec[i].details.eddsa_signature.pub_key))
+        {
+          GNUNET_break_op (0);
+          MAJ_parse_free (sig_spec);
+          return i;
+        }
+        *spec[i].details.eddsa_signature.purpose_p = purpose;
       }
       break;
 

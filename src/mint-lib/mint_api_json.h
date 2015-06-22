@@ -219,6 +219,17 @@ MAJ_parse_free (struct MAJ_Specification *spec);
 
 
 /**
+ * Variable size object (in network byte order, encoded using Crockford
+ * Base32hex encoding).
+ *
+ * @param name name of the JSON field
+ * @param obj_ptr pointer where to write the data (a `void **`)
+ * @param size where to store the number of bytes allocated for @a obj (of type `size_t *`
+ */
+#define MAJ_spec_varsize(name,obj,size) { .cmd = MAJ_CMD_BINARY_VARIABLE, .field = name, .details.variable_data.dest_p = obj, .details.variable_data.dest_size_p = size }
+
+
+/**
  * Absolute time.
  *
  * @param name name of the JSON field

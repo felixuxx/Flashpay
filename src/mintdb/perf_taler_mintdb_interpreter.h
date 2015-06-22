@@ -119,28 +119,6 @@
 }
 
 /**
- * Insert a deposit into the database
- */
-#define PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT(_label) \
-{ \
-  .command = PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT,\
-  .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_DEPOSIT, \
-}
-
-/**
- * Check if a deposit is in the database
- * @param _label_deposit Label of the deposit to use
- */
-#define PERF_TALER_MINTDB_INIT_CMD_GET_DEPOSIT(_label, _label_deposit) \
-{ \
-  .command = PERF_TALER_MINTDB_CMD_GET_DEPOSIT, \
-  .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE, \
-  .details.get_deposit.label_source = _label_deposit \
-}
-
-/**
  * Extracts @a _nb_saved items of type @a _save_type 
  * from the command @a _label_save during the loop @a _label_loop
  */
@@ -171,7 +149,94 @@
     .label_save = _label_save \
   } \
 }
+/**
+ * Insert a deposit into the database
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT(_label) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT,\
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_DEPOSIT, \
+}
 
+/**
+ * Check if a deposit is in the database
+ * @param _label_deposit Label of the deposit to use
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_GET_DEPOSIT(_label, _label_deposit) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_GET_DEPOSIT, \
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .details.get_deposit.label_source = _label_deposit \
+}
+
+/**
+ * Creates a new reserve in the database
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_INSERT_RESERVE(_label) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_INSERT_RESERVE \
+  .label = _label \
+  .exposed_type = PERF_TALER_MINTDB_RESERVE \
+}
+
+
+/**
+ * Polls the database for a secific reserve's details
+ * @param _label_source Source for the reserve to poll
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_GET_RESERVE(_label, _label_source) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_GET_RESERVE \
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .details.get_reserve.label_source = _label_source \
+}
+
+
+/**
+ * Inserts informations about a withdrawal in the database
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_INSERT_WITHDRAW(_label) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW, \
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_BLINDCOIN, \
+}\
+
+
+/**
+ * Polls the database about informations regarding a secific withdrawal
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_GET_WITHDRAW(_label, _label_source) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_GET_WITHDRAW, \
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .details.get_withdraw.label_source = _label_source, \
+}
+
+/**
+ * Inserts informations about a denomination key in the database
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_INSERT_DENOMINATION(_label) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW, \
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_DENOMINATION_KEY, \
+}
+
+/**
+ * Polls the database about informations regarding a specific denomination key
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_GET_DENOMINATION(_label, _label_source) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_GET_DENOMINATION, \
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .details.get_denomination.label_source = _label_source, \
+}
 
 
 /**
@@ -184,7 +249,9 @@ enum PERF_TALER_MINTDB_Type
   PERF_TALER_MINTDB_TIME,
   PERF_TALER_MINTDB_DEPOSIT,
   PERF_TALER_MINTDB_BLINDCOIN,
+  PERF_TALER_MINTDB_RESERVE_KEY,
   PERF_TALER_MINTDB_RESERVE,
+  PERF_TALER_MINTDB_DENOMINATION_KEY,
   PERF_TALER_MINTDB_DENOMINATION_INFO,
   PERF_TALER_MINTDB_COIN_INFO,
 };
@@ -195,10 +262,11 @@ enum PERF_TALER_MINTDB_Type
  */
 union PERF_TALER_MINTDB_Data 
 {
-  struct TALER_MINTDB_Deposit *deposit;
   struct timespec time; 
+  struct TALER_MINTDB_Deposit *deposit;
   struct TALER_MINTDB_CollectableBlindcoin *blindcoin;
   struct TALER_MINTDB_Reserve *reserve;
+  struct TALER_DenominationPublicKey *dpk;
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct TALER_CoinPublicInfo *cpi;
 };
@@ -239,19 +307,36 @@ enum PERF_TALER_MINTDB_CMD_Name
   // Abort a transaction
   PERF_TALER_MINTDB_CMD_ABORT_TRANSACTION,
 
+  // Saves random deposits from a loop
+  PERF_TALER_MINTDB_CMD_SAVE_ARRAY,
+
+  // Load deposits saved earlier
+  PERF_TALER_MINTDB_CMD_LOAD_ARRAY,
+  
   // Insert a deposit into the database
   PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT,
 
   // Check if a deposit is in the database
   PERF_TALER_MINTDB_CMD_GET_DEPOSIT,
 
-  // Saves random deposits from a loop
-  PERF_TALER_MINTDB_CMD_SAVE_ARRAY,
+  // Insert currency in a reserve / Create a reserve
+  PERF_TALER_MINTDB_CMD_INSERT_RESERVE,
 
-  // Load deposits saved earlier
-  PERF_TALER_MINTDB_CMD_LOAD_ARRAY,
+  // Get Informations about a reserve
+  PERF_TALER_MINTDB_CMD_GET_RESERVE,
 
-} command;
+  // Insert informations about a withdrawal in the database
+  PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW,
+
+  // Pulls informations about a withdrawal from the database
+  PERF_TALER_MINTDB_CMD_GET_WITHDRAW,
+
+  // Insert informations about a denomination key in the database
+  PERF_TALER_MINTDB_CMD_INSERT_DENOMINATION,
+
+  // polls the database for informations about a specific denomination key
+  PERF_TALER_MINTDB_CMD_GET_DENOMINATION
+};
 
 
 /**
@@ -366,6 +451,26 @@ struct PERF_TALER_MINTDB_CMD_get_deposit_details
 
 
 /**
+ * Extra data requiered for the GET_DEPOSIT command
+ */
+struct PERF_TALER_MINTDB_CMD_get_reserve_details
+{
+  /**
+   * The label of the source of the reserve to check
+   */
+  const char *label_source;
+};
+
+
+struct PERF_TALER_MINTDB_CMD_get_denomination_details
+{
+  /**
+   * The label of the source of the denomination to check
+   */
+  const char *label_source;
+};
+
+/**
  * Contains extra data required for any command
  */
 union PERF_TALER_MINTDB_CMD_Details
@@ -376,6 +481,8 @@ union PERF_TALER_MINTDB_CMD_Details
   struct PERF_TALER_MINTDB_CMD_save_array_details save_array;
   struct PERF_TALER_MINTDB_CMD_load_array_details load_array;
   struct PERF_TALER_MINTDB_CMD_get_deposit_details get_deposit;
+  struct PERF_TALER_MINTDB_CMD_get_reserve_details get_reserve;
+  struct PERF_TALER_MINTDB_CMD_get_denomination_details get_denomination;
 };
 
 
