@@ -213,15 +213,53 @@ verify_deposit_signature_forbidden (const struct TALER_MINT_DepositHandle *dh,
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
-    switch (purpose->purpose)
+    switch (ntohl (purpose->purpose))
     {
     case TALER_SIGNATURE_WALLET_COIN_DEPOSIT:
-      GNUNET_break (0);
-      /* FIXME: check amount! #3516 */
+      {
+        const struct TALER_DepositRequestPS *dr;
+        struct TALER_Amount dr_amount;
+
+        if (ntohl (purpose->size) != sizeof (struct TALER_DepositRequestPS))
+        {
+          GNUNET_break (0);
+          MAJ_parse_free (spec);
+          return GNUNET_SYSERR;
+        }
+        dr = (const struct TALER_DepositRequestPS *) purpose;
+        TALER_amount_ntoh (&dr_amount,
+                           &dr->amount_with_fee);
+        if (0 != TALER_amount_cmp (&dr_amount,
+                                   &amount))
+        {
+          GNUNET_break (0);
+          MAJ_parse_free (spec);
+          return GNUNET_SYSERR;
+        }
+      }
       break;
     case TALER_SIGNATURE_WALLET_COIN_MELT:
-      GNUNET_break (0);
-      /* FIXME: check amount! #3516 */
+      {
+        const struct TALER_RefreshMeltCoinAffirmationPS *rm;
+        struct TALER_Amount rm_amount;
+
+        if (ntohl (purpose->size) != sizeof (struct TALER_RefreshMeltCoinAffirmationPS))
+        {
+          GNUNET_break (0);
+          MAJ_parse_free (spec);
+          return GNUNET_SYSERR;
+        }
+        rm = (const struct TALER_RefreshMeltCoinAffirmationPS *) purpose;
+        TALER_amount_ntoh (&rm_amount,
+                           &rm->amount_with_fee);
+        if (0 != TALER_amount_cmp (&rm_amount,
+                                   &amount))
+        {
+          GNUNET_break (0);
+          MAJ_parse_free (spec);
+          return GNUNET_SYSERR;
+        }
+      }
       break;
     default:
       /* signature not supported, new version on server? */
@@ -234,7 +272,7 @@ verify_deposit_signature_forbidden (const struct TALER_MINT_DepositHandle *dh,
                           &total,
                           &amount))
     {
-      /* overflow in history already!? inconceivable! */
+      /* overflow in history already!? inconceivable! Bad mint! */
       GNUNET_break_op (0);
       MAJ_parse_free (spec);
       return GNUNET_SYSERR;
