@@ -227,6 +227,10 @@ interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
 }
 
 
+/**
+ * Saves the data exposed by another command into
+ * an array in the command specific struct.
+ */
 static void
 interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
@@ -309,6 +313,53 @@ interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 }
 
 
+static void
+interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
+{
+  int loop_index, save_index;
+  union PERF_TALER_MINTDB_Data zero = {0};
+  union PERF_TALER_MINTDB_Data *loaded_data;
+
+  loop_index = cmd_find (state->cmd, 
+                         state->cmd[state->i].details.load_array.label_loop);
+  save_index = cmd_find (state->cmd, 
+                         state->cmd[state->i].details.load_array.label_save);
+  /* Extracting the data from the loop_indexth indice in save_index
+   * array.
+   */
+  loaded_data = &state->cmd[save_index].details.save_array.data_saved[
+    state->cmd[state->i].details.load_array.permutation[
+      state->cmd[loop_index].details.loop.curr_iteration]];
+
+  switch (state->cmd[state->i].exposed_type)
+  {
+    case PERF_TALER_MINTDB_TIME:
+      state->cmd[state->i].exposed.time = loaded_data->time;
+      break;
+
+    case PERF_TALER_MINTDB_DEPOSIT:
+      state->cmd[state->i].exposed.deposit = loaded_data->deposit;
+      break;
+
+    case PERF_TALER_MINTDB_BLINDCOIN:
+      state->cmd[state->i].exposed.blindcoin = loaded_data->blindcoin;
+      break;
+
+    case PERF_TALER_MINTDB_RESERVE:
+      state->cmd[state->i].exposed.reserve = loaded_data->reserve;
+      break;
+
+    case PERF_TALER_MINTDB_DENOMINATION_INFO:
+      state->cmd[state->i].exposed.dki = loaded_data->dki;
+
+    case PERF_TALER_MINTDB_COIN_INFO:
+      state->cmd[state->i].exposed.cpi = loaded_data->cpi;
+    default:
+      break;
+  }
+  *loaded_data = zero;
+}
+
 /**
  * Main interpreter loop.
  * 
@@ -344,12 +395,13 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           int start_index, stop_index; 
           struct timespec start, stop;
           unsigned long elapsed_ms;
+
           start_index  = cmd_find (state->cmd, 
                                    state->cmd[state->i].details.gauger.label_start);
           stop_index  = cmd_find (state->cmd, 
                                   state->cmd[state->i].details.gauger.label_stop);
-          start = state->cmd [start_index].exposed.time;
-          stop = state->cmd [stop_index].exposed.time;
+          start = state->cmd[start_index].exposed.time;
+          stop = state->cmd[stop_index].exposed.time;
           elapsed_ms = (start.tv_sec - stop.tv_sec) * 1000 + 
             (start.tv_nsec - stop.tv_nsec) / 1000000;
 
@@ -380,35 +432,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         break;
 
       case PERF_TALER_MINTDB_CMD_LOAD_ARRAY:
-        {
-          int loop_index, save_index;
-          union PERF_TALER_MINTDB_Data *loaded_data;
-          loop_index = cmd_find (state->cmd, 
-                                 state->cmd[state->i].details.load_array.label_loop);
-          save_index = cmd_find (state->cmd, 
-                                 state->cmd[state->i].details.load_array.label_save);
-          /* Extracting the data from the loop_indexth indice in save_index
-           * array.
-           */
-          loaded_data = &state->cmd[save_index].details.save_array.data_saved[
-            state->cmd[state->i].details.load_array.permutation[
-              state->cmd[loop_index].details.loop.curr_iteration]];
-
-          switch (state->cmd[state->i].exposed_type)
-          {
-            case PERF_TALER_MINTDB_TIME:
-              state->cmd[state->i].exposed.time = loaded_data->time;
-              break;
-
-            case PERF_TALER_MINTDB_DEPOSIT:
-              state->cmd[state->i].exposed.deposit = loaded_data->deposit;
-              loaded_data->deposit = NULL;
-              break;
-
-            default:
-              break;
-          }
-        }
+        interpret_load_array (state);
         break;
 
       case PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT:
@@ -431,8 +455,98 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
                                  state->cmd[state->i]
                                  .details.get_deposit.label_source)]
             .exposed.deposit; // Get the deposit from the source
+
           state->plugin->have_deposit (state->plugin->cls, 
-                                       state->session, deposit);
+                                       state->session, 
+                                       deposit);
+        }
+        break;
+      
+      case PERF_TALER_MINTDB_CMD_INSERT_RESERVE:
+        {
+          struct TALER_MINTDB_Reserve *reserve;
+          json_t *details = json_pack ("si","justification",
+                                       GNUNET_CRYPTO_random_u32 (
+                                         GNUNET_CRYPTO_QUALITY_WEAK, 
+                                         UINT32_MAX));
+          reserve = PERF_TALER_MINTDB_reserve_init ();
+          state->plugin->reserves_in_insert (
+            state->plugin->cls,
+            state->session,
+            &reserve->pub,
+            &reserve->balance,
+            details
+            );   
+          json_decref (details);
+          state->cmd[state->i].exposed.reserve = reserve;
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_RESERVE:
+        {
+          struct TALER_MINTDB_Reserve *reserve =
+            state->cmd[cmd_find (state->cmd, 
+                                 state->cmd[state->i]
+                                 .details.get_reserve.label_source)]
+            .exposed.reserve; // Get the deposit from the source
+
+          state->plugin->reserve_get (state->plugin->cls, 
+                                      state->session, 
+                                      reserve);
+        }
+        break; 
+
+      case PERF_TALER_MINTDB_CMD_INSERT_DENOMINATION:
+        {
+          struct TALER_MINTDB_DenominationKeyIssueInformation *dki =
+            PERF_TALER_MINTDB_denomination_init ();
+
+          state->plugin->insert_denomination_info (state->plugin->cls,
+                                                   state->session,
+                                                   &dki->denom_pub,
+                                                   &dki->issue);
+          state->cmd[state->i].exposed.dki = dki;
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_DENOMINATION:
+        {
+          struct TALER_MINTDB_DenominationKeyIssueInformation *dki =
+            state->cmd[cmd_find (state->cmd, 
+                                 state->cmd[state->i]
+                                 .details.get_denomination.label_source)]
+            .exposed.dki;
+          state->plugin->get_denomination_info (state->plugin->cls,
+                                                state->session,
+                                                &dki->denom_pub,
+                                                &dki->issue);
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW:
+        {
+          struct TALER_MINTDB_CollectableBlindcoin *blindcoin =
+            PERF_TALER_MINTDB_collectable_blindcoin_init ();
+
+          state->plugin->insert_withdraw_info (state->plugin->cls,
+                                               state->session,
+                                               blindcoin);
+          state->cmd[state->i].exposed.blindcoin = blindcoin;
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_WITHDRAW:
+        {
+          struct TALER_MINTDB_CollectableBlindcoin *blindcoin =
+            state->cmd[cmd_find (state->cmd, 
+                                 state->cmd[state->i]
+                                 .details.get_denomination.label_source)]
+            .exposed.blindcoin;
+          
+          state->plugin->get_withdraw_info (state->plugin->cls,
+                                            state->session,
+                                            &blindcoin->h_coin_envelope,
+                                            blindcoin);
         }
         break;
 
