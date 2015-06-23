@@ -476,9 +476,9 @@ struct TALER_MINT_ReserveHistory
     /**
      * Signature authorizing the withdrawal for outgoing transaction.
      */
-    struct TALER_ReserveSignatureP out_authorization_sig;
+    json_t *out_authorization_sig;
 
-  };
+  } details;
 
 };
 
@@ -490,13 +490,15 @@ struct TALER_MINT_ReserveHistory
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the mint's reply is bogus (fails to follow the protocol)
- * @param balance current balance in the reserve
- * @param history_length number of entries in the transaction history
- * @param history detailed transaction history
+ * @param[in] json original response in JSON format (useful only for diagnostics)
+ * @param balance current balance in the reserve, NULL on error
+ * @param history_length number of entries in the transaction history, 0 on error
+ * @param history detailed transaction history, NULL on error
  */
 typedef void
 (*TALER_MINT_WithdrawStatusResultCallback) (void *cls,
                                             unsigned int http_status,
+                                            json_t *json,
                                             const struct TALER_Amount *balance,
                                             unsigned int history_length,
                                             const struct TALER_MINT_ReserveHistory *history);
