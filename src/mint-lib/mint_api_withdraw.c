@@ -120,6 +120,8 @@ parse_reserve_history (json_t *history,
                        unsigned int history_length,
                        struct TALER_MINT_ReserveHistory *rhistory)
 {
+  struct GNUNET_HashCode uuid[history_length];
+  unsigned int uuid_off;
   struct TALER_Amount total_in;
   struct TALER_Amount total_out;
   size_t off;
@@ -128,6 +130,7 @@ parse_reserve_history (json_t *history,
                          &total_in);
   TALER_amount_get_zero (currency,
                          &total_out);
+  uuid_off = 0;
   for (off=0;off<history_length;off++)
   {
     json_t *transaction;
@@ -193,6 +196,7 @@ parse_reserve_history (json_t *history,
                                        &reserve_pub->eddsa_pub),
         MAJ_spec_end
       };
+      unsigned int i;
 
       rhistory[off].type = TALER_MINT_RTT_WITHDRAWAL;
       if (GNUNET_OK !=
@@ -222,9 +226,27 @@ parse_reserve_history (json_t *history,
       }
       rhistory[off].details.out_authorization_sig = json_object_get (transaction,
                                                                      "signature");
+      /* Check check that the same withdraw transaction
+         isn't listed twice by the mint. We use the
+         "uuid" array to remember the hashes of all
+         purposes, and compare the hashes to find
+         duplicates. */
+      GNUNET_CRYPTO_hash (withdraw_purpose,
+                          ntohl (withdraw_purpose->purpose.size),
+                          &uuid[uuid_off]);
+      for (i=0;i<uuid_off;i++)
+      {
+        if (0 == memcmp (&uuid[uuid_off],
+                         &uuid[i],
+                         sizeof (struct GNUNET_HashCode)))
+        {
+          GNUNET_break_op (0);
+          MAJ_parse_free (withdraw_spec);
+          return GNUNET_SYSERR;
+        }
+      }
+      uuid_off++;
 
-      /* FIXME: ought to also check that the same withdraw transaction
-         isn't listed twice by the mint... #3772-9310 */
       if (GNUNET_OK !=
           TALER_amount_add (&total_out,
                             &total_out,
@@ -258,7 +280,6 @@ parse_reserve_history (json_t *history,
 
   return GNUNET_OK;
 }
-
 
 
 /**
