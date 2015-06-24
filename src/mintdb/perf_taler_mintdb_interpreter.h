@@ -58,7 +58,7 @@
   .exposed_type = PERF_TALER_MINTDB_NONE , \
   .details.loop = { \
     .max_iterations = _iter , \
-    .curr_iteration = 0} \
+    .curr_iteration = 0 } \
 }
 
 /**
@@ -86,15 +86,16 @@
  * Commits the duration between @a _label_start and @a _label_stop
  * to Gauger with @a _description explaining
  */
-#define PERF_TALER_MINTDB_INIT_CMD_GAUGER(_label, _start_time, _stop_time, _description) \
+#define PERF_TALER_MINTDB_INIT_CMD_GAUGER(_label, _label_start, _label_stop, _description, _divide) \
 { \
   .command = PERF_TALER_MINTDB_CMD_GAUGER, \
   .label = _label, \
   .exposed_type = PERF_TALER_MINTDB_NONE, \
   .details.gauger = { \
     .label_start = _label_start, \
-    .label_end = _label_end, \
-    .description = _description \
+    .label_stop = _label_stop, \
+    .description = _description, \
+    .divide = _divide, \
   } \
 }
 
@@ -249,9 +250,7 @@ enum PERF_TALER_MINTDB_Type
   PERF_TALER_MINTDB_TIME,
   PERF_TALER_MINTDB_DEPOSIT,
   PERF_TALER_MINTDB_BLINDCOIN,
-  PERF_TALER_MINTDB_RESERVE_KEY,
   PERF_TALER_MINTDB_RESERVE,
-  PERF_TALER_MINTDB_DENOMINATION_KEY,
   PERF_TALER_MINTDB_DENOMINATION_INFO,
   PERF_TALER_MINTDB_COIN_INFO,
 };
@@ -266,7 +265,6 @@ union PERF_TALER_MINTDB_Data
   struct TALER_MINTDB_Deposit *deposit;
   struct TALER_MINTDB_CollectableBlindcoin *blindcoin;
   struct TALER_MINTDB_Reserve *reserve;
-  struct TALER_DenominationPublicKey *dpk;
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct TALER_CoinPublicInfo *cpi;
 };
@@ -334,8 +332,11 @@ enum PERF_TALER_MINTDB_CMD_Name
   // Insert informations about a denomination key in the database
   PERF_TALER_MINTDB_CMD_INSERT_DENOMINATION,
 
-  // polls the database for informations about a specific denomination key
-  PERF_TALER_MINTDB_CMD_GET_DENOMINATION
+  // Polls the database for informations about a specific denomination key
+  PERF_TALER_MINTDB_CMD_GET_DENOMINATION,
+
+  // Refresh a coin
+  PERF_TALER_MINTDB_CMD_REFRESH_COIN,
 };
 
 
@@ -381,6 +382,12 @@ struct PERF_TALER_MINTDB_CMD_gauger_details
    * Description of the metric, used in GAUGER
    */
   const char *description;
+
+  /**
+   * Constant the result needs to be divided by
+   * to get the result per unit
+   */
+  float divide;
 };
 
 
@@ -470,6 +477,19 @@ struct PERF_TALER_MINTDB_CMD_get_denomination_details
   const char *label_source;
 };
 
+
+/**
+ * Extra data requiered for refreshing coins
+ */
+struct PERF_TALER_MINTDB_CMD_refresh_coin_details
+{
+  /**
+   * The label of the coin to refresh
+   */
+  const char *label_source;
+};
+
+
 /**
  * Contains extra data required for any command
  */
@@ -483,6 +503,7 @@ union PERF_TALER_MINTDB_CMD_Details
   struct PERF_TALER_MINTDB_CMD_get_deposit_details get_deposit;
   struct PERF_TALER_MINTDB_CMD_get_reserve_details get_reserve;
   struct PERF_TALER_MINTDB_CMD_get_denomination_details get_denomination;
+  struct PERF_TALER_MINTDB_CMD_refresh_coin_details refresh;
 };
 
 
@@ -520,7 +541,7 @@ struct PERF_TALER_MINTDB_Cmd
    * GNUNET_YES if the exposed value hav been saved during last loop iteration
    * GNUNET_NO if it hasn't
    */
-  int exposed_saved;
+  unsigned int exposed_saved;
 };
 
 
@@ -532,6 +553,5 @@ int
 PERF_TALER_MINTDB_interpret(
   struct TALER_MINTDB_Plugin *db_plugin,
   struct PERF_TALER_MINTDB_Cmd cmd[]);
-
 
 #endif

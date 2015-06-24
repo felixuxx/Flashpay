@@ -407,7 +407,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
           GAUGER ("MINTDB", 
                   state->cmd[state->i].details.gauger.description, 
-                  elapsed_ms, 
+                  elapsed_ms / state->cmd[state->i].details.gauger.divide, 
                   "milliseconds");
         }
         break;
