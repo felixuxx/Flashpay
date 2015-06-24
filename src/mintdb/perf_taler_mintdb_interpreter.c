@@ -47,7 +47,7 @@ struct PERF_TALER_MINTDB_interpreter_state
   /**
    * The current index of the interpreter
    */
-  int i;
+  unsigned int i;
 };
 
 /**
@@ -99,7 +99,7 @@ data_free (union PERF_TALER_MINTDB_Data *data, enum PERF_TALER_MINTDB_Type type)
 static int
 cmd_find (const struct  PERF_TALER_MINTDB_Cmd *cmd, const char *search)
 {
-  int i;
+  unsigned int i;
 
   for (i=0; PERF_TALER_MINTDB_CMD_END != cmd[i].command; i++)
     if (0 == strcmp (cmd[i].label, search))
@@ -114,7 +114,7 @@ cmd_find (const struct  PERF_TALER_MINTDB_Cmd *cmd, const char *search)
 static int
 cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
 {
-  int i = 0;
+  unsigned int i = 0;
 
   for (i=0; PERF_TALER_MINTDB_CMD_END != cmd[i].command; i++)
   {
@@ -158,7 +158,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
 static int
 cmd_clean (struct PERF_TALER_MINTDB_Cmd cmd[])
 {
-  int i = 0;
+  unsigned int i = 0;
 
   for (i = 0; PERF_TALER_MINTDB_CMD_END != cmd[i].command; i++)
   {
@@ -166,7 +166,7 @@ cmd_clean (struct PERF_TALER_MINTDB_Cmd cmd[])
     {
       case PERF_TALER_MINTDB_CMD_SAVE_ARRAY:
         {
-          int j;
+          unsigned int j;
           for (j = 0; j < cmd[i].details.save_array.nb_saved; j++)
           {
             data_free (&cmd[i].details.save_array.data_saved[j],
@@ -198,9 +198,9 @@ cmd_clean (struct PERF_TALER_MINTDB_Cmd cmd[])
 static void
 interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
-  int i;
+  unsigned int i;
   union PERF_TALER_MINTDB_Data zero = {0};
-  int jump = cmd_find (state->cmd, 
+  unsigned int jump = cmd_find (state->cmd, 
                        state->cmd[state->i].details.end_loop.label_loop);
   // Cleaning up the memory in the loop
   for (i = jump; i < state->i; i++)
@@ -234,8 +234,8 @@ interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
 static void
 interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
-  int loop_index;
-  int selection_chance;
+  unsigned int loop_index;
+  unsigned int selection_chance;
 
   // Array initialization on first loop iteration
   // Alows for nested loops
@@ -316,7 +316,7 @@ interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 static void
 interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
-  int loop_index, save_index;
+  unsigned int loop_index, save_index;
   union PERF_TALER_MINTDB_Data zero = {0};
   union PERF_TALER_MINTDB_Data *loaded_data;
 
@@ -392,7 +392,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_GAUGER:
         {
-          int start_index, stop_index; 
+          unsigned int start_index, stop_index; 
           struct timespec start, stop;
           unsigned long elapsed_ms;
 

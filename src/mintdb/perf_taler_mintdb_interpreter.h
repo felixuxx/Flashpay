@@ -347,7 +347,7 @@ struct PERF_TALER_MINTDB_CMD_loop_details
 {
   // Maximum number of iteration in the loop
   const unsigned int max_iterations;
-  int curr_iteration;
+  unsigned int curr_iteration;
 };
 
 

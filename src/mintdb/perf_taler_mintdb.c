@@ -38,7 +38,6 @@ main (int argc, char ** argv)
     PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("start_transaction_init"),
     PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT ("init_deposit_insert"),
     PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION ("commit_transaction_init"),
-    PERF_TALER_MINTDB_INIT_CMD_DEBUG("INIT_LOOP"),
     PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("array_depo", 
                                            "loop_db_init_deposit", 
                                            "init_deposit_insert", 
