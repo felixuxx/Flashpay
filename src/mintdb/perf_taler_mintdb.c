@@ -33,10 +33,15 @@ main (int argc, char ** argv)
   struct GNUNET_CONFIGURATION_Handle *config;
   struct PERF_TALER_MINTDB_Cmd test[] =
   {
+    // Denomination used to create coins
+    PERF_TALER_MINTDB_INIT_CMD_INSERT_DENOMINATION ("denomination"),
+
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("denomination inserted"),
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("loop_db_init_deposit",
                                      PERF_TALER_MINTDB_NB_DEPOSIT_INIT),
     PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("start_transaction_init"),
-    PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT ("init_deposit_insert"),
+    PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT ("init_deposit_insert", 
+                                               "denomination"),
     PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION ("commit_transaction_init"),
     PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("array_depo",
                                            "loop_db_init_deposit",
@@ -45,13 +50,12 @@ main (int argc, char ** argv)
                                            PERF_TALER_MINTDB_DEPOSIT),
     PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("endloop_init_deposit",
                                          "loop_db_init_deposit"),
-    PERF_TALER_MINTDB_INIT_CMD_DEBUG("INIT_END"),
     // End of database initialization
     PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("deposit_get_start"),
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("loop_deposit_get",
                                      PERF_TALER_MINTDB_NB_DEPOSIT_GET),
     PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("start_transaction_get"),
-    PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("load deposit",
+    PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("load_deposit",
                                           "loop_deposit_get",
                                           "array_depo"),
     PERF_TALER_MINTDB_INIT_CMD_GET_DEPOSIT ("get_deposit",

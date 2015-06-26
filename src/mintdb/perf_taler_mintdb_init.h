@@ -31,14 +31,21 @@
  * @return a randomly generated CollectableBlindcoin
  */
 struct TALER_MINTDB_CollectableBlindcoin *
-PERF_TALER_MINTDB_collectable_blindcoin_init (void);
+PERF_TALER_MINTDB_collectable_blindcoin_init (const struct TALER_MINTDB_DenominationKeyIssueInformation *dki,
+                                              const struct TALER_MINTDB_Reserve *reserve);
+
+/**
+ * @returns a copy of @a coin
+ */
+struct TALER_MINTDB_CollectableBlindcoin *
+PERF_TALER_MINTDB_collectable_blindcoin_copy (const struct TALER_MINTDB_CollectableBlindcoin *coin);
 
 
 /**
  * Liberate memory of @a coin
  */
 int
-PERF_TALER_MINTDB_collectable_blindcoin_free (struct TALER_MINTDB_CollectableBlindcoin *NAME);
+PERF_TALER_MINTDB_collectable_blindcoin_free (struct TALER_MINTDB_CollectableBlindcoin *coin);
 
 
 /**
@@ -49,7 +56,13 @@ PERF_TALER_MINTDB_reserve_init (void);
 
 
 /**
- * Free memory of a reserve
+ * Returns a copy of @reserve
+ */
+struct TALER_MINTDB_Reserve *
+PERF_TALER_MINTDB_reserve_copy (const struct TALER_MINTDB_Reserve *reserve);
+
+/**
+ * Frees memory allocated to @a reserve
  */
 int
 PERF_TALER_MINTDB_reserve_free (struct TALER_MINTDB_Reserve *reserve);
@@ -73,7 +86,14 @@ PERF_TALER_MINTDB_refresh_session_free (struct TALER_MINTDB_RefreshSession *refr
  * Create a randomly generated deposit
  */
 struct TALER_MINTDB_Deposit *
-PERF_TALER_MINTDB_deposit_init (void);
+PERF_TALER_MINTDB_deposit_init (const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
+
+
+/**
+ * @returns a copy of @a deposit
+ */
+struct TALER_MINTDB_Deposit *
+PERF_TALER_MINTDB_deposit_copy (const struct TALER_MINTDB_Deposit *deposit);
 
 
 /**
@@ -89,6 +109,12 @@ PERF_TALER_MINTDB_deposit_free (struct TALER_MINTDB_Deposit *deposit);
 struct TALER_MINTDB_DenominationKeyIssueInformation *
 PERF_TALER_MINTDB_denomination_init (void);
 
+
+/**
+ * @returns a copy of @a dki
+ */
+struct TALER_MINTDB_DenominationKeyIssueInformation *
+PERF_TALER_MINTDB_denomination_copy (const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
 
 /**
  * Free memory for a DenominationKeyIssueInformation
