@@ -324,6 +324,8 @@ handle_withdraw_status_finished (void *cls,
   }
   switch (response_code)
   {
+  case 0:
+    break;
   case MHD_HTTP_OK:
     {
       json_t *history;
@@ -818,6 +820,8 @@ handle_withdraw_sign_finished (void *cls,
   }
   switch (response_code)
   {
+  case 0:
+    break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         withdraw_sign_ok (wsh,

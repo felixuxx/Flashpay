@@ -343,6 +343,8 @@ handle_deposit_finished (void *cls,
   }
   switch (response_code)
   {
+  case 0:
+    break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         verify_deposit_signature_ok (dh,
