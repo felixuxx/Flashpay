@@ -574,8 +574,32 @@ keys_completed_cb (void *cls,
 {
   struct KeysRequest *kr = cls;
   struct TALER_MINT_Handle *mint = kr->mint;
+  long response_code;
 
   /* FIXME: might want to check response code? */
+  if (CURLE_OK !=
+      curl_easy_getinfo (eh,
+                         CURLINFO_RESPONSE_CODE,
+                         &response_code))
+  {
+    /* unexpected error... */
+    GNUNET_break (0);
+    response_code = 0;
+  }
+  switch (response_code) {
+  case 0:
+    kr->errno = 1;
+    break;
+  case MHD_HTTP_OK:
+    break;
+  default:
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Mint returned status code %u for /keys\n",
+                response_code);
+    kr->errno = 1;
+    break;
+  }
+
   if ( (0 != kr->eno) ||
        (GNUNET_OK !=
         parse_response_keys_get (kr)) )
