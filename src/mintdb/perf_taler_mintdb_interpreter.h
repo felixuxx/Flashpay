@@ -38,7 +38,7 @@
 
 
 /**
- *
+ * Prints @ _label to stdout
  */
 #define PERF_TALER_MINTDB_INIT_CMD_DEBUG(_label) \
 { \
@@ -46,6 +46,7 @@
   .label = _label, \
   .exposed_type = PERF_TALER_MINTDB_NONE \
 }
+
 /**
  * The begining of a loop
  * @param _label the name of the loop
@@ -58,7 +59,7 @@
   .exposed_type = PERF_TALER_MINTDB_NONE , \
   .details.loop = { \
     .max_iterations = _iter , \
-    .curr_iteration = 0} \
+    .curr_iteration = 0 } \
 }
 
 /**
@@ -85,16 +86,21 @@
 /**
  * Commits the duration between @a _label_start and @a _label_stop
  * to Gauger with @a _description explaining
+ * @param _label_start label of the start of the measurment
+ * @param _label_stop label of the end of the measurment
+ * @param _description description of the measure displayed in gauger
+ * @param _divide number of measurments in the interval
  */
-#define PERF_TALER_MINTDB_INIT_CMD_GAUGER(_label, _start_time, _stop_time, _description) \
+#define PERF_TALER_MINTDB_INIT_CMD_GAUGER(_label, _label_start, _label_stop, _description, _divide) \
 { \
   .command = PERF_TALER_MINTDB_CMD_GAUGER, \
   .label = _label, \
   .exposed_type = PERF_TALER_MINTDB_NONE, \
   .details.gauger = { \
     .label_start = _label_start, \
-    .label_end = _label_end, \
-    .description = _description \
+    .label_stop = _label_stop, \
+    .description = _description, \
+    .divide = _divide, \
   } \
 }
 
@@ -122,7 +128,7 @@
  * Extracts @a _nb_saved items of type @a _save_type 
  * from the command @a _label_save during the loop @a _label_loop
  */
-#define PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY(_label, _label_loop, _label_save, _nb_saved, _save_type) \
+#define PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY(_label, _label_loop, _label_save, _nb_saved) \
 { \
   .command = PERF_TALER_MINTDB_CMD_SAVE_ARRAY, \
   .label = _label, \
@@ -131,7 +137,6 @@
     .label_loop = _label_loop, \
     .label_save = _label_save, \
     .nb_saved = _nb_saved, \
-    .type_saved = _save_type \
   } \
 }
 
@@ -149,82 +154,15 @@
     .label_save = _label_save \
   } \
 }
-/**
- * Insert a deposit into the database
- */
-#define PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT(_label) \
-{ \
-  .command = PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT,\
-  .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_DEPOSIT, \
-}
-
-/**
- * Check if a deposit is in the database
- * @param _label_deposit Label of the deposit to use
- */
-#define PERF_TALER_MINTDB_INIT_CMD_GET_DEPOSIT(_label, _label_deposit) \
-{ \
-  .command = PERF_TALER_MINTDB_CMD_GET_DEPOSIT, \
-  .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE, \
-  .details.get_deposit.label_source = _label_deposit \
-}
-
-/**
- * Creates a new reserve in the database
- */
-#define PERF_TALER_MINTDB_INIT_CMD_INSERT_RESERVE(_label) \
-{ \
-  .command = PERF_TALER_MINTDB_CMD_INSERT_RESERVE \
-  .label = _label \
-  .exposed_type = PERF_TALER_MINTDB_RESERVE \
-}
-
-
-/**
- * Polls the database for a secific reserve's details
- * @param _label_source Source for the reserve to poll
- */
-#define PERF_TALER_MINTDB_INIT_CMD_GET_RESERVE(_label, _label_source) \
-{ \
-  .command = PERF_TALER_MINTDB_CMD_GET_RESERVE \
-  .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE, \
-  .details.get_reserve.label_source = _label_source \
-}
-
-
-/**
- * Inserts informations about a withdrawal in the database
- */
-#define PERF_TALER_MINTDB_INIT_CMD_INSERT_WITHDRAW(_label) \
-{ \
-  .command = PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW, \
-  .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_BLINDCOIN, \
-}\
-
-
-/**
- * Polls the database about informations regarding a secific withdrawal
- */
-#define PERF_TALER_MINTDB_INIT_CMD_GET_WITHDRAW(_label, _label_source) \
-{ \
-  .command = PERF_TALER_MINTDB_CMD_GET_WITHDRAW, \
-  .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE, \
-  .details.get_withdraw.label_source = _label_source, \
-}
 
 /**
  * Inserts informations about a denomination key in the database
  */
 #define PERF_TALER_MINTDB_INIT_CMD_INSERT_DENOMINATION(_label) \
 { \
-  .command = PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW, \
+  .command = PERF_TALER_MINTDB_CMD_INSERT_DENOMINATION, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_DENOMINATION_KEY, \
+  .exposed_type = PERF_TALER_MINTDB_DENOMINATION_INFO, \
 }
 
 /**
@@ -238,6 +176,84 @@
   .details.get_denomination.label_source = _label_source, \
 }
 
+/**
+ * Creates a new reserve in the database
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_INSERT_RESERVE(_label) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_INSERT_RESERVE, \
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_RESERVE \
+}
+
+
+/**
+ * Polls the database for a secific reserve's details
+ * @param _label_source Source for the reserve to poll
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_GET_RESERVE(_label, _label_source) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_GET_RESERVE, \
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .details.get_reserve.label_source = _label_source \
+}
+
+
+/**
+ * Insert a deposit into the database
+ * @param _label_dki source to use for the denomination key
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT(_label, _label_dki) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT,\
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_DEPOSIT, \
+  .details.insert_deposit.label_dki = _label_dki, \
+}
+
+
+/**
+ * Check if a deposit is in the database
+ * @param _label_deposit Label of the deposit to use
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_GET_DEPOSIT(_label, _label_deposit) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_GET_DEPOSIT, \
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .details.get_deposit.label_source = _label_deposit \
+}
+
+
+/**
+ * Inserts informations about a withdrawal in the database
+ * @param _label_dki denomination key used to sign the coin
+ * @param _label_reserve reserve used to emmit the coin
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_INSERT_WITHDRAW(_label, _label_dki, _label_reserve) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW, \
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_BLINDCOIN, \
+  .details.insert_withdraw = {\
+    .label_dki = _label_dki, \
+    .label_reserve = _label_reserve, \
+  } \
+}
+
+
+/**
+ * Polls the database about informations regarding a secific withdrawal
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_GET_WITHDRAW(_label, _label_source) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_GET_WITHDRAW, \
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .details.get_withdraw.label_source = _label_source, \
+}
+
 
 /**
  * The type of data stored
@@ -249,9 +265,7 @@ enum PERF_TALER_MINTDB_Type
   PERF_TALER_MINTDB_TIME,
   PERF_TALER_MINTDB_DEPOSIT,
   PERF_TALER_MINTDB_BLINDCOIN,
-  PERF_TALER_MINTDB_RESERVE_KEY,
   PERF_TALER_MINTDB_RESERVE,
-  PERF_TALER_MINTDB_DENOMINATION_KEY,
   PERF_TALER_MINTDB_DENOMINATION_INFO,
   PERF_TALER_MINTDB_COIN_INFO,
 };
@@ -266,7 +280,6 @@ union PERF_TALER_MINTDB_Data
   struct TALER_MINTDB_Deposit *deposit;
   struct TALER_MINTDB_CollectableBlindcoin *blindcoin;
   struct TALER_MINTDB_Reserve *reserve;
-  struct TALER_DenominationPublicKey *dpk;
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct TALER_CoinPublicInfo *cpi;
 };
@@ -334,8 +347,11 @@ enum PERF_TALER_MINTDB_CMD_Name
   // Insert informations about a denomination key in the database
   PERF_TALER_MINTDB_CMD_INSERT_DENOMINATION,
 
-  // polls the database for informations about a specific denomination key
-  PERF_TALER_MINTDB_CMD_GET_DENOMINATION
+  // Polls the database for informations about a specific denomination key
+  PERF_TALER_MINTDB_CMD_GET_DENOMINATION,
+
+  // Refresh a coin
+  PERF_TALER_MINTDB_CMD_REFRESH_COIN,
 };
 
 
@@ -346,7 +362,7 @@ struct PERF_TALER_MINTDB_CMD_loop_details
 {
   // Maximum number of iteration in the loop
   const unsigned int max_iterations;
-  int curr_iteration;
+  unsigned int curr_iteration;
 };
 
 
@@ -381,6 +397,12 @@ struct PERF_TALER_MINTDB_CMD_gauger_details
    * Description of the metric, used in GAUGER
    */
   const char *description;
+
+  /**
+   * Constant the result needs to be divided by
+   * to get the result per unit
+   */
+  float divide;
 };
 
 
@@ -439,6 +461,18 @@ struct PERF_TALER_MINTDB_CMD_load_array_details
 
 
 /**
+ * Data used by the command insert_deposit 
+ */
+struct PERF_TALER_MINTDB_CMD_insert_deposit_details
+{
+  /**
+   * Label of the source where the reserve used to create the coin is
+   */
+  const char *label_dki;
+};
+
+
+/**
  * Extra data requiered for the GET_DEPOSIT command
  */
 struct PERF_TALER_MINTDB_CMD_get_deposit_details
@@ -470,6 +504,35 @@ struct PERF_TALER_MINTDB_CMD_get_denomination_details
   const char *label_source;
 };
 
+
+/**
+ * Extra data related to the get withdraw command
+ */
+struct PERF_TALER_MINTDB_CMD_insert_withdraw_details
+{
+  /**
+   * label of the denomination key used to sign the coin
+   */
+  const char *label_dki;
+
+  /**
+   * label of the reserve the money to mint the coin comes from
+   */
+  const char *label_reserve;
+};
+
+/**
+ * Extra data requiered for refreshing coins
+ */
+struct PERF_TALER_MINTDB_CMD_refresh_coin_details
+{
+  /**
+   * The label of the coin to refresh
+   */
+  const char *label_source;
+};
+
+
 /**
  * Contains extra data required for any command
  */
@@ -480,9 +543,12 @@ union PERF_TALER_MINTDB_CMD_Details
   struct PERF_TALER_MINTDB_CMD_gauger_details gauger;
   struct PERF_TALER_MINTDB_CMD_save_array_details save_array;
   struct PERF_TALER_MINTDB_CMD_load_array_details load_array;
+  struct PERF_TALER_MINTDB_CMD_insert_deposit_details insert_deposit;
   struct PERF_TALER_MINTDB_CMD_get_deposit_details get_deposit;
   struct PERF_TALER_MINTDB_CMD_get_reserve_details get_reserve;
   struct PERF_TALER_MINTDB_CMD_get_denomination_details get_denomination;
+  struct PERF_TALER_MINTDB_CMD_refresh_coin_details refresh;
+  struct PERF_TALER_MINTDB_CMD_insert_withdraw_details insert_withdraw;
 };
 
 
@@ -515,12 +581,6 @@ struct PERF_TALER_MINTDB_Cmd
    * Data easily accessible
    */
   union PERF_TALER_MINTDB_Data exposed;
-
-  /**
-   * GNUNET_YES if the exposed value hav been saved during last loop iteration
-   * GNUNET_NO if it hasn't
-   */
-  int exposed_saved;
 };
 
 
@@ -532,6 +592,5 @@ int
 PERF_TALER_MINTDB_interpret(
   struct TALER_MINTDB_Plugin *db_plugin,
   struct PERF_TALER_MINTDB_Cmd cmd[]);
-
 
 #endif

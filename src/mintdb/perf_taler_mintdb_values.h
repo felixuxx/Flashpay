@@ -1,18 +1,18 @@
 /*
-  This file is part of TALER
-  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
+   This file is part of TALER
+   Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+   TALER is free software; you can redistribute it and/or modify it under the
+   terms of the GNU General Public License as published by the Free Software
+   Foundation; either version 3, or (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+   TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+   A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
-*/
+   You should have received a copy of the GNU General Public License along with
+   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
+   */
 /**
  * @file mintdb/perf_taler_mintdb_values.h
  * @brief Values for tweaking the performance analysis
@@ -22,16 +22,17 @@
 #define __PERF_TALER_MINTDB__VALUES_H__
 
 
+#define PERF_TALER_MINTDB_NB_DENOMINATION_INIT  10
+#define PERF_TALER_MINTDB_NB_DENOMINATION_SAVE  10
 
-#define NB_DEPOSIT_INIT   100000
-#define NB_DEPOSIT_GET    1000
-#define NB_DEPOSIT_MARGIN 10000
-
-#define NB_BLINDCOIN_INIT 100000
-
-
-// Temporary macro to compile
-#define GAUGER(a,b,c,d)
+#define PERF_TALER_MINTDB_NB_RESERVE_INIT   100
+#define PERF_TALER_MINTDB_NB_RESERVE_SAVE   10
 
 
+#define PERF_TALER_MINTDB_NB_DEPOSIT_INIT   1000
+#define PERF_TALER_MINTDB_NB_DEPOSIT_SAVE   10
+
+
+#define PERF_TALER_MINTDB_NB_WITHDRAW_INIT  100
+#define PERF_TALER_MINTDB_NB_WITHDRAW_SAVE  10
 #endif
