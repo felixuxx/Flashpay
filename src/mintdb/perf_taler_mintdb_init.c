@@ -230,8 +230,6 @@ PERF_TALER_MINTDB_deposit_init (const struct TALER_MINTDB_DenominationKeyIssueIn
                     GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
                                             &coin.coin_pub.eddsa_pub,
                                             sizeof (struct GNUNET_CRYPTO_EddsaPublicKey))));
-
-    GNUNET_free (eddsa_prvt);
   }
   { //csig
     struct u32_presign
@@ -359,7 +357,6 @@ PERF_TALER_MINTDB_collectable_blindcoin_init (
   } unsigned_data;
   struct TALER_MINTDB_CollectableBlindcoin *coin;
 
-
   GNUNET_assert (NULL != 
                  (coin = GNUNET_new (struct TALER_MINTDB_CollectableBlindcoin)));
   GNUNET_assert (NULL !=
@@ -376,7 +373,6 @@ PERF_TALER_MINTDB_collectable_blindcoin_init (
                     GNUNET_CRYPTO_rsa_private_key_decode (buffer, size)));
     GNUNET_free (buffer);
   }
-
   GNUNET_assert (NULL !=
                  (coin->denom_pub.rsa_public_key =
                   GNUNET_CRYPTO_rsa_private_key_get_public (denomination_key)));
@@ -394,6 +390,9 @@ PERF_TALER_MINTDB_collectable_blindcoin_init (
                   GNUNET_CRYPTO_rsa_sign (denomination_key,
                                           &random_int,
                                           sizeof (random_int))));
+  char *buffer;
+  GNUNET_CRYPTO_rsa_signature_encode (coin->sig.rsa_signature, &buffer);
+  free (buffer);
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
                                     &coin->h_coin_envelope);
   unsigned_data.purpose.size = htonl (sizeof (unsigned_data));

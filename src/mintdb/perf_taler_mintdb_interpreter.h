@@ -128,7 +128,7 @@
  * Extracts @a _nb_saved items of type @a _save_type 
  * from the command @a _label_save during the loop @a _label_loop
  */
-#define PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY(_label, _label_loop, _label_save, _nb_saved, _save_type) \
+#define PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY(_label, _label_loop, _label_save, _nb_saved) \
 { \
   .command = PERF_TALER_MINTDB_CMD_SAVE_ARRAY, \
   .label = _label, \
@@ -137,7 +137,6 @@
     .label_loop = _label_loop, \
     .label_save = _label_save, \
     .nb_saved = _nb_saved, \
-    .type_saved = _save_type \
   } \
 }
 
