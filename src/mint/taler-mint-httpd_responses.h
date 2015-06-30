@@ -115,6 +115,18 @@ TMH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
 
 
 /**
+ * Send a response indicating permission denied.
+ *
+ * @param connection the MHD connection to use
+ * @param hint hint about why access was denied
+ * @return a MHD result code
+ */
+int
+TMH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
+                                      const char *hint);
+
+
+/**
  * Send a response indicating an internal error.
  *
  * @param connection the MHD connection to use

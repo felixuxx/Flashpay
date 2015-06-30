@@ -134,6 +134,7 @@ enum TMH_PARSE_JsonNavigationCommand
    * Param: struct GNUNET_TIME_Absolute *
    */
   TMH_PARSE_JNC_RET_TIME_ABSOLUTE
+
 };
 
 
@@ -298,6 +299,7 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec);
  * @param atime a `struct GNUNET_TIME_Absolute *` to initialize
  */
 #define TMH_PARSE_MEMBER_TIME_ABS(field,atime) { field, atime, sizeof(*atime), 0, TMH_PARSE_JNC_RET_TIME_ABSOLUTE, 0 }
+
 
 /**
  * Generate line in parser specification indicating the end of the spec.
