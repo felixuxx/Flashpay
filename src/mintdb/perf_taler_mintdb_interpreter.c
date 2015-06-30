@@ -385,7 +385,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         return GNUNET_YES;
 
       case PERF_TALER_MINTDB_CMD_DEBUG:
-        printf ("%s\n", state->cmd[state->i].label);
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO, "%s\n", state->cmd[state->i].label);
         break;
 
       case PERF_TALER_MINTDB_CMD_LOOP:

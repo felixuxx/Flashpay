@@ -34,6 +34,8 @@ main (int argc, char ** argv)
   struct PERF_TALER_MINTDB_Cmd test[] =
   {
     // Denomination used to create coins
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("00 - Start of interpretor"),
+
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("01 - denomination loop",
                                      PERF_TALER_MINTDB_NB_DENOMINATION_INIT),
     PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("01 - start transaction"),
@@ -104,7 +106,7 @@ main (int argc, char ** argv)
   };
 
   GNUNET_log_setup ("perf-taler-mintdb",
-                    "WARNING",
+                    "INFO",
                     NULL);
   config = GNUNET_CONFIGURATION_create();
   GNUNET_CONFIGURATION_load(config, "./test-mint-db-postgres.conf");
