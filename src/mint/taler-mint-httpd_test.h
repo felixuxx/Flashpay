@@ -29,7 +29,7 @@
 /**
  * Handle a "/test/base32" request.  Parses the JSON in the post, runs
  * the Crockford Base32 decoder on the "input" field in the JSON,
- * hashes the result and sends the hashed value back as a JSON 
+ * hashes the result and sends the hashed value back as a JSON
  * string with in Base32 Crockford encoding.  Thus, this API
  * allows testing the hashing and Crockford encoding/decoding
  * functions.
@@ -122,11 +122,11 @@ TMH_TEST_handler_test_ecdhe (struct TMH_RequestHandler *rh,
 
 
 /**
- * Handle a "/test/eddsa" request.  Parses the JSON in the post, 
+ * Handle a "/test/eddsa" request.  Parses the JSON in the post,
  * which must contain a "eddsa_pub" with a public key and an
  *"ecdsa_sig" with the corresponding signature for a purpose
  * of #TALER_SIGNATURE_CLIENT_TEST_EDDSA.  If the signature is
- * valid, a reply with a #TALER_SIGNATURE_MINT_TEST_EDDSA is 
+ * valid, a reply with a #TALER_SIGNATURE_MINT_TEST_EDDSA is
  * returned using the same JSON format.
  *
  * @param rh context of the handler
@@ -143,10 +143,10 @@ TMH_TEST_handler_test_eddsa (struct TMH_RequestHandler *rh,
 			     const char *upload_data,
 			     size_t *upload_data_size);
 
+
 /**
- * Handle a "/test/rsa" request.  Parses the JSON in the post, which
- * must contain an "blind_ev" blinded value.  An RSA public key
- * ("rsa_pub") and a blinded signature ("rsa_blind_sig") are returned.
+ * Handle a "/test/rsa/get" request.  Returns the RSA public key
+ * ("rsa_pub") which is used for signing in "/test/rsa/sign".
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
@@ -156,15 +156,35 @@ TMH_TEST_handler_test_eddsa (struct TMH_RequestHandler *rh,
  * @return MHD result code
   */
 int
-TMH_TEST_handler_test_rsa (struct TMH_RequestHandler *rh,
-			   struct MHD_Connection *connection,
-			   void **connection_cls,
-			   const char *upload_data,
-			   size_t *upload_data_size);
+TMH_TEST_handler_test_rsa_get (struct TMH_RequestHandler *rh,
+                               struct MHD_Connection *connection,
+                               void **connection_cls,
+                               const char *upload_data,
+                               size_t *upload_data_size);
 
 
 /**
- * Handle a "/test/transfer" request.  Parses the JSON in the post, 
+ * Handle a "/test/rsa/sign" request.  Parses the JSON in the post, which
+ * must contain an "blind_ev" blinded value.  A a blinded signature
+ * ("rsa_blind_sig") is returned.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
+ * @return MHD result code
+  */
+int
+TMH_TEST_handler_test_rsa_sign (struct TMH_RequestHandler *rh,
+                                struct MHD_Connection *connection,
+                                void **connection_cls,
+                                const char *upload_data,
+                                size_t *upload_data_size);
+
+
+/**
+ * Handle a "/test/transfer" request.  Parses the JSON in the post,
  * which must contain a "secret_enc" with the encrypted link secret,
  * a "trans_priv" with the transfer private key, a "coin_pub" with
  * a coin public key.  A reply with the decrypted "secret" is
