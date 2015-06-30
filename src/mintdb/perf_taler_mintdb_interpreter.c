@@ -129,19 +129,21 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
 
       case PERF_TALER_MINTDB_CMD_LOAD_ARRAY:
         // Creating the permutation array to randomize the data order
-        GNUNET_assert (NULL !=
-                       (cmd[i].details.load_array.permutation =
-                        GNUNET_CRYPTO_random_permute (
-                          GNUNET_CRYPTO_QUALITY_WEAK,
-                          cmd[cmd_find (cmd,
-                                        cmd[i].details
-                                        .load_array.label_save)]
-                          .details.save_array.nb_saved)));
+        {
+          int save_index ;
 
-        // Initializing the type based on the type of the saved array
-        cmd[i].exposed_type = cmd[cmd_find (cmd,
-                                            cmd[i].details.load_array.label_save)]
-          .details.save_array.type_saved;
+          GNUNET_assert (GNUNET_SYSERR !=
+                         (save_index = cmd_find (
+                             cmd,
+                             cmd[i].details.load_array.label_save)));
+          GNUNET_assert (NULL !=
+                         (cmd[i].details.load_array.permutation =
+                          GNUNET_CRYPTO_random_permute (
+                            GNUNET_CRYPTO_QUALITY_WEAK,
+                            cmd[save_index].details.save_array.nb_saved)));
+          // Initializing the type based on the type of the saved array
+          cmd[i].exposed_type = cmd[save_index].details.save_array.type_saved;
+        }
         break;
 
       default:
@@ -200,16 +202,15 @@ interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
   unsigned int i;
   union PERF_TALER_MINTDB_Data zero = {0};
-  unsigned int jump = cmd_find (state->cmd,
-                       state->cmd[state->i].details.end_loop.label_loop);
+  int jump;
+   GNUNET_assert (GNUNET_SYSERR != 
+                  (jump = cmd_find (state->cmd,
+                                    state->cmd[state->i]
+                                    .details.end_loop.label_loop)));
   // Cleaning up the memory in the loop
   for (i = jump; i < state->i; i++)
   {
-    // If the exposed variable has not been copied it is freed
-    if ( GNUNET_NO == state->cmd[i].exposed_saved)
-      data_free (&state->cmd[i].exposed, state->cmd[i].exposed_type);
-    state->cmd[i].exposed_saved = GNUNET_NO;
-    // Anyway we need to make the data zero.
+    data_free (&state->cmd[i].exposed, state->cmd[i].exposed_type);
     state->cmd[i].exposed = zero;
   }
 
@@ -234,20 +235,23 @@ interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
 static void
 interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
-  unsigned int loop_index;
+  int loop_index, save_index;
   unsigned int selection_chance;
 
   // Array initialization on first loop iteration
   // Alows for nested loops
-  if (0 == state->cmd[cmd_find (state->cmd,
-                                state->cmd[state->i]
-                                .details.save_array.label_loop)]
-      .details.loop.curr_iteration)
+  GNUNET_assert (GNUNET_SYSERR != 
+                 (loop_index = cmd_find (state->cmd,
+                                         state->cmd[state->i]
+                                         .details.save_array.label_loop)));
+  GNUNET_assert (GNUNET_SYSERR != 
+                 (save_index = cmd_find (state->cmd,
+                                         state->cmd[state->i]
+                                         .details.save_array.label_save)));
+   if (0 == state->cmd[loop_index].details.loop.curr_iteration)
   {
     state->cmd[state->i].details.save_array.index = 0;
   }
-  loop_index = cmd_find (state->cmd,
-                         state->cmd[state->i].details.save_array.label_loop);
   // The probobility distribution of the saved items will be a little biased
   // against the few last items but it should not be a big problem.
   selection_chance = state->cmd[loop_index].details.loop.max_iterations /
@@ -272,10 +276,7 @@ interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 
     save_location = &state->cmd[state->i].details.save_array
       .data_saved[state->cmd[state->i].details.save_array.index];
-    item_saved = &state->cmd[cmd_find (state->cmd,
-                                       state->cmd[state->i]
-                                       .details.save_array.label_save)]
-      .exposed;
+    item_saved = &state->cmd[save_index].exposed;
     switch (state->cmd[state->i].details.save_array.type_saved)
     {
       case PERF_TALER_MINTDB_TIME:
@@ -283,19 +284,19 @@ interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
         break;
 
       case PERF_TALER_MINTDB_DEPOSIT:
-        save_location->deposit = item_saved->deposit;
+        save_location->deposit = PERF_TALER_MINTDB_deposit_copy (item_saved->deposit);
         break;
 
       case PERF_TALER_MINTDB_BLINDCOIN:
-        save_location->blindcoin = item_saved->blindcoin;
+        save_location->blindcoin = PERF_TALER_MINTDB_collectable_blindcoin_copy (item_saved->blindcoin);
         break;
 
       case PERF_TALER_MINTDB_RESERVE:
-        save_location->reserve = item_saved->reserve;
+        save_location->reserve = PERF_TALER_MINTDB_reserve_copy (item_saved->reserve);
         break;
 
       case PERF_TALER_MINTDB_DENOMINATION_INFO:
-        save_location->dki = item_saved->dki;
+        save_location->dki = PERF_TALER_MINTDB_denomination_copy (item_saved->dki);
         break;
 
       case PERF_TALER_MINTDB_COIN_INFO:
@@ -305,9 +306,6 @@ interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
       default:
         break;
     }
-    state->cmd[cmd_find (state->cmd,
-                         state->cmd[state->i].details.save_array.label_save)]
-      .exposed_saved = GNUNET_YES;
     state->cmd[state->i].details.save_array.index++;
   }
 }
@@ -316,21 +314,32 @@ interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 static void
 interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
-  unsigned int loop_index, save_index;
+  unsigned int loop_iter;
+  int loop_index, save_index;
   union PERF_TALER_MINTDB_Data zero = {0};
   union PERF_TALER_MINTDB_Data *loaded_data;
-
-  loop_index = cmd_find (state->cmd,
-                         state->cmd[state->i].details.load_array.label_loop);
-  save_index = cmd_find (state->cmd,
-                         state->cmd[state->i].details.load_array.label_save);
+  
+  GNUNET_assert (GNUNET_SYSERR !=
+                 (loop_index = cmd_find (state->cmd,
+                                         state->cmd[state->i]
+                                         .details.load_array.label_loop)));
+  GNUNET_assert (GNUNET_SYSERR !=
+                 (save_index = cmd_find (state->cmd,
+                                         state->cmd[state->i]
+                                         .details.load_array.label_save)));
+  loop_iter = state->cmd[loop_index].details.loop.curr_iteration;
+  {
+    int i, quotient;
+    quotient = loop_iter / state->cmd[save_index].details.save_array.nb_saved;
+    loop_iter = loop_iter % state->cmd[save_index].details.save_array.nb_saved;
+    for (i=0; i<=quotient; i++){
+      loop_iter = state->cmd[state->i].details.load_array.permutation[loop_iter];
+    }
+  }
   /* Extracting the data from the loop_indexth indice in save_index
    * array.
    */
-  loaded_data = &state->cmd[save_index].details.save_array.data_saved[
-    state->cmd[state->i].details.load_array.permutation[
-      state->cmd[loop_index].details.loop.curr_iteration]];
-
+  loaded_data = &state->cmd[save_index].details.save_array.data_saved[loop_index];
   switch (state->cmd[state->i].exposed_type)
   {
     case PERF_TALER_MINTDB_TIME:
@@ -392,14 +401,18 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_GAUGER:
         {
-          unsigned int start_index, stop_index;
+          int start_index, stop_index;
           struct timespec start, stop;
           unsigned long elapsed_ms;
 
-          start_index  = cmd_find (state->cmd,
-                                   state->cmd[state->i].details.gauger.label_start);
-          stop_index  = cmd_find (state->cmd,
-                                  state->cmd[state->i].details.gauger.label_stop);
+          GNUNET_assert (GNUNET_SYSERR !=
+                         (start_index  = cmd_find (state->cmd,
+                                                   state->cmd[state->i]
+                                                   .details.gauger.label_start)));
+          GNUNET_assert (GNUNET_SYSERR !=
+                         (stop_index  = cmd_find (state->cmd,
+                                                  state->cmd[state->i]
+                                                  .details.gauger.label_stop)));
           start = state->cmd[start_index].exposed.time;
           stop = state->cmd[stop_index].exposed.time;
           elapsed_ms = (start.tv_sec - stop.tv_sec) * 1000 +
@@ -437,8 +450,15 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT:
         {
-          struct TALER_MINTDB_Deposit *deposit =
-            PERF_TALER_MINTDB_deposit_init ();
+          int dki_index;
+          struct TALER_MINTDB_Deposit *deposit;
+          GNUNET_assert (GNUNET_SYSERR !=
+                         (dki_index = cmd_find(state->cmd,
+                                               state->cmd[state->i]
+                                               .details.insert_deposit.label_dki)));
+          GNUNET_assert (NULL !=
+                         (deposit = PERF_TALER_MINTDB_deposit_init (
+                             state->cmd[dki_index].exposed.dki)));
 
           GNUNET_assert (
             state->plugin->insert_deposit (state->plugin->cls,
@@ -450,12 +470,15 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_GET_DEPOSIT:
         {
-          struct TALER_MINTDB_Deposit *deposit =
-            state->cmd[cmd_find (state->cmd,
-                                 state->cmd[state->i]
-                                 .details.get_deposit.label_source)]
-            .exposed.deposit; // Get the deposit from the source
-          GNUNET_assert (NULL != deposit);
+          int source_index;
+          struct TALER_MINTDB_Deposit *deposit; 
+          
+          GNUNET_assert (GNUNET_SYSERR !=
+                         (source_index =  cmd_find (state->cmd,
+                                                    state->cmd[state->i]
+                                                    .details.get_deposit.label_source)));
+          GNUNET_assert (NULL != 
+                         (deposit = state->cmd[source_index].exposed.deposit));
           state->plugin->have_deposit (state->plugin->cls,
                                        state->session,
                                        deposit);
@@ -465,10 +488,12 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_INSERT_RESERVE:
         {
           struct TALER_MINTDB_Reserve *reserve;
-          json_t *details = json_pack ("si","justification",
-                                       GNUNET_CRYPTO_random_u32 (
-                                         GNUNET_CRYPTO_QUALITY_WEAK,
-                                         UINT32_MAX));
+          json_t *details = NULL;
+          GNUNET_assert (NULL !=
+                         (details = json_pack ("{s:i}","justification",
+                                               GNUNET_CRYPTO_random_u32 (
+                                                 GNUNET_CRYPTO_QUALITY_WEAK,
+                                                 UINT32_MAX))));
           reserve = PERF_TALER_MINTDB_reserve_init ();
           state->plugin->reserves_in_insert (
             state->plugin->cls,
@@ -484,15 +509,19 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_GET_RESERVE:
         {
-          struct TALER_MINTDB_Reserve *reserve =
-            state->cmd[cmd_find (state->cmd,
-                                 state->cmd[state->i]
-                                 .details.get_reserve.label_source)]
-            .exposed.reserve; // Get the deposit from the source
-
-          state->plugin->reserve_get (state->plugin->cls,
-                                      state->session,
-                                      reserve);
+          int source_index;
+          struct TALER_MINTDB_Reserve *reserve;
+         
+          GNUNET_assert (GNUNET_SYSERR !=
+                         (source_index = cmd_find (state->cmd,
+                                                   state->cmd[state->i]
+                                                   .details.get_reserve.label_source)));
+          GNUNET_assert (NULL !=
+                         (reserve = state->cmd[source_index].exposed.reserve));
+          GNUNET_assert (GNUNET_OK ==
+                         (state->plugin->reserve_get (state->plugin->cls,
+                                                      state->session,
+                                                      reserve)));
         }
         break;
 
@@ -511,11 +540,15 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_GET_DENOMINATION:
         {
-          struct TALER_MINTDB_DenominationKeyIssueInformation *dki =
-            state->cmd[cmd_find (state->cmd,
-                                 state->cmd[state->i]
-                                 .details.get_denomination.label_source)]
-            .exposed.dki;
+          int source_index;
+          struct TALER_MINTDB_DenominationKeyIssueInformation *dki; 
+
+          GNUNET_assert (GNUNET_SYSERR !=
+                         (source_index =  cmd_find (state->cmd,
+                                                    state->cmd[state->i]
+                                                    .details.get_denomination.label_source)));
+          GNUNET_assert (NULL !=
+                         (dki = state->cmd[source_index].exposed.dki));
           state->plugin->get_denomination_info (state->plugin->cls,
                                                 state->session,
                                                 &dki->denom_pub,
@@ -525,8 +558,22 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW:
         {
-          struct TALER_MINTDB_CollectableBlindcoin *blindcoin =
-            PERF_TALER_MINTDB_collectable_blindcoin_init ();
+          int dki_index, reserve_index;
+          struct TALER_MINTDB_CollectableBlindcoin *blindcoin ;
+          
+          GNUNET_assert (GNUNET_SYSERR !=
+                         (dki_index = cmd_find (
+                             state->cmd,
+                             state->cmd[state->i].details.insert_withdraw.label_dki)));
+          GNUNET_assert (GNUNET_SYSERR !=
+                         (reserve_index = cmd_find (
+                             state->cmd,
+                             state->cmd[state->i].details.insert_withdraw.label_reserve)));
+          GNUNET_assert (NULL != 
+                         (blindcoin = 
+                          PERF_TALER_MINTDB_collectable_blindcoin_init (
+                            state->cmd[dki_index].exposed.dki,
+                            state->cmd[reserve_index].exposed.reserve)));
 
           state->plugin->insert_withdraw_info (state->plugin->cls,
                                                state->session,
@@ -537,12 +584,15 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_GET_WITHDRAW:
         {
-          struct TALER_MINTDB_CollectableBlindcoin *blindcoin =
-            state->cmd[cmd_find (state->cmd,
-                                 state->cmd[state->i]
-                                 .details.get_denomination.label_source)]
-            .exposed.blindcoin;
+          int source_index;
+          struct TALER_MINTDB_CollectableBlindcoin *blindcoin ;
 
+          GNUNET_assert (GNUNET_SYSERR !=
+                         (source_index = cmd_find (state->cmd,
+                                                   state->cmd[state->i]
+                                                   .details.get_denomination.label_source)));
+          GNUNET_assert (NULL !=
+                         (blindcoin = state->cmd[source_index].exposed.blindcoin));
           state->plugin->get_withdraw_info (state->plugin->cls,
                                             state->session,
                                             &blindcoin->h_coin_envelope,
