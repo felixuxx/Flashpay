@@ -202,7 +202,7 @@ interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
   unsigned int i;
   union PERF_TALER_MINTDB_Data zero = {0};
-  unsigned int jump;
+  int jump;
    GNUNET_assert (GNUNET_SYSERR != 
                   (jump = cmd_find (state->cmd,
                                     state->cmd[state->i]
@@ -235,7 +235,7 @@ interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
 static void
 interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
-  unsigned int loop_index, save_index;
+  int loop_index, save_index;
   unsigned int selection_chance;
 
   // Array initialization on first loop iteration
@@ -314,7 +314,8 @@ interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 static void
 interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
-  unsigned int loop_index, save_index, loop_iter, permut_index;
+  unsigned int loop_iter;
+  int loop_index, save_index;
   union PERF_TALER_MINTDB_Data zero = {0};
   union PERF_TALER_MINTDB_Data *loaded_data;
   
@@ -327,11 +328,18 @@ interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
                                          state->cmd[state->i]
                                          .details.load_array.label_save)));
   loop_iter = state->cmd[loop_index].details.loop.curr_iteration;
-  permut_index = state->cmd[state->i].details.load_array.permutation[loop_iter];
+  {
+    int i, quotient;
+    quotient = loop_iter / state->cmd[save_index].details.save_array.nb_saved;
+    loop_iter = loop_iter % state->cmd[save_index].details.save_array.nb_saved;
+    for (i=0; i<=quotient; i++){
+      loop_iter = state->cmd[state->i].details.load_array.permutation[loop_iter];
+    }
+  }
   /* Extracting the data from the loop_indexth indice in save_index
    * array.
    */
-  loaded_data = &state->cmd[save_index].details.save_array.data_saved[permut_index];
+  loaded_data = &state->cmd[save_index].details.save_array.data_saved[loop_index];
   switch (state->cmd[state->i].exposed_type)
   {
     case PERF_TALER_MINTDB_TIME:
@@ -393,7 +401,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_GAUGER:
         {
-          unsigned int start_index, stop_index;
+          int start_index, stop_index;
           struct timespec start, stop;
           unsigned long elapsed_ms;
 

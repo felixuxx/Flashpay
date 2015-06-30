@@ -38,7 +38,7 @@
 
 
 /**
- *
+ * Prints @ _label to stdout
  */
 #define PERF_TALER_MINTDB_INIT_CMD_DEBUG(_label) \
 { \
@@ -86,6 +86,10 @@
 /**
  * Commits the duration between @a _label_start and @a _label_stop
  * to Gauger with @a _description explaining
+ * @param _label_start label of the start of the measurment
+ * @param _label_stop label of the end of the measurment
+ * @param _description description of the measure displayed in gauger
+ * @param _divide number of measurments in the interval
  */
 #define PERF_TALER_MINTDB_INIT_CMD_GAUGER(_label, _label_start, _label_stop, _description, _divide) \
 { \
@@ -151,27 +155,26 @@
     .label_save = _label_save \
   } \
 }
+
 /**
- * Insert a deposit into the database
+ * Inserts informations about a denomination key in the database
  */
-#define PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT(_label, _label_dki) \
+#define PERF_TALER_MINTDB_INIT_CMD_INSERT_DENOMINATION(_label) \
 { \
-  .command = PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT,\
+  .command = PERF_TALER_MINTDB_CMD_INSERT_DENOMINATION, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_DEPOSIT, \
-  .details.insert_deposit.label_dki = _label_dki, \
+  .exposed_type = PERF_TALER_MINTDB_DENOMINATION_INFO, \
 }
 
 /**
- * Check if a deposit is in the database
- * @param _label_deposit Label of the deposit to use
+ * Polls the database about informations regarding a specific denomination key
  */
-#define PERF_TALER_MINTDB_INIT_CMD_GET_DEPOSIT(_label, _label_deposit) \
+#define PERF_TALER_MINTDB_INIT_CMD_GET_DENOMINATION(_label, _label_source) \
 { \
-  .command = PERF_TALER_MINTDB_CMD_GET_DEPOSIT, \
+  .command = PERF_TALER_MINTDB_CMD_GET_DENOMINATION, \
   .label = _label, \
   .exposed_type = PERF_TALER_MINTDB_NONE, \
-  .details.get_deposit.label_source = _label_deposit \
+  .details.get_denomination.label_source = _label_source, \
 }
 
 /**
@@ -199,7 +202,35 @@
 
 
 /**
+ * Insert a deposit into the database
+ * @param _label_dki source to use for the denomination key
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT(_label, _label_dki) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT,\
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_DEPOSIT, \
+  .details.insert_deposit.label_dki = _label_dki, \
+}
+
+
+/**
+ * Check if a deposit is in the database
+ * @param _label_deposit Label of the deposit to use
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_GET_DEPOSIT(_label, _label_deposit) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_GET_DEPOSIT, \
+  .label = _label, \
+  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .details.get_deposit.label_source = _label_deposit \
+}
+
+
+/**
  * Inserts informations about a withdrawal in the database
+ * @param _label_dki denomination key used to sign the coin
+ * @param _label_reserve reserve used to emmit the coin
  */
 #define PERF_TALER_MINTDB_INIT_CMD_INSERT_WITHDRAW(_label, _label_dki, _label_reserve) \
 { \
@@ -208,9 +239,9 @@
   .exposed_type = PERF_TALER_MINTDB_BLINDCOIN, \
   .details.insert_withdraw = {\
     .label_dki = _label_dki, \
-    .label.reserve = _label_reserve, \
+    .label_reserve = _label_reserve, \
   } \
-}\
+}
 
 
 /**
@@ -222,27 +253,6 @@
   .label = _label, \
   .exposed_type = PERF_TALER_MINTDB_NONE, \
   .details.get_withdraw.label_source = _label_source, \
-}
-
-/**
- * Inserts informations about a denomination key in the database
- */
-#define PERF_TALER_MINTDB_INIT_CMD_INSERT_DENOMINATION(_label) \
-{ \
-  .command = PERF_TALER_MINTDB_CMD_INSERT_DENOMINATION, \
-  .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_DENOMINATION_INFO, \
-}
-
-/**
- * Polls the database about informations regarding a specific denomination key
- */
-#define PERF_TALER_MINTDB_INIT_CMD_GET_DENOMINATION(_label, _label_source) \
-{ \
-  .command = PERF_TALER_MINTDB_CMD_GET_DENOMINATION, \
-  .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE, \
-  .details.get_denomination.label_source = _label_source, \
 }
 
 

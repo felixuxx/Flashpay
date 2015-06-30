@@ -27,70 +27,72 @@
 #define CURRENCY "EUR"
 
 
+
 /**
- * @return a randomly generated CollectableBlindcoin
+ * Generate a dummy DenominationKeyInformation for testing purposes
+ * @return a dummy denomination key
  */
-struct TALER_MINTDB_CollectableBlindcoin *
-PERF_TALER_MINTDB_collectable_blindcoin_init (const struct TALER_MINTDB_DenominationKeyIssueInformation *dki,
-                                              const struct TALER_MINTDB_Reserve *reserve);
+struct TALER_MINTDB_DenominationKeyIssueInformation *
+PERF_TALER_MINTDB_denomination_init (void);
+
 
 /**
- * @returns a copy of @a coin
+ * Copies the given denomination
+ * @param reserve the deposit copy
+ * @return a copy of @a deposit; NULL if error
  */
-struct TALER_MINTDB_CollectableBlindcoin *
-PERF_TALER_MINTDB_collectable_blindcoin_copy (const struct TALER_MINTDB_CollectableBlindcoin *coin);
+struct TALER_MINTDB_DenominationKeyIssueInformation *
+PERF_TALER_MINTDB_denomination_copy (
+  const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
 
 
 /**
- * Liberate memory of @a coin
+ * Free memory of a DenominationKeyIssueInformation
+ * @param dki pointer to the struct to free
  */
 int
-PERF_TALER_MINTDB_collectable_blindcoin_free (struct TALER_MINTDB_CollectableBlindcoin *coin);
+PERF_TALER_MINTDB_denomination_free (
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
 
 
 /**
- * @return a randomly generated reserve
+ * Generate a dummy reserve for testing
+ * @return a reserve with 1000 EUR in it
  */
 struct TALER_MINTDB_Reserve *
 PERF_TALER_MINTDB_reserve_init (void);
 
 
 /**
- * Returns a copy of @reserve
+ * Copies the given reserve
+ * @param reserve the reserve to copy
+ * @return a copy of @a reserve; NULL if error
  */
 struct TALER_MINTDB_Reserve *
 PERF_TALER_MINTDB_reserve_copy (const struct TALER_MINTDB_Reserve *reserve);
 
+
 /**
- * Frees memory allocated to @a reserve
+ * Free memory of a reserve
+ * @param reserve pointer to the structure to be freed
  */
 int
 PERF_TALER_MINTDB_reserve_free (struct TALER_MINTDB_Reserve *reserve);
 
 
 /**
- * @return a randomly generated refresh session
- */
-struct TALER_MINTDB_RefreshSession *
-PERF_TALER_MINTDB_refresh_session_init (void);
-
-
-/**
- * Frees memory of a refresh_session
- */
-int
-PERF_TALER_MINTDB_refresh_session_free (struct TALER_MINTDB_RefreshSession *refresh_session);
-
-
-/**
- * Create a randomly generated deposit
+ * Generate a dummy deposit for testing purposes
+ * @param dki the denomination key used to sign the key
  */
 struct TALER_MINTDB_Deposit *
-PERF_TALER_MINTDB_deposit_init (const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
+PERF_TALER_MINTDB_deposit_init (
+  const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
 
 
 /**
- * @returns a copy of @a deposit
+ * Copies the given deposit
+ * @param reserve the deposit copy
+ * @return a copy of @a deposit; NULL if error
  */
 struct TALER_MINTDB_Deposit *
 PERF_TALER_MINTDB_deposit_copy (const struct TALER_MINTDB_Deposit *deposit);
@@ -98,29 +100,41 @@ PERF_TALER_MINTDB_deposit_copy (const struct TALER_MINTDB_Deposit *deposit);
 
 /**
  * Free memory of a deposit
+ * @param deposit pointer to the structure to free
  */
 int
 PERF_TALER_MINTDB_deposit_free (struct TALER_MINTDB_Deposit *deposit);
 
 
 /**
- * Generate a randomly generate DenominationKeyInformation
+ * Generate a CollectableBlindcoin for testing purpuses
+ * @param dki denomination key used to sign the coin
+ * @param reserve reserve providing the money for the coin
+ * @return a randomly generated CollectableBlindcoin
  */
-struct TALER_MINTDB_DenominationKeyIssueInformation *
-PERF_TALER_MINTDB_denomination_init (void);
+struct TALER_MINTDB_CollectableBlindcoin *
+PERF_TALER_MINTDB_collectable_blindcoin_init (
+  const struct TALER_MINTDB_DenominationKeyIssueInformation *dki,
+  const struct TALER_MINTDB_Reserve *reserve);
 
 
 /**
- * @returns a copy of @a dki
+ * Copies the given coin
+ * @param coin the coin to copy
+ * @return a copy of coin; NULL if error
  */
-struct TALER_MINTDB_DenominationKeyIssueInformation *
-PERF_TALER_MINTDB_denomination_copy (const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
+struct TALER_MINTDB_CollectableBlindcoin *
+PERF_TALER_MINTDB_collectable_blindcoin_copy (
+  const struct TALER_MINTDB_CollectableBlindcoin *coin);
+
 
 /**
- * Free memory for a DenominationKeyIssueInformation
+ * Liberate memory of @a coin
+ * @param coin pointer to the structure to free
  */
 int
-PERF_TALER_MINTDB_denomination_free (struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
+PERF_TALER_MINTDB_collectable_blindcoin_free (
+  struct TALER_MINTDB_CollectableBlindcoin *coin);
 
 
 /**
@@ -134,5 +148,20 @@ PERF_TALER_MINTDB_coin_public_info_init (void);
  * Free a CoinPublicInfo
  */
 int PERF_TALER_MINTDB_coin_public_info_free (struct TALER_CoinPublicInfo *cpi);
+
+
+/**
+ * @return a randomly generated refresh session
+ */
+struct TALER_MINTDB_RefreshSession *
+PERF_TALER_MINTDB_refresh_session_init (void);
+
+
+/**
+ * Frees memory of a refresh_session
+ */
+int
+PERF_TALER_MINTDB_refresh_session_free (
+  struct TALER_MINTDB_RefreshSession *refresh_session);
 
 #endif
