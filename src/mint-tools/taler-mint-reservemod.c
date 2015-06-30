@@ -172,10 +172,12 @@ main (int argc, char *const *argv)
              error.source);
     goto cleanup;
   }
+  /* FIXME: maybe allow passing timestamp via command-line? */
   ret = plugin->reserves_in_insert (plugin->cls,
 				    session,
 				    &reserve_pub,
 				    &add_value,
+                                    GNUNET_TIME_absolute_get (),
 				    jdetails);
   json_decref (jdetails);
   if (GNUNET_SYSERR == ret)
