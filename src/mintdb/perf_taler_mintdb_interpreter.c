@@ -132,10 +132,10 @@ data_copy (const struct PERF_TALER_MINTDB_Data *data, struct PERF_TALER_MINTDB_D
  * Finds the first command in cmd with the name search
  *
  * @return the index of the first command with name search
- * GNUNET_SYSERR if none found
+ * #GNUNET_SYSERR if none found
  */
 static int
-cmd_find (const struct  PERF_TALER_MINTDB_Cmd *cmd, const char *search)
+cmd_find (const struct PERF_TALER_MINTDB_Cmd *cmd, const char *search)
 {
   unsigned int i;
 
@@ -152,7 +152,7 @@ cmd_find (const struct  PERF_TALER_MINTDB_Cmd *cmd, const char *search)
 static int
 cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
 {
-  unsigned int i = 0;
+  unsigned int i;
 
   for (i=0; PERF_TALER_MINTDB_CMD_END != cmd[i].command; i++)
   {
@@ -161,22 +161,21 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
       case PERF_TALER_MINTDB_CMD_SAVE_ARRAY:
         {
           int save_label;
-          
+
           GNUNET_assert (GNUNET_SYSERR !=
                          (save_label = cmd_find (cmd,
                                                  cmd[i].details.save_array.label_save)));
-        /* Allocation of memory for saving data */
-        cmd[i].details.save_array.data_saved =
-          GNUNET_new_array (cmd[i].details.save_array.nb_saved,
-                            struct PERF_TALER_MINTDB_Data);
+          /* Allocation of memory for saving data */
+          cmd[i].details.save_array.data_saved =
+            GNUNET_new_array (cmd[i].details.save_array.nb_saved,
+                              struct PERF_TALER_MINTDB_Data);
         }
-         
         break;
 
       case PERF_TALER_MINTDB_CMD_LOAD_ARRAY:
         /* Creating the permutation array to randomize the data order */
         {
-          int save_index ;
+          int save_index;
 
           GNUNET_assert (GNUNET_SYSERR !=
                          (save_index = cmd_find (
@@ -204,15 +203,16 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
 static int
 cmd_clean (struct PERF_TALER_MINTDB_Cmd cmd[])
 {
-  unsigned int i = 0;
+  unsigned int i;
 
-  for (i = 0; PERF_TALER_MINTDB_CMD_END != cmd[i].command; i++)
+  for (i=0; PERF_TALER_MINTDB_CMD_END != cmd[i].command; i++)
   {
     switch (cmd[i].command)
     {
       case PERF_TALER_MINTDB_CMD_SAVE_ARRAY:
         {
           unsigned int j;
+
           for (j = 0; j < cmd[i].details.save_array.nb_saved; j++)
           {
             data_free (&cmd[i].details.save_array.data_saved[j]);
@@ -234,7 +234,7 @@ cmd_clean (struct PERF_TALER_MINTDB_Cmd cmd[])
     }
   }
   return GNUNET_OK;
-};
+}
 
 
 /**
@@ -245,10 +245,11 @@ interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
   unsigned int i;
   int jump;
-   GNUNET_assert (GNUNET_SYSERR != 
-                  (jump = cmd_find (state->cmd,
-                                    state->cmd[state->i]
-                                    .details.end_loop.label_loop)));
+
+  GNUNET_assert (GNUNET_SYSERR !=
+                 (jump = cmd_find (state->cmd,
+                                   state->cmd[state->i]
+                                   .details.end_loop.label_loop)));
   // Cleaning up the memory in the loop
   for (i = jump; i < state->i; i++)
   {
@@ -262,7 +263,9 @@ interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
   {
     /* jump back to the start */
     state->i = jump;
-  }else{
+  }
+  else
+  {
     /* Reset the loop counter and continue running */
     state->cmd[jump].details.loop.curr_iteration = 0;
   }
@@ -276,26 +279,30 @@ interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
 static void
 interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
-  int loop_index, save_index;
+  struct PERF_TALER_MINTDB_Cmd *cmd = &state->cmd[state->i];
+  struct PERF_TALER_MINTDB_Cmd *save_ref;
+  struct PERF_TALER_MINTDB_Cmd *loop_ref;
+  int loop_index;
+  int save_index;
   unsigned int selection_chance;
 
-  GNUNET_assert (GNUNET_SYSERR != 
+  GNUNET_assert (GNUNET_SYSERR !=
                  (loop_index = cmd_find (state->cmd,
-                                         state->cmd[state->i]
-                                         .details.save_array.label_loop)));
-  GNUNET_assert (GNUNET_SYSERR != 
+                                         cmd->details.save_array.label_loop)));
+  loop_ref = &state->cmd[save_index];
+  GNUNET_assert (GNUNET_SYSERR !=
                  (save_index = cmd_find (state->cmd,
-                                         state->cmd[state->i]
-                                         .details.save_array.label_save)));
+                                         cmd->details.save_array.label_save)));
+  save_ref = &state->cmd[save_index];
   /* Array initialization on first loop iteration
      Alows for nested loops */
-  if (0 == state->cmd[loop_index].details.loop.curr_iteration)
+  if (0 == cmd->details.loop.curr_iteration)
   {
-    state->cmd[state->i].details.save_array.index = 0;
+    cmd->details.save_array.index = 0;
   }
   /* The probobility distribution of the saved items will be a little biased
      against the few last items but it should not be a big problem. */
-  selection_chance = state->cmd[loop_index].details.loop.max_iterations /
+  selection_chance = loop_ref->details.loop.max_iterations /
     state->cmd[state->i].details.save_array.nb_saved;
   /*
    * If the remaining space is equal to the remaining number of
@@ -303,14 +310,14 @@ interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
    *
    * Else it is saved only if the random numbre generated is 0
    */
-  if ((0 < (state->cmd[state->i].details.save_array.nb_saved -
-            state->cmd[state->i].details.save_array.index)) &&
-      (((state->cmd[loop_index].details.loop.max_iterations -
-         state->cmd[loop_index].details.loop.curr_iteration) ==
-        (state->cmd[state->i].details.save_array.nb_saved -
-         state->cmd[state->i].details.save_array.index))
-       || (0 == GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                          selection_chance))))
+  if ( (0 < (state->cmd[state->i].details.save_array.nb_saved -
+             state->cmd[state->i].details.save_array.index) ) &&
+       ( ((state->cmd[loop_index].details.loop.max_iterations -
+           state->cmd[loop_index].details.loop.curr_iteration) ==
+          (state->cmd[state->i].details.save_array.nb_saved -
+           state->cmd[state->i].details.save_array.index)) ||
+         (0 == GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                         selection_chance)) ) )
   {
     struct PERF_TALER_MINTDB_Data *save_location;
     struct PERF_TALER_MINTDB_Data *item_saved;
@@ -332,7 +339,8 @@ static void
 interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
   unsigned int loop_iter;
-  int loop_index, save_index;
+  int loop_index;
+  int save_index;
   struct PERF_TALER_MINTDB_Data *loaded_data;
 
   GNUNET_assert (GNUNET_SYSERR !=
@@ -361,6 +369,7 @@ interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
   data_copy (loaded_data, &state->cmd[state->i].exposed);
 }
 
+
 /**
  * Main interpreter loop.
  *
@@ -377,7 +386,9 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         return GNUNET_YES;
 
       case PERF_TALER_MINTDB_CMD_DEBUG:
-        GNUNET_log (GNUNET_ERROR_TYPE_INFO, "%s\n", state->cmd[state->i].label);
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "%s\n",
+                    state->cmd[state->i].label);
         break;
 
       case PERF_TALER_MINTDB_CMD_LOOP:
@@ -430,7 +441,8 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         break;
 
       case PERF_TALER_MINTDB_CMD_ABORT_TRANSACTION:
-        state->plugin->rollback (state->plugin->cls, state->session);
+        state->plugin->rollback (state->plugin->cls,
+                                 state->session);
 
       case PERF_TALER_MINTDB_CMD_SAVE_ARRAY:
         interpret_save_array (state);
@@ -444,13 +456,12 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         {
           int dki_index;
           struct TALER_MINTDB_Deposit *deposit;
+
           GNUNET_assert (GNUNET_SYSERR !=
                          (dki_index = cmd_find(state->cmd,
-                                               state->cmd[state->i]
-                                               .details.insert_deposit.label_dki)));
+                                               state->cmd[state->i].details.insert_deposit.label_dki)));
           GNUNET_assert (NULL !=
-                         (deposit = PERF_TALER_MINTDB_deposit_init (
-                             state->cmd[dki_index].exposed.data.dki)));
+                         (deposit = PERF_TALER_MINTDB_deposit_init (state->cmd[dki_index].exposed.data.dki)));
 
           GNUNET_assert (
             state->plugin->insert_deposit (state->plugin->cls,
@@ -463,13 +474,13 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_GET_DEPOSIT:
         {
           int source_index;
-          struct TALER_MINTDB_Deposit *deposit; 
+          struct TALER_MINTDB_Deposit *deposit;
 
           GNUNET_assert (GNUNET_SYSERR !=
                          (source_index =  cmd_find (state->cmd,
                                                     state->cmd[state->i]
                                                     .details.get_deposit.label_source)));
-          GNUNET_assert (NULL != 
+          GNUNET_assert (NULL !=
                          (deposit = state->cmd[source_index].exposed.data.deposit));
           state->plugin->have_deposit (state->plugin->cls,
                                        state->session,
@@ -534,7 +545,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_GET_DENOMINATION:
         {
           int source_index;
-          struct TALER_MINTDB_DenominationKeyIssueInformation *dki; 
+          struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
 
           GNUNET_assert (GNUNET_SYSERR !=
                          (source_index =  cmd_find (state->cmd,
@@ -562,8 +573,8 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
                          (reserve_index = cmd_find (
                              state->cmd,
                              state->cmd[state->i].details.insert_withdraw.label_reserve)));
-          GNUNET_assert (NULL != 
-                         (blindcoin = 
+          GNUNET_assert (NULL !=
+                         (blindcoin =
                           PERF_TALER_MINTDB_collectable_blindcoin_init (
                             state->cmd[dki_index].exposed.data.dki,
                             state->cmd[reserve_index].exposed.data.reserve)));
@@ -616,7 +627,8 @@ PERF_TALER_MINTDB_interpret (struct TALER_MINTDB_Plugin *db_plugin,
   cmd_init (state.cmd);
   // Running the interpreter
   GNUNET_assert (NULL !=
-                 (state.session = db_plugin->get_session (db_plugin->cls, GNUNET_YES)));
+                 (state.session = db_plugin->get_session (db_plugin->cls,
+                                                          GNUNET_YES)));
   interpret (&state);
   // Cleaning the memory
   cmd_clean (cmd);
