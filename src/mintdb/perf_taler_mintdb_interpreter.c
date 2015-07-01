@@ -492,6 +492,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
             state->session,
             &reserve->pub,
             &reserve->balance,
+            GNUNET_TIME_absolute_get(),
             details
             );
           json_decref (details);
