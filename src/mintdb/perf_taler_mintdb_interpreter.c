@@ -79,11 +79,6 @@ data_free (struct PERF_TALER_MINTDB_Data *data)
       data->data.dki = NULL;
       return;
 
-    case PERF_TALER_MINTDB_COIN_INFO:
-      PERF_TALER_MINTDB_coin_public_info_free (data->data.cpi);
-      data->data.cpi = NULL;
-      return;
-
     default:
       return;
   }
@@ -91,7 +86,10 @@ data_free (struct PERF_TALER_MINTDB_Data *data)
 
 
 /**
+ * Copies @a data into @a copy
  *
+ * @param data the data to be copied
+ * @param[out] copy the copy made
  */
 static void
 data_copy (const struct PERF_TALER_MINTDB_Data *data, struct PERF_TALER_MINTDB_Data *copy)
@@ -128,6 +126,7 @@ data_copy (const struct PERF_TALER_MINTDB_Data *data, struct PERF_TALER_MINTDB_D
   }
 }
 
+
 /**
  * Finds the first command in cmd with the name search
  *
@@ -148,6 +147,8 @@ cmd_find (const struct PERF_TALER_MINTDB_Cmd *cmd, const char *search)
 
 /**
  * Initialization of a command array
+ * 
+ * @param cmd the comand array initialized
  */
 static int
 cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
@@ -238,7 +239,8 @@ cmd_clean (struct PERF_TALER_MINTDB_Cmd cmd[])
 
 
 /**
- * Handles the command END_LOOP for the interpreter
+ * Handles the command #PERF_TALER_MINTDB_CMD_END_LOOP for the interpreter
+ * Cleans the memory at the end of the loop
  */
 static void
 interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
@@ -273,6 +275,8 @@ interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
 
 
 /**
+ * Part of the interpreter specific to 
+ * #PERF_TALER_MINTDB_CMD_SAVE_ARRAY
  * Saves the data exposed by another command into
  * an array in the command specific struct.
  */
@@ -289,7 +293,7 @@ interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
   GNUNET_assert (GNUNET_SYSERR !=
                  (loop_index = cmd_find (state->cmd,
                                          cmd->details.save_array.label_loop)));
-  loop_ref = &state->cmd[save_index];
+  loop_ref = &state->cmd[loop_index];
   GNUNET_assert (GNUNET_SYSERR !=
                  (save_index = cmd_find (state->cmd,
                                          cmd->details.save_array.label_save)));
@@ -303,37 +307,37 @@ interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
   /* The probobility distribution of the saved items will be a little biased
      against the few last items but it should not be a big problem. */
   selection_chance = loop_ref->details.loop.max_iterations /
-    state->cmd[state->i].details.save_array.nb_saved;
+    cmd->details.save_array.nb_saved;
   /*
    * If the remaining space is equal to the remaining number of
    * iterations, the item is automaticly saved.
    *
    * Else it is saved only if the random numbre generated is 0
    */
-  if ( (0 < (state->cmd[state->i].details.save_array.nb_saved -
-             state->cmd[state->i].details.save_array.index) ) &&
-       ( ((state->cmd[loop_index].details.loop.max_iterations -
-           state->cmd[loop_index].details.loop.curr_iteration) ==
-          (state->cmd[state->i].details.save_array.nb_saved -
-           state->cmd[state->i].details.save_array.index)) ||
+  if ( (0 < (cmd->details.save_array.nb_saved -
+             cmd->details.save_array.index) ) &&
+       ( ((loop_ref->details.loop.max_iterations -
+           loop_ref->details.loop.curr_iteration) ==
+          (cmd->details.save_array.nb_saved -
+           cmd->details.save_array.index)) ||
          (0 == GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
                                          selection_chance)) ) )
   {
     struct PERF_TALER_MINTDB_Data *save_location;
     struct PERF_TALER_MINTDB_Data *item_saved;
 
-    save_location = &state->cmd[state->i].details.save_array
-      .data_saved[state->cmd[state->i].details.save_array.index];
-    item_saved = &state->cmd[save_index].exposed;
+    save_location = &cmd->details.save_array.data_saved[cmd->details.save_array.index];
+    item_saved = &save_ref->exposed;
     data_copy (item_saved, save_location);
-    state->cmd[state->i].details.save_array.index++;
+    cmd->details.save_array.index++;
   }
 }
 
 
 /**
- * Run when the current command is LOAD_ARRAY
- * Get data from a SAVE_ARRAY and exposes a copy
+ * Part of the interpreter specific to
+ * #PERF_TALER_MINTDB_CMD_LOAD_ARRAY 
+ * Gets data from a #PERF_TALER_MINTDB_CMD_SAVE_ARRAY and exposes a copy
  */
 static void
 interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
@@ -355,7 +359,7 @@ interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
   {
     int i, quotient;
 
-    /* in case the iteration number is higher than the amount saved,
+    /* In case the iteration number is higher than the amount saved,
      * the number is run several times in the permutation array */
     quotient = loop_iter / state->cmd[save_index].details.save_array.nb_saved;
     loop_iter = loop_iter % state->cmd[save_index].details.save_array.nb_saved;
@@ -371,8 +375,9 @@ interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 
 
 /**
- * Main interpreter loop.
+ * Iterate over the commands, acting accordingly at each step
  *
+ * @param state the current state of the interpreter
  */
 static int
 interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
@@ -615,6 +620,9 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 /**
  * Runs the commands given in @a cmd, working with
  * the database referenced by @a db_plugin
+ * 
+ * @param db_plugin the connection to the database
+ * @param cmd the commands to run
  */
 int
 PERF_TALER_MINTDB_interpret (struct TALER_MINTDB_Plugin *db_plugin,
@@ -623,14 +631,180 @@ PERF_TALER_MINTDB_interpret (struct TALER_MINTDB_Plugin *db_plugin,
   struct PERF_TALER_MINTDB_interpreter_state state =
   {.i = 0, .cmd = cmd, .plugin = db_plugin};
 
-  // Initializing commands
   cmd_init (state.cmd);
-  // Running the interpreter
   GNUNET_assert (NULL !=
                  (state.session = db_plugin->get_session (db_plugin->cls,
                                                           GNUNET_YES)));
   interpret (&state);
-  // Cleaning the memory
   cmd_clean (cmd);
-  return GNUNET_YES;
+  return GNUNET_OK;
+}
+
+
+/**
+ *
+ * @param benchmark_name the name of the benchmark, displayed in the logs
+ * @param configuration_file path to the taler configuration file to use
+ * @param init the commands to use for the database initialisation, 
+ * if #NULL the standard initialization is used
+ * @param benchmark the commands for the benchmark
+ * @return GNUNET_OK upon success; GNUNET_SYSERR upon failure
+ */
+int
+PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
+                                 const char *configuration_file,
+                                 struct PERF_TALER_MINTDB_Cmd *init,
+                                 struct PERF_TALER_MINTDB_Cmd *benchmark)
+{
+  struct TALER_MINTDB_Plugin *plugin;
+  struct GNUNET_CONFIGURATION_Handle *config;
+  int ret = 0;
+  struct PERF_TALER_MINTDB_Cmd init_def[] = 
+  {
+    // Denomination used to create coins
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("00 - Start of interpreter"),
+
+    PERF_TALER_MINTDB_INIT_CMD_LOOP ("01 - denomination loop",
+                                     PERF_TALER_MINTDB_NB_DENOMINATION_INIT),
+    PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("01 - start transaction"),
+    PERF_TALER_MINTDB_INIT_CMD_INSERT_DENOMINATION ("01 - denomination"),
+    PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION ("01 - commit transaction"),
+    PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("01 - save denomination",
+                                           "01 - denomination loop",
+                                           "01 - denomination",
+                                           PERF_TALER_MINTDB_NB_DENOMINATION_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("01 - denomination loop end",
+                                         "01 - denomination loop"),
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("01 - init denomination complete"),
+    // End of initialization
+    // Reserve initialization
+    PERF_TALER_MINTDB_INIT_CMD_LOOP ("02 - init reserve loop",
+                                     PERF_TALER_MINTDB_NB_RESERVE_INIT),
+    PERF_TALER_MINTDB_INIT_CMD_INSERT_RESERVE ("02 - reserve"),
+    PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("02 - save reserve",
+                                           "02 - init reserve loop",
+                                           "02 - reserve",
+                                           PERF_TALER_MINTDB_NB_RESERVE_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("02 - init reserve end loop",
+                                         "02 - init reserve loop"),
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("02 - reserve init complete"),
+    // End reserve init
+    // Withdrawal initialization
+    PERF_TALER_MINTDB_INIT_CMD_LOOP ("03 - init withdraw loop",
+                                     PERF_TALER_MINTDB_NB_WITHDRAW_INIT),
+    PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("03 - start transaction"),
+    PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("03 - denomination load",
+                                           "03 - init withdraw loop",
+                                           "01 - save denomination"),
+    PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("03 - reserve load",
+                                           "03 - init withdraw loop",
+                                           "02 - save reserve"),
+    PERF_TALER_MINTDB_INIT_CMD_INSERT_WITHDRAW ("03 - withdraw",
+                                                "03 - denomination load",
+                                                "03 - reserve load"),
+    PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION ("03 - commit transaction"),
+    PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("03 - blindcoin array",
+                                           "03 - init withdraw loop",
+                                           "03 - withdraw",
+                                           PERF_TALER_MINTDB_NB_WITHDRAW_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("03 - withdraw init end loop",
+                                         "03 - init withdraw loop"),
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("03 - withdraw init complete"),
+    //End of withdrawal initialization
+    //Deposit initialization
+    PERF_TALER_MINTDB_INIT_CMD_LOOP ("04 - deposit init loop",
+                                     PERF_TALER_MINTDB_NB_DEPOSIT_INIT),
+    PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("04 - start transaction"),
+    PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("04 - denomination load",
+                                           "04 - deposit init loop",
+                                           "01 - save denomination"),
+    PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT ("04 - deposit",
+                                               "04 - denomination load"),
+    PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION ("04 - commit transaction"),
+    PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("04 - deposit array",
+                                           "04 - deposit init loop",
+                                           "04 - deposit",
+                                           PERF_TALER_MINTDB_NB_DEPOSIT_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("04 - deposit init loop end",
+                                         "04 - deposit init loop"),
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("04 - deposit init complete"),
+    // End of deposit initialization
+    PERF_TALER_MINTDB_INIT_CMD_END ("end")
+  };
+
+  GNUNET_log_setup (benchmark_name,
+                    "INFO",
+                    NULL);
+  config = GNUNET_CONFIGURATION_create ();
+
+  ret = GNUNET_CONFIGURATION_load (config, 
+                                   configuration_file);
+  if (GNUNET_OK != ret)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Error parsing configuration file");
+    return GNUNET_SYSERR;
+  }
+  plugin = TALER_MINTDB_plugin_load (config);
+  if (NULL == plugin)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Error connectiong to the database");
+    return ret;
+  }
+
+
+  ret = plugin->create_tables (plugin->cls, 
+                               GNUNET_YES);
+  if (GNUNET_OK != ret)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Error while creating the database architecture");
+    return ret;
+  }
+  /* 
+   * Running the initialization
+   */
+  if (NULL == init)
+  {
+    init = init_def;   
+  }
+  ret = PERF_TALER_MINTDB_interpret (plugin, 
+                                     init);
+  if (GNUNET_OK != ret)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Error during database initialization");
+    return ret;
+  }
+  /*
+   * Running the benchmark
+   */
+  ret = PERF_TALER_MINTDB_interpret (plugin, 
+                                     benchmark);
+  if (GNUNET_OK != ret)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Error during database initialization");
+    return ret;
+  }
+  /* Drop tables */
+  {
+    struct TALER_MINTDB_Session *session;
+
+    session = plugin->get_session (plugin->cls, 
+                                   GNUNET_YES);
+    ret = plugin->drop_temporary (plugin->cls, 
+                                  session);
+    if (GNUNET_OK != ret)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Error removing cleaning the database");
+      return ret;
+    }
+  }
+  TALER_MINTDB_plugin_unload (plugin);
+  GNUNET_CONFIGURATION_destroy (config);
+
+  return ret;
 }

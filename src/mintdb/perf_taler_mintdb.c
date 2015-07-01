@@ -22,6 +22,19 @@
 #include "perf_taler_mintdb_interpreter.h"
 #include "perf_taler_mintdb_values.h"
 
+
+#define PERF_TALER_MINTDB_NB_DENOMINATION_INIT  10
+#define PERF_TALER_MINTDB_NB_DENOMINATION_SAVE  10
+
+#define PERF_TALER_MINTDB_NB_RESERVE_INIT   100
+#define PERF_TALER_MINTDB_NB_RESERVE_SAVE   10
+
+#define PERF_TALER_MINTDB_NB_DEPOSIT_INIT   100
+#define PERF_TALER_MINTDB_NB_DEPOSIT_SAVE   10
+
+#define PERF_TALER_MINTDB_NB_WITHDRAW_INIT  100
+#define PERF_TALER_MINTDB_NB_WITHDRAW_SAVE  10
+
 /**
  * Runs the performances tests for the mint database
  * and logs the results using Gauger
@@ -29,9 +42,8 @@
 int
 main (int argc, char ** argv)
 {
-  struct TALER_MINTDB_Plugin *plugin;
-  struct GNUNET_CONFIGURATION_Handle *config;
-  struct PERF_TALER_MINTDB_Cmd test[] =
+  int ret;
+  struct PERF_TALER_MINTDB_Cmd benchmark[] =
   {
     // Denomination used to create coins
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("00 - Start of interpreter"),
@@ -103,24 +115,11 @@ main (int argc, char ** argv)
     // End of deposit initialization
     PERF_TALER_MINTDB_INIT_CMD_END ("end"),
   };
+  
+  ret = PERF_TALER_MINTDB_run_benchmark ("perf-taler-mintdb",
+                                         "./test-mint-db-postgres.conf",
+                                         NULL,
+                                         benchmark);
 
-  GNUNET_log_setup ("perf-taler-mintdb",
-                    "INFO",
-                    NULL);
-  config = GNUNET_CONFIGURATION_create ();
-  GNUNET_CONFIGURATION_load (config, "./test-mint-db-postgres.conf");
-  GNUNET_assert (NULL !=
-                 (plugin = TALER_MINTDB_plugin_load (config)));
-  plugin->create_tables (plugin->cls, GNUNET_YES);
-  PERF_TALER_MINTDB_interpret (plugin, test);
-  /* Drop tables */
-  {
-    struct TALER_MINTDB_Session *session;
-
-    session = plugin->get_session (plugin->cls, GNUNET_YES);
-    plugin->drop_temporary (plugin->cls, session);
-  }
-  TALER_MINTDB_plugin_unload (plugin);
-  GNUNET_CONFIGURATION_destroy (config);
   return 0;
 }
