@@ -249,6 +249,7 @@ run (void *cls,
                                       session,
                                       &reserve_pub,
                                       &amount,
+                                      GNUNET_TIME_absolute_get (),
 				      just));
   json_decref (just);
   FAILIF (GNUNET_OK !=
@@ -263,6 +264,7 @@ run (void *cls,
                                       session,
                                       &reserve_pub,
                                       &amount,
+                                      GNUNET_TIME_absolute_get (),
 				      just));
   json_decref (just);
   FAILIF (GNUNET_OK !=
