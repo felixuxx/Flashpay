@@ -33,7 +33,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_END, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE \
+  .exposed.type = PERF_TALER_MINTDB_NONE \
 }
 
 
@@ -44,7 +44,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_DEBUG, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE \
+  .exposed.type = PERF_TALER_MINTDB_NONE \
 }
 
 /**
@@ -56,7 +56,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_LOOP , \
   .label = _label , \
-  .exposed_type = PERF_TALER_MINTDB_NONE , \
+  .exposed.type = PERF_TALER_MINTDB_NONE , \
   .details.loop = { \
     .max_iterations = _iter , \
     .curr_iteration = 0 } \
@@ -69,7 +69,7 @@
 {\
   .command = PERF_TALER_MINTDB_CMD_END_LOOP , \
   .label = _label , \
-  .exposed_type = PERF_TALER_MINTDB_NONE , \
+  .exposed.type = PERF_TALER_MINTDB_NONE , \
   .details.end_loop.label_loop = _label_loop \
 }
 
@@ -80,7 +80,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_GET_TIME, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .exposed.type = PERF_TALER_MINTDB_NONE, \
 }
 
 /**
@@ -95,7 +95,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_GAUGER, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .exposed.type = PERF_TALER_MINTDB_NONE, \
   .details.gauger = { \
     .label_start = _label_start, \
     .label_stop = _label_stop, \
@@ -111,7 +111,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_START_TRANSACTION, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .exposed.type = PERF_TALER_MINTDB_NONE, \
 }
 
 /**
@@ -121,7 +121,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_COMMIT_TRANSACTION, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .exposed.type = PERF_TALER_MINTDB_NONE, \
 }
 
 /**
@@ -132,7 +132,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_SAVE_ARRAY, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .exposed.type = PERF_TALER_MINTDB_NONE, \
   .details.save_array = { \
     .label_loop = _label_loop, \
     .label_save = _label_save, \
@@ -148,7 +148,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_LOAD_ARRAY, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .exposed.type = PERF_TALER_MINTDB_NONE, \
   .details.load_array = { \
     .label_loop = _label_loop, \
     .label_save = _label_save \
@@ -162,7 +162,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_INSERT_DENOMINATION, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_DENOMINATION_INFO, \
+  .exposed.type = PERF_TALER_MINTDB_DENOMINATION_INFO, \
 }
 
 /**
@@ -172,7 +172,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_GET_DENOMINATION, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .exposed.type = PERF_TALER_MINTDB_NONE, \
   .details.get_denomination.label_source = _label_source, \
 }
 
@@ -183,7 +183,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_INSERT_RESERVE, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_RESERVE \
+  .exposed.type = PERF_TALER_MINTDB_RESERVE \
 }
 
 
@@ -195,7 +195,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_GET_RESERVE, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .exposed.type = PERF_TALER_MINTDB_NONE, \
   .details.get_reserve.label_source = _label_source \
 }
 
@@ -208,7 +208,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT,\
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_DEPOSIT, \
+  .exposed.type = PERF_TALER_MINTDB_DEPOSIT, \
   .details.insert_deposit.label_dki = _label_dki, \
 }
 
@@ -221,7 +221,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_GET_DEPOSIT, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .exposed.type = PERF_TALER_MINTDB_NONE, \
   .details.get_deposit.label_source = _label_deposit \
 }
 
@@ -235,7 +235,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_BLINDCOIN, \
+  .exposed.type = PERF_TALER_MINTDB_BLINDCOIN, \
   .details.insert_withdraw = {\
     .label_dki = _label_dki, \
     .label_reserve = _label_reserve, \
@@ -250,7 +250,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_GET_WITHDRAW, \
   .label = _label, \
-  .exposed_type = PERF_TALER_MINTDB_NONE, \
+  .exposed.type = PERF_TALER_MINTDB_NONE, \
   .details.get_withdraw.label_source = _label_source, \
 }
 
@@ -274,7 +274,7 @@ enum PERF_TALER_MINTDB_Type
 /**
  * Storage for a variety of data type
  */
-union PERF_TALER_MINTDB_Data 
+union PERF_TALER_MINTDB_Memory 
 {
   struct timespec time; 
   struct TALER_MINTDB_Deposit *deposit;
@@ -282,6 +282,16 @@ union PERF_TALER_MINTDB_Data
   struct TALER_MINTDB_Reserve *reserve;
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct TALER_CoinPublicInfo *cpi;
+};
+
+
+/**
+ * 
+ */
+struct PERF_TALER_MINTDB_Data
+{
+  union PERF_TALER_MINTDB_Memory data;
+  enum PERF_TALER_MINTDB_Type type;
 };
 
 
@@ -428,13 +438,9 @@ struct PERF_TALER_MINTDB_CMD_save_array_details
    */
   const char *label_save;
   /**
-   * Type of data saved
-   */
-  enum PERF_TALER_MINTDB_Type type_saved;
-  /**
    * Array of data saved
    */
-  union PERF_TALER_MINTDB_Data *data_saved;
+  struct PERF_TALER_MINTDB_Data *data_saved;
 };
 
 
@@ -573,14 +579,9 @@ struct PERF_TALER_MINTDB_Cmd
   union PERF_TALER_MINTDB_CMD_Details details;
 
   /**
-   * Type of the data exposed
-   */
-  enum PERF_TALER_MINTDB_Type exposed_type;
-
-  /**
    * Data easily accessible
    */
-  union PERF_TALER_MINTDB_Data exposed;
+  struct PERF_TALER_MINTDB_Data exposed;
 };
 
 

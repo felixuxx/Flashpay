@@ -230,6 +230,7 @@ PERF_TALER_MINTDB_deposit_init (const struct TALER_MINTDB_DenominationKeyIssueIn
                     GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
                                             &coin.coin_pub.eddsa_pub,
                                             sizeof (struct GNUNET_CRYPTO_EddsaPublicKey))));
+    GNUNET_free (eddsa_prvt);
   }
   { //csig
     struct u32_presign
