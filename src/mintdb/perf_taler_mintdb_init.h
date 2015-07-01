@@ -15,7 +15,7 @@
    */
 /**
  * @file mintdb/perf_taler_mintdb_init.h
- * @brief Heler function for creating dummy inpus for the mint database
+ * @brief Heler function for creating dummy inputs for the mint database
  * @author Nicolas Fournier
  */
 #ifndef __PERF_TALER_MINTDB_INIT_H___

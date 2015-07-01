@@ -1536,11 +1536,6 @@ postgres_insert_withdraw_info (void *cls,
     TALER_PQ_query_param_end
   };
 
-  if (GNUNET_OK != postgres_start (cls,
-                                   session))
-  {
-    return GNUNET_SYSERR;
-  }
   now = GNUNET_TIME_absolute_get ();
   result = TALER_PQ_exec_prepared (session->conn,
                                    "insert_withdraw_info",
@@ -1548,7 +1543,7 @@ postgres_insert_withdraw_info (void *cls,
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     QUERY_ERR (result);
-    goto rollback;
+    goto cleanup;
   }
   reserve.pub = collectable->reserve_pub;
   if (GNUNET_OK != postgres_reserve_get (cls,
@@ -1557,7 +1552,7 @@ postgres_insert_withdraw_info (void *cls,
   {
     /* Should have been checked before we got here... */
     GNUNET_break (0);
-    goto rollback;
+    goto cleanup;
   }
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&reserve.balance,
@@ -1566,7 +1561,7 @@ postgres_insert_withdraw_info (void *cls,
   {
     /* Should have been checked before we got here... */
     GNUNET_break (0);
-    goto rollback;
+    goto cleanup;
   }
   expiry = GNUNET_TIME_absolute_add (now,
                                      TALER_IDLE_RESERVE_EXPIRATION_TIME);
@@ -1575,17 +1570,11 @@ postgres_insert_withdraw_info (void *cls,
   if (GNUNET_OK != reserves_update (cls,
                                     session,
                                     &reserve))
-    goto rollback;
-  if (GNUNET_OK == postgres_commit (cls,
-                                    session))
   {
-    ret = GNUNET_OK;
+    GNUNET_break (0);
     goto cleanup;
   }
-
- rollback:
-  postgres_rollback (cls,
-                     session);
+  ret = GNUNET_OK;
  cleanup:
   PQclear (result);
   return ret;

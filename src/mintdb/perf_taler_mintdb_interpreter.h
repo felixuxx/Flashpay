@@ -15,7 +15,7 @@
 */
 /**
  * @file mintdb/perf_taler_mintdb_interpreter.h
- * @brief Library for performance analysis of taler database
+ * @brief Library for performance analysis of the Taler database
  * @author Nicolas Fournier
  */
 
@@ -50,7 +50,7 @@
 /**
  * The begining of a loop
  * @param _label the name of the loop
- * @param _iter the number of iteration of the loop
+ * @param _iter the number of iterations of the loop
  */
 #define PERF_TALER_MINTDB_INIT_CMD_LOOP(_label, _iter) \
 { \
@@ -74,22 +74,23 @@
 }
 
 /**
- * Saves the time of execution to use for logging with gauger
+ * Saves the time of execution to use for logging with Gauger
  */
 #define PERF_TALER_MINTDB_INIT_CMD_GET_TIME(_label) \
 { \
   .command = PERF_TALER_MINTDB_CMD_GET_TIME, \
   .label = _label, \
-  .exposed.type = PERF_TALER_MINTDB_NONE, \
+  .exposed.type = PERF_TALER_MINTDB_NONE \
 }
 
 /**
  * Commits the duration between @a _label_start and @a _label_stop
- * to Gauger with @a _description explaining
+ * to Gauger with @a _description explaining what was measured.
+ *
  * @param _label_start label of the start of the measurment
  * @param _label_stop label of the end of the measurment
- * @param _description description of the measure displayed in gauger
- * @param _divide number of measurments in the interval
+ * @param _description description of the measure displayed in Gauger
+ * @param _divide number of measurments in the interval [FIXME: need UNIT]
  */
 #define PERF_TALER_MINTDB_INIT_CMD_GAUGER(_label, _label_start, _label_stop, _description, _divide) \
 { \
@@ -115,7 +116,7 @@
 }
 
 /**
- * Commits a database connection
+ * Commits a database transaction
  */
 #define PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION(_label) \
 { \
@@ -125,7 +126,7 @@
 }
 
 /**
- * Extracts @a _nb_saved items of type @a _save_type 
+ * Extracts @a _nb_saved items of type @a _save_type
  * from the command @a _label_save during the loop @a _label_loop
  */
 #define PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY(_label, _label_loop, _label_save, _nb_saved) \
@@ -142,7 +143,7 @@
 
 /**
  * Loads @a _nb_saved previously sampled data of type @a _saved_type
- * from @a _label_save during the loop @a _label_loop 
+ * from @a _label_save during the loop @a _label_loop
  */
 #define PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY(_label, _label_loop, _label_save) \
 { \
@@ -244,7 +245,7 @@
 
 
 /**
- * Polls the database about informations regarding a secific withdrawal
+ * Polls the database about informations regarding a specific withdrawal
  */
 #define PERF_TALER_MINTDB_INIT_CMD_GET_WITHDRAW(_label, _label_source) \
 { \
@@ -259,7 +260,7 @@
  * The type of data stored
  * in a PERF_TALER_MINTDB_Type
  */
-enum PERF_TALER_MINTDB_Type 
+enum PERF_TALER_MINTDB_Type
 {
   PERF_TALER_MINTDB_NONE,
   PERF_TALER_MINTDB_TIME,
@@ -267,16 +268,16 @@ enum PERF_TALER_MINTDB_Type
   PERF_TALER_MINTDB_BLINDCOIN,
   PERF_TALER_MINTDB_RESERVE,
   PERF_TALER_MINTDB_DENOMINATION_INFO,
-  PERF_TALER_MINTDB_COIN_INFO,
+  PERF_TALER_MINTDB_COIN_INFO
 };
 
 
 /**
  * Storage for a variety of data type
  */
-union PERF_TALER_MINTDB_Memory 
+union PERF_TALER_MINTDB_Memory
 {
-  struct timespec time; 
+  struct timespec time;
   struct TALER_MINTDB_Deposit *deposit;
   struct TALER_MINTDB_CollectableBlindcoin *blindcoin;
   struct TALER_MINTDB_Reserve *reserve;
@@ -286,12 +287,12 @@ union PERF_TALER_MINTDB_Memory
 
 
 /**
- * 
+ *
  */
 struct PERF_TALER_MINTDB_Data
 {
-  union PERF_TALER_MINTDB_Memory data;
   enum PERF_TALER_MINTDB_Type type;
+  union PERF_TALER_MINTDB_Memory data; // inline def.
 };
 
 
@@ -300,15 +301,19 @@ struct PERF_TALER_MINTDB_Data
  */
 enum PERF_TALER_MINTDB_CMD_Name
 {
-  // All comand chain must hace this as their last command
+  /**
+   * All comand chain must hace this as their last command
+   */
   PERF_TALER_MINTDB_CMD_END,
-  
-  // Prints it's label
+
+  /**
+   * Prints it's label
+   */
   PERF_TALER_MINTDB_CMD_DEBUG,
 
   // Define the start of al command chain loop
   PERF_TALER_MINTDB_CMD_LOOP,
-  
+
   // Define the end of a command chain loop
   PERF_TALER_MINTDB_CMD_END_LOOP,
 
@@ -335,7 +340,7 @@ enum PERF_TALER_MINTDB_CMD_Name
 
   // Load deposits saved earlier
   PERF_TALER_MINTDB_CMD_LOAD_ARRAY,
-  
+
   // Insert a deposit into the database
   PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT,
 
@@ -361,7 +366,7 @@ enum PERF_TALER_MINTDB_CMD_Name
   PERF_TALER_MINTDB_CMD_GET_DENOMINATION,
 
   // Refresh a coin
-  PERF_TALER_MINTDB_CMD_REFRESH_COIN,
+  PERF_TALER_MINTDB_CMD_REFRESH_COIN
 };
 
 
@@ -377,9 +382,9 @@ struct PERF_TALER_MINTDB_CMD_loop_details
 
 
 /**
- * Extra data requiered by the LOOP_END command
+ * Extra data requiered by the #PERF_TALER_MINTDB_CMD_END_LOOP command
  */
-struct PERF_TALER_MINTDB_CMD_loop_end_details  
+struct PERF_TALER_MINTDB_CMD_loop_end_details
 {
   /**
    * Label of the loop closed by the command
@@ -389,7 +394,7 @@ struct PERF_TALER_MINTDB_CMD_loop_end_details
 
 
 /**
- * Details about the GAUGER command
+ * Details about the Gauger command
  */
 struct PERF_TALER_MINTDB_CMD_gauger_details
 {
@@ -404,7 +409,7 @@ struct PERF_TALER_MINTDB_CMD_gauger_details
   const char *label_stop;
 
   /**
-   * Description of the metric, used in GAUGER
+   * Description of the metric, used in Gauger
    */
   const char *description;
 
@@ -458,7 +463,7 @@ struct PERF_TALER_MINTDB_CMD_load_array_details
    * Label of the command where the items were saved
    */
   const char *label_save;
-  
+
   /**
    * A permutation array used to randomize the order the items are loaded in
    */
@@ -467,7 +472,7 @@ struct PERF_TALER_MINTDB_CMD_load_array_details
 
 
 /**
- * Data used by the command insert_deposit 
+ * Data used by the command insert_deposit
  */
 struct PERF_TALER_MINTDB_CMD_insert_deposit_details
 {

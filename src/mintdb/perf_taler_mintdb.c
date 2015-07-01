@@ -34,7 +34,7 @@ main (int argc, char ** argv)
   struct PERF_TALER_MINTDB_Cmd test[] =
   {
     // Denomination used to create coins
-    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("00 - Start of interpretor"),
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("00 - Start of interpreter"),
 
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("01 - denomination loop",
                                      PERF_TALER_MINTDB_NB_DENOMINATION_INIT),
@@ -60,7 +60,7 @@ main (int argc, char ** argv)
     PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("02 - init reserve end loop",
                                          "02 - init reserve loop"),
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("02 - reserve init complete"),
-    // End reserve init
+    // End reserve init"00 - Start of interpreter"),
     // Withdrawal initialization
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("03 - init withdraw loop",
                                      PERF_TALER_MINTDB_NB_WITHDRAW_INIT),
@@ -82,7 +82,7 @@ main (int argc, char ** argv)
     PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("03 - withdraw init end loop",
                                          "03 - init withdraw loop"),
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("03 - withdraw init complete"),
-    //End of withdrawal initialization 
+    //End of withdrawal initialization
     //Deposit initialization
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("04 - deposit init loop",
                                      PERF_TALER_MINTDB_NB_DEPOSIT_INIT),
@@ -91,7 +91,7 @@ main (int argc, char ** argv)
                                            "04 - deposit init loop",
                                            "01 - save denomination"),
 
-    PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT ("04 - deposit", 
+    PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT ("04 - deposit",
                                                "04 - denomination load"),
     PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION ("04 - commit transaction"),
     PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("04 - deposit array",
@@ -108,21 +108,20 @@ main (int argc, char ** argv)
   GNUNET_log_setup ("perf-taler-mintdb",
                     "INFO",
                     NULL);
-  config = GNUNET_CONFIGURATION_create();
-  GNUNET_CONFIGURATION_load(config, "./test-mint-db-postgres.conf");
+  config = GNUNET_CONFIGURATION_create ();
+  GNUNET_CONFIGURATION_load (config, "./test-mint-db-postgres.conf");
   GNUNET_assert (NULL !=
                  (plugin = TALER_MINTDB_plugin_load (config)));
   plugin->create_tables (plugin->cls, GNUNET_YES);
-  // Run command
-  PERF_TALER_MINTDB_interpret(plugin, test);
-  // Drop tables
+  PERF_TALER_MINTDB_interpret (plugin, test);
+  /* Drop tables */
   {
     struct TALER_MINTDB_Session *session;
 
     session = plugin->get_session (plugin->cls, GNUNET_YES);
     plugin->drop_temporary (plugin->cls, session);
   }
-  TALER_MINTDB_plugin_unload(plugin);
-  GNUNET_CONFIGURATION_destroy(config);
-  return GNUNET_OK;
+  TALER_MINTDB_plugin_unload (plugin);
+  GNUNET_CONFIGURATION_destroy (config);
+  return 0;
 }
