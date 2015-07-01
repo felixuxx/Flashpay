@@ -1284,6 +1284,7 @@ reserves_update (void *cls,
  * @param session the database connection handle
  * @param reserve_pub public key of the reserve
  * @param balance the amount that has to be added to the reserve
+ * @param execution_time when was the amount added
  * @param details bank transaction details justifying the increment,
  *        must be unique for each incoming transaction
  * @return #GNUNET_OK upon success; #GNUNET_NO if the given
@@ -1295,12 +1296,12 @@ postgres_reserves_in_insert (void *cls,
                              struct TALER_MINTDB_Session *session,
                              const struct TALER_ReservePublicKeyP *reserve_pub,
                              const struct TALER_Amount *balance,
+                             struct GNUNET_TIME_Absolute execution_time,
                              const json_t *details)
 {
   PGresult *result;
   int reserve_exists;
   struct TALER_MINTDB_Reserve reserve;
-  struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute expiry;
 
   if (GNUNET_OK != postgres_start (cls,
@@ -1318,8 +1319,7 @@ postgres_reserves_in_insert (void *cls,
     GNUNET_break (0);
     goto rollback;
   }
-  now = GNUNET_TIME_absolute_get ();
-  expiry = GNUNET_TIME_absolute_add (now,
+  expiry = GNUNET_TIME_absolute_add (execution_time,
                                      TALER_IDLE_RESERVE_EXPIRATION_TIME);
   if (GNUNET_NO == reserve_exists)
   {
@@ -1358,7 +1358,7 @@ postgres_reserves_in_insert (void *cls,
       TALER_PQ_query_param_auto_from_type (&reserve.pub),
       TALER_PQ_query_param_amount (balance),
       TALER_PQ_query_param_json (details),
-      TALER_PQ_query_param_absolute_time (&now),
+      TALER_PQ_query_param_absolute_time (&execution_time),
       TALER_PQ_query_param_end
     };
 

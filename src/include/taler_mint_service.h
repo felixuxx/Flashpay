@@ -363,12 +363,13 @@ typedef void
 
 
 /**
- * Submit a deposit permission to the mint and get the mint's response.
- * Note that while we return the response verbatim to the caller for
- * further processing, we do already verify that the response is
- * well-formed (i.e. that signatures included in the response are all
- * valid).  If the mint's reply is not well-formed, we return an
- * HTTP status code of zero to @a cb.
+ * Submit a deposit permission to the mint and get the mint's
+ * response.  This API is typically used by a merchant.  Note that
+ * while we return the response verbatim to the caller for further
+ * processing, we do already verify that the response is well-formed
+ * (i.e. that signatures included in the response are all valid).  If
+ * the mint's reply is not well-formed, we return an HTTP status code
+ * of zero to @a cb.
  *
  * We also verify that the @a coin_sig is valid for this deposit
  * request, and that the @a ub_sig is a valid signature for @a
@@ -564,11 +565,12 @@ typedef void
 
 
 /**
- * Withdraw a coin from the mint using a /withdraw/sign request.  Note
- * that to ensure that no money is lost in case of hardware failures,
- * the caller must have committed (most of) the arguments to disk
- * before calling, and be ready to repeat the request with the same
- * arguments in case of failures.
+ * Withdraw a coin from the mint using a /withdraw/sign request.  This
+ * API is typically used by a wallet.  Note that to ensure that no
+ * money is lost in case of hardware failures, the caller must have
+ * committed (most of) the arguments to disk before calling, and be
+ * ready to repeat the request with the same arguments in case of
+ * failures.
  *
  * @param mint the mint handle; the mint must be ready to operate
  * @param pk kind of coin to create
@@ -578,7 +580,7 @@ typedef void
  *        caller must have committed this value to disk before the call (with @a pk)
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
- * @return #GNUNET_OK on success, #GNUNET_SYSERR
+ * @return NULL
  *         if the inputs are invalid (i.e. denomination key not with this mint).
  *         In this case, the callback is not called.
  */
@@ -600,6 +602,68 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
  */
 void
 TALER_MINT_withdraw_sign_cancel (struct TALER_MINT_WithdrawSignHandle *sign);
+
+
+/* ********************* /admin/add/incoming *********************** */
+
+
+
+/**
+ * @brief A /admin/add/incoming Handle
+ */
+struct TALER_MINT_AdminAddIncomingHandle;
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting
+ * information about an incoming transaction to a mint.
+ *
+ * @param cls closure
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param full_response full response from the mint (for logging, in case of errors)
+ */
+typedef void
+(*TALER_MINT_AdminAddIncomingResultCallback) (void *cls,
+                                              unsigned int http_status,
+                                              json_t *full_response);
+
+
+/**
+ * Notify the mint that we have received an incoming transaction
+ * which fills a reserve.  Note that this API is an administrative
+ * API and thus not accessible to typical mint clients, but only
+ * to the operators of the mint.
+ *
+ * @param mint the mint handle; the mint must be ready to operate
+ * @param reserve_pub public key of the reserve
+ * @param amount amount that was deposited
+ * @param execution_date when did we receive the amount
+ * @param wire wire details
+ * @param res_cb the callback to call when the final result for this request is available
+ * @param res_cb_cls closure for the above callback
+ * @return NULL
+ *         if the inputs are invalid (i.e. invalid amount).
+ *         In this case, the callback is not called.
+ */
+struct TALER_MINT_AdminAddIncomingHandle *
+TALER_MINT_admin_add_incoming (struct TALER_MINT_Handle *mint,
+                               const struct TALER_ReservePublicKeyP *reserve_pub,
+                               const struct TALER_Amount *amount,
+                               const struct GNUNET_TIME_Absolute execution_date,
+                               const json_t *wire,
+                               TALER_MINT_AdminAddIncomingResultCallback res_cb,
+                               void *res_cb_cls);
+
+
+/**
+ * Cancel an add incoming.  This function cannot be used on a request
+ * handle if a response is already served for it.
+ *
+ * @param sign the admin add incoming request handle
+ */
+void
+TALER_MINT_admin_add_incoming_cancel (struct TALER_MINT_AdminAddIncomingHandle *aai);
 
 
 

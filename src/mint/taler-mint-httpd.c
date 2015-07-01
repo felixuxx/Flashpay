@@ -28,6 +28,7 @@
 #include <pthread.h>
 #include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_mhd.h"
+#include "taler-mint-httpd_admin.h"
 #include "taler-mint-httpd_deposit.h"
 #include "taler-mint-httpd_withdraw.h"
 #include "taler-mint-httpd_refresh.h"
@@ -199,6 +200,15 @@ handle_mhd_request (void *cls,
         "Only GET is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
+      /* FIXME: maybe conditionally compile these? */
+      { "/admin/add/incoming", MHD_HTTP_METHOD_POST, "application/json",
+        NULL, 0,
+        &TMH_ADMIN_handler_admin_add_incoming, MHD_HTTP_OK },
+      { "/admin/add/incoming", NULL, "text/plain",
+        "Only POST is allowed", 0,
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+
+
 #if HAVE_DEVELOPER
       { "/test", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
@@ -242,10 +252,17 @@ handle_mhd_request (void *cls,
         "Only POST is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/test/rsa", MHD_HTTP_METHOD_POST, "application/json",
+      { "/test/rsa/get", MHD_HTTP_METHOD_GET, "application/json",
 	NULL, 0,
-	&TMH_TEST_handler_test_rsa, MHD_HTTP_OK },
-      { "/test/rsa", NULL, "text/plain",
+	&TMH_TEST_handler_test_rsa_get, MHD_HTTP_OK },
+      { "/test/rsa/get", NULL, "text/plain",
+        "Only GET is allowed", 0,
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+
+      { "/test/rsa/sign", MHD_HTTP_METHOD_POST, "application/json",
+	NULL, 0,
+	&TMH_TEST_handler_test_rsa_sign, MHD_HTTP_OK },
+      { "/test/rsa/sign", NULL, "text/plain",
         "Only POST is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 

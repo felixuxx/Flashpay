@@ -24,6 +24,7 @@
 #include <curl/curl.h>
 #include <jansson.h>
 #include <gnunet/gnunet_util_lib.h>
+#include <microhttpd.h>
 #include "taler_mint_service.h"
 #include "taler_signatures.h"
 #include "mint_api_context.h"
@@ -588,7 +589,7 @@ keys_completed_cb (void *cls,
   }
   switch (response_code) {
   case 0:
-    kr->errno = 1;
+    kr->eno = 1;
     break;
   case MHD_HTTP_OK:
     break;
@@ -596,7 +597,7 @@ keys_completed_cb (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Mint returned status code %u for /keys\n",
                 response_code);
-    kr->errno = 1;
+    kr->eno = 1;
     break;
   }
 

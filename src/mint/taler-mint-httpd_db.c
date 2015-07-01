@@ -1374,4 +1374,53 @@ TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
 }
 
 
+/**
+ * Add an incoming transaction to the database.  Checks if the
+ * transaction is fresh (not a duplicate) and if so adds it to
+ * the database.
+ *
+ * @param connection the MHD connection to handle
+ * @param reserve_pub public key of the reserve
+ * @param amount amount to add to the reserve
+ * @param execution_time when did we receive the wire transfer
+ * @param wire details about the wire transfer
+ * @return MHD result code
+ */
+int
+TMH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
+                                   const struct TALER_ReservePublicKeyP *reserve_pub,
+                                   const struct TALER_Amount *amount,
+                                   struct GNUNET_TIME_Absolute execution_time,
+                                   json_t *wire)
+{
+  struct TALER_MINTDB_Session *session;
+  int ret;
+
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
+                                                  TMH_test_mode)))
+  {
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
+  ret = TMH_plugin->reserves_in_insert (TMH_plugin->cls,
+                                        session,
+                                        reserve_pub,
+                                        amount,
+                                        execution_time,
+                                        wire);
+  if (GNUNET_SYSERR == ret)
+  {
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:s}",
+                                       "status",
+                                       (GNUNET_OK == ret)
+                                       ? "NEW"
+                                       : "DUP");
+}
+
+
 /* end of taler-mint-httpd_db.c */

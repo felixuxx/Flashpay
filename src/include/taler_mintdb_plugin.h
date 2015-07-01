@@ -742,6 +742,7 @@ struct TALER_MINTDB_Plugin
    * @param db the database connection handle
    * @param reserve_pub public key of the reserve
    * @param balance the amount that has to be added to the reserve
+   * @param execution_time when was the amount added
    * @param details bank transaction details justifying the increment,
    *        must be unique for each incoming transaction
    * @return #GNUNET_OK upon success; #GNUNET_NO if the given
@@ -753,6 +754,7 @@ struct TALER_MINTDB_Plugin
                          struct TALER_MINTDB_Session *db,
                          const struct TALER_ReservePublicKeyP *reserve_pub,
                          const struct TALER_Amount *balance,
+                         struct GNUNET_TIME_Absolute execution_time,
                          const json_t *details);
 
 
