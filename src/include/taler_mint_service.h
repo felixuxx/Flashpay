@@ -579,7 +579,7 @@ typedef void
  * @param blinding_key where to store the coin's blinding key
  *        caller must have committed this value to disk before the call (with @a pk)
  * @param res_cb the callback to call when the final result for this request is available
- * @param res_cb_cls closure for the above callback
+ * @param res_cb_cls closure for @a res_cb
  * @return NULL
  *         if the inputs are invalid (i.e. denomination key not with this mint).
  *         In this case, the callback is not called.

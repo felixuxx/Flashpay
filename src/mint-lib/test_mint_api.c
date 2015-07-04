@@ -167,6 +167,11 @@ struct Command
       struct TALER_CoinSpendPrivateKeyP coin_priv;
 
       /**
+       * Blinding key used for the operation.
+       */
+      struct TALER_DenominationBlindingKey blinding_key;
+
+      /**
        * Withdraw handle (while operation is running).
        */
       struct TALER_MINT_WithdrawSignHandle *wsh;
@@ -335,8 +340,7 @@ interpreter_run (void *cls,
 
 
 /**
- * Callbacks of this type are used to serve the result of submitting
- * information about an incoming transaction to a mint.
+ * Function called upon completion of our /admin/add/incoming request.
  *
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
@@ -364,6 +368,73 @@ add_incoming_cb (void *cls,
 
 
 /**
+ * Function called upon completion of our /withdraw/sign request.
+ *
+ * @param cls closure with the interpreter state
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param sig signature over the coin, NULL on error
+ * @param full_response full response from the mint (for logging, in case of errors)
+ */
+static void
+withdraw_sign_cb (void *cls,
+                  unsigned int http_status,
+                  const struct TALER_DenominationSignature *sig,
+                  json_t *full_response)
+{
+  struct InterpreterState *is = cls;
+  struct Command *cmd = &is->commands[is->ip];
+
+  cmd->details.withdraw_sign.wsh = NULL;
+  if (NULL == sig)
+  {
+    fail (is);
+    return;
+  }
+  cmd->details.withdraw_sign.sig.rsa_signature
+    = GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
+  is->ip++;
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
+}
+
+
+/**
+ * Find denomination key matching the given amount.
+ *
+ * @param keys array of keys to search
+ * @param amount coin value to look for
+ * @return NULL if no matching key was found
+ */
+static const struct TALER_MINT_DenomPublicKey *
+find_pk (const struct TALER_MINT_Keys *keys,
+         const struct TALER_Amount *amount)
+{
+  unsigned int i;
+  struct GNUNET_TIME_Absolute now;
+  struct TALER_MINT_DenomPublicKey *pk;
+  char *str;
+
+  now = GNUNET_TIME_absolute_get ();
+  for (i=0;i<keys->num_denom_keys;i++)
+  {
+    pk = &keys->denom_keys[i];
+    if ( (0 == TALER_amount_cmp (amount,
+                                 &pk->value)) &&
+         (now.abs_value_us >= pk->valid_from.abs_value_us) &&
+         (now.abs_value_us < pk->withdraw_valid_until.abs_value_us) )
+      return pk;
+  }
+  str = TALER_amount_to_string (amount);
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "No denomination key for amount %s found\n",
+              str);
+  GNUNET_free (str);
+  return NULL;
+}
+
+
+/**
  * Run the main interpreter loop that performs mint operations.
  *
  * @param cls contains the `struct InterpreterState`
@@ -377,6 +448,7 @@ interpreter_run (void *cls,
   struct Command *cmd = &is->commands[is->ip];
   const struct Command *ref;
   struct TALER_ReservePublicKeyP reserve_pub;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
   struct TALER_Amount amount;
   json_t *wire;
 
@@ -449,9 +521,59 @@ interpreter_run (void *cls,
     trigger_context_task ();
     return;
   case OC_WITHDRAW_SIGN:
-    GNUNET_break (0); // to be implemented!
-    is->ip++;
-    break;
+    GNUNET_assert (NULL !=
+                   cmd->details.withdraw_sign.reserve_reference);
+    ref = find_command (is,
+                        cmd->details.withdraw_sign.reserve_reference);
+    GNUNET_assert (NULL != ref);
+    GNUNET_assert (OC_ADMIN_ADD_INCOMING == ref->oc);
+    if (NULL != cmd->details.withdraw_sign.amount)
+    {
+      if (GNUNET_OK !=
+          TALER_string_to_amount (cmd->details.withdraw_sign.amount,
+                                  &amount))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failed to parse amount `%s' at %u\n",
+                    cmd->details.withdraw_sign.amount,
+                    is->ip);
+        fail (is);
+        return;
+      }
+      cmd->details.withdraw_sign.pk = find_pk (is->keys,
+                                               &amount);
+    }
+    if (NULL == cmd->details.withdraw_sign.pk)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to determine denomination key at %u\n",
+                  is->ip);
+      fail (is);
+      return;
+    }
+
+    /* create coin's private key */
+    {
+      struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
+
+      priv = GNUNET_CRYPTO_eddsa_key_create ();
+      cmd->details.withdraw_sign.coin_priv.eddsa_priv = *priv;
+      GNUNET_free (priv);
+    }
+    GNUNET_CRYPTO_eddsa_key_get_public (&cmd->details.withdraw_sign.coin_priv.eddsa_priv,
+                                        &coin_pub.eddsa_pub);
+    cmd->details.withdraw_sign.blinding_key.rsa_blinding_key
+      = GNUNET_CRYPTO_rsa_blinding_key_create (GNUNET_CRYPTO_rsa_public_key_len (cmd->details.withdraw_sign.pk->key.rsa_public_key));
+
+    cmd->details.withdraw_sign.wsh
+      = TALER_MINT_withdraw_sign (mint,
+                                  cmd->details.withdraw_sign.pk,
+                                  &ref->details.admin_add_incoming.reserve_priv,
+                                  &cmd->details.withdraw_sign.coin_priv,
+                                  &cmd->details.withdraw_sign.blinding_key,
+                                  &withdraw_sign_cb,
+                                  is);
+    return;
   case OC_DEPOSIT:
     GNUNET_break (0); // to be implemented!
     is->ip++;
@@ -513,6 +635,16 @@ do_shutdown (void *cls,
                     cmd->label);
         TALER_MINT_withdraw_sign_cancel (cmd->details.withdraw_sign.wsh);
         cmd->details.withdraw_sign.wsh = NULL;
+      }
+      if (NULL != cmd->details.withdraw_sign.sig.rsa_signature)
+      {
+        GNUNET_CRYPTO_rsa_signature_free (cmd->details.withdraw_sign.sig.rsa_signature);
+        cmd->details.withdraw_sign.sig.rsa_signature = NULL;
+      }
+      if (NULL != cmd->details.withdraw_sign.blinding_key.rsa_blinding_key)
+      {
+        GNUNET_CRYPTO_rsa_blinding_key_free (cmd->details.withdraw_sign.blinding_key.rsa_blinding_key);
+        cmd->details.withdraw_sign.blinding_key.rsa_blinding_key = NULL;
       }
       break;
     case OC_DEPOSIT:
