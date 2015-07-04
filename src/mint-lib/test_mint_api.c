@@ -23,6 +23,8 @@
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_mint_service.h"
+#include <microhttpd.h>
+
 
 /**
  * Main execution context for the main loop.
@@ -115,10 +117,20 @@ struct Command
       const char *amount;
 
       /**
+       * Wire details (JSON).
+       */
+      const char *wire;
+
+      /**
        * Set (by the interpreter) to the reserve's private key
        * we used to fill the reserve.
        */
       struct TALER_ReservePrivateKeyP reserve_priv;
+
+      /**
+       * Set to the API's handle during the operation.
+       */
+      struct TALER_MINT_AdminAddIncomingHandle *aih;
 
     } admin_add_incoming;
 
@@ -243,6 +255,72 @@ fail (struct InterpreterState *is)
 
 
 /**
+ * Find a command by label.
+ *
+ * @param is interpreter state to search
+ * @param label label to look for
+ * @return NULL if command was not found
+ */
+static const struct Command *
+find_command (const struct InterpreterState *is,
+              const char *label)
+{
+  unsigned int i;
+  const struct Command *cmd;
+
+  for (i=0;OC_END != (cmd = &is->commands[i])->oc;i++)
+    if ( (NULL != cmd->label) &&
+         (0 == strcmp (cmd->label,
+                       label)) )
+      return cmd;
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "Command not found: %s\n",
+              label);
+  return NULL;
+}
+
+
+/**
+ * Run the main interpreter loop that performs mint operations.
+ *
+ * @param cls contains the `struct InterpreterState`
+ * @param tc scheduler context
+ */
+static void
+interpreter_run (void *cls,
+                 const struct GNUNET_SCHEDULER_TaskContext *tc);
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting
+ * information about an incoming transaction to a mint.
+ *
+ * @param cls closure with the interpreter state
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param full_response full response from the mint (for logging, in case of errors)
+ */
+static void
+add_incoming_cb (void *cls,
+                 unsigned int http_status,
+                 json_t *full_response)
+{
+  struct InterpreterState *is = cls;
+  struct Command *cmd = &is->commands[is->ip];
+
+  cmd->details.admin_add_incoming.aih = NULL;
+  if (MHD_HTTP_OK != http_status)
+  {
+    fail (is);
+    return;
+  }
+  is->ip++;
+  GNUNET_SCHEDULER_add_now (&interpreter_run,
+                            is);
+}
+
+
+/**
  * Run the main interpreter loop that performs mint operations.
  *
  * @param cls contains the `struct InterpreterState`
@@ -253,7 +331,11 @@ interpreter_run (void *cls,
                  const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   struct InterpreterState *is = cls;
-  struct Command *cmd = &is->commands[is->ip++];
+  struct Command *cmd = &is->commands[is->ip];
+  const struct Command *ref;
+  struct TALER_ReservePublicKeyP reserve_pub;
+  struct TALER_Amount amount;
+  json_t *wire;
 
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
   {
@@ -270,8 +352,56 @@ interpreter_run (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   case OC_ADMIN_ADD_INCOMING:
-    GNUNET_break (0); // to be implemented!
-    break;
+    ref = find_command (is,
+                        cmd->details.admin_add_incoming.reserve_reference);
+    if (NULL != ref)
+    {
+      GNUNET_assert (OC_ADMIN_ADD_INCOMING == ref->oc);
+      cmd->details.admin_add_incoming.reserve_priv
+        = ref->details.admin_add_incoming.reserve_priv;
+    }
+    else
+    {
+      struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
+
+      priv = GNUNET_CRYPTO_eddsa_key_create ();
+      cmd->details.admin_add_incoming.reserve_priv.eddsa_priv = *priv;
+      GNUNET_free (priv);
+    }
+    GNUNET_CRYPTO_eddsa_key_get_public (&cmd->details.admin_add_incoming.reserve_priv.eddsa_priv,
+                                        &reserve_pub.eddsa_pub);
+    if (GNUNET_OK !=
+        TALER_string_to_amount (cmd->details.admin_add_incoming.amount,
+                                &amount))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to parse amount `%s' at %u\n",
+                  cmd->details.admin_add_incoming.amount,
+                  is->ip);
+      fail (is);
+      return;
+    }
+    wire = json_loads (cmd->details.admin_add_incoming.wire,
+                       JSON_REJECT_DUPLICATES,
+                       NULL);
+    if (NULL == wire)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to parse wire details `%s' at %u\n",
+                  cmd->details.admin_add_incoming.amount,
+                  is->ip);
+      fail (is);
+      return;
+    }
+    cmd->details.admin_add_incoming.aih
+      = TALER_MINT_admin_add_incoming (mint,
+                                       &reserve_pub,
+                                       &amount,
+                                       GNUNET_TIME_absolute_get (),
+                                       wire,
+                                       &add_incoming_cb,
+                                       is);
+    return;
   case OC_WITHDRAW_SIGN:
     GNUNET_break (0); // to be implemented!
     break;
@@ -339,6 +469,7 @@ cert_cb (void *cls,
   {
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "create-reserve-1",
+      .details.admin_add_incoming.wire = "{ bank=\"source bank\", account=\"42\" }",
       .details.admin_add_incoming.amount = "EUR:5" },
     { .oc = OC_WITHDRAW_SIGN,
       .label = "withdraw-coin-1",
@@ -348,7 +479,7 @@ cert_cb (void *cls,
       .label = "deposit-simple",
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
-      .details.deposit.wire_details = "{ bank=\"my bank\", account=\"42\" }",
+      .details.deposit.wire_details = "{ bank=\"dest bank\", account=\"42\" }",
       .details.deposit.contract = "{ items={ name=\"ice cream\", value=1 } }",
       .details.deposit.transaction_id = 1 },
     { .oc = OC_END }
