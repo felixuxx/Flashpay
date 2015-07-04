@@ -232,12 +232,40 @@ struct InterpreterState
   struct Command *commands;
 
   /**
+   * Interpreter task (if one is scheduled).
+   */
+  struct GNUNET_SCHEDULER_Task *task;
+
+  /**
    * Instruction pointer.  Tells #interpreter_run() which
    * instruction to run next.
    */
   unsigned int ip;
 
 };
+
+
+/**
+ * Task that runs the context's event loop with the GNUnet scheduler.
+ *
+ * @param cls unused
+ * @param tc scheduler context (unused)
+ */
+static void
+context_task (void *cls,
+              const struct GNUNET_SCHEDULER_TaskContext *tc);
+
+
+/**
+ * Run the context task, the working set has changed.
+ */
+static void
+trigger_context_task ()
+{
+  GNUNET_SCHEDULER_cancel (ctx_task);
+  ctx_task = GNUNET_SCHEDULER_add_now (&context_task,
+                                       NULL);
+}
 
 
 /**
@@ -249,7 +277,6 @@ static void
 fail (struct InterpreterState *is)
 {
   result = GNUNET_SYSERR;
-  GNUNET_free (is);
   GNUNET_SCHEDULER_shutdown ();
 }
 
@@ -268,6 +295,12 @@ find_command (const struct InterpreterState *is,
   unsigned int i;
   const struct Command *cmd;
 
+  if (NULL == label)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Attempt to lookup command for empty label\n");
+    return NULL;
+  }
   for (i=0;OC_END != (cmd = &is->commands[i])->oc;i++)
     if ( (NULL != cmd->label) &&
          (0 == strcmp (cmd->label,
@@ -315,8 +348,8 @@ add_incoming_cb (void *cls,
     return;
   }
   is->ip++;
-  GNUNET_SCHEDULER_add_now (&interpreter_run,
-                            is);
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
 }
 
 
@@ -337,6 +370,7 @@ interpreter_run (void *cls,
   struct TALER_Amount amount;
   json_t *wire;
 
+  is->task = NULL;
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
   {
     fprintf (stderr,
@@ -352,10 +386,12 @@ interpreter_run (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   case OC_ADMIN_ADD_INCOMING:
-    ref = find_command (is,
-                        cmd->details.admin_add_incoming.reserve_reference);
-    if (NULL != ref)
+    if (NULL !=
+        cmd->details.admin_add_incoming.reserve_reference)
     {
+      ref = find_command (is,
+                          cmd->details.admin_add_incoming.reserve_reference);
+      GNUNET_assert (NULL != ref);
       GNUNET_assert (OC_ADMIN_ADD_INCOMING == ref->oc);
       cmd->details.admin_add_incoming.reserve_priv
         = ref->details.admin_add_incoming.reserve_priv;
@@ -388,7 +424,7 @@ interpreter_run (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to parse wire details `%s' at %u\n",
-                  cmd->details.admin_add_incoming.amount,
+                  cmd->details.admin_add_incoming.wire,
                   is->ip);
       fail (is);
       return;
@@ -401,6 +437,7 @@ interpreter_run (void *cls,
                                        wire,
                                        &add_incoming_cb,
                                        is);
+    trigger_context_task ();
     return;
   case OC_WITHDRAW_SIGN:
     GNUNET_break (0); // to be implemented!
@@ -412,13 +449,13 @@ interpreter_run (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unknown instruction %d at %u (%s)\n",
                 cmd->oc,
-                is->ip - 1,
+                is->ip,
                 cmd->label);
     fail (is);
     return;
   }
-  GNUNET_SCHEDULER_add_now (&interpreter_run,
-                            is);
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
 }
 
 
@@ -426,14 +463,57 @@ interpreter_run (void *cls,
  * Function run when the test terminates (good or bad).
  * Cleans up our state.
  *
- * @param cls NULL
+ * @param cls the interpreter state.
  * @param tc unused
  */
 static void
 do_shutdown (void *cls,
              const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
+  struct InterpreterState *is = cls;
+  struct Command *cmd;
+  unsigned int i;
+
   shutdown_task = NULL;
+  for (i=0;OC_END != (cmd = &is->commands[i])->oc;i++)
+  {
+    switch (cmd->oc)
+    {
+    case OC_END:
+      GNUNET_assert (0);
+      break;
+    case OC_ADMIN_ADD_INCOMING:
+      if (NULL != cmd->details.admin_add_incoming.aih)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
+        TALER_MINT_admin_add_incoming_cancel (cmd->details.admin_add_incoming.aih);
+        cmd->details.admin_add_incoming.aih = NULL;
+      }
+      break;
+    case OC_WITHDRAW_SIGN:
+      GNUNET_break (0); // not implemented
+      break;
+    case OC_DEPOSIT:
+      GNUNET_break (0); // not implemented
+      break;
+    default:
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unknown instruction %d at %u (%s)\n",
+                  cmd->oc,
+                  i,
+                  cmd->label);
+      break;
+    }
+  }
+  if (NULL != is->task)
+  {
+    GNUNET_SCHEDULER_cancel (is->task);
+    is->task = NULL;
+  }
+  GNUNET_free (is);
   if (NULL != ctx_task)
   {
     GNUNET_SCHEDULER_cancel (ctx_task);
@@ -464,28 +544,8 @@ static void
 cert_cb (void *cls,
          const struct TALER_MINT_Keys *keys)
 {
-  struct InterpreterState *is;
-  static struct Command commands[] =
-  {
-    { .oc = OC_ADMIN_ADD_INCOMING,
-      .label = "create-reserve-1",
-      .details.admin_add_incoming.wire = "{ bank=\"source bank\", account=\"42\" }",
-      .details.admin_add_incoming.amount = "EUR:5" },
-    { .oc = OC_WITHDRAW_SIGN,
-      .label = "withdraw-coin-1",
-      .details.withdraw_sign.reserve_reference = "create-reserve-1",
-      .details.withdraw_sign.amount = "EUR:5" },
-    { .oc = OC_DEPOSIT,
-      .label = "deposit-simple",
-      .details.deposit.amount = "EUR:5",
-      .details.deposit.coin_ref = "withdraw-coin-1",
-      .details.deposit.wire_details = "{ bank=\"dest bank\", account=\"42\" }",
-      .details.deposit.contract = "{ items={ name=\"ice cream\", value=1 } }",
-      .details.deposit.transaction_id = 1 },
-    { .oc = OC_END }
-  };
+  struct InterpreterState *is = cls;
 
-  GNUNET_assert (NULL == cls);
 #define ERR(cond) do { if(!(cond)) break; GNUNET_break (0); GNUNET_SCHEDULER_shutdown(); return; } while (0)
   ERR (NULL == keys);
   ERR (0 == keys->num_sign_keys);
@@ -499,11 +559,9 @@ cert_cb (void *cls,
 #undef ERR
   /* TODO: start running rest of test suite here! */
 
-  is = GNUNET_new (struct InterpreterState);
   is->keys = keys;
-  is->commands = commands;
-  GNUNET_SCHEDULER_add_now (&interpreter_run,
-                            is);
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
 }
 
 
@@ -575,19 +633,43 @@ static void
 run (void *cls,
      const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
+  struct InterpreterState *is;
+  static struct Command commands[] =
+  {
+    { .oc = OC_ADMIN_ADD_INCOMING,
+      .label = "create-reserve-1",
+      .details.admin_add_incoming.wire = "{ \"bank\":\"source bank\", \"account\":42 }",
+      .details.admin_add_incoming.amount = "EUR:5" },
+    { .oc = OC_WITHDRAW_SIGN,
+      .label = "withdraw-coin-1",
+      .details.withdraw_sign.reserve_reference = "create-reserve-1",
+      .details.withdraw_sign.amount = "EUR:5" },
+    { .oc = OC_DEPOSIT,
+      .label = "deposit-simple",
+      .details.deposit.amount = "EUR:5",
+      .details.deposit.coin_ref = "withdraw-coin-1",
+      .details.deposit.wire_details = "{ \"bank\":\"dest bank\", \"account\":42 }",
+      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":1 } }",
+      .details.deposit.transaction_id = 1 },
+    { .oc = OC_END }
+  };
+
+  is = GNUNET_new (struct InterpreterState);
+  is->commands = commands;
+
   ctx = TALER_MINT_init ();
   GNUNET_assert (NULL != ctx);
   ctx_task = GNUNET_SCHEDULER_add_now (&context_task,
                                        ctx);
   mint = TALER_MINT_connect (ctx,
                              "http://localhost:8081",
-                             &cert_cb, NULL,
+                             &cert_cb, is,
                              TALER_MINT_OPTION_END);
   GNUNET_assert (NULL != mint);
-  shutdown_task =
-      GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_relative_multiply
+  shutdown_task
+    = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_relative_multiply
                                     (GNUNET_TIME_UNIT_SECONDS, 5),
-                                    &do_shutdown, NULL);
+                                    &do_shutdown, is);
 }
 
 
