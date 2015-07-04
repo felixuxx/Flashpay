@@ -166,6 +166,11 @@ struct Command
        */
       struct TALER_CoinSpendPrivateKeyP coin_priv;
 
+      /**
+       * Withdraw handle (while operation is running).
+       */
+      struct TALER_MINT_WithdrawSignHandle *wsh;
+
     } withdraw_sign;
 
     struct
@@ -208,6 +213,11 @@ struct Command
        * if @e refund_deadline is non-zero.
        */
       struct TALER_MerchantPublicKeyP merchant_priv;
+
+      /**
+       * Deposit handle while operation is running.
+       */
+      struct TALER_MINT_DepositHandle *dh;
 
     } deposit;
 
@@ -495,10 +505,26 @@ do_shutdown (void *cls,
       }
       break;
     case OC_WITHDRAW_SIGN:
-      GNUNET_break (0); // not implemented
+      if (NULL != cmd->details.withdraw_sign.wsh)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
+        TALER_MINT_withdraw_sign_cancel (cmd->details.withdraw_sign.wsh);
+        cmd->details.withdraw_sign.wsh = NULL;
+      }
       break;
     case OC_DEPOSIT:
-      GNUNET_break (0); // not implemented
+      if (NULL != cmd->details.deposit.dh)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
+        TALER_MINT_deposit_cancel (cmd->details.deposit.dh);
+        cmd->details.deposit.dh = NULL;
+      }
       break;
     default:
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
