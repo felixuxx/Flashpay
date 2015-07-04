@@ -115,9 +115,7 @@ handle_admin_add_incoming_finished (void *cls,
   json_error_t error;
   json_t *json;
 
-  fprintf (stderr,
-           "FINISHED AAI request\n");
-
+  aai->job = NULL;
   json = NULL;
   if (0 == aai->eno)
   {
@@ -326,7 +324,11 @@ TALER_MINT_admin_add_incoming (struct TALER_MINT_Handle *mint,
 void
 TALER_MINT_admin_add_incoming_cancel (struct TALER_MINT_AdminAddIncomingHandle *aai)
 {
-  MAC_job_cancel (aai->job);
+  if (NULL != aai->job)
+  {
+    MAC_job_cancel (aai->job);
+    aai->job = NULL;
+  }
   curl_slist_free_all (aai->headers);
   GNUNET_free (aai->url);
   GNUNET_free (aai->json_enc);

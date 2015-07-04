@@ -297,6 +297,7 @@ handle_withdraw_status_finished (void *cls,
   json_error_t error;
   json_t *json;
 
+  wsh->job = NULL;
   json = NULL;
   if (0 == wsh->eno)
   {
@@ -540,7 +541,11 @@ TALER_MINT_withdraw_status (struct TALER_MINT_Handle *mint,
 void
 TALER_MINT_withdraw_status_cancel (struct TALER_MINT_WithdrawStatusHandle *wsh)
 {
-  MAC_job_cancel (wsh->job);
+  if (NULL != wsh->job)
+  {
+    MAC_job_cancel (wsh->job);
+    wsh->job = NULL;
+  }
   GNUNET_free (wsh->url);
   GNUNET_free (wsh);
 }
@@ -793,6 +798,7 @@ handle_withdraw_sign_finished (void *cls,
   json_error_t error;
   json_t *json;
 
+  wsh->job = NULL;
   json = NULL;
   if (0 == wsh->eno)
   {
@@ -1067,7 +1073,11 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
 void
 TALER_MINT_withdraw_sign_cancel (struct TALER_MINT_WithdrawSignHandle *sign)
 {
-  MAC_job_cancel (sign->job);
+  if (NULL != sign->job)
+  {
+    MAC_job_cancel (sign->job);
+    sign->job = NULL;
+  }
   curl_slist_free_all (sign->headers);
   GNUNET_free (sign->url);
   GNUNET_free (sign->json_enc);

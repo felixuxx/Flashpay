@@ -316,6 +316,7 @@ handle_deposit_finished (void *cls,
   json_error_t error;
   json_t *json;
 
+  dh->job = NULL;
   json = NULL;
   if (0 == dh->eno)
   {
@@ -709,7 +710,11 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
 void
 TALER_MINT_deposit_cancel (struct TALER_MINT_DepositHandle *deposit)
 {
-  MAC_job_cancel (deposit->job);
+  if (NULL != deposit->job)
+  {
+    MAC_job_cancel (deposit->job);
+    deposit->job = NULL;
+  }
   curl_slist_free_all (deposit->headers);
   GNUNET_free (deposit->url);
   GNUNET_free (deposit->json_enc);

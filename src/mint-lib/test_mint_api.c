@@ -382,7 +382,6 @@ interpreter_run (void *cls,
   {
   case OC_END:
     result = GNUNET_OK;
-    GNUNET_free (is);
     GNUNET_SCHEDULER_shutdown ();
     return;
   case OC_ADMIN_ADD_INCOMING:
@@ -441,9 +440,11 @@ interpreter_run (void *cls,
     return;
   case OC_WITHDRAW_SIGN:
     GNUNET_break (0); // to be implemented!
+    is->ip++;
     break;
   case OC_DEPOSIT:
     GNUNET_break (0); // to be implemented!
+    is->ip++;
     break;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

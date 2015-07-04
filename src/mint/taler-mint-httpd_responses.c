@@ -60,10 +60,6 @@ TMH_RESPONSE_reply_json (struct MHD_Connection *connection,
   ret = MHD_queue_response (connection,
                             response_code,
                             resp);
-  fprintf (stderr,
-           "Queued response %u (%d)\n",
-           response_code,
-           ret);
   MHD_destroy_response (resp);
   return ret;
 }
