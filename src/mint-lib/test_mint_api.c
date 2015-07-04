@@ -51,6 +51,248 @@ static int result;
 
 
 /**
+ * Opcodes for the interpreter.
+ */
+enum OpCode
+{
+  /**
+   * Termination code, stops the interpreter loop (with success).
+   */
+  OC_END = 0,
+
+  /**
+   * Add funds to a reserve by (faking) incoming wire transfer.
+   */
+  OC_ADMIN_ADD_INCOMING,
+
+  /**
+   * Withdraw a coin from a reserve.
+   */
+  OC_WITHDRAW_SIGN,
+
+  /**
+   * Deposit a coin (pay with it).
+   */
+  OC_DEPOSIT
+
+};
+
+
+/**
+ * Details for a mint operation to execute.
+ */
+struct Command
+{
+  /**
+   * Opcode of the command.
+   */
+  enum OpCode oc;
+
+  /**
+   * Label for the command, can be NULL.
+   */
+  const char *label;
+
+  /**
+   * Details about the command.
+   */
+  union
+  {
+
+    struct
+    {
+
+      /**
+       * Label to another admin_add_incoming command if we
+       * should deposit into an existing reserve, NULL if
+       * a fresh reserve should be created.
+       */
+      const char *reserve_reference;
+
+      /**
+       * String describing the amount to add to the reserve.
+       */
+      const char *amount;
+
+      /**
+       * Set (by the interpreter) to the reserve's private key
+       * we used to fill the reserve.
+       */
+      struct TALER_ReservePrivateKeyP reserve_priv;
+
+    } admin_add_incoming;
+
+    struct
+    {
+      /**
+       * Which reserve should we withdraw from?
+       */
+      const char *reserve_reference;
+
+      /**
+       * String describing the denomination value we should withdraw.
+       * A corresponding denomination key must exist in the mint's
+       * offerings.  Can be NULL if @e pk is set instead.
+       */
+      const char *amount;
+
+      /**
+       * If @e amount is NULL, this specifies the denomination key to
+       * use.  Otherwise, this will be set (by the interpreter) to the
+       * denomination PK matching @e amount.
+       */
+      const struct TALER_MINT_DenomPublicKey *pk;
+
+      /**
+       * Set (by the interpreter) to the mint's signature over the
+       * coin's public key.
+       */
+      struct TALER_DenominationSignature sig;
+
+      /**
+       * Set (by the interpreter) to the coin's private key.
+       */
+      struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+    } withdraw_sign;
+
+    struct
+    {
+
+      /**
+       * Amount to deposit.
+       */
+      const char *amount;
+
+      /**
+       * Reference to a withdraw_sign operation for a coin to
+       * be used for the /deposit operation.
+       */
+      const char *coin_ref;
+
+      /**
+       * JSON string describing the merchant's "wire details".
+       */
+      const char *wire_details;
+
+      /**
+       * JSON string describing the contract between the two parties.
+       */
+      const char *contract;
+
+      /**
+       * Transaction ID to use.
+       */
+      uint64_t transaction_id;
+
+      /**
+       * Relative time (to add to 'now') to compute the refund deadline.
+       * Zero for no refunds.
+       */
+      struct GNUNET_TIME_Relative refund_deadline;
+
+      /**
+       * Set (by the interpreter) to a fresh private key of the merchant,
+       * if @e refund_deadline is non-zero.
+       */
+      struct TALER_MerchantPublicKeyP merchant_priv;
+
+    } deposit;
+
+  } details;
+
+};
+
+
+/**
+ * State of the interpreter loop.
+ */
+struct InterpreterState
+{
+  /**
+   * Keys from the mint.
+   */
+  const struct TALER_MINT_Keys *keys;
+
+  /**
+   * Commands the interpreter will run.
+   */
+  struct Command *commands;
+
+  /**
+   * Instruction pointer.  Tells #interpreter_run() which
+   * instruction to run next.
+   */
+  unsigned int ip;
+
+};
+
+
+/**
+ * The testcase failed, return with an error code.
+ *
+ * @param is interpreter state to clean up
+ */
+static void
+fail (struct InterpreterState *is)
+{
+  result = GNUNET_SYSERR;
+  GNUNET_free (is);
+  GNUNET_SCHEDULER_shutdown ();
+}
+
+
+/**
+ * Run the main interpreter loop that performs mint operations.
+ *
+ * @param cls contains the `struct InterpreterState`
+ * @param tc scheduler context
+ */
+static void
+interpreter_run (void *cls,
+                 const struct GNUNET_SCHEDULER_TaskContext *tc)
+{
+  struct InterpreterState *is = cls;
+  struct Command *cmd = &is->commands[is->ip++];
+
+  if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
+  {
+    fprintf (stderr,
+             "Test aborted by shutdown request\n");
+    fail (is);
+    return;
+  }
+  switch (cmd->oc)
+  {
+  case OC_END:
+    result = GNUNET_OK;
+    GNUNET_free (is);
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  case OC_ADMIN_ADD_INCOMING:
+    GNUNET_break (0); // to be implemented!
+    break;
+  case OC_WITHDRAW_SIGN:
+    GNUNET_break (0); // to be implemented!
+    break;
+  case OC_DEPOSIT:
+    GNUNET_break (0); // to be implemented!
+    break;
+  default:
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unknown instruction %d at %u (%s)\n",
+                cmd->oc,
+                is->ip - 1,
+                cmd->label);
+    fail (is);
+    return;
+  }
+  GNUNET_SCHEDULER_add_now (&interpreter_run,
+                            is);
+}
+
+
+/**
  * Function run when the test terminates (good or bad).
  * Cleans up our state.
  *
@@ -92,6 +334,26 @@ static void
 cert_cb (void *cls,
          const struct TALER_MINT_Keys *keys)
 {
+  struct InterpreterState *is;
+  static struct Command commands[] =
+  {
+    { .oc = OC_ADMIN_ADD_INCOMING,
+      .label = "create-reserve-1",
+      .details.admin_add_incoming.amount = "EUR:5" },
+    { .oc = OC_WITHDRAW_SIGN,
+      .label = "withdraw-coin-1",
+      .details.withdraw_sign.reserve_reference = "create-reserve-1",
+      .details.withdraw_sign.amount = "EUR:5" },
+    { .oc = OC_DEPOSIT,
+      .label = "deposit-simple",
+      .details.deposit.amount = "EUR:5",
+      .details.deposit.coin_ref = "withdraw-coin-1",
+      .details.deposit.wire_details = "{ bank=\"my bank\", account=\"42\" }",
+      .details.deposit.contract = "{ items={ name=\"ice cream\", value=1 } }",
+      .details.deposit.transaction_id = 1 },
+    { .oc = OC_END }
+  };
+
   GNUNET_assert (NULL == cls);
 #define ERR(cond) do { if(!(cond)) break; GNUNET_break (0); GNUNET_SCHEDULER_shutdown(); return; } while (0)
   ERR (NULL == keys);
@@ -105,8 +367,12 @@ cert_cb (void *cls,
               keys->num_denom_keys);
 #undef ERR
   /* TODO: start running rest of test suite here! */
-  result = GNUNET_OK;
-  GNUNET_SCHEDULER_shutdown ();
+
+  is = GNUNET_new (struct InterpreterState);
+  is->keys = keys;
+  is->commands = commands;
+  GNUNET_SCHEDULER_add_now (&interpreter_run,
+                            is);
 }
 
 
