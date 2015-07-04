@@ -424,6 +424,15 @@ find_pk (const struct TALER_MINT_Keys *keys,
          (now.abs_value_us >= pk->valid_from.abs_value_us) &&
          (now.abs_value_us < pk->withdraw_valid_until.abs_value_us) )
       return pk;
+    if ( (0 == TALER_amount_cmp (amount,
+                                 &pk->value)) &&
+         ( (now.abs_value_us < pk->valid_from.abs_value_us) ||
+           (now.abs_value_us > pk->withdraw_valid_until.abs_value_us) ) )
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Have a matching denomination key, but with wrong expiration range %llu vs [%llu,%llu)\n",
+                  now.abs_value_us,
+                  pk->valid_from.abs_value_us,
+                  pk->withdraw_valid_until.abs_value_us);
   }
   str = TALER_amount_to_string (amount);
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
