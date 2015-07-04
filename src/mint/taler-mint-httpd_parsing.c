@@ -531,6 +531,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
 
         if ( (-1 != typ) && (json_typeof (root) != typ))
         {
+          *r_json = NULL;
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
@@ -543,6 +544,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
           break;
         }
         *r_json = root;
+        json_incref ((json_t *) root);
         ret = GNUNET_OK;
       }
       break;
@@ -793,7 +795,7 @@ TMH_PARSE_json_data (struct MHD_Connection *connection,
                                      TMH_PARSE_JNC_FIELD,
                                      spec[i].field_name,
                                      TMH_PARSE_JNC_RET_AMOUNT,
-                                     &spec[i].destination);
+                                     spec[i].destination);
       break;
     case TMH_PARSE_JNC_RET_TIME_ABSOLUTE:
       GNUNET_assert (sizeof (struct GNUNET_TIME_Absolute) ==
@@ -803,7 +805,7 @@ TMH_PARSE_json_data (struct MHD_Connection *connection,
                                      TMH_PARSE_JNC_FIELD,
                                      spec[i].field_name,
                                      TMH_PARSE_JNC_RET_TIME_ABSOLUTE,
-                                     &spec[i].destination);
+                                     spec[i].destination);
       break;
     }
   }
@@ -1048,6 +1050,55 @@ TMH_PARSE_amount_json (struct MHD_Connection *connection,
   return GNUNET_OK;
 }
 
+
+/**
+ * Generate line in parser specification for JSON object value.
+ *
+ * @param field name of the field
+ * @param ptraddr address of pointer to JSON to initialize
+ * @return corresponding field spec
+ */
+struct TMH_PARSE_FieldSpecification
+TMH_PARSE_member_object (const char *field,
+                         json_t **jsonp)
+{
+  struct TMH_PARSE_FieldSpecification ret =
+    { field, (void **) jsonp, 0, 0, TMH_PARSE_JNC_RET_TYPED_JSON, JSON_OBJECT };
+  return ret;
+}
+
+
+/**
+ * Generate line in parser specification for an absolute time.
+ *
+ * @param field name of the field
+ * @param[out] atime time to initialize
+ */
+struct TMH_PARSE_FieldSpecification
+TMH_PARSE_member_time_abs (const char *field,
+                           struct GNUNET_TIME_Absolute *atime)
+{
+  struct TMH_PARSE_FieldSpecification ret =
+    { field, atime, sizeof(struct GNUNET_TIME_Absolute), 0, TMH_PARSE_JNC_RET_TIME_ABSOLUTE, 0 };
+  return ret;
+}
+
+
+/**
+ * Generate line in parser specification for an amount.
+ *
+ * @param field name of the field
+ * @param amount a `struct TALER_Amount *` to initialize
+ * @return corresponding field spec
+ */
+struct TMH_PARSE_FieldSpecification
+TMH_PARSE_member_amount (const char *field,
+                         struct TALER_Amount *amount)
+{
+  struct TMH_PARSE_FieldSpecification ret =
+    { field, amount, sizeof(struct TALER_Amount), 0, TMH_PARSE_JNC_RET_AMOUNT, 0 };
+  return ret;
+}
 
 
 /* end of taler-mint-httpd_parsing.c */

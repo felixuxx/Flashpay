@@ -177,7 +177,7 @@ get_coin_public_info (struct MHD_Connection *connection,
     TMH_PARSE_MEMBER_DENOMINATION_SIGNATURE ("denom_sig", &sig.rsa_signature),
     TMH_PARSE_MEMBER_DENOMINATION_PUBLIC_KEY ("denom_pub", &pk.rsa_public_key),
     TMH_PARSE_MEMBER_FIXED ("confirm_sig", &melt_sig),
-    TMH_PARSE_MEMBER_AMOUNT ("value_with_fee", &amount),
+    TMH_PARSE_member_amount ("value_with_fee", &amount),
     TMH_PARSE_MEMBER_END
   };
 

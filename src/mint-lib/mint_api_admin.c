@@ -115,6 +115,9 @@ handle_admin_add_incoming_finished (void *cls,
   json_error_t error;
   json_t *json;
 
+  fprintf (stderr,
+           "FINISHED AAI request\n");
+
   json = NULL;
   if (0 == aai->eno)
   {
@@ -203,9 +206,6 @@ admin_add_incoming_download_cb (char *bufptr,
   size_t msize;
   void *buf;
 
-  fprintf (stderr,
-           "Downloading %u bytes from aai\n",
-           (unsigned int) (nitems * size));
   if (0 == size * nitems)
   {
     /* Nothing (left) to do */

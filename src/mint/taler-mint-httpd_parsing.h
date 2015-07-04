@@ -260,13 +260,18 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec);
  */
 #define TMH_PARSE_MEMBER_ARRAY(field,ptraddr) { field, ptraddr, 0, 0, TMH_PARSE_JNC_RET_TYPED_JSON, JSON_ARRAY }
 
+
 /**
  * Generate line in parser specification for JSON object value.
  *
  * @param field name of the field
- * @param ptraddr address of pointer to initialize (a `void **`)
+ * @param ptraddr address of pointer to JSON to initialize
+ * @return corresponding field spec
  */
-#define TMH_PARSE_MEMBER_OBJECT(field,ptraddr) { field, ptraddr, 0, 0, TMH_PARSE_JNC_RET_TYPED_JSON, JSON_OBJECT }
+struct TMH_PARSE_FieldSpecification
+TMH_PARSE_member_object (const char *field,
+                         json_t **jsonp);
+
 
 /**
  * Generate line in parser specification for RSA public key.
@@ -284,21 +289,30 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec);
  */
 #define TMH_PARSE_MEMBER_DENOMINATION_SIGNATURE(field,ptrsig) { field, ptrsig, 0, 0, TMH_PARSE_JNC_RET_RSA_SIGNATURE, 0 }
 
+
 /**
  * Generate line in parser specification for an amount.
  *
  * @param field name of the field
- * @param amount a `struct TALER_Amount *` to initialize
+ * @param[out] amount a `struct TALER_Amount *` to initialize
+ * @return corresponding field spec
  */
-#define TMH_PARSE_MEMBER_AMOUNT(field,amount) { field, amount, sizeof(*amount), 0, TMH_PARSE_JNC_RET_AMOUNT, 0 }
+struct TMH_PARSE_FieldSpecification
+TMH_PARSE_member_amount (const char *field,
+                         struct TALER_Amount *amount);
+
 
 /**
  * Generate line in parser specification for an absolute time.
  *
  * @param field name of the field
- * @param atime a `struct GNUNET_TIME_Absolute *` to initialize
+ * @param[out] atime time to initialize
+ * @return corresponding field spec
  */
-#define TMH_PARSE_MEMBER_TIME_ABS(field,atime) { field, atime, sizeof(*atime), 0, TMH_PARSE_JNC_RET_TIME_ABSOLUTE, 0 }
+struct TMH_PARSE_FieldSpecification
+TMH_PARSE_member_time_abs (const char *field,
+                           struct GNUNET_TIME_Absolute *atime);
+
 
 
 /**

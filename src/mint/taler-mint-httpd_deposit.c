@@ -147,8 +147,8 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
     TMH_PARSE_MEMBER_FIXED ("H_wire", &deposit.h_wire),
     TMH_PARSE_MEMBER_FIXED ("coin_sig",  &deposit.csig),
     TMH_PARSE_MEMBER_FIXED ("transaction_id", &deposit.transaction_id),
-    TMH_PARSE_MEMBER_TIME_ABS ("timestamp", &deposit.timestamp),
-    TMH_PARSE_MEMBER_TIME_ABS ("refund_deadline", &deposit.refund_deadline),
+    TMH_PARSE_member_time_abs ("timestamp", &deposit.timestamp),
+    TMH_PARSE_member_time_abs ("refund_deadline", &deposit.refund_deadline),
     TMH_PARSE_MEMBER_END
   };
 

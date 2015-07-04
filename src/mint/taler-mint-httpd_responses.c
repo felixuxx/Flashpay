@@ -50,11 +50,20 @@ TMH_RESPONSE_reply_json (struct MHD_Connection *connection,
   resp = MHD_create_response_from_buffer (strlen (json_str), json_str,
                                           MHD_RESPMEM_MUST_FREE);
   if (NULL == resp)
+  {
+    GNUNET_break (0);
     return MHD_NO;
+  }
   (void) MHD_add_response_header (resp,
                                   MHD_HTTP_HEADER_CONTENT_TYPE,
                                   "application/json");
-  ret = MHD_queue_response (connection, response_code, resp);
+  ret = MHD_queue_response (connection,
+                            response_code,
+                            resp);
+  fprintf (stderr,
+           "Queued response %u (%d)\n",
+           response_code,
+           ret);
   MHD_destroy_response (resp);
   return ret;
 }
@@ -84,7 +93,10 @@ TMH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
   json = json_vpack_ex (NULL, 0, fmt, argp);
   va_end (argp);
   if (NULL == json)
+  {
+    GNUNET_break (0);
     return MHD_NO;
+  }
   ret = TMH_RESPONSE_reply_json (connection,
                                  json,
                                  response_code);
@@ -256,7 +268,7 @@ int
 TMH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection)
 {
   return TMH_RESPONSE_reply_internal_error (connection,
-                                          "Failed to connect to database");
+                                            "Failed to connect to database");
 }
 
 

@@ -57,7 +57,7 @@ check_permissions (struct MHD_Connection *connection)
     {
       const struct sockaddr_in *sin = (const struct sockaddr_in *) addr;
 
-      if (INADDR_LOOPBACK != sin->sin_addr.s_addr)
+      if (INADDR_LOOPBACK != ntohl (sin->sin_addr.s_addr))
       {
         res = TMH_RESPONSE_reply_permission_denied (connection,
                                                     "/admin/ only allowed via loopback");
@@ -114,17 +114,16 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
   json_t *root;
   struct TMH_PARSE_FieldSpecification spec[] = {
     TMH_PARSE_MEMBER_FIXED ("reserve_pub", &reserve_pub),
-    TMH_PARSE_MEMBER_AMOUNT ("amount", &amount),
-    TMH_PARSE_MEMBER_TIME_ABS ("execution_date", &at),
-    TMH_PARSE_MEMBER_OBJECT ("wire", &wire),
+    TMH_PARSE_member_amount ("amount", &amount),
+    TMH_PARSE_member_time_abs ("execution_date", &at),
+    TMH_PARSE_member_object ("wire", &wire),
     TMH_PARSE_MEMBER_END
   };
   int res;
 
   res = check_permissions (connection);
   if (GNUNET_OK != res)
-    return (GNUNET_OK == res) ? MHD_YES : MHD_NO;
-
+    return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   res = TMH_PARSE_post_json (connection,
                              connection_cls,
                              upload_data,

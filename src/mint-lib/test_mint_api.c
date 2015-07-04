@@ -605,7 +605,7 @@ context_task (void *cls,
   rs = GNUNET_NETWORK_fdset_create ();
   GNUNET_NETWORK_fdset_copy_native (rs,
                                     &read_fd_set,
-                                    max_fd);
+                                    max_fd + 1);
   ws = GNUNET_NETWORK_fdset_create ();
   GNUNET_NETWORK_fdset_copy_native (ws,
                                     &write_fd_set,
