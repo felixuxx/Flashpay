@@ -731,6 +731,7 @@ cert_cb (void *cls,
 {
   struct InterpreterState *is = cls;
 
+  /* check that keys is OK */
 #define ERR(cond) do { if(!(cond)) break; GNUNET_break (0); GNUNET_SCHEDULER_shutdown(); return; } while (0)
   ERR (NULL == keys);
   ERR (0 == keys->num_sign_keys);
@@ -742,8 +743,8 @@ cert_cb (void *cls,
               "Read %u denomination keys\n",
               keys->num_denom_keys);
 #undef ERR
-  /* TODO: start running rest of test suite here! */
 
+  /* run actual tests via interpreter-loop */
   is->keys = keys;
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
                                        is);
@@ -821,6 +822,7 @@ run (void *cls,
   struct InterpreterState *is;
   static struct Command commands[] =
   {
+    /* Fill reserve with EUR:5.01, as withdraw fee is 1 ct per config */
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "create-reserve-1",
       .details.admin_add_incoming.wire = "{ \"bank\":\"source bank\", \"account\":42 }",
