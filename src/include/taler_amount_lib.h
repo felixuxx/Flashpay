@@ -169,6 +169,9 @@ TALER_amount_ntoh (struct TALER_Amount *res,
  * @param a1 first amount
  * @param a2 second amount
  * @return result of the comparison
+ *         -1 if `a1 < a2`
+ *          1 if `a1 > a2`
+ *          0 if `a1 == a2`.
  */
 int
 TALER_amount_cmp (const struct TALER_Amount *a1,

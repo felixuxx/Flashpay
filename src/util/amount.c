@@ -305,7 +305,10 @@ TALER_amount_cmp_currency_nbo (const struct TALER_AmountNBO *a1,
  *
  * @param a1 first amount
  * @param a2 second amount
- * @return result of the comparison
+ * @return result of the comparison,
+ *         -1 if `a1 < a2`
+ *          1 if `a1 > a2`
+ *          0 if `a1 == a2`.
  */
 int
 TALER_amount_cmp (const struct TALER_Amount *a1,

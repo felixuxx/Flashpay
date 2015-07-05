@@ -655,7 +655,7 @@ withdraw_sign_ok (struct TALER_MINT_WithdrawSignHandle *wsh,
   struct GNUNET_CRYPTO_rsa_Signature *sig;
   struct TALER_DenominationSignature dsig;
   struct MAJ_Specification spec[] = {
-    MAJ_spec_fixed_auto ("ev_sig", &blind_sig),
+    MAJ_spec_rsa_signature ("ev_sig", &blind_sig),
     MAJ_spec_end
   };
 
@@ -771,10 +771,10 @@ withdraw_sign_payment_required (struct TALER_MINT_WithdrawSignHandle *wsh,
     return GNUNET_SYSERR;
   }
   /* Check that funds were really insufficient */
-  if (0 < TALER_amount_cmp (&requested_amount,
-                            &balance))
+  if (0 >= TALER_amount_cmp (&requested_amount,
+                             &balance))
   {
-    /* Requested amount is smaller than reported balance,
+    /* Requested amount is smaller or equal to reported balance,
        so this should not have failed. */
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -971,6 +971,7 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
   wsh->mint = mint;
   wsh->cb = res_cb;
   wsh->cb_cls = res_cb_cls;
+  wsh->pk = pk;
 
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
