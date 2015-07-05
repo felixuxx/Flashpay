@@ -222,7 +222,7 @@ struct Command
        * Set (by the interpreter) to a fresh private key of the merchant,
        * if @e refund_deadline is non-zero.
        */
-      struct TALER_MerchantPublicKeyP merchant_priv;
+      struct TALER_MerchantPrivateKeyP merchant_priv;
 
       /**
        * Deposit handle while operation is running.
@@ -403,6 +403,37 @@ withdraw_sign_cb (void *cls,
   is->ip++;
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
                                        is);
+}
+
+
+/**
+ * Function called with the result of a /deposit operation.
+ *
+ * @param cls closure with the interpreter state
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful deposit;
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param obj the received JSON reply, should be kept as proof (and, in case of errors,
+ *            be forwarded to the customer)
+ */
+static void
+deposit_cb (void *cls,
+            unsigned int http_status,
+            json_t *obj)
+{
+  struct InterpreterState *is = cls;
+  struct Command *cmd = &is->commands[is->ip];
+
+  cmd->details.deposit.dh = NULL;
+  if (MHD_HTTP_OK != http_status)
+  {
+    GNUNET_break (0);
+    fail (is);
+    return;
+  }
+  is->ip++;
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
+
 }
 
 
@@ -601,9 +632,91 @@ interpreter_run (void *cls,
     trigger_context_task ();
     return;
   case OC_DEPOSIT:
-    GNUNET_break (0); // to be implemented!
-    is->ip++;
-    break;
+    {
+      struct GNUNET_HashCode h_contract;
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+      struct TALER_CoinSpendSignatureP coin_sig;
+      struct GNUNET_TIME_Absolute refund_deadline;
+      struct GNUNET_TIME_Absolute timestamp;
+      struct TALER_MerchantPublicKeyP merchant_pub;
+      json_t *wire;
+
+      GNUNET_assert (NULL !=
+                     cmd->details.deposit.coin_ref);
+      ref = find_command (is,
+                          cmd->details.deposit.coin_ref);
+      GNUNET_assert (NULL != ref);
+      GNUNET_assert (OC_WITHDRAW_SIGN == ref->oc);
+      if (GNUNET_OK !=
+          TALER_string_to_amount (cmd->details.deposit.amount,
+                                  &amount))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failed to parse amount `%s' at %u\n",
+                    cmd->details.deposit.amount,
+                    is->ip);
+        fail (is);
+        return;
+      }
+      GNUNET_CRYPTO_hash (cmd->details.deposit.contract,
+                          strlen (cmd->details.deposit.contract),
+                          &h_contract);
+      wire = json_loads (cmd->details.deposit.wire_details,
+                         JSON_REJECT_DUPLICATES,
+                         NULL);
+      if (NULL == wire)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failed to parse wire details `%s' at %u\n",
+                    cmd->details.deposit.wire_details,
+                    is->ip);
+        fail (is);
+        return;
+      }
+      GNUNET_CRYPTO_eddsa_key_get_public (&ref->details.withdraw_sign.coin_priv.eddsa_priv,
+                                          &coin_pub.eddsa_pub);
+
+      if (0 != cmd->details.deposit.refund_deadline.rel_value_us)
+      {
+        struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
+
+        priv = GNUNET_CRYPTO_eddsa_key_create ();
+        cmd->details.deposit.merchant_priv.eddsa_priv = *priv;
+        GNUNET_free (priv);
+        refund_deadline = GNUNET_TIME_relative_to_absolute (cmd->details.deposit.refund_deadline);
+      }
+      else
+      {
+        refund_deadline = GNUNET_TIME_UNIT_ZERO_ABS;
+      }
+      timestamp = GNUNET_TIME_absolute_get ();
+
+      /* FIXME: init "coin_sig" here! */
+
+      cmd->details.deposit.dh
+        = TALER_MINT_deposit (mint,
+                              &amount,
+                              wire,
+                              &h_contract,
+                              &coin_pub,
+                              &ref->details.withdraw_sign.sig,
+                              &ref->details.withdraw_sign.pk->key,
+                              timestamp,
+                              cmd->details.deposit.transaction_id,
+                              &merchant_pub,
+                              refund_deadline,
+                              &coin_sig,
+                              &deposit_cb,
+                              is);
+      if (NULL == cmd->details.deposit.dh)
+      {
+        GNUNET_break (0);
+        json_decref (wire);
+        fail (is);
+        return;
+      }
+      return;
+    }
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unknown instruction %d at %u (%s)\n",

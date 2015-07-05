@@ -672,6 +672,10 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
                                    dh->url));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
+                                   CURLOPT_VERBOSE,
+                                   1LL));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDS,
                                    dh->json_enc));
   GNUNET_assert (CURLE_OK ==

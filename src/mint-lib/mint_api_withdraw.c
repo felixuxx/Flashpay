@@ -811,9 +811,6 @@ handle_withdraw_sign_finished (void *cls,
     GNUNET_break (0);
     response_code = 0;
   }
-  fprintf (stderr,
-           "Response code: %u\n",
-           (unsigned int) response_code);
   if ( (0 == wsh->eno) &&
        (0 != response_code) )
   {
@@ -1037,10 +1034,6 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    wsh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_VERBOSE,
-                                   1LL));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDS,
