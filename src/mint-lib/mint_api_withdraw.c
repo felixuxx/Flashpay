@@ -36,7 +36,7 @@
  */
 #define JSON_WARN(error)                                                \
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,                              \
-                "JSON parsing failed at %s:%u: %s (%s)",                \
+                "JSON parsing failed at %s:%u: %s (%s)\n",              \
                 __FILE__, __LINE__, error.text, error.source)
 
 
@@ -800,7 +800,20 @@ handle_withdraw_sign_finished (void *cls,
 
   wsh->job = NULL;
   json = NULL;
-  if (0 == wsh->eno)
+  if (CURLE_OK !=
+      curl_easy_getinfo (eh,
+                         CURLINFO_RESPONSE_CODE,
+                         &response_code))
+  {
+    /* unexpected error... */
+    GNUNET_break (0);
+    response_code = 0;
+  }
+  fprintf (stderr,
+           "Response code: %u\n",
+           (unsigned int) response_code);
+  if ( (0 == wsh->eno) &&
+       (0 != response_code) )
   {
     json = json_loadb (wsh->buf,
                        wsh->buf_size,
@@ -809,18 +822,6 @@ handle_withdraw_sign_finished (void *cls,
     if (NULL == json)
     {
       JSON_WARN (error);
-      response_code = 0;
-    }
-  }
-  if (NULL != json)
-  {
-    if (CURLE_OK !=
-        curl_easy_getinfo (eh,
-                           CURLINFO_RESPONSE_CODE,
-                           &response_code))
-    {
-      /* unexpected error... */
-      GNUNET_break (0);
       response_code = 0;
     }
   }
@@ -1032,6 +1033,10 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    wsh->url));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_VERBOSE,
+                                   1LL));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDS,

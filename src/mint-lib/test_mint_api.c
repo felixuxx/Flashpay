@@ -358,6 +358,7 @@ add_incoming_cb (void *cls,
   cmd->details.admin_add_incoming.aih = NULL;
   if (MHD_HTTP_OK != http_status)
   {
+    GNUNET_break (0);
     fail (is);
     return;
   }
@@ -385,12 +386,10 @@ withdraw_sign_cb (void *cls,
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
 
-  fprintf (stderr,
-           "Withdraw completed: %u\n",
-           http_status);
   cmd->details.withdraw_sign.wsh = NULL;
   if (NULL == sig)
   {
+    GNUNET_break (0);
     fail (is);
     return;
   }

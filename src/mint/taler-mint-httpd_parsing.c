@@ -768,24 +768,20 @@ TMH_PARSE_json_data (struct MHD_Connection *connection,
       *((void**)spec[i].destination) = ptr;
       break;
     case TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY:
-      ptr = NULL;
       ret = TMH_PARSE_navigate_json (connection,
                                      root,
                                      TMH_PARSE_JNC_FIELD,
                                      spec[i].field_name,
                                      TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY,
-                                     &ptr);
-      spec[i].destination = ptr;
+                                     spec[i].destination);
       break;
     case TMH_PARSE_JNC_RET_RSA_SIGNATURE:
-      ptr = NULL;
       ret = TMH_PARSE_navigate_json (connection,
                                      root,
                                      TMH_PARSE_JNC_FIELD,
                                      spec[i].field_name,
                                      TMH_PARSE_JNC_RET_RSA_SIGNATURE,
-                                     &ptr);
-      spec[i].destination = ptr;
+                                     spec[i].destination);
       break;
     case TMH_PARSE_JNC_RET_AMOUNT:
       GNUNET_assert (sizeof (struct TALER_Amount) ==
@@ -857,25 +853,25 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec)
       break;
     case TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY:
       {
-        struct TALER_DenominationPublicKey pk;
+        struct TALER_DenominationPublicKey *pk;
 
-        pk = *(struct TALER_DenominationPublicKey *) spec[i].destination;
-        if (NULL != pk.rsa_public_key)
+        pk = spec[i].destination;
+        if (NULL != pk->rsa_public_key)
         {
-          GNUNET_CRYPTO_rsa_public_key_free (pk.rsa_public_key);
-          pk.rsa_public_key = NULL;
+          GNUNET_CRYPTO_rsa_public_key_free (pk->rsa_public_key);
+          pk->rsa_public_key = NULL;
         }
       }
       break;
     case TMH_PARSE_JNC_RET_RSA_SIGNATURE:
       {
-        struct TALER_DenominationSignature sig;
+        struct TALER_DenominationSignature *sig;
 
-        sig = *(struct TALER_DenominationSignature *) spec[i].destination;
-        if (NULL != sig.rsa_signature)
+        sig = spec[i].destination;
+        if (NULL != sig->rsa_signature)
         {
-          GNUNET_CRYPTO_rsa_signature_free (sig.rsa_signature);
-          sig.rsa_signature = NULL;
+          GNUNET_CRYPTO_rsa_signature_free (sig->rsa_signature);
+          sig->rsa_signature = NULL;
         }
       }
       break;
@@ -1080,6 +1076,40 @@ TMH_PARSE_member_time_abs (const char *field,
 {
   struct TMH_PARSE_FieldSpecification ret =
     { field, atime, sizeof(struct GNUNET_TIME_Absolute), 0, TMH_PARSE_JNC_RET_TIME_ABSOLUTE, 0 };
+  return ret;
+}
+
+
+/**
+ * Generate line in parser specification for RSA public key.
+ *
+ * @param field name of the field
+ * @param[out] pk key to initialize
+ * @return corresponding field spec
+ */
+struct TMH_PARSE_FieldSpecification
+TMH_PARSE_member_denomination_public_key (const char *field,
+                                          struct TALER_DenominationPublicKey *pk)
+{
+  struct TMH_PARSE_FieldSpecification ret =
+    { field, pk, 0, 0, TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY, 0 };
+  return ret;
+}
+
+
+/**
+ * Generate line in parser specification for RSA public key.
+ *
+ * @param field name of the field
+ * @param sig the signature to initialize
+ * @return corresponding field spec
+ */
+struct TMH_PARSE_FieldSpecification
+TMH_PARSE_member_denomination_signature (const char *field,
+                                         struct TALER_DenominationSignature *sig)
+{
+  struct TMH_PARSE_FieldSpecification ret =
+    { field, sig, 0, 0, TMH_PARSE_JNC_RET_RSA_SIGNATURE, 0 };
   return ret;
 }
 

@@ -47,10 +47,12 @@ TMH_RESPONSE_reply_json (struct MHD_Connection *connection,
   int ret;
 
   json_str = json_dumps (json, JSON_INDENT(2));
+  GNUNET_assert (NULL != json_str);
   resp = MHD_create_response_from_buffer (strlen (json_str), json_str,
                                           MHD_RESPMEM_MUST_FREE);
   if (NULL == resp)
   {
+    free (json_str);
     GNUNET_break (0);
     return MHD_NO;
   }
@@ -84,12 +86,17 @@ TMH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
   json_t *json;
   va_list argp;
   int ret;
+  json_error_t jerror;
 
   va_start (argp, fmt);
-  json = json_vpack_ex (NULL, 0, fmt, argp);
+  json = json_vpack_ex (&jerror, 0, fmt, argp);
   va_end (argp);
   if (NULL == json)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to pack JSON with format `%s': %s\n",
+                fmt,
+                jerror.text);
     GNUNET_break (0);
     return MHD_NO;
   }
@@ -229,10 +236,10 @@ TMH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
                                    const char *hint)
 {
   return TMH_RESPONSE_reply_json_pack (connection,
-                                     MHD_HTTP_BAD_REQUEST,
-                                     "{s:s, s:s}",
-                                     "error", "client error",
-                                     "hint", hint);
+                                       MHD_HTTP_BAD_REQUEST,
+                                       "{s:s, s:s}",
+                                       "error", "client error",
+                                       "hint", hint);
 }
 
 
@@ -247,9 +254,9 @@ int
 TMH_RESPONSE_reply_commit_error (struct MHD_Connection *connection)
 {
   return TMH_RESPONSE_reply_json_pack (connection,
-                                     MHD_HTTP_BAD_REQUEST,
-                                     "{s:s}",
-                                     "error", "commit failure");
+                                       MHD_HTTP_BAD_REQUEST,
+                                       "{s:s}",
+                                       "error", "commit failure");
 }
 
 
@@ -571,16 +578,14 @@ compile_reserve_history (const struct TALER_MINTDB_ReserveHistory *rh,
                                         "type", "WITHDRAW",
                                         "signature", transaction,
                                         "amount", TALER_json_from_amount (&value)));
-
       break;
     }
   }
   if (0 == ret)
   {
-    /* history is empty!? */
-    GNUNET_break (0);
-    json_decref (json_history);
-    return NULL;
+    /* did not encounter any withdraw operations, set to zero */
+    TALER_amount_get_zero (deposit_total.currency,
+                           &withdraw_total);
   }
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (balance,
@@ -591,6 +596,7 @@ compile_reserve_history (const struct TALER_MINTDB_ReserveHistory *rh,
     json_decref (json_history);
     return NULL;
   }
+
   return json_history;
 }
 
@@ -609,7 +615,6 @@ TMH_RESPONSE_reply_withdraw_status_success (struct MHD_Connection *connection,
   json_t *json_balance;
   json_t *json_history;
   struct TALER_Amount balance;
-  int ret;
 
   json_history = compile_reserve_history (rh,
                                           &balance);
@@ -617,14 +622,11 @@ TMH_RESPONSE_reply_withdraw_status_success (struct MHD_Connection *connection,
     return TMH_RESPONSE_reply_internal_error (connection,
                                               "balance calculation failure");
   json_balance = TALER_json_from_amount (&balance);
-  ret = TMH_RESPONSE_reply_json_pack (connection,
-                                      MHD_HTTP_OK,
-                                      "{s:o, s:o}",
-                                      "balance", json_balance,
-                                      "history", json_history);
-  json_decref (json_history);
-  json_decref (json_balance);
-  return ret;
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:o, s:o}",
+                                       "balance", json_balance,
+                                       "history", json_history);
 }
 
 
@@ -644,7 +646,6 @@ TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *conn
   json_t *json_balance;
   json_t *json_history;
   struct TALER_Amount balance;
-  int ret;
 
   json_history = compile_reserve_history (rh,
                                           &balance);
@@ -652,15 +653,12 @@ TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *conn
     return TMH_RESPONSE_reply_internal_error (connection,
                                               "balance calculation failure");
   json_balance = TALER_json_from_amount (&balance);
-  ret = TMH_RESPONSE_reply_json_pack (connection,
-                                      MHD_HTTP_FORBIDDEN,
-                                      "{s:s, s:o, s:o}",
-                                      "error", "Insufficient funds"
-                                      "balance", json_balance,
-                                      "history", json_history);
-  json_decref (json_history);
-  json_decref (json_balance);
-  return ret;
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_FORBIDDEN,
+                                       "{s:s, s:o, s:o}",
+                                       "error", "Insufficient funds",
+                                       "balance", json_balance,
+                                       "history", json_history);
 }
 
 
@@ -676,15 +674,12 @@ TMH_RESPONSE_reply_withdraw_sign_success (struct MHD_Connection *connection,
                                           const struct TALER_MINTDB_CollectableBlindcoin *collectable)
 {
   json_t *sig_json;
-  int ret;
 
   sig_json = TALER_json_from_rsa_signature (collectable->sig.rsa_signature);
-  ret = TMH_RESPONSE_reply_json_pack (connection,
-                                      MHD_HTTP_OK,
-                                      "{s:o}",
-                                      "ev_sig", sig_json);
-  json_decref (sig_json);
-  return ret;
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:o}",
+                                       "ev_sig", sig_json);
 }
 
 
@@ -743,7 +738,6 @@ TMH_RESPONSE_reply_refresh_melt_success (struct MHD_Connection *connection,
   struct TALER_RefreshMeltConfirmationPS body;
   struct TALER_MintSignatureP sig;
   json_t *sig_json;
-  int ret;
 
   body.purpose.size = htonl (sizeof (struct TALER_RefreshMeltConfirmationPS));
   body.purpose.purpose = htonl (TALER_SIGNATURE_MINT_CONFIRM_MELT);
@@ -754,13 +748,11 @@ TMH_RESPONSE_reply_refresh_melt_success (struct MHD_Connection *connection,
   sig_json = TALER_json_from_eddsa_sig (&body.purpose,
                                         &sig.eddsa_signature);
   GNUNET_assert (NULL != sig_json);
-  ret = TMH_RESPONSE_reply_json_pack (connection,
-                                      MHD_HTTP_OK,
-                                      "{s:i, s:o}",
-                                      "noreveal_index", (int) noreveal_index,
-                                      "signature", sig_json);
-  json_decref (sig_json);
-  return ret;
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:i, s:o}",
+                                       "noreveal_index", (int) noreveal_index,
+                                       "signature", sig_json);
 }
 
 
@@ -916,7 +908,6 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
     json_array_append_new (info_links,
                            info_link_k);
   }
-
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_CONFLICT,
                                        "{s:s, s:i, s:i, s:o, s:o, s:o, s:o, s:s}",

@@ -105,7 +105,7 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
     TMH_PARSE_MEMBER_VARIABLE ("coin_ev"),
     TMH_PARSE_MEMBER_FIXED ("reserve_pub", &wsrd.reserve_pub),
     TMH_PARSE_MEMBER_FIXED ("reserve_sig", &signature),
-    TMH_PARSE_MEMBER_DENOMINATION_PUBLIC_KEY ("denom_pub", &denomination_pub),
+    TMH_PARSE_member_denomination_public_key ("denom_pub", &denomination_pub),
     TMH_PARSE_MEMBER_END
   };
 

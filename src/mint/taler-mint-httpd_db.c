@@ -411,11 +411,23 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
       break;
     }
   }
+  if (0 == (res & 1))
+  {
+    /* did not encounter any deposit operations, how can we have a reserve? */
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
+  if (0 == (res & 2))
+  {
+    /* did not encounter any withdraw operations, set to zero */
+    TALER_amount_get_zero (deposit_total.currency,
+                           &withdraw_total);
+  }
   /* All reserve balances should be non-negative */
-  GNUNET_break (GNUNET_SYSERR !=
-                TALER_amount_subtract (&balance,
-                                       &deposit_total,
-                                       &withdraw_total));
+  GNUNET_assert (GNUNET_SYSERR !=
+                 TALER_amount_subtract (&balance,
+                                        &deposit_total,
+                                        &withdraw_total));
   if (0 < TALER_amount_cmp (&amount_required,
                             &balance))
   {

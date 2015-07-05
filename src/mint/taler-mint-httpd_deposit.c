@@ -139,8 +139,8 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct TMH_KS_StateHandle *ks;
   struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_MEMBER_DENOMINATION_PUBLIC_KEY ("denom_pub", &deposit.coin.denom_pub),
-    TMH_PARSE_MEMBER_DENOMINATION_SIGNATURE ("ub_sig", &deposit.coin.denom_sig),
+    TMH_PARSE_member_denomination_public_key ("denom_pub", &deposit.coin.denom_pub),
+    TMH_PARSE_member_denomination_signature ("ub_sig", &deposit.coin.denom_sig),
     TMH_PARSE_MEMBER_FIXED ("coin_pub", &deposit.coin.coin_pub),
     TMH_PARSE_MEMBER_FIXED ("merchant_pub", &deposit.merchant_pub),
     TMH_PARSE_MEMBER_FIXED ("H_contract", &deposit.h_contract),

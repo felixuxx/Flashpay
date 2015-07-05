@@ -174,8 +174,8 @@ get_coin_public_info (struct MHD_Connection *connection,
   struct TALER_Amount amount;
   struct TMH_PARSE_FieldSpecification spec[] = {
     TMH_PARSE_MEMBER_FIXED ("coin_pub", &r_melt_detail->coin_info.coin_pub),
-    TMH_PARSE_MEMBER_DENOMINATION_SIGNATURE ("denom_sig", &sig.rsa_signature),
-    TMH_PARSE_MEMBER_DENOMINATION_PUBLIC_KEY ("denom_pub", &pk.rsa_public_key),
+    TMH_PARSE_member_denomination_signature ("denom_sig", &sig),
+    TMH_PARSE_member_denomination_public_key ("denom_pub", &pk),
     TMH_PARSE_MEMBER_FIXED ("confirm_sig", &melt_sig),
     TMH_PARSE_member_amount ("value_with_fee", &amount),
     TMH_PARSE_MEMBER_END

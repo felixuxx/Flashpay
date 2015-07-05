@@ -277,17 +277,24 @@ TMH_PARSE_member_object (const char *field,
  * Generate line in parser specification for RSA public key.
  *
  * @param field name of the field
- * @param ptrpk address of `struct TALER_DenominationPublicKey` initialize
+ * @param[out] pk key to initialize
+ * @return corresponding field spec
  */
-#define TMH_PARSE_MEMBER_DENOMINATION_PUBLIC_KEY(field,ptrpk) { field, ptrpk, 0, 0, TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY, 0 }
+struct TMH_PARSE_FieldSpecification
+TMH_PARSE_member_denomination_public_key (const char *field,
+                                          struct TALER_DenominationPublicKey *pk);
+
 
 /**
  * Generate line in parser specification for RSA public key.
  *
  * @param field name of the field
- * @param ptrsig address of `struct TALER_DenominationSignature *` initialize
+ * @param sig the signature to initialize
+ * @return corresponding field spec
  */
-#define TMH_PARSE_MEMBER_DENOMINATION_SIGNATURE(field,ptrsig) { field, ptrsig, 0, 0, TMH_PARSE_JNC_RET_RSA_SIGNATURE, 0 }
+struct TMH_PARSE_FieldSpecification
+TMH_PARSE_member_denomination_signature (const char *field,
+                                         struct TALER_DenominationSignature *sig);
 
 
 /**
