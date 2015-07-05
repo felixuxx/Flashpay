@@ -1065,6 +1065,23 @@ TMH_PARSE_member_object (const char *field,
 
 
 /**
+ * Generate line in parser specification for JSON array value.
+ *
+ * @param field name of the field
+ * @param jsonp address of JSON pointer to initialize
+ * @return corresponding field spec
+ */
+struct TMH_PARSE_FieldSpecification
+TMH_PARSE_member_array (const char *field,
+                        json_t **jsonp)
+{
+  struct TMH_PARSE_FieldSpecification ret =
+    { field, jsonp, 0, 0, TMH_PARSE_JNC_RET_TYPED_JSON, JSON_ARRAY };
+  return ret;
+}
+
+
+/**
  * Generate line in parser specification for an absolute time.
  *
  * @param field name of the field

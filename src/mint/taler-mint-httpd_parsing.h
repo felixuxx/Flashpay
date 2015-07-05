@@ -252,13 +252,17 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec);
  */
 #define TMH_PARSE_MEMBER_VARIABLE(field) { field, NULL, 0, 0, TMH_PARSE_JNC_RET_DATA_VAR, 0 }
 
+
 /**
  * Generate line in parser specification for JSON array value.
  *
  * @param field name of the field
- * @param ptraddr address of pointer to initialize (a `void **`)
+ * @param ptraddr address of JSON pointer to initialize
+ * @return corresponding field spec
  */
-#define TMH_PARSE_MEMBER_ARRAY(field,ptraddr) { field, ptraddr, 0, 0, TMH_PARSE_JNC_RET_TYPED_JSON, JSON_ARRAY }
+struct TMH_PARSE_FieldSpecification
+TMH_PARSE_member_array (const char *field,
+                        json_t **jsonp);
 
 
 /**

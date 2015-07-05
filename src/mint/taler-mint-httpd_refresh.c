@@ -653,12 +653,12 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
   json_t *coin_detail;
   int res;
   struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_MEMBER_ARRAY ("new_denoms", &new_denoms),
-    TMH_PARSE_MEMBER_ARRAY ("melt_coins", &melt_coins),
-    TMH_PARSE_MEMBER_ARRAY ("coin_evs", &coin_evs),
-    TMH_PARSE_MEMBER_ARRAY ("link_encs", &link_encs),
-    TMH_PARSE_MEMBER_ARRAY ("transfer_pubs", &transfer_pubs),
-    TMH_PARSE_MEMBER_ARRAY ("secret_encs", &secret_encs),
+    TMH_PARSE_member_array ("new_denoms", &new_denoms),
+    TMH_PARSE_member_array ("melt_coins", &melt_coins),
+    TMH_PARSE_member_array ("coin_evs", &coin_evs),
+    TMH_PARSE_member_array ("link_encs", &link_encs),
+    TMH_PARSE_member_array ("transfer_pubs", &transfer_pubs),
+    TMH_PARSE_member_array ("secret_encs", &secret_encs),
     TMH_PARSE_MEMBER_END
   };
 
@@ -820,7 +820,7 @@ TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
   json_t *transfer_privs;
   struct TMH_PARSE_FieldSpecification spec[] = {
     TMH_PARSE_MEMBER_FIXED ("session_hash", &session_hash),
-    TMH_PARSE_MEMBER_ARRAY ("transfer_privs", &transfer_privs),
+    TMH_PARSE_member_array ("transfer_privs", &transfer_privs),
     TMH_PARSE_MEMBER_END
   };
 
