@@ -287,6 +287,7 @@ parse_reserve_history (json_t *history,
  * HTTP /withdraw/status request.
  *
  * @param cls the `struct TALER_MINT_WithdrawStatusHandle`
+ * @param eh curl handle of the request that finished
  */
 static void
 handle_withdraw_status_finished (void *cls,
@@ -788,6 +789,7 @@ withdraw_sign_payment_required (struct TALER_MINT_WithdrawSignHandle *wsh,
  * HTTP /withdraw/sign request.
  *
  * @param cls the `struct TALER_MINT_WithdrawSignHandle`
+ * @param eh curl handle of the request that finished
  */
 static void
 handle_withdraw_sign_finished (void *cls,
@@ -937,6 +939,7 @@ withdraw_sign_download_cb (char *bufptr,
  *
  * @param mint the mint handle; the mint must be ready to operate
  * @param pk kind of coin to create
+ * @param reserve_priv private key of the reserve to withdraw from
  * @param coin_priv where to store the coin's private key,
  *        caller must have committed this value to disk before the call (with @a pk)
  * @param blinding_key where to store the coin's blinding key

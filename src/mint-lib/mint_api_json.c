@@ -400,7 +400,7 @@ MAJ_spec_absolute_time (const char *name,
  * Specification for parsing an amount value.
  *
  * @param name name of the JSON field
- * @param at where to store the absolute time found under @a name
+ * @param amount where to store the amount found under @a name
  */
 struct MAJ_Specification
 MAJ_spec_amount (const char *name,

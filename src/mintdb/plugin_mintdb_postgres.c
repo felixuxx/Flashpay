@@ -1096,7 +1096,7 @@ postgres_insert_denomination_info (void *cls,
  * Fetch information about a denomination key.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param sesssion connection to use
+ * @param session connection to use
  * @param denom_pub the public key used for signing coins of this denomination
  * @param[out] issue set to issue information with value, fees and other info about the coin, can be NULL
  * @return #GNUNET_OK on success; #GNUNET_NO if no record was found, #GNUNET_SYSERR on failure

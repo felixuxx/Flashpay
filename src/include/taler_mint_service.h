@@ -532,10 +532,10 @@ TALER_MINT_withdraw_status (struct TALER_MINT_Handle *mint,
  * Cancel a withdraw status request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
- * @param status the withdraw status request handle
+ * @param wsh the withdraw status request handle
  */
 void
-TALER_MINT_withdraw_status_cancel (struct TALER_MINT_WithdrawStatusHandle *status);
+TALER_MINT_withdraw_status_cancel (struct TALER_MINT_WithdrawStatusHandle *wsh);
 
 
 /* ********************* /withdraw/sign *********************** */
@@ -574,6 +574,7 @@ typedef void
  *
  * @param mint the mint handle; the mint must be ready to operate
  * @param pk kind of coin to create
+ * @param reserve_priv private key of the reserve to withdraw from
  * @param coin_priv where to store the coin's private key,
  *        caller must have committed this value to disk before the call (with @a pk)
  * @param blinding_key where to store the coin's blinding key
@@ -660,7 +661,7 @@ TALER_MINT_admin_add_incoming (struct TALER_MINT_Handle *mint,
  * Cancel an add incoming.  This function cannot be used on a request
  * handle if a response is already served for it.
  *
- * @param sign the admin add incoming request handle
+ * @param aai the admin add incoming request handle
  */
 void
 TALER_MINT_admin_add_incoming_cancel (struct TALER_MINT_AdminAddIncomingHandle *aai);

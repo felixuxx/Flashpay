@@ -651,12 +651,12 @@ struct TALER_MINTDB_Plugin
    * Start a transaction.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion connection to use
+   * @param session connection to use
    * @return #GNUNET_OK on success
    */
   int
   (*start) (void *cls,
-            struct TALER_MINTDB_Session *sesssion);
+            struct TALER_MINTDB_Session *session);
 
 
   /**

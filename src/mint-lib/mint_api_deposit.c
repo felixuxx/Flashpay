@@ -306,6 +306,7 @@ verify_deposit_signature_forbidden (const struct TALER_MINT_DepositHandle *dh,
  * HTTP /deposit request.
  *
  * @param cls the `struct TALER_MINT_DepositHandle`
+ * @param eh the curl request handle
  */
 static void
 handle_deposit_finished (void *cls,

@@ -228,7 +228,7 @@ MAJ_parse_free (struct MAJ_Specification *spec);
  * Base32hex encoding).
  *
  * @param name name of the JSON field
- * @param obj_ptr pointer where to write the data (a `void **`)
+ * @param obj pointer where to write the data (a `void **`)
  * @param size where to store the number of bytes allocated for @a obj (of type `size_t *`
  */
 #define MAJ_spec_varsize(name,obj,size) { .cmd = MAJ_CMD_BINARY_VARIABLE, .field = name, .details.variable_data.dest_p = obj, .details.variable_data.dest_size_p = size }
@@ -260,7 +260,7 @@ MAJ_spec_absolute_time (const char *name,
  * Specification for parsing an amount value.
  *
  * @param name name of the JSON field
- * @param at where to store the absolute time found under @a name
+ * @param amount where to store the amount under @a name
  */
 struct MAJ_Specification
 MAJ_spec_amount (const char *name,

@@ -105,6 +105,7 @@ struct TALER_MINT_AdminAddIncomingHandle
  * HTTP /admin/add/incoming request.
  *
  * @param cls the `struct TALER_MINT_AdminAddIncomingHandle`
+ * @param eh the curl request handle
  */
 static void
 handle_admin_add_incoming_finished (void *cls,
@@ -319,7 +320,7 @@ TALER_MINT_admin_add_incoming (struct TALER_MINT_Handle *mint,
  * Cancel an add incoming.  This function cannot be used on a request
  * handle if a response is already served for it.
  *
- * @param sign the admin add incoming request handle
+ * @param aai the admin add incoming request handle
  */
 void
 TALER_MINT_admin_add_incoming_cancel (struct TALER_MINT_AdminAddIncomingHandle *aai)

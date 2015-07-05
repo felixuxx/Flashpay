@@ -265,7 +265,7 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec);
  * Generate line in parser specification for JSON object value.
  *
  * @param field name of the field
- * @param ptraddr address of pointer to JSON to initialize
+ * @param jsonp address of pointer to JSON to initialize
  * @return corresponding field spec
  */
 struct TMH_PARSE_FieldSpecification
