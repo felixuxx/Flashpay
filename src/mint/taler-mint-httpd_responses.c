@@ -460,7 +460,7 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
 
 
 /**
- * Send proof that a /withdraw request is invalid to client.  This
+ * Send proof that a /deposit request is invalid to client.  This
  * function will create a message with all of the operations affecting
  * the coin that demonstrate that the coin has insufficient value.
  *
@@ -654,7 +654,7 @@ TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *conn
                                               "balance calculation failure");
   json_balance = TALER_json_from_amount (&balance);
   return TMH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_FORBIDDEN,
+                                       MHD_HTTP_PAYMENT_REQUIRED,
                                        "{s:s, s:o, s:o}",
                                        "error", "Insufficient funds",
                                        "balance", json_balance,
