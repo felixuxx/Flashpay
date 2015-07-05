@@ -19,6 +19,11 @@
  * @brief testcase to test mint's HTTP API interface
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff
+ *
+ * TODO:
+ * - enhance interpreter to allow for testing of failure conditions
+ *   (i.e. double-spending, insufficient funds on withdraw)
+ * - add command for /withdraw/status
  */
 #include "platform.h"
 #include "taler_util.h"
