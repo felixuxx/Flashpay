@@ -348,8 +348,8 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
                                     const struct TALER_Amount *amount_without_fee)
 {
   struct TALER_DepositConfirmationPS dc;
+  struct TALER_MintPublicKeyP pub;
   struct TALER_MintSignatureP sig;
-  json_t *sig_json;
 
   dc.purpose.purpose = htonl (TALER_SIGNATURE_MINT_CONFIRM_DEPOSIT);
   dc.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
@@ -363,14 +363,16 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
   dc.coin_pub = *coin_pub;
   dc.merchant = *merchant;
   TMH_KS_sign (&dc.purpose,
+               &pub,
                &sig);
-  sig_json = TALER_json_from_data (&sig,
-                                   sizeof (sig));
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:s, s:o}",
                                        "status", "DEPOSIT_OK",
-                                       "sig", sig_json);
+                                       "sig", TALER_json_from_data (&sig,
+                                                                    sizeof (sig)),
+                                       "pub", TALER_json_from_data (&pub,
+                                                                    sizeof (pub)));
 }
 
 
@@ -735,6 +737,7 @@ TMH_RESPONSE_reply_refresh_melt_success (struct MHD_Connection *connection,
                                          uint16_t noreveal_index)
 {
   struct TALER_RefreshMeltConfirmationPS body;
+  struct TALER_MintPublicKeyP pub;
   struct TALER_MintSignatureP sig;
   json_t *sig_json;
 
@@ -743,15 +746,18 @@ TMH_RESPONSE_reply_refresh_melt_success (struct MHD_Connection *connection,
   body.session_hash = *session_hash;
   body.noreveal_index = htons (noreveal_index);
   TMH_KS_sign (&body.purpose,
-                        &sig);
-  sig_json = TALER_json_from_eddsa_sig (&body.purpose,
-                                        &sig.eddsa_signature);
+               &pub,
+               &sig);
+  sig_json = TALER_json_from_data (&sig,
+                                   sizeof (sig));
   GNUNET_assert (NULL != sig_json);
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
-                                       "{s:i, s:o}",
+                                       "{s:i, s:o, s:o}",
                                        "noreveal_index", (int) noreveal_index,
-                                       "signature", sig_json);
+                                       "mint_sig", sig_json,
+                                       "mint_pub", TALER_json_from_data (&pub,
+                                                                         sizeof (pub)));
 }
 
 

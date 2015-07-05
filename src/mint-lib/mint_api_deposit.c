@@ -129,10 +129,11 @@ verify_deposit_signature_ok (const struct TALER_MINT_DepositHandle *dh,
                              json_t *json)
 {
   struct TALER_MintSignatureP mint_sig;
+  struct TALER_MintPublicKeyP mint_pub;
   const struct TALER_MINT_Keys *key_state;
-  const struct TALER_MintPublicKeyP *mint_pub;
   struct MAJ_Specification spec[] = {
     MAJ_spec_fixed_auto ("sig", &mint_sig),
+    MAJ_spec_fixed_auto ("pub", &mint_pub),
     MAJ_spec_end
   };
 
@@ -144,12 +145,18 @@ verify_deposit_signature_ok (const struct TALER_MINT_DepositHandle *dh,
     return GNUNET_SYSERR;
   }
   key_state = TALER_MINT_get_keys (dh->mint);
-  mint_pub = TALER_MINT_get_signing_key (key_state);
+  if (GNUNET_OK !=
+      TALER_MINT_test_signing_key (key_state,
+                                   &mint_pub))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MINT_CONFIRM_DEPOSIT,
                                   &dh->depconf.purpose,
                                   &mint_sig.eddsa_signature,
-                                  &mint_pub->eddsa_pub))
+                                  &mint_pub.eddsa_pub))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;

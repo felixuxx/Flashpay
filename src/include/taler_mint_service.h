@@ -316,13 +316,16 @@ TALER_MINT_get_keys (const struct TALER_MINT_Handle *mint);
 
 
 /**
- * Obtain the current signing key from the mint.
+ * Test if the given @a pub is a the current signing key from the mint
+ * according to @a keys.
  *
  * @param keys the mint's key set
- * @return sk current online signing key for the mint, NULL on error
+ * @param pub claimed current online signing key for the mint
+ * @return #GNUNET_OK if @a pub is (according to /keys) a current signing key
  */
-const struct TALER_MintPublicKeyP *
-TALER_MINT_get_signing_key (const struct TALER_MINT_Keys *keys);
+int
+TALER_MINT_test_signing_key (const struct TALER_MINT_Keys *keys,
+                             const struct TALER_MintPublicKeyP *pub);
 
 
 /**

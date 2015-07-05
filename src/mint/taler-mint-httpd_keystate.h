@@ -74,7 +74,7 @@ enum TMH_KS_DenominationKeyUse {
    * The key is to be usd for a /deposit or /refresh (melt) operation.
    */
   TMH_KS_DKU_DEPOSIT
-  
+
 };
 
 
@@ -110,10 +110,12 @@ TMH_KS_loop (void);
  * key.
  *
  * @param purpose the message to sign
+ * @param[out] pub set to the current public signing key of the mint
  * @param[out] sig signature over purpose using current signing key
  */
 void
 TMH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+             struct TALER_MintPublicKeyP *pub,
              struct TALER_MintSignatureP *sig);
 
 

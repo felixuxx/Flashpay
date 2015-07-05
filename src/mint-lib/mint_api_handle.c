@@ -425,7 +425,7 @@ decode_keys_json (json_t *resp_obj,
   struct TALER_MintSignatureP sig;
   struct TALER_MintKeySetPS ks;
   struct GNUNET_HashContext *hash_context;
-  const struct TALER_MintPublicKeyP *pub;
+  struct TALER_MintPublicKeyP pub;
 
   if (JSON_OBJECT != json_typeof (resp_obj))
     return GNUNET_SYSERR;
@@ -438,6 +438,8 @@ decode_keys_json (json_t *resp_obj,
                            &key_data->master_pub),
       MAJ_spec_fixed_auto ("eddsa_sig",
                            &sig),
+      MAJ_spec_fixed_auto ("eddsa_pub",
+                           &pub),
       MAJ_spec_absolute_time ("list_issue_date",
                               &list_issue_date),
       MAJ_spec_end
@@ -504,13 +506,14 @@ decode_keys_json (json_t *resp_obj,
   GNUNET_CRYPTO_hash_context_finish (hash_context,
                                      &ks.hc);
   hash_context = NULL;
-  pub = TALER_MINT_get_signing_key (key_data);
-  EXITIF (NULL == pub);
+  EXITIF (GNUNET_OK !=
+          TALER_MINT_test_signing_key (key_data,
+                                       &pub));
   EXITIF (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MINT_KEY_SET,
                                       &ks.purpose,
                                       &sig.eddsa_signature,
-                                      &pub->eddsa_pub));
+                                      &pub.eddsa_pub));
   return GNUNET_OK;
  EXITIF_exit:
 
@@ -771,23 +774,30 @@ TALER_MINT_disconnect (struct TALER_MINT_Handle *mint)
 
 
 /**
- * Obtain the current signing key from the mint.
+ * Test if the given @a pub is a the current signing key from the mint
+ * according to @a keys.
  *
  * @param keys the mint's key set
- * @return sk current online signing key for the mint, NULL on error
+ * @param pub claimed current online signing key for the mint
+ * @return #GNUNET_OK if @a pub is (according to /keys) a current signing key
  */
-const struct TALER_MintPublicKeyP *
-TALER_MINT_get_signing_key (const struct TALER_MINT_Keys *keys)
+int
+TALER_MINT_test_signing_key (const struct TALER_MINT_Keys *keys,
+                             const struct TALER_MintPublicKeyP *pub)
 {
   struct GNUNET_TIME_Absolute now;
   unsigned int i;
 
+  /* we will check using a tolerance of 1h for the time */
   now = GNUNET_TIME_absolute_get ();
   for (i=0;i<keys->num_sign_keys;i++)
-    if ( (keys->sign_keys[i].valid_from.abs_value_us <= now.abs_value_us) &&
-         (keys->sign_keys[i].valid_until.abs_value_us > now.abs_value_us) )
-      return &keys->sign_keys[i].key;
-  return NULL;
+    if ( (keys->sign_keys[i].valid_from.abs_value_us <= now.abs_value_us + 60 * 60 * 1000LL * 1000LL) &&
+         (keys->sign_keys[i].valid_until.abs_value_us > now.abs_value_us - 60 * 60 * 1000LL * 1000LL) &&
+         (0 == memcmp (pub,
+                       &keys->sign_keys[i].key,
+                       sizeof (struct TALER_MintPublicKeyP))) )
+      return GNUNET_OK;
+  return GNUNET_SYSERR;
 }
 
 

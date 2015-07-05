@@ -519,13 +519,15 @@ TMH_KS_acquire (void)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "No valid signing key found!\n");
 
-    keys = json_pack ("{s:o, s:o, s:o, s:o, s:o}",
+    keys = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
                       "master_public_key",
                       TALER_json_from_data (&TMH_master_public_key,
                                             sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)),
                       "signkeys", key_state->sign_keys_array,
                       "denoms", key_state->denom_keys_array,
                       "list_issue_date", TALER_json_from_abs (key_state->reload_time),
+                      "eddsa_pub", TALER_json_from_data (&key_state->current_sign_key_issue.issue.signkey_pub,
+                                                         sizeof (struct TALER_MintPublicKeyP)),
                       "eddsa_sig", TALER_json_from_data (&sig,
                                                          sizeof (struct TALER_MintSignatureP)));
     key_state->keys_json = json_dumps (keys,
@@ -714,16 +716,19 @@ read_again:
  * Sign the message in @a purpose with the mint's signing key.
  *
  * @param purpose the message to sign
+ * @param[out] pub set to the current public signing key of the mint
  * @param[out] sig signature over purpose using current signing key
  */
 void
 TMH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-                      struct TALER_MintSignatureP *sig)
+             struct TALER_MintPublicKeyP *pub,
+             struct TALER_MintSignatureP *sig)
 
 {
   struct TMH_KS_StateHandle *key_state;
 
   key_state = TMH_KS_acquire ();
+  *pub = key_state->current_sign_key_issue.issue.signkey_pub;
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
                                            purpose,
