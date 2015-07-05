@@ -385,6 +385,9 @@ withdraw_sign_cb (void *cls,
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
 
+  fprintf (stderr,
+           "Withdraw completed: %u\n",
+           http_status);
   cmd->details.withdraw_sign.wsh = NULL;
   if (NULL == sig)
   {
@@ -424,17 +427,26 @@ find_pk (const struct TALER_MINT_Keys *keys,
          (now.abs_value_us >= pk->valid_from.abs_value_us) &&
          (now.abs_value_us < pk->withdraw_valid_until.abs_value_us) )
       return pk;
+  }
+  /* do 2nd pass to check if expiration times are to blame for failure */
+  str = TALER_amount_to_string (amount);
+  for (i=0;i<keys->num_denom_keys;i++)
+  {
     if ( (0 == TALER_amount_cmp (amount,
                                  &pk->value)) &&
          ( (now.abs_value_us < pk->valid_from.abs_value_us) ||
            (now.abs_value_us > pk->withdraw_valid_until.abs_value_us) ) )
+    {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Have a matching denomination key, but with wrong expiration range %llu vs [%llu,%llu)\n",
+                  "Have denomination key for `%s', but with wrong expiration range %llu vs [%llu,%llu)\n",
+                  str,
                   now.abs_value_us,
                   pk->valid_from.abs_value_us,
                   pk->withdraw_valid_until.abs_value_us);
+      GNUNET_free (str);
+      return NULL;
+    }
   }
-  str = TALER_amount_to_string (amount);
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
               "No denomination key for amount %s found\n",
               str);
