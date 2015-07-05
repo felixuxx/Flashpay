@@ -582,6 +582,7 @@ interpreter_run (void *cls,
                                   &cmd->details.withdraw_sign.blinding_key,
                                   &withdraw_sign_cb,
                                   is);
+    trigger_context_task ();
     return;
   case OC_DEPOSIT:
     GNUNET_break (0); // to be implemented!
