@@ -706,7 +706,7 @@ get_cointype_params (const char *ct,
 
   dir = get_cointype_dir (params);
   get_anchor (dir,
-              params->duration_spend,
+              params->duration_withdraw,
               params->duration_overlap,
               &params->anchor);
   return GNUNET_OK;
