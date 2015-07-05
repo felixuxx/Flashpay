@@ -549,6 +549,28 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
       }
       break;
 
+    case TMH_PARSE_JNC_RET_UINT64:
+      {
+        uint64_t *r_u64 = va_arg (argp, uint64_t *);
+
+        if (json_typeof (root) != JSON_INTEGER)
+        {
+          ret = (MHD_YES ==
+                 TMH_RESPONSE_reply_json_pack (connection,
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:s, s:i, s:o}",
+                                               "error", "wrong JSON field type",
+                                               "type_expected", "integer",
+                                               "type_actual", json_typeof (root),
+                                               "path", path))
+            ? GNUNET_NO : GNUNET_SYSERR;
+          break;
+        }
+        *r_u64 = (uint64_t) json_integer_value (root);
+        ret = GNUNET_OK;
+      }
+      break;
+
     case TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY:
       {
         struct TALER_DenominationPublicKey *where;
@@ -803,6 +825,16 @@ TMH_PARSE_json_data (struct MHD_Connection *connection,
                                      TMH_PARSE_JNC_RET_TIME_ABSOLUTE,
                                      spec[i].destination);
       break;
+    case TMH_PARSE_JNC_RET_UINT64:
+      GNUNET_assert (sizeof (uint64_t) ==
+                     spec[i].destination_size_in);
+      ret = TMH_PARSE_navigate_json (connection,
+                                     root,
+                                     TMH_PARSE_JNC_FIELD,
+                                     spec[i].field_name,
+                                     TMH_PARSE_JNC_RET_UINT64,
+                                     spec[i].destination);
+      break;
     }
   }
   if (GNUNET_YES != ret)
@@ -882,6 +914,8 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec)
       break;
     case TMH_PARSE_JNC_RET_TIME_ABSOLUTE:
       break;
+    case TMH_PARSE_JNC_RET_UINT64:
+      break;
     }
   }
 }
@@ -889,8 +923,9 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec)
 
 /**
  * Parse absolute time specified in JSON format.  The JSON format is
- * "/TIMEVAL/" where TIMEVAL is in milliseconds.  Additionally, we
- * support "/forever/" to represent the end of time.
+ * "/Date(TIMEVAL)/" where TIMEVAL is in seconds after the Unix Epoch.
+ * Additionally, we support "/forever/" and "/never/" to represent the
+ * end of time.
  *
  * @param connection the MHD connection (to report errors)
  * @param f json specification of the amount
@@ -906,9 +941,7 @@ TMH_PARSE_time_abs_json (struct MHD_Connection *connection,
                          struct GNUNET_TIME_Absolute *time)
 {
   const char *val;
-  size_t slen;
-  unsigned long long int tval;
-  char *endp;
+  unsigned long long tval;
 
   val = json_string_value (f);
   if (NULL == val)
@@ -921,30 +954,18 @@ TMH_PARSE_time_abs_json (struct MHD_Connection *connection,
       return GNUNET_SYSERR;
     return GNUNET_NO;
   }
-  slen = strlen (val);
-  if ( (slen <= 2) ||
-       ('/' != val[0]) ||
-       ('/' != val[slen - 1]) )
-  {
-    if (MHD_YES !=
-        TMH_RESPONSE_reply_json_pack (connection,
-                                      MHD_HTTP_BAD_REQUEST,
-                                      "{s:s, s:s}",
-                                      "error", "timestamp expected",
-                                      "value", val))
-      return GNUNET_SYSERR;
-    return GNUNET_NO;
-  }
-  if (0 == strcasecmp (val,
-                       "/forever/"))
+  if ( (0 == strcasecmp (val,
+                         "/forever/")) ||
+       (0 == strcasecmp (val,
+                         "/never/")) )
+
   {
     *time = GNUNET_TIME_UNIT_FOREVER_ABS;
     return GNUNET_OK;
   }
-  tval = strtoull (&val[1],
-                   &endp,
-                   10);
-  if (&val[slen - 1] != endp)
+  if (1 != sscanf (val,
+                   "/Date(%llu)/",
+                   &tval))
   {
     if (MHD_YES !=
         TMH_RESPONSE_reply_json_pack (connection,
@@ -955,9 +976,9 @@ TMH_PARSE_time_abs_json (struct MHD_Connection *connection,
       return GNUNET_SYSERR;
     return GNUNET_NO;
   }
-  /* Time is in 'ms' in JSON, but in microseconds in GNUNET_TIME_Absolute */
-  time->abs_value_us = tval * 1000LL;
-  if ( (time->abs_value_us) / 1000LL != tval)
+  /* Time is in seconds in JSON, but in microseconds in GNUNET_TIME_Absolute */
+  time->abs_value_us = tval * 1000LL * 1000LL;
+  if ( (time->abs_value_us) / 1000LL / 1000LL != tval)
   {
     /* Integer overflow */
     if (MHD_YES !=
@@ -1044,6 +1065,24 @@ TMH_PARSE_amount_json (struct MHD_Connection *connection,
   strcpy (amount->currency, TMH_mint_currency_string);
   (void) TALER_amount_normalize (amount);
   return GNUNET_OK;
+}
+
+
+/**
+ * Generate line in parser specification for 64-bit integer
+ * given as an integer in JSON.
+ *
+ * @param field name of the field
+ * @param[out] u64 integer to initialize
+ * @return corresponding field spec
+ */
+struct TMH_PARSE_FieldSpecification
+TMH_PARSE_member_uint64 (const char *field,
+                         uint64_t *u64)
+{
+  struct TMH_PARSE_FieldSpecification ret =
+    { field, (void *) u64, sizeof (uint64_t), 0, TMH_PARSE_JNC_RET_UINT64, 0 };
+  return ret;
 }
 
 

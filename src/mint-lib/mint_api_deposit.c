@@ -37,7 +37,7 @@
  */
 #define JSON_WARN(error)                                                \
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,                              \
-                "JSON parsing failed at %s:%u: %s (%s)",                \
+                "JSON parsing failed at %s:%u: %s (%s)\n",              \
                 __FILE__, __LINE__, error.text, error.source)
 
 
@@ -464,8 +464,8 @@ verify_signatures (const struct TALER_MINT_DenomPublicKey *dki,
     TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
     return GNUNET_SYSERR;
   }
-  if (TALER_amount_cmp (&dki->fee_deposit,
-                        amount) < 0)
+  if (0 < TALER_amount_cmp (&dki->fee_deposit,
+                            amount))
   {
     TALER_LOG_WARNING ("Deposit amount smaller than fee\n");
     return GNUNET_SYSERR;
@@ -615,17 +615,17 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
   }
 
   deposit_obj = json_pack ("{s:o, s:o," /* f/wire */
-                           " s:s, s:s," /* H_wire, H_contract */
-                           " s:s, s:s," /* coin_pub, denom_pub */
-                           " s:s, s:s," /* ub_sig, timestamp */
-                           " s:I, s:s," /* transaction id, merchant_pub */
-                           " s:s, s:s}", /* refund_deadline, coin_sig */
+                           " s:o, s:o," /* H_wire, H_contract */
+                           " s:o, s:o," /* coin_pub, denom_pub */
+                           " s:o, s:o," /* ub_sig, timestamp */
+                           " s:I, s:o," /* transaction id, merchant_pub */
+                           " s:o, s:o}", /* refund_deadline, coin_sig */
                            "f", TALER_json_from_amount (amount),
                            "wire", wire_details,
                            "H_wire", TALER_json_from_data (&h_wire,
                                                            sizeof (h_wire)),
-                           "H_contract", TALER_json_from_data (&h_contract,
-                                                               sizeof (h_contract)),
+                           "H_contract", TALER_json_from_data (h_contract,
+                                                               sizeof (struct GNUNET_HashCode)),
                            "coin_pub", TALER_json_from_data (coin_pub,
                                                              sizeof (*coin_pub)),
                            "denom_pub", TALER_json_from_rsa_public_key (denom_pub->rsa_public_key),

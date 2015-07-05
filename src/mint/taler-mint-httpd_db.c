@@ -126,6 +126,7 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
                                                &deposit->h_wire,
                                                &deposit->h_contract,
                                                deposit->transaction_id,
+                                               deposit->timestamp,
                                                deposit->refund_deadline,
                                                &deposit->merchant_pub,
                                                &amount_without_fee);
@@ -194,14 +195,19 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
     TALER_LOG_WARNING ("/deposit transaction commit failed\n");
     return TMH_RESPONSE_reply_commit_error (connection);
   }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_subtract (&amount_without_fee,
+                                        &deposit->amount_with_fee,
+                                        &deposit->deposit_fee));
   return TMH_RESPONSE_reply_deposit_success (connection,
                                              &deposit->coin.coin_pub,
                                              &deposit->h_wire,
                                              &deposit->h_contract,
                                              deposit->transaction_id,
+                                             deposit->timestamp,
                                              deposit->refund_deadline,
                                              &deposit->merchant_pub,
-                                             &deposit->amount_with_fee);
+                                             &amount_without_fee);
 }
 
 

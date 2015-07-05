@@ -89,11 +89,13 @@ TALER_json_from_abs (struct GNUNET_TIME_Absolute stamp)
   char *mystr;
   int ret;
 
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_round_abs_time (&stamp));
   if (stamp.abs_value_us == GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us)
     return json_string ("/never/");
   ret = GNUNET_asprintf (&mystr,
-                         "/%llu/",
-                         (long long) (stamp.abs_value_us / (1000LL * 1000LL)));
+                         "/Date(%llu)/",
+                         (unsigned long long) (stamp.abs_value_us / (1000LL * 1000LL)));
   GNUNET_assert (ret > 0);
   j = json_string (mystr);
   GNUNET_free (mystr);
@@ -320,7 +322,7 @@ TALER_json_to_amount (json_t *json,
 
 
 /**
- * Parse given JSON object to Amount
+ * Parse given JSON object to absolute time.
  *
  * @param json the json object representing Amount
  * @param[out] abs where the amount has to be written
@@ -331,20 +333,10 @@ TALER_json_to_abs (json_t *json,
                    struct GNUNET_TIME_Absolute *abs)
 {
   const char *val;
-  size_t slen;
   unsigned long long int tval;
-  char *endp;
 
   val = json_string_value (json);
   if (NULL == val)
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  slen = strlen (val);
-  if ( (slen <= 2) ||
-       ('/' != val[0]) ||
-       ('/' != val[slen - 1]) )
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -357,10 +349,9 @@ TALER_json_to_abs (json_t *json,
     *abs = GNUNET_TIME_UNIT_FOREVER_ABS;
     return GNUNET_OK;
   }
-  tval = strtoull (&val[1],
-                   &endp,
-                   10);
-  if (&val[slen - 1] != endp)
+  if (1 != sscanf (val,
+                   "/Date(%llu)/",
+                   &tval))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;

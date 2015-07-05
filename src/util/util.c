@@ -64,6 +64,46 @@ TALER_config_get_denom (struct GNUNET_CONFIGURATION_Handle *cfg,
 
 
 /**
+ * Round a time value so that it is suitable for transmission
+ * via JSON encodings.
+ *
+ * @param at time to round
+ * @return #GNUNET_OK if time was already rounded, #GNUNET_NO if
+ *         it was just now rounded
+ */
+int
+TALER_round_abs_time (struct GNUNET_TIME_Absolute *at)
+{
+  if (at->abs_value_us == GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us)
+    return GNUNET_OK;
+  if (0 == at->abs_value_us % 1000000)
+    return GNUNET_OK;
+  at->abs_value_us -= at->abs_value_us % 1000000;
+  return GNUNET_NO;
+}
+
+
+/**
+ * Round a time value so that it is suitable for transmission
+ * via JSON encodings.
+ *
+ * @param rt time to round
+ * @return #GNUNET_OK if time was already rounded, #GNUNET_NO if
+ *         it was just now rounded
+ */
+int
+TALER_round_rel_time (struct GNUNET_TIME_Relative *rt)
+{
+  if (rt->rel_value_us == GNUNET_TIME_UNIT_FOREVER_REL.rel_value_us)
+    return GNUNET_OK;
+  if (0 == rt->rel_value_us % 1000000)
+    return GNUNET_OK;
+  rt->rel_value_us -= rt->rel_value_us % 1000000;
+  return GNUNET_NO;
+}
+
+
+/**
  * Load configuration by parsing all configuration
  * files in the given directory.
  *

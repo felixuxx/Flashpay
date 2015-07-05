@@ -34,14 +34,6 @@
  */
 #define HASH_CUTOFF 20
 
-/**
- * Macro to round microseconds to seconds in GNUNET_TIME_* structs.
- *
- * @param name value to round
- * @param us_field rel_value_us or abs_value_us
- */
-#define ROUND_TO_SECS(name,us_field) name.us_field -= name.us_field % (1000 * 1000);
-
 
 GNUNET_NETWORK_STRUCT_BEGIN
 
@@ -515,8 +507,7 @@ mint_keys_update_signkeys ()
                                "must be longer than signkey_duration");
     return GNUNET_SYSERR;
   }
-  ROUND_TO_SECS (signkey_duration,
-                 rel_value_us);
+  TALER_round_rel_time (&signkey_duration);
   GNUNET_asprintf (&signkey_dir,
                    "%s" DIR_SEPARATOR_STR TALER_MINTDB_DIR_SIGNING_KEYS,
                    mint_directory);
@@ -598,8 +589,7 @@ get_cointype_params (const char *ct,
                                "duration_withdraw");
     return GNUNET_SYSERR;
   }
-  ROUND_TO_SECS (params->duration_withdraw,
-                 rel_value_us);
+  TALER_round_rel_time (&params->duration_withdraw);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            ct,
@@ -611,8 +601,7 @@ get_cointype_params (const char *ct,
                                "duration_spend");
     return GNUNET_SYSERR;
   }
-  ROUND_TO_SECS (params->duration_spend,
-                 rel_value_us);
+  TALER_round_rel_time (&params->duration_spend);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            ct,
@@ -624,8 +613,7 @@ get_cointype_params (const char *ct,
                                "duration_legal");
     return GNUNET_SYSERR;
   }
-  ROUND_TO_SECS (params->duration_legal,
-                 rel_value_us);
+  TALER_round_rel_time (&params->duration_legal);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            ct,
@@ -637,8 +625,7 @@ get_cointype_params (const char *ct,
                                "mint_denom_duration_overlap");
     return GNUNET_SYSERR;
   }
-  ROUND_TO_SECS (params->duration_overlap,
-                 rel_value_us);
+  TALER_round_rel_time (&params->duration_overlap);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (kcfg,
                                              ct,
@@ -914,7 +901,7 @@ main (int argc,
   {
     now = GNUNET_TIME_absolute_get ();
   }
-  ROUND_TO_SECS (now, abs_value_us);
+  TALER_round_abs_time (&now);
 
   kcfg = TALER_config_load (mint_directory);
   if (NULL == kcfg)
@@ -990,8 +977,7 @@ main (int argc,
                                _("must not be zero"));
     return GNUNET_SYSERR;
   }
-  ROUND_TO_SECS (lookahead_sign,
-                 rel_value_us);
+  TALER_round_rel_time (&lookahead_sign);
   lookahead_sign_stamp = GNUNET_TIME_absolute_add (now,
                                                    lookahead_sign);
 

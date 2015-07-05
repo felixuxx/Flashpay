@@ -27,6 +27,7 @@
  */
 #include "platform.h"
 #include "taler_util.h"
+#include "taler_signatures.h"
 #include "taler_mint_service.h"
 #include <microhttpd.h>
 
@@ -506,6 +507,7 @@ interpreter_run (void *cls,
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   struct TALER_Amount amount;
+  struct GNUNET_TIME_Absolute execution_date;
   json_t *wire;
 
   is->task = NULL;
@@ -566,14 +568,22 @@ interpreter_run (void *cls,
       fail (is);
       return;
     }
+    execution_date = GNUNET_TIME_absolute_get ();
+    TALER_round_abs_time (&execution_date);
     cmd->details.admin_add_incoming.aih
       = TALER_MINT_admin_add_incoming (mint,
                                        &reserve_pub,
                                        &amount,
-                                       GNUNET_TIME_absolute_get (),
+                                       execution_date,
                                        wire,
                                        &add_incoming_cb,
                                        is);
+    if (NULL == cmd->details.admin_add_incoming.aih)
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
     trigger_context_task ();
     return;
   case OC_WITHDRAW_SIGN:
@@ -629,6 +639,12 @@ interpreter_run (void *cls,
                                   &cmd->details.withdraw_sign.blinding_key,
                                   &withdraw_sign_cb,
                                   is);
+    if (NULL == cmd->details.withdraw_sign.wsh)
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
     trigger_context_task ();
     return;
   case OC_DEPOSIT:
@@ -690,9 +706,30 @@ interpreter_run (void *cls,
         refund_deadline = GNUNET_TIME_UNIT_ZERO_ABS;
       }
       timestamp = GNUNET_TIME_absolute_get ();
+      TALER_round_abs_time (&timestamp);
+      {
+        struct TALER_DepositRequestPS dr;
 
-      /* FIXME: init "coin_sig" here! */
+        dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
+        dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
+        dr.h_contract = h_contract;
+        TALER_hash_json (wire,
+                         &dr.h_wire);
+        dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
+        dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
+        dr.transaction_id = GNUNET_htonll (cmd->details.deposit.transaction_id);
+        TALER_amount_hton (&dr.amount_with_fee,
+                           &amount);
+        TALER_amount_hton (&dr.deposit_fee,
+                           &ref->details.withdraw_sign.pk->fee_deposit);
+        dr.merchant = merchant_pub;
+        dr.coin_pub = coin_pub;
+        GNUNET_assert (GNUNET_OK ==
+                       GNUNET_CRYPTO_eddsa_sign (&ref->details.withdraw_sign.coin_priv.eddsa_priv,
+                                                 &dr.purpose,
+                                                 &coin_sig.eddsa_signature));
 
+      }
       cmd->details.deposit.dh
         = TALER_MINT_deposit (mint,
                               &amount,
@@ -715,6 +752,7 @@ interpreter_run (void *cls,
         fail (is);
         return;
       }
+      trigger_context_task ();
       return;
     }
   default:
@@ -938,7 +976,7 @@ run (void *cls,
     /* Fill reserve with EUR:5.01, as withdraw fee is 1 ct per config */
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "create-reserve-1",
-      .details.admin_add_incoming.wire = "{ \"bank\":\"source bank\", \"account\":42 }",
+      .details.admin_add_incoming.wire = "{ \"type\":\"TEST\", \"bank\":\"source bank\", \"account\":42 }",
       .details.admin_add_incoming.amount = "EUR:5.01" },
     { .oc = OC_WITHDRAW_SIGN,
       .label = "withdraw-coin-1",
@@ -948,7 +986,7 @@ run (void *cls,
       .label = "deposit-simple",
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"bank\":\"dest bank\", \"account\":42 }",
+      .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
       .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":1 } }",
       .details.deposit.transaction_id = 1 },
     { .oc = OC_END }
@@ -1007,7 +1045,7 @@ main (int argc,
                                    "-d", "test-mint-home",
                                    NULL);
   /* give child time to start and bind against the socket */
-  sleep (1);
+  sleep (5);
   result = GNUNET_SYSERR;
   GNUNET_SCHEDULER_run (&run, NULL);
   GNUNET_OS_process_kill (mintd,

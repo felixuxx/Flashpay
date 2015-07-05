@@ -133,7 +133,14 @@ enum TMH_PARSE_JsonNavigationCommand
    * encoded within its own json object.
    * Param: struct GNUNET_TIME_Absolute *
    */
-  TMH_PARSE_JNC_RET_TIME_ABSOLUTE
+  TMH_PARSE_JNC_RET_TIME_ABSOLUTE,
+
+  /**
+   * Return a `uint64_t` which was
+   * encoded as a JSON integer.
+   * Param: uint64_t *
+   */
+  TMH_PARSE_JNC_RET_UINT64
 
 };
 
@@ -254,10 +261,23 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec);
 
 
 /**
+ * Generate line in parser specification for 64-bit integer
+ * given as an integer in JSON.
+ *
+ * @param field name of the field
+ * @param[out] u64 integer to initialize
+ * @return corresponding field spec
+ */
+struct TMH_PARSE_FieldSpecification
+TMH_PARSE_member_uint64 (const char *field,
+                         uint64_t *u64);
+
+
+/**
  * Generate line in parser specification for JSON array value.
  *
  * @param field name of the field
- * @param ptraddr address of JSON pointer to initialize
+ * @param[out] jsonp address of JSON pointer to initialize
  * @return corresponding field spec
  */
 struct TMH_PARSE_FieldSpecification
@@ -269,7 +289,7 @@ TMH_PARSE_member_array (const char *field,
  * Generate line in parser specification for JSON object value.
  *
  * @param field name of the field
- * @param jsonp address of pointer to JSON to initialize
+ * @param[out] jsonp address of pointer to JSON to initialize
  * @return corresponding field spec
  */
 struct TMH_PARSE_FieldSpecification
@@ -351,8 +371,8 @@ TMH_PARSE_amount_json (struct MHD_Connection *connection,
 
 /**
  * Parse absolute time specified in JSON format.  The JSON format is
- * "/TIMEVAL/" where TIMEVAL is in milliseconds.  Additionally, we
- * support "/forever/" to represent the end of time.
+ * "/TIMEVAL/" where TIMEVAL is in seconds.  Additionally, we
+ * support "/forever/" and "/never/" to represent the end of time.
  *
  * @param connection the MHD connection (to report errors)
  * @param f json specification of the amount

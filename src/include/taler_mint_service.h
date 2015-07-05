@@ -651,7 +651,7 @@ struct TALER_MINT_AdminAddIncomingHandle *
 TALER_MINT_admin_add_incoming (struct TALER_MINT_Handle *mint,
                                const struct TALER_ReservePublicKeyP *reserve_pub,
                                const struct TALER_Amount *amount,
-                               const struct GNUNET_TIME_Absolute execution_date,
+                               struct GNUNET_TIME_Absolute execution_date,
                                const json_t *wire,
                                TALER_MINT_AdminAddIncomingResultCallback res_cb,
                                void *res_cb_cls);

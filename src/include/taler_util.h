@@ -74,6 +74,30 @@ TALER_gcrypt_init (void);
 
 
 /**
+ * Round a time value so that it is suitable for transmission
+ * via JSON encodings.
+ *
+ * @param at time to round
+ * @return #GNUNET_OK if time was already rounded, #GNUNET_NO if
+ *         it was just now rounded
+ */
+int
+TALER_round_abs_time (struct GNUNET_TIME_Absolute *at);
+
+
+/**
+ * Round a time value so that it is suitable for transmission
+ * via JSON encodings.
+ *
+ * @param rt time to round
+ * @return #GNUNET_OK if time was already rounded, #GNUNET_NO if
+ *         it was just now rounded
+ */
+int
+TALER_round_rel_time (struct GNUNET_TIME_Relative *rt);
+
+
+/**
  * Load configuration by parsing all configuration
  * files in the given directory.
  *

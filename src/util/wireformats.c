@@ -330,7 +330,7 @@ validate_sepa (const json_t *wire)
                  ((json_t *) wire,
                   &error, JSON_STRICT,
                   "{"
-                  "s:s " /* type: "SEPA" */
+                  "s:s " /* TYPE: sepa */
                   "s:s " /* IBAN: iban */
                   "s:s " /* name: beneficiary name */
                   "s:s " /* BIC: beneficiary bank's BIC */
@@ -345,7 +345,6 @@ validate_sepa (const json_t *wire)
                   "edate", &edate,
                   "r", &r,
                   "address", &address));
-  EXITIF (0 != strcmp (type, "SEPA"));
   if (1 != validate_iban (iban))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -356,6 +355,20 @@ validate_sepa (const json_t *wire)
   return GNUNET_YES;
  EXITIF_exit:
   return GNUNET_NO;
+}
+
+
+/**
+ * Validate TEST account details.  The "test" format is used
+ * for testing, so this validator does nothing.
+ *
+ * @param wire JSON with the TEST details
+ * @return  #GNUNET_YES if correctly formatted; #GNUNET_NO if not
+ */
+static int
+validate_test (const json_t *wire)
+{
+  return GNUNET_YES;
 }
 
 
@@ -392,9 +405,29 @@ TALER_json_validate_wireformat (const char *type,
 {
   static const struct FormatHandler format_handlers[] = {
     { "SEPA", &validate_sepa },
+    { "TEST", &validate_test },
     { NULL, NULL}
   };
   unsigned int i;
+  char *stype;
+  json_error_t error;
+
+  UNPACK_EXITIF (0 != json_unpack_ex
+                 ((json_t *) wire,
+                  &error, 0,
+                  "{"
+                  "s:s " /* TYPE: type */
+                  "}",
+                  "type", &stype));
+  if (0 != strcasecmp (type,
+                       stype))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Wireformat `%s' does not match mint's expected `%s' format\n",
+                stype,
+                type);
+    return GNUNET_NO;
+  }
 
   for (i=0;NULL != format_handlers[i].type;i++)
     if (0 == strcasecmp (format_handlers[i].type,
@@ -403,6 +436,8 @@ TALER_json_validate_wireformat (const char *type,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Wireformat `%s' not supported\n",
               type);
+  return GNUNET_NO;
+ EXITIF_exit:
   return GNUNET_NO;
 }
 

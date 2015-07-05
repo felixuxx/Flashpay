@@ -330,6 +330,7 @@ TMH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection)
  * @param h_wire hash of wire details
  * @param h_contract hash of contract details
  * @param transaction_id transaction ID
+ * @param timestamp client's timestamp
  * @param refund_deadline until when this deposit be refunded
  * @param merchant merchant public key
  * @param amount_without_fee fraction of coin value to deposit, without the fee
@@ -341,6 +342,7 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
                                     const struct GNUNET_HashCode *h_wire,
                                     const struct GNUNET_HashCode *h_contract,
                                     uint64_t transaction_id,
+                                    struct GNUNET_TIME_Absolute timestamp,
                                     struct GNUNET_TIME_Absolute refund_deadline,
                                     const struct TALER_MerchantPublicKeyP *merchant,
                                     const struct TALER_Amount *amount_without_fee)
@@ -348,14 +350,13 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
   struct TALER_DepositConfirmationPS dc;
   struct TALER_MintSignatureP sig;
   json_t *sig_json;
-  int ret;
 
   dc.purpose.purpose = htonl (TALER_SIGNATURE_MINT_CONFIRM_DEPOSIT);
   dc.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
   dc.h_contract = *h_contract;
   dc.h_wire = *h_wire;
   dc.transaction_id = GNUNET_htonll (transaction_id);
-  dc.timestamp = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get ());
+  dc.timestamp = GNUNET_TIME_absolute_hton (timestamp);
   dc.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
   TALER_amount_hton (&dc.amount_without_fee,
                      amount_without_fee);
@@ -363,15 +364,13 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
   dc.merchant = *merchant;
   TMH_KS_sign (&dc.purpose,
                &sig);
-  sig_json = TALER_json_from_eddsa_sig (&dc.purpose,
-                                        &sig.eddsa_signature);
-  ret = TMH_RESPONSE_reply_json_pack (connection,
-                                      MHD_HTTP_OK,
-                                      "{s:s, s:o}",
-                                      "status", "DEPOSIT_OK",
-                                      "signature", sig_json);
-  json_decref (sig_json);
-  return ret;
+  sig_json = TALER_json_from_data (&sig,
+                                   sizeof (sig));
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:s, s:o}",
+                                       "status", "DEPOSIT_OK",
+                                       "sig", sig_json);
 }
 
 

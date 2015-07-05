@@ -101,14 +101,12 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   }
   TALER_amount_ntoh (&fee_deposit,
                      &dki->issue.fee_deposit);
-  if (TALER_amount_cmp (&fee_deposit,
-                        &deposit->amount_with_fee) < 0)
+  if (0 < TALER_amount_cmp (&fee_deposit,
+                            &deposit->amount_with_fee))
   {
     TMH_KS_release (key_state);
-    return (MHD_YES ==
-            TMH_RESPONSE_reply_external_error (connection,
-                                               "deposited amount smaller than depositing fee"))
-      ? GNUNET_NO : GNUNET_SYSERR;
+    return TMH_RESPONSE_reply_external_error (connection,
+                                              "deposited amount smaller than depositing fee");
   }
   TMH_KS_release (key_state);
 
@@ -146,7 +144,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
     TMH_PARSE_MEMBER_FIXED ("H_contract", &deposit.h_contract),
     TMH_PARSE_MEMBER_FIXED ("H_wire", &deposit.h_wire),
     TMH_PARSE_MEMBER_FIXED ("coin_sig",  &deposit.csig),
-    TMH_PARSE_MEMBER_FIXED ("transaction_id", &deposit.transaction_id),
+    TMH_PARSE_member_uint64 ("transaction_id", &deposit.transaction_id),
     TMH_PARSE_member_time_abs ("timestamp", &deposit.timestamp),
     TMH_PARSE_member_time_abs ("refund_deadline", &deposit.refund_deadline),
     TMH_PARSE_MEMBER_END
@@ -160,6 +158,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
     return MHD_NO; /* hard failure */
   if (GNUNET_NO == res)
     return MHD_YES; /* failure */
+
   if (GNUNET_YES !=
       TALER_json_validate_wireformat (TMH_expected_wire_format,
 				      wire))
@@ -197,7 +196,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
                               &deposit.deposit_fee))
   {
     /* Total amount smaller than fee, invalid */
-    TMH_PARSE_release_data (spec);
+     TMH_PARSE_release_data (spec);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "f");
   }
@@ -247,7 +246,7 @@ TMH_DEPOSIT_handler_deposit (struct TMH_RequestHandler *rh,
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
   if (-1 == json_unpack (json,
-                         "{s:s, s:o, f:o}",
+                         "{s:o, s:o}",
                          "wire", &wire,
                          "f", &f))
   {

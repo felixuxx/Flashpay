@@ -65,7 +65,7 @@ test_time ()
   struct GNUNET_TIME_Absolute a2;
 
   a1 = GNUNET_TIME_absolute_get ();
-  a1.abs_value_us -= a1.abs_value_us % 1000000; /* round! */
+  TALER_round_abs_time (&a1);
   j = TALER_json_from_abs (a1);
   GNUNET_assert (NULL != j);
   GNUNET_assert (GNUNET_OK ==
@@ -110,7 +110,7 @@ test_raw ()
 		   TALER_json_to_data (j,
 				       blob2,
 				       i));
-    GNUNET_assert (0 == 
+    GNUNET_assert (0 ==
 		   memcmp (blob,
 			   blob2,
 			   i));
