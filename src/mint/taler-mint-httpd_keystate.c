@@ -386,10 +386,12 @@ reload_keys_sign_iter (void *cls,
 
   /* The signkey is valid at this time, check if it's more recent than
      what we have so far! */
-  if (GNUNET_TIME_absolute_ntoh (ctx->current_sign_key_issue.issue.start).abs_value_us <
-      GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us)
+  if ( (GNUNET_TIME_absolute_ntoh (ctx->current_sign_key_issue.issue.start).abs_value_us <
+        GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us) &&
+       (GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us <
+        now.abs_value_us) )
   {
-    /* We keep the most recent one around */
+    /* We use the most recent one, if it is valid now (not just in the near future) */
     ctx->current_sign_key_issue = *ski;
   }
   json_array_append_new (ctx->sign_keys_array,

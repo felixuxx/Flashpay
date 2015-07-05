@@ -1045,7 +1045,7 @@ main (int argc,
                                    "-d", "test-mint-home",
                                    NULL);
   /* give child time to start and bind against the socket */
-  sleep (5);
+  sleep (2);
   result = GNUNET_SYSERR;
   GNUNET_SCHEDULER_run (&run, NULL);
   GNUNET_OS_process_kill (mintd,

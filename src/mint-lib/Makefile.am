@@ -29,6 +29,9 @@ libtalermint_la_LIBADD = \
 check_PROGRAMS = \
   test_mint_api
 
+TESTS = \
+  $(check_PROGRAMS)
+
 test_mint_api_SOURCES = \
   test_mint_api.c
 test_mint_api_LDADD = \

@@ -367,7 +367,7 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
                &sig);
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
-                                       "{s:s, s:o}",
+                                       "{s:s, s:o, s:o}",
                                        "status", "DEPOSIT_OK",
                                        "sig", TALER_json_from_data (&sig,
                                                                     sizeof (sig)),
