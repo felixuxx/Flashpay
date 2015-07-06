@@ -49,6 +49,7 @@ check_PROGRAMS = \
   test-mintdb-deposits \
   test-mintdb-keyio \
   test-mintdb-postgres \
+	test-perf-taler-mintdb \
   perf-mintdb
 
 TESTS = \
@@ -79,6 +80,17 @@ test_mintdb_postgres_LDADD = \
   $(top_srcdir)/src/util/libtalerutil.la \
   $(top_srcdir)/src/pq/libtalerpq.la \
   -lgnunetutil -ljansson
+
+test_perf_taler_mintdb_SOURCES = \
+	test_perf_taler_mintdb.c \
+  perf_taler_mintdb_init.c \
+  perf_taler_mintdb_interpreter.c
+test_perf_taler_mintdb_LDADD = \
+  libtalermintdb.la \
+  $(top_srcdir)/src/util/libtalerutil.la \
+  $(top_srcdir)/src/pq/libtalerpq.la \
+  -ljansson \
+  -lgnunetutil
 
 perf_mintdb_SOURCES = \
   perf_taler_mintdb.c \

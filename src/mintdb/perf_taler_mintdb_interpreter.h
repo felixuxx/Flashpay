@@ -126,7 +126,7 @@
     .label_start = _label_start, \
     .label_stop = _label_stop, \
     .description = _description, \
-    .unit = _unit \
+    .unit = _unit, \
     .divide = _divide, \
   } \
 }
