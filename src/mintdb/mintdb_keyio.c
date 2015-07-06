@@ -140,7 +140,7 @@ TALER_MINTDB_denomination_key_read (const char *filename,
                 filename);
     return GNUNET_SYSERR;
   }
-  offset = sizeof (struct TALER_DenominationKeyValidityPS);
+  offset = sizeof (struct TALER_MINTDB_DenominationKeyInformationP);
   if (size <= offset)
   {
     GNUNET_break (0);
@@ -204,7 +204,7 @@ TALER_MINTDB_denomination_key_write (const char *filename,
                 GNUNET_DISK_OPEN_WRITE | GNUNET_DISK_OPEN_CREATE | GNUNET_DISK_OPEN_TRUNCATE,
                 GNUNET_DISK_PERM_USER_READ | GNUNET_DISK_PERM_USER_WRITE)))
     goto cleanup;
-  wsize = sizeof (struct TALER_DenominationKeyValidityPS);
+  wsize = sizeof (struct TALER_MINTDB_DenominationKeyInformationP);
   if (GNUNET_SYSERR == (wrote = GNUNET_DISK_file_write (fh,
                                                         &dki->issue,
                                                         wsize)))
