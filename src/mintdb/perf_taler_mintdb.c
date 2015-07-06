@@ -120,6 +120,7 @@ main (int argc, char ** argv)
                                          "./test-mint-db-postgres.conf",
                                          NULL,
                                          benchmark);
-
+  if (GNUNET_SYSERR == ret)
+    return 1;
   return 0;
 }
