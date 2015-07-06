@@ -608,8 +608,9 @@ struct TALER_DenominationKeyValidityPS
 
 
 /**
- * @brief Information about a denomination key. Denomination keys
- * are used to sign coins of a certain value into existence.
+ * @brief Information signed by an auditor affirming
+ * the master public key and the denomination keys
+ * of a mint.
  */
 struct TALER_MintKeyValidityPS
 {
