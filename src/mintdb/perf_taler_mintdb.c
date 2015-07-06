@@ -20,20 +20,19 @@
  */
 #include "platform.h"
 #include "perf_taler_mintdb_interpreter.h"
-#include "perf_taler_mintdb_values.h"
 
 
-#define PERF_TALER_MINTDB_NB_DENOMINATION_INIT  10
-#define PERF_TALER_MINTDB_NB_DENOMINATION_SAVE  10
+#define NB_DENOMINATION_INIT  10
+#define NB_DENOMINATION_SAVE  10
 
-#define PERF_TALER_MINTDB_NB_RESERVE_INIT   100
-#define PERF_TALER_MINTDB_NB_RESERVE_SAVE   10
+#define NB_RESERVE_INIT   1000
+#define NB_RESERVE_SAVE   100
 
-#define PERF_TALER_MINTDB_NB_DEPOSIT_INIT   100
-#define PERF_TALER_MINTDB_NB_DEPOSIT_SAVE   10
+#define NB_DEPOSIT_INIT   1000
+#define NB_DEPOSIT_SAVE   100
 
-#define PERF_TALER_MINTDB_NB_WITHDRAW_INIT  100
-#define PERF_TALER_MINTDB_NB_WITHDRAW_SAVE  10
+#define NB_WITHDRAW_INIT  1000
+#define NB_WITHDRAW_SAVE  100
 
 /**
  * Runs the performances tests for the mint database
@@ -49,33 +48,33 @@ main (int argc, char ** argv)
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("00 - Start of interpreter"),
 
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("01 - denomination loop",
-                                     PERF_TALER_MINTDB_NB_DENOMINATION_INIT),
+                                     NB_DENOMINATION_INIT),
     PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("01 - start transaction"),
     PERF_TALER_MINTDB_INIT_CMD_INSERT_DENOMINATION ("01 - denomination"),
     PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION ("01 - commit transaction"),
     PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("01 - save denomination",
                                            "01 - denomination loop",
                                            "01 - denomination",
-                                           PERF_TALER_MINTDB_NB_DENOMINATION_SAVE),
+                                           NB_DENOMINATION_SAVE),
     PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("01 - denomination loop end",
                                          "01 - denomination loop"),
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("01 - init denomination complete"),
     // End of initialization
     // Reserve initialization
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("02 - init reserve loop",
-                                     PERF_TALER_MINTDB_NB_RESERVE_INIT),
+                                     NB_RESERVE_INIT),
     PERF_TALER_MINTDB_INIT_CMD_INSERT_RESERVE ("02 - reserve"),
     PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("02 - save reserve",
                                            "02 - init reserve loop",
                                            "02 - reserve",
-                                           PERF_TALER_MINTDB_NB_RESERVE_SAVE),
+                                           NB_RESERVE_SAVE),
     PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("02 - init reserve end loop",
                                          "02 - init reserve loop"),
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("02 - reserve init complete"),
     // End reserve init
     // Withdrawal initialization
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("03 - init withdraw loop",
-                                     PERF_TALER_MINTDB_NB_WITHDRAW_INIT),
+                                     NB_WITHDRAW_INIT),
     PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("03 - start transaction"),
     PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("03 - denomination load",
                                            "03 - init withdraw loop",
@@ -90,14 +89,14 @@ main (int argc, char ** argv)
     PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("03 - blindcoin array",
                                            "03 - init withdraw loop",
                                            "03 - withdraw",
-                                           PERF_TALER_MINTDB_NB_WITHDRAW_SAVE),
+                                           NB_WITHDRAW_SAVE),
     PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("03 - withdraw init end loop",
                                          "03 - init withdraw loop"),
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("03 - withdraw init complete"),
     //End of withdrawal initialization
     //Deposit initialization
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("04 - deposit init loop",
-                                     PERF_TALER_MINTDB_NB_DEPOSIT_INIT),
+                                     NB_DEPOSIT_INIT),
     PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("04 - start transaction"),
     PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("04 - denomination load",
                                            "04 - deposit init loop",
@@ -108,7 +107,7 @@ main (int argc, char ** argv)
     PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("04 - deposit array",
                                            "04 - deposit init loop",
                                            "04 - deposit",
-                                           PERF_TALER_MINTDB_NB_DEPOSIT_SAVE),
+                                           NB_DEPOSIT_SAVE),
     PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("04 - deposit init loop end",
                                          "04 - deposit init loop"),
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("04 - deposit init complete"),

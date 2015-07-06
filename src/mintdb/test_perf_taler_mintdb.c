@@ -132,7 +132,7 @@ main (int argc, char ** argv)
                                          init,
                                          benchmark);
   
-  if (GNUNET_SYSERR != ret)
+  if (GNUNET_SYSERR == ret)
     return 1;
   return 0;
 }

@@ -111,11 +111,12 @@
  * Commits the duration between @a _label_start and @a _label_stop
  * to Gauger with @a _description explaining what was measured.
  *
+ * @param _label the label of this command
  * @param _label_start label of the start of the measurment
  * @param _label_stop label of the end of the measurment
  * @param _description description of the measure displayed in Gauger
  * @param _unit the unit of the data measured, typicly something/sec
- * @param _divide number of measurments in the interval [FIXME: need UNIT]
+ * @param _divide number of measurments in the interval 
  */
 #define PERF_TALER_MINTDB_INIT_CMD_GAUGER(_label, _label_start, _label_stop, _description, _unit, _divide) \
 { \
