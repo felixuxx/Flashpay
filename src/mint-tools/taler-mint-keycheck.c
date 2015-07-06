@@ -128,10 +128,8 @@ denomkeys_iter (void *cls,
 {
   struct GNUNET_HashCode hc;
 
-  if (ntohl (dki->issue.purpose.size) !=
-      sizeof (struct TALER_DenominationKeyValidityPS) -
-      offsetof (struct TALER_DenominationKeyValidityPS,
-                purpose))
+  if (ntohl (dki->issue.properties.purpose.size) !=
+      sizeof (struct TALER_DenominationKeyValidityPS))
   {
     fprintf (stderr,
              "Denomination key for `%s' has invalid purpose size\n",
@@ -139,10 +137,10 @@ denomkeys_iter (void *cls,
     return GNUNET_SYSERR;
   }
 
-  if ( (0 != GNUNET_TIME_absolute_ntoh (dki->issue.start).abs_value_us % 1000000) ||
-       (0 != GNUNET_TIME_absolute_ntoh (dki->issue.expire_withdraw).abs_value_us % 1000000) ||
-       (0 != GNUNET_TIME_absolute_ntoh (dki->issue.expire_legal).abs_value_us % 1000000) ||
-       (0 != GNUNET_TIME_absolute_ntoh (dki->issue.expire_spend).abs_value_us % 1000000) )
+  if ( (0 != GNUNET_TIME_absolute_ntoh (dki->issue.properties.start).abs_value_us % 1000000) ||
+       (0 != GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_withdraw).abs_value_us % 1000000) ||
+       (0 != GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_legal).abs_value_us % 1000000) ||
+       (0 != GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_spend).abs_value_us % 1000000) )
   {
     fprintf (stderr,
              "Timestamps are not multiples of a round second\n");
@@ -151,9 +149,9 @@ denomkeys_iter (void *cls,
 
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
-                                  &dki->issue.purpose,
+                                  &dki->issue.properties.purpose,
                                   &dki->issue.signature.eddsa_signature,
-                                  &dki->issue.master.eddsa_pub))
+                                  &dki->issue.properties.master.eddsa_pub))
   {
     fprintf (stderr,
              "Denomination key for `%s' has invalid signature\n",
@@ -163,7 +161,7 @@ denomkeys_iter (void *cls,
   GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
                                      &hc);
   if (0 != memcmp (&hc,
-                   &dki->issue.denom_hash,
+                   &dki->issue.properties.denom_hash,
                    sizeof (struct GNUNET_HashCode)))
   {
     fprintf (stderr,

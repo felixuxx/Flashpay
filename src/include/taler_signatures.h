@@ -89,6 +89,17 @@
 #define TALER_SIGNATURE_MINT_KEY_SET 1035
 
 
+/*********************/
+/* Wallet signatures */
+/*********************/
+
+/**
+ * Signature where the auditor confirms that he is 
+ * aware of certain denomination keys from the mint.
+ */
+#define TALER_SIGNATURE_AUDITOR_MINT_KEYS 1064
+
+
 /***********************/
 /* Merchant signatures */
 /***********************/
@@ -123,10 +134,10 @@
  */
 #define TALER_SIGNATURE_WALLET_COIN_MELT 1202
 
+
 /*******************/
 /* Test signatures */
 /*******************/
-
 
 /**
  * EdDSA test signature.
@@ -512,10 +523,6 @@ struct TALER_MintKeySetPS
  */
 struct TALER_DenominationKeyValidityPS
 {
-  /**
-   * Signature over this struct to affirm the validity of the key.
-   */
-  struct TALER_MasterSignatureP signature;
 
   /**
    * Purpose is #TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY.
@@ -598,6 +605,37 @@ struct TALER_DenominationKeyValidityPS
   struct GNUNET_HashCode denom_hash;
 
 };
+
+
+/**
+ * @brief Information about a denomination key. Denomination keys
+ * are used to sign coins of a certain value into existence.
+ */
+struct TALER_MintKeyValidityPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_AUDITOR_MINT_KEYS.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * The long-term offline master key of the mint, affirmed by the
+   * auditor.
+   */
+  struct TALER_MasterPublicKeyP master;
+
+  /**
+   * Array of hash(es) of the mint's denomination keys.
+   * Specifically, this is the hash over the
+   * `struct TALER_DenominationKeyValidityPS`, not just
+   * the public key (as the auditor needs to check against
+   * the correct valuations and fee structure).
+   */
+  /* struct GNUNET_HashCode h_dks; */
+
+};
+
 
 GNUNET_NETWORK_STRUCT_END
 

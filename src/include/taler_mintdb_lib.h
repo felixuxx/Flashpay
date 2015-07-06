@@ -60,6 +60,24 @@ struct TALER_MINTDB_PrivateSigningKeyInformationP
 };
 
 
+/**
+ * Information about a denomination key.
+ */ 
+struct TALER_MINTDB_DenominationKeyInformationP
+{
+
+  /**
+   * Signature over this struct to affirm the validity of the key.
+   */
+  struct TALER_MasterSignatureP signature;
+
+  /**
+   * Signed properties of the denomination key.
+   */
+  struct TALER_DenominationKeyValidityPS properties;
+};
+
+
 GNUNET_NETWORK_STRUCT_END
 
 
@@ -85,7 +103,7 @@ struct TALER_MINTDB_DenominationKeyIssueInformation
   /**
    * Signed public information about a denomination key.
    */
-  struct TALER_DenominationKeyValidityPS issue;
+  struct TALER_MINTDB_DenominationKeyInformationP issue;
 };
 
 

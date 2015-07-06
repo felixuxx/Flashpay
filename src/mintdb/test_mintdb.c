@@ -105,26 +105,26 @@ register_denomination(struct TALER_DenominationPublicKey denom_pub,
           0,
           sizeof (struct TALER_MINTDB_DenominationKeyIssueInformation));
   dki.denom_pub = denom_pub;
-  dki.issue.start = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get ());
-  dki.issue.expire_withdraw = GNUNET_TIME_absolute_hton
+  dki.issue.properties.start = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get ());
+  dki.issue.properties.expire_withdraw = GNUNET_TIME_absolute_hton
       (GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
                                  GNUNET_TIME_UNIT_HOURS));
-  dki.issue.expire_spend = GNUNET_TIME_absolute_hton
+  dki.issue.properties.expire_spend = GNUNET_TIME_absolute_hton
       (GNUNET_TIME_absolute_add
        (GNUNET_TIME_absolute_get (),
         GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 2)));
-  dki.issue.expire_legal = GNUNET_TIME_absolute_hton
+  dki.issue.properties.expire_legal = GNUNET_TIME_absolute_hton
       (GNUNET_TIME_absolute_add
        (GNUNET_TIME_absolute_get (),
         GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 3)));
-  dki.issue.value.value = GNUNET_htonll (1);
-  dki.issue.value.fraction = htonl (100);
-  (void) strcpy (dki.issue.value.currency, CURRENCY);
-  dki.issue.fee_withdraw.value = 0;
-  dki.issue.fee_withdraw.fraction = htonl (100);
-  (void) strcpy (dki.issue.fee_withdraw.currency, CURRENCY);
-  dki.issue.fee_deposit = dki.issue.fee_withdraw;
-  dki.issue.fee_refresh = dki.issue.fee_withdraw;
+  dki.issue.properties.value.value = GNUNET_htonll (1);
+  dki.issue.properties.value.fraction = htonl (100);
+  (void) strcpy (dki.issue.properties.value.currency, CURRENCY);
+  dki.issue.properties.fee_withdraw.value = 0;
+  dki.issue.properties.fee_withdraw.fraction = htonl (100);
+  (void) strcpy (dki.issue.properties.fee_withdraw.currency, CURRENCY);
+  dki.issue.properties.fee_deposit = dki.issue.properties.fee_withdraw;
+  dki.issue.properties.fee_refresh = dki.issue.properties.fee_withdraw;
   if (GNUNET_OK !=
       plugin->insert_denomination_info (plugin->cls,
                                         session,

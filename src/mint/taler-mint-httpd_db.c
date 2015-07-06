@@ -136,7 +136,7 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
                                         &deposit->coin.denom_pub,
 					TMH_KS_DKU_DEPOSIT);
   TALER_amount_ntoh (&value,
-                     &dki->issue.value);
+                     &dki->issue.properties.value);
   TMH_KS_release (mks);
 
   if (GNUNET_OK !=
@@ -357,9 +357,9 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
 
   /* calculate amount required including fees */
   TALER_amount_ntoh (&value,
-                     &dki->issue.value);
+                     &dki->issue.properties.value);
   TALER_amount_ntoh (&fee_withdraw,
-                     &dki->issue.fee_withdraw);
+                     &dki->issue.properties.fee_withdraw);
 
   if (GNUNET_OK !=
       TALER_amount_add (&amount_required,
@@ -399,7 +399,7 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
                                              &pos->details.withdraw->denom_pub,
 					     TMH_KS_DKU_WITHDRAW);
       TALER_amount_ntoh (&value,
-                         &tdki->issue.value);
+                         &tdki->issue.properties.value);
       if (0 == (res & 2))
         withdraw_total = value;
       else
@@ -516,7 +516,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
                       const struct TMH_DB_MeltDetails *coin_details,
                       uint16_t oldcoin_index)
 {
-  struct TALER_DenominationKeyValidityPS *dki;
+  struct TALER_MINTDB_DenominationKeyInformationP *dki;
   struct TALER_MINTDB_TransactionList *tl;
   struct TALER_Amount coin_value;
   struct TALER_Amount coin_residual;
@@ -535,7 +535,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
         ? GNUNET_NO : GNUNET_SYSERR;
 
   TALER_amount_ntoh (&coin_value,
-                     &dki->value);
+                     &dki->properties.value);
   /* fee for THIS transaction; the melt amount includes the fee! */
   spent = coin_details->melt_amount_with_fee;
   /* add historic transaction costs of this coin */

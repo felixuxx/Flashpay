@@ -1045,35 +1045,35 @@ static int
 postgres_insert_denomination_info (void *cls,
                                    struct TALER_MINTDB_Session *session,
                                    const struct TALER_DenominationPublicKey *denom_pub,
-                                   const struct TALER_DenominationKeyValidityPS *issue)
+                                   const struct TALER_MINTDB_DenominationKeyInformationP *issue)
 {
   PGresult *result;
   int ret;
 
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
-    TALER_PQ_query_param_auto_from_type (&issue->master),
+    TALER_PQ_query_param_auto_from_type (&issue->properties.master),
     TALER_PQ_query_param_auto_from_type (&issue->signature),
-    TALER_PQ_query_param_absolute_time_nbo (&issue->start),
-    TALER_PQ_query_param_absolute_time_nbo (&issue->expire_withdraw),
-    TALER_PQ_query_param_absolute_time_nbo (&issue->expire_spend),
-    TALER_PQ_query_param_absolute_time_nbo (&issue->expire_legal),
-    TALER_PQ_query_param_amount_nbo (&issue->value),
-    TALER_PQ_query_param_amount_nbo (&issue->fee_withdraw),
-    TALER_PQ_query_param_amount_nbo (&issue->fee_deposit),
-    TALER_PQ_query_param_amount_nbo (&issue->fee_refresh),
+    TALER_PQ_query_param_absolute_time_nbo (&issue->properties.start),
+    TALER_PQ_query_param_absolute_time_nbo (&issue->properties.expire_withdraw),
+    TALER_PQ_query_param_absolute_time_nbo (&issue->properties.expire_spend),
+    TALER_PQ_query_param_absolute_time_nbo (&issue->properties.expire_legal),
+    TALER_PQ_query_param_amount_nbo (&issue->properties.value),
+    TALER_PQ_query_param_amount_nbo (&issue->properties.fee_withdraw),
+    TALER_PQ_query_param_amount_nbo (&issue->properties.fee_deposit),
+    TALER_PQ_query_param_amount_nbo (&issue->properties.fee_refresh),
     TALER_PQ_query_param_end
   };
   /* check fees match coin currency */
   GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency_nbo (&issue->value,
-                                                &issue->fee_withdraw));
+                 TALER_amount_cmp_currency_nbo (&issue->properties.value,
+                                                &issue->properties.fee_withdraw));
   GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency_nbo (&issue->value,
-                                                &issue->fee_deposit));
+                 TALER_amount_cmp_currency_nbo (&issue->properties.value,
+                                                &issue->properties.fee_deposit));
   GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency_nbo (&issue->value,
-                                                &issue->fee_refresh));
+                 TALER_amount_cmp_currency_nbo (&issue->properties.value,
+                                                &issue->properties.fee_refresh));
 
   result = TALER_PQ_exec_prepared (session->conn,
                                    "denomination_insert",
@@ -1105,7 +1105,7 @@ static int
 postgres_get_denomination_info (void *cls,
                                 struct TALER_MINTDB_Session *session,
                                 const struct TALER_DenominationPublicKey *denom_pub,
-                                struct TALER_DenominationKeyValidityPS *issue)
+                                struct TALER_MINTDB_DenominationKeyInformationP *issue)
 {
   PGresult *result;
   struct TALER_PQ_QueryParam params[] = {
@@ -1141,25 +1141,25 @@ postgres_get_denomination_info (void *cls,
   {
     struct TALER_PQ_ResultSpec rs[] = {
       TALER_PQ_result_spec_auto_from_type ("master_pub",
-                                           &issue->master),
+                                           &issue->properties.master),
       TALER_PQ_result_spec_auto_from_type ("master_sig",
                                            &issue->signature),
       TALER_PQ_result_spec_absolute_time_nbo ("valid_from",
-                                              &issue->start),
+                                              &issue->properties.start),
       TALER_PQ_result_spec_absolute_time_nbo ("expire_withdraw",
-                                              &issue->expire_withdraw),
+                                              &issue->properties.expire_withdraw),
       TALER_PQ_result_spec_absolute_time_nbo ("expire_spend",
-                                              &issue->expire_spend),
+                                              &issue->properties.expire_spend),
       TALER_PQ_result_spec_absolute_time_nbo ("expire_legal",
-                                              &issue->expire_legal),
+                                              &issue->properties.expire_legal),
       TALER_PQ_result_spec_amount_nbo ("coin",
-                                       &issue->value),
+                                       &issue->properties.value),
       TALER_PQ_result_spec_amount_nbo ("fee_withdraw",
-                                       &issue->fee_withdraw),
+                                       &issue->properties.fee_withdraw),
       TALER_PQ_result_spec_amount_nbo ("fee_deposit",
-                                       &issue->fee_deposit),
+                                       &issue->properties.fee_deposit),
       TALER_PQ_result_spec_amount_nbo ("fee_refresh",
-                                       &issue->fee_refresh),
+                                       &issue->properties.fee_refresh),
       TALER_PQ_result_spec_end
     };
 

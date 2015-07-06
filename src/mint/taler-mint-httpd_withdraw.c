@@ -137,9 +137,9 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
                                            "denom_pub");
   }
   TALER_amount_ntoh (&amount,
-                     &dki->issue.value);
+                     &dki->issue.properties.value);
   TALER_amount_ntoh (&fee_withdraw,
-                     &dki->issue.fee_withdraw);
+                     &dki->issue.properties.fee_withdraw);
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_add (&amount_with_fee,
                                    &amount,

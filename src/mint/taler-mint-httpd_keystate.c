@@ -119,7 +119,7 @@ static int reload_pipe[2];
  */
 static json_t *
 denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
-                         const struct TALER_DenominationKeyValidityPS *dki)
+                         const struct TALER_MINTDB_DenominationKeyInformationP *dki)
 {
   struct TALER_Amount value;
   struct TALER_Amount fee_withdraw;
@@ -127,26 +127,26 @@ denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
   struct TALER_Amount fee_refresh;
 
   TALER_amount_ntoh (&value,
-                     &dki->value);
+                     &dki->properties.value);
   TALER_amount_ntoh (&fee_withdraw,
-                     &dki->fee_withdraw);
+                     &dki->properties.fee_withdraw);
   TALER_amount_ntoh (&fee_deposit,
-                     &dki->fee_deposit);
+                     &dki->properties.fee_deposit);
   TALER_amount_ntoh (&fee_refresh,
-                     &dki->fee_refresh);
+                     &dki->properties.fee_refresh);
   return
     json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                "master_sig",
                TALER_json_from_data (&dki->signature,
                                      sizeof (struct GNUNET_CRYPTO_EddsaSignature)),
                "stamp_start",
-               TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (dki->start)),
+               TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (dki->properties.start)),
                "stamp_expire_withdraw",
-               TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_withdraw)),
+               TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (dki->properties.expire_withdraw)),
                "stamp_expire_deposit",
-               TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_spend)),
+               TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (dki->properties.expire_spend)),
                "stamp_expire_legal",
-               TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (dki->expire_legal)),
+               TALER_json_from_abs (GNUNET_TIME_absolute_ntoh (dki->properties.expire_legal)),
                "denom_pub",
                TALER_json_from_rsa_public_key (pk->rsa_public_key),
                "value",
@@ -214,7 +214,7 @@ reload_keys_denom_iter (void *cls,
               "Loading denomination key `%s'\n",
               alias);
   horizon = GNUNET_TIME_relative_to_absolute (TALER_MINT_conf_duration_provide ());
-  if (GNUNET_TIME_absolute_ntoh (dki->issue.start).abs_value_us >
+  if (GNUNET_TIME_absolute_ntoh (dki->issue.properties.start).abs_value_us >
       horizon.abs_value_us)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -223,7 +223,7 @@ reload_keys_denom_iter (void *cls,
     return GNUNET_OK;
   }
   now = GNUNET_TIME_absolute_get ();
-  if (GNUNET_TIME_absolute_ntoh (dki->issue.expire_spend).abs_value_us <
+  if (GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_spend).abs_value_us <
       now.abs_value_us)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -569,7 +569,7 @@ TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
 					   &hc);
   now = GNUNET_TIME_absolute_get ();
   if (now.abs_value_us <
-      GNUNET_TIME_absolute_ntoh (dki->issue.start).abs_value_us)
+      GNUNET_TIME_absolute_ntoh (dki->issue.properties.start).abs_value_us)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 		"Not returning DKI for %s, as start time is in the future\n",
@@ -581,7 +581,7 @@ TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
   {
   case TMH_KS_DKU_WITHDRAW:
     if (now.abs_value_us >
-	GNUNET_TIME_absolute_ntoh (dki->issue.expire_withdraw).abs_value_us)
+	GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_withdraw).abs_value_us)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 		  "Not returning DKI for %s, as time to create coins has passed\n",
@@ -591,7 +591,7 @@ TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
     break;
   case TMH_KS_DKU_DEPOSIT:
     if (now.abs_value_us >
-	GNUNET_TIME_absolute_ntoh (dki->issue.expire_spend).abs_value_us)
+	GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_spend).abs_value_us)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 		  "Not returning DKI for %s, as time to spend coin has passed\n",

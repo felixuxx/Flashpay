@@ -53,8 +53,7 @@ main (int argc,
   dki_read.denom_priv.rsa_private_key = NULL;
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &dki.issue.signature,
-                              sizeof (dki) - offsetof (struct TALER_DenominationKeyValidityPS,
-                                                       signature));
+                              sizeof (struct TALER_MasterSignatureP));
   dki.denom_priv.rsa_private_key
     = GNUNET_CRYPTO_rsa_private_key_create (RSA_KEY_SIZE);
   enc_size = GNUNET_CRYPTO_rsa_private_key_encode (dki.denom_priv.rsa_private_key,

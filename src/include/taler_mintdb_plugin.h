@@ -697,7 +697,7 @@ struct TALER_MINTDB_Plugin
   (*insert_denomination_info) (void *cls,
                                struct TALER_MINTDB_Session *session,
                                const struct TALER_DenominationPublicKey *denom_pub,
-                               const struct TALER_DenominationKeyValidityPS *issue);
+                               const struct TALER_MINTDB_DenominationKeyInformationP *issue);
 
 
   /**
@@ -713,7 +713,7 @@ struct TALER_MINTDB_Plugin
   (*get_denomination_info) (void *cls,
                             struct TALER_MINTDB_Session *session,
                             const struct TALER_DenominationPublicKey *denom_pub,
-                            struct TALER_DenominationKeyValidityPS *issue);
+                            struct TALER_MINTDB_DenominationKeyInformationP *issue);
 
 
   /**
