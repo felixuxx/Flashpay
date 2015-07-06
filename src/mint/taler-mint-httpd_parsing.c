@@ -141,6 +141,86 @@ buffer_append (struct Buffer *buf,
 
 
 /**
+ * Release all memory allocated for the variable-size fields in
+ * the parser specification.
+ *
+ * @param spec specification to free
+ * @param spec_len number of items in @a spec to look at
+ */
+static void
+release_data (struct TMH_PARSE_FieldSpecification *spec,
+              unsigned int spec_len)
+{
+  unsigned int i;
+  void *ptr;
+
+  for (i=0; i < spec_len; i++)
+  {
+    switch (spec[i].command)
+    {
+    case TMH_PARSE_JNC_FIELD:
+      GNUNET_break (0);
+      return;
+    case TMH_PARSE_JNC_INDEX:
+      GNUNET_break (0);
+      return;
+    case TMH_PARSE_JNC_RET_DATA:
+      break;
+    case TMH_PARSE_JNC_RET_DATA_VAR:
+      if (0 != spec[i].destination_size_out)
+      {
+        GNUNET_free (spec[i].destination);
+        spec[i].destination = NULL;
+        spec[i].destination_size_out = 0;
+      }
+      break;
+    case TMH_PARSE_JNC_RET_TYPED_JSON:
+      ptr = *(void **) spec[i].destination;
+      if (NULL != ptr)
+      {
+        json_decref (ptr);
+        *(void**) spec[i].destination = NULL;
+      }
+      break;
+    case TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY:
+      {
+        struct TALER_DenominationPublicKey *pk;
+
+        pk = spec[i].destination;
+        if (NULL != pk->rsa_public_key)
+        {
+          GNUNET_CRYPTO_rsa_public_key_free (pk->rsa_public_key);
+          pk->rsa_public_key = NULL;
+        }
+      }
+      break;
+    case TMH_PARSE_JNC_RET_RSA_SIGNATURE:
+      {
+        struct TALER_DenominationSignature *sig;
+
+        sig = spec[i].destination;
+        if (NULL != sig->rsa_signature)
+        {
+          GNUNET_CRYPTO_rsa_signature_free (sig->rsa_signature);
+          sig->rsa_signature = NULL;
+        }
+      }
+      break;
+    case TMH_PARSE_JNC_RET_AMOUNT:
+      memset (spec[i].destination,
+              0,
+              sizeof (struct TALER_Amount));
+      break;
+    case TMH_PARSE_JNC_RET_TIME_ABSOLUTE:
+      break;
+    case TMH_PARSE_JNC_RET_UINT64:
+      break;
+    }
+  }
+}
+
+
+/**
  * Process a POST request containing a JSON object.  This function
  * realizes an MHD POST processor that will (incrementally) process
  * JSON data uploaded to the HTTP server.  It will store the required
@@ -838,7 +918,8 @@ TMH_PARSE_json_data (struct MHD_Connection *connection,
     }
   }
   if (GNUNET_YES != ret)
-    TMH_PARSE_release_data (spec);
+    release_data (spec,
+                  i);
   return ret;
 }
 
@@ -853,71 +934,9 @@ void
 TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec)
 {
   unsigned int i;
-  void *ptr;
 
-  for (i=0; NULL != spec[i].field_name; i++)
-  {
-    switch (spec[i].command)
-    {
-    case TMH_PARSE_JNC_FIELD:
-      GNUNET_break (0);
-      return;
-    case TMH_PARSE_JNC_INDEX:
-      GNUNET_break (0);
-      return;
-    case TMH_PARSE_JNC_RET_DATA:
-      break;
-    case TMH_PARSE_JNC_RET_DATA_VAR:
-      if (0 != spec[i].destination_size_out)
-      {
-        GNUNET_free (spec[i].destination);
-        spec[i].destination = NULL;
-        spec[i].destination_size_out = 0;
-      }
-      break;
-    case TMH_PARSE_JNC_RET_TYPED_JSON:
-      ptr = *(void **) spec[i].destination;
-      if (NULL != ptr)
-      {
-        json_decref (ptr);
-        *(void**) spec[i].destination = NULL;
-      }
-      break;
-    case TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY:
-      {
-        struct TALER_DenominationPublicKey *pk;
-
-        pk = spec[i].destination;
-        if (NULL != pk->rsa_public_key)
-        {
-          GNUNET_CRYPTO_rsa_public_key_free (pk->rsa_public_key);
-          pk->rsa_public_key = NULL;
-        }
-      }
-      break;
-    case TMH_PARSE_JNC_RET_RSA_SIGNATURE:
-      {
-        struct TALER_DenominationSignature *sig;
-
-        sig = spec[i].destination;
-        if (NULL != sig->rsa_signature)
-        {
-          GNUNET_CRYPTO_rsa_signature_free (sig->rsa_signature);
-          sig->rsa_signature = NULL;
-        }
-      }
-      break;
-    case TMH_PARSE_JNC_RET_AMOUNT:
-      memset (spec[i].destination,
-              0,
-              sizeof (struct TALER_Amount));
-      break;
-    case TMH_PARSE_JNC_RET_TIME_ABSOLUTE:
-      break;
-    case TMH_PARSE_JNC_RET_UINT64:
-      break;
-    }
-  }
+  for (i=0; NULL != spec[i].field_name; i++) ;
+  release_data (spec, i);
 }
 
 
