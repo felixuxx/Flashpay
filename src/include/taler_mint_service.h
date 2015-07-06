@@ -118,28 +118,6 @@ enum TALER_MINT_Option
 
 
 /**
- * Information we get from the mint about auditors.
- */
-struct TALER_MINT_AuditorInformation
-{
-  /**
-   * Public key of the auditing institution.
-   */
-  struct TALER_AuditorPublicKeyP auditor_pub;
-
-  /**
-   * URL of the auditing institution.  The application must check that
-   * this is an acceptable auditor for its purpose and also verify
-   * that the @a auditor_pub matches the auditor's public key given at
-   * that website.  We expect that in practice software is going to
-   * often ship with an initial list of accepted auditors, just like
-   * browsers ship with a CA root store.
-   */
-  const char *auditor_url;
-};
-
-
-/**
  * @brief Mint's signature key
  */
 struct TALER_MINT_SigningPublicKey
@@ -207,6 +185,42 @@ struct TALER_MINT_DenomPublicKey
    */
   struct TALER_Amount fee_refresh;
 };
+
+
+/**
+ * Information we get from the mint about auditors.
+ */
+struct TALER_MINT_AuditorInformation
+{
+  /**
+   * Public key of the auditing institution.
+   */
+  struct TALER_AuditorPublicKeyP auditor_pub;
+
+  /**
+   * URL of the auditing institution.  The application must check that
+   * this is an acceptable auditor for its purpose and also verify
+   * that the @a auditor_pub matches the auditor's public key given at
+   * that website.  We expect that in practice software is going to
+   * often ship with an initial list of accepted auditors, just like
+   * browsers ship with a CA root store.
+   */
+  const char *auditor_url;
+
+  /**
+   * Number of denomination keys audited by this auditor.
+   */
+  unsigned int num_denom_keys;
+
+  /**
+   * Array of length @a denom_keys with the denomination
+   * keys audited by this auditor.  Note that the array
+   * elements point to the same locations as the entries
+   * in the key's main `denom_keys` array. 
+   */
+  struct TALER_MINT_DenomPublicKey *const*denom_keys;
+};
+
 
 
 /**

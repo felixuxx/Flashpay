@@ -100,7 +100,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
                                                  "ub_sig");
   }
   TALER_amount_ntoh (&fee_deposit,
-                     &dki->issue.fee_deposit);
+                     &dki->issue.properties.fee_deposit);
   if (0 < TALER_amount_cmp (&fee_deposit,
                             &deposit->amount_with_fee))
   {
@@ -188,7 +188,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
                                            "denom_pub");
   }
   TALER_amount_ntoh (&deposit.deposit_fee,
-                     &dki->issue.fee_deposit);
+                     &dki->issue.properties.fee_deposit);
   TMH_KS_release (ks);
   deposit.wire = wire;
   deposit.amount_with_fee = *amount;

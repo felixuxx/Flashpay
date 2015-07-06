@@ -719,35 +719,33 @@ create_denomkey_issue (const struct CoinTypeParams *params,
   dki->denom_pub.rsa_public_key
     = GNUNET_CRYPTO_rsa_private_key_get_public (dki->denom_priv.rsa_private_key);
   GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
-                                     &dki->issue.denom_hash);
-  dki->issue.master = master_public_key;
-  dki->issue.start = GNUNET_TIME_absolute_hton (params->anchor);
-  dki->issue.expire_withdraw =
+                                     &dki->issue.properties.denom_hash);
+  dki->issue.properties.master = master_public_key;
+  dki->issue.properties.start = GNUNET_TIME_absolute_hton (params->anchor);
+  dki->issue.properties.expire_withdraw =
       GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
                                                            params->duration_withdraw));
-  dki->issue.expire_spend =
+  dki->issue.properties.expire_spend =
     GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
                                                          params->duration_spend));
-  dki->issue.expire_legal =
+  dki->issue.properties.expire_legal =
     GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
                                                          params->duration_legal));
-  TALER_amount_hton (&dki->issue.value,
+  TALER_amount_hton (&dki->issue.properties.value,
                      &params->value);
-  TALER_amount_hton (&dki->issue.fee_withdraw,
+  TALER_amount_hton (&dki->issue.properties.fee_withdraw,
                      &params->fee_withdraw);
-  TALER_amount_hton (&dki->issue.fee_deposit,
+  TALER_amount_hton (&dki->issue.properties.fee_deposit,
                      &params->fee_deposit);
-  TALER_amount_hton (&dki->issue.fee_refresh,
+  TALER_amount_hton (&dki->issue.properties.fee_refresh,
                      &params->fee_refresh);
-  dki->issue.purpose.purpose
+  dki->issue.properties.purpose.purpose
     = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
-  dki->issue.purpose.size
-    = htonl (sizeof (struct TALER_DenominationKeyValidityPS) -
-             offsetof (struct TALER_DenominationKeyValidityPS,
-                       purpose));
+  dki->issue.properties.purpose.size
+    = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
-                                           &dki->issue.purpose,
+                                           &dki->issue.properties.purpose,
                                            &dki->issue.signature.eddsa_signature));
 }
 

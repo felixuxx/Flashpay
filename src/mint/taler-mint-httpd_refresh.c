@@ -61,7 +61,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
 {
   unsigned int i;
   struct TMH_KS_StateHandle *key_state;
-  struct TALER_DenominationKeyValidityPS *dki;
+  struct TALER_MINTDB_DenominationKeyInformationP *dki;
   struct TALER_Amount cost;
   struct TALER_Amount total_cost;
   struct TALER_Amount melt;
@@ -80,9 +80,9 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                                            &denom_pubs[i],
 					   TMH_KS_DKU_WITHDRAW)->issue;
     TALER_amount_ntoh (&value,
-                       &dki->value);
+                       &dki->properties.value);
     TALER_amount_ntoh (&fee_withdraw,
-                       &dki->fee_withdraw);
+                       &dki->properties.fee_withdraw);
     if ( (GNUNET_OK !=
           TALER_amount_add (&cost,
                             &value,
@@ -109,7 +109,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                                            &coin_melt_details[i].coin_info.denom_pub,
 					   TMH_KS_DKU_DEPOSIT)->issue;
     TALER_amount_ntoh (&fee_melt,
-                       &dki->fee_refresh);
+                       &dki->properties.fee_refresh);
     if (GNUNET_OK !=
         TALER_amount_subtract (&melt,
                                &coin_melt_details->melt_amount_with_fee,
@@ -245,7 +245,7 @@ verify_coin_public_info (struct MHD_Connection *connection,
   /* FIXME: need to check if denomination key is still
      valid for issuing! (#3634) */
   TALER_amount_ntoh (&fee_refresh,
-                     &dki->issue.fee_refresh);
+                     &dki->issue.properties.fee_refresh);
   body.purpose.size = htonl (sizeof (struct TALER_RefreshMeltCoinAffirmationPS));
   body.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
   body.session_hash = *session_hash;
