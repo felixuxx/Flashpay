@@ -24,6 +24,8 @@
 #include "gauger.h"
 
 
+#define FIND_TEST(cmd, string, arg) \
+
 /**
  * Represents the state of the interpreter
  */
@@ -375,6 +377,26 @@ interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 
 
 /**
+ * Part of the interpreter specific to 
+ * #PERF_TALER_MINTDB_CMD_LOAD_RANDOM
+ * Get a random element from a #PERF_TALER_MINTDB_CMD_SAVE_ARRAY and exposes it
+ */
+static void
+interpret_load_random (struct PERF_TALER_MINTDB_interpreter_state *state)
+{
+  unsigned int index;
+  int save_index;
+
+  GNUNET_assert (0 <=
+    (save_index  = cmd_find (state->cmd,
+                             state->cmd[state->i].details.load_random.label_save)));
+   index = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                     state->cmd[save_index].details.save_array.nb_saved);
+   state->cmd[state->i].exposed = 
+     data_copy (state->cmd[save_index].details.data_saved[index]);
+}
+
+/**
  * Iterate over the commands, acting accordingly at each step
  *
  * @param state the current state of the interpreter
@@ -382,7 +404,6 @@ interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 static int
 interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
-
   for (state->i=0; PERF_TALER_MINTDB_CMD_END != state->cmd[state->i].command; state->i++)
   {
     switch (state->cmd[state->i].command)
@@ -448,6 +469,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_ABORT_TRANSACTION:
         state->plugin->rollback (state->plugin->cls,
                                  state->session);
+        break;
 
       case PERF_TALER_MINTDB_CMD_SAVE_ARRAY:
         interpret_save_array (state);
@@ -457,13 +479,17 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         interpret_load_array (state);
         break;
 
+      case PERF_TALER_MINTDB_CMD_LOAD_RANDOM:
+        interprete_load_random(state);
+        break;
+
       case PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT:
         {
           int dki_index;
           struct TALER_MINTDB_Deposit *deposit;
 
           GNUNET_assert (GNUNET_SYSERR !=
-                         (dki_index = cmd_find(state->cmd,
+                         (dki_index = cmd_find (state->cmd,
                                                state->cmd[state->i].details.insert_deposit.label_dki)));
           GNUNET_assert (NULL !=
                          (deposit = PERF_TALER_MINTDB_deposit_init (state->cmd[dki_index].exposed.data.dki)));
@@ -508,7 +534,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
             state->session,
             &reserve->pub,
             &reserve->balance,
-            GNUNET_TIME_absolute_get(),
+            GNUNET_TIME_absolute_get (),
             details
             );
           json_decref (details);
@@ -642,13 +668,14 @@ PERF_TALER_MINTDB_interpret (struct TALER_MINTDB_Plugin *db_plugin,
 
 
 /**
+ * Initialize the database and run the benchmark
  *
  * @param benchmark_name the name of the benchmark, displayed in the logs
  * @param configuration_file path to the taler configuration file to use
  * @param init the commands to use for the database initialisation, 
  * if #NULL the standard initialization is used
  * @param benchmark the commands for the benchmark
- * @return GNUNET_OK upon success; GNUNET_SYSERR upon failure
+ * @return #GNUNET_OK upon success; GNUNET_SYSERR upon failure
  */
 int
 PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
@@ -752,8 +779,6 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
                 "Error connectiong to the database");
     return ret;
   }
-
-
   ret = plugin->create_tables (plugin->cls, 
                                GNUNET_YES);
   if (GNUNET_OK != ret)
@@ -769,6 +794,9 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
   {
     init = init_def;   
   }
+  if (GNUNET_SYSERR ==PERF_TALER_MINTDB_check (init))
+    return GNUNET_SYSERR;
+
   ret = PERF_TALER_MINTDB_interpret (plugin, 
                                      init);
   if (GNUNET_OK != ret)
@@ -780,6 +808,8 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
   /*
    * Running the benchmark
    */
+  if (GNUNET_SYSERR ==PERF_TALER_MINTDB_check (benchmark))
+    return GNUNET_SYSERR;
   ret = PERF_TALER_MINTDB_interpret (plugin, 
                                      benchmark);
   if (GNUNET_OK != ret)
@@ -806,5 +836,142 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
   TALER_MINTDB_plugin_unload (plugin);
   GNUNET_CONFIGURATION_destroy (config);
 
+  return ret;
+}
+
+
+/**
+ * Tests if @a label is reference to a command of @a cmd
+ * Prints an error containing @a desc if a problem occurs 
+ * 
+ * @param cmd the cmd array checked
+ * @param label the label checked 
+ * @param i the index of the command beeing checked (used for error reporting
+ * @param desc a description of the label checked 
+ */
+static int
+find_test (const struct PERF_TALER_MINTDB_Cmd *cmd,
+           const char *label,
+           const unsigned int i,
+           const char *desc)
+{
+    int ret;
+
+    ret = cmd_find (cmd, label);
+    if (GNUNET_SYSERR == ret)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Error at %s:index %d wrong label for %s",
+                  cmd[i].label,
+                  i,
+                  desc);
+    }
+    return ret;
+}
+
+
+/**
+ * Check if the given command array is syntaxicly correct
+ * This will check if the label are corrects but will not check if
+ * they are pointing to an apropriate command.
+ *
+ * @param cmd the command array to check
+ * @return #GNUNET_OK is @a cmd is correct; #GNUNET_SYSERR if it is'nt
+ */
+int
+PERF_TALER_MINTDB_check (const struct PERF_TALER_MINTDB_Cmd *cmd)
+{
+  unsigned int i;
+  int ret = GNUNET_OK;
+
+  for (i = 0; PERF_TALER_MINTDB_CMD_END != cmd[i].command; i++)
+  {
+    int ret_loc = GNUNET_OK;
+    switch (cmd[i].command)
+    {
+      case PERF_TALER_MINTDB_CMD_END_LOOP:
+        ret_loc = find_test (cmd,
+                   cmd[i].details.end_loop.label_loop,
+                   i,
+                   "label_loop");
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GAUGER:
+        ret_loc = find_test (cmd,
+                   cmd[i].details.gauger.label_start,
+                   i,
+                   "label_start");
+        break;
+
+      case PERF_TALER_MINTDB_CMD_SAVE_ARRAY:
+        ret_loc = find_test (cmd,
+                   cmd[i].details.save_array.label_loop,
+                   i,
+                   "label_loop");
+        ret_loc = find_test (cmd,
+                   cmd[i].details.save_array.label_save,
+                   i,
+                   "label_save");
+        break;
+
+      case PERF_TALER_MINTDB_CMD_LOAD_ARRAY:
+        ret_loc = find_test (cmd,
+                   cmd[i].details.load_array.label_loop,
+                   i,
+                   "label_loop");
+        ret_loc = find_test (cmd,
+                   cmd[i].details.load_array.label_save,
+                   i,
+                   "label_save");  
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_DENOMINATION:
+        ret_loc = find_test (cmd,
+                   cmd[i].details.get_denomination.label_source,
+                   i,
+                   "label_source");
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_RESERVE:
+        ret_loc = find_test (cmd,
+                   cmd[i].details.get_reserve.label_source,
+                   i,
+                   "label_source");
+        break;
+
+      case PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT:
+        ret_loc = find_test (cmd,
+                   cmd[i].details.insert_deposit.label_dki,
+                   i,
+                   "label_dki");
+        break;
+      
+      case PERF_TALER_MINTDB_CMD_GET_DEPOSIT:
+        ret_loc = find_test (cmd,
+                   cmd[i].details.get_deposit.label_source,
+                   i,
+                   "label_source");
+        break;
+
+      case PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW:
+        ret_loc = find_test (cmd,
+                   cmd[i].details.insert_withdraw.label_dki,
+                   i,
+                   "label_dki");
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_WITHDRAW:
+        ret_loc = find_test (cmd,
+                   cmd[i].details.get_withdraw.label_source,
+                   i,
+                   "label_source");
+        break;
+
+      default :
+        break;
+    }
+    if (GNUNET_OK == ret)
+      ret = (GNUNET_SYSERR == ret_loc)?GNUNET_SYSERR:GNUNET_OK;
+  }
   return ret;
 }

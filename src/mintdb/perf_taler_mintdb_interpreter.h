@@ -114,9 +114,10 @@
  * @param _label_start label of the start of the measurment
  * @param _label_stop label of the end of the measurment
  * @param _description description of the measure displayed in Gauger
+ * @param _unit the unit of the data measured, typicly something/sec
  * @param _divide number of measurments in the interval [FIXME: need UNIT]
  */
-#define PERF_TALER_MINTDB_INIT_CMD_GAUGER(_label, _label_start, _label_stop, _description, _divide) \
+#define PERF_TALER_MINTDB_INIT_CMD_GAUGER(_label, _label_start, _label_stop, _description, _unit, _divide) \
 { \
   .command = PERF_TALER_MINTDB_CMD_GAUGER, \
   .label = _label, \
@@ -125,6 +126,7 @@
     .label_start = _label_start, \
     .label_stop = _label_stop, \
     .description = _description, \
+    .unit = _unit \
     .divide = _divide, \
   } \
 }
@@ -344,6 +346,7 @@ struct PERF_TALER_MINTDB_Data
 
   /**
    * Storage for a variety of data type
+   * The data saved should match #type
    */
   union PERF_TALER_MINTDB_Memory
   {
@@ -412,7 +415,7 @@ enum PERF_TALER_MINTDB_CMD_Name
   PERF_TALER_MINTDB_CMD_COMMIT_TRANSACTION,
 
   /**
-   * Abort a transaction
+   * Abort a transaction started with #PERF_TALER_MINTDB_CMD_START_TRANSACTION
    */
   PERF_TALER_MINTDB_CMD_ABORT_TRANSACTION,
 
@@ -422,9 +425,16 @@ enum PERF_TALER_MINTDB_CMD_Name
   PERF_TALER_MINTDB_CMD_SAVE_ARRAY,
 
   /**
-   * Load deposits saved earlier
+   * Load items saved earlier in a #PERF_TALER_MINTDB_CMD_SAVE_ARRAY
+   * The items are loaded in a random order, but all of them will be loaded
    */
   PERF_TALER_MINTDB_CMD_LOAD_ARRAY,
+
+  /**
+   * Loads a random item from a #PERF_TALER_MINTDB_CMD_SAVE_ARRAY
+   * A random item is loaded each time the command is run
+   */
+  PERF_TALER_MINTDB_CMD_LOAD_RANDOM,
 
   /**
    * Insert a deposit into the database
@@ -510,7 +520,7 @@ union PERF_TALER_MINTDB_CMD_Details
   /**
    * Details about the #PERF_TALER_MINTDB_CMD_GAUGER  command
    */
-  struct PERF_TALER_MINTDB_CMD_GaugerDetails
+  struct PERF_TALER_MINTDB_CMD_gaugerDetails
   {
     /**
      * Label of the starting timestamp
@@ -526,6 +536,11 @@ union PERF_TALER_MINTDB_CMD_Details
      * Description of the metric, used in Gauger
      */
     const char *description;
+
+    /**
+     * The name of the metric beeing used
+     */
+    const char *unit;
 
     /**
      * Constant the result needs to be divided by
@@ -584,6 +599,17 @@ union PERF_TALER_MINTDB_CMD_Details
     unsigned int *permutation;
   } load_array;
 
+
+  /**
+   * Contains data for the #PERF_TALER_MINTDB_CMD_LOAD_RANDOM command
+   */
+  struct PERF_TALER_MINTDB_CMD_loadRandomDetails
+  {
+    /**
+     * The label of the #PERF_TALER_MINTDB_CMD_SAVE_ARRAY the items will be extracted from
+     */
+    const char *label_save;
+  } load_random;
 
   /**
    * Data used by the #PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT command 
@@ -648,6 +674,17 @@ union PERF_TALER_MINTDB_CMD_Details
      */
     const char *label_reserve;
   } insert_withdraw;
+
+  /**
+   *
+   */
+  struct PERF_TALER_MINTDB_CMD_getWithdraw
+  {
+    /**
+     * label of the source for the withdra information
+     */
+    const char *label_source;
+  } get_withdraw;
 };
 
 
@@ -705,5 +742,17 @@ int
 PERF_TALER_MINTDB_interpret(
   struct TALER_MINTDB_Plugin *db_plugin,
   struct PERF_TALER_MINTDB_Cmd cmd[]);
+
+
+/**
+ * Check if the given command array is syntaxicly correct
+ * This will check if the label are corrects but will not check if
+ * they are pointing to an apropriate command.
+ *
+ * @param cmd the command array to check
+ * @return #GNUNET_OK is @a cmd is correct; #GNUNET_SYSERR if it is'nt
+ */
+int
+PERF_TALER_MINTDB_check (const struct PERF_TALER_MINTDB_Cmd *cmd);
 
 #endif
