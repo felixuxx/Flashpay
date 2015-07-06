@@ -382,7 +382,7 @@ interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
  * Get a random element from a #PERF_TALER_MINTDB_CMD_SAVE_ARRAY and exposes it
  */
 static void
-interpret_load_random (struct PERF_TALER_MINTDB_interpreter_state *state)
+interprete_load_random (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
   unsigned int index;
   int save_index;
@@ -392,8 +392,8 @@ interpret_load_random (struct PERF_TALER_MINTDB_interpreter_state *state)
                              state->cmd[state->i].details.load_random.label_save)));
    index = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
                                      state->cmd[save_index].details.save_array.nb_saved);
-   state->cmd[state->i].exposed = 
-     data_copy (state->cmd[save_index].details.data_saved[index]);
+     data_copy (&state->cmd[save_index].details.save_array.data_saved[index],
+                &state->cmd[state->i].exposed);
 }
 
 /**
@@ -480,7 +480,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         break;
 
       case PERF_TALER_MINTDB_CMD_LOAD_RANDOM:
-        interprete_load_random(state);
+        interprete_load_random (state);
         break;
 
       case PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT:
