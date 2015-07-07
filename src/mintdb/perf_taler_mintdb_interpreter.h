@@ -17,6 +17,14 @@
  * @file mintdb/perf_taler_mintdb_interpreter.h
  * @brief Library for performance analysis of the Taler database
  * @author Nicolas Fournier
+ *
+ * This library contains functions and macro alowing Taler performance analysis 
+ * to be written with ease. 
+ * To do so, create a #PERF_TALER_MINTDB_Cmd array and fill it with the commands
+ * to execute in chronological order. Some command have an exposed variable wich
+ * can be reused in other commands.
+ * Macros are available to make the use much easier so feel free to use them 
+ * to initialize your own command array.
  */
 
 #ifndef __PERF_TALER_MINTDB_INTERPRETER_H__
@@ -209,6 +217,8 @@
 /**
  * Inserts informations about a denomination key in the database
  * 
+ * @exposed #PERF_TALER_MINTDB_DENOMINATION_INFO
+ * 
  * @param _label the label of this command
  */
 #define PERF_TALER_MINTDB_INIT_CMD_INSERT_DENOMINATION(_label) \
@@ -222,18 +232,20 @@
  * Polls the database about informations regarding a specific denomination key
  * 
  * @param _label the label of this command
- * @param _label_source the label of the command prividing information about the denomination key
+ * @param _label_denom the label of the command prividing information about the denomination key
  */
-#define PERF_TALER_MINTDB_INIT_CMD_GET_DENOMINATION(_label, _label_source) \
+#define PERF_TALER_MINTDB_INIT_CMD_GET_DENOMINATION(_label, _label_denom) \
 { \
   .command = PERF_TALER_MINTDB_CMD_GET_DENOMINATION, \
   .label = _label, \
   .exposed.type = PERF_TALER_MINTDB_NONE, \
-  .details.get_denomination.label_source = _label_source, \
+  .details.get_denomination.label_denom = _label_denom, \
 }
 
 /**
  * Creates a new reserve in the database
+ * 
+ * @exposed #PERF_TALER_MINTDB_RESERVE
  * 
  * @param _label the name of this command
  */
@@ -249,19 +261,36 @@
  * Polls the database for a secific reserve's details
  * 
  * @param _label the label of this command
- * @param _label_source Source for the reserve to poll
+ * @param _label_reserve Source for the reserve to poll
  */
-#define PERF_TALER_MINTDB_INIT_CMD_GET_RESERVE(_label, _label_source) \
+#define PERF_TALER_MINTDB_INIT_CMD_GET_RESERVE(_label, _label_reserve) \
 { \
   .command = PERF_TALER_MINTDB_CMD_GET_RESERVE, \
   .label = _label, \
   .exposed.type = PERF_TALER_MINTDB_NONE, \
-  .details.get_reserve.label_source = _label_source \
+  .details.get_reserve.label_reserve = _label_reserve \
+}
+
+
+/**
+ * Polls the database for the history of a reserve
+ *
+ * @param _label the label of the command
+ * @param _label_reserve the reserve to examine
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_GET_RESERVE_HISTORY(_label, _label_reserve) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_GET_RESERVE_HISTORY, \
+  .label = _label, \
+  .exposed.type = PERF_TALER_MINTDB_NONE, \
+  .details.get_reserve_history.label_reserve = _label_reserve \
 }
 
 
 /**
  * Insert a deposit into the database
+ *
+ * @exposes #PERF_TALER_MINTDB_DEPOSIT
  *
  * @param _label the label of this command
  * @param _label_dki source to use for the denomination key
@@ -286,13 +315,15 @@
   .command = PERF_TALER_MINTDB_CMD_GET_DEPOSIT, \
   .label = _label, \
   .exposed.type = PERF_TALER_MINTDB_NONE, \
-  .details.get_deposit.label_source = _label_deposit \
+  .details.get_deposit.label_deposit = _label_deposit \
 }
 
 
 /**
  * Inserts informations about a withdrawal in the database
  * 
+ * @exposes #PERF_TALER_MINTDB_BLINDCOIN
+ *
  * @param _label the label of this command
  * @param _label_dki denomination key used to sign the coin
  * @param _label_reserve reserve used to emmit the coin
@@ -313,16 +344,32 @@
  * Polls the database about informations regarding a specific withdrawal
  * 
  * @param _label the label of this command
- * @param _label_source the label of the command providing the coin to check
+ * @param _label_coin the label of the command providing the coin to check
  */
-#define PERF_TALER_MINTDB_INIT_CMD_GET_WITHDRAW(_label, _label_source) \
+#define PERF_TALER_MINTDB_INIT_CMD_GET_WITHDRAW(_label, _label_coin) \
 { \
   .command = PERF_TALER_MINTDB_CMD_GET_WITHDRAW, \
   .label = _label, \
   .exposed.type = PERF_TALER_MINTDB_NONE, \
-  .details.get_withdraw.label_source = _label_source, \
+  .details.get_withdraw.label_coin = _label_coin, \
 }
 
+
+/**
+ * Composit command representing a coin withdrawal
+ * It first access the reserve history to check the ballance
+ * and hen emits a coin.
+ *
+ * @exposes #PERF_TALER_MINTDB_BLINDCOIN
+ *
+ * @param _label the label of this command
+ * @param _label_reserve the reserve used to provide currency
+ * @param _label_dki the denomination of the created coin
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_WITHDRAWAL(_label, _label_dki, _label_reserve) \
+  PERF_TALER_MINTDB_CMD_GET_RESERVE_HISTORY("", _label_reserve), \
+  PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW(_label, _label_dki, _label_reserve),
+  
 
 /**
  * The type of data stored in #PERF_TALER_MINTDB_Memory
@@ -456,6 +503,11 @@ enum PERF_TALER_MINTDB_CMD_Name
    * Get Informations about a reserve
    */
   PERF_TALER_MINTDB_CMD_GET_RESERVE,
+
+  /**
+   * Get the history of a reserve
+   */
+  PERF_TALER_MINTDB_CMD_GET_RESERVE_HISTORY,
 
   /**
    * Insert informations about a withdrawal in the database
@@ -632,7 +684,7 @@ union PERF_TALER_MINTDB_CMD_Details
     /**
      * The label of the source of the deposit to check
      */
-    const char *label_source;
+    const char *label_deposit;
   } get_deposit;
 
 
@@ -644,8 +696,20 @@ union PERF_TALER_MINTDB_CMD_Details
     /**
      * The label of the source of the reserve to check
      */
-    const char *label_source;
+    const char *label_reserve;
   } get_reserve;
+
+
+  /**
+   * Extra data requiered for the #PERF_TALER_MINTDB_CMD_GET_RESERVE command
+   */
+  struct PERF_TALER_MINTDB_CMD_getReserveHistoryDetails
+  {
+    /**
+     * The label of the source of the reserve to check
+     */
+    const char *label_reserve;
+  } get_reserve_history;
 
 
   /**
@@ -656,7 +720,7 @@ union PERF_TALER_MINTDB_CMD_Details
     /**
      * The label of the source of the denomination to check
      */
-    const char *label_source;
+    const char *label_denom;
   } get_denomination;
 
 
@@ -682,9 +746,9 @@ union PERF_TALER_MINTDB_CMD_Details
   struct PERF_TALER_MINTDB_CMD_getWithdraw
   {
     /**
-     * label of the source for the withdra information
+     * label of the source for the coin information
      */
-    const char *label_source;
+    const char *label_coin;
   } get_withdraw;
 };
 

@@ -510,7 +510,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           GNUNET_assert (GNUNET_SYSERR !=
                          (source_index =  cmd_find (state->cmd,
                                                     state->cmd[state->i]
-                                                    .details.get_deposit.label_source)));
+                                                    .details.get_deposit.label_deposit)));
           GNUNET_assert (NULL !=
                          (deposit = state->cmd[source_index].exposed.data.deposit));
           state->plugin->have_deposit (state->plugin->cls,
@@ -544,19 +544,40 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_GET_RESERVE:
         {
-          int source_index;
+          int reserve_index;
           struct TALER_MINTDB_Reserve *reserve;
 
           GNUNET_assert (GNUNET_SYSERR !=
-                         (source_index = cmd_find (state->cmd,
+                         (reserve_index = cmd_find (state->cmd,
                                                    state->cmd[state->i]
-                                                   .details.get_reserve.label_source)));
+                                                   .details.get_reserve.label_reserve)));
           GNUNET_assert (NULL !=
-                         (reserve = state->cmd[source_index].exposed.data.reserve));
+                         (reserve = state->cmd[reserve_index].exposed.data.reserve));
           GNUNET_assert (GNUNET_OK ==
                          (state->plugin->reserve_get (state->plugin->cls,
                                                       state->session,
                                                       reserve)));
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_RESERVE_HISTORY:
+        {
+         int reserve_index;
+         struct TALER_MINTDB_ReserveHistory *history; 
+         struct TALER_MINTDB_Reserve *reserve;
+
+         GNUNET_assert (GNUNET_SYSERR !=
+                        (reserve_index = cmd_find (state->cmd,
+                                                   state->cmd[state->i]
+                                                   .details.get_reserve_history.label_reserve)));
+         GNUNET_assert (NULL !=
+                        (reserve = state->cmd[reserve_index].exposed.data.reserve));
+         GNUNET_assert (NULL !=
+                        (history = state->plugin->get_reserve_history (state->plugin->cls,
+                                                                       state->session,
+                                                                       &reserve->pub)));
+         state->plugin->free_reserve_history (state->plugin->cls,
+                                              history);
         }
         break;
 
@@ -581,7 +602,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           GNUNET_assert (GNUNET_SYSERR !=
                          (source_index =  cmd_find (state->cmd,
                                                     state->cmd[state->i]
-                                                    .details.get_denomination.label_source)));
+                                                    .details.get_denomination.label_denom)));
           GNUNET_assert (NULL !=
                          (dki = state->cmd[source_index].exposed.data.dki));
           state->plugin->get_denomination_info (state->plugin->cls,
@@ -625,7 +646,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           GNUNET_assert (GNUNET_SYSERR !=
                          (source_index = cmd_find (state->cmd,
                                                    state->cmd[state->i]
-                                                   .details.get_denomination.label_source)));
+                                                   .details.get_denomination.label_denom)));
           GNUNET_assert (NULL !=
                          (blindcoin = state->cmd[source_index].exposed.data.blindcoin));
           state->plugin->get_withdraw_info (state->plugin->cls,
@@ -927,16 +948,16 @@ PERF_TALER_MINTDB_check (const struct PERF_TALER_MINTDB_Cmd *cmd)
 
       case PERF_TALER_MINTDB_CMD_GET_DENOMINATION:
         ret_loc = find_test (cmd,
-                   cmd[i].details.get_denomination.label_source,
+                   cmd[i].details.get_denomination.label_denom,
                    i,
-                   "label_source");
+                   "label_denom");
         break;
 
       case PERF_TALER_MINTDB_CMD_GET_RESERVE:
         ret_loc = find_test (cmd,
-                   cmd[i].details.get_reserve.label_source,
+                   cmd[i].details.get_reserve.label_reserve,
                    i,
-                   "label_source");
+                   "label_reserve");
         break;
 
       case PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT:
@@ -948,9 +969,9 @@ PERF_TALER_MINTDB_check (const struct PERF_TALER_MINTDB_Cmd *cmd)
       
       case PERF_TALER_MINTDB_CMD_GET_DEPOSIT:
         ret_loc = find_test (cmd,
-                   cmd[i].details.get_deposit.label_source,
+                   cmd[i].details.get_deposit.label_deposit,
                    i,
-                   "label_source");
+                   "label_deposit");
         break;
 
       case PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW:
@@ -962,9 +983,9 @@ PERF_TALER_MINTDB_check (const struct PERF_TALER_MINTDB_Cmd *cmd)
 
       case PERF_TALER_MINTDB_CMD_GET_WITHDRAW:
         ret_loc = find_test (cmd,
-                   cmd[i].details.get_withdraw.label_source,
+                   cmd[i].details.get_withdraw.label_coin,
                    i,
-                   "label_source");
+                   "label_coin");
         break;
 
       default :
