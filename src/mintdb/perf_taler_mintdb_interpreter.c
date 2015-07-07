@@ -449,8 +449,8 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
           GAUGER ("MINTDB",
                   state->cmd[state->i].details.gauger.description,
-                  elapsed_ms / state->cmd[state->i].details.gauger.divide,
-                  "milliseconds");
+                  ((1.0 * state->cmd[state->i].details.gauger.divide) / elapsed_ms) * 1000,
+                  state->cmd[state->i].details.gauger.unit);
         }
         break;
 
@@ -505,17 +505,17 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_GET_DEPOSIT:
         {
           int source_index;
-          struct TALER_MINTDB_Deposit *deposit;
+          struct PERF_TALER_MINTDB_Data data;
 
           GNUNET_assert (GNUNET_SYSERR !=
                          (source_index =  cmd_find (state->cmd,
                                                     state->cmd[state->i]
                                                     .details.get_deposit.label_deposit)));
-          GNUNET_assert (NULL !=
-                         (deposit = state->cmd[source_index].exposed.data.deposit));
+          data_copy (&state->cmd[source_index].exposed,
+                     &data);
           state->plugin->have_deposit (state->plugin->cls,
                                        state->session,
-                                       deposit);
+                                       data.data.deposit);
         }
         break;
 
@@ -545,18 +545,18 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_GET_RESERVE:
         {
           int reserve_index;
-          struct TALER_MINTDB_Reserve *reserve;
+          struct PERF_TALER_MINTDB_Data data;
 
           GNUNET_assert (GNUNET_SYSERR !=
                          (reserve_index = cmd_find (state->cmd,
                                                    state->cmd[state->i]
                                                    .details.get_reserve.label_reserve)));
-          GNUNET_assert (NULL !=
-                         (reserve = state->cmd[reserve_index].exposed.data.reserve));
+          data_copy (&state->cmd[reserve_index].exposed,
+                     &data);
           GNUNET_assert (GNUNET_OK ==
                          (state->plugin->reserve_get (state->plugin->cls,
                                                       state->session,
-                                                      reserve)));
+                                                      data.data.reserve)));
         }
         break;
 
@@ -564,18 +564,18 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         {
          int reserve_index;
          struct TALER_MINTDB_ReserveHistory *history; 
-         struct TALER_MINTDB_Reserve *reserve;
+         struct PERF_TALER_MINTDB_Data data;
 
          GNUNET_assert (GNUNET_SYSERR !=
                         (reserve_index = cmd_find (state->cmd,
                                                    state->cmd[state->i]
                                                    .details.get_reserve_history.label_reserve)));
-         GNUNET_assert (NULL !=
-                        (reserve = state->cmd[reserve_index].exposed.data.reserve));
+         data_copy (&state->cmd[reserve_index].exposed,
+                    &data);
          GNUNET_assert (NULL !=
                         (history = state->plugin->get_reserve_history (state->plugin->cls,
                                                                        state->session,
-                                                                       &reserve->pub)));
+                                                                       &data.data.reserve->pub)));
          state->plugin->free_reserve_history (state->plugin->cls,
                                               history);
         }
@@ -597,18 +597,18 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_GET_DENOMINATION:
         {
           int source_index;
-          struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
+          struct PERF_TALER_MINTDB_Data data;
 
           GNUNET_assert (GNUNET_SYSERR !=
                          (source_index =  cmd_find (state->cmd,
                                                     state->cmd[state->i]
                                                     .details.get_denomination.label_denom)));
-          GNUNET_assert (NULL !=
-                         (dki = state->cmd[source_index].exposed.data.dki));
+          data_copy (&state->cmd[source_index].exposed,
+                     &data);
           state->plugin->get_denomination_info (state->plugin->cls,
                                                 state->session,
-                                                &dki->denom_pub,
-                                                &dki->issue);
+                                                &data.data.dki->denom_pub,
+                                                &data.data.dki->issue);
         }
         break;
 
@@ -641,18 +641,18 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_GET_WITHDRAW:
         {
           int source_index;
-          struct TALER_MINTDB_CollectableBlindcoin *blindcoin ;
+          struct PERF_TALER_MINTDB_Data data;
 
           GNUNET_assert (GNUNET_SYSERR !=
                          (source_index = cmd_find (state->cmd,
                                                    state->cmd[state->i]
                                                    .details.get_denomination.label_denom)));
-          GNUNET_assert (NULL !=
-                         (blindcoin = state->cmd[source_index].exposed.data.blindcoin));
+          data_copy (&state->cmd[source_index].exposed,
+                     &data);
           state->plugin->get_withdraw_info (state->plugin->cls,
                                             state->session,
-                                            &blindcoin->h_coin_envelope,
-                                            blindcoin);
+                                            &data.data.blindcoin->h_coin_envelope,
+                                            data.data.blindcoin);
         }
         break;
 
