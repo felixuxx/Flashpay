@@ -234,7 +234,11 @@ TMH_DEPOSIT_handler_deposit (struct TMH_RequestHandler *rh,
   json_t *wire;
   int res;
   struct TALER_Amount amount;
-  json_t *f;
+  struct TMH_PARSE_FieldSpecification spec[] = {
+    TMH_PARSE_member_object ("wire", &wire),
+    TMH_PARSE_member_amount ("f", &amount),
+    TMH_PARSE_MEMBER_END
+  };
 
   res = TMH_PARSE_post_json (connection,
                              connection_cls,
@@ -245,39 +249,19 @@ TMH_DEPOSIT_handler_deposit (struct TMH_RequestHandler *rh,
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
-  if (-1 == json_unpack (json,
-                         "{s:o, s:o}",
-                         "wire", &wire,
-                         "f", &f))
+  res = TMH_PARSE_json_data (connection,
+                             json,
+                             spec);
+  if (GNUNET_OK != res)
   {
-    GNUNET_break_op (0);
     json_decref (json);
-    return TMH_RESPONSE_reply_json_pack (connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         "{s:s}",
-                                         "error", "Bad format");
-  }
-  res = TMH_PARSE_amount_json (connection,
-                               f,
-                               &amount);
-  json_decref (f);
-  if (GNUNET_SYSERR == res)
-  {
-    json_decref (wire);
-    json_decref (json);
-    return MHD_NO;
-  }
-  if (GNUNET_NO == res)
-  {
-    json_decref (wire);
-    json_decref (json);
-    return MHD_YES;
+    return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   }
   res = parse_and_handle_deposit_request (connection,
                                           json,
                                           &amount,
                                           wire);
-  json_decref (wire);
+  TMH_PARSE_release_data (spec);
   json_decref (json);
   return res;
 }

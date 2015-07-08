@@ -297,7 +297,19 @@ TALER_json_to_amount (json_t *json,
                         "fraction", &fraction,
                         "currency", &currency))
   {
+    char *json_enc;
+
     GNUNET_break_op (0);
+    if (NULL == (json_enc = json_dumps (json,
+                                        JSON_COMPACT | JSON_SORT_KEYS | JSON_ENCODE_ANY)))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Malformed JSON amount: %s\n",
+                json_enc);
+    free (json_enc);
     return GNUNET_SYSERR;
   }
   if ( (value < 0) ||
@@ -415,7 +427,7 @@ TALER_hash_json (json_t *json,
   GNUNET_CRYPTO_hash (wire_enc,
                       len,
                       hc);
-  GNUNET_free (wire_enc);
+  free (wire_enc);
   return GNUNET_OK;
 }
 

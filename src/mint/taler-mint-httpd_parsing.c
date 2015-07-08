@@ -771,9 +771,37 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
       {
         struct TALER_Amount *where = va_arg (argp, void *);
 
-        ret = TMH_PARSE_amount_json (connection,
-                                     (json_t *) root,
-                                     where);
+        if (GNUNET_OK !=
+            TALER_json_to_amount ((json_t *) root,
+                                  where))
+        {
+          if (MHD_YES !=
+              TMH_RESPONSE_reply_json_pack (connection,
+                                            MHD_HTTP_BAD_REQUEST,
+                                            "{s:s, s:o}",
+                                            "error", "Bad format",
+                                            "path", path))
+            return GNUNET_SYSERR;
+          return GNUNET_NO;
+        }
+        if (0 != strcmp (where->currency,
+                         TMH_mint_currency_string))
+        {
+          if (MHD_YES !=
+              TMH_RESPONSE_reply_json_pack (connection,
+                                            MHD_HTTP_BAD_REQUEST,
+                                            "{s:s, s:o, s:s}",
+                                            "error", "Currency not supported",
+                                            "path", path,
+                                            "currency", where->currency))
+          {
+            memset (where, 0, sizeof (struct TALER_Amount));
+            return GNUNET_SYSERR;
+          }
+          memset (where, 0, sizeof (struct TALER_Amount));
+          return GNUNET_NO;
+        }
+        ret = GNUNET_OK;
         break;
       }
 
@@ -781,9 +809,21 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
       {
         struct GNUNET_TIME_Absolute *where = va_arg (argp, void *);
 
-        ret = TMH_PARSE_time_abs_json (connection,
-                                       (json_t *) root,
-                                       where);
+        if (GNUNET_OK !=
+            TALER_json_to_abs ((json_t *) root,
+                               where))
+        {
+          if (MHD_YES !=
+              TMH_RESPONSE_reply_json_pack (connection,
+                                            MHD_HTTP_BAD_REQUEST,
+                                            "{s:s, s:s, s:o}",
+                                            "error", "Bad format",
+                                            "hint", "expected absolute time",
+                                            "path", path))
+            return GNUNET_SYSERR;
+          return GNUNET_NO;
+        }
+        ret = GNUNET_OK;
         break;
       }
 
@@ -937,129 +977,6 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec)
 
   for (i=0; NULL != spec[i].field_name; i++) ;
   release_data (spec, i);
-}
-
-
-/**
- * Parse absolute time specified in JSON format.  The JSON format is
- * "/Date(TIMEVAL)/" where TIMEVAL is in seconds after the Unix Epoch.
- * Additionally, we support "/forever/" and "/never/" to represent the
- * end of time.
- *
- * @param connection the MHD connection (to report errors)
- * @param f json specification of the amount
- * @param[out] time set to the time specified in @a f
- * @return
- *    #GNUNET_YES if parsing was successful
- *    #GNUNET_NO if json is malformed, error response was generated
- *    #GNUNET_SYSERR on internal error, error response was not generated
- */
-int
-TMH_PARSE_time_abs_json (struct MHD_Connection *connection,
-                         json_t *f,
-                         struct GNUNET_TIME_Absolute *time)
-{
-  const char *val;
-  unsigned long long tval;
-
-  val = json_string_value (f);
-  if (NULL == val)
-  {
-    if (MHD_YES !=
-        TMH_RESPONSE_reply_json_pack (connection,
-                                      MHD_HTTP_BAD_REQUEST,
-                                      "{s:s}",
-                                      "error", "string expected"))
-      return GNUNET_SYSERR;
-    return GNUNET_NO;
-  }
-  if ( (0 == strcasecmp (val,
-                         "/forever/")) ||
-       (0 == strcasecmp (val,
-                         "/never/")) )
-
-  {
-    *time = GNUNET_TIME_UNIT_FOREVER_ABS;
-    return GNUNET_OK;
-  }
-  if (1 != sscanf (val,
-                   "/Date(%llu)/",
-                   &tval))
-  {
-    if (MHD_YES !=
-        TMH_RESPONSE_reply_json_pack (connection,
-                                      MHD_HTTP_BAD_REQUEST,
-                                      "{s:s, s:s}",
-                                      "error", "timestamp expected",
-                                      "value", val))
-      return GNUNET_SYSERR;
-    return GNUNET_NO;
-  }
-  /* Time is in seconds in JSON, but in microseconds in GNUNET_TIME_Absolute */
-  time->abs_value_us = tval * 1000LL * 1000LL;
-  if ( (time->abs_value_us) / 1000LL / 1000LL != tval)
-  {
-    /* Integer overflow */
-    if (MHD_YES !=
-        TMH_RESPONSE_reply_json_pack (connection,
-                                      MHD_HTTP_BAD_REQUEST,
-                                      "{s:s, s:s}",
-                                      "error", "timestamp outside of legal range",
-                                      "value", val))
-      return GNUNET_SYSERR;
-    return GNUNET_NO;
-  }
-  return GNUNET_OK;
-}
-
-
-/**
- * Parse amount specified in JSON format.
- *
- * @param connection the MHD connection (to report errors)
- * @param f json specification of the amount
- * @param[out] amount set to the amount specified in @a f
- * @return
- *    #GNUNET_YES if parsing was successful
- *    #GNUNET_NO if json is malformed, error response was generated
- *    #GNUNET_SYSERR on internal error, error response was not generated
- */
-int
-TMH_PARSE_amount_json (struct MHD_Connection *connection,
-                       json_t *f,
-                       struct TALER_Amount *amount)
-{
-  if (GNUNET_OK !=
-      TALER_json_to_amount (f,
-                            amount))
-  {
-    TALER_LOG_WARNING ("Failed to parse JSON amount specification\n");
-    if (MHD_YES !=
-        TMH_RESPONSE_reply_json_pack (connection,
-                                      MHD_HTTP_BAD_REQUEST,
-                                      "{s:s}",
-                                      "error", "Bad format"))
-      return GNUNET_SYSERR;
-    return GNUNET_NO;
-  }
-  if (0 != strcmp (amount->currency,
-                   TMH_mint_currency_string))
-  {
-    TALER_LOG_WARNING ("Currency specified not supported by this mint\n");
-    if (MHD_YES !=
-        TMH_RESPONSE_reply_json_pack (connection,
-                                      MHD_HTTP_BAD_REQUEST,
-                                      "{s:s, s:s}",
-                                      "error", "Currency not supported",
-                                      "currency", amount->currency))
-    {
-      memset (amount, 0, sizeof (struct TALER_Amount));
-      return GNUNET_SYSERR;
-    }
-    memset (amount, 0, sizeof (struct TALER_Amount));
-    return GNUNET_NO;
-  }
-  return GNUNET_OK;
 }
 
 
