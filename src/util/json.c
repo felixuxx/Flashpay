@@ -291,11 +291,11 @@ TALER_json_to_amount (json_t *json,
   memset (r_amount,
           0,
           sizeof (struct TALER_Amount));
-  if (-1 == json_unpack (json,
-                         "{s:I, s:I, s:s}",
-                         "value", &value,
-                         "fraction", &fraction,
-                         "currency", &currency))
+  if (0 != json_unpack (json,
+                        "{s:I, s:I, s:s}",
+                        "value", &value,
+                        "fraction", &fraction,
+                        "currency", &currency))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;

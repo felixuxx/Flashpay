@@ -571,7 +571,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         {
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_internal_error (connection,
-                                                  "json_string_value() failed"))
+                                                    "json_string_value() failed"))
             ? GNUNET_NO : GNUNET_SYSERR;
           break;
         }
@@ -818,8 +818,8 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
  */
 int
 TMH_PARSE_json_data (struct MHD_Connection *connection,
-                            const json_t *root,
-                            struct TMH_PARSE_FieldSpecification *spec)
+                     const json_t *root,
+                     struct TMH_PARSE_FieldSpecification *spec)
 {
   unsigned int i;
   int ret;
@@ -1029,18 +1029,9 @@ TMH_PARSE_amount_json (struct MHD_Connection *connection,
                        json_t *f,
                        struct TALER_Amount *amount)
 {
-  json_int_t value;
-  json_int_t fraction;
-  const char *currency;
-
-  memset (amount,
-          0,
-          sizeof (struct TALER_Amount));
-  if (-1 == json_unpack (f,
-                         "{s:I, s:I, s:s}",
-                         "value", &value,
-                         "fraction", &fraction,
-                         "currency", &currency))
+  if (GNUNET_OK !=
+      TALER_json_to_amount (f,
+                            amount))
   {
     TALER_LOG_WARNING ("Failed to parse JSON amount specification\n");
     if (MHD_YES !=
@@ -1051,21 +1042,7 @@ TMH_PARSE_amount_json (struct MHD_Connection *connection,
       return GNUNET_SYSERR;
     return GNUNET_NO;
   }
-  if ( (value < 0) ||
-       (fraction < 0) ||
-       (value > UINT64_MAX) ||
-       (fraction > UINT32_MAX) )
-  {
-    TALER_LOG_WARNING ("Amount specified not in allowed range\n");
-    if (MHD_YES !=
-        TMH_RESPONSE_reply_json_pack (connection,
-                                      MHD_HTTP_BAD_REQUEST,
-                                      "{s:s}",
-                                      "error", "Amount outside of allowed range"))
-      return GNUNET_SYSERR;
-    return GNUNET_NO;
-  }
-  if (0 != strcmp (currency,
+  if (0 != strcmp (amount->currency,
                    TMH_mint_currency_string))
   {
     TALER_LOG_WARNING ("Currency specified not supported by this mint\n");
@@ -1074,15 +1051,14 @@ TMH_PARSE_amount_json (struct MHD_Connection *connection,
                                       MHD_HTTP_BAD_REQUEST,
                                       "{s:s, s:s}",
                                       "error", "Currency not supported",
-                                      "currency", currency))
+                                      "currency", amount->currency))
+    {
+      memset (amount, 0, sizeof (struct TALER_Amount));
       return GNUNET_SYSERR;
+    }
+    memset (amount, 0, sizeof (struct TALER_Amount));
     return GNUNET_NO;
   }
-  amount->value = (uint64_t) value;
-  amount->fraction = (uint32_t) fraction;
-  GNUNET_assert (strlen (TMH_mint_currency_string) < TALER_CURRENCY_LEN);
-  strcpy (amount->currency, TMH_mint_currency_string);
-  (void) TALER_amount_normalize (amount);
   return GNUNET_OK;
 }
 

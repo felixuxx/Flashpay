@@ -29,6 +29,7 @@
 #include "taler_util.h"
 #include "taler_signatures.h"
 #include "taler_mint_service.h"
+#include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
 
 
@@ -629,7 +630,7 @@ interpreter_run (void *cls,
     GNUNET_CRYPTO_eddsa_key_get_public (&cmd->details.withdraw_sign.coin_priv.eddsa_priv,
                                         &coin_pub.eddsa_pub);
     cmd->details.withdraw_sign.blinding_key.rsa_blinding_key
-      = GNUNET_CRYPTO_rsa_blinding_key_create (GNUNET_CRYPTO_rsa_public_key_len (cmd->details.withdraw_sign.pk->key.rsa_public_key));
+      = GNUNET_CRYPTO_rsa_blinding_key_create (1024); // FIXME: GNUNET_CRYPTO_rsa_public_key_len (cmd->details.withdraw_sign.pk->key.rsa_public_key));
 
     cmd->details.withdraw_sign.wsh
       = TALER_MINT_withdraw_sign (mint,
