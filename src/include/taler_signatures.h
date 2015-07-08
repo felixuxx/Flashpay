@@ -94,7 +94,7 @@
 /*********************/
 
 /**
- * Signature where the auditor confirms that he is 
+ * Signature where the auditor confirms that he is
  * aware of certain denomination keys from the mint.
  */
 #define TALER_SIGNATURE_AUDITOR_MINT_KEYS 1064
@@ -445,6 +445,9 @@ struct TALER_MintSigningKeyValidityPS
 {
   /**
    * Signature over the signing key (by the master key of the mint).
+   *
+   * FIXME: should be moved outside of the "PS" struct, this is ugly.
+   * (and makes this struct different from all of the others)
    */
   struct TALER_MasterSignatureP signature;
 
