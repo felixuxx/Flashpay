@@ -299,9 +299,8 @@ TALER_json_to_amount (json_t *json,
   {
     char *json_enc;
 
-    GNUNET_break_op (0);
     if (NULL == (json_enc = json_dumps (json,
-                                        JSON_COMPACT | JSON_SORT_KEYS | JSON_ENCODE_ANY)))
+                                        JSON_COMPACT | JSON_ENCODE_ANY)))
     {
       GNUNET_break (0);
       return GNUNET_SYSERR;

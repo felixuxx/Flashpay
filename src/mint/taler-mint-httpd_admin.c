@@ -136,15 +136,26 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
   res = TMH_PARSE_json_data (connection,
                              root,
                              spec);
-  json_decref (root);
   if (GNUNET_OK != res)
+  {
+    json_decref (root);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
+  }
+  if (GNUNET_YES !=
+      TALER_json_validate_wireformat (TMH_expected_wire_format,
+				      wire))
+  {
+    TMH_PARSE_release_data (spec);
+    return TMH_RESPONSE_reply_arg_unknown (connection,
+                                           "wire");
+  }
   res = TMH_DB_execute_admin_add_incoming (connection,
                                            &reserve_pub,
                                            &amount,
                                            at,
                                            wire);
   TMH_PARSE_release_data (spec);
+  json_decref (root);
   return res;
 }
 
