@@ -1,0 +1,39 @@
+# This file is part of TALER
+# Copyright (C) 2015 GNUnet e.V.
+#
+#  TALER is free software; you can redistribute it and/or modify it under the
+#  terms of the GNU Affero General Public License as published by the Free Software
+#  Foundation; either version 3, or (at your option) any later version.
+#
+#  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+#  A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General Public License along with
+#  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
+#
+#
+# This is a resource file for test_taler_mint_httpd.sh.
+# Lines starting with '#' (must be first character in line) are comments.
+#
+# Each non-comment line must contain two strings, the first being the
+# URL on the HTTP serve which a HTTP POST request should be made out
+# two, followed by the JSON data to POST to the server.
+#
+# Note that neither element may contain any spaces!
+#
+#
+# Bad amount:
+/admin/add/incoming {"reserve_pub":"7RZBZ86677QMASD2KAYGEPD246C7B7RC6P101FNTG6ZK8X61A620","amount":"1","execution_date":"\/Date(1435934428788)\/","wire":{"empty":"empty"}}
+#
+# Bad wire format:
+/admin/add/incoming {"reserve_pub":"6VRFYZRVHJ434BV3J018MS6H7Q1V5Q6YECNMEF9G4WKB8QJQCAX0","amount":{"currency":"EUR","value":10,"fraction":3},"execution_date":"\/Date(1436258333286)\/","wire":{"empty":"empty"}}
+#
+# Malformed JSON (ill-balanced quotes around 'amount')
+/admin/add/incoming {"reserve_pub":"BSEFVVNZ4C3724BPVKTJMQMD73HQREA5FWSS1C1BZ36ZFF2WBTK0",amount":{"currency":"EUR","value":5,"fraction":3},"execution_date":"\/Date(1436271156447)\/","wire":{"type":"test","IBAN":0,"name":"Jack","BIC":999,"edate":"\/Date(1436271156447)\/","r":50}}
+#
+# Bad amount (value not a string)
+/admin/add/incoming {"reserve_pub":"BSEFVVNZ4C3724BPVKTJMQMD73HQREA5FWSS1C1BZ36ZFF2WBTK0","amount":{"currency":"EUR","value":"5","fraction":3},"execution_date":"\/Date(1436271156447)\/","wire":{"type":"test","IBAN":0,"name":"Jack","BIC":999,"edate":"\/Date(1436271156447)\/","r":50}}
+#
+# Bad amount (overall amount is a string)
+/admin/add/incoming {"reserve_pub":"BSEFVVNZ4C3724BPVKTJMQMD73HQREA5FWSS1C1BZ36ZFF2WBTK0","amount":"{\"currency\":\"EUR\",\"value\":5,\"fraction\":3}","execution_date":"\/Date(1436271156447)\/","wire":{"type":"test"}}
