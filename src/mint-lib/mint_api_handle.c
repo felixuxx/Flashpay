@@ -280,7 +280,9 @@ parse_json_signkey (struct TALER_MINT_SigningPublicKey *sign_key,
 
   sign_key_issue.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
   sign_key_issue.purpose.size =
-    htonl (sizeof (struct TALER_MintSigningKeyValidityPS));
+    htonl (sizeof (struct TALER_MintSigningKeyValidityPS)
+           - offsetof (struct TALER_MintSigningKeyValidityPS,
+                       purpose));
   sign_key_issue.master_public_key = *master_key;
   sign_key_issue.start = GNUNET_TIME_absolute_hton (valid_from);
   sign_key_issue.expire = GNUNET_TIME_absolute_hton (valid_until);
