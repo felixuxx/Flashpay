@@ -107,6 +107,11 @@ struct Command
   const char *label;
 
   /**
+   * Which response code do we expect for this command?
+   */
+  unsigned int expected_response_code;
+
+  /**
    * Details about the command.
    */
   union
@@ -496,76 +501,85 @@ withdraw_status_cb (void *cls,
   struct TALER_Amount amount;
 
   cmd->details.withdraw_status.wsh = NULL;
-  if (MHD_HTTP_OK != http_status)
+  if (cmd->expected_response_code != http_status)
   {
     GNUNET_break (0);
     fail (is);
     return;
   }
-  /* FIXME: note that history events may come in a different
-     order than the commands right now... */
-  j = 0;
-  for (i=0;i<is->ip;i++)
+  switch (http_status)
   {
-    switch ((rel = &is->commands[i])->oc)
+  case MHD_HTTP_OK:
+    /* FIXME: note that history events may come in a different
+       order than the commands right now... */
+    j = 0;
+    for (i=0;i<is->ip;i++)
     {
-    case OC_ADMIN_ADD_INCOMING:
-      if ( ( (NULL != rel->label) &&
-             (0 == strcmp (cmd->details.withdraw_status.reserve_reference,
-                           rel->label) ) ) ||
-           ( (NULL != rel->details.admin_add_incoming.reserve_reference) &&
-             (0 == strcmp (cmd->details.withdraw_status.reserve_reference,
-                           rel->details.admin_add_incoming.reserve_reference) ) ) )
+      switch ((rel = &is->commands[i])->oc)
       {
-        if (GNUNET_OK !=
-            compare_admin_add_incoming_history (&history[j],
-                                                rel))
+      case OC_ADMIN_ADD_INCOMING:
+        if ( ( (NULL != rel->label) &&
+               (0 == strcmp (cmd->details.withdraw_status.reserve_reference,
+                             rel->label) ) ) ||
+             ( (NULL != rel->details.admin_add_incoming.reserve_reference) &&
+               (0 == strcmp (cmd->details.withdraw_status.reserve_reference,
+                             rel->details.admin_add_incoming.reserve_reference) ) ) )
         {
-          GNUNET_break (0);
-          fail (is);
-          return;
+          if (GNUNET_OK !=
+              compare_admin_add_incoming_history (&history[j],
+                                                  rel))
+          {
+            GNUNET_break (0);
+            fail (is);
+            return;
+          }
+          j++;
         }
-        j++;
-      }
-      break;
-    case OC_WITHDRAW_SIGN:
-      if (0 == strcmp (cmd->details.withdraw_status.reserve_reference,
-                       rel->details.withdraw_sign.reserve_reference))
-      {
-        if (GNUNET_OK !=
-            compare_withdraw_sign_history (&history[j],
-                                           rel))
+        break;
+      case OC_WITHDRAW_SIGN:
+        if (0 == strcmp (cmd->details.withdraw_status.reserve_reference,
+                         rel->details.withdraw_sign.reserve_reference))
         {
-          GNUNET_break (0);
-          fail (is);
-          return;
+          if (GNUNET_OK !=
+              compare_withdraw_sign_history (&history[j],
+                                             rel))
+          {
+            GNUNET_break (0);
+            fail (is);
+            return;
+          }
+          j++;
         }
-        j++;
+        break;
+      default:
+        /* unreleated, just skip */
+        break;
       }
-      break;
-    default:
-      /* unreleated, just skip */
-      break;
     }
-  }
-  if (j != history_length)
-  {
-    GNUNET_break (0);
-    fail (is);
-    return;
-  }
-  if (NULL != cmd->details.withdraw_status.expected_balance)
-  {
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_string_to_amount (cmd->details.withdraw_status.expected_balance,
-                                           &amount));
-    if (0 != TALER_amount_cmp (&amount,
-                               balance))
+    if (j != history_length)
     {
       GNUNET_break (0);
       fail (is);
       return;
     }
+    if (NULL != cmd->details.withdraw_status.expected_balance)
+    {
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_string_to_amount (cmd->details.withdraw_status.expected_balance,
+                                             &amount));
+      if (0 != TALER_amount_cmp (&amount,
+                                 balance))
+      {
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
+    }
+    /* FIXME: support other status codes! */
+  default:
+    /* Unsupported status code (by test harness) */
+    GNUNET_break (0);
+    break;
   }
   is->ip++;
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
@@ -592,14 +606,30 @@ withdraw_sign_cb (void *cls,
   struct Command *cmd = &is->commands[is->ip];
 
   cmd->details.withdraw_sign.wsh = NULL;
-  if (NULL == sig)
+  if (cmd->expected_response_code != http_status)
   {
     GNUNET_break (0);
     fail (is);
     return;
   }
-  cmd->details.withdraw_sign.sig.rsa_signature
-    = GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
+  switch (http_status)
+  {
+  case MHD_HTTP_OK:
+    if (NULL == sig)
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
+    cmd->details.withdraw_sign.sig.rsa_signature
+      = GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
+    break;
+    /* FIXME: support other status codes here */
+  default:
+    /* Unsupported status code (by test harness) */
+    GNUNET_break (0);
+    break;
+  }
   is->ip++;
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
                                        is);
@@ -624,7 +654,7 @@ deposit_cb (void *cls,
   struct Command *cmd = &is->commands[is->ip];
 
   cmd->details.deposit.dh = NULL;
-  if (MHD_HTTP_OK != http_status)
+  if (cmd->expected_response_code != http_status)
   {
     GNUNET_break (0);
     fail (is);
@@ -1202,18 +1232,22 @@ run (void *cls,
     /* Fill reserve with EUR:5.01, as withdraw fee is 1 ct per config */
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "create-reserve-1",
+      .expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.wire = "{ \"type\":\"TEST\", \"bank\":\"source bank\", \"account\":42 }",
       .details.admin_add_incoming.amount = "EUR:5.01" },
     { .oc = OC_WITHDRAW_SIGN,
       .label = "withdraw-coin-1",
+      .expected_response_code = MHD_HTTP_OK,
       .details.withdraw_sign.reserve_reference = "create-reserve-1",
       .details.withdraw_sign.amount = "EUR:5" },
     { .oc = OC_WITHDRAW_STATUS,
       .label = "withdraw-status-1",
+      .expected_response_code = MHD_HTTP_OK,
       .details.withdraw_status.reserve_reference = "create-reserve-1",
       .details.withdraw_status.expected_balance = "EUR:0" },
     { .oc = OC_DEPOSIT,
       .label = "deposit-simple",
+      .expected_response_code = MHD_HTTP_OK,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
