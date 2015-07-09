@@ -13,16 +13,11 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
-
 /**
  * @file mint/test_mint_api.c
  * @brief testcase to test mint's HTTP API interface
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff
- *
- * TODO:
- * - enhance interpreter to allow for testing of failure conditions
- *   (i.e. double-spending, insufficient funds on withdraw)
  */
 #include "platform.h"
 #include "taler_util.h"
@@ -515,7 +510,7 @@ withdraw_status_cb (void *cls,
   {
   case MHD_HTTP_OK:
     /* FIXME: note that history events may come in a different
-       order than the commands right now... */
+       order than the commands. However, for now this works... */
     j = 0;
     for (i=0;i<is->ip;i++)
     {
