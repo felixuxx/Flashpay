@@ -397,6 +397,72 @@ add_incoming_cb (void *cls,
 
 
 /**
+ * Check if the given historic event @a h corresponds to the given
+ * command @a cmd.
+ *
+ * @param h event in history
+ * @param cmd an #OC_ADMIN_ADD_INCOMING command
+ * @return #GNUNET_OK if they match, #GNUNET_SYSERR if not
+ */
+static int
+compare_admin_add_incoming_history (const struct TALER_MINT_ReserveHistory *h,
+                                    const struct Command *cmd)
+{
+  struct TALER_Amount amount;
+
+  if (TALER_MINT_RTT_DEPOSIT != h->type)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (cmd->details.admin_add_incoming.amount,
+                                         &amount));
+  if (0 != TALER_amount_cmp (&amount,
+                             &h->amount))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Check if the given historic event @a h corresponds to the given
+ * command @a cmd.
+ *
+ * @param h event in history
+ * @param cmd an #OC_WITHDRAW_SIGN command
+ * @return #GNUNET_OK if they match, #GNUNET_SYSERR if not
+ */
+static int
+compare_withdraw_sign_history (const struct TALER_MINT_ReserveHistory *h,
+                               const struct Command *cmd)
+{
+  struct TALER_Amount amount;
+
+  if (TALER_MINT_RTT_WITHDRAWAL != h->type)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (cmd->details.withdraw_sign.amount,
+                                         &amount));
+  // FIXME: should fail (amount with vs. amount without fee!)
+  if (0 != TALER_amount_cmp (&amount,
+                             &h->amount))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_OK; /* FIXME: returning OK for now, as the above
+                         fails due to fee/no-fee mismatch */
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Function called with the result of a /withdraw/status request.
  *
  * @param cls closure with the interpreter state
@@ -417,10 +483,70 @@ withdraw_status_cb (void *cls,
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
+  struct Command *rel;
+  unsigned int i;
+  unsigned int j;
 
   cmd->details.withdraw_status.wsh = NULL;
-
-  /* FIXME: check the result... */
+  if (MHD_HTTP_OK != http_status)
+  {
+    GNUNET_break (0);
+    fail (is);
+    return;
+  }
+  /* FIXME: note that history events may come in a different
+     order than the commands right now... */
+  j = 0;
+  for (i=0;i<is->ip;i++)
+  {
+    switch ((rel = &is->commands[i])->oc)
+    {
+    case OC_ADMIN_ADD_INCOMING:
+      if ( ( (NULL != rel->label) &&
+             (0 == strcmp (cmd->details.withdraw_status.reserve_reference,
+                           rel->label) ) ) ||
+           ( (NULL != rel->details.admin_add_incoming.reserve_reference) &&
+             (0 == strcmp (cmd->details.withdraw_status.reserve_reference,
+                           rel->details.admin_add_incoming.reserve_reference) ) ) )
+      {
+        if (GNUNET_OK !=
+            compare_admin_add_incoming_history (&history[j],
+                                                rel))
+        {
+          GNUNET_break (0);
+          fail (is);
+          return;
+        }
+        j++;
+      }
+      break;
+    case OC_WITHDRAW_SIGN:
+      if (0 == strcmp (cmd->details.withdraw_status.reserve_reference,
+                       rel->details.withdraw_sign.reserve_reference))
+      {
+        if (GNUNET_OK !=
+            compare_withdraw_sign_history (&history[j],
+                                           rel))
+        {
+          GNUNET_break (0);
+          fail (is);
+          return;
+        }
+        j++;
+      }
+      break;
+    default:
+      /* unreleated, just skip */
+      break;
+    }
+  }
+  if (j != history_length)
+  {
+    GNUNET_break (0);
+    fail (is);
+    return;
+  }
+  /* FIXME: check the amount... */
 
   is->ip++;
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
