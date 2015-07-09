@@ -98,18 +98,8 @@ PERF_TALER_MINTDB_denomination_copy (const struct TALER_MINTDB_DenominationKeyIs
   GNUNET_assert (NULL !=
                  (copy = GNUNET_new (struct TALER_MINTDB_DenominationKeyIssueInformation)));
   *copy = *dki;
-  {
-    char *buffer = NULL;
-    int size;
-    GNUNET_assert (0 <
-                   (size = GNUNET_CRYPTO_rsa_private_key_encode (
-                       dki->denom_priv.rsa_private_key,
-                       &buffer)));
-    GNUNET_assert (NULL !=
-                   (copy->denom_priv.rsa_private_key = 
-                    GNUNET_CRYPTO_rsa_private_key_decode(buffer, size)));
-    GNUNET_free (buffer);
-  }
+  copy->denom_priv.rsa_private_key = 
+    GNUNET_CRYPTO_rsa_private_key_dup (dki->denom_priv.rsa_private_key);
   GNUNET_assert (NULL !=
                  (copy->denom_pub.rsa_public_key = 
                   GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key)));
@@ -128,7 +118,6 @@ PERF_TALER_MINTDB_denomination_free (struct TALER_MINTDB_DenominationKeyIssueInf
     return GNUNET_OK;
   GNUNET_CRYPTO_rsa_private_key_free (dki->denom_priv.rsa_private_key);
   GNUNET_CRYPTO_rsa_public_key_free (dki->denom_pub.rsa_public_key);
-  GNUNET_free (dki);
 
   return GNUNET_OK;
 }
@@ -172,6 +161,7 @@ PERF_TALER_MINTDB_reserve_copy (const struct TALER_MINTDB_Reserve *reserve)
   return copy;
 } 
 
+
 /**
  * Free memory of a reserve
  * @param reserve pointer to the structure to be freed
@@ -181,7 +171,6 @@ PERF_TALER_MINTDB_reserve_free (struct TALER_MINTDB_Reserve *reserve)
 {
   if (NULL == reserve)
     return GNUNET_OK;
-  GNUNET_free (reserve);
   return GNUNET_OK;
 }
 
@@ -330,7 +319,6 @@ PERF_TALER_MINTDB_deposit_free (struct TALER_MINTDB_Deposit *deposit)
   GNUNET_CRYPTO_rsa_public_key_free (deposit->coin.denom_pub.rsa_public_key);
   GNUNET_CRYPTO_rsa_signature_free (deposit->coin.denom_sig.rsa_signature);
   json_decref (deposit->wire);
-  GNUNET_free (deposit);
 
   return GNUNET_OK;
 }
@@ -440,6 +428,7 @@ PERF_TALER_MINTDB_collectable_blindcoin_copy (const struct TALER_MINTDB_Collecta
   return copy;
 }
 
+
 /**
  * Liberate memory of @a coin
  * @param coin pointer to the structure to free
@@ -452,7 +441,6 @@ PERF_TALER_MINTDB_collectable_blindcoin_free (struct TALER_MINTDB_CollectableBli
 
   GNUNET_CRYPTO_rsa_signature_free (coin->sig.rsa_signature);
   GNUNET_CRYPTO_rsa_public_key_free (coin->denom_pub.rsa_public_key);
-  GNUNET_free (coin);
   return GNUNET_OK;
 }
 
@@ -476,12 +464,25 @@ PERF_TALER_MINTDB_refresh_session_init ()
 
 
 /**
+ * @return #GNUNET_OK if the copy was successful, #GNUNET_SYSERR if it wasn't
+ */
+int
+PERF_TALER_MINTDB_refresh_session_copy (struct TALER_MINTDB_RefreshSession *session, 
+                                        struct TALER_MINTDB_RefreshSession *copy)
+{
+  *copy = *session;
+  return GNUNET_OK;
+}
+
+
+/**
  * Free a refresh session
  */
 int
 PERF_TALER_MINTDB_refresh_session_free (struct TALER_MINTDB_RefreshSession *refresh_session)
 {
-  GNUNET_free (refresh_session);
+  if (NULL == refresh_session)
+    return GNUNET_OK;
   return GNUNET_OK;
 }
 
@@ -514,14 +515,106 @@ PERF_TALER_MINTDB_coin_public_info_init ()
   return cpi;
 }
 
+
 /**
  * Free a CoinPublicInfo
  */
 int
 PERF_TALER_MINTDB_coin_public_info_free (struct TALER_CoinPublicInfo *cpi)
 {
+
   GNUNET_CRYPTO_rsa_signature_free (cpi->denom_sig.rsa_signature);
   GNUNET_CRYPTO_rsa_public_key_free (cpi->denom_pub.rsa_public_key);
-  GNUNET_free (cpi); 
+  return GNUNET_OK;
+}
+
+/**
+ * Create a melt operation
+ *
+ * @param session the refresh session 
+ * @param dki the denomination the melted coin uses
+ * @return a pointer to a #TALER_MINTDB_RefreshMelt 
+ */
+struct TALER_MINTDB_RefreshMelt *
+PERF_TALER_MINTDB_refresh_melt_init (struct GNUNET_HashCode *session,
+                                     struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
+{
+  struct TALER_MINTDB_RefreshMelt *melt;
+  struct GNUNET_CRYPTO_EddsaPrivateKey *coin_key;
+  struct TALER_CoinPublicInfo cpi;
+  struct TALER_CoinSpendSignatureP coin_spent;
+  struct TALER_Amount amount;
+  struct TALER_Amount amount_with_fee; 
+
+  coin_key = GNUNET_CRYPTO_eddsa_key_create ();
+  cpi.denom_pub = dki->denom_pub;
+  GNUNET_CRYPTO_eddsa_key_get_public (coin_key, 
+                                      &cpi.coin_pub.eddsa_pub);
+  GNUNET_assert (NULL !=
+                 (cpi.denom_sig.rsa_signature = 
+                  GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
+                                          &cpi.coin_pub.eddsa_pub,
+                                          sizeof (struct GNUNET_CRYPTO_EddsaPublicKey))));
+  {
+    struct 
+    {
+      struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+      struct GNUNET_HashCode session;
+    } to_sign;
+    
+    to_sign.purpose.purpose = GNUNET_SIGNATURE_PURPOSE_TEST; 
+    to_sign.purpose.size = htonl (sizeof (to_sign));
+    to_sign.session = *session; 
+    GNUNET_CRYPTO_eddsa_sign (coin_key,
+                              &to_sign.purpose,
+                              &coin_spent.eddsa_signature);
+  }
+  GNUNET_assert (GNUNET_OK == TALER_string_to_amount (CURRENCY ":10.0",
+                                                      &amount));
+  GNUNET_assert (GNUNET_OK == TALER_string_to_amount (CURRENCY ":0.1",
+                                                      &amount_with_fee));
+  melt = GNUNET_new (struct TALER_MINTDB_RefreshMelt); 
+  melt->coin = cpi;
+  melt->coin_sig = coin_spent;
+  melt->session_hash = *session;
+  melt->amount_with_fee = amount;
+  melt->melt_fee = amount_with_fee;
+
+  GNUNET_free (coin_key);
+  return melt;
+}
+
+
+/**
+ * Copies the internals of a #TALER_MINTDB_RefreshMelt
+ * 
+ * @param melt the refresh melt to copy
+ * @return an copy of @ melt
+ */
+struct TALER_MINTDB_RefreshMelt *
+PERF_TALER_MINTDB_refresh_melt_copy (const struct TALER_MINTDB_RefreshMelt *melt)
+{
+  struct TALER_MINTDB_RefreshMelt *copy;
+
+  copy = GNUNET_new (struct TALER_MINTDB_RefreshMelt);
+  *copy = *melt;
+  GNUNET_assert (NULL != 
+  (copy->coin.denom_sig.rsa_signature = 
+   GNUNET_CRYPTO_rsa_signature_dup (melt->coin.denom_sig.rsa_signature)));
+
+  return copy;
+}
+
+
+/**
+ * Free the internal memory of a #TALER_MINTDB_RefreshMelt
+ *
+ * @param melt the #TALER_MINTDB_RefreshMelt to free
+ * @return #GNUNET_OK if the operation was successful, #GNUNET_SYSERROR
+ */
+int
+PERF_TALER_MINTDB_refresh_melt_free (struct TALER_MINTDB_RefreshMelt *melt)
+{
+  GNUNET_CRYPTO_rsa_signature_free (melt->coin.denom_sig.rsa_signature);
   return GNUNET_OK;
 }

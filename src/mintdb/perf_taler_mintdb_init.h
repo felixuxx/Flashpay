@@ -138,6 +138,38 @@ PERF_TALER_MINTDB_collectable_blindcoin_free (
 
 
 /**
+ * Create a melt operation
+ *
+ * @param session the refresh session 
+ * @param dki the denomination the melted coin uses
+ * @return a pointer to a #TALER_MINTDB_RefreshMelt 
+ */
+struct TALER_MINTDB_RefreshMelt *
+PERF_TALER_MINTDB_refresh_melt_init (struct GNUNET_HashCode *session,
+                                     struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
+
+
+/**
+ * Copies the internals of a #TALER_MINTDB_RefreshMelt
+ * 
+ * @param melt the refresh melt to copy
+ * @return an copy of @ melt
+ */
+struct TALER_MINTDB_RefreshMelt *
+PERF_TALER_MINTDB_refresh_melt_copy (const struct TALER_MINTDB_RefreshMelt *melt);
+
+
+/**
+ * Free the internal memory of a #TALER_MINTDB_RefreshMelt
+ *
+ * @param melt the #TALER_MINTDB_RefreshMelt to free
+ * @return #GNUNET_OK if the operation was successful, #GNUNET_SYSERROR
+ */
+int
+PERF_TALER_MINTDB_refresh_melt_free (struct TALER_MINTDB_RefreshMelt *melt)
+
+
+/**
  * Generate a random CoinPublicInfo
  */
 struct TALER_CoinPublicInfo *
@@ -155,6 +187,14 @@ int PERF_TALER_MINTDB_coin_public_info_free (struct TALER_CoinPublicInfo *cpi);
  */
 struct TALER_MINTDB_RefreshSession *
 PERF_TALER_MINTDB_refresh_session_init (void);
+
+
+/**
+ * @return #GNUNET_OK if the copy was successful, #GNUNET_SYSERR if it wasn't
+ */
+int
+PERF_TALER_MINTDB_refresh_session_copy (struct TALER_MINTDB_RefreshSession *session, 
+                                        struct TALER_MINTDB_RefreshSession *copy)
 
 
 /**

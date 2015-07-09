@@ -62,22 +62,34 @@ data_free (struct PERF_TALER_MINTDB_Data *data)
   switch (data->type)
   {
     case PERF_TALER_MINTDB_DEPOSIT:
+      if (NULL == data->data.deposit)
+        return;
       PERF_TALER_MINTDB_deposit_free (data->data.deposit);
+      GNUNET_free (data->data.deposit);
       data->data.deposit = NULL;
       return;
 
     case PERF_TALER_MINTDB_BLINDCOIN:
+      if (NULL == data->data.blindcoin)
+        return;
       PERF_TALER_MINTDB_collectable_blindcoin_free (data->data.blindcoin);
+      GNUNET_free (data->data.blindcoin);
       data->data.blindcoin = NULL;
       return;
 
     case PERF_TALER_MINTDB_RESERVE:
+      if (NULL == data->data.reserve)
+        return;
       PERF_TALER_MINTDB_reserve_free (data->data.reserve);
+      GNUNET_free (data->data.reserve);
       data->data.reserve = NULL;
       return;
 
     case PERF_TALER_MINTDB_DENOMINATION_INFO:
+      if (NULL == data->data.dki)
+        return;
       PERF_TALER_MINTDB_denomination_free (data->data.dki);
+      GNUNET_free (data->data.dki);
       data->data.dki = NULL;
       return;
 
