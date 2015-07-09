@@ -392,6 +392,9 @@ handle_deposit_finished (void *cls,
     break;
   default:
     /* unexpected response code */
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u\n",
+                response_code);
     GNUNET_break (0);
     response_code = 0;
     break;

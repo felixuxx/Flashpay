@@ -503,6 +503,10 @@ withdraw_status_cb (void *cls,
   cmd->details.withdraw_status.wsh = NULL;
   if (cmd->expected_response_code != http_status)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u to command %s\n",
+                http_status,
+                cmd->label);
     GNUNET_break (0);
     fail (is);
     return;
@@ -575,7 +579,7 @@ withdraw_status_cb (void *cls,
         return;
       }
     }
-    /* FIXME: support other status codes! */
+    break;
   default:
     /* Unsupported status code (by test harness) */
     GNUNET_break (0);
@@ -608,6 +612,10 @@ withdraw_sign_cb (void *cls,
   cmd->details.withdraw_sign.wsh = NULL;
   if (cmd->expected_response_code != http_status)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u to command %s\n",
+                http_status,
+                cmd->label);
     GNUNET_break (0);
     fail (is);
     return;
@@ -624,7 +632,9 @@ withdraw_sign_cb (void *cls,
     cmd->details.withdraw_sign.sig.rsa_signature
       = GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
     break;
-    /* FIXME: support other status codes here */
+  case MHD_HTTP_PAYMENT_REQUIRED:
+    /* nothing to check */
+    break;
   default:
     /* Unsupported status code (by test harness) */
     GNUNET_break (0);
@@ -656,7 +666,10 @@ deposit_cb (void *cls,
   cmd->details.deposit.dh = NULL;
   if (cmd->expected_response_code != http_status)
   {
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u to command %s\n",
+                http_status,
+                cmd->label);
     fail (is);
     return;
   }
@@ -1235,16 +1248,20 @@ run (void *cls,
       .expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.wire = "{ \"type\":\"TEST\", \"bank\":\"source bank\", \"account\":42 }",
       .details.admin_add_incoming.amount = "EUR:5.01" },
+    /* Withdraw a 5 EUR coin, at fee of 1 ct */
     { .oc = OC_WITHDRAW_SIGN,
       .label = "withdraw-coin-1",
       .expected_response_code = MHD_HTTP_OK,
       .details.withdraw_sign.reserve_reference = "create-reserve-1",
       .details.withdraw_sign.amount = "EUR:5" },
+    /* Check that deposit and withdraw operation are in history, and
+       that the balance is now at zero */
     { .oc = OC_WITHDRAW_STATUS,
       .label = "withdraw-status-1",
       .expected_response_code = MHD_HTTP_OK,
       .details.withdraw_status.reserve_reference = "create-reserve-1",
       .details.withdraw_status.expected_balance = "EUR:0" },
+    /* Try to deposit the 5 EUR coin (in full) */
     { .oc = OC_DEPOSIT,
       .label = "deposit-simple",
       .expected_response_code = MHD_HTTP_OK,
@@ -1253,6 +1270,43 @@ run (void *cls,
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
       .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":1 } }",
       .details.deposit.transaction_id = 1 },
+
+    /* Try to overdraw funds ... */
+    { .oc = OC_WITHDRAW_SIGN,
+      .label = "withdraw-coin-2",
+      .expected_response_code = MHD_HTTP_PAYMENT_REQUIRED,
+      .details.withdraw_sign.reserve_reference = "create-reserve-1",
+      .details.withdraw_sign.amount = "EUR:5" },
+    /* Try to double-spend the 5 EUR coin with different wire details */
+    { .oc = OC_DEPOSIT,
+      .label = "deposit-double-1",
+      .expected_response_code = MHD_HTTP_FORBIDDEN,
+      .details.deposit.amount = "EUR:5",
+      .details.deposit.coin_ref = "withdraw-coin-1",
+      .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":43 }",
+      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":1 } }",
+      .details.deposit.transaction_id = 1 },
+    /* Try to double-spend the 5 EUR coin at the same merchant (but different
+       transaction ID) */
+    { .oc = OC_DEPOSIT,
+      .label = "deposit-double-2",
+      .expected_response_code = MHD_HTTP_FORBIDDEN,
+      .details.deposit.amount = "EUR:5",
+      .details.deposit.coin_ref = "withdraw-coin-1",
+      .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
+      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":1 } }",
+      .details.deposit.transaction_id = 2 },
+    /* Try to double-spend the 5 EUR coin at the same merchant (but different
+       contract) */
+    { .oc = OC_DEPOSIT,
+      .label = "deposit-double-3",
+      .expected_response_code = MHD_HTTP_FORBIDDEN,
+      .details.deposit.amount = "EUR:5",
+      .details.deposit.coin_ref = "withdraw-coin-1",
+      .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
+      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":2 } }",
+      .details.deposit.transaction_id = 1 },
+
     { .oc = OC_END }
   };
 

@@ -451,7 +451,7 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
       GNUNET_assert (0);
     }
     json_array_append_new (history,
-                           json_pack ("{s:s, s:o}",
+                           json_pack ("{s:s, s:o, s:o}",
                                       "type", type,
                                       "amount", TALER_json_from_amount (&value),
                                       "signature", transaction));
@@ -477,7 +477,7 @@ TMH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection
 
   history = compile_transaction_history (tl);
   return TMH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_PRECONDITION_FAILED,
+                                       MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:o}",
                                        "error", "insufficient funds",
                                        "history", history);
