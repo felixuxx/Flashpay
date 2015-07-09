@@ -166,7 +166,7 @@ PERF_TALER_MINTDB_refresh_melt_copy (const struct TALER_MINTDB_RefreshMelt *melt
  * @return #GNUNET_OK if the operation was successful, #GNUNET_SYSERROR
  */
 int
-PERF_TALER_MINTDB_refresh_melt_free (struct TALER_MINTDB_RefreshMelt *melt)
+PERF_TALER_MINTDB_refresh_melt_free (struct TALER_MINTDB_RefreshMelt *melt);
 
 
 /**
@@ -194,7 +194,7 @@ PERF_TALER_MINTDB_refresh_session_init (void);
  */
 int
 PERF_TALER_MINTDB_refresh_session_copy (struct TALER_MINTDB_RefreshSession *session, 
-                                        struct TALER_MINTDB_RefreshSession *copy)
+                                        struct TALER_MINTDB_RefreshSession *copy);
 
 
 /**
