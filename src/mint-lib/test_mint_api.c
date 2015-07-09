@@ -23,7 +23,6 @@
  * TODO:
  * - enhance interpreter to allow for testing of failure conditions
  *   (i.e. double-spending, insufficient funds on withdraw)
- * - add checks for /withdraw/status
  */
 #include "platform.h"
 #include "taler_util.h"
@@ -159,6 +158,11 @@ struct Command
        * Set to the API's handle during the operation.
        */
       struct TALER_MINT_WithdrawStatusHandle *wsh;
+
+      /**
+       * Expected reserve balance.
+       */
+      const char *expected_balance;
 
     } withdraw_status;
 
@@ -441,6 +445,7 @@ compare_withdraw_sign_history (const struct TALER_MINT_ReserveHistory *h,
                                const struct Command *cmd)
 {
   struct TALER_Amount amount;
+  struct TALER_Amount amount_with_fee;
 
   if (TALER_MINT_RTT_WITHDRAWAL != h->type)
   {
@@ -450,13 +455,15 @@ compare_withdraw_sign_history (const struct TALER_MINT_ReserveHistory *h,
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (cmd->details.withdraw_sign.amount,
                                          &amount));
-  // FIXME: should fail (amount with vs. amount without fee!)
-  if (0 != TALER_amount_cmp (&amount,
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&amount_with_fee,
+                                   &amount,
+                                   &cmd->details.withdraw_sign.pk->fee_withdraw));
+  if (0 != TALER_amount_cmp (&amount_with_fee,
                              &h->amount))
   {
     GNUNET_break_op (0);
-    return GNUNET_OK; /* FIXME: returning OK for now, as the above
-                         fails due to fee/no-fee mismatch */
+    return GNUNET_SYSERR;
   }
   return GNUNET_OK;
 }
@@ -486,6 +493,7 @@ withdraw_status_cb (void *cls,
   struct Command *rel;
   unsigned int i;
   unsigned int j;
+  struct TALER_Amount amount;
 
   cmd->details.withdraw_status.wsh = NULL;
   if (MHD_HTTP_OK != http_status)
@@ -546,8 +554,19 @@ withdraw_status_cb (void *cls,
     fail (is);
     return;
   }
-  /* FIXME: check the amount... */
-
+  if (NULL != cmd->details.withdraw_status.expected_balance)
+  {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_string_to_amount (cmd->details.withdraw_status.expected_balance,
+                                           &amount));
+    if (0 != TALER_amount_cmp (&amount,
+                               balance))
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
+  }
   is->ip++;
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
                                        is);
@@ -1191,7 +1210,8 @@ run (void *cls,
       .details.withdraw_sign.amount = "EUR:5" },
     { .oc = OC_WITHDRAW_STATUS,
       .label = "withdraw-status-1",
-      .details.withdraw_status.reserve_reference = "create-reserve-1" },
+      .details.withdraw_status.reserve_reference = "create-reserve-1",
+      .details.withdraw_status.expected_balance = "EUR:0" },
     { .oc = OC_DEPOSIT,
       .label = "deposit-simple",
       .details.deposit.amount = "EUR:5",
