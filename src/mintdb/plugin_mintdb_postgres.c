@@ -1752,7 +1752,7 @@ postgres_have_deposit (void *cls,
 {
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
-    TALER_PQ_query_param_auto_from_type (&deposit->transaction_id),
+    TALER_PQ_query_param_uint64 (&deposit->transaction_id),
     TALER_PQ_query_param_auto_from_type (&deposit->merchant_pub),
     TALER_PQ_query_param_end
   };
@@ -1846,7 +1846,7 @@ postgres_insert_deposit (void *cls,
       TALER_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
       TALER_PQ_query_param_rsa_public_key (deposit->coin.denom_pub.rsa_public_key),
       TALER_PQ_query_param_rsa_signature (deposit->coin.denom_sig.rsa_signature),
-      TALER_PQ_query_param_auto_from_type (&deposit->transaction_id),
+      TALER_PQ_query_param_uint64 (&deposit->transaction_id),
       TALER_PQ_query_param_amount (&deposit->amount_with_fee),
       TALER_PQ_query_param_amount (&deposit->deposit_fee),
       TALER_PQ_query_param_absolute_time (&deposit->timestamp),

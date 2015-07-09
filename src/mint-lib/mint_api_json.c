@@ -23,7 +23,6 @@
 #include "platform.h"
 #include "mint_api_json.h"
 
-
 /**
  * Navigate and parse data in a JSON tree.
  *
@@ -239,6 +238,7 @@ parse_json (json_t *root,
           MAJ_parse_free (sig_spec);
           return i;
         }
+
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (ntohl (purpose->purpose),
                                         purpose,
@@ -306,6 +306,7 @@ parse_free (struct MAJ_Specification *spec,
     case MAJ_CMD_EDDSA_SIGNATURE:
       GNUNET_free (*spec[i].details.eddsa_signature.purpose_p);
       *spec[i].details.eddsa_signature.purpose_p = NULL;
+      break;
     default:
       GNUNET_break (0);
       break;
