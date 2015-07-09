@@ -75,6 +75,11 @@ enum OpCode
   OC_ADMIN_ADD_INCOMING,
 
   /**
+   * Check status of a reserve.
+   */
+  OC_WITHDRAW_STATUS,
+
+  /**
    * Withdraw a coin from a reserve.
    */
   OC_WITHDRAW_SIGN,
@@ -140,6 +145,22 @@ struct Command
       struct TALER_MINT_AdminAddIncomingHandle *aih;
 
     } admin_add_incoming;
+
+    struct
+    {
+
+      /**
+       * Label to the #OC_ADMIN_ADD_INCOMING command which
+       * created the reserve.
+       */
+      const char *reserve_reference;
+
+      /**
+       * Set to the API's handle during the operation.
+       */
+      struct TALER_MINT_WithdrawStatusHandle *wsh;
+
+    } withdraw_status;
 
     struct
     {
@@ -376,6 +397,38 @@ add_incoming_cb (void *cls,
 
 
 /**
+ * Function called with the result of a /withdraw/status request.
+ *
+ * @param cls closure with the interpreter state
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param[in] json original response in JSON format (useful only for diagnostics)
+ * @param balance current balance in the reserve, NULL on error
+ * @param history_length number of entries in the transaction history, 0 on error
+ * @param history detailed transaction history, NULL on error
+ */
+static void
+withdraw_status_cb (void *cls,
+                    unsigned int http_status,
+                    json_t *json,
+                    const struct TALER_Amount *balance,
+                    unsigned int history_length,
+                    const struct TALER_MINT_ReserveHistory *history)
+{
+  struct InterpreterState *is = cls;
+  struct Command *cmd = &is->commands[is->ip];
+
+  cmd->details.withdraw_status.wsh = NULL;
+
+  /* FIXME: check the result... */
+
+  is->ip++;
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
+}
+
+
+/**
  * Function called upon completion of our /withdraw/sign request.
  *
  * @param cls closure with the interpreter state
@@ -585,6 +638,22 @@ interpreter_run (void *cls,
       fail (is);
       return;
     }
+    trigger_context_task ();
+    return;
+  case OC_WITHDRAW_STATUS:
+    GNUNET_assert (NULL !=
+                   cmd->details.withdraw_status.reserve_reference);
+    ref = find_command (is,
+                        cmd->details.withdraw_status.reserve_reference);
+    GNUNET_assert (NULL != ref);
+    GNUNET_assert (OC_ADMIN_ADD_INCOMING == ref->oc);
+    GNUNET_CRYPTO_eddsa_key_get_public (&ref->details.admin_add_incoming.reserve_priv.eddsa_priv,
+                                        &reserve_pub.eddsa_pub);
+    cmd->details.withdraw_status.wsh
+      = TALER_MINT_withdraw_status (mint,
+                                    &reserve_pub,
+                                    &withdraw_status_cb,
+                                    is);
     trigger_context_task ();
     return;
   case OC_WITHDRAW_SIGN:
@@ -804,6 +873,17 @@ do_shutdown (void *cls,
         cmd->details.admin_add_incoming.aih = NULL;
       }
       break;
+    case OC_WITHDRAW_STATUS:
+      if (NULL != cmd->details.withdraw_status.wsh)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
+        TALER_MINT_withdraw_status_cancel (cmd->details.withdraw_status.wsh);
+        cmd->details.withdraw_status.wsh = NULL;
+      }
+      break;
     case OC_WITHDRAW_SIGN:
       if (NULL != cmd->details.withdraw_sign.wsh)
       {
@@ -983,6 +1063,9 @@ run (void *cls,
       .label = "withdraw-coin-1",
       .details.withdraw_sign.reserve_reference = "create-reserve-1",
       .details.withdraw_sign.amount = "EUR:5" },
+    { .oc = OC_WITHDRAW_STATUS,
+      .label = "withdraw-status-1",
+      .details.withdraw_status.reserve_reference = "create-reserve-1" },
     { .oc = OC_DEPOSIT,
       .label = "deposit-simple",
       .details.deposit.amount = "EUR:5",
