@@ -23,7 +23,7 @@
  * TODO:
  * - enhance interpreter to allow for testing of failure conditions
  *   (i.e. double-spending, insufficient funds on withdraw)
- * - add command for /withdraw/status
+ * - add checks for /withdraw/status
  */
 #include "platform.h"
 #include "taler_util.h"
