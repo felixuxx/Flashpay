@@ -96,10 +96,12 @@ TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
 
 /**
  * Read signals from a pipe in a loop, and reload keys from disk if
- * SIGUSR1 is read from the pipe.
+ * SIGUSR1 is received, terminate if SIGTERM/SIGINT is received, and
+ * restart if SIGHUP is received.
  *
- * @return #GNUNET_OK if we terminated normally,
- *         #GNUNET_SYSERR on error
+ * @return #GNUNET_SYSERR on errors,
+ *         #GNUNET_OK to terminate normally
+ *         #GNUNET_NO to restart an update version of the binary
  */
 int
 TMH_KS_loop (void);

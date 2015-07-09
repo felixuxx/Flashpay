@@ -105,6 +105,7 @@ handle_mhd_completion_callback (void *cls,
                                 void **con_cls,
                                 enum MHD_RequestTerminationCode toe)
 {
+  fprintf (stderr, "CC called (%p)!\n", *con_cls);
   if (NULL == *con_cls)
     return;
   TMH_PARSE_post_cleanup_callback (*con_cls);
@@ -482,9 +483,32 @@ main (int argc, char *const *argv)
              "Failed to start HTTP server.\n");
     return 1;
   }
-
   ret = TMH_KS_loop ();
-  MHD_stop_daemon (mydaemon);
+  switch (ret)
+  {
+  case GNUNET_OK:
+  case GNUNET_SYSERR:
+    MHD_stop_daemon (mydaemon);
+    break;
+  case GNUNET_NO:
+    {
+      MHD_socket sock = MHD_quiesce_daemon (mydaemon);
+
+      /* FIXME #3474: fork another MHD, passing on the listen socket! */
+      while (0 != MHD_get_daemon_info (mydaemon,
+                                       MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->num_connections)
+        sleep (1);
+      MHD_stop_daemon (mydaemon);
+
+      close (sock); /* FIXME: done like this because #3474 is open */
+    }
+    break;
+  default:
+    GNUNET_break (0);
+    MHD_stop_daemon (mydaemon);
+    break;
+  }
+
   if (GNUNET_YES == TMH_test_mode)
   {
     struct TALER_MINTDB_Session *session;
@@ -499,5 +523,5 @@ main (int argc, char *const *argv)
   }
 
   TALER_MINTDB_plugin_unload (TMH_plugin);
-  return (GNUNET_OK == ret) ? 0 : 1;
+  return (GNUNET_SYSERR == ret) ? 1 : 0;
 }

@@ -892,10 +892,12 @@ postgres_prepare (PGconn *db_conn)
 static void
 db_conn_destroy (void *cls)
 {
-  PGconn *db_conn = cls;
+  struct TALER_MINTDB_Session *session = cls;
+  PGconn *db_conn = session->conn;
 
   if (NULL != db_conn)
     PQfinish (db_conn);
+  GNUNET_free (session);
 }
 
 

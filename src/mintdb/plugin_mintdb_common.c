@@ -100,6 +100,8 @@ common_free_coin_transaction_list (void *cls,
     {
     case TALER_MINTDB_TT_DEPOSIT:
       json_decref (list->details.deposit->wire);
+      GNUNET_CRYPTO_rsa_public_key_free (list->details.deposit->coin.denom_pub.rsa_public_key);
+      GNUNET_CRYPTO_rsa_signature_free (list->details.deposit->coin.denom_sig.rsa_signature);
       GNUNET_free (list->details.deposit);
       break;
     case TALER_MINTDB_TT_REFRESH_MELT:

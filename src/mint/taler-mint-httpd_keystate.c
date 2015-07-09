@@ -296,6 +296,8 @@ reload_keys_denom_iter (void *cls,
        as it is possible we just retry until we succeed. */
   }
 
+  /* FIXME: this is a VERY ugly (we obtain ownership of
+     pointers within 'dki' here!!!) #3886 */
   d2 = GNUNET_memdup (dki,
                       sizeof (struct TALER_MINTDB_DenominationKeyIssueInformation));
   res = GNUNET_CONTAINER_multihashmap_put (ctx->denomkey_map,
@@ -418,6 +420,8 @@ free_denom_key (void *cls,
 {
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki = value;
 
+  GNUNET_CRYPTO_rsa_private_key_free (dki->denom_priv.rsa_private_key);
+  GNUNET_CRYPTO_rsa_public_key_free (dki->denom_pub.rsa_public_key);
   GNUNET_free (dki);
   return GNUNET_OK;
 }
@@ -436,13 +440,25 @@ TMH_KS_release_ (struct TMH_KS_StateHandle *key_state)
   key_state->refcnt--;
   if (0 == key_state->refcnt)
   {
-    json_decref (key_state->denom_keys_array);
-    json_decref (key_state->sign_keys_array);
-    GNUNET_CONTAINER_multihashmap_iterate (key_state->denomkey_map,
-                                           &free_denom_key,
-                                           key_state);
-    GNUNET_CONTAINER_multihashmap_destroy (key_state->denomkey_map);
-    GNUNET_free (key_state->keys_json);
+    if (NULL != key_state->denom_keys_array)
+    {
+      json_decref (key_state->denom_keys_array);
+      key_state->denom_keys_array = NULL;
+    }
+    if (NULL != key_state->sign_keys_array)
+    {
+      json_decref (key_state->sign_keys_array);
+      key_state->sign_keys_array = NULL;
+    }
+    if (NULL != key_state->denomkey_map)
+    {
+      GNUNET_CONTAINER_multihashmap_iterate (key_state->denomkey_map,
+                                             &free_denom_key,
+                                             key_state);
+      GNUNET_CONTAINER_multihashmap_destroy (key_state->denomkey_map);
+      key_state->denomkey_map = NULL;
+    }
+    GNUNET_free_non_null (key_state->keys_json);
     GNUNET_free (key_state);
   }
 }
@@ -532,6 +548,8 @@ TMH_KS_acquire (void)
                                                          sizeof (struct TALER_MintPublicKeyP)),
                       "eddsa_sig", TALER_json_from_data (&sig,
                                                          sizeof (struct TALER_MintSignatureP)));
+    key_state->sign_keys_array = NULL;
+    key_state->denom_keys_array = NULL;
     key_state->keys_json = json_dumps (keys,
                                        JSON_INDENT (2));
     json_decref (keys);
@@ -605,8 +623,7 @@ TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
 
 
 /**
- * Handle a signal, writing relevant signal numbers
- * (currently just SIGUSR1) to a pipe.
+ * Handle a signal, writing relevant signal numbers to the pipe.
  *
  * @param signal_number the signal number
  */
@@ -616,38 +633,83 @@ handle_signal (int signal_number)
   ssize_t res;
   char c = signal_number;
 
-  if (SIGUSR1 == signal_number)
+  res = write (reload_pipe[1],
+               &c,
+               1);
+  if ( (res < 0) &&
+       (EINTR != errno) )
   {
-    res = write (reload_pipe[1],
-                 &c,
-                 1);
-    if ( (res < 0) &&
-         (EINTR != errno) )
-    {
-      GNUNET_break (0);
-      return;
-    }
-    if (0 == res)
-    {
-      GNUNET_break (0);
-      return;
-    }
+    GNUNET_break (0);
+    return;
+  }
+  if (0 == res)
+  {
+    GNUNET_break (0);
+    return;
   }
 }
 
 
 /**
+ * Call #handle_signal() to pass the received signal via
+ * the control pipe.
+ */
+static void
+handle_sigusr1 ()
+{
+  handle_signal (SIGUSR1);
+}
+
+
+/**
+ * Call #handle_signal() to pass the received signal via
+ * the control pipe.
+ */
+static void
+handle_sigint ()
+{
+  handle_signal (SIGINT);
+}
+
+
+/**
+ * Call #handle_signal() to pass the received signal via
+ * the control pipe.
+ */
+static void
+handle_sigterm ()
+{
+  handle_signal (SIGTERM);
+}
+
+
+/**
+ * Call #handle_signal() to pass the received signal via
+ * the control pipe.
+ */
+static void
+handle_sighup ()
+{
+  handle_signal (SIGHUP);
+}
+
+
+/**
  * Read signals from a pipe in a loop, and reload keys from disk if
- * SIGUSR1 is read from the pipe.
+ * SIGUSR1 is received, terminate if SIGTERM/SIGINT is received, and
+ * restart if SIGHUP is received.
  *
- * @return #GNUNET_SYSERR on errors, otherwise does not return
- *          (FIXME: #3474)
+ * @return #GNUNET_SYSERR on errors,
+ *         #GNUNET_OK to terminate normally
+ *         #GNUNET_NO to restart an update version of the binary
  */
 int
 TMH_KS_loop (void)
 {
-  struct sigaction act;
-  struct sigaction rec;
+  struct GNUNET_SIGNAL_Context *sigusr1;
+  struct GNUNET_SIGNAL_Context *sigterm;
+  struct GNUNET_SIGNAL_Context *sigint;
+  struct GNUNET_SIGNAL_Context *sighup;
   int ret;
 
   if (0 != pipe (reload_pipe))
@@ -656,22 +718,17 @@ TMH_KS_loop (void)
              "Failed to create pipe.\n");
     return GNUNET_SYSERR;
   }
-  memset (&act,
-          0,
-          sizeof (struct sigaction));
-  act.sa_handler = &handle_signal;
-  if (0 != sigaction (SIGUSR1,
-                      &act,
-                      &rec))
-  {
-    fprintf (stderr,
-             "Failed to set signal handler.\n");
-    return GNUNET_SYSERR;
-  }
+  sigusr1 = GNUNET_SIGNAL_handler_install (SIGUSR1,
+                                           &handle_sigusr1);
+  sigterm = GNUNET_SIGNAL_handler_install (SIGTERM,
+                                           &handle_sigterm);
+  sigint = GNUNET_SIGNAL_handler_install (SIGINT,
+                                          &handle_sigint);
+  sighup = GNUNET_SIGNAL_handler_install (SIGHUP,
+                                          &handle_sighup);
 
-  ret = GNUNET_OK;
-  /* FIXME: allow for 'clean' termination or restart (#3474) */
-  while (1)
+  ret = 0;
+  while (0 == ret)
   {
     char c;
     ssize_t res;
@@ -700,16 +757,35 @@ read_again:
     }
     if (EINTR == errno)
       goto read_again;
+    switch (c)
+    {
+    case SIGUSR1:
+      /* reload internal key state, we do this in the loop */
+      break;
+    case SIGTERM:
+    case SIGINT:
+      /* terminate */
+      ret = GNUNET_OK;
+      break;
+    case SIGHUP:
+      /* restart updated binary */
+      ret = GNUNET_NO;
+      break;
+    default:
+      /* unexpected character */
+      GNUNET_break (0);
+      break;
+    }
   }
-
-  if (0 != sigaction (SIGUSR1,
-                      &rec,
-                      &act))
+  if (NULL != internal_key_state)
   {
-    fprintf (stderr,
-             "Failed to restore signal handler.\n");
-    return GNUNET_SYSERR;
+    TMH_KS_release (internal_key_state);
+    internal_key_state = NULL;
   }
+  GNUNET_SIGNAL_handler_uninstall (sigusr1);
+  GNUNET_SIGNAL_handler_uninstall (sigterm);
+  GNUNET_SIGNAL_handler_uninstall (sigint);
+  GNUNET_SIGNAL_handler_uninstall (sighup);
   return ret;
 }
 

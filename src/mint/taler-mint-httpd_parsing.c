@@ -273,6 +273,7 @@ TMH_PARSE_post_json (struct MHD_Connection *connection,
         ? GNUNET_SYSERR : GNUNET_NO;
     }
     /* everything OK, wait for more POST data */
+    fprintf (stderr, "Init %p\n", r);
     *upload_data_size = 0;
     *con_cls = r;
     return GNUNET_YES;
@@ -314,6 +315,8 @@ TMH_PARSE_post_json (struct MHD_Connection *connection,
             TMH_RESPONSE_reply_invalid_json (connection))
       ? GNUNET_NO : GNUNET_SYSERR;
   }
+  fprintf (stderr, "Deinit %p\n", r);
+
   buffer_deinit (r);
   GNUNET_free (r);
   *con_cls = NULL;

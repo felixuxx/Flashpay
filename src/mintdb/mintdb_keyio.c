@@ -165,6 +165,7 @@ TALER_MINTDB_denomination_key_read (const char *filename,
     GNUNET_free (data);
     return GNUNET_SYSERR;
   }
+  GNUNET_assert (NULL == dki->denom_priv.rsa_private_key);
   dki->denom_priv.rsa_private_key = priv;
   dki->denom_pub.rsa_public_key
     = GNUNET_CRYPTO_rsa_private_key_get_public (priv);
@@ -270,15 +271,18 @@ denomkeys_iterate_keydir_iter (void *cls,
   struct DenomkeysIterateContext *dic = cls;
   struct TALER_MINTDB_DenominationKeyIssueInformation issue;
 
+  memset (&issue, 0, sizeof (issue));
   if (GNUNET_OK !=
       TALER_MINTDB_denomination_key_read (filename,
-                                 &issue))
+                                          &issue))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Invalid denomkey file: '%s'\n",
                 filename);
     return GNUNET_OK;
   }
+  /* FIXME: very ugly, 'it' is to free memory WE
+     allocated as part of issue!!?? #3886 */
   return dic->it (dic->it_cls,
                   dic->alias,
                   &issue);

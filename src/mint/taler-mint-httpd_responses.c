@@ -525,7 +525,7 @@ compile_reserve_history (const struct TALER_MINTDB_ReserveHistory *rh,
         }
       ret = 1;
       json_array_append_new (json_history,
-                             json_pack ("{s:s, s:o, s:o}",
+                             json_pack ("{s:s, s:O, s:o}",
                                         "type", "DEPOSIT",
                                         "wire", pos->details.bank->wire,
                                         "amount", TALER_json_from_amount (&pos->details.bank->amount)));
