@@ -29,13 +29,12 @@
 
 
 /**
- * Initial size for POST
- * request buffer.
+ * Initial size for POST request buffer.
  */
-#define REQUEST_BUFFER_INITIAL 1024
+#define REQUEST_BUFFER_INITIAL (2*1024)
 
 /**
- * Maximum POST request size
+ * Maximum POST request size.
  */
 #define REQUEST_BUFFER_MAX (1024*1024)
 
@@ -131,6 +130,7 @@ buffer_append (struct Buffer *buf,
       return GNUNET_NO;
     new_buf = GNUNET_malloc (new_size);
     memcpy (new_buf, buf->data, buf->fill);
+    GNUNET_free (buf->data);
     buf->data = new_buf;
     buf->alloc = new_size;
   }
@@ -273,7 +273,6 @@ TMH_PARSE_post_json (struct MHD_Connection *connection,
         ? GNUNET_SYSERR : GNUNET_NO;
     }
     /* everything OK, wait for more POST data */
-    fprintf (stderr, "Init %p\n", r);
     *upload_data_size = 0;
     *con_cls = r;
     return GNUNET_YES;
@@ -315,8 +314,6 @@ TMH_PARSE_post_json (struct MHD_Connection *connection,
             TMH_RESPONSE_reply_invalid_json (connection))
       ? GNUNET_NO : GNUNET_SYSERR;
   }
-  fprintf (stderr, "Deinit %p\n", r);
-
   buffer_deinit (r);
   GNUNET_free (r);
   *con_cls = NULL;

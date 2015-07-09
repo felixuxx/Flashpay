@@ -105,7 +105,6 @@ handle_mhd_completion_callback (void *cls,
                                 void **con_cls,
                                 enum MHD_RequestTerminationCode toe)
 {
-  fprintf (stderr, "CC called (%p)!\n", *con_cls);
   if (NULL == *con_cls)
     return;
   TMH_PARSE_post_cleanup_callback (*con_cls);

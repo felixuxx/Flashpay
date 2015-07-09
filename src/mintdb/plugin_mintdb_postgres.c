@@ -3030,6 +3030,7 @@ postgres_get_coin_transactions (void *cls,
     if (PGRES_TUPLES_OK != PQresultStatus (result))
     {
       QUERY_ERR (result);
+      PQclear (result);
       goto cleanup;
     }
     nrows = PQntuples (result);
@@ -3072,6 +3073,7 @@ postgres_get_coin_transactions (void *cls,
         {
           GNUNET_break (0);
           GNUNET_free (deposit);
+          PQclear (result);
           goto cleanup;
         }
         deposit->coin.coin_pub = *coin_pub;
@@ -3083,6 +3085,7 @@ postgres_get_coin_transactions (void *cls,
       head = tl;
       continue;
     }
+    PQclear (result);
   }
   /* Handle refreshing */
   {
@@ -3129,6 +3132,7 @@ postgres_get_coin_transactions (void *cls,
         {
           GNUNET_break (0);
           GNUNET_free (melt);
+          PQclear (result);
           goto cleanup;
         }
       }
@@ -3139,6 +3143,7 @@ postgres_get_coin_transactions (void *cls,
       head = tl;
       continue;
     }
+    PQclear (result);
   }
   /* FIXME: Handle locked coins (#3625) */
   return head;
