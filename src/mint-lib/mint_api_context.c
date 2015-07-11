@@ -34,8 +34,17 @@
  * @param code what was the curl error code
  */
 #define CURL_STRERROR(type, function, code)      \
- GNUNET_log (type, "Curl function `%s' has failed at `%s:%d' with error: %s", \
+ GNUNET_log (type,                               \
+             "Curl function `%s' has failed at `%s:%d' with error: %s\n", \
              function, __FILE__, __LINE__, curl_easy_strerror (code));
+
+/**
+ * Print JSON parsing related error information
+ */
+#define JSON_WARN(error)                                                \
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,                              \
+                "JSON parsing failed at %s:%u: %s (%s)\n",              \
+                __FILE__, __LINE__, error.text, error.source)
 
 
 /**
@@ -109,6 +118,12 @@ struct TALER_MINT_Context
    */
   struct MAC_Job *jobs_tail;
 
+  /**
+   * HTTP header "application/json", created once and used
+   * for all requests that need it.
+   */
+  struct curl_slist *json_header;
+
 };
 
 
@@ -146,6 +161,9 @@ TALER_MINT_init ()
   ctx = GNUNET_new (struct TALER_MINT_Context);
   ctx->multi = multi;
   ctx->share = share;
+  GNUNET_assert (NULL != (ctx->json_header =
+                          curl_slist_append (NULL,
+                                             "Content-Type: application/json")));
   return ctx;
 }
 
@@ -157,19 +175,30 @@ TALER_MINT_init ()
  * instead use #MAC_easy_to_closure to extract the @a jcc_cls argument
  * from a valid @a eh afterwards.
  *
+ * This function modifies the CURL handle to add the
+ * "Content-Type: application/json" header if @a add_json is set.
+ *
  * @param ctx context to execute the job in
  * @param eh curl easy handle for the request, will
  *           be executed AND cleaned up
+ * @param add_json add "application/json" content type header
  * @param jcc callback to invoke upon completion
  * @param jcc_cls closure for @a jcc
  */
 struct MAC_Job *
 MAC_job_add (struct TALER_MINT_Context *ctx,
              CURL *eh,
+             int add_json,
              MAC_JobCompletionCallback jcc,
              void *jcc_cls)
 {
   struct MAC_Job *job;
+
+  if (GNUNET_YES == add_json)
+    GNUNET_assert (CURLE_OK ==
+                   curl_easy_setopt (eh,
+                                     CURLOPT_HTTPHEADER,
+                                     ctx->json_header));
 
   job = GNUNET_new (struct MAC_Job);
   job->easy_handle = eh;
@@ -333,7 +362,109 @@ TALER_MINT_fini (struct TALER_MINT_Context *ctx)
   GNUNET_assert (NULL == ctx->jobs_head);
   curl_share_cleanup (ctx->share);
   curl_multi_cleanup (ctx->multi);
+  curl_slist_free_all (ctx->json_header);
   GNUNET_free (ctx);
+}
+
+
+/**
+ * Callback used when downloading the reply to an HTTP request.
+ * Just appends all of the data to the `buf` in the
+ * `struct MAC_DownloadBuffer` for further processing. The size of
+ * the download is limited to #GNUNET_MAX_MALLOC_CHECKED, if
+ * the download exceeds this size, we abort with an error.
+ *
+ * @param bufptr data downloaded via HTTP
+ * @param size size of an item in @a bufptr
+ * @param nitems number of items in @a bufptr
+ * @param cls the `struct KeysRequest`
+ * @return number of bytes processed from @a bufptr
+ */
+size_t
+MAC_download_cb (char *bufptr,
+                 size_t size,
+                 size_t nitems,
+                 void *cls)
+{
+  struct MAC_DownloadBuffer *db = cls;
+  size_t msize;
+  void *buf;
+
+  if (0 == size * nitems)
+  {
+    /* Nothing (left) to do */
+    return 0;
+  }
+  msize = size * nitems;
+  if ( (msize + db->buf_size) >= GNUNET_MAX_MALLOC_CHECKED)
+  {
+    db->eno = ENOMEM;
+    return 0; /* signals an error to curl */
+  }
+  db->buf = GNUNET_realloc (db->buf,
+                            db->buf_size + msize);
+  buf = db->buf + db->buf_size;
+  memcpy (buf, bufptr, msize);
+  db->buf_size += msize;
+  return msize;
+}
+
+
+/**
+ * Obtain information about the final result about the
+ * HTTP download. If the download was successful, parses
+ * the JSON in the @a db and returns it. Also returns
+ * the HTTP @a response_code.  If the download failed,
+ * the return value is NULL.  The response code is set
+ * in any case, on download errors to zero.
+ *
+ * Calling this function also cleans up @a db.
+ *
+ * @param db download buffer
+ * @param eh CURL handle (to get the response code)
+ * @param[out] response_code set to the HTTP response code
+ *             (or zero if we aborted the download, i.e.
+ *              because the response was too big, or if
+ *              the JSON we received was malformed).
+ * @return NULL if downloading a JSON reply failed
+ */
+json_t *
+MAC_download_get_result (struct MAC_DownloadBuffer *db,
+                         CURL *eh,
+                         long *response_code)
+{
+  json_t *json;
+  json_error_t error;
+
+  json = NULL;
+  if (0 == db->eno)
+  {
+    json = json_loadb (db->buf,
+                       db->buf_size,
+                       JSON_REJECT_DUPLICATES | JSON_DISABLE_EOF_CHECK,
+                       &error);
+    if (NULL == json)
+    {
+      JSON_WARN (error);
+      *response_code = 0;
+    }
+  }
+  GNUNET_free_non_null (db->buf);
+  db->buf = NULL;
+  db->buf_size = 0;
+  if (NULL != json)
+  {
+    if (CURLE_OK !=
+        curl_easy_getinfo (eh,
+                           CURLINFO_RESPONSE_CODE,
+                           response_code))
+    {
+      /* unexpected error... */
+      GNUNET_break (0);
+      *response_code = 0;
+    }
+  }
+  return json;
 }
 
 

@@ -32,15 +32,6 @@
 
 
 /**
- * Print JSON parsing related error information
- */
-#define JSON_WARN(error)                                                \
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,                              \
-                "JSON parsing failed at %s:%u: %s (%s)",                \
-                __FILE__, __LINE__, error.text, error.source)
-
-
-/**
  * @brief An admin/add/incoming Handle
  */
 struct TALER_MINT_AdminAddIncomingHandle
@@ -84,18 +75,7 @@ struct TALER_MINT_AdminAddIncomingHandle
   /**
    * Download buffer
    */
-  void *buf;
-
-  /**
-   * The size of the download buffer
-   */
-  size_t buf_size;
-
-  /**
-   * Error code (based on libc errno) if we failed to download
-   * (i.e. response too large).
-   */
-  int eno;
+  struct MAC_DownloadBuffer db;
 
 };
 
@@ -113,35 +93,12 @@ handle_admin_add_incoming_finished (void *cls,
 {
   struct TALER_MINT_AdminAddIncomingHandle *aai = cls;
   long response_code;
-  json_error_t error;
   json_t *json;
 
   aai->job = NULL;
-  json = NULL;
-  if (0 == aai->eno)
-  {
-    json = json_loadb (aai->buf,
-                       aai->buf_size,
-                       JSON_REJECT_DUPLICATES | JSON_DISABLE_EOF_CHECK,
-                       &error);
-    if (NULL == json)
-    {
-      JSON_WARN (error);
-      response_code = 0;
-    }
-  }
-  if (NULL != json)
-  {
-    if (CURLE_OK !=
-        curl_easy_getinfo (eh,
-                           CURLINFO_RESPONSE_CODE,
-                           &response_code))
-    {
-      /* unexpected error... */
-      GNUNET_break (0);
-      response_code = 0;
-    }
-  }
+  json = MAC_download_get_result (&aai->db,
+                                  eh,
+                                  &response_code);
   switch (response_code)
   {
   case 0:
@@ -170,6 +127,9 @@ handle_admin_add_incoming_finished (void *cls,
     break;
   default:
     /* unexpected response code */
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u\n",
+                response_code);
     GNUNET_break (0);
     response_code = 0;
     break;
@@ -179,49 +139,6 @@ handle_admin_add_incoming_finished (void *cls,
            json);
   json_decref (json);
   TALER_MINT_admin_add_incoming_cancel (aai);
-}
-
-
-/**
- * Callback used when downloading the reply to a /admin/add/incoming
- * request.  Just appends all of the data to the `buf` in the `struct
- * TALER_MINT_AdminAddIncomingHandle` for further processing. The size
- * of the download is limited to #GNUNET_MAX_MALLOC_CHECKED, if the
- * download exceeds this size, we abort with an error.
- *
- * @param bufptr data downloaded via HTTP
- * @param size size of an item in @a bufptr
- * @param nitems number of items in @a bufptr
- * @param cls the `struct TALER_MINT_DepositHandle`
- * @return number of bytes processed from @a bufptr
- */
-static int
-admin_add_incoming_download_cb (char *bufptr,
-                                size_t size,
-                                size_t nitems,
-                                void *cls)
-{
-  struct TALER_MINT_AdminAddIncomingHandle *aai = cls;
-  size_t msize;
-  void *buf;
-
-  if (0 == size * nitems)
-  {
-    /* Nothing (left) to do */
-    return 0;
-  }
-  msize = size * nitems;
-  if ( (msize + aai->buf_size) >= GNUNET_MAX_MALLOC_CHECKED)
-  {
-    aai->eno = ENOMEM;
-    return 0; /* signals an error to curl */
-  }
-  aai->buf = GNUNET_realloc (aai->buf,
-                             aai->buf_size + msize);
-  buf = aai->buf + aai->buf_size;
-  memcpy (buf, bufptr, msize);
-  aai->buf_size += msize;
-  return msize;
 }
 
 
@@ -265,7 +182,7 @@ TALER_MINT_admin_add_incoming (struct TALER_MINT_Handle *mint,
     return NULL;
   }
   admin_obj = json_pack ("{s:o, s:o," /* reserve_pub/amount */
-                         " s:o, s:o}", /* execution_Date/wire */
+                         " s:o, s:O}", /* execution_Date/wire */
                          "reserve_pub", TALER_json_from_data (reserve_pub,
                                                                sizeof (*reserve_pub)),
                          "amount", TALER_json_from_amount (amount),
@@ -297,21 +214,15 @@ TALER_MINT_admin_add_incoming (struct TALER_MINT_Handle *mint,
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_WRITEFUNCTION,
-                                   &admin_add_incoming_download_cb));
+                                   &MAC_download_cb));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_WRITEDATA,
-                                   aai));
-  GNUNET_assert (NULL != (aai->headers =
-                          curl_slist_append (aai->headers,
-                                             "Content-Type: application/json")));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_HTTPHEADER,
-                                   aai->headers));
+                                   &aai->db));
   ctx = MAH_handle_to_context (mint);
   aai->job = MAC_job_add (ctx,
                           eh,
+                          GNUNET_YES,
                           &handle_admin_add_incoming_finished,
                           aai);
   return aai;
@@ -333,6 +244,7 @@ TALER_MINT_admin_add_incoming_cancel (struct TALER_MINT_AdminAddIncomingHandle *
     aai->job = NULL;
   }
   curl_slist_free_all (aai->headers);
+  GNUNET_free_non_null (aai->db.buf);
   GNUNET_free (aai->url);
   GNUNET_free (aai->json_enc);
   GNUNET_free (aai);

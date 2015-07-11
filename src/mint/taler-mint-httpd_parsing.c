@@ -152,7 +152,6 @@ release_data (struct TMH_PARSE_FieldSpecification *spec,
               unsigned int spec_len)
 {
   unsigned int i;
-  void *ptr;
 
   for (i=0; i < spec_len; i++)
   {
@@ -175,11 +174,15 @@ release_data (struct TMH_PARSE_FieldSpecification *spec,
       }
       break;
     case TMH_PARSE_JNC_RET_TYPED_JSON:
-      ptr = *(void **) spec[i].destination;
-      if (NULL != ptr)
       {
-        json_decref (ptr);
-        *(void**) spec[i].destination = NULL;
+        json_t *json;
+
+        json = *(json_t **) spec[i].destination;
+        if (NULL != json)
+        {
+          json_decref (json);
+          *(json_t**) spec[i].destination = NULL;
+        }
       }
       break;
     case TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY:
@@ -606,7 +609,9 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         int typ = va_arg (argp, int);
         const json_t **r_json = va_arg (argp, const json_t **);
 
-        if ( (-1 != typ) && (json_typeof (root) != typ))
+        if ( (NULL == root) ||
+             ( (-1 != typ) &&
+               (json_typeof (root) != typ)) )
         {
           *r_json = NULL;
           ret = (MHD_YES ==
@@ -899,7 +904,7 @@ TMH_PARSE_json_data (struct MHD_Connection *connection,
                                      spec[i].field_name,
                                      TMH_PARSE_JNC_RET_TYPED_JSON,
                                      spec[i].type,
-                                     &spec[i].destination);
+                                     spec[i].destination);
       break;
     case TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY:
       ret = TMH_PARSE_navigate_json (connection,
@@ -994,7 +999,7 @@ TMH_PARSE_member_uint64 (const char *field,
  * Generate line in parser specification for JSON object value.
  *
  * @param field name of the field
- * @param jsonp address of pointer to JSON to initialize
+ * @param[out] jsonp address of pointer to JSON to initialize
  * @return corresponding field spec
  */
 struct TMH_PARSE_FieldSpecification
@@ -1002,7 +1007,8 @@ TMH_PARSE_member_object (const char *field,
                          json_t **jsonp)
 {
   struct TMH_PARSE_FieldSpecification ret =
-    { field, (void **) jsonp, 0, NULL, TMH_PARSE_JNC_RET_TYPED_JSON, JSON_OBJECT };
+    { field, jsonp, 0, NULL, TMH_PARSE_JNC_RET_TYPED_JSON, JSON_OBJECT };
+  *jsonp = NULL;
   return ret;
 }
 
@@ -1011,7 +1017,7 @@ TMH_PARSE_member_object (const char *field,
  * Generate line in parser specification for JSON array value.
  *
  * @param field name of the field
- * @param jsonp address of JSON pointer to initialize
+ * @param[out] jsonp address of JSON pointer to initialize
  * @return corresponding field spec
  */
 struct TMH_PARSE_FieldSpecification
@@ -1020,6 +1026,7 @@ TMH_PARSE_member_array (const char *field,
 {
   struct TMH_PARSE_FieldSpecification ret =
     { field, jsonp, 0, NULL, TMH_PARSE_JNC_RET_TYPED_JSON, JSON_ARRAY };
+  *jsonp = NULL;
   return ret;
 }
 
@@ -1053,6 +1060,7 @@ TMH_PARSE_member_denomination_public_key (const char *field,
 {
   struct TMH_PARSE_FieldSpecification ret =
     { field, pk, 0, NULL, TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY, 0 };
+  pk->rsa_public_key = NULL;
   return ret;
 }
 
@@ -1070,6 +1078,7 @@ TMH_PARSE_member_denomination_signature (const char *field,
 {
   struct TMH_PARSE_FieldSpecification ret =
     { field, sig, 0, NULL, TMH_PARSE_JNC_RET_RSA_SIGNATURE, 0 };
+  sig->rsa_signature = NULL;
   return ret;
 }
 
@@ -1087,6 +1096,7 @@ TMH_PARSE_member_amount (const char *field,
 {
   struct TMH_PARSE_FieldSpecification ret =
     { field, amount, sizeof(struct TALER_Amount), NULL, TMH_PARSE_JNC_RET_AMOUNT, 0 };
+  memset (amount, 0, sizeof (struct TALER_Amount));
   return ret;
 }
 
@@ -1106,6 +1116,7 @@ TMH_PARSE_member_variable (const char *field,
 {
   struct TMH_PARSE_FieldSpecification ret =
     { field, ptr, 0, ptr_size, TMH_PARSE_JNC_RET_DATA_VAR, 0 };
+  *ptr = NULL;
   return ret;
 }
 

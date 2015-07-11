@@ -33,15 +33,6 @@
 
 
 /**
- * Print JSON parsing related error information
- */
-#define JSON_WARN(error)                                                \
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,                              \
-                "JSON parsing failed at %s:%u: %s (%s)\n",              \
-                __FILE__, __LINE__, error.text, error.source)
-
-
-/**
  * @brief A Deposit Handle
  */
 struct TALER_MINT_DepositHandle
@@ -68,11 +59,6 @@ struct TALER_MINT_DepositHandle
   struct MAC_Job *job;
 
   /**
-   * HTTP headers for the request.
-   */
-  struct curl_slist *headers;
-
-  /**
    * Function to call with the result.
    */
   TALER_MINT_DepositResultCallback cb;
@@ -85,7 +71,7 @@ struct TALER_MINT_DepositHandle
   /**
    * Download buffer
    */
-  void *buf;
+  struct MAC_DownloadBuffer db;
 
   /**
    * Information the mint should sign in response.
@@ -101,17 +87,6 @@ struct TALER_MINT_DepositHandle
    * Total value of the coin being transacted with.
    */
   struct TALER_Amount coin_value;
-
-  /**
-   * The size of the download buffer
-   */
-  size_t buf_size;
-
-  /**
-   * Error code (based on libc errno) if we failed to download
-   * (i.e. response too large).
-   */
-  int eno;
 
 };
 
@@ -321,35 +296,12 @@ handle_deposit_finished (void *cls,
 {
   struct TALER_MINT_DepositHandle *dh = cls;
   long response_code;
-  json_error_t error;
   json_t *json;
 
   dh->job = NULL;
-  json = NULL;
-  if (0 == dh->eno)
-  {
-    json = json_loadb (dh->buf,
-                       dh->buf_size,
-                       JSON_REJECT_DUPLICATES | JSON_DISABLE_EOF_CHECK,
-                       &error);
-    if (NULL == json)
-    {
-      JSON_WARN (error);
-      response_code = 0;
-    }
-  }
-  if (NULL != json)
-  {
-    if (CURLE_OK !=
-        curl_easy_getinfo (eh,
-                           CURLINFO_RESPONSE_CODE,
-                           &response_code))
-    {
-      /* unexpected error... */
-      GNUNET_break (0);
-      response_code = 0;
-    }
-  }
+  json = MAC_download_get_result (&dh->db,
+                                  eh,
+                                  &response_code);
   switch (response_code)
   {
   case 0:
@@ -485,49 +437,6 @@ verify_signatures (const struct TALER_MINT_DenomPublicKey *dki,
 
 
 /**
- * Callback used when downloading the reply to a /deposit request.
- * Just appends all of the data to the `buf` in the
- * `struct TALER_MINT_DepositHandle` for further processing. The size of
- * the download is limited to #GNUNET_MAX_MALLOC_CHECKED, if
- * the download exceeds this size, we abort with an error.
- *
- * @param bufptr data downloaded via HTTP
- * @param size size of an item in @a bufptr
- * @param nitems number of items in @a bufptr
- * @param cls the `struct TALER_MINT_DepositHandle`
- * @return number of bytes processed from @a bufptr
- */
-static int
-deposit_download_cb (char *bufptr,
-                     size_t size,
-                     size_t nitems,
-                     void *cls)
-{
-  struct TALER_MINT_DepositHandle *dh = cls;
-  size_t msize;
-  void *buf;
-
-  if (0 == size * nitems)
-  {
-    /* Nothing (left) to do */
-    return 0;
-  }
-  msize = size * nitems;
-  if ( (msize + dh->buf_size) >= GNUNET_MAX_MALLOC_CHECKED)
-  {
-    dh->eno = ENOMEM;
-    return 0; /* signals an error to curl */
-  }
-  dh->buf = GNUNET_realloc (dh->buf,
-                            dh->buf_size + msize);
-  buf = dh->buf + dh->buf_size;
-  memcpy (buf, bufptr, msize);
-  dh->buf_size += msize;
-  return msize;
-}
-
-
-/**
  * Submit a deposit permission to the mint and get the mint's response.
  * Note that while we return the response verbatim to the caller for
  * further processing, we do already verify that the response is
@@ -624,7 +533,7 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
     return NULL;
   }
 
-  deposit_obj = json_pack ("{s:o, s:o," /* f/wire */
+  deposit_obj = json_pack ("{s:o, s:O," /* f/wire */
                            " s:o, s:o," /* H_wire, H_contract */
                            " s:o, s:o," /* coin_pub, denom_pub */
                            " s:o, s:o," /* ub_sig, timestamp */
@@ -691,21 +600,15 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_WRITEFUNCTION,
-                                   &deposit_download_cb));
+                                   &MAC_download_cb));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_WRITEDATA,
-                                   dh));
-  GNUNET_assert (NULL != (dh->headers =
-                          curl_slist_append (dh->headers,
-                                             "Content-Type: application/json")));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_HTTPHEADER,
-                                   dh->headers));
+                                   &dh->db));
   ctx = MAH_handle_to_context (mint);
   dh->job = MAC_job_add (ctx,
                          eh,
+                         GNUNET_YES,
                          &handle_deposit_finished,
                          dh);
   return dh;
@@ -726,7 +629,7 @@ TALER_MINT_deposit_cancel (struct TALER_MINT_DepositHandle *deposit)
     MAC_job_cancel (deposit->job);
     deposit->job = NULL;
   }
-  curl_slist_free_all (deposit->headers);
+  GNUNET_free_non_null (deposit->db.buf);
   GNUNET_free (deposit->url);
   GNUNET_free (deposit->json_enc);
   GNUNET_free (deposit);

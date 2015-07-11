@@ -45,14 +45,6 @@
 
 
 /**
- * Print JSON parsing related error information
- */
-#define JSON_WARN(error)                                                \
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,                              \
-                "JSON parsing failed at %s:%u: %s (%s)",                \
-                __FILE__, __LINE__, error.text, error.source)
-
-/**
  * Stages of initialization for the `struct TALER_MINT_Handle`
  */
 enum MintHandleState
@@ -149,70 +141,11 @@ struct KeysRequest
   struct MAC_Job *job;
 
   /**
-   * Error buffer for Curl. Do we need this?
+   * Data structure for the download.
    */
-  char emsg[CURL_ERROR_SIZE];
-
-  /**
-   * Download buffer
-   */
-  void *buf;
-
-  /**
-   * The size of the download buffer
-   */
-  size_t buf_size;
-
-  /**
-   * Error code (based on libc errno) if we failed to download
-   * (i.e. response too large).
-   */
-  int eno;
+  struct MAC_DownloadBuffer db;
 
 };
-
-
-/**
- * Callback used when downloading the reply to a /keys request.
- * Just appends all of the data to the `buf` in the
- * `struct KeysRequest` for further processing. The size of
- * the download is limited to #GNUNET_MAX_MALLOC_CHECKED, if
- * the download exceeds this size, we abort with an error.
- *
- * @param bufptr data downloaded via HTTP
- * @param size size of an item in @a bufptr
- * @param nitems number of items in @a bufptr
- * @param cls the `struct KeysRequest`
- * @return number of bytes processed from @a bufptr
- */
-static size_t
-keys_download_cb (char *bufptr,
-                  size_t size,
-                  size_t nitems,
-                  void *cls)
-{
-  struct KeysRequest *kr = cls;
-  size_t msize;
-  void *buf;
-
-  if (0 == size * nitems)
-  {
-    /* Nothing (left) to do */
-    return 0;
-  }
-  msize = size * nitems;
-  if ( (msize + kr->buf_size) >= GNUNET_MAX_MALLOC_CHECKED)
-  {
-    kr->eno = ENOMEM;
-    return 0; /* signals an error to curl */
-  }
-  kr->buf = GNUNET_realloc (kr->buf,
-                            kr->buf_size + msize);
-  buf = kr->buf + kr->buf_size;
-  memcpy (buf, bufptr, msize);
-  kr->buf_size += msize;
-  return msize;
-}
 
 
 /**
@@ -225,7 +158,7 @@ keys_download_cb (char *bufptr,
 static void
 free_keys_request (struct KeysRequest *kr)
 {
-  GNUNET_free_non_null (kr->buf);
+  GNUNET_free_non_null (kr->db.buf);
   GNUNET_free (kr->url);
   GNUNET_free (kr);
 }
@@ -493,7 +426,6 @@ decode_keys_json (json_t *resp_obj,
                                    hash_context));
     }
   }
-  return GNUNET_OK;
 
   /* FIXME: parse the auditor keys (#3847) */
 
@@ -522,48 +454,6 @@ decode_keys_json (json_t *resp_obj,
 
 
 /**
- * We have successfully received the reply to the /keys
- * request from the mint. We now need to parse the reply
- * and, if successful, store the resulting information
- * in the `key_data` structure.
- *
- * @param kr key request with all of the data to parse
- *        and references to the `struct TALER_MINT_Handle`
- *        where we need to store the result
- * @return #GNUNET_OK on success,
- *         #GNUNET_SYSERR on failure
- */
-static int
-parse_response_keys_get (struct KeysRequest *kr)
-{
-  json_t *resp_obj;
-  json_error_t error;
-  int ret;
-
-  resp_obj = json_loadb (kr->buf,
-                         kr->buf_size,
-                         JSON_REJECT_DUPLICATES | JSON_DISABLE_EOF_CHECK,
-                         &error);
-  if (NULL == resp_obj)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unable to parse received /keys data as JSON object\n");
-    GNUNET_free_non_null (kr->buf);
-    kr->buf = NULL;
-    kr->buf_size = 0;
-    return GNUNET_SYSERR;
-  }
-  GNUNET_free_non_null (kr->buf);
-  kr->buf = NULL;
-  kr->buf_size = 0;
-  ret = decode_keys_json (resp_obj,
-                          &kr->mint->key_data);
-  json_decref (resp_obj);
-  return ret;
-}
-
-
-/**
  * Callback used when downloading the reply to a /keys request
  * is complete.
  *
@@ -576,35 +466,32 @@ keys_completed_cb (void *cls,
 {
   struct KeysRequest *kr = cls;
   struct TALER_MINT_Handle *mint = kr->mint;
+  json_t *resp_obj;
   long response_code;
 
-  /* FIXME: might want to check response code? */
-  if (CURLE_OK !=
-      curl_easy_getinfo (eh,
-                         CURLINFO_RESPONSE_CODE,
-                         &response_code))
-  {
-    /* unexpected error... */
-    GNUNET_break (0);
-    response_code = 0;
-  }
+  resp_obj = MAC_download_get_result (&kr->db,
+                                      eh,
+                                      &response_code);
   switch (response_code) {
   case 0:
-    kr->eno = 1;
     break;
   case MHD_HTTP_OK:
+    if ( (NULL == resp_obj) ||
+         (GNUNET_OK !=
+          decode_keys_json (resp_obj,
+                            &kr->mint->key_data)) )
+      response_code = 0;
     break;
   default:
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Mint returned status code %u for /keys\n",
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u\n",
                 response_code);
-    kr->eno = 1;
     break;
   }
+  if (NULL != resp_obj)
+    json_decref (resp_obj);
 
-  if ( (0 != kr->eno) ||
-       (GNUNET_OK !=
-        parse_response_keys_get (kr)) )
+  if (MHD_HTTP_OK != response_code)
   {
     mint->kr = NULL;
     free_keys_request (kr);
@@ -724,18 +611,15 @@ TALER_MINT_connect (struct TALER_MINT_Context *ctx,
                                    kr->url));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (c,
-                                   CURLOPT_ERRORBUFFER,
-                                   kr->emsg));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (c,
                                    CURLOPT_WRITEFUNCTION,
-                                   &keys_download_cb));
+                                   &MAC_download_cb));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (c,
                                    CURLOPT_WRITEDATA,
-                                   kr));
+                                   &kr->db));
   kr->job = MAC_job_add (mint->ctx,
                          c,
+                         GNUNET_NO,
                          &keys_completed_cb,
                          kr);
   mint->kr = kr;
@@ -751,6 +635,8 @@ TALER_MINT_connect (struct TALER_MINT_Context *ctx,
 void
 TALER_MINT_disconnect (struct TALER_MINT_Handle *mint)
 {
+  unsigned int i;
+
   if (NULL != mint->kr)
   {
     MAC_job_cancel (mint->kr->job);
@@ -760,6 +646,8 @@ TALER_MINT_disconnect (struct TALER_MINT_Handle *mint)
   GNUNET_array_grow (mint->key_data.sign_keys,
                      mint->key_data.num_sign_keys,
                      0);
+  for (i=0;i<mint->key_data.num_denom_keys;i++)
+    GNUNET_CRYPTO_rsa_public_key_free (mint->key_data.denom_keys[i].key.rsa_public_key);
   GNUNET_array_grow (mint->key_data.denom_keys,
                      mint->key_data.num_denom_keys,
                      0);

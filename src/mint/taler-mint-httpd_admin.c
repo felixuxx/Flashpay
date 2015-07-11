@@ -146,6 +146,7 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
 				      wire))
   {
     TMH_PARSE_release_data (spec);
+    json_decref (root);
     return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "wire");
   }

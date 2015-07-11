@@ -31,15 +31,6 @@
 #include "taler_signatures.h"
 
 
-/**
- * Print JSON parsing related error information
- */
-#define JSON_WARN(error)                                                \
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,                              \
-                "JSON parsing failed at %s:%u: %s (%s)\n",              \
-                __FILE__, __LINE__, error.text, error.source)
-
-
 /* ********************** /withdraw/status ********************** */
 
 /**
@@ -81,18 +72,7 @@ struct TALER_MINT_WithdrawStatusHandle
   /**
    * Download buffer
    */
-  void *buf;
-
-  /**
-   * The size of the download buffer
-   */
-  size_t buf_size;
-
-  /**
-   * Error code (based on libc errno) if we failed to download
-   * (i.e. response too large).
-   */
-  int eno;
+  struct MAC_DownloadBuffer db;
 
 };
 
@@ -295,35 +275,12 @@ handle_withdraw_status_finished (void *cls,
 {
   struct TALER_MINT_WithdrawStatusHandle *wsh = cls;
   long response_code;
-  json_error_t error;
   json_t *json;
 
   wsh->job = NULL;
-  json = NULL;
-  if (0 == wsh->eno)
-  {
-    json = json_loadb (wsh->buf,
-                       wsh->buf_size,
-                       JSON_REJECT_DUPLICATES | JSON_DISABLE_EOF_CHECK,
-                       &error);
-    if (NULL == json)
-    {
-      JSON_WARN (error);
-      response_code = 0;
-    }
-  }
-  if (NULL != json)
-  {
-    if (CURLE_OK !=
-        curl_easy_getinfo (eh,
-                           CURLINFO_RESPONSE_CODE,
-                           &response_code))
-    {
-      /* unexpected error... */
-      GNUNET_break (0);
-      response_code = 0;
-    }
-  }
+  json = MAC_download_get_result (&wsh->db,
+                                  eh,
+                                  &response_code);
   switch (response_code)
   {
   case 0:
@@ -404,6 +361,9 @@ handle_withdraw_status_finished (void *cls,
     break;
   default:
     /* unexpected response code */
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u\n",
+                response_code);
     GNUNET_break (0);
     response_code = 0;
     break;
@@ -416,49 +376,6 @@ handle_withdraw_status_finished (void *cls,
              0, NULL);
   json_decref (json);
   TALER_MINT_withdraw_status_cancel (wsh);
-}
-
-
-/**
- * Callback used when downloading the reply to a /withdraw/status request.
- * Just appends all of the data to the `buf` in the
- * `struct TALER_MINT_WithdrawStatusHandle` for further processing. The size of
- * the download is limited to #GNUNET_MAX_MALLOC_CHECKED, if
- * the download exceeds this size, we abort with an error.
- *
- * @param bufptr data downloaded via HTTP
- * @param size size of an item in @a bufptr
- * @param nitems number of items in @a bufptr
- * @param cls the `struct TALER_MINT_DepositHandle`
- * @return number of bytes processed from @a bufptr
- */
-static int
-withdraw_status_download_cb (char *bufptr,
-                             size_t size,
-                             size_t nitems,
-                             void *cls)
-{
-  struct TALER_MINT_WithdrawStatusHandle *wsh = cls;
-  size_t msize;
-  void *buf;
-
-  if (0 == size * nitems)
-  {
-    /* Nothing (left) to do */
-    return 0;
-  }
-  msize = size * nitems;
-  if ( (msize + wsh->buf_size) >= GNUNET_MAX_MALLOC_CHECKED)
-  {
-    wsh->eno = ENOMEM;
-    return 0; /* signals an error to curl */
-  }
-  wsh->buf = GNUNET_realloc (wsh->buf,
-                            wsh->buf_size + msize);
-  buf = wsh->buf + wsh->buf_size;
-  memcpy (buf, bufptr, msize);
-  wsh->buf_size += msize;
-  return msize;
 }
 
 
@@ -519,14 +436,15 @@ TALER_MINT_withdraw_status (struct TALER_MINT_Handle *mint,
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_WRITEFUNCTION,
-                                   &withdraw_status_download_cb));
+                                   &MAC_download_cb));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_WRITEDATA,
-                                   wsh));
+                                   &wsh->db));
   ctx = MAH_handle_to_context (mint);
   wsh->job = MAC_job_add (ctx,
                           eh,
+                          GNUNET_NO,
                           &handle_withdraw_status_finished,
                           wsh);
   return wsh;
@@ -547,6 +465,7 @@ TALER_MINT_withdraw_status_cancel (struct TALER_MINT_WithdrawStatusHandle *wsh)
     MAC_job_cancel (wsh->job);
     wsh->job = NULL;
   }
+  GNUNET_free_non_null (wsh->db.buf);
   GNUNET_free (wsh->url);
   GNUNET_free (wsh);
 }
@@ -581,11 +500,6 @@ struct TALER_MINT_WithdrawSignHandle
   struct MAC_Job *job;
 
   /**
-   * HTTP headers for the request.
-   */
-  struct curl_slist *headers;
-
-  /**
    * Function to call with the result.
    */
   TALER_MINT_WithdrawSignResultCallback cb;
@@ -608,7 +522,7 @@ struct TALER_MINT_WithdrawSignHandle
   /**
    * Download buffer
    */
-  void *buf;
+  struct MAC_DownloadBuffer db;
 
   /**
    * Hash of the public key of the coin we are signing.
@@ -619,17 +533,6 @@ struct TALER_MINT_WithdrawSignHandle
    * Public key of the reserve we are withdrawing from.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
-
-  /**
-   * The size of the download buffer
-   */
-  size_t buf_size;
-
-  /**
-   * Error code (based on libc errno) if we failed to download
-   * (i.e. response too large).
-   */
-  int eno;
 
 };
 
@@ -797,33 +700,12 @@ handle_withdraw_sign_finished (void *cls,
 {
   struct TALER_MINT_WithdrawSignHandle *wsh = cls;
   long response_code;
-  json_error_t error;
   json_t *json;
 
   wsh->job = NULL;
-  json = NULL;
-  if (CURLE_OK !=
-      curl_easy_getinfo (eh,
-                         CURLINFO_RESPONSE_CODE,
-                         &response_code))
-  {
-    /* unexpected error... */
-    GNUNET_break (0);
-    response_code = 0;
-  }
-  if ( (0 == wsh->eno) &&
-       (0 != response_code) )
-  {
-    json = json_loadb (wsh->buf,
-                       wsh->buf_size,
-                       JSON_REJECT_DUPLICATES | JSON_DISABLE_EOF_CHECK,
-                       &error);
-    if (NULL == json)
-    {
-      JSON_WARN (error);
-      response_code = 0;
-    }
-  }
+  json = MAC_download_get_result (&wsh->db,
+                                  eh,
+                                  &response_code);
   switch (response_code)
   {
   case 0:
@@ -870,6 +752,9 @@ handle_withdraw_sign_finished (void *cls,
     break;
   default:
     /* unexpected response code */
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u\n",
+                response_code);
     GNUNET_break (0);
     response_code = 0;
     break;
@@ -881,49 +766,6 @@ handle_withdraw_sign_finished (void *cls,
              json);
   json_decref (json);
   TALER_MINT_withdraw_sign_cancel (wsh);
-}
-
-
-/**
- * Callback used when downloading the reply to a /withdraw/sign request.
- * Just appends all of the data to the `buf` in the
- * `struct TALER_MINT_WithdrawSignHandle` for further processing. The size of
- * the download is limited to #GNUNET_MAX_MALLOC_CHECKED, if
- * the download exceeds this size, we abort with an error.
- *
- * @param bufptr data downloaded via HTTP
- * @param size size of an item in @a bufptr
- * @param nitems number of items in @a bufptr
- * @param cls the `struct TALER_MINT_DepositHandle`
- * @return number of bytes processed from @a bufptr
- */
-static int
-withdraw_sign_download_cb (char *bufptr,
-                           size_t size,
-                           size_t nitems,
-                           void *cls)
-{
-  struct TALER_MINT_WithdrawSignHandle *wsh = cls;
-  size_t msize;
-  void *buf;
-
-  if (0 == size * nitems)
-  {
-    /* Nothing (left) to do */
-    return 0;
-  }
-  msize = size * nitems;
-  if ( (msize + wsh->buf_size) >= GNUNET_MAX_MALLOC_CHECKED)
-  {
-    wsh->eno = ENOMEM;
-    return 0; /* signals an error to curl */
-  }
-  wsh->buf = GNUNET_realloc (wsh->buf,
-                             wsh->buf_size + msize);
-  buf = wsh->buf + wsh->buf_size;
-  memcpy (buf, bufptr, msize);
-  wsh->buf_size += msize;
-  return msize;
 }
 
 
@@ -1045,21 +887,15 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_WRITEFUNCTION,
-                                   &withdraw_sign_download_cb));
+                                   &MAC_download_cb));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_WRITEDATA,
-                                   wsh));
-  GNUNET_assert (NULL != (wsh->headers =
-                          curl_slist_append (wsh->headers,
-                                             "Content-Type: application/json")));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_HTTPHEADER,
-                                   wsh->headers));
+                                   &wsh->db));
   ctx = MAH_handle_to_context (mint);
   wsh->job = MAC_job_add (ctx,
                           eh,
+                          GNUNET_YES,
                           &handle_withdraw_sign_finished,
                           wsh);
   return wsh;
@@ -1080,7 +916,7 @@ TALER_MINT_withdraw_sign_cancel (struct TALER_MINT_WithdrawSignHandle *sign)
     MAC_job_cancel (sign->job);
     sign->job = NULL;
   }
-  curl_slist_free_all (sign->headers);
+  GNUNET_free_non_null (sign->db.buf);
   GNUNET_free (sign->url);
   GNUNET_free (sign->json_enc);
   GNUNET_free (sign);
