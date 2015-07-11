@@ -59,9 +59,11 @@ TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
 {
   json_t *json;
   int res;
+  void *in_ptr;
+  size_t in_ptr_size;
   struct GNUNET_HashCode hc;
   struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_MEMBER_VARIABLE ("input"),
+    TMH_PARSE_member_variable ("input", &in_ptr, &in_ptr_size),
     TMH_PARSE_MEMBER_END
   };
 
@@ -79,8 +81,8 @@ TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
 			     spec);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
-  GNUNET_CRYPTO_hash (spec[0].destination,
-		      spec[0].destination_size_out,
+  GNUNET_CRYPTO_hash (in_ptr,
+		      in_ptr_size,
 		      &hc);
   TMH_PARSE_release_data (spec);
   json_decref (json);
@@ -121,9 +123,11 @@ TMH_TEST_handler_test_encrypt (struct TMH_RequestHandler *rh,
   struct GNUNET_HashCode key;
   struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
   struct GNUNET_CRYPTO_SymmetricSessionKey skey;
+  void *in_ptr;
+  size_t in_ptr_size;
   struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_MEMBER_VARIABLE ("input"),
-    TMH_PARSE_MEMBER_FIXED ("key_hash", &key),
+    TMH_PARSE_member_variable ("input", &in_ptr, &in_ptr_size),
+    TMH_PARSE_member_fixed ("key_hash", &key),
     TMH_PARSE_MEMBER_END
   };
   char *out;
@@ -153,15 +157,15 @@ TMH_TEST_handler_test_encrypt (struct TMH_RequestHandler *rh,
 				    "iv", strlen ("iv"),
 				    &key, sizeof (key),
 				    NULL, 0));
-  out = GNUNET_malloc (spec[0].destination_size_out);
-  GNUNET_break (spec[0].destination_size_out ==
-		GNUNET_CRYPTO_symmetric_encrypt (spec[0].destination,
-						 spec[0].destination_size_out,
+  out = GNUNET_malloc (in_ptr_size);
+  GNUNET_break (in_ptr_size ==
+		GNUNET_CRYPTO_symmetric_encrypt (in_ptr,
+						 in_ptr_size,
 						 &skey,
 						 &iv,
 						 out));
   json = TALER_json_from_data (out,
-			       spec[0].destination_size_out);
+			       in_ptr_size);
   GNUNET_free (out);
   TMH_PARSE_release_data (spec);
   return TMH_RESPONSE_reply_json_pack (connection,
@@ -199,8 +203,10 @@ TMH_TEST_handler_test_hkdf (struct TMH_RequestHandler *rh,
   json_t *json;
   int res;
   struct GNUNET_HashCode hc;
+  void *in_ptr;
+  size_t in_ptr_size;
   struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_MEMBER_VARIABLE ("input"),
+    TMH_PARSE_member_variable ("input", &in_ptr, &in_ptr_size),
     TMH_PARSE_MEMBER_END
   };
 
@@ -221,8 +227,8 @@ TMH_TEST_handler_test_hkdf (struct TMH_RequestHandler *rh,
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   GNUNET_CRYPTO_kdf (&hc, sizeof (hc),
 		     "salty", strlen ("salty"),
-		     spec[0].destination,
-		     spec[0].destination_size_out,
+		     in_ptr,
+		     in_ptr_size,
 		     NULL, 0);
   TMH_PARSE_release_data (spec);
   json = TALER_json_from_data (&hc,
@@ -262,8 +268,8 @@ TMH_TEST_handler_test_ecdhe (struct TMH_RequestHandler *rh,
   struct GNUNET_CRYPTO_EcdhePrivateKey priv;
   struct GNUNET_HashCode hc;
   struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_MEMBER_FIXED ("ecdhe_pub", &pub),
-    TMH_PARSE_MEMBER_FIXED ("ecdhe_priv", &priv),
+    TMH_PARSE_member_fixed ("ecdhe_pub", &pub),
+    TMH_PARSE_member_fixed ("ecdhe_priv", &priv),
     TMH_PARSE_MEMBER_END
   };
 
@@ -329,8 +335,8 @@ TMH_TEST_handler_test_eddsa (struct TMH_RequestHandler *rh,
   struct GNUNET_CRYPTO_EddsaSignature sig;
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
   struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_MEMBER_FIXED ("eddsa_pub", &pub),
-    TMH_PARSE_MEMBER_FIXED ("eddsa_sig", &sig),
+    TMH_PARSE_member_fixed ("eddsa_pub", &pub),
+    TMH_PARSE_member_fixed ("eddsa_sig", &sig),
     TMH_PARSE_MEMBER_END
   };
   struct GNUNET_CRYPTO_EddsaPrivateKey *pk;
@@ -457,8 +463,10 @@ TMH_TEST_handler_test_rsa_sign (struct TMH_RequestHandler *rh,
   json_t *json;
   int res;
   struct GNUNET_CRYPTO_rsa_Signature *sig;
+  void *in_ptr;
+  size_t in_ptr_size;
   struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_MEMBER_VARIABLE ("blind_ev"),
+    TMH_PARSE_member_variable ("blind_ev", &in_ptr, &in_ptr_size),
     TMH_PARSE_MEMBER_END
   };
 
@@ -487,8 +495,8 @@ TMH_TEST_handler_test_rsa_sign (struct TMH_RequestHandler *rh,
 					      "Failed to create RSA key");
   }
   sig = GNUNET_CRYPTO_rsa_sign (rsa_pk,
-				spec[0].destination,
-				spec[0].destination_size_out);
+				in_ptr,
+				in_ptr_size);
   if (NULL == sig)
   {
     GNUNET_break (0);
@@ -534,9 +542,9 @@ TMH_TEST_handler_test_transfer (struct TMH_RequestHandler *rh,
   struct TALER_TransferPrivateKeyP trans_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_MEMBER_FIXED ("secret_enc", &secret_enc),
-    TMH_PARSE_MEMBER_FIXED ("trans_priv", &trans_priv),
-    TMH_PARSE_MEMBER_FIXED ("coin_pub", &coin_pub),
+    TMH_PARSE_member_fixed ("secret_enc", &secret_enc),
+    TMH_PARSE_member_fixed ("trans_priv", &trans_priv),
+    TMH_PARSE_member_fixed ("coin_pub", &coin_pub),
     TMH_PARSE_MEMBER_END
   };
   struct TALER_LinkSecretP secret;

@@ -173,10 +173,10 @@ get_coin_public_info (struct MHD_Connection *connection,
   struct TALER_DenominationPublicKey pk;
   struct TALER_Amount amount;
   struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_MEMBER_FIXED ("coin_pub", &r_melt_detail->coin_info.coin_pub),
+    TMH_PARSE_member_fixed ("coin_pub", &r_melt_detail->coin_info.coin_pub),
     TMH_PARSE_member_denomination_signature ("denom_sig", &sig),
     TMH_PARSE_member_denomination_public_key ("denom_pub", &pk),
-    TMH_PARSE_MEMBER_FIXED ("confirm_sig", &melt_sig),
+    TMH_PARSE_member_fixed ("confirm_sig", &melt_sig),
     TMH_PARSE_member_amount ("value_with_fee", &amount),
     TMH_PARSE_MEMBER_END
   };
@@ -819,7 +819,7 @@ TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
   json_t *root;
   json_t *transfer_privs;
   struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_MEMBER_FIXED ("session_hash", &session_hash),
+    TMH_PARSE_member_fixed ("session_hash", &session_hash),
     TMH_PARSE_member_array ("transfer_privs", &transfer_privs),
     TMH_PARSE_MEMBER_END
   };
@@ -842,13 +842,13 @@ TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
 
   /* Determine dimensionality of the request (kappa and #old coins) */
+  /* Note we do +1 as 1 row (cut-and-choose!) is missing! */
   if (TALER_CNC_KAPPA != json_array_size (transfer_privs) + 1)
   {
     TMH_PARSE_release_data (spec);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "transfer_privs");
   }
-  /* Note we do +1 as 1 row (cut-and-choose!) is missing! */
   res = TMH_PARSE_navigate_json (connection,
                                  transfer_privs,
                                  TMH_PARSE_JNC_INDEX, 0,

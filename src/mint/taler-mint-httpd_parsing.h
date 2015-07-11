@@ -194,7 +194,7 @@ struct TMH_PARSE_FieldSpecification
    * value that was stored in @e destination (useful for
    * variable-size allocations).
    */
-  size_t destination_size_out;
+  size_t *destination_size_out;
 
   /**
    * Navigation command to use to extract the value.  Note that
@@ -250,14 +250,21 @@ TMH_PARSE_release_data (struct TMH_PARSE_FieldSpecification *spec);
  * @param field name of the field
  * @param value where to store the value
  */
-#define TMH_PARSE_MEMBER_FIXED(field,value) { field, value, sizeof (*value), 0, TMH_PARSE_JNC_RET_DATA, 0 }
+#define TMH_PARSE_member_fixed(field,value) { field, value, sizeof (*value), NULL, TMH_PARSE_JNC_RET_DATA, 0 }
+
 
 /**
  * Generate line in parser specification for variable-size value.
  *
  * @param field name of the field
+ * @param[out] ptr pointer to initialize
+ * @param[out] ptr_size size to initialize
+ * @return corresponding field spec
  */
-#define TMH_PARSE_MEMBER_VARIABLE(field) { field, NULL, 0, 0, TMH_PARSE_JNC_RET_DATA_VAR, 0 }
+struct TMH_PARSE_FieldSpecification
+TMH_PARSE_member_variable (const char *field,
+                           void **ptr,
+                           size_t *ptr_size);
 
 
 /**
@@ -349,7 +356,7 @@ TMH_PARSE_member_time_abs (const char *field,
 /**
  * Generate line in parser specification indicating the end of the spec.
  */
-#define TMH_PARSE_MEMBER_END { NULL, NULL, 0, 0, TMH_PARSE_JNC_FIELD, 0 }
+#define TMH_PARSE_MEMBER_END { NULL, NULL, 0, NULL, TMH_PARSE_JNC_FIELD, 0 }
 
 
 /**

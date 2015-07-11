@@ -113,7 +113,7 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
   json_t *wire;
   json_t *root;
   struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_MEMBER_FIXED ("reserve_pub", &reserve_pub),
+    TMH_PARSE_member_fixed ("reserve_pub", &reserve_pub),
     TMH_PARSE_member_amount ("amount", &amount),
     TMH_PARSE_member_time_abs ("execution_date", &at),
     TMH_PARSE_member_object ("wire", &wire),

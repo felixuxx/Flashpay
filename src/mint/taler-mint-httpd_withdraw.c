@@ -92,7 +92,7 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
   struct TALER_WithdrawRequestPS wsrd;
   int res;
   struct TALER_DenominationPublicKey denomination_pub;
-  const char *blinded_msg;
+  char *blinded_msg;
   size_t blinded_msg_len;
   struct TALER_Amount amount;
   struct TALER_Amount amount_with_fee;
@@ -102,9 +102,9 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
   struct TMH_KS_StateHandle *ks;
 
   struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_MEMBER_VARIABLE ("coin_ev"),
-    TMH_PARSE_MEMBER_FIXED ("reserve_pub", &wsrd.reserve_pub),
-    TMH_PARSE_MEMBER_FIXED ("reserve_sig", &signature),
+    TMH_PARSE_member_variable ("coin_ev", (void **) &blinded_msg, &blinded_msg_len),
+    TMH_PARSE_member_fixed ("reserve_pub", &wsrd.reserve_pub),
+    TMH_PARSE_member_fixed ("reserve_sig", &signature),
     TMH_PARSE_member_denomination_public_key ("denom_pub", &denomination_pub),
     TMH_PARSE_MEMBER_END
   };
@@ -124,8 +124,6 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
   json_decref (root);
   if (GNUNET_OK != res)
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-  blinded_msg = spec[0].destination;
-  blinded_msg_len = spec[0].destination_size_out;
   ks = TMH_KS_acquire ();
   dki = TMH_KS_denomination_key_lookup (ks,
                                         &denomination_pub,
