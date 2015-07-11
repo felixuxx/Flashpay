@@ -1,6 +1,8 @@
 *~
 *Makefile.in
 *Makefile
+*.gcno
+*.gcda
 aclocal.m4
 autom4te.cache
 autoscan.log
