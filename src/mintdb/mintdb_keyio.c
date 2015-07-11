@@ -270,6 +270,7 @@ denomkeys_iterate_keydir_iter (void *cls,
 {
   struct DenomkeysIterateContext *dic = cls;
   struct TALER_MINTDB_DenominationKeyIssueInformation issue;
+  int ret;
 
   memset (&issue, 0, sizeof (issue));
   if (GNUNET_OK !=
@@ -281,11 +282,12 @@ denomkeys_iterate_keydir_iter (void *cls,
                 filename);
     return GNUNET_OK;
   }
-  /* FIXME: very ugly, 'it' is to free memory WE
-     allocated as part of issue!!?? #3886 */
-  return dic->it (dic->it_cls,
-                  dic->alias,
-                  &issue);
+  ret = dic->it (dic->it_cls,
+                 dic->alias,
+                 &issue);
+  GNUNET_CRYPTO_rsa_private_key_free (issue.denom_priv.rsa_private_key);
+  GNUNET_CRYPTO_rsa_public_key_free (issue.denom_pub.rsa_public_key);
+  return ret;
 }
 
 

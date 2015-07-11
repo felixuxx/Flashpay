@@ -296,10 +296,12 @@ reload_keys_denom_iter (void *cls,
        as it is possible we just retry until we succeed. */
   }
 
-  /* FIXME: this is a VERY ugly (we obtain ownership of
-     pointers within 'dki' here!!!) #3886 */
-  d2 = GNUNET_memdup (dki,
-                      sizeof (struct TALER_MINTDB_DenominationKeyIssueInformation));
+  d2 = GNUNET_new (struct TALER_MINTDB_DenominationKeyIssueInformation);
+  d2->issue = dki->issue;
+  d2->denom_priv.rsa_private_key
+    = GNUNET_CRYPTO_rsa_private_key_dup (dki->denom_priv.rsa_private_key);
+  d2->denom_pub.rsa_public_key
+    = GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key);
   res = GNUNET_CONTAINER_multihashmap_put (ctx->denomkey_map,
                                            &denom_key_hash,
                                            d2,
@@ -309,6 +311,8 @@ reload_keys_denom_iter (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Duplicate denomination key `%s'\n",
                 alias);
+    GNUNET_CRYPTO_rsa_private_key_free (d2->denom_priv.rsa_private_key);
+    GNUNET_CRYPTO_rsa_public_key_free (d2->denom_pub.rsa_public_key);
     GNUNET_free (d2);
     return GNUNET_OK;
   }
