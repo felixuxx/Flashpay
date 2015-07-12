@@ -429,20 +429,134 @@ mint_serve_process_config (const char *mint_directory)
 }
 
 
+/* Developer logic for supporting the `-f' option. */
+#if HAVE_DEVELOPER
+
 /**
- * The main function of the serve tool
+ * Option `-f' (specifies an input file to give to the HTTP server).
+ */
+static char *input_filename;
+
+
+/**
+ * Run 'nc' or 'ncat' as a fake HTTP client using #input_filename
+ * as the input for the request.  If launching the client worked,
+ * run the #TMH_KS_loop() event loop as usual.
+ *
+ * @return #GNUNET_OK
+ */
+static int
+run_fake_client ()
+{
+  pid_t cld;
+  char ports[6];
+  int fd;
+  int ret;
+  int status;
+
+  fd = open (input_filename, O_RDONLY);
+  if (-1 == fd)
+  {
+    fprintf (stderr,
+             "Failed to open `%s': %s\n",
+             input_filename,
+             strerror (errno));
+    return GNUNET_SYSERR;
+  }
+  /* Fake HTTP client request with #input_filename as input.
+     We do this using the nc tool. */
+  GNUNET_snprintf (ports,
+                   sizeof (ports),
+                   "%u",
+                   serve_port);
+  if (0 == (cld = fork()))
+  {
+    GNUNET_break (0 == close (0));
+    GNUNET_break (0 == dup2 (fd, 0));
+    GNUNET_break (0 == close (fd));
+    if ( (0 != execlp ("nc",
+                       "nc",
+                       "localhost",
+                       ports,
+                       NULL)) &&
+         (0 != execlp ("ncat",
+                       "ncat",
+                       "localhost",
+                       ports,
+                       NULL)) )
+    {
+      fprintf (stderr,
+               "Failed to run both `nc' and `ncat': %s\n",
+               strerror (errno));
+    }
+    exit (0);
+  }
+  /* parent process */
+  GNUNET_break (0 == close (fd));
+  ret = TMH_KS_loop ();
+  if (cld != waitpid (cld, &status, 0))
+    fprintf (stderr,
+             "Waiting for `nc' child failed: %s\n",
+             strerror (errno));
+  return ret;
+}
+
+
+/**
+ * Signature of the callback used by MHD to notify the application
+ * about completed connections.  If we are running in test-mode with
+ * an #input_filename, this function is used to terminate the HTTPD
+ * after the first request has been processed.
+ *
+ * @param cls client-defined closure, NULL
+ * @param connection connection handle (ignored)
+ * @param socket_context socket-specific pointer (ignored)
+ * @param toe reason for connection notification
+ */
+static void
+connection_done (void *cls,
+                 struct MHD_Connection *connection,
+                 void **socket_context,
+                 enum MHD_ConnectionNotificationCode toe)
+{
+  /* We only act if the connection is closed. */
+  if (MHD_CONNECTION_NOTIFY_CLOSED != toe)
+    return;
+  /* This callback is also present if the option wasn't, so
+     make sure the option was actually set. */
+  if (NULL == input_filename)
+    return;
+  /* We signal ourselves to terminate. */
+  if (0 != kill (getpid(),
+                 SIGTERM))
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "kill");
+}
+
+/* end of HAVE_DEVELOPER */
+#endif
+
+
+/**
+ * The main function of the taler-mint-httpd server ("the mint").
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments
  * @return 0 ok, 1 on error
  */
 int
-main (int argc, char *const *argv)
+main (int argc,
+      char *const *argv)
 {
   static const struct GNUNET_GETOPT_CommandLineOption options[] = {
     {'d', "mint-dir", "DIR",
-     "mint directory", 1,
+     "mint directory with configuration and keys for operating the mint", 1,
      &GNUNET_GETOPT_set_filename, &TMH_mint_directory},
+#if HAVE_DEVELOPER
+    {'f', "file-input", "FILENAME",
+     "run in test-mode using FILENAME as the HTTP request to process", 1,
+     &GNUNET_GETOPT_set_filename, &input_filename},
+#endif
     TALER_GETOPT_OPTION_HELP ("HTTP server providing a RESTful API to access a Taler mint"),
     GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
@@ -474,6 +588,9 @@ main (int argc, char *const *argv)
                                NULL, NULL,
                                &handle_mhd_request, NULL,
                                MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
+#if HAVE_DEVELOPER
+                               MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
+#endif
                                MHD_OPTION_END);
 
   if (NULL == mydaemon)
@@ -482,7 +599,22 @@ main (int argc, char *const *argv)
              "Failed to start HTTP server.\n");
     return 1;
   }
+#if HAVE_DEVELOPER
+  if (NULL != input_filename)
+  {
+    /* run only the testfile input, then terminate */
+    ret = run_fake_client ();
+  }
+  else
+  {
+    /* normal behavior */
+    ret = TMH_KS_loop ();
+  }
+#else
+  /* normal behavior */
   ret = TMH_KS_loop ();
+#endif
+
   switch (ret)
   {
   case GNUNET_OK:
@@ -524,3 +656,5 @@ main (int argc, char *const *argv)
   TALER_MINTDB_plugin_unload (TMH_plugin);
   return (GNUNET_SYSERR == ret) ? 1 : 0;
 }
+
+/* end of taler-mint-httpd.c */

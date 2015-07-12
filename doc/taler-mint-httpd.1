@@ -21,6 +21,10 @@ Print short help on options.
 .B
 .IP "\-v, \-\-version"
 Print version information.
+.B
+.IP "\-f FILENAME, \-\-file\-input=FILENAME"
+This option is only available if the mint was compiled with the configure option
+\-\-enable\-developer\-mode.  It is used for generating test cases against the mint using AFL.  When this option is present, the HTTP server will (1) terminate after the first client's HTTP connection is completed, and (2) automatically start such a client using a helper process based on the 'nc' or 'ncat' binary using FILENAME as the standard input to the helper process.  As a result, the process will effectively run with FILENAME as the input from an HTTP client and then immediately exit.  This is useful to test taler\-mint\-httpd against many different possible inputs in a controlled way.
 
 .SH BUGS
 Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
