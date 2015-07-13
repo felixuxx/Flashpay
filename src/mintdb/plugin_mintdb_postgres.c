@@ -166,6 +166,8 @@ static int
 postgres_drop_temporary (void *cls,
                          struct TALER_MINTDB_Session *session)
 {
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "Dropping temporary tables\n");
   SQLEXEC_ (session->conn,
             "DROP SCHEMA " TALER_TEMP_SCHEMA_NAME " CASCADE;");
   return GNUNET_OK;

@@ -75,6 +75,11 @@ struct TALER_MINTDB_Plugin *TMH_plugin;
 int TMH_test_mode;
 
 /**
+ * Default timeout in seconds for HTTP requests.
+ */
+static unsigned int connection_timeout = 30;
+
+/**
  * The HTTP Daemon.
  */
 static struct MHD_Daemon *mydaemon;
@@ -552,6 +557,9 @@ main (int argc,
     {'d', "mint-dir", "DIR",
      "mint directory with configuration and keys for operating the mint", 1,
      &GNUNET_GETOPT_set_filename, &TMH_mint_directory},
+    {'t', "timeout", "SECONDS",
+     "after how long do connections timeout by default (in seconds)", 1,
+     &GNUNET_GETOPT_set_uint, &connection_timeout},
 #if HAVE_DEVELOPER
     {'f', "file-input", "FILENAME",
      "run in test-mode using FILENAME as the HTTP request to process", 1,
@@ -588,6 +596,7 @@ main (int argc,
                                NULL, NULL,
                                &handle_mhd_request, NULL,
                                MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
+                               MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
 #if HAVE_DEVELOPER
                                MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
 #endif
