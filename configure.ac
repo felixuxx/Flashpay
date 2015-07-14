@@ -236,6 +236,28 @@ AS_IF([test "x$enableval" = "xno"], [enable_dev=0])
 AC_DEFINE_UNQUOTED([HAVE_DEVELOPER],[$enable_dev],[1 if developer logic is enabled, 0 otherwise])
 
 
+
+# Adam shostack suggests the following for Windows:
+# -D_FORTIFY_SOURCE=2 -fstack-protector-all
+AC_ARG_ENABLE(gcc-hardening,
+   AS_HELP_STRING(--enable-gcc-hardening, enable compiler security checks),
+[if test x$enableval = xyes; then
+    CFLAGS="$CFLAGS -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2 -fstack-protector-all"
+    CFLAGS="$CFLAGS -fwrapv -fPIE -Wstack-protector"
+    CFLAGS="$CFLAGS --param ssp-buffer-size=1"
+    LDFLAGS="$LDFLAGS -pie"
+fi])
+
+
+# Linker hardening options
+# Currently these options are ELF specific - you can't use this with MacOSX
+AC_ARG_ENABLE(linker-hardening,
+  AS_HELP_STRING(--enable-linker-hardening, enable linker security fixups),
+[if test x$enableval = xyes; then
+   LDFLAGS="$LDFLAGS -z relro -z now"
+fi])
+
+
 # logging
 extra_logging=0
 AC_ARG_ENABLE([logging],

@@ -956,7 +956,7 @@ TMH_PARSE_json_data (struct MHD_Connection *connection,
   }
   if (GNUNET_YES != ret)
     release_data (spec,
-                  i);
+                  i - 1);
   return ret;
 }
 
