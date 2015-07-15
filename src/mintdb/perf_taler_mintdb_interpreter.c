@@ -69,12 +69,12 @@ data_free (struct PERF_TALER_MINTDB_Data *data)
       data->data.deposit = NULL;
       return;
 
-    case PERF_TALER_MINTDB_BLINDCOIN:
-      if (NULL == data->data.blindcoin)
+    case PERF_TALER_MINTDB_COIN:
+      if (NULL == data->data.coin)
         return;
-      PERF_TALER_MINTDB_collectable_blindcoin_free (data->data.blindcoin);
-      GNUNET_free (data->data.blindcoin);
-      data->data.blindcoin = NULL;
+      PERF_TALER_MINTDB_coin_free (data->data.coin);
+      GNUNET_free (data->data.coin);
+      data->data.coin = NULL;
       return;
 
     case PERF_TALER_MINTDB_RESERVE:
@@ -120,9 +120,9 @@ data_copy (const struct PERF_TALER_MINTDB_Data *data, struct PERF_TALER_MINTDB_D
       PERF_TALER_MINTDB_deposit_copy (data->data.deposit);
       return;
 
-    case PERF_TALER_MINTDB_BLINDCOIN:
-      copy->data.blindcoin =
-      PERF_TALER_MINTDB_collectable_blindcoin_copy (data->data.blindcoin);
+    case PERF_TALER_MINTDB_COIN:
+      copy->data.coin =
+      PERF_TALER_MINTDB_coin_copy (data->data.coin);
       return;
 
     case PERF_TALER_MINTDB_RESERVE:
@@ -627,7 +627,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW:
         {
           int dki_index, reserve_index;
-          struct TALER_MINTDB_CollectableBlindcoin *blindcoin ;
+          struct PERF_TALER_MINTDB_Coin *coin ;
 
           GNUNET_assert (GNUNET_SYSERR !=
                          (dki_index = cmd_find (
@@ -638,15 +638,15 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
                              state->cmd,
                              state->cmd[state->i].details.insert_withdraw.label_reserve)));
           GNUNET_assert (NULL !=
-                         (blindcoin =
-                          PERF_TALER_MINTDB_collectable_blindcoin_init (
+                         (coin =
+                          PERF_TALER_MINTDB_coin_init (
                             state->cmd[dki_index].exposed.data.dki,
                             state->cmd[reserve_index].exposed.data.reserve)));
 
           state->plugin->insert_withdraw_info (state->plugin->cls,
                                                state->session,
-                                               blindcoin);
-          state->cmd[state->i].exposed.data.blindcoin = blindcoin;
+                                               &coin->blind);
+          state->cmd[state->i].exposed.data.coin = coin;
         }
         break;
 
@@ -663,8 +663,8 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
                      &data);
           state->plugin->get_withdraw_info (state->plugin->cls,
                                             state->session,
-                                            &data.data.blindcoin->h_coin_envelope,
-                                            data.data.blindcoin);
+                                            &data.data.coin->blind.h_coin_envelope,
+                                            &data.data.coin->blind);
         }
         break;
 

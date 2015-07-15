@@ -347,67 +347,63 @@ PERF_TALER_MINTDB_deposit_free (struct TALER_MINTDB_Deposit *deposit)
  * @param reserve reserve providing the money for the coin
  * @return a randomly generated CollectableBlindcoin
  */
-struct TALER_MINTDB_CollectableBlindcoin *
-PERF_TALER_MINTDB_collectable_blindcoin_init (
+struct PERF_TALER_MINTDB_Coin *
+PERF_TALER_MINTDB_coin_init (
   const struct TALER_MINTDB_DenominationKeyIssueInformation *dki,
   const struct PERF_TALER_MINTDB_Reserve *reserve)
 {
-  uint32_t random_int;
-  struct GNUNET_CRYPTO_rsa_PrivateKey *denomination_key;
-  struct GNUNET_CRYPTO_EddsaPrivateKey *reserve_sig_key;
-  struct {
-    struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-    uint32_t data;
-  } unsigned_data;
-  struct TALER_MINTDB_CollectableBlindcoin *coin;
+  struct PERF_TALER_MINTDB_Coin *coin;
 
-  GNUNET_assert (NULL != 
-                 (coin = GNUNET_new (struct TALER_MINTDB_CollectableBlindcoin)));
   GNUNET_assert (NULL !=
-                 (reserve_sig_key = GNUNET_CRYPTO_eddsa_key_create ()));
-  {
-    char *buffer = NULL;
-    int size;
-    GNUNET_assert (0 <
-                   (size = GNUNET_CRYPTO_rsa_private_key_encode (
-                       dki->denom_priv.rsa_private_key,
-                       &buffer)));
+                 (coin = GNUNET_new (struct PERF_TALER_MINTDB_Coin)));
+  {/* priv */
+    struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
+    
     GNUNET_assert (NULL !=
-                   (denomination_key = 
-                    GNUNET_CRYPTO_rsa_private_key_decode (buffer, size)));
-    GNUNET_free (buffer);
+                   (priv = GNUNET_CRYPTO_eddsa_key_create()));
+    coin->priv = *priv;
   }
-  GNUNET_assert (NULL !=
-                 (coin->denom_pub.rsa_public_key =
-                  GNUNET_CRYPTO_rsa_private_key_get_public (denomination_key)));
-  coin->reserve_pub.eddsa_pub = reserve->reserve.pub.eddsa_pub;
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY ":1.1",
-                                         &coin->amount_with_fee));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY ":1.1",
-                                         &coin->withdraw_fee));
-  random_int =
-    GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, UINT32_MAX);
-  GNUNET_assert (NULL !=
-                 (coin->sig.rsa_signature =
-                  GNUNET_CRYPTO_rsa_sign (denomination_key,
-                                          &random_int,
-                                          sizeof (random_int))));
-  char *buffer;
-  GNUNET_CRYPTO_rsa_signature_encode (coin->sig.rsa_signature, &buffer);
-  free (buffer);
-  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
-                                    &coin->h_coin_envelope);
-  unsigned_data.purpose.size = htonl (sizeof (unsigned_data));
-  unsigned_data.purpose.purpose = htonl (GNUNET_SIGNATURE_PURPOSE_TEST);
-  unsigned_data.data = htonl (random_int);
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (reserve_sig_key,
-                                           (struct GNUNET_CRYPTO_EccSignaturePurpose *) &unsigned_data,
-                                           &coin->reserve_sig.eddsa_signature));
-  GNUNET_free (reserve_sig_key);
-  GNUNET_CRYPTO_rsa_private_key_free (denomination_key);
+  {/* public_info */
+    GNUNET_CRYPTO_eddsa_key_get_public (&coin->priv,
+                                        &coin->public_info.coin_pub.eddsa_pub);
+    GNUNET_assert (NULL !=
+                   (coin->public_info.denom_pub.rsa_public_key = 
+                   GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key)));
+    GNUNET_assert (NULL !=
+                   (coin->public_info.denom_sig.rsa_signature = 
+                    GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
+                                            &coin->public_info.coin_pub,
+                                            sizeof (struct TALER_CoinSpendPublicKeyP))));
+  }
+  {/* blind */
+    GNUNET_assert (NULL !=
+                   (coin->blind.sig.rsa_signature = 
+                    GNUNET_CRYPTO_rsa_signature_dup (coin->public_info.denom_sig.rsa_signature)));
+    GNUNET_assert (NULL !=
+                   (coin->blind.denom_pub.rsa_public_key = 
+                   GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key)));
+    TALER_amount_ntoh (&coin->blind.amount_with_fee,
+                       &dki->issue.properties.value);
+    TALER_amount_ntoh (&coin->blind.withdraw_fee,
+                       &dki->issue.properties.fee_withdraw);
+    coin->blind.reserve_pub = reserve->reserve.pub;
+    GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
+                                      &coin->blind.h_coin_envelope);
+    {
+      struct {
+        struct TALER_ReservePublicKeyP reserve_pub;
+        struct GNUNET_HashCode hash; 
+      } data;
+      
+      data.reserve_pub = reserve->reserve.pub;
+      data.hash = coin->blind.h_coin_envelope;
+      GNUNET_assert (NULL !=
+                     (coin->blind.sig.rsa_signature 
+                      = GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
+                                                &data,
+                                                sizeof (data))));
+    }
+  }
   return coin;
 }
 
@@ -417,31 +413,36 @@ PERF_TALER_MINTDB_collectable_blindcoin_init (
  * @param coin the coin to copy
  * @return a copy of coin; NULL if error
  */
-struct TALER_MINTDB_CollectableBlindcoin *
-PERF_TALER_MINTDB_collectable_blindcoin_copy (const struct TALER_MINTDB_CollectableBlindcoin *coin)
+struct PERF_TALER_MINTDB_Coin *
+PERF_TALER_MINTDB_coin_copy (const struct PERF_TALER_MINTDB_Coin *coin)
 {
-  struct TALER_MINTDB_CollectableBlindcoin *copy;
+  struct PERF_TALER_MINTDB_Coin *copy;
 
   GNUNET_assert (NULL != 
-                 (copy = GNUNET_new (struct TALER_MINTDB_CollectableBlindcoin)));
-  *copy = *coin;
-  // No signature copy function found, Hacking it in
-  {
-    char *buffer = NULL;
-    int size;
-    GNUNET_assert (0 <
-                   (size = GNUNET_CRYPTO_rsa_signature_encode (
-                       coin->sig.rsa_signature,
-                       &buffer)));
+                 (copy = GNUNET_new (struct PERF_TALER_MINTDB_Coin)));
+  copy->priv = coin->priv;
+  {/* public_info */
+    copy->public_info.coin_pub = coin->public_info.coin_pub;
     GNUNET_assert (NULL !=
-                   (copy->sig.rsa_signature = GNUNET_CRYPTO_rsa_signature_decode(
-                       buffer,
-                       size)));
-    GNUNET_free (buffer);
+                   (copy->public_info.denom_pub.rsa_public_key = 
+                    GNUNET_CRYPTO_rsa_public_key_dup (coin->public_info.denom_pub.rsa_public_key)));
+    GNUNET_assert (NULL !=
+                   (copy->public_info.denom_sig.rsa_signature = 
+                    GNUNET_CRYPTO_rsa_signature_dup (coin->public_info.denom_sig.rsa_signature)));
   }
-  GNUNET_assert (NULL !=
-                 (copy->denom_pub.rsa_public_key = 
-                  GNUNET_CRYPTO_rsa_public_key_dup (coin->denom_pub.rsa_public_key)));
+  {/* blind */
+    GNUNET_assert (NULL !=
+                   (copy->blind.sig.rsa_signature = 
+                    GNUNET_CRYPTO_rsa_signature_dup (coin->blind.sig.rsa_signature)));
+    GNUNET_assert (NULL !=
+                   (copy->blind.denom_pub.rsa_public_key =
+                   GNUNET_CRYPTO_rsa_public_key_dup (coin->blind.denom_pub.rsa_public_key))); 
+    copy->blind.amount_with_fee = coin->blind.amount_with_fee;
+    copy->blind.withdraw_fee = coin->blind.withdraw_fee;
+    copy->blind.reserve_pub = coin->blind.reserve_pub;
+    copy->blind.h_coin_envelope = coin->blind.h_coin_envelope;
+    copy->blind.reserve_sig = coin->blind.reserve_sig;
+  }
   return copy;
 }
 
@@ -451,13 +452,14 @@ PERF_TALER_MINTDB_collectable_blindcoin_copy (const struct TALER_MINTDB_Collecta
  * @param coin pointer to the structure to free
  */
 int
-PERF_TALER_MINTDB_collectable_blindcoin_free (struct TALER_MINTDB_CollectableBlindcoin *coin)
+PERF_TALER_MINTDB_coin_free (struct PERF_TALER_MINTDB_Coin *coin)
 {
   if (NULL == coin)
     return GNUNET_OK;
-
-  GNUNET_CRYPTO_rsa_signature_free (coin->sig.rsa_signature);
-  GNUNET_CRYPTO_rsa_public_key_free (coin->denom_pub.rsa_public_key);
+  GNUNET_CRYPTO_rsa_public_key_free (coin->public_info.denom_pub.rsa_public_key);
+  GNUNET_CRYPTO_rsa_signature_free (coin->public_info.denom_sig.rsa_signature);
+  GNUNET_CRYPTO_rsa_signature_free (coin->blind.sig.rsa_signature);
+  GNUNET_CRYPTO_rsa_public_key_free (coin->blind.denom_pub.rsa_public_key);
   return GNUNET_OK;
 }
 

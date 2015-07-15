@@ -322,7 +322,7 @@
 /**
  * Inserts informations about a withdrawal in the database
  * 
- * @exposes #PERF_TALER_MINTDB_BLINDCOIN
+ * @exposes #PERF_TALER_MINTDB_COIN
  *
  * @param _label the label of this command
  * @param _label_dki denomination key used to sign the coin
@@ -332,7 +332,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW, \
   .label = _label, \
-  .exposed.type = PERF_TALER_MINTDB_BLINDCOIN, \
+  .exposed.type = PERF_TALER_MINTDB_COIN, \
   .details.insert_withdraw = {\
     .label_dki = _label_dki, \
     .label_reserve = _label_reserve, \
@@ -360,7 +360,7 @@
  * It first access the reserve history to check the ballance
  * and hen emits a coin.
  *
- * @exposes #PERF_TALER_MINTDB_BLINDCOIN
+ * @exposes #PERF_TALER_MINTDB_COIN
  *
  * @param _label the label of this command
  * @param _label_reserve the reserve used to provide currency
@@ -379,7 +379,7 @@ enum PERF_TALER_MINTDB_Type
   PERF_TALER_MINTDB_NONE,
   PERF_TALER_MINTDB_TIME,
   PERF_TALER_MINTDB_DEPOSIT,
-  PERF_TALER_MINTDB_BLINDCOIN,
+  PERF_TALER_MINTDB_COIN,
   PERF_TALER_MINTDB_RESERVE,
   PERF_TALER_MINTDB_DENOMINATION_INFO,
 };
@@ -402,8 +402,8 @@ struct PERF_TALER_MINTDB_Data
     struct timespec time;
     /** #PERF_TALER_MINTDB_DEPOSIT */
     struct TALER_MINTDB_Deposit *deposit;
-    /** #PERF_TALER_MINTDB_BLINDCOIN */ 
-    struct TALER_MINTDB_CollectableBlindcoin *blindcoin;
+    /** #PERF_TALER_MINTDB_COIN */ 
+    struct PERF_TALER_MINTDB_Coin *coin;
     /** #PERF_TALER_MINTDB_RESERVE */
     struct PERF_TALER_MINTDB_Reserve *reserve;
     /** #PERF_TALER_MINTDB_DENOMINATION_INFO */

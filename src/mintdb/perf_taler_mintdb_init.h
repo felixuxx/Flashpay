@@ -144,13 +144,13 @@ PERF_TALER_MINTDB_deposit_free (struct TALER_MINTDB_Deposit *deposit);
 
 
 /**
- * Generate a CollectableBlindcoin for testing purpuses
+ * Generate a coin for testing purpuses
  * @param dki denomination key used to sign the coin
  * @param reserve reserve providing the money for the coin
  * @return a randomly generated CollectableBlindcoin
  */
-struct TALER_MINTDB_CollectableBlindcoin *
-PERF_TALER_MINTDB_collectable_blindcoin_init (
+struct PERF_TALER_MINTDB_Coin *
+PERF_TALER_MINTDB_coin_init (
   const struct TALER_MINTDB_DenominationKeyIssueInformation *dki,
   const struct PERF_TALER_MINTDB_Reserve *reserve);
 
@@ -160,9 +160,9 @@ PERF_TALER_MINTDB_collectable_blindcoin_init (
  * @param coin the coin to copy
  * @return a copy of coin; NULL if error
  */
-struct TALER_MINTDB_CollectableBlindcoin *
-PERF_TALER_MINTDB_collectable_blindcoin_copy (
-  const struct TALER_MINTDB_CollectableBlindcoin *coin);
+struct PERF_TALER_MINTDB_Coin *
+PERF_TALER_MINTDB_coin_copy (
+  const struct PERF_TALER_MINTDB_Coin *coin);
 
 
 /**
@@ -170,8 +170,8 @@ PERF_TALER_MINTDB_collectable_blindcoin_copy (
  * @param coin pointer to the structure to free
  */
 int
-PERF_TALER_MINTDB_collectable_blindcoin_free (
-  struct TALER_MINTDB_CollectableBlindcoin *coin);
+PERF_TALER_MINTDB_coin_free (
+  struct PERF_TALER_MINTDB_Coin *coin);
 
 
 /**
