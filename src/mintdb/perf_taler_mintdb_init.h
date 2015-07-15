@@ -123,7 +123,7 @@ PERF_TALER_MINTDB_reserve_free (struct PERF_TALER_MINTDB_Reserve *reserve);
  */
 struct TALER_MINTDB_Deposit *
 PERF_TALER_MINTDB_deposit_init (
-  const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
+  const struct PERF_TALER_MINTDB_Coin *coin);
 
 
 /**

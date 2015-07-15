@@ -197,10 +197,9 @@ PERF_TALER_MINTDB_reserve_free (struct PERF_TALER_MINTDB_Reserve *reserve)
  * @param dki the denomination key used to sign the key
  */
 struct TALER_MINTDB_Deposit *
-PERF_TALER_MINTDB_deposit_init (const struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
+PERF_TALER_MINTDB_deposit_init (const struct PERF_TALER_MINTDB_Coin *coin)
 {
   struct TALER_MINTDB_Deposit *deposit;
-  struct TALER_CoinPublicInfo coin;
   struct TALER_CoinSpendSignatureP csig;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct GNUNET_HashCode h_contract;
@@ -219,42 +218,21 @@ PERF_TALER_MINTDB_deposit_init (const struct TALER_MINTDB_DenominationKeyIssueIn
 
   GNUNET_assert (NULL !=
                  (deposit = GNUNET_malloc (sizeof (struct TALER_MINTDB_Deposit) + sizeof (wire))));
-  { // coin
-    struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_prvt;
-
-    GNUNET_assert (NULL !=
-                   (eddsa_prvt = GNUNET_CRYPTO_eddsa_key_create ()));
-    GNUNET_CRYPTO_eddsa_key_get_public (eddsa_prvt,
-                                        &coin.coin_pub.eddsa_pub);    
-    GNUNET_assert (NULL != 
-                   (coin.denom_pub.rsa_public_key = 
-                    GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key)));
-    GNUNET_assert (NULL !=
-                   (coin.denom_sig.rsa_signature =
-                    GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
-                                            &coin.coin_pub.eddsa_pub,
-                                            sizeof (struct GNUNET_CRYPTO_EddsaPublicKey))));
-    GNUNET_free (eddsa_prvt);
-  }
   { //csig
     struct u32_presign
     {
       struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
       uint32_t data;
     } unsigned_data;
-    struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_prvt;
 
-    GNUNET_assert (NULL !=
-                   (eddsa_prvt = GNUNET_CRYPTO_eddsa_key_create ()));
     unsigned_data.data = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, 
                                                    UINT32_MAX);
     unsigned_data.purpose.size = htonl (sizeof (struct u32_presign));
     unsigned_data.purpose.purpose = htonl (GNUNET_SIGNATURE_PURPOSE_TEST);
     GNUNET_assert (GNUNET_OK ==
-                   GNUNET_CRYPTO_eddsa_sign (eddsa_prvt,
+                   GNUNET_CRYPTO_eddsa_sign (&coin->priv,
                                              &unsigned_data.purpose,
                                              &csig.eddsa_signature));
-    GNUNET_free (eddsa_prvt);
   }
   { //merchant_pub
     struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_prv;
@@ -278,7 +256,7 @@ PERF_TALER_MINTDB_deposit_init (const struct TALER_MINTDB_DenominationKeyIssueIn
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":0.1", 
                                          &deposit_fee));
-  deposit->coin = coin;
+  deposit->coin = coin->public_info;
   deposit->csig = csig;
   deposit->h_contract = h_contract;
   deposit->h_wire = h_wire;

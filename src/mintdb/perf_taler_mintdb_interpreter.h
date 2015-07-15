@@ -293,14 +293,14 @@
  * @exposes #PERF_TALER_MINTDB_DEPOSIT
  *
  * @param _label the label of this command
- * @param _label_dki source to use for the denomination key
+ * @param _label_coin source of the coin used to pay
  */
-#define PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT(_label, _label_dki) \
+#define PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT(_label, _label_coin) \
 { \
   .command = PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT,\
   .label = _label, \
   .exposed.type = PERF_TALER_MINTDB_DEPOSIT, \
-  .details.insert_deposit.label_dki = _label_dki, \
+  .details.insert_deposit.label_coin = _label_coin, \
 }
 
 
@@ -732,7 +732,7 @@ union PERF_TALER_MINTDB_CMD_Details
     /**
      * Label of the source where the reserve used to create the coin is
      */
-    const char *label_dki;
+    const char *label_coin;
   } insert_deposit;
 
 

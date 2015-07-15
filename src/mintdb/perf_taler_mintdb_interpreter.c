@@ -497,14 +497,14 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT:
         {
-          int dki_index;
+          int coin_index;
           struct TALER_MINTDB_Deposit *deposit;
 
           GNUNET_assert (GNUNET_SYSERR !=
-                         (dki_index = cmd_find (state->cmd,
-                                               state->cmd[state->i].details.insert_deposit.label_dki)));
+                         (coin_index = cmd_find (state->cmd,
+                                               state->cmd[state->i].details.insert_deposit.label_coin)));
           GNUNET_assert (NULL !=
-                         (deposit = PERF_TALER_MINTDB_deposit_init (state->cmd[dki_index].exposed.data.dki)));
+                         (deposit = PERF_TALER_MINTDB_deposit_init (state->cmd[coin_index].exposed.data.coin)));
 
           GNUNET_assert (
             state->plugin->insert_deposit (state->plugin->cls,
@@ -974,7 +974,7 @@ PERF_TALER_MINTDB_check (const struct PERF_TALER_MINTDB_Cmd *cmd)
 
       case PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT:
         ret_loc = find_test (cmd,
-                   cmd[i].details.insert_deposit.label_dki,
+                   cmd[i].details.insert_deposit.label_coin,
                    i,
                    "label_dki");
         break;
