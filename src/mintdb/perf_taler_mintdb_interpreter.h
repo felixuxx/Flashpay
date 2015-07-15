@@ -405,7 +405,7 @@ struct PERF_TALER_MINTDB_Data
     /** #PERF_TALER_MINTDB_BLINDCOIN */ 
     struct TALER_MINTDB_CollectableBlindcoin *blindcoin;
     /** #PERF_TALER_MINTDB_RESERVE */
-    struct TALER_MINTDB_Reserve *reserve;
+    struct PERF_TALER_MINTDB_Reserve *reserve;
     /** #PERF_TALER_MINTDB_DENOMINATION_INFO */
     struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   } data;

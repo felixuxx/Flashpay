@@ -140,22 +140,25 @@ PERF_TALER_MINTDB_denomination_free (struct TALER_MINTDB_DenominationKeyIssueInf
  * Generate a dummy reserve for testing
  * @return a reserve with 1000 EUR in it
  */
-struct TALER_MINTDB_Reserve *
+struct PERF_TALER_MINTDB_Reserve *
 PERF_TALER_MINTDB_reserve_init ()
 {
-  struct TALER_MINTDB_Reserve *reserve;
-  struct GNUNET_CRYPTO_EddsaPrivateKey *reserve_priv;
+  struct PERF_TALER_MINTDB_Reserve *reserve;
 
   GNUNET_assert (NULL !=
-                 (reserve = GNUNET_new (struct TALER_MINTDB_Reserve)));
-  GNUNET_assert (NULL !=
-                 (reserve_priv = GNUNET_CRYPTO_eddsa_key_create ()));
-  GNUNET_CRYPTO_eddsa_key_get_public (reserve_priv ,
-                                      &reserve->pub.eddsa_pub);
+                 (reserve = GNUNET_new (struct PERF_TALER_MINTDB_Reserve)));
+  {/* private */
+    struct GNUNET_CRYPTO_EddsaPrivateKey *private;
+    GNUNET_assert (NULL !=
+                   (private = GNUNET_CRYPTO_eddsa_key_create ()));
+    reserve->private = *private;
+  }
+
+  GNUNET_CRYPTO_eddsa_key_get_public (&reserve->private,
+                                      &reserve->reserve.pub.eddsa_pub);
   GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY ":1000", &reserve->balance));
-  reserve->expiry = GNUNET_TIME_absolute_get_forever_ ();
-  GNUNET_free (reserve_priv);
+                 TALER_string_to_amount (CURRENCY ":1000", &reserve->reserve.balance));
+  reserve->reserve.expiry = GNUNET_TIME_absolute_get_forever_ ();
   return reserve;
 }
 
@@ -165,11 +168,12 @@ PERF_TALER_MINTDB_reserve_init ()
  * @param reserve the reserve to copy
  * @return a copy of @a reserve; NULL if error
  */
-struct TALER_MINTDB_Reserve *
-PERF_TALER_MINTDB_reserve_copy (const struct TALER_MINTDB_Reserve *reserve)
+struct PERF_TALER_MINTDB_Reserve *
+PERF_TALER_MINTDB_reserve_copy (const struct PERF_TALER_MINTDB_Reserve *reserve)
 {
-  struct TALER_MINTDB_Reserve *copy;
-  GNUNET_assert (NULL != (copy = GNUNET_new (struct TALER_MINTDB_Reserve)));
+  struct PERF_TALER_MINTDB_Reserve *copy;
+  GNUNET_assert (NULL != 
+                 (copy = GNUNET_new (struct PERF_TALER_MINTDB_Reserve)));
   *copy = *reserve;
   return copy;
 } 
@@ -180,7 +184,7 @@ PERF_TALER_MINTDB_reserve_copy (const struct TALER_MINTDB_Reserve *reserve)
  * @param reserve pointer to the structure to be freed
  */
 int
-PERF_TALER_MINTDB_reserve_free (struct TALER_MINTDB_Reserve *reserve)
+PERF_TALER_MINTDB_reserve_free (struct PERF_TALER_MINTDB_Reserve *reserve)
 {
   if (NULL == reserve)
     return GNUNET_OK;
@@ -346,10 +350,10 @@ PERF_TALER_MINTDB_deposit_free (struct TALER_MINTDB_Deposit *deposit)
 struct TALER_MINTDB_CollectableBlindcoin *
 PERF_TALER_MINTDB_collectable_blindcoin_init (
   const struct TALER_MINTDB_DenominationKeyIssueInformation *dki,
-  const struct TALER_MINTDB_Reserve *reserve)
+  const struct PERF_TALER_MINTDB_Reserve *reserve)
 {
   uint32_t random_int;
-  struct GNUNET_CRYPTO_rsa_PrivateKey  *denomination_key;
+  struct GNUNET_CRYPTO_rsa_PrivateKey *denomination_key;
   struct GNUNET_CRYPTO_EddsaPrivateKey *reserve_sig_key;
   struct {
     struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
@@ -376,7 +380,7 @@ PERF_TALER_MINTDB_collectable_blindcoin_init (
   GNUNET_assert (NULL !=
                  (coin->denom_pub.rsa_public_key =
                   GNUNET_CRYPTO_rsa_private_key_get_public (denomination_key)));
-  coin->reserve_pub.eddsa_pub = reserve->pub.eddsa_pub;
+  coin->reserve_pub.eddsa_pub = reserve->reserve.pub.eddsa_pub;
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.1",
                                          &coin->amount_with_fee));

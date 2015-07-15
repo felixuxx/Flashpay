@@ -533,7 +533,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_INSERT_RESERVE:
         {
-          struct TALER_MINTDB_Reserve *reserve;
+          struct PERF_TALER_MINTDB_Reserve *reserve;
           json_t *details = NULL;
           GNUNET_assert (NULL !=
                          (details = json_pack ("{s:i}","justification",
@@ -544,8 +544,8 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           state->plugin->reserves_in_insert (
             state->plugin->cls,
             state->session,
-            &reserve->pub,
-            &reserve->balance,
+            &reserve->reserve.pub,
+            &reserve->reserve.balance,
             GNUNET_TIME_absolute_get (),
             details
             );
@@ -568,7 +568,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           GNUNET_assert (GNUNET_OK ==
                          (state->plugin->reserve_get (state->plugin->cls,
                                                       state->session,
-                                                      data.data.reserve)));
+                                                      &data.data.reserve->reserve)));
         }
         break;
 
@@ -587,7 +587,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
          GNUNET_assert (NULL !=
                         (history = state->plugin->get_reserve_history (state->plugin->cls,
                                                                        state->session,
-                                                                       &data.data.reserve->pub)));
+                                                                       &data.data.reserve->reserve.pub)));
          state->plugin->free_reserve_history (state->plugin->cls,
                                               history);
         }

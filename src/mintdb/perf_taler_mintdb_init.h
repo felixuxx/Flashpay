@@ -26,6 +26,43 @@
 
 #define CURRENCY "EUR"
 
+/**
+ * All information about a reserve
+ */
+struct PERF_TALER_MINTDB_Reserve
+{
+  /**
+   * Information about a rserve available to the Mint
+   */
+  struct TALER_MINTDB_Reserve reserve;
+
+  /**
+   * Private key of a reserve
+   */
+  struct GNUNET_CRYPTO_EddsaPrivateKey private;
+};
+
+
+/**
+ * All informations about a coin 
+ */
+struct PERF_TALER_MINTDB_Coin
+{
+  /**
+   *  Blinded coin, known by the mint
+   */
+  struct TALER_MINTDB_CollectableBlindcoin blind;
+
+  /**
+   *  Public key of the coin and othes informations
+   */
+  struct TALER_CoinPublicInfo public_info;
+
+  /**
+   * Private key of the coin
+   */
+  struct GNUNET_CRYPTO_EddsaPrivateKey priv;
+};
 
 
 /**
@@ -59,7 +96,7 @@ PERF_TALER_MINTDB_denomination_free (
  * Generate a dummy reserve for testing
  * @return a reserve with 1000 EUR in it
  */
-struct TALER_MINTDB_Reserve *
+struct PERF_TALER_MINTDB_Reserve *
 PERF_TALER_MINTDB_reserve_init (void);
 
 
@@ -68,8 +105,8 @@ PERF_TALER_MINTDB_reserve_init (void);
  * @param reserve the reserve to copy
  * @return a copy of @a reserve; NULL if error
  */
-struct TALER_MINTDB_Reserve *
-PERF_TALER_MINTDB_reserve_copy (const struct TALER_MINTDB_Reserve *reserve);
+struct PERF_TALER_MINTDB_Reserve *
+PERF_TALER_MINTDB_reserve_copy (const struct PERF_TALER_MINTDB_Reserve *reserve);
 
 
 /**
@@ -77,7 +114,7 @@ PERF_TALER_MINTDB_reserve_copy (const struct TALER_MINTDB_Reserve *reserve);
  * @param reserve pointer to the structure to be freed
  */
 int
-PERF_TALER_MINTDB_reserve_free (struct TALER_MINTDB_Reserve *reserve);
+PERF_TALER_MINTDB_reserve_free (struct PERF_TALER_MINTDB_Reserve *reserve);
 
 
 /**
@@ -115,7 +152,7 @@ PERF_TALER_MINTDB_deposit_free (struct TALER_MINTDB_Deposit *deposit);
 struct TALER_MINTDB_CollectableBlindcoin *
 PERF_TALER_MINTDB_collectable_blindcoin_init (
   const struct TALER_MINTDB_DenominationKeyIssueInformation *dki,
-  const struct TALER_MINTDB_Reserve *reserve);
+  const struct PERF_TALER_MINTDB_Reserve *reserve);
 
 
 /**
