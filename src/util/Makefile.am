@@ -16,8 +16,7 @@ endif
 
 libtalerutil_wallet_la_SOURCES = \
   amount.c \
-  crypto.c \
-  util.c
+  crypto.c
 
 libtalerutil_wallet_la_LIBADD = \
   -lgnunetutil_taler_wallet \

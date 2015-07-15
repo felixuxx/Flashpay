@@ -22,13 +22,12 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
-#include "taler_util.h"
 
 #if HAVE_GNUNET_GNUNET_UTIL_TALER_WALLET_LIB_H
-#include <gnunet/gnunet_util_taler_wallet_lib.h>
+#include "taler_util_wallet.h"
 #endif
 #if HAVE_GNUNET_GNUNET_UTIL_LIB_H
-#include <gnunet/gnunet_util_lib.h>
+#include "taler_util.h"
 #endif
 #include <gcrypt.h>
 
