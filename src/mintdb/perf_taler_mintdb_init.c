@@ -36,51 +36,58 @@
 struct TALER_MINTDB_DenominationKeyIssueInformation *
 PERF_TALER_MINTDB_denomination_init ()
 {
-  struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct GNUNET_CRYPTO_EddsaPrivateKey *master_prvt;
-  struct GNUNET_TIME_Absolute anchor;
-  struct TALER_Amount amount;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
+  struct TALER_DenominationPrivateKey denom_priv;
+  struct TALER_DenominationPublicKey denom_pub;
+  struct TALER_MINTDB_DenominationKeyInformationP issue;
+
+  master_prvt = GNUNET_CRYPTO_eddsa_key_create();
 
   GNUNET_assert (NULL !=
                  (dki = GNUNET_new (struct TALER_MINTDB_DenominationKeyIssueInformation)));
   GNUNET_assert (NULL !=
-                 (dki->denom_priv.rsa_private_key
+                 (denom_priv.rsa_private_key
                   = GNUNET_CRYPTO_rsa_private_key_create (PERF_TALER_MINTDB_RSA_SIZE)));
   GNUNET_assert (NULL !=
-                 (dki->denom_pub.rsa_public_key =
-                  GNUNET_CRYPTO_rsa_private_key_get_public (dki->denom_priv.rsa_private_key)));
-  GNUNET_CRYPTO_rsa_public_key_hash (dki->denom_pub.rsa_public_key,
-                                     &dki->issue.properties.denom_hash);
-  GNUNET_assert (NULL !=
-                 (master_prvt = GNUNET_CRYPTO_eddsa_key_create ()));
-  GNUNET_CRYPTO_eddsa_key_get_public (master_prvt,
-                                      &dki->issue.properties.master.eddsa_pub);
-  anchor = GNUNET_TIME_absolute_get ();
-  dki->issue.properties.start = GNUNET_TIME_absolute_hton (anchor);
-  dki->issue.properties.expire_withdraw =
-    GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (anchor,
-                                                         GNUNET_TIME_relative_get_hour_ ()));
-  dki->issue.properties.expire_spend =
-    GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (anchor,
-                                                         GNUNET_TIME_relative_get_hour_ ()));
-  dki->issue.properties.expire_legal =
-    GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (anchor,
-                                                         GNUNET_TIME_relative_get_hour_ ()));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY ":1.1", &amount));
-  TALER_amount_hton (&dki->issue.properties.value, &amount);
-  TALER_amount_hton (&dki->issue.properties.fee_withdraw, &amount);
-  TALER_amount_hton (&dki->issue.properties.fee_deposit, &amount);
-  TALER_amount_hton (&dki->issue.properties.fee_refresh, &amount);
-  dki->issue.properties.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
-  dki->issue.properties.purpose.size =
-    htonl (sizeof (struct TALER_MINTDB_DenominationKeyIssueInformation));
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (master_prvt,
-                                           &dki->issue.properties.purpose,
-                                           &dki->issue.signature.eddsa_signature));
-  GNUNET_free (master_prvt);
+                 (denom_pub.rsa_public_key =
+                  GNUNET_CRYPTO_rsa_private_key_get_public (denom_priv.rsa_private_key)));
+  {/* issue */
+    struct TALER_MasterSignatureP signature;
+    struct TALER_DenominationKeyValidityPS properties;
 
+    {/* properties */
+      struct TALER_Amount amount;
+
+      properties.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
+      properties.purpose.size = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
+      GNUNET_CRYPTO_eddsa_key_get_public (master_prvt,
+                                          &properties.master.eddsa_pub);
+      properties.start = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get());
+      properties.expire_withdraw = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get_forever_());
+      properties.expire_spend = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get_forever_());
+      properties.expire_legal = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get_forever_());
+      TALER_string_to_amount (CURRENCY ":1.1", &amount);
+      TALER_amount_hton (&properties.value, &amount);
+      TALER_string_to_amount (CURRENCY ":0.1", &amount);
+      TALER_amount_hton (&properties.fee_withdraw, &amount);
+      TALER_amount_hton (&properties.fee_deposit, &amount);
+      TALER_amount_hton (&properties.fee_refresh, &amount);
+      GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
+                                         &properties.denom_hash);
+      issue.properties = properties;
+    }
+    {/* signature */
+      GNUNET_CRYPTO_eddsa_sign (master_prvt,
+                                &properties.purpose,
+                                &signature.eddsa_signature);
+      issue.signature = signature;
+    }
+  }
+  dki->denom_priv = denom_priv;
+  dki->denom_pub = denom_pub;
+  dki->issue = issue;
+  GNUNET_free (master_prvt);
   return dki;
 }
 
@@ -97,12 +104,18 @@ PERF_TALER_MINTDB_denomination_copy (const struct TALER_MINTDB_DenominationKeyIs
 
   GNUNET_assert (NULL !=
                  (copy = GNUNET_new (struct TALER_MINTDB_DenominationKeyIssueInformation)));
-  *copy = *dki;
-  copy->denom_priv.rsa_private_key = 
-    GNUNET_CRYPTO_rsa_private_key_dup (dki->denom_priv.rsa_private_key);
-  GNUNET_assert (NULL !=
-                 (copy->denom_pub.rsa_public_key = 
-                  GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key)));
+  {/* denom_priv */
+    copy->denom_priv.rsa_private_key =
+      GNUNET_CRYPTO_rsa_private_key_dup ( dki->denom_priv.rsa_private_key);
+  }
+  {/* denom_pub */
+    copy->denom_pub.rsa_public_key = 
+      GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key);
+  }
+  {/* issue */
+    copy->issue.properties = dki->issue.properties;
+    copy->issue.signature = dki->issue.signature;
+  }
   return copy;
 }
 
