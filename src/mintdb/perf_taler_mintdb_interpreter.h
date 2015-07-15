@@ -530,9 +530,69 @@ enum PERF_TALER_MINTDB_CMD_Name
   PERF_TALER_MINTDB_CMD_GET_DENOMINATION,
 
   /**
-   * Refresh a coin
+   * Get the list of all transactions the coin has been in
    */
-  PERF_TALER_MINTDB_CMD_REFRESH_COIN
+  PERF_TALER_MINTDB_CMD_GET_COIN_TRANSACTION,
+
+  /**
+   * Create a refresh session
+   */
+  PERF_TALER_MINTDB_CMD_CREATE_REFRESH_SESSION,
+
+  /**
+   * Get a refresh session informations
+   */
+  PERF_TALER_MINTDB_CMD_GET_REFRESH_SESSION,
+
+  /**
+   * Insert a refresh melt
+   */
+  PERF_TALER_MINTDB_CMD_INSERT_REFRESH_MELT,
+
+  /**
+   * Get informations about a refresh melt operation
+   */
+  PERF_TALER_MINTDB_CMD_GET_REFRESH_MELT,
+
+  /**
+   * Insert a melt refresh order
+   */
+  PERF_TALER_MINTDB_CMD_INSERT_REFRESH_ORDER,
+
+  /**
+   * Get informations about a refresh order
+   */
+  PERF_TALER_MINTDB_CMD_GET_REFRESH_ORDER,
+
+  /**
+   * Insert refresh commit coin
+   */
+  PERF_TALER_MINTDB_CMD_INSERT_COMMIT_COIN,
+
+  /**
+   * Get refresh commit coin
+   */
+  PERF_TALER_MINTDB_CMD_GET_COMMIT_COIN,
+
+  /**
+   * Insert refresh commit link
+   */
+  PERF_TALER_MINTDB_CMD_INSERT_REFRESH_COMMIT_LINK,
+
+  /**
+   * Get refresh commit link
+   */
+  PERF_TALER_MINTDB_CMD_GET_REFRESH_COMMIT_LINK,
+
+  /**
+   * Get information avout the melt commit
+   */
+  PERF_TALER_MINTDB_CMD_GET_MELT_COMMITMENT,
+
+  /**
+   * 
+   */
+  PERF_TALER_MINTDB_CMD_INSERT_REFRESH_OUT
 };
 
 

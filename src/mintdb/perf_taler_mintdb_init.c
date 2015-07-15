@@ -599,8 +599,8 @@ PERF_TALER_MINTDB_refresh_melt_copy (const struct TALER_MINTDB_RefreshMelt *melt
   copy = GNUNET_new (struct TALER_MINTDB_RefreshMelt);
   *copy = *melt;
   GNUNET_assert (NULL != 
-  (copy->coin.denom_sig.rsa_signature = 
-   GNUNET_CRYPTO_rsa_signature_dup (melt->coin.denom_sig.rsa_signature)));
+                 (copy->coin.denom_sig.rsa_signature = 
+                  GNUNET_CRYPTO_rsa_signature_dup (melt->coin.denom_sig.rsa_signature)));
 
   return copy;
 }
