@@ -506,7 +506,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           GNUNET_assert (NULL !=
                          (deposit = PERF_TALER_MINTDB_deposit_init (state->cmd[coin_index].exposed.data.coin)));
 
-          GNUNET_assert (
+          GNUNET_assert (GNUNET_OK ==
             state->plugin->insert_deposit (state->plugin->cls,
                                            state->session,
                                            deposit));
@@ -519,12 +519,10 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           int source_index;
           struct PERF_TALER_MINTDB_Data data;
 
-          GNUNET_assert (GNUNET_SYSERR !=
-                         (source_index =  cmd_find (state->cmd,
-                                                    state->cmd[state->i]
-                                                    .details.get_deposit.label_deposit)));
-          data_copy (&state->cmd[source_index].exposed,
-                     &data);
+          source_index =  cmd_find (state->cmd,
+                                    state->cmd[state->i].details.get_deposit.label_deposit);
+          GNUNET_assert (GNUNET_SYSERR != source_index);
+          data = state->cmd[source_index].exposed;
           state->plugin->have_deposit (state->plugin->cls,
                                        state->session,
                                        data.data.deposit);
@@ -726,14 +724,14 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
 
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("01 - denomination loop",
                                      PERF_TALER_MINTDB_NB_DENOMINATION_INIT),
-    PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("01 - start transaction"),
+    PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION (""),
     PERF_TALER_MINTDB_INIT_CMD_INSERT_DENOMINATION ("01 - denomination"),
-    PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION ("01 - commit transaction"),
+    PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION (""),
     PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("01 - save denomination",
                                            "01 - denomination loop",
                                            "01 - denomination",
                                            PERF_TALER_MINTDB_NB_DENOMINATION_SAVE),
-    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("01 - denomination loop end",
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("",
                                          "01 - denomination loop"),
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("01 - init denomination complete"),
     // End of initialization
@@ -745,14 +743,14 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
                                            "02 - init reserve loop",
                                            "02 - reserve",
                                            PERF_TALER_MINTDB_NB_RESERVE_SAVE),
-    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("02 - init reserve end loop",
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("",
                                          "02 - init reserve loop"),
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("02 - reserve init complete"),
     // End reserve init
     // Withdrawal initialization
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("03 - init withdraw loop",
                                      PERF_TALER_MINTDB_NB_WITHDRAW_INIT),
-    PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("03 - start transaction"),
+    PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION (""),
     PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("03 - denomination load",
                                            "03 - init withdraw loop",
                                            "01 - save denomination"),
@@ -762,12 +760,12 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
     PERF_TALER_MINTDB_INIT_CMD_INSERT_WITHDRAW ("03 - withdraw",
                                                 "03 - denomination load",
                                                 "03 - reserve load"),
-    PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION ("03 - commit transaction"),
-    PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("03 - blindcoin array",
+    PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION (""),
+    PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("03 - save coin",
                                            "03 - init withdraw loop",
                                            "03 - withdraw",
                                            PERF_TALER_MINTDB_NB_WITHDRAW_SAVE),
-    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("03 - withdraw init end loop",
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("",
                                          "03 - init withdraw loop"),
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("03 - withdraw init complete"),
     //End of withdrawal initialization
@@ -777,7 +775,7 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
     PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("04 - start transaction"),
     PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("04 - denomination load",
                                            "04 - deposit init loop",
-                                           "01 - save denomination"),
+                                           "03 - save coin"),
     PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT ("04 - deposit",
                                                "04 - denomination load"),
     PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION ("04 - commit transaction"),
@@ -827,7 +825,7 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
   {
     init = init_def;   
   }
-  if (GNUNET_SYSERR ==PERF_TALER_MINTDB_check (init))
+  if (GNUNET_SYSERR == PERF_TALER_MINTDB_check (init))
     return GNUNET_SYSERR;
 
   ret = PERF_TALER_MINTDB_interpret (plugin, 
@@ -841,14 +839,14 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
   /*
    * Running the benchmark
    */
-  if (GNUNET_SYSERR ==PERF_TALER_MINTDB_check (benchmark))
+  if (GNUNET_SYSERR == PERF_TALER_MINTDB_check (benchmark))
     return GNUNET_SYSERR;
   ret = PERF_TALER_MINTDB_interpret (plugin, 
                                      benchmark);
   if (GNUNET_OK != ret)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Error during database initialization");
+                "Error while runing the benchmark");
     return ret;
   }
   /* Drop tables */
