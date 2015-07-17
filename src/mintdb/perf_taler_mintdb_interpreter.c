@@ -61,6 +61,13 @@ data_free (struct PERF_TALER_MINTDB_Data *data)
 {
   switch (data->type)
   {
+    case PERF_TALER_MINTDB_TIME:
+      if (NULL == data->data.time)
+        return;
+    GNUNET_free (data->data.time);
+    data->data.time = NULL;
+    return;
+
     case PERF_TALER_MINTDB_DEPOSIT:
       if (NULL == data->data.deposit)
         return;
@@ -112,7 +119,8 @@ data_copy (const struct PERF_TALER_MINTDB_Data *data, struct PERF_TALER_MINTDB_D
   switch (data->type)
   {
     case PERF_TALER_MINTDB_TIME:
-      copy->data.time = data->data.time;
+      copy->data.time = GNUNET_new (struct GNUNET_TIME_Absolute);
+      *copy->data.time = *data->data.time;
       return;
 
     case PERF_TALER_MINTDB_DEPOSIT:
@@ -437,15 +445,18 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         break;
 
       case PERF_TALER_MINTDB_CMD_GET_TIME:
-        clock_gettime (CLOCK_MONOTONIC, &state->cmd[state->i].exposed.data.time);
+        state->cmd[state->i].exposed.data.time = 
+          GNUNET_new (struct GNUNET_TIME_Absolute);
+        *state->cmd[state->i].exposed.data.time = 
+          GNUNET_TIME_absolute_get ();
         break;
 
       case PERF_TALER_MINTDB_CMD_GAUGER:
         {
           int start_index, stop_index;
-          struct timespec start, stop;
-          unsigned long elapsed_ms;
-
+          float ips;
+          struct GNUNET_TIME_Absolute start, stop;
+          struct GNUNET_TIME_Relative elapsed;
           GNUNET_assert (GNUNET_SYSERR !=
                          (start_index  = cmd_find (state->cmd,
                                                    state->cmd[state->i]
@@ -454,14 +465,15 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
                          (stop_index  = cmd_find (state->cmd,
                                                   state->cmd[state->i]
                                                   .details.gauger.label_stop)));
-          start = state->cmd[start_index].exposed.data.time;
-          stop = state->cmd[stop_index].exposed.data.time;
-          elapsed_ms = (start.tv_sec - stop.tv_sec) * 1000 +
-            (start.tv_nsec - stop.tv_nsec) / 1000000;
-
+          start = *state->cmd[start_index].exposed.data.time;
+          stop = *state->cmd[stop_index].exposed.data.time;
+          elapsed = GNUNET_TIME_absolute_get_difference (start,
+                                                         stop); 
+          ips = (1.0 * state->cmd[state->i].details.gauger.divide) / (elapsed.rel_value_us/1000000.0);
+          printf ("gauger data:%lu - %f\n", elapsed.rel_value_us, ips);
           GAUGER ("MINTDB",
                   state->cmd[state->i].details.gauger.description,
-                  ((1.0 * state->cmd[state->i].details.gauger.divide) / elapsed_ms) * 1000,
+                  ips, 
                   state->cmd[state->i].details.gauger.unit);
         }
         break;
