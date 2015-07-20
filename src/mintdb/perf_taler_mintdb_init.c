@@ -534,24 +534,13 @@ PERF_TALER_MINTDB_coin_public_info_free (struct TALER_CoinPublicInfo *cpi)
  */
 struct TALER_MINTDB_RefreshMelt *
 PERF_TALER_MINTDB_refresh_melt_init (struct GNUNET_HashCode *session,
-                                     struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
+                                     struct PERF_TALER_MINTDB_Coin *coin)
 {
   struct TALER_MINTDB_RefreshMelt *melt;
-  struct GNUNET_CRYPTO_EddsaPrivateKey *coin_key;
-  struct TALER_CoinPublicInfo cpi;
-  struct TALER_CoinSpendSignatureP coin_spent;
+  struct TALER_CoinSpendSignatureP coin_sig;
   struct TALER_Amount amount;
   struct TALER_Amount amount_with_fee; 
 
-  coin_key = GNUNET_CRYPTO_eddsa_key_create ();
-  cpi.denom_pub = dki->denom_pub;
-  GNUNET_CRYPTO_eddsa_key_get_public (coin_key, 
-                                      &cpi.coin_pub.eddsa_pub);
-  GNUNET_assert (NULL !=
-                 (cpi.denom_sig.rsa_signature = 
-                  GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
-                                          &cpi.coin_pub.eddsa_pub,
-                                          sizeof (struct GNUNET_CRYPTO_EddsaPublicKey))));
   {
     struct 
     {
@@ -562,22 +551,21 @@ PERF_TALER_MINTDB_refresh_melt_init (struct GNUNET_HashCode *session,
     to_sign.purpose.purpose = GNUNET_SIGNATURE_PURPOSE_TEST; 
     to_sign.purpose.size = htonl (sizeof (to_sign));
     to_sign.session = *session; 
-    GNUNET_CRYPTO_eddsa_sign (coin_key,
+    GNUNET_CRYPTO_eddsa_sign (&coin->priv,
                               &to_sign.purpose,
-                              &coin_spent.eddsa_signature);
+                              &coin_sig.eddsa_signature);
   }
-  GNUNET_assert (GNUNET_OK == TALER_string_to_amount (CURRENCY ":10.0",
+  GNUNET_assert (GNUNET_OK == TALER_string_to_amount (CURRENCY ":1.1",
                                                       &amount));
   GNUNET_assert (GNUNET_OK == TALER_string_to_amount (CURRENCY ":0.1",
                                                       &amount_with_fee));
   melt = GNUNET_new (struct TALER_MINTDB_RefreshMelt); 
-  melt->coin = cpi;
-  melt->coin_sig = coin_spent;
+  melt->coin = coin->public_info;
+  melt->coin_sig = coin_sig;
   melt->session_hash = *session;
   melt->amount_with_fee = amount;
   melt->melt_fee = amount_with_fee;
 
-  GNUNET_free (coin_key);
   return melt;
 }
 

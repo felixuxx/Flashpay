@@ -183,7 +183,7 @@ PERF_TALER_MINTDB_coin_free (
  */
 struct TALER_MINTDB_RefreshMelt *
 PERF_TALER_MINTDB_refresh_melt_init (struct GNUNET_HashCode *session,
-                                     struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
+                                     struct PERF_TALER_MINTDB_Coin *coin);
 
 
 /**

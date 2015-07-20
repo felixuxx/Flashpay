@@ -678,7 +678,100 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         }
         break;
 
-      default :
+      case PERF_TALER_MINTDB_CMD_GET_COIN_TRANSACTION:
+        {
+          int coin_index;
+          struct PERF_TALER_MINTDB_Coin *coin;
+          struct TALER_MINTDB_TransactionList *transactions;
+          
+          coin_index = cmd_find (state->cmd,
+                                 state->cmd[state->i].details.get_coin_transaction.label_coin);
+          GNUNET_assert (GNUNET_SYSERR != coin_index);
+          coin = state->cmd[coin_index].exposed.data.coin;
+          transactions = state->plugin->get_coin_transactions (state->plugin->cls,
+                                                               state->session,
+                                                               &coin->public_info.coin_pub);
+          state->plugin->free_coin_transaction_list (state->plugin->cls,
+                                                     transactions);
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_CREATE_REFRESH_SESSION:
+        {
+          struct GNUNET_HashCode hash;
+          struct TALER_MINTDB_RefreshSession *refresh_session;
+
+          refresh_session = PERF_TALER_MINTDB_refresh_session_init ();
+          GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
+                                            &hash);
+          state->plugin->create_refresh_session (state->session,
+                                                 state->session,
+                                                 &hash,
+                                                 refresh_session);
+          state->cmd[state->i].exposed.data.session_hash = hash;
+          PERF_TALER_MINTDB_refresh_session_free (refresh_session);
+          GNUNET_free (refresh_session);
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_REFRESH_SESSION:
+        {
+          int hash_index;
+          struct GNUNET_HashCode hash;
+          struct TALER_MINTDB_RefreshSession refresh;
+
+          hash_index = cmd_find (state->cmd,
+                                 state->cmd[state->i].details.get_refresh_session.label_hash);
+          hash = state->cmd[hash_index].exposed.data.session_hash;
+          state->plugin->get_refresh_session (state->session,
+                                              state->session,
+                                              &hash,
+                                              &refresh);
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_INSERT_REFRESH_MELT:
+        {
+          int hash_index;
+          int coin_index;
+          struct GNUNET_HashCode hash;
+          struct TALER_MINTDB_RefreshMelt *melt;
+          struct PERF_TALER_MINTDB_Coin *coin;
+
+          hash_index = cmd_find (state->cmd,
+                                 state->cmd[state->i].details.insert_refresh_melt.label_hash);
+          coin_index = cmd_find (state->cmd,
+                                 state->cmd[state->i].details.insert_refresh_melt.label_coin);
+          hash = state->cmd[hash_index].exposed.data.session_hash;
+          coin = state->cmd[coin_index].exposed.data.coin;
+          melt = PERF_TALER_MINTDB_refresh_melt_init (&hash,
+                                                      coin);
+          state->plugin->insert_refresh_melt (state->plugin->cls,
+                                              state->session,
+                                              1,
+                                              melt);
+          state->cmd[state->i].exposed.data.session_hash = hash;
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_REFRESH_MELT:
+        {
+          int hash_index;
+          struct GNUNET_HashCode hash;
+          struct TALER_MINTDB_RefreshMelt melt;
+          
+          hash_index = cmd_find (state->cmd,
+                                 state->cmd[state->i].details.get_refresh_melt.label_hash);
+          hash = state->cmd[hash_index].exposed.data.session_hash;
+          state->plugin->get_refresh_melt (state->plugin->cls,
+                                           state->session,
+                                           &hash,
+                                           1,
+                                           &melt);
+        }
+        break;
+
+      default:
         break;
     }
   }
