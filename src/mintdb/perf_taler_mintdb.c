@@ -206,7 +206,7 @@ main (int argc, char ** argv)
     PERF_TALER_MINTDB_INIT_CMD_GAUGER ("",
                                        "09 - start",
                                        "09 - stop",
-                                       "Number of reserve loaded per second",
+                                       "Number of withdraw loaded per second",
                                        "item/sec",
                                        NB_RESERVE_SAVE),
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("End of withdraw loading"),
