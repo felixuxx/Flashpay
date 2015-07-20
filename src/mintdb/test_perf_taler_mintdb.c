@@ -119,6 +119,7 @@ main (int argc, char ** argv)
     PERF_TALER_MINTDB_INIT_CMD_GAUGER ("04 - gauger",
                                        "04 - time start",
                                        "04 - time stop",
+                                       "TEST",
                                        "time to insert a deposit",
                                        "deposit/sec",
                                        NB_DEPOSIT_SAVE),

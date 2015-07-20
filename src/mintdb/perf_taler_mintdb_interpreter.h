@@ -126,7 +126,7 @@
  * @param _unit the unit of the data measured, typicly something/sec
  * @param _divide number of measurments in the interval 
  */
-#define PERF_TALER_MINTDB_INIT_CMD_GAUGER(_label, _label_start, _label_stop, _description, _unit, _divide) \
+#define PERF_TALER_MINTDB_INIT_CMD_GAUGER(_label, _label_start, _label_stop, _category, _description, _unit, _divide) \
 { \
   .command = PERF_TALER_MINTDB_CMD_GAUGER, \
   .label = _label, \
@@ -134,6 +134,7 @@
   .details.gauger = { \
     .label_start = _label_start, \
     .label_stop = _label_stop, \
+    .category = _category, \
     .description = _description, \
     .unit = _unit, \
     .divide = _divide, \
@@ -645,6 +646,11 @@ union PERF_TALER_MINTDB_CMD_Details
      * Label of the ending timestamp
      */
     const char *label_stop;
+
+    /**
+     * The category of the measurment
+     */
+    const char *category;
 
     /**
      * Description of the metric, used in Gauger
