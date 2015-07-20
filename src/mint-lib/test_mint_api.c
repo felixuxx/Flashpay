@@ -705,6 +705,7 @@ find_pk (const struct TALER_MINT_Keys *keys,
   str = TALER_amount_to_string (amount);
   for (i=0;i<keys->num_denom_keys;i++)
   {
+    pk = &keys->denom_keys[i];
     if ( (0 == TALER_amount_cmp (amount,
                                  &pk->value)) &&
          ( (now.abs_value_us < pk->valid_from.abs_value_us) ||
