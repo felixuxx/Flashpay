@@ -29,6 +29,8 @@ extern "C"
 #endif
 #endif
 
+#include <gnunet/platform.h>
+
 
 /**
  * @brief Number of characters (plus 1 for 0-termination) we use to

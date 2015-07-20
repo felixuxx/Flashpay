@@ -24,8 +24,7 @@
 #include "platform.h"
 #if HAVE_GNUNET_GNUNET_UTIL_LIB_H
 #include "taler_util.h"
-#endif
-#if HAVE_GNUNET_GNUNET_UTIL_TALER_WALLET_LIB_H
+#elif HAVE_GNUNET_GNUNET_UTIL_TALER_WALLET_LIB_H
 #include "taler_util_wallet.h"
 #endif
 #include <gcrypt.h>
