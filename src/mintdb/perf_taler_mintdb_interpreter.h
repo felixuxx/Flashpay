@@ -181,7 +181,7 @@
  * @param _label the label of the command, used by other commands to reference it
  * @param _label_loop the label of the loop the array iterates over
  * @param _label_save the label of the command which outout is saved by this command
- * @param _nb_saved the total number of tiems to be saved
+ * @param _nb_saved the total number of items to be saved
  */
 #define PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY(_label, _label_loop, _label_save, _nb_saved) \
 { \
@@ -216,7 +216,7 @@
 
 /**
  * Inserts informations about a denomination key in the database
- * 
+ * Exposes a #PERF_TALER_MINTDB_DENOMINATION_INFO to be used by other commands
  * @exposed #PERF_TALER_MINTDB_DENOMINATION_INFO
  * 
  * @param _label the label of this command
@@ -232,7 +232,7 @@
  * Polls the database about informations regarding a specific denomination key
  * 
  * @param _label the label of this command
- * @param _label_denom the label of the command prividing information about the denomination key
+ * @param _label_denom the label of the command providing information about the denomination key
  */
 #define PERF_TALER_MINTDB_INIT_CMD_GET_DENOMINATION(_label, _label_denom) \
 { \
@@ -243,7 +243,8 @@
 }
 
 /**
- * Creates a new reserve in the database
+ * Creates a new reserve in the database containing 1000 Euros 
+ * Exposes a #PERF_TALER_MINTDB_RESERVE
  * 
  * @exposed #PERF_TALER_MINTDB_RESERVE
  * 
@@ -261,7 +262,7 @@
  * Polls the database for a secific reserve's details
  * 
  * @param _label the label of this command
- * @param _label_reserve Source for the reserve to poll
+ * @param _label_reserve the reserve to poll
  */
 #define PERF_TALER_MINTDB_INIT_CMD_GET_RESERVE(_label, _label_reserve) \
 { \
@@ -293,7 +294,7 @@
  * @exposes #PERF_TALER_MINTDB_DEPOSIT
  *
  * @param _label the label of this command
- * @param _label_coin source of the coin used to pay
+ * @param _label_coin the coin used to pay
  */
 #define PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT(_label, _label_coin) \
 { \
@@ -308,7 +309,7 @@
  * Check if a deposit is in the database
  *
  * @param _label the label of this command
- * @param _label_deposit the label of the deposit to use
+ * @param _label_deposit the deposit to use
  */
 #define PERF_TALER_MINTDB_INIT_CMD_GET_DEPOSIT(_label, _label_deposit) \
 { \
@@ -344,7 +345,7 @@
  * Polls the database about informations regarding a specific withdrawal
  * 
  * @param _label the label of this command
- * @param _label_coin the label of the command providing the coin to check
+ * @param _label_coin the coin to check
  */
 #define PERF_TALER_MINTDB_INIT_CMD_GET_WITHDRAW(_label, _label_coin) \
 { \
@@ -356,17 +357,15 @@
 
 
 /**
- * Composit command representing a coin withdrawal
- * It first access the reserve history to check the ballance
- * and hen emits a coin.
- *
- * @exposes #PERF_TALER_MINTDB_COIN
+ * The /withdraw/sign api call
+ * 
+ * Exposes #PERF_TALER_MINTDB_COIN
  *
  * @param _label the label of this command
- * @param _label_reserve the reserve used to provide currency
  * @param _label_dki the denomination of the created coin
+ * @param _label_reserve the reserve used to provide currency
  */
-#define PERF_TALER_MINTDB_INIT_CMD_WITHDRAWAL(_label, _label_dki, _label_reserve) \
+#define PERF_TALER_MINTDB_INIT_CMD_WITHDRAW_SIGN(_label, _label_dki, _label_reserve) \
   PERF_TALER_MINTDB_CMD_GET_RESERVE_HISTORY("", _label_reserve), \
   PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW(_label, _label_dki, _label_reserve),
   
@@ -382,6 +381,7 @@ enum PERF_TALER_MINTDB_Type
   PERF_TALER_MINTDB_COIN,
   PERF_TALER_MINTDB_RESERVE,
   PERF_TALER_MINTDB_DENOMINATION_INFO,
+  PERF_TALER_MINTDB_REFRESH_HASH
 };
 
 
@@ -399,7 +399,7 @@ struct PERF_TALER_MINTDB_Data
   union PERF_TALER_MINTDB_Memory
   {
     /** #PERF_TALER_MINTDB_TIME */
-    struct timespec time;
+    struct GNUNET_TIME_Absolute *time;
     /** #PERF_TALER_MINTDB_DEPOSIT */
     struct TALER_MINTDB_Deposit *deposit;
     /** #PERF_TALER_MINTDB_COIN */ 
@@ -408,6 +408,8 @@ struct PERF_TALER_MINTDB_Data
     struct PERF_TALER_MINTDB_Reserve *reserve;
     /** #PERF_TALER_MINTDB_DENOMINATION_INFO */
     struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
+    /** #PERF_TALER_MINTDB_REFRESH_HASH */
+    struct GNUNET_HashCode session_hash;
   } data;
 };
 
@@ -601,7 +603,6 @@ enum PERF_TALER_MINTDB_CMD_Name
  */
 union PERF_TALER_MINTDB_CMD_Details
 {
-
   /**
    * Extra data requiered for the #PERF_TALER_MINTDB_CMD_LOOP command
    */
@@ -801,7 +802,7 @@ union PERF_TALER_MINTDB_CMD_Details
   } insert_withdraw;
 
   /**
-   *
+   * data requiered for the #PERF_TALER_MINTDB_CMD_GET_WITHDRAW
    */
   struct PERF_TALER_MINTDB_CMD_getWithdraw
   {
@@ -810,6 +811,66 @@ union PERF_TALER_MINTDB_CMD_Details
      */
     const char *label_coin;
   } get_withdraw;
+
+  /**
+   * Data requiered for the #PERF_TALER_MINTDB_CMD_GET_COIN_TRANSACTION command
+   */ 
+  struct PERF_TALER_MINTDB_CMD_getCoinTransactionDetails
+  {
+    /**
+     * The coin which history is checked
+     */
+    const char *label_coin;
+  } get_coin_transaction;
+
+  /**
+   * Data requiered for the #PERF_TALER_MINTDB_CMD_GET_REFRESH_SESSION command
+   */
+  struct PERF_TALER_MINTDB_CMD_getRefreshSessionDetails
+  {
+    /**
+     * label of the source of the hash of the session
+     */
+    const char *label_hash;
+  } get_refresh_session;
+
+  /**
+   * Data requiered for the #PERF_TALER_MINTDB_CMD_INSERT_REFRESH_MELT command
+   */
+  struct PERF_TALER_MINTDB_CMD_insertRefreshMeltDetails
+  {
+    /**
+     * The label of the hash of the refresh session
+     */
+    const char *label_hash;
+
+    /**
+     * The label of the coin to melt
+     */
+    const char *label_coin;
+  } insert_refresh_melt;
+
+  /**
+   * Data requiered for the #PERF_TALER_MINTDB_CMD_GET_REFRESH_MELT command
+   */
+  struct PERF_TALER_MINTDB_CMD_getRefreshMeltDetails
+  {
+    /**
+     * The label of the hash of the session
+     */
+    const char *label_hash;
+  } get_refresh_melt;
+
+  /**
+   * Data requiered for the #PERF_TALER_MINTDB_CMD_INSERT_REFRESH_ORDER command
+   */
+  struct PERF_TALER_MINTDB_CMD_insertRefreshOrderDetails
+  {
+   /**
+    * The refresh session hash
+    */
+   const char *label_hash; 
+  } insert_refresh_order;
 };
 
 
