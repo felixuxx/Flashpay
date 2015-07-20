@@ -470,7 +470,6 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           elapsed = GNUNET_TIME_absolute_get_difference (start,
                                                          stop); 
           ips = (1.0 * state->cmd[state->i].details.gauger.divide) / (elapsed.rel_value_us/1000000.0);
-          printf ("gauger data:%lu - %f\n", elapsed.rel_value_us, ips);
           GAUGER ("MINTDB",
                   state->cmd[state->i].details.gauger.description,
                   ips, 

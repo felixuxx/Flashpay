@@ -25,14 +25,14 @@
 #define NB_DENOMINATION_INIT  15
 #define NB_DENOMINATION_SAVE  15
 
-#define NB_RESERVE_INIT   100000
-#define NB_RESERVE_SAVE   10000
+#define NB_RESERVE_INIT   10000
+#define NB_RESERVE_SAVE   1000
 
-#define NB_DEPOSIT_INIT   100000
-#define NB_DEPOSIT_SAVE   10000
+#define NB_DEPOSIT_INIT   10000
+#define NB_DEPOSIT_SAVE   1000
 
-#define NB_WITHDRAW_INIT  100000
-#define NB_WITHDRAW_SAVE  10000
+#define NB_WITHDRAW_INIT  10000
+#define NB_WITHDRAW_SAVE  1000
 
 /**
  * Runs the performances tests for the mint database
@@ -193,7 +193,7 @@ main (int argc, char ** argv)
                                      NB_RESERVE_SAVE),
     PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("09 - reserve",
                                            "09 - withdraw insert measure",
-                                           "03 - save coin"),
+                                           "02 - save reserve"),
     PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("09 - denomination",
                                            "09 - withdraw insert measure",
                                            "01 - save denomination"),
