@@ -6,8 +6,8 @@ talerinclude_HEADERS = \
   platform.h \
   taler_amount_lib.h \
   taler_crypto_lib.h \
-  taler_util_wallet.h
-
+  taler_util_wallet.h \
+  taler_signatures.h
 else
 
 talerinclude_HEADERS = \
