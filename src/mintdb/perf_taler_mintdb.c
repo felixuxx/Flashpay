@@ -22,17 +22,17 @@
 #include "perf_taler_mintdb_interpreter.h"
 
 
-#define NB_DENOMINATION_INIT  10
-#define NB_DENOMINATION_SAVE  10
+#define NB_DENOMINATION_INIT  15
+#define NB_DENOMINATION_SAVE  15
 
-#define NB_RESERVE_INIT   1000
-#define NB_RESERVE_SAVE   100
+#define NB_RESERVE_INIT   100000
+#define NB_RESERVE_SAVE   10000
 
-#define NB_DEPOSIT_INIT   1000
-#define NB_DEPOSIT_SAVE   100
+#define NB_DEPOSIT_INIT   100000
+#define NB_DEPOSIT_SAVE   10000
 
-#define NB_WITHDRAW_INIT  1000
-#define NB_WITHDRAW_SAVE  100
+#define NB_WITHDRAW_INIT  100000
+#define NB_WITHDRAW_SAVE  10000
 
 /**
  * Runs the performances tests for the mint database
@@ -110,33 +110,115 @@ main (int argc, char ** argv)
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("End of initialization"),
     // End of deposit initialization
     
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("Start of performances measuring"),
     PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("05 - start"),
-    PERF_TALER_MINTDB_INIT_CMD_LOOP ("05 - loop",
-                                     NB_DEPOSIT_SAVE),
-    PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION (""),
-    PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("05 - deposit load",
-                                           "05 - loop",
-                                           "04 - deposit array"),
-    PERF_TALER_MINTDB_INIT_CMD_GET_DEPOSIT ("",
-                                            "05 - deposit load"),
-    PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION (""),
+    PERF_TALER_MINTDB_INIT_CMD_LOOP ("05 - reserve insert measure",
+                                     NB_RESERVE_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_INSERT_RESERVE (""),
     PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("",
-                                         "05 - loop"),
+                                         "05 - reserve insert measure"),
     PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("05 - stop"),
     PERF_TALER_MINTDB_INIT_CMD_GAUGER ("",
                                        "05 - start",
                                        "05 - stop",
-                                       "deposit insertion",
-                                       "deposit/sec",
-                                       NB_DEPOSIT_SAVE),
+                                       "Number of reserve inserted per second",
+                                       "item/sec",
+                                       NB_RESERVE_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("End of reserve insertion"),
+
+    PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("06 - start"),
+    PERF_TALER_MINTDB_INIT_CMD_LOOP ("06 - reserve load measure",
+                                     NB_RESERVE_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("06 - reserve",
+                                           "06 - reserve load measure",
+                                           "02 - save reserve"),
+    PERF_TALER_MINTDB_INIT_CMD_GET_RESERVE ("",
+                                            "06 - reserve"),
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("",
+                                         "06 - reserve load measure"),
+    PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("06 - stop"),
+    PERF_TALER_MINTDB_INIT_CMD_GAUGER ("",
+                                       "06 - start",
+                                       "06 - stop",
+                                       "Number of reserve loaded per second",
+                                       "item/sec",
+                                       NB_RESERVE_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("End of reserve retreival"),
+
+    PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("07 - start"),
+    PERF_TALER_MINTDB_INIT_CMD_LOOP ("07 - reserve history measure",
+                                     NB_RESERVE_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("07 - reserve",
+                                           "07 - reserve history measure",
+                                           "02 - save reserve"),
+    PERF_TALER_MINTDB_INIT_CMD_GET_RESERVE_HISTORY ("",
+                                                    "07 - reserve"),
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("",
+                                         "07 - reserve history measure"),
+    PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("07 - stop"),
+    PERF_TALER_MINTDB_INIT_CMD_GAUGER ("",
+                                       "07 - start",
+                                       "07 - stop",
+                                       "Number of reserve history loaded per second",
+                                       "item/sec",
+                                       NB_RESERVE_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("End of reserve history access"),
+
+
+    PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("08 - start"),
+    PERF_TALER_MINTDB_INIT_CMD_LOOP ("08 - withdraw insert measure",
+                                     NB_WITHDRAW_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("08 - reserve",
+                                           "08 - withdraw insert measure",
+                                           "02 - save reserve"),
+    PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("08 - denomination",
+                                           "08 - withdraw insert measure",
+                                           "01 - save denomination"),
+    PERF_TALER_MINTDB_INIT_CMD_INSERT_WITHDRAW ("",
+                                                "08 - denomination",
+                                                "08 - reserve"),
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("",
+                                         "08 - withdraw insert measure"),
+    PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("08 - stop"),
+    PERF_TALER_MINTDB_INIT_CMD_GAUGER ("",
+                                       "08 - start",
+                                       "08 - stop",
+                                       "Number of withdraw insert per second",
+                                       "item/sec",
+                                       NB_WITHDRAW_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("End of withdraw insertion"),
+
+    PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("09 - start"),
+    PERF_TALER_MINTDB_INIT_CMD_LOOP ("09 - withdraw insert measure",
+                                     NB_RESERVE_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("09 - reserve",
+                                           "09 - withdraw insert measure",
+                                           "03 - save coin"),
+    PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("09 - denomination",
+                                           "09 - withdraw insert measure",
+                                           "01 - save denomination"),
+    PERF_TALER_MINTDB_INIT_CMD_INSERT_WITHDRAW ("",
+                                                "09 - denomination",
+                                                "09 - reserve"),
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("",
+                                         "09 - withdraw insert measure"),
+    PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("09 - stop"),
+    PERF_TALER_MINTDB_INIT_CMD_GAUGER ("",
+                                       "09 - start",
+                                       "09 - stop",
+                                       "Number of reserve loaded per second",
+                                       "item/sec",
+                                       NB_RESERVE_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("End of withdraw loading"),
+
     PERF_TALER_MINTDB_INIT_CMD_END (""),
   };
   
-  ret = PERF_TALER_MINTDB_run_benchmark ("perf-taler-mintdb",
-                                         "./test-mint-db-postgres.conf",
-                                         (struct PERF_TALER_MINTDB_Cmd []) 
-                                         {PERF_TALER_MINTDB_INIT_CMD_END("")},
-                                         benchmark);
+  ret = PERF_TALER_MINTDB_run_benchmark (
+    "perf-taler-mintdb",
+    "./test-mint-db-postgres.conf",
+    (struct PERF_TALER_MINTDB_Cmd []) {PERF_TALER_MINTDB_INIT_CMD_END("")},
+    benchmark);
   if (GNUNET_SYSERR == ret)
     return 1;
   return 0;
