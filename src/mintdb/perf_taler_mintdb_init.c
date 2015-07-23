@@ -485,47 +485,6 @@ PERF_TALER_MINTDB_refresh_session_free (struct TALER_MINTDB_RefreshSession *refr
 
 
 /**
- * Generate a random CoinPublicInfo
- */
-struct TALER_CoinPublicInfo *
-PERF_TALER_MINTDB_coin_public_info_init ()
-{
-  struct GNUNET_CRYPTO_EddsaPrivateKey *coin_spent_prv;
-  struct GNUNET_CRYPTO_rsa_PrivateKey *denom_prv;
-  struct TALER_CoinPublicInfo *cpi;
-
-  GNUNET_assert (NULL !=
-                 (denom_prv = GNUNET_CRYPTO_rsa_private_key_create (PERF_TALER_MINTDB_RSA_SIZE)));
-  GNUNET_assert (NULL != 
-                 (coin_spent_prv = GNUNET_CRYPTO_eddsa_key_create ()));
-  GNUNET_assert (NULL !=
-                 (cpi = GNUNET_new (struct TALER_CoinPublicInfo)));
-  GNUNET_CRYPTO_eddsa_key_get_public (coin_spent_prv, &cpi->coin_pub.eddsa_pub);
-  GNUNET_assert (NULL !=
-                 (cpi->denom_pub.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (denom_prv)));
-  GNUNET_assert (NULL !=
-                 (cpi->denom_sig.rsa_signature = GNUNET_CRYPTO_rsa_sign (denom_prv, 
-                                                                         &cpi->coin_pub, 
-                                                                         sizeof (struct TALER_CoinSpendPublicKeyP)))); 
-  GNUNET_free (coin_spent_prv);
-  GNUNET_CRYPTO_rsa_private_key_free (denom_prv);
-  return cpi;
-}
-
-
-/**
- * Free a CoinPublicInfo
- */
-int
-PERF_TALER_MINTDB_coin_public_info_free (struct TALER_CoinPublicInfo *cpi)
-{
-
-  GNUNET_CRYPTO_rsa_signature_free (cpi->denom_sig.rsa_signature);
-  GNUNET_CRYPTO_rsa_public_key_free (cpi->denom_pub.rsa_public_key);
-  return GNUNET_OK;
-}
-
-/**
  * Create a melt operation
  *
  * @param session the refresh session 
@@ -560,12 +519,17 @@ PERF_TALER_MINTDB_refresh_melt_init (struct GNUNET_HashCode *session,
   GNUNET_assert (GNUNET_OK == TALER_string_to_amount (CURRENCY ":0.1",
                                                       &amount_with_fee));
   melt = GNUNET_new (struct TALER_MINTDB_RefreshMelt); 
-  melt->coin = coin->public_info;
+  melt->coin.coin_pub = coin->public_info.coin_pub;
+  melt->coin.denom_sig.rsa_signature = 
+    GNUNET_CRYPTO_rsa_signature_dup (coin->public_info.denom_sig.rsa_signature);
+  melt->coin.denom_pub.rsa_public_key =
+    GNUNET_CRYPTO_rsa_public_key_dup (coin->public_info.denom_pub.rsa_public_key);
+  GNUNET_assert (NULL != melt->coin.denom_pub.rsa_public_key);
+  GNUNET_assert (NULL != melt->coin.denom_sig.rsa_signature);
   melt->coin_sig = coin_sig;
   melt->session_hash = *session;
   melt->amount_with_fee = amount;
   melt->melt_fee = amount_with_fee;
-
   return melt;
 }
 

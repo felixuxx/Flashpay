@@ -322,6 +322,21 @@
 
 
 /**
+ * Access the transactioj history of a coin
+ *
+ * @param _label the label of the command
+ * @param _label_coin the coin which history is checked
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_GET_COIN_TRANSACTION(_label, _label_coin) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_GET_COIN_TRANSACTION, \
+  .label = _label, \
+  .exposed.type = PERF_TALER_MINTDB_NONE, \
+  .details.get_coin_trancaction.label_coin = _label_coin \
+}
+
+
+/**
  * Inserts informations about a withdrawal in the database
  * 
  * @exposes #PERF_TALER_MINTDB_COIN
@@ -367,9 +382,25 @@
  * @param _label_reserve the reserve used to provide currency
  */
 #define PERF_TALER_MINTDB_INIT_CMD_WITHDRAW_SIGN(_label, _label_dki, _label_reserve) \
-  PERF_TALER_MINTDB_CMD_GET_RESERVE_HISTORY("", _label_reserve), \
-  PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW(_label, _label_dki, _label_reserve),
+  PERF_TALER_MINTDB_INIT_CMD_GET_RESERVE_HISTORY(_label "reserve_history", \
+                                                 _label_reserve), \
+  PERF_TALER_MINTDB_INIT_CMD_INSERT_WITHDRAW(_label "insert withdraw", \
+                                             _label_dki, \
+                                             _label_reserve),
   
+
+/**
+ * The /deposit api call
+ * 
+ * @param _label the label of the command
+ * @param _label_coin the coin used for the deposit
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_deposit(_label, _label_coin) \
+  PERF_TALER_MINTDB_INIT_CMD_GET_COIN_TRANSACTION (_label "coin history", \
+                                                   _label_coin), \
+  PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT (_label "deposit", \
+                                             _label_coin),
+
 
 /**
  * The type of data stored in #PERF_TALER_MINTDB_Memory
@@ -570,12 +601,12 @@ enum PERF_TALER_MINTDB_CMD_Name
   /**
    * Insert refresh commit coin
    */
-  PERF_TALER_MINTDB_CMD_INSERT_COMMIT_COIN,
+  PERF_TALER_MINTDB_CMD_INSERT_REFRESH_COMMIT_COIN,
 
   /**
    * Get refresh commit coin
    */
-  PERF_TALER_MINTDB_CMD_GET_COMMIT_COIN,
+  PERF_TALER_MINTDB_CMD_GET_REFRESH_COMMIT_COIN,
 
   /**
    * Insert refresh commit link
@@ -593,9 +624,20 @@ enum PERF_TALER_MINTDB_CMD_Name
   PERF_TALER_MINTDB_CMD_GET_MELT_COMMITMENT,
 
   /**
-   * 
+   * Insert a new coin into the database after a melt operation
    */
-  PERF_TALER_MINTDB_CMD_INSERT_REFRESH_OUT
+  PERF_TALER_MINTDB_CMD_INSERT_REFRESH_OUT,
+
+  /**
+   * Get the link data list of a coin
+   */
+  PERF_TALER_MINTDB_CMD_GET_LINK_DATA_LIST,
+
+  /**
+   * Get the shared secret and the transfere public key
+   */
+  PERF_TALER_MINTDB_CMD_GET_TRANSFER
+
 };
 
 
@@ -876,7 +918,103 @@ union PERF_TALER_MINTDB_CMD_Details
     * The refresh session hash
     */
    const char *label_hash; 
+
+   /**
+    * The new coin denomination
+    */
+   const char *label_denom;
   } insert_refresh_order;
+
+  /**
+   * Data requiered for the #PERF_TALER_MINTDB_CMD_GET_REFRESH_ORDER command
+   */
+  struct PERF_TALER_MINTDB_CMD_getRefreshOrderDetails
+  {
+    /**
+     * The session hash
+     */
+    const char *label_hash;
+
+  } get_refresh_order;
+
+  /**
+   * Data requiered for the #PERF_TALER_MINTDB_CMD_INSERT_REFRESH_COMMIT_COIN command
+   */
+  struct PERF_TALER_MINTDB_CMD_insertRefreshCommitCoinDetails
+  {
+    /**
+     * The refresh session hash
+     */
+    const char *label_hash;
+  } insert_refresh_commit_coin;
+
+  /**
+   * Data requiered for the #PERF_TALER_MINTDB_CMD_INSERT_REFRESH_COMMIT_LINK command
+   */
+  struct PERF_TALER_MINTDB_CMD_insertRefreshCommitLinkDetails
+  {
+    /**
+     * The refresh session hash
+     */
+    const char *label_hash;
+
+  } insert_refresh_commit_link;
+
+  /**
+   * Data requiered by the #PERF_TALER_MINTDB_CMD_GET_REFRESH_COMMIT_LINK command
+   */
+  struct PERF_TALER_MINTB_CMD_getRefreshCommitLinkDetails
+  {
+    /**
+     * The refresh session hash
+     */
+    const char *label_hash;
+  } get_refresh_commit_link;
+
+  /**
+   * Data requiered for the #PERF_TALER_MINTDB_CMD_GET_MELT_COMMITMENT command
+   */
+  struct PERF_TALER_MINTDB_CMD_getMeltCommitmentDaetails
+  {
+    /**
+     * The refresh session hash
+     */
+    const char *label_hash;
+  } get_melt_commitment;
+
+  /**
+   * Data requiered by the #PERF_TALER_MINTDB_CMD_INSERT_REFRESH_OUT command
+   */
+  struct PERF_TALER_MINTDB_CMD_insertRefreshOutDetails
+  {
+    /**
+     * The refresh session hash
+     */
+    const char *label_hash;
+  } insert_refresh_out;
+
+  /**
+   * Data requiered by the #PERF_TALER_MINTDB_CMD_GET_LINK_DATA_LIST command
+   */
+  struct PERF_TALER_MINTDB_CMD_getLinkDataListDetails
+  {
+    /**
+     * The refresh session hash
+     */
+    const char *label_hash;
+  } get_link_datat_list;
+
+  /**
+   * Data requiered by the #PERF_TALER_MINTDB_CMD_GET_TRANSFER command
+   */
+  struct PERF_TALER_MINTDB_CMD_getTransferDetails
+  {
+    /**
+     * The refresh session hash
+     */
+    const char *label_hash;
+  } get_transfer;
+
 };
 
 
@@ -908,6 +1046,7 @@ struct PERF_TALER_MINTDB_Cmd
 
 
 /**
+ * Run a benchmark
  *
  * @param benchmark_name the name of the benchmark, displayed in the logs
  * @param configuration_file path to the taler configuration file to use

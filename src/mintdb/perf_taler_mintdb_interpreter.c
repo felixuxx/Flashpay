@@ -770,6 +770,93 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         }
         break;
 
+      case PERF_TALER_MINTDB_CMD_INSERT_REFRESH_ORDER:
+        {
+          int hash_index;
+          int denom_index;
+          struct GNUNET_HashCode session_hash;
+          struct TALER_MINTDB_DenominationKeyIssueInformation *denom;
+
+          hash_index = cmd_find (state->cmd,
+                                 state->cmd[state->i].details.insert_refresh_order.label_hash);
+          GNUNET_assert (GNUNET_SYSERR != hash_index);
+          denom_index = cmd_find (state->cmd,
+                                 state->cmd[state->i].details.insert_refresh_order.label_denom);
+          GNUNET_assert (GNUNET_SYSERR != denom_index);
+          session_hash = state->cmd[hash_index].exposed.data.session_hash;
+          denom = state->cmd[denom_index].exposed.data.dki;
+          state->plugin->insert_refresh_order (state->plugin->cls,
+                                               state->session,
+                                               &session_hash,
+                                               1,
+                                               &denom->denom_pub);
+
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_REFRESH_ORDER:
+        {
+          int hash_index;
+          struct GNUNET_HashCode hash;
+          struct TALER_DenominationPublicKey denom_pub;
+
+          hash_index = cmd_find (state->cmd,
+                                 state->cmd[state->i].details.get_refresh_order.label_hash);
+          GNUNET_assert (GNUNET_SYSERR != hash_index);
+          hash = state->cmd[hash_index].exposed.data.session_hash;
+          state->plugin->get_refresh_order (state->plugin->cls,
+                                            state->session,
+                                            &hash,
+                                            1,
+                                            &denom_pub);
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_INSERT_REFRESH_COMMIT_COIN:
+        {
+          int hash_index;
+
+          hash_index = cmd_find (state->cmd,
+                                 state->cmd[state->i].details.insert_refresh_commit_coin.label_hash);
+          GNUNET_assert (GNUNET_SYSERR != hash_index);
+        }
+        break;
+ 
+      case PERF_TALER_MINTDB_CMD_GET_REFRESH_COMMIT_COIN:
+        {
+          int hash_index;
+
+          hash_index = cmd_find (state->cmd,
+                                 state->cmd[state->i].details.insert_refresh_commit_coin.label_hash);
+          GNUNET_assert (GNUNET_SYSERR != hash_index);
+        }
+        break;
+     
+      case PERF_TALER_MINTDB_CMD_INSERT_REFRESH_COMMIT_LINK:
+        {
+          int hash_index;
+
+          hash_index = cmd_find (state->cmd,
+                                 state->cmd[state->i].details.insert_refresh_commit_link.label_hash);
+          GNUNET_assert (GNUNET_SYSERR != hash_index);
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_REFRESH_COMMIT_LINK:
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_MELT_COMMITMENT:
+        break;
+
+      case PERF_TALER_MINTDB_CMD_INSERT_REFRESH_OUT:
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_LINK_DATA_LIST:
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_TRANSFER:
+        break;
+
       default:
         break;
     }
