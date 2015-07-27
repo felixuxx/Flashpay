@@ -207,19 +207,6 @@ PERF_TALER_MINTDB_refresh_melt_free (struct TALER_MINTDB_RefreshMelt *melt);
 
 
 /**
- * Generate a random CoinPublicInfo
- */
-struct TALER_CoinPublicInfo *
-PERF_TALER_MINTDB_coin_public_info_init (void);
-
-
-/**
- * Free a CoinPublicInfo
- */
-int PERF_TALER_MINTDB_coin_public_info_free (struct TALER_CoinPublicInfo *cpi);
-
-
-/**
  * @return a randomly generated refresh session
  */
 struct TALER_MINTDB_RefreshSession *

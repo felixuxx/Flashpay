@@ -567,3 +567,23 @@ PERF_TALER_MINTDB_refresh_melt_free (struct TALER_MINTDB_RefreshMelt *melt)
   GNUNET_CRYPTO_rsa_signature_free (melt->coin.denom_sig.rsa_signature);
   return GNUNET_OK;
 }
+
+
+/**
+ * Create a #TALER_MINTDB_RefreshCommitCoin 
+ */
+struct TALER_MINTDB_RefreshCommitCoin *
+PERF_TALER_MINTDB_refresh_commit_coin_init ()
+{
+  struct TALER_MINTDB_RefreshCommitCoin *commit_coin;
+  struct TALER_RefreshLinkEncrypted *refresh_link;
+
+  commit_coin = GNUNET_new (struct TALER_MINTDB_RefreshCommitCoin);
+  GNUNET_assert (NULL != commit_coin);
+  {/* refresh_link */
+    refresh_link = GNUNET_new (struct TALER_RefreshLinkEncrypted);
+    GNUNET_assert (NULL != refresh_link);
+  }
+  commit_coin->refresh_link = refresh_link;
+  return commit_coin;
+}

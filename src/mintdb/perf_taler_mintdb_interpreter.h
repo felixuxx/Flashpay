@@ -332,7 +332,7 @@
   .command = PERF_TALER_MINTDB_CMD_GET_COIN_TRANSACTION, \
   .label = _label, \
   .exposed.type = PERF_TALER_MINTDB_NONE, \
-  .details.get_coin_trancaction.label_coin = _label_coin \
+  .details.get_coin_transaction.label_coin = _label_coin \
 }
 
 
@@ -386,7 +386,7 @@
                                                  _label_reserve), \
   PERF_TALER_MINTDB_INIT_CMD_INSERT_WITHDRAW(_label "insert withdraw", \
                                              _label_dki, \
-                                             _label_reserve),
+                                             _label_reserve)
   
 
 /**
@@ -570,6 +570,8 @@ enum PERF_TALER_MINTDB_CMD_Name
 
   /**
    * Create a refresh session
+   * The number of melted coins is 1,
+   * The number of minted coins is 1
    */
   PERF_TALER_MINTDB_CMD_CREATE_REFRESH_SESSION,
 
@@ -946,6 +948,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The refresh session hash
      */
     const char *label_hash;
+
   } insert_refresh_commit_coin;
 
   /**

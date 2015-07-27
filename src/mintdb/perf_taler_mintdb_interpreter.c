@@ -470,7 +470,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           elapsed = GNUNET_TIME_absolute_get_difference (start,
                                                          stop); 
           ips = (1.0 * state->cmd[state->i].details.gauger.divide) / (elapsed.rel_value_us/1000000.0);
-          GAUGER ("MINTDB",
+          GAUGER (state->cmd[state->i].details.gauger.category,
                   state->cmd[state->i].details.gauger.description,
                   ips, 
                   state->cmd[state->i].details.gauger.unit);
@@ -741,6 +741,8 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
                                  state->cmd[state->i].details.insert_refresh_melt.label_hash);
           coin_index = cmd_find (state->cmd,
                                  state->cmd[state->i].details.insert_refresh_melt.label_coin);
+          GNUNET_assert (GNUNET_SYSERR != hash_index);
+          GNUNET_assert (GNUNET_SYSERR != coin_index);
           hash = state->cmd[hash_index].exposed.data.session_hash;
           coin = state->cmd[coin_index].exposed.data.coin;
           melt = PERF_TALER_MINTDB_refresh_melt_init (&hash,
