@@ -309,7 +309,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           cmd[i].details.load_array.permutation =
             GNUNET_CRYPTO_random_permute (
               GNUNET_CRYPTO_QUALITY_WEAK,
-              cmd[cmd[i].details.load_array.index_loop].details.save_array.nb_saved);
+              cmd[cmd[i].details.load_array.index_save].details.save_array.nb_saved);
           GNUNET_assert (NULL != cmd[i].details.load_array.permutation);
 
           cmd[i].exposed.type = cmd[cmd[i].details.load_array.index_save].details.save_array.data_saved->type;

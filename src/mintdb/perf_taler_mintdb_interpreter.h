@@ -997,7 +997,7 @@ union PERF_TALER_MINTDB_CMD_Details
   /**
    * Data requiered by the #PERF_TALER_MINTDB_CMD_GET_REFRESH_COMMIT_LINK command
    */
-  struct PERF_TALER_MINTB_CMD_getRefreshCommitLinkDetails
+  struct PERF_TALER_MINTDB_CMD_getRefreshCommitLinkDetails
   {
     /**
      * The refresh session hash
