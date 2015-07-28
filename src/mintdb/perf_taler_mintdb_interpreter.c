@@ -24,8 +24,6 @@
 #include "gauger.h"
 
 
-#define FIND_TEST(cmd, string, arg) \
-
 /**
  * Represents the state of the interpreter
  */
@@ -169,8 +167,11 @@ cmd_find (const struct PERF_TALER_MINTDB_Cmd *cmd, const char *search)
 
 /**
  * Initialization of a command array
- * 
+ * and check for the type of the label
+ *
  * @param cmd the comand array initialized
+ * @return #GNUNET_OK if the initialization was sucessful
+ * #GNUNET_SYSERR if there was a probleb. See the log for details
  */
 static int
 cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
@@ -181,34 +182,412 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
   {
     switch (cmd[i].command)
     {
+      case PERF_TALER_MINTDB_CMD_END_LOOP:
+        {
+          int ret;
+
+          ret = cmd_find (cmd,
+                          cmd[i].details.end_loop.label_loop);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.end_loop.label_loop);
+            return GNUNET_SYSERR;
+          }
+
+          if (PERF_TALER_MINTDB_CMD_LOOP != cmd[ret].command)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.end_loop.label_loop);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.end_loop.index_loop = ret;
+        }
+        break;
+
       case PERF_TALER_MINTDB_CMD_SAVE_ARRAY:
         {
-          int save_label;
+          int ret;
 
-          GNUNET_assert (GNUNET_SYSERR !=
-                         (save_label = cmd_find (cmd,
-                                                 cmd[i].details.save_array.label_save)));
-          /* Allocation of memory for saving data */
+          ret = cmd_find (cmd,
+                          cmd[i].details.save_array.label_save);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.save_array.label_save);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_NONE == cmd[ret].exposed.type)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.save_array.label_save);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.save_array.index_save = ret;
+
+          ret = cmd_find (cmd,
+                          cmd[i].details.save_array.label_loop);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.save_array.label_loop);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_CMD_LOOP != cmd[ret].command)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.save_array.label_loop);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.save_array.index_loop = ret;
+
           cmd[i].details.save_array.data_saved =
             GNUNET_new_array (cmd[i].details.save_array.nb_saved,
                               struct PERF_TALER_MINTDB_Data);
+          GNUNET_assert (NULL != cmd[i].details.save_array.data_saved);
+          cmd[i].details.save_array.data_saved->type =
+            cmd[cmd[i].details.save_array.index_save].exposed.type;
         }
         break;
 
       case PERF_TALER_MINTDB_CMD_LOAD_ARRAY:
-        /* Creating the permutation array to randomize the data order */
         {
-          int save_index;
+          int ret;
 
-          GNUNET_assert (GNUNET_SYSERR !=
-                         (save_index = cmd_find (
-                             cmd,
-                             cmd[i].details.load_array.label_save)));
-          GNUNET_assert (NULL !=
-                         (cmd[i].details.load_array.permutation =
-                          GNUNET_CRYPTO_random_permute (
-                            GNUNET_CRYPTO_QUALITY_WEAK,
-                            cmd[save_index].details.save_array.nb_saved)));
+          ret = cmd_find (cmd,
+                          cmd[i].details.load_array.label_save);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.load_array.label_save);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_CMD_SAVE_ARRAY != cmd[ret].command)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.load_array.label_save);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.load_array.index_save = ret;
+
+          ret = cmd_find (cmd,
+                          cmd[i].details.load_array.label_loop);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.load_array.label_loop);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_CMD_LOOP != cmd[ret].command)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.load_array.label_loop);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.load_array.index_loop = ret;
+
+          cmd[i].details.load_array.permutation =
+            GNUNET_CRYPTO_random_permute (
+              GNUNET_CRYPTO_QUALITY_WEAK,
+              cmd[cmd[i].details.load_array.index_loop].details.save_array.nb_saved);
+          GNUNET_assert (NULL != cmd[i].details.load_array.permutation);
+
+          cmd[i].exposed.type = cmd[cmd[i].details.load_array.index_save].details.save_array.data_saved->type;
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_LOAD_RANDOM:
+        {
+          int ret;
+
+          ret = cmd_find (cmd,
+                          cmd[i].details.load_random.label_save);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.load_random.label_save);
+            return GNUNET_SYSERR;
+          }
+
+          if (PERF_TALER_MINTDB_CMD_SAVE_ARRAY != cmd[ret].command)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.load_random.label_save);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.load_random.index_save = ret;
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GAUGER:
+        {
+          int ret;
+
+          ret = cmd_find (cmd,
+                          cmd[i].details.gauger.label_start);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.gauger.label_start);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_TIME != cmd[ret].exposed.type)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.gauger.label_start);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.gauger.index_start = ret;
+
+          ret = cmd_find (cmd,
+                          cmd[i].details.gauger.label_stop);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.gauger.label_stop);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_TIME != cmd[ret].exposed.type)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.gauger.label_stop);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.gauger.index_stop = ret;
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT:
+        {
+          int ret;
+
+          ret = cmd_find( cmd,
+                          cmd[i].details.insert_deposit.label_coin);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.insert_deposit.label_coin);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_COIN != cmd[ret].exposed.type)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.insert_deposit.label_coin);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.insert_deposit.index_coin = ret;
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_DEPOSIT:
+        {
+          int ret;
+
+          ret = cmd_find (cmd,
+                          cmd[i].details.get_deposit.label_deposit);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.get_deposit.label_deposit);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_DEPOSIT != cmd[ret].exposed.type)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.get_deposit.label_deposit);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.get_deposit.index_deposit = ret;
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_RESERVE:
+        {
+          int ret;
+
+          ret = cmd_find (cmd,
+                          cmd[i].details.get_reserve.label_reserve);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.get_reserve.label_reserve);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_RESERVE != cmd[ret].exposed.type)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.get_reserve.label_reserve);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.get_reserve.index_reserve = ret;
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_RESERVE_HISTORY:
+        {
+          int ret;
+
+          ret = cmd_find (cmd,
+                          cmd[i].details.get_reserve_history.label_reserve);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.get_reserve_history.label_reserve);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_RESERVE != cmd[ret].exposed.type)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.get_reserve_history.label_reserve);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.get_reserve_history.index_reserve = ret;
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_DENOMINATION:
+        {
+          int ret;
+
+          ret = cmd_find (cmd,
+                          cmd[i].details.get_denomination.label_denom);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.get_denomination.label_denom);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_DENOMINATION_INFO != cmd[ret].exposed.type)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.get_denomination.label_denom);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.get_denomination.index_denom = ret;
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW:
+        {
+          int ret;
+
+          ret = cmd_find (cmd,
+                          cmd[i].details.insert_withdraw.label_dki);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.insert_withdraw.label_dki);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_DENOMINATION_INFO != cmd[ret].exposed.type)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.insert_withdraw.label_dki);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.insert_withdraw.index_dki = ret;
+
+          ret = cmd_find (cmd,
+                          cmd[i].details.insert_withdraw.label_reserve);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.insert_withdraw.label_reserve);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_RESERVE != cmd[ret].exposed.type)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.insert_withdraw.label_reserve);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.insert_withdraw.index_reserve = ret;
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_WITHDRAW:
+        {
+          int ret;
+
+          ret = cmd_find (cmd,
+                           cmd[i].details.get_withdraw.label_coin);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s",
+                        i,
+                        cmd[i].details.get_withdraw.label_coin);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_COIN != cmd[ret].exposed.type)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s",
+                        i,
+                        cmd[i].details.get_withdraw.label_coin);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.get_withdraw.index_coin = ret;
         }
         break;
 
@@ -270,10 +649,7 @@ interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
   unsigned int i;
   int jump;
 
-  GNUNET_assert (GNUNET_SYSERR !=
-                 (jump = cmd_find (state->cmd,
-                                   state->cmd[state->i]
-                                   .details.end_loop.label_loop)));
+  jump = state->cmd[state->i].details.end_loop.index_loop;
   // Cleaning up the memory in the loop
   for (i = jump; i < state->i; i++)
   {
@@ -297,7 +673,7 @@ interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
 
 
 /**
- * Part of the interpreter specific to 
+ * Part of the interpreter specific to
  * #PERF_TALER_MINTDB_CMD_SAVE_ARRAY
  * Saves the data exposed by another command into
  * an array in the command specific struct.
@@ -312,13 +688,9 @@ interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
   int save_index;
   unsigned int selection_chance;
 
-  GNUNET_assert (GNUNET_SYSERR !=
-                 (loop_index = cmd_find (state->cmd,
-                                         cmd->details.save_array.label_loop)));
+  loop_index = cmd->details.save_array.index_loop;
+  save_index = cmd->details.save_array.index_save;
   loop_ref = &state->cmd[loop_index];
-  GNUNET_assert (GNUNET_SYSERR !=
-                 (save_index = cmd_find (state->cmd,
-                                         cmd->details.save_array.label_save)));
   save_ref = &state->cmd[save_index];
   /* Array initialization on first loop iteration
      Alows for nested loops */
@@ -358,25 +730,20 @@ interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 
 /**
  * Part of the interpreter specific to
- * #PERF_TALER_MINTDB_CMD_LOAD_ARRAY 
+ * #PERF_TALER_MINTDB_CMD_LOAD_ARRAY
  * Gets data from a #PERF_TALER_MINTDB_CMD_SAVE_ARRAY and exposes a copy
  */
 static void
 interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
+  struct PERF_TALER_MINTDB_Cmd *cmd = &state->cmd[state->i];
   unsigned int loop_iter;
   int loop_index;
   int save_index;
   struct PERF_TALER_MINTDB_Data *loaded_data;
 
-  GNUNET_assert (GNUNET_SYSERR !=
-                 (loop_index = cmd_find (state->cmd,
-                                         state->cmd[state->i]
-                                         .details.load_array.label_loop)));
-  GNUNET_assert (GNUNET_SYSERR !=
-                 (save_index = cmd_find (state->cmd,
-                                         state->cmd[state->i]
-                                         .details.load_array.label_save)));
+  loop_index = cmd->details.load_array.index_loop;
+  save_index = cmd->details.load_array.index_save;
   loop_iter = state->cmd[loop_index].details.loop.curr_iteration;
   {
     int i, quotient;
@@ -386,34 +753,33 @@ interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
     quotient = loop_iter / state->cmd[save_index].details.save_array.nb_saved;
     loop_iter = loop_iter % state->cmd[save_index].details.save_array.nb_saved;
     for (i=0; i<=quotient; i++)
-      loop_iter = state->cmd[state->i].details.load_array.permutation[loop_iter];
+      loop_iter = cmd->details.load_array.permutation[loop_iter];
   }
   /* Extracting the data from the loop_indexth indice in save_index
    * array.
    */
   loaded_data = &state->cmd[save_index].details.save_array.data_saved[loop_iter];
-  data_copy (loaded_data, &state->cmd[state->i].exposed);
+  data_copy (loaded_data, &cmd->exposed);
 }
 
 
 /**
- * Part of the interpreter specific to 
+ * Part of the interpreter specific to
  * #PERF_TALER_MINTDB_CMD_LOAD_RANDOM
  * Get a random element from a #PERF_TALER_MINTDB_CMD_SAVE_ARRAY and exposes it
  */
 static void
 interprete_load_random (struct PERF_TALER_MINTDB_interpreter_state *state)
 {
+  struct PERF_TALER_MINTDB_Cmd *cmd = &state->cmd[state->i];
   unsigned int index;
   int save_index;
 
-  GNUNET_assert (0 <=
-    (save_index  = cmd_find (state->cmd,
-                             state->cmd[state->i].details.load_random.label_save)));
-   index = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                     state->cmd[save_index].details.save_array.nb_saved);
-     data_copy (&state->cmd[save_index].details.save_array.data_saved[index],
-                &state->cmd[state->i].exposed);
+  save_index = cmd->details.load_random.index_save;
+  index = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                    state->cmd[save_index].details.save_array.nb_saved);
+  data_copy (&state->cmd[save_index].details.save_array.data_saved[index],
+             &cmd->exposed);
 }
 
 /**
@@ -445,9 +811,9 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         break;
 
       case PERF_TALER_MINTDB_CMD_GET_TIME:
-        state->cmd[state->i].exposed.data.time = 
+        state->cmd[state->i].exposed.data.time =
           GNUNET_new (struct GNUNET_TIME_Absolute);
-        *state->cmd[state->i].exposed.data.time = 
+        *state->cmd[state->i].exposed.data.time =
           GNUNET_TIME_absolute_get ();
         break;
 
@@ -457,22 +823,17 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           float ips;
           struct GNUNET_TIME_Absolute start, stop;
           struct GNUNET_TIME_Relative elapsed;
-          GNUNET_assert (GNUNET_SYSERR !=
-                         (start_index  = cmd_find (state->cmd,
-                                                   state->cmd[state->i]
-                                                   .details.gauger.label_start)));
-          GNUNET_assert (GNUNET_SYSERR !=
-                         (stop_index  = cmd_find (state->cmd,
-                                                  state->cmd[state->i]
-                                                  .details.gauger.label_stop)));
+
+          start_index = state->cmd[state->i].details.gauger.index_start;
+          stop_index = state->cmd[state->i].details.gauger.index_stop;
           start = *state->cmd[start_index].exposed.data.time;
           stop = *state->cmd[stop_index].exposed.data.time;
           elapsed = GNUNET_TIME_absolute_get_difference (start,
-                                                         stop); 
+                                                         stop);
           ips = (1.0 * state->cmd[state->i].details.gauger.divide) / (elapsed.rel_value_us/1000000.0);
           GAUGER (state->cmd[state->i].details.gauger.category,
                   state->cmd[state->i].details.gauger.description,
-                  ips, 
+                  ips,
                   state->cmd[state->i].details.gauger.unit);
         }
         break;
@@ -511,12 +872,9 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           int coin_index;
           struct TALER_MINTDB_Deposit *deposit;
 
-          GNUNET_assert (GNUNET_SYSERR !=
-                         (coin_index = cmd_find (state->cmd,
-                                               state->cmd[state->i].details.insert_deposit.label_coin)));
-          GNUNET_assert (NULL !=
-                         (deposit = PERF_TALER_MINTDB_deposit_init (state->cmd[coin_index].exposed.data.coin)));
-
+          coin_index = state->cmd[state->i].details.insert_deposit.index_coin;
+          deposit = PERF_TALER_MINTDB_deposit_init (state->cmd[coin_index].exposed.data.coin);
+          GNUNET_assert (NULL != deposit);
           GNUNET_assert (GNUNET_OK ==
             state->plugin->insert_deposit (state->plugin->cls,
                                            state->session,
@@ -584,7 +942,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_GET_RESERVE_HISTORY:
         {
          int reserve_index;
-         struct TALER_MINTDB_ReserveHistory *history; 
+         struct TALER_MINTDB_ReserveHistory *history;
          struct PERF_TALER_MINTDB_Data data;
 
          GNUNET_assert (GNUNET_SYSERR !=
@@ -682,7 +1040,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           int coin_index;
           struct PERF_TALER_MINTDB_Coin *coin;
           struct TALER_MINTDB_TransactionList *transactions;
-          
+
           coin_index = cmd_find (state->cmd,
                                  state->cmd[state->i].details.get_coin_transaction.label_coin);
           GNUNET_assert (GNUNET_SYSERR != coin_index);
@@ -760,7 +1118,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           int hash_index;
           struct GNUNET_HashCode hash;
           struct TALER_MINTDB_RefreshMelt melt;
-          
+
           hash_index = cmd_find (state->cmd,
                                  state->cmd[state->i].details.get_refresh_melt.label_hash);
           hash = state->cmd[hash_index].exposed.data.session_hash;
@@ -823,7 +1181,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           GNUNET_assert (GNUNET_SYSERR != hash_index);
         }
         break;
- 
+
       case PERF_TALER_MINTDB_CMD_GET_REFRESH_COMMIT_COIN:
         {
           int hash_index;
@@ -833,7 +1191,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           GNUNET_assert (GNUNET_SYSERR != hash_index);
         }
         break;
-     
+
       case PERF_TALER_MINTDB_CMD_INSERT_REFRESH_COMMIT_LINK:
         {
           int hash_index;
@@ -870,7 +1228,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 /**
  * Runs the commands given in @a cmd, working with
  * the database referenced by @a db_plugin
- * 
+ *
  * @param db_plugin the connection to the database
  * @param cmd the commands to run
  */
@@ -896,7 +1254,7 @@ PERF_TALER_MINTDB_interpret (struct TALER_MINTDB_Plugin *db_plugin,
  *
  * @param benchmark_name the name of the benchmark, displayed in the logs
  * @param configuration_file path to the taler configuration file to use
- * @param init the commands to use for the database initialisation, 
+ * @param init the commands to use for the database initialisation,
  * if #NULL the standard initialization is used
  * @param benchmark the commands for the benchmark
  * @return #GNUNET_OK upon success; GNUNET_SYSERR upon failure
@@ -910,7 +1268,7 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
   struct TALER_MINTDB_Plugin *plugin;
   struct GNUNET_CONFIGURATION_Handle *config;
   int ret = 0;
-  struct PERF_TALER_MINTDB_Cmd init_def[] = 
+  struct PERF_TALER_MINTDB_Cmd init_def[] =
   {
     // Denomination used to create coins
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("00 - Start of interpreter"),
@@ -988,7 +1346,7 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
                     NULL);
   config = GNUNET_CONFIGURATION_create ();
 
-  ret = GNUNET_CONFIGURATION_load (config, 
+  ret = GNUNET_CONFIGURATION_load (config,
                                    configuration_file);
   if (GNUNET_OK != ret)
   {
@@ -1003,7 +1361,7 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
                 "Error connectiong to the database");
     return ret;
   }
-  ret = plugin->create_tables (plugin->cls, 
+  ret = plugin->create_tables (plugin->cls,
                                GNUNET_YES);
   if (GNUNET_OK != ret)
   {
@@ -1011,17 +1369,14 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
                 "Error while creating the database architecture");
     return ret;
   }
-  /* 
+  /*
    * Running the initialization
    */
   if (NULL == init)
   {
-    init = init_def;   
+    init = init_def;
   }
-  if (GNUNET_SYSERR == PERF_TALER_MINTDB_check (init))
-    return GNUNET_SYSERR;
-
-  ret = PERF_TALER_MINTDB_interpret (plugin, 
+  ret = PERF_TALER_MINTDB_interpret (plugin,
                                      init);
   if (GNUNET_OK != ret)
   {
@@ -1032,9 +1387,7 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
   /*
    * Running the benchmark
    */
-  if (GNUNET_SYSERR == PERF_TALER_MINTDB_check (benchmark))
-    return GNUNET_SYSERR;
-  ret = PERF_TALER_MINTDB_interpret (plugin, 
+  ret = PERF_TALER_MINTDB_interpret (plugin,
                                      benchmark);
   if (GNUNET_OK != ret)
   {
@@ -1046,9 +1399,9 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
   {
     struct TALER_MINTDB_Session *session;
 
-    session = plugin->get_session (plugin->cls, 
+    session = plugin->get_session (plugin->cls,
                                    GNUNET_YES);
-    ret = plugin->drop_temporary (plugin->cls, 
+    ret = plugin->drop_temporary (plugin->cls,
                                   session);
     if (GNUNET_OK != ret)
     {
@@ -1060,142 +1413,5 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
   TALER_MINTDB_plugin_unload (plugin);
   GNUNET_CONFIGURATION_destroy (config);
 
-  return ret;
-}
-
-
-/**
- * Tests if @a label is reference to a command of @a cmd
- * Prints an error containing @a desc if a problem occurs 
- * 
- * @param cmd the cmd array checked
- * @param label the label checked 
- * @param i the index of the command beeing checked (used for error reporting
- * @param desc a description of the label checked 
- */
-static int
-find_test (const struct PERF_TALER_MINTDB_Cmd *cmd,
-           const char *label,
-           const unsigned int i,
-           const char *desc)
-{
-    int ret;
-
-    ret = cmd_find (cmd, label);
-    if (GNUNET_SYSERR == ret)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Error at %s:index %d wrong label for %s",
-                  cmd[i].label,
-                  i,
-                  desc);
-    }
-    return ret;
-}
-
-
-/**
- * Check if the given command array is syntaxicly correct
- * This will check if the label are corrects but will not check if
- * they are pointing to an apropriate command.
- *
- * @param cmd the command array to check
- * @return #GNUNET_OK is @a cmd is correct; #GNUNET_SYSERR if it is'nt
- */
-int
-PERF_TALER_MINTDB_check (const struct PERF_TALER_MINTDB_Cmd *cmd)
-{
-  unsigned int i;
-  int ret = GNUNET_OK;
-
-  for (i = 0; PERF_TALER_MINTDB_CMD_END != cmd[i].command; i++)
-  {
-    int ret_loc = GNUNET_OK;
-    switch (cmd[i].command)
-    {
-      case PERF_TALER_MINTDB_CMD_END_LOOP:
-        ret_loc = find_test (cmd,
-                   cmd[i].details.end_loop.label_loop,
-                   i,
-                   "label_loop");
-        break;
-
-      case PERF_TALER_MINTDB_CMD_GAUGER:
-        ret_loc = find_test (cmd,
-                   cmd[i].details.gauger.label_start,
-                   i,
-                   "label_start");
-        break;
-
-      case PERF_TALER_MINTDB_CMD_SAVE_ARRAY:
-        ret_loc = find_test (cmd,
-                   cmd[i].details.save_array.label_loop,
-                   i,
-                   "label_loop");
-        ret_loc = find_test (cmd,
-                   cmd[i].details.save_array.label_save,
-                   i,
-                   "label_save");
-        break;
-
-      case PERF_TALER_MINTDB_CMD_LOAD_ARRAY:
-        ret_loc = find_test (cmd,
-                   cmd[i].details.load_array.label_loop,
-                   i,
-                   "label_loop");
-        ret_loc = find_test (cmd,
-                   cmd[i].details.load_array.label_save,
-                   i,
-                   "label_save");  
-        break;
-
-      case PERF_TALER_MINTDB_CMD_GET_DENOMINATION:
-        ret_loc = find_test (cmd,
-                   cmd[i].details.get_denomination.label_denom,
-                   i,
-                   "label_denom");
-        break;
-
-      case PERF_TALER_MINTDB_CMD_GET_RESERVE:
-        ret_loc = find_test (cmd,
-                   cmd[i].details.get_reserve.label_reserve,
-                   i,
-                   "label_reserve");
-        break;
-
-      case PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT:
-        ret_loc = find_test (cmd,
-                   cmd[i].details.insert_deposit.label_coin,
-                   i,
-                   "label_dki");
-        break;
-      
-      case PERF_TALER_MINTDB_CMD_GET_DEPOSIT:
-        ret_loc = find_test (cmd,
-                   cmd[i].details.get_deposit.label_deposit,
-                   i,
-                   "label_deposit");
-        break;
-
-      case PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW:
-        ret_loc = find_test (cmd,
-                   cmd[i].details.insert_withdraw.label_dki,
-                   i,
-                   "label_dki");
-        break;
-
-      case PERF_TALER_MINTDB_CMD_GET_WITHDRAW:
-        ret_loc = find_test (cmd,
-                   cmd[i].details.get_withdraw.label_coin,
-                   i,
-                   "label_coin");
-        break;
-
-      default :
-        break;
-    }
-    if (GNUNET_OK == ret)
-      ret = (GNUNET_SYSERR == ret_loc)?GNUNET_SYSERR:GNUNET_OK;
-  }
   return ret;
 }

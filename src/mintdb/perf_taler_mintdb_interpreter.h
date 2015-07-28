@@ -112,7 +112,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_GET_TIME, \
   .label = _label, \
-  .exposed.type = PERF_TALER_MINTDB_NONE \
+  .exposed.type = PERF_TALER_MINTDB_TIME \
 }
 
 /**
@@ -657,6 +657,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * Maximum number of iteration in the loop 
      */
     const unsigned int max_iterations;
+
     /**
      * The current iteration of the loop
      */
@@ -673,6 +674,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * Label of the loop closed by the command
      */
     const char *label_loop;
+    unsigned int index_loop;
   } end_loop;
 
 
@@ -685,11 +687,13 @@ union PERF_TALER_MINTDB_CMD_Details
      * Label of the starting timestamp
      */
     const char *label_start;
+    unsigned int index_start;
 
     /**
      * Label of the ending timestamp
      */
     const char *label_stop;
+    unsigned int index_stop;
 
     /**
      * The category of the measurment
@@ -723,18 +727,24 @@ union PERF_TALER_MINTDB_CMD_Details
      * Number of items to save
      */
     unsigned int nb_saved;
+
     /**
      * Number of items already saved
      */
     unsigned int index;
+    
     /**
      * Label of the loop it is attached to
      */
     const char *label_loop;
+    unsigned int index_loop;
+    
     /**
      * Label of the command exposing the item
      */
     const char *label_save;
+    unsigned int index_save;
+    
     /**
      * Array of data saved
      */
@@ -751,11 +761,13 @@ union PERF_TALER_MINTDB_CMD_Details
      * The loop in which the command is located
      */
     const char *label_loop;
+    unsigned int index_loop;
 
     /**
      * Label of the command where the items were saved
      */
     const char *label_save;
+    unsigned int index_save;
 
     /**
      * A permutation array used to randomize the order the items are loaded in
@@ -773,6 +785,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The label of the #PERF_TALER_MINTDB_CMD_SAVE_ARRAY the items will be extracted from
      */
     const char *label_save;
+    unsigned int index_save;
   } load_random;
 
   /**
@@ -784,6 +797,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * Label of the source where the reserve used to create the coin is
      */
     const char *label_coin;
+    unsigned int index_coin;
   } insert_deposit;
 
 
@@ -796,6 +810,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The label of the source of the deposit to check
      */
     const char *label_deposit;
+    unsigned int index_deposit;
   } get_deposit;
 
 
@@ -808,6 +823,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The label of the source of the reserve to check
      */
     const char *label_reserve;
+    unsigned int index_reserve;
   } get_reserve;
 
 
@@ -820,6 +836,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The label of the source of the reserve to check
      */
     const char *label_reserve;
+    unsigned int index_reserve;
   } get_reserve_history;
 
 
@@ -832,6 +849,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The label of the source of the denomination to check
      */
     const char *label_denom;
+    unsigned int index_denom;
   } get_denomination;
 
 
@@ -844,11 +862,13 @@ union PERF_TALER_MINTDB_CMD_Details
      * label of the denomination key used to sign the coin
      */
     const char *label_dki;
+    unsigned int index_dki;
 
     /**
      * label of the reserve the money to mint the coin comes from
      */
     const char *label_reserve;
+    unsigned int index_reserve;
   } insert_withdraw;
 
   /**
@@ -860,6 +880,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * label of the source for the coin information
      */
     const char *label_coin;
+    unsigned int index_coin;
   } get_withdraw;
 
   /**
@@ -871,6 +892,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The coin which history is checked
      */
     const char *label_coin;
+    unsigned int index_coin;
   } get_coin_transaction;
 
   /**
@@ -882,6 +904,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * label of the source of the hash of the session
      */
     const char *label_hash;
+    unsigned int index_hash;
   } get_refresh_session;
 
   /**
@@ -893,11 +916,13 @@ union PERF_TALER_MINTDB_CMD_Details
      * The label of the hash of the refresh session
      */
     const char *label_hash;
+    unsigned int index_hash;
 
     /**
      * The label of the coin to melt
      */
     const char *label_coin;
+    const char coin;
   } insert_refresh_melt;
 
   /**
@@ -909,6 +934,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The label of the hash of the session
      */
     const char *label_hash;
+    unsigned int index_hash;
   } get_refresh_melt;
 
   /**
@@ -920,11 +946,13 @@ union PERF_TALER_MINTDB_CMD_Details
     * The refresh session hash
     */
    const char *label_hash; 
+    unsigned int index_hash;
 
    /**
     * The new coin denomination
     */
    const char *label_denom;
+   unsigned int index_denom;
   } insert_refresh_order;
 
   /**
@@ -936,6 +964,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The session hash
      */
     const char *label_hash;
+    unsigned int index_hash;
 
   } get_refresh_order;
 
@@ -948,6 +977,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The refresh session hash
      */
     const char *label_hash;
+    unsigned int index_hash;
 
   } insert_refresh_commit_coin;
 
@@ -960,6 +990,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The refresh session hash
      */
     const char *label_hash;
+    unsigned int index_hash;
 
   } insert_refresh_commit_link;
 
@@ -972,6 +1003,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The refresh session hash
      */
     const char *label_hash;
+    unsigned int index_hash;
   } get_refresh_commit_link;
 
   /**
@@ -983,6 +1015,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The refresh session hash
      */
     const char *label_hash;
+    unsigned int index_hash;
   } get_melt_commitment;
 
   /**
@@ -994,6 +1027,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The refresh session hash
      */
     const char *label_hash;
+    unsigned int index_hash;
   } insert_refresh_out;
 
   /**
@@ -1005,6 +1039,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The refresh session hash
      */
     const char *label_hash;
+    unsigned int index_hash;
   } get_link_datat_list;
 
   /**
@@ -1016,6 +1051,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The refresh session hash
      */
     const char *label_hash;
+    unsigned int index_hash;
   } get_transfer;
 
 };

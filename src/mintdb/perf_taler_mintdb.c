@@ -109,7 +109,7 @@ main (int argc, char ** argv)
                                          "04 - deposit init loop"),
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("End of initialization"),
     // End of deposit initialization
-    
+
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("Start of performances measuring"),
     PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("05 - start"),
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("05 - reserve insert measure",
@@ -235,7 +235,7 @@ main (int argc, char ** argv)
                                        "item/sec",
                                        NB_WITHDRAW_SAVE),
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("End of transaction loading"),
- 
+
     PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("11 - start"),
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("11 - /withdraw/sign",
                                      NB_WITHDRAW_SAVE),
@@ -261,7 +261,7 @@ main (int argc, char ** argv)
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("End of /withdraw/sign"),
     PERF_TALER_MINTDB_INIT_CMD_END (""),
   };
-  
+
   ret = PERF_TALER_MINTDB_run_benchmark (
     "perf-taler-mintdb",
     "./test-mint-db-postgres.conf",
