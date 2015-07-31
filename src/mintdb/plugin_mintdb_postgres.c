@@ -404,6 +404,9 @@ postgres_create_tables (void *cls,
           ",coin_sig BYTEA NOT NULL CHECK (LENGTH(coin_sig)=64)"
           ",wire TEXT NOT NULL"
           ")");
+  /* Index for get_deposit statement on coin_pub, transactiojn_id and merchant_pub */
+  SQLEXEC_INDEX("CREATE INDEX deposits_coin_pub_index "
+                "ON deposits(coin_pub, transaction_id, merchant_pub)");
 #undef SQLEXEC
 #undef SQLEXEC_INDEX
 
