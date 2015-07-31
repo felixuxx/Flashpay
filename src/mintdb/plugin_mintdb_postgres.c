@@ -287,7 +287,9 @@ postgres_create_tables (void *cls,
            ");");
   /* Index blindcoins(reserve_pub) for get_reserves_out statement */
   SQLEXEC_INDEX ("CREATE INDEX reserves_out_reserve_pub_index ON"
-		 " reserves_out (reserve_pub)");
+                 " reserves_out (reserve_pub)");
+  SQLEXEC_INDEX ("CREATE INDEX reserves_out_h_blind_ev_index ON "
+                 "reserves_out (h_blind_ev)");
   /* Table with coins that have been (partially) spent, used to track
      coin information only once.
      TODO: maybe eliminate, this might be over-normalization (#3811) */
