@@ -650,10 +650,10 @@ $\widetilde{C} := S_K(C_p)$:
 \item\label{contract} Let $\vec{D} := D_1, \ldots, D_n$ be the list of
   mints accepted by the merchant where each $D_i$ is a mint's public
   key.  The merchant creates a digitally signed contract $\mathcal{A}
-  := S_M(m, f, a, H(p, r), \vec{D})$ where $a$ is data relevant to the
-  contract indicating which services or goods the merchant will
-  deliver to the customer, $f$ is the price of the offer, and $p$ is
-  the merchant's payment information (e.g. his IBAN number) and $r$ is
+  := S_M(m, f, a, H(p, r), \vec{D})$ where $m$ is an identifier for this
+  transaction, $a$ is data relevant to the contract indicating which services
+  or goods the merchant will deliver to the customer, $f$ is the price of the offer,
+  and $p$ is the merchant's payment information (e.g. his IBAN number) and $r$ is
   an random nounce.  The merchant commits $\langle \mathcal{A}
   \rangle$ to disk and sends $\mathcal{A}$ it to the customer.
 \item\label{deposit} The customer must possess or acquire a coin minted by a mint that is
