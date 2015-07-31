@@ -244,6 +244,9 @@ postgres_create_tables (void *cls,
            ",current_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
            ",expiration_date INT8 NOT NULL"
            ")");
+  /* index on reserves table */
+  SQLEXEC_INDEX ("CREATE INDEX reserves_reserve_pub_index ON "
+                 "reserves (reserve_pub)");
   /* reserves_in table collects the transactions which transfer funds
      into the reserve.  The rows of this table correspond to each
      incoming transaction. */
