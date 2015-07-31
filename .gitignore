@@ -40,3 +40,4 @@ src/util/test_amount
 src/util/test_crypto
 src/util/test_json
 src/util/test_wireformats
+doc/paper/llncs.cls
