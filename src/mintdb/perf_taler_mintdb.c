@@ -25,14 +25,14 @@
 #define NB_DENOMINATION_INIT  15
 #define NB_DENOMINATION_SAVE  15
 
-#define NB_RESERVE_INIT   100
-#define NB_RESERVE_SAVE   10
+#define NB_RESERVE_INIT   10000
+#define NB_RESERVE_SAVE   1000
 
-#define NB_DEPOSIT_INIT   100
-#define NB_DEPOSIT_SAVE   10
+#define NB_DEPOSIT_INIT   10000
+#define NB_DEPOSIT_SAVE   1000
 
-#define NB_WITHDRAW_INIT  100
-#define NB_WITHDRAW_SAVE  10
+#define NB_WITHDRAW_INIT  10000
+#define NB_WITHDRAW_SAVE  1000
 
 /**
  * Runs the performances tests for the mint database
