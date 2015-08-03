@@ -337,6 +337,14 @@
 
 
 /**
+ * the /deposit API call
+ */
+#define PERF_TALER_MONTDB_INIT_CMD_DEPOSIT(_label, _label_coin)\
+  PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT (_label ":insert deposit", _label_coin), \
+  PERF_TALER_MINTDB_INIT_CMD_GET_DEPOSIT (_label ":get deposit", _label ":insert deposit") 
+
+
+/**
  * Inserts informations about a withdrawal in the database
  * 
  * @exposes #PERF_TALER_MINTDB_COIN
@@ -395,11 +403,11 @@
  * @param _label the label of the command
  * @param _label_coin the coin used for the deposit
  */
-#define PERF_TALER_MINTDB_INIT_CMD_deposit(_label, _label_coin) \
+#define PERF_TALER_MINTDB_INIT_CMD_DEPOSIT(_label, _label_coin) \
   PERF_TALER_MINTDB_INIT_CMD_GET_COIN_TRANSACTION (_label "coin history", \
                                                    _label_coin), \
   PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT (_label "deposit", \
-                                             _label_coin),
+                                             _label_coin)
 
 
 /**
@@ -854,7 +862,7 @@ union PERF_TALER_MINTDB_CMD_Details
 
 
   /**
-   * Extra data related to the #PERF_TALER_MINTDB_CMD_GET_WITHDRAW command
+   * Extra data related to the #PERF_TALER_MINTDB_CMD_INSERT_WITHDRAW command
    */
   struct PERF_TALER_MINTDB_CMD_insertWithdrawDetails
   {

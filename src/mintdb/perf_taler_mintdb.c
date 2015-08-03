@@ -25,14 +25,14 @@
 #define NB_DENOMINATION_INIT  15
 #define NB_DENOMINATION_SAVE  15
 
-#define NB_RESERVE_INIT   10000
-#define NB_RESERVE_SAVE   1000
+#define NB_RESERVE_INIT   100
+#define NB_RESERVE_SAVE   10
 
-#define NB_DEPOSIT_INIT   10000
-#define NB_DEPOSIT_SAVE   1000
+#define NB_DEPOSIT_INIT   100
+#define NB_DEPOSIT_SAVE   10
 
-#define NB_WITHDRAW_INIT  10000
-#define NB_WITHDRAW_SAVE  1000
+#define NB_WITHDRAW_INIT  100
+#define NB_WITHDRAW_SAVE  10
 
 /**
  * Runs the performances tests for the mint database
@@ -255,6 +255,25 @@ main (int argc, char ** argv)
                                        "item/sec",
                                        NB_WITHDRAW_SAVE),
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("End of /withdraw/sign"),
+    
+    PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("12 - start"),
+    PERF_TALER_MINTDB_INIT_CMD_LOOP ("12 - /deposit",
+                                     NB_DEPOSIT_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("12 - coin",
+                                           "12 - /deposit",
+                                           "03 - save coin"),
+    PERF_TALER_MINTDB_INIT_CMD_DEPOSIT ("12 - deposit",
+                                        "12 - coin"),
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("",
+                                         "12 - /deposit"),
+    PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("12 - stop"),
+    PERF_TALER_MINTDB_INIT_CMD_GAUGER ("",
+                                       "12 - start",
+                                       "12 - stop",
+                                       "POSTGRES",
+                                       "Number of /deposit per second",
+                                       "item/sec",
+                                       NB_DEPOSIT_SAVE),
     PERF_TALER_MINTDB_INIT_CMD_END (""),
   };
 

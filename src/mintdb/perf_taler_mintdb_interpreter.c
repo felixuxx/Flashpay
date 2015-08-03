@@ -191,16 +191,15 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.end_loop.label_loop);
             return GNUNET_SYSERR;
           }
-
           if (PERF_TALER_MINTDB_CMD_LOOP != cmd[ret].command)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.end_loop.label_loop);
             return GNUNET_SYSERR;
@@ -218,7 +217,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.save_array.label_save);
             return GNUNET_SYSERR;
@@ -226,7 +225,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (PERF_TALER_MINTDB_NONE == cmd[ret].exposed.type)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.save_array.label_save);
             return GNUNET_SYSERR;
@@ -238,7 +237,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.save_array.label_loop);
             return GNUNET_SYSERR;
@@ -246,7 +245,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (PERF_TALER_MINTDB_CMD_LOOP != cmd[ret].command)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.save_array.label_loop);
             return GNUNET_SYSERR;
@@ -271,7 +270,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.load_array.label_save);
             return GNUNET_SYSERR;
@@ -279,7 +278,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (PERF_TALER_MINTDB_CMD_SAVE_ARRAY != cmd[ret].command)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.load_array.label_save);
             return GNUNET_SYSERR;
@@ -291,7 +290,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.load_array.label_loop);
             return GNUNET_SYSERR;
@@ -299,7 +298,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (PERF_TALER_MINTDB_CMD_LOOP != cmd[ret].command)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.load_array.label_loop);
             return GNUNET_SYSERR;
@@ -325,16 +324,15 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.load_random.label_save);
             return GNUNET_SYSERR;
           }
-
           if (PERF_TALER_MINTDB_CMD_SAVE_ARRAY != cmd[ret].command)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.load_random.label_save);
             return GNUNET_SYSERR;
@@ -352,7 +350,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.gauger.label_start);
             return GNUNET_SYSERR;
@@ -360,7 +358,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (PERF_TALER_MINTDB_TIME != cmd[ret].exposed.type)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.gauger.label_start);
             return GNUNET_SYSERR;
@@ -372,7 +370,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.gauger.label_stop);
             return GNUNET_SYSERR;
@@ -380,7 +378,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (PERF_TALER_MINTDB_TIME != cmd[ret].exposed.type)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.gauger.label_stop);
             return GNUNET_SYSERR;
@@ -398,7 +396,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.insert_deposit.label_coin);
             return GNUNET_SYSERR;
@@ -406,7 +404,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (PERF_TALER_MINTDB_COIN != cmd[ret].exposed.type)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.insert_deposit.label_coin);
             return GNUNET_SYSERR;
@@ -424,7 +422,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.get_deposit.label_deposit);
             return GNUNET_SYSERR;
@@ -432,7 +430,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (PERF_TALER_MINTDB_DEPOSIT != cmd[ret].exposed.type)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.get_deposit.label_deposit);
             return GNUNET_SYSERR;
@@ -450,7 +448,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.get_reserve.label_reserve);
             return GNUNET_SYSERR;
@@ -458,7 +456,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (PERF_TALER_MINTDB_RESERVE != cmd[ret].exposed.type)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.get_reserve.label_reserve);
             return GNUNET_SYSERR;
@@ -476,7 +474,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.get_reserve_history.label_reserve);
             return GNUNET_SYSERR;
@@ -484,7 +482,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (PERF_TALER_MINTDB_RESERVE != cmd[ret].exposed.type)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.get_reserve_history.label_reserve);
             return GNUNET_SYSERR;
@@ -502,7 +500,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.get_denomination.label_denom);
             return GNUNET_SYSERR;
@@ -510,7 +508,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (PERF_TALER_MINTDB_DENOMINATION_INFO != cmd[ret].exposed.type)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.get_denomination.label_denom);
             return GNUNET_SYSERR;
@@ -528,7 +526,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.insert_withdraw.label_dki);
             return GNUNET_SYSERR;
@@ -536,7 +534,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (PERF_TALER_MINTDB_DENOMINATION_INFO != cmd[ret].exposed.type)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.insert_withdraw.label_dki);
             return GNUNET_SYSERR;
@@ -548,7 +546,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.insert_withdraw.label_reserve);
             return GNUNET_SYSERR;
@@ -556,7 +554,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (PERF_TALER_MINTDB_RESERVE != cmd[ret].exposed.type)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.insert_withdraw.label_reserve);
             return GNUNET_SYSERR;
@@ -574,7 +572,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Undefined reference to %s",
+                        "%d:Undefined reference to %s\n",
                         i,
                         cmd[i].details.get_withdraw.label_coin);
             return GNUNET_SYSERR;
@@ -582,7 +580,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           if (PERF_TALER_MINTDB_COIN != cmd[ret].exposed.type)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "%d:Wrong type reference to %s",
+                        "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.get_withdraw.label_coin);
             return GNUNET_SYSERR;
@@ -1236,14 +1234,20 @@ int
 PERF_TALER_MINTDB_interpret (struct TALER_MINTDB_Plugin *db_plugin,
                              struct PERF_TALER_MINTDB_Cmd cmd[])
 {
+  int ret;
   struct PERF_TALER_MINTDB_interpreter_state state =
   {.i = 0, .cmd = cmd, .plugin = db_plugin};
 
-  cmd_init (state.cmd);
-  GNUNET_assert (NULL !=
-                 (state.session = db_plugin->get_session (db_plugin->cls,
-                                                          GNUNET_YES)));
-  interpret (&state);
+
+  ret = cmd_init (state.cmd);
+  if (GNUNET_SYSERR == ret)
+    return ret;
+  state.session = db_plugin->get_session (db_plugin->cls,
+                                          GNUNET_YES);
+  GNUNET_assert (NULL != state.session);
+  ret = interpret (&state);
+  if (GNUNET_SYSERR == ret)
+    return ret;
   cmd_clean (cmd);
   return GNUNET_OK;
 }
@@ -1412,6 +1416,5 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
   }
   TALER_MINTDB_plugin_unload (plugin);
   GNUNET_CONFIGURATION_destroy (config);
-
   return ret;
 }
