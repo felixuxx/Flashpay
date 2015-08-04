@@ -114,7 +114,7 @@ psql # this is the command-line client to the DMBS
 # the following lines are SQL
 CREATE USER demo;
 CREATE DATABASE talercheck OWNER demo;
-# quit with CTRL-C
+# quit with CTRL-D
 
 7) If any previous step has been successful, it is now possbile to start up the
 mint web server (by default it will listen on port 4241); issue:
