@@ -216,7 +216,7 @@ struct TALER_MINT_AuditorInformation
    * Array of length @a denom_keys with the denomination
    * keys audited by this auditor.  Note that the array
    * elements point to the same locations as the entries
-   * in the key's main `denom_keys` array. 
+   * in the key's main `denom_keys` array.
    */
   struct TALER_MINT_DenomPublicKey *const*denom_keys;
 };
@@ -622,8 +622,268 @@ void
 TALER_MINT_withdraw_sign_cancel (struct TALER_MINT_WithdrawSignHandle *sign);
 
 
-/* ********************* /admin/add/incoming *********************** */
+/* ********************* /refresh/melt+reveal ***************************** */
 
+
+/**
+ * Melt (partially spent) coins to obtain fresh coins that are
+ * unlinkable to the original coin(s).  Note that melting more
+ * than one coin in a single request will make those coins linkable,
+ * so the safest operation only melts one coin at a time.
+ *
+ * This API is typically used by a wallet.  Note that to ensure that
+ * no money is lost in case of hardware failures, is operation does
+ * not actually initiate the request. Instead, it generates a buffer
+ * which the caller must store before proceeding with the actual call
+ * to #TALER_MINT_refresh_execute() that will generate the request.
+ *
+ * This function does verify that the given request data is internally
+ * consistent.  However, the @a melts_sigs are only verified if @a
+ * check_sigs is set to #GNUNET_YES, as this may be relatively
+ * expensive and should be redundant.
+ *
+ * Aside from some non-trivial cryptographic operations that might
+ * take a bit of CPU time to complete, this function returns
+ * its result immediately and does not start any asynchronous
+ * processing.  This function is also thread-safe.
+ *
+ * @param num_melts number of coins that are being melted (typically 1)
+ * @param melt_privs array of @a num_melts private keys of the coins to melt
+ * @param melt_amounts array of @a num_melts amounts specifying how much
+ *                     each coin will contribute to the melt (including fee)
+ * @param melt_sigs array of @a num_melts signatures affirming the
+ *                   validity of the public keys corresponding to the
+ *                   @a melt_privs private keys
+ * @param melt_pks array of @a num_melts denomination key information
+ *                   records corresponding to the @a melt_sigs
+ *                   validity of the keys
+ * @param check_sigs verify the validity of the signatures of @a melt_sigs
+ * @param fresh_pks_len length of the @a pks array
+ * @param fresh_pks array of @a pks_len denominations of fresh coins to create
+ * @param[OUT] res_size set to the size of the return value, or 0 on error
+ * @return NULL
+ *         if the inputs are invalid (i.e. denomination key not with this mint).
+ *         Otherwise, pointer to a buffer of @a res_size to store persistently
+ *         before proceeding to #TALER_MINT_refresh_execute().
+ *         Non-null results should be freed using #GNUNET_free().
+ */
+char *
+TALER_MINT_refresh_prepare (unsigned int num_melts,
+                            const struct TALER_CoinSpendPrivateKeyP *melt_privs,
+                            const struct TALER_Amount *melt_amounts,
+                            const struct TALER_DenominationSignature *melt_sigs,
+                            const struct TALER_MINT_DenomPublicKey *melt_pks,
+                            int check_sigs,
+                            unsigned int fresh_pks_len,
+                            const struct TALER_MINT_DenomPublicKey *fresh_pks,
+                            size_t *res_size);
+
+
+/* ********************* /refresh/melt ***************************** */
+
+/**
+ * @brief A /refresh/melt Handle
+ */
+struct TALER_MINT_RefreshMeltHandle;
+
+
+/**
+ * Callbacks of this type are used to notify the application about the
+ * result of the /refresh/melt stage.  If successful, the @a noreveal_index
+ * should be committed to disk prior to proceeding #TALER_MINT_refresh_reveal().
+ *
+ * @param cls closure
+ * @param http_status HTTP response code, never #MHD_HTTP_OK (200) as for successful intermediate response this callback is skipped.
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param noreveal_index choice by the mint in the cut-and-choose protocol,
+ *                    UINT16_MAX on error
+ * @param full_response full response from the mint (for logging, in case of errors)
+ */
+typedef void
+(*TALER_MINT_RefreshMeltCallback) (void *cls,
+                                   unsigned int http_status,
+                                   uint16_t noreveal_index,
+                                   json_t *full_response);
+
+
+/**
+ * Submit a melt request to the mint and get the mint's
+ * response.
+ *
+ * This API is typically used by a wallet.  Note that to ensure that
+ * no money is lost in case of hardware failures, the provided
+ * argument should have been constructed using
+ * #TALER_MINT_refresh_prepare and committed to persistent storage
+ * prior to calling this function.
+ *
+ * @param mint the mint handle; the mint must be ready to operate
+ * @param refresh_data_length size of the @a refresh_data (returned
+ *        in the `res_size` argument from #TALER_MINT_refresh_prepare())
+ * @param refresh_data the refresh data as returned from
+          #TALER_MINT_refresh_prepare())
+ * @param melt_cb the callback to call with the result
+ * @param melt_cb_cls closure for @a melt_cb
+ * @return a handle for this request; NULL if the argument was invalid.
+ *         In this case, neither callback will be called.
+ */
+struct TALER_MINT_RefreshMeltHandle *
+TALER_MINT_refresh_melt_execute (struct TALER_MINT_Handle *mint,
+                                 size_t refresh_data_length,
+                                 const char *refresh_data,
+                                 TALER_MINT_RefreshMeltCallback melt_cb,
+                                 void *melt_cb_cls);
+
+
+/**
+ * Cancel a refresh melt request.  This function cannot be used
+ * on a request handle if the callback was already invoked.
+ *
+ * @param rmh the refresh handle
+ */
+void
+TALER_MINT_refresh_melt_cancel (struct TALER_MINT_RefreshMeltHandle *rmh);
+
+
+/* ********************* /refresh/reveal ***************************** */
+
+
+/**
+ * Callbacks of this type are used to return the final result of
+ * submitting a refresh request to a mint.  If the operation was
+ * successful, this function returns the signatures over the coins
+ * that were remelted.  The @a coin_privs and @a sigs arrays give the
+ * coins in the same order (and should have the same length) in which
+ * the original request specified the respective denomination keys.
+ *
+ * @param cls closure
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
+ * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
+ * @param sigs array of signature over @a num_coins coins, NULL on error
+ * @param full_response full response from the mint (for logging, in case of errors)
+ */
+typedef void
+(*TALER_MINT_RefreshRevealCallback) (void *cls,
+                                     unsigned int http_status,
+
+                                     unsigned int num_coins,
+                                     const struct TALER_CoinSpendPrivateKeyP *coin_privs,
+                                     const struct TALER_DenominationSignature *sigs,
+                                     json_t *full_response);
+
+
+/**
+ * @brief A /refresh/reveal Handle
+ */
+struct TALER_MINT_RefreshRevealHandle;
+
+
+/**
+ * Submit a /refresh/reval request to the mint and get the mint's
+ * response.
+ *
+ * This API is typically used by a wallet.  Note that to ensure that
+ * no money is lost in case of hardware failures, the provided
+ * arguments should have been committed to persistent storage
+ * prior to calling this function.
+ *
+ * @param mint the mint handle; the mint must be ready to operate
+ * @param refresh_data_length size of the @a refresh_data (returned
+ *        in the `res_size` argument from #TALER_MINT_refresh_prepare())
+ * @param refresh_data the refresh data as returned from
+          #TALER_MINT_refresh_prepare())
+ * @param noreveal_index response from the mint to the
+ *        #TALER_MINT_refresh_melt() invocation
+ * @param reveal_cb the callback to call with the final result of the
+ *        refresh operation
+ * @param reveal_cb_cls closure for the above callback
+ * @return a handle for this request; NULL if the argument was invalid.
+ *         In this case, neither callback will be called.
+ */
+struct TALER_MINT_RefreshRevealHandle *
+TALER_MINT_refresh_reveal (struct TALER_MINT_Handle *mint,
+                           size_t refresh_data_length,
+                           const char *refresh_data,
+                           uint16_t noreveal_index,
+                           TALER_MINT_RefreshRevealCallback reveal_cb,
+                           void *reveal_cb_cls);
+
+
+/**
+ * Cancel a refresh reveal request.  This function cannot be used
+ * on a request handle if the callback was already invoked.
+ *
+ * @param rrh the refresh reval handle
+ */
+void
+TALER_MINT_refresh_reveal_cancel (struct TALER_MINT_RefreshRevealHandle *rrh);
+
+
+/* ********************* /refresh/link ***************************** */
+
+
+/**
+ * @brief A /refresh/link Handle
+ */
+struct TALER_MINT_RefreshLinkHandle;
+
+
+/**
+ * Callbacks of this type are used to return the final result of
+ * submitting a /refresh/link request to a mint.  If the operation was
+ * successful, this function returns the signatures over the coins
+ * that were created when the original coin was melted.
+ *
+ * @param cls closure
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
+ * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
+ * @param sigs array of signature over @a num_coins coins, NULL on error
+ * @param full_response full response from the mint (for logging, in case of errors)
+ */
+typedef void
+(*TALER_MINT_RefreshLinkCallback) (void *cls,
+                                   unsigned int http_status,
+                                   unsigned int num_coins,
+                                   const struct TALER_CoinSpendPrivateKeyP *coin_privs,
+                                   const struct TALER_DenominationSignature *sigs,
+                                   json_t *full_response);
+
+
+/**
+ * Submit a link request to the mint and get the mint's response.
+ *
+ * This API is typically not used by anyone, it is more a threat
+ * against those trying to receive a funds transfer by abusing the
+ * /refresh protocol.
+ *
+ * @param mint the mint handle; the mint must be ready to operate
+ * @param coin_priv private key to request link data for
+ * @param link_cb the callback to call with the useful result of the
+ *        refresh operation the @a coin_priv was involved in (if any)
+ * @param link_cb_cls closure for @a link_cb
+ * @return a handle for this request
+ */
+struct TALER_MINT_RefreshLinkHandle *
+TALER_MINT_refresh_link (struct TALER_MINT_Handle *mint,
+                         const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                         TALER_MINT_RefreshLinkCallback link_cb,
+                         void *link_cb_cls);
+
+
+/**
+ * Cancel a refresh link request.  This function cannot be used
+ * on a request handle if the callback was already invoked.
+ *
+ * @param rlh the refresh link handle
+ */
+void
+TALER_MINT_refresh_link_cancel (struct TALER_MINT_RefreshLinkHandle *rlh);
+
+
+/* ********************* /admin/add/incoming *********************** */
 
 
 /**
