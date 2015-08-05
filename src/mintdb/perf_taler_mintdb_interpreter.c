@@ -256,7 +256,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
             GNUNET_new_array (cmd[i].details.save_array.nb_saved,
                               struct PERF_TALER_MINTDB_Data);
           GNUNET_assert (NULL != cmd[i].details.save_array.data_saved);
-          cmd[i].details.save_array.data_saved->type =
+          cmd[i].details.save_array.data_saved[0].type =
             cmd[cmd[i].details.save_array.index_save].exposed.type;
         }
         break;
@@ -589,6 +589,17 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
         }
         break;
 
+      case PERF_TALER_MINTDB_CMD_END:
+      case PERF_TALER_MINTDB_CMD_DEBUG:
+      case PERF_TALER_MINTDB_CMD_LOOP:
+      case PERF_TALER_MINTDB_CMD_START_TRANSACTION:
+      case PERF_TALER_MINTDB_CMD_COMMIT_TRANSACTION:
+      case PERF_TALER_MINTDB_CMD_ABORT_TRANSACTION:
+      case PERF_TALER_MINTDB_CMD_GET_TIME:
+      case PERF_TALER_MINTDB_CMD_INSERT_DENOMINATION:
+      case PERF_TALER_MINTDB_CMD_INSERT_RESERVE:
+        break;
+
       default:
         break;
     }
@@ -884,15 +895,15 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_GET_DEPOSIT:
         {
           int source_index;
-          struct PERF_TALER_MINTDB_Data data;
+          struct PERF_TALER_MINTDB_Data *data;
 
           source_index =  cmd_find (state->cmd,
                                     state->cmd[state->i].details.get_deposit.label_deposit);
           GNUNET_assert (GNUNET_SYSERR != source_index);
-          data = state->cmd[source_index].exposed;
+          data = &state->cmd[source_index].exposed;
           state->plugin->have_deposit (state->plugin->cls,
                                        state->session,
-                                       data.data.deposit);
+                                       data->data.deposit);
         }
         break;
 
@@ -922,18 +933,19 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_GET_RESERVE:
         {
           int reserve_index;
-          struct PERF_TALER_MINTDB_Data data;
+          struct PERF_TALER_MINTDB_Data *data;
 
           GNUNET_assert (GNUNET_SYSERR !=
                          (reserve_index = cmd_find (state->cmd,
                                                    state->cmd[state->i]
                                                    .details.get_reserve.label_reserve)));
-          data_copy (&state->cmd[reserve_index].exposed,
-                     &data);
+
+          data = &state->cmd[reserve_index].exposed;
+                     
           GNUNET_assert (GNUNET_OK ==
                          (state->plugin->reserve_get (state->plugin->cls,
                                                       state->session,
-                                                      &data.data.reserve->reserve)));
+                                                      &data->data.reserve->reserve)));
         }
         break;
 
@@ -941,18 +953,17 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         {
          int reserve_index;
          struct TALER_MINTDB_ReserveHistory *history;
-         struct PERF_TALER_MINTDB_Data data;
+         struct PERF_TALER_MINTDB_Data *data;
 
          GNUNET_assert (GNUNET_SYSERR !=
                         (reserve_index = cmd_find (state->cmd,
                                                    state->cmd[state->i]
                                                    .details.get_reserve_history.label_reserve)));
-         data_copy (&state->cmd[reserve_index].exposed,
-                    &data);
+         data = &state->cmd[reserve_index].exposed;
          GNUNET_assert (NULL !=
                         (history = state->plugin->get_reserve_history (state->plugin->cls,
                                                                        state->session,
-                                                                       &data.data.reserve->reserve.pub)));
+                                                                       &data->data.reserve->reserve.pub)));
          state->plugin->free_reserve_history (state->plugin->cls,
                                               history);
         }
@@ -974,18 +985,17 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_GET_DENOMINATION:
         {
           int source_index;
-          struct PERF_TALER_MINTDB_Data data;
+          struct PERF_TALER_MINTDB_Data *data;
 
           GNUNET_assert (GNUNET_SYSERR !=
                          (source_index =  cmd_find (state->cmd,
                                                     state->cmd[state->i]
                                                     .details.get_denomination.label_denom)));
-          data_copy (&state->cmd[source_index].exposed,
-                     &data);
+          data = &state->cmd[source_index].exposed;
           state->plugin->get_denomination_info (state->plugin->cls,
                                                 state->session,
-                                                &data.data.dki->denom_pub,
-                                                &data.data.dki->issue);
+                                                &data->data.dki->denom_pub,
+                                                &data->data.dki->issue);
         }
         break;
 
@@ -1018,18 +1028,17 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_GET_WITHDRAW:
         {
           int source_index;
-          struct PERF_TALER_MINTDB_Data data;
+          struct PERF_TALER_MINTDB_Data *data;
 
           GNUNET_assert (GNUNET_SYSERR !=
                          (source_index = cmd_find (state->cmd,
                                                    state->cmd[state->i]
                                                    .details.get_denomination.label_denom)));
-          data_copy (&state->cmd[source_index].exposed,
-                     &data);
+          data = &state->cmd[source_index].exposed;
           state->plugin->get_withdraw_info (state->plugin->cls,
                                             state->session,
-                                            &data.data.coin->blind.h_coin_envelope,
-                                            &data.data.coin->blind);
+                                            &data->data.coin->blind.h_coin_envelope,
+                                            &data->data.coin->blind);
         }
         break;
 
