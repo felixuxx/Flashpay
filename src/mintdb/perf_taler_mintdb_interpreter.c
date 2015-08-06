@@ -62,15 +62,14 @@ data_free (struct PERF_TALER_MINTDB_Data *data)
     case PERF_TALER_MINTDB_TIME:
       if (NULL == data->data.time)
         return;
-    GNUNET_free (data->data.time);
-    data->data.time = NULL;
+      GNUNET_free (data->data.time);
+      data->data.time = NULL;
     return;
 
     case PERF_TALER_MINTDB_DEPOSIT:
       if (NULL == data->data.deposit)
         return;
       PERF_TALER_MINTDB_deposit_free (data->data.deposit);
-      GNUNET_free (data->data.deposit);
       data->data.deposit = NULL;
       return;
 
@@ -78,7 +77,6 @@ data_free (struct PERF_TALER_MINTDB_Data *data)
       if (NULL == data->data.coin)
         return;
       PERF_TALER_MINTDB_coin_free (data->data.coin);
-      GNUNET_free (data->data.coin);
       data->data.coin = NULL;
       return;
 
@@ -86,7 +84,6 @@ data_free (struct PERF_TALER_MINTDB_Data *data)
       if (NULL == data->data.reserve)
         return;
       PERF_TALER_MINTDB_reserve_free (data->data.reserve);
-      GNUNET_free (data->data.reserve);
       data->data.reserve = NULL;
       return;
 
@@ -94,7 +91,6 @@ data_free (struct PERF_TALER_MINTDB_Data *data)
       if (NULL == data->data.dki)
         return;
       PERF_TALER_MINTDB_denomination_free (data->data.dki);
-      GNUNET_free (data->data.dki);
       data->data.dki = NULL;
       return;
 
@@ -123,22 +119,22 @@ data_copy (const struct PERF_TALER_MINTDB_Data *data, struct PERF_TALER_MINTDB_D
 
     case PERF_TALER_MINTDB_DEPOSIT:
       copy->data.deposit =
-      PERF_TALER_MINTDB_deposit_copy (data->data.deposit);
+        PERF_TALER_MINTDB_deposit_copy (data->data.deposit);
       return;
 
     case PERF_TALER_MINTDB_COIN:
       copy->data.coin =
-      PERF_TALER_MINTDB_coin_copy (data->data.coin);
+        PERF_TALER_MINTDB_coin_copy (data->data.coin);
       return;
 
     case PERF_TALER_MINTDB_RESERVE:
       copy->data.reserve =
-      PERF_TALER_MINTDB_reserve_copy (data->data.reserve);
+        PERF_TALER_MINTDB_reserve_copy (data->data.reserve);
       return;
 
     case PERF_TALER_MINTDB_DENOMINATION_INFO:
       copy->data.dki =
-      PERF_TALER_MINTDB_denomination_copy (data->data.dki);
+        PERF_TALER_MINTDB_denomination_copy (data->data.dki);
       return;
 
     default:
@@ -639,10 +635,9 @@ cmd_clean (struct PERF_TALER_MINTDB_Cmd cmd[])
         break;
 
       default:
-        data_free (&cmd[i].exposed);
         break;
-
     }
+    data_free (&cmd[i].exposed);
   }
   return GNUNET_OK;
 }
@@ -661,9 +656,7 @@ interpret_end_loop (struct PERF_TALER_MINTDB_interpreter_state *state)
   jump = state->cmd[state->i].details.end_loop.index_loop;
   // Cleaning up the memory in the loop
   for (i = jump; i < state->i; i++)
-  {
     data_free (&state->cmd[i].exposed);
-  }
 
   state->cmd[jump].details.loop.curr_iteration++;
   /* If the loop is not finished */

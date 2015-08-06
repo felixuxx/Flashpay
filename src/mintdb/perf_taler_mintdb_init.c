@@ -132,6 +132,7 @@ PERF_TALER_MINTDB_denomination_free (struct TALER_MINTDB_DenominationKeyIssueInf
   GNUNET_CRYPTO_rsa_private_key_free (dki->denom_priv.rsa_private_key);
   GNUNET_CRYPTO_rsa_public_key_free (dki->denom_pub.rsa_public_key);
 
+  GNUNET_free (dki);
   return GNUNET_OK;
 }
 
@@ -149,9 +150,10 @@ PERF_TALER_MINTDB_reserve_init ()
                  (reserve = GNUNET_new (struct PERF_TALER_MINTDB_Reserve)));
   {/* private */
     struct GNUNET_CRYPTO_EddsaPrivateKey *private;
-    GNUNET_assert (NULL !=
-                   (private = GNUNET_CRYPTO_eddsa_key_create ()));
+    private = GNUNET_CRYPTO_eddsa_key_create ();
+    GNUNET_assert (NULL != private);
     reserve->private = *private;
+    GNUNET_free (private);
   }
 
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve->private,
@@ -188,6 +190,7 @@ PERF_TALER_MINTDB_reserve_free (struct PERF_TALER_MINTDB_Reserve *reserve)
 {
   if (NULL == reserve)
     return GNUNET_OK;
+  GNUNET_free (reserve);
   return GNUNET_OK;
 }
 
@@ -291,12 +294,11 @@ PERF_TALER_MINTDB_deposit_copy (const struct TALER_MINTDB_Deposit *deposit)
 
   GNUNET_assert (NULL != (copy = GNUNET_new (struct TALER_MINTDB_Deposit)));
   *copy = *deposit;
-  json_incref (copy->wire);
+  json_incref (deposit->wire);
   copy->coin.denom_pub.rsa_public_key = 
     GNUNET_CRYPTO_rsa_public_key_dup (deposit->coin.denom_pub.rsa_public_key);
   copy->coin.denom_sig.rsa_signature =
     GNUNET_CRYPTO_rsa_signature_dup (deposit->coin.denom_sig.rsa_signature);
-
   return copy;
 }
 
@@ -313,7 +315,7 @@ PERF_TALER_MINTDB_deposit_free (struct TALER_MINTDB_Deposit *deposit)
   GNUNET_CRYPTO_rsa_public_key_free (deposit->coin.denom_pub.rsa_public_key);
   GNUNET_CRYPTO_rsa_signature_free (deposit->coin.denom_sig.rsa_signature);
   json_decref (deposit->wire);
-
+  GNUNET_free (deposit);
   return GNUNET_OK;
 }
 
@@ -344,22 +346,22 @@ PERF_TALER_MINTDB_coin_init (
   /* public_info */
   GNUNET_CRYPTO_eddsa_key_get_public (&coin->priv,
                                       &coin->public_info.coin_pub.eddsa_pub);
-  GNUNET_assert (NULL !=
-                 (coin->public_info.denom_pub.rsa_public_key = 
-                  GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key)));
-  GNUNET_assert (NULL !=
-                 (coin->public_info.denom_sig.rsa_signature = 
-                  GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
-                                          &coin->public_info.coin_pub,
-                                          sizeof (struct TALER_CoinSpendPublicKeyP))));
+  coin->public_info.denom_pub.rsa_public_key = 
+    GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key);
+  coin->public_info.denom_sig.rsa_signature = 
+    GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
+                            &coin->public_info.coin_pub,
+                            sizeof (struct TALER_CoinSpendPublicKeyP));
+  GNUNET_assert (NULL != coin->public_info.denom_pub.rsa_public_key);
+  GNUNET_assert (NULL != coin->public_info.denom_sig.rsa_signature);
 
   /* blind */
-  GNUNET_assert (NULL !=
-                 (coin->blind.sig.rsa_signature = 
-                  GNUNET_CRYPTO_rsa_signature_dup (coin->public_info.denom_sig.rsa_signature)));
-  GNUNET_assert (NULL !=
-                 (coin->blind.denom_pub.rsa_public_key = 
-                  GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key)));
+  coin->blind.sig.rsa_signature = 
+    GNUNET_CRYPTO_rsa_signature_dup (coin->public_info.denom_sig.rsa_signature);
+  coin->blind.denom_pub.rsa_public_key = 
+    GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key);
+  GNUNET_assert (NULL != coin->blind.sig.rsa_signature);
+  GNUNET_assert (NULL != coin->blind.denom_pub.rsa_public_key);
   TALER_amount_ntoh (&coin->blind.amount_with_fee,
                      &dki->issue.properties.value);
   TALER_amount_ntoh (&coin->blind.withdraw_fee,
@@ -367,20 +369,6 @@ PERF_TALER_MINTDB_coin_init (
   coin->blind.reserve_pub = reserve->reserve.pub;
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
                                     &coin->blind.h_coin_envelope);
-  {
-    struct {
-      struct TALER_ReservePublicKeyP reserve_pub;
-      struct GNUNET_HashCode hash; 
-    } data;
-
-    data.reserve_pub = reserve->reserve.pub;
-    data.hash = coin->blind.h_coin_envelope;
-    GNUNET_assert (NULL !=
-                   (coin->blind.sig.rsa_signature =
-                    GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
-                                            &data,
-                                            sizeof (data))));
-  }
   return coin;
 }
 
@@ -395,8 +383,8 @@ PERF_TALER_MINTDB_coin_copy (const struct PERF_TALER_MINTDB_Coin *coin)
 {
   struct PERF_TALER_MINTDB_Coin *copy;
 
-  GNUNET_assert (NULL != 
-                 (copy = GNUNET_new (struct PERF_TALER_MINTDB_Coin)));
+  copy = GNUNET_new (struct PERF_TALER_MINTDB_Coin);
+  GNUNET_assert (NULL != copy);
   /* priv */
   copy->priv = coin->priv;
   /* public_info */
@@ -438,6 +426,7 @@ PERF_TALER_MINTDB_coin_free (struct PERF_TALER_MINTDB_Coin *coin)
   GNUNET_CRYPTO_rsa_signature_free (coin->public_info.denom_sig.rsa_signature);
   GNUNET_CRYPTO_rsa_signature_free (coin->blind.sig.rsa_signature);
   GNUNET_CRYPTO_rsa_public_key_free (coin->blind.denom_pub.rsa_public_key);
+  GNUNET_free (coin);
   return GNUNET_OK;
 }
 
@@ -481,6 +470,7 @@ PERF_TALER_MINTDB_refresh_session_free (struct TALER_MINTDB_RefreshSession *refr
   if (NULL == refresh_session)
     return GNUNET_OK;
   return GNUNET_OK;
+  GNUNET_free (refresh_session);
 }
 
 
@@ -547,9 +537,9 @@ PERF_TALER_MINTDB_refresh_melt_copy (const struct TALER_MINTDB_RefreshMelt *melt
 
   copy = GNUNET_new (struct TALER_MINTDB_RefreshMelt);
   *copy = *melt;
-  GNUNET_assert (NULL != 
-                 (copy->coin.denom_sig.rsa_signature = 
-                  GNUNET_CRYPTO_rsa_signature_dup (melt->coin.denom_sig.rsa_signature)));
+  copy->coin.denom_sig.rsa_signature = 
+    GNUNET_CRYPTO_rsa_signature_dup (melt->coin.denom_sig.rsa_signature);
+  GNUNET_assert (NULL != copy->coin.denom_sig.rsa_signature);
 
   return copy;
 }
@@ -565,6 +555,7 @@ int
 PERF_TALER_MINTDB_refresh_melt_free (struct TALER_MINTDB_RefreshMelt *melt)
 {
   GNUNET_CRYPTO_rsa_signature_free (melt->coin.denom_sig.rsa_signature);
+  GNUNET_free (melt);
   return GNUNET_OK;
 }
 
@@ -582,8 +573,18 @@ PERF_TALER_MINTDB_refresh_commit_coin_init ()
   GNUNET_assert (NULL != commit_coin);
   {/* refresh_link */
     refresh_link = GNUNET_new (struct TALER_RefreshLinkEncrypted);
-    GNUNET_assert (NULL != refresh_link);
+    *refresh_link = (struct TALER_RefreshLinkEncrypted)
+    {
+      .blinding_key_enc = "blinding_key",
+      .blinding_key_enc_size = 13
+    };
+    refresh_link->blinding_key_enc_size = 32;
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                &refresh_link->coin_priv_enc,
+                                sizeof(struct TALER_CoinSpendPrivateKeyP));
   }
+  commit_coin->coin_ev = "coin_ev";
+  commit_coin->coin_ev_size = 8;
   commit_coin->refresh_link = refresh_link;
   return commit_coin;
 }
