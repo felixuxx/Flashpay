@@ -127,7 +127,7 @@ PERF_TALER_MINTDB_denomination_copy (const struct TALER_MINTDB_DenominationKeyIs
 int
 PERF_TALER_MINTDB_denomination_free (struct TALER_MINTDB_DenominationKeyIssueInformation *dki)
 {
-  if (NULL ==dki)
+  if (NULL == dki)
     return GNUNET_OK;
   GNUNET_CRYPTO_rsa_private_key_free (dki->denom_priv.rsa_private_key);
   GNUNET_CRYPTO_rsa_public_key_free (dki->denom_pub.rsa_public_key);

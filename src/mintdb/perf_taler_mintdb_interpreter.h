@@ -18,12 +18,12 @@
  * @brief Library for performance analysis of the Taler database
  * @author Nicolas Fournier
  *
- * This library contains functions and macro alowing Taler performance analysis 
- * to be written with ease. 
+ * This library contains functions and macro alowing Taler performance analysis
+ * to be written with ease.
  * To do so, create a #PERF_TALER_MINTDB_Cmd array and fill it with the commands
  * to execute in chronological order. Some command have an exposed variable wich
  * can be reused in other commands.
- * Macros are available to make the use much easier so feel free to use them 
+ * Macros are available to make the use much easier so feel free to use them
  * to initialize your own command array.
  */
 
@@ -62,7 +62,7 @@
 
 /**
  * Prints @ _label to stdout
- * 
+ *
  * @param _label The label of the command,
  *  will be logged each time the command runs
  */
@@ -75,7 +75,7 @@
 
 /**
  * The begining of a loop
- * 
+ *
  * @param _label the label of the loop
  * @param _iter the number of iterations of the loop
  */
@@ -91,9 +91,9 @@
 
 /**
  * Marks the end of the loop @_label_loop
- * 
+ *
  * @param _label the label of the command
- * @param _label_loop the label of the loop closed by this command 
+ * @param _label_loop the label of the loop closed by this command
  */
 #define PERF_TALER_MINTDB_INIT_CMD_END_LOOP(_label, _label_loop) \
 {\
@@ -124,7 +124,7 @@
  * @param _label_stop label of the end of the measurment
  * @param _description description of the measure displayed in Gauger
  * @param _unit the unit of the data measured, typicly something/sec
- * @param _divide number of measurments in the interval 
+ * @param _divide number of measurments in the interval
  */
 #define PERF_TALER_MINTDB_INIT_CMD_GAUGER(_label, _label_start, _label_stop, _category, _description, _unit, _divide) \
 { \
@@ -143,7 +143,7 @@
 
 /**
  * Initiate a database transaction
- * 
+ *
  * @param _label the label of the command
  */
 #define PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION(_label) \
@@ -155,7 +155,7 @@
 
 /**
  * Commits a database transaction
- * 
+ *
  * @param _label the label of the command
  */
 #define PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION(_label) \
@@ -176,9 +176,9 @@
   .label = _label,
 
 /**
- * Saves randomly selected items from @a _label_save 
+ * Saves randomly selected items from @a _label_save
  * Saved items can latter be access using #PERF_TALER_MINTDB_CMD_LOAD_ARRAY
- * 
+ *
  * @param _label the label of the command, used by other commands to reference it
  * @param _label_loop the label of the loop the array iterates over
  * @param _label_save the label of the command which outout is saved by this command
@@ -199,7 +199,7 @@
 /**
  * Loads data from a #PERF_TALER_MINTDB_CMD_SAVE_ARRAY to allow other
  * commands to access it
- * 
+ *
  * @param _label the label of this command, referenced by commands to access it's outpout
  * @param _label_loop the label of the loop to iterate over
  * @param _label_save the label of the #PERF_TALER_MINTDB_CMD_SAVE_ARRAY providing data
@@ -219,7 +219,7 @@
  * Inserts informations about a denomination key in the database
  * Exposes a #PERF_TALER_MINTDB_DENOMINATION_INFO to be used by other commands
  * @exposed #PERF_TALER_MINTDB_DENOMINATION_INFO
- * 
+ *
  * @param _label the label of this command
  */
 #define PERF_TALER_MINTDB_INIT_CMD_INSERT_DENOMINATION(_label) \
@@ -231,7 +231,7 @@
 
 /**
  * Polls the database about informations regarding a specific denomination key
- * 
+ *
  * @param _label the label of this command
  * @param _label_denom the label of the command providing information about the denomination key
  */
@@ -244,11 +244,11 @@
 }
 
 /**
- * Creates a new reserve in the database containing 1000 Euros 
+ * Creates a new reserve in the database containing 1000 Euros
  * Exposes a #PERF_TALER_MINTDB_RESERVE
- * 
+ *
  * @exposed #PERF_TALER_MINTDB_RESERVE
- * 
+ *
  * @param _label the name of this command
  */
 #define PERF_TALER_MINTDB_INIT_CMD_INSERT_RESERVE(_label) \
@@ -261,7 +261,7 @@
 
 /**
  * Polls the database for a secific reserve's details
- * 
+ *
  * @param _label the label of this command
  * @param _label_reserve the reserve to poll
  */
@@ -341,12 +341,12 @@
  */
 #define PERF_TALER_MONTDB_INIT_CMD_DEPOSIT(_label, _label_coin)\
   PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT (_label ":insert deposit", _label_coin), \
-  PERF_TALER_MINTDB_INIT_CMD_GET_DEPOSIT (_label ":get deposit", _label ":insert deposit") 
+  PERF_TALER_MINTDB_INIT_CMD_GET_DEPOSIT (_label ":get deposit", _label ":insert deposit")
 
 
 /**
  * Inserts informations about a withdrawal in the database
- * 
+ *
  * @exposes #PERF_TALER_MINTDB_COIN
  *
  * @param _label the label of this command
@@ -367,7 +367,7 @@
 
 /**
  * Polls the database about informations regarding a specific withdrawal
- * 
+ *
  * @param _label the label of this command
  * @param _label_coin the coin to check
  */
@@ -382,7 +382,7 @@
 
 /**
  * The /withdraw/sign api call
- * 
+ *
  * Exposes #PERF_TALER_MINTDB_COIN
  *
  * @param _label the label of this command
@@ -395,11 +395,11 @@
   PERF_TALER_MINTDB_INIT_CMD_INSERT_WITHDRAW(_label "insert withdraw", \
                                              _label_dki, \
                                              _label_reserve)
-  
+
 
 /**
  * The /deposit api call
- * 
+ *
  * @param _label the label of the command
  * @param _label_coin the coin used for the deposit
  */
@@ -442,7 +442,7 @@ struct PERF_TALER_MINTDB_Data
     struct GNUNET_TIME_Absolute *time;
     /** #PERF_TALER_MINTDB_DEPOSIT */
     struct TALER_MINTDB_Deposit *deposit;
-    /** #PERF_TALER_MINTDB_COIN */ 
+    /** #PERF_TALER_MINTDB_COIN */
     struct PERF_TALER_MINTDB_Coin *coin;
     /** #PERF_TALER_MINTDB_RESERVE */
     struct PERF_TALER_MINTDB_Reserve *reserve;
@@ -469,9 +469,9 @@ enum PERF_TALER_MINTDB_CMD_Name
    */
   PERF_TALER_MINTDB_CMD_DEBUG,
 
-  /** 
+  /**
    * Define the start of al command chain loop
-   */ 
+   */
   PERF_TALER_MINTDB_CMD_LOOP,
 
   /**
@@ -662,7 +662,7 @@ union PERF_TALER_MINTDB_CMD_Details
   struct PERF_TALER_MINTDB_CMD_loopDetails
   {
     /**
-     * Maximum number of iteration in the loop 
+     * Maximum number of iteration in the loop
      */
     const unsigned int max_iterations;
 
@@ -740,23 +740,30 @@ union PERF_TALER_MINTDB_CMD_Details
      * Number of items already saved
      */
     unsigned int index;
-    
+
     /**
      * Label of the loop it is attached to
      */
     const char *label_loop;
     unsigned int index_loop;
-    
+
     /**
      * Label of the command exposing the item
      */
     const char *label_save;
     unsigned int index_save;
-    
+
     /**
      * Array of data saved
      */
     struct PERF_TALER_MINTDB_Data *data_saved;
+
+    /**
+     * Type of the data that will be stored in @a data_saved, for
+     * 'static' type checking.
+     */
+    enum PERF_TALER_MINTDB_Type type_saved;
+
   } save_array;
 
 
@@ -797,7 +804,7 @@ union PERF_TALER_MINTDB_CMD_Details
   } load_random;
 
   /**
-   * Data used by the #PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT command 
+   * Data used by the #PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT command
    */
   struct PERF_TALER_MINTDB_CMD_insertDepositDetails
   {
@@ -893,7 +900,7 @@ union PERF_TALER_MINTDB_CMD_Details
 
   /**
    * Data requiered for the #PERF_TALER_MINTDB_CMD_GET_COIN_TRANSACTION command
-   */ 
+   */
   struct PERF_TALER_MINTDB_CMD_getCoinTransactionDetails
   {
     /**
@@ -953,7 +960,7 @@ union PERF_TALER_MINTDB_CMD_Details
    /**
     * The refresh session hash
     */
-   const char *label_hash; 
+   const char *label_hash;
     unsigned int index_hash;
 
    /**
@@ -1097,7 +1104,7 @@ struct PERF_TALER_MINTDB_Cmd
  *
  * @param benchmark_name the name of the benchmark, displayed in the logs
  * @param configuration_file path to the taler configuration file to use
- * @param init the commands to use for the database initialisation, 
+ * @param init the commands to use for the database initialisation,
  * if #NULL the standard initialization is used
  * @param benchmark the commands for the benchmark
  * @return GNUNET_OK upon success; GNUNET_SYSERR upon failure
@@ -1112,7 +1119,7 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
 /**
  * Runs the command array @a cmd
  * using @a db_plugin to connect to the database
- * 
+ *
  * @param db_plugin the connection to the database
  * @param cmd the commands to run
  */

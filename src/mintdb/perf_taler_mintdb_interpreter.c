@@ -61,42 +61,43 @@ data_free (struct PERF_TALER_MINTDB_Data *data)
   {
     case PERF_TALER_MINTDB_TIME:
       if (NULL == data->data.time)
-        return;
+        break;
       GNUNET_free (data->data.time);
       data->data.time = NULL;
-      return;
+      break;
 
     case PERF_TALER_MINTDB_DEPOSIT:
       if (NULL == data->data.deposit)
-        return;
+        break;
       PERF_TALER_MINTDB_deposit_free (data->data.deposit);
       data->data.deposit = NULL;
-      return;
+      break;
 
     case PERF_TALER_MINTDB_COIN:
       if (NULL == data->data.coin)
-        return;
+        break;
       PERF_TALER_MINTDB_coin_free (data->data.coin);
       data->data.coin = NULL;
-      return;
+      break;
 
     case PERF_TALER_MINTDB_RESERVE:
       if (NULL == data->data.reserve)
-        return;
+        break;
       PERF_TALER_MINTDB_reserve_free (data->data.reserve);
       data->data.reserve = NULL;
-      return;
+      break;
 
     case PERF_TALER_MINTDB_DENOMINATION_INFO:
       if (NULL == data->data.dki)
-        return;
+        break;
       PERF_TALER_MINTDB_denomination_free (data->data.dki);
       data->data.dki = NULL;
-      return;
+      break;
 
     default:
-      return;
+      break;
   }
+  data->type = PERF_TALER_MINTDB_NONE;
 }
 
 
@@ -107,8 +108,10 @@ data_free (struct PERF_TALER_MINTDB_Data *data)
  * @param[out] copy the copy made
  */
 static void
-data_copy (const struct PERF_TALER_MINTDB_Data *data, struct PERF_TALER_MINTDB_Data *copy)
+data_copy (const struct PERF_TALER_MINTDB_Data *data,
+           struct PERF_TALER_MINTDB_Data *copy)
 {
+  GNUNET_assert (PERF_TALER_MINTDB_NONE == copy->type);
   copy->type = data->type;
   switch (data->type)
   {
@@ -150,7 +153,8 @@ data_copy (const struct PERF_TALER_MINTDB_Data *data, struct PERF_TALER_MINTDB_D
  * #GNUNET_SYSERR if none found
  */
 static int
-cmd_find (const struct PERF_TALER_MINTDB_Cmd *cmd, const char *search)
+cmd_find (const struct PERF_TALER_MINTDB_Cmd *cmd,
+          const char *search)
 {
   unsigned int i;
 
@@ -252,7 +256,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           cmd[i].details.save_array.data_saved =
             GNUNET_new_array (cmd[i].details.save_array.nb_saved,
                               struct PERF_TALER_MINTDB_Data);
-          cmd[i].details.save_array.data_saved[0].type =
+          cmd[i].details.save_array.type_saved =
             cmd[cmd[i].details.save_array.index_save].exposed.type;
         }
         break;
@@ -307,7 +311,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
               cmd[cmd[i].details.load_array.index_save].details.save_array.nb_saved);
           GNUNET_assert (NULL != cmd[i].details.load_array.permutation);
 
-          cmd[i].exposed.type = cmd[cmd[i].details.load_array.index_save].details.save_array.data_saved->type;
+          cmd[i].exposed.type = cmd[cmd[i].details.load_array.index_save].details.save_array.type_saved;
         }
         break;
 
@@ -760,8 +764,10 @@ interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
   /* Extracting the data from the loop_indexth indice in save_index
    * array.
    */
+  data_free (&cmd->exposed);
   loaded_data = &state->cmd[save_index].details.save_array.data_saved[loop_iter];
-  data_copy (loaded_data, &cmd->exposed);
+  data_copy (loaded_data,
+             &cmd->exposed);
 }
 
 
@@ -777,12 +783,14 @@ interprete_load_random (struct PERF_TALER_MINTDB_interpreter_state *state)
   unsigned int index;
   int save_index;
 
+  data_free (&cmd->exposed);
   save_index = cmd->details.load_random.index_save;
   index = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
                                     state->cmd[save_index].details.save_array.nb_saved);
   data_copy (&state->cmd[save_index].details.save_array.data_saved[index],
              &cmd->exposed);
 }
+
 
 /**
  * Iterate over the commands, acting accordingly at each step
