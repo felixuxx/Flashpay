@@ -33,6 +33,321 @@
 
 /* ********************* /refresh/ common ***************************** */
 
+/* structures for committing refresh data to disk before doing the
+   network interaction(s) */
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Header of serialized information about a coin we are melting.
+ */
+struct MeltedCoinP
+{
+  /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * Amount this coin contributes to the melt, including fee.
+   */
+  struct TALER_AmountNBO melt_amount_with_fee;
+
+  /**
+   * The applicable fee for withdrawing a coin of this denomination
+   */
+  struct TALER_AmountNBO fee_withdraw;
+
+  /**
+   * Transfer private keys for each cut-and-choose dimension.
+   */
+  struct TALER_TransferPrivateKeyP transfer_priv[TALER_CNC_KAPPA];
+
+  /**
+   * Timestamp indicating when coins of this denomination become invalid.
+   */
+  struct GNUNET_TIME_AbsoluteNBO deposit_valid_until;
+
+  /* Followed by serializations of:
+     1) struct TALER_DenominationPublicKey pub_key;
+     2) struct TALER_DenominationSignature sig;
+  */
+};
+
+
+/**
+ * Header for serializations of coin-specific information about the
+ * fresh coins we generate during a melt.
+ */
+struct FreshCoinP
+{
+
+  /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * Link secret used to encrypt the @a coin_priv and the blinding
+   * key in the linkage data.
+   */
+  struct TALER_LinkSecretP link_secret;
+
+  /* Followed by serialization of:
+     - struct TALER_DenominationBlindingKey blinding_key;
+  */
+
+};
+
+
+/**
+ * Header of serialized data about a melt operation, suitable for
+ * persisting it on disk.
+ */
+struct MeltDataP
+{
+
+  /**
+   * Hash over the melting session.
+   */
+  struct GNUNET_HashCode melt_session_hash;
+
+  /**
+   * Transfer secrets for each cut-and-choose dimension.
+   */
+  struct TALER_TransferSecretP transfer_secrets[TALER_CNC_KAPPA];
+
+  /**
+   * Number of coins we are melting, in NBO
+   */
+  uint16_t num_melted_coins GNUNET_PACKED;
+
+  /**
+   * Number of coins we are creating, in NBO
+   */
+  uint16_t num_fresh_coins GNUNET_PACKED;
+
+  /* Followed by serializations of:
+     1) struct MeltedCoinP melted_coins[num_melted_coins];
+     2) struct TALER_MINT_DenomPublicKey fresh_pks[num_fresh_coins];
+     3) struct FreshCoinP fresh_coins[num_fresh_coins][k];
+  */
+};
+
+
+GNUNET_NETWORK_STRUCT_END
+
+
+/**
+ * Information about a coin we are melting.
+ */
+struct MeltedCoin
+{
+  /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * Amount this coin contributes to the melt, including fee.
+   */
+  struct TALER_Amount melt_amount_with_fee;
+
+  /**
+   * The applicable fee for withdrawing a coin of this denomination
+   */
+  struct TALER_Amount fee_withdraw;
+
+  /**
+   * Transfer private keys for each cut-and-choose dimension.
+   */
+  struct TALER_TransferPrivateKeyP transfer_priv[TALER_CNC_KAPPA];
+
+  /**
+   * Timestamp indicating when coins of this denomination become invalid.
+   */
+  struct GNUNET_TIME_AbsoluteNBO deposit_valid_until;
+
+  /**
+   * Denomination key of the original coin.
+   */
+  struct TALER_DenominationPublicKey pub_key;
+
+  /**
+   * Mint's signature over the coin.
+   */
+  struct TALER_DenominationSignature sig;
+
+};
+
+
+/**
+ * Coin-specific information about the fresh coins we generate during
+ * a melt.
+ */
+struct FreshCoin
+{
+
+  /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * Link secret used to encrypt the @a coin_priv and the blinding
+   * key in the linkage data.
+   */
+  struct TALER_LinkSecretP link_secret;
+
+  /**
+   * Blinding key used for blinding during blind signing.
+   */
+  struct TALER_DenominationBlindingKey blinding_key;
+
+};
+
+
+/**
+ * Melt data in non-serialized format for convenient processing.
+ */
+struct MeltData
+{
+
+  /**
+   * Hash over the melting session.
+   */
+  struct GNUNET_HashCode melt_session_hash;
+
+  /**
+   * Transfer secrets for each cut-and-choose dimension.
+   */
+  struct TALER_TransferSecretP transfer_secrets[TALER_CNC_KAPPA];
+
+  /**
+   * Number of coins we are melting
+   */
+  uint16_t num_melted_coins;
+
+  /**
+   * Number of coins we are creating
+   */
+  uint16_t num_fresh_coins;
+
+  /**
+   * Information about the melted coins in an array of length @e
+   * num_melted_coins.
+   */
+  struct MeltedCoin *melted_coins;
+
+  /**
+   * Array of @e num_fresh_coins denomination keys for the coins to be
+   * freshly minted.
+   */
+  struct TALER_DenominationPublicKey *fresh_pks;
+
+  /**
+   * Arrays of @e num_fresh_coins with information about the fresh
+   * coins to be created, for each cut-and-choose dimension.
+   */
+  struct FreshCoin *fresh_coins[TALER_CNC_KAPPA];
+};
+
+
+/**
+ * Free all information associated with a melted coin session.
+ *
+ * @param mc melted coin to release, the pointer itself is NOT
+ *           freed (as it is typically not allocated by itself)
+ */
+static void
+free_melted_coin (struct MeltedCoin *mc)
+{
+  GNUNET_CRYPTO_rsa_public_key_free (mc->pub_key.rsa_public_key);
+  GNUNET_CRYPTO_rsa_signature_free (mc->sig.rsa_signature);
+}
+
+
+/**
+ * Free all information associated with a fresh coin.
+ *
+ * @param fc fresh coin to release, the pointer itself is NOT
+ *           freed (as it is typically not allocated by itself)
+ */
+static void
+free_fresh_coin (struct FreshCoin *fc)
+{
+  GNUNET_CRYPTO_rsa_blinding_key_free (fc->blinding_key.rsa_blinding_key);
+}
+
+
+/**
+ * Free all information associated with a melting session.
+ *
+ * @param md melting data to release, the pointer itself is NOT
+ *           freed (as it is typically not allocated by itself)
+ */
+static void
+free_melt_data (struct MeltData *md)
+{
+  unsigned int i;
+  unsigned int j;
+
+  for (i=0;i<md->num_melted_coins;i++)
+    free_melted_coin (&md->melted_coins[i]);
+  GNUNET_free (md->melted_coins);
+
+  for (i=0;i<md->num_fresh_coins;i++)
+    GNUNET_CRYPTO_rsa_public_key_free (md->fresh_pks[i].rsa_public_key);
+  GNUNET_free (md->fresh_pks);
+
+  for (i=0;i<TALER_CNC_KAPPA;i++)
+  {
+    for (j=0;j<md->num_fresh_coins;j++)
+      free_fresh_coin (&md->fresh_coins[i][j]);
+    GNUNET_free (md->fresh_coins[i]);
+  }
+  /* Finally, clean up a bit...
+     (NOTE: compilers might optimize this away, so this is
+     not providing any strong assurances that the key material
+     is purged.) */
+  memset (md,
+          0,
+          sizeof (struct MeltData));
+}
+
+
+/**
+ * Serialize melt data.
+ *
+ * @param md data to serialize
+ * @param[out] res_size size of buffer returned
+ * @return serialized melt data
+ */
+static char *
+serialize_melt_data (const struct MeltData *md,
+                     size_t *res_size)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  *res_size = 0;
+  return NULL;
+}
+
+
+/**
+ * Deserialize melt data.
+ *
+ * @param buf serialized data
+ * @param buf_size size of @a buf
+ * @return deserialized melt data, NULL on error
+ */
+static struct MeltData *
+deserialize_melt_data (const char *buf,
+                       size_t buf_size)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return NULL;
+}
+
 
 /**
  * Melt (partially spent) coins to obtain fresh coins that are
@@ -87,9 +402,16 @@ TALER_MINT_refresh_prepare (unsigned int num_melts,
                             const struct TALER_MINT_DenomPublicKey *fresh_pks,
                             size_t *res_size)
 {
+  struct MeltData md;
+  char *buf;
+
   GNUNET_break (0); // FIXME: not implemented
-  *res_size = 0;
-  return NULL;
+  // FIXME: init 'md' here!
+
+  buf = serialize_melt_data (&md,
+                             res_size);
+  free_melt_data (&md);
+  return buf;
 }
 
 
@@ -137,6 +459,10 @@ struct TALER_MINT_RefreshMeltHandle
    */
   struct MAC_DownloadBuffer db;
 
+  /**
+   * Actual information about the melt operation.
+   */
+  struct MeltData *md;
 };
 
 
@@ -238,6 +564,7 @@ TALER_MINT_refresh_melt (struct TALER_MINT_Handle *mint,
   struct TALER_MINT_RefreshMeltHandle *rmh;
   CURL *eh;
   struct TALER_MINT_Context *ctx;
+  struct MeltData *md;
 
   if (GNUNET_YES !=
       MAH_handle_is_ready (mint))
@@ -245,7 +572,13 @@ TALER_MINT_refresh_melt (struct TALER_MINT_Handle *mint,
     GNUNET_break (0);
     return NULL;
   }
-  /* FIXME: parse "refresh_data" */
+  md = deserialize_melt_data (refresh_data,
+                              refresh_data_length);
+  if (NULL == md)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
 
   /* FIXME: totally bogus request building here: */
   melt_obj = json_pack ("{s:o, s:O}", /* f/wire */
@@ -257,7 +590,7 @@ TALER_MINT_refresh_melt (struct TALER_MINT_Handle *mint,
   rmh->mint = mint;
   rmh->melt_cb = melt_cb;
   rmh->melt_cb_cls = melt_cb_cls;
-
+  rmh->md = md;
   rmh->url = MAH_path_to_url (mint,
                               "/refresh/melt");
 
@@ -311,6 +644,8 @@ TALER_MINT_refresh_melt_cancel (struct TALER_MINT_RefreshMeltHandle *rmh)
     rmh->job = NULL;
   }
   GNUNET_free_non_null (rmh->db.buf);
+  free_melt_data (rmh->md); /* does not free 'md' itself */
+  GNUNET_free (rmh->md);
   GNUNET_free (rmh->url);
   GNUNET_free (rmh->json_enc);
   GNUNET_free (rmh);
@@ -361,6 +696,10 @@ struct TALER_MINT_RefreshRevealHandle
    */
   struct MAC_DownloadBuffer db;
 
+  /**
+   * Actual information about the melt operation.
+   */
+  struct MeltData *md;
 
 };
 
@@ -459,6 +798,7 @@ TALER_MINT_refresh_reveal (struct TALER_MINT_Handle *mint,
   json_t *reveal_obj;
   CURL *eh;
   struct TALER_MINT_Context *ctx;
+  struct MeltData *md;
 
   if (GNUNET_YES !=
       MAH_handle_is_ready (mint))
@@ -466,7 +806,13 @@ TALER_MINT_refresh_reveal (struct TALER_MINT_Handle *mint,
     GNUNET_break (0);
     return NULL;
   }
-  /* FIXME: parse "refresh_data" */
+  md = deserialize_melt_data (refresh_data,
+                              refresh_data_length);
+  if (NULL == md)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
 
   /* FIXME: totally bogus request building here: */
   reveal_obj = json_pack ("{s:o, s:O}", /* f/wire */
@@ -477,7 +823,7 @@ TALER_MINT_refresh_reveal (struct TALER_MINT_Handle *mint,
   rrh->mint = mint;
   rrh->reveal_cb = reveal_cb;
   rrh->reveal_cb_cls = reveal_cb_cls;
-
+  rrh->md = md;
   rrh->url = MAH_path_to_url (rrh->mint,
                               "/refresh/reveal");
 
@@ -533,6 +879,8 @@ TALER_MINT_refresh_reveal_cancel (struct TALER_MINT_RefreshRevealHandle *rrh)
   GNUNET_free_non_null (rrh->db.buf);
   GNUNET_free (rrh->url);
   GNUNET_free (rrh->json_enc);
+  free_melt_data (rrh->md); /* does not free 'md' itself */
+  GNUNET_free (rrh->md);
   GNUNET_free (rrh);
 }
 
