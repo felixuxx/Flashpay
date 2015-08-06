@@ -20,6 +20,7 @@
  */
 #include "platform.h"
 #include "perf_taler_mintdb_interpreter.h"
+#include "perf_taler_mintdb_init.h"
 
 
 #define NB_DENOMINATION_INIT  2
@@ -35,13 +36,46 @@
 #define NB_WITHDRAW_SAVE  1
 
 /**
+ * Allocate, copies and free all the data used in the interpreter
+ * Used to check for memory leaks
+ */
+void
+test_alocate ()
+{
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dki, *dki_copy;
+  struct PERF_TALER_MINTDB_Reserve *reserve, *reserve_copy;
+  struct PERF_TALER_MINTDB_Coin *coin, *coin_copy;
+  struct TALER_MINTDB_Deposit *deposit, *deposit_copy;
+
+  dki = PERF_TALER_MINTDB_denomination_init ();
+  reserve = PERF_TALER_MINTDB_reserve_init ();
+  coin = PERF_TALER_MINTDB_coin_init (dki,
+                                      reserve);
+  deposit = PERF_TALER_MINTDB_deposit_init (coin);
+
+  dki_copy = PERF_TALER_MINTDB_denomination_copy (dki);
+  reserve_copy = PERF_TALER_MINTDB_reserve_copy (reserve);
+  coin_copy = PERF_TALER_MINTDB_coin_copy (coin);
+  deposit_copy = PERF_TALER_MINTDB_deposit_copy (deposit);
+
+  PERF_TALER_MINTDB_denomination_free (dki);
+  PERF_TALER_MINTDB_denomination_free (dki_copy);
+  PERF_TALER_MINTDB_reserve_free (reserve);
+  PERF_TALER_MINTDB_reserve_free (reserve_copy);
+  PERF_TALER_MINTDB_coin_free (coin);
+  PERF_TALER_MINTDB_coin_free (coin_copy);
+  PERF_TALER_MINTDB_deposit_free (deposit);
+  PERF_TALER_MINTDB_deposit_free (deposit_copy);
+}
+
+/**
  * Runs the performances tests for the mint database
  * and logs the results using Gauger
  */
 int
 main (int argc, char ** argv)
 {
-  int ret;
+  int ret = 0;
   struct PERF_TALER_MINTDB_Cmd init[] =
   {
     PERF_TALER_MINTDB_INIT_CMD_END ("init")
@@ -128,11 +162,11 @@ main (int argc, char ** argv)
     PERF_TALER_MINTDB_INIT_CMD_END ("end"),
   };
   
+  test_alocate ();
   ret = PERF_TALER_MINTDB_run_benchmark ("perf-taler-mintdb",
                                          "./test-mint-db-postgres.conf",
                                          init,
                                          benchmark);
-  
   if (GNUNET_SYSERR == ret)
     return 1;
   return 0;
