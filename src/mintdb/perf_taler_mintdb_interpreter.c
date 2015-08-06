@@ -248,10 +248,10 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
           }
           cmd[i].details.save_array.index_loop = ret;
 
+          GNUNET_assert (NULL == cmd[i].details.save_array.data_saved);
           cmd[i].details.save_array.data_saved =
             GNUNET_new_array (cmd[i].details.save_array.nb_saved,
                               struct PERF_TALER_MINTDB_Data);
-          GNUNET_assert (NULL != cmd[i].details.save_array.data_saved);
           cmd[i].details.save_array.data_saved[0].type =
             cmd[cmd[i].details.save_array.index_save].exposed.type;
         }
@@ -700,7 +700,7 @@ interpret_save_array (struct PERF_TALER_MINTDB_interpreter_state *state)
   {
     cmd->details.save_array.index = 0;
   }
-  /* The probobility distribution of the saved items will be a little biased
+  /* The probability distribution of the saved items will be a little biased
      against the few last items but it should not be a big problem. */
   selection_chance = loop_ref->details.loop.max_iterations /
     cmd->details.save_array.nb_saved;
@@ -1240,18 +1240,15 @@ PERF_TALER_MINTDB_interpret (struct TALER_MINTDB_Plugin *db_plugin,
   struct PERF_TALER_MINTDB_interpreter_state state =
   {.i = 0, .cmd = cmd, .plugin = db_plugin};
 
-
-  ret = cmd_init (state.cmd);
+  ret = cmd_init (cmd);
   if (GNUNET_SYSERR == ret)
     return ret;
   state.session = db_plugin->get_session (db_plugin->cls,
                                           GNUNET_YES);
   GNUNET_assert (NULL != state.session);
   ret = interpret (&state);
-  if (GNUNET_SYSERR == ret)
-    return ret;
   cmd_clean (cmd);
-  return GNUNET_OK;
+  return ret;
 }
 
 
@@ -1263,7 +1260,7 @@ PERF_TALER_MINTDB_interpret (struct TALER_MINTDB_Plugin *db_plugin,
  * @param init the commands to use for the database initialisation,
  * if #NULL the standard initialization is used
  * @param benchmark the commands for the benchmark
- * @return #GNUNET_OK upon success; GNUNET_SYSERR upon failure
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 int
 PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,

@@ -25,14 +25,17 @@
 #define NB_DENOMINATION_INIT  15
 #define NB_DENOMINATION_SAVE  15
 
-#define NB_RESERVE_INIT   10000
-#define NB_RESERVE_SAVE   1000
+#define BIGGER 10
+#define BIG 4
 
-#define NB_DEPOSIT_INIT   10000
-#define NB_DEPOSIT_SAVE   1000
+#define NB_RESERVE_INIT   BIGGER
+#define NB_RESERVE_SAVE   BIG
 
-#define NB_WITHDRAW_INIT  10000
-#define NB_WITHDRAW_SAVE  1000
+#define NB_DEPOSIT_INIT   BIGGER
+#define NB_DEPOSIT_SAVE   BIG
+
+#define NB_WITHDRAW_INIT  BIGGER
+#define NB_WITHDRAW_SAVE  BIG
 
 /**
  * Runs the performances tests for the mint database
@@ -255,7 +258,7 @@ main (int argc, char ** argv)
                                        "item/sec",
                                        NB_WITHDRAW_SAVE),
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("End of /withdraw/sign"),
-    
+
     PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("12 - start"),
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("12 - /deposit",
                                      NB_DEPOSIT_SAVE),

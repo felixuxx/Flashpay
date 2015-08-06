@@ -346,9 +346,9 @@ PERF_TALER_MINTDB_coin_init (
   /* public_info */
   GNUNET_CRYPTO_eddsa_key_get_public (&coin->priv,
                                       &coin->public_info.coin_pub.eddsa_pub);
-  coin->public_info.denom_pub.rsa_public_key = 
+  coin->public_info.denom_pub.rsa_public_key =
     GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key);
-  coin->public_info.denom_sig.rsa_signature = 
+  coin->public_info.denom_sig.rsa_signature =
     GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
                             &coin->public_info.coin_pub,
                             sizeof (struct TALER_CoinSpendPublicKeyP));
@@ -356,9 +356,9 @@ PERF_TALER_MINTDB_coin_init (
   GNUNET_assert (NULL != coin->public_info.denom_sig.rsa_signature);
 
   /* blind */
-  coin->blind.sig.rsa_signature = 
+  coin->blind.sig.rsa_signature =
     GNUNET_CRYPTO_rsa_signature_dup (coin->public_info.denom_sig.rsa_signature);
-  coin->blind.denom_pub.rsa_public_key = 
+  coin->blind.denom_pub.rsa_public_key =
     GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key);
   GNUNET_assert (NULL != coin->blind.sig.rsa_signature);
   GNUNET_assert (NULL != coin->blind.denom_pub.rsa_public_key);
@@ -376,6 +376,7 @@ PERF_TALER_MINTDB_coin_init (
 
 /**
  * Copies the given coin
+ *
  * @param coin the coin to copy
  * @return a copy of coin; NULL if error
  */
@@ -385,25 +386,20 @@ PERF_TALER_MINTDB_coin_copy (const struct PERF_TALER_MINTDB_Coin *coin)
   struct PERF_TALER_MINTDB_Coin *copy;
 
   copy = GNUNET_new (struct PERF_TALER_MINTDB_Coin);
-  GNUNET_assert (NULL != copy);
   /* priv */
   copy->priv = coin->priv;
   /* public_info */
   copy->public_info.coin_pub = coin->public_info.coin_pub;
   copy->public_info.denom_pub.rsa_public_key =
-   GNUNET_CRYPTO_rsa_public_key_dup (coin->public_info.denom_pub.rsa_public_key);
-  GNUNET_assert (NULL != copy->public_info.denom_pub.rsa_public_key);
+    GNUNET_CRYPTO_rsa_public_key_dup (coin->public_info.denom_pub.rsa_public_key);
   copy->public_info.denom_sig.rsa_signature =
     GNUNET_CRYPTO_rsa_signature_dup (coin->public_info.denom_sig.rsa_signature);
-  GNUNET_assert (NULL != coin->public_info.denom_sig.rsa_signature);
 
   /* blind */
   copy->blind.sig.rsa_signature =
-   GNUNET_CRYPTO_rsa_signature_dup (coin->blind.sig.rsa_signature);
-  GNUNET_assert (NULL != copy->blind.sig.rsa_signature);
+    GNUNET_CRYPTO_rsa_signature_dup (coin->blind.sig.rsa_signature);
   copy->blind.denom_pub.rsa_public_key =
-   GNUNET_CRYPTO_rsa_public_key_dup (coin->blind.denom_pub.rsa_public_key);
-  GNUNET_assert (NULL != copy->blind.denom_pub.rsa_public_key);
+    GNUNET_CRYPTO_rsa_public_key_dup (coin->blind.denom_pub.rsa_public_key);
   copy->blind.amount_with_fee = coin->blind.amount_with_fee;
   copy->blind.withdraw_fee = coin->blind.withdraw_fee;
   copy->blind.reserve_pub = coin->blind.reserve_pub;
@@ -415,7 +411,8 @@ PERF_TALER_MINTDB_coin_copy (const struct PERF_TALER_MINTDB_Coin *coin)
 
 
 /**
- * Liberate memory of @a coin
+ * Free memory of @a coin
+ *
  * @param coin pointer to the structure to free
  */
 int
@@ -538,7 +535,7 @@ PERF_TALER_MINTDB_refresh_melt_copy (const struct TALER_MINTDB_RefreshMelt *melt
 
   copy = GNUNET_new (struct TALER_MINTDB_RefreshMelt);
   *copy = *melt;
-  copy->coin.denom_sig.rsa_signature = 
+  copy->coin.denom_sig.rsa_signature =
     GNUNET_CRYPTO_rsa_signature_dup (melt->coin.denom_sig.rsa_signature);
   GNUNET_assert (NULL != copy->coin.denom_sig.rsa_signature);
 
