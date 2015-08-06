@@ -64,7 +64,7 @@ data_free (struct PERF_TALER_MINTDB_Data *data)
         return;
       GNUNET_free (data->data.time);
       data->data.time = NULL;
-    return;
+      return;
 
     case PERF_TALER_MINTDB_DEPOSIT:
       if (NULL == data->data.deposit)
@@ -123,8 +123,8 @@ data_copy (const struct PERF_TALER_MINTDB_Data *data, struct PERF_TALER_MINTDB_D
       return;
 
     case PERF_TALER_MINTDB_COIN:
-      copy->data.coin =
-        PERF_TALER_MINTDB_coin_copy (data->data.coin);
+      copy->data.coin
+        = PERF_TALER_MINTDB_coin_copy (data->data.coin);
       return;
 
     case PERF_TALER_MINTDB_RESERVE:
@@ -934,7 +934,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
                                                    .details.get_reserve.label_reserve)));
 
           data = &state->cmd[reserve_index].exposed;
-                     
+
           GNUNET_assert (GNUNET_OK ==
                          (state->plugin->reserve_get (state->plugin->cls,
                                                       state->session,
