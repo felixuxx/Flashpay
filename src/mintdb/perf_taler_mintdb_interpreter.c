@@ -97,7 +97,6 @@ data_free (struct PERF_TALER_MINTDB_Data *data)
     default:
       break;
   }
-  data->type = PERF_TALER_MINTDB_NONE;
 }
 
 
@@ -111,7 +110,6 @@ static void
 data_copy (const struct PERF_TALER_MINTDB_Data *data,
            struct PERF_TALER_MINTDB_Data *copy)
 {
-  GNUNET_assert (PERF_TALER_MINTDB_NONE == copy->type);
   copy->type = data->type;
   switch (data->type)
   {
@@ -121,8 +119,8 @@ data_copy (const struct PERF_TALER_MINTDB_Data *data,
       return;
 
     case PERF_TALER_MINTDB_DEPOSIT:
-      copy->data.deposit =
-        PERF_TALER_MINTDB_deposit_copy (data->data.deposit);
+      copy->data.deposit
+        = PERF_TALER_MINTDB_deposit_copy (data->data.deposit);
       return;
 
     case PERF_TALER_MINTDB_COIN:
@@ -131,13 +129,13 @@ data_copy (const struct PERF_TALER_MINTDB_Data *data,
       return;
 
     case PERF_TALER_MINTDB_RESERVE:
-      copy->data.reserve =
-        PERF_TALER_MINTDB_reserve_copy (data->data.reserve);
+      copy->data.reserve
+        = PERF_TALER_MINTDB_reserve_copy (data->data.reserve);
       return;
 
     case PERF_TALER_MINTDB_DENOMINATION_INFO:
-      copy->data.dki =
-        PERF_TALER_MINTDB_denomination_copy (data->data.dki);
+      copy->data.dki
+        = PERF_TALER_MINTDB_denomination_copy (data->data.dki);
       return;
 
     default:
@@ -764,7 +762,6 @@ interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
   /* Extracting the data from the loop_indexth indice in save_index
    * array.
    */
-  data_free (&cmd->exposed);
   loaded_data = &state->cmd[save_index].details.save_array.data_saved[loop_iter];
   data_copy (loaded_data,
              &cmd->exposed);
@@ -783,7 +780,6 @@ interprete_load_random (struct PERF_TALER_MINTDB_interpreter_state *state)
   unsigned int index;
   int save_index;
 
-  data_free (&cmd->exposed);
   save_index = cmd->details.load_random.index_save;
   index = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
                                     state->cmd[save_index].details.save_array.nb_saved);
@@ -942,7 +938,6 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
                                                    .details.get_reserve.label_reserve)));
 
           data = &state->cmd[reserve_index].exposed;
-
           GNUNET_assert (GNUNET_OK ==
                          (state->plugin->reserve_get (state->plugin->cls,
                                                       state->session,
