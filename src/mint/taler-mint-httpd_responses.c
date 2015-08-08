@@ -713,13 +713,19 @@ TMH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *conne
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s, s:o, s:o, s:o, s:o, s:o}",
-                                       "error", "insufficient funds",
-                                       "coin-pub", TALER_json_from_data (coin_pub,
-                                                                         sizeof (struct TALER_CoinSpendPublicKeyP)),
-                                       "original-value", TALER_json_from_amount (&coin_value),
-                                       "residual-value", TALER_json_from_amount (&residual),
-                                       "requested-value", TALER_json_from_amount (&requested),
-                                       "history", history);
+                                       "error",
+                                       "insufficient funds",
+                                       "coin_pub",
+                                       TALER_json_from_data (coin_pub,
+                                                             sizeof (struct TALER_CoinSpendPublicKeyP)),
+                                       "original_value",
+                                       TALER_json_from_amount (&coin_value),
+                                       "residual_value",
+                                       TALER_json_from_amount (&residual),
+                                       "requested_value",
+                                       TALER_json_from_amount (&requested),
+                                       "history",
+                                       history);
 }
 
 
