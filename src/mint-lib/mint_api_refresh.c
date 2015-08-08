@@ -1063,7 +1063,7 @@ verify_refresh_melt_signature_ok (struct TALER_MINT_RefreshMeltHandle *rmh,
   struct MAJ_Specification spec[] = {
     MAJ_spec_fixed_auto ("mint_sig", &mint_sig),
     MAJ_spec_fixed_auto ("mint_pub", &mint_sig),
-    // MAJ_spec_uint16 ("noreveal_index", noreveal_index), // FIXME!
+    MAJ_spec_uint16 ("noreveal_index", noreveal_index),
     MAJ_spec_end
   };
   struct TALER_RefreshMeltConfirmationPS confirm;
@@ -1124,7 +1124,7 @@ verify_refresh_melt_signature_forbidden (struct TALER_MINT_RefreshMeltHandle *rm
   struct TALER_CoinSpendPublicKeyP coin_pub;
   unsigned int i;
   struct MAJ_Specification spec[] = {
-    // MAJ_spec_json ("history", &history), // FIXME!
+    MAJ_spec_json ("history", &history),
     MAJ_spec_fixed_auto ("coin_pub", &coin_pub),
     MAJ_spec_amount ("original_value", &original_value),
     MAJ_spec_amount ("requested_value", &melt_value_with_fee),
@@ -1165,6 +1165,7 @@ verify_refresh_melt_signature_forbidden (struct TALER_MINT_RefreshMeltHandle *rm
   {
     /* coin not found in our original request */
     GNUNET_break_op (0);
+    json_decref (history);
     return GNUNET_SYSERR;
   }
 
@@ -1174,6 +1175,7 @@ verify_refresh_melt_signature_forbidden (struct TALER_MINT_RefreshMeltHandle *rm
   {
     /* We disagree on the value of the coin */
     GNUNET_break_op (0);
+    json_decref (history);
     return GNUNET_SYSERR;
   }
   if (0 != TALER_amount_cmp (&melt_value_with_fee,
@@ -1181,6 +1183,7 @@ verify_refresh_melt_signature_forbidden (struct TALER_MINT_RefreshMeltHandle *rm
   {
     /* We disagree on the value of the coin */
     GNUNET_break_op (0);
+    json_decref (history);
     return GNUNET_SYSERR;
   }
 
@@ -1194,8 +1197,10 @@ verify_refresh_melt_signature_forbidden (struct TALER_MINT_RefreshMeltHandle *rm
                                        &total))
   {
     GNUNET_break_op (0);
+    json_decref (history);
     return GNUNET_SYSERR;
   }
+  json_decref (history);
 
   /* check if melt operation was really too expensive given history */
   if (GNUNET_OK !=
