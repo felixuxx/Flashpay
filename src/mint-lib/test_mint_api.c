@@ -81,7 +81,23 @@ enum OpCode
   /**
    * Deposit a coin (pay with it).
    */
-  OC_DEPOSIT
+  OC_DEPOSIT,
+
+  /**
+   * Melt a (set of) coins.
+   */
+  OC_REFRESH_MELT,
+
+  /**
+   * Complete melting session by withdrawing melted coins.
+   */
+  OC_REFRESH_REVEAL,
+
+  /**
+   * Verify mint's /refresh/link by linking original private key to
+   * results from #OC_REFRESH_REVEAL step.
+   */
+  OC_REFRESH_LINK
 
 };
 
@@ -112,6 +128,9 @@ struct Command
   union
   {
 
+    /**
+     * Information for a #OC_ADMIN_ADD_INCOMING command.
+     */
     struct
     {
 
@@ -145,6 +164,9 @@ struct Command
 
     } admin_add_incoming;
 
+    /**
+     * Information for a #OC_WITHDRAW_STATUS command.
+     */
     struct
     {
 
@@ -166,8 +188,12 @@ struct Command
 
     } withdraw_status;
 
+    /**
+     * Information for a #OC_WITHDRAW_SIGN command.
+     */
     struct
     {
+
       /**
        * Which reserve should we withdraw from?
        */
@@ -210,6 +236,9 @@ struct Command
 
     } withdraw_sign;
 
+    /**
+     * Information for a #OC_DEPOSIT command.
+     */
     struct
     {
 
@@ -257,6 +286,117 @@ struct Command
       struct TALER_MINT_DepositHandle *dh;
 
     } deposit;
+
+    /**
+     * Information for a #OC_REFRESH_MELT command.
+     */
+    struct
+    {
+
+      /**
+       * Information about coins to be melted.
+       */
+      struct
+      {
+
+        /**
+         * Amount to melt (including fee).
+         */
+        const char *amount;
+
+        /**
+         * Reference to withdraw_sign operations for coin to
+         * be used for the /refresh/melt operation.
+         */
+        const char *coin_ref;
+
+      } *melted_coins;
+
+      /**
+       * Which reserves should we withdraw the fresh coins from?
+       */
+      const char **reserve_references;
+
+      /**
+       * Melt handle while operation is running.
+       */
+      struct TALER_MINT_RefreshMeltHandle *rmh;
+
+      /**
+       * Data used in the refresh operation, set by the interpreter.
+       */
+      char *refresh_data;
+
+      /**
+       * Number of bytes in @e refresh_data, set by the interpreter.
+       */
+      size_t refresh_data_length;
+
+      /**
+       * Set by the interpreter (upon completion) to the noreveal
+       * index selected by the mint.
+       */
+      uint16_t noreveal_index;
+
+    } refresh_melt;
+
+    /**
+     * Information for a #OC_REFRESH_REVEAL command.
+     */
+    struct
+    {
+
+      /**
+       * Melt operation this is the matching reveal for.
+       */
+      const char *melt_ref;
+
+      /**
+       * Number of fresh coins withdrawn, set by the interpreter.
+       * Length of the @e fresh_coins array.
+       */
+      unsigned int num_fresh_coins;
+
+      /**
+       * Information about coins withdrawn, set by the interpreter.
+       */
+      struct
+      {
+
+        /**
+         * If @e amount is NULL, this specifies the denomination key to
+         * use.  Otherwise, this will be set (by the interpreter) to the
+         * denomination PK matching @e amount.
+         */
+        const struct TALER_MINT_DenomPublicKey *pk;
+
+        /**
+         * Set (by the interpreter) to the mint's signature over the
+         * coin's public key.
+         */
+        struct TALER_DenominationSignature sig;
+
+        /**
+         * Set (by the interpreter) to the coin's private key.
+         */
+        struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+      } *fresh_coins;
+
+    } refresh_reveal;
+
+    /**
+     * Information for a #OC_REFRESH_LINK command.
+     */
+    struct
+    {
+
+      /**
+       * Reveal operation this is the matching link for.
+       */
+      const char *reveal_ref;
+
+    } refresh_link;
 
   } details;
 
@@ -1009,6 +1149,21 @@ interpreter_run (void *cls,
       trigger_context_task ();
       return;
     }
+  case OC_REFRESH_MELT:
+    /* not implemented */
+    GNUNET_break (0);
+    is->ip++;
+    break;
+  case OC_REFRESH_REVEAL:
+    /* not implemented */
+    GNUNET_break (0);
+    is->ip++;
+    break;
+  case OC_REFRESH_LINK:
+    /* not implemented */
+    GNUNET_break (0);
+    is->ip++;
+    break;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unknown instruction %d at %u (%s)\n",
