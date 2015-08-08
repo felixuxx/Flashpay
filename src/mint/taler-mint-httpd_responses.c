@@ -695,7 +695,7 @@ TMH_RESPONSE_reply_withdraw_sign_success (struct MHD_Connection *connection,
  * @param coin_pub public key of the coin
  * @param coin_value original value of the coin
  * @param tl transaction history for the coin
- * @param requested how much this coin was supposed to contribute
+ * @param requested how much this coin was supposed to contribute, including fee
  * @param residual remaining value of the coin (after subtracting @a tl)
  * @return a MHD result code
  */

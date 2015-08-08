@@ -25,6 +25,7 @@
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_mint_service.h"
+#include "mint_api_common.h"
 #include "mint_api_json.h"
 #include "mint_api_context.h"
 #include "mint_api_handle.h"
@@ -57,6 +58,11 @@ struct MeltedCoinP
    * The applicable fee for withdrawing a coin of this denomination
    */
   struct TALER_AmountNBO fee_melt;
+
+  /**
+   * The original value of the coin.
+   */
+  struct TALER_AmountNBO original_value;
 
   /**
    * Transfer private keys for each cut-and-choose dimension.
@@ -168,6 +174,11 @@ struct MeltedCoin
    * The applicable fee for melting a coin of this denomination
    */
   struct TALER_Amount fee_melt;
+
+  /**
+   * The original value of the coin.
+   */
+  struct TALER_Amount original_value;
 
   /**
    * Transfer private keys for each cut-and-choose dimension.
@@ -381,9 +392,10 @@ serialize_melted_coin (const struct MeltedCoin *mc,
   mcp.coin_priv = mc->coin_priv;
   TALER_amount_hton (&mcp.melt_amount_with_fee,
                      &mc->melt_amount_with_fee);
-
   TALER_amount_hton (&mcp.fee_melt,
                      &mc->fee_melt);
+  TALER_amount_hton (&mcp.original_value,
+                     &mc->original_value);
   for (i=0;i<TALER_CNC_KAPPA;i++)
     mcp.transfer_priv[i] = mc->transfer_priv[i];
   mcp.deposit_valid_until = GNUNET_TIME_absolute_hton (mc->deposit_valid_until);
@@ -464,6 +476,8 @@ deserialize_melted_coin (struct MeltedCoin *mc,
                      &mcp.melt_amount_with_fee);
   TALER_amount_ntoh (&mc->fee_melt,
                      &mcp.fee_melt);
+  TALER_amount_ntoh (&mc->original_value,
+                     &mcp.original_value);
   for (i=0;i<TALER_CNC_KAPPA;i++)
     mc->transfer_priv[i] = mcp.transfer_priv[i];
   mc->deposit_valid_until = GNUNET_TIME_absolute_ntoh (mcp.deposit_valid_until);
@@ -868,6 +882,7 @@ TALER_MINT_refresh_prepare (unsigned int num_melts,
     md.melted_coins[i].coin_priv = melt_privs[i];
     md.melted_coins[i].melt_amount_with_fee = melt_amounts[i];
     md.melted_coins[i].fee_melt = melt_pks[i].fee_refresh;
+    md.melted_coins[i].original_value = melt_pks[i].value;
     for (j=0;j<TALER_CNC_KAPPA;j++)
     {
       struct GNUNET_CRYPTO_EcdhePrivateKey *tpk;
@@ -1091,6 +1106,122 @@ verify_refresh_melt_signature_ok (struct TALER_MINT_RefreshMeltHandle *rmh,
 
 
 /**
+ * Verify that the signatures on the "403 FORBIDDEN" response from the
+ * mint demonstrating customer double-spending are valid.
+ *
+ * @param rmh melt handle
+ * @param json json reply with the signature(s) and transaction history
+ * @return #GNUNET_OK if the signature(s) is valid, #GNUNET_SYSERR if not
+ */
+static int
+verify_refresh_melt_signature_forbidden (struct TALER_MINT_RefreshMeltHandle *rmh,
+                                         json_t *json)
+{
+  json_t *history;
+  struct TALER_Amount original_value;
+  struct TALER_Amount melt_value_with_fee;
+  struct TALER_Amount total;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+  unsigned int i;
+  struct MAJ_Specification spec[] = {
+    // MAJ_spec_json ("history", &history), // FIXME!
+    MAJ_spec_fixed_auto ("coin_pub", &coin_pub),
+    MAJ_spec_amount ("original_value", &original_value),
+    MAJ_spec_amount ("requested_value", &melt_value_with_fee),
+    MAJ_spec_end
+  };
+  const struct MeltedCoin *mc;
+
+  /* parse JSON reply */
+  if (GNUNET_OK !=
+      MAJ_parse_json (json,
+                      spec))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  /* Find out which coin was deemed problematic by the mint */
+  mc = NULL;
+  for (i=0;i<rmh->md->num_melted_coins;i++)
+  {
+    if (0 == TALER_amount_cmp (&melt_value_with_fee,
+                               &rmh->md->melted_coins[i].melt_amount_with_fee))
+    {
+      struct TALER_CoinSpendPublicKeyP mc_pub;
+
+      GNUNET_CRYPTO_eddsa_key_get_public (&rmh->md->melted_coins[i].coin_priv.eddsa_priv,
+                                          &mc_pub.eddsa_pub);
+      if (0 == memcmp (&mc_pub,
+                       &coin_pub,
+                       sizeof (struct TALER_CoinSpendPublicKeyP)))
+      {
+        mc = &rmh->md->melted_coins[i];
+        break;
+      }
+    }
+  }
+  if (NULL == mc)
+  {
+    /* coin not found in our original request */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  /* check basic coin properties */
+  if (0 != TALER_amount_cmp (&original_value,
+                             &mc->original_value))
+  {
+    /* We disagree on the value of the coin */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 != TALER_amount_cmp (&melt_value_with_fee,
+                             &mc->melt_amount_with_fee))
+  {
+    /* We disagree on the value of the coin */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  /* verify coin history */
+  history = json_object_get (json,
+                             "history");
+  if (GNUNET_OK !=
+      TALER_MINT_verify_coin_history_ (original_value.currency,
+                                       &coin_pub,
+                                       history,
+                                       &total))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  /* check if melt operation was really too expensive given history */
+  if (GNUNET_OK !=
+      TALER_amount_add (&total,
+                        &total,
+                        &melt_value_with_fee))
+  {
+    /* clearly not OK if our transaction would have caused
+       the overflow... */
+    return GNUNET_OK;
+  }
+
+  if (0 >= TALER_amount_cmp (&total,
+                             &original_value))
+  {
+    /* transaction should have still fit */
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  /* everything OK, valid proof of double-spending was provided */
+  return GNUNET_OK;
+}
+
+
+/**
  * Function called when we're done processing the
  * HTTP /refresh/melt request.
  *
@@ -1138,7 +1269,13 @@ handle_refresh_melt_finished (void *cls,
     break;
   case MHD_HTTP_FORBIDDEN:
     /* Double spending; check signatures on transaction history */
-    GNUNET_break (0); // FIXME: NOT implemented!
+    if (GNUNET_OK !=
+        verify_refresh_melt_signature_forbidden (rmh,
+                                                 json))
+    {
+      GNUNET_break_op (0);
+      response_code = 0;
+    }
     break;
   case MHD_HTTP_UNAUTHORIZED:
     /* Nothing really to verify, mint says one of the signatures is
