@@ -1123,10 +1123,18 @@ TALER_MINT_refresh_melt (struct TALER_MINT_Handle *mint,
                          void *melt_cb_cls)
 {
   json_t *melt_obj;
+  json_t *new_denoms;
+  json_t *melt_coins;
+  json_t *coin_evs;
+  json_t *transfer_pubs;
+  json_t *secret_encs;
+  json_t *link_encs;
   struct TALER_MINT_RefreshMeltHandle *rmh;
   CURL *eh;
   struct TALER_MINT_Context *ctx;
   struct MeltData *md;
+  unsigned int i;
+  unsigned int j;
 
   if (GNUNET_YES !=
       MAH_handle_is_ready (mint))
@@ -1142,10 +1150,32 @@ TALER_MINT_refresh_melt (struct TALER_MINT_Handle *mint,
     return NULL;
   }
 
-  /* FIXME: totally bogus request building here: */
-  melt_obj = json_pack ("{s:o, s:O}", /* f/wire */
-                        "4", 42,
-                        "6", 62);
+  /* FIXME: inomplete request building here: */
+  new_denoms = json_array ();
+  melt_coins = json_array ();
+  coin_evs = json_array ();
+  transfer_pubs = json_array ();
+  secret_encs = json_array ();
+  link_encs = json_array ();
+  for (i=0;i<md->num_melted_coins;i++)
+  {
+    for (j=0;j<TALER_CNC_KAPPA;j++)
+    {
+    }
+  }
+  for (i=0;i<md->num_fresh_coins;i++)
+  {
+    for (j=0;j<TALER_CNC_KAPPA;j++)
+    {
+    }
+  }
+  melt_obj = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
+                        "new_denoms", new_denoms,
+                        "melt_coins", melt_coins,
+                        "coin_evs", coin_evs,
+                        "transfer_pubs", transfer_pubs,
+                        "secret_encs", secret_encs,
+                        "link_encs", link_encs);
 
 
   rmh = GNUNET_new (struct TALER_MINT_RefreshMeltHandle);
