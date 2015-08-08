@@ -103,6 +103,28 @@ enum OpCode
 
 
 /**
+ * Structure specifying details about a coin to be melted.
+ * Used in a NULL-terminated array as part of command
+ * specification.
+ */
+struct MeltDetails
+{
+
+  /**
+   * Amount to melt (including fee).
+   */
+  const char *amount;
+
+  /**
+   * Reference to withdraw_sign operations for coin to
+   * be used for the /refresh/melt operation.
+   */
+  const char *coin_ref;
+
+};
+
+
+/**
  * Details for a mint operation to execute.
  */
 struct Command
@@ -254,6 +276,12 @@ struct Command
       const char *coin_ref;
 
       /**
+       * If this @e coin_ref refers to an operation that generated
+       * an array of coins, this value determines which coin to use.
+       */
+      unsigned int coin_idx;
+
+      /**
        * JSON string describing the merchant's "wire details".
        */
       const char *wire_details;
@@ -296,21 +324,7 @@ struct Command
       /**
        * Information about coins to be melted.
        */
-      struct
-      {
-
-        /**
-         * Amount to melt (including fee).
-         */
-        const char *amount;
-
-        /**
-         * Reference to withdraw_sign operations for coin to
-         * be used for the /refresh/melt operation.
-         */
-        const char *coin_ref;
-
-      } *melted_coins;
+      struct MeltDetails *melted_coins;
 
       /**
        * Which reserves should we withdraw the fresh coins from?
@@ -1391,6 +1405,24 @@ run (void *cls,
      const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   struct InterpreterState *is;
+  static struct MeltDetails melt_coins_1[] = {
+    { "coin_ref1", "EUR:1.1" }, // FIXME: pick sensible values
+    { "coin_ref2", "EUR:1.1" }, // FIXME: pick sensible values
+    { "coin_ref3", "EUR:1.1" }, // FIXME: pick sensible values
+    { NULL, NULL }
+  };
+  static const char *melt_fresh_reserves_1[] = {
+    "create-reserve-1", // FIXME: pick sensible values
+    "create-reserve-1", // FIXME: pick sensible values
+    "create-reserve-1", // FIXME: pick sensible values
+    NULL
+  };
+  static const char *melt_fresh_reserves_2[] = {
+    "create-reserve-1", // FIXME: pick sensible values
+    "create-reserve-1", // FIXME: pick sensible values
+    "create-reserve-1", // FIXME: pick sensible values
+    NULL
+  };
   static struct Command commands[] =
   {
     /* Fill reserve with EUR:5.01, as withdraw fee is 1 ct per config */
@@ -1457,6 +1489,46 @@ run (void *cls,
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
       .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":2 } }",
       .details.deposit.transaction_id = 1 },
+
+#if FUTURE
+    /* Test running a successful melt operation */
+    { .oc = OC_REFRESH_MELT,
+      .label = "melt-1",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.refresh_melt.melted_coins = melt_coins_1,
+      .details.refresh_melt.reserve_references = melt_fresh_reserves_1 },
+
+    /* Complete (successful) melt operation, and withdraw the coins */
+    { .oc = OC_REFRESH_REVEAL,
+      .label = "reveal-1",
+      .melt_ref = "melt-1",
+      .expected_response_code = MHD_HTTP_OK },
+
+    /* Test that /refresh/link works */
+    { .oc = OC_REFRESH_LINK,
+      .label = "link-1",
+      .reveal_ref = "reveal-1",
+      .expected_response_code = MHD_HTTP_OK },
+
+    /* Test successfully spending coins from the refresh operation */
+    { .oc = OC_DEPOSIT,
+      .label = "deposit-refreshed-1",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.deposit.amount = "EUR:5",  // FIXME: pick sensible value
+      .details.deposit.coin_ref = "reveal-1",
+      .details.deposit.coin_idx = 0,
+      .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
+      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":3 } }",
+      .details.deposit.transaction_id = 2 },
+
+    /* Test running a failing melt operation */
+    { .oc = OC_REFRESH_MELT,
+      .label = "melt-2",
+      .expected_response_code = MHD_HTTP_FORBIDDEN,
+      .details.refresh_melt.melted_coins = melt_coins_1,
+      .details.refresh_melt.reserve_references = melt_fresh_reserves_2 },
+
+#endif
 
     { .oc = OC_END }
   };
