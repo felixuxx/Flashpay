@@ -869,6 +869,7 @@ TALER_MINT_refresh_prepare (unsigned int num_melts,
   unsigned int j;
   struct GNUNET_HashContext *hash_context;
 
+  /* build up melt data structure */
   for (i=0;i<TALER_CNC_KAPPA;i++)
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
                                 &md.link_secrets[i],
@@ -1660,7 +1661,105 @@ struct TALER_MINT_RefreshRevealHandle
    */
   struct MeltData *md;
 
+  /**
+   * The index selected by the mint in cut-and-choose to not be revealed.
+   */
+  uint16_t noreveal_index;
+
 };
+
+
+/**
+ * We got a 200 OK response for the /refresh/reveal operation.
+ * Extract the coin signatures and return them to the caller.
+ * The signatures we get from the mint is for the blinded value.
+ * Thus, we first must unblind them and then should verify their
+ * validity.
+ *
+ * If everything checks out, we return the unblinded signatures
+ * to the application via the callback.
+ *
+ * @param rrh operation handle
+ * @param jsona reply from the mint
+ * @param[out] coin_privs array of length `num_fresh_coins`, initialized to contain private keys
+ * @param[out] sigs array of length `num_fresh_coins`, initialized to cointain RSA signatures
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
+ */
+static int
+refresh_reveal_ok (struct TALER_MINT_RefreshRevealHandle *rrh,
+                   json_t *jsona,
+                   struct TALER_CoinSpendPrivateKeyP *coin_privs,
+                   struct TALER_DenominationSignature *sigs)
+{
+  unsigned int i;
+
+  if (! json_is_array (jsona))
+  {
+    /* We expected an array of coins */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (rrh->md->num_fresh_coins != json_array_size (jsona))
+  {
+    /* Number of coins generated does not match our expectation */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  for (i=0;i<rrh->md->num_fresh_coins;i++)
+  {
+    const struct FreshCoin *fc;
+    struct TALER_DenominationPublicKey *pk;
+    json_t *json;
+    struct GNUNET_CRYPTO_rsa_Signature *blind_sig;
+    struct GNUNET_CRYPTO_rsa_Signature *sig;
+    struct TALER_CoinSpendPublicKeyP coin_pub;
+    struct GNUNET_HashCode coin_hash;
+
+    struct MAJ_Specification spec[] = {
+      MAJ_spec_rsa_signature ("ev_sig", &blind_sig),
+      MAJ_spec_end
+    };
+
+    fc = &rrh->md->fresh_coins[rrh->noreveal_index][i];
+    pk = &rrh->md->fresh_pks[i];
+    json = json_array_get (jsona, i);
+    GNUNET_assert (NULL != json);
+
+    if (GNUNET_OK !=
+        MAJ_parse_json (json,
+                        spec))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+
+    /* unblind the signature */
+    sig = GNUNET_CRYPTO_rsa_unblind (blind_sig,
+                                     fc->blinding_key.rsa_blinding_key,
+                                     pk->rsa_public_key);
+    GNUNET_CRYPTO_rsa_signature_free (blind_sig);
+
+    /* verify the signature */
+    GNUNET_CRYPTO_eddsa_key_get_public (&fc->coin_priv.eddsa_priv,
+                                        &coin_pub.eddsa_pub);
+    GNUNET_CRYPTO_hash (&coin_pub.eddsa_pub,
+                        sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
+                        &coin_hash);
+
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_rsa_verify (&coin_hash,
+                                  sig,
+                                  pk->rsa_public_key))
+    {
+      GNUNET_break_op (0);
+      GNUNET_CRYPTO_rsa_signature_free (sig);
+      return GNUNET_SYSERR;
+    }
+    coin_privs[i] = fc->coin_priv;
+    sigs[i].rsa_signature = sig;
+  }
+  return GNUNET_OK;
+}
 
 
 /**
@@ -1687,8 +1786,35 @@ handle_refresh_reveal_finished (void *cls,
   case 0:
     break;
   case MHD_HTTP_OK:
-    GNUNET_break (0); // FIXME: NOT implemented!
-    // rrh->reveal_cb = NULL; (call with real result, do not call again below)
+    {
+      struct TALER_CoinSpendPrivateKeyP coin_privs[rrh->md->num_fresh_coins];
+      struct TALER_DenominationSignature sigs[rrh->md->num_fresh_coins];
+      unsigned int i;
+      int ret;
+
+      memset (sigs, 0, sizeof (sigs));
+      ret = refresh_reveal_ok (rrh,
+                               json,
+                               coin_privs,
+                               sigs);
+      if (GNUNET_OK != ret)
+      {
+        response_code = 0;
+      }
+      else
+      {
+        rrh->reveal_cb (rrh->reveal_cb_cls,
+                        MHD_HTTP_OK,
+                        rrh->md->num_fresh_coins,
+                        coin_privs,
+                        sigs,
+                        json);
+        rrh->reveal_cb = NULL;
+      }
+      for (i=0;i<rrh->md->num_fresh_coins;i++)
+        if (NULL != sigs[i].rsa_signature)
+          GNUNET_CRYPTO_rsa_signature_free (sigs[i].rsa_signature);
+    }
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the mint is buggy
@@ -1820,6 +1946,7 @@ TALER_MINT_refresh_reveal (struct TALER_MINT_Handle *mint,
   /* finally, we can actually issue the request */
   rrh = GNUNET_new (struct TALER_MINT_RefreshRevealHandle);
   rrh->mint = mint;
+  rrh->noreveal_index = noreveal_index;
   rrh->reveal_cb = reveal_cb;
   rrh->reveal_cb_cls = reveal_cb_cls;
   rrh->md = md;
