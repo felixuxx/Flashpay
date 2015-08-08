@@ -841,6 +841,7 @@ struct TALER_MINT_RefreshLinkHandle;
  * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
  * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
  * @param sigs array of signature over @a num_coins coins, NULL on error
+ * @param pubs array of public keys for the @a sigs, NULL on error
  * @param full_response full response from the mint (for logging, in case of errors)
  */
 typedef void
@@ -849,6 +850,7 @@ typedef void
                                    unsigned int num_coins,
                                    const struct TALER_CoinSpendPrivateKeyP *coin_privs,
                                    const struct TALER_DenominationSignature *sigs,
+                                   const struct TALER_DenominationPublicKey *pubs,
                                    json_t *full_response);
 
 

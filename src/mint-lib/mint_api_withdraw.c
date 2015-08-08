@@ -287,6 +287,7 @@ handle_withdraw_status_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     {
+      /* TODO: move into separate function... */
       json_t *history;
       unsigned int len;
       struct TALER_Amount balance;
