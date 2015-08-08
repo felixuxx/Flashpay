@@ -68,6 +68,16 @@ struct MeltedCoinP
    */
   struct GNUNET_TIME_AbsoluteNBO deposit_valid_until;
 
+  /**
+   * Size of the encoded public key that follows.
+   */
+  uint16_t pbuf_size;
+
+  /**
+   * Size of the encoded signature that follows.
+   */
+  uint16_t sbuf_size;
+
   /* Followed by serializations of:
      1) struct TALER_DenominationPublicKey pub_key;
      2) struct TALER_DenominationSignature sig;
@@ -92,6 +102,11 @@ struct FreshCoinP
    * key in the linkage data.
    */
   struct TALER_LinkSecretP link_secret;
+
+  /**
+   * Size of the encoded blinding key that follows.
+   */
+  uint32_t bbuf_size;
 
   /* Followed by serialization of:
      - struct TALER_DenominationBlindingKey blinding_key;
@@ -263,8 +278,12 @@ struct MeltData
 static void
 free_melted_coin (struct MeltedCoin *mc)
 {
-  GNUNET_CRYPTO_rsa_public_key_free (mc->pub_key.rsa_public_key);
-  GNUNET_CRYPTO_rsa_signature_free (mc->sig.rsa_signature);
+  if (NULL == mc)
+    return;
+  if (NULL != mc->pub_key.rsa_public_key)
+    GNUNET_CRYPTO_rsa_public_key_free (mc->pub_key.rsa_public_key);
+  if (NULL != mc->sig.rsa_signature)
+    GNUNET_CRYPTO_rsa_signature_free (mc->sig.rsa_signature);
 }
 
 
@@ -277,12 +296,18 @@ free_melted_coin (struct MeltedCoin *mc)
 static void
 free_fresh_coin (struct FreshCoin *fc)
 {
-  GNUNET_CRYPTO_rsa_blinding_key_free (fc->blinding_key.rsa_blinding_key);
+  if (NULL == fc)
+    return;
+  if (NULL != fc->blinding_key.rsa_blinding_key)
+    GNUNET_CRYPTO_rsa_blinding_key_free (fc->blinding_key.rsa_blinding_key);
 }
 
 
 /**
- * Free all information associated with a melting session.
+ * Free all information associated with a melting session.  Note
+ * that we allow the melting session to be only partially initialized,
+ * as we use this function also when freeing melt data that was not
+ * fully initialized (i.e. due to failures in #deserialize_melt_data()).
  *
  * @param md melting data to release, the pointer itself is NOT
  *           freed (as it is typically not allocated by itself)
@@ -293,19 +318,28 @@ free_melt_data (struct MeltData *md)
   unsigned int i;
   unsigned int j;
 
-  for (i=0;i<md->num_melted_coins;i++)
-    free_melted_coin (&md->melted_coins[i]);
-  GNUNET_free (md->melted_coins);
-
-  for (i=0;i<md->num_fresh_coins;i++)
-    GNUNET_CRYPTO_rsa_public_key_free (md->fresh_pks[i].rsa_public_key);
-  GNUNET_free (md->fresh_pks);
+  if (NULL != md->melted_coins)
+  {
+    for (i=0;i<md->num_melted_coins;i++)
+      free_melted_coin (&md->melted_coins[i]);
+    GNUNET_free (md->melted_coins);
+  }
+  if (NULL != md->fresh_pks)
+  {
+    for (i=0;i<md->num_fresh_coins;i++)
+      if (NULL != md->fresh_pks[i].rsa_public_key)
+        GNUNET_CRYPTO_rsa_public_key_free (md->fresh_pks[i].rsa_public_key);
+    GNUNET_free (md->fresh_pks);
+  }
 
   for (i=0;i<TALER_CNC_KAPPA;i++)
   {
-    for (j=0;j<md->num_fresh_coins;j++)
-      free_fresh_coin (&md->fresh_coins[i][j]);
-    GNUNET_free (md->fresh_coins[i]);
+    if (NULL != md->fresh_coins)
+    {
+      for (j=0;j<md->num_fresh_coins;j++)
+        free_fresh_coin (&md->fresh_coins[i][j]);
+      GNUNET_free (md->fresh_coins[i]);
+    }
   }
   /* Finally, clean up a bit...
      (NOTE: compilers might optimize this away, so this is
@@ -325,7 +359,7 @@ free_melt_data (struct MeltData *md)
  *            required size
  * @param off offeset at @a buf to use
  * @return number of bytes written to @a buf at @a off, or if
- *        @a buf is NULL, number of bytes required
+ *        @a buf is NULL, number of bytes required; 0 on error
  */
 static size_t
 serialize_melted_coin (const struct MeltedCoin *mc,
@@ -349,7 +383,12 @@ serialize_melted_coin (const struct MeltedCoin *mc,
     GNUNET_free (pbuf);
     return sizeof (struct MeltedCoinP) + sbuf_size + pbuf_size;
   }
-
+  if ( (sbuf_size > UINT16_MAX) ||
+       (pbuf_size > UINT16_MAX) )
+  {
+    GNUNET_break (0);
+    return 0;
+  }
   mcp.coin_priv = mc->coin_priv;
   TALER_amount_hton (&mcp.melt_amount_with_fee,
                      &mc->melt_amount_with_fee);
@@ -359,7 +398,8 @@ serialize_melted_coin (const struct MeltedCoin *mc,
   for (i=0;i<TALER_CNC_KAPPA;i++)
     mcp.transfer_priv[i] = mc->transfer_priv[i];
   mcp.deposit_valid_until = GNUNET_TIME_absolute_hton (mc->deposit_valid_until);
-
+  mcp.pbuf_size = htons ((uint16_t) pbuf_size);
+  mcp.sbuf_size = htons ((uint16_t) sbuf_size);
   memcpy (&buf[off],
           &mcp,
           sizeof (struct MeltedCoinP));
@@ -372,6 +412,73 @@ serialize_melted_coin (const struct MeltedCoin *mc,
   GNUNET_free (sbuf);
   GNUNET_free (pbuf);
   return sizeof (struct MeltedCoinP) + sbuf_size + pbuf_size;
+}
+
+
+/**
+ * Deserialize information about a coin we are melting.
+ *
+ * @param[out] mc information to deserialize
+ * @param buf buffer to read data from
+ * @param size number of bytes available at @a buf to use
+ * @param[out] ok set to #GNUNET_NO to report errors
+ * @return number of bytes read from @a buf, 0 on error
+ */
+static size_t
+deserialize_melted_coin (struct MeltedCoin *mc,
+                         const char *buf,
+                         size_t size,
+                         int *ok)
+{
+  struct MeltedCoinP mcp;
+  unsigned int i;
+  size_t pbuf_size;
+  size_t sbuf_size;
+  size_t off;
+
+  if (size < sizeof (struct MeltedCoinP))
+  {
+    GNUNET_break (0);
+    *ok = GNUNET_NO;
+    return 0;
+  }
+  memcpy (&mcp,
+          buf,
+          sizeof (struct MeltedCoinP));
+  pbuf_size = ntohs (mcp.pbuf_size);
+  sbuf_size = ntohs (mcp.sbuf_size);
+  if (size < sizeof (struct MeltedCoinP) + pbuf_size + sbuf_size)
+  {
+    GNUNET_break (0);
+    *ok = GNUNET_NO;
+    return 0;
+  }
+  off = sizeof (struct MeltedCoinP);
+  mc->pub_key.rsa_public_key
+    = GNUNET_CRYPTO_rsa_public_key_decode (&buf[off],
+                                           pbuf_size);
+  off += pbuf_size;
+  mc->sig.rsa_signature
+    = GNUNET_CRYPTO_rsa_signature_decode (&buf[off],
+                                          sbuf_size);
+  off += sbuf_size;
+  if ( (NULL == mc->pub_key.rsa_public_key) ||
+       (NULL == mc->sig.rsa_signature) )
+  {
+    GNUNET_break (0);
+    *ok = GNUNET_NO;
+    return 0;
+  }
+
+  mc->coin_priv = mcp.coin_priv;
+  TALER_amount_ntoh (&mc->melt_amount_with_fee,
+                     &mcp.melt_amount_with_fee);
+  TALER_amount_ntoh (&mc->fee_withdraw,
+                     &mcp.fee_withdraw);
+  for (i=0;i<TALER_CNC_KAPPA;i++)
+    mc->transfer_priv[i] = mcp.transfer_priv[i];
+  mc->deposit_valid_until = GNUNET_TIME_absolute_ntoh (mcp.deposit_valid_until);
+  return off;
 }
 
 
@@ -392,20 +499,72 @@ serialize_denomination_key (const struct TALER_DenominationPublicKey *dk,
 {
   char *pbuf;
   size_t pbuf_size;
+  uint32_t be;
 
   pbuf_size = GNUNET_CRYPTO_rsa_public_key_encode (dk->rsa_public_key,
                                                    &pbuf);
   if (NULL == buf)
   {
     GNUNET_free (pbuf);
-    return pbuf_size;
+    return pbuf_size + sizeof (uint32_t);
   }
-
+  be = htonl ((uint32_t) pbuf_size);
   memcpy (&buf[off],
+          &be,
+          sizeof (uint32_t));
+  memcpy (&buf[off + sizeof (uint32_t)],
           pbuf,
           pbuf_size);
   GNUNET_free (pbuf);
   return pbuf_size;
+}
+
+
+/**
+ * Deserialize information about a denomination key.
+ *
+ * @param[out] dk information to deserialize
+ * @param buf buffer to read data from
+ * @param size number of bytes available at @a buf to use
+ * @param[out] ok set to #GNUNET_NO to report errors
+ * @return number of bytes read from @a buf, 0 on error
+ */
+static size_t
+deserialize_denomination_key (struct TALER_DenominationPublicKey *dk,
+                              const char *buf,
+                              size_t size,
+                              int *ok)
+{
+  size_t pbuf_size;
+  uint32_t be;
+
+  if (size < sizeof (uint32_t))
+  {
+    GNUNET_break (0);
+    *ok = GNUNET_NO;
+    return 0;
+  }
+  memcpy (&be,
+          buf,
+          sizeof (uint32_t));
+  pbuf_size = ntohl (be);
+  if (size < sizeof (uint32_t) + pbuf_size)
+  {
+    GNUNET_break (0);
+    *ok = GNUNET_NO;
+    return 0;
+  }
+  dk->rsa_public_key
+    = GNUNET_CRYPTO_rsa_public_key_decode (&buf[sizeof (uint32_t)],
+                                           pbuf_size);
+
+  if (NULL == dk->rsa_public_key)
+  {
+    GNUNET_break (0);
+    *ok = GNUNET_NO;
+    return 0;
+  }
+  return sizeof (uint32_t) + pbuf_size;
 }
 
 
@@ -435,9 +594,9 @@ serialize_fresh_coin (const struct FreshCoin *fc,
     GNUNET_free (bbuf);
     return sizeof (struct FreshCoinP) + bbuf_size;
   }
-
   fcp.coin_priv = fc->coin_priv;
   fcp.link_secret = fc->link_secret;
+  fcp.bbuf_size = htonl ((uint32_t) bbuf_size);
   memcpy (&buf[off],
           &fcp,
           sizeof (struct FreshCoinP));
@@ -445,6 +604,55 @@ serialize_fresh_coin (const struct FreshCoin *fc,
           bbuf,
           bbuf_size);
   GNUNET_free (bbuf);
+  return sizeof (struct FreshCoinP) + bbuf_size;
+}
+
+
+/**
+ * Deserialize information about a fresh coin we are generating.
+ *
+ * @param[out] fc information to deserialize
+ * @param buf buffer to read data from
+ * @param size number of bytes available at @a buf to use
+ * @param[out] ok set to #GNUNET_NO to report errors
+ * @return number of bytes read from @a buf, 0 on error
+ */
+static size_t
+deserialize_fresh_coin (struct FreshCoin *fc,
+                        const char *buf,
+                        size_t size,
+                        int *ok)
+{
+  struct FreshCoinP fcp;
+  size_t bbuf_size;
+
+  if (size < sizeof (struct FreshCoinP))
+  {
+    GNUNET_break (0);
+    *ok = GNUNET_NO;
+    return 0;
+  }
+  memcpy (&fcp,
+          buf,
+          sizeof (struct FreshCoinP));
+  bbuf_size = ntohl (fcp.bbuf_size);
+  if (size < sizeof (struct FreshCoinP) + bbuf_size)
+  {
+    GNUNET_break (0);
+    *ok = GNUNET_NO;
+    return 0;
+  }
+  fc->blinding_key.rsa_blinding_key
+    = GNUNET_CRYPTO_rsa_blinding_key_decode (&buf[sizeof (struct FreshCoinP)],
+                                             bbuf_size);
+  if (NULL ==  fc->blinding_key.rsa_blinding_key)
+  {
+    GNUNET_break (0);
+    *ok = GNUNET_NO;
+    return 0;
+  }
+  fc->coin_priv = fcp.coin_priv;
+  fc->link_secret = fcp.link_secret;
   return sizeof (struct FreshCoinP) + bbuf_size;
 }
 
@@ -520,8 +728,62 @@ static struct MeltData *
 deserialize_melt_data (const char *buf,
                        size_t buf_size)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return NULL;
+  struct MeltData *md;
+  struct MeltDataP mdp;
+  unsigned int i;
+  unsigned int j;
+  size_t off;
+  int ok;
+
+  if (buf_size < sizeof (struct MeltDataP))
+    return NULL;
+  memcpy (&mdp,
+          buf,
+          buf_size);
+  md = GNUNET_new (struct MeltData);
+  md->melt_session_hash = mdp.melt_session_hash;
+  for (i=0;i<TALER_CNC_KAPPA;i++)
+    md->transfer_secrets[i] = mdp.transfer_secrets[i];
+  md->num_melted_coins = ntohs (mdp.num_melted_coins);
+  md->num_fresh_coins = ntohs (mdp.num_fresh_coins);
+  md->melted_coins = GNUNET_new_array (md->num_melted_coins,
+                                       struct MeltedCoin);
+  md->fresh_pks = GNUNET_new_array (md->num_fresh_coins,
+                                    struct TALER_DenominationPublicKey);
+  for (i=0;i<TALER_CNC_KAPPA;i++)
+    md->fresh_coins[i] = GNUNET_new_array (md->num_fresh_coins,
+                                           struct FreshCoin);
+  off = sizeof (struct MeltDataP);
+  ok = GNUNET_YES;
+  for (i=0;(i<md->num_melted_coins)&&(GNUNET_YES == ok);i++)
+    off += deserialize_melted_coin (&md->melted_coins[i],
+                                    &buf[off],
+                                    buf_size - off,
+                                    &ok);
+  for (i=0;(i<md->num_fresh_coins)&&(GNUNET_YES == ok);i++)
+    off += deserialize_denomination_key (&md->fresh_pks[i],
+                                         &buf[off],
+                                         buf_size - off,
+                                         &ok);
+
+  for (i=0;i<TALER_CNC_KAPPA;i++)
+    for(j=0;(j<md->num_fresh_coins)&&(GNUNET_YES == ok);j++)
+      off += deserialize_fresh_coin (&md->fresh_coins[i][j],
+                                     &buf[off],
+                                     buf_size - off,
+                                     &ok);
+  if (off != buf_size)
+  {
+    GNUNET_break (0);
+    ok = GNUNET_NO;
+  }
+  if (GNUNET_YES != ok)
+  {
+    free_melt_data (md);
+    GNUNET_free (md);
+    return NULL;
+  }
+  return md;
 }
 
 
