@@ -1848,7 +1848,6 @@ handle_refresh_reveal_finished (void *cls,
 }
 
 
-
 /**
  * Submit a /refresh/reval request to the mint and get the mint's
  * response.
