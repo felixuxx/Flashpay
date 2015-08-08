@@ -26,6 +26,7 @@
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_mint_service.h"
+#include "mint_api_common.h"
 #include "mint_api_json.h"
 #include "mint_api_context.h"
 #include "mint_api_handle.h"
@@ -153,113 +154,18 @@ verify_deposit_signature_forbidden (const struct TALER_MINT_DepositHandle *dh,
                                     json_t *json)
 {
   json_t *history;
-  size_t len;
-  size_t off;
   struct TALER_Amount total;
 
   history = json_object_get (json,
                              "history");
-  if (NULL == history)
+  if (GNUNET_OK !=
+      TALER_MINT_verify_coin_history_ (dh->coin_value.currency,
+                                       &dh->depconf.coin_pub,
+                                       history,
+                                       &total))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
-  }
-  len = json_array_size (history);
-  if (0 == len)
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  TALER_amount_get_zero (dh->coin_value.currency,
-                         &total);
-  for (off=0;off<len;off++)
-  {
-    json_t *transaction;
-    struct TALER_Amount amount;
-    struct GNUNET_CRYPTO_EccSignaturePurpose *purpose;
-    struct MAJ_Specification spec[] = {
-      MAJ_spec_amount ("amount",
-                       &amount),
-      MAJ_spec_eddsa_signed_purpose ("signature",
-                                     &purpose,
-                                     &dh->depconf.coin_pub.eddsa_pub),
-      MAJ_spec_end
-    };
-
-    transaction = json_array_get (history,
-                                  off);
-    if (GNUNET_OK !=
-        MAJ_parse_json (transaction,
-                        spec))
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
-    switch (ntohl (purpose->purpose))
-    {
-    case TALER_SIGNATURE_WALLET_COIN_DEPOSIT:
-      {
-        const struct TALER_DepositRequestPS *dr;
-        struct TALER_Amount dr_amount;
-
-        if (ntohl (purpose->size) != sizeof (struct TALER_DepositRequestPS))
-        {
-          GNUNET_break (0);
-          MAJ_parse_free (spec);
-          return GNUNET_SYSERR;
-        }
-        dr = (const struct TALER_DepositRequestPS *) purpose;
-        TALER_amount_ntoh (&dr_amount,
-                           &dr->amount_with_fee);
-        if (0 != TALER_amount_cmp (&dr_amount,
-                                   &amount))
-        {
-          GNUNET_break (0);
-          MAJ_parse_free (spec);
-          return GNUNET_SYSERR;
-        }
-      }
-      break;
-    case TALER_SIGNATURE_WALLET_COIN_MELT:
-      {
-        const struct TALER_RefreshMeltCoinAffirmationPS *rm;
-        struct TALER_Amount rm_amount;
-
-        if (ntohl (purpose->size) != sizeof (struct TALER_RefreshMeltCoinAffirmationPS))
-        {
-          GNUNET_break (0);
-          MAJ_parse_free (spec);
-          return GNUNET_SYSERR;
-        }
-        rm = (const struct TALER_RefreshMeltCoinAffirmationPS *) purpose;
-        TALER_amount_ntoh (&rm_amount,
-                           &rm->amount_with_fee);
-        if (0 != TALER_amount_cmp (&rm_amount,
-                                   &amount))
-        {
-          GNUNET_break (0);
-          MAJ_parse_free (spec);
-          return GNUNET_SYSERR;
-        }
-      }
-      break;
-    default:
-      /* signature not supported, new version on server? */
-      GNUNET_break (0);
-      MAJ_parse_free (spec);
-      return GNUNET_SYSERR;
-    }
-    if (GNUNET_OK !=
-        TALER_amount_add (&total,
-                          &total,
-                          &amount))
-    {
-      /* overflow in history already!? inconceivable! Bad mint! */
-      GNUNET_break_op (0);
-      MAJ_parse_free (spec);
-      return GNUNET_SYSERR;
-    }
-    MAJ_parse_free (spec);
   }
   if (GNUNET_OK !=
       TALER_amount_add (&total,

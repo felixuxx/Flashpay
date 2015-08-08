@@ -1,0 +1,154 @@
+/*
+  This file is part of TALER
+  Copyright (C) 2015 Christian Grothoff (and other contributing authors)
+
+  TALER is free software; you can redistribute it and/or modify it under the
+  terms of the GNU General Public License as published by the Free Software
+  Foundation; either version 3, or (at your option) any later version.
+
+  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License along with
+  TALER; see the file COPYING.  If not, If not, see
+  <http://www.gnu.org/licenses/>
+*/
+/**
+ * @file mint-lib/mint_api_common.c
+ * @brief common functions for the mint API
+ * @author Christian Grothoff
+ */
+#include "platform.h"
+#include "mint_api_common.h"
+#include "mint_api_json.h"
+#include "mint_api_context.h"
+#include "mint_api_handle.h"
+#include "taler_signatures.h"
+
+
+/**
+ * Verify a coins transaction history as returned by the mint.
+ *
+ * @param currency expected currency for the coin
+ * @param coin_pub public key of the coin
+ * @param history history of the coin in json encoding
+ * @param[out] total how much of the coin has been spent according to @a history
+ * @return #GNUNET_OK if @a history is valid, #GNUNET_SYSERR if not
+ */
+int
+TALER_MINT_verify_coin_history_ (const char *currency,
+                                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                 json_t *history,
+                                 struct TALER_Amount *total)
+{
+  size_t len;
+  size_t off;
+
+  if (NULL == history)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  len = json_array_size (history);
+  if (0 == len)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  TALER_amount_get_zero (currency,
+                         total);
+  for (off=0;off<len;off++)
+  {
+    json_t *transaction;
+    struct TALER_Amount amount;
+    struct GNUNET_CRYPTO_EccSignaturePurpose *purpose;
+    struct MAJ_Specification spec[] = {
+      MAJ_spec_amount ("amount",
+                       &amount),
+      MAJ_spec_eddsa_signed_purpose ("signature",
+                                     &purpose,
+                                     &coin_pub->eddsa_pub),
+      MAJ_spec_end
+    };
+
+    transaction = json_array_get (history,
+                                  off);
+    if (GNUNET_OK !=
+        MAJ_parse_json (transaction,
+                        spec))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    switch (ntohl (purpose->purpose))
+    {
+    case TALER_SIGNATURE_WALLET_COIN_DEPOSIT:
+      {
+        const struct TALER_DepositRequestPS *dr;
+        struct TALER_Amount dr_amount;
+
+        if (ntohl (purpose->size) != sizeof (struct TALER_DepositRequestPS))
+        {
+          GNUNET_break (0);
+          MAJ_parse_free (spec);
+          return GNUNET_SYSERR;
+        }
+        dr = (const struct TALER_DepositRequestPS *) purpose;
+        TALER_amount_ntoh (&dr_amount,
+                           &dr->amount_with_fee);
+        if (0 != TALER_amount_cmp (&dr_amount,
+                                   &amount))
+        {
+          GNUNET_break (0);
+          MAJ_parse_free (spec);
+          return GNUNET_SYSERR;
+        }
+      }
+      break;
+    case TALER_SIGNATURE_WALLET_COIN_MELT:
+      {
+        const struct TALER_RefreshMeltCoinAffirmationPS *rm;
+        struct TALER_Amount rm_amount;
+
+        if (ntohl (purpose->size) != sizeof (struct TALER_RefreshMeltCoinAffirmationPS))
+        {
+          GNUNET_break (0);
+          MAJ_parse_free (spec);
+          return GNUNET_SYSERR;
+        }
+        rm = (const struct TALER_RefreshMeltCoinAffirmationPS *) purpose;
+        TALER_amount_ntoh (&rm_amount,
+                           &rm->amount_with_fee);
+        if (0 != TALER_amount_cmp (&rm_amount,
+                                   &amount))
+        {
+          GNUNET_break (0);
+          MAJ_parse_free (spec);
+          return GNUNET_SYSERR;
+        }
+      }
+      break;
+    default:
+      /* signature not supported, new version on server? */
+      GNUNET_break (0);
+      MAJ_parse_free (spec);
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_OK !=
+        TALER_amount_add (total,
+                          total,
+                          &amount))
+    {
+      /* overflow in history already!? inconceivable! Bad mint! */
+      GNUNET_break_op (0);
+      MAJ_parse_free (spec);
+      return GNUNET_SYSERR;
+    }
+    MAJ_parse_free (spec);
+  }
+  return GNUNET_OK;
+}
+
+
+/* end of mint_api_common.c */
