@@ -1029,6 +1029,68 @@ struct TALER_MINT_RefreshMeltHandle
 
 
 /**
+ * Verify that the signature on the "200 OK" response
+ * from the mint is valid.
+ *
+ * @param rmh melt handle
+ * @param json json reply with the signature
+ * @param[out] noreveal_index set to the noreveal index selected by the mint
+ * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
+ */
+static int
+verify_refresh_melt_signature_ok (struct TALER_MINT_RefreshMeltHandle *rmh,
+                                  json_t *json,
+                                  uint16_t *noreveal_index)
+{
+  struct TALER_MintSignatureP mint_sig;
+  struct TALER_MintPublicKeyP mint_pub;
+  const struct TALER_MINT_Keys *key_state;
+  struct MAJ_Specification spec[] = {
+    MAJ_spec_fixed_auto ("mint_sig", &mint_sig),
+    MAJ_spec_fixed_auto ("mint_pub", &mint_sig),
+    // MAJ_spec_uint16 ("noreveal_index", noreveal_index), // FIXME!
+    MAJ_spec_end
+  };
+  struct TALER_RefreshMeltConfirmationPS confirm;
+
+  if (GNUNET_OK !=
+      MAJ_parse_json (json,
+                      spec))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  key_state = TALER_MINT_get_keys (rmh->mint);
+  if (GNUNET_OK !=
+      TALER_MINT_test_signing_key (key_state,
+                                   &mint_pub))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (TALER_CNC_KAPPA >= *noreveal_index)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  confirm.purpose.purpose = htonl (TALER_SIGNATURE_MINT_CONFIRM_MELT);
+  confirm.purpose.size = htonl (sizeof (confirm));
+  confirm.session_hash = rmh->md->melt_session_hash;
+  confirm.noreveal_index = htons (*noreveal_index);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MINT_CONFIRM_MELT,
+                                  &confirm.purpose,
+                                  &mint_sig.eddsa_signature,
+                                  &mint_pub.eddsa_pub))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Function called when we're done processing the
  * HTTP /refresh/melt request.
  *
@@ -1042,6 +1104,7 @@ handle_refresh_melt_finished (void *cls,
   struct TALER_MINT_RefreshMeltHandle *rmh = cls;
   long response_code;
   json_t *json;
+  uint16_t noreveal_index = TALER_CNC_KAPPA; /* invalid value */
 
   rmh->job = NULL;
   json = MAC_download_get_result (&rmh->db,
@@ -1052,8 +1115,22 @@ handle_refresh_melt_finished (void *cls,
   case 0:
     break;
   case MHD_HTTP_OK:
-    GNUNET_break (0); // FIXME: NOT implemented! (parse, check sig!)
-
+    if (GNUNET_OK !=
+        verify_refresh_melt_signature_ok (rmh,
+                                          json,
+                                          &noreveal_index))
+    {
+      GNUNET_break_op (0);
+      response_code = 0;
+    }
+    if (NULL != rmh->melt_cb)
+    {
+      rmh->melt_cb (rmh->melt_cb_cls,
+                    response_code,
+                    noreveal_index,
+                    json);
+      rmh->melt_cb = NULL;
+    }
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the mint is buggy
