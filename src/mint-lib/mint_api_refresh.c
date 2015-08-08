@@ -788,6 +788,31 @@ deserialize_melt_data (const char *buf,
 
 
 /**
+ * Setup information for a fresh coin.
+ *
+ * @param[out] fc value to initialize
+ * @param pk denomination information for the fresh coin
+ */
+static void
+setup_fresh_coin (struct FreshCoin *fc,
+                  const struct TALER_MINT_DenomPublicKey *pk)
+{
+  struct GNUNET_CRYPTO_EddsaPrivateKey *epk;
+  unsigned int len;
+
+  epk = GNUNET_CRYPTO_eddsa_key_create ();
+  fc->coin_priv.eddsa_priv = *epk;
+  GNUNET_free (epk);
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
+                              &fc->link_secret,
+                              sizeof (struct TALER_LinkSecretP));
+  len = GNUNET_CRYPTO_rsa_public_key_len (pk->key.rsa_public_key);
+  fc->blinding_key.rsa_blinding_key
+    = GNUNET_CRYPTO_rsa_blinding_key_create (len);
+}
+
+
+/**
  * Melt (partially spent) coins to obtain fresh coins that are
  * unlinkable to the original coin(s).  Note that melting more
  * than one coin in a single request will make those coins linkable,
@@ -842,9 +867,53 @@ TALER_MINT_refresh_prepare (unsigned int num_melts,
 {
   struct MeltData md;
   char *buf;
+  unsigned int i;
+  unsigned int j;
+
+  for (i=0;i<TALER_CNC_KAPPA;i++)
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
+                                &md.transfer_secrets[i],
+                                sizeof (struct TALER_TransferSecretP));
+  md.num_melted_coins = num_melts;
+  md.num_fresh_coins = fresh_pks_len;
+  md.melted_coins = GNUNET_new_array (num_melts,
+                                      struct MeltedCoin);
+  for (i=0;i<num_melts;i++)
+  {
+    md.melted_coins[i].coin_priv = melt_privs[i];
+    md.melted_coins[i].melt_amount_with_fee = melt_amounts[i];
+    md.melted_coins[i].fee_withdraw = melt_pks[i].fee_withdraw;
+    for (j=0;j<TALER_CNC_KAPPA;j++)
+    {
+      struct GNUNET_CRYPTO_EcdhePrivateKey *tpk;
+
+      tpk = GNUNET_CRYPTO_ecdhe_key_create ();
+      md.melted_coins[i].transfer_priv[j].ecdhe_priv = *tpk;
+      GNUNET_free (tpk);
+    }
+    md.melted_coins[i].deposit_valid_until
+      = melt_pks[i].deposit_valid_until;
+    md.melted_coins[i].pub_key.rsa_public_key
+      = GNUNET_CRYPTO_rsa_public_key_dup (melt_pks[i].key.rsa_public_key);
+    md.melted_coins[i].sig.rsa_signature
+      = GNUNET_CRYPTO_rsa_signature_dup (melt_sigs[i].rsa_signature);
+  }
+  md.fresh_pks = GNUNET_new_array (fresh_pks_len,
+                                   struct TALER_DenominationPublicKey);
+  for (i=0;i<fresh_pks_len;i++)
+    md.fresh_pks[i].rsa_public_key
+      = GNUNET_CRYPTO_rsa_public_key_dup (fresh_pks[i].key.rsa_public_key);
+  for (i=0;i<TALER_CNC_KAPPA;i++)
+  {
+    md.fresh_coins[i] = GNUNET_new_array (fresh_pks_len,
+                                          struct FreshCoin);
+    for (j=0;j<fresh_pks_len;j++)
+      setup_fresh_coin (&md.fresh_coins[i][j],
+                        &fresh_pks[j]);
+  }
+  // FIXME: compute melt_session_hash!
 
   GNUNET_break (0); // FIXME: not implemented
-  // FIXME: init 'md' here!
 
   buf = serialize_melt_data (&md,
                              res_size);
