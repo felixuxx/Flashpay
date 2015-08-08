@@ -1525,10 +1525,14 @@ TALER_MINT_refresh_reveal (struct TALER_MINT_Handle *mint,
                            void *reveal_cb_cls)
 {
   struct TALER_MINT_RefreshRevealHandle *rrh;
+  json_t *transfer_privs;
   json_t *reveal_obj;
+  json_t *tmp;
   CURL *eh;
   struct TALER_MINT_Context *ctx;
   struct MeltData *md;
+  unsigned int i;
+  unsigned int j;
 
   if (GNUNET_YES !=
       MAH_handle_is_ready (mint))
@@ -1543,12 +1547,48 @@ TALER_MINT_refresh_reveal (struct TALER_MINT_Handle *mint,
     GNUNET_break (0);
     return NULL;
   }
+  if (noreveal_index >= TALER_CNC_KAPPA)
+  {
+    /* We check this here, as it would be really bad to below just
+       disclose all the transfer keys. Note that this error should
+       have been caught way earlier when the mint replied, but maybe
+       we had some internal corruption that changed the value... */
+    GNUNET_break (0);
+    return NULL;
+  }
 
-  /* FIXME: totally bogus request building here: */
-  reveal_obj = json_pack ("{s:o, s:O}", /* f/wire */
-                          "4", 42,
-                          "6", 62);
+  /* build array of transfer private keys */
+  transfer_privs = json_array ();
+  for (i=0;i<md->num_melted_coins;i++)
+  {
+    const struct MeltedCoin *mc = &md->melted_coins[i];
 
+    tmp = json_array ();
+    for (j=0;j<TALER_CNC_KAPPA;j++)
+    {
+      if (j == noreveal_index)
+      {
+        /* This is crucial: exclude the transfer key for the
+           noreval index! */
+        continue;
+      }
+      json_array_append (tmp,
+                         TALER_json_from_data (&mc->transfer_priv[j],
+                                               sizeof (struct TALER_TransferPrivateKeyP)));
+    }
+    json_array_append (transfer_privs,
+                       tmp);
+  }
+
+  /* build main JSON request */
+  reveal_obj = json_pack ("{s:o, s:o}",
+                          "session_hash",
+                          TALER_json_from_data (&md->melt_session_hash,
+                                                sizeof (struct GNUNET_HashCode)),
+                          "transfer_privs",
+                          transfer_privs);
+
+  /* finally, we can actually issue the request */
   rrh = GNUNET_new (struct TALER_MINT_RefreshRevealHandle);
   rrh->mint = mint;
   rrh->reveal_cb = reveal_cb;
