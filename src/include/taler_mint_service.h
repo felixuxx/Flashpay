@@ -181,7 +181,7 @@ struct TALER_MINT_DenomPublicKey
   struct TALER_Amount fee_deposit;
 
   /**
-   *The applicable fee to refresh a coin of this denomination
+   *The applicable fee to melt/refresh a coin of this denomination
    */
   struct TALER_Amount fee_refresh;
 };
