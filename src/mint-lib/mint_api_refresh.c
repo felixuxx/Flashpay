@@ -985,6 +985,10 @@ TALER_MINT_refresh_prepare (unsigned int num_melts,
       GNUNET_free (link_enc);
     }
   }
+  GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                     &md.melt_session_hash);
+
+  /* finally, serialize everything */
   buf = serialize_melt_data (&md,
                              res_size);
   free_melt_data (&md);
@@ -1075,6 +1079,8 @@ verify_refresh_melt_signature_ok (struct TALER_MINT_RefreshMeltHandle *rmh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+
+  /* check that mint signing key is permitted */
   key_state = TALER_MINT_get_keys (rmh->mint);
   if (GNUNET_OK !=
       TALER_MINT_test_signing_key (key_state,
@@ -1083,11 +1089,15 @@ verify_refresh_melt_signature_ok (struct TALER_MINT_RefreshMeltHandle *rmh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+
+  /* check that noreveal index is in permitted range */
   if (TALER_CNC_KAPPA >= *noreveal_index)
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+
+  /* verify signature by mint */
   confirm.purpose.purpose = htonl (TALER_SIGNATURE_MINT_CONFIRM_MELT);
   confirm.purpose.size = htonl (sizeof (confirm));
   confirm.session_hash = rmh->md->melt_session_hash;
