@@ -130,7 +130,8 @@ struct MeltDataP
   /* Followed by serializations of:
      1) struct MeltedCoinP melted_coins[num_melted_coins];
      2) struct TALER_MINT_DenomPublicKey fresh_pks[num_fresh_coins];
-     3) struct FreshCoinP fresh_coins[num_fresh_coins][k];
+     3) TALER_CNC_KAPPA times:
+        3a) struct FreshCoinP fresh_coins[num_fresh_coins];
   */
 };
 
@@ -166,7 +167,7 @@ struct MeltedCoin
   /**
    * Timestamp indicating when coins of this denomination become invalid.
    */
-  struct GNUNET_TIME_AbsoluteNBO deposit_valid_until;
+  struct GNUNET_TIME_Absolute deposit_valid_until;
 
   /**
    * Denomination key of the original coin.
@@ -317,6 +318,138 @@ free_melt_data (struct MeltData *md)
 
 
 /**
+ * Serialize information about a coin we are melting.
+ *
+ * @param mc information to serialize
+ * @param buf buffer to write data in, NULL to just compute
+ *            required size
+ * @param off offeset at @a buf to use
+ * @return number of bytes written to @a buf at @a off, or if
+ *        @a buf is NULL, number of bytes required
+ */
+static size_t
+serialize_melted_coin (const struct MeltedCoin *mc,
+                       char *buf,
+                       size_t off)
+{
+  struct MeltedCoinP mcp;
+  unsigned int i;
+  char *pbuf;
+  size_t pbuf_size;
+  char *sbuf;
+  size_t sbuf_size;
+
+  sbuf_size = GNUNET_CRYPTO_rsa_signature_encode (mc->sig.rsa_signature,
+                                                  &sbuf);
+  pbuf_size = GNUNET_CRYPTO_rsa_public_key_encode (mc->pub_key.rsa_public_key,
+                                                   &pbuf);
+  if (NULL == buf)
+  {
+    GNUNET_free (sbuf);
+    GNUNET_free (pbuf);
+    return sizeof (struct MeltedCoinP) + sbuf_size + pbuf_size;
+  }
+
+  mcp.coin_priv = mc->coin_priv;
+  TALER_amount_hton (&mcp.melt_amount_with_fee,
+                     &mc->melt_amount_with_fee);
+
+  TALER_amount_hton (&mcp.fee_withdraw,
+                     &mc->fee_withdraw);
+  for (i=0;i<TALER_CNC_KAPPA;i++)
+    mcp.transfer_priv[i] = mc->transfer_priv[i];
+  mcp.deposit_valid_until = GNUNET_TIME_absolute_hton (mc->deposit_valid_until);
+
+  memcpy (&buf[off],
+          &mcp,
+          sizeof (struct MeltedCoinP));
+  memcpy (&buf[off + sizeof (struct MeltedCoinP)],
+          pbuf,
+          pbuf_size);
+  memcpy (&buf[off + sizeof (struct MeltedCoinP) + pbuf_size],
+          sbuf,
+          sbuf_size);
+  GNUNET_free (sbuf);
+  GNUNET_free (pbuf);
+  return sizeof (struct MeltedCoinP) + sbuf_size + pbuf_size;
+}
+
+
+/**
+ * Serialize information about a denomination key.
+ *
+ * @param dk information to serialize
+ * @param buf buffer to write data in, NULL to just compute
+ *            required size
+ * @param off offeset at @a buf to use
+ * @return number of bytes written to @a buf at @a off, or if
+ *        @a buf is NULL, number of bytes required
+ */
+static size_t
+serialize_denomination_key (const struct TALER_DenominationPublicKey *dk,
+                            char *buf,
+                            size_t off)
+{
+  char *pbuf;
+  size_t pbuf_size;
+
+  pbuf_size = GNUNET_CRYPTO_rsa_public_key_encode (dk->rsa_public_key,
+                                                   &pbuf);
+  if (NULL == buf)
+  {
+    GNUNET_free (pbuf);
+    return pbuf_size;
+  }
+
+  memcpy (&buf[off],
+          pbuf,
+          pbuf_size);
+  GNUNET_free (pbuf);
+  return pbuf_size;
+}
+
+
+/**
+ * Serialize information about a fresh coin we are generating.
+ *
+ * @param fc information to serialize
+ * @param buf buffer to write data in, NULL to just compute
+ *            required size
+ * @param off offeset at @a buf to use
+ * @return number of bytes written to @a buf at @a off, or if
+ *        @a buf is NULL, number of bytes required
+ */
+static size_t
+serialize_fresh_coin (const struct FreshCoin *fc,
+                      char *buf,
+                      size_t off)
+{
+  struct FreshCoinP fcp;
+  char *bbuf;
+  size_t bbuf_size;
+
+  bbuf_size = GNUNET_CRYPTO_rsa_blinding_key_encode (fc->blinding_key.rsa_blinding_key,
+                                                     &bbuf);
+  if (NULL == buf)
+  {
+    GNUNET_free (bbuf);
+    return sizeof (struct FreshCoinP) + bbuf_size;
+  }
+
+  fcp.coin_priv = fc->coin_priv;
+  fcp.link_secret = fc->link_secret;
+  memcpy (&buf[off],
+          &fcp,
+          sizeof (struct FreshCoinP));
+  memcpy (&buf[off + sizeof (struct FreshCoinP)],
+          bbuf,
+          bbuf_size);
+  GNUNET_free (bbuf);
+  return sizeof (struct FreshCoinP) + bbuf_size;
+}
+
+
+/**
  * Serialize melt data.
  *
  * @param md data to serialize
@@ -327,9 +460,52 @@ static char *
 serialize_melt_data (const struct MeltData *md,
                      size_t *res_size)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  *res_size = 0;
-  return NULL;
+  size_t size;
+  size_t asize;
+  char *buf;
+  unsigned int i;
+  unsigned int j;
+
+  size = 0;
+  buf = NULL;
+  /* we do 2 iterations, #1 to determine total size, #2 to
+     actually construct the buffer */
+  do {
+    if (0 == size)
+    {
+      size = sizeof (struct MeltDataP);
+    }
+    else
+    {
+      struct MeltDataP *mdp;
+
+      buf = GNUNET_malloc (size);
+      asize = size; /* just for invariant check later */
+      size = sizeof (struct MeltDataP);
+      mdp = (struct MeltDataP *) buf;
+      mdp->melt_session_hash = md->melt_session_hash;
+      for (i=0;i<TALER_CNC_KAPPA;i++)
+        mdp->transfer_secrets[i] = md->transfer_secrets[i];
+      mdp->num_melted_coins = htons (md->num_melted_coins);
+      mdp->num_fresh_coins = htons (md->num_fresh_coins);
+    }
+    for (i=0;i<md->num_melted_coins;i++)
+      size += serialize_melted_coin (&md->melted_coins[i],
+                                     buf,
+                                     size);
+    for (i=0;i<md->num_fresh_coins;i++)
+      size += serialize_denomination_key (&md->fresh_pks[i],
+                                          buf,
+                                          size);
+    for (i=0;i<TALER_CNC_KAPPA;i++)
+      for(j=0;j<md->num_fresh_coins;j++)
+        size += serialize_fresh_coin (&md->fresh_coins[i][j],
+                                      buf,
+                                      size);
+  } while (NULL == buf);
+  GNUNET_assert (size == asize);
+  *res_size = size;
+  return buf;
 }
 
 
