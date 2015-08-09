@@ -57,7 +57,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                             const struct TMH_DB_MeltDetails *coin_melt_details,
                             const struct GNUNET_HashCode *session_hash,
                             struct TALER_MINTDB_RefreshCommitCoin *const* commit_coin,
-                            struct TALER_MINTDB_RefreshCommitLinkP *const* commit_link)
+                            struct TALER_RefreshCommitLinkP *const* commit_link)
 {
   unsigned int i;
   struct TMH_KS_StateHandle *key_state;
@@ -324,7 +324,7 @@ free_commit_coins (struct TALER_MINTDB_RefreshCommitCoin **commit_coin,
  * @param num_old_coins size of 2nd dimension
  */
 static void
-free_commit_links (struct TALER_MINTDB_RefreshCommitLinkP **commit_link,
+free_commit_links (struct TALER_RefreshCommitLinkP **commit_link,
                    unsigned int kappa,
                    unsigned int num_old_coins)
 {
@@ -378,7 +378,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   struct GNUNET_HashCode session_hash;
   struct GNUNET_HashContext *hash_context;
   struct TALER_MINTDB_RefreshCommitCoin *commit_coin[TALER_CNC_KAPPA];
-  struct TALER_MINTDB_RefreshCommitLinkP *commit_link[TALER_CNC_KAPPA];
+  struct TALER_RefreshCommitLinkP *commit_link[TALER_CNC_KAPPA];
 
   /* For the signature check, we hash most of the inputs together
      (except for the signatures on the coins). */
@@ -532,10 +532,10 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   for (i = 0; i < TALER_CNC_KAPPA; i++)
   {
     commit_link[i] = GNUNET_malloc (num_oldcoins *
-                                    sizeof (struct TALER_MINTDB_RefreshCommitLinkP));
+                                    sizeof (struct TALER_RefreshCommitLinkP));
     for (j = 0; j < num_oldcoins; j++)
     {
-      struct TALER_MINTDB_RefreshCommitLinkP *rcl = &commit_link[i][j];
+      struct TALER_RefreshCommitLinkP *rcl = &commit_link[i][j];
 
       res = TMH_PARSE_navigate_json (connection,
                                      transfer_pubs,
@@ -582,7 +582,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
 
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        rcl,
-                                       sizeof (struct TALER_MINTDB_RefreshCommitLinkP));
+                                       sizeof (struct TALER_RefreshCommitLinkP));
     }
 
   }

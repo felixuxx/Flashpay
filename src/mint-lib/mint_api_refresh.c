@@ -990,7 +990,7 @@ TALER_MINT_refresh_prepare (unsigned int num_melts,
   {
     for (j = 0; j < num_melts; j++)
     {
-      struct TALER_MINTDB_RefreshCommitLinkP rcl;
+      struct TALER_RefreshCommitLinkP rcl;
       struct TALER_TransferSecretP trans_sec;
 
       GNUNET_CRYPTO_ecdhe_key_get_public (&md.melted_coins[j].transfer_priv[i].ecdhe_priv,
@@ -1003,7 +1003,7 @@ TALER_MINT_refresh_prepare (unsigned int num_melts,
                               &rcl.shared_secret_enc);
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        &rcl,
-                                       sizeof (struct TALER_MINTDB_RefreshCommitLinkP));
+                                       sizeof (struct TALER_RefreshCommitLinkP));
     }
   }
 

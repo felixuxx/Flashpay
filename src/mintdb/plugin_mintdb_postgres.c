@@ -2640,7 +2640,7 @@ postgres_insert_refresh_commit_links (void *cls,
                                       const struct GNUNET_HashCode *session_hash,
                                       uint16_t cnc_index,
                                       uint16_t num_links,
-                                      const struct TALER_MINTDB_RefreshCommitLinkP *links)
+                                      const struct TALER_RefreshCommitLinkP *links)
 {
   // FIXME: check logic! links is array!
   struct TALER_PQ_QueryParam params[] = {
@@ -2693,7 +2693,7 @@ postgres_get_refresh_commit_links (void *cls,
                                    const struct GNUNET_HashCode *session_hash,
                                    uint16_t cnc_index,
                                    uint16_t num_links,
-                                   struct TALER_MINTDB_RefreshCommitLinkP *links)
+                                   struct TALER_RefreshCommitLinkP *links)
 {
   // FIXME: check logic: was written for a single link!
   struct TALER_PQ_QueryParam params[] = {
@@ -2801,7 +2801,7 @@ postgres_get_melt_commitment (void *cls,
       goto cleanup;
     mc->commit_links[cnc_index]
       = GNUNET_malloc (mc->num_oldcoins *
-                       sizeof (struct TALER_MINTDB_RefreshCommitLinkP));
+                       sizeof (struct TALER_RefreshCommitLinkP));
     if (GNUNET_OK !=
         postgres_get_refresh_commit_links (cls,
                                            session,

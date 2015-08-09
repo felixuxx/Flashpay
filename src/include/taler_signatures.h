@@ -657,7 +657,7 @@ struct TALER_MintKeyValidityPS
  * Part of the construction of the refresh session's hash and
  * thus of what is signed there.
  */
-struct TALER_MINTDB_RefreshCommitLinkP
+struct TALER_RefreshCommitLinkP
 {
   /**
    * Transfer public key, used to decrypt the @e shared_secret_enc

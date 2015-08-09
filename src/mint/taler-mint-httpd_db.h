@@ -130,7 +130,7 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                              unsigned int coin_count,
                              const struct TMH_DB_MeltDetails *coin_melt_details,
                              struct TALER_MINTDB_RefreshCommitCoin *const* commit_coin,
-                             struct TALER_MINTDB_RefreshCommitLinkP *const* commit_link);
+                             struct TALER_RefreshCommitLinkP *const* commit_link);
 
 
 /**

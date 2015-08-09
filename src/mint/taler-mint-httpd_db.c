@@ -623,7 +623,7 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                              unsigned int coin_count,
                              const struct TMH_DB_MeltDetails *coin_melt_details,
                              struct TALER_MINTDB_RefreshCommitCoin *const* commit_coin,
-                             struct TALER_MINTDB_RefreshCommitLinkP *const* commit_link)
+                             struct TALER_RefreshCommitLinkP *const* commit_link)
 {
   struct TMH_KS_StateHandle *key_state;
   struct TALER_MINTDB_RefreshSession refresh_session;
@@ -839,11 +839,11 @@ check_commitment (struct MHD_Connection *connection,
   unsigned int j;
   struct TALER_LinkSecretP last_shared_secret;
   int secret_initialized = GNUNET_NO;
-  struct TALER_MINTDB_RefreshCommitLinkP *commit_links;
+  struct TALER_RefreshCommitLinkP *commit_links;
   struct TALER_MINTDB_RefreshCommitCoin *commit_coins;
 
   commit_links = GNUNET_malloc (num_oldcoins *
-                                sizeof (struct TALER_MINTDB_RefreshCommitLinkP));
+                                sizeof (struct TALER_RefreshCommitLinkP));
   if (GNUNET_OK !=
       TMH_plugin->get_refresh_commit_links (TMH_plugin->cls,
                                             session,

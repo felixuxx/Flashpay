@@ -900,7 +900,7 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
     info_link_k = json_array ();
     for (i=0;i<mc->num_newcoins;i++)
     {
-      const struct TALER_MINTDB_RefreshCommitLinkP *cl;
+      const struct TALER_RefreshCommitLinkP *cl;
       json_t *cl_json;
 
       cl = &mc->commit_links[k][i];

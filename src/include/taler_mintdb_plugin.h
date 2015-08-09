@@ -539,7 +539,7 @@ struct TALER_MINTDB_MeltCommitment
   /**
    * 2D-Array of #TALER_CNC_KAPPA and @e new_oldcoins links.
    */
-  struct TALER_MINTDB_RefreshCommitLinkP *commit_links[TALER_CNC_KAPPA];
+  struct TALER_RefreshCommitLinkP *commit_links[TALER_CNC_KAPPA];
 };
 
 
@@ -1002,7 +1002,7 @@ struct TALER_MINTDB_Plugin
                                   const struct GNUNET_HashCode *session_hash,
                                   uint16_t cnc_index,
                                   uint16_t num_links,
-                                  const struct TALER_MINTDB_RefreshCommitLinkP *commit_links);
+                                  const struct TALER_RefreshCommitLinkP *commit_links);
 
   /**
    * Obtain the commited (encrypted) refresh link data
@@ -1024,7 +1024,7 @@ struct TALER_MINTDB_Plugin
                                const struct GNUNET_HashCode *session_hash,
                                uint16_t cnc_index,
                                uint16_t num_links,
-                               struct TALER_MINTDB_RefreshCommitLinkP *links);
+                               struct TALER_RefreshCommitLinkP *links);
 
 
   /**
