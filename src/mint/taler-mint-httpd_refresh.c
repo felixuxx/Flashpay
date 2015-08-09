@@ -252,13 +252,17 @@ verify_coin_public_info (struct MHD_Connection *connection,
   body.purpose.size = htonl (sizeof (struct TALER_RefreshMeltCoinAffirmationPS));
   body.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
   body.session_hash = *session_hash;
+  fprintf (stderr,
+           "Verifying hash %s\n",
+           GNUNET_h2s (session_hash));
+
   TALER_amount_hton (&body.amount_with_fee,
                      &melt_detail->melt_amount_with_fee);
   TALER_amount_hton (&body.melt_fee,
                      &fee_refresh);
   body.coin_pub = melt_detail->coin_info.coin_pub;
   if (TALER_amount_cmp (&fee_refresh,
-                        &melt_detail->melt_amount_with_fee) < 0)
+                        &melt_detail->melt_amount_with_fee) > 0)
   {
     GNUNET_break_op (0);
     TMH_KS_release (key_state);
