@@ -420,6 +420,11 @@ struct Command
        */
       struct TALER_MINT_RefreshLinkHandle *rlh;
 
+      /**
+       * Which of the melted coins should be used for the linkage?
+       */
+      unsigned int coin_idx;
+
     } refresh_link;
 
   } details;
@@ -908,7 +913,63 @@ reveal_cb (void *cls,
     return;
   }
   cmd->details.refresh_reveal.num_fresh_coins = num_coins;
-  // FIXME: init rest...
+  switch (http_status)
+  {
+  case MHD_HTTP_OK:
+    // FIXME: store returned coin keys...
+    break;
+  default:
+    break;
+  }
+
+  is->ip++;
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
+}
+
+
+/**
+ * Function called with the result of a /refresh/link operation.
+ *
+ * @param cls closure with the interpreter state
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
+ * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
+ * @param sigs array of signature over @a num_coins coins, NULL on error
+ * @param pubs array of public keys for the @a sigs, NULL on error
+ * @param full_response full response from the mint (for logging, in case of errors)
+ */
+static void
+link_cb (void *cls,
+         unsigned int http_status,
+         unsigned int num_coins,
+         const struct TALER_CoinSpendPrivateKeyP *coin_privs,
+         const struct TALER_DenominationSignature *sigs,
+         const struct TALER_DenominationPublicKey *pubs,
+         json_t *full_response)
+{
+  struct InterpreterState *is = cls;
+  struct Command *cmd = &is->commands[is->ip];
+
+  cmd->details.refresh_link.rlh = NULL;
+  if (cmd->expected_response_code != http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u to command %s\n",
+                http_status,
+                cmd->label);
+    fail (is);
+    return;
+  }
+  switch (http_status)
+  {
+  case MHD_HTTP_OK:
+    // FIXME: test returned values...
+    break;
+  default:
+    break;
+  }
   is->ip++;
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
                                        is);
@@ -1156,6 +1217,7 @@ interpreter_run (void *cls,
       ref = find_command (is,
                           cmd->details.deposit.coin_ref);
       GNUNET_assert (NULL != ref);
+      // FIXME: support OC_REFRESH_REVEAL commands as well!
       GNUNET_assert (OC_WITHDRAW_SIGN == ref->oc);
       if (GNUNET_OK !=
           TALER_string_to_amount (cmd->details.deposit.amount,
@@ -1337,11 +1399,10 @@ interpreter_run (void *cls,
           fail (is);
           return;
         }
-        trigger_context_task ();
-        return;
       }
     }
-    break;
+    trigger_context_task ();
+    return;
   case OC_REFRESH_REVEAL:
     ref = find_command (is,
                         cmd->details.refresh_reveal.melt_ref);
@@ -1361,10 +1422,41 @@ interpreter_run (void *cls,
     trigger_context_task ();
     return;
   case OC_REFRESH_LINK:
-    /* not implemented */
-    GNUNET_break (0);
-    is->ip++;
-    break;
+    /* find reveal command */
+    ref = find_command (is,
+                        cmd->details.refresh_link.reveal_ref);
+    /* find melt command */
+    ref = find_command (is,
+                        ref->details.refresh_reveal.melt_ref);
+    /* find withdraw_sign command */
+    {
+      unsigned int idx;
+      const struct MeltDetails *md;
+      unsigned int num_melted_coins;
+
+      for (num_melted_coins=0;
+           NULL != ref->details.refresh_melt.melted_coins[num_melted_coins].amount;
+           num_melted_coins++) ;
+      idx = cmd->details.refresh_link.coin_idx;
+      GNUNET_assert (idx < num_melted_coins);
+      md = &ref->details.refresh_melt.melted_coins[idx];
+      ref = find_command (is,
+                          md->coin_ref);
+    }
+    /* finally, use private key from withdraw sign command */
+    cmd->details.refresh_link.rlh
+      = TALER_MINT_refresh_link (mint,
+                                 &ref->details.withdraw_sign.coin_priv,
+                                 &link_cb,
+                                 is);
+    if (NULL == cmd->details.refresh_link.rlh)
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
+    trigger_context_task ();
+    return;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unknown instruction %d at %u (%s)\n",
@@ -1628,6 +1720,7 @@ run (void *cls,
      const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   struct InterpreterState *is;
+#if FUTURE
   static struct MeltDetails melt_coins_1[] = {
     { "coin_ref1", "EUR:1.1" }, // FIXME: pick sensible values
     { "coin_ref2", "EUR:1.1" }, // FIXME: pick sensible values
@@ -1646,6 +1739,7 @@ run (void *cls,
     "EUR:1", // FIXME: pick sensible values
     NULL
   };
+#endif
   static struct Command commands[] =
   {
     /* Fill reserve with EUR:5.01, as withdraw fee is 1 ct per config */
