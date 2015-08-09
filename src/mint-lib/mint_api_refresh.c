@@ -820,11 +820,11 @@ setup_fresh_coin (struct FreshCoin *fc,
  * no money is lost in case of hardware failures, is operation does
  * not actually initiate the request. Instead, it generates a buffer
  * which the caller must store before proceeding with the actual call
- * to #TALER_MINT_refresh_execute() that will generate the request.
+ * to #TALER_MINT_refresh_melt() that will generate the request.
  *
  * This function does verify that the given request data is internally
- * consistent.  However, the @a melts_sigs are only verified if @a
- * check_sigs is set to #GNUNET_YES, as this may be relatively
+ * consistent.  However, the @a melts_sigs are only verified if
+ * @a check_sigs is set to #GNUNET_YES, as this may be relatively
  * expensive and should be redundant.
  *
  * Aside from some non-trivial cryptographic operations that might
@@ -845,11 +845,11 @@ setup_fresh_coin (struct FreshCoin *fc,
  * @param check_sigs verify the validity of the signatures of @a melt_sigs
  * @param fresh_pks_len length of the @a pks array
  * @param fresh_pks array of @a pks_len denominations of fresh coins to create
- * @param[OUT] res_size set to the size of the return value, or 0 on error
+ * @param[out] res_size set to the size of the return value, or 0 on error
  * @return NULL
  *         if the inputs are invalid (i.e. denomination key not with this mint).
  *         Otherwise, pointer to a buffer of @a res_size to store persistently
- *         before proceeding to #TALER_MINT_refresh_execute().
+ *         before proceeding to #TALER_MINT_refresh_melt().
  *         Non-null results should be freed using #GNUNET_free().
  */
 char *

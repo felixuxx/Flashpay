@@ -358,7 +358,7 @@ verify_signatures (const struct TALER_MINT_DenomPublicKey *dki,
  *
  * @param mint the mint handle; the mint must be ready to operate
  * @param amount the amount to be deposited
- * @param wire the merchant’s account details, in a format supported by the mint
+ * @param wire_details the merchant’s account details, in a format supported by the mint
  * @param h_contract hash of the contact of the merchant with the customer (further details are never disclosed to the mint)
  * @param coin_pub coin’s public key
  * @param denom_pub denomination key with which the coin is signed

@@ -171,7 +171,7 @@ TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecretP *secret_enc,
  *
  * @param coin_priv coin key
  * @param trans_priv transfer private key
- * @param[out] computed transfer secret
+ * @param[out] ts computed transfer secret
  */
 void
 TALER_link_derive_transfer_secret (const struct TALER_CoinSpendPrivateKeyP *coin_priv,
