@@ -185,13 +185,17 @@ get_coin_public_info (struct MHD_Connection *connection,
                              coin_info,
                              spec);
   if (GNUNET_OK != ret)
+  {
+    GNUNET_break_op (0);
     return ret;
+  }
   /* check mint signature on the coin */
   r_melt_detail->coin_info.denom_sig = sig;
   r_melt_detail->coin_info.denom_pub = pk;
   if (GNUNET_OK !=
       TALER_test_coin_valid (&r_melt_detail->coin_info))
   {
+    GNUNET_break_op (0);
     TMH_PARSE_release_data (spec);
     r_melt_detail->coin_info.denom_sig.rsa_signature = NULL;
     r_melt_detail->coin_info.denom_pub.rsa_public_key = NULL;
@@ -202,7 +206,6 @@ get_coin_public_info (struct MHD_Connection *connection,
   }
   r_melt_detail->melt_sig = melt_sig;
   r_melt_detail->melt_amount_with_fee = amount;
-  TMH_PARSE_release_data (spec);
   return GNUNET_OK;
 }
 
@@ -257,6 +260,7 @@ verify_coin_public_info (struct MHD_Connection *connection,
   if (TALER_amount_cmp (&fee_refresh,
                         &melt_detail->melt_amount_with_fee) < 0)
   {
+    GNUNET_break_op (0);
     TMH_KS_release (key_state);
     return (MHD_YES ==
             TMH_RESPONSE_reply_external_error (connection,
@@ -271,6 +275,7 @@ verify_coin_public_info (struct MHD_Connection *connection,
                                   &melt_detail->melt_sig.eddsa_signature,
                                   &melt_detail->coin_info.coin_pub.eddsa_pub))
   {
+    GNUNET_break_op (0);
     if (MHD_YES !=
         TMH_RESPONSE_reply_signature_invalid (connection,
                                               "confirm_sig"))
@@ -418,6 +423,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                                 &coin_melt_details[i]);
     if (GNUNET_OK != res)
     {
+      GNUNET_break_op (0);
       for (j=0;j<i;j++)
       {
         GNUNET_CRYPTO_rsa_public_key_free (coin_melt_details[j].coin_info.denom_pub.rsa_public_key);
@@ -437,6 +443,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                        &coin_melt_details[j].coin_info.coin_pub,
                        sizeof (struct TALER_CoinSpendPublicKeyP)))
       {
+        GNUNET_break_op (0);
         for (j=0;j<i;j++)
         {
           GNUNET_CRYPTO_rsa_public_key_free (coin_melt_details[j].coin_info.denom_pub.rsa_public_key);
@@ -458,7 +465,6 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
     GNUNET_CRYPTO_hash_context_read (hash_context,
                                      &melt_amount,
                                      sizeof (struct TALER_AmountNBO));
-
   }
 
   /* parse JSON arrays into 2d binary arrays and hash everything
@@ -485,6 +491,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
 
       if (GNUNET_OK != res)
       {
+        GNUNET_break_op (0);
         GNUNET_CRYPTO_hash_context_abort (hash_context);
         free_commit_coins (commit_coin,
                            TALER_CNC_KAPPA,
@@ -503,6 +510,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                                      &link_enc_size);
       if (GNUNET_OK != res)
       {
+        GNUNET_break_op (0);
         GNUNET_CRYPTO_hash_context_abort (hash_context);
         free_commit_coins (commit_coin,
                            TALER_CNC_KAPPA,
@@ -538,6 +546,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
 
       if (GNUNET_OK != res)
       {
+        GNUNET_break_op (0);
         GNUNET_break (GNUNET_SYSERR != res);
         GNUNET_CRYPTO_hash_context_abort (hash_context);
         free_commit_coins (commit_coin,
@@ -558,6 +567,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
 
       if (GNUNET_OK != res)
       {
+        GNUNET_break_op (0);
         GNUNET_break (GNUNET_SYSERR != res);
         GNUNET_CRYPTO_hash_context_abort (hash_context);
         free_commit_coins (commit_coin,
@@ -586,6 +596,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                                    &coin_melt_details[i]);
     if (GNUNET_OK != res)
     {
+      GNUNET_break_op (0);
       res = (GNUNET_NO == res) ? MHD_YES : MHD_NO;
       goto cleanup;
     }
