@@ -21,7 +21,6 @@
  *
  * TODO:
  * - test /refresh/-operations
- * - check coins returned by link_cb
  */
 #include "platform.h"
 #include "taler_util.h"
@@ -981,6 +980,8 @@ link_cb (void *cls,
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
+  const struct Command *ref;
+  unsigned int i;
 
   cmd->details.refresh_link.rlh = NULL;
   if (cmd->expected_response_code != http_status)
@@ -992,10 +993,37 @@ link_cb (void *cls,
     fail (is);
     return;
   }
+  ref = find_command (is,
+                      cmd->details.refresh_link.reveal_ref);
   switch (http_status)
   {
   case MHD_HTTP_OK:
-    // FIXME: test returned values...
+    /* check that number of coins returned matches */
+    if (num_coins != ref->details.refresh_reveal.num_fresh_coins)
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
+    /* check that the coins match */
+    for (i=0;i<num_coins;i++)
+    {
+      const struct FreshCoin *fc;
+
+      fc = &ref->details.refresh_reveal.fresh_coins[i];
+      if ( (0 != memcmp (&coin_privs[i],
+                         &fc->coin_priv,
+                         sizeof (struct TALER_CoinSpendPrivateKeyP))) ||
+           (0 != GNUNET_CRYPTO_rsa_signature_cmp (fc->sig.rsa_signature,
+                                                  sigs[i].rsa_signature)) ||
+           (0 != GNUNET_CRYPTO_rsa_public_key_cmp (fc->pk->key.rsa_public_key,
+                                                   pubs[i].rsa_public_key)) )
+      {
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
+    }
     break;
   default:
     break;
