@@ -694,9 +694,10 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "transfer_pubs");
   }
-  res = TMH_PARSE_navigate_json (connection, coin_evs,
+  res = TMH_PARSE_navigate_json (connection,
+                                 coin_evs,
                                  TMH_PARSE_JNC_INDEX, (int) 0,
-                                 TMH_PARSE_JNC_RET_DATA,
+                                 TMH_PARSE_JNC_RET_TYPED_JSON,
                                  JSON_ARRAY, &coin_detail);
   if (GNUNET_OK != res)
   {
@@ -708,7 +709,7 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
   res = TMH_PARSE_navigate_json (connection,
                                  transfer_pubs,
                                  TMH_PARSE_JNC_INDEX, (int) 0,
-                                 TMH_PARSE_JNC_RET_DATA,
+                                 TMH_PARSE_JNC_RET_TYPED_JSON,
                                  JSON_ARRAY, &coin_detail);
   if (GNUNET_OK != res)
   {
