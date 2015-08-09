@@ -209,7 +209,7 @@ get_coin_public_info (struct MHD_Connection *connection,
 
 /**
  * Verify that the signature shows that this coin is to be melted into
- * the given @a session_pub melting session, and that this is a valid
+ * the given @a session_hash melting session, and that this is a valid
  * coin (we know the denomination key and the signature on it is
  * valid).  Essentially, this does all of the per-coin checks that can
  * be done before the transaction starts.
@@ -361,7 +361,6 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                           unsigned int num_newcoins,
                           const json_t *coin_evs,
                           const json_t *link_encs)
-
 {
   int res;
   unsigned int i;
@@ -407,8 +406,8 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   }
 
   coin_count = json_array_size (melt_coins);
-  coin_melt_details = GNUNET_malloc (coin_count *
-                                     sizeof (struct TMH_DB_MeltDetails));
+  coin_melt_details = GNUNET_new_array (coin_count,
+                                        struct TMH_DB_MeltDetails);
   for (i=0;i<coin_count;i++)
   {
     /* decode JSON data on coin to melt */
