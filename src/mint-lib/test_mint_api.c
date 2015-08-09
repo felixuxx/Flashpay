@@ -18,9 +18,6 @@
  * @brief testcase to test mint's HTTP API interface
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff
- *
- * TODO:
- * - test /refresh/-operations
  */
 #include "platform.h"
 #include "taler_util.h"
@@ -1822,26 +1819,25 @@ run (void *cls,
      const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   struct InterpreterState *is;
-#if FUTURE
   static struct MeltDetails melt_coins_1[] = {
-    { "coin_ref1", "EUR:1.1" }, // FIXME: pick sensible values
-    { "coin_ref2", "EUR:1.1" }, // FIXME: pick sensible values
-    { "coin_ref3", "EUR:1.1" }, // FIXME: pick sensible values
+    { .amount = "EUR:4",
+      .coin_ref = "refresh-withdraw-coin-1" },
     { NULL, NULL }
   };
   static const char *melt_fresh_amounts_1[] = {
-    "EUR:1", // FIXME: pick sensible values
-    "EUR:1", // FIXME: pick sensible values
-    "EUR:1", // FIXME: pick sensible values
+    "EUR:1",
+    "EUR:1",
+    "EUR:1",
+    "EUR:0.1",
+    "EUR:0.1",
+    "EUR:0.1",
+    "EUR:0.1",
+    "EUR:0.1",
+    "EUR:0.1",
+    "EUR:0.1",
+    /* with 0.03 refresh fees each, this totals up to exactly 4 EUR */
     NULL
   };
-  static const char *melt_fresh_amounts_2[] = {
-    "EUR:1", // FIXME: pick sensible values
-    "EUR:1", // FIXME: pick sensible values
-    "EUR:1", // FIXME: pick sensible values
-    NULL
-  };
-#endif
   static struct Command commands[] =
   {
     /* Fill reserve with EUR:5.01, as withdraw fee is 1 ct per config */
@@ -1909,44 +1905,82 @@ run (void *cls,
       .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":2 } }",
       .details.deposit.transaction_id = 1 },
 
-#if FUTURE
-    /* Test running a successful melt operation */
+#if TEST_REFRESH
+    /* ***************** /refresh testing ******************** */
+
+    /* Fill reserve with EUR:5.01, as withdraw fee is 1 ct */
+    { .oc = OC_ADMIN_ADD_INCOMING,
+      .label = "refresh-create-reserve-1",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.admin_add_incoming.wire = "{ \"type\":\"TEST\", \"bank\":\"source bank\", \"account\":424 }",
+      .details.admin_add_incoming.amount = "EUR:5.01" },
+    /* Withdraw a 5 EUR coin, at fee of 1 ct */
+    { .oc = OC_WITHDRAW_SIGN,
+      .label = "refresh-withdraw-coin-1",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.withdraw_sign.reserve_reference = "refresh-create-reserve-1",
+      .details.withdraw_sign.amount = "EUR:5" },
+    /* Try to partially spend (deposit) 1 EUR of the 5 EUR coin (in full)
+       (merchant would receive EUR:0.99 due to 1 ct deposit fee) */
+    { .oc = OC_DEPOSIT,
+      .label = "refresh-deposit-partial",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.deposit.amount = "EUR:1",
+      .details.deposit.coin_ref = "refresh-withdraw-coin-1",
+      .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
+      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\"EUR:1 } }",
+      .details.deposit.transaction_id = 42421 },
+
+    /* Melt the rest of the coin's value (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
     { .oc = OC_REFRESH_MELT,
-      .label = "melt-1",
+      .label = "refresh-melt-1",
       .expected_response_code = MHD_HTTP_OK,
       .details.refresh_melt.melted_coins = melt_coins_1,
       .details.refresh_melt.fresh_amounts = melt_fresh_amounts_1 },
 
     /* Complete (successful) melt operation, and withdraw the coins */
     { .oc = OC_REFRESH_REVEAL,
-      .label = "reveal-1",
-      .melt_ref = "melt-1",
-      .expected_response_code = MHD_HTTP_OK },
+      .label = "refresh-reveal-1",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.refresh_reveal.melt_ref = "refresh-melt-1" },
 
     /* Test that /refresh/link works */
     { .oc = OC_REFRESH_LINK,
-      .label = "link-1",
-      .reveal_ref = "reveal-1",
-      .expected_response_code = MHD_HTTP_OK },
-
-    /* Test successfully spending coins from the refresh operation */
-    { .oc = OC_DEPOSIT,
-      .label = "deposit-refreshed-1",
+      .label = "refresh-link-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.deposit.amount = "EUR:5",  // FIXME: pick sensible value
-      .details.deposit.coin_ref = "reveal-1",
+      .details.refresh_link.reveal_ref = "refresh-reveal-1" },
+
+    /* Test successfully spending coins from the refresh operation:
+       first EUR:1 */
+    { .oc = OC_DEPOSIT,
+      .label = "refresh-deposit-refreshed-1",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.deposit.amount = "EUR:1",
+      .details.deposit.coin_ref = "refresh-reveal-1a",
       .details.deposit.coin_idx = 0,
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
       .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":3 } }",
       .details.deposit.transaction_id = 2 },
+    /* Test successfully spending coins from the refresh operation:
+       finally EUR:0.1 */
+    { .oc = OC_DEPOSIT,
+      .label = "refresh-deposit-refreshed-1b",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.deposit.amount = "EUR:0.1",
+      .details.deposit.coin_ref = "refresh-reveal-1b",
+      .details.deposit.coin_idx = 4,
+      .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
+      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":3 } }",
+      .details.deposit.transaction_id = 2 },
 
-    /* Test running a failing melt operation */
+    /* Test running a failing melt operation (same operation again must fail) */
     { .oc = OC_REFRESH_MELT,
-      .label = "melt-2",
+      .label = "refresh-melt-failing",
       .expected_response_code = MHD_HTTP_FORBIDDEN,
       .details.refresh_melt.melted_coins = melt_coins_1,
-      .details.refresh_melt.fresh_amounts = melt_fresh_amounts_2 },
+      .details.refresh_melt.fresh_amounts = melt_fresh_amounts_1 },
 
+    /* *************** end of /refresh testing ************** */
 #endif
 
     { .oc = OC_END }
