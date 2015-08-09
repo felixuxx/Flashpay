@@ -20,7 +20,6 @@
  * @author Christian Grothoff
  *
  * TODO:
- * - support depositing coins from /refresh/reveal result
  * - test /refresh/-operations
  * - check coins returned by link_cb
  */
@@ -1236,6 +1235,9 @@ interpreter_run (void *cls,
   case OC_DEPOSIT:
     {
       struct GNUNET_HashCode h_contract;
+      const struct TALER_CoinSpendPrivateKeyP *coin_priv;
+      const struct TALER_MINT_DenomPublicKey *coin_pk;
+      const struct TALER_DenominationSignature *coin_pk_sig;
       struct TALER_CoinSpendPublicKeyP coin_pub;
       struct TALER_CoinSpendSignatureP coin_sig;
       struct GNUNET_TIME_Absolute refund_deadline;
@@ -1248,8 +1250,30 @@ interpreter_run (void *cls,
       ref = find_command (is,
                           cmd->details.deposit.coin_ref);
       GNUNET_assert (NULL != ref);
-      // FIXME: support OC_REFRESH_REVEAL commands as well!
-      GNUNET_assert (OC_WITHDRAW_SIGN == ref->oc);
+      switch (ref->oc)
+      {
+      case OC_WITHDRAW_SIGN:
+        coin_priv = &ref->details.withdraw_sign.coin_priv;
+        coin_pk = ref->details.withdraw_sign.pk;
+        coin_pk_sig = &ref->details.withdraw_sign.sig;
+        break;
+      case OC_REFRESH_REVEAL:
+        {
+          const struct FreshCoin *fc;
+          unsigned int idx;
+
+          idx = cmd->details.deposit.coin_idx;
+          GNUNET_assert (idx < ref->details.refresh_reveal.num_fresh_coins);
+          fc = &ref->details.refresh_reveal.fresh_coins[idx];
+
+          coin_priv = &fc->coin_priv;
+          coin_pk = fc->pk;
+          coin_pk_sig = &fc->sig;
+        }
+        break;
+      default:
+        GNUNET_assert (0);
+      }
       if (GNUNET_OK !=
           TALER_string_to_amount (cmd->details.deposit.amount,
                                   &amount))
@@ -1276,7 +1300,8 @@ interpreter_run (void *cls,
         fail (is);
         return;
       }
-      GNUNET_CRYPTO_eddsa_key_get_public (&ref->details.withdraw_sign.coin_priv.eddsa_priv,
+
+      GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                           &coin_pub.eddsa_pub);
 
       if (0 != cmd->details.deposit.refund_deadline.rel_value_us)
@@ -1308,11 +1333,11 @@ interpreter_run (void *cls,
         TALER_amount_hton (&dr.amount_with_fee,
                            &amount);
         TALER_amount_hton (&dr.deposit_fee,
-                           &ref->details.withdraw_sign.pk->fee_deposit);
+                           &coin_pk->fee_deposit);
         dr.merchant = merchant_pub;
         dr.coin_pub = coin_pub;
         GNUNET_assert (GNUNET_OK ==
-                       GNUNET_CRYPTO_eddsa_sign (&ref->details.withdraw_sign.coin_priv.eddsa_priv,
+                       GNUNET_CRYPTO_eddsa_sign (&coin_priv->eddsa_priv,
                                                  &dr.purpose,
                                                  &coin_sig.eddsa_signature));
 
@@ -1323,8 +1348,8 @@ interpreter_run (void *cls,
                               wire,
                               &h_contract,
                               &coin_pub,
-                              &ref->details.withdraw_sign.sig,
-                              &ref->details.withdraw_sign.pk->key,
+                              coin_pk_sig,
+                              &coin_pk->key,
                               timestamp,
                               cmd->details.deposit.transaction_id,
                               &merchant_pub,
