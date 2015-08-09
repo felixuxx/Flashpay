@@ -1751,11 +1751,8 @@ postgres_get_reserve_history (void *cls,
  * @param session database connection
  * @param deposit deposit to search for
  * @return #GNUNET_YES if we know this operation,
- *         #GNUNET_NO if this deposit is unknown to us
- *         #GNUNET_SYSERR on DB error or if same coin(pub), merchant(pub) and
- *                        transaction ID are already in DB, but for different
- *                        other transaction details (contract, wiring details,
- *                        amount, etc.)
+ *         #GNUNET_NO if this exact deposit is unknown to us
+ *         #GNUNET_SYSERR on DB error
  */
 static int
 postgres_have_deposit (void *cls,
@@ -1823,13 +1820,12 @@ postgres_have_deposit (void *cls,
                        &deposit2.h_wire,
                        sizeof (struct GNUNET_HashCode))) )
     {
-      /* Inconsistencies detected! Bug in merchant!  (We might want to
+      /* Inconsistencies detected! Does not match!  (We might want to
          expand the API with a 'get_deposit' function to return the
          original transaction details to be used for an error message
          in the future!) #3838 */
-      GNUNET_break_op (0);
       PQclear (result);
-      return GNUNET_SYSERR;
+      return GNUNET_NO;
     }
   }
   PQclear (result);

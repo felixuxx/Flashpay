@@ -830,11 +830,8 @@ struct TALER_MINTDB_Plugin
    * @param sesssion database connection
    * @param deposit deposit to search for
    * @return #GNUNET_YES if we know this operation,
-   *         #GNUNET_NO if this deposit is unknown to us,
-   *         #GNUNET_SYSERR on DB error or if same coin(pub), merchant(pub) and
-   *                        transaction ID are already in DB, but for different
-   *                        other transaction details (contract, wiring details,
-   *                        amount, etc.)
+   *         #GNUNET_NO if this exact deposit is unknown to us,
+   *         #GNUNET_SYSERR on DB error
    */
   int
   (*have_deposit) (void *cls,
