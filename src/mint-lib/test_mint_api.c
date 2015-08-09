@@ -1875,6 +1875,7 @@ run (void *cls,
       .expected_response_code = MHD_HTTP_PAYMENT_REQUIRED,
       .details.withdraw_sign.reserve_reference = "create-reserve-1",
       .details.withdraw_sign.amount = "EUR:5" },
+
     /* Try to double-spend the 5 EUR coin with different wire details */
     { .oc = OC_DEPOSIT,
       .label = "deposit-double-1",
@@ -2039,7 +2040,14 @@ main (int argc,
                                    "-d", "test-mint-home",
                                    NULL);
   /* give child time to start and bind against the socket */
-  sleep (2);
+  fprintf (stderr, "Waiting for taler-mint-httpd to be ready");
+  do
+    {
+      fprintf (stderr, ".");
+      sleep (1);
+    }
+  while (0 != system ("wget -q -t 1 http://localhost:8081/agpl -o /dev/null"));
+  fprintf (stderr, "\n");
   result = GNUNET_SYSERR;
   GNUNET_SCHEDULER_run (&run, NULL);
   GNUNET_OS_process_kill (mintd,
