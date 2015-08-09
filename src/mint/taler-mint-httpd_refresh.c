@@ -700,6 +700,7 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
                                  JSON_ARRAY, &coin_detail);
   if (GNUNET_OK != res)
   {
+    GNUNET_break_op (0);
     TMH_PARSE_release_data (spec);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
@@ -711,6 +712,7 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
                                  JSON_ARRAY, &coin_detail);
   if (GNUNET_OK != res)
   {
+    GNUNET_break_op (0);
     TMH_PARSE_release_data (spec);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }

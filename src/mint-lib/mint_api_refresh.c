@@ -1438,11 +1438,15 @@ TALER_MINT_refresh_melt (struct TALER_MINT_Handle *mint,
     json_array_append (melt_coins,
                        melted_coin_to_json (&md->melt_session_hash,
                                             mc));
+  }
 
-    /* now transfer_pubs */
+  /* now transfer_pubs */
+  for (j=0;j<TALER_CNC_KAPPA;j++)
+  {
     tmp = json_array ();
-    for (j=0;j<TALER_CNC_KAPPA;j++)
+    for (i=0;i<md->num_melted_coins;i++)
     {
+      const struct MeltedCoin *mc = &md->melted_coins[i];
       struct TALER_TransferPublicKeyP transfer_pub;
 
       GNUNET_CRYPTO_ecdhe_key_get_public (&mc->transfer_priv[j].ecdhe_priv,
@@ -1453,11 +1457,15 @@ TALER_MINT_refresh_melt (struct TALER_MINT_Handle *mint,
     }
     json_array_append (transfer_pubs,
                        tmp);
+  }
 
-    /* now secret_encs */
+  /* now secret_encs */
+  for (j=0;j<TALER_CNC_KAPPA;j++)
+  {
     tmp = json_array ();
-    for (j=0;j<TALER_CNC_KAPPA;j++)
+    for (i=0;i<md->num_melted_coins;i++)
     {
+      const struct MeltedCoin *mc = &md->melted_coins[i];
       struct TALER_EncryptedLinkSecretP els;
       struct TALER_TransferSecretP trans_sec;
 
@@ -1475,16 +1483,20 @@ TALER_MINT_refresh_melt (struct TALER_MINT_Handle *mint,
     json_array_append (secret_encs,
                        tmp);
   }
+
+  /* now new_denoms */
   for (i=0;i<md->num_fresh_coins;i++)
   {
-    /* now new_denoms */
     json_array_append (new_denoms,
                        TALER_json_from_rsa_public_key
                        (md->fresh_pks[i].rsa_public_key));
+  }
 
-    /* now link_encs */
+  /* now link_encs */
+  for (j=0;j<TALER_CNC_KAPPA;j++)
+  {
     tmp = json_array ();
-    for (j=0;j<TALER_CNC_KAPPA;j++)
+    for (i=0;i<md->num_fresh_coins;i++)
     {
       const struct FreshCoin *fc = &md->fresh_coins[j][i];
       struct TALER_RefreshLinkDecrypted rld;
@@ -1508,10 +1520,13 @@ TALER_MINT_refresh_melt (struct TALER_MINT_Handle *mint,
     }
     json_array_append (link_encs,
                        tmp);
+  }
 
-    /* now coin_evs */
+  /* now coin_evs */
+  for (j=0;j<TALER_CNC_KAPPA;j++)
+  {
     tmp = json_array ();
-    for (j=0;j<TALER_CNC_KAPPA;j++)
+    for (i=0;i<md->num_fresh_coins;i++)
     {
       const struct FreshCoin *fc = &md->fresh_coins[j][i];
       struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -1536,6 +1551,7 @@ TALER_MINT_refresh_melt (struct TALER_MINT_Handle *mint,
     json_array_append (coin_evs,
                        tmp);
   }
+
   /* finally, assemble main JSON request from constitutent arrays */
   melt_obj = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
                         "new_denoms", new_denoms,
