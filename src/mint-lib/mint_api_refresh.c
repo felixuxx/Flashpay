@@ -1339,8 +1339,8 @@ melted_coin_to_json (const struct GNUNET_HashCode *melt_session_hash,
   struct TALER_CoinSpendSignatureP confirm_sig;
   struct TALER_RefreshMeltCoinAffirmationPS melt;
 
-  melt.purpose.purpose = htonl (TALER_SIGNATURE_MINT_CONFIRM_MELT);
-  melt.purpose.size = htonl (sizeof (melt));
+  melt.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
+  melt.purpose.size = htonl (sizeof (struct TALER_RefreshMeltCoinAffirmationPS));
   melt.session_hash = *melt_session_hash;
   TALER_amount_hton (&melt.amount_with_fee,
                      &mc->melt_amount_with_fee);
@@ -1351,6 +1351,9 @@ melted_coin_to_json (const struct GNUNET_HashCode *melt_session_hash,
   GNUNET_CRYPTO_eddsa_sign (&mc->coin_priv.eddsa_priv,
                             &melt.purpose,
                             &confirm_sig.eddsa_signature);
+  fprintf (stderr,
+           "Signing hash %s\n",
+           GNUNET_h2s (melt_session_hash));
   return json_pack ("{s:o, s:o, s:o, s:o, s:o}",
                     "coin_pub",
                     TALER_json_from_data (&melt.coin_pub,
