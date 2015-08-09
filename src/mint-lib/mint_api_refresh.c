@@ -519,7 +519,7 @@ serialize_denomination_key (const struct TALER_DenominationPublicKey *dk,
           pbuf,
           pbuf_size);
   GNUNET_free (pbuf);
-  return pbuf_size;
+  return pbuf_size + sizeof (uint32_t);
 }
 
 
