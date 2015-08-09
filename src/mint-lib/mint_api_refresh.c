@@ -647,7 +647,7 @@ deserialize_fresh_coin (struct FreshCoin *fc,
   fc->blinding_key.rsa_blinding_key
     = GNUNET_CRYPTO_rsa_blinding_key_decode (&buf[sizeof (struct FreshCoinP)],
                                              bbuf_size);
-  if (NULL ==  fc->blinding_key.rsa_blinding_key)
+  if (NULL == fc->blinding_key.rsa_blinding_key)
   {
     GNUNET_break (0);
     *ok = GNUNET_NO;
@@ -740,7 +740,7 @@ deserialize_melt_data (const char *buf,
     return NULL;
   memcpy (&mdp,
           buf,
-          buf_size);
+          sizeof (struct MeltDataP));
   md = GNUNET_new (struct MeltData);
   md->melt_session_hash = mdp.melt_session_hash;
   for (i=0;i<TALER_CNC_KAPPA;i++)

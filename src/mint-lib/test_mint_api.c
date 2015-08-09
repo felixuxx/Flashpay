@@ -1906,7 +1906,6 @@ run (void *cls,
       .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":2 } }",
       .details.deposit.transaction_id = 1 },
 
-#if TEST_REFRESH
     /* ***************** /refresh testing ******************** */
 
     /* Fill reserve with EUR:5.01, as withdraw fee is 1 ct */
@@ -1944,6 +1943,8 @@ run (void *cls,
       .label = "refresh-reveal-1",
       .expected_response_code = MHD_HTTP_OK,
       .details.refresh_reveal.melt_ref = "refresh-melt-1" },
+
+#if TEST_REFRESH_LINK
 
     /* Test that /refresh/link works */
     { .oc = OC_REFRESH_LINK,
@@ -2046,7 +2047,7 @@ main (int argc,
       fprintf (stderr, ".");
       sleep (1);
     }
-  while (0 != system ("wget -q -t 1 http://localhost:8081/agpl -o /dev/null"));
+  while (0 != system ("wget -q -t 1 http://localhost:8081/agpl -o /dev/null -O /dev/null"));
   fprintf (stderr, "\n");
   result = GNUNET_SYSERR;
   GNUNET_SCHEDULER_run (&run, NULL);
