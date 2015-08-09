@@ -97,7 +97,7 @@ enum MAJ_Command
 
 
 /**
- * Entry in parser specification for #MAJ_parse_json.
+ * @brief Entry in parser specification for #MAJ_parse_json.
  */
 struct MAJ_Specification
 {

@@ -188,7 +188,7 @@ struct TALER_MINT_DenomPublicKey
 
 
 /**
- * Information we get from the mint about auditors.
+ * @brief Information we get from the mint about auditors.
  */
 struct TALER_MINT_AuditorInformation
 {
@@ -222,9 +222,8 @@ struct TALER_MINT_AuditorInformation
 };
 
 
-
 /**
- * Information about keys from the mint.
+ * @brief Information about keys from the mint.
  */
 struct TALER_MINT_Keys
 {
@@ -466,7 +465,7 @@ enum TALER_MINT_ReserveTransactionType {
 
 
 /**
- * Entry in the reserve's transaction history.
+ * @brief Entry in the reserve's transaction history.
  */
 struct TALER_MINT_ReserveHistory
 {
