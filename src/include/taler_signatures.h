@@ -648,6 +648,31 @@ struct TALER_MintKeyValidityPS
 };
 
 
+/**
+ * @brief For each (old) coin being melted, we have a `struct
+ * RefreshCommitLinkP` that allows the user to find the shared secret
+ * to decrypt the respective refresh links for the new coins in the
+ * `struct TALER_MINTDB_RefreshCommitCoin`.
+ *
+ * Part of the construction of the refresh session's hash and
+ * thus of what is signed there.
+ */
+struct TALER_MINTDB_RefreshCommitLinkP
+{
+  /**
+   * Transfer public key, used to decrypt the @e shared_secret_enc
+   * in combintation with the corresponding private key of the
+   * coin.
+   */
+  struct TALER_TransferPublicKeyP transfer_pub;
+
+  /**
+   * Encrypted shared secret to decrypt the link.
+   */
+  struct TALER_EncryptedLinkSecretP shared_secret_enc;
+};
+
+
 GNUNET_NETWORK_STRUCT_END
 
 #endif

@@ -252,9 +252,6 @@ verify_coin_public_info (struct MHD_Connection *connection,
   body.purpose.size = htonl (sizeof (struct TALER_RefreshMeltCoinAffirmationPS));
   body.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
   body.session_hash = *session_hash;
-  fprintf (stderr,
-           "Verifying hash %s\n",
-           GNUNET_h2s (session_hash));
 
   TALER_amount_hton (&body.amount_with_fee,
                      &melt_detail->melt_amount_with_fee);

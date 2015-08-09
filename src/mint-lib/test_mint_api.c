@@ -1933,14 +1933,13 @@ run (void *cls,
 
     /* Melt the rest of the coin's value (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
 
-#if TEST_REFRESH
-
-
     { .oc = OC_REFRESH_MELT,
       .label = "refresh-melt-1",
       .expected_response_code = MHD_HTTP_OK,
       .details.refresh_melt.melted_coins = melt_coins_1,
       .details.refresh_melt.fresh_amounts = melt_fresh_amounts_1 },
+
+#if TEST_REFRESH
 
     /* Complete (successful) melt operation, and withdraw the coins */
     { .oc = OC_REFRESH_REVEAL,
