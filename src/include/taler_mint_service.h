@@ -727,11 +727,11 @@ typedef void
  *         In this case, neither callback will be called.
  */
 struct TALER_MINT_RefreshMeltHandle *
-TALER_MINT_refresh_melt_execute (struct TALER_MINT_Handle *mint,
-                                 size_t refresh_data_length,
-                                 const char *refresh_data,
-                                 TALER_MINT_RefreshMeltCallback melt_cb,
-                                 void *melt_cb_cls);
+TALER_MINT_refresh_melt (struct TALER_MINT_Handle *mint,
+                         size_t refresh_data_length,
+                         const char *refresh_data,
+                         TALER_MINT_RefreshMeltCallback melt_cb,
+                         void *melt_cb_cls);
 
 
 /**

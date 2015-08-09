@@ -366,6 +366,11 @@ struct Command
       const char *melt_ref;
 
       /**
+       * Reveal handle while operation is running.
+       */
+      struct TALER_MINT_RefreshRevealHandle *rrh;
+
+      /**
        * Number of fresh coins withdrawn, set by the interpreter.
        * Length of the @e fresh_coins array.
        */
@@ -409,6 +414,11 @@ struct Command
        * Reveal operation this is the matching link for.
        */
       const char *reveal_ref;
+
+      /**
+       * Link handle while operation is running.
+       */
+      struct TALER_MINT_RefreshLinkHandle *rlh;
 
     } refresh_link;
 
@@ -865,6 +875,47 @@ melt_cb (void *cls,
 
 
 /**
+ * Function called with the result of the /refresh/reveal operation.
+ *
+ * @param cls closure with the interpreter state
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
+ * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
+ * @param sigs array of signature over @a num_coins coins, NULL on error
+ * @param full_response full response from the mint (for logging, in case of errors)
+ */
+static void
+reveal_cb (void *cls,
+           unsigned int http_status,
+           unsigned int num_coins,
+           const struct TALER_CoinSpendPrivateKeyP *coin_privs,
+           const struct TALER_DenominationSignature *sigs,
+           json_t *full_response)
+{
+  struct InterpreterState *is = cls;
+  struct Command *cmd = &is->commands[is->ip];
+  unsigned int i;
+
+  cmd->details.refresh_reveal.rrh = NULL;
+  if (cmd->expected_response_code != http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u to command %s\n",
+                http_status,
+                cmd->label);
+    fail (is);
+    return;
+  }
+  cmd->details.refresh_reveal.num_fresh_coins = num_coins;
+  // FIXME: init rest...
+  is->ip++;
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
+}
+
+
+/**
  * Find denomination key matching the given amount.
  *
  * @param keys array of keys to search
@@ -1205,7 +1256,7 @@ interpreter_run (void *cls,
 
       cmd->details.refresh_melt.noreveal_index = UINT16_MAX;
       for (num_melted_coins=0;
-           NULL != cmd->details.refresh_melt.melted_coins[num_melted_coins];
+           NULL != cmd->details.refresh_melt.melted_coins[num_melted_coins].amount;
            num_melted_coins++) ;
       for (num_fresh_coins=0;
            NULL != cmd->details.refresh_melt.fresh_amounts[num_fresh_coins];
@@ -1225,7 +1276,7 @@ interpreter_run (void *cls,
           ref = find_command (is,
                               md->coin_ref);
           GNUNET_assert (NULL != ref);
-          GNUNET_assert (OC_WITHDRAW_SIGN == ref_cmd->oc);
+          GNUNET_assert (OC_WITHDRAW_SIGN == ref->oc);
 
           melt_privs[i] = ref->details.withdraw_sign.coin_priv;
           if (GNUNET_OK !=
@@ -1240,12 +1291,23 @@ interpreter_run (void *cls,
             return;
           }
           melt_sigs[i] = ref->details.withdraw_sign.sig;
-          melt_pks[i] = ref->details.withdraw_sign.pk;
+          melt_pks[i] = *ref->details.withdraw_sign.pk;
         }
         for (i=0;i<num_fresh_coins;i++)
         {
-          fresh_pks[i] = find_pk (is->keys,
-                                  cmd->details.refresh_melt.fresh_amounts[i]);
+          if (GNUNET_OK !=
+              TALER_string_to_amount (cmd->details.refresh_melt.fresh_amounts[i],
+                                      &amount))
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "Failed to parse amount `%s' at %u\n",
+                        cmd->details.withdraw_sign.amount,
+                        is->ip);
+            fail (is);
+            return;
+          }
+          fresh_pks[i] = *find_pk (is->keys,
+                                   &amount);
         }
         cmd->details.refresh_melt.refresh_data
           = TALER_MINT_refresh_prepare (num_melted_coins,
@@ -1264,11 +1326,11 @@ interpreter_run (void *cls,
           return;
         }
         cmd->details.refresh_melt.rmh
-          = TALER_MINT_refresh_melt_execute (mint,
-                                             cmd->details.refresh_melt.refresh_data_length,
-                                             cmd->details.refresh_melt.refresh_data,
-                                             &melt_cb,
-                                             is);
+          = TALER_MINT_refresh_melt (mint,
+                                     cmd->details.refresh_melt.refresh_data_length,
+                                     cmd->details.refresh_melt.refresh_data,
+                                     &melt_cb,
+                                     is);
         if (NULL == cmd->details.refresh_melt.rmh)
         {
           GNUNET_break (0);
@@ -1281,10 +1343,23 @@ interpreter_run (void *cls,
     }
     break;
   case OC_REFRESH_REVEAL:
-    /* not implemented */
-    GNUNET_break (0);
-    is->ip++;
-    break;
+    ref = find_command (is,
+                        cmd->details.refresh_reveal.melt_ref);
+    cmd->details.refresh_reveal.rrh
+      = TALER_MINT_refresh_reveal (mint,
+                                   ref->details.refresh_melt.refresh_data_length,
+                                   ref->details.refresh_melt.refresh_data,
+                                   ref->details.refresh_melt.noreveal_index,
+                                   &reveal_cb,
+                                   is);
+    if (NULL == cmd->details.refresh_reveal.rrh)
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
+    trigger_context_task ();
+    return;
   case OC_REFRESH_LINK:
     /* not implemented */
     GNUNET_break (0);
@@ -1407,7 +1482,7 @@ do_shutdown (void *cls,
       }
       break;
     case OC_REFRESH_LINK:
-      if (NULL != cmd->details.refresh_link.rl)
+      if (NULL != cmd->details.refresh_link.rlh)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                     "Command %u (%s) did not complete\n",
