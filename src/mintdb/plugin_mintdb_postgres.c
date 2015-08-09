@@ -166,13 +166,47 @@ static int
 postgres_drop_temporary (void *cls,
                          struct TALER_MINTDB_Session *session)
 {
-  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Dropping temporary tables\n");
   SQLEXEC_ (session->conn,
             "DROP SCHEMA " TALER_TEMP_SCHEMA_NAME " CASCADE;");
   return GNUNET_OK;
  SQLEXEC_fail:
   return GNUNET_SYSERR;
+}
+
+
+/**
+ * Function called by libpq whenever it wants to log something.
+ * We already log whenever we care, so this function does nothing
+ * and merely exists to silence the libpq logging.
+ *
+ * @param arg NULL
+ * @param res information about some libpq event
+ */
+static void
+pq_notice_receiver_cb (void *arg,
+                       const PGresult *res)
+{
+  /* do nothing, intentionally */
+}
+
+
+/**
+ * Function called by libpq whenever it wants to log something.
+ * We log those using the Taler logger.
+ *
+ * @param arg NULL
+ * @param message information about some libpq event
+ */
+static void
+pq_notice_processor_cb (void *arg,
+                        const char *message)
+{
+  GNUNET_log_from (GNUNET_ERROR_TYPE_INFO,
+                   "pq",
+                   "%s",
+                   message);
 }
 
 
@@ -198,6 +232,12 @@ postgres_create_tables (void *cls,
     PQfinish (conn);
     return GNUNET_SYSERR;
   }
+  PQsetNoticeReceiver (conn,
+                       &pq_notice_receiver_cb,
+                       NULL);
+  PQsetNoticeProcessor (conn,
+                        &pq_notice_processor_cb,
+                        NULL);
   if ( (GNUNET_YES == temporary) &&
        (GNUNET_SYSERR == set_temporary_schema (conn)))
   {
@@ -939,6 +979,12 @@ postgres_get_session (void *cls,
     GNUNET_break (0);
     return NULL;
   }
+  PQsetNoticeReceiver (db_conn,
+                       &pq_notice_receiver_cb,
+                       NULL);
+  PQsetNoticeProcessor (db_conn,
+                        &pq_notice_processor_cb,
+                        NULL);
   if ( (GNUNET_YES == temporary) &&
        (GNUNET_SYSERR == set_temporary_schema(db_conn)) )
   {
