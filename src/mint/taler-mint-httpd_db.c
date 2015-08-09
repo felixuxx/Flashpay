@@ -582,6 +582,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
   melt.coin_sig = coin_details->melt_sig;
   melt.session_hash = *session_hash;
   melt.amount_with_fee = coin_details->melt_amount_with_fee;
+  melt.melt_fee = coin_details->melt_fee;
   if (GNUNET_OK !=
       TMH_plugin->insert_refresh_melt (TMH_plugin->cls,
                                        session,

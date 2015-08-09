@@ -223,7 +223,8 @@ get_coin_public_info (struct MHD_Connection *connection,
  *
  * @param connection the connection to send error responses to
  * @param session_hash hash over refresh session the coin is melted into
- * @param melt_detail details about the coin's melting permission (if valid)
+ * @param[in,out] melt_detail details about the coin's melting permission,
+ *                            the `melt_fee` is updated
  * @return #GNUNET_YES if coin public info in JSON was valid
  *         #GNUNET_NO JSON was invalid, response was generated
  *         #GNUNET_SYSERR on internal error
@@ -231,7 +232,7 @@ get_coin_public_info (struct MHD_Connection *connection,
 static int
 verify_coin_public_info (struct MHD_Connection *connection,
                          const struct GNUNET_HashCode *session_hash,
-                         const struct TMH_DB_MeltDetails *melt_detail)
+                         struct TMH_DB_MeltDetails *melt_detail)
 {
   struct TALER_RefreshMeltCoinAffirmationPS body;
   struct TMH_KS_StateHandle *key_state;
@@ -253,6 +254,7 @@ verify_coin_public_info (struct MHD_Connection *connection,
      valid for issuing! (#3634) */
   TALER_amount_ntoh (&fee_refresh,
                      &dki->issue.properties.fee_refresh);
+  melt_detail->melt_fee = fee_refresh;
   body.purpose.size = htonl (sizeof (struct TALER_RefreshMeltCoinAffirmationPS));
   body.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
   body.session_hash = *session_hash;

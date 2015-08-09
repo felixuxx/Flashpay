@@ -99,6 +99,12 @@ struct TMH_DB_MeltDetails
    * to the melt is this value minus the fee for melting the coin.
    */
   struct TALER_Amount melt_amount_with_fee;
+
+  /**
+   * What fee is earned by the mint?  Set delayed during
+   * #verify_coin_public_info().
+   */
+  struct TALER_Amount melt_fee;
 };
 
 
