@@ -986,6 +986,27 @@ TALER_MINT_refresh_prepare (unsigned int num_melts,
       GNUNET_free (link_enc);
     }
   }
+  for (i = 0; i < TALER_CNC_KAPPA; i++)
+  {
+    for (j = 0; j < num_melts; j++)
+    {
+      struct TALER_MINTDB_RefreshCommitLinkP rcl;
+      struct TALER_TransferSecretP trans_sec;
+
+      GNUNET_CRYPTO_ecdhe_key_get_public (&md.melted_coins[j].transfer_priv[i].ecdhe_priv,
+                                          &rcl.transfer_pub.ecdhe_pub);
+      TALER_link_derive_transfer_secret  (&melt_privs[j],
+                                          &md.melted_coins[j].transfer_priv[i],
+                                          &trans_sec);
+      TALER_transfer_encrypt (&md.link_secrets[i],
+                              &trans_sec,
+                              &rcl.shared_secret_enc);
+      GNUNET_CRYPTO_hash_context_read (hash_context,
+                                       &rcl,
+                                       sizeof (struct TALER_MINTDB_RefreshCommitLinkP));
+    }
+  }
+
   GNUNET_CRYPTO_hash_context_finish (hash_context,
                                      &md.melt_session_hash);
 
@@ -1351,9 +1372,6 @@ melted_coin_to_json (const struct GNUNET_HashCode *melt_session_hash,
   GNUNET_CRYPTO_eddsa_sign (&mc->coin_priv.eddsa_priv,
                             &melt.purpose,
                             &confirm_sig.eddsa_signature);
-  fprintf (stderr,
-           "Signing hash %s\n",
-           GNUNET_h2s (melt_session_hash));
   return json_pack ("{s:o, s:o, s:o, s:o, s:o}",
                     "coin_pub",
                     TALER_json_from_data (&melt.coin_pub,
@@ -1544,7 +1562,7 @@ TALER_MINT_refresh_melt (struct TALER_MINT_Handle *mint,
                           &coin_hash);
       coin_ev_size = GNUNET_CRYPTO_rsa_blind (&coin_hash,
                                               fc->blinding_key.rsa_blinding_key,
-                                              md->fresh_pks[j].rsa_public_key,
+                                              md->fresh_pks[i].rsa_public_key,
                                               &coin_ev);
       json_array_append (tmp,
                          TALER_json_from_data (coin_ev,
