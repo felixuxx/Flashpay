@@ -327,9 +327,9 @@ struct Command
       struct MeltDetails *melted_coins;
 
       /**
-       * Which reserves should we withdraw the fresh coins from?
+       * Denominations of the fresh coins to withdraw.
        */
-      const char **reserve_references;
+      const char **fresh_amounts;
 
       /**
        * Melt handle while operation is running.
@@ -825,7 +825,42 @@ deposit_cb (void *cls,
   is->ip++;
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
                                        is);
+}
 
+
+/**
+ * Function called with the result of the /refresh/melt operation.
+ *
+ * @param cls closure with the interpreter state
+ * @param http_status HTTP response code, never #MHD_HTTP_OK (200) as for successful intermediate response this callback is skipped.
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param noreveal_index choice by the mint in the cut-and-choose protocol,
+ *                    UINT16_MAX on error
+ * @param full_response full response from the mint (for logging, in case of errors)
+ */
+static void
+melt_cb (void *cls,
+         unsigned int http_status,
+         uint16_t noreveal_index,
+         json_t *full_response)
+{
+  struct InterpreterState *is = cls;
+  struct Command *cmd = &is->commands[is->ip];
+
+  cmd->details.refresh_melt.rmh = NULL;
+  if (cmd->expected_response_code != http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u to command %s\n",
+                http_status,
+                cmd->label);
+    fail (is);
+    return;
+  }
+  cmd->details.refresh_melt.noreveal_index = noreveal_index;
+  is->ip++;
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
 }
 
 
@@ -1164,9 +1199,86 @@ interpreter_run (void *cls,
       return;
     }
   case OC_REFRESH_MELT:
-    /* not implemented */
-    GNUNET_break (0);
-    is->ip++;
+    {
+      unsigned int num_melted_coins;
+      unsigned int num_fresh_coins;
+
+      cmd->details.refresh_melt.noreveal_index = UINT16_MAX;
+      for (num_melted_coins=0;
+           NULL != cmd->details.refresh_melt.melted_coins[num_melted_coins];
+           num_melted_coins++) ;
+      for (num_fresh_coins=0;
+           NULL != cmd->details.refresh_melt.fresh_amounts[num_fresh_coins];
+           num_fresh_coins++) ;
+
+      {
+        struct TALER_CoinSpendPrivateKeyP melt_privs[num_melted_coins];
+        struct TALER_Amount melt_amounts[num_melted_coins];
+        struct TALER_DenominationSignature melt_sigs[num_melted_coins];
+        struct TALER_MINT_DenomPublicKey melt_pks[num_melted_coins];
+        struct TALER_MINT_DenomPublicKey fresh_pks[num_fresh_coins];
+        unsigned int i;
+
+        for (i=0;i<num_melted_coins;i++)
+        {
+          const struct MeltDetails *md = &cmd->details.refresh_melt.melted_coins[i];
+          ref = find_command (is,
+                              md->coin_ref);
+          GNUNET_assert (NULL != ref);
+          GNUNET_assert (OC_WITHDRAW_SIGN == ref_cmd->oc);
+
+          melt_privs[i] = ref->details.withdraw_sign.coin_priv;
+          if (GNUNET_OK !=
+              TALER_string_to_amount (md->amount,
+                                      &melt_amounts[i]))
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "Failed to parse amount `%s' at %u\n",
+                        md->amount,
+                        is->ip);
+            fail (is);
+            return;
+          }
+          melt_sigs[i] = ref->details.withdraw_sign.sig;
+          melt_pks[i] = ref->details.withdraw_sign.pk;
+        }
+        for (i=0;i<num_fresh_coins;i++)
+        {
+          fresh_pks[i] = find_pk (is->keys,
+                                  cmd->details.refresh_melt.fresh_amounts[i]);
+        }
+        cmd->details.refresh_melt.refresh_data
+          = TALER_MINT_refresh_prepare (num_melted_coins,
+                                        melt_privs,
+                                        melt_amounts,
+                                        melt_sigs,
+                                        melt_pks,
+                                        GNUNET_YES,
+                                        num_fresh_coins,
+                                        fresh_pks,
+                                        &cmd->details.refresh_melt.refresh_data_length);
+        if (NULL == cmd->details.refresh_melt.refresh_data)
+        {
+          GNUNET_break (0);
+          fail (is);
+          return;
+        }
+        cmd->details.refresh_melt.rmh
+          = TALER_MINT_refresh_melt_execute (mint,
+                                             cmd->details.refresh_melt.refresh_data_length,
+                                             cmd->details.refresh_melt.refresh_data,
+                                             &melt_cb,
+                                             is);
+        if (NULL == cmd->details.refresh_melt.rmh)
+        {
+          GNUNET_break (0);
+          fail (is);
+          return;
+        }
+        trigger_context_task ();
+        return;
+      }
+    }
     break;
   case OC_REFRESH_REVEAL:
     /* not implemented */
@@ -1267,6 +1379,42 @@ do_shutdown (void *cls,
                     cmd->label);
         TALER_MINT_deposit_cancel (cmd->details.deposit.dh);
         cmd->details.deposit.dh = NULL;
+      }
+      break;
+    case OC_REFRESH_MELT:
+      if (NULL != cmd->details.refresh_melt.rmh)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
+        TALER_MINT_refresh_melt_cancel (cmd->details.refresh_melt.rmh);
+        cmd->details.refresh_melt.rmh = NULL;
+      }
+      GNUNET_free_non_null (cmd->details.refresh_melt.refresh_data);
+      cmd->details.refresh_melt.refresh_data = NULL;
+      cmd->details.refresh_melt.refresh_data_length = 0;
+      break;
+    case OC_REFRESH_REVEAL:
+      if (NULL != cmd->details.refresh_reveal.rrh)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
+        TALER_MINT_refresh_reveal_cancel (cmd->details.refresh_reveal.rrh);
+        cmd->details.refresh_reveal.rrh = NULL;
+      }
+      break;
+    case OC_REFRESH_LINK:
+      if (NULL != cmd->details.refresh_link.rl)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
+        TALER_MINT_refresh_link_cancel (cmd->details.refresh_link.rlh);
+        cmd->details.refresh_link.rlh = NULL;
       }
       break;
     default:
@@ -1411,16 +1559,16 @@ run (void *cls,
     { "coin_ref3", "EUR:1.1" }, // FIXME: pick sensible values
     { NULL, NULL }
   };
-  static const char *melt_fresh_reserves_1[] = {
-    "create-reserve-1", // FIXME: pick sensible values
-    "create-reserve-1", // FIXME: pick sensible values
-    "create-reserve-1", // FIXME: pick sensible values
+  static const char *melt_fresh_amounts_1[] = {
+    "EUR:1", // FIXME: pick sensible values
+    "EUR:1", // FIXME: pick sensible values
+    "EUR:1", // FIXME: pick sensible values
     NULL
   };
-  static const char *melt_fresh_reserves_2[] = {
-    "create-reserve-1", // FIXME: pick sensible values
-    "create-reserve-1", // FIXME: pick sensible values
-    "create-reserve-1", // FIXME: pick sensible values
+  static const char *melt_fresh_amounts_2[] = {
+    "EUR:1", // FIXME: pick sensible values
+    "EUR:1", // FIXME: pick sensible values
+    "EUR:1", // FIXME: pick sensible values
     NULL
   };
   static struct Command commands[] =
@@ -1496,7 +1644,7 @@ run (void *cls,
       .label = "melt-1",
       .expected_response_code = MHD_HTTP_OK,
       .details.refresh_melt.melted_coins = melt_coins_1,
-      .details.refresh_melt.reserve_references = melt_fresh_reserves_1 },
+      .details.refresh_melt.fresh_amounts = melt_fresh_amounts_1 },
 
     /* Complete (successful) melt operation, and withdraw the coins */
     { .oc = OC_REFRESH_REVEAL,
@@ -1526,7 +1674,7 @@ run (void *cls,
       .label = "melt-2",
       .expected_response_code = MHD_HTTP_FORBIDDEN,
       .details.refresh_melt.melted_coins = melt_coins_1,
-      .details.refresh_melt.reserve_references = melt_fresh_reserves_2 },
+      .details.refresh_melt.fresh_amounts = melt_fresh_amounts_2 },
 
 #endif
 
