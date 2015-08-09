@@ -550,7 +550,9 @@ refresh_accept_melts (struct MHD_Connection *connection,
     GNUNET_break (0);
     TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
                                             tl);
-    return TMH_RESPONSE_reply_internal_db_error (connection);
+    return (MHD_YES ==
+            TMH_RESPONSE_reply_internal_db_error (connection))
+      ? GNUNET_NO : GNUNET_SYSERR;
   }
   /* Refuse to refresh when the coin's value is insufficient
      for the cost of all transactions. */
@@ -587,7 +589,9 @@ refresh_accept_melts (struct MHD_Connection *connection,
                                        &melt))
   {
     GNUNET_break (0);
-    return GNUNET_SYSERR;
+    return (MHD_YES ==
+            TMH_RESPONSE_reply_internal_db_error (connection))
+      ? GNUNET_NO : GNUNET_SYSERR;
   }
   return GNUNET_OK;
 }

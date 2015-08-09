@@ -1835,7 +1835,16 @@ run (void *cls,
     "EUR:0.1",
     "EUR:0.1",
     "EUR:0.1",
-    /* with 0.03 refresh fees each, this totals up to exactly 4 EUR */
+    "EUR:0.1",
+    "EUR:0.01",
+    "EUR:0.01",
+    "EUR:0.01",
+    "EUR:0.01",
+    "EUR:0.01",
+    "EUR:0.01",
+    /* with 0.01 withdraw fees (except for 1ct coins),
+       this totals up to exactly EUR:3.97, and with
+       the 0.03 refresh fee, to EUR:4.0*/
     NULL
   };
   static struct Command commands[] =

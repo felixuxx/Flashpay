@@ -92,6 +92,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                             &cost,
                             &total_cost)) )
     {
+      GNUNET_break_op (0);
       TMH_KS_release (key_state);
       return TMH_RESPONSE_reply_internal_error (connection,
                                                 "cost calculation failure");
@@ -115,6 +116,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                                &coin_melt_details->melt_amount_with_fee,
                                &fee_melt))
     {
+      GNUNET_break_op (0);
       TMH_KS_release (key_state);
       return TMH_RESPONSE_reply_external_error (connection,
                                                 "Melt contribution below melting fee");
@@ -124,6 +126,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                           &melt,
                           &total_melt))
     {
+      GNUNET_break_op (0);
       TMH_KS_release (key_state);
       return TMH_RESPONSE_reply_internal_error (connection,
                                                 "balance calculation failure");
@@ -134,6 +137,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
       TALER_amount_cmp (&total_cost,
                         &total_melt))
   {
+    GNUNET_break_op (0);
     /* We require total value of coins being melted and
        total value of coins being generated to match! */
     return TMH_RESPONSE_reply_json_pack (connection,
