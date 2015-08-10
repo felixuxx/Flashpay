@@ -94,7 +94,21 @@ data_free (struct PERF_TALER_MINTDB_Data *data)
       data->data.dki = NULL;
       break;
 
-    default:
+    case PERF_TALER_MINTDB_REFRESH_HASH:
+      if (NULL == data->data.session_hash)
+        break;
+      GNUNET_free (data->data.session_hash);
+      data->data.session_hash = NULL;
+      break;
+
+    case PERF_TALER_MINTDB_REFRESH_MELT:
+      if (NULL == data->data.refresh_melt)
+        break;
+      PERF_TALER_MINTDB_refresh_melt_free (data->data.refresh_melt);
+      data->data.refresh_melt = NULL;
+      break;
+
+    case PERF_TALER_MINTDB_NONE:
       break;
   }
 }
@@ -138,8 +152,19 @@ data_copy (const struct PERF_TALER_MINTDB_Data *data,
         = PERF_TALER_MINTDB_denomination_copy (data->data.dki);
       return;
 
-    default:
-      return;
+    case PERF_TALER_MINTDB_REFRESH_HASH:
+      copy-> data.session_hash = GNUNET_new (struct GNUNET_HashCode);
+      *copy->data.session_hash
+        = *data->data.session_hash;
+      break;
+
+    case PERF_TALER_MINTDB_REFRESH_MELT:
+      copy->data.refresh_melt
+        = PERF_TALER_MINTDB_refresh_melt_copy (data->data.refresh_melt);
+      break;
+
+    case PERF_TALER_MINTDB_NONE:
+      break;
   }
 }
 
@@ -719,6 +744,55 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
         }
         break;
 
+      case PERF_TALER_MINTDB_CMD_GET_REFRESH_SESSION:
+        {
+          int ret;
+          ret = cmd_find (cmd,
+                          cmd[i].details.get_refresh_session.label_hash);
+          if (GNUNET_SYSERR != ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.get_refresh_session.label_hash);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_REFRESH_HASH != cmd[ret].exposed.type)
+          {   
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s\n",
+                        i,
+                        cmd[i].details.get_refresh_session.label_hash);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.get_refresh_session.index_hash = ret;
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_REFRESH_MELT:
+        {
+          int ret;
+          ret = cmd_find (cmd,
+                          cmd[i].details.get_refresh_melt.label_hash);
+          if (GNUNET_SYSERR != ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.get_refresh_melt.label_hash);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_REFRESH_HASH != cmd[ret].exposed.type)
+          {   
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s\n",
+                        i,
+                        cmd[i].details.get_refresh_melt.label_hash);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.get_refresh_melt.index_hash = ret;
+        }
+        break;
 
       case PERF_TALER_MINTDB_CMD_END:
       case PERF_TALER_MINTDB_CMD_DEBUG:
@@ -733,6 +807,7 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
 
       default:
         break;
+
     }
   }
   return GNUNET_OK;
@@ -1217,15 +1292,16 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_CREATE_REFRESH_SESSION:
         {
-          struct GNUNET_HashCode hash;
+          struct GNUNET_HashCode *hash;
           struct TALER_MINTDB_RefreshSession *refresh_session;
 
+          hash = GNUNET_new (struct GNUNET_HashCode);
           refresh_session = PERF_TALER_MINTDB_refresh_session_init ();
           GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
-                                            &hash);
+                                            hash);
           state->plugin->create_refresh_session (state->session,
                                                  state->session,
-                                                 &hash,
+                                                 hash,
                                                  refresh_session);
           state->cmd[state->i].exposed.data.session_hash = hash;
           PERF_TALER_MINTDB_refresh_session_free (refresh_session);
@@ -1235,16 +1311,15 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_GET_REFRESH_SESSION:
         {
-          int hash_index;
-          struct GNUNET_HashCode hash;
+          unsigned int hash_index;
+          struct GNUNET_HashCode *hash;
           struct TALER_MINTDB_RefreshSession refresh;
 
-          hash_index = cmd_find (state->cmd,
-                                 state->cmd[state->i].details.get_refresh_session.label_hash);
+          hash_index = state->cmd[state->i].details.get_refresh_session.index_hash;
           hash = state->cmd[hash_index].exposed.data.session_hash;
           state->plugin->get_refresh_session (state->session,
                                               state->session,
-                                              &hash,
+                                              hash,
                                               &refresh);
         }
         break;
@@ -1253,19 +1328,15 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         {
           int hash_index;
           int coin_index;
-          struct GNUNET_HashCode hash;
+          struct GNUNET_HashCode *hash;
           struct TALER_MINTDB_RefreshMelt *melt;
           struct PERF_TALER_MINTDB_Coin *coin;
 
-          hash_index = cmd_find (state->cmd,
-                                 state->cmd[state->i].details.insert_refresh_melt.label_hash);
-          coin_index = cmd_find (state->cmd,
-                                 state->cmd[state->i].details.insert_refresh_melt.label_coin);
-          GNUNET_assert (GNUNET_SYSERR != hash_index);
-          GNUNET_assert (GNUNET_SYSERR != coin_index);
+          hash_index = state->cmd[state->i].details.insert_refresh_melt.index_hash;
+          coin_index = state->cmd[state->i].details.insert_refresh_melt.index_coin;
           hash = state->cmd[hash_index].exposed.data.session_hash;
           coin = state->cmd[coin_index].exposed.data.coin;
-          melt = PERF_TALER_MINTDB_refresh_melt_init (&hash,
+          melt = PERF_TALER_MINTDB_refresh_melt_init (hash,
                                                       coin);
           state->plugin->insert_refresh_melt (state->plugin->cls,
                                               state->session,
@@ -1278,7 +1349,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_GET_REFRESH_MELT:
         {
           int hash_index;
-          struct GNUNET_HashCode hash;
+          struct GNUNET_HashCode *hash;
           struct TALER_MINTDB_RefreshMelt melt;
 
           hash_index = cmd_find (state->cmd,
@@ -1286,7 +1357,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           hash = state->cmd[hash_index].exposed.data.session_hash;
           state->plugin->get_refresh_melt (state->plugin->cls,
                                            state->session,
-                                           &hash,
+                                           hash,
                                            1,
                                            &melt);
         }
@@ -1296,20 +1367,17 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         {
           int hash_index;
           int denom_index;
-          struct GNUNET_HashCode session_hash;
+          struct GNUNET_HashCode *session_hash;
           struct TALER_MINTDB_DenominationKeyIssueInformation *denom;
 
-          hash_index = cmd_find (state->cmd,
-                                 state->cmd[state->i].details.insert_refresh_order.label_hash);
-          GNUNET_assert (GNUNET_SYSERR != hash_index);
-          denom_index = cmd_find (state->cmd,
-                                  state->cmd[state->i].details.insert_refresh_order.label_denom);
+          hash_index = state->cmd[state->i].details.insert_refresh_order.index_hash;
+          denom_index = state->cmd[state->i].details.insert_refresh_order.index_denom;
           GNUNET_assert (GNUNET_SYSERR != denom_index);
           session_hash = state->cmd[hash_index].exposed.data.session_hash;
           denom = state->cmd[denom_index].exposed.data.dki;
           state->plugin->insert_refresh_order (state->plugin->cls,
                                                state->session,
-                                               &session_hash,
+                                               session_hash,
                                                1,
                                                &denom->denom_pub);
 
@@ -1319,16 +1387,14 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_GET_REFRESH_ORDER:
         {
           int hash_index;
-          struct GNUNET_HashCode hash;
+          struct GNUNET_HashCode *hash;
           struct TALER_DenominationPublicKey denom_pub;
 
-          hash_index = cmd_find (state->cmd,
-                                 state->cmd[state->i].details.get_refresh_order.label_hash);
-          GNUNET_assert (GNUNET_SYSERR != hash_index);
+          hash_index = state->cmd[state->i].details.get_refresh_order.index_hash;
           hash = state->cmd[hash_index].exposed.data.session_hash;
           state->plugin->get_refresh_order (state->plugin->cls,
                                             state->session,
-                                            &hash,
+                                            hash,
                                             1,
                                             &denom_pub);
         }

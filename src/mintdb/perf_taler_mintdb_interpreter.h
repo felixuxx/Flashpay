@@ -450,7 +450,65 @@
                                              _label_coin), \
   PERF_TALER_MINTDB_INIT_CMD_INSERT_DEPOSIT (_label "insert", \
                                              _label "deposit")
+/**
+ * Insert informations about a refresh session
+ * melts one coin into another
+ *
+ * @param _label the label of the command
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_CREATE_REFRESH_SESSION(_label) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_CREATE_REFRESH_SESSION, \
+  .label = _label, \
+  .exposed.type = PERF_TALER_MINTDB_REFRESH_HASH \
+}
 
+/**
+ * Get informations about a refresh session
+ * 
+ * @param _label the label of the command
+ * @param _label_hash the label of the hash to search
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_GET_REFRESH_SESSION(_label, \
+                                                       _label_hash) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_GET_REFRESH_SESSION, \
+  .label = _label, \
+  .exposed.type = PERF_TALER_MINTDB_REFRESH_MELT \
+}
+
+/**
+ * Insert a melt operation in the database
+ *
+ * @param _label the label of the command
+ * @param _label_hash the label of the hash of the session
+ * @param _label_coin the label of the coin to melt
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_INSERT_REFRESH_MELT(_label, \
+                                                       _label_hash, \
+                                                       _label_coin), \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_INSERT_REFRESH_MELT, \
+  .label = _label, \
+  .details.insert_refresh_melt.label_hash = _label_hash, \
+  .details.insert_refresh_melt.label_coin = _label_coin, \
+  .exposed.type = PERF_TALER_MINTDB_NONE \
+}
+
+/**
+ * Get informations about a melt operation
+ *
+ * @param _label the label of the command
+ * @param _label_hash the label of the hash of the refresh session
+ */
+#define PERF_TALER_MINTDB_INIT_CMD_GET_REFRESH_MELT(_label, \
+                                                    _label_hash) \
+{ \
+  .command = PERF_TALER_MINTDB_CMD_GET_REFRESH_MELT, \
+  .label = _label, \
+  .detail.get_refresh_melt.label_hash = _label_hash, \
+  .exposed.type = PERF_TALER_MINTDB_NONE \
+}
 
 /**
  * The type of data stored in #PERF_TALER_MINTDB_Memory
@@ -463,7 +521,8 @@ enum PERF_TALER_MINTDB_Type
   PERF_TALER_MINTDB_RESERVE,
   PERF_TALER_MINTDB_COIN,
   PERF_TALER_MINTDB_DEPOSIT,
-  PERF_TALER_MINTDB_REFRESH_HASH
+  PERF_TALER_MINTDB_REFRESH_HASH,
+  PERF_TALER_MINTDB_REFRESH_MELT
 };
 
 
@@ -491,7 +550,9 @@ struct PERF_TALER_MINTDB_Data
     /** #PERF_TALER_MINTDB_DENOMINATION_INFO */
     struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
     /** #PERF_TALER_MINTDB_REFRESH_HASH */
-    struct GNUNET_HashCode session_hash;
+    struct GNUNET_HashCode *session_hash;
+    /** #PERF_TALER_MINTDB_REFRESH_MELT */
+    struct TALER_MINTDB_RefreshMelt *refresh_melt;
   } data;
 };
 
@@ -1037,7 +1098,7 @@ union PERF_TALER_MINTDB_CMD_Details
      * The label of the coin to melt
      */
     const char *label_coin;
-    const char coin;
+    unsigned int index_coin;
   } insert_refresh_melt;
 
   /**

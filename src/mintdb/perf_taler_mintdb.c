@@ -25,8 +25,8 @@
 #define NB_DENOMINATION_INIT  15
 #define NB_DENOMINATION_SAVE  15
 
-#define BIGGER 10
-#define BIG 10
+#define BIGGER 100000
+#define BIG 10000
 
 #define NB_RESERVE_INIT   BIGGER
 #define NB_RESERVE_SAVE   BIG
@@ -36,6 +36,9 @@
 
 #define NB_WITHDRAW_INIT  BIGGER
 #define NB_WITHDRAW_SAVE  BIG
+
+#define NB_REFRESH_INIT BIGGER
+#define NB_REFRESH_SAVE BIG
 
 /**
  * Runs the performances tests for the mint database
@@ -118,8 +121,21 @@ main (int argc, char ** argv)
                                            NB_DEPOSIT_SAVE),
     PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("",
                                          "04 - deposit init loop"),
-    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("End of initialization"),
     // End of deposit initialization
+    // Session initialization
+    PERF_TALER_MINTDB_INIT_CMD_LOOP ("05 - refresh session init loop",
+                                     NB_REFRESH_INIT),
+    PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION (""),
+    PERF_TALER_MINTDB_INIT_CMD_CREATE_REFRESH_SESSION ("05 - refresh session"),
+    PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("05 - session array",
+                                           "05 - refresh session init loop",
+                                           "05 - refresh session",
+                                           NB_RESERVE_SAVE),
+    PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION (""),
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("05 - end",
+                                         "05 - refresh session init loop"),
+
+    PERF_TALER_MINTDB_INIT_CMD_DEBUG ("End of initialization"),
 
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("Start of performances measuring"),
     PERF_TALER_MINTDB_INIT_CMD_GET_TIME ("05 - start"),
