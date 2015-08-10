@@ -695,7 +695,7 @@ TMH_RESPONSE_reply_withdraw_sign_success (struct MHD_Connection *connection,
  * @param coin_pub public key of the coin
  * @param coin_value original value of the coin
  * @param tl transaction history for the coin
- * @param requested how much this coin was supposed to contribute
+ * @param requested how much this coin was supposed to contribute, including fee
  * @param residual remaining value of the coin (after subtracting @a tl)
  * @return a MHD result code
  */
@@ -713,13 +713,19 @@ TMH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *conne
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s, s:o, s:o, s:o, s:o, s:o}",
-                                       "error", "insufficient funds",
-                                       "coin-pub", TALER_json_from_data (coin_pub,
-                                                                         sizeof (struct TALER_CoinSpendPublicKeyP)),
-                                       "original-value", TALER_json_from_amount (&coin_value),
-                                       "residual-value", TALER_json_from_amount (&residual),
-                                       "requested-value", TALER_json_from_amount (&requested),
-                                       "history", history);
+                                       "error",
+                                       "insufficient funds",
+                                       "coin_pub",
+                                       TALER_json_from_data (coin_pub,
+                                                             sizeof (struct TALER_CoinSpendPublicKeyP)),
+                                       "original_value",
+                                       TALER_json_from_amount (&coin_value),
+                                       "residual_value",
+                                       TALER_json_from_amount (&residual),
+                                       "requested_value",
+                                       TALER_json_from_amount (&requested),
+                                       "history",
+                                       history);
 }
 
 
@@ -894,7 +900,7 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
     info_link_k = json_array ();
     for (i=0;i<mc->num_newcoins;i++)
     {
-      const struct TALER_MINTDB_RefreshCommitLinkP *cl;
+      const struct TALER_RefreshCommitLinkP *cl;
       json_t *cl_json;
 
       cl = &mc->commit_links[k][i];

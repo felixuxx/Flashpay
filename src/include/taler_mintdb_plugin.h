@@ -388,33 +388,6 @@ struct TALER_MINTDB_RefreshCommitCoin
 };
 
 
-GNUNET_NETWORK_STRUCT_BEGIN
-
-/**
- * @brief For each (old) coin being melted, we have a `struct
- * RefreshCommitLinkP` that allows the user to find the shared secret
- * to decrypt the respective refresh links for the new coins in the
- * `struct TALER_MINTDB_RefreshCommitCoin`.
- */
-struct TALER_MINTDB_RefreshCommitLinkP
-{
-  /**
-   * Transfer public key, used to decrypt the @e shared_secret_enc
-   * in combintation with the corresponding private key of the
-   * coin.
-   */
-  struct TALER_TransferPublicKeyP transfer_pub;
-
-  /**
-   * Encrypted shared secret to decrypt the link.
-   */
-  struct TALER_EncryptedLinkSecretP shared_secret_enc;
-};
-
-GNUNET_NETWORK_STRUCT_END
-
-
-
 /**
  * @brief Linked list of refresh information linked to a coin.
  */
@@ -566,7 +539,7 @@ struct TALER_MINTDB_MeltCommitment
   /**
    * 2D-Array of #TALER_CNC_KAPPA and @e new_oldcoins links.
    */
-  struct TALER_MINTDB_RefreshCommitLinkP *commit_links[TALER_CNC_KAPPA];
+  struct TALER_RefreshCommitLinkP *commit_links[TALER_CNC_KAPPA];
 };
 
 
@@ -830,11 +803,8 @@ struct TALER_MINTDB_Plugin
    * @param sesssion database connection
    * @param deposit deposit to search for
    * @return #GNUNET_YES if we know this operation,
-   *         #GNUNET_NO if this deposit is unknown to us,
-   *         #GNUNET_SYSERR on DB error or if same coin(pub), merchant(pub) and
-   *                        transaction ID are already in DB, but for different
-   *                        other transaction details (contract, wiring details,
-   *                        amount, etc.)
+   *         #GNUNET_NO if this exact deposit is unknown to us,
+   *         #GNUNET_SYSERR on DB error
    */
   int
   (*have_deposit) (void *cls,
@@ -1032,7 +1002,7 @@ struct TALER_MINTDB_Plugin
                                   const struct GNUNET_HashCode *session_hash,
                                   uint16_t cnc_index,
                                   uint16_t num_links,
-                                  const struct TALER_MINTDB_RefreshCommitLinkP *commit_links);
+                                  const struct TALER_RefreshCommitLinkP *commit_links);
 
   /**
    * Obtain the commited (encrypted) refresh link data
@@ -1054,7 +1024,7 @@ struct TALER_MINTDB_Plugin
                                const struct GNUNET_HashCode *session_hash,
                                uint16_t cnc_index,
                                uint16_t num_links,
-                               struct TALER_MINTDB_RefreshCommitLinkP *links);
+                               struct TALER_RefreshCommitLinkP *links);
 
 
   /**

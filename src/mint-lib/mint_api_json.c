@@ -253,6 +253,37 @@ parse_json (json_t *root,
       }
       break;
 
+    case MAJ_CMD_UINT16:
+      {
+        json_int_t val;
+
+        if (! json_is_integer (pos))
+        {
+          GNUNET_break_op (0);
+          return i;
+        }
+        val = json_integer_value (pos);
+        if ( (0 > val) || (val > UINT16_MAX) )
+        {
+          GNUNET_break_op (0);
+          return i;
+        }
+        *spec[i].details.u16 = (uint16_t) val;
+      }
+      break;
+
+    case MAJ_CMD_JSON_OBJECT:
+      {
+        if (! (json_is_object (pos) || json_is_array (pos)) )
+        {
+          GNUNET_break_op (0);
+          return i;
+        }
+        json_incref (pos);
+        *spec[i].details.obj = pos;
+      }
+      break;
+
     default:
       GNUNET_break (0);
       return i;
@@ -306,6 +337,10 @@ parse_free (struct MAJ_Specification *spec,
     case MAJ_CMD_EDDSA_SIGNATURE:
       GNUNET_free (*spec[i].details.eddsa_signature.purpose_p);
       *spec[i].details.eddsa_signature.purpose_p = NULL;
+      break;
+    case MAJ_CMD_JSON_OBJECT:
+      json_decref (*spec[i].details.obj);
+      *spec[i].details.obj = NULL;
       break;
     default:
       GNUNET_break (0);
@@ -412,6 +447,46 @@ MAJ_spec_amount (const char *name,
       .cmd = MAJ_CMD_AMOUNT,
       .field = name,
       .details.amount = amount
+    };
+  return ret;
+}
+
+
+/**
+ * 16-bit integer.
+ *
+ * @param name name of the JSON field
+ * @param[out] u16 where to store the integer found under @a name
+ */
+struct MAJ_Specification
+MAJ_spec_uint16 (const char *name,
+                 uint16_t *u16)
+{
+  struct MAJ_Specification ret =
+    {
+      .cmd = MAJ_CMD_UINT16,
+      .field = name,
+      .details.u16 = u16
+    };
+  return ret;
+}
+
+
+/**
+ * JSON object.
+ *
+ * @param name name of the JSON field
+ * @param[out] jsonp where to store the JSON found under @a name
+ */
+struct MAJ_Specification
+MAJ_spec_json (const char *name,
+               json_t **jsonp)
+{
+  struct MAJ_Specification ret =
+    {
+      .cmd = MAJ_CMD_JSON_OBJECT,
+      .field = name,
+      .details.obj = jsonp
     };
   return ret;
 }

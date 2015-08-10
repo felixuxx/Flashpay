@@ -181,14 +181,14 @@ struct TALER_MINT_DenomPublicKey
   struct TALER_Amount fee_deposit;
 
   /**
-   *The applicable fee to refresh a coin of this denomination
+   *The applicable fee to melt/refresh a coin of this denomination
    */
   struct TALER_Amount fee_refresh;
 };
 
 
 /**
- * Information we get from the mint about auditors.
+ * @brief Information we get from the mint about auditors.
  */
 struct TALER_MINT_AuditorInformation
 {
@@ -222,9 +222,8 @@ struct TALER_MINT_AuditorInformation
 };
 
 
-
 /**
- * Information about keys from the mint.
+ * @brief Information about keys from the mint.
  */
 struct TALER_MINT_Keys
 {
@@ -396,11 +395,11 @@ typedef void
  *
  * @param mint the mint handle; the mint must be ready to operate
  * @param amount the amount to be deposited
- * @param wire the merchant’s account details, in a format supported by the mint
+ * @param wire_details the merchant’s account details, in a format supported by the mint
  * @param h_contract hash of the contact of the merchant with the customer (further details are never disclosed to the mint)
  * @param coin_pub coin’s public key
  * @param denom_pub denomination key with which the coin is signed
- * @param ub_sig mint’s unblinded signature of the coin
+ * @param denom_sig mint’s unblinded signature of the coin
  * @param timestamp timestamp when the contract was finalized, must match approximately the current time of the mint
  * @param transaction_id transaction id for the transaction between merchant and customer
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
@@ -466,7 +465,7 @@ enum TALER_MINT_ReserveTransactionType {
 
 
 /**
- * Entry in the reserve's transaction history.
+ * @brief Entry in the reserve's transaction history.
  */
 struct TALER_MINT_ReserveHistory
 {
@@ -635,7 +634,7 @@ TALER_MINT_withdraw_sign_cancel (struct TALER_MINT_WithdrawSignHandle *sign);
  * no money is lost in case of hardware failures, is operation does
  * not actually initiate the request. Instead, it generates a buffer
  * which the caller must store before proceeding with the actual call
- * to #TALER_MINT_refresh_execute() that will generate the request.
+ * to #TALER_MINT_refresh_melt() that will generate the request.
  *
  * This function does verify that the given request data is internally
  * consistent.  However, the @a melts_sigs are only verified if @a
@@ -660,11 +659,11 @@ TALER_MINT_withdraw_sign_cancel (struct TALER_MINT_WithdrawSignHandle *sign);
  * @param check_sigs verify the validity of the signatures of @a melt_sigs
  * @param fresh_pks_len length of the @a pks array
  * @param fresh_pks array of @a pks_len denominations of fresh coins to create
- * @param[OUT] res_size set to the size of the return value, or 0 on error
+ * @param[out] res_size set to the size of the return value, or 0 on error
  * @return NULL
  *         if the inputs are invalid (i.e. denomination key not with this mint).
  *         Otherwise, pointer to a buffer of @a res_size to store persistently
- *         before proceeding to #TALER_MINT_refresh_execute().
+ *         before proceeding to #TALER_MINT_refresh_melt().
  *         Non-null results should be freed using #GNUNET_free().
  */
 char *
@@ -727,11 +726,11 @@ typedef void
  *         In this case, neither callback will be called.
  */
 struct TALER_MINT_RefreshMeltHandle *
-TALER_MINT_refresh_melt_execute (struct TALER_MINT_Handle *mint,
-                                 size_t refresh_data_length,
-                                 const char *refresh_data,
-                                 TALER_MINT_RefreshMeltCallback melt_cb,
-                                 void *melt_cb_cls);
+TALER_MINT_refresh_melt (struct TALER_MINT_Handle *mint,
+                         size_t refresh_data_length,
+                         const char *refresh_data,
+                         TALER_MINT_RefreshMeltCallback melt_cb,
+                         void *melt_cb_cls);
 
 
 /**
@@ -841,6 +840,7 @@ struct TALER_MINT_RefreshLinkHandle;
  * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
  * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
  * @param sigs array of signature over @a num_coins coins, NULL on error
+ * @param pubs array of public keys for the @a sigs, NULL on error
  * @param full_response full response from the mint (for logging, in case of errors)
  */
 typedef void
@@ -849,6 +849,7 @@ typedef void
                                    unsigned int num_coins,
                                    const struct TALER_CoinSpendPrivateKeyP *coin_privs,
                                    const struct TALER_DenominationSignature *sigs,
+                                   const struct TALER_DenominationPublicKey *pubs,
                                    json_t *full_response);
 
 

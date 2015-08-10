@@ -490,6 +490,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                                 fname);
         if (NULL == root)
         {
+          GNUNET_break_op (0);
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
@@ -513,6 +514,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                                fnum);
         if (NULL == root)
         {
+          GNUNET_break_op (0);
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
@@ -535,6 +537,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         str = json_string_value (root);
         if (NULL == str)
         {
+          GNUNET_break_op (0);
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
                                              MHD_HTTP_BAD_REQUEST,
@@ -548,6 +551,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                                              where, len);
         if (GNUNET_OK != res)
         {
+          GNUNET_break_op (0);
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
@@ -571,6 +575,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         str = json_string_value (root);
         if (NULL == str)
         {
+          GNUNET_break_op (0);
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_internal_error (connection,
                                                     "json_string_value() failed"))
@@ -587,6 +592,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                                                *len);
           if (GNUNET_OK != res)
           {
+            GNUNET_break_op (0);
             GNUNET_free (*where);
             *where = NULL;
             *len = 0;
@@ -613,6 +619,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
              ( (-1 != typ) &&
                (json_typeof (root) != typ)) )
         {
+          GNUNET_break_op (0);
           *r_json = NULL;
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
@@ -637,6 +644,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
 
         if (json_typeof (root) != JSON_INTEGER)
         {
+          GNUNET_break_op (0);
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
@@ -666,6 +674,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         str = json_string_value (root);
         if (NULL == str)
         {
+          GNUNET_break_op (0);
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
@@ -683,6 +692,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                                              len);
         if (GNUNET_OK != res)
         {
+          GNUNET_break_op (0);
           GNUNET_free (buf);
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
@@ -698,6 +708,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         GNUNET_free (buf);
         if (NULL == where->rsa_public_key)
         {
+          GNUNET_break_op (0);
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
@@ -724,6 +735,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         str = json_string_value (root);
         if (NULL == str)
         {
+          GNUNET_break_op (0);
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
@@ -741,6 +753,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                                              len);
         if (GNUNET_OK != res)
         {
+          GNUNET_break_op (0);
           GNUNET_free (buf);
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
@@ -756,6 +769,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         GNUNET_free (buf);
         if (NULL == where->rsa_signature)
         {
+          GNUNET_break_op (0);
           ret = (MHD_YES ==
                  TMH_RESPONSE_reply_json_pack (connection,
                                                MHD_HTTP_BAD_REQUEST,
@@ -777,6 +791,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
             TALER_json_to_amount ((json_t *) root,
                                   where))
         {
+          GNUNET_break_op (0);
           if (MHD_YES !=
               TMH_RESPONSE_reply_json_pack (connection,
                                             MHD_HTTP_BAD_REQUEST,
@@ -789,6 +804,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
         if (0 != strcmp (where->currency,
                          TMH_mint_currency_string))
         {
+          GNUNET_break_op (0);
           if (MHD_YES !=
               TMH_RESPONSE_reply_json_pack (connection,
                                             MHD_HTTP_BAD_REQUEST,
@@ -815,6 +831,7 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
             TALER_json_to_abs ((json_t *) root,
                                where))
         {
+          GNUNET_break_op (0);
           if (MHD_YES !=
               TMH_RESPONSE_reply_json_pack (connection,
                                             MHD_HTTP_BAD_REQUEST,

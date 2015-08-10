@@ -550,7 +550,9 @@ refresh_accept_melts (struct MHD_Connection *connection,
     GNUNET_break (0);
     TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
                                             tl);
-    return TMH_RESPONSE_reply_internal_db_error (connection);
+    return (MHD_YES ==
+            TMH_RESPONSE_reply_internal_db_error (connection))
+      ? GNUNET_NO : GNUNET_SYSERR;
   }
   /* Refuse to refresh when the coin's value is insufficient
      for the cost of all transactions. */
@@ -580,6 +582,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
   melt.coin_sig = coin_details->melt_sig;
   melt.session_hash = *session_hash;
   melt.amount_with_fee = coin_details->melt_amount_with_fee;
+  melt.melt_fee = coin_details->melt_fee;
   if (GNUNET_OK !=
       TMH_plugin->insert_refresh_melt (TMH_plugin->cls,
                                        session,
@@ -587,7 +590,9 @@ refresh_accept_melts (struct MHD_Connection *connection,
                                        &melt))
   {
     GNUNET_break (0);
-    return GNUNET_SYSERR;
+    return (MHD_YES ==
+            TMH_RESPONSE_reply_internal_db_error (connection))
+      ? GNUNET_NO : GNUNET_SYSERR;
   }
   return GNUNET_OK;
 }
@@ -623,7 +628,7 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                              unsigned int coin_count,
                              const struct TMH_DB_MeltDetails *coin_melt_details,
                              struct TALER_MINTDB_RefreshCommitCoin *const* commit_coin,
-                             struct TALER_MINTDB_RefreshCommitLinkP *const* commit_link)
+                             struct TALER_RefreshCommitLinkP *const* commit_link)
 {
   struct TMH_KS_StateHandle *key_state;
   struct TALER_MINTDB_RefreshSession refresh_session;
@@ -839,11 +844,11 @@ check_commitment (struct MHD_Connection *connection,
   unsigned int j;
   struct TALER_LinkSecretP last_shared_secret;
   int secret_initialized = GNUNET_NO;
-  struct TALER_MINTDB_RefreshCommitLinkP *commit_links;
+  struct TALER_RefreshCommitLinkP *commit_links;
   struct TALER_MINTDB_RefreshCommitCoin *commit_coins;
 
   commit_links = GNUNET_malloc (num_oldcoins *
-                                sizeof (struct TALER_MINTDB_RefreshCommitLinkP));
+                                sizeof (struct TALER_RefreshCommitLinkP));
   if (GNUNET_OK !=
       TMH_plugin->get_refresh_commit_links (TMH_plugin->cls,
                                             session,

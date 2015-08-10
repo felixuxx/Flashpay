@@ -99,6 +99,12 @@ struct TMH_DB_MeltDetails
    * to the melt is this value minus the fee for melting the coin.
    */
   struct TALER_Amount melt_amount_with_fee;
+
+  /**
+   * What fee is earned by the mint?  Set delayed during
+   * #verify_coin_public_info().
+   */
+  struct TALER_Amount melt_fee;
 };
 
 
@@ -130,7 +136,7 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                              unsigned int coin_count,
                              const struct TMH_DB_MeltDetails *coin_melt_details,
                              struct TALER_MINTDB_RefreshCommitCoin *const* commit_coin,
-                             struct TALER_MINTDB_RefreshCommitLinkP *const* commit_link);
+                             struct TALER_RefreshCommitLinkP *const* commit_link);
 
 
 /**

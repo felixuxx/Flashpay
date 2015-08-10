@@ -79,7 +79,17 @@ enum MAJ_Command
   MAJ_CMD_STRING,
 
   /**
-   * Parse  at current position.
+   * Parse `uint16_t` integer at the current position.
+   */
+  MAJ_CMD_UINT16,
+
+  /**
+   * Parse JSON object at the current position.
+   */
+  MAJ_CMD_JSON_OBJECT,
+
+  /**
+   * Parse ??? at current position.
    */
   MAJ_CMD_C
 
@@ -87,7 +97,7 @@ enum MAJ_Command
 
 
 /**
- * Entry in parser specification for #MAJ_parse_json.
+ * @brief Entry in parser specification for #MAJ_parse_json.
  */
 struct MAJ_Specification
 {
@@ -181,6 +191,16 @@ struct MAJ_Specification
      */
     const char **strptr;
 
+    /**
+     * Where to store 16-bit integer.
+     */
+    uint16_t *u16;
+
+    /**
+     * Where to store a JSON object.
+     */
+    json_t **obj;
+
   } details;
 
 };
@@ -249,11 +269,33 @@ MAJ_spec_string (const char *name,
  * Absolute time.
  *
  * @param name name of the JSON field
- * @param at where to store the absolute time found under @a name
+ * @param[out] at where to store the absolute time found under @a name
  */
 struct MAJ_Specification
 MAJ_spec_absolute_time (const char *name,
                         struct GNUNET_TIME_Absolute *at);
+
+
+/**
+ * 16-bit integer.
+ *
+ * @param name name of the JSON field
+ * @param[out] u16 where to store the integer found under @a name
+ */
+struct MAJ_Specification
+MAJ_spec_uint16 (const char *name,
+                 uint16_t *u16);
+
+
+/**
+ * JSON object.
+ *
+ * @param name name of the JSON field
+ * @param[out] jsonp where to store the JSON found under @a name
+ */
+struct MAJ_Specification
+MAJ_spec_json (const char *name,
+               json_t **jsonp);
 
 
 /**

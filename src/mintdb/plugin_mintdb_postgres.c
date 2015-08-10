@@ -166,13 +166,47 @@ static int
 postgres_drop_temporary (void *cls,
                          struct TALER_MINTDB_Session *session)
 {
-  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Dropping temporary tables\n");
   SQLEXEC_ (session->conn,
             "DROP SCHEMA " TALER_TEMP_SCHEMA_NAME " CASCADE;");
   return GNUNET_OK;
  SQLEXEC_fail:
   return GNUNET_SYSERR;
+}
+
+
+/**
+ * Function called by libpq whenever it wants to log something.
+ * We already log whenever we care, so this function does nothing
+ * and merely exists to silence the libpq logging.
+ *
+ * @param arg NULL
+ * @param res information about some libpq event
+ */
+static void
+pq_notice_receiver_cb (void *arg,
+                       const PGresult *res)
+{
+  /* do nothing, intentionally */
+}
+
+
+/**
+ * Function called by libpq whenever it wants to log something.
+ * We log those using the Taler logger.
+ *
+ * @param arg NULL
+ * @param message information about some libpq event
+ */
+static void
+pq_notice_processor_cb (void *arg,
+                        const char *message)
+{
+  GNUNET_log_from (GNUNET_ERROR_TYPE_INFO,
+                   "pq",
+                   "%s",
+                   message);
 }
 
 
@@ -198,6 +232,12 @@ postgres_create_tables (void *cls,
     PQfinish (conn);
     return GNUNET_SYSERR;
   }
+  PQsetNoticeReceiver (conn,
+                       &pq_notice_receiver_cb,
+                       NULL);
+  PQsetNoticeProcessor (conn,
+                        &pq_notice_processor_cb,
+                        NULL);
   if ( (GNUNET_YES == temporary) &&
        (GNUNET_SYSERR == set_temporary_schema (conn)))
   {
@@ -939,6 +979,12 @@ postgres_get_session (void *cls,
     GNUNET_break (0);
     return NULL;
   }
+  PQsetNoticeReceiver (db_conn,
+                       &pq_notice_receiver_cb,
+                       NULL);
+  PQsetNoticeProcessor (db_conn,
+                        &pq_notice_processor_cb,
+                        NULL);
   if ( (GNUNET_YES == temporary) &&
        (GNUNET_SYSERR == set_temporary_schema(db_conn)) )
   {
@@ -1751,11 +1797,8 @@ postgres_get_reserve_history (void *cls,
  * @param session database connection
  * @param deposit deposit to search for
  * @return #GNUNET_YES if we know this operation,
- *         #GNUNET_NO if this deposit is unknown to us
- *         #GNUNET_SYSERR on DB error or if same coin(pub), merchant(pub) and
- *                        transaction ID are already in DB, but for different
- *                        other transaction details (contract, wiring details,
- *                        amount, etc.)
+ *         #GNUNET_NO if this exact deposit is unknown to us
+ *         #GNUNET_SYSERR on DB error
  */
 static int
 postgres_have_deposit (void *cls,
@@ -1823,13 +1866,12 @@ postgres_have_deposit (void *cls,
                        &deposit2.h_wire,
                        sizeof (struct GNUNET_HashCode))) )
     {
-      /* Inconsistencies detected! Bug in merchant!  (We might want to
+      /* Inconsistencies detected! Does not match!  (We might want to
          expand the API with a 'get_deposit' function to return the
          original transaction details to be used for an error message
          in the future!) #3838 */
-      GNUNET_break_op (0);
       PQclear (result);
-      return GNUNET_SYSERR;
+      return GNUNET_NO;
     }
   }
   PQclear (result);
@@ -2598,7 +2640,7 @@ postgres_insert_refresh_commit_links (void *cls,
                                       const struct GNUNET_HashCode *session_hash,
                                       uint16_t cnc_index,
                                       uint16_t num_links,
-                                      const struct TALER_MINTDB_RefreshCommitLinkP *links)
+                                      const struct TALER_RefreshCommitLinkP *links)
 {
   // FIXME: check logic! links is array!
   struct TALER_PQ_QueryParam params[] = {
@@ -2651,7 +2693,7 @@ postgres_get_refresh_commit_links (void *cls,
                                    const struct GNUNET_HashCode *session_hash,
                                    uint16_t cnc_index,
                                    uint16_t num_links,
-                                   struct TALER_MINTDB_RefreshCommitLinkP *links)
+                                   struct TALER_RefreshCommitLinkP *links)
 {
   // FIXME: check logic: was written for a single link!
   struct TALER_PQ_QueryParam params[] = {
@@ -2759,7 +2801,7 @@ postgres_get_melt_commitment (void *cls,
       goto cleanup;
     mc->commit_links[cnc_index]
       = GNUNET_malloc (mc->num_oldcoins *
-                       sizeof (struct TALER_MINTDB_RefreshCommitLinkP));
+                       sizeof (struct TALER_RefreshCommitLinkP));
     if (GNUNET_OK !=
         postgres_get_refresh_commit_links (cls,
                                            session,

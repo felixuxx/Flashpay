@@ -14,6 +14,7 @@ libtalermint_la_LDFLAGS = \
   -no-undefined
 
 libtalermint_la_SOURCES = \
+  mint_api_common.c mint_api_common.h \
   mint_api_context.c mint_api_context.h \
   mint_api_json.c mint_api_json.h \
   mint_api_handle.c mint_api_handle.h \

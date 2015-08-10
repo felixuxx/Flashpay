@@ -90,7 +90,7 @@ MAC_job_cancel (struct MAC_Job *job);
 
 
 /**
- * Buffer data structure we use to buffer the HTTP download
+ * @brief Buffer data structure we use to buffer the HTTP download
  * before giving it to the JSON parser.
  */
 struct MAC_DownloadBuffer

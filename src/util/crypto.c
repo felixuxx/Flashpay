@@ -163,6 +163,34 @@ TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecretP *secret_enc,
 
 
 /**
+ * Given the coin and the transfer private keys, compute the
+ * transfer secret.  (Technically, we only need one of the two
+ * private keys, but the caller currently trivially only has
+ * the two private keys, so we derive one of the public keys
+ * internally to this function.)
+ *
+ * @param coin_priv coin key
+ * @param trans_priv transfer private key
+ * @param[out] ts computed transfer secret
+ */
+void
+TALER_link_derive_transfer_secret (const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                                   const struct TALER_TransferPrivateKeyP *trans_priv,
+                                   struct TALER_TransferSecretP *ts)
+{
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
+                                      &coin_pub.eddsa_pub);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_ecdh_eddsa (&trans_priv->ecdhe_priv,
+                                           &coin_pub.eddsa_pub,
+                                           &ts->key));
+
+}
+
+
+/**
  * Use the @a trans_sec (from ECDHE) to encrypt the @a secret
  * to obtain the @a secret_enc.
  *

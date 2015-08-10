@@ -350,7 +350,7 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
 
 
 /**
- * Information for each session a coin was melted into.
+ * @brief Information for each session a coin was melted into.
  */
 struct TMH_RESPONSE_LinkSessionInfo
 {

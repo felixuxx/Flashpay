@@ -48,11 +48,6 @@ struct TALER_MINT_RefreshLinkHandle
   char *url;
 
   /**
-   * JSON encoding of the request to POST.
-   */
-  char *json_enc;
-
-  /**
    * Handle for the request.
    */
   struct MAC_Job *job;
@@ -72,7 +67,188 @@ struct TALER_MINT_RefreshLinkHandle
    */
   struct MAC_DownloadBuffer db;
 
+  /**
+   * Private key of the coin, required to decode link information.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
 };
+
+
+/**
+ * Parse the provided linkage data from the "200 OK" response
+ * for one of the coins.
+ *
+ * @param rlh refresh link handle
+ * @param json json reply with the data for one coin
+ * @param trans_pub our transfer public key
+ * @param secret_enc encrypted key to decrypt link data
+ * @param[out] coin_priv where to return private coin key
+ * @param[out] sig where to return private coin signature
+ * @param[out] pub where to return the public key for the coin
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+static int
+parse_refresh_link_coin (const struct TALER_MINT_RefreshLinkHandle *rlh,
+                         json_t *json,
+                         const struct TALER_TransferPublicKeyP *trans_pub,
+                         const struct TALER_EncryptedLinkSecretP *secret_enc,
+                         struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                         struct TALER_DenominationSignature *sig,
+                         struct TALER_DenominationPublicKey *pub)
+{
+  void *link_enc;
+  size_t link_enc_size;
+  struct GNUNET_CRYPTO_rsa_Signature *bsig;
+  struct MAJ_Specification spec[] = {
+    MAJ_spec_varsize ("link_enc", &link_enc, &link_enc_size),
+    MAJ_spec_rsa_public_key ("denom_pub", &pub->rsa_public_key),
+    MAJ_spec_rsa_signature ("ev_sig", &bsig),
+    MAJ_spec_end
+  };
+  struct TALER_RefreshLinkEncrypted *rle;
+  struct TALER_RefreshLinkDecrypted *rld;
+  struct TALER_LinkSecretP secret;
+
+  /* parse reply */
+  if (GNUNET_OK !=
+      MAJ_parse_json (json,
+                      spec))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  /* decode and decrypt link data */
+  rle = TALER_refresh_link_encrypted_decode (link_enc,
+                                             link_enc_size);
+  if (NULL == rle)
+  {
+    GNUNET_break_op (0);
+    MAJ_parse_free (spec);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_link_decrypt_secret2 (secret_enc,
+                                  trans_pub,
+                                  &rlh->coin_priv,
+                                  &secret))
+  {
+    GNUNET_break_op (0);
+    MAJ_parse_free (spec);
+    return GNUNET_SYSERR;
+  }
+  rld = TALER_refresh_decrypt (rle,
+                               &secret);
+  if (NULL == rld)
+  {
+    GNUNET_break_op (0);
+    MAJ_parse_free (spec);
+    return GNUNET_SYSERR;
+  }
+
+  /* extract coin and signature */
+  *coin_priv = rld->coin_priv;
+  sig->rsa_signature
+    = GNUNET_CRYPTO_rsa_unblind (bsig,
+                                 rld->blinding_key.rsa_blinding_key,
+                                 pub->rsa_public_key);
+
+  /* clean up */
+  GNUNET_free (rld);
+  MAJ_parse_free (spec);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Parse the provided linkage data from the "200 OK" response
+ * for one of the coins.
+ *
+ * @param[in,out] rlh refresh link handle (callback may be zero'ed out)
+ * @param json json reply with the data for one coin
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+static int
+parse_refresh_link_ok (struct TALER_MINT_RefreshLinkHandle *rlh,
+                       json_t *json)
+{
+  json_t *jsona;
+  struct TALER_TransferPublicKeyP trans_pub;
+  struct TALER_EncryptedLinkSecretP secret_enc;
+  struct MAJ_Specification spec[] = {
+    MAJ_spec_json ("new_coins", &jsona),
+    MAJ_spec_fixed_auto ("trans_pub", &trans_pub),
+    MAJ_spec_fixed_auto ("secret_enc", &secret_enc),
+    MAJ_spec_end
+  };
+  unsigned int num_coins;
+  int ret;
+
+  if (GNUNET_OK !=
+      MAJ_parse_json (json,
+                      spec))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (! json_is_array (jsona))
+  {
+    GNUNET_break_op (0);
+    MAJ_parse_free (spec);
+    return GNUNET_SYSERR;
+  }
+
+  /* decode all coins */
+  num_coins = json_array_size (json);
+  {
+    unsigned int i;
+    struct TALER_CoinSpendPrivateKeyP coin_privs[num_coins];
+    struct TALER_DenominationSignature sigs[num_coins];
+    struct TALER_DenominationPublicKey pubs[num_coins];
+
+    for (i=0;i<num_coins;i++)
+    {
+      if (GNUNET_OK !=
+          parse_refresh_link_coin (rlh,
+                                   json_array_get (json, i),
+                                   &trans_pub,
+                                   &secret_enc,
+                                   &coin_privs[i],
+                                   &sigs[i],
+                                   &pubs[i]))
+      {
+        GNUNET_break_op (0);
+        break;
+      }
+    }
+
+    /* check if we really got all, then invoke callback */
+    if (i != num_coins)
+    {
+      GNUNET_break_op (0);
+      ret = GNUNET_SYSERR;
+    }
+    else
+    {
+      rlh->link_cb (rlh->link_cb_cls,
+                    MHD_HTTP_OK,
+                    num_coins,
+                    coin_privs,
+                    sigs,
+                    pubs,
+                    json);
+      rlh->link_cb = NULL;
+      ret = GNUNET_OK;
+    }
+
+    /* clean up */
+    for (i=0;i<num_coins;i++)
+      if (NULL != sigs[i].rsa_signature)
+        GNUNET_CRYPTO_rsa_signature_free (sigs[i].rsa_signature);
+  }
+  return ret;
+}
 
 
 /**
@@ -99,8 +275,13 @@ handle_refresh_link_finished (void *cls,
   case 0:
     break;
   case MHD_HTTP_OK:
-    GNUNET_break (0); // FIXME: NOT implemented!
-    // rh->link_cb = NULL; (call with real result, do not call again below)
+    if (GNUNET_OK !=
+        parse_refresh_link_ok (rlh,
+                               json))
+    {
+      GNUNET_break_op (0);
+      response_code = 0;
+    }
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the mint is buggy
@@ -126,7 +307,7 @@ handle_refresh_link_finished (void *cls,
   if (NULL != rlh->link_cb)
     rlh->link_cb (rlh->link_cb_cls,
                   response_code,
-                  0, NULL, NULL,
+                  0, NULL, NULL, NULL,
                   json);
   json_decref (json);
   TALER_MINT_refresh_link_cancel (rlh);
@@ -153,10 +334,12 @@ TALER_MINT_refresh_link (struct TALER_MINT_Handle *mint,
                          TALER_MINT_RefreshLinkCallback link_cb,
                          void *link_cb_cls)
 {
-  json_t *link_obj;
   struct TALER_MINT_RefreshLinkHandle *rlh;
   CURL *eh;
   struct TALER_MINT_Context *ctx;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+  char *pub_str;
+  char *arg_str;
 
   if (GNUNET_YES !=
       MAH_handle_is_ready (mint))
@@ -164,36 +347,29 @@ TALER_MINT_refresh_link (struct TALER_MINT_Handle *mint,
     GNUNET_break (0);
     return NULL;
   }
-  /* FIXME: totally bogus request building here: */
-  link_obj = json_pack ("{s:o, s:O}", /* f/wire */
-                        "4", 42,
-                        "6", 62);
 
+  GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
+                                      &coin_pub.eddsa_pub);
+  pub_str = GNUNET_STRINGS_data_to_string_alloc (&coin_pub,
+                                                 sizeof (struct TALER_CoinSpendPublicKeyP));
+  GNUNET_asprintf (&arg_str,
+                   "/refresh/link?coin_pub=%s",
+                   pub_str);
+  GNUNET_free (pub_str);
 
   rlh = GNUNET_new (struct TALER_MINT_RefreshLinkHandle);
   rlh->mint = mint;
   rlh->link_cb = link_cb;
   rlh->link_cb_cls = link_cb_cls;
-
-  rlh->url = MAH_path_to_url (mint, "/refresh/link");
+  rlh->coin_priv = *coin_priv;
+  rlh->url = MAH_path_to_url (mint, arg_str);
+  GNUNET_free (arg_str);
 
   eh = curl_easy_init ();
-  GNUNET_assert (NULL != (rlh->json_enc =
-                          json_dumps (link_obj,
-                                      JSON_COMPACT)));
-  json_decref (link_obj);
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    rlh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDS,
-                                   rlh->json_enc));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDSIZE,
-                                   strlen (rlh->json_enc)));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_WRITEFUNCTION,
@@ -228,7 +404,6 @@ TALER_MINT_refresh_link_cancel (struct TALER_MINT_RefreshLinkHandle *rlh)
   }
   GNUNET_free_non_null (rlh->db.buf);
   GNUNET_free (rlh->url);
-  GNUNET_free (rlh->json_enc);
   GNUNET_free (rlh);
 }
 
