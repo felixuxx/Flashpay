@@ -88,7 +88,9 @@ main (int argc, char ** argv)
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("01 - denomination loop",
                                      NB_DENOMINATION_INIT),
     PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION ("01 - start transaction"),
-    PERF_TALER_MINTDB_INIT_CMD_INSERT_DENOMINATION ("01 - denomination"),
+    PERF_TALER_MINTDB_INIT_CMD_CREATE_DENOMINATION ("01 - denomination"),
+    PERF_TALER_MINTDB_INIT_CMD_INSERT_DENOMINATION ("01 - insert",
+                                                    "01 - denomination"),
     PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION ("01 - commit transaction"),
     PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("01 - save denomination",
                                            "01 - denomination loop",
@@ -101,7 +103,10 @@ main (int argc, char ** argv)
     // Reserve initialization
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("02 - init reserve loop",
                                      NB_RESERVE_INIT),
-    PERF_TALER_MINTDB_INIT_CMD_INSERT_RESERVE ("02 - reserve"),
+
+    PERF_TALER_MINTDB_INIT_CMD_CREATE_RESERVE ("02 - reserve"),
+    PERF_TALER_MINTDB_INIT_CMD_INSERT_RESERVE ("02 - insert",
+                                               "02 - reserve"),
     PERF_TALER_MINTDB_INIT_CMD_SAVE_ARRAY ("02 - save reserve",
                                            "02 - init reserve loop",
                                            "02 - reserve",
