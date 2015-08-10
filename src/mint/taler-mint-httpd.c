@@ -31,6 +31,7 @@
 #include "taler-mint-httpd_admin.h"
 #include "taler-mint-httpd_deposit.h"
 #include "taler-mint-httpd_withdraw.h"
+#include "taler-mint-httpd_wire.h"
 #include "taler-mint-httpd_refresh.h"
 #include "taler-mint-httpd_keystate.h"
 #if HAVE_DEVELOPER
@@ -142,13 +143,23 @@ handle_mhd_request (void *cls,
 {
   static struct TMH_RequestHandler handlers[] =
     {
+      /* Landing page, tell humans to go away. */
       { "/", MHD_HTTP_METHOD_GET, "text/plain",
-        "Hello, I'm the mint\n", 0,
+        "Hello, I'm the Taler mint. This HTTP server is not for humans.\n", 0,
         &TMH_MHD_handler_static_response, MHD_HTTP_OK },
+      /* /robots.txt: disallow everything */
+      { "/robots.txt", MHD_HTTP_METHOD_GET, "text/plain",
+        "User-agent: *\nDisallow: /\n", 0,
+        &TMH_MHD_handler_static_response, MHD_HTTP_OK },
+      /* AGPL licensing page, redirect to source. As per the AGPL-license,
+         every deployment is required to offer the user a download of the
+         source. We make this easy by including a redirect to the source
+         here. */
       { "/agpl", MHD_HTTP_METHOD_GET, "text/plain",
         NULL, 0,
         &TMH_MHD_handler_agpl_redirect, MHD_HTTP_FOUND },
 
+      /* Return key material and fundamental properties for this mint */
       { "/keys", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
         &TMH_KS_handler_keys, MHD_HTTP_OK },
@@ -156,6 +167,29 @@ handle_mhd_request (void *cls,
         "Only GET is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
+      /* Requests for wiring information */
+      { "/wire", MHD_HTTP_METHOD_GET, "application/json",
+        NULL, 0,
+        &TMH_WIRE_handler_wire, MHD_HTTP_OK },
+      { "/wire", NULL, "text/plain",
+        "Only GET is allowed", 0,
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+
+      { "/wire/test", MHD_HTTP_METHOD_GET, "application/json",
+        NULL, 0,
+        &TMH_WIRE_handler_wire_test, MHD_HTTP_OK },
+      { "/wire/test", NULL, "text/plain",
+        "Only GET is allowed", 0,
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+
+      { "/wire/sepa", MHD_HTTP_METHOD_GET, "application/json",
+        NULL, 0,
+        &TMH_WIRE_handler_wire_sepa, MHD_HTTP_OK },
+      { "/wire/sepa", NULL, "text/plain",
+        "Only GET is allowed", 0,
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+
+      /* Withdrawing coins / interaction with reserves */
       { "/withdraw/status", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
         &TMH_WITHDRAW_handler_withdraw_status, MHD_HTTP_OK },
@@ -170,6 +204,7 @@ handle_mhd_request (void *cls,
         "Only POST is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
+      /* Depositing coins */
       { "/deposit", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
         &TMH_DEPOSIT_handler_deposit, MHD_HTTP_OK },
@@ -177,6 +212,7 @@ handle_mhd_request (void *cls,
         "Only POST is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
+      /* Dealing with change */
       { "/refresh/melt", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
         &TMH_REFRESH_handler_refresh_melt, MHD_HTTP_OK },
@@ -213,8 +249,8 @@ handle_mhd_request (void *cls,
         "Only POST is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-
 #if HAVE_DEVELOPER
+      /* Client crypto-interoperability test functions */
       { "/test", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
         &TMH_TEST_handler_test, MHD_HTTP_OK },

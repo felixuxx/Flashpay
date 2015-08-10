@@ -19,6 +19,7 @@ taler_mint_httpd_SOURCES = \
   taler-mint-httpd_admin.c taler-mint-httpd_admin.h \
   taler-mint-httpd_deposit.c taler-mint-httpd_deposit.h \
   taler-mint-httpd_withdraw.c taler-mint-httpd_withdraw.h \
+  taler-mint-httpd_wire.c taler-mint-httpd_wire.h \
   taler-mint-httpd_refresh.c taler-mint-httpd_refresh.h
 taler_mint_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \
