@@ -474,7 +474,7 @@
 { \
   .command = PERF_TALER_MINTDB_CMD_GET_REFRESH_SESSION, \
   .label = _label, \
-  .exposed.type = PERF_TALER_MINTDB_REFRESH_MELT \
+  .exposed.type = PERF_TALER_MINTDB_NONE \
 }
 
 /**
@@ -486,7 +486,7 @@
  */
 #define PERF_TALER_MINTDB_INIT_CMD_INSERT_REFRESH_MELT(_label, \
                                                        _label_hash, \
-                                                       _label_coin), \
+                                                       _label_coin) \
 { \
   .command = PERF_TALER_MINTDB_CMD_INSERT_REFRESH_MELT, \
   .label = _label, \

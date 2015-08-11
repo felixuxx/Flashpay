@@ -25,8 +25,8 @@
 #define NB_DENOMINATION_INIT  15
 #define NB_DENOMINATION_SAVE  15
 
-#define BIGGER 100000
-#define BIG 10000
+#define BIGGER 10
+#define BIG 10
 
 #define NB_RESERVE_INIT   BIGGER
 #define NB_RESERVE_SAVE   BIG
@@ -50,7 +50,7 @@ main (int argc, char ** argv)
   int ret;
   struct PERF_TALER_MINTDB_Cmd benchmark[] =
   {
-    // Denomination used to create coins
+    /* Denomination used to create coins */
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("Initializing database"),
 
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("01 - denomination loop",
@@ -66,8 +66,8 @@ main (int argc, char ** argv)
                                            NB_DENOMINATION_SAVE),
     PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("01 - end",
                                          "01 - denomination loop"),
-    // End of initialization
-    // Reserve initialization
+    /* End of initialization */
+    /* Reserve initialization */
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("02 - init reserve loop",
                                      NB_RESERVE_INIT),
     PERF_TALER_MINTDB_INIT_CMD_CREATE_RESERVE ("02 - reserve"),
@@ -79,8 +79,8 @@ main (int argc, char ** argv)
                                            NB_RESERVE_SAVE),
     PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("02 - end",
                                          "02 - init reserve loop"),
-    // End reserve init
-    // Withdrawal initialization
+    /* End reserve init */
+    /* Withdrawal initialization */
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("03 - init withdraw loop",
                                      NB_WITHDRAW_INIT),
     PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION (""),
@@ -102,8 +102,8 @@ main (int argc, char ** argv)
                                            NB_WITHDRAW_SAVE),
     PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("03 - end",
                                          "03 - init withdraw loop"),
-    //End of withdrawal initialization
-    //Deposit initialization
+    /*End of withdrawal initialization */
+    /*Deposit initialization */
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("04 - deposit init loop",
                                      NB_DEPOSIT_INIT),
     PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION (""),
@@ -121,8 +121,8 @@ main (int argc, char ** argv)
                                            NB_DEPOSIT_SAVE),
     PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("",
                                          "04 - deposit init loop"),
-    // End of deposit initialization
-    // Session initialization
+    /* End of deposit initialization */
+    /* Session initialization */
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("05 - refresh session init loop",
                                      NB_REFRESH_INIT),
     PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION (""),
@@ -134,7 +134,24 @@ main (int argc, char ** argv)
     PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION (""),
     PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("05 - end",
                                          "05 - refresh session init loop"),
-
+    /* End of refresh session initialization */
+    /* Refresh melt initialization */
+    PERF_TALER_MINTDB_INIT_CMD_LOOP ("06 - refresh melt init loop",
+                                     NB_REFRESH_INIT),
+    PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION (""),
+    PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("06 - session hash",
+                                           "06 - refresh melt init loop",
+                                           "05 - session array"),
+    PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("06 - coin",
+                                           "06 - refresh melt init loop",
+                                           "03 - save coin"),
+    PERF_TALER_MINTDB_INIT_CMD_INSERT_REFRESH_MELT ("06 - refresh melt",
+                                                    "06 - session hash",
+                                                    "06 - coin"),
+    PERF_TALER_MINTDB_INIT_CMD_COMMIT_TRANSACTION (""),
+    PERF_TALER_MINTDB_INIT_CMD_END_LOOP ("06 - end",
+                                         "06 - refresh melt init loop"),
+    /* End of refresh melt initialization */
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("End of initialization"),
 
     PERF_TALER_MINTDB_INIT_CMD_DEBUG ("Start of performances measuring"),
