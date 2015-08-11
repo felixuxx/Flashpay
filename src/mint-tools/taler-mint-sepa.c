@@ -19,7 +19,10 @@
  * @author Christian Grothoff
  */
 #include <platform.h>
+#include <jansson.h>
 #include "taler_crypto_lib.h"
+#include "taler_signatures.h"
+
 
 /**
  * Filename of the master private key.
@@ -79,6 +82,11 @@ main (int argc,
     GNUNET_GETOPT_OPTION_END
   };
   struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
+  struct TALER_MasterWireSepaDetailsPS wsd;
+  struct TALER_MasterSignatureP sig;
+  struct GNUNET_HashContext *hc;
+  json_t *reply;
+  char *json_str;
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-mint-sepa",
@@ -103,8 +111,51 @@ main (int argc,
              masterkeyfile);
     return 1;
   }
-  /* FIXME: do real work! */
+
+  /* Compute message to sign */
+  hc = GNUNET_CRYPTO_hash_context_start ();
+  GNUNET_CRYPTO_hash_context_read (hc,
+				   sepa_name,
+				   strlen (sepa_name) + 1);
+  GNUNET_CRYPTO_hash_context_read (hc,
+				   iban,
+				   strlen (iban) + 1);
+  GNUNET_CRYPTO_hash_context_read (hc,
+				   bic,
+				   strlen (bic) + 1);
+  wsd.purpose.size = htonl (sizeof (wsd));
+  wsd.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SEPA_DETAILS);
+  GNUNET_CRYPTO_hash_context_finish (hc,
+				     &wsd.h_sepa_details);
+  GNUNET_CRYPTO_eddsa_sign (eddsa_priv,
+			    &wsd.purpose,
+			    &sig.eddsa_signature);
   GNUNET_free (eddsa_priv);
+  
+  /* build JSON message */
+  reply = json_pack ("{s:s, s:s, s:s, s:o}",
+		     "receiver_name", sepa_name,
+		     "iban", iban,
+		     "bic", bic,
+		     "sig", TALER_json_from_data (&sig,
+						  sizeof (sig)));
+  GNUNET_assert (NULL != reply);
+
+  /* dump result to stdout */
+  json_str = json_dumps (reply, JSON_INDENT(2));
+  GNUNET_assert (NULL != json_str);
+ 
+  if (NULL != output_filename)
+  {
+    fclose (stdout);
+    stdout = fopen (output_filename,
+		    "w+");
+  }
+  fprintf (stdout, 
+	   "%s",
+	   json_str);
+  fflush (stdout);
+  free (json_str);
   return 0;
 }
 

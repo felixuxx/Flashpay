@@ -30,7 +30,7 @@ taler_mint_sepa_SOURCES = \
 taler_mint_sepa_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetutil  $(XLIB)
+  -lgnunetutil -ljansson $(XLIB)
 taler_mint_sepa_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 
 taler_mint_keycheck_SOURCES = \

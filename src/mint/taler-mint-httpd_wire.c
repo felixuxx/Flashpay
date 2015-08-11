@@ -22,7 +22,7 @@
 #include "taler-mint-httpd_keystate.h"
 #include "taler-mint-httpd_responses.h"
 #include "taler-mint-httpd_wire.h"
-
+#include <jansson.h>
 
 /**
  * Handle a "/wire" request.
@@ -44,6 +44,7 @@ TMH_WIRE_handler_wire (struct TMH_RequestHandler *rh,
   struct TALER_MintWireSupportMethodsPS wsm;
   struct TALER_MintPublicKeyP pub;
   struct TALER_MintSignatureP sig;
+  json_t *methods;
 
   wsm.purpose.size = htonl (sizeof (wsm));
   wsm.purpose.purpose = htonl (TALER_SIGNATURE_MINT_WIRE_TYPES);
@@ -53,11 +54,17 @@ TMH_WIRE_handler_wire (struct TMH_RequestHandler *rh,
   TMH_KS_sign (&wsm.purpose,
                &pub,
                &sig);
-  /* FIXME: check against spec! */
+  methods = json_array ();
+  /* NOTE: for now, we only support *ONE* wire format per
+     mint instance; if we supply multiple, we need to 
+     add the strings for each type separately here -- and
+     hash the 0-terminated strings above differently as well... */
+  json_array_append_new (methods,
+			 json_string (TMH_expected_wire_format));
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:s, s:o, s:o}",
-                                       "wire", TMH_expected_wire_format,
+                                       "methods", methods,
                                        "sig", TALER_json_from_data (&sig,
                                                                     sizeof (sig)),
                                        "pub", TALER_json_from_data (&pub,
