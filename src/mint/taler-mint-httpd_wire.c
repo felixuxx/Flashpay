@@ -150,11 +150,8 @@ TMH_WIRE_handler_wire_sepa (struct TMH_RequestHandler *rh,
 					     "SEPA_RESPONSE_FILE",
 					     &sepa_wire_file))
   {
-    ret = MHD_queue_response (connection,
-			      MHD_HTTP_NOT_IMPLEMENTED,
-			      response);
-    MHD_destroy_response (response);
-    return ret;
+    return TMH_RESPONSE_reply_internal_error (connection,
+					      "SEPA_RESPONSE_FILE not configured");
   }
   fd = open (sepa_wire_file,
 	     O_RDONLY);
