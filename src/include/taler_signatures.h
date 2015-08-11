@@ -531,6 +531,7 @@ struct TALER_MintKeySetPS
    */
   struct GNUNET_TIME_AbsoluteNBO list_issue_date;
 
+  /**
    * Hash over the various denomination signing keys returned.
    */
   struct GNUNET_HashCode hc;
