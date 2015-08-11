@@ -747,9 +747,10 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
       case PERF_TALER_MINTDB_CMD_GET_REFRESH_SESSION:
         {
           int ret;
+
           ret = cmd_find (cmd,
                           cmd[i].details.get_refresh_session.label_hash);
-          if (GNUNET_SYSERR != ret)
+          if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Undefined reference to %s\n",
@@ -769,12 +770,56 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
         }
         break;
 
+      case PERF_TALER_MINTDB_CMD_INSERT_REFRESH_MELT:
+        {
+          int ret;
+
+          ret = cmd_find (cmd,
+                          cmd[i].details.insert_refresh_melt.label_hash);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.insert_refresh_melt.label_hash);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_REFRESH_HASH != cmd[ret].exposed.type)
+          {   
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s\n",
+                        i,
+                        cmd[i].details.insert_refresh_melt.label_hash);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.insert_refresh_melt.index_hash = ret;
+          ret = cmd_find (cmd,
+                          cmd[i].details.insert_refresh_melt.label_coin);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.insert_refresh_melt.label_coin);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_COIN != cmd[ret].exposed.type)
+          {   
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s\n",
+                        i,
+                        cmd[i].details.insert_refresh_melt.label_coin);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.insert_refresh_melt.index_coin = ret;        }
+        break;
+
       case PERF_TALER_MINTDB_CMD_GET_REFRESH_MELT:
         {
           int ret;
           ret = cmd_find (cmd,
                           cmd[i].details.get_refresh_melt.label_hash);
-          if (GNUNET_SYSERR != ret)
+          if (GNUNET_SYSERR == ret)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Undefined reference to %s\n",
@@ -1328,6 +1373,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         {
           int hash_index;
           int coin_index;
+          int ret;
           struct GNUNET_HashCode *hash;
           struct TALER_MINTDB_RefreshMelt *melt;
           struct PERF_TALER_MINTDB_Coin *coin;
@@ -1338,11 +1384,11 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           coin = state->cmd[coin_index].exposed.data.coin;
           melt = PERF_TALER_MINTDB_refresh_melt_init (hash,
                                                       coin);
-          state->plugin->insert_refresh_melt (state->plugin->cls,
+          ret = state->plugin->insert_refresh_melt (state->plugin->cls,
                                               state->session,
                                               1,
                                               melt);
-          state->cmd[state->i].exposed.data.session_hash = hash;
+          GNUNET_assert (GNUNET_SYSERR != ret);
         }
         break;
 
@@ -1588,14 +1634,14 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
   if (GNUNET_OK != ret)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Error parsing configuration file");
+                "Error parsing configuration file\n");
     return GNUNET_SYSERR;
   }
   plugin = TALER_MINTDB_plugin_load (config);
   if (NULL == plugin)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Error connectiong to the database");
+                "Error connectiong to the database\n");
     return ret;
   }
   ret = plugin->create_tables (plugin->cls,
@@ -1603,7 +1649,7 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
   if (GNUNET_OK != ret)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Error while creating the database architecture");
+                "Error while creating the database architecture\n");
     return ret;
   }
   /*
@@ -1618,7 +1664,7 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
   if (GNUNET_OK != ret)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Error during database initialization");
+                "Error during database initialization\n");
     return ret;
   }
   /*
@@ -1629,7 +1675,7 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
   if (GNUNET_OK != ret)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Error while runing the benchmark");
+                "Error while runing the benchmark\n");
     return ret;
   }
   /* Drop tables */
@@ -1643,7 +1689,7 @@ PERF_TALER_MINTDB_run_benchmark (const char *benchmark_name,
     if (GNUNET_OK != ret)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Error removing cleaning the database");
+                  "Error cleaning the database\n");
       return ret;
     }
   }
