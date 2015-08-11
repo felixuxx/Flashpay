@@ -67,6 +67,12 @@
  */
 #define TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY 1025
 
+/**
+ * Signature where the Mint confirms its SEPA details in
+ * the /wire/sepa response.
+ */
+#define TALER_SIGNATURE_MASTER_SEPA_DETAILS 1026
+
 
 /*********************************************/
 /* Mint online signatures (with signing key) */
@@ -94,6 +100,11 @@
  * Signature where the Mint confirms the full /keys response set.
  */
 #define TALER_SIGNATURE_MINT_KEY_SET 1035
+
+/**
+ * Signature where the Mint confirms the /wire response.
+ */
+#define TALER_SIGNATURE_MINT_WIRE_TYPES 1036
 
 
 /*********************/
@@ -520,7 +531,6 @@ struct TALER_MintKeySetPS
    */
   struct GNUNET_TIME_AbsoluteNBO list_issue_date;
 
-  /**
    * Hash over the various denomination signing keys returned.
    */
   struct GNUNET_HashCode hc;
@@ -670,6 +680,48 @@ struct TALER_RefreshCommitLinkP
    * Encrypted shared secret to decrypt the link.
    */
   struct TALER_EncryptedLinkSecretP shared_secret_enc;
+};
+
+
+/**
+ * @brief Information signed by the mint's master
+ * key affirming the SEPA details for the mint.
+ */
+struct TALER_MasterWireSepaDetailsPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_SEPA_DETAILS.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash over the account holder's name, IBAN and BIC
+   * code (all as 0-terminated strings).
+   */
+  struct GNUNET_HashCode h_sepa_details;
+
+};
+
+
+/**
+ * @brief Information signed by a mint's online signing key affirming
+ * the wire formats supported by the mint.
+ */
+struct TALER_MintWireSupportMethodsPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MINT_WIRE_TYPES.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash over the various wire formats supported by this mint
+   * (all as 0-terminated strings).
+   */
+  struct GNUNET_HashCode h_wire_types;
+
 };
 
 

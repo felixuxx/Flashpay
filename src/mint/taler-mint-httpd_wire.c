@@ -19,6 +19,8 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
+#include "taler-mint-httpd_keystate.h"
+#include "taler-mint-httpd_responses.h"
 #include "taler-mint-httpd_wire.h"
 
 
@@ -39,8 +41,27 @@ TMH_WIRE_handler_wire (struct TMH_RequestHandler *rh,
                        const char *upload_data,
                        size_t *upload_data_size)
 {
-  GNUNET_break (0); // FIXME: not implemented (#3477)
-  return MHD_NO;
+  struct TALER_MintWireSupportMethodsPS wsm;
+  struct TALER_MintPublicKeyP pub;
+  struct TALER_MintSignatureP sig;
+
+  wsm.purpose.size = htonl (sizeof (wsm));
+  wsm.purpose.purpose = htonl (TALER_SIGNATURE_MINT_WIRE_TYPES);
+  GNUNET_CRYPTO_hash (TMH_expected_wire_format,
+		      strlen (TMH_expected_wire_format) + 1,
+		      &wsm.h_wire_types);
+  TMH_KS_sign (&wsm.purpose,
+               &pub,
+               &sig);
+  /* FIXME: check against spec! */
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:s, s:o, s:o}",
+                                       "wire", TMH_expected_wire_format,
+                                       "sig", TALER_json_from_data (&sig,
+                                                                    sizeof (sig)),
+                                       "pub", TALER_json_from_data (&pub,
+                                                                    sizeof (pub)));
 }
 
 
@@ -61,8 +82,42 @@ TMH_WIRE_handler_wire_test (struct TMH_RequestHandler *rh,
                             const char *upload_data,
                             size_t *upload_data_size)
 {
-  GNUNET_break (0); // FIXME: not implemented (#3477)
-  return MHD_NO;
+  struct MHD_Response *response;
+  int ret;
+  char *wire_test_redirect;
+
+  response = MHD_create_response_from_buffer (0, NULL,
+                                              MHD_RESPMEM_PERSISTENT);
+  if (NULL == response)
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+					     "mint-wire-test",
+					     "REDIRECT_URL",
+					     &wire_test_redirect))
+  {
+    ret = MHD_queue_response (connection,
+			      MHD_HTTP_NOT_IMPLEMENTED,
+			      response);
+    MHD_destroy_response (response);
+    return ret;
+  }
+  MHD_add_response_header (response,
+                           MHD_HTTP_HEADER_LOCATION,
+                           wire_test_redirect);
+  GNUNET_free (wire_test_redirect);
+  if (NULL != rh->mime_type)
+    (void) MHD_add_response_header (response,
+                                    MHD_HTTP_HEADER_CONTENT_TYPE,
+                                    rh->mime_type);
+  ret = MHD_queue_response (connection,
+                            rh->response_code,
+                            response);
+  MHD_destroy_response (response);
+  return ret;
 }
 
 
@@ -83,8 +138,63 @@ TMH_WIRE_handler_wire_sepa (struct TMH_RequestHandler *rh,
 			    const char *upload_data,
 			    size_t *upload_data_size)
 {
-  GNUNET_break (0); // FIXME: not implemented (#3477)
-  return MHD_NO;
+  struct MHD_Response *response;
+  int ret;
+  char *sepa_wire_file;
+  int fd;
+  struct stat sbuf;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+					     "mint-wire-sepa",
+					     "SEPA_RESPONSE_FILE",
+					     &sepa_wire_file))
+  {
+    ret = MHD_queue_response (connection,
+			      MHD_HTTP_NOT_IMPLEMENTED,
+			      response);
+    MHD_destroy_response (response);
+    return ret;
+  }
+  fd = open (sepa_wire_file,
+	     O_RDONLY);
+  if (-1 == fd)
+  {
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+			      "open",
+			      sepa_wire_file);
+    GNUNET_free (sepa_wire_file);
+    return TMH_RESPONSE_reply_internal_error (connection,
+					      "Failed to open SEPA_RESPONSE_FILE");
+  }
+  if (0 != fstat (fd, &sbuf))
+  {
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+			      "fstat",
+			      sepa_wire_file);
+    (void) close (fd);
+    GNUNET_free (sepa_wire_file);
+    return TMH_RESPONSE_reply_internal_error (connection,
+					      "Failed to open SEPA_RESPONSE_FILE");
+  }
+  response = MHD_create_response_from_fd ((size_t) sbuf.st_size,
+					  fd);
+  GNUNET_free (sepa_wire_file);
+  if (NULL == response)
+  {
+    (void) close (fd);
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+  if (NULL != rh->mime_type)
+    (void) MHD_add_response_header (response,
+                                    MHD_HTTP_HEADER_CONTENT_TYPE,
+                                    rh->mime_type);
+  ret = MHD_queue_response (connection,
+                            rh->response_code,
+                            response);
+  MHD_destroy_response (response);
+  return ret;
 }
 
 /* end of taler-mint-httpd_wire.c */

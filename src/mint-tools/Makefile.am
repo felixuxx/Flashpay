@@ -10,6 +10,7 @@ bin_PROGRAMS = \
   taler-mint-keyup \
   taler-mint-keycheck \
   taler-mint-reservemod \
+  taler-mint-sepa \
   taler-mint-dbinit
 
 taler_mint_keyup_SOURCES = \
@@ -24,9 +25,16 @@ taler_mint_keyup_LDADD = \
 taler_mint_keyup_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 
 
+taler_mint_sepa_SOURCES = \
+  taler-mint-sepa.c
+taler_mint_sepa_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil  $(XLIB)
+taler_mint_sepa_LDFLAGS = $(POSTGRESQL_LDFLAGS)
+
 taler_mint_keycheck_SOURCES = \
   taler-mint-keycheck.c
-
 taler_mint_keycheck_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \

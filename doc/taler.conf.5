@@ -1,4 +1,4 @@
-.TH TALER.CONF 5 "Apr 22, 2015" "GNU Taler"
+.TH TALER.CONF 5 "Aug 11, 2015" "GNU Taler"
 
 .SH NAME
 taler.conf \- Taler configuration file.
@@ -24,6 +24,20 @@ The following options are from the "[mint]" section and used by most mint tools:
     Port on which the HTTP server listens, i.e. 8080.
 .IP MASTER_PUBLIC_KEY
     Crockford Base32-encoded master public key, public version of the mint\'s long\-time offline signing key.
+
+
+.SH WIRE transfer details
+
+The following options must be in section "[mint-wire-test]":
+
+.IP REDIRECT_URL
+    URL to redirect /wire/test to. Should contain a Web form the user can use to charge his wallet with coins in a "test" currency for testing. If this option is not provided, /wire/test will return "501 NOT IMPLEMENTED".
+
+The following options must be in section "[mint-wire-sepa]":
+
+.IP SEPA_RESPONSE_FILE
+    Filename with the JSON body for the /wire/sepa response, signed using the mint's long-term offline master key.  If this option is not provided, /wire/test will return "501 NOT IMPLEMENTED".  Use "taler-mint-sepa" to create the SEPA_RESPONSE_FILE.
+
 
 .SH Postgres database options
 
@@ -71,4 +85,5 @@ The following options are from the "[mint_keys]" section and used by most taler\
 Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
 
 .SH "SEE ALSO"
-\fBtaler\-mint\-httpd\fP(1), \fBtaler\-mint\-keyup\fP(1), \fBtaler\-mint\-reservemod\fP(1), \fBtaler\-mint\-dbinit\fP(1)
+\fBtaler\-mint\-httpd\fP(1), \fBtaler\-mint\-keyup\fP(1), \fBtaler\-mint\-reservemod\fP(1), \fBtaler\-mint\-dbinit\fP(1), \fBtaler\-mint\-sepa(1)
+
