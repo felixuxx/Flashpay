@@ -363,10 +363,10 @@ postgres_create_tables (void *cls,
           ",oldcoin_index INT2 NOT NULL"
           ",coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)"
           ",amount_with_fee_val INT8 NOT NULL"
-          ",amount_with_fee_frac INT8 NOT NULL"
+          ",amount_with_fee_frac INT4 NOT NULL"
           ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",melt_fee_val INT8 NOT NULL"
-          ",melt_fee_frac INT8 NOT NULL"
+          ",melt_fee_frac INT4 NOT NULL"
           ",melt_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",PRIMARY KEY (session_hash, oldcoin_index)" /* a coin can be used only
                                                  once in a refresh session */
