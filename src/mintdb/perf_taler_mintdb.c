@@ -25,8 +25,8 @@
 #define NB_DENOMINATION_INIT  15
 #define NB_DENOMINATION_SAVE  15
 
-#define BIGGER 10
-#define BIG 10
+#define BIGGER 100000
+#define BIG 10000
 
 #define NB_RESERVE_INIT   BIGGER
 #define NB_RESERVE_SAVE   BIG
