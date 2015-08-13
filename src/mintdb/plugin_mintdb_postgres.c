@@ -13,6 +13,7 @@
   You should have received a copy of the GNU General Public License along with
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
+
 /**
  * @file plugin_mintdb_postgres.c
  * @brief Low-level (statement-level) Postgres database access for the mint
@@ -1442,6 +1443,7 @@ postgres_reserves_in_insert (void *cls,
       return GNUNET_NO;
     }
     QUERY_ERR (result);
+    PQclear (result);
     goto rollback;
   }
   PQclear (result);
@@ -2261,7 +2263,7 @@ postgres_get_refresh_melt (void *cls,
       TALER_PQ_result_spec_auto_from_type ("coin_pub", &coin.coin_pub),
       TALER_PQ_result_spec_auto_from_type ("coin_sig", &coin_sig),
       TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
-      TALER_PQ_result_spec_amount ("amount_with_fee", &melt_fee),
+      TALER_PQ_result_spec_amount ("melt_fee", &melt_fee),
       TALER_PQ_result_spec_end
     };
     if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
