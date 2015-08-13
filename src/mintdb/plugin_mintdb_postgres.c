@@ -2116,6 +2116,8 @@ get_known_coin (void *cls,
     return GNUNET_NO;
   }
   GNUNET_assert (1 == nrows);   /* due to primary key */
+  if (NULL == coin_info)
+    return GNUNET_YES;
   {
     struct TALER_PQ_ResultSpec rs[] = {
       TALER_PQ_result_spec_rsa_public_key ("denom_pub", &coin_info->denom_pub.rsa_public_key),
