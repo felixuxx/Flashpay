@@ -1141,14 +1141,15 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_INSERT_DEPOSIT:
         {
           int deposit_index;
+          int ret;
           struct TALER_MINTDB_Deposit *deposit;
 
           deposit_index = state->cmd[state->i].details.insert_deposit.index_deposit;
           deposit = state->cmd[deposit_index].exposed.data.deposit;
-          GNUNET_assert (GNUNET_OK ==
-                         state->plugin->insert_deposit (state->plugin->cls,
+          ret = state->plugin->insert_deposit (state->plugin->cls,
                                                         state->session,
-                                                        deposit));
+                                                        deposit);
+          GNUNET_assert (GNUNET_SYSERR != ret);
           state->cmd[state->i].exposed.data.deposit = deposit;
         }
         break;
@@ -1156,13 +1157,15 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_GET_DEPOSIT:
         {
           unsigned int source_index;
+          int ret;
           struct PERF_TALER_MINTDB_Data *data;
 
           source_index = state->cmd[state->i].details.get_deposit.index_deposit;
           data = &state->cmd[source_index].exposed;
-          state->plugin->have_deposit (state->plugin->cls,
-                                       state->session,
-                                       data->data.deposit);
+          ret = state->plugin->have_deposit (state->plugin->cls,
+                                             state->session,
+                                             data->data.deposit);
+          GNUNET_assert (GNUNET_SYSERR != ret);
         }
         break;
 
@@ -1178,6 +1181,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_INSERT_RESERVE:
         {
           unsigned int reserve_index;
+          int ret;
           struct PERF_TALER_MINTDB_Reserve *reserve;
           json_t *details = NULL;
 
@@ -1188,21 +1192,20 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
                                  GNUNET_CRYPTO_QUALITY_WEAK,
                                  UINT32_MAX));
           GNUNET_assert (NULL != details);
-          state->plugin->reserves_in_insert (
-            state->plugin->cls,
-            state->session,
-            &reserve->reserve.pub,
-            &reserve->reserve.balance,
-            GNUNET_TIME_absolute_get (),
-            details
-            );
+          ret = state->plugin->reserves_in_insert (state->plugin->cls,
+                                                   state->session,
+                                                   &reserve->reserve.pub,
+                                                   &reserve->reserve.balance,
+                                                   GNUNET_TIME_absolute_get (),
+                                                   details);
+          GNUNET_assert (GNUNET_SYSERR != ret);
           json_decref (details);
         }
         break;
 
       case PERF_TALER_MINTDB_CMD_GET_RESERVE:
         {
-          int reserve_index;
+          unsigned int reserve_index;
           int ret;
           struct PERF_TALER_MINTDB_Data *data;
 
@@ -1218,7 +1221,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_GET_RESERVE_HISTORY:
         {
-          int reserve_index;
+          unsigned int reserve_index;
           struct TALER_MINTDB_ReserveHistory *history;
           struct PERF_TALER_MINTDB_Data *data;
 
@@ -1237,6 +1240,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         {
           struct TALER_MINTDB_DenominationKeyIssueInformation *dki =
             PERF_TALER_MINTDB_denomination_init ();
+          GNUNET_assert (NULL != dki);
           state->cmd[state->i].exposed.data.dki = dki;
         }
         break;
@@ -1275,7 +1279,8 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_CREATE_WITHDRAW:
         {
-          int dki_index, reserve_index;
+          unsigned int dki_index;
+          unsigned int reserve_index;
           struct PERF_TALER_MINTDB_Coin *coin ;
 
           dki_index     = state->cmd[state->i].details.create_withdraw.index_dki;
@@ -1371,9 +1376,8 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_INSERT_REFRESH_MELT:
         {
-          int hash_index;
-          int coin_index;
-          int ret;
+          unsigned int hash_index;
+          unsigned int coin_index;
           struct GNUNET_HashCode *hash;
           struct TALER_MINTDB_RefreshMelt *melt;
           struct PERF_TALER_MINTDB_Coin *coin;
@@ -1384,28 +1388,29 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
           coin = state->cmd[coin_index].exposed.data.coin;
           melt = PERF_TALER_MINTDB_refresh_melt_init (hash,
                                                       coin);
-          ret = state->plugin->insert_refresh_melt (state->plugin->cls,
-                                              state->session,
-                                              1,
-                                              melt);
-          GNUNET_assert (GNUNET_SYSERR != ret);
+          state->plugin->insert_refresh_melt (state->plugin->cls,
+                                                    state->session,
+                                                    1,
+                                                    melt);
         }
         break;
 
       case PERF_TALER_MINTDB_CMD_GET_REFRESH_MELT:
         {
-          int hash_index;
+          int ret;
+          unsigned int hash_index;
           struct GNUNET_HashCode *hash;
           struct TALER_MINTDB_RefreshMelt melt;
 
           hash_index = cmd_find (state->cmd,
                                  state->cmd[state->i].details.get_refresh_melt.label_hash);
           hash = state->cmd[hash_index].exposed.data.session_hash;
-          state->plugin->get_refresh_melt (state->plugin->cls,
-                                           state->session,
-                                           hash,
-                                           1,
-                                           &melt);
+          ret = state->plugin->get_refresh_melt (state->plugin->cls,
+                                                 state->session,
+                                                 hash,
+                                                 1,
+                                                 &melt);
+          GNUNET_assert (GNUNET_SYSERR != ret);
         }
         break;
 
