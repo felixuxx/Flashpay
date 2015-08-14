@@ -783,17 +783,24 @@ TMH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
 {
   int newcoin_index;
   json_t *root;
+  json_t *obj;
   json_t *list;
   int ret;
 
-  root = json_object ();
   list = json_array ();
+  for (newcoin_index = 0; newcoin_index < num_newcoins; newcoin_index++)
+  {
+    obj = json_object ();
+    json_object_set_new (obj,
+			 "ev_sig",
+			 TALER_json_from_rsa_signature (sigs[newcoin_index].rsa_signature));
+    json_array_append_new (list,
+                           obj);
+  }
+  root = json_object ();
   json_object_set_new (root,
                        "ev_sigs",
                        list);
-  for (newcoin_index = 0; newcoin_index < num_newcoins; newcoin_index++)
-    json_array_append_new (list,
-                           TALER_json_from_rsa_signature (sigs[newcoin_index].rsa_signature));
   ret = TMH_RESPONSE_reply_json (connection,
                                  root,
                                  MHD_HTTP_OK);

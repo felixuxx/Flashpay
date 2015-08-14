@@ -2019,7 +2019,7 @@ run (void *cls,
   GNUNET_assert (NULL != mint);
   shutdown_task
     = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_relative_multiply
-                                    (GNUNET_TIME_UNIT_SECONDS, 5),
+                                    (GNUNET_TIME_UNIT_SECONDS, 30),
                                     &do_shutdown, is);
 }
 

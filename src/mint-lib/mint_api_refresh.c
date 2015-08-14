@@ -1718,19 +1718,31 @@ struct TALER_MINT_RefreshRevealHandle
  * to the application via the callback.
  *
  * @param rrh operation handle
- * @param jsona reply from the mint
+ * @param json reply from the mint
  * @param[out] coin_privs array of length `num_fresh_coins`, initialized to contain private keys
  * @param[out] sigs array of length `num_fresh_coins`, initialized to cointain RSA signatures
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static int
 refresh_reveal_ok (struct TALER_MINT_RefreshRevealHandle *rrh,
-                   json_t *jsona,
+                   json_t *json,
                    struct TALER_CoinSpendPrivateKeyP *coin_privs,
                    struct TALER_DenominationSignature *sigs)
 {
   unsigned int i;
+  json_t *jsona;
+  struct MAJ_Specification spec[] = {
+    MAJ_spec_json ("ev_sigs", &jsona),
+    MAJ_spec_end
+  };
 
+  if (GNUNET_OK !=
+      MAJ_parse_json (json,
+		      spec))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
   if (! json_is_array (jsona))
   {
     /* We expected an array of coins */
@@ -1747,7 +1759,7 @@ refresh_reveal_ok (struct TALER_MINT_RefreshRevealHandle *rrh,
   {
     const struct FreshCoin *fc;
     struct TALER_DenominationPublicKey *pk;
-    json_t *json;
+    json_t *jsonai;
     struct GNUNET_CRYPTO_rsa_Signature *blind_sig;
     struct GNUNET_CRYPTO_rsa_Signature *sig;
     struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -1760,11 +1772,11 @@ refresh_reveal_ok (struct TALER_MINT_RefreshRevealHandle *rrh,
 
     fc = &rrh->md->fresh_coins[rrh->noreveal_index][i];
     pk = &rrh->md->fresh_pks[i];
-    json = json_array_get (jsona, i);
-    GNUNET_assert (NULL != json);
+    jsonai = json_array_get (jsona, i);
+    GNUNET_assert (NULL != jsonai);
 
     if (GNUNET_OK !=
-        MAJ_parse_json (json,
+        MAJ_parse_json (jsonai,
                         spec))
     {
       GNUNET_break_op (0);
