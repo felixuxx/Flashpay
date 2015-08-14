@@ -794,6 +794,7 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
                                      TMH_PARSE_JNC_RET_DATA,
                                      &transfer_privs[i][j],
                                      sizeof (struct TALER_TransferPrivateKeyP));
+      GNUNET_break_op (GNUNET_OK == res);
     }
   }
   if (GNUNET_OK != res)
@@ -859,13 +860,16 @@ TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
                              spec);
   json_decref (root);
   if (GNUNET_OK != res)
+  {
+    GNUNET_break_op (0);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-
+  }
   /* Determine dimensionality of the request (kappa and #old coins) */
   /* Note we do +1 as 1 row (cut-and-choose!) is missing! */
   if (TALER_CNC_KAPPA != json_array_size (transfer_privs) + 1)
   {
     TMH_PARSE_release_data (spec);
+    GNUNET_break_op (0);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "transfer_privs");
   }
@@ -878,6 +882,7 @@ TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
   if (GNUNET_OK != res)
   {
     TMH_PARSE_release_data (spec);
+    GNUNET_break_op (0);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   num_oldcoins = json_array_size (reveal_detail);

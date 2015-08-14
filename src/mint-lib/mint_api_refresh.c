@@ -1951,19 +1951,19 @@ TALER_MINT_refresh_reveal (struct TALER_MINT_Handle *mint,
 
   /* build array of transfer private keys */
   transfer_privs = json_array ();
-  for (i=0;i<md->num_melted_coins;i++)
+  for (j=0;j<TALER_CNC_KAPPA;j++)
   {
-    const struct MeltedCoin *mc = &md->melted_coins[i];
-
-    tmp = json_array ();
-    for (j=0;j<TALER_CNC_KAPPA;j++)
+    if (j == noreveal_index)
     {
-      if (j == noreveal_index)
-      {
-        /* This is crucial: exclude the transfer key for the
-           noreval index! */
-        continue;
-      }
+      /* This is crucial: exclude the transfer key for the
+	 noreval index! */
+      continue;
+    }
+    tmp = json_array ();
+    for (i=0;i<md->num_melted_coins;i++)
+    {
+      const struct MeltedCoin *mc = &md->melted_coins[i];
+
       json_array_append (tmp,
                          TALER_json_from_data (&mc->transfer_priv[j],
                                                sizeof (struct TALER_TransferPrivateKeyP)));

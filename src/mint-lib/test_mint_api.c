@@ -684,6 +684,7 @@ withdraw_status_cb (void *cls,
                 http_status,
                 cmd->label);
     GNUNET_break (0);
+    json_dumpf (json, stderr, 0);
     fail (is);
     return;
   }
@@ -792,6 +793,7 @@ withdraw_sign_cb (void *cls,
                 "Unexpected response code %u to command %s\n",
                 http_status,
                 cmd->label);
+    json_dumpf (full_response, stderr, 0);
     GNUNET_break (0);
     fail (is);
     return;
@@ -846,6 +848,7 @@ deposit_cb (void *cls,
                 "Unexpected response code %u to command %s\n",
                 http_status,
                 cmd->label);
+    json_dumpf (obj, stderr, 0);
     fail (is);
     return;
   }
@@ -881,6 +884,7 @@ melt_cb (void *cls,
                 "Unexpected response code %u to command %s\n",
                 http_status,
                 cmd->label);
+    json_dumpf (full_response, stderr, 0);
     fail (is);
     return;
   }
@@ -922,6 +926,7 @@ reveal_cb (void *cls,
                 "Unexpected response code %u to command %s\n",
                 http_status,
                 cmd->label);
+    json_dumpf (full_response, stderr, 0);
     fail (is);
     return;
   }
@@ -987,6 +992,7 @@ link_cb (void *cls,
                 "Unexpected response code %u to command %s\n",
                 http_status,
                 cmd->label);
+    json_dumpf (full_response, stderr, 0);
     fail (is);
     return;
   }
