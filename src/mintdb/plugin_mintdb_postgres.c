@@ -2316,7 +2316,7 @@ postgres_insert_refresh_order (void *cls,
       struct TALER_PQ_QueryParam params[] = {
         TALER_PQ_query_param_uint16 (&newcoin_off),
         TALER_PQ_query_param_auto_from_type (session_hash),
-        TALER_PQ_query_param_rsa_public_key (denom_pubs->rsa_public_key),
+        TALER_PQ_query_param_rsa_public_key (denom_pubs[i].rsa_public_key),
         TALER_PQ_query_param_end
       };
       result = TALER_PQ_exec_prepared (session->conn,
