@@ -74,6 +74,30 @@ TALER_gcrypt_init (void);
 
 
 /**
+ * Convert a buffer to an 8-character string
+ * representative of the contents. This is used
+ * for logging binary data when debugging.
+ *
+ * @param buf buffer to log
+ * @param buf_size number of bytes in @a buf
+ * @return text representation of buf, valid until next
+ *         call to this function
+ */
+const char *
+TALER_b2s (const void *buf,
+	   size_t buf_size);
+
+/**
+ * Convert a fixed-sized object to a string using
+ * #TALER_b2s().
+ *
+ * @param obj address of object to convert
+ * @return string representing the binary obj buffer
+ */
+#define TALER_B2S(obj) TALER_b2s (obj, sizeof (*obj))
+
+
+/**
  * Round a time value so that it is suitable for transmission
  * via JSON encodings.
  *

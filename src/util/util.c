@@ -28,6 +28,38 @@
 
 
 /**
+ * Convert a buffer to an 8-character string
+ * representative of the contents. This is used
+ * for logging binary data when debugging.
+ *
+ * @param buf buffer to log
+ * @param buf_size number of bytes in @a buf
+ * @return text representation of buf, valid until next
+ *         call to this function
+ */
+const char *
+TALER_b2s (const void *buf,
+	   size_t buf_size)
+{
+  static char ret[9];
+  struct GNUNET_HashCode hc;
+  char *tmp;
+
+  GNUNET_CRYPTO_hash (buf,
+		      buf_size,
+		      &hc);
+  tmp = GNUNET_STRINGS_data_to_string_alloc (&hc,
+					     sizeof (hc));
+  memcpy (ret,
+	  tmp,
+	  8);
+  GNUNET_free (tmp);
+  ret[8] = '\0';
+  return ret;
+}	   
+
+
+/**
  * Obtain denomination amount from configuration file.
  *
  * @param cfg configuration to use
