@@ -1088,7 +1088,7 @@ verify_refresh_melt_signature_ok (struct TALER_MINT_RefreshMeltHandle *rmh,
   const struct TALER_MINT_Keys *key_state;
   struct MAJ_Specification spec[] = {
     MAJ_spec_fixed_auto ("mint_sig", &mint_sig),
-    MAJ_spec_fixed_auto ("mint_pub", &mint_sig),
+    MAJ_spec_fixed_auto ("mint_pub", &mint_pub),
     MAJ_spec_uint16 ("noreveal_index", noreveal_index),
     MAJ_spec_end
   };
