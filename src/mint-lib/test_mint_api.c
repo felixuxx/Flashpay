@@ -1948,7 +1948,6 @@ run (void *cls,
       .details.refresh_melt.melted_coins = melt_coins_1,
       .details.refresh_melt.fresh_amounts = melt_fresh_amounts_1 },
 
-#if TEST_REFRESH
 
     /* Complete (successful) melt operation, and withdraw the coins */
     { .oc = OC_REFRESH_REVEAL,
@@ -1956,6 +1955,7 @@ run (void *cls,
       .expected_response_code = MHD_HTTP_OK,
       .details.refresh_reveal.melt_ref = "refresh-melt-1" },
 
+#if TEST_REFRESH
 
     /* Test that /refresh/link works */
     { .oc = OC_REFRESH_LINK,

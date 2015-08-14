@@ -222,7 +222,7 @@ handle_mhd_request (void *cls,
 
       { "/refresh/reveal", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-        &TMH_REFRESH_handler_refresh_melt, MHD_HTTP_OK },
+        &TMH_REFRESH_handler_refresh_reveal, MHD_HTTP_OK },
       { "/refresh/reveal", NULL, "text/plain",
         "Only POST is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
