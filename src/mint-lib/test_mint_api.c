@@ -1535,6 +1535,7 @@ interpreter_run (void *cls,
       ref = find_command (is,
                           md->coin_ref);
     }
+    GNUNET_assert (OC_WITHDRAW_SIGN == ref->oc);
     /* finally, use private key from withdraw sign command */
     cmd->details.refresh_link.rlh
       = TALER_MINT_refresh_link (mint,
@@ -1961,13 +1962,13 @@ run (void *cls,
       .expected_response_code = MHD_HTTP_OK,
       .details.refresh_reveal.melt_ref = "refresh-melt-1" },
 
-#if TEST_REFRESH
-
     /* Test that /refresh/link works */
     { .oc = OC_REFRESH_LINK,
       .label = "refresh-link-1",
       .expected_response_code = MHD_HTTP_OK,
       .details.refresh_link.reveal_ref = "refresh-reveal-1" },
+
+#if TEST_REFRESH
 
     /* Test successfully spending coins from the refresh operation:
        first EUR:1 */
