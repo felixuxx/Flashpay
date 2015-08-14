@@ -1158,7 +1158,7 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
                                  session_hash,
                                  i + off,
                                  refresh_session.num_oldcoins,
-                                 transfer_privs[i + off],
+                                 transfer_privs[i],
                                  melts,
                                  refresh_session.num_newcoins,
                                  denom_pubs)))

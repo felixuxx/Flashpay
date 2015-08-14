@@ -505,6 +505,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                            num_newcoins);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
+
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        rcc->coin_ev,
                                        rcc->coin_ev_size);
