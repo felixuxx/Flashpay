@@ -2478,11 +2478,10 @@ postgres_insert_refresh_commit_coins (void *cls,
         TALER_PQ_query_param_uint16 (&coin_off),
         TALER_PQ_query_param_fixed_size (rle,
                                          rle_size),
-        TALER_PQ_query_param_fixed_size (commit_coins->coin_ev,
-                                         commit_coins->coin_ev_size),
+        TALER_PQ_query_param_fixed_size (commit_coins[i].coin_ev,
+                                         commit_coins[i].coin_ev_size),
         TALER_PQ_query_param_end
       };
-
       result = TALER_PQ_exec_prepared (session->conn,
                                        "insert_refresh_commit_coin",
                                        params);
