@@ -751,6 +751,7 @@ TMH_RESPONSE_reply_refresh_melt_success (struct MHD_Connection *connection,
   body.purpose.purpose = htonl (TALER_SIGNATURE_MINT_CONFIRM_MELT);
   body.session_hash = *session_hash;
   body.noreveal_index = htons (noreveal_index);
+  body.reserved = htons (0);
   TMH_KS_sign (&body.purpose,
                &pub,
                &sig);

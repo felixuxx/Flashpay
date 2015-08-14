@@ -444,13 +444,18 @@ struct TALER_RefreshMeltConfirmationPS
   /**
    * Hash of the refresh session.
    */
-  struct GNUNET_HashCode session_hash;
+  struct GNUNET_HashCode session_hash GNUNET_PACKED;
 
   /**
    * Index that the client will not have to reveal, in NBO.
    * Must be smaller than #TALER_CNC_KAPPA.
    */
   uint16_t noreveal_index GNUNET_PACKED;
+
+  /**
+   * Zero.
+   */
+  uint16_t reserved GNUNET_PACKED;
 };
 
 
@@ -534,7 +539,7 @@ struct TALER_MintKeySetPS
   /**
    * Hash over the various denomination signing keys returned.
    */
-  struct GNUNET_HashCode hc;
+  struct GNUNET_HashCode hc GNUNET_PACKED;
 };
 
 
@@ -623,7 +628,7 @@ struct TALER_DenominationKeyValidityPS
    * Hash code of the denomination public key. (Used to avoid having
    * the variable-size RSA key in this struct.)
    */
-  struct GNUNET_HashCode denom_hash;
+  struct GNUNET_HashCode denom_hash GNUNET_PACKED;
 
 };
 
@@ -700,7 +705,7 @@ struct TALER_MasterWireSepaDetailsPS
    * Hash over the account holder's name, IBAN and BIC
    * code (all as 0-terminated strings).
    */
-  struct GNUNET_HashCode h_sepa_details;
+  struct GNUNET_HashCode h_sepa_details GNUNET_PACKED;
 
 };
 
@@ -721,7 +726,7 @@ struct TALER_MintWireSupportMethodsPS
    * Hash over the various wire formats supported by this mint
    * (all as 0-terminated strings).
    */
-  struct GNUNET_HashCode h_wire_types;
+  struct GNUNET_HashCode h_wire_types GNUNET_PACKED;
 
 };
 

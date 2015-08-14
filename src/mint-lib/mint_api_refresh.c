@@ -1121,9 +1121,10 @@ verify_refresh_melt_signature_ok (struct TALER_MINT_RefreshMeltHandle *rmh,
 
   /* verify signature by mint */
   confirm.purpose.purpose = htonl (TALER_SIGNATURE_MINT_CONFIRM_MELT);
-  confirm.purpose.size = htonl (sizeof (confirm));
+  confirm.purpose.size = htonl (sizeof (struct TALER_RefreshMeltConfirmationPS));
   confirm.session_hash = rmh->md->melt_session_hash;
   confirm.noreveal_index = htons (*noreveal_index);
+  confirm.reserved = htons (0);
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MINT_CONFIRM_MELT,
                                   &confirm.purpose,
