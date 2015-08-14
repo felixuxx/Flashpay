@@ -1113,7 +1113,7 @@ verify_refresh_melt_signature_ok (struct TALER_MINT_RefreshMeltHandle *rmh,
   }
 
   /* check that noreveal index is in permitted range */
-  if (TALER_CNC_KAPPA >= *noreveal_index)
+  if (TALER_CNC_KAPPA <= *noreveal_index)
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
