@@ -27,7 +27,15 @@ libtalermint_la_SOURCES = \
 libtalermint_la_LIBADD = \
   -lgnunetutil \
   -ljansson \
-  -lcurl $(XLIB)
+  $(XLIB)
+
+if HAVE_LIBCURL
+libtalermint_la_LIBADD += -lcurl
+else
+if HAVE_LIBGNURL
+libtalermint_la_LIBADD += -lgnurl
+endif
+endif
 
 check_PROGRAMS = \
   test_mint_api

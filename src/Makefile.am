@@ -10,6 +10,10 @@ else
 SUBDIRS = include util $(PQ_DIR) mintdb mint mint-tools
 if HAVE_LIBCURL
  SUBDIRS += mint-lib
+else 
+if HAVE_LIBGNURL
+ SUBDIRS += mint-lib
+endif
 endif
 
 endif
