@@ -175,6 +175,98 @@ destroy_denom_key_pair (struct DenomKeyPair *dkp)
 
 
 /**
+ * Function to test melting of coins as part of a refresh session
+ *
+ * @param session the database session
+ * @param refresh_session the refresh session
+ * @return #GNUNET_OK if everything went well; #GNUNET_SYSERR if not
+ */
+static int
+test_melting (struct TALER_MINTDB_Session *session)
+{
+#define MELT_COINS 10
+  struct TALER_MINTDB_RefreshSession refresh_session;
+  struct TALER_MINTDB_RefreshSession ret_refresh_session;
+  struct GNUNET_HashCode session_hash;
+  struct DenomKeyPair *dkp;
+  /* struct TALER_CoinPublicInfo *coins; */
+  struct TALER_MINTDB_RefreshMelt *melts;
+  struct TALER_Amount amount_with_fee;
+  struct TALER_Amount melt_fee;
+  unsigned int cnt;
+  int ret;
+
+  ret = GNUNET_SYSERR;
+  RND_BLK (&refresh_session);
+  RND_BLK (&session_hash);
+  melts = NULL;
+  /* create and test a refresh session */
+  refresh_session.num_oldcoins = MELT_COINS;
+  refresh_session.num_newcoins = 1;
+  refresh_session.noreveal_index = 1;
+  FAILIF (GNUNET_OK != plugin->create_refresh_session (plugin->cls,
+                                                       session,
+                                                       &session_hash,
+                                                       &refresh_session));
+  FAILIF (GNUNET_OK != plugin->get_refresh_session (plugin->cls,
+                                                    session,
+                                                    &session_hash,
+                                                    &ret_refresh_session));
+  FAILIF (0 != memcmp (&ret_refresh_session,
+                       &refresh_session,
+                       sizeof (refresh_session)));
+
+  /* create a denomination (value: 1; fraction: 100) */
+  dkp = create_denom_key_pair(512, session);
+
+  /* create MELT_COIN number of coins to be melted */
+  /* coins = GNUNET_new_array (MELT_COINS, struct TALER_CoinPublicInfo); */
+  /* for (cnt = 0; cnt < MELT_COINS; cnt++) */
+  /* { */
+  /*   RND_BLK (&coins[cnt].coin_pub); */
+  /*   coins[cnt].denom_pub = dkp->pub; */
+  /*   RND_BLK (&coins[cnt].denom_sig); */
+  /* } */
+  /* create MELT_COINS number of refresh melts */
+  melts = GNUNET_new_array (MELT_COINS, struct TALER_MINTDB_RefreshMelt);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":1.000010",
+                                         &amount_with_fee));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":0.000010",
+                                         &melt_fee));
+  for (cnt=0; cnt < MELT_COINS; cnt++)
+  {
+    RND_BLK (&melts[cnt].coin.coin_pub);
+    melts[cnt].coin.denom_sig.rsa_signature =
+        GNUNET_CRYPTO_rsa_sign (dkp->priv.rsa_private_key,
+                                &melts[cnt].coin.coin_pub,
+                                sizeof (melts[cnt].coin.coin_pub));
+    melts[cnt].coin.denom_pub = dkp->pub;
+    RND_BLK (&melts[cnt].coin_sig);
+    melts[cnt].session_hash = session_hash;
+    melts[cnt].amount_with_fee = amount_with_fee;
+    melts[cnt].melt_fee = melt_fee;
+    FAILIF (GNUNET_OK != plugin->insert_refresh_melt (plugin->cls,
+                                                      session,
+                                                      cnt,
+                                                      &melts[cnt]));
+  }
+  ret = GNUNET_OK;
+
+ drop:
+  destroy_denom_key_pair (dkp);
+  if (NULL != melts)
+  {
+    for (cnt = 0; cnt < MELT_COINS; cnt++)
+      GNUNET_CRYPTO_rsa_signature_free (melts[cnt].coin.denom_sig.rsa_signature);
+    GNUNET_free (melts);
+  }
+  return ret;
+}
+
+
+/**
  * Main function that will be run by the scheduler.
  *
  * @param cls closure
@@ -391,32 +483,9 @@ run (void *cls,
           plugin->have_deposit (plugin->cls,
                                 session,
                                 &deposit2));
-  /* Tests for refreshing */
-  {
-    struct TALER_MINTDB_RefreshSession refresh_session;
-    struct TALER_MINTDB_RefreshSession ret_refresh_session;
-    struct GNUNET_HashCode session_hash;
-    RND_BLK (&refresh_session);
-    RND_BLK (&session_hash);
-    refresh_session.num_oldcoins = UINT16_MAX;
-    refresh_session.num_newcoins = 1;
-    refresh_session.noreveal_index = 1;
-    FAILIF (GNUNET_OK != plugin->create_refresh_session (plugin->cls,
-                                                         session,
-                                                         &session_hash,
-                                                         &refresh_session));
-    FAILIF (GNUNET_OK != plugin->get_refresh_session (plugin->cls,
-                                                      session,
-                                                      &session_hash,
-                                                      &ret_refresh_session));
-    FAILIF (0 != memcmp (&ret_refresh_session,
-                         &refresh_session,
-                         sizeof (refresh_session)));
-  }
-  // FAILIF (GNUNET_OK != test_known_coins (session));
+  FAILIF (GNUNET_OK != test_melting (session));
   result = 0;
 
-  /* FIXME: test_refresh_melts */
  drop:
   if (NULL != wire)
     json_decref (wire);
