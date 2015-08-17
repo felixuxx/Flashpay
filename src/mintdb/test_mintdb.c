@@ -87,80 +87,6 @@ struct DenomKeyPair
 
 
 /**
- * Register a denomination in the DB.
- *
- * @param dkp the denomination key pair
- * @param session the DB session
- * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
- */
-static int
-register_denomination(struct TALER_DenominationPublicKey denom_pub,
-                      struct TALER_MINTDB_Session *session)
-{
-  struct TALER_MINTDB_DenominationKeyIssueInformation dki;
-
-  /* Using memset() as fields like master key and signature
-     are not properly initialized for this test. */
-  memset (&dki,
-          0,
-          sizeof (struct TALER_MINTDB_DenominationKeyIssueInformation));
-  dki.denom_pub = denom_pub;
-  dki.issue.properties.start = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get ());
-  dki.issue.properties.expire_withdraw = GNUNET_TIME_absolute_hton
-      (GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
-                                 GNUNET_TIME_UNIT_HOURS));
-  dki.issue.properties.expire_spend = GNUNET_TIME_absolute_hton
-      (GNUNET_TIME_absolute_add
-       (GNUNET_TIME_absolute_get (),
-        GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 2)));
-  dki.issue.properties.expire_legal = GNUNET_TIME_absolute_hton
-      (GNUNET_TIME_absolute_add
-       (GNUNET_TIME_absolute_get (),
-        GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 3)));
-  dki.issue.properties.value.value = GNUNET_htonll (1);
-  dki.issue.properties.value.fraction = htonl (100);
-  (void) strcpy (dki.issue.properties.value.currency, CURRENCY);
-  dki.issue.properties.fee_withdraw.value = 0;
-  dki.issue.properties.fee_withdraw.fraction = htonl (100);
-  (void) strcpy (dki.issue.properties.fee_withdraw.currency, CURRENCY);
-  dki.issue.properties.fee_deposit = dki.issue.properties.fee_withdraw;
-  dki.issue.properties.fee_refresh = dki.issue.properties.fee_withdraw;
-  if (GNUNET_OK !=
-      plugin->insert_denomination_info (plugin->cls,
-                                        session,
-                                        &denom_pub,
-                                        &dki.issue))
-  {
-    GNUNET_break(0);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
-
-
-/**
- * Create a denominaiton key pair
- *
- * @param size the size of the denomination key
- * @param session the DB session
- * @return the denominaiton key pair; NULL upon error
- */
-static struct DenomKeyPair *
-create_denom_key_pair (unsigned int size, struct TALER_MINTDB_Session *session)
-{
-  struct DenomKeyPair *dkp;
-
-  dkp = GNUNET_new (struct DenomKeyPair);
-  dkp->priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (size);
-  GNUNET_assert (NULL != dkp->priv.rsa_private_key);
-  dkp->pub.rsa_public_key
-    = GNUNET_CRYPTO_rsa_private_key_get_public (dkp->priv.rsa_private_key);
-  (void) register_denomination (dkp->pub, session);
-  return dkp;
-}
-
-
-/**
  * Destroy a denomination key pair.  The key is not necessarily removed from the DB.
  *
  * @param dkp the keypair to destroy
@@ -175,6 +101,74 @@ destroy_denom_key_pair (struct DenomKeyPair *dkp)
 
 
 /**
+ * Create a denominaiton key pair by registering the denomination in the DB.
+ *
+ * @param size the size of the denomination key
+ * @param session the DB session
+ * @return the denominaiton key pair; NULL upon error
+ */
+static struct DenomKeyPair *
+create_denom_key_pair (unsigned int size,
+                       struct TALER_MINTDB_Session *session,
+                       const struct TALER_Amount *value,
+                       const struct TALER_Amount *fee_withdraw,
+                       const struct TALER_Amount *fee_deposit,
+                       const struct TALER_Amount *fee_refresh)
+{
+  struct DenomKeyPair *dkp;
+  struct TALER_MINTDB_DenominationKeyIssueInformation dki;
+
+  dkp = GNUNET_new (struct DenomKeyPair);
+  dkp->priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (size);
+  GNUNET_assert (NULL != dkp->priv.rsa_private_key);
+  dkp->pub.rsa_public_key
+    = GNUNET_CRYPTO_rsa_private_key_get_public (dkp->priv.rsa_private_key);
+
+  /* Using memset() as fields like master key and signature
+     are not properly initialized for this test. */
+  memset (&dki,
+          0,
+          sizeof (struct TALER_MINTDB_DenominationKeyIssueInformation));
+  dki.denom_pub = dkp->pub;
+  dki.issue.properties.start = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get ());
+  dki.issue.properties.expire_withdraw = GNUNET_TIME_absolute_hton
+      (GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
+                                 GNUNET_TIME_UNIT_HOURS));
+  dki.issue.properties.expire_spend = GNUNET_TIME_absolute_hton
+      (GNUNET_TIME_absolute_add
+       (GNUNET_TIME_absolute_get (),
+        GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 2)));
+  dki.issue.properties.expire_legal = GNUNET_TIME_absolute_hton
+      (GNUNET_TIME_absolute_add
+       (GNUNET_TIME_absolute_get (),
+        GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 3)));
+  TALER_amount_hton (&dki.issue.properties.value, value);
+  TALER_amount_hton (&dki.issue.properties.fee_withdraw, fee_withdraw);
+  TALER_amount_hton (&dki.issue.properties.fee_deposit, fee_deposit);
+  TALER_amount_hton (&dki.issue.properties.fee_refresh, fee_refresh);
+  GNUNET_CRYPTO_rsa_public_key_hash (dkp->pub.rsa_public_key,
+                                     &dki.issue.properties.denom_hash);
+  if (GNUNET_OK !=
+      plugin->insert_denomination_info (plugin->cls,
+                                        session,
+                                        &dki.denom_pub,
+                                        &dki.issue))
+  {
+    GNUNET_break(0);
+    destroy_denom_key_pair (dkp);
+    return NULL;
+  }
+  return dkp;
+}
+
+static struct TALER_Amount value;
+static struct TALER_Amount fee_withdraw;
+static struct TALER_Amount fee_deposit;
+static struct TALER_Amount fee_refresh;
+static struct TALER_Amount amount_with_fee;
+
+
+/**
  * Function to test melting of coins as part of a refresh session
  *
  * @param session the database session
@@ -184,15 +178,16 @@ destroy_denom_key_pair (struct DenomKeyPair *dkp)
 static int
 test_melting (struct TALER_MINTDB_Session *session)
 {
-#define MELT_COINS 10
+#define MELT_OLD_COINS 10
+#define MELT_NEW_COINS 5
+
   struct TALER_MINTDB_RefreshSession refresh_session;
   struct TALER_MINTDB_RefreshSession ret_refresh_session;
   struct GNUNET_HashCode session_hash;
   struct DenomKeyPair *dkp;
+  struct DenomKeyPair *new_dkp;
   /* struct TALER_CoinPublicInfo *coins; */
   struct TALER_MINTDB_RefreshMelt *melts;
-  struct TALER_Amount amount_with_fee;
-  struct TALER_Amount melt_fee;
   unsigned int cnt;
   int ret;
 
@@ -201,7 +196,7 @@ test_melting (struct TALER_MINTDB_Session *session)
   RND_BLK (&session_hash);
   melts = NULL;
   /* create and test a refresh session */
-  refresh_session.num_oldcoins = MELT_COINS;
+  refresh_session.num_oldcoins = MELT_OLD_COINS;
   refresh_session.num_newcoins = 1;
   refresh_session.noreveal_index = 1;
   FAILIF (GNUNET_OK != plugin->create_refresh_session (plugin->cls,
@@ -217,16 +212,14 @@ test_melting (struct TALER_MINTDB_Session *session)
                        sizeof (refresh_session)));
 
   /* create a denomination (value: 1; fraction: 100) */
-  dkp = create_denom_key_pair(512, session);
-  /* create MELT_COINS number of refresh melts */
-  melts = GNUNET_new_array (MELT_COINS, struct TALER_MINTDB_RefreshMelt);
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY ":1.000010",
-                                         &amount_with_fee));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY ":0.000010",
-                                         &melt_fee));
-  for (cnt=0; cnt < MELT_COINS; cnt++)
+  dkp = create_denom_key_pair(512, session,
+                              &value,
+                              &fee_withdraw,
+                              &fee_deposit,
+                              &fee_refresh);
+  /* create MELT_OLD_COINS number of refresh melts */
+  melts = GNUNET_new_array (MELT_OLD_COINS, struct TALER_MINTDB_RefreshMelt);
+  for (cnt=0; cnt < MELT_OLD_COINS; cnt++)
   {
     RND_BLK (&melts[cnt].coin.coin_pub);
     melts[cnt].coin.denom_sig.rsa_signature =
@@ -237,13 +230,13 @@ test_melting (struct TALER_MINTDB_Session *session)
     RND_BLK (&melts[cnt].coin_sig);
     melts[cnt].session_hash = session_hash;
     melts[cnt].amount_with_fee = amount_with_fee;
-    melts[cnt].melt_fee = melt_fee;
+    melts[cnt].melt_fee = fee_refresh;
     FAILIF (GNUNET_OK != plugin->insert_refresh_melt (plugin->cls,
                                                       session,
                                                       cnt,
                                                       &melts[cnt]));
   }
-  for (cnt = 0; cnt < MELT_COINS; cnt++)
+  for (cnt = 0; cnt < MELT_OLD_COINS; cnt++)
   {
     struct TALER_MINTDB_RefreshMelt ret_melt;
     FAILIF (GNUNET_OK != plugin->get_refresh_melt (plugin->cls,
@@ -279,7 +272,7 @@ test_melting (struct TALER_MINTDB_Session *session)
   destroy_denom_key_pair (dkp);
   if (NULL != melts)
   {
-    for (cnt = 0; cnt < MELT_COINS; cnt++)
+    for (cnt = 0; cnt < MELT_OLD_COINS; cnt++)
       GNUNET_CRYPTO_rsa_signature_free (melts[cnt].coin.denom_sig.rsa_signature);
     GNUNET_free (melts);
   }
@@ -353,40 +346,57 @@ run (void *cls,
   }
   RND_BLK (&reserve_pub);
   GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY ":1.000001",
-                                         &amount));
+                 TALER_string_to_amount (CURRENCY ":1.000010",
+                                         &value));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":0.000010",
+                                         &fee_withdraw));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":0.000010",
+                                         &fee_deposit));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":0.000010",
+                                         &fee_refresh));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":1.000010",
+                                         &amount_with_fee));
+
   result = 4;
   just = json_loads ("{ \"justification\":\"1\" }", 0, NULL);
   FAILIF (GNUNET_OK !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
                                       &reserve_pub,
-                                      &amount,
+                                      &value,
                                       GNUNET_TIME_absolute_get (),
 				      just));
   json_decref (just);
   FAILIF (GNUNET_OK !=
           check_reserve (session,
                          &reserve_pub,
-                         amount.value,
-                         amount.fraction,
-                         amount.currency));
+                         value.value,
+                         value.fraction,
+                         value.currency));
   just = json_loads ("{ \"justification\":\"2\" }", 0, NULL);
   FAILIF (GNUNET_OK !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
                                       &reserve_pub,
-                                      &amount,
+                                      &value,
                                       GNUNET_TIME_absolute_get (),
 				      just));
   json_decref (just);
   FAILIF (GNUNET_OK !=
           check_reserve (session,
                          &reserve_pub,
-                         ++amount.value,
-                         ++amount.fraction,
-                         amount.currency));
-  dkp = create_denom_key_pair (1024, session);
+                         value.value * 2,
+                         value.fraction * 2,
+                         value.currency));
+  dkp = create_denom_key_pair (1024, session,
+                               &value,
+                               &fee_withdraw,
+                               &fee_deposit,
+                               &fee_refresh);
   RND_BLK(&cbc.h_coin_envelope);
   RND_BLK(&cbc.reserve_sig);
   cbc.denom_pub = dkp->pub;
@@ -399,7 +409,7 @@ run (void *cls,
                  sizeof (reserve_pub));
   amount.value--;
   amount.fraction--;
-  cbc.amount_with_fee = amount;
+  cbc.amount_with_fee = value;
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (CURRENCY, &cbc.withdraw_fee));
   FAILIF (GNUNET_OK !=
@@ -409,9 +419,9 @@ run (void *cls,
   FAILIF (GNUNET_OK !=
           check_reserve (session,
                          &reserve_pub,
-                         amount.value,
-                         amount.fraction,
-                         amount.currency));
+                         value.value,
+                         value.fraction,
+                         value.currency));
   FAILIF (GNUNET_YES !=
           plugin->get_withdraw_info (plugin->cls,
                                      session,
@@ -442,8 +452,9 @@ run (void *cls,
       FAILIF (0 != memcmp (&bt->reserve_pub,
                            &reserve_pub,
                            sizeof (reserve_pub)));
+      /* this is the amount we trasferred twice*/
       FAILIF (1 != bt->amount.value);
-      FAILIF (1 != bt->amount.fraction);
+      FAILIF (10 != bt->amount.fraction);
       FAILIF (0 != strcmp (CURRENCY, bt->amount.currency));
       FAILIF (NULL == bt->wire);
       break;
@@ -472,7 +483,7 @@ run (void *cls,
   deposit.wire = wire;
   deposit.transaction_id =
       GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
-  deposit.amount_with_fee = amount;
+  deposit.amount_with_fee = value;
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (CURRENCY, &deposit.deposit_fee));
   FAILIF (GNUNET_OK !=
