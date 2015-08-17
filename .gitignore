@@ -34,6 +34,7 @@ src/mint-tools/taler-mint-dbinit
 src/mint-tools/taler-mint-keycheck
 src/mint-tools/taler-mint-keyup
 src/mint-tools/taler-mint-reservemod
+src/mint-tools/taler-mint-sepa
 src/mintdb/perf-mintdb
 src/pq/test_pq
 src/util/test_amount
