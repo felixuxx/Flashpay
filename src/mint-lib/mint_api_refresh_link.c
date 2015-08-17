@@ -100,9 +100,10 @@ parse_refresh_link_coin (const struct TALER_MINT_RefreshLinkHandle *rlh,
   void *link_enc;
   size_t link_enc_size;
   struct GNUNET_CRYPTO_rsa_Signature *bsig;
+  struct GNUNET_CRYPTO_rsa_PublicKey *rpub;
   struct MAJ_Specification spec[] = {
     MAJ_spec_varsize ("link_enc", &link_enc, &link_enc_size),
-    MAJ_spec_rsa_public_key ("denom_pub", &pub->rsa_public_key),
+    MAJ_spec_rsa_public_key ("denom_pub", &rpub),
     MAJ_spec_rsa_signature ("ev_sig", &bsig),
     MAJ_spec_end
   };
@@ -152,10 +153,11 @@ parse_refresh_link_coin (const struct TALER_MINT_RefreshLinkHandle *rlh,
   sig->rsa_signature
     = GNUNET_CRYPTO_rsa_unblind (bsig,
                                  rld->blinding_key.rsa_blinding_key,
-                                 pub->rsa_public_key);
+                                 rpub);
 
   /* clean up */
   GNUNET_free (rld);
+  pub->rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (rpub);
   MAJ_parse_free (spec);
   return GNUNET_OK;
 }
