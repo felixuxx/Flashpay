@@ -711,7 +711,7 @@ TMH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *conne
 
   history = compile_transaction_history (tl);
   return TMH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_NOT_FOUND,
+                                       MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:o, s:o, s:o, s:o, s:o}",
                                        "error",
                                        "insufficient funds",
