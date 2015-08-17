@@ -245,6 +245,9 @@ parse_json (json_t *root,
                                         &sig.eddsa_signature,
                                         spec[i].details.eddsa_signature.pub_key))
         {
+	  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		      "Failed to verify signature of purpose %u\n",
+		      ntohl (purpose->purpose));
           GNUNET_break_op (0);
           MAJ_parse_free (sig_spec);
           return i;

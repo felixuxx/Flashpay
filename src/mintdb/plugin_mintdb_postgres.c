@@ -2648,33 +2648,36 @@ postgres_insert_refresh_commit_links (void *cls,
                                       uint16_t num_links,
                                       const struct TALER_RefreshCommitLinkP *links)
 {
-  // FIXME: check logic! links is array!
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (session_hash),
-    TALER_PQ_query_param_auto_from_type (&links->transfer_pub),
-    TALER_PQ_query_param_uint16 (&cnc_index),
-    TALER_PQ_query_param_uint16 (&num_links),
-    TALER_PQ_query_param_auto_from_type (&links->shared_secret_enc),
-    TALER_PQ_query_param_end
-  };
+  uint16_t i;
 
-  PGresult *result = TALER_PQ_exec_prepared (session->conn,
-                                             "insert_refresh_commit_link",
-                                             params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  for (i=0;i<num_links;i++)
   {
-    BREAK_DB_ERR (result);
+    struct TALER_PQ_QueryParam params[] = {
+      TALER_PQ_query_param_auto_from_type (session_hash),
+      TALER_PQ_query_param_auto_from_type (&links[i].transfer_pub),
+      TALER_PQ_query_param_uint16 (&cnc_index),
+      TALER_PQ_query_param_uint16 (&i),
+      TALER_PQ_query_param_auto_from_type (&links[i].shared_secret_enc),
+      TALER_PQ_query_param_end
+    };
+
+    PGresult *result = TALER_PQ_exec_prepared (session->conn,
+					       "insert_refresh_commit_link",
+					       params);
+    if (PGRES_COMMAND_OK != PQresultStatus (result))
+    {
+      BREAK_DB_ERR (result);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    
+    if (0 != strcmp ("1", PQcmdTuples (result)))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
     PQclear (result);
-    return GNUNET_SYSERR;
   }
-
-  if (0 != strcmp ("1", PQcmdTuples (result)))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-
-  PQclear (result);
   return GNUNET_OK;
 }
 
@@ -2701,46 +2704,50 @@ postgres_get_refresh_commit_links (void *cls,
                                    uint16_t num_links,
                                    struct TALER_RefreshCommitLinkP *links)
 {
-  // FIXME: check logic: was written for a single link!
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (session_hash),
-    TALER_PQ_query_param_uint16 (&cnc_index),
-    TALER_PQ_query_param_uint16 (&num_links),
-    TALER_PQ_query_param_end
-  };
-  PGresult *result;
+  uint16_t i;
 
-  result = TALER_PQ_exec_prepared (session->conn,
-                                   "get_refresh_commit_link",
-                                   params);
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  for (i=0;i<num_links;i++)
   {
-    BREAK_DB_ERR (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  if (0 == PQntuples (result))
-  {
-    PQclear (result);
-    return GNUNET_NO;
-  }
-  {
-    struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_auto_from_type ("transfer_pub",
-                                           &links->transfer_pub),
-      TALER_PQ_result_spec_auto_from_type ("link_secret_enc",
-                                           &links->shared_secret_enc),
-      TALER_PQ_result_spec_end
+    struct TALER_PQ_QueryParam params[] = {
+      TALER_PQ_query_param_auto_from_type (session_hash),
+      TALER_PQ_query_param_uint16 (&cnc_index),
+      TALER_PQ_query_param_uint16 (&i),
+      TALER_PQ_query_param_end
     };
+    PGresult *result;
 
-    if (GNUNET_YES !=
-        TALER_PQ_extract_result (result, rs, 0))
+    result = TALER_PQ_exec_prepared (session->conn,
+				     "get_refresh_commit_link",
+				     params);
+    if (PGRES_TUPLES_OK != PQresultStatus (result))
     {
+      BREAK_DB_ERR (result);
       PQclear (result);
       return GNUNET_SYSERR;
     }
+    if (0 == PQntuples (result))
+    {
+      PQclear (result);
+      return GNUNET_NO;
+    }
+    {
+      struct TALER_PQ_ResultSpec rs[] = {
+	TALER_PQ_result_spec_auto_from_type ("transfer_pub",
+					     &links[i].transfer_pub),
+	TALER_PQ_result_spec_auto_from_type ("link_secret_enc",
+					     &links[i].shared_secret_enc),
+	TALER_PQ_result_spec_end
+      };
+      
+      if (GNUNET_YES !=
+	  TALER_PQ_extract_result (result, rs, 0))
+      {
+	PQclear (result);
+	return GNUNET_SYSERR;
+      }
+    }
+    PQclear (result);
   }
-  PQclear (result);
   return GNUNET_OK;
 }
 
