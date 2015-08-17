@@ -1009,6 +1009,10 @@ link_cb (void *cls,
       return;
     }
     /* check that the coins match */
+    fprintf (stderr,
+	     "Got %u coins\n",
+	     num_coins);
+    /* FIXME: note: coins might be legitimately permutated in here... */
     for (i=0;i<num_coins;i++)
     {
       const struct FreshCoin *fc;

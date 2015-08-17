@@ -173,73 +173,122 @@ static int
 parse_refresh_link_ok (struct TALER_MINT_RefreshLinkHandle *rlh,
                        json_t *json)
 {
-  json_t *jsona;
-  struct TALER_TransferPublicKeyP trans_pub;
-  struct TALER_EncryptedLinkSecretP secret_enc;
-  struct MAJ_Specification spec[] = {
-    MAJ_spec_json ("new_coins", &jsona),
-    MAJ_spec_fixed_auto ("trans_pub", &trans_pub),
-    MAJ_spec_fixed_auto ("secret_enc", &secret_enc),
-    MAJ_spec_end
-  };
+  unsigned int session;
   unsigned int num_coins;
   int ret;
 
-  if (GNUNET_OK !=
-      MAJ_parse_json (json,
-                      spec))
+  if (! json_is_array (json))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  if (! json_is_array (jsona))
+  num_coins = 0;
+  for (session=0;session<json_array_size (json); session++)
   {
-    GNUNET_break_op (0);
-    MAJ_parse_free (spec);
-    return GNUNET_SYSERR;
-  }
+    json_t *jsona;
+    struct MAJ_Specification spec[] = {
+      MAJ_spec_json ("new_coins", &jsona),
+      MAJ_spec_end
+    };
 
-  /* decode all coins */
-  num_coins = json_array_size (json);
+    if (GNUNET_OK !=
+	MAJ_parse_json (json_array_get (json, 
+					session),
+			spec))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    if (! json_is_array (jsona))
+    {
+      GNUNET_break_op (0);
+      MAJ_parse_free (spec);
+      return GNUNET_SYSERR;
+    }
+
+    /* count all coins over all sessions */
+    num_coins += json_array_size (jsona);
+    MAJ_parse_free (spec);
+  }
   {
+    unsigned int off_coin;
     unsigned int i;
     struct TALER_CoinSpendPrivateKeyP coin_privs[num_coins];
     struct TALER_DenominationSignature sigs[num_coins];
     struct TALER_DenominationPublicKey pubs[num_coins];
-
-    for (i=0;i<num_coins;i++)
+      
+    off_coin = 0;
+    for (session=0;session<json_array_size (json); session++)
     {
+      json_t *jsona;
+      struct TALER_TransferPublicKeyP trans_pub;
+      struct TALER_EncryptedLinkSecretP secret_enc;
+      struct MAJ_Specification spec[] = {
+	MAJ_spec_json ("new_coins", &jsona),
+	MAJ_spec_fixed_auto ("transfer_pub", &trans_pub),
+	MAJ_spec_fixed_auto ("secret_enc", &secret_enc),
+	MAJ_spec_end
+      };
+
       if (GNUNET_OK !=
-          parse_refresh_link_coin (rlh,
-                                   json_array_get (json, i),
-                                   &trans_pub,
-                                   &secret_enc,
-                                   &coin_privs[i],
-                                   &sigs[i],
-                                   &pubs[i]))
+	  MAJ_parse_json (json_array_get (json, 
+					  session),
+			  spec))
       {
-        GNUNET_break_op (0);
-        break;
+	GNUNET_break_op (0);
+	return GNUNET_SYSERR;
       }
+      if (! json_is_array (jsona))
+      {
+	GNUNET_break_op (0);
+	MAJ_parse_free (spec);
+	return GNUNET_SYSERR;
+      }
+      
+      /* decode all coins */
+      for (i=0;i<json_array_size (jsona);i++)
+      {
+	if (GNUNET_OK !=
+	    parse_refresh_link_coin (rlh,
+				     json_array_get (jsona, 
+						     i),
+				     &trans_pub,
+				     &secret_enc,
+				     &coin_privs[i+off_coin],
+				     &sigs[i+off_coin],
+				     &pubs[i+off_coin]))
+	{
+	  GNUNET_break_op (0);
+	  break;
+	}
+      }
+      /* check if we really got all, then invoke callback */
+      if (i != json_array_size (jsona))
+      {
+	GNUNET_break_op (0);
+	ret = GNUNET_SYSERR;
+	MAJ_parse_free (spec);
+	break;
+      }
+      off_coin += json_array_size (jsona);
+      MAJ_parse_free (spec);
     }
-
-    /* check if we really got all, then invoke callback */
-    if (i != num_coins)
+    if (off_coin == num_coins)
     {
-      GNUNET_break_op (0);
-      ret = GNUNET_SYSERR;
+      rlh->link_cb (rlh->link_cb_cls,
+		    MHD_HTTP_OK,
+		    num_coins,
+		    coin_privs,
+		    sigs,
+		    pubs,
+		    json);
+      rlh->link_cb = NULL;
+      ret = GNUNET_OK;
     }
     else
     {
-      rlh->link_cb (rlh->link_cb_cls,
-                    MHD_HTTP_OK,
-                    num_coins,
-                    coin_privs,
-                    sigs,
-                    pubs,
-                    json);
-      rlh->link_cb = NULL;
-      ret = GNUNET_OK;
+      GNUNET_break_op (0);
+      ret = GNUNET_SYSERR;
     }
 
     /* clean up */
