@@ -218,15 +218,6 @@ test_melting (struct TALER_MINTDB_Session *session)
 
   /* create a denomination (value: 1; fraction: 100) */
   dkp = create_denom_key_pair(512, session);
-
-  /* create MELT_COIN number of coins to be melted */
-  /* coins = GNUNET_new_array (MELT_COINS, struct TALER_CoinPublicInfo); */
-  /* for (cnt = 0; cnt < MELT_COINS; cnt++) */
-  /* { */
-  /*   RND_BLK (&coins[cnt].coin_pub); */
-  /*   coins[cnt].denom_pub = dkp->pub; */
-  /*   RND_BLK (&coins[cnt].denom_sig); */
-  /* } */
   /* create MELT_COINS number of refresh melts */
   melts = GNUNET_new_array (MELT_COINS, struct TALER_MINTDB_RefreshMelt);
   GNUNET_assert (GNUNET_OK ==
@@ -251,6 +242,36 @@ test_melting (struct TALER_MINTDB_Session *session)
                                                       session,
                                                       cnt,
                                                       &melts[cnt]));
+  }
+  for (cnt = 0; cnt < MELT_COINS; cnt++)
+  {
+    struct TALER_MINTDB_RefreshMelt ret_melt;
+    FAILIF (GNUNET_OK != plugin->get_refresh_melt (plugin->cls,
+                                                   session,
+                                                   &session_hash,
+                                                   cnt,
+                                                   &ret_melt));
+    FAILIF (0 != GNUNET_CRYPTO_rsa_signature_cmp
+            (ret_melt.coin.denom_sig.rsa_signature,
+             melts[cnt].coin.denom_sig.rsa_signature));
+    FAILIF (0 != memcmp (&ret_melt.coin.coin_pub,
+                         &melts[cnt].coin.coin_pub,
+                         sizeof (ret_melt.coin.coin_pub)));
+    FAILIF (0 != GNUNET_CRYPTO_rsa_public_key_cmp
+            (ret_melt.coin.denom_pub.rsa_public_key,
+             melts[cnt].coin.denom_pub.rsa_public_key));
+    FAILIF (0 != memcmp (&ret_melt.coin_sig,
+                         &melts[cnt].coin_sig,
+                         sizeof (ret_melt.coin_sig)));
+    FAILIF (0 != memcmp (&ret_melt.session_hash,
+                         &melts[cnt].session_hash,
+                         sizeof (ret_melt.session_hash)));
+    FAILIF (0 != TALER_amount_cmp (&ret_melt.amount_with_fee,
+                                   &melts[cnt].amount_with_fee));
+    FAILIF (0 != TALER_amount_cmp (&ret_melt.melt_fee,
+                                   &melts[cnt].melt_fee));
+    GNUNET_CRYPTO_rsa_signature_free (ret_melt.coin.denom_sig.rsa_signature);
+    GNUNET_CRYPTO_rsa_public_key_free (ret_melt.coin.denom_pub.rsa_public_key);
   }
   ret = GNUNET_OK;
 
