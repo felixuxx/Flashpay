@@ -839,20 +839,288 @@ cmd_init (struct PERF_TALER_MINTDB_Cmd cmd[])
         }
         break;
 
+      case PERF_TALER_MINTDB_CMD_INSERT_REFRESH_ORDER:
+        {
+          int ret;
+          ret = cmd_find (cmd,
+                          cmd[i].details.insert_refresh_order.label_hash);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.insert_refresh_order.label_hash);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_REFRESH_HASH != cmd[ret].exposed.type)
+          {   
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s\n",
+                        i,
+                        cmd[i].details.insert_refresh_order.label_hash);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.insert_refresh_order.index_hash = ret;
+
+          ret = cmd_find (cmd,
+                          cmd[i].details.insert_refresh_order.label_denom);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.insert_refresh_order.label_denom);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_DENOMINATION_INFO != cmd[ret].exposed.type)
+          {   
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s\n",
+                        i,
+                        cmd[i].details.insert_refresh_order.label_denom);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.insert_refresh_order.index_denom = ret;
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_REFRESH_ORDER:
+        {
+          int ret;
+          ret = cmd_find (cmd,
+                          cmd[i].details.get_refresh_order.label_hash);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.get_refresh_order.label_hash);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_REFRESH_HASH != cmd[ret].exposed.type)
+          {   
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s\n",
+                        i,
+                        cmd[i].details.get_refresh_order.label_hash);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.get_refresh_order.index_hash = ret; 
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_INSERT_REFRESH_COMMIT_COIN:
+       {
+          int ret;
+          ret = cmd_find (cmd,
+                          cmd[i].details.insert_refresh_commit_coin.label_hash);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.insert_refresh_commit_coin.label_hash);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_REFRESH_HASH != cmd[ret].exposed.type)
+          {   
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s\n",
+                        i,
+                        cmd[i].details.insert_refresh_commit_coin.label_hash);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.insert_refresh_commit_coin.index_hash = ret; 
+        } 
+       break;
+
+      case PERF_TALER_MINTDB_CMD_GET_REFRESH_COMMIT_COIN:
+       {
+          int ret;
+          ret = cmd_find (cmd,
+                          cmd[i].details.get_refresh_commit_coin.label_hash);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.get_refresh_commit_coin.label_hash);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_REFRESH_HASH != cmd[ret].exposed.type)
+          {   
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s\n",
+                        i,
+                        cmd[i].details.get_refresh_commit_coin.label_hash);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.get_refresh_commit_coin.index_hash = ret; 
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_INSERT_REFRESH_COMMIT_LINK:
+       {
+          int ret;
+          ret = cmd_find (cmd,
+                          cmd[i].details.insert_refresh_commit_link.label_hash);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.insert_refresh_commit_link.label_hash);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_REFRESH_HASH != cmd[ret].exposed.type)
+          {   
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s\n",
+                        i,
+                        cmd[i].details.insert_refresh_commit_link.label_hash);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.insert_refresh_commit_link.index_hash = ret; 
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_REFRESH_COMMIT_LINK:
+       {
+          int ret;
+          ret = cmd_find (cmd,
+                          cmd[i].details.get_refresh_commit_link.label_hash);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.get_refresh_commit_link.label_hash);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_REFRESH_HASH != cmd[ret].exposed.type)
+          {   
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s\n",
+                        i,
+                        cmd[i].details.get_refresh_commit_link.label_hash);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.get_refresh_commit_link.index_hash = ret; 
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_MELT_COMMITMENT:
+       {
+          int ret;
+          ret = cmd_find (cmd,
+                          cmd[i].details.get_melt_commitment.label_hash);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.get_melt_commitment.label_hash);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_REFRESH_HASH != cmd[ret].exposed.type)
+          {   
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s\n",
+                        i,
+                        cmd[i].details.get_melt_commitment.label_hash);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.get_melt_commitment.index_hash = ret; 
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_INSERT_REFRESH_OUT:
+       {
+          int ret;
+          ret = cmd_find (cmd,
+                          cmd[i].details.insert_refresh_out.label_hash);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.insert_refresh_out.label_hash);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_REFRESH_HASH != cmd[ret].exposed.type)
+          {   
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s\n",
+                        i,
+                        cmd[i].details.insert_refresh_out.label_hash);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.insert_refresh_out.index_hash = ret; 
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_LINK_DATA_LIST:
+       {
+          int ret;
+          ret = cmd_find (cmd,
+                          cmd[i].details.get_link_data_list.label_hash);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.get_link_data_list.label_hash);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_REFRESH_HASH != cmd[ret].exposed.type)
+          {   
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s\n",
+                        i,
+                        cmd[i].details.get_link_data_list.label_hash);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.get_link_data_list.index_hash = ret; 
+        }
+        break;
+
+      case PERF_TALER_MINTDB_CMD_GET_TRANSFER:
+       {
+          int ret;
+          ret = cmd_find (cmd,
+                          cmd[i].details.get_transfer.label_hash);
+          if (GNUNET_SYSERR == ret)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Undefined reference to %s\n",
+                        i,
+                        cmd[i].details.get_transfer.label_hash);
+            return GNUNET_SYSERR;
+          }
+          if (PERF_TALER_MINTDB_REFRESH_HASH != cmd[ret].exposed.type)
+          {   
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "%d:Wrong type reference to %s\n",
+                        i,
+                        cmd[i].details.get_transfer.label_hash);
+            return GNUNET_SYSERR;
+          }
+          cmd[i].details.get_transfer.index_hash = ret; 
+        }
+        break;
+
       case PERF_TALER_MINTDB_CMD_END:
       case PERF_TALER_MINTDB_CMD_DEBUG:
       case PERF_TALER_MINTDB_CMD_LOOP:
+      case PERF_TALER_MINTDB_CMD_NEW_SESSION:
       case PERF_TALER_MINTDB_CMD_START_TRANSACTION:
       case PERF_TALER_MINTDB_CMD_COMMIT_TRANSACTION:
       case PERF_TALER_MINTDB_CMD_ABORT_TRANSACTION:
       case PERF_TALER_MINTDB_CMD_GET_TIME:
       case PERF_TALER_MINTDB_CMD_CREATE_DENOMINATION:
       case PERF_TALER_MINTDB_CMD_CREATE_RESERVE:
+      case PERF_TALER_MINTDB_CMD_CREATE_REFRESH_SESSION:
         break;
-
-      default:
-        break;
-
     }
   }
   return GNUNET_OK;
@@ -1003,7 +1271,8 @@ interpret_load_array (struct PERF_TALER_MINTDB_interpreter_state *state)
   save_index = cmd->details.load_array.index_save;
   loop_iter = state->cmd[loop_index].details.loop.curr_iteration;
   {
-    int i, quotient;
+    unsigned int i;
+    unsigned int quotient;
 
     /* In case the iteration number is higher than the amount saved,
      * the number is run several times in the permutation array */
@@ -1078,9 +1347,11 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_GAUGER:
         {
-          int start_index, stop_index;
+          unsigned int start_index;
+          unsigned int stop_index;
           float ips;
-          struct GNUNET_TIME_Absolute start, stop;
+          struct GNUNET_TIME_Absolute start;
+          struct GNUNET_TIME_Absolute stop;
           struct GNUNET_TIME_Relative elapsed;
 
           start_index = state->cmd[state->i].details.gauger.index_start;
@@ -1416,14 +1687,13 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_INSERT_REFRESH_ORDER:
         {
-          int hash_index;
-          int denom_index;
+          unsigned int hash_index;
+          unsigned int denom_index;
           struct GNUNET_HashCode *session_hash;
           struct TALER_MINTDB_DenominationKeyIssueInformation *denom;
 
           hash_index = state->cmd[state->i].details.insert_refresh_order.index_hash;
           denom_index = state->cmd[state->i].details.insert_refresh_order.index_denom;
-          GNUNET_assert (GNUNET_SYSERR != denom_index);
           session_hash = state->cmd[hash_index].exposed.data.session_hash;
           denom = state->cmd[denom_index].exposed.data.dki;
           state->plugin->insert_refresh_order (state->plugin->cls,
@@ -1453,21 +1723,35 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_INSERT_REFRESH_COMMIT_COIN:
         {
-          int hash_index;
+          int ret;
+          unsigned int hash_index;
+          struct TALER_MINTDB_RefreshCommitCoin *refresh_commit;
 
-          hash_index = cmd_find (state->cmd,
-                                 state->cmd[state->i].details.insert_refresh_commit_coin.label_hash);
-          GNUNET_assert (GNUNET_SYSERR != hash_index);
+          hash_index = state->cmd[state->i].details.insert_refresh_commit_coin.index_hash;
+          refresh_commit = PERF_TALER_MINTDB_refresh_commit_coin_init ();
+          ret = state->plugin->insert_refresh_commit_coins (state->plugin->cls,
+                                                            state->session,
+                                                            state->cmd[hash_index].exposed.data.session_hash,
+                                                            1,
+                                                            1,
+                                                            refresh_commit);
+                                                            
         }
         break;
 
       case PERF_TALER_MINTDB_CMD_GET_REFRESH_COMMIT_COIN:
         {
-          int hash_index;
+          unsigned int hash_index;
+          struct TALER_MINTDB_RefreshCommitCoin refresh_commit;
+            
+          hash_index = state->cmd[state->i].details.insert_refresh_commit_coin.index_hash;
+          state->plugin->get_refresh_commit_coins (state->plugin->cls,
+                                                   state->session,
+                                                   state->cmd[hash_index].exposed.data.session_hash,
+                                                   1,
+                                                   1,
+                                                   &refresh_commit);
 
-          hash_index = cmd_find (state->cmd,
-                                 state->cmd[state->i].details.insert_refresh_commit_coin.label_hash);
-          GNUNET_assert (GNUNET_SYSERR != hash_index);
         }
         break;
 
@@ -1475,9 +1759,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
         {
           int hash_index;
 
-          hash_index = cmd_find (state->cmd,
-                                 state->cmd[state->i].details.insert_refresh_commit_link.label_hash);
-          GNUNET_assert (GNUNET_SYSERR != hash_index);
+          hash_index = state->cmd[state->i].details.insert_refresh_commit_link.index_hash;
         }
         break;
 
@@ -1496,8 +1778,6 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
       case PERF_TALER_MINTDB_CMD_GET_TRANSFER:
         break;
 
-      default:
-        break;
     }
   }
   return GNUNET_OK;

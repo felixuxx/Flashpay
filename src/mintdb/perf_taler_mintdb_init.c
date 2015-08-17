@@ -565,24 +565,54 @@ struct TALER_MINTDB_RefreshCommitCoin *
 PERF_TALER_MINTDB_refresh_commit_coin_init ()
 {
   struct TALER_MINTDB_RefreshCommitCoin *commit_coin;
-  struct TALER_RefreshLinkEncrypted *refresh_link;
+  struct TALER_RefreshLinkEncrypted refresh_link;
 
   commit_coin = GNUNET_new (struct TALER_MINTDB_RefreshCommitCoin);
   GNUNET_assert (NULL != commit_coin);
   {/* refresh_link */
-    refresh_link = GNUNET_new (struct TALER_RefreshLinkEncrypted);
-    *refresh_link = (struct TALER_RefreshLinkEncrypted)
+    refresh_link = (struct TALER_RefreshLinkEncrypted)
     {
       .blinding_key_enc = "blinding_key",
       .blinding_key_enc_size = 13
     };
-    refresh_link->blinding_key_enc_size = 32;
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                &refresh_link->coin_priv_enc,
+                                &refresh_link.coin_priv_enc,
                                 sizeof(struct TALER_CoinSpendPrivateKeyP));
   }
   commit_coin->coin_ev = "coin_ev";
   commit_coin->coin_ev_size = 8;
-  commit_coin->refresh_link = refresh_link;
+  commit_coin->refresh_link = GNUNET_new (struct TALER_RefreshLinkEncrypted);
+  *commit_coin->refresh_link = refresh_link;
   return commit_coin;
+}
+
+
+/**
+ * Copies a #TALER_MINTDB_RefreshCommitCoin
+ *
+ * @param commit_coin the commit to copy
+ * @return a copy of @a commit_coin
+ */
+struct TALER_MINTDB_RefreshCommitCoin *
+PERF_TALER_MINTDB_refresh_commit_coin_copy (struct TALER_MINTDB_RefreshCommitCoin *commit_coin)
+{
+  struct TALER_MINTDB_RefreshCommitCoin *copy;
+  
+  copy = GNUNET_new (struct TALER_MINTDB_RefreshCommitCoin);
+  copy->refresh_link = GNUNET_new (struct TALER_RefreshLinkEncrypted);
+  *copy->refresh_link = *commit_coin->refresh_link;
+  return copy;
+}
+
+
+/**
+ * Free a #TALER_MINTDB_RefreshCommitCoin
+ *
+ * @param commit_coin the coin to free
+ */
+void
+PERF_TALER_MINTDB_refresh_commit_coin_free (struct TALER_MINTDB_RefreshCommitCoin *commit_coin)
+{
+  GNUNET_free (commit_coin->refresh_link);
+  GNUNET_free (commit_coin);
 }

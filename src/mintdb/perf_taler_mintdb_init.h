@@ -175,6 +175,29 @@ PERF_TALER_MINTDB_coin_free (
 
 
 /**
+ * @return a randomly generated refresh session
+ */
+struct TALER_MINTDB_RefreshSession *
+PERF_TALER_MINTDB_refresh_session_init (void);
+
+
+/**
+ * @return #GNUNET_OK if the copy was successful, #GNUNET_SYSERR if it wasn't
+ */
+int
+PERF_TALER_MINTDB_refresh_session_copy (struct TALER_MINTDB_RefreshSession *session, 
+                                        struct TALER_MINTDB_RefreshSession *copy);
+
+
+/**
+ * Frees memory of a refresh_session
+ */
+int
+PERF_TALER_MINTDB_refresh_session_free (
+  struct TALER_MINTDB_RefreshSession *refresh_session);
+
+
+/**
  * Create a melt operation
  *
  * @param session the refresh session 
@@ -207,25 +230,28 @@ PERF_TALER_MINTDB_refresh_melt_free (struct TALER_MINTDB_RefreshMelt *melt);
 
 
 /**
- * @return a randomly generated refresh session
+ * Create a #TALER_MINTDB_RefreshCommitCoin
  */
-struct TALER_MINTDB_RefreshSession *
-PERF_TALER_MINTDB_refresh_session_init (void);
+struct TALER_MINTDB_RefreshCommitCoin *
+PERF_TALER_MINTDB_refresh_commit_coin_init (void);
 
 
 /**
- * @return #GNUNET_OK if the copy was successful, #GNUNET_SYSERR if it wasn't
+ * Copies a #TALER_MINTDB_RefreshCommitCoin
+ *
+ * @param commit_coin the commit to copy
+ * @return a copy of @a commit_coin
  */
-int
-PERF_TALER_MINTDB_refresh_session_copy (struct TALER_MINTDB_RefreshSession *session, 
-                                        struct TALER_MINTDB_RefreshSession *copy);
+struct TALER_MINTDB_RefreshCommitCoin *
+PERF_TALER_MINTDB_refresh_commit_coin_copy (struct TALER_MINTDB_RefreshCommitCoin *commit_coin);
 
 
 /**
- * Frees memory of a refresh_session
+ * Free a #TALER_MINTDB_RefreshCommitCoin
+ *
+ * @param commit_coin the coin to free
  */
-int
-PERF_TALER_MINTDB_refresh_session_free (
-  struct TALER_MINTDB_RefreshSession *refresh_session);
+void
+PERF_TALER_MINTDB_refresh_commit_coin_free (struct TALER_MINTDB_RefreshCommitCoin *commit_coin);
 
 #endif

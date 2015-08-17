@@ -143,6 +143,8 @@ main (int argc, char ** argv)
     PERF_TALER_MINTDB_INIT_CMD_LOOP ("06 - refresh melt init loop",
                                      NB_MELT_INIT),
     PERF_TALER_MINTDB_INIT_CMD_START_TRANSACTION (""),
+    /* TODO: initialize using coins & sessions created localy 
+     * in order to make sure the same coin are not melted twice*/
     PERF_TALER_MINTDB_INIT_CMD_LOAD_ARRAY ("06 - session hash",
                                            "06 - refresh melt init loop",
                                            "05 - session array"),

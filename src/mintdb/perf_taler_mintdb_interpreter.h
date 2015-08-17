@@ -1158,6 +1158,19 @@ union PERF_TALER_MINTDB_CMD_Details
   } insert_refresh_commit_coin;
 
   /**
+   * Data requiered for the #PERF_TALER_MINTDB_CMD_GET_REFRESH_COMMIT_COIN command
+   */
+  struct PERF_TALER_MINTDB_CMD_getRefreshCommitCoinDetails
+  {
+    /**
+     * The refresh session hash
+     */
+    const char *label_hash;
+    unsigned int index_hash;
+
+  } get_refresh_commit_coin;
+
+  /**
    * Data requiered for the #PERF_TALER_MINTDB_CMD_INSERT_REFRESH_COMMIT_LINK command
    */
   struct PERF_TALER_MINTDB_CMD_insertRefreshCommitLinkDetails
@@ -1216,7 +1229,7 @@ union PERF_TALER_MINTDB_CMD_Details
      */
     const char *label_hash;
     unsigned int index_hash;
-  } get_link_datat_list;
+  } get_link_data_list;
 
   /**
    * Data requiered by the #PERF_TALER_MINTDB_CMD_GET_TRANSFER command
