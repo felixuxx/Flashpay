@@ -215,12 +215,12 @@ struct TALER_WithdrawRequestPS
   /**
    * Hash of the denomination public key for the coin that is withdrawn.
    */
-  struct GNUNET_HashCode h_denomination_pub;
+  struct GNUNET_HashCode h_denomination_pub GNUNET_PACKED;
 
   /**
    * Hash of the (blinded) message to be signed by the Mint.
    */
-  struct GNUNET_HashCode h_coin_envelope;
+  struct GNUNET_HashCode h_coin_envelope GNUNET_PACKED;
 };
 
 
@@ -239,12 +239,12 @@ struct TALER_DepositRequestPS
   /**
    * Hash over the contract for which this deposit is made.
    */
-  struct GNUNET_HashCode h_contract;
+  struct GNUNET_HashCode h_contract GNUNET_PACKED;
 
   /**
    * Hash over the wiring information of the merchant.
    */
-  struct GNUNET_HashCode h_wire;
+  struct GNUNET_HashCode h_wire GNUNET_PACKED;
 
   /**
    * Time when this request was generated.  Used, for example, to
@@ -330,12 +330,12 @@ struct TALER_DepositConfirmationPS
   /**
    * Hash over the contract for which this deposit is made.
    */
-  struct GNUNET_HashCode h_contract;
+  struct GNUNET_HashCode h_contract GNUNET_PACKED;
 
   /**
    * Hash over the wiring information of the merchant.
    */
-  struct GNUNET_HashCode h_wire;
+  struct GNUNET_HashCode h_wire GNUNET_PACKED;
 
   /**
    * Merchant-generated transaction ID to detect duplicate
@@ -395,7 +395,7 @@ struct TALER_RefreshMeltCoinAffirmationPS
   /**
    * Which melting session should the coin become a part of.
    */
-  struct GNUNET_HashCode session_hash;
+  struct GNUNET_HashCode session_hash GNUNET_PACKED;
 
   /**
    * How much of the value of the coin should be melted?  This amount

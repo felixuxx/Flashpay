@@ -1973,30 +1973,32 @@ run (void *cls,
       .expected_response_code = MHD_HTTP_OK,
       .details.refresh_link.reveal_ref = "refresh-reveal-1" },
 
-#if TEST_REFRESH
 
     /* Test successfully spending coins from the refresh operation:
        first EUR:1 */
     { .oc = OC_DEPOSIT,
-      .label = "refresh-deposit-refreshed-1",
+      .label = "refresh-deposit-refreshed-1a",
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit.amount = "EUR:1",
-      .details.deposit.coin_ref = "refresh-reveal-1a",
+      .details.deposit.coin_ref = "refresh-reveal-1",
       .details.deposit.coin_idx = 0,
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
       .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":3 } }",
       .details.deposit.transaction_id = 2 },
+
     /* Test successfully spending coins from the refresh operation:
        finally EUR:0.1 */
     { .oc = OC_DEPOSIT,
       .label = "refresh-deposit-refreshed-1b",
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit.amount = "EUR:0.1",
-      .details.deposit.coin_ref = "refresh-reveal-1b",
+      .details.deposit.coin_ref = "refresh-reveal-1",
       .details.deposit.coin_idx = 4,
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
       .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":3 } }",
       .details.deposit.transaction_id = 2 },
+
+#if TEST_REFRESH
 
     /* Test running a failing melt operation (same operation again must fail) */
     { .oc = OC_REFRESH_MELT,

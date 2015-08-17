@@ -416,6 +416,19 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
                            &deposit->deposit_fee);
         dr.merchant = deposit->merchant_pub;
         dr.coin_pub = deposit->coin.coin_pub;
+
+	/* internal sanity check before we hand out a bogus sig... */
+        if (GNUNET_OK !=
+            GNUNET_CRYPTO_eddsa_verify (ntohl (dr.purpose.purpose),
+                                        &dr.purpose,
+                                        &deposit->csig.eddsa_signature,
+                                        &deposit->coin.coin_pub.eddsa_pub))
+	{
+	  GNUNET_break (0);
+	  json_decref (history);
+	  return NULL;
+	}
+
         transaction = TALER_json_from_eddsa_sig (&dr.purpose,
                                                  &deposit->csig.eddsa_signature);
         break;
@@ -435,6 +448,19 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
         TALER_amount_hton (&ms.melt_fee,
                            &melt->melt_fee);
         ms.coin_pub = melt->coin.coin_pub;
+
+	/* internal sanity check before we hand out a bogus sig... */
+        if (GNUNET_OK !=
+            GNUNET_CRYPTO_eddsa_verify (ntohl (ms.purpose.purpose),
+                                        &ms.purpose,
+                                        &melt->coin_sig.eddsa_signature,
+                                        &melt->coin.coin_pub.eddsa_pub))
+	{
+	  GNUNET_break (0);
+	  json_decref (history);
+	  return NULL;
+	}
+
         transaction = TALER_json_from_eddsa_sig (&ms.purpose,
                                                  &melt->coin_sig.eddsa_signature);
       }
@@ -476,6 +502,8 @@ TMH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection
   json_t *history;
 
   history = compile_transaction_history (tl);
+  if (NULL == history)
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:o}",
@@ -710,6 +738,8 @@ TMH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *conne
   json_t *history;
 
   history = compile_transaction_history (tl);
+  if (NULL == history)
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:o, s:o, s:o, s:o, s:o}",
