@@ -2181,9 +2181,6 @@ postgres_insert_refresh_melt (void *cls,
   }
   if (GNUNET_NO == ret)         /* if not, insert it */
   {
-    fprintf (stderr,
-	     "Melting coin coin %s\n",
-	     TALER_B2S (&melt->coin.coin_pub));
     ret = insert_known_coin (cls,
                              session,
                              &melt->coin);
@@ -3026,10 +3023,6 @@ postgres_get_transfer (void *cls,
     return GNUNET_SYSERR;
   }
   nrows = PQntuples (result);
-  fprintf (stderr,
-	   "linkage for coin %s resulted in %d results\n",
-	   TALER_B2S (coin_pub),
-	   nrows);
   if (0 == nrows)
   {
     /* no matches found */
@@ -3192,7 +3185,7 @@ postgres_get_coin_transactions (void *cls,
                                                &melt->coin_sig),
           TALER_PQ_result_spec_amount ("amount_with_fee",
                                        &melt->amount_with_fee),
-          TALER_PQ_result_spec_amount ("amount_with_fee",
+          TALER_PQ_result_spec_amount ("melt_fee",
                                        &melt->melt_fee),
           TALER_PQ_result_spec_end
         };
@@ -3204,6 +3197,7 @@ postgres_get_coin_transactions (void *cls,
           PQclear (result);
           goto cleanup;
         }
+	melt->coin.coin_pub = *coin_pub;
       }
       tl = GNUNET_new (struct TALER_MINTDB_TransactionList);
       tl->next = head;

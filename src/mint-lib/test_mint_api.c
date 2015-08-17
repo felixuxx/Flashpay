@@ -1998,8 +1998,6 @@ run (void *cls,
       .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":3 } }",
       .details.deposit.transaction_id = 2 },
 
-#if TEST_REFRESH
-    
     /* Test running a failing melt operation (same operation again must fail) */
     { .oc = OC_REFRESH_MELT,
       .label = "refresh-melt-failing",
@@ -2011,7 +2009,6 @@ run (void *cls,
     // (signature differs from coin that was deposited...)
 
     /* *************** end of /refresh testing ************** */
-#endif
 
     { .oc = OC_END }
   };
@@ -2030,7 +2027,7 @@ run (void *cls,
   GNUNET_assert (NULL != mint);
   shutdown_task
     = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_relative_multiply
-                                    (GNUNET_TIME_UNIT_SECONDS, 30),
+                                    (GNUNET_TIME_UNIT_SECONDS, 150),
                                     &do_shutdown, is);
 }
 
@@ -2075,7 +2072,7 @@ main (int argc,
       fprintf (stderr, ".");
       sleep (1);
     }
-  while (0 != system ("wget -q -t 1 http://localhost:8081/agpl -o /dev/null -O /dev/null"));
+  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/agpl -o /dev/null -O /dev/null"));
   fprintf (stderr, "\n");
   result = GNUNET_SYSERR;
   GNUNET_SCHEDULER_run (&run, NULL);

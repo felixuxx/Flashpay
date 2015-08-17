@@ -419,7 +419,7 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
 
 	/* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
-            GNUNET_CRYPTO_eddsa_verify (ntohl (dr.purpose.purpose),
+            GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
                                         &dr.purpose,
                                         &deposit->csig.eddsa_signature,
                                         &deposit->coin.coin_pub.eddsa_pub))
@@ -451,7 +451,7 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
 
 	/* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
-            GNUNET_CRYPTO_eddsa_verify (ntohl (ms.purpose.purpose),
+            GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
                                         &ms.purpose,
                                         &melt->coin_sig.eddsa_signature,
                                         &melt->coin.coin_pub.eddsa_pub))

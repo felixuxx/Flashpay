@@ -250,15 +250,12 @@ verify_coin_public_info (struct MHD_Connection *connection,
     return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "denom_pub");
   }
-  /* FIXME: need to check if denomination key is still
-     valid for issuing! (#3634) */
   TALER_amount_ntoh (&fee_refresh,
                      &dki->issue.properties.fee_refresh);
   melt_detail->melt_fee = fee_refresh;
   body.purpose.size = htonl (sizeof (struct TALER_RefreshMeltCoinAffirmationPS));
   body.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
   body.session_hash = *session_hash;
-
   TALER_amount_hton (&body.amount_with_fee,
                      &melt_detail->melt_amount_with_fee);
   TALER_amount_hton (&body.melt_fee,
