@@ -2231,10 +2231,9 @@ postgres_get_refresh_melt (void *cls,
   struct TALER_CoinSpendSignatureP coin_sig;
   struct TALER_Amount amount_with_fee;
   struct TALER_Amount melt_fee;
-  uint16_t oldcoin_index_nbo = htons (oldcoin_index);
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type (session_hash),
-    TALER_PQ_query_param_auto_from_type (&oldcoin_index_nbo),
+    TALER_PQ_query_param_uint16 (&oldcoin_index),
     TALER_PQ_query_param_end
   };
   int nrows;
