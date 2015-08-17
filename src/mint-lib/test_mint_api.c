@@ -1999,13 +1999,16 @@ run (void *cls,
       .details.deposit.transaction_id = 2 },
 
 #if TEST_REFRESH
-
+    
     /* Test running a failing melt operation (same operation again must fail) */
     { .oc = OC_REFRESH_MELT,
       .label = "refresh-melt-failing",
       .expected_response_code = MHD_HTTP_FORBIDDEN,
       .details.refresh_melt.melted_coins = melt_coins_1,
       .details.refresh_melt.fresh_amounts = melt_fresh_amounts_1 },
+
+    // FIXME: also test with coin that was already melted 
+    // (signature differs from coin that was deposited...)
 
     /* *************** end of /refresh testing ************** */
 #endif
