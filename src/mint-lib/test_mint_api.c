@@ -984,6 +984,8 @@ link_cb (void *cls,
   struct Command *cmd = &is->commands[is->ip];
   const struct Command *ref;
   unsigned int i;
+  unsigned int j;
+  unsigned int found;
 
   cmd->details.refresh_link.rlh = NULL;
   if (cmd->expected_response_code != http_status)
@@ -1012,25 +1014,42 @@ link_cb (void *cls,
     fprintf (stderr,
 	     "Got %u coins\n",
 	     num_coins);
-    /* FIXME: note: coins might be legitimately permutated in here... */
-    /* (in fact, we currently get them in reverse order, and that's
-       why this is "failing") */
-    for (i=0;i<num_coins;i++)
-    {
-      const struct FreshCoin *fc;
 
-      fc = &ref->details.refresh_reveal.fresh_coins[i];
-      if ( (0 != memcmp (&coin_privs[i],
-                         &fc->coin_priv,
-                         sizeof (struct TALER_CoinSpendPrivateKeyP))) ||
-           (0 != GNUNET_CRYPTO_rsa_signature_cmp (fc->sig.rsa_signature,
-                                                  sigs[i].rsa_signature)) ||
-           (0 != GNUNET_CRYPTO_rsa_public_key_cmp (fc->pk->key.rsa_public_key,
-                                                   pubs[i].rsa_public_key)) )
+    for (i=0;i<num_coins;i++)
+      for (j=i+1;j<num_coins;j++)
+	if (0 == memcmp (&coin_privs[i],
+			 &coin_privs[j],
+			 sizeof (struct TALER_CoinSpendPrivateKeyP)))
+	  GNUNET_break (0);
+    /* Note: coins might be legitimately permutated in here... */
+    found = 0;
+    for (i=0;i<num_coins;i++)
+      for (j=0;j<num_coins;j++)
       {
-        GNUNET_break (0);
-        // fail (is);  return; // commented out, as the test is wrong: needs to support permutations!
+	const struct FreshCoin *fc;
+	
+	fc = &ref->details.refresh_reveal.fresh_coins[j];
+	if ( (0 == memcmp (&coin_privs[i],
+			   &fc->coin_priv,
+			   sizeof (struct TALER_CoinSpendPrivateKeyP))) &&
+	     (0 == GNUNET_CRYPTO_rsa_signature_cmp (fc->sig.rsa_signature,
+						    sigs[i].rsa_signature)) &&
+	     (0 == GNUNET_CRYPTO_rsa_public_key_cmp (fc->pk->key.rsa_public_key,
+						     pubs[i].rsa_public_key)) )
+	{
+	  found++;
+	  break;
+	}
       }
+    if (found != num_coins)
+    {
+      fprintf (stderr,
+	       "Only %u/%u coins match expectations\n",
+	       found,
+	       num_coins);
+      GNUNET_break (0);
+      fail (is); 
+      return; 
     }
     break;
   default:
@@ -2072,7 +2091,7 @@ main (int argc,
       fprintf (stderr, ".");
       sleep (1);
     }
-  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/agpl -o /dev/null -O /dev/null"));
+  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/keys -o /dev/null -O /dev/null"));
   fprintf (stderr, "\n");
   result = GNUNET_SYSERR;
   GNUNET_SCHEDULER_run (&run, NULL);

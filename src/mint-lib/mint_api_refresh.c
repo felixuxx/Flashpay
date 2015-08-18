@@ -773,7 +773,7 @@ deserialize_melt_data (const char *buf,
                                      &buf[off],
                                      buf_size - off,
                                      &ok);
-  if (off != buf_size)
+  if (off != buf_size)        
   {
     GNUNET_break (0);
     ok = GNUNET_NO;
