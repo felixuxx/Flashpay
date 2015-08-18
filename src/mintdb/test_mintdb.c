@@ -188,6 +188,8 @@ test_melting (struct TALER_MINTDB_Session *session)
   struct DenomKeyPair **new_dkp;
   /* struct TALER_CoinPublicInfo *coins; */
   struct TALER_MINTDB_RefreshMelt *melts;
+  struct TALER_DenominationPublicKey *new_denom_pubs;
+  struct TALER_DenominationPublicKey *ret_denom_pubs;
   unsigned int cnt;
   int ret;
 
@@ -196,6 +198,7 @@ test_melting (struct TALER_MINTDB_Session *session)
   RND_BLK (&session_hash);
   melts = NULL;
   new_dkp = NULL;
+  new_denom_pubs = NULL;
   /* create and test a refresh session */
   refresh_session.num_oldcoins = MELT_OLD_COINS;
   refresh_session.num_newcoins = 1;
@@ -268,12 +271,11 @@ test_melting (struct TALER_MINTDB_Session *session)
     GNUNET_CRYPTO_rsa_public_key_free (ret_melt.coin.denom_pub.rsa_public_key);
   }
   new_dkp = GNUNET_new_array (MELT_NEW_COINS, struct DenomKeyPair *);
-  struct TALER_DenominationPublicKey *new_denom_pubs;
   new_denom_pubs = GNUNET_new_array (MELT_NEW_COINS,
                                      struct TALER_DenominationPublicKey);
   for (cnt=0; cnt < MELT_NEW_COINS; cnt++)
   {
-    new_dkp[cnt] = create_denom_key_pair (256, session,
+    new_dkp[cnt] = create_denom_key_pair (128, session,
                                           &value,
                                           &fee_withdraw,
                                           &fee_deposit,
@@ -285,6 +287,19 @@ test_melting (struct TALER_MINTDB_Session *session)
                                                        &session_hash,
                                                        MELT_NEW_COINS,
                                                        new_denom_pubs));
+  ret_denom_pubs = GNUNET_new_array (MELT_NEW_COINS,
+                                     struct TALER_DenominationPublicKey);
+  FAILIF (GNUNET_OK != plugin->get_refresh_order (plugin->cls,
+                                                  session,
+                                                  &session_hash,
+                                                  MELT_NEW_COINS,
+                                                  ret_denom_pubs));
+  for (cnt=0; cnt < MELT_NEW_COINS; cnt++)
+  {
+    FAILIF (0 != GNUNET_CRYPTO_rsa_public_key_cmp
+            (ret_denom_pubs[cnt].rsa_public_key,
+             new_denom_pubs[cnt].rsa_public_key));
+  }
 
   ret = GNUNET_OK;
 
@@ -296,6 +311,12 @@ test_melting (struct TALER_MINTDB_Session *session)
       GNUNET_CRYPTO_rsa_signature_free (melts[cnt].coin.denom_sig.rsa_signature);
     GNUNET_free (melts);
   }
+  for (cnt = 0;
+       (NULL != ret_denom_pubs) && (cnt < MELT_NEW_COINS)
+           && (NULL != ret_denom_pubs[cnt].rsa_public_key);
+       cnt++)
+    GNUNET_CRYPTO_rsa_public_key_free (ret_denom_pubs[cnt].rsa_public_key);
+  GNUNET_free_non_null (ret_denom_pubs);
   GNUNET_free_non_null (new_denom_pubs);
   for (cnt = 0;
        (NULL != new_dkp) && (cnt < MELT_NEW_COINS) && (NULL != new_dkp[cnt]);
