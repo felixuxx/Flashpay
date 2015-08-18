@@ -185,7 +185,7 @@ test_melting (struct TALER_MINTDB_Session *session)
   struct TALER_MINTDB_RefreshSession ret_refresh_session;
   struct GNUNET_HashCode session_hash;
   struct DenomKeyPair *dkp;
-  struct DenomKeyPair *new_dkp;
+  struct DenomKeyPair **new_dkp;
   /* struct TALER_CoinPublicInfo *coins; */
   struct TALER_MINTDB_RefreshMelt *melts;
   unsigned int cnt;
@@ -195,6 +195,7 @@ test_melting (struct TALER_MINTDB_Session *session)
   RND_BLK (&refresh_session);
   RND_BLK (&session_hash);
   melts = NULL;
+  new_dkp = NULL;
   /* create and test a refresh session */
   refresh_session.num_oldcoins = MELT_OLD_COINS;
   refresh_session.num_newcoins = 1;
@@ -266,6 +267,25 @@ test_melting (struct TALER_MINTDB_Session *session)
     GNUNET_CRYPTO_rsa_signature_free (ret_melt.coin.denom_sig.rsa_signature);
     GNUNET_CRYPTO_rsa_public_key_free (ret_melt.coin.denom_pub.rsa_public_key);
   }
+  new_dkp = GNUNET_new_array (MELT_NEW_COINS, struct DenomKeyPair *);
+  struct TALER_DenominationPublicKey *new_denom_pubs;
+  new_denom_pubs = GNUNET_new_array (MELT_NEW_COINS,
+                                     struct TALER_DenominationPublicKey);
+  for (cnt=0; cnt < MELT_NEW_COINS; cnt++)
+  {
+    new_dkp[cnt] = create_denom_key_pair (256, session,
+                                          &value,
+                                          &fee_withdraw,
+                                          &fee_deposit,
+                                          &fee_refresh);
+    new_denom_pubs[cnt]=new_dkp[cnt]->pub;
+  }
+  FAILIF (GNUNET_OK != plugin->insert_refresh_order (plugin->cls,
+                                                       session,
+                                                       &session_hash,
+                                                       MELT_NEW_COINS,
+                                                       new_denom_pubs));
+
   ret = GNUNET_OK;
 
  drop:
@@ -276,6 +296,12 @@ test_melting (struct TALER_MINTDB_Session *session)
       GNUNET_CRYPTO_rsa_signature_free (melts[cnt].coin.denom_sig.rsa_signature);
     GNUNET_free (melts);
   }
+  GNUNET_free_non_null (new_denom_pubs);
+  for (cnt = 0;
+       (NULL != new_dkp) && (cnt < MELT_NEW_COINS) && (NULL != new_dkp[cnt]);
+       cnt++)
+    destroy_denom_key_pair (new_dkp[cnt]);
+  GNUNET_free_non_null (new_dkp);
   return ret;
 }
 
