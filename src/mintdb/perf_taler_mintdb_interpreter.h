@@ -375,6 +375,8 @@
   PERF_TALER_MINTDB_INIT_CMD_CREATE_WITHDRAW (_label "withdraw", \
                                               _label_dki, \
                                               _label_reserve), \
+  PERF_TALER_MINTDB_INIT_CMD_GET_DENOMINATION(_label "withdraw info", \
+                                              _label_dki), \
   PERF_TALER_MINTDB_INIT_CMD_GET_RESERVE_HISTORY(_label "reserve_history", \
                                                  _label_reserve), \
   PERF_TALER_MINTDB_INIT_CMD_INSERT_WITHDRAW(_label "insert withdraw", \
