@@ -191,18 +191,20 @@ his message to the merchant.
 \begin{figure}[h]
 \centering
 \begin{tikzpicture}
+ \tikzstyle{def} = [node distance= 5em and 7em, inner sep=1em, outer sep=.3em];
+ \node (origin) at (0,0) {};
+ \node (mint) [def,above=of origin,draw]{Mint};
+ \node (customer) [def, draw, below left=of origin] {Customer};
+ \node (merchant) [def, draw, below right=of origin] {Merchant};
+ \node (auditor) [def, draw, above right=of origin]{Auditor};
 
+ \tikzstyle{C} = [color=black, line width=1pt]
 
-\tikzstyle{def} = [node distance= 7em and 10em, inner sep=1em, outer sep=.3em];
-\node (origin) at (0,0) {};
-\node (mint) [def,above=of origin,draw]{Mint};
-\node (customer) [def, draw, below left=of origin] {Customer};
-\node (merchant) [def, draw, below right=of origin] {Merchant};
+ \draw [<-, C] (customer) -- (mint) node [midway, above, sloped] (TextNode) {withdraw coins};
+ \draw [<-, C] (mint) -- (merchant) node [midway, above, sloped] (TextNode) {deposit coins};
+ \draw [<-, C] (merchant) -- (customer) node [midway, above, sloped] (TextNode) {spend coins};
+ \draw [<-, C] (mint) -- (auditor) node [midway, above, sloped] (TextNode) {verify};
 
-\tikzstyle{C} = [color=black, line width=1pt]
-\draw [<-, C] (customer) -- (mint) node [midway, above, sloped] (TextNode) {withdraw coins};
-\draw [<-, C] (mint) -- (merchant) node [midway, above, sloped] (TextNode) {deposit coins};
-\draw [<-, C] (merchant) -- (customer) node [midway, above, sloped] (TextNode) {spend coins};
 \end{tikzpicture}
 \caption{Taler's system model for the payment system is based on Chaum~\cite{chaum1983blind}.}
 \label{fig:cmm}
@@ -665,7 +667,7 @@ $\widetilde{C} := S_K(C_p)$:
   assume that one coin is sufficient.)
 
   The customer then generates a \emph{deposit-permission} $\mathcal{D} :=
-  S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$ 
+  S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$
   and sends $\langle \mathcal{D}, D_i\rangle$ to the merchant,
   where $D_i$ is the mint which signed $K$.
 \item The merchant gives $(\mathcal{D}, p, r)$ to the mint, revealing his
@@ -776,13 +778,78 @@ and $G$ is the generator of the elliptic curve.
 
 \subsection{Linking}
 
-% FIXME: explain better...
-For a coin that was successfully refreshed, the mint responds to
-a request $S_{C'}(\mathtt{link})$ with $(T^{(\gamma)}_p$, $E_{\gamma}, \widetilde{C})$.
+For a coin that was successfully refreshed, the mint responds to a
+request $S_{C'}(\mathtt{link})$ with $(T^{(\gamma)}_p$, $E_{\gamma},
+\widetilde{C})$.
 
 This allows the owner of the old coin to also obtain the private key
 of the new coin, even if the refreshing protocol was illicitly
-executed by another party who learned $C'_s$ from the old owner.
+executed by another party who learned $C'_s$ from the old owner.  As a
+result, linking ensures that access to the new coins minted by the
+refresh protocol is always {\em shared} with the owner of the melted
+coins.  This makes it impossible to abuse the refresh protocol for
+{\em transactions}.
+
+The linking request is not expected to be used at all during ordinary
+operation of Taler.  If the refresh protocol is used by Alice to
+obtain change as designed, she already knows all of the information
+and thus has little reason to request it via the linking protocol.
+The fundamental reason why the mint must provide the link protocol is
+simply to provide a threat: if Bob were to use the refresh protocol
+for a transaction of funds from Alice to him, Alice may use a link
+request to gain shared access to Bob's coins. Thus, this threat
+prevents Bob from abusing the refresh protocol to evade taxation on
+transactions.
+
+The auditor can anonymously check if the mint correctly implements the
+link request, thus preventing the mint operator from legally disabling
+this protocol component.  Without the link operation, Taler would
+devolve into a payment system where both sides can be anonymous, and
+thus no longer provide taxability.
+
+
+\subsection{Error handling}
+
+During operation, there are three main types of errors that are
+expected.  First, in the case of faulty clients, the responding server
+will generate an error message with detailed cryptographic proofs
+demonstrating that the client was faulty, for example by providing
+proof of double-spending or providing the previous commit and the
+location of the missmatch in the case of the reveal step in the
+refresh protocol.  It is also possible that the server may claim that
+the client has been violating the protocol.  In these cases, the
+clients should verify any proofs provided and if they are acceptable,
+notify the user that they are somehow ``faulty''.  Similar, if the
+server indicates that the client is violating the protocol, the
+client should record the interaction and enable the user to file a
+bug report with the developer.
+
+The second case is a faulty mint service provider.  Such faults will
+be detected because of protocol violations (for example, by providing
+a faulty proof or no proof).  In this case, the client is expected to
+notify the auditor, providing a transcript of the interaction.  The
+auditor can then (anonymously) replay the transaction, and either
+provide the (now) correct response to the client or take appropriate
+legal action against the faulty provider.
+
+The third case are transient failures, such as network failures or
+temporary hardware failures at the mint service provider.  Here, the
+client may receive an explicit protocol indication (such as an HTTP
+response code 500 ``internal server error'') or simply no response.
+The appropriate behavior for the client is to automatically retry
+(after 1s, twice more at randomized times within 1 minute). If those
+three attempts fail, the user should be informed about the delay.  The
+client should then retry another three times within the next 24h, and
+after that time the auditor be informed about the outage.
+
+Using this process, short term failures should be effectively obscured
+from the user, while malicious behavior is reported to the auditor who
+can then presumably rectify the situation, for example by shutting
+down the operator (while providing an opportunity for customers to
+receive refunds for the coins in circulation).  To ensure that such
+refunds are possible, the operator is expected to always provide
+adequate securities for the amount of coins in circulation as part of
+the certification process.
 
 
 \section{Discussion}
@@ -840,15 +907,15 @@ transfer.
 %suitable for money laundering, we are optimistic that states will find
 %the design desirable.
 
-We did not yet perform performance measurements for the various
-operations.  However, we are pretty sure that the computational and
-bandwidth cost for transactions described in this paper is likely
-small compared to other business costs for the mint.  We expect costs
-within the system to be dominated by the (replicated, transactional)
-database.  However, these expenses are again likely small in relation
-to the business cost of currency transfers using traditional banking.
-Here, mint operators should be able to reduce their expenses by
-aggregating multiple transfers to the same merchant.
+We performed some initial performance measurements for the various
+operations.  The main conclusion was that the computational and
+bandwidth cost for transactions described in this paper is smaller
+than $10^{-3}$ cent/transaction, and thus dwarfed by the other
+business costs for the mint.  However, this figure excludes the cost
+of currency transfers using traditional banking, which a mint operator
+would ultimately have to interact with.  Here, mint operators should
+be able to reduce their expenses by aggregating multiple transfers to
+the same merchant.
 
 
 \section{Conclusion}
@@ -861,6 +928,15 @@ variety of payment methods.  The libre implementation and open
 protocol may finally enable modern society to upgrade to proper
 electronic wallets with efficient, secure and privacy-preserving
 transactions.
+
+\subsection*{Acknowledgements}
+
+This work was supported by a grant from the Renewable Freedom Foundation.
+% FIXME: ARED?
+We thank Tanja Lange and Dan Bernstein for feedback on an earlier
+version of this paper, Nicolas Fournier for implementing and running
+some performance benchmarks, and Richard Stallman, Hellekin Wolf,
+Jacob Appelbaum for productive discussions and support.
 
 \bibliographystyle{alpha}
 \bibliography{taler}
@@ -878,7 +954,7 @@ The refresh protocol offers an easy way to enable refunds to
 customers, even if they are anonymous.  Refunds can be supported
 by including a public signing key of the mechant in the transaction
 details, and having the customer keep the private key of the spent
-coins on file.  
+coins on file.
 
 Given this, the merchant can simply sign a {\em refund confirmation}
 and share it with the mint (and the customer).  Assuming the mint has
@@ -1079,7 +1155,7 @@ coin by offering a coin that has already been spent.  This kind of
 fraud would only be detected if the customer actually lost the coin
 flip, and at this point the merchant might not be able to recover from
 the loss.  A fradulent anonymous customer may run the protocol using
-already spent coins until the coin flip is in his favor.  
+already spent coins until the coin flip is in his favor.
 
 As with incremental spending, lock permissions could be used to ensure
 that the customer cannot defraud the merchant by offering a coin that
