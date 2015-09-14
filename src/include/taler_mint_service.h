@@ -353,6 +353,88 @@ TALER_MINT_get_denomination_key (const struct TALER_MINT_Keys *keys,
                                  const struct TALER_DenominationPublicKey *pk);
 
 
+/* *********************  /wire *********************** */
+
+
+/**
+ * @brief A Wire format inquiry handle
+ */
+struct TALER_MINT_WireHandle;
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * wire format inquiry request to a mint.
+ *
+ * The callback is invoked multiple times, once for each supported @a
+ * method.  Finally, it is invoked one more time with cls/0/NULL/NULL
+ * to indicate the end of the iteration.  If any request fails to
+ * generate a valid response from the mint, @a http_status will also
+ * be zero and the iteration will also end.  Thus, the iteration
+ * always ends with a final call with an @a http_status of 0. If the
+ * @a http_status is already 0 on the first call, then the response to
+ * the /wire request was invalid.  Later, clients can tell the
+ * difference between @a http_status of 0 indicating a failed
+ * /wire/method request and a regular end of the iteration by @a
+ * method being non-NULL.  If the mint simply correctly asserts that
+ * it does not support any methods, @a method will be NULL but the @a
+ * http_status will be #MHD_HTTP_OK for the first call (followed by a
+ * cls/0/NULL/NULL call to signal the end of the iteration).
+ *
+ * @param cls closure
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful request;
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param method wire format method supported, i.e. "test" or "sepa", or NULL
+ *            if already the /wire request failed.
+ * @param obj the received JSON reply, if successful this should be the wire
+ *            format details as provided by /wire/METHOD/, or NULL if the
+ *            reply was not in JSON format (in this case, the client might
+ *            want to do an HTTP request to /wire/METHOD/ with a browser to
+ *            provide more information to the user about the @a method).
+ */
+typedef void
+(*TALER_MINT_WireResultCallback) (void *cls,
+                                  unsigned int http_status,
+                                  const char *method,
+                                  json_t *obj);
+
+
+/**
+ * Obtain information about a mint's wire instructions.
+ * A mint may provide wire instructions for creating
+ * a reserve.  The wire instructions also indicate
+ * which wire formats merchants may use with the mint.
+ * This API is typically used by a wallet for wiring
+ * funds, and possibly by a merchant to determine
+ * supported wire formats.
+ *
+ * Note that while we return the (main) response verbatim to the
+ * caller for further processing, we do already verify that the
+ * response is well-formed (i.e. that signatures included in the
+ * response are all valid).  If the mint's reply is not well-formed,
+ * we return an HTTP status code of zero to @a cb.
+ *
+ * @param mint the mint handle; the mint must be ready to operate
+ * @param wire_cb the callback to call when a reply for this request is available
+ * @param wire_cb_cls closure for the above callback
+ * @return a handle for this request
+ */
+struct TALER_MINT_WireHandle *
+TALER_MINT_wire (struct TALER_MINT_Handle *mint,
+                 TALER_MINT_WireResultCallback wire_cb,
+                 void *wire_cb_cls);
+
+
+/**
+ * Cancel a wire information request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param wh the wire information request handle
+ */
+void
+TALER_MINT_wire_cancel (struct TALER_MINT_WireHandle *wh);
+
+
 /* *********************  /deposit *********************** */
 
 
