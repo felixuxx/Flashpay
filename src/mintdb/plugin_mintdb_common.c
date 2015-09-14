@@ -107,10 +107,6 @@ common_free_coin_transaction_list (void *cls,
     case TALER_MINTDB_TT_REFRESH_MELT:
       GNUNET_free (list->details.melt);
       break;
-    case TALER_MINTDB_TT_LOCK:
-      GNUNET_free (list->details.lock);
-      /* FIXME: look at this again once locking is implemented (#3625) */
-      break;
     }
     GNUNET_free (list);
     list = next;

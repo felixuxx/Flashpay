@@ -2666,7 +2666,7 @@ postgres_insert_refresh_commit_links (void *cls,
       PQclear (result);
       return GNUNET_SYSERR;
     }
-    
+
     if (0 != strcmp ("1", PQcmdTuples (result)))
     {
       GNUNET_break (0);
@@ -2734,7 +2734,7 @@ postgres_get_refresh_commit_links (void *cls,
 					     &links[i].shared_secret_enc),
 	TALER_PQ_result_spec_end
       };
-      
+
       if (GNUNET_YES !=
 	  TALER_PQ_extract_result (result, rs, 0))
       {
@@ -3286,8 +3286,6 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->get_link_data_list = &postgres_get_link_data_list;
   plugin->free_link_data_list = &common_free_link_data_list;
   plugin->get_transfer = &postgres_get_transfer;
-  // plugin->have_lock = &postgres_have_lock; /* #3625 */
-  // plugin->insert_lock = &postgres_insert_lock; /* #3625 */
   plugin->get_coin_transactions = &postgres_get_coin_transactions;
   plugin->free_coin_transaction_list = &common_free_coin_transaction_list;
   return plugin;

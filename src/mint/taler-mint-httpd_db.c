@@ -67,15 +67,6 @@ calculate_transaction_list_totals (struct TALER_MINTDB_TransactionList *tl,
         return GNUNET_SYSERR;
       }
       break;
-    case TALER_MINTDB_TT_LOCK:
-      /* should check if lock is still active,
-         and if it is for THIS operation; if
-         lock is inactive, delete it; if lock
-         is for THIS operation, ignore it;
-         if lock is for another operation,
-         count it! */
-      GNUNET_assert (0);  // FIXME: not implemented! (#3625)
-      return GNUNET_SYSERR;
     }
   }
   *ret = spent;

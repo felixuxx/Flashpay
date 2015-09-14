@@ -465,14 +465,6 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
                                                  &melt->coin_sig.eddsa_signature);
       }
       break;
-    case TALER_MINTDB_TT_LOCK:
-      {
-        type = "lock";
-        value = pos->details.lock->amount;
-        transaction = NULL;
-        GNUNET_break (0); /* #3625: Lock NOT implemented! */
-        break;
-      }
     default:
       GNUNET_assert (0);
     }

@@ -417,30 +417,6 @@ struct TALER_MINTDB_LinkDataList
 
 
 /**
- * @brief Specification for a /lock operation.
- */
-struct TALER_MINTDB_LockOperation
-{
-  /**
-   * Information about the coin that is being locked.
-   */
-  struct TALER_CoinPublicInfo coin;
-
-  /**
-   * Signature over the locking operation.
-   */
-  struct TALER_CoinSpendSignatureP coin_sig;
-
-  /**
-   * How much value is being locked?
-   */
-  struct TALER_Amount amount;
-
-  // FIXME: more needed...
-};
-
-
-/**
  * @brief Enumeration to classify the different types of transactions
  * that can be done with a coin.
  */
@@ -454,12 +430,8 @@ enum TALER_MINTDB_TransactionType
   /**
    * /refresh/melt operation.
    */
-  TALER_MINTDB_TT_REFRESH_MELT = 1,
+  TALER_MINTDB_TT_REFRESH_MELT = 1
 
-  /**
-   * /lock operation.
-   */
-  TALER_MINTDB_TT_LOCK = 2
 };
 
 
@@ -494,11 +466,6 @@ struct TALER_MINTDB_TransactionList
      * Details if transaction was a /refresh/melt operation.
      */
     struct TALER_MINTDB_RefreshMelt *melt;
-
-    /**
-     * Details if transaction was a /lock operation.
-     */
-    struct TALER_MINTDB_LockOperation *lock;
 
   } details;
 
@@ -1122,38 +1089,6 @@ struct TALER_MINTDB_Plugin
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    TALER_MINTDB_TransferDataCallback tdc,
                    void *tdc_cls);
-
-
-
-  /**
-   * Test if the given /lock request is known to us.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection
-   * @param lock lock operation
-   * @return #GNUNET_YES if known,
-   *         #GNUNET_NO if not,
-   *         #GNUNET_SYSERR on internal error
-   */
-  int
-  (*have_lock) (void *cls,
-                struct TALER_MINTDB_Session *sesssion,
-                const struct TALER_MINTDB_LockOperation *lock);
-
-
-  /**
-   * Store the given /lock request in the database.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection
-   * @param lock lock operation
-   * @return #GNUNET_OK on success
-   *         #GNUNET_SYSERR on internal error
-   */
-  int
-  (*insert_lock) (void *cls,
-                  struct TALER_MINTDB_Session *sesssion,
-                  const struct TALER_MINTDB_LockOperation *lock);
 
 
   /**
