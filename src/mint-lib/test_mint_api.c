@@ -97,7 +97,12 @@ enum OpCode
    * Verify mint's /refresh/link by linking original private key to
    * results from #OC_REFRESH_REVEAL step.
    */
-  OC_REFRESH_LINK
+  OC_REFRESH_LINK,
+
+  /**
+   * Verify the mint's /wire-method.
+   */
+  OC_WIRE
 
 };
 
@@ -438,6 +443,18 @@ struct Command
       unsigned int coin_idx;
 
     } refresh_link;
+
+    /**
+     * Information for the /wire command.
+     */
+    struct {
+
+      /**
+       * Handle to the wire request.
+       */
+      struct TALER_MINT_WireHandle *wh;
+
+    } wire;
 
   } details;
 
@@ -1027,7 +1044,7 @@ link_cb (void *cls,
       for (j=0;j<num_coins;j++)
       {
 	const struct FreshCoin *fc;
-	
+
 	fc = &ref->details.refresh_reveal.fresh_coins[j];
 	if ( (0 == memcmp (&coin_privs[i],
 			   &fc->coin_priv,
@@ -1048,8 +1065,8 @@ link_cb (void *cls,
 	       found,
 	       num_coins);
       GNUNET_break (0);
-      fail (is); 
-      return; 
+      fail (is);
+      return;
     }
     break;
   default:
@@ -1112,6 +1129,76 @@ find_pk (const struct TALER_MINT_Keys *keys,
               str);
   GNUNET_free (str);
   return NULL;
+}
+
+
+/**
+ * Callbacks called with the result(s) of a
+ * wire format inquiry request to the mint.
+ *
+ * The callback is invoked multiple times, once for each supported @a
+ * method.  Finally, it is invoked one more time with cls/0/NULL/NULL
+ * to indicate the end of the iteration.  If any request fails to
+ * generate a valid response from the mint, @a http_status will also
+ * be zero and the iteration will also end.  Thus, the iteration
+ * always ends with a final call with an @a http_status of 0. If the
+ * @a http_status is already 0 on the first call, then the response to
+ * the /wire request was invalid.  Later, clients can tell the
+ * difference between @a http_status of 0 indicating a failed
+ * /wire/method request and a regular end of the iteration by @a
+ * method being non-NULL.  If the mint simply correctly asserts that
+ * it does not support any methods, @a method will be NULL but the @a
+ * http_status will be #MHD_HTTP_OK for the first call (followed by a
+ * cls/0/NULL/NULL call to signal the end of the iteration).
+ *
+ * @param cls closure with the interpreter state
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful request;
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param method wire format method supported, i.e. "test" or "sepa", or NULL
+ *            if already the /wire request failed.
+ * @param obj the received JSON reply, if successful this should be the wire
+ *            format details as provided by /wire/METHOD/, or NULL if the
+ *            reply was not in JSON format (in this case, the client might
+ *            want to do an HTTP request to /wire/METHOD/ with a browser to
+ *            provide more information to the user about the @a method).
+ */
+static void
+wire_cb (void *cls,
+         unsigned int http_status,
+         const char *method,
+         json_t *obj)
+{
+  struct InterpreterState *is = cls;
+  struct Command *cmd = &is->commands[is->ip];
+
+  if (0 == http_status)
+  {
+    /* 0 always signals the end of the iteration */
+    cmd->details.wire.wh = NULL;
+  }
+  if (cmd->expected_response_code != http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u to command %s/%s\n",
+                http_status,
+                cmd->label,
+                method);
+    json_dumpf (obj, stderr, 0);
+    fail (is);
+    return;
+  }
+  if (0 == http_status)
+  {
+    /* end of iteration, move to next command */
+    is->ip++;
+    is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                         is);
+    return;
+  }
+  /* For now, we only support to be called only once
+     with a "positive" result; so we switch to an
+     expected value of 0 for the 2nd iteration */
+  cmd->expected_response_code = 0;
 }
 
 
@@ -1574,6 +1661,12 @@ interpreter_run (void *cls,
     }
     trigger_context_task ();
     return;
+  case OC_WIRE:
+    cmd->details.wire.wh = TALER_MINT_wire (mint,
+                                            &wire_cb,
+                                            is);
+    trigger_context_task ();
+    return;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unknown instruction %d at %u (%s)\n",
@@ -1712,6 +1805,13 @@ do_shutdown (void *cls,
                     cmd->label);
         TALER_MINT_refresh_link_cancel (cmd->details.refresh_link.rlh);
         cmd->details.refresh_link.rlh = NULL;
+      }
+      break;
+    case OC_WIRE:
+      if (NULL != cmd->details.wire.wh)
+      {
+        TALER_MINT_wire_cancel (cmd->details.wire.wh);
+        cmd->details.wire.wh = NULL;
       }
       break;
     default:
@@ -2024,7 +2124,7 @@ run (void *cls,
       .details.refresh_melt.melted_coins = melt_coins_1,
       .details.refresh_melt.fresh_amounts = melt_fresh_amounts_1 },
 
-    // FIXME: also test with coin that was already melted 
+    // FIXME: also test with coin that was already melted
     // (signature differs from coin that was deposited...)
 
     /* *************** end of /refresh testing ************** */
