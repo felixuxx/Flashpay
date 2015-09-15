@@ -58,7 +58,8 @@ TMH_WIRE_handler_wire (struct TMH_RequestHandler *rh,
   /* NOTE: for now, we only support *ONE* wire format per
      mint instance; if we supply multiple, we need to
      add the strings for each type separately here -- and
-     hash the 0-terminated strings above differently as well... */
+     hash the 0-terminated strings above differently as well...
+     See #3972. */
   json_array_append_new (methods,
 			 json_string (TMH_expected_wire_format));
   return TMH_RESPONSE_reply_json_pack (connection,

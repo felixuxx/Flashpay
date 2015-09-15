@@ -33,6 +33,7 @@
 
 /**
  * Is the configuration file is set to include wire format 'sepa'?
+ * Needs #3972 to be solved first.
  */
 #define WIRE_SEPA 0
 
