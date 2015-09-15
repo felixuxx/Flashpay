@@ -56,14 +56,14 @@ TMH_WIRE_handler_wire (struct TMH_RequestHandler *rh,
                &sig);
   methods = json_array ();
   /* NOTE: for now, we only support *ONE* wire format per
-     mint instance; if we supply multiple, we need to 
+     mint instance; if we supply multiple, we need to
      add the strings for each type separately here -- and
      hash the 0-terminated strings above differently as well... */
   json_array_append_new (methods,
 			 json_string (TMH_expected_wire_format));
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
-                                       "{s:s, s:o, s:o}",
+                                       "{s:o, s:o, s:o}",
                                        "methods", methods,
                                        "sig", TALER_json_from_data (&sig,
                                                                     sizeof (sig)),
@@ -100,26 +100,30 @@ TMH_WIRE_handler_wire_test (struct TMH_RequestHandler *rh,
     GNUNET_break (0);
     return MHD_NO;
   }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-					     "mint-wire-test",
-					     "REDIRECT_URL",
-					     &wire_test_redirect))
+  if (0 != strcasecmp ("test",
+                       TMH_expected_wire_format))
   {
+    /* Return 501: not implemented */
     ret = MHD_queue_response (connection,
 			      MHD_HTTP_NOT_IMPLEMENTED,
 			      response);
     MHD_destroy_response (response);
     return ret;
   }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+					     "mint-wire-test",
+					     "REDIRECT_URL",
+					     &wire_test_redirect))
+  {
+    /* oopsie, configuration error */
+    return TMH_RESPONSE_reply_internal_error (connection,
+					      "REDIRECT_URL not configured");
+  }
   MHD_add_response_header (response,
                            MHD_HTTP_HEADER_LOCATION,
                            wire_test_redirect);
   GNUNET_free (wire_test_redirect);
-  if (NULL != rh->mime_type)
-    (void) MHD_add_response_header (response,
-                                    MHD_HTTP_HEADER_CONTENT_TYPE,
-                                    rh->mime_type);
   ret = MHD_queue_response (connection,
                             rh->response_code,
                             response);
@@ -151,11 +155,29 @@ TMH_WIRE_handler_wire_sepa (struct TMH_RequestHandler *rh,
   int fd;
   struct stat sbuf;
 
+  if (0 != strcasecmp ("sepa",
+                       TMH_expected_wire_format))
+  {
+    /* Return 501: not implemented */
+    response = MHD_create_response_from_buffer (0, NULL,
+                                                MHD_RESPMEM_PERSISTENT);
+    if (NULL == response)
+    {
+      GNUNET_break (0);
+      return MHD_NO;
+    }
+    ret = MHD_queue_response (connection,
+			      MHD_HTTP_NOT_IMPLEMENTED,
+			      response);
+    MHD_destroy_response (response);
+    return ret;
+  }
+  /* Fetch reply */
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-					     "mint-wire-sepa",
-					     "SEPA_RESPONSE_FILE",
-					     &sepa_wire_file))
+      GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                               "mint-wire-sepa",
+                                               "SEPA_RESPONSE_FILE",
+                                               &sepa_wire_file))
   {
     return TMH_RESPONSE_reply_internal_error (connection,
 					      "SEPA_RESPONSE_FILE not configured");

@@ -284,6 +284,7 @@ handle_wire_method_finished (void *cls,
             NULL);
     json_decref (json);
     TALER_MINT_wire_cancel (wh);
+    return;
   }
   /* pass on successful reply */
   wh->cb (wh->cb_cls,
@@ -345,6 +346,11 @@ request_wire_method (struct TALER_MINT_WireHandle *wh)
                  curl_easy_setopt (eh,
                                    CURLOPT_WRITEDATA,
                                    &wh->db));
+  /* The default is 'disabled', but let's be sure */
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_FOLLOWLOCATION,
+                                   (long) 0));
   ctx = MAH_handle_to_context (wh->mint);
   wh->job = MAC_job_add (ctx,
                          eh,
@@ -514,7 +520,8 @@ handle_wire_finished (void *cls,
           0,
           NULL,
           NULL);
-  json_decref (json);
+  if (NULL != json)
+    json_decref (json);
   TALER_MINT_wire_cancel (wh);
 }
 

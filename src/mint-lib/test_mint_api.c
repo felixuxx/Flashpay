@@ -26,6 +26,15 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
 
+/**
+ * Is the configuration file is set to include wire format 'test'?
+ */
+#define WIRE_TEST 1
+
+/**
+ * Is the configuration file is set to include wire format 'sepa'?
+ */
+#define WIRE_SEPA 0
 
 /**
  * Main execution context for the main loop.
@@ -1357,7 +1366,6 @@ interpreter_run (void *cls,
                                         &coin_pub.eddsa_pub);
     cmd->details.withdraw_sign.blinding_key.rsa_blinding_key
       = GNUNET_CRYPTO_rsa_blinding_key_create (GNUNET_CRYPTO_rsa_public_key_len (cmd->details.withdraw_sign.pk->key.rsa_public_key));
-
     cmd->details.withdraw_sign.wsh
       = TALER_MINT_withdraw_sign (mint,
                                   cmd->details.withdraw_sign.pk,
@@ -1442,7 +1450,6 @@ interpreter_run (void *cls,
         fail (is);
         return;
       }
-
       GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                           &coin_pub.eddsa_pub);
 
@@ -1464,6 +1471,7 @@ interpreter_run (void *cls,
       {
         struct TALER_DepositRequestPS dr;
 
+        memset (&dr, 0, sizeof (dr));
         dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
         dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
         dr.h_contract = h_contract;
@@ -1482,7 +1490,6 @@ interpreter_run (void *cls,
                        GNUNET_CRYPTO_eddsa_sign (&coin_priv->eddsa_priv,
                                                  &dr.purpose,
                                                  &coin_sig.eddsa_signature));
-
       }
       cmd->details.deposit.dh
         = TALER_MINT_deposit (mint,
@@ -1980,6 +1987,26 @@ run (void *cls,
   };
   static struct Command commands[] =
   {
+    /* *************** start of /wire testing ************** */
+
+#if WIRE_TEST
+    { .oc = OC_WIRE,
+      .label = "wire",
+      /* /wire/test replies with a 302 redirect */
+      .expected_response_code = MHD_HTTP_FOUND  },
+#endif
+#if WIRE_SEPA
+        { .oc = OC_WIRE,
+      .label = "wire",
+      /* /wire/sepa replies with a 200 redirect */
+      .expected_response_code = MHD_HTTP_OK  },
+#endif
+    /* *************** end of /wire testing ************** */
+
+#if WIRE_TEST
+    /* None of this works if 'test' is not allowed as we do
+       /admin/add/incoming with format 'test' */
+
     /* Fill reserve with EUR:5.01, as withdraw fee is 1 ct per config */
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "create-reserve-1",
@@ -2126,8 +2153,8 @@ run (void *cls,
 
     // FIXME: also test with coin that was already melted
     // (signature differs from coin that was deposited...)
-
     /* *************** end of /refresh testing ************** */
+#endif
 
     { .oc = OC_END }
   };

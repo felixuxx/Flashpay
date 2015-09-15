@@ -177,7 +177,7 @@ handle_mhd_request (void *cls,
 
       { "/wire/test", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
-        &TMH_WIRE_handler_wire_test, MHD_HTTP_OK },
+        &TMH_WIRE_handler_wire_test, MHD_HTTP_FOUND },
       { "/wire/test", NULL, "text/plain",
         "Only GET is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },

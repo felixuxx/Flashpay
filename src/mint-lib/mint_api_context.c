@@ -435,6 +435,29 @@ MAC_download_get_result (struct MAC_DownloadBuffer *db,
 {
   json_t *json;
   json_error_t error;
+  char *ct;
+
+  if ( (CURLE_OK !=
+        curl_easy_getinfo (eh,
+                           CURLINFO_CONTENT_TYPE,
+                           &ct)) ||
+       (NULL == ct) ||
+       (0 != strcasecmp (ct,
+                         "application/json")) )
+  {
+    /* No content type or explicitly not JSON, refuse to parse
+       (but keep response code) */
+    if (CURLE_OK !=
+        curl_easy_getinfo (eh,
+                           CURLINFO_RESPONSE_CODE,
+                           response_code))
+    {
+      /* unexpected error... */
+      GNUNET_break (0);
+      *response_code = 0;
+    }
+    return NULL;
+  }
 
   json = NULL;
   if (0 == db->eno)
