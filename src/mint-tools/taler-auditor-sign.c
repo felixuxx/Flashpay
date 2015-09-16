@@ -24,6 +24,11 @@
 
 
 /**
+ * Are we running in verbose mode?
+ */
+static int verbose;
+
+/**
  * Filename of the auditor's private key.
  */
 static char *auditor_key_file;
@@ -55,6 +60,62 @@ static struct GNUNET_CONFIGURATION_Handle *kcfg;
 static struct TALER_MasterPublicKeyP master_public_key;
 
 
+/**
+ * Print denomination key details for diagnostics.
+ *
+ * @param dk denomination key to print
+ */
+static void
+print_dk (const struct TALER_DenominationKeyValidityPS *dk)
+{
+  struct TALER_Amount a;
+  char *s;
+
+  fprintf (stdout,
+           "Denomination key hash: %s\n",
+           GNUNET_h2s_full (&dk->denom_hash));
+  TALER_amount_ntoh (&a,
+                     &dk->value);
+  fprintf (stdout,
+           "Value: %s\n",
+           s = TALER_amount_to_string (&a));
+  GNUNET_free (s);
+    TALER_amount_ntoh (&a,
+                       &dk->fee_withdraw);
+  fprintf (stdout,
+           "Withdraw fee: %s\n",
+           s = TALER_amount_to_string (&a));
+  GNUNET_free (s);
+    TALER_amount_ntoh (&a,
+                       &dk->fee_deposit);
+  fprintf (stdout,
+           "Deposit fee: %s\n",
+           s = TALER_amount_to_string (&a));
+  GNUNET_free (s);
+  TALER_amount_ntoh (&a,
+                     &dk->fee_refresh);
+  fprintf (stdout,
+           "Refresh fee: %s\n",
+           s = TALER_amount_to_string (&a));
+  GNUNET_free (s);
+
+  fprintf (stdout,
+           "Validity start time: %s\n",
+           GNUNET_TIME_absolute_to_string (GNUNET_TIME_absolute_ntoh (dk->start)));
+  fprintf (stdout,
+           "Withdraw end time: %s\n",
+           GNUNET_TIME_absolute_to_string (GNUNET_TIME_absolute_ntoh (dk->expire_withdraw)));
+  fprintf (stdout,
+           "Deposit end time: %s\n",
+           GNUNET_TIME_absolute_to_string (GNUNET_TIME_absolute_ntoh (dk->expire_spend)));
+  fprintf (stdout,
+           "Legal dispute end time: %s\n",
+           GNUNET_TIME_absolute_to_string (GNUNET_TIME_absolute_ntoh (dk->expire_legal)));
+
+  fprintf (stdout,
+           "\n");
+}
+
 
 /**
  * The main function of the taler-auditor-sign tool.  This tool is used
@@ -85,12 +146,17 @@ main (int argc,
      "where to write our signature", 1,
      &GNUNET_GETOPT_set_string, &output_file},
     GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
+    GNUNET_GETOPT_OPTION_VERBOSE (&verbose),
     GNUNET_GETOPT_OPTION_END
   };
   struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
+  struct TALER_AuditorSignatureP sig;
   struct GNUNET_DISK_FileHandle *fh;
   struct GNUNET_DISK_FileHandle *fout;
+  struct TALER_DenominationKeyValidityPS *dks;
+  struct TALER_MintKeyValidityPS *ap;
   off_t in_size;
+  unsigned int i;
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-mint-keyup",
@@ -159,11 +225,46 @@ main (int argc,
     GNUNET_DISK_file_close (fh);
     return 1;
   }
+  if (0 != (in_size % sizeof (struct TALER_DenominationKeyValidityPS)))
+  {
+    fprintf (stderr,
+             "Input file size of file `%s' is invalid\n",
+             mint_request_file);
+    GNUNET_DISK_file_close (fh);
+    return 1;
+  }
+  ap = GNUNET_malloc (sizeof (struct TALER_MintKeyValidityPS) +
+                      in_size);
+  ap.purpose.purpose = htonl (TALER_SIGNATURE_AUDITOR_MINT_KEYS);
+  ap.purpose.size = htonl (sizeof (struct TALER_MintKeyValidityPS) +
+                           in_size);
+  ap.master = master_public_key;
+  dks = (struct TALER_DenominationKeyValidityPS *) &ap[1];
+  if (in_size !=
+      GNUNET_DISK_file_read (fh,
+                             dks,
+                             in_size))
+  {
+    fprintf (stderr,
+             "Failed to read input file `%s': %s\n",
+             mint_request_file,
+             STRERROR (errno));
+    GNUNET_DISK_file_close (fh);
+    GNUNET_free (ap);
+    return 1;
+  }
+  GNUNET_DISK_file_close (fh);
+  if (verbose)
+  {
+    for (i=0;i<in_size / sizeof (struct TALER_DenominationKeyValidityPS);i++)
+      print_dk (&dks[i]);
+  }
+
   if (NULL == output_file)
   {
     fprintf (stderr,
              "Output file not given\n");
-    GNUNET_DISK_file_close (fh);
+    GNUNET_free (ap);
     return 1;
   }
   fout = GNUNET_DISK_file_open (output_file,
@@ -180,11 +281,29 @@ main (int argc,
              "Failed to open file `%s': %s\n",
              output_file,
              STRERROR (errno));
-    GNUNET_DISK_file_close (fh);
+    GNUNET_free (ap);
     return 1;
   }
-  /* FIXME: finally do real work... */
 
+  /* Finally sign ... */
+  GNUNET_CRYPTO_eddsa_sign (eddsa_priv,
+                            &ap->purpose,
+                            &sig.eddsa_sig);
+  if (sizeof (struct TALER_AuditorSignatureP) !=
+      GNUNET_DISK_file_write (out,
+                              &sig,
+                              sizeof (sig)))
+  {
+    fprintf (stderr,
+             "Failed to write to file `%s': %s\n",
+             output_file,
+             STRERROR (errno));
+    GNUNET_free (ap);
+    GNUNET_DISK_file_close (output_file);
+    return 1;
+  }
+  GNUNET_free (ap);
+  GNUNET_DISK_file_close (out);
   GNUNET_free (eddsa_priv);
   return 0;
 }
