@@ -158,6 +158,17 @@ struct CoinTypeParams
 static char *masterkeyfile;
 
 /**
+ * Filename where to write denomination key signing
+ * requests for the auditor (optional, can be NULL).
+ */
+static char *auditorrequestfile;
+
+/**
+ * Handle for writing the output for the auditor.
+ */
+static FILE *auditor_output_file;
+
+/**
  * Director of the mint, containing the keys.
  */
 static char *mint_directory;
@@ -807,6 +818,20 @@ mint_keys_update_cointype (void *cls,
       GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv.rsa_private_key);
       return;
     }
+    if ( (NULL != auditor_output_file) &&
+         (sizeof (denomkey_issue.issue.properties) !=
+          fwrite (&denomkey_issue.issue.properties,
+                  sizeof (struct TALER_DenominationKeyValidityPS),
+                  1,
+                  auditor_output_file)) )
+    {
+      fprintf (stderr,
+               "Failed to write denomination key information to %s: %s\n",
+               auditorrequestfile,
+               STRERROR (errno));
+      *ret = GNUNET_SYSERR;
+      return;
+    }
     GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv.rsa_private_key);
     p.anchor = GNUNET_TIME_absolute_add (p.anchor,
                                          p.duration_spend);
@@ -859,6 +884,9 @@ main (int argc,
     {'m', "master-key", "FILE",
      "master key file (private key)", 1,
      &GNUNET_GETOPT_set_filename, &masterkeyfile},
+    {'o', "output", "FILE",
+     "auditor denomination key signing request file to create", 1,
+     &GNUNET_GETOPT_set_filename, &auditorrequestfile},
     {'t', "time", "TIMESTAMP",
      "pretend it is a different time for the update", 0,
      &GNUNET_GETOPT_set_string, &pretend_time_str},
@@ -927,6 +955,20 @@ main (int argc,
   GNUNET_CRYPTO_eddsa_key_get_public (&master_priv.eddsa_priv,
                                       &master_public_key.eddsa_pub);
 
+  if (NULL != auditorrequestfile)
+  {
+    auditor_output_file = FOPEN (auditorrequestfile,
+                                 "w");
+    if (NULL == auditor_output_file)
+    {
+      fprintf (stderr,
+               "Failed to open `%s' for writing: %s\n",
+               auditorrequestfile,
+               STRERROR (errno));
+      return 1;
+    }
+  }
+
   /* check if key from file matches the one from the configuration */
   {
     struct GNUNET_CRYPTO_EddsaPublicKey master_public_key_from_cfg;
@@ -986,6 +1028,11 @@ main (int argc,
 
   if (GNUNET_OK != mint_keys_update_denomkeys ())
     return 1;
+  if (NULL != auditor_output_file)
+  {
+    FCLOSE (auditor_output_file);
+    auditor_output_file = NULL;
+  }
   return 0;
 }
 
