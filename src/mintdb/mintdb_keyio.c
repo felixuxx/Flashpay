@@ -351,4 +351,205 @@ TALER_MINTDB_denomination_keys_iterate (const char *mint_base_dir,
 }
 
 
+/**
+ * Closure for #auditor_iter() and
+ */
+struct AuditorIterateContext
+{
+
+  /**
+   * Function to call with the information for each auditor.
+   */
+  TALER_MINTDB_AuditorIterator it;
+
+  /**
+   * Closure for @e it.
+   */
+  void *it_cls;
+};
+
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Header of a file with auditing information.
+ */
+struct AuditorFileHeaderP
+{
+
+  /**
+   * Public key of the auditor.
+   */
+  struct TALER_AuditorPublicKeyP apub;
+
+  /**
+   * Signature from the auditor.
+   */
+  struct TALER_AuditorSignatureP asig;
+
+  /**
+   * Master public key of the mint the auditor is signing
+   * information for.
+   */
+  struct TALER_MasterPublicKeyP mpub;
+
+};
+GNUNET_NETWORK_STRUCT_END
+
+
+/**
+ * Load the auditor signature and the information signed by the
+ * auditor and call the callback in @a cls with the information.
+ *
+ * @param cls the `struct AuditorIterateContext *`
+ * @param filename name of a file that should contain
+ *                 a denomination key
+ * @return #GNUNET_OK to continue to iterate
+ *         #GNUNET_NO to abort iteration with success
+ *         #GNUNET_SYSERR to abort iteration with failure
+ */
+static int
+auditor_iter (void *cls,
+              const char *filename)
+{
+  struct AuditorIterateContext *aic = cls;
+  uint64_t size;
+  struct AuditorFileHeaderP *af;
+  const struct TALER_DenominationKeyValidityPS *dki;
+  unsigned int len;
+  int ret;
+
+  if (GNUNET_OK != GNUNET_DISK_file_size (filename,
+                                          &size,
+                                          GNUNET_YES,
+                                          GNUNET_YES))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Skipping inaccessable auditor information file `%s'\n",
+                filename);
+    return GNUNET_SYSERR;
+  }
+  if ( (size < sizeof (struct AuditorFileHeaderP)) ||
+       (0 != (len = ((size - sizeof (struct AuditorFileHeaderP)) %
+                     sizeof (struct TALER_DenominationKeyValidityPS)))) )
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  af = GNUNET_malloc (size);
+  if (size !=
+      GNUNET_DISK_fn_read (filename,
+                           af,
+                           size))
+  {
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                              "read",
+                              filename);
+    GNUNET_free (af);
+    return GNUNET_SYSERR;
+  }
+  dki = (const struct TALER_DenominationKeyValidityPS *) &af[1];
+  ret = aic->it (aic->it_cls,
+                 &af->apub,
+                 &af->asig,
+                 &af->mpub,
+                 len,
+                 dki);
+  GNUNET_free (af);
+  return ret;
+}
+
+
+/**
+ * Call @a it with information for each auditor found in the @a mint_base_dir.
+ *
+ * @param mint_base_dir base directory for the mint,
+ *                      the signing keys must be in the #TALER_MINTDB_DIR_DENOMINATION_KEYS
+ *                      subdirectory
+ * @param it function to call with auditor information
+ * @param it_cls closure for @a it
+ * @return -1 on error, 0 if no files were found, otherwise
+ *         a positive number (however, even with a positive
+ *         number it is possible that @a it was never called
+ *         as maybe none of the files were well-formed)
+ */
+int
+TALER_MINTDB_auditor_iterate (const char *mint_base_dir,
+                              TALER_MINTDB_AuditorIterator it,
+                              void *it_cls)
+{
+  char *dir;
+  struct AuditorIterateContext aic;
+  int ret;
+
+  GNUNET_asprintf (&dir,
+                   "%s" DIR_SEPARATOR_STR TALER_MINTDB_DIR_AUDITORS,
+                   mint_base_dir);
+  aic.it = it;
+  aic.it_cls = it_cls;
+  ret = GNUNET_DISK_directory_scan (dir,
+                                    &auditor_iter,
+                                    &aic);
+  GNUNET_free (dir);
+  return ret;
+}
+
+
+/**
+ * Write auditor information to the given file.
+ *
+ * @param filename the file where to write the auditor information to
+ * @param apub the auditor's public key
+ * @param asig the auditor's signature
+ * @param mpub the mint's public key (as expected by the auditor)
+ * @param dki_len length of @a dki
+ * @param dki array of denomination coin data signed by the auditor
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
+ */
+int
+TALER_MINTDB_auditor_write (const char *filename,
+                            const struct TALER_AuditorPublicKeyP *apub,
+                            const struct TALER_AuditorSignatureP *asig,
+                            const struct TALER_MasterPublicKeyP *mpub,
+                            unsigned int dki_len,
+                            const struct TALER_DenominationKeyValidityPS *dki)
+{
+  struct AuditorFileHeaderP af;
+  struct GNUNET_DISK_FileHandle *fh;
+  ssize_t wrote;
+  size_t wsize;
+  int ret;
+  int eno;
+
+  af.apub = *apub;
+  af.asig = *asig;
+  af.mpub = *mpub;
+  ret = GNUNET_SYSERR;
+  if (NULL == (fh = GNUNET_DISK_file_open
+               (filename,
+                GNUNET_DISK_OPEN_WRITE | GNUNET_DISK_OPEN_CREATE | GNUNET_DISK_OPEN_TRUNCATE,
+                GNUNET_DISK_PERM_USER_READ | GNUNET_DISK_PERM_USER_WRITE)))
+    goto cleanup;
+  wsize = sizeof (struct AuditorFileHeaderP);
+  if (GNUNET_SYSERR == (wrote = GNUNET_DISK_file_write (fh,
+                                                        &af,
+                                                        wsize)))
+    goto cleanup;
+  if (wrote != wsize)
+    goto cleanup;
+  wsize = dki_len * sizeof (struct TALER_DenominationKeyValidityPS);
+  if (wsize ==
+      GNUNET_DISK_file_write (fh,
+                              dki,
+                              wsize))
+    ret = GNUNET_OK;
+ cleanup:
+  eno = errno;
+  if (NULL != fh)
+    (void) GNUNET_DISK_file_close (fh);
+  errno = eno;
+  return ret;
+}
+
+
 /* end of mintdb_keyio.c */

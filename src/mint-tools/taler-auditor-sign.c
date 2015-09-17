@@ -151,9 +151,10 @@ main (int argc,
   };
   struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
   struct TALER_AuditorSignatureP sig;
+  struct TALER_AuditorPublicKeyP apub;
   struct GNUNET_DISK_FileHandle *fh;
-  struct GNUNET_DISK_FileHandle *fout;
   struct TALER_DenominationKeyValidityPS *dks;
+  unsigned int dks_len;
   struct TALER_MintKeyValidityPS *ap;
   off_t in_size;
   unsigned int i;
@@ -180,6 +181,8 @@ main (int argc,
              auditor_key_file);
     return 1;
   }
+  GNUNET_CRYPTO_eddsa_key_get_public (eddsa_priv,
+                                      &apub.eddsa_pub);
   if (NULL == mint_public_key)
   {
     fprintf (stderr,
@@ -233,6 +236,7 @@ main (int argc,
     GNUNET_DISK_file_close (fh);
     return 1;
   }
+  dks_len = in_size / sizeof (struct TALER_DenominationKeyValidityPS);
   ap = GNUNET_malloc (sizeof (struct TALER_MintKeyValidityPS) +
                       in_size);
   ap.purpose.purpose = htonl (TALER_SIGNATURE_AUDITOR_MINT_KEYS);
@@ -256,7 +260,7 @@ main (int argc,
   GNUNET_DISK_file_close (fh);
   if (verbose)
   {
-    for (i=0;i<in_size / sizeof (struct TALER_DenominationKeyValidityPS);i++)
+    for (i=0;i<dks_len;i++)
       print_dk (&dks[i]);
   }
 
@@ -267,43 +271,29 @@ main (int argc,
     GNUNET_free (ap);
     return 1;
   }
-  fout = GNUNET_DISK_file_open (output_file,
-                                GNUNET_DISK_OPEN_READ |
-                                GNUNET_DISK_OPEN_TRUNCATE |
-                                GNUNET_DISK_OPEN_CREATE,
-                                GNUNET_DISK_PERM_USER_READ |
-                                GNUNET_DISK_PERM_USER_WRITE |
-                                GNUNET_DISK_PERM_GROUP_READ |
-                                GNUNET_DISK_PERM_OTHER_READ);
-  if (NULL == fout)
-  {
-    fprintf (stderr,
-             "Failed to open file `%s': %s\n",
-             output_file,
-             STRERROR (errno));
-    GNUNET_free (ap);
-    return 1;
-  }
 
   /* Finally sign ... */
   GNUNET_CRYPTO_eddsa_sign (eddsa_priv,
                             &ap->purpose,
                             &sig.eddsa_sig);
-  if (sizeof (struct TALER_AuditorSignatureP) !=
-      GNUNET_DISK_file_write (out,
-                              &sig,
-                              sizeof (sig)))
+
+  /* write result to disk */
+  if (GNUNET_OK !=
+      TALER_MINTDB_auditor_write (output_file,
+                                  &apub,
+                                  &sig,
+                                  &master_public_key,
+                                  dks_len,
+                                  dks))
   {
     fprintf (stderr,
              "Failed to write to file `%s': %s\n",
              output_file,
              STRERROR (errno));
     GNUNET_free (ap);
-    GNUNET_DISK_file_close (output_file);
     return 1;
   }
   GNUNET_free (ap);
-  GNUNET_DISK_file_close (out);
   GNUNET_free (eddsa_priv);
   return 0;
 }

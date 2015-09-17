@@ -408,6 +408,35 @@ reload_keys_sign_iter (void *cls,
 
 
 /**
+ * @brief Iterator called with auditor information.
+ * Check that the @a mpub actually matches this mint, and then
+ * add the auditor information to our /keys response (if it is
+ * (still) applicable).
+ *
+ * @param cls closure
+ * @param apub the auditor's public key
+ * @param asig the auditor's signature
+ * @param mpub the mint's public key (as expected by the auditor)
+ * @param dki_len length of @a dki
+ * @param dki array of denomination coin data signed by the auditor
+ * @return #GNUNET_OK to continue to iterate,
+ *  #GNUNET_NO to stop iteration with no error,
+ *  #GNUNET_SYSERR to abort iteration with error!
+ */
+static int
+reload_auditor_iter (void *cls,
+                     const struct TALER_AuditorPublicKeyP *apub,
+                     const struct TALER_AuditorSignatureP *asig,
+                     const struct TALER_MasterPublicKeyP *mpub,
+                     unsigned int dki_len,
+                     const struct TALER_DenominationKeyValidityPS *dki)
+{
+  GNUNET_break (0); // FIXME: not implemented: #3847
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Iterator for freeing denomination keys.
  *
  * @param cls closure with the `struct TMH_KS_StateHandle`
@@ -526,6 +555,9 @@ TMH_KS_acquire (void)
     TALER_MINTDB_signing_keys_iterate (TMH_mint_directory,
                                        &reload_keys_sign_iter,
                                        key_state);
+    TALER_MINTDB_auditor_iterate (TMH_mint_directory,
+                                  &reload_auditor_iter,
+                                  key_state);
     ks.purpose.size = htonl (sizeof (ks));
     ks.purpose.purpose = htonl (TALER_SIGNATURE_MINT_KEY_SET);
     ks.list_issue_date = GNUNET_TIME_absolute_hton (key_state->reload_time);
