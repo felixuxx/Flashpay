@@ -51,6 +51,12 @@ struct TMH_KS_StateHandle
   json_t *sign_keys_array;
 
   /**
+   * JSON array with auditor information. (Currently not really used
+   * after initialization.)
+   */
+  json_t *auditors_array;
+
+  /**
    * Cached JSON text that the mint will send for a "/keys" request.
    * Includes our @e TMH_master_public_key public key, the signing and
    * denomination keys as well as the @e reload_time.
@@ -327,7 +333,7 @@ reload_keys_denom_iter (void *cls,
  * Convert the public part of a sign key issue to a JSON object.
  *
  * @param ski the sign key issue
- * @return a JSON object describing the sign key isue (public part)
+ * @return a JSON object describing the sign key issue (public part)
  */
 static json_t *
 sign_key_issue_to_json (const struct TALER_MintSigningKeyValidityPS *ski)
@@ -355,7 +361,7 @@ sign_key_issue_to_json (const struct TALER_MintSigningKeyValidityPS *ski)
 /**
  * Iterator for sign keys.
  *
- * @param cls closure
+ * @param cls closure with the `struct TMH_KS_StateHandle *`
  * @param filename name of the file the key came from
  * @param ski the sign key issue
  * @return #GNUNET_OK to continue to iterate,
@@ -408,12 +414,49 @@ reload_keys_sign_iter (void *cls,
 
 
 /**
+ * Convert information from an auditor to a JSON object.
+ *
+ * @param apub the auditor's public key
+ * @param asig the auditor's signature
+ * @param dki_len length of @a dki
+ * @param dki array of denomination coin data signed by the auditor
+ * @return a JSON object describing the auditor information and signature
+ */
+static json_t *
+auditor_to_json (const struct TALER_AuditorPublicKeyP *apub,
+                 const struct TALER_AuditorSignatureP *asig,
+                 unsigned int dki_len,
+                 const struct TALER_DenominationKeyValidityPS *dki)
+{
+  unsigned int i;
+  json_t *ja;
+
+  ja = json_array ();
+  for (i=0;i<dki_len;i++)
+    json_array_append_new (ja,
+                           json_pack ("{s:o}",
+                                      "denom_pub_h",
+                                      TALER_json_from_data (&dki->denom_hash,
+                                                            sizeof (struct GNUNET_HashCode))));
+  return
+    json_pack ("{s:o, s:o, s:o}",
+               "denomination_keys", ja,
+               "auditor_pub",
+               TALER_json_from_data (apub,
+                                     sizeof (struct TALER_AuditorPublicKeyP)),
+               "auditor_sig",
+               TALER_json_from_data (asig,
+                                     sizeof (struct TALER_AuditorSignatureP)));
+}
+
+
+/**
  * @brief Iterator called with auditor information.
  * Check that the @a mpub actually matches this mint, and then
  * add the auditor information to our /keys response (if it is
  * (still) applicable).
  *
- * @param cls closure
+ * @param cls closure with the `struct TMH_KS_StateHandle *`
  * @param apub the auditor's public key
  * @param asig the auditor's signature
  * @param mpub the mint's public key (as expected by the auditor)
@@ -431,7 +474,16 @@ reload_auditor_iter (void *cls,
                      unsigned int dki_len,
                      const struct TALER_DenominationKeyValidityPS *dki)
 {
+  struct TMH_KS_StateHandle *ctx = cls;
+
   GNUNET_break (0); // FIXME: not implemented: #3847
+  // FIXME: check merchant public key matches
+  // FIXME: check dki overlap with our (active) DKI set
+  json_array_append_new (ctx->auditors_array,
+                         auditor_to_json (apub,
+                                          asig,
+                                          dki_len,
+                                          dki));
   return GNUNET_SYSERR;
 }
 
@@ -542,6 +594,8 @@ TMH_KS_acquire (void)
     GNUNET_assert (NULL != key_state->denom_keys_array);
     key_state->sign_keys_array = json_array ();
     GNUNET_assert (NULL != key_state->sign_keys_array);
+    key_state->auditors_array = json_array ();
+    GNUNET_assert (NULL != key_state->auditors_array);
     key_state->denomkey_map = GNUNET_CONTAINER_multihashmap_create (32,
                                                                     GNUNET_NO);
     key_state->reload_time = GNUNET_TIME_absolute_get ();
@@ -573,17 +627,19 @@ TMH_KS_acquire (void)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "No valid signing key found!\n");
 
-    keys = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
+    keys = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                       "master_public_key",
                       TALER_json_from_data (&TMH_master_public_key,
                                             sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)),
                       "signkeys", key_state->sign_keys_array,
                       "denoms", key_state->denom_keys_array,
+                      "auditors", key_state->auditors_array,
                       "list_issue_date", TALER_json_from_abs (key_state->reload_time),
                       "eddsa_pub", TALER_json_from_data (&key_state->current_sign_key_issue.issue.signkey_pub,
                                                          sizeof (struct TALER_MintPublicKeyP)),
                       "eddsa_sig", TALER_json_from_data (&sig,
                                                          sizeof (struct TALER_MintSignatureP)));
+    key_state->auditors_array = NULL;
     key_state->sign_keys_array = NULL;
     key_state->denom_keys_array = NULL;
     key_state->keys_json = json_dumps (keys,
