@@ -212,10 +212,10 @@ TALER_MINTDB_denomination_key_read (const char *filename,
  *
  * @param cls closure
  * @param apub the auditor's public key
- * @param asig the auditor's signature
  * @param mpub the mint's public key (as expected by the auditor)
- * @param dki_len length of @a dki
- * @param dki array of denomination coin data signed by the auditor
+ * @param dki_len length of @a asig and @a dki arrays
+ * @param asigs array of the auditor's signatures over the @a dks, of length @a dki_len
+ * @param dki array of denomination coin data signed by the auditor, of length @a dki_len
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -223,9 +223,9 @@ TALER_MINTDB_denomination_key_read (const char *filename,
 typedef int
 (*TALER_MINTDB_AuditorIterator)(void *cls,
                                 const struct TALER_AuditorPublicKeyP *apub,
-                                const struct TALER_AuditorSignatureP *asig,
                                 const struct TALER_MasterPublicKeyP *mpub,
                                 unsigned int dki_len,
+                                const struct TALER_AuditorSignatureP *asigs,
                                 const struct TALER_DenominationKeyValidityPS *dki);
 
 
@@ -253,16 +253,16 @@ TALER_MINTDB_auditor_iterate (const char *mint_base_dir,
  *
  * @param filename the file where to write the auditor information to
  * @param apub the auditor's public key
- * @param asig the auditor's signature
+ * @param asigs the auditor's signatures, array of length @a dki_len
  * @param mpub the mint's public key (as expected by the auditor)
- * @param dki_len length of @a dki
+ * @param dki_len length of @a dki and @a asigs arrays
  * @param dki array of denomination coin data signed by the auditor
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
  */
 int
 TALER_MINTDB_auditor_write (const char *filename,
                             const struct TALER_AuditorPublicKeyP *apub,
-                            const struct TALER_AuditorSignatureP *asig,
+                            const struct TALER_AuditorSignatureP *asigs,
                             const struct TALER_MasterPublicKeyP *mpub,
                             unsigned int dki_len,
                             const struct TALER_DenominationKeyValidityPS *dki);

@@ -383,11 +383,6 @@ struct AuditorFileHeaderP
   struct TALER_AuditorPublicKeyP apub;
 
   /**
-   * Signature from the auditor.
-   */
-  struct TALER_AuditorSignatureP asig;
-
-  /**
    * Master public key of the mint the auditor is signing
    * information for.
    */
@@ -415,6 +410,7 @@ auditor_iter (void *cls,
   struct AuditorIterateContext *aic = cls;
   uint64_t size;
   struct AuditorFileHeaderP *af;
+  const struct TALER_AuditorSignatureP *sigs;
   const struct TALER_DenominationKeyValidityPS *dki;
   unsigned int len;
   int ret;
@@ -431,7 +427,8 @@ auditor_iter (void *cls,
   }
   if ( (size < sizeof (struct AuditorFileHeaderP)) ||
        (0 != (len = ((size - sizeof (struct AuditorFileHeaderP)) %
-                     sizeof (struct TALER_DenominationKeyValidityPS)))) )
+                     (sizeof (struct TALER_DenominationKeyValidityPS) +
+                      sizeof (struct TALER_AuditorSignatureP))))) )
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -448,12 +445,13 @@ auditor_iter (void *cls,
     GNUNET_free (af);
     return GNUNET_SYSERR;
   }
-  dki = (const struct TALER_DenominationKeyValidityPS *) &af[1];
+  sigs = (const struct TALER_AuditorSignatureP *) &af[1];
+  dki = (const struct TALER_DenominationKeyValidityPS *) &sigs[len];
   ret = aic->it (aic->it_cls,
                  &af->apub,
-                 &af->asig,
                  &af->mpub,
                  len,
+                 sigs,
                  dki);
   GNUNET_free (af);
   return ret;
@@ -500,7 +498,7 @@ TALER_MINTDB_auditor_iterate (const char *mint_base_dir,
  *
  * @param filename the file where to write the auditor information to
  * @param apub the auditor's public key
- * @param asig the auditor's signature
+ * @param asigs the auditor's signatures, array of length @a dki_len
  * @param mpub the mint's public key (as expected by the auditor)
  * @param dki_len length of @a dki
  * @param dki array of denomination coin data signed by the auditor
@@ -509,7 +507,7 @@ TALER_MINTDB_auditor_iterate (const char *mint_base_dir,
 int
 TALER_MINTDB_auditor_write (const char *filename,
                             const struct TALER_AuditorPublicKeyP *apub,
-                            const struct TALER_AuditorSignatureP *asig,
+                            const struct TALER_AuditorSignatureP *asigs,
                             const struct TALER_MasterPublicKeyP *mpub,
                             unsigned int dki_len,
                             const struct TALER_DenominationKeyValidityPS *dki)
@@ -522,7 +520,6 @@ TALER_MINTDB_auditor_write (const char *filename,
   int eno;
 
   af.apub = *apub;
-  af.asig = *asig;
   af.mpub = *mpub;
   ret = GNUNET_SYSERR;
   if (NULL == (fh = GNUNET_DISK_file_open
@@ -537,6 +534,12 @@ TALER_MINTDB_auditor_write (const char *filename,
     goto cleanup;
   if (wrote != wsize)
     goto cleanup;
+  wsize = dki_len * sizeof (struct TALER_AuditorSignatureP);
+  if (wsize ==
+      GNUNET_DISK_file_write (fh,
+                              asigs,
+                              wsize))
+    ret = GNUNET_OK;
   wsize = dki_len * sizeof (struct TALER_DenominationKeyValidityPS);
   if (wsize ==
       GNUNET_DISK_file_write (fh,

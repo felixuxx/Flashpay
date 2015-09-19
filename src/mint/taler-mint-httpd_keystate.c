@@ -417,16 +417,16 @@ reload_keys_sign_iter (void *cls,
  * Convert information from an auditor to a JSON object.
  *
  * @param apub the auditor's public key
- * @param asig the auditor's signature
- * @param dki_len length of @a dki
+ * @param dki_len length of @a dki and @a asigs arrays
+ * @param asigs the auditor's signatures
  * @param dki array of denomination coin data signed by the auditor
  * @return a JSON object describing the auditor information and signature
  */
 static json_t *
 auditor_to_json (const struct TALER_AuditorPublicKeyP *apub,
-                 const struct TALER_AuditorSignatureP *asig,
                  unsigned int dki_len,
-                 const struct TALER_DenominationKeyValidityPS *dki)
+                 const struct TALER_AuditorSignatureP **asigs,
+                 const struct TALER_DenominationKeyValidityPS **dki)
 {
   unsigned int i;
   json_t *ja;
@@ -434,19 +434,19 @@ auditor_to_json (const struct TALER_AuditorPublicKeyP *apub,
   ja = json_array ();
   for (i=0;i<dki_len;i++)
     json_array_append_new (ja,
-                           json_pack ("{s:o}",
+                           json_pack ("{s:o, s:o}",
                                       "denom_pub_h",
-                                      TALER_json_from_data (&dki->denom_hash,
-                                                            sizeof (struct GNUNET_HashCode))));
+                                      TALER_json_from_data (&dki[i]->denom_hash,
+                                                            sizeof (struct GNUNET_HashCode)),
+                                      "auditor_sig",
+                                      TALER_json_from_data (asigs[i],
+                                                            sizeof (struct TALER_AuditorSignatureP))));
   return
-    json_pack ("{s:o, s:o, s:o}",
+    json_pack ("{s:o, s:o}",
                "denomination_keys", ja,
                "auditor_pub",
                TALER_json_from_data (apub,
-                                     sizeof (struct TALER_AuditorPublicKeyP)),
-               "auditor_sig",
-               TALER_json_from_data (asig,
-                                     sizeof (struct TALER_AuditorSignatureP)));
+                                     sizeof (struct TALER_AuditorPublicKeyP)));
 }
 
 
@@ -458,9 +458,9 @@ auditor_to_json (const struct TALER_AuditorPublicKeyP *apub,
  *
  * @param cls closure with the `struct TMH_KS_StateHandle *`
  * @param apub the auditor's public key
- * @param asig the auditor's signature
  * @param mpub the mint's public key (as expected by the auditor)
- * @param dki_len length of @a dki
+ * @param dki_len length of @a dki and @a asigs
+ * @param asigs array with the auditor's signatures, of length @a dki_len
  * @param dki array of denomination coin data signed by the auditor
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
@@ -469,14 +469,16 @@ auditor_to_json (const struct TALER_AuditorPublicKeyP *apub,
 static int
 reload_auditor_iter (void *cls,
                      const struct TALER_AuditorPublicKeyP *apub,
-                     const struct TALER_AuditorSignatureP *asig,
                      const struct TALER_MasterPublicKeyP *mpub,
                      unsigned int dki_len,
+                     const struct TALER_AuditorSignatureP *asigs,
                      const struct TALER_DenominationKeyValidityPS *dki)
 {
   struct TMH_KS_StateHandle *ctx = cls;
   unsigned int i;
-  int found;
+  unsigned int keep;
+  const struct TALER_AuditorSignatureP *kept_asigs[dki_len];
+  const struct TALER_DenominationKeyValidityPS *kept_dkis[dki_len];
 
   /* Check if the signature is at least for this mint. */
   if (0 != memcmp (&mpub->eddsa_pub,
@@ -487,28 +489,26 @@ reload_auditor_iter (void *cls,
                 "Auditing information provided for a different mint, ignored\n");
     return GNUNET_OK;
   }
-  /* check if there is an overlap between the set of keys signed by
-     the auditor and the denomination keys that are active right now */
-  found = GNUNET_NO;
+  /* Filter the auditor information for those for which the
+     keys actually match the denomination keys that are active right now */
+  keep = 0;
   for (i=0;i<dki_len;i++)
   {
     if (GNUNET_YES ==
         GNUNET_CONTAINER_multihashmap_contains (ctx->denomkey_map,
                                                 &dki[i].denom_hash))
     {
-      found = GNUNET_YES;
-      break;
+      kept_asigs[keep] = &asigs[i];
+      kept_dkis[keep] = &dki[i];
+      keep++;
     }
   }
-  if (GNUNET_NO == found)
-    return GNUNET_OK; /* None of the keys are relevant for us right now,
-                         so skip this auditor signature */
   /* add auditor information to our /keys response */
   json_array_append_new (ctx->auditors_array,
                          auditor_to_json (apub,
-                                          asig,
-                                          dki_len,
-                                          dki));
+                                          keep,
+                                          kept_asigs,
+                                          kept_dkis));
   return GNUNET_OK;
 }
 

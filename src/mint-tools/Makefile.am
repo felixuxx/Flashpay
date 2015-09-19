@@ -7,6 +7,7 @@ if USE_COVERAGE
 endif
 
 bin_PROGRAMS = \
+  taler-auditor-sign \
   taler-mint-keyup \
   taler-mint-keycheck \
   taler-mint-reservemod \
@@ -15,7 +16,6 @@ bin_PROGRAMS = \
 
 taler_mint_keyup_SOURCES = \
   taler-mint-keyup.c
-
 taler_mint_keyup_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
@@ -23,6 +23,14 @@ taler_mint_keyup_LDADD = \
   $(top_builddir)/src/mintdb/libtalermintdb.la \
   -lgnunetutil $(XLIB)
 taler_mint_keyup_LDFLAGS = $(POSTGRESQL_LDFLAGS)
+
+taler_auditor_sign_SOURCES = \
+  taler-auditor-sign.c
+taler_auditor_sign_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/mintdb/libtalermintdb.la \
+  -lgnunetutil $(XLIB)
 
 
 taler_mint_sepa_SOURCES = \
