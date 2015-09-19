@@ -426,7 +426,7 @@ postgres_create_tables (void *cls,
   /* This table contains the wire transfers the mint is supposed to
      execute to transmit funds to the merchants (and manage refunds). */
   SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
-          "(id BIGSERIAL"
+          "(serial_id BIGSERIAL"
           ",coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)"
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",denom_sig BYTEA NOT NULL"
@@ -852,8 +852,8 @@ postgres_prepare (PGconn *db_conn)
   /* Used in #postgres_iterate_deposits() */
   PREPARE ("deposits_iterate",
            "SELECT"
-           " id"
-           " amount_with_fee_val"
+           " serial_id"
+           ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
            ",deposit_fee_val"
@@ -863,7 +863,8 @@ postgres_prepare (PGconn *db_conn)
            ",h_contract"
            ",wire"
            " FROM deposits"
-           " WHERE id>=$1"
+           " WHERE serial_id>=$1"
+           " ORDER BY serial_id ASC"
            " LIMIT $2;",
            2, NULL);
   /* Used in #postgres_get_coin_transactions() to obtain information
@@ -1891,6 +1892,119 @@ postgres_have_deposit (void *cls,
   }
   PQclear (result);
   return GNUNET_YES;
+}
+
+
+/**
+ * Obtain information about deposits.  Iterates over all deposits
+ * above a certain ID.  Use a @a min_id of 0 to start at the beginning.
+ * This operation is executed in its own transaction in transaction
+ * mode "REPEATABLE READ", i.e. we should only see valid deposits.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to the database
+ * @param min_id deposit to start at
+ * @param limit maximum number of transactions to fetch
+ * @param deposit_cb function to call for each deposit
+ * @param deposit_cb_cls closure for @a deposit_cb
+ * @return number of rows processed, 0 if none exist,
+ *         #GNUNET_SYSERR on error
+ */
+static int
+postgres_iterate_deposits (void *cls,
+                           struct TALER_MINTDB_Session *session,
+                           uint64_t min_id,
+                           uint32_t limit,
+                           TALER_MINTDB_DepositIterator deposit_cb,
+                           void *deposit_cb_cls)
+{
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_uint64 (&min_id),
+    TALER_PQ_query_param_uint32 (&limit),
+    TALER_PQ_query_param_end
+  };
+  PGresult *result;
+  unsigned int i;
+  unsigned int n;
+
+  if (GNUNET_OK !=
+      postgres_start (cls, session))
+    return GNUNET_SYSERR;
+  result = PQexec (session->conn,
+                   "SET TRANSACTION REPEATABLE READ");
+  if (PGRES_COMMAND_OK !=
+      PQresultStatus (result))
+  {
+    TALER_LOG_ERROR ("Failed to set transaction to REPEATABL EREAD: %s\n",
+                     PQresultErrorMessage (result));
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "deposits_iterate",
+                                   params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    postgres_rollback (cls, session);
+    return GNUNET_SYSERR;
+  }
+  if (0 == (n = PQntuples (result)))
+  {
+    PQclear (result);
+    postgres_rollback (cls, session);
+    return 0;
+  }
+  for (i=0;i<n;i++)
+  {
+    struct TALER_Amount amount_with_fee;
+    struct TALER_Amount deposit_fee;
+    struct GNUNET_HashCode h_contract;
+    json_t *wire;
+    uint64_t transaction_id;
+    uint64_t id;
+    int ret;
+    struct TALER_PQ_ResultSpec rs[] = {
+      TALER_PQ_result_spec_uint64 ("id",
+                                   &id),
+      TALER_PQ_result_spec_uint64 ("transaction_id",
+                                   &transaction_id),
+      TALER_PQ_result_spec_amount ("amount_with_fee",
+                                   &amount_with_fee),
+      TALER_PQ_result_spec_amount ("deposit_fee",
+                                   &deposit_fee),
+      TALER_PQ_result_spec_auto_from_type ("h_contract",
+                                           &h_contract),
+      TALER_PQ_result_spec_json ("wire",
+                                 &wire),
+      TALER_PQ_result_spec_end
+    };
+    if (GNUNET_OK !=
+        TALER_PQ_extract_result (result, rs, i))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      postgres_rollback (cls, session);
+      return GNUNET_SYSERR;
+    }
+    ret = deposit_cb (deposit_cb_cls,
+                      id,
+                      &amount_with_fee,
+                      &deposit_fee,
+                      transaction_id,
+                      &h_contract,
+                      wire);
+    TALER_PQ_cleanup_result (rs);
+    PQclear (result);
+    if (GNUNET_OK != ret)
+      break;
+  }
+  postgres_rollback (cls, session);
+  return i;
 }
 
 
@@ -3280,6 +3394,7 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->get_reserve_history = &postgres_get_reserve_history;
   plugin->free_reserve_history = &common_free_reserve_history;
   plugin->have_deposit = &postgres_have_deposit;
+  plugin->iterate_deposits = &postgres_iterate_deposits;
   plugin->insert_deposit = &postgres_insert_deposit;
 
   plugin->get_refresh_session = &postgres_get_refresh_session;
