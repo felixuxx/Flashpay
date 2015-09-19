@@ -475,16 +475,41 @@ reload_auditor_iter (void *cls,
                      const struct TALER_DenominationKeyValidityPS *dki)
 {
   struct TMH_KS_StateHandle *ctx = cls;
+  unsigned int i;
+  int found;
 
-  GNUNET_break (0); // FIXME: not implemented: #3847
-  // FIXME: check merchant public key matches
-  // FIXME: check dki overlap with our (active) DKI set
+  /* Check if the signature is at least for this mint. */
+  if (0 != memcmp (&mpub->eddsa_pub,
+                   &TMH_master_public_key,
+                   sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Auditing information provided for a different mint, ignored\n");
+    return GNUNET_OK;
+  }
+  /* check if there is an overlap between the set of keys signed by
+     the auditor and the denomination keys that are active right now */
+  found = GNUNET_NO;
+  for (i=0;i<dki_len;i++)
+  {
+    if (GNUNET_YES ==
+        GNUNET_CONTAINER_multihashmap_contains (ctx->denomkey_map,
+                                                &dki[i].denom_hash))
+    {
+      found = GNUNET_YES;
+      break;
+    }
+  }
+  if (GNUNET_NO == found)
+    return GNUNET_OK; /* None of the keys are relevant for us right now,
+                         so skip this auditor signature */
+  /* add auditor information to our /keys response */
   json_array_append_new (ctx->auditors_array,
                          auditor_to_json (apub,
                                           asig,
                                           dki_len,
                                           dki));
-  return GNUNET_SYSERR;
+  return GNUNET_OK;
 }
 
 
