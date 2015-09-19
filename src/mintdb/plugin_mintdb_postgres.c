@@ -424,15 +424,10 @@ postgres_create_tables (void *cls,
           ",ev_sig BYTEA NOT NULL"
           ")");
   /* This table contains the wire transfers the mint is supposed to
-     execute to transmit funds to the merchants (and manage refunds).
-     TODO: we might want to generate some other primary key
-     to internally identify outgoing transactions, as "coin_pub"
-     may not be unique if a wallet chooses not to refresh.  The
-     resulting transaction ID should then be returned to the merchant
-     and could be used by the mearchant for further inquriries about
-     the deposit's execution. (#3816); */
+     execute to transmit funds to the merchants (and manage refunds). */
   SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
-          "(coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)"
+          "(id BIGSERIAL"
+          ",coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)"
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",denom_sig BYTEA NOT NULL"
           ",transaction_id INT8 NOT NULL"
@@ -853,6 +848,24 @@ postgres_prepare (PGconn *db_conn)
            "  (merchant_pub=$3)"
            " )",
            3, NULL);
+
+  /* Used in #postgres_iterate_deposits() */
+  PREPARE ("deposits_iterate",
+           "SELECT"
+           " id"
+           " amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           ",deposit_fee_val"
+           ",deposit_fee_frac"
+           ",deposit_fee_curr"
+           ",transaction_id"
+           ",h_contract"
+           ",wire"
+           " FROM deposits"
+           " WHERE id>=$1"
+           " LIMIT $2;",
+           2, NULL);
   /* Used in #postgres_get_coin_transactions() to obtain information
      about how a coin has been spend with /deposit requests. */
   PREPARE ("get_deposit_with_coin_pub",

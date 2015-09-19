@@ -517,6 +517,31 @@ struct TALER_MINTDB_Session;
 
 
 /**
+ * Function called with details about deposits that
+ * have been made, with the goal of executing the
+ * corresponding wire transaction.
+ *
+ * @param cls closure
+ * @param id transaction ID (used as future `min_id` to avoid
+ *           iterating over transactions more than once)
+ * @param amount_with_fee amount that was deposited including fee
+ * @param deposit_fee amount the mint gets to keep as transaction fees
+ * @param transaction_id unique transaction ID chosen by the merchant
+ * @param h_contract hash of the contract between merchant and customer
+ * @param wire wire details for the merchant
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef int
+(*TALER_MINTDB_DepositIterator)(void *cls,
+                                uint64_t id,
+                                const struct TALER_Amount *amount_with_fee,
+                                const struct TALER_Amount *deposit_fee,
+                                uint64_t transaction_id,
+                                const struct GNUNET_HashCode *h_contract,
+                                const char *wire);
+
+
+/**
  * Function called with the session hashes and transfer secret
  * information for a given coin.
  *
@@ -780,8 +805,7 @@ struct TALER_MINTDB_Plugin
 
 
   /**
-   * Insert information about deposited coin into the
-   * database.
+   * Insert information about deposited coin into the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param sesssion connection to the database
@@ -792,6 +816,30 @@ struct TALER_MINTDB_Plugin
   (*insert_deposit) (void *cls,
                      struct TALER_MINTDB_Session *sesssion,
                      const struct TALER_MINTDB_Deposit *deposit);
+
+
+  /**
+   * Obtain information about deposits.  Iterates over all deposits
+   * above a certain ID.  Use a @a min_id of 0 to start at the beginning.
+   * This operation is executed in its own transaction in transaction
+   * mode "READ COMMITTED", i.e. we should only see valid deposits.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param sesssion connection to the database
+   * @param min_id deposit to start at
+   * @param limit maximum number of transactions to fetch
+   * @param deposit_cb function to call for each deposit
+   * @param deposit_cb_cls closure for @a deposit_cb
+   * @return number of rows processed, 0 if none exist,
+   *         #GNUNET_SYSERR on error
+   */
+  int
+  (*iterate_deposits) (void *cls,
+                       struct TALER_MINTDB_Session *sesssion,
+                       uint64_t min_id,
+                       unsigned int limit,
+                       TALER_MINTDB_DepositIterator deposit_cb,
+                       void *deposit_cb_cls);
 
 
   /**
