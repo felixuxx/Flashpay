@@ -150,6 +150,11 @@ struct TALER_MINT_DenomPublicKey
   struct TALER_DenominationPublicKey key;
 
   /**
+   * The hash of the public key.
+   */
+  struct GNUNET_HashCode h_key;
+
+  /**
    * Timestamp indicating when the denomination key becomes valid
    */
   struct GNUNET_TIME_Absolute valid_from;
@@ -164,6 +169,15 @@ struct TALER_MINT_DenomPublicKey
    * Timestamp indicating when coins of this denomination become invalid.
    */
   struct GNUNET_TIME_Absolute deposit_valid_until;
+
+  /**
+   * When do signatures with this denomination key become invalid?
+   * After this point, these signatures cannot be used in (legal)
+   * disputes anymore, as the Mint is then allowed to destroy its side
+   * of the evidence.  @e expire_legal is expected to be significantly
+   * larger than @e expire_spend (by a year or more).
+   */
+  struct GNUNET_TIME_Absolute expire_legal;
 
   /**
    * The value of this denomination
@@ -204,6 +218,8 @@ struct TALER_MINT_AuditorInformation
    * that website.  We expect that in practice software is going to
    * often ship with an initial list of accepted auditors, just like
    * browsers ship with a CA root store.
+   *
+   * This field may be NULL. (#3987).
    */
   const char *auditor_url;
 
@@ -218,7 +234,7 @@ struct TALER_MINT_AuditorInformation
    * elements point to the same locations as the entries
    * in the key's main `denom_keys` array.
    */
-  struct TALER_MINT_DenomPublicKey *const*denom_keys;
+  const struct TALER_MINT_DenomPublicKey **denom_keys;
 };
 
 
@@ -246,7 +262,7 @@ struct TALER_MINT_Keys
   /**
    * Array of the keys of the auditors of the mint.
    */
-  struct TALER_AuditorPublicKeyP *auditors;
+  struct TALER_MINT_AuditorInformation *auditors;
 
   /**
    * Length of the @e sign_keys array.
@@ -351,6 +367,18 @@ TALER_MINT_test_signing_key (const struct TALER_MINT_Keys *keys,
 const struct TALER_MINT_DenomPublicKey *
 TALER_MINT_get_denomination_key (const struct TALER_MINT_Keys *keys,
                                  const struct TALER_DenominationPublicKey *pk);
+
+
+/**
+ * Obtain the denomination key details from the mint.
+ *
+ * @param keys the mint's key set
+ * @param hc hash of the public key of the denomination to lookup
+ * @return details about the given denomination key
+ */
+const struct TALER_MINT_DenomPublicKey *
+TALER_MINT_get_denomination_key_by_hash (const struct TALER_MINT_Keys *keys,
+                                         const struct GNUNET_HashCode *hc);
 
 
 /* *********************  /wire *********************** */
