@@ -131,7 +131,7 @@ struct MeltDetails
   const char *amount;
 
   /**
-   * Reference to withdraw_sign operations for coin to
+   * Reference to reserve_withdraw operations for coin to
    * be used for the /refresh/melt operation.
    */
   const char *coin_ref;
@@ -243,14 +243,14 @@ struct Command
       /**
        * Set to the API's handle during the operation.
        */
-      struct TALER_MINT_WithdrawStatusHandle *wsh;
+      struct TALER_MINT_ReserveStatusHandle *wsh;
 
       /**
        * Expected reserve balance.
        */
       const char *expected_balance;
 
-    } withdraw_status;
+    } reserve_status;
 
     /**
      * Information for a #OC_WITHDRAW_SIGN command.
@@ -296,9 +296,9 @@ struct Command
       /**
        * Withdraw handle (while operation is running).
        */
-      struct TALER_MINT_WithdrawSignHandle *wsh;
+      struct TALER_MINT_ReserveWithdrawHandle *wsh;
 
-    } withdraw_sign;
+    } reserve_withdraw;
 
     /**
      * Information for a #OC_DEPOSIT command.
@@ -312,7 +312,7 @@ struct Command
       const char *amount;
 
       /**
-       * Reference to a withdraw_sign operation for a coin to
+       * Reference to a reserve_withdraw operation for a coin to
        * be used for the /deposit operation.
        */
       const char *coin_ref;
@@ -649,8 +649,8 @@ compare_admin_add_incoming_history (const struct TALER_MINT_ReserveHistory *h,
  * @return #GNUNET_OK if they match, #GNUNET_SYSERR if not
  */
 static int
-compare_withdraw_sign_history (const struct TALER_MINT_ReserveHistory *h,
-                               const struct Command *cmd)
+compare_reserve_withdraw_history (const struct TALER_MINT_ReserveHistory *h,
+                                  const struct Command *cmd)
 {
   struct TALER_Amount amount;
   struct TALER_Amount amount_with_fee;
@@ -661,12 +661,12 @@ compare_withdraw_sign_history (const struct TALER_MINT_ReserveHistory *h,
     return GNUNET_SYSERR;
   }
   GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (cmd->details.withdraw_sign.amount,
+                 TALER_string_to_amount (cmd->details.reserve_withdraw.amount,
                                          &amount));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_add (&amount_with_fee,
                                    &amount,
-                                   &cmd->details.withdraw_sign.pk->fee_withdraw));
+                                   &cmd->details.reserve_withdraw.pk->fee_withdraw));
   if (0 != TALER_amount_cmp (&amount_with_fee,
                              &h->amount))
   {
@@ -678,7 +678,7 @@ compare_withdraw_sign_history (const struct TALER_MINT_ReserveHistory *h,
 
 
 /**
- * Function called with the result of a /withdraw/status request.
+ * Function called with the result of a /reserve/status request.
  *
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
@@ -689,12 +689,12 @@ compare_withdraw_sign_history (const struct TALER_MINT_ReserveHistory *h,
  * @param history detailed transaction history, NULL on error
  */
 static void
-withdraw_status_cb (void *cls,
-                    unsigned int http_status,
-                    json_t *json,
-                    const struct TALER_Amount *balance,
-                    unsigned int history_length,
-                    const struct TALER_MINT_ReserveHistory *history)
+reserve_status_cb (void *cls,
+                   unsigned int http_status,
+                   json_t *json,
+                   const struct TALER_Amount *balance,
+                   unsigned int history_length,
+                   const struct TALER_MINT_ReserveHistory *history)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
@@ -703,7 +703,7 @@ withdraw_status_cb (void *cls,
   unsigned int j;
   struct TALER_Amount amount;
 
-  cmd->details.withdraw_status.wsh = NULL;
+  cmd->details.reserve_status.wsh = NULL;
   if (cmd->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -727,10 +727,10 @@ withdraw_status_cb (void *cls,
       {
       case OC_ADMIN_ADD_INCOMING:
         if ( ( (NULL != rel->label) &&
-               (0 == strcmp (cmd->details.withdraw_status.reserve_reference,
+               (0 == strcmp (cmd->details.reserve_status.reserve_reference,
                              rel->label) ) ) ||
              ( (NULL != rel->details.admin_add_incoming.reserve_reference) &&
-               (0 == strcmp (cmd->details.withdraw_status.reserve_reference,
+               (0 == strcmp (cmd->details.reserve_status.reserve_reference,
                              rel->details.admin_add_incoming.reserve_reference) ) ) )
         {
           if (GNUNET_OK !=
@@ -745,11 +745,11 @@ withdraw_status_cb (void *cls,
         }
         break;
       case OC_WITHDRAW_SIGN:
-        if (0 == strcmp (cmd->details.withdraw_status.reserve_reference,
-                         rel->details.withdraw_sign.reserve_reference))
+        if (0 == strcmp (cmd->details.reserve_status.reserve_reference,
+                         rel->details.reserve_withdraw.reserve_reference))
         {
           if (GNUNET_OK !=
-              compare_withdraw_sign_history (&history[j],
+              compare_reserve_withdraw_history (&history[j],
                                              rel))
           {
             GNUNET_break (0);
@@ -770,10 +770,10 @@ withdraw_status_cb (void *cls,
       fail (is);
       return;
     }
-    if (NULL != cmd->details.withdraw_status.expected_balance)
+    if (NULL != cmd->details.reserve_status.expected_balance)
     {
       GNUNET_assert (GNUNET_OK ==
-                     TALER_string_to_amount (cmd->details.withdraw_status.expected_balance,
+                     TALER_string_to_amount (cmd->details.reserve_status.expected_balance,
                                              &amount));
       if (0 != TALER_amount_cmp (&amount,
                                  balance))
@@ -796,7 +796,7 @@ withdraw_status_cb (void *cls,
 
 
 /**
- * Function called upon completion of our /withdraw/sign request.
+ * Function called upon completion of our /reserve/withdraw request.
  *
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
@@ -805,15 +805,15 @@ withdraw_status_cb (void *cls,
  * @param full_response full response from the mint (for logging, in case of errors)
  */
 static void
-withdraw_sign_cb (void *cls,
-                  unsigned int http_status,
-                  const struct TALER_DenominationSignature *sig,
-                  json_t *full_response)
+reserve_withdraw_cb (void *cls,
+                     unsigned int http_status,
+                     const struct TALER_DenominationSignature *sig,
+                     json_t *full_response)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
 
-  cmd->details.withdraw_sign.wsh = NULL;
+  cmd->details.reserve_withdraw.wsh = NULL;
   if (cmd->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -834,7 +834,7 @@ withdraw_sign_cb (void *cls,
       fail (is);
       return;
     }
-    cmd->details.withdraw_sign.sig.rsa_signature
+    cmd->details.reserve_withdraw.sig.rsa_signature
       = GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
     break;
   case MHD_HTTP_PAYMENT_REQUIRED:
@@ -1309,44 +1309,44 @@ interpreter_run (void *cls,
     return;
   case OC_WITHDRAW_STATUS:
     GNUNET_assert (NULL !=
-                   cmd->details.withdraw_status.reserve_reference);
+                   cmd->details.reserve_status.reserve_reference);
     ref = find_command (is,
-                        cmd->details.withdraw_status.reserve_reference);
+                        cmd->details.reserve_status.reserve_reference);
     GNUNET_assert (NULL != ref);
     GNUNET_assert (OC_ADMIN_ADD_INCOMING == ref->oc);
     GNUNET_CRYPTO_eddsa_key_get_public (&ref->details.admin_add_incoming.reserve_priv.eddsa_priv,
                                         &reserve_pub.eddsa_pub);
-    cmd->details.withdraw_status.wsh
-      = TALER_MINT_withdraw_status (mint,
-                                    &reserve_pub,
-                                    &withdraw_status_cb,
-                                    is);
+    cmd->details.reserve_status.wsh
+      = TALER_MINT_reserve_status (mint,
+                                   &reserve_pub,
+                                   &reserve_status_cb,
+                                   is);
     trigger_context_task ();
     return;
   case OC_WITHDRAW_SIGN:
     GNUNET_assert (NULL !=
-                   cmd->details.withdraw_sign.reserve_reference);
+                   cmd->details.reserve_withdraw.reserve_reference);
     ref = find_command (is,
-                        cmd->details.withdraw_sign.reserve_reference);
+                        cmd->details.reserve_withdraw.reserve_reference);
     GNUNET_assert (NULL != ref);
     GNUNET_assert (OC_ADMIN_ADD_INCOMING == ref->oc);
-    if (NULL != cmd->details.withdraw_sign.amount)
+    if (NULL != cmd->details.reserve_withdraw.amount)
     {
       if (GNUNET_OK !=
-          TALER_string_to_amount (cmd->details.withdraw_sign.amount,
+          TALER_string_to_amount (cmd->details.reserve_withdraw.amount,
                                   &amount))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Failed to parse amount `%s' at %u\n",
-                    cmd->details.withdraw_sign.amount,
+                    cmd->details.reserve_withdraw.amount,
                     is->ip);
         fail (is);
         return;
       }
-      cmd->details.withdraw_sign.pk = find_pk (is->keys,
-                                               &amount);
+      cmd->details.reserve_withdraw.pk = find_pk (is->keys,
+                                                  &amount);
     }
-    if (NULL == cmd->details.withdraw_sign.pk)
+    if (NULL == cmd->details.reserve_withdraw.pk)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to determine denomination key at %u\n",
@@ -1360,22 +1360,22 @@ interpreter_run (void *cls,
       struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
 
       priv = GNUNET_CRYPTO_eddsa_key_create ();
-      cmd->details.withdraw_sign.coin_priv.eddsa_priv = *priv;
+      cmd->details.reserve_withdraw.coin_priv.eddsa_priv = *priv;
       GNUNET_free (priv);
     }
-    GNUNET_CRYPTO_eddsa_key_get_public (&cmd->details.withdraw_sign.coin_priv.eddsa_priv,
+    GNUNET_CRYPTO_eddsa_key_get_public (&cmd->details.reserve_withdraw.coin_priv.eddsa_priv,
                                         &coin_pub.eddsa_pub);
-    cmd->details.withdraw_sign.blinding_key.rsa_blinding_key
-      = GNUNET_CRYPTO_rsa_blinding_key_create (GNUNET_CRYPTO_rsa_public_key_len (cmd->details.withdraw_sign.pk->key.rsa_public_key));
-    cmd->details.withdraw_sign.wsh
-      = TALER_MINT_withdraw_sign (mint,
-                                  cmd->details.withdraw_sign.pk,
-                                  &ref->details.admin_add_incoming.reserve_priv,
-                                  &cmd->details.withdraw_sign.coin_priv,
-                                  &cmd->details.withdraw_sign.blinding_key,
-                                  &withdraw_sign_cb,
-                                  is);
-    if (NULL == cmd->details.withdraw_sign.wsh)
+    cmd->details.reserve_withdraw.blinding_key.rsa_blinding_key
+      = GNUNET_CRYPTO_rsa_blinding_key_create (GNUNET_CRYPTO_rsa_public_key_len (cmd->details.reserve_withdraw.pk->key.rsa_public_key));
+    cmd->details.reserve_withdraw.wsh
+      = TALER_MINT_reserve_withdraw (mint,
+                                     cmd->details.reserve_withdraw.pk,
+                                     &ref->details.admin_add_incoming.reserve_priv,
+                                     &cmd->details.reserve_withdraw.coin_priv,
+                                     &cmd->details.reserve_withdraw.blinding_key,
+                                     &reserve_withdraw_cb,
+                                     is);
+    if (NULL == cmd->details.reserve_withdraw.wsh)
     {
       GNUNET_break (0);
       fail (is);
@@ -1404,9 +1404,9 @@ interpreter_run (void *cls,
       switch (ref->oc)
       {
       case OC_WITHDRAW_SIGN:
-        coin_priv = &ref->details.withdraw_sign.coin_priv;
-        coin_pk = ref->details.withdraw_sign.pk;
-        coin_pk_sig = &ref->details.withdraw_sign.sig;
+        coin_priv = &ref->details.reserve_withdraw.coin_priv;
+        coin_pk = ref->details.reserve_withdraw.pk;
+        coin_pk_sig = &ref->details.reserve_withdraw.sig;
         break;
       case OC_REFRESH_REVEAL:
         {
@@ -1549,7 +1549,7 @@ interpreter_run (void *cls,
           GNUNET_assert (NULL != ref);
           GNUNET_assert (OC_WITHDRAW_SIGN == ref->oc);
 
-          melt_privs[i] = ref->details.withdraw_sign.coin_priv;
+          melt_privs[i] = ref->details.reserve_withdraw.coin_priv;
           if (GNUNET_OK !=
               TALER_string_to_amount (md->amount,
                                       &melt_amounts[i]))
@@ -1561,8 +1561,8 @@ interpreter_run (void *cls,
             fail (is);
             return;
           }
-          melt_sigs[i] = ref->details.withdraw_sign.sig;
-          melt_pks[i] = *ref->details.withdraw_sign.pk;
+          melt_sigs[i] = ref->details.reserve_withdraw.sig;
+          melt_pks[i] = *ref->details.reserve_withdraw.pk;
         }
         for (i=0;i<num_fresh_coins;i++)
         {
@@ -1572,7 +1572,7 @@ interpreter_run (void *cls,
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "Failed to parse amount `%s' at %u\n",
-                        cmd->details.withdraw_sign.amount,
+                        cmd->details.reserve_withdraw.amount,
                         is->ip);
             fail (is);
             return;
@@ -1639,7 +1639,7 @@ interpreter_run (void *cls,
     /* find melt command */
     ref = find_command (is,
                         ref->details.refresh_reveal.melt_ref);
-    /* find withdraw_sign command */
+    /* find reserve_withdraw command */
     {
       unsigned int idx;
       const struct MeltDetails *md;
@@ -1658,7 +1658,7 @@ interpreter_run (void *cls,
     /* finally, use private key from withdraw sign command */
     cmd->details.refresh_link.rlh
       = TALER_MINT_refresh_link (mint,
-                                 &ref->details.withdraw_sign.coin_priv,
+                                 &ref->details.reserve_withdraw.coin_priv,
                                  &link_cb,
                                  is);
     if (NULL == cmd->details.refresh_link.rlh)
@@ -1724,35 +1724,35 @@ do_shutdown (void *cls,
       }
       break;
     case OC_WITHDRAW_STATUS:
-      if (NULL != cmd->details.withdraw_status.wsh)
+      if (NULL != cmd->details.reserve_status.wsh)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                     "Command %u (%s) did not complete\n",
                     i,
                     cmd->label);
-        TALER_MINT_withdraw_status_cancel (cmd->details.withdraw_status.wsh);
-        cmd->details.withdraw_status.wsh = NULL;
+        TALER_MINT_reserve_status_cancel (cmd->details.reserve_status.wsh);
+        cmd->details.reserve_status.wsh = NULL;
       }
       break;
     case OC_WITHDRAW_SIGN:
-      if (NULL != cmd->details.withdraw_sign.wsh)
+      if (NULL != cmd->details.reserve_withdraw.wsh)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                     "Command %u (%s) did not complete\n",
                     i,
                     cmd->label);
-        TALER_MINT_withdraw_sign_cancel (cmd->details.withdraw_sign.wsh);
-        cmd->details.withdraw_sign.wsh = NULL;
+        TALER_MINT_reserve_withdraw_cancel (cmd->details.reserve_withdraw.wsh);
+        cmd->details.reserve_withdraw.wsh = NULL;
       }
-      if (NULL != cmd->details.withdraw_sign.sig.rsa_signature)
+      if (NULL != cmd->details.reserve_withdraw.sig.rsa_signature)
       {
-        GNUNET_CRYPTO_rsa_signature_free (cmd->details.withdraw_sign.sig.rsa_signature);
-        cmd->details.withdraw_sign.sig.rsa_signature = NULL;
+        GNUNET_CRYPTO_rsa_signature_free (cmd->details.reserve_withdraw.sig.rsa_signature);
+        cmd->details.reserve_withdraw.sig.rsa_signature = NULL;
       }
-      if (NULL != cmd->details.withdraw_sign.blinding_key.rsa_blinding_key)
+      if (NULL != cmd->details.reserve_withdraw.blinding_key.rsa_blinding_key)
       {
-        GNUNET_CRYPTO_rsa_blinding_key_free (cmd->details.withdraw_sign.blinding_key.rsa_blinding_key);
-        cmd->details.withdraw_sign.blinding_key.rsa_blinding_key = NULL;
+        GNUNET_CRYPTO_rsa_blinding_key_free (cmd->details.reserve_withdraw.blinding_key.rsa_blinding_key);
+        cmd->details.reserve_withdraw.blinding_key.rsa_blinding_key = NULL;
       }
       break;
     case OC_DEPOSIT:
@@ -2018,15 +2018,15 @@ run (void *cls,
     { .oc = OC_WITHDRAW_SIGN,
       .label = "withdraw-coin-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.withdraw_sign.reserve_reference = "create-reserve-1",
-      .details.withdraw_sign.amount = "EUR:5" },
+      .details.reserve_withdraw.reserve_reference = "create-reserve-1",
+      .details.reserve_withdraw.amount = "EUR:5" },
     /* Check that deposit and withdraw operation are in history, and
        that the balance is now at zero */
     { .oc = OC_WITHDRAW_STATUS,
       .label = "withdraw-status-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.withdraw_status.reserve_reference = "create-reserve-1",
-      .details.withdraw_status.expected_balance = "EUR:0" },
+      .details.reserve_status.reserve_reference = "create-reserve-1",
+      .details.reserve_status.expected_balance = "EUR:0" },
     /* Try to deposit the 5 EUR coin (in full) */
     { .oc = OC_DEPOSIT,
       .label = "deposit-simple",
@@ -2041,8 +2041,8 @@ run (void *cls,
     { .oc = OC_WITHDRAW_SIGN,
       .label = "withdraw-coin-2",
       .expected_response_code = MHD_HTTP_PAYMENT_REQUIRED,
-      .details.withdraw_sign.reserve_reference = "create-reserve-1",
-      .details.withdraw_sign.amount = "EUR:5" },
+      .details.reserve_withdraw.reserve_reference = "create-reserve-1",
+      .details.reserve_withdraw.amount = "EUR:5" },
 
     /* Try to double-spend the 5 EUR coin with different wire details */
     { .oc = OC_DEPOSIT,
@@ -2086,8 +2086,8 @@ run (void *cls,
     { .oc = OC_WITHDRAW_SIGN,
       .label = "refresh-withdraw-coin-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.withdraw_sign.reserve_reference = "refresh-create-reserve-1",
-      .details.withdraw_sign.amount = "EUR:5" },
+      .details.reserve_withdraw.reserve_reference = "refresh-create-reserve-1",
+      .details.reserve_withdraw.amount = "EUR:5" },
     /* Try to partially spend (deposit) 1 EUR of the 5 EUR coin (in full)
        (merchant would receive EUR:0.99 due to 1 ct deposit fee) */
     { .oc = OC_DEPOSIT,

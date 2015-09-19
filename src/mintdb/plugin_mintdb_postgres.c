@@ -593,7 +593,7 @@ postgres_prepare (PGconn *db_conn)
            1, NULL);
   /* Used in #postgres_insert_withdraw_info() to store
      the signature of a blinded coin with the blinded coin's
-     details before returning it during /withdraw/sign. We store
+     details before returning it during /reserve/withdraw. We store
      the coin's denomination information (public key, signature)
      and the blinded message as well as the reserve that the coin
      is being withdrawn from and the signature of the message
@@ -616,9 +616,9 @@ postgres_prepare (PGconn *db_conn)
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);",
            12, NULL);
   /* Used in #postgres_get_withdraw_info() to
-     locate the response for a /withdraw/sign request
+     locate the response for a /reserve/withdraw request
      using the hash of the blinded message.  Used to
-     make sure /withdraw/sign requests are idempotent. */
+     make sure /reserve/withdraw requests are idempotent. */
   PREPARE ("get_withdraw_info",
            "SELECT"
            " denom_pub"
@@ -636,7 +636,7 @@ postgres_prepare (PGconn *db_conn)
            " WHERE h_blind_ev=$1",
            1, NULL);
   /* Used during #postgres_get_reserve_history() to
-     obtain all of the /withdraw/sign operations that
+     obtain all of the /reserve/withdraw operations that
      have been performed on a given reserve. (i.e. to
      demonstrate double-spending) */
   PREPARE ("get_reserves_out",
@@ -1502,7 +1502,7 @@ postgres_reserves_in_insert (void *cls,
 
 
 /**
- * Locate the response for a /withdraw/sign request under the
+ * Locate the response for a /reserve/withdraw request under the
  * key of the hash of the blinded message.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state

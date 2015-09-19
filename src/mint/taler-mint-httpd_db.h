@@ -41,7 +41,7 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
 
 
 /**
- * Execute a "/withdraw/status".  Given the public key of a reserve,
+ * Execute a "/reserve/status".  Given the public key of a reserve,
  * return the associated transaction history.
  *
  * @param connection the MHD connection to handle
@@ -49,12 +49,12 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_DB_execute_withdraw_status (struct MHD_Connection *connection,
-                                const struct TALER_ReservePublicKeyP *reserve_pub);
+TMH_DB_execute_reserve_status (struct MHD_Connection *connection,
+                               const struct TALER_ReservePublicKeyP *reserve_pub);
 
 
 /**
- * Execute a "/withdraw/sign".  Given a reserve and a properly signed
+ * Execute a "/reserve/withdraw".  Given a reserve and a properly signed
  * request to withdraw a coin, check the balance of the reserve and
  * if it is sufficient, store the request and return the signed
  * blinded envelope.
@@ -68,12 +68,12 @@ TMH_DB_execute_withdraw_status (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
-                              const struct TALER_ReservePublicKeyP *reserve,
-                              const struct TALER_DenominationPublicKey *denomination_pub,
-                              const char *blinded_msg,
-                              size_t blinded_msg_len,
-                              const struct TALER_ReserveSignatureP *signature);
+TMH_DB_execute_reserve_withdraw (struct MHD_Connection *connection,
+                                 const struct TALER_ReservePublicKeyP *reserve,
+                                 const struct TALER_DenominationPublicKey *denomination_pub,
+                                 const char *blinded_msg,
+                                 size_t blinded_msg_len,
+                                 const struct TALER_ReserveSignatureP *signature);
 
 
 /**

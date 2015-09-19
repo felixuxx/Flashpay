@@ -65,7 +65,7 @@ TMH_KS_release (struct TMH_KS_StateHandle *key_state);
 enum TMH_KS_DenominationKeyUse {
 
   /**
-   * The key is to be used for a /withdraw/sign or /refresh (mint)
+   * The key is to be used for a /reserve/withdraw or /refresh (mint)
    * operation.
    */
   TMH_KS_DKU_WITHDRAW,

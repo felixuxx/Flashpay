@@ -245,22 +245,22 @@ TMH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_withdraw_status_success (struct MHD_Connection *connection,
-                                            const struct TALER_MINTDB_ReserveHistory *rh);
+TMH_RESPONSE_reply_reserve_status_success (struct MHD_Connection *connection,
+                                           const struct TALER_MINTDB_ReserveHistory *rh);
 
 
 /**
  * Send reserve status information to client with the
  * message that we have insufficient funds for the
- * requested /withdraw/sign operation.
+ * requested /reserve/withdraw operation.
  *
  * @param connection connection to the client
  * @param rh reserve history to return
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *connection,
-                                                     const struct TALER_MINTDB_ReserveHistory *rh);
+TMH_RESPONSE_reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
+                                                        const struct TALER_MINTDB_ReserveHistory *rh);
 
 
 /**
@@ -271,8 +271,8 @@ TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *conn
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_withdraw_sign_success (struct MHD_Connection *connection,
-                                          const struct TALER_MINTDB_CollectableBlindcoin *collectable);
+TMH_RESPONSE_reply_reserve_withdraw_success (struct MHD_Connection *connection,
+                                             const struct TALER_MINTDB_CollectableBlindcoin *collectable);
 
 
 /**

@@ -48,7 +48,7 @@ MAH_handle_is_ready (struct TALER_MINT_Handle *h);
  * Obtain the URL to use for an API request.
  *
  * @param h the mint handle to query
- * @param path Taler API path (i.e. "/withdraw/sign")
+ * @param path Taler API path (i.e. "/reserve/withdraw")
  * @return the full URI to use with cURL
  */
 char *

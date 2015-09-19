@@ -203,7 +203,7 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
 
 
 /**
- * Execute a /withdraw/status.  Given the public key of a reserve,
+ * Execute a /reserve/status.  Given the public key of a reserve,
  * return the associated transaction history.
  *
  * @param connection the MHD connection to handle
@@ -211,8 +211,8 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_DB_execute_withdraw_status (struct MHD_Connection *connection,
-                                const struct TALER_ReservePublicKeyP *reserve_pub)
+TMH_DB_execute_reserve_status (struct MHD_Connection *connection,
+                               const struct TALER_ReservePublicKeyP *reserve_pub)
 {
   struct TALER_MINTDB_Session *session;
   struct TALER_MINTDB_ReserveHistory *rh;
@@ -233,7 +233,7 @@ TMH_DB_execute_withdraw_status (struct MHD_Connection *connection,
                                          "{s:s, s:s}",
                                          "error", "Reserve not found",
                                          "parameter", "withdraw_pub");
-  res = TMH_RESPONSE_reply_withdraw_status_success (connection,
+  res = TMH_RESPONSE_reply_reserve_status_success (connection,
                                                     rh);
   TMH_plugin->free_reserve_history (TMH_plugin->cls,
                                     rh);
@@ -242,7 +242,7 @@ TMH_DB_execute_withdraw_status (struct MHD_Connection *connection,
 
 
 /**
- * Execute a "/withdraw/sign". Given a reserve and a properly signed
+ * Execute a "/reserve/withdraw". Given a reserve and a properly signed
  * request to withdraw a coin, check the balance of the reserve and
  * if it is sufficient, store the request and return the signed
  * blinded envelope.
@@ -256,12 +256,12 @@ TMH_DB_execute_withdraw_status (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
-                              const struct TALER_ReservePublicKeyP *reserve,
-                              const struct TALER_DenominationPublicKey *denomination_pub,
-                              const char *blinded_msg,
-                              size_t blinded_msg_len,
-                              const struct TALER_ReserveSignatureP *signature)
+TMH_DB_execute_reserve_withdraw (struct MHD_Connection *connection,
+                                 const struct TALER_ReservePublicKeyP *reserve,
+                                 const struct TALER_DenominationPublicKey *denomination_pub,
+                                 const char *blinded_msg,
+                                 size_t blinded_msg_len,
+                                 const struct TALER_ReserveSignatureP *signature)
 {
   struct TALER_MINTDB_Session *session;
   struct TALER_MINTDB_ReserveHistory *rh;
@@ -303,7 +303,7 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
   /* Don't sign again if we have already signed the coin */
   if (GNUNET_YES == res)
   {
-    res = TMH_RESPONSE_reply_withdraw_sign_success (connection,
+    res = TMH_RESPONSE_reply_reserve_withdraw_success (connection,
                                                     &collectable);
     GNUNET_CRYPTO_rsa_signature_free (collectable.sig.rsa_signature);
     GNUNET_CRYPTO_rsa_public_key_free (collectable.denom_pub.rsa_public_key);
@@ -431,7 +431,7 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
     TMH_KS_release (key_state);
     TMH_plugin->rollback (TMH_plugin->cls,
                           session);
-    res = TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (connection,
+    res = TMH_RESPONSE_reply_reserve_withdraw_insufficient_funds (connection,
                                                                rh);
     TMH_plugin->free_reserve_history (TMH_plugin->cls,
                                       rh);
@@ -475,10 +475,10 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
       TMH_plugin->commit (TMH_plugin->cls,
                           session))
   {
-    TALER_LOG_WARNING ("/withdraw/sign transaction commit failed\n");
+    TALER_LOG_WARNING ("/reserve/withdraw transaction commit failed\n");
     return TMH_RESPONSE_reply_commit_error (connection);
   }
-  res = TMH_RESPONSE_reply_withdraw_sign_success (connection,
+  res = TMH_RESPONSE_reply_reserve_withdraw_success (connection,
                                                   &collectable);
   GNUNET_CRYPTO_rsa_signature_free (sig);
   return res;

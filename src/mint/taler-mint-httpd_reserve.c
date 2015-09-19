@@ -14,8 +14,8 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-mint-httpd_withdraw.c
- * @brief Handle /withdraw/ requests
+ * @file taler-mint-httpd_reserve.c
+ * @brief Handle /reserve/ requests
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
@@ -23,14 +23,14 @@
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
-#include "taler-mint-httpd_withdraw.h"
+#include "taler-mint-httpd_reserve.h"
 #include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_responses.h"
 #include "taler-mint-httpd_keystate.h"
 
 
 /**
- * Handle a "/withdraw/status" request.  Parses the
+ * Handle a "/reserve/status" request.  Parses the
  * given "reserve_pub" argument (which should contain the
  * EdDSA public key of a reserve) and then respond with the
  * status of the reserve.
@@ -43,11 +43,11 @@
  * @return MHD result code
  */
 int
-TMH_WITHDRAW_handler_withdraw_status (struct TMH_RequestHandler *rh,
-                                      struct MHD_Connection *connection,
-                                      void **connection_cls,
-                                      const char *upload_data,
-                                      size_t *upload_data_size)
+TMH_RESERVE_handler_reserve_status (struct TMH_RequestHandler *rh,
+                                    struct MHD_Connection *connection,
+                                    void **connection_cls,
+                                    const char *upload_data,
+                                    size_t *upload_data_size)
 {
   struct TALER_ReservePublicKeyP reserve_pub;
   int res;
@@ -60,13 +60,13 @@ TMH_WITHDRAW_handler_withdraw_status (struct TMH_RequestHandler *rh,
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
     return MHD_YES; /* parse error */
-  return TMH_DB_execute_withdraw_status (connection,
-                                         &reserve_pub);
+  return TMH_DB_execute_reserve_status (connection,
+                                        &reserve_pub);
 }
 
 
 /**
- * Handle a "/withdraw/sign" request.  Parses the "reserve_pub"
+ * Handle a "/reserve/withdraw" request.  Parses the "reserve_pub"
  * EdDSA key of the reserve and the requested "denom_pub" which
  * specifies the key/value of the coin to be withdrawn, and checks
  * that the signature "reserve_sig" makes this a valid withdrawl
@@ -82,11 +82,11 @@ TMH_WITHDRAW_handler_withdraw_status (struct TMH_RequestHandler *rh,
  * @return MHD result code
  */
 int
-TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
-                                    struct MHD_Connection *connection,
-                                    void **connection_cls,
-                                    const char *upload_data,
-                                    size_t *upload_data_size)
+TMH_RESERVE_handler_reserve_withdraw (struct TMH_RequestHandler *rh,
+                                      struct MHD_Connection *connection,
+                                      void **connection_cls,
+                                      const char *upload_data,
+                                      size_t *upload_data_size)
 {
   json_t *root;
   struct TALER_WithdrawRequestPS wsrd;
@@ -102,10 +102,15 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
   struct TMH_KS_StateHandle *ks;
 
   struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_variable ("coin_ev", (void **) &blinded_msg, &blinded_msg_len),
-    TMH_PARSE_member_fixed ("reserve_pub", &wsrd.reserve_pub),
-    TMH_PARSE_member_fixed ("reserve_sig", &signature),
-    TMH_PARSE_member_denomination_public_key ("denom_pub", &denomination_pub),
+    TMH_PARSE_member_variable ("coin_ev",
+                               (void **) &blinded_msg,
+                               &blinded_msg_len),
+    TMH_PARSE_member_fixed ("reserve_pub",
+                            &wsrd.reserve_pub),
+    TMH_PARSE_member_fixed ("reserve_sig",
+                            &signature),
+    TMH_PARSE_member_denomination_public_key ("denom_pub",
+                                              &denomination_pub),
     TMH_PARSE_MEMBER_END
   };
 
@@ -162,19 +167,19 @@ TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
                                   &signature.eddsa_signature,
                                   &wsrd.reserve_pub.eddsa_pub))
   {
-    TALER_LOG_WARNING ("Client supplied invalid signature for /withdraw/sign request\n");
+    TALER_LOG_WARNING ("Client supplied invalid signature for /reserve/withdraw request\n");
     TMH_PARSE_release_data (spec);
     return TMH_RESPONSE_reply_signature_invalid (connection,
                                                  "reserve_sig");
   }
-  res = TMH_DB_execute_withdraw_sign (connection,
-                                      &wsrd.reserve_pub,
-                                      &denomination_pub,
-                                      blinded_msg,
-                                      blinded_msg_len,
-                                      &signature);
+  res = TMH_DB_execute_reserve_withdraw (connection,
+                                         &wsrd.reserve_pub,
+                                         &denomination_pub,
+                                         blinded_msg,
+                                         blinded_msg_len,
+                                         &signature);
   TMH_PARSE_release_data (spec);
   return res;
 }
 
-/* end of taler-mint-httpd_withdraw.c */
+/* end of taler-mint-httpd_reserve.c */

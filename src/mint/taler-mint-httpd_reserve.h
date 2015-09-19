@@ -14,20 +14,20 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-mint-httpd_withdraw.h
- * @brief Handle /withdraw/ requests
+ * @file taler-mint-httpd_reserve.h
+ * @brief Handle /reserve/ requests
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
  */
-#ifndef TALER_MINT_HTTPD_WITHDRAW_H
-#define TALER_MINT_HTTPD_WITHDRAW_H
+#ifndef TALER_MINT_HTTPD_RESERVE_H
+#define TALER_MINT_HTTPD_RESERVE_H
 
 #include <microhttpd.h>
 #include "taler-mint-httpd.h"
 
 /**
- * Handle a "/withdraw/status" request.  Parses the
+ * Handle a "/reserve/status" request.  Parses the
  * given "reserve_pub" argument (which should contain the
  * EdDSA public key of a reserve) and then respond with the
  * status of the reserve.
@@ -40,15 +40,15 @@
  * @return MHD result code
   */
 int
-TMH_WITHDRAW_handler_withdraw_status (struct TMH_RequestHandler *rh,
-                                      struct MHD_Connection *connection,
-                                      void **connection_cls,
-                                      const char *upload_data,
-                                      size_t *upload_data_size);
+TMH_RESERVE_handler_reserve_status (struct TMH_RequestHandler *rh,
+                                    struct MHD_Connection *connection,
+                                    void **connection_cls,
+                                    const char *upload_data,
+                                    size_t *upload_data_size);
 
 
 /**
- * Handle a "/withdraw/sign" request.  Parses the "reserve_pub"
+ * Handle a "/reserve/withdraw" request.  Parses the "reserve_pub"
  * EdDSA key of the reserve and the requested "denom_pub" which
  * specifies the key/value of the coin to be withdrawn, and checks
  * that the signature "reserve_sig" makes this a valid withdrawl
@@ -64,10 +64,10 @@ TMH_WITHDRAW_handler_withdraw_status (struct TMH_RequestHandler *rh,
  * @return MHD result code
   */
 int
-TMH_WITHDRAW_handler_withdraw_sign (struct TMH_RequestHandler *rh,
-                                    struct MHD_Connection *connection,
-                                    void **connection_cls,
-                                    const char *upload_data,
-                                    size_t *upload_data_size);
+TMH_RESERVE_handler_reserve_withdraw (struct TMH_RequestHandler *rh,
+                                      struct MHD_Connection *connection,
+                                      void **connection_cls,
+                                      const char *upload_data,
+                                      size_t *upload_data_size);
 
 #endif

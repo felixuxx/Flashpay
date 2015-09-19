@@ -30,7 +30,7 @@
 #include "taler-mint-httpd_mhd.h"
 #include "taler-mint-httpd_admin.h"
 #include "taler-mint-httpd_deposit.h"
-#include "taler-mint-httpd_withdraw.h"
+#include "taler-mint-httpd_reserve.h"
 #include "taler-mint-httpd_wire.h"
 #include "taler-mint-httpd_refresh.h"
 #include "taler-mint-httpd_keystate.h"
@@ -190,17 +190,17 @@ handle_mhd_request (void *cls,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       /* Withdrawing coins / interaction with reserves */
-      { "/withdraw/status", MHD_HTTP_METHOD_GET, "application/json",
+      { "/reserve/status", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
-        &TMH_WITHDRAW_handler_withdraw_status, MHD_HTTP_OK },
-      { "/withdraw/status", NULL, "text/plain",
+        &TMH_RESERVE_handler_reserve_status, MHD_HTTP_OK },
+      { "/reserve/status", NULL, "text/plain",
         "Only GET is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/withdraw/sign", MHD_HTTP_METHOD_POST, "application/json",
+      { "/reserve/withdraw", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-        &TMH_WITHDRAW_handler_withdraw_sign, MHD_HTTP_OK },
-      { "/withdraw/sign", NULL, "text/plain",
+        &TMH_RESERVE_handler_reserve_withdraw, MHD_HTTP_OK },
+      { "/reserve/withdraw", NULL, "text/plain",
         "Only POST is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 

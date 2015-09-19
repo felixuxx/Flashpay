@@ -15,8 +15,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file mint-lib/mint_api_withdraw.c
- * @brief Implementation of the /withdraw requests of the mint's HTTP API
+ * @file mint-lib/mint_api_reserve.c
+ * @brief Implementation of the /reserve requests of the mint's HTTP API
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -31,12 +31,12 @@
 #include "taler_signatures.h"
 
 
-/* ********************** /withdraw/status ********************** */
+/* ********************** /reserve/status ********************** */
 
 /**
  * @brief A Withdraw Status Handle
  */
-struct TALER_MINT_WithdrawStatusHandle
+struct TALER_MINT_ReserveStatusHandle
 {
 
   /**
@@ -57,7 +57,7 @@ struct TALER_MINT_WithdrawStatusHandle
   /**
    * Function to call with the result.
    */
-  TALER_MINT_WithdrawStatusResultCallback cb;
+  TALER_MINT_ReserveStatusResultCallback cb;
 
   /**
    * Public key of the reserve we are querying.
@@ -264,16 +264,16 @@ parse_reserve_history (json_t *history,
 
 /**
  * Function called when we're done processing the
- * HTTP /withdraw/status request.
+ * HTTP /reserve/status request.
  *
- * @param cls the `struct TALER_MINT_WithdrawStatusHandle`
+ * @param cls the `struct TALER_MINT_ReserveStatusHandle`
  * @param eh curl handle of the request that finished
  */
 static void
-handle_withdraw_status_finished (void *cls,
-                                 CURL *eh)
+handle_reserve_status_finished (void *cls,
+                                CURL *eh)
 {
-  struct TALER_MINT_WithdrawStatusHandle *wsh = cls;
+  struct TALER_MINT_ReserveStatusHandle *wsh = cls;
   long response_code;
   json_t *json;
 
@@ -376,7 +376,7 @@ handle_withdraw_status_finished (void *cls,
              NULL,
              0, NULL);
   json_decref (json);
-  TALER_MINT_withdraw_status_cancel (wsh);
+  TALER_MINT_reserve_status_cancel (wsh);
 }
 
 
@@ -396,13 +396,13 @@ handle_withdraw_status_finished (void *cls,
  * @return a handle for this request; NULL if the inputs are invalid (i.e.
  *         signatures fail to verify).  In this case, the callback is not called.
  */
-struct TALER_MINT_WithdrawStatusHandle *
-TALER_MINT_withdraw_status (struct TALER_MINT_Handle *mint,
-                            const struct TALER_ReservePublicKeyP *reserve_pub,
-                            TALER_MINT_WithdrawStatusResultCallback cb,
-                            void *cb_cls)
+struct TALER_MINT_ReserveStatusHandle *
+TALER_MINT_reserve_status (struct TALER_MINT_Handle *mint,
+                           const struct TALER_ReservePublicKeyP *reserve_pub,
+                           TALER_MINT_ReserveStatusResultCallback cb,
+                           void *cb_cls)
 {
-  struct TALER_MINT_WithdrawStatusHandle *wsh;
+  struct TALER_MINT_ReserveStatusHandle *wsh;
   struct TALER_MINT_Context *ctx;
   CURL *eh;
   char *pub_str;
@@ -417,10 +417,10 @@ TALER_MINT_withdraw_status (struct TALER_MINT_Handle *mint,
   pub_str = GNUNET_STRINGS_data_to_string_alloc (reserve_pub,
                                                  sizeof (struct TALER_ReservePublicKeyP));
   GNUNET_asprintf (&arg_str,
-                   "/withdraw/status?reserve_pub=%s",
+                   "/reserve/status?reserve_pub=%s",
                    pub_str);
   GNUNET_free (pub_str);
-  wsh = GNUNET_new (struct TALER_MINT_WithdrawStatusHandle);
+  wsh = GNUNET_new (struct TALER_MINT_ReserveStatusHandle);
   wsh->mint = mint;
   wsh->cb = cb;
   wsh->cb_cls = cb_cls;
@@ -446,7 +446,7 @@ TALER_MINT_withdraw_status (struct TALER_MINT_Handle *mint,
   wsh->job = MAC_job_add (ctx,
                           eh,
                           GNUNET_NO,
-                          &handle_withdraw_status_finished,
+                          &handle_reserve_status_finished,
                           wsh);
   return wsh;
 }
@@ -459,7 +459,7 @@ TALER_MINT_withdraw_status (struct TALER_MINT_Handle *mint,
  * @param wsh the withdraw status request handle
  */
 void
-TALER_MINT_withdraw_status_cancel (struct TALER_MINT_WithdrawStatusHandle *wsh)
+TALER_MINT_reserve_status_cancel (struct TALER_MINT_ReserveStatusHandle *wsh)
 {
   if (NULL != wsh->job)
   {
@@ -472,12 +472,12 @@ TALER_MINT_withdraw_status_cancel (struct TALER_MINT_WithdrawStatusHandle *wsh)
 }
 
 
-/* ********************** /withdraw/sign ********************** */
+/* ********************** /reserve/withdraw ********************** */
 
 /**
  * @brief A Withdraw Sign Handle
  */
-struct TALER_MINT_WithdrawSignHandle
+struct TALER_MINT_ReserveWithdrawHandle
 {
 
   /**
@@ -503,7 +503,7 @@ struct TALER_MINT_WithdrawSignHandle
   /**
    * Function to call with the result.
    */
-  TALER_MINT_WithdrawSignResultCallback cb;
+  TALER_MINT_ReserveWithdrawResultCallback cb;
 
   /**
    * Key used to blind the value.
@@ -539,7 +539,7 @@ struct TALER_MINT_WithdrawSignHandle
 
 
 /**
- * We got a 200 OK response for the /withdraw/sign operation.
+ * We got a 200 OK response for the /reserve/withdraw operation.
  * Extract the coin's signature and return it to the caller.
  * The signature we get from the mint is for the blinded value.
  * Thus, we first must unblind it and then should verify its
@@ -553,7 +553,7 @@ struct TALER_MINT_WithdrawSignHandle
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static int
-withdraw_sign_ok (struct TALER_MINT_WithdrawSignHandle *wsh,
+reserve_withdraw_ok (struct TALER_MINT_ReserveWithdrawHandle *wsh,
                   json_t *json)
 {
   struct GNUNET_CRYPTO_rsa_Signature *blind_sig;
@@ -598,7 +598,7 @@ withdraw_sign_ok (struct TALER_MINT_WithdrawSignHandle *wsh,
 
 
 /**
- * We got a 402 PAYMENT REQUIRED response for the /withdraw/sign operation.
+ * We got a 402 PAYMENT REQUIRED response for the /reserve/withdraw operation.
  * Check the signatures on the withdraw transactions in the provided
  * history and that the balances add up.  We don't do anything directly
  * with the information, as the JSON will be returned to the application.
@@ -610,8 +610,8 @@ withdraw_sign_ok (struct TALER_MINT_WithdrawSignHandle *wsh,
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static int
-withdraw_sign_payment_required (struct TALER_MINT_WithdrawSignHandle *wsh,
-                                json_t *json)
+reserve_withdraw_payment_required (struct TALER_MINT_ReserveWithdrawHandle *wsh,
+                                   json_t *json)
 {
   struct TALER_Amount balance;
   struct TALER_Amount balance_from_history;
@@ -690,16 +690,16 @@ withdraw_sign_payment_required (struct TALER_MINT_WithdrawSignHandle *wsh,
 
 /**
  * Function called when we're done processing the
- * HTTP /withdraw/sign request.
+ * HTTP /reserve/withdraw request.
  *
- * @param cls the `struct TALER_MINT_WithdrawSignHandle`
+ * @param cls the `struct TALER_MINT_ReserveWithdrawHandle`
  * @param eh curl handle of the request that finished
  */
 static void
-handle_withdraw_sign_finished (void *cls,
-                               CURL *eh)
+handle_reserve_withdraw_finished (void *cls,
+                                  CURL *eh)
 {
-  struct TALER_MINT_WithdrawSignHandle *wsh = cls;
+  struct TALER_MINT_ReserveWithdrawHandle *wsh = cls;
   long response_code;
   json_t *json;
 
@@ -713,7 +713,7 @@ handle_withdraw_sign_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
-        withdraw_sign_ok (wsh,
+        reserve_withdraw_ok (wsh,
                           json))
     {
       GNUNET_break_op (0);
@@ -728,7 +728,7 @@ handle_withdraw_sign_finished (void *cls,
     /* The mint says that the reserve has insufficient funds;
        check the signatures in the history... */
     if (GNUNET_OK !=
-        withdraw_sign_payment_required (wsh,
+        reserve_withdraw_payment_required (wsh,
                                         json))
     {
       GNUNET_break_op (0);
@@ -766,12 +766,12 @@ handle_withdraw_sign_finished (void *cls,
              NULL,
              json);
   json_decref (json);
-  TALER_MINT_withdraw_sign_cancel (wsh);
+  TALER_MINT_reserve_withdraw_cancel (wsh);
 }
 
 
 /**
- * Withdraw a coin from the mint using a /withdraw/sign request.  Note
+ * Withdraw a coin from the mint using a /reserve/withdraw request.  Note
  * that to ensure that no money is lost in case of hardware failures,
  * the caller must have committed (most of) the arguments to disk
  * before calling, and be ready to repeat the request with the same
@@ -790,16 +790,16 @@ handle_withdraw_sign_finished (void *cls,
  *         if the inputs are invalid (i.e. denomination key not with this mint).
  *         In this case, the callback is not called.
  */
-struct TALER_MINT_WithdrawSignHandle *
-TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
-                          const struct TALER_MINT_DenomPublicKey *pk,
-                          const struct TALER_ReservePrivateKeyP *reserve_priv,
-                          const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                          const struct TALER_DenominationBlindingKey *blinding_key,
-                          TALER_MINT_WithdrawSignResultCallback res_cb,
-                          void *res_cb_cls)
+struct TALER_MINT_ReserveWithdrawHandle *
+TALER_MINT_reserve_withdraw (struct TALER_MINT_Handle *mint,
+                             const struct TALER_MINT_DenomPublicKey *pk,
+                             const struct TALER_ReservePrivateKeyP *reserve_priv,
+                             const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                             const struct TALER_DenominationBlindingKey *blinding_key,
+                             TALER_MINT_ReserveWithdrawResultCallback res_cb,
+                             void *res_cb_cls)
 {
-  struct TALER_MINT_WithdrawSignHandle *wsh;
+  struct TALER_MINT_ReserveWithdrawHandle *wsh;
   struct TALER_WithdrawRequestPS req;
   struct TALER_ReserveSignatureP reserve_sig;
   struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -810,7 +810,7 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
   json_t *withdraw_obj;
   CURL *eh;
 
-  wsh = GNUNET_new (struct TALER_MINT_WithdrawSignHandle);
+  wsh = GNUNET_new (struct TALER_MINT_ReserveWithdrawHandle);
   wsh->mint = mint;
   wsh->cb = res_cb;
   wsh->cb_cls = res_cb_cls;
@@ -866,7 +866,7 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
   GNUNET_free (coin_ev);
 
   wsh->blinding_key = blinding_key;
-  wsh->url = MAH_path_to_url (mint, "/withdraw/sign");
+  wsh->url = MAH_path_to_url (mint, "/reserve/withdraw");
 
   eh = curl_easy_init ();
   GNUNET_assert (NULL != (wsh->json_enc =
@@ -897,7 +897,7 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
   wsh->job = MAC_job_add (ctx,
                           eh,
                           GNUNET_YES,
-                          &handle_withdraw_sign_finished,
+                          &handle_reserve_withdraw_finished,
                           wsh);
   return wsh;
 }
@@ -910,7 +910,7 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
  * @param sign the withdraw sign request handle
  */
 void
-TALER_MINT_withdraw_sign_cancel (struct TALER_MINT_WithdrawSignHandle *sign)
+TALER_MINT_reserve_withdraw_cancel (struct TALER_MINT_ReserveWithdrawHandle *sign)
 {
   if (NULL != sign->job)
   {
@@ -924,4 +924,4 @@ TALER_MINT_withdraw_sign_cancel (struct TALER_MINT_WithdrawSignHandle *sign)
 }
 
 
-/* end of mint_api_withdraw.c */
+/* end of mint_api_reserve.c */
