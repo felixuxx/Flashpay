@@ -289,7 +289,8 @@ handle_wire_method_finished (void *cls,
   /* pass on successful reply */
   wh->cb (wh->cb_cls,
           response_code,
-          NULL,
+          json_string_value (json_array_get (wh->methods,
+                                             wh->methods_off-1)),
           json);
   /* trigger request for the next /wire/method */
   request_wire_method (wh);

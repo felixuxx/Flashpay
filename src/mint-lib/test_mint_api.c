@@ -33,9 +33,8 @@
 
 /**
  * Is the configuration file is set to include wire format 'sepa'?
- * Needs #3972 to be solved first.
  */
-#define WIRE_SEPA 0
+#define WIRE_SEPA 1
 
 /**
  * Main execution context for the main loop.
@@ -463,6 +462,11 @@ struct Command
        * Handle to the wire request.
        */
       struct TALER_MINT_WireHandle *wh;
+
+      /**
+       * Format we expect to see, others will be *ignored*.
+       */
+      const char *format;
 
     } wire;
 
@@ -1038,10 +1042,6 @@ link_cb (void *cls,
       return;
     }
     /* check that the coins match */
-    fprintf (stderr,
-	     "Got %u coins\n",
-	     num_coins);
-
     for (i=0;i<num_coins;i++)
       for (j=i+1;j<num_coins;j++)
 	if (0 == memcmp (&coin_privs[i],
@@ -1185,6 +1185,13 @@ wire_cb (void *cls,
   {
     /* 0 always signals the end of the iteration */
     cmd->details.wire.wh = NULL;
+  }
+  else if ( (NULL != method) &&
+            (0 != strcasecmp (method,
+                              cmd->details.wire.format)) )
+  {
+    /* not the method we care about, skip */
+    return;
   }
   if (cmd->expected_response_code != http_status)
   {
@@ -1994,13 +2001,15 @@ run (void *cls,
     { .oc = OC_WIRE,
       .label = "wire-test",
       /* /wire/test replies with a 302 redirect */
-      .expected_response_code = MHD_HTTP_FOUND  },
+      .expected_response_code = MHD_HTTP_FOUND,
+      .details.wire.format = "test" },
 #endif
 #if WIRE_SEPA
-        { .oc = OC_WIRE,
+    { .oc = OC_WIRE,
       .label = "wire-sepa",
       /* /wire/sepa replies with a 200 redirect */
-      .expected_response_code = MHD_HTTP_OK  },
+      .expected_response_code = MHD_HTTP_OK,
+      .details.wire.format = "sepa" },
 #endif
     /* *************** end of /wire testing ************** */
 

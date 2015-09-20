@@ -66,11 +66,6 @@ TMH_WIRE_handler_wire (struct TMH_RequestHandler *rh,
   TMH_KS_sign (&wsm.purpose,
                &pub,
                &sig);
-  /* NOTE: for now, we only support *ONE* wire format per
-     mint instance; if we supply multiple, we need to
-     add the strings for each type separately here -- and
-     hash the 0-terminated strings above differently as well...
-     See #3972. */
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:o, s:o, s:o}",
