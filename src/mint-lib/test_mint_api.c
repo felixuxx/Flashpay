@@ -1992,13 +1992,13 @@ run (void *cls,
 
 #if WIRE_TEST
     { .oc = OC_WIRE,
-      .label = "wire",
+      .label = "wire-test",
       /* /wire/test replies with a 302 redirect */
       .expected_response_code = MHD_HTTP_FOUND  },
 #endif
 #if WIRE_SEPA
         { .oc = OC_WIRE,
-      .label = "wire",
+      .label = "wire-sepa",
       /* /wire/sepa replies with a 200 redirect */
       .expected_response_code = MHD_HTTP_OK  },
 #endif

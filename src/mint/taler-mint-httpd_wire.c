@@ -45,23 +45,32 @@ TMH_WIRE_handler_wire (struct TMH_RequestHandler *rh,
   struct TALER_MintPublicKeyP pub;
   struct TALER_MintSignatureP sig;
   json_t *methods;
+  struct GNUNET_HashContext *hc;
+  unsigned int i;
+  const char *wf;
 
+  methods = json_array ();
+  hc = GNUNET_CRYPTO_hash_context_start ();
+  for (i=0;NULL != (wf = TMH_expected_wire_formats[i]); i++)
+  {
+    json_array_append_new (methods,
+                           json_string (wf));
+    GNUNET_CRYPTO_hash_context_read (hc,
+                                     wf,
+                                     strlen (wf) + 1);
+  }
   wsm.purpose.size = htonl (sizeof (wsm));
   wsm.purpose.purpose = htonl (TALER_SIGNATURE_MINT_WIRE_TYPES);
-  GNUNET_CRYPTO_hash (TMH_expected_wire_format,
-		      strlen (TMH_expected_wire_format) + 1,
-		      &wsm.h_wire_types);
+  GNUNET_CRYPTO_hash_context_finish (hc,
+                                     &wsm.h_wire_types);
   TMH_KS_sign (&wsm.purpose,
                &pub,
                &sig);
-  methods = json_array ();
   /* NOTE: for now, we only support *ONE* wire format per
      mint instance; if we supply multiple, we need to
      add the strings for each type separately here -- and
      hash the 0-terminated strings above differently as well...
      See #3972. */
-  json_array_append_new (methods,
-			 json_string (TMH_expected_wire_format));
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:o, s:o, s:o}",
@@ -93,6 +102,7 @@ TMH_WIRE_handler_wire_test (struct TMH_RequestHandler *rh,
   struct MHD_Response *response;
   int ret;
   char *wire_test_redirect;
+  unsigned int i;
 
   response = MHD_create_response_from_buffer (0, NULL,
                                               MHD_RESPMEM_PERSISTENT);
@@ -101,8 +111,11 @@ TMH_WIRE_handler_wire_test (struct TMH_RequestHandler *rh,
     GNUNET_break (0);
     return MHD_NO;
   }
-  if (0 != strcasecmp ("test",
-                       TMH_expected_wire_format))
+  for (i=0;NULL != TMH_expected_wire_formats[i];i++)
+    if (0 == strcasecmp ("test",
+                         TMH_expected_wire_formats[i]))
+      break;
+  if (NULL == TMH_expected_wire_formats[i])
   {
     /* Return 501: not implemented */
     ret = MHD_queue_response (connection,
@@ -155,9 +168,13 @@ TMH_WIRE_handler_wire_sepa (struct TMH_RequestHandler *rh,
   char *sepa_wire_file;
   int fd;
   struct stat sbuf;
+  unsigned int i;
 
-  if (0 != strcasecmp ("sepa",
-                       TMH_expected_wire_format))
+  for (i=0;NULL != TMH_expected_wire_formats[i];i++)
+    if (0 == strcasecmp ("sepa",
+                         TMH_expected_wire_formats[i]))
+      break;
+  if (NULL == TMH_expected_wire_formats[i])
   {
     /* Return 501: not implemented */
     response = MHD_create_response_from_buffer (0, NULL,

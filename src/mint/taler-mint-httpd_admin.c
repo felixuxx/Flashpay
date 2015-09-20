@@ -142,7 +142,7 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   if (GNUNET_YES !=
-      TALER_json_validate_wireformat (TMH_expected_wire_format,
+      TALER_json_validate_wireformat (TMH_expected_wire_formats,
 				      wire))
   {
     TMH_PARSE_release_data (spec);

@@ -160,7 +160,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
     return MHD_YES; /* failure */
 
   if (GNUNET_YES !=
-      TALER_json_validate_wireformat (TMH_expected_wire_format,
+      TALER_json_validate_wireformat (TMH_expected_wire_formats,
 				      wire))
   {
     TMH_PARSE_release_data (spec);

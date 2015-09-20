@@ -62,8 +62,10 @@ struct GNUNET_CRYPTO_EddsaPublicKey TMH_master_public_key;
 
 /**
  * In which format does this MINT expect wiring instructions?
+ * NULL-terminated array of 0-terminated wire format types,
+ * suitable for passing to #TALER_json_validate_wireformat().
  */
-char *TMH_expected_wire_format;
+const char **TMH_expected_wire_formats;
 
 /**
  * Our DB plugin.
@@ -363,6 +365,9 @@ mint_serve_process_config (const char *mint_directory)
 {
   unsigned long long port;
   char *TMH_master_public_key_str;
+  char *wireformats;
+  const char *token;
+  unsigned int len;
 
   cfg = TALER_config_load (mint_directory);
   if (NULL == cfg)
@@ -390,17 +395,36 @@ mint_serve_process_config (const char *mint_directory)
              (unsigned int) TALER_CURRENCY_LEN);
     return GNUNET_SYSERR;
   }
+  /* Find out list of supported wire formats */
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "mint",
                                              "wireformat",
-                                             &TMH_expected_wire_format))
+                                             &wireformats))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "mint",
                                "wireformat");
     return GNUNET_SYSERR;
   }
+  /* build NULL-terminated array of TMH_expected_wire_formats */
+  TMH_expected_wire_formats = GNUNET_new_array (1,
+                                                const char *);
+  len = 1;
+  for (token = strtok (wireformats,
+                       " ");
+       NULL != token;
+       token = strtok (NULL,
+                       " "))
+  {
+    /* Grow by 1, appending NULL-terminator */
+    GNUNET_array_append (TMH_expected_wire_formats,
+                         len,
+                         NULL);
+    TMH_expected_wire_formats[len - 2] = GNUNET_strdup (token);
+  }
+  GNUNET_free (wireformats);
+
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "mint",

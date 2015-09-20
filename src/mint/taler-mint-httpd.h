@@ -48,9 +48,11 @@ extern int TMH_test_mode;
 extern char *TMH_mint_directory;
 
 /**
- * In which format does this MINT expect wiring instructions?
+ * In which formats does this MINT expect wiring instructions?
+ * NULL-terminated array of 0-terminated wire format types,
+ * suitable for passing to #TALER_json_validate_wireformat().
  */
-extern char *TMH_expected_wire_format;
+extern const char **TMH_expected_wire_formats;
 
 /**
  * Master public key (according to the
