@@ -34,3 +34,9 @@ if HAVE_DEVELOPER
 taler_mint_httpd_SOURCES += \
   taler-mint-httpd_test.c taler-mint-httpd_test.h
 endif
+
+check_SCRIPTS = \
+  test_taler_mint_httpd.sh \
+  test_taler_mint_httpd_afl.sh
+
+TESTS = $(check_SCRIPTS)
