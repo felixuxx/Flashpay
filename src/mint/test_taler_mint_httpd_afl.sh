@@ -23,10 +23,12 @@
 #
 # Setup keys.
 taler-mint-keyup -d test-mint-home -m test-mint-home/master.priv
+# Only log hard errors, we expect lots of warnings...
+export GNUNET_FORCE_LOG="taler-mint-httpd;;;;ERROR/libmicrohttpd;;;;ERROR/"
 # Run test...
-for n in afl-tests/*.req
+for n in afl-tests/*
 do
-  echo -n "Test $n"
+  echo -n "Test $n "
   taler-mint-httpd -d test-mint-home/ -t 1 -f $n -C > /dev/null || { echo "FAIL!"; exit 1; }
   echo "OK"
 done

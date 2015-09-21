@@ -305,7 +305,7 @@ TALER_json_to_amount (json_t *json,
       GNUNET_break (0);
       return GNUNET_SYSERR;
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Malformed JSON amount: %s\n",
                 json_enc);
     free (json_enc);
