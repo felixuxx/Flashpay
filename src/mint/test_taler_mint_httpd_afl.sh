@@ -23,6 +23,8 @@
 #
 # Setup keys.
 taler-mint-keyup -d test-mint-home -m test-mint-home/master.priv
+# Setup database (just to be sure)
+taler-mint-dbinit -d test-mint-home &> /dev/null || true
 # Only log hard errors, we expect lots of warnings...
 export GNUNET_FORCE_LOG="taler-mint-httpd;;;;ERROR/libmicrohttpd;;;;ERROR/"
 # Run test...
