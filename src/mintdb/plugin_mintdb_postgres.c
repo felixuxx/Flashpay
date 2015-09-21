@@ -1095,7 +1095,31 @@ postgres_commit (void *cls,
   if (PGRES_COMMAND_OK !=
       PQresultStatus (result))
   {
-    GNUNET_break (0);
+    const char *sqlstate;
+
+    sqlstate = PQresultErrorField (result,
+                                   PG_DIAG_SQLSTATE);
+    if (NULL == sqlstate)
+    {
+      /* very unexpected... */
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    /* 40P01: deadlock, 40001: serialization failure */
+    if ( (0 == strcmp (sqlstate,
+                       "40P01")) ||
+         (0 == strcmp (sqlstate,
+                       "40001")) )
+    {
+      /* These two can be retried and have a fair chance of working
+         the next time */
+      PQclear (result);
+      return GNUNET_NO;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Database commit failure: %s\n",
+                sqlstate);
     PQclear (result);
     return GNUNET_SYSERR;
   }

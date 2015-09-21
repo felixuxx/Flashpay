@@ -629,7 +629,8 @@ struct TALER_MINTDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
-   * @return #GNUNET_OK on success
+   * @return #GNUNET_OK on success, #GNUNET_NO if the transaction
+   *         can be retried, #GNUNET_SYSERR on hard failures
    */
   int
   (*commit) (void *cls,
