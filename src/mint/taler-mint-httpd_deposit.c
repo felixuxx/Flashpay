@@ -111,7 +111,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   TMH_KS_release (key_state);
 
   return TMH_DB_execute_deposit (connection,
-                                        deposit);
+                                 deposit);
 }
 
 

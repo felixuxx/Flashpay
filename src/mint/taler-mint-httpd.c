@@ -610,6 +610,31 @@ connection_done (void *cls,
 
 
 /**
+ * Function called for logging by MHD.
+ *
+ * @param cls closure, NULL
+ * @param fm format string (`printf()`-style)
+ * @param ap arguments to @a fm
+ */
+static void
+handle_mhd_logs (void *cls,
+                 const char *fm,
+                 va_list ap)
+{
+  char buf[2048];
+
+  vsnprintf (buf,
+             sizeof (buf),
+             fm,
+             ap);
+  GNUNET_log_from (GNUNET_ERROR_TYPE_WARNING,
+                   "libmicrohttpd",
+                   "%s",
+                   buf);
+}
+
+
+/**
  * The main function of the taler-mint-httpd server ("the mint").
  *
  * @param argc number of arguments from the command line
@@ -665,6 +690,7 @@ main (int argc,
                                serve_port,
                                NULL, NULL,
                                &handle_mhd_request, NULL,
+                               MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
                                MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
                                MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
 #if HAVE_DEVELOPER

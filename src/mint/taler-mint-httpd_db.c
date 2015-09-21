@@ -187,6 +187,12 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
   dki = TMH_KS_denomination_key_lookup (mks,
                                         &deposit->coin.denom_pub,
 					TMH_KS_DKU_DEPOSIT);
+  if (NULL == dki)
+  {
+    TMH_KS_release (mks);
+    return TMH_RESPONSE_reply_arg_invalid (connection,
+                                           "denom_pub");
+  }
   TALER_amount_ntoh (&value,
                      &dki->issue.properties.value);
   TMH_KS_release (mks);
@@ -386,6 +392,13 @@ execute_reserve_withdraw_transaction (struct MHD_Connection *connection,
       tdki = TMH_KS_denomination_key_lookup (key_state,
                                              &pos->details.withdraw->denom_pub,
 					     TMH_KS_DKU_WITHDRAW);
+      if (NULL == tdki)
+      {
+        GNUNET_break (0);
+        TMH_plugin->rollback (TMH_plugin->cls,
+                              session);
+        return TMH_RESPONSE_reply_internal_db_error (connection);
+      }
       TALER_amount_ntoh (&value,
                          &tdki->issue.properties.value);
       if (0 == (res & 2))
@@ -587,6 +600,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
                       const struct TMH_DB_MeltDetails *coin_details,
                       uint16_t oldcoin_index)
 {
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dk;
   struct TALER_MINTDB_DenominationKeyInformationP *dki;
   struct TALER_MINTDB_TransactionList *tl;
   struct TALER_Amount coin_value;
@@ -595,16 +609,15 @@ refresh_accept_melts (struct MHD_Connection *connection,
   struct TALER_MINTDB_RefreshMelt melt;
   int res;
 
-  dki = &TMH_KS_denomination_key_lookup (key_state,
-                                         &coin_details->coin_info.denom_pub,
-					 TMH_KS_DKU_DEPOSIT)->issue;
-
-  if (NULL == dki)
+  dk = TMH_KS_denomination_key_lookup (key_state,
+                                       &coin_details->coin_info.denom_pub,
+                                       TMH_KS_DKU_DEPOSIT);
+  if (NULL == dk)
     return (MHD_YES ==
             TMH_RESPONSE_reply_arg_unknown (connection,
                                             "denom_pub"))
         ? GNUNET_NO : GNUNET_SYSERR;
-
+  dki = &dk->issue;
   TALER_amount_ntoh (&coin_value,
                      &dki->properties.value);
   /* fee for THIS transaction; the melt amount includes the fee! */
@@ -934,7 +947,7 @@ check_commitment (struct MHD_Connection *connection,
                 &commit_links[j].transfer_pub,
                 sizeof (struct TALER_TransferPublicKeyP)))
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "transfer keys do not match\n");
       GNUNET_free (commit_links);
       return send_melt_commitment_error (connection,
@@ -966,7 +979,7 @@ check_commitment (struct MHD_Connection *connection,
                           &last_shared_secret,
                           sizeof (struct GNUNET_HashCode)))
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "shared secrets do not match\n");
       GNUNET_free (commit_links);
       return send_melt_commitment_error (connection,
@@ -1041,7 +1054,7 @@ check_commitment (struct MHD_Connection *connection,
                        commit_coins[j].coin_ev,
                        buf_len)) )
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "blind envelope does not match for k=%u, old=%d\n",
                   off,
                   (int) j);
@@ -1389,7 +1402,6 @@ handle_transfer_data (void *cls,
                                         session_hash);
   if (NULL == ldl)
   {
-    GNUNET_break (0);
     ctx->status = GNUNET_NO;
     if (MHD_NO ==
         TMH_RESPONSE_reply_json_pack (ctx->connection,
@@ -1463,7 +1475,7 @@ TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
   for (i=0;i<ctx.num_sessions;i++)
     TMH_plugin->free_link_data_list (TMH_plugin->cls,
                                      ctx.sessions[i].ldl);
-  GNUNET_free (ctx.sessions);
+  GNUNET_free_non_null (ctx.sessions);
   return res;
 }
 

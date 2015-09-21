@@ -115,9 +115,16 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   {
     /* calculate contribution of the i-th melt by subtracting
        the fee; add the rest to the total_melt value */
-    dki = &TMH_KS_denomination_key_lookup (key_state,
-                                           &coin_melt_details[i].coin_info.denom_pub,
-					   TMH_KS_DKU_DEPOSIT)->issue;
+    dk = TMH_KS_denomination_key_lookup (key_state,
+                                         &coin_melt_details[i].coin_info.denom_pub,
+                                         TMH_KS_DKU_DEPOSIT);
+    if (NULL == dk)
+    {
+      GNUNET_break (0);
+      return TMH_RESPONSE_reply_arg_invalid (connection,
+                                             "denom_pub");
+    }
+    dki = &dk->issue;
     TALER_amount_ntoh (&fee_melt,
                        &dki->properties.fee_refresh);
     if (GNUNET_OK !=
