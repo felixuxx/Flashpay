@@ -61,6 +61,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
 {
   unsigned int i;
   struct TMH_KS_StateHandle *key_state;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dk;
   struct TALER_MINTDB_DenominationKeyInformationP *dki;
   struct TALER_Amount cost;
   struct TALER_Amount total_cost;
@@ -76,9 +77,17 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   key_state = TMH_KS_acquire ();
   for (i=0;i<num_new_denoms;i++)
   {
-    dki = &TMH_KS_denomination_key_lookup (key_state,
-                                           &denom_pubs[i],
-					   TMH_KS_DKU_WITHDRAW)->issue;
+    dk = TMH_KS_denomination_key_lookup (key_state,
+                                         &denom_pubs[i],
+                                         TMH_KS_DKU_WITHDRAW);
+    if (NULL == dk)
+    {
+      GNUNET_break_op (0);
+      TMH_KS_release (key_state);
+      return TMH_RESPONSE_reply_arg_invalid (connection,
+                                             "new_denoms");
+    }
+    dki = &dk->issue;
     TALER_amount_ntoh (&value,
                        &dki->properties.value);
     TALER_amount_ntoh (&fee_withdraw,
