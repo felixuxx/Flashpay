@@ -301,6 +301,7 @@ TMH_DB_execute_reserve_status (struct MHD_Connection *connection,
  * @param dki denomination to withdraw
  * @param blinded_msg blinded message to be signed
  * @param blinded_msg_len number of bytes in @a blinded_msg
+ * @param h_blind hash of @a blinded_msg
  * @param signature signature over the withdraw request, to be stored in DB
  * @param denom_sig[out] where to write the resulting signature
  *        (used to release memory in case of transaction failure
@@ -315,6 +316,7 @@ execute_reserve_withdraw_transaction (struct MHD_Connection *connection,
                                       const struct TALER_MINTDB_DenominationKeyIssueInformation *dki,
                                       const char *blinded_msg,
                                       size_t blinded_msg_len,
+                                      const struct GNUNET_HashCode *h_blind,
                                       const struct TALER_ReserveSignatureP *signature,
                                       struct TALER_DenominationSignature *denom_sig)
 {
@@ -328,7 +330,6 @@ execute_reserve_withdraw_transaction (struct MHD_Connection *connection,
   struct TALER_Amount balance;
   struct TALER_Amount value;
   struct TALER_Amount fee_withdraw;
-  struct GNUNET_HashCode h_blind;
   int res;
 
   /* Check if balance is sufficient */
@@ -452,7 +453,7 @@ execute_reserve_withdraw_transaction (struct MHD_Connection *connection,
   collectable.amount_with_fee = amount_required;
   collectable.withdraw_fee = fee_withdraw;
   collectable.reserve_pub = *reserve;
-  collectable.h_coin_envelope = h_blind;
+  collectable.h_coin_envelope = *h_blind;
   collectable.reserve_sig = *signature;
   if (GNUNET_OK !=
       TMH_plugin->insert_withdraw_info (TMH_plugin->cls,
@@ -505,7 +506,6 @@ TMH_DB_execute_reserve_withdraw (struct MHD_Connection *connection,
   GNUNET_CRYPTO_hash (blinded_msg,
                       blinded_msg_len,
                       &h_blind);
-
   if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
                                                   TMH_test_mode)))
   {
@@ -555,9 +555,11 @@ TMH_DB_execute_reserve_withdraw (struct MHD_Connection *connection,
                                               dki,
                                               blinded_msg,
                                               blinded_msg_len,
+                                              &h_blind,
                                               signature,
                                               &denom_sig);
-  GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
+  if (NULL != denom_sig.rsa_signature)
+    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
   TMH_KS_release (key_state);
   return res;
 }
