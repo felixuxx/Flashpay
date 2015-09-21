@@ -990,7 +990,7 @@ postgres_get_session (void *cls,
       PQstatus (db_conn))
   {
     TALER_LOG_ERROR ("Database connection failed: %s\n",
-               PQerrorMessage (db_conn));
+                     PQerrorMessage (db_conn));
     GNUNET_break (0);
     return NULL;
   }
