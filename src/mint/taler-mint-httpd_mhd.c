@@ -65,6 +65,7 @@ TMH_MHD_handler_static_response (struct TMH_RequestHandler *rh,
     GNUNET_break (0);
     return MHD_NO;
   }
+  TMH_RESPONSE_add_global_headers (response);
   if (NULL != rh->mime_type)
     (void) MHD_add_response_header (response,
                                     MHD_HTTP_HEADER_CONTENT_TYPE,
@@ -108,6 +109,7 @@ TMH_MHD_handler_agpl_redirect (struct TMH_RequestHandler *rh,
     GNUNET_break (0);
     return MHD_NO;
   }
+  TMH_RESPONSE_add_global_headers (response);
   if (NULL != rh->mime_type)
     (void) MHD_add_response_header (response,
                                     MHD_HTTP_HEADER_CONTENT_TYPE,

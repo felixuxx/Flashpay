@@ -106,6 +106,7 @@ TMH_WIRE_handler_wire_test (struct TMH_RequestHandler *rh,
     GNUNET_break (0);
     return MHD_NO;
   }
+  TMH_RESPONSE_add_global_headers (response);
   for (i=0;NULL != TMH_expected_wire_formats[i];i++)
     if (0 == strcasecmp ("test",
                          TMH_expected_wire_formats[i]))
@@ -179,6 +180,7 @@ TMH_WIRE_handler_wire_sepa (struct TMH_RequestHandler *rh,
       GNUNET_break (0);
       return MHD_NO;
     }
+    TMH_RESPONSE_add_global_headers (response);
     ret = MHD_queue_response (connection,
 			      MHD_HTTP_NOT_IMPLEMENTED,
 			      response);
@@ -225,6 +227,7 @@ TMH_WIRE_handler_wire_sepa (struct TMH_RequestHandler *rh,
     GNUNET_break (0);
     return MHD_NO;
   }
+  TMH_RESPONSE_add_global_headers (response);
   if (NULL != rh->mime_type)
     (void) MHD_add_response_header (response,
                                     MHD_HTTP_HEADER_CONTENT_TYPE,

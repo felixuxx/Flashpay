@@ -32,6 +32,16 @@
 #include "taler-mint-httpd.h"
 #include "taler-mint-httpd_db.h"
 
+/**
+ * Add headers we want to return in every response.
+ * Useful for testing, like if we want to always close
+ * connections.
+ *
+ * @param response response to modify
+ */
+void
+TMH_RESPONSE_add_global_headers (struct MHD_Response *response);
+
 
 /**
  * Send JSON object as response.

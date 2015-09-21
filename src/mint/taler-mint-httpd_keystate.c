@@ -23,6 +23,7 @@
 #include "platform.h"
 #include <pthread.h>
 #include "taler-mint-httpd_keystate.h"
+#include "taler-mint-httpd_responses.h"
 #include "taler_mintdb_plugin.h"
 
 
@@ -814,6 +815,17 @@ handle_sighup ()
 
 
 /**
+ * Call #handle_signal() to pass the received signal via
+ * the control pipe.
+ */
+static void
+handle_sigchld ()
+{
+  handle_signal (SIGCHLD);
+}
+
+
+/**
  * Read signals from a pipe in a loop, and reload keys from disk if
  * SIGUSR1 is received, terminate if SIGTERM/SIGINT is received, and
  * restart if SIGHUP is received.
@@ -829,6 +841,7 @@ TMH_KS_loop (void)
   struct GNUNET_SIGNAL_Context *sigterm;
   struct GNUNET_SIGNAL_Context *sigint;
   struct GNUNET_SIGNAL_Context *sighup;
+  struct GNUNET_SIGNAL_Context *sigchld;
   int ret;
 
   if (0 != pipe (reload_pipe))
@@ -845,6 +858,8 @@ TMH_KS_loop (void)
                                           &handle_sigint);
   sighup = GNUNET_SIGNAL_handler_install (SIGHUP,
                                           &handle_sighup);
+  sigchld = GNUNET_SIGNAL_handler_install (SIGCHLD,
+                                           &handle_sigchld);
 
   ret = 0;
   while (0 == ret)
@@ -890,6 +905,12 @@ read_again:
       /* restart updated binary */
       ret = GNUNET_NO;
       break;
+#if HAVE_DEVELOPER
+    case SIGCHLD:
+      /* running in test-mode, test finished, terminate */
+      ret = GNUNET_OK;
+      break;
+#endif
     default:
       /* unexpected character */
       GNUNET_break (0);
@@ -905,6 +926,7 @@ read_again:
   GNUNET_SIGNAL_handler_uninstall (sigterm);
   GNUNET_SIGNAL_handler_uninstall (sigint);
   GNUNET_SIGNAL_handler_uninstall (sighup);
+  GNUNET_SIGNAL_handler_uninstall (sigchld);
   return ret;
 }
 
@@ -966,6 +988,7 @@ TMH_KS_handler_keys (struct TMH_RequestHandler *rh,
     GNUNET_break (0);
     return MHD_NO;
   }
+  TMH_RESPONSE_add_global_headers (response);
   (void) MHD_add_response_header (response,
                                   "Content-Type",
                                   rh->mime_type);

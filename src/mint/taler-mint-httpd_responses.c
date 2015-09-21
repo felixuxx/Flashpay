@@ -30,6 +30,23 @@
 
 
 /**
+ * Add headers we want to return in every response.
+ * Useful for testing, like if we want to always close
+ * connections.
+ *
+ * @param response response to modify
+ */
+void
+TMH_RESPONSE_add_global_headers (struct MHD_Response *response)
+{
+  if (TMH_mint_connection_close)
+    (void) MHD_add_response_header (response,
+                                    MHD_HTTP_HEADER_CONNECTION,
+                                    "close");
+}
+
+
+/**
  * Send JSON object as response.
  *
  * @param connection the MHD connection
@@ -56,6 +73,7 @@ TMH_RESPONSE_reply_json (struct MHD_Connection *connection,
     GNUNET_break (0);
     return MHD_NO;
   }
+  TMH_RESPONSE_add_global_headers (resp);
   (void) MHD_add_response_header (resp,
                                   MHD_HTTP_HEADER_CONTENT_TYPE,
                                   "application/json");
@@ -292,6 +310,7 @@ TMH_RESPONSE_reply_request_too_large (struct MHD_Connection *connection)
                                           MHD_RESPMEM_PERSISTENT);
   if (NULL == resp)
     return MHD_NO;
+  TMH_RESPONSE_add_global_headers (resp);
   ret = MHD_queue_response (connection,
                             MHD_HTTP_REQUEST_ENTITY_TOO_LARGE,
                             resp);

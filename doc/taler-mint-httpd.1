@@ -13,6 +13,9 @@ taler\-mint\-httpd \- Run Taler mint (with RESTful API)
 
 .SH OPTIONS
 .B
+.IP "\-C,  \-\-connection-close"
+Force each HTTP connection to be closed after each request (useful in combination with \-f to avoid having to wait for nc to time out).
+.B
 .IP "\-d DIRNAME,  \-\-mint-dir=DIRNAME"
 Use the configuration and other resources for the mint to operate from DIRNAME.
 .B

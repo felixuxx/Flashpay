@@ -33,6 +33,11 @@
 extern char *TMH_mint_currency_string;
 
 /**
+ * Should we return "Connection: close" in each response?
+ */
+extern int TMH_mint_connection_close;
+
+/**
  * The mint's configuration.
  */
 extern struct GNUNET_CONFIGURATION_Handle *cfg;

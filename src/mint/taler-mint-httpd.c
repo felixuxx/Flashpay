@@ -45,6 +45,11 @@
 char *TMH_mint_currency_string;
 
 /**
+ * Should we return "Connection: close" in each response?
+ */
+int TMH_mint_connection_close;
+
+/**
  * Base directory of the mint (global)
  */
 char *TMH_mint_directory;
@@ -543,11 +548,13 @@ run_fake_client ()
                        "nc",
                        "localhost",
                        ports,
+                       "-w", "30",
                        NULL)) &&
          (0 != execlp ("ncat",
                        "ncat",
                        "localhost",
                        ports,
+                       "-i", "30",
                        NULL)) )
     {
       fprintf (stderr,
@@ -614,6 +621,9 @@ main (int argc,
       char *const *argv)
 {
   static const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    {'C', "connection-close", NULL,
+     "force HTTP connections to be closed after each request", 0,
+     &GNUNET_GETOPT_set_one, &TMH_mint_connection_close},
     {'d', "mint-dir", "DIR",
      "mint directory with configuration and keys for operating the mint", 1,
      &GNUNET_GETOPT_set_filename, &TMH_mint_directory},
