@@ -1,0 +1,9 @@
+GET /keyt: */*
+Accept-Encoding:s HTTP/1.1
+User-Agent: Wget/1.16.3 (linux-gnu)
+Accept: */*
+Accept-Encoding: identity
+Host: 12TTP/1.1
+User-Agent: Wget/1.17.0.0.1:8081
+Connection: Keep-Alive
+

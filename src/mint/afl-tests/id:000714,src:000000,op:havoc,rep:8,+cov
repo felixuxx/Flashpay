@@ -1,0 +1,6 @@
+POST /admin/add/incoming HTTP1.1
+Host: localhost:/incoming HTTP1.1
+Htent-Type: application/json
+Content-Length: 220
+
+{"reserve_pub":"TMZCK5CFM1KZQGY1WTF0CEZZPGA0070G94969RF79PA5106ARTK0","amount":{"currency"("EURraction":10000},"execution_date":"/Daåe(144282165":{"type":"TEST","bank":"source bank","account":42}}
