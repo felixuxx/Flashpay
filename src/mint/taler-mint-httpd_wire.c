@@ -127,6 +127,7 @@ TMH_WIRE_handler_wire_test (struct TMH_RequestHandler *rh,
 					     &wire_test_redirect))
   {
     /* oopsie, configuration error */
+    MHD_destroy_response (response);
     return TMH_RESPONSE_reply_internal_error (connection,
 					      "REDIRECT_URL not configured");
   }
