@@ -1,4 +1,4 @@
-POST /admin/add/incoming HDTP/1.1
+POST /admin/add/incoming HtTP/1.1
 Host: localhost:8081
 Accept: */*
 Content-Type: application/json

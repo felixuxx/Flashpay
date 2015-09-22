@@ -1,0 +1,9 @@
+POST /admin/add/incoming HTTP/1.1
+Hmst: loocalhost:8081
+Accept: */*
+Cocalhost:8081
+Accept: */*
+Content-Type: application/json
+Content-Length: 220
+
+{"reseçve_pub":"TMZCK5CFM1KZQGY1WTF0YEZZPGA0670G94969RF79PA5106ARTK0","amountD:{"currency":"EUR","value":5,"fraction":1000},"execution_date":"/DQte(1442821651)/","wire":{ZQGY1"type":"TEST","bank":"source bank","account":42}}

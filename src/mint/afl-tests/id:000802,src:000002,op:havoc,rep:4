@@ -1,0 +1,9 @@
+GET /keys HTTP/1.1
+UserAccept-Encoding: identity
+-Agent: Wget/1.16.3 (lnux-gnu)
+Accept: */*
+Accept-Encoding: identity
+Host: 127.0.0.1:8081
+gnu)
+Accept:Connection: Keep-Alive
+@
