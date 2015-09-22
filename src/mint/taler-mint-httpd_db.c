@@ -1265,6 +1265,11 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
                                       &melts[j]))
     {
       GNUNET_break (0);
+      for (i=0;i<j;i++)
+      {
+        GNUNET_CRYPTO_rsa_signature_free (melts[i].coin.denom_sig.rsa_signature);
+        GNUNET_CRYPTO_rsa_public_key_free (melts[i].coin.denom_pub.rsa_public_key);
+      }
       GNUNET_free (melts);
       return TMH_RESPONSE_reply_internal_db_error (connection);
     }
@@ -1280,6 +1285,11 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
   {
     GNUNET_break (0);
     GNUNET_free (denom_pubs);
+    for (i=0;i<refresh_session.num_oldcoins;i++)
+    {
+      GNUNET_CRYPTO_rsa_signature_free (melts[i].coin.denom_sig.rsa_signature);
+      GNUNET_CRYPTO_rsa_public_key_free (melts[i].coin.denom_pub.rsa_public_key);
+    }
     GNUNET_free (melts);
     return (MHD_YES == TMH_RESPONSE_reply_internal_db_error (connection))
         ? GNUNET_NO : GNUNET_SYSERR;
@@ -1305,9 +1315,19 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
       for (j=0;j<refresh_session.num_newcoins;j++)
         GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
       GNUNET_free (denom_pubs);
+      for (i=0;i<refresh_session.num_oldcoins;i++)
+      {
+        GNUNET_CRYPTO_rsa_signature_free (melts[i].coin.denom_sig.rsa_signature);
+        GNUNET_CRYPTO_rsa_public_key_free (melts[i].coin.denom_pub.rsa_public_key);
+      }
       GNUNET_free (melts);
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     }
+  }
+  for (i=0;i<refresh_session.num_oldcoins;i++)
+  {
+    GNUNET_CRYPTO_rsa_signature_free (melts[i].coin.denom_sig.rsa_signature);
+    GNUNET_CRYPTO_rsa_public_key_free (melts[i].coin.denom_pub.rsa_public_key);
   }
   GNUNET_free (melts);
 

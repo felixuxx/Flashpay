@@ -2273,12 +2273,15 @@ get_known_coin (void *cls,
     return GNUNET_YES;
   {
     struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_rsa_public_key ("denom_pub", &coin_info->denom_pub.rsa_public_key),
-      TALER_PQ_result_spec_rsa_signature ("denom_sig", &coin_info->denom_sig.rsa_signature),
+      TALER_PQ_result_spec_rsa_public_key ("denom_pub",
+                                           &coin_info->denom_pub.rsa_public_key),
+      TALER_PQ_result_spec_rsa_signature ("denom_sig",
+                                          &coin_info->denom_sig.rsa_signature),
       TALER_PQ_result_spec_end
     };
 
-    if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
+    if (GNUNET_OK !=
+        TALER_PQ_extract_result (result, rs, 0))
     {
       PQclear (result);
       GNUNET_break (0);
@@ -2428,7 +2431,11 @@ postgres_get_refresh_melt (void *cls,
                                    &coin))
     return GNUNET_SYSERR;
   if (NULL == melt)
+  {
+    GNUNET_CRYPTO_rsa_signature_free (coin.denom_sig.rsa_signature);
+    GNUNET_CRYPTO_rsa_public_key_free (coin.denom_pub.rsa_public_key);
     return GNUNET_OK;
+  }
   melt->coin = coin;
   melt->coin_sig = coin_sig;
   melt->session_hash = *session_hash;
@@ -2974,28 +2981,7 @@ postgres_get_melt_commitment (void *cls,
   return mc;
 
  cleanup:
-  GNUNET_free_non_null (mc->melts);
-  if (NULL != mc->denom_pubs)
-  {
-    for (i=0;i<(unsigned int) mc->num_newcoins;i++)
-      if (NULL != mc->denom_pubs[i].rsa_public_key)
-        GNUNET_CRYPTO_rsa_public_key_free (mc->denom_pubs[i].rsa_public_key);
-    GNUNET_free (mc->denom_pubs);
-  }
-  for (cnc_index=0;cnc_index<TALER_CNC_KAPPA;cnc_index++)
-  {
-    if (NULL != mc->commit_coins[cnc_index])
-    {
-      for (i=0;i<(unsigned int) mc->num_newcoins;i++)
-      {
-        GNUNET_free_non_null (mc->commit_coins[cnc_index][i].refresh_link);
-        GNUNET_free_non_null (mc->commit_coins[cnc_index][i].coin_ev);
-      }
-      GNUNET_free (mc->commit_coins[cnc_index]);
-    }
-    GNUNET_free_non_null (mc->commit_links[cnc_index]);
-  }
-  GNUNET_free (mc);
+  common_free_melt_commitment (cls, mc);
   return NULL;
 }
 

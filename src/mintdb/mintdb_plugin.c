@@ -77,8 +77,10 @@ TALER_MINTDB_plugin_unload (struct TALER_MINTDB_Plugin *plugin)
   if (NULL == plugin)
     return;
   lib_name = plugin->library_name;
+#if SKIP
   GNUNET_assert (NULL == GNUNET_PLUGIN_unload (lib_name,
                                                plugin));
+#endif
   GNUNET_free (lib_name);
 }
 
