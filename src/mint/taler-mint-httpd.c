@@ -561,7 +561,7 @@ run_fake_client ()
                "Failed to run both `nc' and `ncat': %s\n",
                strerror (errno));
     }
-    exit (0);
+    _exit (1);
   }
   /* parent process */
   GNUNET_break (0 == close (fd));
@@ -757,7 +757,6 @@ main (int argc,
       TMH_plugin->drop_temporary (TMH_plugin->cls,
                                   session);
   }
-
   TALER_MINTDB_plugin_unload (TMH_plugin);
   return (GNUNET_SYSERR == ret) ? 1 : 0;
 }
