@@ -536,7 +536,6 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
         free_commit_coins (commit_coin,
                            TALER_CNC_KAPPA,
                            num_newcoins);
-        GNUNET_free (link_enc);
         return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
       }
       rcc->refresh_link
