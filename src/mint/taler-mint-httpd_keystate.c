@@ -545,7 +545,7 @@ free_denom_key (void *cls,
  * @param key_state the key state to release
  */
 static void
-TMH_KS_release_ (struct TMH_KS_StateHandle *key_state)
+ks_release_ (struct TMH_KS_StateHandle *key_state)
 {
   GNUNET_assert (0 < key_state->refcnt);
   key_state->refcnt--;
@@ -578,13 +578,15 @@ TMH_KS_release_ (struct TMH_KS_StateHandle *key_state)
 /**
  * Release key state, free if necessary (if reference count gets to zero).
  *
+ * @param location name of the function in which the lock is acquired
  * @param key_state the key state to release
  */
 void
-TMH_KS_release (struct TMH_KS_StateHandle *key_state)
+TMH_KS_release_ (const char *location,
+                 struct TMH_KS_StateHandle *key_state)
 {
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
-  TMH_KS_release_ (key_state);
+  ks_release_ (key_state);
   GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
 }
 
@@ -594,10 +596,11 @@ TMH_KS_release (struct TMH_KS_StateHandle *key_state)
  * For every call to #TMH_KS_acquire(), a matching call
  * to #TMH_KS_release() must be made.
  *
+ * @param location name of the function in which the lock is acquired
  * @return the key state
  */
 struct TMH_KS_StateHandle *
-TMH_KS_acquire (void)
+TMH_KS_acquire_ (const char *location)
 {
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct TMH_KS_StateHandle *key_state;
@@ -609,7 +612,7 @@ TMH_KS_acquire (void)
   if ( (NULL != internal_key_state) &&
        (internal_key_state->next_reload.abs_value_us <= now.abs_value_us) )
   {
-    TMH_KS_release_ (internal_key_state);
+    ks_release_ (internal_key_state);
     internal_key_state = NULL;
   }
   if (NULL == internal_key_state)

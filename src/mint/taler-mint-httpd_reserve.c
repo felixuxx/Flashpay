@@ -136,6 +136,7 @@ TMH_RESERVE_handler_reserve_withdraw (struct TMH_RequestHandler *rh,
   if (NULL == dki)
   {
     TMH_PARSE_release_data (spec);
+    TMH_KS_release (ks);
     return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "denom_pub");
   }
