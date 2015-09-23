@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 GNUnet e.V.
+  Copyright (C) 2014, 2015 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -136,9 +136,9 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
   res = TMH_PARSE_json_data (connection,
                              root,
                              spec);
+  json_decref (root);
   if (GNUNET_OK != res)
   {
-    json_decref (root);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   if (GNUNET_YES !=
@@ -146,7 +146,6 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
 				      wire))
   {
     TMH_PARSE_release_data (spec);
-    json_decref (root);
     return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "wire");
   }
@@ -156,7 +155,6 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
                                            at,
                                            wire);
   TMH_PARSE_release_data (spec);
-  json_decref (root);
   return res;
 }
 
