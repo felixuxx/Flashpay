@@ -4,7 +4,7 @@
 \usepackage{palatino}
 \usepackage{xspace}
 \usepackage{microtype}
-\usepackage{tikz}
+\usepackage{tikz,eurosym}
 \usepackage{amsmath,amssymb}
 \usepackage{enumitem}
 \usetikzlibrary{shapes,arrows}
@@ -89,7 +89,7 @@ total control of the population, or create weak states with almost
 anarchistic economies.
 
 The Taler protocol is havily based on ideas from
-Chaum~\cite{1983blind} and also follows Chaum's basic architecture of
+Chaum~\cite{chaum1983blind} and also follows Chaum's basic architecture of
 customer, merchant and mint (Figure~\ref{fig:cmm}). The two designs
 share the key first step where the {\em customer} withdraws digital
 {\em coins} from the {\em mint} with unlinkability provided via blind
@@ -175,12 +175,12 @@ believe needs a payment system with the following properties:
     Thus, coins cannot just be issued in the smallest unit of currency,
     and a mechanism to give {\em change} must be provided to ensure
     that customers with sufficient total funds can always spend them.
-    For example, a customer may want to pay \eur{49,99} using a
-    \eur{100,00} coin.  The system must then support giving change in
-    the form of say two fresh \eur{0,01} and \eur{50,00} coins.  Those
+    For example, a customer may want to pay \EUR{49,99} using a
+    \EUR{100,00} coin.  The system must then support giving change in
+    the form of say two fresh \EUR{0,01} and \EUR{50,00} coins.  Those
     coins must be {\em unlinkable}: an adversary should not be able to
     relate transactions with either of the new coins to the original
-    \eur{100,00} coin or transaction or the other change being generated.
+    \EUR{100,00} coin or transaction or the other change being generated.
 \end{description}
 
 Instead of using cryptographic methods like restrictive blind
