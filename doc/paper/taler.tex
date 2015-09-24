@@ -923,6 +923,31 @@ that is unlinkable to the refunded transaction.
 
 \section{Discussion}
 
+Taler's security is largely equivalent to that of Chaum's original
+design without online checks (and without the cut-and-choose
+revelation of double-spending customers for offline spending).  We
+specifically note that the digital equivalent of the ``Columbian Black
+Market Exchange''~\cite{fatf1997} is a theoretical problem for both
+Chaum and Taler, as individuals with a strong mutual trust foundation
+can simply copy electronic coins and thereby establish a limited form
+of black transfers.  However, unlike the situation with physical
+checks with blank recipients in the Columbian black market, the
+transitivity is limited as each participant can deposit the electronic
+coins and thereby cheat any other participant, while in the Columbian
+black market each participant only needs to trust the issuer of the
+check and not also all previous owners of the physical check.
+
+As with any unconditionally anonymous payment system, the ``Perfect
+Crime'' attack~\cite{solms1992perfect} where blackmail is used to
+force the mint to issue anonymous coins also continues to apply in
+principle.  However, as mentioned Taler does faciliate limits on
+withdrawals, which we believe is a better trade-off than the
+problematic escrow systems where the necessary intransparency
+actually facilitates voluntary cooperation between the mint and
+criminals~\cite{sander1999escrow} and where state can selectively
+deanonymize activists to support the deep state's quest for absolute
+security.
+
 \subsection{Offline Payments}
 
 Chaum's original proposals for anonymous digital cash avoided the need
@@ -952,28 +977,22 @@ currency.  A tax auditor can then request the merchant to reveal
 (meaningful) details about the business transaction ($\mathcal{D}$,
 $a$, $p$, $r$), including proof that applicable taxes were paid.
 
-If a merchant is not able to provide theses values, he can be punished
-in relation to the amount transferred by the traditional currency
-transfer.
+If a merchant is not able to provide theses values, he can be
+subjected to financial penalties by the state in relation to the
+amount transferred by the traditional currency transfer.
 
 
-\section{Future Work}
-
-%The legal status of the system needs to be investigated in the various
-%legal systems of the world.  However, given that the system enables
-%taxation and is able to impose withdrawal limits and thus is not
-%suitable for money laundering, we are optimistic that states will find
-%the design desirable.
+\subsection{System Performance}
 
 We performed some initial performance measurements for the various
-operations.  The main conclusion was that the computational and
-bandwidth cost for transactions described in this paper is smaller
-than $10^{-3}$ cent/transaction, and thus dwarfed by the other
-business costs for the mint.  However, this figure excludes the cost
-of currency transfers using traditional banking, which a mint operator
-would ultimately have to interact with.  Here, mint operators should
-be able to reduce their expenses by aggregating multiple transfers to
-the same merchant.
+operations on our mint implementation.  The main conclusion was that
+the computational and bandwidth cost for transactions described in
+this paper is smaller than $10^{-3}$ cent/transaction, and thus
+dwarfed by the other business costs for the mint.  However, this
+figure excludes the cost of currency transfers using traditional
+banking, which a mint operator would ultimately have to interact with.
+Here, mint operators should be able to reduce their expenses by
+aggregating multiple transfers to the same merchant.
 
 
 \section{Conclusion}
