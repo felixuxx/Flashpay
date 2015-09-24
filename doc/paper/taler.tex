@@ -842,13 +842,14 @@ For a coin that was successfully refreshed, the mint responds to a
 request $S_{C'}(\mathtt{link})$ with $(T^{(\gamma)}_p$, $E_{\gamma},
 \widetilde{C})$.
 %
-This allows the owner of the old coin to also obtain the private key
-of the new coin, even if the refreshing protocol was illicitly
-executed by another party who learned $C'_s$ from the old owner.  As a
-result, linking ensures that access to the new coins minted by the
-refresh protocol is always {\em shared} with the owner of the melted
-coins.  This makes it impossible to abuse the refresh protocol for
-{\em transactions}.
+This allows the owner of the melted coin to also obtain the private
+key of the new coin, even if the refreshing protocol was illicitly
+executed with the help of another party who generated $C'_s$ and only
+provided $\vec{C'_p}$ and other required information to the old owner.
+As a result, linking ensures that access to the new coins minted by
+the refresh protocol is always {\em shared} with the owner of the
+melted coins.  This makes it impossible to abuse the refresh protocol
+for {\em transactions}.
 
 The linking request is not expected to be used at all during ordinary
 operation of Taler.  If the refresh protocol is used by Alice to
@@ -858,8 +859,12 @@ The fundamental reason why the mint must provide the link protocol is
 simply to provide a threat: if Bob were to use the refresh protocol
 for a transaction of funds from Alice to him, Alice may use a link
 request to gain shared access to Bob's coins. Thus, this threat
-prevents Bob from abusing the refresh protocol to evade taxation on
-transactions.
+prevents Alice and Bob from abusing the refresh protocol to evade
+taxation on transactions. If Bob trusts Alice to not execute the link
+protocol, then they can already conspire to evade taxation by simply
+exchanging the original private coin keys.  This is permitted in our
+taxation model as with such trust they are assumed to be the same
+entity.
 
 The auditor can anonymously check if the mint correctly implements the
 link request, thus preventing the mint operator from legally disabling
@@ -879,10 +884,10 @@ location of the missmatch in the case of the reveal step in the
 refresh protocol.  It is also possible that the server may claim that
 the client has been violating the protocol.  In these cases, the
 clients should verify any proofs provided and if they are acceptable,
-notify the user that they are somehow ``faulty''.  Similar, if the
+notify the user that they are somehow faulty.  Similar, if the
 server indicates that the client is violating the protocol, the
 client should record the interaction and enable the user to file a
-bug report with the developer.
+bug report.
 
 The second case is a faulty mint service provider.  Such faults will
 be detected because of protocol violations (for example, by providing
