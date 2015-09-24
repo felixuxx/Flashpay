@@ -340,8 +340,8 @@ customers and merchants at the expense of the mint not only creates
 legal risks for the mint (who has to make a statistical argument), but
 also would require the mint to learn about microdonations where the
 merchant did not get upgraded to a macropayment.  Thus, it is unclear
-how much Peppercoin would actually do to reduce the computational
-burden on the mint.
+how Peppercoin would actually reduce the computational burden on the
+mint.
 
 
 \section{Design}
@@ -359,17 +359,19 @@ merchant must agree on the same \emph{mint}, which serves as an
 intermediary for the financial transaction between the two.  The mint
 is responsible for allowing the customer to obtain the anonymous
 digital currency and for enabling the merchant to convert the
-anonymous digital currency back to some traditional currency.
+digital coins back to some traditional currency.  The \emph{auditor}
+assures customers and merchants that the mint operates correctly.
 
 \subsection{Security model}
 
 Taler's security model assumes that cryptographic primitives are
 secure and that each participant is under full control of his system.
 The contact information of the mint is known to both customer and
-merchant from the start.  Furthermore, the merchant is known to the
-customer and we assume that an anonymous, reliable bi-directional
-communication channel can be established by the customer to both the
-mint and the merchant.
+merchant from the start.  Furthermore, the merchant communication's
+authenticity is assured to the customer (for example using X.509
+certificates~\cite{rfc5280}) and we assume that an anonymous, reliable
+bi-directional communication channel can be established by the
+customer to both the mint and the merchant.
 
 The mint is trusted to hold funds of its customers and to forward them
 when receiving the respective deposit instructions from the merchants.
@@ -377,7 +379,9 @@ Customer and merchant can have some assurances about the mint's
 liquidity and operation, as the mint has proven reserves, is subject
 to the law, and can have its business is regularly audited (for
 example, by the government or a trusted third party auditor).
-Audits of the mint's accounts must reveal any possible fraud.
+Regular audits of the mint's accounts must reveal any possible fraud
+before the mint is allowed to destroy the corresponding accumulated
+cryptographic proofs and book its fees as profits.
 %
 The merchant is trusted to deliver the service or goods to the
 customer upon receiving payment.  The customer can seek legal relief
@@ -387,7 +391,6 @@ and that he paid his obligations.
 Neither the merchant nor the customer may have any ability to {\em
   effectively} defraud the mint or the state collecting taxes.  Here,
 ``effectively'' means that the expected return for fraud is negative.
-%
 Note that customers do not need to be trusted in any way, and that in
 particular it is never necessary for anyone to try to recover funds
 from customers using legal means.
@@ -462,12 +465,11 @@ merchant.  In this respect, Taler provides exactly the same scheme for
 unconditional anonymous payments as was proposed by
 Chaum~\cite{chaum1983blind,chaum1990untraceable} over 30 years ago.
 
-While the customer thus has anonymity for his purchase, the mint will
+While the customer thus has anonymity for purchases, the mint will
 always learn the merchant's identity in order to credit the merchant's
-account.  This is also necessary for taxation, as Taler is supposed
+account.  This is simply necessary for taxation, as Taler is supposed
 to make information about funds received by any entity transparent
-to the state.  The merchant has thus no reason to anonymize his
-communication with the mint.
+to the state.
 % Technically, the merchant could still
 %use an anonymous communication channel to communicate with the mint.
 %However, in order to receive the traditional currency the mint will
@@ -489,10 +491,11 @@ communication with the mint.
 
 \subsection{Coins}
 
-A \emph{coin} is a digital token which derives its financial value
-from a signature on the coin's identifier by a mint.  The mint is
-expected to have multiple {\em coin signing key} pairs available for
-signing, each representing a different coin denomination.
+A \emph{coin} in Taler is a public-private key pair which derives its
+financial value from a signature over the coin's public key by a mint.
+The mint is expected to have multiple {\em coin signing key} pairs
+available for signing, each representing a different coin
+denomination.
 
 The coin signing keys have an expiration date (typically measured in
 years), and coins signed with a coin signing key must be spent (or
@@ -513,15 +516,15 @@ To ensure that the mint does not enable deanonymization of users by
 signing each coin with a fresh coin signing key, the mint must
 publicly announce the coin signing keys in advance.  Those
 announcements are expected to be signed with an off-line long-term
-private {\em master signing key} of the mint and possibly the auditor.
+private {\em master signing key} of the mint and the auditor.
 
 Before a customer can withdraw a coin from the mint, he has to pay the
 mint the value of the coin, as well as processing fees.  This is done
-using other means of payments, such as wire transfers~\cite{sepa} or
+using other means of payments, such as wire transfers or
 by having a personal {\em reserve} at the mint (which is equivalent to
 a bank account with a positive balance).  Taler assumes that the
 customer has a {\em withdrawal authorization key} to identify himself
-as authorized to withdraw funds from the reserved.  By signing the
+as authorized to withdraw funds from the reserve.  By signing the
 withdrawal request messages using the withdrawal authorization key,
 the customer can prove to the mint that he is the individual
 authorized to withdraw anonymous digital coins from the reserve.  The
@@ -529,10 +532,11 @@ mint will record the withdrawal messages with the reserve record as
 proof that the anonymous digital coin was created for the correct
 customer.  We note that the specifics of how the customer
 authenticates to the mint are orthogonal to the rest of the system,
-and multiple methods can be supported. To put it differently, unlike
-modern cryptocurrencies like BitCoin, Taler's design simply
-acknowledges that primitive accumulation~\cite{engels1844} predates
-the system and that a secure method to authenticate owners exists.
+and multiple methods can be supported.
+%To put it differently, unlike
+%modern cryptocurrencies like BitCoin, Taler's design simply
+%acknowledges that primitive accumulation~\cite{engels1844} predates
+%the system and that a secure method to authenticate owners exists.
 
 After a coin is minted, the customer is the only entity that knows the
 private key of the coin, making him the \emph{owner} of the coin.  The
@@ -556,46 +560,36 @@ transfer the funds to the merchant using a wire transfer or by
 crediting the merchant's individual account, depending on what is
 appropriate to the domain of the traditional currency.
 
-
-\paragraph{Partial spending.}
-
 To allow exact payments without requiring the customer to keep a large
-amount of ``change'' in stock, the payment systems allows partial
-spending of coins.  Consequently, the mint the must not only store the
-identifiers of spent coins, but also the fraction of the coin that has
-been spent.
-
-\paragraph{Online checks.}
-
-For secure transactions, the merchant is expected to perform an online
-check to detect double-spending.  Thus, the merchant must deposit the
-coin with the mint (and validate the signature from the mint
-confirming the validity of the transaction) before proceeding with its
-business logic.
+amount of ``change'' in stock and possibly perform thousands of
+signatures for larger transactions, the payment systems allows partial
+spending where just a fraction of a coin's total value is transferred.
+Consequently, the mint the must not only store the identifiers of
+spent coins, but also the fraction of the coin that has been spent.
 
 
 \subsection{Refreshing Coins}
 
-In the payment scenarios there are several cases where a customer will
-reveal the public key of a coin to a merchant, but not ultimately sign
-over the full value of the coin.  If the customer then continues to
-use the remainder of the value of the coin in other transactions,
-merchants and the mint could link the various transactions as they all
-share the same public key for the coin.
+In this and other scenarios it is thus possible that a customer has
+revealed the public key of a coin to a merchant, but not ultimately
+signed over the full value of the coin.  If the customer then
+continues to directly use the coin in other transactions, merchants
+and the mint could link the various transactions as they all share the
+same public key for the coin.
 
 Thus, the owner might want to exchange such a {\em dirty} coin for a
 {\em fresh} coin to ensure unlinkability of future transactions with
 the previous operation.  Even if a coin is not dirty, the owner of a
 coin may want to exchange a coin if the respective coin signing key is
 about to expire.  All of these operations are supported with the {\em
-  coin refreshing protocol}, which allows the owner of a coin to
-exchange existing coins (or their remaining value) for fresh coins
-with a new public-private key pairs.  Refreshing does not use the
-ordinary spending operation as the owner of a coin should not have to
-pay taxes on this operation.  Because of this, the refreshing protocol
-must assure that owner stays the same.  After all, the coin refreshing
-protocol must not be usable for transactions, as transactions in Taler
-must be taxable.
+  coin refreshing protocol}, which allows the owner of a coin to {\em
+  melt} existing coins (redeeming their remaining value) for fresh
+coins with a new public-private key pairs.  Refreshing does not use
+the ordinary spending operation as the owner of a coin should not have
+to pay taxes on this operation.  Because of this, the refreshing
+protocol must assure that owner stays the same.  After all, the coin
+refreshing protocol must not be usable for transactions, as
+transactions in Taler must be taxable.
 
 Thus, one main goal of the refreshing protocol is that the mint must
 not be able to link the fresh coin's public key to the public key of
@@ -605,12 +599,13 @@ fresh coin.  This way, refreshing cannot be used to construct a
 transaction --- the owner of the dirty coin remains in control of the
 fresh coin.
 
-As with other operations, the refreshing protocol must also protect
-the mint from double-spending; similarly, the customer has to have
-cryptographic evidence if there is any misbehaviour by the mint.
-Finally, the mint may choose to charge a transaction fee for
-refreshing by reducing the value of the generated fresh coins
-in relation to the value of the melted coins.
+%As with other operations, the refreshing protocol must also protect
+%the mint from double-spending; similarly, the customer has to have
+%cryptographic evidence if there is any misbehaviour by the mint.
+%Finally, the mint may choose to charge a transaction fee for
+%refreshing by reducing the value of the generated fresh coins
+%in relation to the value of the melted coins.
+%
 %Naturally, all such transaction fees should be clearly stated as part
 %of the business contract offered by the mint to customers and
 %merchants.
@@ -969,44 +964,56 @@ if the owner's identity were embedded in coins, it would be leaked to
 the mint as part of the reveal operation in the cut-and-choose
 operation of the refreshing protocol.
 
-\subsection{Merchant Tax Audits}
+%\subsection{Merchant Tax Audits}
+%
+%For a tax audit on the merchant, the mint includes the business
+%transaction-specific hash in the transfer of the traditional
+%currency.  A tax auditor can then request the merchant to reveal
+%(meaningful) details about the business transaction ($\mathcal{D}$,
+%$a$, $p$, $r$), including proof that applicable taxes were paid.
+%
+%If a merchant is not able to provide theses values, he can be
+%subjected to financial penalties by the state in relation to the
+%amount transferred by the traditional currency transfer.
 
-For a tax audit on the merchant, the mint includes the business
-transaction-specific hash in the transfer of the traditional
-currency.  A tax auditor can then request the merchant to reveal
-(meaningful) details about the business transaction ($\mathcal{D}$,
-$a$, $p$, $r$), including proof that applicable taxes were paid.
+\subsection{Cryptographic proof vs. evidence}
 
-If a merchant is not able to provide theses values, he can be
-subjected to financial penalties by the state in relation to the
-amount transferred by the traditional currency transfer.
+In this paper we have use the term ``proof'' in many places as the
+protocol provides cryptographic proofs of which parties behave
+correctly or incorrectly. However, as~\cite{fc2014murdoch} point out,
+in practice financial systems need to provide evidence that holds up
+in courts.  Taler's implementation is designed to export evidence and
+upholds the core principles described in~\cite{fc2014murdoch}.  In
+particular, in providing the cryptographic proofs as evidence none of
+the participants have to disclose their core secrets, the process is
+covered by standard testing proceedures, and the full trusted
+computing base (TCB) is public and free software.
+
+%\subsection{System Performance}
+%
+%We performed some initial performance measurements for the various
+%operations on our mint implementation.  The main conclusion was that
+%the computational and bandwidth cost for transactions described in
+%this paper is smaller than $10^{-3}$ cent/transaction, and thus
+%dwarfed by the other business costs for the mint.  However, this
+%figure excludes the cost of currency transfers using traditional
+%banking, which a mint operator would ultimately have to interact with.
+%Here, mint operators should be able to reduce their expenses by
+%aggregating multiple transfers to the same merchant.
 
 
-\subsection{System Performance}
+%\section{Conclusion}
 
-We performed some initial performance measurements for the various
-operations on our mint implementation.  The main conclusion was that
-the computational and bandwidth cost for transactions described in
-this paper is smaller than $10^{-3}$ cent/transaction, and thus
-dwarfed by the other business costs for the mint.  However, this
-figure excludes the cost of currency transfers using traditional
-banking, which a mint operator would ultimately have to interact with.
-Here, mint operators should be able to reduce their expenses by
-aggregating multiple transfers to the same merchant.
-
-
-\section{Conclusion}
-
-We have presented an efficient electronic payment system that
-simultaneously addresses the conflicting objectives created by the
-citizen's need for privacy and the state's need for taxation.  The
-coin refreshing protocol makes the design flexible and enables a
-variety of payment methods.  The current balance and profits of the
-mint are also easily determined, thus audits can be used to ensure
-that the mint operates correctly.  The libre implementation and open
-protocol may finally enable modern society to upgrade to proper
-electronic wallets with efficient, secure and privacy-preserving
-transactions.
+%We have presented an efficient electronic payment system that
+%simultaneously addresses the conflicting objectives created by the
+%citizen's need for privacy and the state's need for taxation.  The
+%coin refreshing protocol makes the design flexible and enables a
+%variety of payment methods.  The current balance and profits of the
+%mint are also easily determined, thus audits can be used to ensure
+%that the mint operates correctly.  The libre implementation and open
+%protocol may finally enable modern society to upgrade to proper
+%electronic wallets with efficient, secure and privacy-preserving
+%transactions.
 
 % commented out for anonymized submission
 %\subsection*{Acknowledgements}
@@ -1020,21 +1027,36 @@ transactions.
 
 
 \bibliographystyle{alpha}
-\bibliography{taler}
+\bibliography{taler,rfc}
 
+\newpage
 \appendix
 
 \section{Optional features}
 
 In this appendix we detail various optional features that can
-be added to the basic protocol.
+be added to the basic protocol to reduce transaction costs for
+certain interactions.
 
 However, we note that Taler's transaction costs are expected to be so
-low that these features are not particularly useful, as they are about
-reducing interactions with the mint to reduce costs.  In particular,
-we expect that transactions with amounts below Taler's transaction
-costs to be economically meaningless.  Nevertheless, we document
-various ways how this could be achieved.
+low that these features are likely not particularly useful in
+practice: When we performed some initial performance measurements for
+the various operations on our mint implementation, the main conclusion
+was that the computational and bandwidth cost for transactions
+described in this paper is smaller than $10^{-3}$ cent/transaction,
+and thus dwarfed by the other business costs for the mint.  We note
+that the $10^{-3}$ cent/transaction estimate excludes the cost of wire
+transfers using traditional banking, which a mint operator would
+ultimately have to interact with.  Here, mint operators should be able
+to reduce their expenses by aggregating multiple transfers to the same
+merchant.
+
+As a result of the low cost of the interaction with the mint in Taler
+today, we expect that transactions with amounts below Taler's internal
+transaction costs to be economically meaningless.  Nevertheless, we
+document various ways how such transactions could be achieved within
+Taler.
+
 
 
 \subsection{Incremental spending}
