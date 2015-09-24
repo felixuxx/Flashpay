@@ -50,19 +50,18 @@
 This paper introduces Taler, a Chaum-style digital currency using
 blind signatures that enables anonymous payments while ensuring that
 entities that receive payments are auditable and thus taxable.  Taler
-differs from Chaum's original proposal in that customers can never defraud anyone,
-merchants can only fail to deliver the merchandise to the customer,
-and mints can be fully audited. Consequently, enforcement of honest
-behavior is better and more timely than with Chaum, and is at least as
-strict as with legacy credit card payment systems that do not provide
-for privacy.  Furthermore, Taler allows fractional and incremental
-payments, and even in this case is still able to guarantee
-unlinkability of transactions via a new coin refreshing protocol.
-Finally, Taler also supports microdonations using probabilistic
-transactions.  We argue that Taler provides a secure digital currency
-for modern liberal societies as it is a flexible, libre and efficient
-protocol and adequately balances the state's need for monetary control
-with the citizen's needs for private economic activity.
+differs from Chaum's original proposal in that customers can never
+defraud anyone, merchants can only fail to deliver the merchandise to
+the customer, and mints can be fully audited. Consequently,
+enforcement of honest behavior is better and more timely than with
+Chaum, and is at least as strict as with legacy credit card payment
+systems that do not provide for privacy.  Furthermore, Taler allows
+fractional payments, and even in this case is still able to guarantee
+unlinkability of transactions via a new coin refreshing protocol.  We
+argue that Taler provides a secure digital currency for modern liberal
+societies as it is a flexible, libre and efficient protocol and
+adequately balances the state's need for monetary control with the
+citizen's needs for private economic activity.
 \end{abstract}
 
 \section{Introduction}
@@ -79,115 +78,25 @@ states where economic activity is based largely on coins, paper money
 or even barter.  Here, the state is often unable to effectively
 monitor or tax economic activity, and this limits the ability of the
 state to shape the society.  As bribery is virtually impossible to
-detect, it is widespread and not limited to social elites.
+detect, corruption is widespread and not limited to social elites.
 ZeroCoin~\cite{miers2013zerocoin} is an example for translating such
 an economy into the digital realm.
 
-Taler is supposed to offer a middleground between an authoritarian
-state in total control of the population and weak states with almost
-anarchistic economies.  Specifically, we believe that a liberal
-democracy needs a payment system with the following properties:
+This paper describes Taler, a simple and practical payment system for
+a modern social-liberal society, which is not be served well by
+current payment systems which enable either an authoritarian state in
+total control of the population, or create weak states with almost
+anarchistic economies.
 
-\begin{description}
-  \item[Customer Anonymity] It must be impossible for mints, merchants
-    and even a global active adversary, to trace the spending behavior
-    of a customer.
-  \item[Unlinkability] Merchants must not be able to tell if two
-    transactions were performed by the same customer.  It must be
-    infeasible to link a set of transactions to the same (anonymous)
-    customer. %, even when taking aborted transactions into account.
-  \item[Taxability] In many current legal systems, it is the
-    responsibility of the merchant to deduct (sales) taxes from
-    purchases made by customers, or to pay (income) taxes for payments
-    received for work.
-    %Taxation is neccessary for the state to
-    %provide legitimate social functions, such as education.  Thus, a payment
-    %system must facilitate sales, income and transaction taxes.
-    This specifically means that it must be able to audit merchants (or
-    generally anybody receiving money), and thus the receiver of
-    electronic cash must be easily identifiable.
-    %non-anonymous, as this would enable tax fraud.
-  \item[Verifiability] The payment system should try to minimize the
-    trust necessary between the participants.  In particular, digital
-    signatures should be used extensively in order to be able to
-    resolve disputes between the involved parties.  Nevertheless,
-    customers must never be able to defraud anyone, and merchants must
-    at best be able to defraud their customers by not delivering the
-    on the agreed contract.  Neither merchants nor customers must ever
-    be able to commit fraud against the mint.  Both customers and
-    merchants must receive cryptographic proofs of bad behavior in
-    case of protocol violations by the mint.  Thus, only the mint will
-    have to be tightly audited and regulated.  The design must make it
-    easy to audit the finances of the mint.
-  \item[Ease of Deployment] %The system should be easy to deploy for
- %   real-world applications.  In order to lower the entry barrier and
- %   acceptance of the system, a gateway to the existing financial
- %   system should be provided, i.e. by integrating internet-banking
- %   protocols such as HBCI/FinTAN.
-    The digital currency should be
-    tied 1:1 to existing currencies (such as EUR or USD) to avoid
-    exposing users to unnecessary risks from currency fluctuations.
-    Moreover, the system must have a free software reference
-    implementation and an open protocol standard.
-%    The protocol should
-%    be able to run easily over HTTP(S).
-  \item[Low resource consumption] In order to minimize the operating
-    costs and environmental impact of the payment system, it must
-    avoid the reliance on expensive and ``wasteful'' computations
-    such as proof-of-work.
-  \item[Large Payments and Microdonations] The payment system needs to
-    handle large payments in a reliable manner.  Furthermore, for
-    microdonations the system should allow sacrificing reliability to
-    achieve economic viability.
-\end{description}
-
-Taler builds on ideas from Chaum~\cite{chaum1983blind}, who proposed a
-digital currency system that would provide (some) customer anonymity
-while disclosing the identity of the merchants.  Chaum's digital cash
-system had some limitations and ultimately failed to be widely
-adopted.  In our assessment, key reasons include:
-
-\begin{itemize}
- \item The use of patents to protect the technology; a payment system
-   must be libre --- free software --- to have a chance for widespread
-   adoption.
- \item The use of off-line payments and thus deferred detection of
-   double-spending, which could require the mint to attempt to recover
-   funds from customers via the legal system.  This creates a
-   significant business risk for the mint, as the system is not
-   self-enforcing from the perspective of the mint.  In 1983 off-line
-   payments might have been a necessary feature.  However, today
-   requiring network connectivity is feasible and avoids the business
-   risks associated with deferred fraud detection.
- \item % In addition to the risk of legal disputes with fradulent
-   % merchants and customers,
-   Chaum's published design does not clearly
-   limit the financial damage a mint might suffer from the
-   disclosure of its private online signing key.
-% \item Chaum did not support fractional payments, and Brand's
-%   extensions for fractional payments broke unlinkability and thus
-%   limited anonymity.  Chaum also did not support microdonations,
-%   leaving an opportunity for expanding payments into additional areas
-%   unexplored.
-% \item Chaum's system was implemented at a time where the US market
-%   was still dominated by paper checks and the European market was
-%   fragmented into dozens of currencies.  Today, SEPA provides a
-%   unified currency and currency transfer method for most of Europe,
-%   significantly lowering the barrier to entry into this domain for
-%   a larger market.
-\end{itemize}
-
-This paper describes Taler, a simple and practical payment with the
-above goals in mind.  The basic idea is to use Chaum's model of
-customer, merchant and mint (Figure~\ref{fig:cmm}) where the customer
-withdraws digital currency from the mint with unlinkability provided
-via blind signatures.  In contrast to Chaum, Taler uses online
-detection of double-spending, thus ensuring the merchant instantly
-that a transaction is valid.  Instead of using cryptographic methods
-to enable fractional payments, the customer can simply include
-the fraction of a coin's value that is to be paid to the merchant in
-his message to the merchant.
-
+The Taler protocol is havily based on ideas from
+Chaum~\cite{1983blind} and also follows Chaum's basic architecture of
+customer, merchant and mint (Figure~\ref{fig:cmm}). The two designs
+share the key first step where the {\em customer} withdraws digital
+{\em coins} from the {\em mint} with unlinkability provided via blind
+signatures.  The coins can then be spend at a {\em merchant} who {\em
+  deposits} them at the mint.  Taler uses online detection of
+double-spending, thus assuring the merchant instantly that a
+transaction is valid.
 
 \begin{figure}[h]
 \centering
@@ -211,23 +120,102 @@ his message to the merchant.
 \label{fig:cmm}
 \end{figure}
 
+Taler was designed for use in a modern social-liberal society, which we
+believe needs a payment system with the following properties:
+
+\begin{description}
+  \item[Customer Anonymity] It must be impossible for mints, merchants
+    and even a global active adversary, to trace the spending behavior
+    of a customer.
+  \item[Unlinkability] Merchants must not be able to tell if two
+    transactions were performed by the same customer.  It must be
+    infeasible to link a set of transactions to the same (anonymous)
+    customer. %, even when taking aborted transactions into account.
+  \item[Taxability] In many current legal systems, it is the
+    responsibility of the merchant to deduct (sales) taxes from
+    purchases made by customers, or to pay (income) taxes for payments
+    received for work.
+    %Taxation is neccessary for the state to
+    %provide legitimate social functions, such as education.  Thus, a payment
+    %system must facilitate sales, income and transaction taxes.
+    This specifically means that the state must be able to audit merchants (or
+    generally anybody receiving money), and thus the receiver of
+    electronic cash must be easily identifiable.
+    %non-anonymous, as this would enable tax fraud.
+  \item[Verifiability] The payment system should try to minimize the
+    trust necessary between the participants.  In particular, digital
+    signatures should be used extensively in order to be able to
+    resolve disputes between the involved parties.  Nevertheless,
+    customers must never be able to defraud anyone, and merchants must
+    at best be able to defraud their customers by not delivering the
+    on the agreed contract.  Neither merchants nor customers must ever
+    be able to commit fraud against the mint.  Both customers and
+    merchants must receive cryptographic proofs of bad behavior in
+    case of protocol violations by the mint.  Thus, only the mint will
+    have to be tightly audited and regulated.  The design must make it
+    easy to audit the finances of the mint.
+  \item[Ease of Deployment] %The system should be easy to deploy for
+ %   real-world applications.  In order to lower the entry barrier and
+ %   acceptance of the system, a gateway to the existing financial
+ %   system should be provided, i.e. by integrating internet-banking
+ %   protocols such as HBCI/FinTAN.
+    The digital currency should be
+    tied 1:1 to existing currencies (such as EUR or USD) to avoid
+    exposing citizens to unnecessary risks from currency fluctuations.
+    Moreover, the system must have a free software reference
+    implementation and an open protocol standard.
+%    The protocol should
+%    be able to run easily over HTTP(S).
+  \item[Low resource consumption] In order to minimize the operating
+    costs and environmental impact of the payment system, it must
+    avoid the reliance on expensive and ``wasteful'' computations
+    such as proof-of-work.
+  \item[Fractional payments] The payment system needs to handle both
+    small and large payments in an efficient and reliable manner.
+    Thus, coins cannot just be issued in the smallest unit of currency,
+    and a mechanism to give {\em change} must be provided to ensure
+    that customers with sufficient total funds can always spend them.
+    For example, a customer may want to pay \eur{49,99} using a
+    \eur{100,00} coin.  The system must then support giving change in
+    the form of say two fresh \eur{0,01} and \eur{50,00} coins.  Those
+    coins must be {\em unlinkable}: an adversary should not be able to
+    relate transactions with either of the new coins to the original
+    \eur{100,00} coin or transaction or the other change being generated.
+\end{description}
+
+Instead of using cryptographic methods like restrictive blind
+signatures to achieve divisiblity, Taler's fractional payments use a
+simpler, more powerful mechanism.  In Taler, a coin is not simply a
+unique random token, but a private key.  Thus, the transfer of a coin
+can be performed by signing a message using this private key.  Thus,
+the customer can simply specify the fraction of a coin's value that is
+to be paid to the merchant in the cryptographically signed deposit
+message given to the merchant.  A key contribution of Taler is the
+{\em refresh} protocol, which enables a customer to exchange the
+residual value of a coin for fresh coins, thereby providing unlinkable
+change.  Using online checks, the mint can trivially ensure that all
+transactions involving the same coin do not exceed the total value of
+the coin.
+
 Online fraud detection can create problems if the network fails during
 the initial steps of a transaction.  For example, a law enforcement
 agency might try to entrap a customer by offering illicit goods and
-then aborting the transaction after learning the public key of the
-coin.  If the customer were to then later spend that coin on a
-purchase with shipping, the law enforcement agency could link the two
-transactions and might be able to use the shipping to deanonymize the
-customer.  Similarly, fractional payments also lead to the
-possibility of customers wanting to legitimately use the same coin
-twice.  Taler addresses this problem by allowing customers to {\em
-  refresh} coins.  Refreshing means that a customer is able to
-exchange one coin for a fresh coin, with the old and the new coin
-being unlinkable (except for the customer himself).  Taler ensures
-that the {\em entity} of the user owning the new coin is the same as the
-entity of the user owning the old coin, thus making sure that the
-refreshing protocol cannot be abused for money laundering or other
-illicit transactions.
+then cancelling the transaction after learning the public key of the
+coin.  This is equivalent to a benign merchant giving a dissatisfied
+(anonymous) customer a {\em refund} by sending a message affirming
+the cancellation.
+
+If the customer later spends the refunded coin on a purchase with
+shipping, the state can link the two transactions and might be able to
+use the shipping address to deanonymize the customer.  As with support
+for fractional payments, Taler addresses this problem by allowing
+customers to refresh coins, thereby destroying the link between the
+refunded (or aborted) transaction and the coin.
+
+Taler ensures that the {\em entity} of the user owning the new coin is
+the same as the entity of the user owning the old coin, thus making
+sure that the refreshing protocol cannot be abused for money
+laundering or other illicit transactions.
 
 
 \section{Related Work}
@@ -268,24 +256,75 @@ irredeemable problems inherent in these systems:
     currency exchange and exascerbates the problems with currency fluctuations.
 \end{itemize}
 
+GreenCoinX\footnote{\url{https://www.greencoinx.com/}} is a more
+recent AltCoin where the company promises to identify the owner of
+each coin via e-mail addresses and phone numbers.  While it is unclear
+from their technical description how this identification would be
+enforced against a determined adversary, the resulting payment system
+would also merely impose a totalitarian financial panopticon on a
+BitCoin-style money supply and transaction model, thus largely
+combining what we would consider to be the drawbacks of these existing
+systems.
+
 \subsection{Chaum-style electronic cash}
 
+Taler builds on ideas from Chaum~\cite{chaum1983blind}, who proposed a
+digital payment system that would provide (some) customer anonymity
+while disclosing the identity of the merchants.  Chaum's digital cash
+(DigiCash) system had some limitations and ultimately failed to be widely
+adopted.  In our assessment, key reasons for DigiCash's failure that
+Taler avoids include:
+
+\begin{itemize}
+ \item The use of patents to protect the technology; a payment system
+   must be libre --- free software --- to have a chance for widespread
+   adoption.
+ \item The use of off-line payments and thus deferred detection of
+   double-spending, which could require the mint to attempt to recover
+   funds from customers via the legal system.  This creates a
+   significant business risk for the mint, as the system is not
+   self-enforcing from the perspective of the mint.  In 1983 off-line
+   payments might have been a necessary feature.  However, today
+   requiring network connectivity is feasible and avoids the business
+   risks associated with deferred fraud detection.
+ \item % In addition to the risk of legal disputes with fradulent
+   % merchants and customers,
+   Chaum's published design does not clearly
+   limit the financial damage a mint might suffer from the
+   disclosure of its private online signing key.
+ \item Chaum did not support fractional payments or refunds without
+   breaking customer anonymity.
+%, and Brand's
+%   extensions for fractional payments broke unlinkability and thus
+%   limited anonymity.
+% \item Chaum's system was implemented at a time where the US market
+%   was still dominated by paper checks and the European market was
+%   fragmented into dozens of currencies.  Today, SEPA provides a
+%   unified currency and currency transfer method for most of Europe,
+%   significantly lowering the barrier to entry into this domain for
+%   a larger market.
+\end{itemize}
+
 Chaum's original digital cash system~\cite{chaum1983blind} was
-extended by Brands~\cite{brands1993efficient} with the ability to
-perform fractional payments; however, the transactions performed with
-the same coin then become linkable.
+extended by Brands~\cite{brands1993efficient} with the ability to {\em
+  divide} coins and thus spend (certain) fractions of a coin using
+restrictive blind signatures.  Compared to Taler, performing
+fractional payments is cryptographically way more expensive and
+moreover the transactions performed with ``divisions'' from the same
+coin do become linkable.
 %
 %Some argue that the focus on technically perfect but overwhelmingly
 %complex protocols, as well as the the lack of usable, practical
 %solutions lead to an abandonment of these ideas by
 %practitioners~\cite{selby2004analyzing}.
 %
+
 To our knowledge, the only publicly available effort to implement
-Chaum's idea is
-Opencoin~\cite{dent2008extensions}.  However,
-Opencoin seems to be neither actively developed nor used, and it is
-not clear to what degree the implementation is even complete.  Only a
-partial description of the Opencoin protocol is available to date.
+Chaum's idea is Opencoin~\cite{dent2008extensions}.  However, Opencoin
+seems to be neither actively developed nor used, and it is not clear
+to what degree the implementation is even complete.  Only a partial
+description of the Opencoin protocol is available to date.
+
 
 \subsection{Peppercoin}
 
@@ -313,14 +352,14 @@ constructions to provide unlinkability, online fraud detection and
 taxability.
 
 As with Chaum, the Taler system comprises three principal types of
-actors: The \emph{customer} is interested in receiving goods or
-services from the \emph{merchant} in exchange for payment.  When
-making a transaction, both the customer and the merchant must agree on
-the same \emph{mint}, which serves as an intermediary for the
-financial transaction between the two.  The mint is responsible for
-allowing the customer to obtain the anonymous digital currency and for
-enabling the merchant to convert the anonymous digital currency back
-to some traditional currency.
+actors (Figure~\ref{fig:cmm}): The \emph{customer} is interested in
+receiving goods or services from the \emph{merchant} in exchange for
+payment.  When making a transaction, both the customer and the
+merchant must agree on the same \emph{mint}, which serves as an
+intermediary for the financial transaction between the two.  The mint
+is responsible for allowing the customer to obtain the anonymous
+digital currency and for enabling the merchant to convert the
+anonymous digital currency back to some traditional currency.
 
 \subsection{Security model}
 
@@ -362,63 +401,72 @@ After all, without instrusive measures to take away control of the
 computing platform from its users, copying an electronic wallet from
 one computer to another can hardly be prevented by a payment system.
 Furthermore, it would also hardly be appropriate to tax the moving of
-funds between two computers owned by the same individual.  We thus
+funds between two computers owned by the same entity.  We thus
 need to clarify which kinds of transfers we expect to tax.
 
 Taler is supposed to ensure that the state can tax {\em transactions}.
-We define a transaction as the transfer of funds between {\em mutually
-  distrustful} entities.  Two entities are assumed to be mutually
-distrustful if they are unwilling to share control over assets.  If a
-private key is shared between two entities, then both entities have
-equal access to the credentials represented by the private key.  In a
-payment system this means that either entity could spent the
-associated funds.  Assuming the payment system has effective
-double-spending detection, this means that either entity has to
-constantly fear that the funds might no longer be available to it.
-Thus, ``transferring'' funds by sharing a private key implies that
-receiving party must trust the sender.  In Taler, making funds
-available by sharing a private key and thus sharing control is {\bf
-  not} considered a {\em transaction} and thus {\bf not} recorded for
-taxation.
-
 A {\em transaction} is a transfer where it is assured that one entity
 gains control over funds while at the same time another entity looses
-control over those funds.  Taler ensures taxability only when some
-entity acquires exclusive control over digital coins.  For
-transactions, the state can obtain information from the mint (or the
-bank) that identifies the entity that received the digital coins as
-well as the exact value of those coins.  Taler also allows the mint
-(and thus the state) to learn the value of digital coins withdrawn by
-a customer --- but not how, where or when they were spent.  Finally,
-to enable audits, the current balance and profits of the mint are also
-easily determined.
+control over those funds.  We further restrict transactions to apply
+only to the transfer of funds between {\em mutually distrustful}
+entities.  Two entities are assumed to be mutually distrustful if they
+are unwilling to share control over coins.  If a private key is shared
+between two entities, then both entities have equal access to the
+credentials represented by the private key.  In a payment system this
+means that either entity could spent the associated funds.  Assuming
+the payment system has effective double-spending detection, this means
+that either entity has to constantly fear that the funds might no
+longer be available to it.  Thus, sharing coins by copying a private
+key implies mutual trust between the two parties, in which case Taler
+will treat them as the same entity.  In Taler, making funds available
+by copying a private key and thus sharing control is {\bf not}
+considered a {\em transaction} and thus {\bf not} recorded for
+taxation.
+
+Taler ensures taxability only when some entity acquires exclusive
+control over the value of digital coins, which requires an interaction
+with the mint.  For such transactions, the state can obtain
+information from the mint (or the bank) that identifies the entity
+that received the digital coins as well as the exact value of those
+coins.  Taler also allows the mint (and thus the state) to learn the
+value of digital coins withdrawn by a customer --- but not how, where
+or when they were spent.
 
 \subsection{Anonymity}
 
 An anonymous communication channel (e.g. via Tor~\cite{tor-design}) is
 used for all communication between the customer and the merchant.
-Thus, the customer can remain anonymous; however, the system does reveal
-that the customer is one of the patrons of the mint.  Naturally, the
-customer-merchant operation might leak other information about the
-customer, such as a shipping address.  Such purchase-specific
-information leakage is outside of the scope of this work.
+Thus, the customer can remain anonymous limited only by the anonymous
+communication channel; however, the payment system does additionally
+reveal that the customer is one of the patrons of the mint.
+Naturally, the customer-merchant business operation might leak other
+information about the customer, such as a shipping address.
+Information leakage from shipping is in theory avoidable~\cite{apod}.
+Nevertheless, for Taler as a payment system, information leakage
+specific to the business logic is outside of the scope of the design.
 
 The customer may use an anonymous communication channel for the
 communication with the mint to avoid leaking IP address information;
 however, the mint will anyway be able to determine the customer's
 identity from the wire transfer or some other authentication process
-that the customer initiates to withdraw anonymous digital cash.  The
-scheme is anonymous because the mint will be unable to link the known
-identity of the customer that withdrew anonymous digital currency to
-the {\em purchase} performed later at the merchant.
-%  All the mint will be
-%able to confirm is that the customer is {\em one} of its patrons who
-%previously obtained the anonymous digital currency --- and of course
-%that the coin was not spent before.
+that the customer initiates to withdraw anonymous digital cash.  In
+fact, this is desirable as there might be rules and regulations
+designed to limit the amount of anonymous digital cash that an
+individual customer can withdraw in a given time period, similar to
+how states today sometimes impose limits on cash
+withdrawals~\cite{france2015cash,greece2015cash}.  Taler is only
+anonymous with respect to {\em payments}, as the mint will be unable
+to link the known identity of the customer that withdrew anonymous
+digital currency to the {\em purchase} performed later at the
+merchant.  In this respect, Taler provides exactly the same scheme for
+unconditional anonymous payments as was proposed by
+Chaum~\cite{chaum1983blind,chaum1990untraceable} over 30 years ago.
 
 While the customer thus has anonymity for his purchase, the mint will
-always learn the merchant's identity (which is necessary for
-taxation), and thus the merchant has no reason to anonymize his
+always learn the merchant's identity in order to credit the merchant's
+account.  This is also necessary for taxation, as Taler is supposed
+to make information about funds received by any entity transparent
+to the state.  The merchant has thus no reason to anonymize his
 communication with the mint.
 % Technically, the merchant could still
 %use an anonymous communication channel to communicate with the mint.
@@ -934,7 +982,9 @@ We have presented an efficient electronic payment system that
 simultaneously addresses the conflicting objectives created by the
 citizen's need for privacy and the state's need for taxation.  The
 coin refreshing protocol makes the design flexible and enables a
-variety of payment methods.  The libre implementation and open
+variety of payment methods.  The current balance and profits of the
+mint are also easily determined, thus audits can be used to ensure
+that the mint operates correctly.  The libre implementation and open
 protocol may finally enable modern society to upgrade to proper
 electronic wallets with efficient, secure and privacy-preserving
 transactions.
