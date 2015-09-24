@@ -620,9 +620,8 @@ message always first checks that the signature is valid, even though
 this is not explicitly stated below.  Also, whenever a signed message
 is transmitted, it is assumed that the receiver is told the public key
 (or knows it from the context) and that the signature contains
-additional identification as to the purpose of the signature (such
-that it is not possible to use a signature from one protocol step in a
-different context).
+additional identification as to the purpose of the signature, making
+it impossible to use a signature in a different context.
 
 When the mint signs messages (not coins), an {\em online message
   signing key} of the mint is used.  The mint's long-term offline key
@@ -658,9 +657,8 @@ following interaction with the mint:
         \begin{itemize}
            \item withdrawal key $W := (W_s,W_p)$ with private key $W_s$ and public key $W_p$,
            \item coin key $C := (C_s,C_p)$ with private key $C_s$ and public key $C_p$,
-           \item blinding factor $b$,
+           \item blinding factor $b$, and commits $\langle W, C, b \rangle$ to disk.
         \end{itemize}
-        and commits $\langle W, C, b \rangle$ to disk.
   \item The customer transfers an amount of money corresponding to (at least) $K_p$ to the mint, with $W_p$ in the subject line of the transaction.
   \item The mint receives the transaction and credits the $W_p$ reserve with the respective amount in its database.
   \item The customer sends $S_W(E_b(C_p))$ to the mint to request withdrawal of $C$; here, $E_b$ denotes Chaum-style blinding with blinding factor $b$.
@@ -675,21 +673,26 @@ following interaction with the mint:
         \end{enumerate}
         If the guards for the transaction fail, the mint sends a descriptive error back to the customer,
         with proof that it operated correctly (i.e. by showing the transaction history for the reserve).
-  \item The customer computes (and verifies) the unblind signature $S_K(C_p) = D_b(S_K(E_b(C_p)))$.
+  \item The customer computes (and verifies) the unblinded signature $S_K(C_p) = D_b(S_K(E_b(C_p)))$.
         The customer writes $\langle S_K(C_p), C_s \rangle$ to disk (effectively adding the coin to the
         local wallet) for future use.
 \end{enumerate}
+We note that the authorization to create and access a reserve using a
+withdrawal key $W$ is just one way to establish that the customer is
+authorized to withdraw funds.  If a mint has other ways to securely
+authenticate customers and establish that they are authorized to
+withdraw funds, those can also be used with Taler.
 
 
 \subsection{Exact and partial spending}
 
 A customer can spend coins at a merchant, under the condition that the
-merchant trusts the mint that minted the coin.  Merchants are
+merchant trusts the specific mint that minted the coin.  Merchants are
 identified by their public key $M := (M_s, M_p)$, which must be known
 to the customer apriori.
 
 The following steps describe the protocol between customer, merchant and mint
-for a transaction involving a coin $C := (C_s, C_p)$ which is previously signed
+for a transaction involving a coin $C := (C_s, C_p)$, which was previously signed
 by a mint's denomination key $K$, i.e. the customer posses
 $\widetilde{C} := S_K(C_p)$:
 
@@ -701,36 +704,36 @@ $\widetilde{C} := S_K(C_p)$:
   transaction, $a$ is data relevant to the contract indicating which services
   or goods the merchant will deliver to the customer, $f$ is the price of the offer,
   and $p$ is the merchant's payment information (e.g. his IBAN number) and $r$ is
-  an random nounce.  The merchant commits $\langle \mathcal{A}
+  a random nounce.  The merchant commits $\langle \mathcal{A}
   \rangle$ to disk and sends $\mathcal{A}$ it to the customer.
 \item\label{deposit} The customer must possess or acquire a coin minted by a mint that is
   accepted by the merchant, i.e. $K$ should be publicly signed by some $D_i
   \in \{D_1, D_2, \ldots, D_n\}$, and has a value $\geq f$. (The customer
   can of course also use multiple coins where the total value adds up to
   the cost of the transaction and run the following steps for each of
-  the coins. However, for simplicity of the description here we will
+  the coins. However, for simplicity of the exposition here we will
   assume that one coin is sufficient.)
-
+%
   The customer then generates a \emph{deposit-permission} $\mathcal{D} :=
   S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$
   and sends $\langle \mathcal{D}, D_i\rangle$ to the merchant,
   where $D_i$ is the mint which signed $K$.
-\item The merchant gives $(\mathcal{D}, p, r)$ to the mint, revealing his
-  payment information.
+\item The merchant gives $(\mathcal{D}, p, r)$ to the mint, revealing $p$
+  only to the mint.
 
 \item The mint validates $\mathcal{D}$ and checks for double spending.
   If the coin has been involved in previous transactions, it sends an error
   with the records from the previous transactions back to the merchant.
-
+%
   If double spending is not found, the mint commits $\langle \mathcal{D} \rangle$ to disk
-  and notifies the merchant that deposit operation was successful.
+  and notifies the merchant that the deposit operation was successful.
 
 \item The merchant commits and forwards the notification from the mint to the
-  customer, confirming the success or failure of the operation.
+  customer, confirming the success (or failure) of the operation.
 \end{enumerate}
 
-Similarly, if a transaction is aborted after Step~\ref{deposit},
-subsequent transactions with the same coin can be linked to the coin,
+If a transaction is aborted after Step~\ref{deposit},
+subsequent transactions with the same coin could be linked to the coin,
 but not directly to the coin's owner.  The same applies to partially
 spent coins (where $f$ is smaller than the actual value of the coin).
 To unlink subsequent transactions from a coin, the customer has to
@@ -771,20 +774,23 @@ execute the coin refreshing protocol with the mint.
 
 \subsection{Refreshing} \label{sec:refreshing}
 
-The following protocol is executed in order to refresh a coin $C'$ of
-denomination $K$ to a fresh coin $\widetilde{C}$ with the same
-denomination. In the protocol, $\kappa \ge 3$ is a security parameter
-and $G$ is the generator of the elliptic curve.
+The following refreshing protocol is executed in order to melt a dirty
+coin $C'$ of denomination $K$ to obtain a fresh coin $\widetilde{C}$
+with the same denomination.  In pratice, Taler uses a natural
+extension where multiple fresh coins are generated a the same time to
+enable giving precise change matching any amount.  In the
+protocol, $\kappa \ge 3$ is a security parameter and $G$ is the
+generator of the elliptic curve.
 
 \begin{enumerate}
   \item For each $i = 1,\ldots,\kappa$, the customer
     \begin{itemize}
       \item randomly generates transfer key $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$ where $T^{(i)}_p := t^{(i)}_s G$,
-      \item randomly generates coin key pair $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$ where $C^{(i)}_p := c^{(i)}_s G$,
+      \item randomly generates coin key pair \\ $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$ where $C^{(i)}_p := c^{(i)}_s G$,
       \item randomly generates blinding factors $b_i$,
       \item computes $E_i := E_{K_i}\left(c_s^{(i)}, b_i\right)$ where $K_i := H(c'_s T_p^{(i)})$. (The encryption key $K_i$ is
             computed by multiplying the private key $c'_s$ of the original coin with the point on the curve
-            that represents the public key $T^{(i)}_p$ of the transfer key $T^{(i)}$.),
+            that represents the public key $T^{(i)}_p$ of the transfer key $T^{(i)}$. This is basically DH between coin and transfer key.),
     \end{itemize}
     and commits $\langle C', \vec{T}, \vec{C}, \vec{b} \rangle$ to disk.
   \item The customer computes $B_i := E_{b_i}(C^{(i)}_p)$  for $i=1,\ldots,\kappa$ and sends a commitment
@@ -800,14 +806,23 @@ and $G$ is the generator of the elliptic curve.
   \item The customer computes $\mathfrak{R} := \left(t_s^{(i)}, C_p^{(i)}, b_i\right)_{i \ne \gamma}$
         and sends $S_{C'}(\mathfrak{R})$ to the mint.
   \item \label{step:refresh-ccheck} The mint checks whether $\mathfrak{R}$ is consistent with the commitments;
-        specifically, it computes for $i \not= \gamma$:
-    \begin{itemize}
-      \item $\overline{K}_i := H(t_s^{(i)} C_p')$,
-      \item $(\overline{c}_s^{(i)}, \overline{b}_i) := D_{\overline{K}_i}(E_i)$,
-      \item $\overline{C}^{(i)}_p := \overline{c}_s^{(i)} G$,
-      \item $\overline{B}_i := E_{b_i}(C_p^{(i)})$,
-      \item $\overline{T}_i := t_s^{(i)} G$,
-    \end{itemize}
+    specifically, it computes for $i \not= \gamma$:
+
+    \vspace{-2ex}
+    \begin{minipage}{5cm}
+    \begin{align*}
+      \overline{K}_i :&= H(t_s^{(i)} C_p'), \\
+      (\overline{c}_s^{(i)}, \overline{b}_i) :&= D_{\overline{K}_i}(E_i), \\
+      \overline{C}^{(i)}_p :&= \overline{c}_s^{(i)} G,
+     \end{align*}
+     \end{minipage}
+    \begin{minipage}{5cm}
+      \begin{align*}
+      \overline{B}_i :&= E_{b_i}(C_p^{(i)}), \\
+      \overline{T}_i :&= t_s^{(i)} G, \\
+      \end{align*}
+    \end{minipage}
+
     and checks if $\overline{C}^{(i)}_p = C^{(i)}_p$ and $H(E_i, \overline{B}_i, \overline{T}^{(i)}_p) = H(E_i, B_i, T^{(i)}_p)$
     and $\overline{T}_i = T_i$.
 
@@ -826,7 +841,7 @@ and $G$ is the generator of the elliptic curve.
 For a coin that was successfully refreshed, the mint responds to a
 request $S_{C'}(\mathtt{link})$ with $(T^{(\gamma)}_p$, $E_{\gamma},
 \widetilde{C})$.
-
+%
 This allows the owner of the old coin to also obtain the private key
 of the new coin, even if the refreshing protocol was illicitly
 executed by another party who learned $C'_s$ from the old owner.  As a
