@@ -1757,13 +1757,27 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
 
       case PERF_TALER_MINTDB_CMD_INSERT_REFRESH_COMMIT_LINK:
         {
-          int hash_index;
-
-          hash_index = state->cmd[state->i].details.insert_refresh_commit_link.index_hash;
+//          unsigned int hash_index;
+//
+//          hash_index = state->cmd[state->i].details.insert_refresh_commit_link.index_hash;
         }
         break;
 
       case PERF_TALER_MINTDB_CMD_GET_REFRESH_COMMIT_LINK:
+        {
+          int ret;
+          unsigned int hash_index;
+          struct TALER_MINTDB_RefreshCommitCoin commit_coin;
+
+          hash_index = state->cmd[state->i].details.get_refresh_commit_link.index_hash;
+          ret = state->plugin->get_refresh_commit_coins(state->plugin->cls,
+                                                        state->session,
+                                                        state->cmd[hash_index].exposed.data.session_hash,
+                                                        1,
+                                                        1,
+                                                        &commit_coin);
+          GNUNET_assert (GNUNET_SYSERR != ret);
+        }
         break;
 
       case PERF_TALER_MINTDB_CMD_GET_MELT_COMMITMENT:
