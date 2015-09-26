@@ -647,34 +647,35 @@ taxability.
 
 \subsection{Withdrawal}
 
-To withdraw anonymous digital coins, the customer performs the
-following interaction with the mint:
+Let $G$ be the generator of an elliptic curve.  To withdraw anonymous
+digital coins, the customer performs the following interaction with
+the mint:
 
 \begin{enumerate}
   \item The customer identifies a mint with an auditor-approved
         coin signing public-private key pair $K := (K_s, K_p)$
         and randomly generates:
         \begin{itemize}
-           \item withdrawal key $W := (W_s,W_p)$ with private key $W_s$ and public key $W_p$,
-           \item coin key $C := (C_s,C_p)$ with private key $C_s$ and public key $C_p$,
+           \item withdrawal key $W := (w_s,W_p)$ with private key $w_s$ and public key $W_p$,
+           \item coin key $C := (c_s,C_p)$ with private key $c_s$ and public key $C_p := c_s G$,
            \item blinding factor $b$, and commits $\langle W, C, b \rangle$ to disk.
         \end{itemize}
   \item The customer transfers an amount of money corresponding to (at least) $K_p$ to the mint, with $W_p$ in the subject line of the transaction.
   \item The mint receives the transaction and credits the $W_p$ reserve with the respective amount in its database.
-  \item The customer sends $S_W(E_b(C_p))$ to the mint to request withdrawal of $C$; here, $E_b$ denotes Chaum-style blinding with blinding factor $b$.
-  \item The mint checks if the same withdrawal request was issued before; in this case, it sends $S_{K}(E_b(C_p))$ to the customer.\footnote{Here $S_K$
+  \item The customer sends $S_W(B_b(C_p))$ to the mint to request withdrawal of $C$; here, $B_b$ denotes Chaum-style blinding with blinding factor $b$.
+  \item The mint checks if the same withdrawal request was issued before; in this case, it sends $S_{K}(B_b(C_p))$ to the customer.\footnote{Here $S_K$
         denotes a Chaum-style blind signature with private key $K_s$.}
         If this is a fresh withdrawal request, the mint performs the following transaction:
         \begin{enumerate}
            \item checks if the reserve $W_p$ has sufficient funds for a coin of value corresponding to $K_p$
-           \item stores the withdrawal request $\langle S_W(E_b(C_p)), S_K(E_b(C_p)) \rangle$ in its database for future reference,
+           \item stores the withdrawal request and response $\langle S_W(B_b(C_p)), S_K(B_b(C_p)) \rangle$ in its database for future reference,
            \item deducts the amount corresponding to $K_p$ from the reserve,
-           \item and sends $S_{K}(E_b(C_p))$ to the customer.
         \end{enumerate}
+        and then sends $S_{K}(B_b(C_p))$ to the customer.
         If the guards for the transaction fail, the mint sends a descriptive error back to the customer,
         with proof that it operated correctly (i.e. by showing the transaction history for the reserve).
-  \item The customer computes (and verifies) the unblinded signature $S_K(C_p) = D_b(S_K(E_b(C_p)))$.
-        The customer writes $\langle S_K(C_p), C_s \rangle$ to disk (effectively adding the coin to the
+  \item The customer computes (and verifies) the unblinded signature $S_K(C_p) = B^{-1}_b(S_K(B_b(C_p)))$.
+        The customer writes $\langle S_K(C_p), c_s \rangle$ to disk (effectively adding the coin to the
         local wallet) for future use.
 \end{enumerate}
 We note that the authorization to create and access a reserve using a
@@ -688,17 +689,17 @@ withdraw funds, those can also be used with Taler.
 
 A customer can spend coins at a merchant, under the condition that the
 merchant trusts the specific mint that minted the coin.  Merchants are
-identified by their public key $M := (M_s, M_p)$, which must be known
+identified by their public key $M := (m_s, M_p)$, which must be known
 to the customer apriori.
 
 The following steps describe the protocol between customer, merchant and mint
-for a transaction involving a coin $C := (C_s, C_p)$, which was previously signed
+for a transaction involving a coin $C := (c_s, C_p)$, which was previously signed
 by a mint's denomination key $K$, i.e. the customer posses
 $\widetilde{C} := S_K(C_p)$:
 
 \begin{enumerate}
 \item\label{contract} Let $\vec{D} := D_1, \ldots, D_n$ be the list of
-  mints accepted by the merchant where each $D_i$ is a mint's public
+  mints accepted by the merchant where each $D_j$ is a mint's public
   key.  The merchant creates a digitally signed contract $\mathcal{A}
   := S_M(m, f, a, H(p, r), \vec{D})$ where $m$ is an identifier for this
   transaction, $a$ is data relevant to the contract indicating which services
@@ -707,7 +708,7 @@ $\widetilde{C} := S_K(C_p)$:
   a random nounce.  The merchant commits $\langle \mathcal{A}
   \rangle$ to disk and sends $\mathcal{A}$ it to the customer.
 \item\label{deposit} The customer must possess or acquire a coin minted by a mint that is
-  accepted by the merchant, i.e. $K$ should be publicly signed by some $D_i
+  accepted by the merchant, i.e. $K$ should be publicly signed by some $D_j
   \in \{D_1, D_2, \ldots, D_n\}$, and has a value $\geq f$. (The customer
   can of course also use multiple coins where the total value adds up to
   the cost of the transaction and run the following steps for each of
@@ -716,8 +717,8 @@ $\widetilde{C} := S_K(C_p)$:
 %
   The customer then generates a \emph{deposit-permission} $\mathcal{D} :=
   S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$
-  and sends $\langle \mathcal{D}, D_i\rangle$ to the merchant,
-  where $D_i$ is the mint which signed $K$.
+  and sends $\langle \mathcal{D}, D_j\rangle$ to the merchant,
+  where $D_j$ is the mint which signed $K$.
 \item The merchant gives $(\mathcal{D}, p, r)$ to the mint, revealing $p$
   only to the mint.
 
@@ -787,15 +788,14 @@ generator of the elliptic curve.
     \begin{itemize}
       \item randomly generates transfer key $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$ where $T^{(i)}_p := t^{(i)}_s G$,
       \item randomly generates coin key pair \\ $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$ where $C^{(i)}_p := c^{(i)}_s G$,
-      \item randomly generates blinding factors $b_i$,
-      \item computes $E_i := E_{K_i}\left(c_s^{(i)}, b_i\right)$ where $K_i := H(c'_s T_p^{(i)})$. (The encryption key $K_i$ is
+      \item randomly generates blinding factors $b^{(i)}$,
+      \item computes $E^{(i)} := E_{K_i}\left(c_s^{(i)}, b^{(i)}\right)$ where $K_i := H(c'_s T_p^{(i)})$. (The encryption key $K_i$ is
             computed by multiplying the private key $c'_s$ of the original coin with the point on the curve
             that represents the public key $T^{(i)}_p$ of the transfer key $T^{(i)}$. This is basically DH between coin and transfer key.),
     \end{itemize}
     and commits $\langle C', \vec{T}, \vec{C}, \vec{b} \rangle$ to disk.
-  \item The customer computes $B_i := E_{b_i}(C^{(i)}_p)$  for $i=1,\ldots,\kappa$ and sends a commitment
-    $S_{C'}(\vec{E}, \vec{B}, \vec{T_p}))$ to the mint;
-    here $E_{b_i}$ denotes Chaum-style blinding with blinding factor $b_i$.
+  \item The customer computes $B^{(i)} := B_{b^{(i)}}(C^{(i)}_p)$  for $i \in 1,\ldots,\kappa$ and sends a commitment
+    $S_{C'}(\vec{E}, \vec{B}, \vec{T_p}))$ to the mint.
   \item The mint generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
     marks $C'_p$ as spent by committing
     $\langle C', \gamma, S_{C'}(\vec{E}, \vec{B}, \vec{T}) \rangle$ to disk.
@@ -803,7 +803,7 @@ generator of the elliptic curve.
     possible to use any equivalent mint signing key known to the customer here, as $K$ merely
     serves as proof to the customer that the mint selected this particular $\gamma$.}
   \item The customer commits $\langle C', S_K(C'_p, \gamma) \rangle$ to disk.
-  \item The customer computes $\mathfrak{R} := \left(t_s^{(i)}, C_p^{(i)}, b_i\right)_{i \ne \gamma}$
+  \item The customer computes $\mathfrak{R} := \left(t_s^{(i)}, C_p^{(i)}, b^{(i)}\right)_{i \ne \gamma}$
         and sends $S_{C'}(\mathfrak{R})$ to the mint.
   \item \label{step:refresh-ccheck} The mint checks whether $\mathfrak{R}$ is consistent with the commitments;
     specifically, it computes for $i \not= \gamma$:
@@ -812,23 +812,23 @@ generator of the elliptic curve.
     \begin{minipage}{5cm}
     \begin{align*}
       \overline{K}_i :&= H(t_s^{(i)} C_p'), \\
-      (\overline{c}_s^{(i)}, \overline{b}_i) :&= D_{\overline{K}_i}(E_i), \\
-      \overline{C}^{(i)}_p :&= \overline{c}_s^{(i)} G,
+      (\overline{c}_s^{(i)}, \overline{b}_i) :&= D_{\overline{K}_i}(E^{(i)}), \\
+     \overline{C^{(i)}_p} :&= \overline{c}_s^{(i)} G,
      \end{align*}
      \end{minipage}
     \begin{minipage}{5cm}
       \begin{align*}
-      \overline{B}_i :&= E_{b_i}(C_p^{(i)}), \\
-      \overline{T}_i :&= t_s^{(i)} G, \\
+       \overline{T_p^{(i)}} :&= t_s^{(i)} G, \\ \\
+      \overline{B^{(i)}} :&= B_{b^{(i)}}(\overline{C_p^{(i)}}),
       \end{align*}
     \end{minipage}
 
-    and checks if $\overline{C}^{(i)}_p = C^{(i)}_p$ and $H(E_i, \overline{B}_i, \overline{T}^{(i)}_p) = H(E_i, B_i, T^{(i)}_p)$
-    and $\overline{T}_i = T_i$.
+    and checks if $\overline{B^{(i)}} = B^{(i)}$
+    and $\overline{T^{(i)}_p} = T^{(i)}_p$.
 
   \item \label{step:refresh-done} If the commitments were consistent,
     the mint sends the blind signature $\widetilde{C} :=
-    S_{K}(B_\gamma)$ to the customer.  Otherwise, the mint responds
+    S_{K}(B^{(\gamma)})$ to the customer.  Otherwise, the mint responds
     with an error the value of $C'$.
 \end{enumerate}
 
@@ -839,7 +839,7 @@ generator of the elliptic curve.
 \subsection{Linking}
 
 For a coin that was successfully refreshed, the mint responds to a
-request $S_{C'}(\mathtt{link})$ with $(T^{(\gamma)}_p$, $E_{\gamma},
+request $S_{C'}(\mathtt{link})$ with $(T^{(\gamma)}_p$, $B^{(\gamma)},
 \widetilde{C})$.
 %
 This allows the owner of the melted coin to also obtain the private
@@ -1040,7 +1040,7 @@ computing base (TCB) is public and free software.
 
 %This work was supported by a grant from the Renewable Freedom Foundation.
 % FIXME: ARED?
-%We thank Tanja Lange and Dan Bernstein for feedback on an earlier
+%We thank Tanja Lange, Dan Bernstein and Fabian Kirsch for feedback on an earlier
 %version of this paper, Nicolas Fournier for implementing and running
 %some performance benchmarks, and Richard Stallman, Hellekin Wolf,
 %Jacob Appelbaum for productive discussions and support.
@@ -1105,15 +1105,15 @@ coin first.
 \item\label{offer2} The merchant sends an \emph{offer:} $\langle S_M(m, f),
   \vec{D} \rangle$ containing the price of the offer $f$, a transaction
   ID $m$ and the list of mints $D_1, \ldots, D_n$ accepted by the merchant
-  where each $D_i$ is a mint's public key.
+  where each $D_j$ is a mint's public key.
 \item\label{lock2} The customer must possess or acquire a coin minted by a mint that is
-  accepted by the merchant, i.e. $K$ should be publicly signed by some $D_i
+  accepted by the merchant, i.e. $K$ should be publicly signed by some $D_j
   \in \{D_1, D_2, \ldots, D_n\}$, and has a value $\geq f$.
 
   Customer then generates a \emph{lock-permission} $\mathcal{L} :=
   S_c(\widetilde{C}, t, m, f, M_p)$ where $t$ specifies the time until which the
-  lock is valid and sends $\langle \mathcal{L}, D_i\rangle$ to the merchant,
-  where $D_i$ is the mint which signed $K$.
+  lock is valid and sends $\langle \mathcal{L}, D_j\rangle$ to the merchant,
+  where $D_j$ is the mint which signed $K$.
 \item The merchant asks the mint to apply the lock by sending $\langle
   \mathcal{L} \rangle$ to the mint.
 \item The mint validates $\widetilde{C}$ and detects double spending if there is
@@ -1127,7 +1127,7 @@ coin first.
 \item\label{contract2} The merchant creates a digitally signed contract
   $\mathcal{A} := S_M(m, f, a, H(p, r))$ where $a$ is data relevant to the contract
   indicating which services or goods the merchant will deliver to the customer, and $p$ is the
-  merchant's payment information (e.g. his IBAN number) and $r$ is an random nounce.
+  merchant's payment information (e.g. his IBAN number) and $r$ is an random nonce.
   The merchant commits $\langle \mathcal{A} \rangle$ to disk and sends it to the customer.
 \item The customer creates a
   \emph{deposit-permission} $\mathcal{D} := S_c(\widetilde{C}, f, m, M_p, H(a), H(p, r))$, commits
@@ -1314,5 +1314,86 @@ the dishonest version of the payment protocol.
 If an organization detects that it cannot support itself with
 microdonations, it can always choose to switch to the macropayment
 system with slightly higher transaction costs to remain in business.
+
+\newpage
+\section{Notation summary}
+
+The paper uses the subscript $p$ to indicate public keys and $s$ to
+indicate secret (private) keys.  For keys, we also use small letters
+for scalars and capital letters for points on an elliptic curve.  The
+capital letter without the subscript $p$ stands for the key pair.  The
+superscript $(i)$ is used to indicate one of the elements of a vector
+during the cut-and-choose protocol.  Bold-face is used to indicate a
+vector over these elements.  A line above indicates a value computed
+by the verifier during the cut-and-choose operation.  We use $f()$ to
+indicate the application of a function $f$ to one or more arguments.
+
+\begin{description}
+  \item[$K_s$]{Private (RSA) key of the mint used for coin signing}
+  \item[$K_p$]{Public (RSA) key corresponding to $K_s$}
+  \item[$K$]{Public-priate (RSA) coin signing key pair $K := (K_s, K_p)$}
+  \item[$b$]{RSA blinding factor for RSA-style blind signatures}
+  \item[$B_b()$]{RSA blinding over the argument using blinding factor $b$}
+  \item[$B^{-1}_b()$]{RSA unblinding of the argument using blinding factor $b$, inverse of $B_b()$}
+  \item[$S_K()$]{Chaum-style RSA signature, commutes with blinding operation $B_b()$}
+  \item[$w_s$]{Private key from customer for authentication}
+  \item[$W_p$]{Public key corresponding to $w_s$}
+  \item[$W$]{Public-private customer authentication key pair $W := (w_s, W_p)$}
+  \item[$S_W()$]{Signature over the argument(s) involving key $W$}
+  \item[$m_s$]{Private key from merchant for authentication}
+  \item[$M_p$]{Public key corresponding to $m_s$}
+  \item[$M$]{Public-private merchant authentication key pair $M := (m_s, M_p)$}
+  \item[$S_M()$]{Signature over the argument(s) involving key $M$}
+  \item[$G$]{Generator of the elliptic curve}
+  \item[$c_s$]{Secret key corresponding to a coin, scalar on a curve}
+  \item[$C_p$]{Public key corresponding to $c_s$, point on a curve}
+  \item[$C$]{Public-private coin key pair $C := (c_s, C_p)$}
+  \item[$S_{C}()$]{Signature over the argument(s) involving key $C$ (using EdDSA)}
+  \item[$c_s'$]{Private key of a ``dirty'' coin (otherwise like $c_s$)}
+  \item[$C_p'$]{Public key of a ``dirty'' coin (otherwise like $C_p$)}
+  \item[$C'$]{Dirty coin (otherwise like $C$)}
+  \item[$\widetilde{C}$]{Mint signature $S_K(C_p)$ indicating validity of a fresh coin (with key $C$)}
+  \item[$n$]{Number of mints accepted by a merchant}
+  \item[$j$]{Index into a set of accepted mints, $i \in \{1,\ldots,n\}$}
+  \item[$D_j$]{Public key of a mint (not used to sign coins)}
+  \item[$\vec{D}$]{Vector of $D_j$ signifying mints accepted by a merchant}
+  \item[$a$]{Complete text of a contract between customer and merchant}
+  \item[$f$]{Amount a customer agrees to pay to a merchant for a contract}
+  \item[$m$]{Unique transaction identifier chosen by the merchant}
+  \item[$H()$]{Hash function}
+  \item[$p$]{Payment details of a merchant (i.e. wire transfer details for a bank transfer)}
+  \item[$r$]{Random nonce}
+  \item[${\cal A}$]{Complete contract signed by the merchant}
+  \item[${\cal D}$]{Deposit permission, signing over a certain amount of coin to the merchant as payment and to signify acceptance of a particular contract}
+  \item[$\kappa$]{Security parameter $\ge 3$}
+  \item[$i$]{Index over cut-and-choose set, $i \in \{1,\ldots,\kappa\}$}
+  \item[$\gamma$]{Selected index in cut-and-choose protocol, $\gamma \in \{1,\ldots,\kappa\}$}
+  \item[$t^{(i)}_s$]{private transfer key, a scalar}
+  \item[$T^{(i)}_s$]{private transfer key, point on a curve (same curve must be used for $C_p$)}
+  \item[$T^{(i)}$]{public-private transfer key pair $T^{(i)} := (t^{(i)}_s,T^{(i)}_s)$}
+  \item[$\vec{T}$]{Vector of $T^{(i)}$}
+  \item[$c_s^{(i)}$]{Secret key corresponding to a fresh coin, scalar on a curve}
+  \item[$C_p^{(i)}$]{Public key corresponding to $c_s^{(i)}$, point on a curve}
+  \item[$C^{(i)}$]{Public-private coin key pair $C^{(i)} := (c_s^{(i)}, C_p^{(i)})$}
+  \item[$\vec{C}$]{Vector of $C^{(i)}$ (public and private keys)}
+  \item[$b^{(i)}$]{Blinding factor for RSA-style blind signatures}
+  \item[$\vec{b}$]{Vector of $b^{(i)}$}
+  \item[$B^(i)$]{Blinding of $C_p^{(i)}$}
+  \item[$\vec{B}$]{Vector of $B^{(i)}$}
+  \item[$K_i$]{Symmetric encryption key derived from ECDH operation via hashing}
+  \item[$E_{K_i}()$]{Symmetric encryption using key $K_i$}
+  \item[$E^{(i)}$]{$i$-th encryption of the private information $(c_s^{(i)}, b_i)$}
+  \item[$\vec{E}$]{Vector of $E^{(i)}$}
+  \item[$\cal{R}$]{Tuple of revealed vectors in cut-and-choose protocol,
+    where the vectors exclude the selected index $\gamma$}
+  \item[$\overline{K_i}$]{Encryption keys derived by the verifier from DH}
+  \item[$\overline{B^{(i)}}$]{Blinded values derived by the verifier}
+  \item[$\overline{T_p^{(i)}}$]{Public transfer keys derived by the verifier from revealed private keys}
+  \item[$\overline{c_s^{(i)}}$]{Private keys obtained from decryption by the verifier}
+  \item[$\overline{b_s^{(i)}}$]{Blinding factors obtained from decryption by the verifier}
+  \item[$\overline{C^{(i)}_p}$]{Public coin keys computed from $\overline{c_s^{(i)}}$ by the verifier}
+\end{description}
+
+
 
 \end{document}
