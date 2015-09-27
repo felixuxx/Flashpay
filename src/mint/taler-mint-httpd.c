@@ -30,7 +30,7 @@
 #include "taler-mint-httpd_mhd.h"
 #include "taler-mint-httpd_admin.h"
 #include "taler-mint-httpd_deposit.h"
-#include "taler-mint-httpd_withdraw.h"
+#include "taler-mint-httpd_reserve.h"
 #include "taler-mint-httpd_wire.h"
 #include "taler-mint-httpd_refresh.h"
 #include "taler-mint-httpd_keystate.h"
@@ -43,6 +43,11 @@
  * Which currency is used by this mint?
  */
 char *TMH_mint_currency_string;
+
+/**
+ * Should we return "Connection: close" in each response?
+ */
+int TMH_mint_connection_close;
 
 /**
  * Base directory of the mint (global)
@@ -62,8 +67,10 @@ struct GNUNET_CRYPTO_EddsaPublicKey TMH_master_public_key;
 
 /**
  * In which format does this MINT expect wiring instructions?
+ * NULL-terminated array of 0-terminated wire format types,
+ * suitable for passing to #TALER_json_validate_wireformat().
  */
-char *TMH_expected_wire_format;
+const char **TMH_expected_wire_formats;
 
 /**
  * Our DB plugin.
@@ -177,7 +184,7 @@ handle_mhd_request (void *cls,
 
       { "/wire/test", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
-        &TMH_WIRE_handler_wire_test, MHD_HTTP_OK },
+        &TMH_WIRE_handler_wire_test, MHD_HTTP_FOUND },
       { "/wire/test", NULL, "text/plain",
         "Only GET is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
@@ -190,17 +197,17 @@ handle_mhd_request (void *cls,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       /* Withdrawing coins / interaction with reserves */
-      { "/withdraw/status", MHD_HTTP_METHOD_GET, "application/json",
+      { "/reserve/status", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
-        &TMH_WITHDRAW_handler_withdraw_status, MHD_HTTP_OK },
-      { "/withdraw/status", NULL, "text/plain",
+        &TMH_RESERVE_handler_reserve_status, MHD_HTTP_OK },
+      { "/reserve/status", NULL, "text/plain",
         "Only GET is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      { "/withdraw/sign", MHD_HTTP_METHOD_POST, "application/json",
+      { "/reserve/withdraw", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-        &TMH_WITHDRAW_handler_withdraw_sign, MHD_HTTP_OK },
-      { "/withdraw/sign", NULL, "text/plain",
+        &TMH_RESERVE_handler_reserve_withdraw, MHD_HTTP_OK },
+      { "/reserve/withdraw", NULL, "text/plain",
         "Only POST is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
@@ -363,6 +370,9 @@ mint_serve_process_config (const char *mint_directory)
 {
   unsigned long long port;
   char *TMH_master_public_key_str;
+  char *wireformats;
+  const char *token;
+  unsigned int len;
 
   cfg = TALER_config_load (mint_directory);
   if (NULL == cfg)
@@ -390,17 +400,36 @@ mint_serve_process_config (const char *mint_directory)
              (unsigned int) TALER_CURRENCY_LEN);
     return GNUNET_SYSERR;
   }
+  /* Find out list of supported wire formats */
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "mint",
                                              "wireformat",
-                                             &TMH_expected_wire_format))
+                                             &wireformats))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "mint",
                                "wireformat");
     return GNUNET_SYSERR;
   }
+  /* build NULL-terminated array of TMH_expected_wire_formats */
+  TMH_expected_wire_formats = GNUNET_new_array (1,
+                                                const char *);
+  len = 1;
+  for (token = strtok (wireformats,
+                       " ");
+       NULL != token;
+       token = strtok (NULL,
+                       " "))
+  {
+    /* Grow by 1, appending NULL-terminator */
+    GNUNET_array_append (TMH_expected_wire_formats,
+                         len,
+                         NULL);
+    TMH_expected_wire_formats[len - 2] = GNUNET_strdup (token);
+  }
+  GNUNET_free (wireformats);
+
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "mint",
@@ -519,18 +548,20 @@ run_fake_client ()
                        "nc",
                        "localhost",
                        ports,
+                       "-w", "30",
                        NULL)) &&
          (0 != execlp ("ncat",
                        "ncat",
                        "localhost",
                        ports,
+                       "-i", "30",
                        NULL)) )
     {
       fprintf (stderr,
                "Failed to run both `nc' and `ncat': %s\n",
                strerror (errno));
     }
-    exit (0);
+    _exit (1);
   }
   /* parent process */
   GNUNET_break (0 == close (fd));
@@ -579,6 +610,31 @@ connection_done (void *cls,
 
 
 /**
+ * Function called for logging by MHD.
+ *
+ * @param cls closure, NULL
+ * @param fm format string (`printf()`-style)
+ * @param ap arguments to @a fm
+ */
+static void
+handle_mhd_logs (void *cls,
+                 const char *fm,
+                 va_list ap)
+{
+  char buf[2048];
+
+  vsnprintf (buf,
+             sizeof (buf),
+             fm,
+             ap);
+  GNUNET_log_from (GNUNET_ERROR_TYPE_WARNING,
+                   "libmicrohttpd",
+                   "%s",
+                   buf);
+}
+
+
+/**
  * The main function of the taler-mint-httpd server ("the mint").
  *
  * @param argc number of arguments from the command line
@@ -590,6 +646,9 @@ main (int argc,
       char *const *argv)
 {
   static const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    {'C', "connection-close", NULL,
+     "force HTTP connections to be closed after each request", 0,
+     &GNUNET_GETOPT_set_one, &TMH_mint_connection_close},
     {'d', "mint-dir", "DIR",
      "mint directory with configuration and keys for operating the mint", 1,
      &GNUNET_GETOPT_set_filename, &TMH_mint_directory},
@@ -631,6 +690,7 @@ main (int argc,
                                serve_port,
                                NULL, NULL,
                                &handle_mhd_request, NULL,
+                               MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
                                MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
                                MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
 #if HAVE_DEVELOPER
@@ -697,7 +757,6 @@ main (int argc,
       TMH_plugin->drop_temporary (TMH_plugin->cls,
                                   session);
   }
-
   TALER_MINTDB_plugin_unload (TMH_plugin);
   return (GNUNET_SYSERR == ret) ? 1 : 0;
 }

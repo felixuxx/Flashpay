@@ -653,13 +653,73 @@ struct TALER_MintKeyValidityPS
   struct TALER_MasterPublicKeyP master;
 
   /**
-   * Array of hash(es) of the mint's denomination keys.
-   * Specifically, this is the hash over the
-   * `struct TALER_DenominationKeyValidityPS`, not just
-   * the public key (as the auditor needs to check against
-   * the correct valuations and fee structure).
+   * Start time of the validity period for this key.
    */
-  /* struct GNUNET_HashCode h_dks; */
+  struct GNUNET_TIME_AbsoluteNBO start;
+
+  /**
+   * The mint will sign fresh coins between @e start and this time.
+   * @e expire_withdraw will be somewhat larger than @e start to
+   * ensure a sufficiently large anonymity set, while also allowing
+   * the Mint to limit the financial damage in case of a key being
+   * compromised.  Thus, mints with low volume are expected to have a
+   * longer withdraw period (@e expire_withdraw - @e start) than mints
+   * with high transaction volume.  The period may also differ between
+   * types of coins.  A mint may also have a few denomination keys
+   * with the same value with overlapping validity periods, to address
+   * issues such as clock skew.
+   */
+  struct GNUNET_TIME_AbsoluteNBO expire_withdraw;
+
+  /**
+   * Coins signed with the denomination key must be spent or refreshed
+   * between @e start and this expiration time.  After this time, the
+   * mint will refuse transactions involving this key as it will
+   * "drop" the table with double-spending information (shortly after)
+   * this time.  Note that wallets should refresh coins significantly
+   * before this time to be on the safe side.  @e expire_spend must be
+   * significantly larger than @e expire_withdraw (by months or even
+   * years).
+   */
+  struct GNUNET_TIME_AbsoluteNBO expire_spend;
+
+  /**
+   * When do signatures with this denomination key become invalid?
+   * After this point, these signatures cannot be used in (legal)
+   * disputes anymore, as the Mint is then allowed to destroy its side
+   * of the evidence.  @e expire_legal is expected to be significantly
+   * larger than @e expire_spend (by a year or more).
+   */
+  struct GNUNET_TIME_AbsoluteNBO expire_legal;
+
+  /**
+   * The value of the coins signed with this denomination key.
+   */
+  struct TALER_AmountNBO value;
+
+  /**
+   * The fee the mint charges when a coin of this type is withdrawn.
+   * (can be zero).
+   */
+  struct TALER_AmountNBO fee_withdraw;
+
+  /**
+   * The fee the mint charges when a coin of this type is deposited.
+   * (can be zero).
+   */
+  struct TALER_AmountNBO fee_deposit;
+
+  /**
+   * The fee the mint charges when a coin of this type is refreshed.
+   * (can be zero).
+   */
+  struct TALER_AmountNBO fee_refresh;
+
+  /**
+   * Hash code of the denomination public key. (Used to avoid having
+   * the variable-size RSA key in this struct.)
+   */
+  struct GNUNET_HashCode denom_hash GNUNET_PACKED;
 
 };
 

@@ -363,7 +363,7 @@
 
 
 /**
- * The /withdraw/sign api call
+ * The /reserve/withdraw api call
  *
  * Exposes #PERF_TALER_MINTDB_COIN
  *

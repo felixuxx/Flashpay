@@ -107,10 +107,6 @@ common_free_coin_transaction_list (void *cls,
     case TALER_MINTDB_TT_REFRESH_MELT:
       GNUNET_free (list->details.melt);
       break;
-    case TALER_MINTDB_TT_LOCK:
-      GNUNET_free (list->details.lock);
-      /* FIXME: look at this again once locking is implemented (#3625) */
-      break;
     }
     GNUNET_free (list);
     list = next;
@@ -131,19 +127,34 @@ common_free_melt_commitment (void *cls,
   unsigned int i;
   unsigned int k;
 
-  GNUNET_free (mc->melts);
-  for (i=0;i<mc->num_newcoins;i++)
-    GNUNET_CRYPTO_rsa_public_key_free (mc->denom_pubs[i].rsa_public_key);
-  GNUNET_free (mc->denom_pubs);
-  for (k=0;k<TALER_CNC_KAPPA;k++)
+  if (NULL != mc->melts)
+  {
+    for (i=0;i<mc->num_oldcoins;i++)
+    {
+      GNUNET_CRYPTO_rsa_signature_free (mc->melts[i].coin.denom_sig.rsa_signature);
+      GNUNET_CRYPTO_rsa_public_key_free (mc->melts[i].coin.denom_pub.rsa_public_key);
+    }
+    GNUNET_free (mc->melts);
+  }
+  if (NULL != mc->denom_pubs)
   {
     for (i=0;i<mc->num_newcoins;i++)
+      if (NULL != mc->denom_pubs[i].rsa_public_key)
+        GNUNET_CRYPTO_rsa_public_key_free (mc->denom_pubs[i].rsa_public_key);
+    GNUNET_free (mc->denom_pubs);
+  }
+  for (k=0;k<TALER_CNC_KAPPA;k++)
+  {
+    if (NULL != mc->commit_coins[k])
     {
-      GNUNET_free (mc->commit_coins[k][i].refresh_link);
-      GNUNET_free (mc->commit_coins[k][i].coin_ev);
+      for (i=0;i<mc->num_newcoins;i++)
+      {
+        GNUNET_free (mc->commit_coins[k][i].refresh_link);
+        GNUNET_free (mc->commit_coins[k][i].coin_ev);
+      }
+      GNUNET_free (mc->commit_coins[k]);
     }
-    GNUNET_free (mc->commit_coins[k]);
-    GNUNET_free (mc->commit_links[k]);
+    GNUNET_free_non_null (mc->commit_links[k]);
   }
   GNUNET_free (mc);
 }

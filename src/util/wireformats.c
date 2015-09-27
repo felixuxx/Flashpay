@@ -395,12 +395,12 @@ struct FormatHandler
 /**
  * Check if the given wire format JSON object is correctly formatted
  *
- * @param type the expected type of the wire format
+ * @param allowed NULL-terminated array of allowed wire format types
  * @param wire the JSON wire format object
  * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
 int
-TALER_json_validate_wireformat (const char *type,
+TALER_json_validate_wireformat (const char **allowed,
 				const json_t *wire)
 {
   static const struct FormatHandler format_handlers[] = {
@@ -409,33 +409,33 @@ TALER_json_validate_wireformat (const char *type,
     { NULL, NULL}
   };
   unsigned int i;
-  char *stype;
+  const char *stype;
   json_error_t error;
 
   UNPACK_EXITIF (0 != json_unpack_ex
                  ((json_t *) wire,
                   &error, 0,
-                  "{"
-                  "s:s " /* TYPE: type */
-                  "}",
+                  "{s:s}",
                   "type", &stype));
-  if (0 != strcasecmp (type,
-                       stype))
+  for (i=0;NULL != allowed[i];i++)
+    if (0 == strcasecmp (allowed[i],
+                         stype))
+      break;
+  if (NULL == allowed[i])
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Wireformat `%s' does not match mint's expected `%s' format\n",
-                stype,
-                type);
+                "Wireformat `%s' does not match mint's allowed formats\n",
+                stype);
     return GNUNET_NO;
   }
 
   for (i=0;NULL != format_handlers[i].type;i++)
     if (0 == strcasecmp (format_handlers[i].type,
-                         type))
+                         stype))
       return format_handlers[i].handler (wire);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Wireformat `%s' not supported\n",
-              type);
+              stype);
   return GNUNET_NO;
  EXITIF_exit:
   return GNUNET_NO;

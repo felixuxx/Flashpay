@@ -19,7 +19,7 @@
 # taler-mint-httpd.  Basically, the goal is to make sure that the
 # HTTP server survives (and produces the 'correct' error code).
 #
-# We read the JSON snippets to POST from test_atler_mint_httpd.data
+# We read the JSON snippets to POST from test_taler_mint_httpd.data
 #
 # Setup keys.
 taler-mint-keyup -d test-mint-home -m test-mint-home/master.priv

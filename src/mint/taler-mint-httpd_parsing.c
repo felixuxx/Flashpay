@@ -792,32 +792,29 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                                   where))
         {
           GNUNET_break_op (0);
-          if (MHD_YES !=
-              TMH_RESPONSE_reply_json_pack (connection,
-                                            MHD_HTTP_BAD_REQUEST,
-                                            "{s:s, s:O}",
-                                            "error", "Bad format",
-                                            "path", path))
-            return GNUNET_SYSERR;
-          return GNUNET_NO;
+          ret = (MHD_YES !=
+                 TMH_RESPONSE_reply_json_pack (connection,
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:O}",
+                                               "error", "Bad format",
+                                               "path", path))
+            ? GNUNET_SYSERR : GNUNET_NO;
+          break;
         }
         if (0 != strcmp (where->currency,
                          TMH_mint_currency_string))
         {
           GNUNET_break_op (0);
-          if (MHD_YES !=
-              TMH_RESPONSE_reply_json_pack (connection,
-                                            MHD_HTTP_BAD_REQUEST,
-                                            "{s:s, s:O, s:s}",
-                                            "error", "Currency not supported",
-                                            "path", path,
-                                            "currency", where->currency))
-          {
-            memset (where, 0, sizeof (struct TALER_Amount));
-            return GNUNET_SYSERR;
-          }
+          ret = (MHD_YES !=
+                 TMH_RESPONSE_reply_json_pack (connection,
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:O, s:s}",
+                                               "error", "Currency not supported",
+                                               "path", path,
+                                               "currency", where->currency))
+            ? GNUNET_SYSERR : GNUNET_NO;
           memset (where, 0, sizeof (struct TALER_Amount));
-          return GNUNET_NO;
+          break;
         }
         ret = GNUNET_OK;
         break;
@@ -832,15 +829,15 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
                                where))
         {
           GNUNET_break_op (0);
-          if (MHD_YES !=
-              TMH_RESPONSE_reply_json_pack (connection,
-                                            MHD_HTTP_BAD_REQUEST,
-                                            "{s:s, s:s, s:O}",
-                                            "error", "Bad format",
-                                            "hint", "expected absolute time",
-                                            "path", path))
-            return GNUNET_SYSERR;
-          return GNUNET_NO;
+          ret = (MHD_YES !=
+                 TMH_RESPONSE_reply_json_pack (connection,
+                                               MHD_HTTP_BAD_REQUEST,
+                                               "{s:s, s:s, s:O}",
+                                               "error", "Bad format",
+                                               "hint", "expected absolute time",
+                                               "path", path))
+            ? GNUNET_SYSERR : GNUNET_NO;
+          break;
         }
         ret = GNUNET_OK;
         break;

@@ -150,6 +150,11 @@ struct TALER_MINT_DenomPublicKey
   struct TALER_DenominationPublicKey key;
 
   /**
+   * The hash of the public key.
+   */
+  struct GNUNET_HashCode h_key;
+
+  /**
    * Timestamp indicating when the denomination key becomes valid
    */
   struct GNUNET_TIME_Absolute valid_from;
@@ -164,6 +169,15 @@ struct TALER_MINT_DenomPublicKey
    * Timestamp indicating when coins of this denomination become invalid.
    */
   struct GNUNET_TIME_Absolute deposit_valid_until;
+
+  /**
+   * When do signatures with this denomination key become invalid?
+   * After this point, these signatures cannot be used in (legal)
+   * disputes anymore, as the Mint is then allowed to destroy its side
+   * of the evidence.  @e expire_legal is expected to be significantly
+   * larger than @e expire_spend (by a year or more).
+   */
+  struct GNUNET_TIME_Absolute expire_legal;
 
   /**
    * The value of this denomination
@@ -204,6 +218,8 @@ struct TALER_MINT_AuditorInformation
    * that website.  We expect that in practice software is going to
    * often ship with an initial list of accepted auditors, just like
    * browsers ship with a CA root store.
+   *
+   * This field may be NULL. (#3987).
    */
   const char *auditor_url;
 
@@ -218,7 +234,7 @@ struct TALER_MINT_AuditorInformation
    * elements point to the same locations as the entries
    * in the key's main `denom_keys` array.
    */
-  struct TALER_MINT_DenomPublicKey *const*denom_keys;
+  const struct TALER_MINT_DenomPublicKey **denom_keys;
 };
 
 
@@ -246,7 +262,7 @@ struct TALER_MINT_Keys
   /**
    * Array of the keys of the auditors of the mint.
    */
-  struct TALER_AuditorPublicKeyP *auditors;
+  struct TALER_MINT_AuditorInformation *auditors;
 
   /**
    * Length of the @e sign_keys array.
@@ -353,6 +369,100 @@ TALER_MINT_get_denomination_key (const struct TALER_MINT_Keys *keys,
                                  const struct TALER_DenominationPublicKey *pk);
 
 
+/**
+ * Obtain the denomination key details from the mint.
+ *
+ * @param keys the mint's key set
+ * @param hc hash of the public key of the denomination to lookup
+ * @return details about the given denomination key
+ */
+const struct TALER_MINT_DenomPublicKey *
+TALER_MINT_get_denomination_key_by_hash (const struct TALER_MINT_Keys *keys,
+                                         const struct GNUNET_HashCode *hc);
+
+
+/* *********************  /wire *********************** */
+
+
+/**
+ * @brief A Wire format inquiry handle
+ */
+struct TALER_MINT_WireHandle;
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * wire format inquiry request to a mint.
+ *
+ * The callback is invoked multiple times, once for each supported @a
+ * method.  Finally, it is invoked one more time with cls/0/NULL/NULL
+ * to indicate the end of the iteration.  If any request fails to
+ * generate a valid response from the mint, @a http_status will also
+ * be zero and the iteration will also end.  Thus, the iteration
+ * always ends with a final call with an @a http_status of 0. If the
+ * @a http_status is already 0 on the first call, then the response to
+ * the /wire request was invalid.  Later, clients can tell the
+ * difference between @a http_status of 0 indicating a failed
+ * /wire/method request and a regular end of the iteration by @a
+ * method being non-NULL.  If the mint simply correctly asserts that
+ * it does not support any methods, @a method will be NULL but the @a
+ * http_status will be #MHD_HTTP_OK for the first call (followed by a
+ * cls/0/NULL/NULL call to signal the end of the iteration).
+ *
+ * @param cls closure
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful request;
+ *                    0 if the mint's reply is bogus (fails to follow the protocol)
+ * @param method wire format method supported, i.e. "test" or "sepa", or NULL
+ *            if already the /wire request failed.
+ * @param obj the received JSON reply, if successful this should be the wire
+ *            format details as provided by /wire/METHOD/, or NULL if the
+ *            reply was not in JSON format (in this case, the client might
+ *            want to do an HTTP request to /wire/METHOD/ with a browser to
+ *            provide more information to the user about the @a method).
+ */
+typedef void
+(*TALER_MINT_WireResultCallback) (void *cls,
+                                  unsigned int http_status,
+                                  const char *method,
+                                  json_t *obj);
+
+
+/**
+ * Obtain information about a mint's wire instructions.
+ * A mint may provide wire instructions for creating
+ * a reserve.  The wire instructions also indicate
+ * which wire formats merchants may use with the mint.
+ * This API is typically used by a wallet for wiring
+ * funds, and possibly by a merchant to determine
+ * supported wire formats.
+ *
+ * Note that while we return the (main) response verbatim to the
+ * caller for further processing, we do already verify that the
+ * response is well-formed (i.e. that signatures included in the
+ * response are all valid).  If the mint's reply is not well-formed,
+ * we return an HTTP status code of zero to @a cb.
+ *
+ * @param mint the mint handle; the mint must be ready to operate
+ * @param wire_cb the callback to call when a reply for this request is available
+ * @param wire_cb_cls closure for the above callback
+ * @return a handle for this request
+ */
+struct TALER_MINT_WireHandle *
+TALER_MINT_wire (struct TALER_MINT_Handle *mint,
+                 TALER_MINT_WireResultCallback wire_cb,
+                 void *wire_cb_cls);
+
+
+/**
+ * Cancel a wire information request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param wh the wire information request handle
+ */
+void
+TALER_MINT_wire_cancel (struct TALER_MINT_WireHandle *wh);
+
+
 /* *********************  /deposit *********************** */
 
 
@@ -437,13 +547,13 @@ void
 TALER_MINT_deposit_cancel (struct TALER_MINT_DepositHandle *deposit);
 
 
-/* ********************* /withdraw/status *********************** */
+/* ********************* /reserve/status *********************** */
 
 
 /**
- * @brief A /withdraw/status Handle
+ * @brief A /reserve/status Handle
  */
-struct TALER_MINT_WithdrawStatusHandle;
+struct TALER_MINT_ReserveStatusHandle;
 
 
 /**
@@ -513,12 +623,12 @@ struct TALER_MINT_ReserveHistory
  * @param history detailed transaction history, NULL on error
  */
 typedef void
-(*TALER_MINT_WithdrawStatusResultCallback) (void *cls,
-                                            unsigned int http_status,
-                                            json_t *json,
-                                            const struct TALER_Amount *balance,
-                                            unsigned int history_length,
-                                            const struct TALER_MINT_ReserveHistory *history);
+(*TALER_MINT_ReserveStatusResultCallback) (void *cls,
+                                           unsigned int http_status,
+                                           json_t *json,
+                                           const struct TALER_Amount *balance,
+                                           unsigned int history_length,
+                                           const struct TALER_MINT_ReserveHistory *history);
 
 
 /**
@@ -537,11 +647,11 @@ typedef void
  * @return a handle for this request; NULL if the inputs are invalid (i.e.
  *         signatures fail to verify).  In this case, the callback is not called.
  */
-struct TALER_MINT_WithdrawStatusHandle *
-TALER_MINT_withdraw_status (struct TALER_MINT_Handle *mint,
-                            const struct TALER_ReservePublicKeyP *reserve_pub,
-                            TALER_MINT_WithdrawStatusResultCallback cb,
-                            void *cb_cls);
+struct TALER_MINT_ReserveStatusHandle *
+TALER_MINT_reserve_status (struct TALER_MINT_Handle *mint,
+                           const struct TALER_ReservePublicKeyP *reserve_pub,
+                           TALER_MINT_ReserveStatusResultCallback cb,
+                           void *cb_cls);
 
 
 /**
@@ -551,16 +661,16 @@ TALER_MINT_withdraw_status (struct TALER_MINT_Handle *mint,
  * @param wsh the withdraw status request handle
  */
 void
-TALER_MINT_withdraw_status_cancel (struct TALER_MINT_WithdrawStatusHandle *wsh);
+TALER_MINT_reserve_status_cancel (struct TALER_MINT_ReserveStatusHandle *wsh);
 
 
-/* ********************* /withdraw/sign *********************** */
+/* ********************* /reserve/withdraw *********************** */
 
 
 /**
- * @brief A /withdraw/sign Handle
+ * @brief A /reserve/withdraw Handle
  */
-struct TALER_MINT_WithdrawSignHandle;
+struct TALER_MINT_ReserveWithdrawHandle;
 
 
 /**
@@ -574,14 +684,14 @@ struct TALER_MINT_WithdrawSignHandle;
  * @param full_response full response from the mint (for logging, in case of errors)
  */
 typedef void
-(*TALER_MINT_WithdrawSignResultCallback) (void *cls,
-                                          unsigned int http_status,
-                                          const struct TALER_DenominationSignature *sig,
-                                          json_t *full_response);
+(*TALER_MINT_ReserveWithdrawResultCallback) (void *cls,
+                                             unsigned int http_status,
+                                             const struct TALER_DenominationSignature *sig,
+                                             json_t *full_response);
 
 
 /**
- * Withdraw a coin from the mint using a /withdraw/sign request.  This
+ * Withdraw a coin from the mint using a /reserve/withdraw request.  This
  * API is typically used by a wallet.  Note that to ensure that no
  * money is lost in case of hardware failures, the caller must have
  * committed (most of) the arguments to disk before calling, and be
@@ -601,14 +711,14 @@ typedef void
  *         if the inputs are invalid (i.e. denomination key not with this mint).
  *         In this case, the callback is not called.
  */
-struct TALER_MINT_WithdrawSignHandle *
-TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
-                          const struct TALER_MINT_DenomPublicKey *pk,
-                          const struct TALER_ReservePrivateKeyP *reserve_priv,
-                          const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                          const struct TALER_DenominationBlindingKey *blinding_key,
-                          TALER_MINT_WithdrawSignResultCallback res_cb,
-                          void *res_cb_cls);
+struct TALER_MINT_ReserveWithdrawHandle *
+TALER_MINT_reserve_withdraw (struct TALER_MINT_Handle *mint,
+                             const struct TALER_MINT_DenomPublicKey *pk,
+                             const struct TALER_ReservePrivateKeyP *reserve_priv,
+                             const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                             const struct TALER_DenominationBlindingKey *blinding_key,
+                             TALER_MINT_ReserveWithdrawResultCallback res_cb,
+                             void *res_cb_cls);
 
 
 /**
@@ -618,7 +728,7 @@ TALER_MINT_withdraw_sign (struct TALER_MINT_Handle *mint,
  * @param sign the withdraw sign request handle
  */
 void
-TALER_MINT_withdraw_sign_cancel (struct TALER_MINT_WithdrawSignHandle *sign);
+TALER_MINT_reserve_withdraw_cancel (struct TALER_MINT_ReserveWithdrawHandle *sign);
 
 
 /* ********************* /refresh/melt+reveal ***************************** */

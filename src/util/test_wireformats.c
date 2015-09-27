@@ -15,9 +15,9 @@
 */
 
 /**
- * @file util/test_json_validations.c
+ * @file util/test_wireformats.c
  * @brief Tests for JSON validations
- * @author Sree Harsha Totakura <sreeharsha@totakura.in> 
+ * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
 
 #include "platform.h"
@@ -65,10 +65,18 @@ static const char * const unsupported_wire_str =
 \"address\": \"foobar\"}";
 
 
-int 
-main(int argc, 
+int
+main(int argc,
      const char *const argv[])
 {
+  const char *unsupported[] = {
+    "unsupported",
+    NULL
+  };
+  const char *sepa[] = {
+    "SEPA",
+    NULL
+  };
   json_t *wire;
   json_error_t error;
   int ret;
@@ -76,16 +84,16 @@ main(int argc,
   GNUNET_log_setup ("test-json-validations", "WARNING", NULL);
   (void) memset(&error, 0, sizeof(error));
   GNUNET_assert (NULL != (wire = json_loads (unsupported_wire_str, 0, NULL)));
-  GNUNET_assert (1 != TALER_json_validate_wireformat ("unsupported", wire));
+  GNUNET_assert (1 != TALER_json_validate_wireformat (unsupported, wire));
   json_decref (wire);
   GNUNET_assert (NULL != (wire = json_loads (invalid_wire_str, 0, NULL)));
-  GNUNET_assert (1 != TALER_json_validate_wireformat ("SEPA", wire));
+  GNUNET_assert (1 != TALER_json_validate_wireformat (sepa, wire));
   json_decref (wire);
   GNUNET_assert (NULL != (wire = json_loads (invalid_wire_str2, 0, NULL)));
-  GNUNET_assert (1 != TALER_json_validate_wireformat ("SEPA", wire));
+  GNUNET_assert (1 != TALER_json_validate_wireformat (sepa, wire));
   json_decref (wire);
   GNUNET_assert (NULL != (wire = json_loads (valid_wire_str, 0, &error)));
-  ret = TALER_json_validate_wireformat ("SEPA", wire);
+  ret = TALER_json_validate_wireformat (sepa, wire);
   json_decref (wire);
   if (1 == ret)
     return 0;

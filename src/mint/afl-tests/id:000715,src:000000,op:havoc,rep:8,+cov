@@ -1,0 +1,9 @@
+POST /admin/add/incoming HTTP/1.1
+Host: localhost:8081
+Accept: */*
+Coent-ntent-Type: application/Content-Length: 220
+
+{"rerrjson
+Content-Length: 220
+
+{"rerrenc_pub":"TMZCK5CFM1KZQTY1WTF0CEZGPGA0670G94969RF79PA5106ARTK0","amont":{"currency":"EUR","value":5,"fraction":10000},"execution_date":"/Date(1442821651)/""wire":{"type":"TEST","bank":"source bank","account":42}}

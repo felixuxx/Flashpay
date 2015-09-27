@@ -24,6 +24,11 @@
 
 
 /**
+ * Are we running in verbose mode?
+ */
+static int verbose;
+
+/**
  * Filename of the auditor's private key.
  */
 static char *auditor_key_file;
@@ -45,15 +50,66 @@ static char *mint_request_file;
 static char *output_file;
 
 /**
- * Handle to the auditor's configuration
- */
-static struct GNUNET_CONFIGURATION_Handle *kcfg;
-
-/**
  * Master public key of the mint.
  */
 static struct TALER_MasterPublicKeyP master_public_key;
 
+
+/**
+ * Print denomination key details for diagnostics.
+ *
+ * @param dk denomination key to print
+ */
+static void
+print_dk (const struct TALER_DenominationKeyValidityPS *dk)
+{
+  struct TALER_Amount a;
+  char *s;
+
+  fprintf (stdout,
+           "Denomination key hash: %s\n",
+           GNUNET_h2s_full (&dk->denom_hash));
+  TALER_amount_ntoh (&a,
+                     &dk->value);
+  fprintf (stdout,
+           "Value: %s\n",
+           s = TALER_amount_to_string (&a));
+  GNUNET_free (s);
+    TALER_amount_ntoh (&a,
+                       &dk->fee_withdraw);
+  fprintf (stdout,
+           "Withdraw fee: %s\n",
+           s = TALER_amount_to_string (&a));
+  GNUNET_free (s);
+    TALER_amount_ntoh (&a,
+                       &dk->fee_deposit);
+  fprintf (stdout,
+           "Deposit fee: %s\n",
+           s = TALER_amount_to_string (&a));
+  GNUNET_free (s);
+  TALER_amount_ntoh (&a,
+                     &dk->fee_refresh);
+  fprintf (stdout,
+           "Refresh fee: %s\n",
+           s = TALER_amount_to_string (&a));
+  GNUNET_free (s);
+
+  fprintf (stdout,
+           "Validity start time: %s\n",
+           GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dk->start)));
+  fprintf (stdout,
+           "Withdraw end time: %s\n",
+           GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dk->expire_withdraw)));
+  fprintf (stdout,
+           "Deposit end time: %s\n",
+           GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dk->expire_spend)));
+  fprintf (stdout,
+           "Legal dispute end time: %s\n",
+           GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dk->expire_legal)));
+
+  fprintf (stdout,
+           "\n");
+}
 
 
 /**
@@ -79,18 +135,24 @@ main (int argc,
      "public key of the mint (Crockford base32 encoded)", 1,
      &GNUNET_GETOPT_set_filename, &mint_public_key},
     {'r', "mint-request", "FILE",
-     "set of keys the mint requested the auditor to sign", 0,
+     "set of keys the mint requested the auditor to sign", 1,
      &GNUNET_GETOPT_set_string, &mint_request_file},
     {'o', "output", "FILE",
-     "where to write our signature", 0,
+     "where to write our signature", 1,
      &GNUNET_GETOPT_set_string, &output_file},
     GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
+    GNUNET_GETOPT_OPTION_VERBOSE (&verbose),
     GNUNET_GETOPT_OPTION_END
   };
   struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
+  struct TALER_AuditorSignatureP *sigs;
+  struct TALER_AuditorPublicKeyP apub;
   struct GNUNET_DISK_FileHandle *fh;
-  struct GNUNET_DISK_FileHandle *fout;
+  struct TALER_DenominationKeyValidityPS *dks;
+  unsigned int dks_len;
+  struct TALER_MintKeyValidityPS kv;
   off_t in_size;
+  unsigned int i;
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-mint-keyup",
@@ -114,10 +176,13 @@ main (int argc,
              auditor_key_file);
     return 1;
   }
+  GNUNET_CRYPTO_eddsa_key_get_public (eddsa_priv,
+                                      &apub.eddsa_pub);
   if (NULL == mint_public_key)
   {
     fprintf (stderr,
              "Mint public key not given\n");
+    GNUNET_free (eddsa_priv);
     return 1;
   }
   if (GNUNET_OK !=
@@ -129,12 +194,14 @@ main (int argc,
     fprintf (stderr,
              "Public key `%s' malformed\n",
              mint_public_key);
+    GNUNET_free (eddsa_priv);
     return 1;
   }
   if (NULL == mint_request_file)
   {
     fprintf (stderr,
              "Mint signing request not given\n");
+    GNUNET_free (eddsa_priv);
     return 1;
   }
   fh = GNUNET_DISK_file_open (mint_request_file,
@@ -146,6 +213,7 @@ main (int argc,
              "Failed to open file `%s': %s\n",
              mint_request_file,
              STRERROR (errno));
+    GNUNET_free (eddsa_priv);
     return 1;
   }
   if (GNUNET_OK !=
@@ -157,34 +225,95 @@ main (int argc,
              mint_request_file,
              STRERROR (errno));
     GNUNET_DISK_file_close (fh);
+    GNUNET_free (eddsa_priv);
     return 1;
   }
+  if (0 != (in_size % sizeof (struct TALER_DenominationKeyValidityPS)))
+  {
+    fprintf (stderr,
+             "Input file size of file `%s' is invalid\n",
+             mint_request_file);
+    GNUNET_DISK_file_close (fh);
+    GNUNET_free (eddsa_priv);
+    return 1;
+  }
+  dks_len = in_size / sizeof (struct TALER_DenominationKeyValidityPS);
+  kv.purpose.purpose = htonl (TALER_SIGNATURE_AUDITOR_MINT_KEYS);
+  kv.purpose.size = htonl (sizeof (struct TALER_MintKeyValidityPS));
+  kv.master = master_public_key;
+  dks = GNUNET_new_array (dks_len,
+                          struct TALER_DenominationKeyValidityPS);
+  sigs = GNUNET_new_array (dks_len,
+                           struct TALER_AuditorSignatureP);
+  if (in_size !=
+      GNUNET_DISK_file_read (fh,
+                             dks,
+                             in_size))
+  {
+    fprintf (stderr,
+             "Failed to read input file `%s': %s\n",
+             mint_request_file,
+             STRERROR (errno));
+    GNUNET_DISK_file_close (fh);
+    GNUNET_free (sigs);
+    GNUNET_free (dks);
+    GNUNET_free (eddsa_priv);
+    return 1;
+  }
+  GNUNET_DISK_file_close (fh);
+  for (i=0;i<dks_len;i++)
+  {
+    struct TALER_DenominationKeyValidityPS *dk = &dks[i];
+
+    if (verbose)
+      print_dk (dk);
+    kv.start = dk->start;
+    kv.expire_withdraw = dk->expire_withdraw;
+    kv.expire_spend = dk->expire_spend;
+    kv.expire_legal = dk->expire_legal;
+    kv.value = dk->value;
+    kv.fee_withdraw = dk->fee_withdraw;
+    kv.fee_deposit = dk->fee_deposit;
+    kv.fee_refresh = dk->fee_refresh;
+    kv.denom_hash = dk->denom_hash;
+
+    /* Finally sign ... */
+    GNUNET_CRYPTO_eddsa_sign (eddsa_priv,
+                              &kv.purpose,
+                              &sigs[i].eddsa_sig);
+
+
+  }
+
   if (NULL == output_file)
   {
     fprintf (stderr,
              "Output file not given\n");
-    GNUNET_DISK_file_close (fh);
+    GNUNET_free (dks);
+    GNUNET_free (sigs);
+    GNUNET_free (eddsa_priv);
     return 1;
   }
-  fout = GNUNET_DISK_file_open (output_file,
-                                GNUNET_DISK_OPEN_READ |
-                                GNUNET_DISK_OPEN_TRUNCATE |
-                                GNUNET_DISK_OPEN_CREATE,
-                                GNUNET_DISK_PERM_USER_READ |
-                                GNUNET_DISK_PERM_USER_WRITE |
-                                GNUNET_DISK_PERM_GROUP_READ |
-                                GNUNET_DISK_PERM_OTHER_READ);
-  if (NULL == fout)
+
+  /* write result to disk */
+  if (GNUNET_OK !=
+      TALER_MINTDB_auditor_write (output_file,
+                                  &apub,
+                                  sigs,
+                                  &master_public_key,
+                                  dks_len,
+                                  dks))
   {
     fprintf (stderr,
-             "Failed to open file `%s': %s\n",
+             "Failed to write to file `%s': %s\n",
              output_file,
              STRERROR (errno));
-    GNUNET_DISK_file_close (fh);
+    GNUNET_free (sigs);
+    GNUNET_free (dks);
     return 1;
   }
-  /* FIXME: finally do real work... */
-
+  GNUNET_free (sigs);
+  GNUNET_free (dks);
   GNUNET_free (eddsa_priv);
   return 0;
 }

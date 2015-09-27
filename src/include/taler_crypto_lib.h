@@ -190,6 +190,18 @@ struct TALER_AuditorPublicKeyP
 
 
 /**
+ * @brief Type of the public key used by the auditor.
+ */
+struct TALER_AuditorSignatureP
+{
+  /**
+   * Taler uses EdDSA signatures for auditors.
+   */
+  struct GNUNET_CRYPTO_EddsaSignature eddsa_sig;
+};
+
+
+/**
  * @brief Type of the offline master public keys used by the mint.
  */
 struct TALER_MasterPrivateKeyP

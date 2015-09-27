@@ -167,12 +167,12 @@ TALER_hash_json (json_t *json,
 /**
  * Check if the given wire format JSON object is correctly formatted
  *
- * @param type the type of the wire format
+ * @param allowed NULL-terminated array of allowed wire format types
  * @param wire the JSON wire format object
  * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
 int
-TALER_json_validate_wireformat (const char *type,
+TALER_json_validate_wireformat (const char **allowed,
                                 const json_t *wire);
 
 

@@ -30,6 +30,23 @@
 
 
 /**
+ * Add headers we want to return in every response.
+ * Useful for testing, like if we want to always close
+ * connections.
+ *
+ * @param response response to modify
+ */
+void
+TMH_RESPONSE_add_global_headers (struct MHD_Response *response)
+{
+  if (TMH_mint_connection_close)
+    (void) MHD_add_response_header (response,
+                                    MHD_HTTP_HEADER_CONNECTION,
+                                    "close");
+}
+
+
+/**
  * Send JSON object as response.
  *
  * @param connection the MHD connection
@@ -56,6 +73,7 @@ TMH_RESPONSE_reply_json (struct MHD_Connection *connection,
     GNUNET_break (0);
     return MHD_NO;
   }
+  TMH_RESPONSE_add_global_headers (resp);
   (void) MHD_add_response_header (resp,
                                   MHD_HTTP_HEADER_CONTENT_TYPE,
                                   "application/json");
@@ -292,6 +310,7 @@ TMH_RESPONSE_reply_request_too_large (struct MHD_Connection *connection)
                                           MHD_RESPMEM_PERSISTENT);
   if (NULL == resp)
     return MHD_NO;
+  TMH_RESPONSE_add_global_headers (resp);
   ret = MHD_queue_response (connection,
                             MHD_HTTP_REQUEST_ENTITY_TOO_LARGE,
                             resp);
@@ -465,14 +484,6 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
                                                  &melt->coin_sig.eddsa_signature);
       }
       break;
-    case TALER_MINTDB_TT_LOCK:
-      {
-        type = "lock";
-        value = pos->details.lock->amount;
-        transaction = NULL;
-        GNUNET_break (0); /* #3625: Lock NOT implemented! */
-        break;
-      }
     default:
       GNUNET_assert (0);
     }
@@ -638,8 +649,8 @@ compile_reserve_history (const struct TALER_MINTDB_ReserveHistory *rh,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_withdraw_status_success (struct MHD_Connection *connection,
-                                            const struct TALER_MINTDB_ReserveHistory *rh)
+TMH_RESPONSE_reply_reserve_status_success (struct MHD_Connection *connection,
+                                           const struct TALER_MINTDB_ReserveHistory *rh)
 {
   json_t *json_balance;
   json_t *json_history;
@@ -662,15 +673,15 @@ TMH_RESPONSE_reply_withdraw_status_success (struct MHD_Connection *connection,
 /**
  * Send reserve status information to client with the
  * message that we have insufficient funds for the
- * requested /withdraw/sign operation.
+ * requested /reserve/withdraw operation.
  *
  * @param connection connection to the client
  * @param rh reserve history to return
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *connection,
-                                                     const struct TALER_MINTDB_ReserveHistory *rh)
+TMH_RESPONSE_reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
+                                                        const struct TALER_MINTDB_ReserveHistory *rh)
 {
   json_t *json_balance;
   json_t *json_history;
@@ -699,7 +710,7 @@ TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (struct MHD_Connection *conn
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_withdraw_sign_success (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_reserve_withdraw_success (struct MHD_Connection *connection,
                                           const struct TALER_MINTDB_CollectableBlindcoin *collectable)
 {
   json_t *sig_json;
@@ -936,7 +947,7 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
     json_array_append_new (info_commit,
                            info_commit_k);
     info_link_k = json_array ();
-    for (i=0;i<mc->num_newcoins;i++)
+    for (i=0;i<mc->num_oldcoins;i++)
     {
       const struct TALER_RefreshCommitLinkP *cl;
       json_t *cl_json;

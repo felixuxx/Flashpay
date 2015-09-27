@@ -325,9 +325,11 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey *denom_key,
                                    &denom_key_issue.denom_hash,
                                    sizeof (struct GNUNET_HashCode));
   denom_key->key.rsa_public_key = pk;
+  denom_key->h_key = denom_key_issue.denom_hash;
   denom_key->valid_from = valid_from;
   denom_key->withdraw_valid_until = withdraw_valid_until;
   denom_key->deposit_valid_until = deposit_valid_until;
+  denom_key->expire_legal = expire_legal;
   denom_key->value = value;
   denom_key->fee_withdraw = fee_withdraw;
   denom_key->fee_deposit = fee_deposit;
@@ -337,6 +339,116 @@ parse_json_denomkey (struct TALER_MINT_DenomPublicKey *denom_key,
  EXITIF_exit:
   MAJ_parse_free (spec);
   return GNUNET_SYSERR;
+}
+
+
+/**
+ * Parse a mint's auditor information encoded in JSON.
+ *
+ * @param[out] auditor where to return the result
+ * @param[in] auditor_obj json to parse
+ * @param key_data information about denomination keys
+ * @return #GNUNET_OK if all is fine, #GNUNET_SYSERR if the signature is
+ *        invalid or the json malformed.
+ */
+static int
+parse_json_auditor (struct TALER_MINT_AuditorInformation *auditor,
+                    json_t *auditor_obj,
+                    const struct TALER_MINT_Keys *key_data)
+{
+  json_t *keys;
+  json_t *key;
+  unsigned int len;
+  unsigned int off;
+  unsigned int i;
+  struct TALER_MintKeyValidityPS kv;
+  struct MAJ_Specification spec[] = {
+    MAJ_spec_fixed_auto ("auditor_pub",
+                         &auditor->auditor_pub),
+    MAJ_spec_json ("denomination_keys",
+                   &keys),
+    MAJ_spec_end
+  };
+
+  auditor->auditor_url = NULL; /* #3987 */
+  if (GNUNET_OK !=
+      MAJ_parse_json (auditor_obj,
+                      spec))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  kv.purpose.purpose = htonl (TALER_SIGNATURE_AUDITOR_MINT_KEYS);
+  kv.purpose.size = htonl (sizeof (struct TALER_MintKeyValidityPS));
+  kv.master = key_data->master_pub;
+  len = json_array_size (keys);
+  auditor->denom_keys = GNUNET_new_array (len,
+                                          const struct TALER_MINT_DenomPublicKey *);
+  i = 0;
+  off = 0;
+  json_array_foreach (keys, i, key) {
+    struct TALER_AuditorSignatureP auditor_sig;
+    struct GNUNET_HashCode denom_h;
+    const struct TALER_MINT_DenomPublicKey *dk;
+    unsigned int j;
+    struct MAJ_Specification spec[] = {
+      MAJ_spec_fixed_auto ("denom_pub_h",
+                           &denom_h),
+      MAJ_spec_fixed_auto ("auditor_sig",
+                           &auditor_sig),
+      MAJ_spec_end
+    };
+
+    if (GNUNET_OK !=
+        MAJ_parse_json (key,
+                        spec))
+      {
+      GNUNET_break_op (0);
+      continue;
+    }
+    dk = NULL;
+    for (j=0;j<key_data->num_denom_keys;j++)
+    {
+      if (0 == memcmp (&denom_h,
+                       &key_data->denom_keys[j].h_key,
+                       sizeof (struct GNUNET_HashCode)))
+      {
+        dk = &key_data->denom_keys[j];
+        break;
+      }
+    }
+    if (NULL == dk)
+    {
+      GNUNET_break_op (0);
+      continue;
+    }
+    kv.start = GNUNET_TIME_absolute_hton (dk->valid_from);
+    kv.expire_withdraw = GNUNET_TIME_absolute_hton (dk->withdraw_valid_until);
+    kv.expire_spend = GNUNET_TIME_absolute_hton (dk->deposit_valid_until);
+    kv.expire_legal = GNUNET_TIME_absolute_hton (dk->expire_legal);
+    TALER_amount_hton (&kv.value,
+                       &dk->value);
+    TALER_amount_hton (&kv.fee_withdraw,
+                       &dk->fee_withdraw);
+    TALER_amount_hton (&kv.fee_deposit,
+                       &dk->fee_deposit);
+    TALER_amount_hton (&kv.fee_refresh,
+                       &dk->fee_refresh);
+    kv.denom_hash = dk->h_key;
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_AUDITOR_MINT_KEYS,
+                                    &kv.purpose,
+                                    &auditor_sig.eddsa_sig,
+                                    &auditor->auditor_pub.eddsa_pub))
+    {
+      GNUNET_break_op (0);
+      continue;
+    }
+    auditor->denom_keys[off] = dk;
+    off++;
+  }
+  auditor->num_denom_keys = off;
+  return GNUNET_OK;
 }
 
 
@@ -394,8 +506,8 @@ decode_keys_json (json_t *resp_obj,
     EXITIF (0 == (key_data->num_sign_keys =
                   json_array_size (sign_keys_array)));
     key_data->sign_keys
-      = GNUNET_malloc (sizeof (struct TALER_MINT_SigningPublicKey)
-                       * key_data->num_sign_keys);
+      = GNUNET_new_array (key_data->num_sign_keys,
+                          struct TALER_MINT_SigningPublicKey);
     index = 0;
     json_array_foreach (sign_keys_array, index, sign_key_obj) {
       EXITIF (GNUNET_SYSERR ==
@@ -415,8 +527,8 @@ decode_keys_json (json_t *resp_obj,
                      json_object_get (resp_obj, "denoms")));
     EXITIF (JSON_ARRAY != json_typeof (denom_keys_array));
     EXITIF (0 == (key_data->num_denom_keys = json_array_size (denom_keys_array)));
-    key_data->denom_keys = GNUNET_malloc (sizeof (struct TALER_MINT_DenomPublicKey)
-                                          * key_data->num_denom_keys);
+    key_data->denom_keys = GNUNET_new_array (key_data->num_denom_keys,
+                                             struct TALER_MINT_DenomPublicKey);
     index = 0;
     json_array_foreach (denom_keys_array, index, denom_key_obj) {
       EXITIF (GNUNET_SYSERR ==
@@ -427,7 +539,30 @@ decode_keys_json (json_t *resp_obj,
     }
   }
 
-  /* FIXME: parse the auditor keys (#3847) */
+  /* parse the auditor information */
+  {
+    json_t *auditors_array;
+    json_t *auditor_info;
+    unsigned int len;
+    unsigned int index;
+
+    EXITIF (NULL == (auditors_array =
+                     json_object_get (resp_obj, "auditors")));
+    EXITIF (JSON_ARRAY != json_typeof (auditors_array));
+    len = json_array_size (auditors_array);
+    if (0 != len)
+    {
+      key_data->auditors = GNUNET_new_array (len,
+                                             struct TALER_MINT_AuditorInformation);
+      index = 0;
+      json_array_foreach (auditors_array, index, auditor_info) {
+        EXITIF (GNUNET_SYSERR ==
+                parse_json_auditor (&key_data->auditors[index],
+                                    auditor_info,
+                                    key_data));
+      }
+    }
+  }
 
   /* Validate signature... */
   ks.purpose.size = htonl (sizeof (ks));
@@ -551,7 +686,7 @@ MAH_handle_is_ready (struct TALER_MINT_Handle *h)
  * Obtain the URL to use for an API request.
  *
  * @param h the mint handle to query
- * @param path Taler API path (i.e. "/withdraw/sign")
+ * @param path Taler API path (i.e. "/reserve/withdraw")
  * @return the full URI to use with cURL
  */
 char *
@@ -703,6 +838,28 @@ TALER_MINT_get_denomination_key (const struct TALER_MINT_Keys *keys,
   for (i=0;i<keys->num_denom_keys;i++)
     if (0 == GNUNET_CRYPTO_rsa_public_key_cmp (pk->rsa_public_key,
                                                keys->denom_keys[i].key.rsa_public_key))
+      return &keys->denom_keys[i];
+  return NULL;
+}
+
+
+/**
+ * Obtain the denomination key details from the mint.
+ *
+ * @param keys the mint's key set
+ * @param hc hash of the public key of the denomination to lookup
+ * @return details about the given denomination key
+ */
+const struct TALER_MINT_DenomPublicKey *
+TALER_MINT_get_denomination_key_by_hash (const struct TALER_MINT_Keys *keys,
+                                         const struct GNUNET_HashCode *hc)
+{
+  unsigned int i;
+
+  for (i=0;i<keys->num_denom_keys;i++)
+    if (0 == memcmp (hc,
+                     &keys->denom_keys[i].h_key,
+                     sizeof (struct GNUNET_HashCode)))
       return &keys->denom_keys[i];
   return NULL;
 }

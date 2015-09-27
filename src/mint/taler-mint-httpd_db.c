@@ -24,6 +24,67 @@
 #include "taler-mint-httpd_responses.h"
 #include "taler-mint-httpd_keystate.h"
 
+/**
+ * How often should we retry a transaction before giving up
+ * (for transactions resulting in serialization/dead locks only).
+ */
+#define MAX_TRANSACTION_COMMIT_RETRIES 3
+
+/**
+ * Code to begin a transaction, must be inline as we define a block
+ * that ends with #COMMIT_TRANSACTION() within which we perform a number
+ * of retries.  Note that this code may call "return" internally, so
+ * it must be called within a function where any cleanup will be done
+ * by the caller. Furthermore, the function's return value must
+ * match that of a #TMH_RESPONSE_reply_internal_db_error() status code.
+ *
+ * @param session session handle
+ * @param connection connection handle
+ */
+#define START_TRANSACTION(session,connection)                 \
+{ /* start new scope, will be ended by COMMIT_TRANSACTION() */\
+  unsigned int transaction_retries = 0;                       \
+  int transaction_commit_result;                              \
+transaction_start_label: /* we will use goto for retries */   \
+  if (GNUNET_OK !=                                            \
+      TMH_plugin->start (TMH_plugin->cls,                     \
+                         session))                            \
+  {                                                           \
+    GNUNET_break (0);                                         \
+    return TMH_RESPONSE_reply_internal_db_error (connection); \
+  }
+
+/**
+ * Code to conclude a transaction, dual to #START_TRANSACTION().  Note
+ * that this code may call "return" internally, so it must be called
+ * within a function where any cleanup will be done by the caller.
+ * Furthermore, the function's return value must match that of a
+ * #TMH_RESPONSE_reply_internal_db_error() status code.
+ *
+ * @param session session handle
+ * @param connection connection handle
+ */
+#define COMMIT_TRANSACTION(session,connection)                             \
+  transaction_commit_result =                                              \
+    TMH_plugin->commit (TMH_plugin->cls,                                   \
+                        session);                                          \
+  if (GNUNET_SYSERR == transaction_commit_result)                          \
+  {                                                                        \
+    TALER_LOG_WARNING ("Transaction commit failed in %s\n", __FUNCTION__); \
+    return TMH_RESPONSE_reply_commit_error (connection);                   \
+  }                                                                        \
+  if (GNUNET_NO == transaction_commit_result)                              \
+  {                                                                        \
+    TALER_LOG_WARNING ("Transaction commit failed in %s\n", __FUNCTION__); \
+    if (transaction_retries++ <= MAX_TRANSACTION_COMMIT_RETRIES)           \
+      goto transaction_start_label;                                        \
+    TALER_LOG_WARNING ("Transaction commit failed %u times in %s\n",       \
+                       transaction_retries,                                \
+                       __FUNCTION__);                                      \
+    return TMH_RESPONSE_reply_commit_error (connection);                   \
+  }                                                                        \
+} /* end of scope opened by BEGIN_TRANSACTION */
+
 
 /**
  * Calculate the total value of all transactions performed.
@@ -67,15 +128,6 @@ calculate_transaction_list_totals (struct TALER_MINTDB_TransactionList *tl,
         return GNUNET_SYSERR;
       }
       break;
-    case TALER_MINTDB_TT_LOCK:
-      /* should check if lock is still active,
-         and if it is for THIS operation; if
-         lock is inactive, delete it; if lock
-         is for THIS operation, ignore it;
-         if lock is for another operation,
-         count it! */
-      GNUNET_assert (0);  // FIXME: not implemented! (#3625)
-      return GNUNET_SYSERR;
     }
   }
   *ret = spent;
@@ -135,17 +187,18 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
   dki = TMH_KS_denomination_key_lookup (mks,
                                         &deposit->coin.denom_pub,
 					TMH_KS_DKU_DEPOSIT);
+  if (NULL == dki)
+  {
+    TMH_KS_release (mks);
+    return TMH_RESPONSE_reply_arg_invalid (connection,
+                                           "denom_pub");
+  }
   TALER_amount_ntoh (&value,
                      &dki->issue.properties.value);
   TMH_KS_release (mks);
 
-  if (GNUNET_OK !=
-      TMH_plugin->start (TMH_plugin->cls,
-                         session))
-  {
-    GNUNET_break (0);
-    return TMH_RESPONSE_reply_internal_db_error (connection);
-  }
+  START_TRANSACTION (session, connection);
+
   /* fee for THIS transaction */
   spent = deposit->amount_with_fee;
   /* add cost of all previous transactions */
@@ -188,13 +241,7 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
 
-  if (GNUNET_OK !=
-      TMH_plugin->commit (TMH_plugin->cls,
-                          session))
-  {
-    TALER_LOG_WARNING ("/deposit transaction commit failed\n");
-    return TMH_RESPONSE_reply_commit_error (connection);
-  }
+  COMMIT_TRANSACTION(session, connection);
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_subtract (&amount_without_fee,
                                         &deposit->amount_with_fee,
@@ -212,7 +259,7 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
 
 
 /**
- * Execute a /withdraw/status.  Given the public key of a reserve,
+ * Execute a /reserve/status.  Given the public key of a reserve,
  * return the associated transaction history.
  *
  * @param connection the MHD connection to handle
@@ -220,8 +267,8 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_DB_execute_withdraw_status (struct MHD_Connection *connection,
-                                const struct TALER_ReservePublicKeyP *reserve_pub)
+TMH_DB_execute_reserve_status (struct MHD_Connection *connection,
+                               const struct TALER_ReservePublicKeyP *reserve_pub)
 {
   struct TALER_MINTDB_Session *session;
   struct TALER_MINTDB_ReserveHistory *rh;
@@ -242,7 +289,7 @@ TMH_DB_execute_withdraw_status (struct MHD_Connection *connection,
                                          "{s:s, s:s}",
                                          "error", "Reserve not found",
                                          "parameter", "withdraw_pub");
-  res = TMH_RESPONSE_reply_withdraw_status_success (connection,
+  res = TMH_RESPONSE_reply_reserve_status_success (connection,
                                                     rh);
   TMH_plugin->free_reserve_history (TMH_plugin->cls,
                                     rh);
@@ -251,98 +298,48 @@ TMH_DB_execute_withdraw_status (struct MHD_Connection *connection,
 
 
 /**
- * Execute a "/withdraw/sign". Given a reserve and a properly signed
- * request to withdraw a coin, check the balance of the reserve and
- * if it is sufficient, store the request and return the signed
- * blinded envelope.
+ * Try to execute /reserve/withdraw transaction.
  *
- * @param connection the MHD connection to handle
- * @param reserve public key of the reserve
+ * @param connection request we are handling
+ * @param session database session we are using
+ * @param reserve reserve to withdraw from
  * @param denomination_pub public key of the denomination requested
+ * @param dki denomination to withdraw
  * @param blinded_msg blinded message to be signed
  * @param blinded_msg_len number of bytes in @a blinded_msg
+ * @param h_blind hash of @a blinded_msg
  * @param signature signature over the withdraw request, to be stored in DB
+ * @param denom_sig[out] where to write the resulting signature
+ *        (used to release memory in case of transaction failure
  * @return MHD result code
  */
-int
-TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
-                              const struct TALER_ReservePublicKeyP *reserve,
-                              const struct TALER_DenominationPublicKey *denomination_pub,
-                              const char *blinded_msg,
-                              size_t blinded_msg_len,
-                              const struct TALER_ReserveSignatureP *signature)
+static int
+execute_reserve_withdraw_transaction (struct MHD_Connection *connection,
+                                      struct TALER_MINTDB_Session *session,
+                                      struct TMH_KS_StateHandle *key_state,
+                                      const struct TALER_ReservePublicKeyP *reserve,
+                                      const struct TALER_DenominationPublicKey *denomination_pub,
+                                      const struct TALER_MINTDB_DenominationKeyIssueInformation *dki,
+                                      const char *blinded_msg,
+                                      size_t blinded_msg_len,
+                                      const struct GNUNET_HashCode *h_blind,
+                                      const struct TALER_ReserveSignatureP *signature,
+                                      struct TALER_DenominationSignature *denom_sig)
 {
-  struct TALER_MINTDB_Session *session;
   struct TALER_MINTDB_ReserveHistory *rh;
   const struct TALER_MINTDB_ReserveHistory *pos;
-  struct TMH_KS_StateHandle *key_state;
-  struct TALER_MINTDB_CollectableBlindcoin collectable;
-  struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
   struct TALER_MINTDB_DenominationKeyIssueInformation *tdki;
-  struct GNUNET_CRYPTO_rsa_Signature *sig;
+  struct TALER_MINTDB_CollectableBlindcoin collectable;
   struct TALER_Amount amount_required;
   struct TALER_Amount deposit_total;
   struct TALER_Amount withdraw_total;
   struct TALER_Amount balance;
   struct TALER_Amount value;
   struct TALER_Amount fee_withdraw;
-  struct GNUNET_HashCode h_blind;
   int res;
 
-  GNUNET_CRYPTO_hash (blinded_msg,
-                      blinded_msg_len,
-                      &h_blind);
-
-  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                  TMH_test_mode)))
-  {
-    GNUNET_break (0);
-    return TMH_RESPONSE_reply_internal_db_error (connection);
-  }
-  res = TMH_plugin->get_withdraw_info (TMH_plugin->cls,
-                                       session,
-                                       &h_blind,
-                                       &collectable);
-  if (GNUNET_SYSERR == res)
-  {
-    GNUNET_break (0);
-    return TMH_RESPONSE_reply_internal_db_error (connection);
-  }
-
-  /* Don't sign again if we have already signed the coin */
-  if (GNUNET_YES == res)
-  {
-    res = TMH_RESPONSE_reply_withdraw_sign_success (connection,
-                                                    &collectable);
-    GNUNET_CRYPTO_rsa_signature_free (collectable.sig.rsa_signature);
-    GNUNET_CRYPTO_rsa_public_key_free (collectable.denom_pub.rsa_public_key);
-    return res;
-  }
-  GNUNET_assert (GNUNET_NO == res);
-
   /* Check if balance is sufficient */
-  key_state = TMH_KS_acquire ();
-  dki = TMH_KS_denomination_key_lookup (key_state,
-                                        denomination_pub,
-					TMH_KS_DKU_WITHDRAW);
-  if (NULL == dki)
-  {
-    TMH_KS_release (key_state);
-    return TMH_RESPONSE_reply_json_pack (connection,
-                                         MHD_HTTP_NOT_FOUND,
-                                         "{s:s}",
-                                         "error",
-                                         "Denomination not found");
-  }
-  if (GNUNET_OK !=
-      TMH_plugin->start (TMH_plugin->cls,
-                         session))
-  {
-    GNUNET_break (0);
-    TMH_KS_release (key_state);
-    return TMH_RESPONSE_reply_internal_db_error (connection);
-  }
-
+  START_TRANSACTION (session, connection);
   rh = TMH_plugin->get_reserve_history (TMH_plugin->cls,
                                         session,
                                         reserve);
@@ -350,7 +347,6 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
   {
     TMH_plugin->rollback (TMH_plugin->cls,
                           session);
-    TMH_KS_release (key_state);
     return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "reserve_pub");
   }
@@ -368,7 +364,6 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
   {
     TMH_plugin->rollback (TMH_plugin->cls,
                           session);
-    TMH_KS_release (key_state);
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
 
@@ -389,7 +384,6 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
         {
           TMH_plugin->rollback (TMH_plugin->cls,
                                 session);
-          TMH_KS_release (key_state);
           return TMH_RESPONSE_reply_internal_db_error (connection);
         }
       res |= 1;
@@ -398,6 +392,13 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
       tdki = TMH_KS_denomination_key_lookup (key_state,
                                              &pos->details.withdraw->denom_pub,
 					     TMH_KS_DKU_WITHDRAW);
+      if (NULL == tdki)
+      {
+        GNUNET_break (0);
+        TMH_plugin->rollback (TMH_plugin->cls,
+                              session);
+        return TMH_RESPONSE_reply_internal_db_error (connection);
+      }
       TALER_amount_ntoh (&value,
                          &tdki->issue.properties.value);
       if (0 == (res & 2))
@@ -410,7 +411,6 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
         {
           TMH_plugin->rollback (TMH_plugin->cls,
                                 session);
-          TMH_KS_release (key_state);
           return TMH_RESPONSE_reply_internal_db_error (connection);
         }
       res |= 2;
@@ -437,11 +437,10 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
   if (0 < TALER_amount_cmp (&amount_required,
                             &balance))
   {
-    TMH_KS_release (key_state);
     TMH_plugin->rollback (TMH_plugin->cls,
                           session);
-    res = TMH_RESPONSE_reply_withdraw_sign_insufficient_funds (connection,
-                                                               rh);
+    res = TMH_RESPONSE_reply_reserve_withdraw_insufficient_funds (connection,
+                                                                  rh);
     TMH_plugin->free_reserve_history (TMH_plugin->cls,
                                       rh);
     return res;
@@ -450,11 +449,11 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
                                     rh);
 
   /* Balance is good, sign the coin! */
-  sig = GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
-                                blinded_msg,
-                                blinded_msg_len);
-  TMH_KS_release (key_state);
-  if (NULL == sig)
+  denom_sig->rsa_signature
+    = GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
+                              blinded_msg,
+                              blinded_msg_len);
+  if (NULL == denom_sig->rsa_signature)
   {
     GNUNET_break (0);
     TMH_plugin->rollback (TMH_plugin->cls,
@@ -462,12 +461,12 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
     return TMH_RESPONSE_reply_internal_error (connection,
                                               "Internal error");
   }
-  collectable.sig.rsa_signature = sig;
+  collectable.sig = *denom_sig;
   collectable.denom_pub = *denomination_pub;
   collectable.amount_with_fee = amount_required;
   collectable.withdraw_fee = fee_withdraw;
   collectable.reserve_pub = *reserve;
-  collectable.h_coin_envelope = h_blind;
+  collectable.h_coin_envelope = *h_blind;
   collectable.reserve_sig = *signature;
   if (GNUNET_OK !=
       TMH_plugin->insert_withdraw_info (TMH_plugin->cls,
@@ -475,21 +474,106 @@ TMH_DB_execute_withdraw_sign (struct MHD_Connection *connection,
                                         &collectable))
   {
     GNUNET_break (0);
-    GNUNET_CRYPTO_rsa_signature_free (sig);
     TMH_plugin->rollback (TMH_plugin->cls,
                           session);
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
-  if (GNUNET_OK !=
-      TMH_plugin->commit (TMH_plugin->cls,
-                          session))
+  COMMIT_TRANSACTION (session, connection);
+
+  return TMH_RESPONSE_reply_reserve_withdraw_success (connection,
+                                                      &collectable);
+}
+
+
+
+/**
+ * Execute a "/reserve/withdraw". Given a reserve and a properly signed
+ * request to withdraw a coin, check the balance of the reserve and
+ * if it is sufficient, store the request and return the signed
+ * blinded envelope.
+ *
+ * @param connection the MHD connection to handle
+ * @param reserve public key of the reserve
+ * @param denomination_pub public key of the denomination requested
+ * @param blinded_msg blinded message to be signed
+ * @param blinded_msg_len number of bytes in @a blinded_msg
+ * @param signature signature over the withdraw request, to be stored in DB
+ * @return MHD result code
+ */
+int
+TMH_DB_execute_reserve_withdraw (struct MHD_Connection *connection,
+                                 const struct TALER_ReservePublicKeyP *reserve,
+                                 const struct TALER_DenominationPublicKey *denomination_pub,
+                                 const char *blinded_msg,
+                                 size_t blinded_msg_len,
+                                 const struct TALER_ReserveSignatureP *signature)
+{
+  struct TALER_MINTDB_Session *session;
+  struct TMH_KS_StateHandle *key_state;
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dki;
+  struct TALER_MINTDB_CollectableBlindcoin collectable;
+  struct TALER_DenominationSignature denom_sig;
+  struct GNUNET_HashCode h_blind;
+  int res;
+
+  GNUNET_CRYPTO_hash (blinded_msg,
+                      blinded_msg_len,
+                      &h_blind);
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
+                                                  TMH_test_mode)))
   {
-    TALER_LOG_WARNING ("/withdraw/sign transaction commit failed\n");
-    return TMH_RESPONSE_reply_commit_error (connection);
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
   }
-  res = TMH_RESPONSE_reply_withdraw_sign_success (connection,
-                                                  &collectable);
-  GNUNET_CRYPTO_rsa_signature_free (sig);
+  res = TMH_plugin->get_withdraw_info (TMH_plugin->cls,
+                                       session,
+                                       &h_blind,
+                                       &collectable);
+  if (GNUNET_SYSERR == res)
+  {
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
+
+  /* Don't sign again if we have already signed the coin */
+  if (GNUNET_YES == res)
+  {
+    res = TMH_RESPONSE_reply_reserve_withdraw_success (connection,
+                                                       &collectable);
+    GNUNET_CRYPTO_rsa_signature_free (collectable.sig.rsa_signature);
+    GNUNET_CRYPTO_rsa_public_key_free (collectable.denom_pub.rsa_public_key);
+    return res;
+  }
+  GNUNET_assert (GNUNET_NO == res);
+
+  key_state = TMH_KS_acquire ();
+  dki = TMH_KS_denomination_key_lookup (key_state,
+                                        denomination_pub,
+					TMH_KS_DKU_WITHDRAW);
+  if (NULL == dki)
+  {
+    TMH_KS_release (key_state);
+    return TMH_RESPONSE_reply_json_pack (connection,
+                                         MHD_HTTP_NOT_FOUND,
+                                         "{s:s}",
+                                         "error",
+                                         "Denomination not found");
+  }
+  denom_sig.rsa_signature = NULL;
+  res = execute_reserve_withdraw_transaction (connection,
+                                              session,
+                                              key_state,
+                                              reserve,
+                                              denomination_pub,
+                                              dki,
+                                              blinded_msg,
+                                              blinded_msg_len,
+                                              &h_blind,
+                                              signature,
+                                              &denom_sig);
+  if (NULL != denom_sig.rsa_signature)
+    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
+  TMH_KS_release (key_state);
   return res;
 }
 
@@ -516,6 +600,7 @@ refresh_accept_melts (struct MHD_Connection *connection,
                       const struct TMH_DB_MeltDetails *coin_details,
                       uint16_t oldcoin_index)
 {
+  struct TALER_MINTDB_DenominationKeyIssueInformation *dk;
   struct TALER_MINTDB_DenominationKeyInformationP *dki;
   struct TALER_MINTDB_TransactionList *tl;
   struct TALER_Amount coin_value;
@@ -524,16 +609,15 @@ refresh_accept_melts (struct MHD_Connection *connection,
   struct TALER_MINTDB_RefreshMelt melt;
   int res;
 
-  dki = &TMH_KS_denomination_key_lookup (key_state,
-                                         &coin_details->coin_info.denom_pub,
-					 TMH_KS_DKU_DEPOSIT)->issue;
-
-  if (NULL == dki)
+  dk = TMH_KS_denomination_key_lookup (key_state,
+                                       &coin_details->coin_info.denom_pub,
+                                       TMH_KS_DKU_DEPOSIT);
+  if (NULL == dk)
     return (MHD_YES ==
             TMH_RESPONSE_reply_arg_unknown (connection,
                                             "denom_pub"))
         ? GNUNET_NO : GNUNET_SYSERR;
-
+  dki = &dk->issue;
   TALER_amount_ntoh (&coin_value,
                      &dki->properties.value);
   /* fee for THIS transaction; the melt amount includes the fee! */
@@ -642,13 +726,7 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
-  if (GNUNET_OK !=
-      TMH_plugin->start (TMH_plugin->cls,
-                         session))
-  {
-    GNUNET_break (0);
-    return TMH_RESPONSE_reply_internal_db_error (connection);
-  }
+  START_TRANSACTION (session, connection);
   res = TMH_plugin->get_refresh_session (TMH_plugin->cls,
                                          session,
                                          session_hash,
@@ -750,13 +828,7 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
     }
   }
 
-  if (GNUNET_OK !=
-      TMH_plugin->commit (TMH_plugin->cls,
-                          session))
-  {
-    TALER_LOG_WARNING ("/refresh/melt transaction commit failed\n");
-    return TMH_RESPONSE_reply_commit_error (connection);
-  }
+  COMMIT_TRANSACTION (session, connection);
   return TMH_RESPONSE_reply_refresh_melt_success (connection,
                                                   session_hash,
                                                   refresh_session.noreveal_index);
@@ -875,7 +947,7 @@ check_commitment (struct MHD_Connection *connection,
                 &commit_links[j].transfer_pub,
                 sizeof (struct TALER_TransferPublicKeyP)))
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "transfer keys do not match\n");
       GNUNET_free (commit_links);
       return send_melt_commitment_error (connection,
@@ -907,7 +979,7 @@ check_commitment (struct MHD_Connection *connection,
                           &last_shared_secret,
                           sizeof (struct GNUNET_HashCode)))
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "shared secrets do not match\n");
       GNUNET_free (commit_links);
       return send_melt_commitment_error (connection,
@@ -982,7 +1054,7 @@ check_commitment (struct MHD_Connection *connection,
                        commit_coins[j].coin_ev,
                        buf_len)) )
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "blind envelope does not match for k=%u, old=%d\n",
                   off,
                   (int) j);
@@ -1047,16 +1119,84 @@ refresh_mint_coin (struct MHD_Connection *connection,
   }
   if (GNUNET_OK !=
       TMH_plugin->insert_refresh_out (TMH_plugin->cls,
-                                              session,
-                                              session_hash,
-                                              coin_off,
-                                              &ev_sig))
+                                      session,
+                                      session_hash,
+                                      coin_off,
+                                      &ev_sig))
   {
     GNUNET_break (0);
     GNUNET_CRYPTO_rsa_signature_free (ev_sig.rsa_signature);
     ev_sig.rsa_signature = NULL;
   }
   return ev_sig;
+}
+
+
+/**
+ * The client request was well-formed, now execute the DB transaction
+ * of a "/refresh/reveal" operation.  We use the @a ev_sigs and
+ * @a commit_coins to clean up resources after this function returns
+ * as we might experience retries of the database transaction.
+ *
+ * @param connection the MHD connection to handle
+ * @param session database session
+ * @param session_hash hash identifying the refresh session
+ * @param refresh_session information about the refresh operation we are doing
+ * @param denom_pubs array of "num_newcoins" denomination keys for the new coins
+ * @param ev_sigs[out] where to store generated signatures for the new coins,
+ *                     array of length "num_newcoins", memory released by the
+ *                     caller
+ * @param commit_coins[out] array of length "num_newcoins" to be used for
+ *                     information about the new coins from the commitment.
+ * @return MHD result code
+ */
+static int
+execute_refresh_reveal_transaction (struct MHD_Connection *connection,
+                                    struct TALER_MINTDB_Session *session,
+                                    const struct GNUNET_HashCode *session_hash,
+                                    struct TALER_MINTDB_RefreshSession *refresh_session,
+                                    struct TALER_MINTDB_RefreshMelt *melts,
+                                    struct TALER_DenominationPublicKey *denom_pubs,
+                                    struct TALER_DenominationSignature *ev_sigs,
+                                    struct TALER_MINTDB_RefreshCommitCoin *commit_coins)
+{
+  unsigned int j;
+  struct TMH_KS_StateHandle *key_state;
+
+  START_TRANSACTION (session, connection);
+  if (GNUNET_OK !=
+      TMH_plugin->get_refresh_commit_coins (TMH_plugin->cls,
+                                            session,
+                                            session_hash,
+                                            refresh_session->noreveal_index,
+                                            refresh_session->num_newcoins,
+                                            commit_coins))
+  {
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
+  key_state = TMH_KS_acquire ();
+  for (j=0;j<refresh_session->num_newcoins;j++)
+  {
+    if (NULL == ev_sigs[j].rsa_signature) /* could be non-NULL during retries */
+      ev_sigs[j] = refresh_mint_coin (connection,
+                                      session,
+                                      session_hash,
+                                      key_state,
+                                      &denom_pubs[j],
+                                      &commit_coins[j],
+                                      j);
+    if (NULL == ev_sigs[j].rsa_signature)
+    {
+      TMH_KS_release (key_state);
+      return TMH_RESPONSE_reply_internal_db_error (connection);
+    }
+  }
+  TMH_KS_release (key_state);
+  COMMIT_TRANSACTION (session, connection);
+  return TMH_RESPONSE_reply_refresh_reveal_success (connection,
+                                                    refresh_session->num_newcoins,
+                                                    ev_sigs);
 }
 
 
@@ -1083,7 +1223,6 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
   int res;
   struct TALER_MINTDB_Session *session;
   struct TALER_MINTDB_RefreshSession refresh_session;
-  struct TMH_KS_StateHandle *key_state;
   struct TALER_MINTDB_RefreshMelt *melts;
   struct TALER_DenominationPublicKey *denom_pubs;
   struct TALER_DenominationSignature *ev_sigs;
@@ -1126,6 +1265,11 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
                                       &melts[j]))
     {
       GNUNET_break (0);
+      for (i=0;i<j;i++)
+      {
+        GNUNET_CRYPTO_rsa_signature_free (melts[i].coin.denom_sig.rsa_signature);
+        GNUNET_CRYPTO_rsa_public_key_free (melts[i].coin.denom_pub.rsa_public_key);
+      }
       GNUNET_free (melts);
       return TMH_RESPONSE_reply_internal_db_error (connection);
     }
@@ -1141,6 +1285,11 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
   {
     GNUNET_break (0);
     GNUNET_free (denom_pubs);
+    for (i=0;i<refresh_session.num_oldcoins;i++)
+    {
+      GNUNET_CRYPTO_rsa_signature_free (melts[i].coin.denom_sig.rsa_signature);
+      GNUNET_CRYPTO_rsa_public_key_free (melts[i].coin.denom_pub.rsa_public_key);
+    }
     GNUNET_free (melts);
     return (MHD_YES == TMH_RESPONSE_reply_internal_db_error (connection))
         ? GNUNET_NO : GNUNET_SYSERR;
@@ -1166,89 +1315,44 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
       for (j=0;j<refresh_session.num_newcoins;j++)
         GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
       GNUNET_free (denom_pubs);
+      for (i=0;i<refresh_session.num_oldcoins;i++)
+      {
+        GNUNET_CRYPTO_rsa_signature_free (melts[i].coin.denom_sig.rsa_signature);
+        GNUNET_CRYPTO_rsa_public_key_free (melts[i].coin.denom_pub.rsa_public_key);
+      }
       GNUNET_free (melts);
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     }
   }
+  for (i=0;i<refresh_session.num_oldcoins;i++)
+  {
+    GNUNET_CRYPTO_rsa_signature_free (melts[i].coin.denom_sig.rsa_signature);
+    GNUNET_CRYPTO_rsa_public_key_free (melts[i].coin.denom_pub.rsa_public_key);
+  }
   GNUNET_free (melts);
 
   /* Client request OK, start transaction */
-  if (GNUNET_OK !=
-      TMH_plugin->start (TMH_plugin->cls,
-                         session))
-  {
-    GNUNET_break (0);
-    for (j=0;j<refresh_session.num_newcoins;j++)
-      GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
-    GNUNET_free (denom_pubs);
-    return TMH_RESPONSE_reply_internal_db_error (connection);
-  }
-
   commit_coins = GNUNET_malloc (refresh_session.num_newcoins *
                                 sizeof (struct TALER_MINTDB_RefreshCommitCoin));
-  if (GNUNET_OK !=
-      TMH_plugin->get_refresh_commit_coins (TMH_plugin->cls,
-                                            session,
-                                            session_hash,
-                                            refresh_session.noreveal_index,
-                                            refresh_session.num_newcoins,
-                                            commit_coins))
-  {
-    GNUNET_break (0);
-    GNUNET_free (commit_coins);
-    for (j=0;j<refresh_session.num_newcoins;j++)
-      GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
-    GNUNET_free (denom_pubs);
-    return TMH_RESPONSE_reply_internal_db_error (connection);
-  }
   ev_sigs = GNUNET_malloc (refresh_session.num_newcoins *
                            sizeof (struct TALER_DenominationSignature));
-  key_state = TMH_KS_acquire ();
+  res = execute_refresh_reveal_transaction (connection,
+                                            session,
+                                            session_hash,
+                                            &refresh_session,
+                                            melts,
+                                            denom_pubs,
+                                            ev_sigs,
+                                            commit_coins);
+  for (i=0;i<refresh_session.num_newcoins;i++)
+    if (NULL != ev_sigs[i].rsa_signature)
+    GNUNET_CRYPTO_rsa_signature_free (ev_sigs[i].rsa_signature);
   for (j=0;j<refresh_session.num_newcoins;j++)
-  {
-    ev_sigs[j] = refresh_mint_coin (connection,
-                                    session,
-                                    session_hash,
-                                    key_state,
-                                    &denom_pubs[j],
-                                    &commit_coins[j],
-                                    j);
-    if (NULL == ev_sigs[j].rsa_signature)
-    {
-      TMH_KS_release (key_state);
-      for (i=0;i<j;i++)
-        GNUNET_CRYPTO_rsa_signature_free (ev_sigs[i].rsa_signature);
-      GNUNET_free (ev_sigs);
-      for (j=0;j<refresh_session.num_newcoins;j++)
-        GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
-      GNUNET_free (denom_pubs);
-      GNUNET_free (commit_coins);
-      return TMH_RESPONSE_reply_internal_db_error (connection);
-    }
-  }
-  TMH_KS_release (key_state);
-  for (j=0;j<refresh_session.num_newcoins;j++)
-    GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
+    if (NULL != denom_pubs[j].rsa_public_key)
+      GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
+  GNUNET_free (ev_sigs);
   GNUNET_free (denom_pubs);
   GNUNET_free (commit_coins);
-
-  if (GNUNET_OK !=
-      TMH_plugin->commit (TMH_plugin->cls,
-                          session))
-  {
-    TALER_LOG_WARNING ("/refresh/reveal transaction commit failed\n");
-    for (i=0;i<refresh_session.num_newcoins;i++)
-      GNUNET_CRYPTO_rsa_signature_free (ev_sigs[i].rsa_signature);
-    GNUNET_free (ev_sigs);
-    return TMH_RESPONSE_reply_commit_error (connection);
-  }
-
-  res = TMH_RESPONSE_reply_refresh_reveal_success (connection,
-                                                   refresh_session.num_newcoins,
-                                                   ev_sigs);
-  for (i=0;i<refresh_session.num_newcoins;i++)
-    GNUNET_CRYPTO_rsa_signature_free (ev_sigs[i].rsa_signature);
-  GNUNET_free (ev_sigs);
   return res;
 }
 
@@ -1318,7 +1422,6 @@ handle_transfer_data (void *cls,
                                         session_hash);
   if (NULL == ldl)
   {
-    GNUNET_break (0);
     ctx->status = GNUNET_NO;
     if (MHD_NO ==
         TMH_RESPONSE_reply_json_pack (ctx->connection,
@@ -1392,7 +1495,7 @@ TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
   for (i=0;i<ctx.num_sessions;i++)
     TMH_plugin->free_link_data_list (TMH_plugin->cls,
                                      ctx.sessions[i].ldl);
-  GNUNET_free (ctx.sessions);
+  GNUNET_free_non_null (ctx.sessions);
   return res;
 }
 

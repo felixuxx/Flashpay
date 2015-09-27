@@ -424,15 +424,10 @@ postgres_create_tables (void *cls,
           ",ev_sig BYTEA NOT NULL"
           ")");
   /* This table contains the wire transfers the mint is supposed to
-     execute to transmit funds to the merchants (and manage refunds).
-     TODO: we might want to generate some other primary key
-     to internally identify outgoing transactions, as "coin_pub"
-     may not be unique if a wallet chooses not to refresh.  The
-     resulting transaction ID should then be returned to the merchant
-     and could be used by the mearchant for further inquriries about
-     the deposit's execution. (#3816); */
+     execute to transmit funds to the merchants (and manage refunds). */
   SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
-          "(coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)"
+          "(serial_id BIGSERIAL"
+          ",coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)"
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",denom_sig BYTEA NOT NULL"
           ",transaction_id INT8 NOT NULL"
@@ -598,7 +593,7 @@ postgres_prepare (PGconn *db_conn)
            1, NULL);
   /* Used in #postgres_insert_withdraw_info() to store
      the signature of a blinded coin with the blinded coin's
-     details before returning it during /withdraw/sign. We store
+     details before returning it during /reserve/withdraw. We store
      the coin's denomination information (public key, signature)
      and the blinded message as well as the reserve that the coin
      is being withdrawn from and the signature of the message
@@ -621,9 +616,9 @@ postgres_prepare (PGconn *db_conn)
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);",
            12, NULL);
   /* Used in #postgres_get_withdraw_info() to
-     locate the response for a /withdraw/sign request
+     locate the response for a /reserve/withdraw request
      using the hash of the blinded message.  Used to
-     make sure /withdraw/sign requests are idempotent. */
+     make sure /reserve/withdraw requests are idempotent. */
   PREPARE ("get_withdraw_info",
            "SELECT"
            " denom_pub"
@@ -641,7 +636,7 @@ postgres_prepare (PGconn *db_conn)
            " WHERE h_blind_ev=$1",
            1, NULL);
   /* Used during #postgres_get_reserve_history() to
-     obtain all of the /withdraw/sign operations that
+     obtain all of the /reserve/withdraw operations that
      have been performed on a given reserve. (i.e. to
      demonstrate double-spending) */
   PREPARE ("get_reserves_out",
@@ -853,6 +848,25 @@ postgres_prepare (PGconn *db_conn)
            "  (merchant_pub=$3)"
            " )",
            3, NULL);
+
+  /* Used in #postgres_iterate_deposits() */
+  PREPARE ("deposits_iterate",
+           "SELECT"
+           " serial_id"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           ",deposit_fee_val"
+           ",deposit_fee_frac"
+           ",deposit_fee_curr"
+           ",transaction_id"
+           ",h_contract"
+           ",wire"
+           " FROM deposits"
+           " WHERE serial_id>=$1"
+           " ORDER BY serial_id ASC"
+           " LIMIT $2;",
+           2, NULL);
   /* Used in #postgres_get_coin_transactions() to obtain information
      about how a coin has been spend with /deposit requests. */
   PREPARE ("get_deposit_with_coin_pub",
@@ -976,7 +990,7 @@ postgres_get_session (void *cls,
       PQstatus (db_conn))
   {
     TALER_LOG_ERROR ("Database connection failed: %s\n",
-               PQerrorMessage (db_conn));
+                     PQerrorMessage (db_conn));
     GNUNET_break (0);
     return NULL;
   }
@@ -1081,7 +1095,31 @@ postgres_commit (void *cls,
   if (PGRES_COMMAND_OK !=
       PQresultStatus (result))
   {
-    GNUNET_break (0);
+    const char *sqlstate;
+
+    sqlstate = PQresultErrorField (result,
+                                   PG_DIAG_SQLSTATE);
+    if (NULL == sqlstate)
+    {
+      /* very unexpected... */
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    /* 40P01: deadlock, 40001: serialization failure */
+    if ( (0 == strcmp (sqlstate,
+                       "40P01")) ||
+         (0 == strcmp (sqlstate,
+                       "40001")) )
+    {
+      /* These two can be retried and have a fair chance of working
+         the next time */
+      PQclear (result);
+      return GNUNET_NO;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Database commit failure: %s\n",
+                sqlstate);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -1488,7 +1526,7 @@ postgres_reserves_in_insert (void *cls,
 
 
 /**
- * Locate the response for a /withdraw/sign request under the
+ * Locate the response for a /reserve/withdraw request under the
  * key of the hash of the blinded message.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -1882,6 +1920,119 @@ postgres_have_deposit (void *cls,
 
 
 /**
+ * Obtain information about deposits.  Iterates over all deposits
+ * above a certain ID.  Use a @a min_id of 0 to start at the beginning.
+ * This operation is executed in its own transaction in transaction
+ * mode "REPEATABLE READ", i.e. we should only see valid deposits.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to the database
+ * @param min_id deposit to start at
+ * @param limit maximum number of transactions to fetch
+ * @param deposit_cb function to call for each deposit
+ * @param deposit_cb_cls closure for @a deposit_cb
+ * @return number of rows processed, 0 if none exist,
+ *         #GNUNET_SYSERR on error
+ */
+static int
+postgres_iterate_deposits (void *cls,
+                           struct TALER_MINTDB_Session *session,
+                           uint64_t min_id,
+                           uint32_t limit,
+                           TALER_MINTDB_DepositIterator deposit_cb,
+                           void *deposit_cb_cls)
+{
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_uint64 (&min_id),
+    TALER_PQ_query_param_uint32 (&limit),
+    TALER_PQ_query_param_end
+  };
+  PGresult *result;
+  unsigned int i;
+  unsigned int n;
+
+  if (GNUNET_OK !=
+      postgres_start (cls, session))
+    return GNUNET_SYSERR;
+  result = PQexec (session->conn,
+                   "SET TRANSACTION REPEATABLE READ");
+  if (PGRES_COMMAND_OK !=
+      PQresultStatus (result))
+  {
+    TALER_LOG_ERROR ("Failed to set transaction to REPEATABL EREAD: %s\n",
+                     PQresultErrorMessage (result));
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "deposits_iterate",
+                                   params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    postgres_rollback (cls, session);
+    return GNUNET_SYSERR;
+  }
+  if (0 == (n = PQntuples (result)))
+  {
+    PQclear (result);
+    postgres_rollback (cls, session);
+    return 0;
+  }
+  for (i=0;i<n;i++)
+  {
+    struct TALER_Amount amount_with_fee;
+    struct TALER_Amount deposit_fee;
+    struct GNUNET_HashCode h_contract;
+    json_t *wire;
+    uint64_t transaction_id;
+    uint64_t id;
+    int ret;
+    struct TALER_PQ_ResultSpec rs[] = {
+      TALER_PQ_result_spec_uint64 ("id",
+                                   &id),
+      TALER_PQ_result_spec_uint64 ("transaction_id",
+                                   &transaction_id),
+      TALER_PQ_result_spec_amount ("amount_with_fee",
+                                   &amount_with_fee),
+      TALER_PQ_result_spec_amount ("deposit_fee",
+                                   &deposit_fee),
+      TALER_PQ_result_spec_auto_from_type ("h_contract",
+                                           &h_contract),
+      TALER_PQ_result_spec_json ("wire",
+                                 &wire),
+      TALER_PQ_result_spec_end
+    };
+    if (GNUNET_OK !=
+        TALER_PQ_extract_result (result, rs, i))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      postgres_rollback (cls, session);
+      return GNUNET_SYSERR;
+    }
+    ret = deposit_cb (deposit_cb_cls,
+                      id,
+                      &amount_with_fee,
+                      &deposit_fee,
+                      transaction_id,
+                      &h_contract,
+                      wire);
+    TALER_PQ_cleanup_result (rs);
+    PQclear (result);
+    if (GNUNET_OK != ret)
+      break;
+  }
+  postgres_rollback (cls, session);
+  return i;
+}
+
+
+/**
  * Insert information about deposited coin into the database.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -2122,12 +2273,15 @@ get_known_coin (void *cls,
     return GNUNET_YES;
   {
     struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_rsa_public_key ("denom_pub", &coin_info->denom_pub.rsa_public_key),
-      TALER_PQ_result_spec_rsa_signature ("denom_sig", &coin_info->denom_sig.rsa_signature),
+      TALER_PQ_result_spec_rsa_public_key ("denom_pub",
+                                           &coin_info->denom_pub.rsa_public_key),
+      TALER_PQ_result_spec_rsa_signature ("denom_sig",
+                                          &coin_info->denom_sig.rsa_signature),
       TALER_PQ_result_spec_end
     };
 
-    if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
+    if (GNUNET_OK !=
+        TALER_PQ_extract_result (result, rs, 0))
     {
       PQclear (result);
       GNUNET_break (0);
@@ -2277,7 +2431,11 @@ postgres_get_refresh_melt (void *cls,
                                    &coin))
     return GNUNET_SYSERR;
   if (NULL == melt)
+  {
+    GNUNET_CRYPTO_rsa_signature_free (coin.denom_sig.rsa_signature);
+    GNUNET_CRYPTO_rsa_public_key_free (coin.denom_pub.rsa_public_key);
     return GNUNET_OK;
+  }
   melt->coin = coin;
   melt->coin_sig = coin_sig;
   melt->session_hash = *session_hash;
@@ -2666,7 +2824,7 @@ postgres_insert_refresh_commit_links (void *cls,
       PQclear (result);
       return GNUNET_SYSERR;
     }
-    
+
     if (0 != strcmp ("1", PQcmdTuples (result)))
     {
       GNUNET_break (0);
@@ -2734,7 +2892,7 @@ postgres_get_refresh_commit_links (void *cls,
 					     &links[i].shared_secret_enc),
 	TALER_PQ_result_spec_end
       };
-      
+
       if (GNUNET_YES !=
 	  TALER_PQ_extract_result (result, rs, 0))
       {
@@ -2823,28 +2981,7 @@ postgres_get_melt_commitment (void *cls,
   return mc;
 
  cleanup:
-  GNUNET_free_non_null (mc->melts);
-  if (NULL != mc->denom_pubs)
-  {
-    for (i=0;i<(unsigned int) mc->num_newcoins;i++)
-      if (NULL != mc->denom_pubs[i].rsa_public_key)
-        GNUNET_CRYPTO_rsa_public_key_free (mc->denom_pubs[i].rsa_public_key);
-    GNUNET_free (mc->denom_pubs);
-  }
-  for (cnc_index=0;cnc_index<TALER_CNC_KAPPA;cnc_index++)
-  {
-    if (NULL != mc->commit_coins[cnc_index])
-    {
-      for (i=0;i<(unsigned int) mc->num_newcoins;i++)
-      {
-        GNUNET_free_non_null (mc->commit_coins[cnc_index][i].refresh_link);
-        GNUNET_free_non_null (mc->commit_coins[cnc_index][i].coin_ev);
-      }
-      GNUNET_free (mc->commit_coins[cnc_index]);
-    }
-    GNUNET_free_non_null (mc->commit_links[cnc_index]);
-  }
-  GNUNET_free (mc);
+  common_free_melt_commitment (cls, mc);
   return NULL;
 }
 
@@ -3267,6 +3404,7 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->get_reserve_history = &postgres_get_reserve_history;
   plugin->free_reserve_history = &common_free_reserve_history;
   plugin->have_deposit = &postgres_have_deposit;
+  plugin->iterate_deposits = &postgres_iterate_deposits;
   plugin->insert_deposit = &postgres_insert_deposit;
 
   plugin->get_refresh_session = &postgres_get_refresh_session;
@@ -3286,8 +3424,6 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->get_link_data_list = &postgres_get_link_data_list;
   plugin->free_link_data_list = &common_free_link_data_list;
   plugin->get_transfer = &postgres_get_transfer;
-  // plugin->have_lock = &postgres_have_lock; /* #3625 */
-  // plugin->insert_lock = &postgres_insert_lock; /* #3625 */
   plugin->get_coin_transactions = &postgres_get_coin_transactions;
   plugin->free_coin_transaction_list = &common_free_coin_transaction_list;
   return plugin;

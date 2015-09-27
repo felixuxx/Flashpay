@@ -23,6 +23,7 @@
 #include "platform.h"
 #include <pthread.h>
 #include "taler-mint-httpd_keystate.h"
+#include "taler-mint-httpd_responses.h"
 #include "taler_mintdb_plugin.h"
 
 
@@ -49,6 +50,12 @@ struct TMH_KS_StateHandle
    * after initialization.)
    */
   json_t *sign_keys_array;
+
+  /**
+   * JSON array with auditor information. (Currently not really used
+   * after initialization.)
+   */
+  json_t *auditors_array;
 
   /**
    * Cached JSON text that the mint will send for a "/keys" request.
@@ -327,7 +334,7 @@ reload_keys_denom_iter (void *cls,
  * Convert the public part of a sign key issue to a JSON object.
  *
  * @param ski the sign key issue
- * @return a JSON object describing the sign key isue (public part)
+ * @return a JSON object describing the sign key issue (public part)
  */
 static json_t *
 sign_key_issue_to_json (const struct TALER_MintSigningKeyValidityPS *ski)
@@ -355,7 +362,7 @@ sign_key_issue_to_json (const struct TALER_MintSigningKeyValidityPS *ski)
 /**
  * Iterator for sign keys.
  *
- * @param cls closure
+ * @param cls closure with the `struct TMH_KS_StateHandle *`
  * @param filename name of the file the key came from
  * @param ski the sign key issue
  * @return #GNUNET_OK to continue to iterate,
@@ -408,6 +415,106 @@ reload_keys_sign_iter (void *cls,
 
 
 /**
+ * Convert information from an auditor to a JSON object.
+ *
+ * @param apub the auditor's public key
+ * @param dki_len length of @a dki and @a asigs arrays
+ * @param asigs the auditor's signatures
+ * @param dki array of denomination coin data signed by the auditor
+ * @return a JSON object describing the auditor information and signature
+ */
+static json_t *
+auditor_to_json (const struct TALER_AuditorPublicKeyP *apub,
+                 unsigned int dki_len,
+                 const struct TALER_AuditorSignatureP **asigs,
+                 const struct TALER_DenominationKeyValidityPS **dki)
+{
+  unsigned int i;
+  json_t *ja;
+
+  ja = json_array ();
+  for (i=0;i<dki_len;i++)
+    json_array_append_new (ja,
+                           json_pack ("{s:o, s:o}",
+                                      "denom_pub_h",
+                                      TALER_json_from_data (&dki[i]->denom_hash,
+                                                            sizeof (struct GNUNET_HashCode)),
+                                      "auditor_sig",
+                                      TALER_json_from_data (asigs[i],
+                                                            sizeof (struct TALER_AuditorSignatureP))));
+  return
+    json_pack ("{s:o, s:o}",
+               "denomination_keys", ja,
+               "auditor_pub",
+               TALER_json_from_data (apub,
+                                     sizeof (struct TALER_AuditorPublicKeyP)));
+}
+
+
+/**
+ * @brief Iterator called with auditor information.
+ * Check that the @a mpub actually matches this mint, and then
+ * add the auditor information to our /keys response (if it is
+ * (still) applicable).
+ *
+ * @param cls closure with the `struct TMH_KS_StateHandle *`
+ * @param apub the auditor's public key
+ * @param mpub the mint's public key (as expected by the auditor)
+ * @param dki_len length of @a dki and @a asigs
+ * @param asigs array with the auditor's signatures, of length @a dki_len
+ * @param dki array of denomination coin data signed by the auditor
+ * @return #GNUNET_OK to continue to iterate,
+ *  #GNUNET_NO to stop iteration with no error,
+ *  #GNUNET_SYSERR to abort iteration with error!
+ */
+static int
+reload_auditor_iter (void *cls,
+                     const struct TALER_AuditorPublicKeyP *apub,
+                     const struct TALER_MasterPublicKeyP *mpub,
+                     unsigned int dki_len,
+                     const struct TALER_AuditorSignatureP *asigs,
+                     const struct TALER_DenominationKeyValidityPS *dki)
+{
+  struct TMH_KS_StateHandle *ctx = cls;
+  unsigned int i;
+  unsigned int keep;
+  const struct TALER_AuditorSignatureP *kept_asigs[dki_len];
+  const struct TALER_DenominationKeyValidityPS *kept_dkis[dki_len];
+
+  /* Check if the signature is at least for this mint. */
+  if (0 != memcmp (&mpub->eddsa_pub,
+                   &TMH_master_public_key,
+                   sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Auditing information provided for a different mint, ignored\n");
+    return GNUNET_OK;
+  }
+  /* Filter the auditor information for those for which the
+     keys actually match the denomination keys that are active right now */
+  keep = 0;
+  for (i=0;i<dki_len;i++)
+  {
+    if (GNUNET_YES ==
+        GNUNET_CONTAINER_multihashmap_contains (ctx->denomkey_map,
+                                                &dki[i].denom_hash))
+    {
+      kept_asigs[keep] = &asigs[i];
+      kept_dkis[keep] = &dki[i];
+      keep++;
+    }
+  }
+  /* add auditor information to our /keys response */
+  json_array_append_new (ctx->auditors_array,
+                         auditor_to_json (apub,
+                                          keep,
+                                          kept_asigs,
+                                          kept_dkis));
+  return GNUNET_OK;
+}
+
+
+/**
  * Iterator for freeing denomination keys.
  *
  * @param cls closure with the `struct TMH_KS_StateHandle`
@@ -438,7 +545,7 @@ free_denom_key (void *cls,
  * @param key_state the key state to release
  */
 static void
-TMH_KS_release_ (struct TMH_KS_StateHandle *key_state)
+ks_release_ (struct TMH_KS_StateHandle *key_state)
 {
   GNUNET_assert (0 < key_state->refcnt);
   key_state->refcnt--;
@@ -471,13 +578,15 @@ TMH_KS_release_ (struct TMH_KS_StateHandle *key_state)
 /**
  * Release key state, free if necessary (if reference count gets to zero).
  *
+ * @param location name of the function in which the lock is acquired
  * @param key_state the key state to release
  */
 void
-TMH_KS_release (struct TMH_KS_StateHandle *key_state)
+TMH_KS_release_ (const char *location,
+                 struct TMH_KS_StateHandle *key_state)
 {
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
-  TMH_KS_release_ (key_state);
+  ks_release_ (key_state);
   GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
 }
 
@@ -487,10 +596,11 @@ TMH_KS_release (struct TMH_KS_StateHandle *key_state)
  * For every call to #TMH_KS_acquire(), a matching call
  * to #TMH_KS_release() must be made.
  *
+ * @param location name of the function in which the lock is acquired
  * @return the key state
  */
 struct TMH_KS_StateHandle *
-TMH_KS_acquire (void)
+TMH_KS_acquire_ (const char *location)
 {
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct TMH_KS_StateHandle *key_state;
@@ -502,7 +612,7 @@ TMH_KS_acquire (void)
   if ( (NULL != internal_key_state) &&
        (internal_key_state->next_reload.abs_value_us <= now.abs_value_us) )
   {
-    TMH_KS_release_ (internal_key_state);
+    ks_release_ (internal_key_state);
     internal_key_state = NULL;
   }
   if (NULL == internal_key_state)
@@ -513,6 +623,8 @@ TMH_KS_acquire (void)
     GNUNET_assert (NULL != key_state->denom_keys_array);
     key_state->sign_keys_array = json_array ();
     GNUNET_assert (NULL != key_state->sign_keys_array);
+    key_state->auditors_array = json_array ();
+    GNUNET_assert (NULL != key_state->auditors_array);
     key_state->denomkey_map = GNUNET_CONTAINER_multihashmap_create (32,
                                                                     GNUNET_NO);
     key_state->reload_time = GNUNET_TIME_absolute_get ();
@@ -526,6 +638,9 @@ TMH_KS_acquire (void)
     TALER_MINTDB_signing_keys_iterate (TMH_mint_directory,
                                        &reload_keys_sign_iter,
                                        key_state);
+    TALER_MINTDB_auditor_iterate (TMH_mint_directory,
+                                  &reload_auditor_iter,
+                                  key_state);
     ks.purpose.size = htonl (sizeof (ks));
     ks.purpose.purpose = htonl (TALER_SIGNATURE_MINT_KEY_SET);
     ks.list_issue_date = GNUNET_TIME_absolute_hton (key_state->reload_time);
@@ -541,17 +656,19 @@ TMH_KS_acquire (void)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "No valid signing key found!\n");
 
-    keys = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
+    keys = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                       "master_public_key",
                       TALER_json_from_data (&TMH_master_public_key,
                                             sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)),
                       "signkeys", key_state->sign_keys_array,
                       "denoms", key_state->denom_keys_array,
+                      "auditors", key_state->auditors_array,
                       "list_issue_date", TALER_json_from_abs (key_state->reload_time),
                       "eddsa_pub", TALER_json_from_data (&key_state->current_sign_key_issue.issue.signkey_pub,
                                                          sizeof (struct TALER_MintPublicKeyP)),
                       "eddsa_sig", TALER_json_from_data (&sig,
                                                          sizeof (struct TALER_MintSignatureP)));
+    key_state->auditors_array = NULL;
     key_state->sign_keys_array = NULL;
     key_state->denom_keys_array = NULL;
     key_state->keys_json = json_dumps (keys,
@@ -701,6 +818,17 @@ handle_sighup ()
 
 
 /**
+ * Call #handle_signal() to pass the received signal via
+ * the control pipe.
+ */
+static void
+handle_sigchld ()
+{
+  handle_signal (SIGCHLD);
+}
+
+
+/**
  * Read signals from a pipe in a loop, and reload keys from disk if
  * SIGUSR1 is received, terminate if SIGTERM/SIGINT is received, and
  * restart if SIGHUP is received.
@@ -716,6 +844,7 @@ TMH_KS_loop (void)
   struct GNUNET_SIGNAL_Context *sigterm;
   struct GNUNET_SIGNAL_Context *sigint;
   struct GNUNET_SIGNAL_Context *sighup;
+  struct GNUNET_SIGNAL_Context *sigchld;
   int ret;
 
   if (0 != pipe (reload_pipe))
@@ -732,6 +861,8 @@ TMH_KS_loop (void)
                                           &handle_sigint);
   sighup = GNUNET_SIGNAL_handler_install (SIGHUP,
                                           &handle_sighup);
+  sigchld = GNUNET_SIGNAL_handler_install (SIGCHLD,
+                                           &handle_sigchld);
 
   ret = 0;
   while (0 == ret)
@@ -777,6 +908,12 @@ read_again:
       /* restart updated binary */
       ret = GNUNET_NO;
       break;
+#if HAVE_DEVELOPER
+    case SIGCHLD:
+      /* running in test-mode, test finished, terminate */
+      ret = GNUNET_OK;
+      break;
+#endif
     default:
       /* unexpected character */
       GNUNET_break (0);
@@ -792,6 +929,7 @@ read_again:
   GNUNET_SIGNAL_handler_uninstall (sigterm);
   GNUNET_SIGNAL_handler_uninstall (sigint);
   GNUNET_SIGNAL_handler_uninstall (sighup);
+  GNUNET_SIGNAL_handler_uninstall (sigchld);
   return ret;
 }
 
@@ -853,6 +991,7 @@ TMH_KS_handler_keys (struct TMH_RequestHandler *rh,
     GNUNET_break (0);
     return MHD_NO;
   }
+  TMH_RESPONSE_add_global_headers (response);
   (void) MHD_add_response_header (response,
                                   "Content-Type",
                                   rh->mime_type);

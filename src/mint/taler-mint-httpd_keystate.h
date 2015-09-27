@@ -41,10 +41,32 @@ struct TMH_KS_StateHandle;
  * For every call to #TMH_KS_acquire(), a matching call
  * to #TMH_KS_release() must be made.
  *
+ * @param location name of the function in which the lock is acquired
  * @return the key state
  */
 struct TMH_KS_StateHandle *
-TMH_KS_acquire (void);
+TMH_KS_acquire_ (const char *location);
+
+
+/**
+ * Release key state, free if necessary (if reference count gets to zero).
+ *
+ * @param location name of the function in which the lock is acquired
+ * @param key_state the key state to release
+ */
+void
+TMH_KS_release_ (const char *location,
+                 struct TMH_KS_StateHandle *key_state);
+
+
+/**
+ * Acquire the key state of the mint.  Updates keys if necessary.
+ * For every call to #TMH_KS_acquire(), a matching call
+ * to #TMH_KS_release() must be made.
+ *
+ * @return the key state
+ */
+#define TMH_KS_acquire(void) TMH_KS_acquire_(__FUNCTION__)
 
 
 /**
@@ -52,8 +74,7 @@ TMH_KS_acquire (void);
  *
  * @param key_state the key state to release
  */
-void
-TMH_KS_release (struct TMH_KS_StateHandle *key_state);
+#define TMH_KS_release(key_state) TMH_KS_release_ (__FUNCTION__, key_state)
 
 
 /**
@@ -65,7 +86,7 @@ TMH_KS_release (struct TMH_KS_StateHandle *key_state);
 enum TMH_KS_DenominationKeyUse {
 
   /**
-   * The key is to be used for a /withdraw/sign or /refresh (mint)
+   * The key is to be used for a /reserve/withdraw or /refresh (mint)
    * operation.
    */
   TMH_KS_DKU_WITHDRAW,

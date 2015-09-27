@@ -37,6 +37,12 @@
  */
 #define TALER_MINTDB_DIR_DENOMINATION_KEYS "denomkeys"
 
+/**
+ * Subdirectory under the mint's base directory which contains
+ * the mint's auditing information.
+ */
+#define TALER_MINTDB_DIR_AUDITORS "auditors"
+
 
 GNUNET_NETWORK_STRUCT_BEGIN
 
@@ -62,7 +68,7 @@ struct TALER_MINTDB_PrivateSigningKeyInformationP
 
 /**
  * Information about a denomination key.
- */ 
+ */
 struct TALER_MINTDB_DenominationKeyInformationP
 {
 
@@ -124,23 +130,6 @@ typedef int
 
 
 /**
- * @brief Iterator over denomination keys.
- *
- * @param cls closure
- * @param dki the denomination key
- * @param alias coin alias
- * @return #GNUNET_OK to continue to iterate,
- *  #GNUNET_NO to stop iteration with no error,
- *  #GNUNET_SYSERR to abort iteration with error!
- */
-typedef int
-(*TALER_MINTDB_DenominationKeyIterator)(void *cls,
-                                        const char *alias,
-                                        const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
-
-
-
-/**
  * Call @a it for each signing key found in the @a mint_base_dir.
  *
  * @param mint_base_dir base directory for the mint,
@@ -156,6 +145,23 @@ int
 TALER_MINTDB_signing_keys_iterate (const char *mint_base_dir,
                                    TALER_MINTDB_SigningKeyIterator it,
                                    void *it_cls);
+
+
+
+/**
+ * @brief Iterator over denomination keys.
+ *
+ * @param cls closure
+ * @param dki the denomination key
+ * @param alias coin alias
+ * @return #GNUNET_OK to continue to iterate,
+ *  #GNUNET_NO to stop iteration with no error,
+ *  #GNUNET_SYSERR to abort iteration with error!
+ */
+typedef int
+(*TALER_MINTDB_DenominationKeyIterator)(void *cls,
+                                        const char *alias,
+                                        const struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
 
 
 /**
@@ -199,6 +205,67 @@ TALER_MINTDB_denomination_key_write (const char *filename,
 int
 TALER_MINTDB_denomination_key_read (const char *filename,
                                     struct TALER_MINTDB_DenominationKeyIssueInformation *dki);
+
+
+/**
+ * @brief Iterator over auditor information.
+ *
+ * @param cls closure
+ * @param apub the auditor's public key
+ * @param mpub the mint's public key (as expected by the auditor)
+ * @param dki_len length of @a asig and @a dki arrays
+ * @param asigs array of the auditor's signatures over the @a dks, of length @a dki_len
+ * @param dki array of denomination coin data signed by the auditor, of length @a dki_len
+ * @return #GNUNET_OK to continue to iterate,
+ *  #GNUNET_NO to stop iteration with no error,
+ *  #GNUNET_SYSERR to abort iteration with error!
+ */
+typedef int
+(*TALER_MINTDB_AuditorIterator)(void *cls,
+                                const struct TALER_AuditorPublicKeyP *apub,
+                                const struct TALER_MasterPublicKeyP *mpub,
+                                unsigned int dki_len,
+                                const struct TALER_AuditorSignatureP *asigs,
+                                const struct TALER_DenominationKeyValidityPS *dki);
+
+
+/**
+ * Call @a it with information for each auditor found in the @a mint_base_dir.
+ *
+ * @param mint_base_dir base directory for the mint,
+ *                      the signing keys must be in the #TALER_MINTDB_DIR_DENOMINATION_KEYS
+ *                      subdirectory
+ * @param it function to call with auditor information
+ * @param it_cls closure for @a it
+ * @return -1 on error, 0 if no files were found, otherwise
+ *         a positive number (however, even with a positive
+ *         number it is possible that @a it was never called
+ *         as maybe none of the files were well-formed)
+ */
+int
+TALER_MINTDB_auditor_iterate (const char *mint_base_dir,
+                              TALER_MINTDB_AuditorIterator it,
+                              void *it_cls);
+
+
+/**
+ * Write auditor information to the given file.
+ *
+ * @param filename the file where to write the auditor information to
+ * @param apub the auditor's public key
+ * @param asigs the auditor's signatures, array of length @a dki_len
+ * @param mpub the mint's public key (as expected by the auditor)
+ * @param dki_len length of @a dki and @a asigs arrays
+ * @param dki array of denomination coin data signed by the auditor
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
+ */
+int
+TALER_MINTDB_auditor_write (const char *filename,
+                            const struct TALER_AuditorPublicKeyP *apub,
+                            const struct TALER_AuditorSignatureP *asigs,
+                            const struct TALER_MasterPublicKeyP *mpub,
+                            unsigned int dki_len,
+                            const struct TALER_DenominationKeyValidityPS *dki);
 
 
 /**

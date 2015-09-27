@@ -18,7 +18,7 @@ taler_mint_httpd_SOURCES = \
   taler-mint-httpd_mhd.c taler-mint-httpd_mhd.h \
   taler-mint-httpd_admin.c taler-mint-httpd_admin.h \
   taler-mint-httpd_deposit.c taler-mint-httpd_deposit.h \
-  taler-mint-httpd_withdraw.c taler-mint-httpd_withdraw.h \
+  taler-mint-httpd_reserve.c taler-mint-httpd_reserve.h \
   taler-mint-httpd_wire.c taler-mint-httpd_wire.h \
   taler-mint-httpd_refresh.c taler-mint-httpd_refresh.h
 taler_mint_httpd_LDADD = \
@@ -34,3 +34,9 @@ if HAVE_DEVELOPER
 taler_mint_httpd_SOURCES += \
   taler-mint-httpd_test.c taler-mint-httpd_test.h
 endif
+
+check_SCRIPTS = \
+  test_taler_mint_httpd.sh \
+  test_taler_mint_httpd_afl.sh
+
+TESTS = $(check_SCRIPTS)

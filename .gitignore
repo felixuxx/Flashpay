@@ -30,6 +30,7 @@ GTAGS
 src/lib/test_mint_api
 doc/doxygen/doxygen_sqlite3.db
 src/mint-lib/test_mint_api
+src/mint-tools/taler-auditor-sign
 src/mint-tools/taler-mint-dbinit
 src/mint-tools/taler-mint-keycheck
 src/mint-tools/taler-mint-keyup

@@ -417,30 +417,6 @@ struct TALER_MINTDB_LinkDataList
 
 
 /**
- * @brief Specification for a /lock operation.
- */
-struct TALER_MINTDB_LockOperation
-{
-  /**
-   * Information about the coin that is being locked.
-   */
-  struct TALER_CoinPublicInfo coin;
-
-  /**
-   * Signature over the locking operation.
-   */
-  struct TALER_CoinSpendSignatureP coin_sig;
-
-  /**
-   * How much value is being locked?
-   */
-  struct TALER_Amount amount;
-
-  // FIXME: more needed...
-};
-
-
-/**
  * @brief Enumeration to classify the different types of transactions
  * that can be done with a coin.
  */
@@ -454,12 +430,8 @@ enum TALER_MINTDB_TransactionType
   /**
    * /refresh/melt operation.
    */
-  TALER_MINTDB_TT_REFRESH_MELT = 1,
+  TALER_MINTDB_TT_REFRESH_MELT = 1
 
-  /**
-   * /lock operation.
-   */
-  TALER_MINTDB_TT_LOCK = 2
 };
 
 
@@ -494,11 +466,6 @@ struct TALER_MINTDB_TransactionList
      * Details if transaction was a /refresh/melt operation.
      */
     struct TALER_MINTDB_RefreshMelt *melt;
-
-    /**
-     * Details if transaction was a /lock operation.
-     */
-    struct TALER_MINTDB_LockOperation *lock;
 
   } details;
 
@@ -547,6 +514,31 @@ struct TALER_MINTDB_MeltCommitment
  * @brief Handle for a database session (per-thread, for transactions).
  */
 struct TALER_MINTDB_Session;
+
+
+/**
+ * Function called with details about deposits that
+ * have been made, with the goal of executing the
+ * corresponding wire transaction.
+ *
+ * @param cls closure
+ * @param id transaction ID (used as future `min_id` to avoid
+ *           iterating over transactions more than once)
+ * @param amount_with_fee amount that was deposited including fee
+ * @param deposit_fee amount the mint gets to keep as transaction fees
+ * @param transaction_id unique transaction ID chosen by the merchant
+ * @param h_contract hash of the contract between merchant and customer
+ * @param wire wire details for the merchant
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef int
+(*TALER_MINTDB_DepositIterator)(void *cls,
+                                uint64_t id,
+                                const struct TALER_Amount *amount_with_fee,
+                                const struct TALER_Amount *deposit_fee,
+                                uint64_t transaction_id,
+                                const struct GNUNET_HashCode *h_contract,
+                                const json_t *wire);
 
 
 /**
@@ -636,23 +628,24 @@ struct TALER_MINTDB_Plugin
    * Commit a transaction.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion connection to use
-   * @return #GNUNET_OK on success
+   * @param session connection to use
+   * @return #GNUNET_OK on success, #GNUNET_NO if the transaction
+   *         can be retried, #GNUNET_SYSERR on hard failures
    */
   int
   (*commit) (void *cls,
-             struct TALER_MINTDB_Session *sesssion);
+             struct TALER_MINTDB_Session *session);
 
 
   /**
    * Abort/rollback a transaction.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion connection to use
+   * @param session connection to use
    */
   void
   (*rollback) (void *cls,
-               struct TALER_MINTDB_Session *sesssion);
+               struct TALER_MINTDB_Session *session);
 
 
   /**
@@ -661,7 +654,7 @@ struct TALER_MINTDB_Plugin
    * with this key have.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion connection to use
+   * @param session connection to use
    * @param denom_pub the public key used for signing coins of this denomination
    * @param issue issuing information with value, fees and other info about the coin
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
@@ -677,7 +670,7 @@ struct TALER_MINTDB_Plugin
    * Fetch information about a denomination key.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion connection to use
+   * @param session connection to use
    * @param denom_pub the public key used for signing coins of this denomination
    * @param[out] issue set to issue information with value, fees and other info about the coin, can be NULL
    * @return #GNUNET_OK on success; #GNUNET_NO if no record was found, #GNUNET_SYSERR on failure
@@ -736,7 +729,7 @@ struct TALER_MINTDB_Plugin
    * key of the hash of the blinded message.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection to use
+   * @param session database connection to use
    * @param h_blind hash of the blinded coin to be signed (will match
    *                `h_coin_envelope` in the @a collectable to be returned)
    * @param collectable corresponding collectable coin (blind signature)
@@ -747,7 +740,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*get_withdraw_info) (void *cls,
-                        struct TALER_MINTDB_Session *sesssion,
+                        struct TALER_MINTDB_Session *session,
                         const struct GNUNET_HashCode *h_blind,
                         struct TALER_MINTDB_CollectableBlindcoin *collectable);
 
@@ -757,7 +750,7 @@ struct TALER_MINTDB_Plugin
    * hash of the blinded message.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection to use
+   * @param session database connection to use
    * @param collectable corresponding collectable coin (blind signature)
    *                    if a coin is found
    * @return #GNUNET_SYSERR on internal error
@@ -766,7 +759,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*insert_withdraw_info) (void *cls,
-                           struct TALER_MINTDB_Session *sesssion,
+                           struct TALER_MINTDB_Session *session,
                            const struct TALER_MINTDB_CollectableBlindcoin *collectable);
 
 
@@ -775,13 +768,13 @@ struct TALER_MINTDB_Plugin
    * reserve.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion connection to use
+   * @param session connection to use
    * @param reserve_pub public key of the reserve
    * @return known transaction history (NULL if reserve is unknown)
    */
   struct TALER_MINTDB_ReserveHistory *
   (*get_reserve_history) (void *cls,
-                          struct TALER_MINTDB_Session *sesssion,
+                          struct TALER_MINTDB_Session *session,
                           const struct TALER_ReservePublicKeyP *reserve_pub);
 
 
@@ -800,7 +793,7 @@ struct TALER_MINTDB_Plugin
    * Check if we have the specified deposit already in the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection
+   * @param session database connection
    * @param deposit deposit to search for
    * @return #GNUNET_YES if we know this operation,
    *         #GNUNET_NO if this exact deposit is unknown to us,
@@ -808,30 +801,53 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*have_deposit) (void *cls,
-                   struct TALER_MINTDB_Session *sesssion,
+                   struct TALER_MINTDB_Session *session,
                    const struct TALER_MINTDB_Deposit *deposit);
 
 
   /**
-   * Insert information about deposited coin into the
-   * database.
+   * Insert information about deposited coin into the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion connection to the database
+   * @param session connection to the database
    * @param deposit deposit information to store
    * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
    */
   int
   (*insert_deposit) (void *cls,
-                     struct TALER_MINTDB_Session *sesssion,
+                     struct TALER_MINTDB_Session *session,
                      const struct TALER_MINTDB_Deposit *deposit);
+
+
+  /**
+   * Obtain information about deposits.  Iterates over all deposits
+   * above a certain ID.  Use a @a min_id of 0 to start at the beginning.
+   * This operation is executed in its own transaction in transaction
+   * mode "REPEATABLE READ", i.e. we should only see valid deposits.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param min_id deposit to start at
+   * @param limit maximum number of transactions to fetch
+   * @param deposit_cb function to call for each deposit
+   * @param deposit_cb_cls closure for @a deposit_cb
+   * @return number of rows processed, 0 if none exist,
+   *         #GNUNET_SYSERR on error
+   */
+  int
+  (*iterate_deposits) (void *cls,
+                       struct TALER_MINTDB_Session *session,
+                       uint64_t min_id,
+                       uint32_t limit,
+                       TALER_MINTDB_DepositIterator deposit_cb,
+                       void *deposit_cb_cls);
 
 
   /**
    * Lookup refresh session data under the given @a session_hash.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database handle to use
+   * @param session database handle to use
    * @param session_hash hash over the melt to use for the lookup
    * @param[out] refresh_session where to store the result
    * @return #GNUNET_YES on success,
@@ -840,7 +856,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*get_refresh_session) (void *cls,
-                          struct TALER_MINTDB_Session *sesssion,
+                          struct TALER_MINTDB_Session *session,
                           const struct GNUNET_HashCode *session_hash,
                           struct TALER_MINTDB_RefreshSession *refresh_session);
 
@@ -849,7 +865,7 @@ struct TALER_MINTDB_Plugin
    * Store new refresh session data under the given @a session_hash.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database handle to use
+   * @param session database handle to use
    * @param session_hash hash over the melt to use to locate the session
    * @param refresh_session session data to store
    * @return #GNUNET_YES on success,
@@ -857,7 +873,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*create_refresh_session) (void *cls,
-                             struct TALER_MINTDB_Session *sesssion,
+                             struct TALER_MINTDB_Session *session,
                              const struct GNUNET_HashCode *session_hash,
                              const struct TALER_MINTDB_RefreshSession *refresh_session);
 
@@ -866,7 +882,7 @@ struct TALER_MINTDB_Plugin
    * Store the given /refresh/melt request in the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection
+   * @param session database connection
    * @param oldcoin_index index of the coin to store
    * @param melt coin melt operation details to store; includes
    *             the session hash of the melt
@@ -875,7 +891,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*insert_refresh_melt) (void *cls,
-                          struct TALER_MINTDB_Session *sesssion,
+                          struct TALER_MINTDB_Session *session,
                           uint16_t oldcoin_index,
                           const struct TALER_MINTDB_RefreshMelt *melt);
 
@@ -884,7 +900,7 @@ struct TALER_MINTDB_Plugin
    * Get information about melted coin details from the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection
+   * @param session database connection
    * @param session_hash hash to identify refresh session
    * @param oldcoin_index index of the coin to retrieve
    * @param melt melt data to fill in, can be NULL
@@ -893,7 +909,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*get_refresh_melt) (void *cls,
-                       struct TALER_MINTDB_Session *sesssion,
+                       struct TALER_MINTDB_Session *session,
                        const struct GNUNET_HashCode *session_hash,
                        uint16_t oldcoin_index,
                        struct TALER_MINTDB_RefreshMelt *melt);
@@ -904,7 +920,7 @@ struct TALER_MINTDB_Plugin
    * in a given refresh operation.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection
+   * @param session database connection
    * @param session_hash hash to identify refresh session
    * @param num_newcoins number of coins to generate, size of the @a denom_pubs array
    * @param denom_pubs array denominations of the coins to create
@@ -913,7 +929,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*insert_refresh_order) (void *cls,
-                           struct TALER_MINTDB_Session *sesssion,
+                           struct TALER_MINTDB_Session *session,
                            const struct GNUNET_HashCode *session_hash,
                            uint16_t num_newcoins,
                            const struct TALER_DenominationPublicKey *denom_pubs);
@@ -924,7 +940,7 @@ struct TALER_MINTDB_Plugin
    * create in the given refresh operation.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection
+   * @param session database connection
    * @param session_hash hash to identify refresh session
    * @param num_newcoins size of the @a denom_pubs array
    * @param[out] denom_pubs where to write @a num_newcoins denomination keys
@@ -933,7 +949,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*get_refresh_order) (void *cls,
-                        struct TALER_MINTDB_Session *sesssion,
+                        struct TALER_MINTDB_Session *session,
                         const struct GNUNET_HashCode *session_hash,
                         uint16_t num_newcoins,
                         struct TALER_DenominationPublicKey *denom_pubs);
@@ -944,7 +960,7 @@ struct TALER_MINTDB_Plugin
    * for the given refresh session in the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection to use
+   * @param session database connection to use
    * @param session_hash hash to identify refresh session
    * @param cnc_index cut and choose index (1st dimension), relating to #TALER_CNC_KAPPA
    * @param num_newcoins coin index size of the @a commit_coins array
@@ -954,7 +970,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*insert_refresh_commit_coins) (void *cls,
-                                  struct TALER_MINTDB_Session *sesssion,
+                                  struct TALER_MINTDB_Session *session,
                                   const struct GNUNET_HashCode *session_hash,
                                   uint16_t cnc_index,
                                   uint16_t num_newcoins,
@@ -966,7 +982,7 @@ struct TALER_MINTDB_Plugin
    * given coin of the given refresh session from the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection to use
+   * @param session database connection to use
    * @param session_hash hash to identify refresh session
    * @param cnc_index cut and choose set index (1st dimension)
    * @param num_coins size of the @a commit_coins array
@@ -977,7 +993,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*get_refresh_commit_coins) (void *cls,
-                               struct TALER_MINTDB_Session *sesssion,
+                               struct TALER_MINTDB_Session *session,
                                const struct GNUNET_HashCode *session_hash,
                                uint16_t cnc_index,
                                uint16_t num_coins,
@@ -989,7 +1005,7 @@ struct TALER_MINTDB_Plugin
    * for the given refresh session.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection to use
+   * @param session database connection to use
    * @param session_hash hash to identify refresh session
    * @param cnc_index cut and choose index (1st dimension), relating to #TALER_CNC_KAPPA
    * @param num_links size of the @a commit_link array
@@ -998,7 +1014,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*insert_refresh_commit_links) (void *cls,
-                                  struct TALER_MINTDB_Session *sesssion,
+                                  struct TALER_MINTDB_Session *session,
                                   const struct GNUNET_HashCode *session_hash,
                                   uint16_t cnc_index,
                                   uint16_t num_links,
@@ -1009,7 +1025,7 @@ struct TALER_MINTDB_Plugin
    * for the given refresh session.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection to use
+   * @param session database connection to use
    * @param session_hash hash to identify refresh session
    * @param cnc_index cut and choose index (1st dimension)
    * @param num_links size of the @a links array to return
@@ -1020,7 +1036,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*get_refresh_commit_links) (void *cls,
-                               struct TALER_MINTDB_Session *sesssion,
+                               struct TALER_MINTDB_Session *session,
                                const struct GNUNET_HashCode *session_hash,
                                uint16_t cnc_index,
                                uint16_t num_links,
@@ -1031,14 +1047,14 @@ struct TALER_MINTDB_Plugin
    * Get all of the information from the given melt commit operation.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection to use
+   * @param session database connection to use
    * @param session_hash hash to identify refresh session
    * @return NULL if the @a session_hash does not correspond to any known melt
    *         operation
    */
   struct TALER_MINTDB_MeltCommitment *
   (*get_melt_commitment) (void *cls,
-                          struct TALER_MINTDB_Session *sesssion,
+                          struct TALER_MINTDB_Session *session,
                           const struct GNUNET_HashCode *session_hash);
 
 
@@ -1060,7 +1076,7 @@ struct TALER_MINTDB_Plugin
    * be used to try to obtain the private keys during "/refresh/link".
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection
+   * @param session database connection
    * @param session_hash hash to identify refresh session
    * @param newcoin_index coin index
    * @param ev_sig coin signature
@@ -1068,7 +1084,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*insert_refresh_out) (void *cls,
-                                 struct TALER_MINTDB_Session *sesssion,
+                                 struct TALER_MINTDB_Session *session,
                                  const struct GNUNET_HashCode *session_hash,
                                  uint16_t newcoin_index,
                                  const struct TALER_DenominationSignature *ev_sig);
@@ -1079,13 +1095,13 @@ struct TALER_MINTDB_Plugin
    * information, the denomination keys and the signatures.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection
+   * @param session database connection
    * @param session_hash session to get linkage data for
    * @return all known link data for the session
    */
   struct TALER_MINTDB_LinkDataList *
   (*get_link_data_list) (void *cls,
-                         struct TALER_MINTDB_Session *sesssion,
+                         struct TALER_MINTDB_Session *session,
                          const struct GNUNET_HashCode *session_hash);
 
 
@@ -1108,7 +1124,7 @@ struct TALER_MINTDB_Plugin
    *
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection
+   * @param session database connection
    * @param coin_pub public key of the coin
    * @param tdc function to call for each session the coin was melted into
    * @param tdc_cls closure for @a tdc
@@ -1118,42 +1134,10 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*get_transfer) (void *cls,
-                   struct TALER_MINTDB_Session *sesssion,
+                   struct TALER_MINTDB_Session *session,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    TALER_MINTDB_TransferDataCallback tdc,
                    void *tdc_cls);
-
-
-
-  /**
-   * Test if the given /lock request is known to us.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection
-   * @param lock lock operation
-   * @return #GNUNET_YES if known,
-   *         #GNUNET_NO if not,
-   *         #GNUNET_SYSERR on internal error
-   */
-  int
-  (*have_lock) (void *cls,
-                struct TALER_MINTDB_Session *sesssion,
-                const struct TALER_MINTDB_LockOperation *lock);
-
-
-  /**
-   * Store the given /lock request in the database.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection
-   * @param lock lock operation
-   * @return #GNUNET_OK on success
-   *         #GNUNET_SYSERR on internal error
-   */
-  int
-  (*insert_lock) (void *cls,
-                  struct TALER_MINTDB_Session *sesssion,
-                  const struct TALER_MINTDB_LockOperation *lock);
 
 
   /**
@@ -1161,13 +1145,13 @@ struct TALER_MINTDB_Plugin
    * with the given coin (/refresh/melt and /deposit operations).
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param sesssion database connection
+   * @param session database connection
    * @param coin_pub coin to investigate
    * @return list of transactions, NULL if coin is fresh
    */
   struct TALER_MINTDB_TransactionList *
   (*get_coin_transactions) (void *cls,
-                            struct TALER_MINTDB_Session *sesssion,
+                            struct TALER_MINTDB_Session *session,
                             const struct TALER_CoinSpendPublicKeyP *coin_pub);
 
 

@@ -22,7 +22,8 @@ libtalermint_la_SOURCES = \
   mint_api_deposit.c \
   mint_api_refresh.c \
   mint_api_refresh_link.c \
-  mint_api_withdraw.c
+  mint_api_reserve.c \
+  mint_api_wire.c
 
 libtalermint_la_LIBADD = \
   -lgnunetutil \
