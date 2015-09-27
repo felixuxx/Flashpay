@@ -745,7 +745,8 @@ and $G$ is the generator of the elliptic curve.
   \item The customer computes $B_i := E_{b_i}(C^{(i)}_p)$  for $i=1,\ldots,\kappa$ and sends a commitment
     $S_{C'}(\vec{E}, \vec{B}, \vec{T_p}))$ to the mint;
     here $E_{b_i}$ denotes Chaum-style blinding with blinding factor $b_i$.
-  \item The mint generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
+  \item The mint generates a random\footnote{Auditing processes need to assure $\gamma$ is unpredictable until this time to 
+    prevent the mint from assisting tax evasion.} $\gamma$ with $1 \le \gamma \le \kappa$ and
     marks $C'_p$ as spent by committing
     $\langle C', \gamma, S_{C'}(\vec{E}, \vec{B}, \vec{T}) \rangle$ to disk.
   \item The mint sends $S_K(C'_p, \gamma)$ to the customer.\footnote{Instead of $K$, it is also
