@@ -138,6 +138,7 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
                              spec);
   if (GNUNET_OK != res)
   {
+    GNUNET_break_op (0);
     json_decref (root);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
@@ -145,6 +146,7 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
       TALER_json_validate_wireformat (TMH_expected_wire_format,
 				      wire))
   {
+    GNUNET_break_op (0);
     TMH_PARSE_release_data (spec);
     json_decref (root);
     return TMH_RESPONSE_reply_arg_unknown (connection,
