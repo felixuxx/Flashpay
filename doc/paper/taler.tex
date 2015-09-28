@@ -712,8 +712,8 @@ withdraw funds, those can also be used with Taler.
 
 A customer can spend coins at a merchant, under the condition that the
 merchant trusts the specific mint that minted the coin.  Merchants are
-identified by their public key $M := (m_s, M_p)$, which must be known
-to the customer apriori.
+identified by their key $M := (m_s, M_p)$ where the public key $M_p$
+must be known to the customer apriori.
 
 The following steps describe the protocol between customer, merchant and mint
 for a transaction involving a coin $C := (c_s, C_p)$, which was previously signed
@@ -854,7 +854,7 @@ generator of the elliptic curve.
   \item \label{step:refresh-done} If the commitments were consistent,
     the mint sends the blind signature $\widetilde{C} :=
     S_{K}(B^{(\gamma)})$ to the customer.  Otherwise, the mint responds
-    with an error the value of $C'$.
+    with an error indicating the location of the failure.
 \end{enumerate}
 
 %\subsection{N-to-M Refreshing}
@@ -1147,7 +1147,7 @@ coin first.
   in the form of existing \emph{deposit-permission} or 
   lock-permission records for $\widetilde{C}$.  If such records exist
   and indicate that insufficient funds are left, the mint sends those
-  records to the merchant, who can then use it prove the double
+  records to the merchant, who can then use the records to prove the double
   spending to the customer.
 
   If double spending is not found, 
