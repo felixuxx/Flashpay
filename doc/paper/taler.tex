@@ -1123,7 +1123,7 @@ transaction (and remembers the lock permission).  The merchant and the
 customer can then finalize the business transaction, possibly
 exchanging a series of incremental payment permissions for services.
 Finally, the merchant then redeems the coin at the mint before the
-lock permission expires to ensure that no other merchant spends the
+lock permission expires to ensure that no other merchant redeems the
 coin first.
 
 \begin{enumerate}
@@ -1131,8 +1131,9 @@ coin first.
   \vec{D} \rangle$ containing the price of the offer $f$, a transaction
   ID $m$ and the list of mints $D_1, \ldots, D_n$ accepted by the merchant
   where each $D_j$ is a mint's public key.
-\item\label{lock2} The customer must possess or acquire a coin minted by a mint that is
-  accepted by the merchant, i.e. $K$ should be publicly signed by some $D_j
+\item\label{lock2} The customer must possess or acquire a coin $\widetilde{C}$ 
+  signed by a mint that is
+  accepted by the merchant, i.e. $K$ should be signed by some $D_j
   \in \{D_1, D_2, \ldots, D_n\}$, and has a value $\geq f$.
 
   Customer then generates a \emph{lock-permission} $\mathcal{L} :=
@@ -1141,13 +1142,15 @@ coin first.
   where $D_j$ is the mint which signed $K$.
 \item The merchant asks the mint to apply the lock by sending $\langle
   \mathcal{L} \rangle$ to the mint.
-\item The mint validates $\widetilde{C}$ and detects double spending if there is
-  a lock-permission record $S_c(\widetilde{C}, t', m', f', M_p')$ where $(t',
-  m', f', M_p') \neq (t, m, f, M_p)$ or a \emph{deposit-permission} record for
-  $C$ and sends it to the merchant, who can then use it prove to the customer
-  and subsequently ask the customer to issue a new lock-permission.
+\item The mint validates $\widetilde{C}$ and detects double spending
+  in the form of existing \emph{deposit-permission} or 
+  lock-permission records for $\widetilde{C}$.  If such records exist
+  and indicate that insufficient funds are left, the mint sends those
+  records to the merchant, who can then use it prove the double
+  spending to the customer.
 
-  If double spending is not found, the mint commits $\langle \mathcal{L} \rangle$ to disk
+  If double spending is not found, 
+  the mint commits $\langle \mathcal{L} \rangle$ to disk
   and notifies the merchant that locking was successful.
 \item\label{contract2} The merchant creates a digitally signed contract
   $\mathcal{A} := S_M(m, f, a, H(p, r))$ where $a$ is data relevant to the contract
@@ -1155,31 +1158,27 @@ coin first.
   merchant's payment information (e.g. his IBAN number) and $r$ is an random nonce.
   The merchant commits $\langle \mathcal{A} \rangle$ to disk and sends it to the customer.
 \item The customer creates a
-  \emph{deposit-permission} $\mathcal{D} := S_c(\widetilde{C}, f, m, M_p, H(a), H(p, r))$, commits
+  \emph{deposit-permission} $\mathcal{D} := S_c(\widetilde{C}, \widetilde{L}, f, m, M_p, H(a), H(p, r))$, commits
   $\langle \mathcal{A}, \mathcal{D} \rangle$ to disk and sends $\mathcal{D}$ to the merchant.
-\item\label{invoice_paid2} The merchant commits the received $\langle \mathcal{D} \rangle$ to disk.
+\item\label{invoice_paid2} The merchant commits the received $\langle \mathcal{D} \rangle$ to disk.  
 \item The merchant gives $(\mathcal{D}, p, r)$ to the mint, revealing his
   payment information.
-\item The mint verifies $(\mathcal{D}, p, r)$ for its validity.  A
-  \emph{deposit-permission} for a coin $C$ is valid if:
-  \begin{itemize}
-  \item $C$ is not refreshed already
-  \item there exists no other \emph{deposit-permission} on disk for \\
-    $\mathcal{D'} := S_c(\widetilde{C}, f', m', M_p', H(a'), H(p', r'))$ for $C$
-    such that \\ $(f', m',M_p', H(a')) \neq (f, m, M_p, H(a))$
-  \item  $H(p, r) := H(p', r')$
-  \end{itemize}
-  If $C$ is valid and no other \emph{deposit-permission} for $C$ exists on disk, the
-  mint does the following:
+\item The mint verifies $(\mathcal{D}, p, r)$ for its validity and
+  checks against double spending, while of
+  course permitting the merchant to withdraw funds from the amount that
+  had been locked for this merchant.
+ \item If $\widetilde{C}$ is valid and no equivalent \emph{deposit-permission} for $\widetilde{C}$ and $\widetilde{L}$ exists on disk, the
+  mint performs the following transaction:
   \begin{enumerate}
-    \item if a \emph{lock-permission} exists for $C$, it is deleted from disk.
+    \item $\langle \mathcal{D}, p, r \rangle$ is committed to disk.
     \item\label{transfer2} transfers an amount of $f$ to the merchant's bank account
       given in $p$.  The subject line of the transaction to $p$ must contain
       $H(\mathcal{D})$.
-    \item $\langle \mathcal{D}, p, r \rangle$ is commited to disk.
   \end{enumerate}
-  If the deposit record $\langle \mathcal{D}, p, r \rangle$ already exists,
-  the mint sends it to the merchant, but does not transfer money to $p$ again.
+  Finally, the mint sends a confirmation to the merchant.
+ \item If the deposit record $\langle \mathcal{D}, p, r \rangle$ already exists,
+  the mint sends the confirmation to the merchant, 
+  but does not transfer money to $p$ again.
 \end{enumerate}
 
 To facilitate incremental spending of a coin $C$ in a single transaction, the
@@ -1200,30 +1199,30 @@ incremental amount up to $f_{max}$:
   contract data appended to older contract data $a$.
   The merchant commits $\langle \mathcal{A}' \rangle$ to disk and sends it to the customer.
 \item Customer commits $\langle \mathcal{A}' \rangle$ to disk, creates
-  $\mathcal{D}' := S_c(\widetilde{C}, f', m, M_p, H(a'), H(p, r))$, commits
+  $\mathcal{D}' := S_c(\widetilde{C}, \mathcal{L}, f', m, M_p, H(a'), H(p, r))$, commits
   $\langle \mathcal{D'} \rangle$ and sends it to the merchant.
 \item The merchant commits the received $\langle \mathcal{D'} \rangle$ and
-  deletes the older $\mathcal{D}$
+  deletes the older $\mathcal{D}$.
 \end{enumerate}
 
 %Figure~\ref{fig:spending_protocol_interactions} summarizes the interactions of the
 %coin spending protocol.
 
-For transactions with multiple coins, the steps of the protocol are executed in
-parallel for each coin.
+For transactions with multiple coins, the steps of the protocol are
+executed in parallel for each coin.  During the time a coin is locked,
+the locked fraction may not be spent at a different merchant or via a
+deposit permission that does not contain $\mathcal{L}$.  The mint will
+release the locks when they expire or are used in a deposit operation.
+Thus the coins can be used with other merchants once their locks
+expire, even if the original merchant never executed any deposit for
+the coin.  However, doing so may link the new transaction to older
+transaction.
 
-During the time a coin is locked, it may not be spent at a
-different merchant.  To make the storage costs of the mint more predictable,
-only one lock per coin can be active at any time, even if the lock only covers a
-fraction of the coin's denomination.  The mint will delete the locks when they
-expire.  Thus the coins can be reused once their locks expire.  However, doing
-so may link the new transaction to older transaction.
-
-Similarly, if a transaction is aborted after Step 2, subsequent transactions
-with the same coin can be linked to the coin, but not directly to the coin's
-owner.  The same applies to partially spent coins.  To unlink subsequent
-transactions from a coin, the customer has to execute the coin refreshing
-protocol with the mint.
+Similarly, if a transaction is aborted after Step 2, subsequent
+transactions with the same coin can be linked to the coin, but not
+directly to the coin's owner.  The same applies to partially spent
+coins.  Thus, to unlink subsequent transactions from a coin, the
+customer has to execute the coin refreshing protocol with the mint.
 
 %\begin{figure}[h]
 %\centering
