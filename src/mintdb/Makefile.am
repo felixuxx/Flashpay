@@ -83,7 +83,7 @@ test_mintdb_postgres_LDADD = \
   -lgnunetutil -ljansson
 
 test_perf_taler_mintdb_SOURCES = \
-	test_perf_taler_mintdb.c \
+  test_perf_taler_mintdb.c \
   perf_taler_mintdb_init.c \
   perf_taler_mintdb_interpreter.c
 test_perf_taler_mintdb_LDADD = \

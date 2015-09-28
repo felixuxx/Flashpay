@@ -14,7 +14,7 @@
    TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
    */
 /**
- * @file mintdb/perf_taler_mintdb.c
+ * @file mintdb/test_perf_taler_mintdb.c
  * @brief Mint database performance analysis
  * @author Nicolas Fournier
  */
@@ -39,8 +39,8 @@
  * Allocate, copies and free all the data used in the interpreter
  * Used to check for memory leaks
  */
-void
-test_alocate ()
+static void
+test_allocate ()
 {
   struct TALER_MINTDB_DenominationKeyIssueInformation *dki, *dki_copy;
   struct PERF_TALER_MINTDB_Reserve *reserve, *reserve_copy;
@@ -171,8 +171,8 @@ main (int argc, char ** argv)
     PERF_TALER_MINTDB_INIT_CMD_END ("end"),
   };
   
-  test_alocate ();
-  ret = PERF_TALER_MINTDB_run_benchmark ("perf-taler-mintdb",
+  test_allocate ();
+  ret = PERF_TALER_MINTDB_run_benchmark ("test-perf-taler-mintdb",
                                          "./test-mint-db-postgres.conf",
                                          init,
                                          benchmark);
