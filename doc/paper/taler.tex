@@ -222,7 +222,8 @@ the coin.
 Online fraud detection can create problems if the network fails during
 the initial steps of a transaction.  For example, a law enforcement
 agency might try to entrap a customer by offering illicit goods and
-then cancelling the transaction after learning the public key of the
+then cancelling the transaction (i.e. by pretending that there is
+a network failure) after learning the public key of the
 coin.  This is equivalent to a benign merchant giving a dissatisfied
 (anonymous) customer a {\em refund} by sending a message affirming
 the cancellation.
@@ -868,8 +869,8 @@ request $S_{C'}(\mathtt{link})$ with $(T^{(\gamma)}_p$, $B^{(\gamma)},
 %
 This allows the owner of the melted coin to also obtain the private
 key of the new coin, even if the refreshing protocol was illicitly
-executed with the help of another party who generated $C'_s$ and only
-provided $\vec{C'_p}$ and other required information to the old owner.
+executed with the help of another party who generated $C_s$ and only
+provided $\vec{C_p}$ and other required information to the old owner.
 As a result, linking ensures that access to the new coins minted by
 the refresh protocol is always {\em shared} with the owner of the
 melted coins.  This makes it impossible to abuse the refresh protocol
@@ -1064,7 +1065,7 @@ computing base (TCB) is public and free software.
 
 %This work was supported by a grant from the Renewable Freedom Foundation.
 % FIXME: ARED?
-%We thank Tanja Lange, Dan Bernstein and Fabian Kirsch for feedback on an earlier
+%We thank Tanja Lange, Dan Bernstein, Luis Ressel and Fabian Kirsch for feedback on an earlier
 %version of this paper, Nicolas Fournier for implementing and running
 %some performance benchmarks, and Richard Stallman, Hellekin Wolf,
 %Jacob Appelbaum for productive discussions and support.
