@@ -57,6 +57,16 @@ AC_DEFINE_UNQUOTED([NEED_LIBGCRYPT_VERSION], ["$need_libgcrypt_version"],
 AM_PATH_LIBGCRYPT([$need_libgcrypt_version])
 
 
+# should expensive tests be run?
+AC_MSG_CHECKING(whether to run expensive tests)
+AC_ARG_ENABLE([expensivetests],
+   [AS_HELP_STRING([--enable-expensivetests], [enable running expensive testcases])],
+   [enable_expensive=${enableval}],
+   [enable_expensive=no])
+AC_MSG_RESULT($enable_expensive)
+AM_CONDITIONAL([HAVE_EXPENSIVE_TESTS], [test "x$enable_expensive" = "xyes"])
+
+
 if test "$wallet_only" != yes
 then
 

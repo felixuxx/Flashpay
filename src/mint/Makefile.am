@@ -36,7 +36,11 @@ taler_mint_httpd_SOURCES += \
 endif
 
 check_SCRIPTS = \
-  test_taler_mint_httpd.sh \
+  test_taler_mint_httpd.sh 
+
+if HAVE_EXPENSIVE_TESTS
+check_SCRIPTS += \
   test_taler_mint_httpd_afl.sh
+endif
 
 TESTS = $(check_SCRIPTS)
