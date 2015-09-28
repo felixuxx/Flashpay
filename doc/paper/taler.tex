@@ -169,7 +169,7 @@ believe needs a payment system with the following properties:
     signatures should be used extensively in order to be able to
     resolve disputes between the involved parties.  Nevertheless,
     customers must never be able to defraud anyone, and merchants must
-    at best be able to defraud their customers by not delivering the
+    at best be able to defraud their customers by not delivering
     on the agreed contract.  Neither merchants nor customers must ever
     be able to commit fraud against the mint.  Both customers and
     merchants must receive cryptographic proofs of bad behavior in
@@ -400,7 +400,7 @@ The mint is trusted to hold funds of its customers and to forward them
 when receiving the respective deposit instructions from the merchants.
 Customer and merchant can have some assurances about the mint's
 liquidity and operation, as the mint has proven reserves, is subject
-to the law, and can have its business is regularly audited (for
+to the law, and can have its business regularly audited (for
 example, by the government or a trusted third party auditor).
 Regular audits of the mint's accounts must reveal any possible fraud
 before the mint is allowed to destroy the corresponding accumulated
@@ -713,11 +713,11 @@ withdraw funds, those can also be used with Taler.
 A customer can spend coins at a merchant, under the condition that the
 merchant trusts the specific mint that minted the coin.  Merchants are
 identified by their key $M := (m_s, M_p)$ where the public key $M_p$
-must be known to the customer apriori.
+must be known to the customer a priori.
 
 The following steps describe the protocol between customer, merchant and mint
 for a transaction involving a coin $C := (c_s, C_p)$, which was previously signed
-by a mint's denomination key $K$, i.e. the customer posses
+by a mint's denomination key $K$, i.e. the customer possesses
 $\widetilde{C} := S_K(C_p)$:
 
 \begin{enumerate}
@@ -729,7 +729,7 @@ $\widetilde{C} := S_K(C_p)$:
   or goods the merchant will deliver to the customer, $f$ is the price of the offer,
   and $p$ is the merchant's payment information (e.g. his IBAN number) and $r$ is
   a random nounce.  The merchant commits $\langle \mathcal{A}
-  \rangle$ to disk and sends $\mathcal{A}$ it to the customer.
+  \rangle$ to disk and sends $\mathcal{A}$ to the customer.
 \item\label{deposit} The customer must possess or acquire a coin minted by a mint that is
   accepted by the merchant, i.e. $K$ should be publicly signed by some $D_j
   \in \{D_1, D_2, \ldots, D_n\}$, and has a value $\geq f$. (The customer
@@ -801,7 +801,7 @@ execute the coin refreshing protocol with the mint.
 
 The following refreshing protocol is executed in order to melt a dirty
 coin $C'$ of denomination $K$ to obtain a fresh coin $\widetilde{C}$
-with the same denomination.  In pratice, Taler uses a natural
+with the same denomination.  In practice, Taler uses a natural
 extension where multiple fresh coins are generated a the same time to
 enable giving precise change matching any amount.  In the
 protocol, $\kappa \ge 3$ is a security parameter and $G$ is the
