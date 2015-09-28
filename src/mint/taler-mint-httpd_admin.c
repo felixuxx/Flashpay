@@ -139,11 +139,8 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
   json_decref (root);
   if (GNUNET_OK != res)
   {
-<<<<<<< HEAD
     GNUNET_break_op (0);
     json_decref (root);
-=======
->>>>>>> 1bfba318ec0f3393de2dfc66821dec6165eef90a
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   if (GNUNET_YES !=
