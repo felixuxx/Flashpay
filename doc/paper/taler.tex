@@ -745,7 +745,8 @@ $\widetilde{C} := S_K(C_p)$:
   only to the mint.
 
 \item The mint validates $\mathcal{D}$ and checks for double spending.
-  If the coin has been involved in previous transactions, it sends an error
+  If the coin has been involved in previous transactions and the new
+  one would exceed its remaining value, it sends an error
   with the records from the previous transactions back to the merchant.
 %
   If double spending is not found, the mint commits $\langle \mathcal{D} \rangle$ to disk
@@ -1113,7 +1114,8 @@ an exclusive right to redeem deposit permissions for the coin for a
 limited duration.  The merchant uses the lock permission to determine
 if the coin has already been spent and to ensure that it cannot be
 spent by another merchant for the {\em duration} of the lock as
-specified in the lock permission.  If the coin has been spent or is
+specified in the lock permission.  If the coin has insufficient funds
+because too much has been spent or is
 already locked, the mint provides the owner's deposit or locking
 request and signature to prove the attempted fraud by the customer.
 Otherwise, the mint locks the coin for the expected duration of the
