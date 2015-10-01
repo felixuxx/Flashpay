@@ -697,7 +697,7 @@ the mint:
         and then sends $S_{K}(B_b(C_p))$ to the customer.
         If the guards for the transaction fail, the mint sends a descriptive error back to the customer,
         with proof that it operated correctly (i.e. by showing the transaction history for the reserve).
-  \item The customer computes (and verifies) the unblinded signature $S_K(C_p) = B^{-1}_b(S_K(B_b(C_p)))$.
+  \item The customer computes (and verifies) the unblinded signature $S_K(C_p) = U_b(S_K(B_b(C_p)))$.
         The customer writes $\langle S_K(C_p), c_s \rangle$ to disk (effectively adding the coin to the
         local wallet) for future use.
 \end{enumerate}
@@ -1359,7 +1359,7 @@ indicate the application of a function $f$ to one or more arguments.
   \item[$K$]{Public-priate (RSA) coin signing key pair $K := (K_s, K_p)$}
   \item[$b$]{RSA blinding factor for RSA-style blind signatures}
   \item[$B_b()$]{RSA blinding over the argument using blinding factor $b$}
-  \item[$B^{-1}_b()$]{RSA unblinding of the argument using blinding factor $b$, inverse of $B_b()$}
+  \item[$U_b()$]{RSA unblinding of the argument using blinding factor $b$}
   \item[$S_K()$]{Chaum-style RSA signature, commutes with blinding operation $B_b()$}
   \item[$w_s$]{Private key from customer for authentication}
   \item[$W_p$]{Public key corresponding to $w_s$}
