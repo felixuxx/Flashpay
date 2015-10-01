@@ -1360,7 +1360,7 @@ indicate the application of a function $f$ to one or more arguments.
   \item[$b$]{RSA blinding factor for RSA-style blind signatures}
   \item[$B_b()$]{RSA blinding over the argument using blinding factor $b$}
   \item[$U_b()$]{RSA unblinding of the argument using blinding factor $b$}
-  \item[$S_K()$]{Chaum-style RSA signature, commutes with blinding operation $B_b()$}
+  \item[$S_K()$]{Chaum-style RSA signature, $S_K(C) = U_b(S_K(B_b(C)))$}
   \item[$w_s$]{Private key from customer for authentication}
   \item[$W_p$]{Public key corresponding to $w_s$}
   \item[$W$]{Public-private customer authentication key pair $W := (w_s, W_p)$}
