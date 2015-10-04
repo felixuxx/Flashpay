@@ -820,7 +820,7 @@ generator of the elliptic curve.
     and commits $\langle C', \vec{T}, \vec{C}, \vec{b} \rangle$ to disk.
   \item The customer computes $B^{(i)} := B_{b^{(i)}}(C^{(i)}_p)$  for $i \in \{1,\ldots,\kappa\}$ and sends a commitment
     $S_{C'}(\vec{E}, \vec{B}, \vec{T_p}))$ to the mint.
-  \item The mint generates a random\footnote{Auditing processes need to assure $\gamma$ is unpredictable until this time to 
+  \item The mint generates a random\footnote{Auditing processes need to assure $\gamma$ is unpredictable until this time to
     prevent the mint from assisting tax evasion.} $\gamma$ with $1 \le \gamma \le \kappa$ and
     marks $C'_p$ as spent by committing
     $\langle C', \gamma, S_{C'}(\vec{E}, \vec{B}, \vec{T}) \rangle$ to disk.
@@ -828,7 +828,7 @@ generator of the elliptic curve.
     possible to use any equivalent mint signing key known to the customer here, as $K$ merely
     serves as proof to the customer that the mint selected this particular $\gamma$.}
   \item The customer commits $\langle C', S_K(C'_p, \gamma) \rangle$ to disk.
-  \item The customer computes $\mathfrak{R} := \left(t_s^{(i)}, C_p^{(i)}, b^{(i)}\right)_{i \ne \gamma}$
+  \item The customer computes $\mathfrak{R} := \left(t_s^{(i)}\right)_{i \ne \gamma}$
         and sends $S_{C'}(\mathfrak{R})$ to the mint.
   \item \label{step:refresh-ccheck} The mint checks whether $\mathfrak{R}$ is consistent with the commitments;
     specifically, it computes for $i \not= \gamma$:
@@ -837,19 +837,20 @@ generator of the elliptic curve.
     \begin{minipage}{5cm}
     \begin{align*}
       \overline{K}_i :&= H(t_s^{(i)} C_p'), \\
-      (\overline{c}_s^{(i)}, \overline{b}_i) :&= D_{\overline{K}_i}(E^{(i)}), \\
+      (\overline{c}_s^{(i)}, \overline{b_i}) :&= D_{\overline{K}_i}(E^{(i)}), \\
      \overline{C^{(i)}_p} :&= \overline{c}_s^{(i)} G,
      \end{align*}
      \end{minipage}
     \begin{minipage}{5cm}
       \begin{align*}
        \overline{T_p^{(i)}} :&= t_s^{(i)} G, \\ \\
-      \overline{B^{(i)}} :&= B_{b^{(i)}}(\overline{C_p^{(i)}}),
+      \overline{B^{(i)}} :&= B_{\overline{b_i}}(\overline{C_p^{(i)}}),
       \end{align*}
     \end{minipage}
 
     and checks if $\overline{B^{(i)}} = B^{(i)}$
     and $\overline{T^{(i)}_p} = T^{(i)}_p$.
+
 
   \item \label{step:refresh-done} If the commitments were consistent,
     the mint sends the blind signature $\widetilde{C} :=
@@ -1132,7 +1133,7 @@ coin first.
   \vec{D} \rangle$ containing the price of the offer $f$, a transaction
   ID $m$ and the list of mints $D_1, \ldots, D_n$ accepted by the merchant
   where each $D_j$ is a mint's public key.
-\item\label{lock2} The customer must possess or acquire a coin $\widetilde{C}$ 
+\item\label{lock2} The customer must possess or acquire a coin $\widetilde{C}$
   signed by a mint that is
   accepted by the merchant, i.e. $K$ should be signed by some $D_j
   \in \{D_1, D_2, \ldots, D_n\}$, and has a value $\geq f$.
@@ -1144,13 +1145,13 @@ coin first.
 \item The merchant asks the mint to apply the lock by sending $\langle
   \mathcal{L} \rangle$ to the mint.
 \item The mint validates $\widetilde{C}$ and detects double spending
-  in the form of existing \emph{deposit-permission} or 
+  in the form of existing \emph{deposit-permission} or
   lock-permission records for $\widetilde{C}$.  If such records exist
   and indicate that insufficient funds are left, the mint sends those
   records to the merchant, who can then use the records to prove the double
   spending to the customer.
 
-  If double spending is not found, 
+  If double spending is not found,
   the mint commits $\langle \mathcal{L} \rangle$ to disk
   and notifies the merchant that locking was successful.
 \item\label{contract2} The merchant creates a digitally signed contract
@@ -1161,7 +1162,7 @@ coin first.
 \item The customer creates a
   \emph{deposit-permission} $\mathcal{D} := S_c(\widetilde{C}, \widetilde{L}, f, m, M_p, H(a), H(p, r))$, commits
   $\langle \mathcal{A}, \mathcal{D} \rangle$ to disk and sends $\mathcal{D}$ to the merchant.
-\item\label{invoice_paid2} The merchant commits the received $\langle \mathcal{D} \rangle$ to disk.  
+\item\label{invoice_paid2} The merchant commits the received $\langle \mathcal{D} \rangle$ to disk.
 \item The merchant gives $(\mathcal{D}, p, r)$ to the mint, revealing his
   payment information.
 \item The mint verifies $(\mathcal{D}, p, r)$ for its validity and
@@ -1178,7 +1179,7 @@ coin first.
   \end{enumerate}
   Finally, the mint sends a confirmation to the merchant.
  \item If the deposit record $\langle \mathcal{D}, p, r \rangle$ already exists,
-  the mint sends the confirmation to the merchant, 
+  the mint sends the confirmation to the merchant,
   but does not transfer money to $p$ again.
 \end{enumerate}
 
