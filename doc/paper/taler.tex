@@ -808,15 +808,15 @@ protocol, $\kappa \ge 3$ is a security parameter and $G$ is the
 generator of the elliptic curve.
 
 \begin{enumerate}
-  \item For each $i = 1,\ldots,\kappa$, the customer
+  \item For each $i = 1,\ldots,\kappa$, the customer randomly generates
     \begin{itemize}
-      \item randomly generates transfer key $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$ where $T^{(i)}_p := t^{(i)}_s G$,
-      \item randomly generates coin key pair \\ $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$ where $C^{(i)}_p := c^{(i)}_s G$,
-      \item randomly generates blinding factors $b^{(i)}$,
-      \item computes $E^{(i)} := E_{K_i}\left(c_s^{(i)}, b^{(i)}\right)$ where $K_i := H(c'_s T_p^{(i)})$. (The encryption key $K_i$ is
-            computed by multiplying the private key $c'_s$ of the original coin with the point on the curve
-            that represents the public key $T^{(i)}_p$ of the transfer key $T^{(i)}$. This is basically DH between coin and transfer key.),
+      \item transfer key $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$ where $T^{(i)}_p := t^{(i)}_s G$,
+      \item coin key pair \\ $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$ where $C^{(i)}_p := c^{(i)}_s G$,
+      \item blinding factors $b^{(i)}$.
     \end{itemize}
+    The customer then computes $E^{(i)} := E_{K_i}\left(c_s^{(i)}, b^{(i)}\right)$ where $K_i := H(c'_s T_p^{(i)})$. (The encryption key $K_i$ is
+    computed by multiplying the private key $c'_s$ of the original coin with the point on the curve
+    that represents the public key $T^{(i)}_p$ of the transfer key $T^{(i)}$. This is basically DH between coin and transfer key.),
     and commits $\langle C', \vec{T}, \vec{C}, \vec{b} \rangle$ to disk.
   \item The customer computes $B^{(i)} := B_{b^{(i)}}(C^{(i)}_p)$  for $i \in \{1,\ldots,\kappa\}$ and sends a commitment
     $S_{C'}(\vec{E}, \vec{B}, \vec{T_p}))$ to the mint.
