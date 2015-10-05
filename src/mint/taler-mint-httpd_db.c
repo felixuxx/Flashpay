@@ -302,6 +302,7 @@ TMH_DB_execute_reserve_status (struct MHD_Connection *connection,
  *
  * @param connection request we are handling
  * @param session database session we are using
+ * @param key_state key state to lookup denomination pubs
  * @param reserve reserve to withdraw from
  * @param denomination_pub public key of the denomination requested
  * @param dki denomination to withdraw
@@ -1142,11 +1143,12 @@ refresh_mint_coin (struct MHD_Connection *connection,
  * @param session database session
  * @param session_hash hash identifying the refresh session
  * @param refresh_session information about the refresh operation we are doing
+ * @param melts array of "num_oldcoins" with information about melted coins
  * @param denom_pubs array of "num_newcoins" denomination keys for the new coins
- * @param ev_sigs[out] where to store generated signatures for the new coins,
+ * @param[out] ev_sigs where to store generated signatures for the new coins,
  *                     array of length "num_newcoins", memory released by the
  *                     caller
- * @param commit_coins[out] array of length "num_newcoins" to be used for
+ * @param[out] commit_coins array of length "num_newcoins" to be used for
  *                     information about the new coins from the commitment.
  * @return MHD result code
  */
@@ -1154,9 +1156,9 @@ static int
 execute_refresh_reveal_transaction (struct MHD_Connection *connection,
                                     struct TALER_MINTDB_Session *session,
                                     const struct GNUNET_HashCode *session_hash,
-                                    struct TALER_MINTDB_RefreshSession *refresh_session,
-                                    struct TALER_MINTDB_RefreshMelt *melts,
-                                    struct TALER_DenominationPublicKey *denom_pubs,
+                                    const struct TALER_MINTDB_RefreshSession *refresh_session,
+                                    const struct TALER_MINTDB_RefreshMelt *melts,
+                                    const struct TALER_DenominationPublicKey *denom_pubs,
                                     struct TALER_DenominationSignature *ev_sigs,
                                     struct TALER_MINTDB_RefreshCommitCoin *commit_coins)
 {

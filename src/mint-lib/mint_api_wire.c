@@ -595,24 +595,24 @@ TALER_MINT_wire (struct TALER_MINT_Handle *mint,
  * Cancel a wire information request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
- * @param wire the wire information request handle
+ * @param wh the wire information request handle
  */
 void
-TALER_MINT_wire_cancel (struct TALER_MINT_WireHandle *wire)
+TALER_MINT_wire_cancel (struct TALER_MINT_WireHandle *wh)
 {
-  if (NULL != wire->job)
+  if (NULL != wh->job)
   {
-    MAC_job_cancel (wire->job);
-    wire->job = NULL;
+    MAC_job_cancel (wh->job);
+    wh->job = NULL;
   }
-  if (NULL != wire->methods)
+  if (NULL != wh->methods)
   {
-    json_decref (wire->methods);
-    wire->methods = NULL;
+    json_decref (wh->methods);
+    wh->methods = NULL;
   }
-  GNUNET_free_non_null (wire->db.buf);
-  GNUNET_free (wire->url);
-  GNUNET_free (wire);
+  GNUNET_free_non_null (wh->db.buf);
+  GNUNET_free (wh->url);
+  GNUNET_free (wh);
 }
 
 
