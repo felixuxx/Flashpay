@@ -205,8 +205,9 @@ believe needs a payment system with the following properties:
     \EUR{100,00} coin or transaction or the other change being generated.
 \end{description}
 
-Instead of using cryptographic methods like restrictive blind
-signatures to achieve divisiblity, Taler's fractional payments use a
+Instead of using cryptographic methods like $k$-show
+signatures to achieve divisiblity~\cite{brands1993efficient},
+Taler's fractional payments use a
 simpler, more powerful mechanism.  In Taler, a coin is not simply a
 unique random token, but a private key.  Thus, the transfer of a coin
 can be performed by signing a message using this private key.  Thus,
