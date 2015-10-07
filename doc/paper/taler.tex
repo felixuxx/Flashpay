@@ -110,12 +110,12 @@ current payment systems which enable either an authoritarian state in
 total control of the population, or create weak states with almost
 anarchistic economies.
 
-The Taler protocol is havily based on ideas from
+The Taler protocol is heavily based on ideas from
 Chaum~\cite{chaum1983blind} and also follows Chaum's basic architecture of
 customer, merchant and mint (Figure~\ref{fig:cmm}). The two designs
 share the key first step where the {\em customer} withdraws digital
 {\em coins} from the {\em mint} with unlinkability provided via blind
-signatures.  The coins can then be spend at a {\em merchant} who {\em
+signatures.  The coins can then be spent at a {\em merchant} who {\em
   deposits} them at the mint.  Taler uses online detection of
 double-spending, thus assuring the merchant instantly that a
 transaction is valid.
@@ -146,95 +146,93 @@ Taler was designed for use in a modern social-liberal society, which we
 believe needs a payment system with the following properties:
 
 \begin{description}
-  \item[Customer Anonymity] It must be impossible for mints, merchants
-    and even a global active adversary, to trace the spending behavior
-    of a customer.
-  \item[Unlinkability] Merchants must not be able to tell if two
-    transactions were performed by the same customer.  It must be
-    infeasible to link a set of transactions to the same (anonymous)
-    customer. %, even when taking aborted transactions into account.
-  \item[Taxability] In many current legal systems, it is the
-    responsibility of the merchant to deduct (sales) taxes from
-    purchases made by customers, or to pay (income) taxes for payments
-    received for work.
-    %Taxation is neccessary for the state to
+  \item[Customer Anonymity] 
+    It must be impossible for mints, merchants and even a global active
+    adversary, to trace the spending behavior of a customer.  
+  \item[Unlinkability]
+    As a strong form of customer anonymity, it must be infeasible to
+    link a set of transactions to the same (anonymous) customer.
+    %, even when taking aborted transactions into account.
+  \item[Taxability] 
+    In many current legal systems, it is the responsibility of the merchant
+    to deduct (sales) taxes from purchases made by customers, or to
+    pay (income) taxes for payments received for work.
+    %Taxation is necessary for the state to
     %provide legitimate social functions, such as education.  Thus, a payment
     %system must facilitate sales, income and transaction taxes.
-    This specifically means that the state must be able to audit merchants (or
-    generally anybody receiving money), and thus the receiver of
-    electronic cash must be easily identifiable.
-    %non-anonymous, as this would enable tax fraud.
-  \item[Verifiability] The payment system should try to minimize the
-    trust necessary between the participants.  In particular, digital
-    signatures should be used extensively in order to be able to
-    resolve disputes between the involved parties.  Nevertheless,
-    customers must never be able to defraud anyone, and merchants must
-    at best be able to defraud their customers by not delivering
-    on the agreed contract.  Neither merchants nor customers must ever
-    be able to commit fraud against the mint.  Both customers and
-    merchants must receive cryptographic proofs of bad behavior in
-    case of protocol violations by the mint.  Thus, only the mint will
-    have to be tightly audited and regulated.  The design must make it
-    easy to audit the finances of the mint.
+    This requires that merchants, or anybody receiving electronic transfers,
+    is easily identifiable, so that the state can ensure that its
+    taxation regime is obeyed.
+  \item[Verifiability] 
+    The payment system should try to minimize the trust necessary between
+    the participants.  In particular, digital signatures should be used,
+    and retained, whenever they would play a role in resolving disputes. % between the involved parties.  
+    Nevertheless, customers must never be able to defraud anyone, and
+    merchants must at best be able to defraud their customers by not
+    delivering on the agreed contract.  Neither merchants nor customers
+    should ever be able to commit fraud against the mint.  Additionally,
+    both customers and merchants must receive cryptographic proofs of
+    bad behavior in case of protocol violations by the mint.  
+    In this way, only the mint will need to be tightly audited and regulated.
+    The design must make it easy to audit the finances of the mint.
   \item[Ease of Deployment] %The system should be easy to deploy for
  %   real-world applications.  In order to lower the entry barrier and
  %   acceptance of the system, a gateway to the existing financial
  %   system should be provided, i.e. by integrating internet-banking
  %   protocols such as HBCI/FinTAN.
-    The digital currency should be
-    tied 1:1 to existing currencies (such as EUR or USD) to avoid
-    exposing citizens to unnecessary risks from currency fluctuations.
-    Moreover, the system must have a free software reference
-    implementation and an open protocol standard.
+    The digital coins should be denominated in existing currencies,
+    such as EUR or USD, to avoid exposing citizens to unnecessary risks
+    from currency fluctuations.
+    Moreover, the system must have an open protocol specification and
+    a free software reference implementation.
 %    The protocol should
 %    be able to run easily over HTTP(S).
-  \item[Low resource consumption] In order to minimize the operating
-    costs and environmental impact of the payment system, it must
-    avoid the reliance on expensive and ``wasteful'' computations
-    such as proof-of-work.
-  \item[Fractional payments] The payment system needs to handle both
-    small and large payments in an efficient and reliable manner.
-    Thus, coins cannot just be issued in the smallest unit of currency,
-    and a mechanism to give {\em change} must be provided to ensure
-    that customers with sufficient total funds can always spend them.
-    For example, a customer may want to pay \EUR{49,99} using a
-    \EUR{100,00} coin.  The system must then support giving change in
-    the form of say two fresh \EUR{0,01} and \EUR{50,00} coins.  Those
-    coins must be {\em unlinkable}: an adversary should not be able to
-    relate transactions with either of the new coins to the original
-    \EUR{100,00} coin or transaction or the other change being generated.
+  \item[Low resource consumption] 
+    In order to minimize the operating costs and environmental impact of
+    the payment system, it should avoid the reliance on expensive or
+    ``wasteful'' computations, such as proof-of-work.
+  \item[Fractional payments] 
+    The payment system needs to handle both small and large payments in
+    an efficient and reliable manner.  It is inefficient to simply issue
+    coins in the smallest unit of currency, so instead a mechanism to
+    give {\em change} should be provided to ensure that customers with
+    sufficient total funds can always spend them.
 \end{description}
+%
+We give a concise example of how these properties interact:
+A customer may want to pay \EUR{49,99} using a \EUR{100,00} coin. 
+the system must thus support giving change in the form of spendable coins,
+say a \EUR{0,01} coin and a \EUR{50,00} coin.  
+A merchant cannot simply give the customer their coins in another transaction
+however, as this reverses the role of merchant and customer, and
+our taxability requirement would deanonymize the customer.
+Instead, the customer should obtain new freshly anonymized coins that cannot be
+linked with this transaction, the original \EUR{100,00} coin, or each other.
 
-Instead of using cryptographic methods like $k$-show
-signatures to achieve divisiblity~\cite{brands1993efficient},
-Taler's fractional payments use a
-simpler, more powerful mechanism.  In Taler, a coin is not simply a
-unique random token, but a private key.  Thus, the transfer of a coin
-can be performed by signing a message using this private key.  Thus,
-the customer can simply specify the fraction of a coin's value that is
-to be paid to the merchant in the cryptographically signed deposit
-message given to the merchant.  A key contribution of Taler is the
-{\em refresh} protocol, which enables a customer to exchange the
-residual value of a coin for fresh coins, thereby providing unlinkable
-change.  Using online checks, the mint can trivially ensure that all
-transactions involving the same coin do not exceed the total value of
-the coin.
+Instead of using cryptographic methods like $k$-show signatures
+\cite{brands1993efficient} to achieve divisibility, 
+Taler's fractional payments use a simpler, more powerful mechanism. 
+In Taler, a coin is not simply a unique random token, but a private key. 
+A customer transfers currency from a coin to a merchant by cryptographically
+signing a deposit message with this private key.  This deposit message
+specifies the fraction of the coin's value to be paid to the merchant. 
+A key contribution of Taler is the {\em refresh} protocol, which enables 
+a customer to exchange the residual value of the exchanged coin for 
+unlinkable fleshy anonymized change.  
 
-Online fraud detection can create problems if the network fails during
-the initial steps of a transaction.  For example, a law enforcement
-agency might try to entrap a customer by offering illicit goods and
-then cancelling the transaction (i.e. by pretending that there is
-a network failure) after learning the public key of the
-coin.  This is equivalent to a benign merchant giving a dissatisfied
-(anonymous) customer a {\em refund} by sending a message affirming
-the cancellation.
-
-If the customer later spends the refunded coin on a purchase with
-shipping, the state can link the two transactions and might be able to
-use the shipping address to deanonymize the customer.  As with support
-for fractional payments, Taler addresses this problem by allowing
-customers to refresh coins, thereby destroying the link between the
-refunded (or aborted) transaction and the coin.
+Taler mints ensure that all transactions involving the same coin 
+do not exceed the total value of the coin, thereby
+ requiring that merchants process transactions online.
+This improves dramatically on systems that support offline merchants with
+cryptographic threats to deanonymizing customers who double-spend, like
+restrictive blind signatures \cite{brands1993efficient}.
+In such schemes, if a transaction is interrupted, then any coins sent to
+the merchant become tainted, but may never arrive or be spent.  
+It becomes tricky to extract the value of the tainted coins without linking
+to the aborted transaction and risking deanonymization.
+As with support for fractional payments, Taler addresses these problems by
+allowing customers to refresh tainted coins, thereby destroying the link
+between the refunded or aborted transaction and the coin.
 
 Taler ensures that the {\em entity} of the user owning the new coin is
 the same as the entity of the user owning the old coin, thus making
@@ -255,29 +253,30 @@ transactions are recorded for eternity, which can enable
 identification of users.  In theory, this concern has been addressed
 with the Zerocoin extension to the protocol~\cite{miers2013zerocoin}.
 
-While these protocols dispense with the need for a central, trusted
-authority and provide anonymity, we argue there are some major,
-irredeemable problems inherent in these systems:
+These protocols do dispense with the need for a central, trusted
+authority, while providing a useful measure of pseudonymity.
+Yet, there are several major irredeemable problems inherent in their designs:
 
 \begin{itemize}
-  \item Bitcoins are not (easily) taxable.  The legality and legitimacy of
-    this aspect is questionable.  The Zerocoin extension would only make
-    this worse.
-  \item Bitcoins can not be bound to any fiat currency, and are subject to
-    significant value fluctuations.  While such fluctuations may be
-    acceptable for high-risk investments, they make Bitcoin unsuitable as
-    a medium of exchange.
   \item The computational puzzles solved by Bitcoin nodes with the purpose
-    of securing the block chain
-    consume a considerable amount of computational resources and thus
-    energy.  Thus, Bitcoin does not represent an environmentally responsible
+    of securing the block chain consume a considerable amount of computational
+    resources and energy.  So Bitcoin does not an environmentally responsible
     design.
-  \item Anyone can easily start an alternative Bitcoin transaction chain
-    (a so-called AltCoin) and, if successful, reap the benefits of the low
-    cost to initially create coins via computation.  As a result, dozens of
-    AltCoins have been created, often without any significant changes to the
-    technology.  A large number of AltCoins creates additional overheads for
-    currency exchange and exascerbates the problems with currency fluctuations.
+  \item Bitcoin transactions are not easily taxable, leading to legal hurdles. 
+    % The legality and legitimacy of this aspect is questionable.  
+    The Zerocoin extension would only make this worse.
+  \item Bitcoins can not easily be bound to any fiat currency, leading to
+    significant fluctuations in value.  These fluctuations may be desirable in
+    a high-risk investment instrument, but they make Bitcoin unsuitable as
+    a medium of exchange.
+  \item Worse, anyone can start an alternative Bitcoin transaction chain,
+    called an AltCoin, and, if successful, reap the benefits of the low
+    cost to initially create coins via computation.  As participants are
+    de facto investors, these become a form of ponzi scheme.
+    % As a result, dozens of
+    % AltCoins have been created, often without any significant changes to the
+    % technology.  A large number of AltCoins creates additional overheads for
+    % currency exchange and exacerbates the problems with currency fluctuations.
 \end{itemize}
 
 GreenCoinX\footnote{\url{https://www.greencoinx.com/}} is a more
@@ -293,16 +292,15 @@ systems.
 \subsection{Chaum-style electronic cash}
 
 Taler builds on ideas from Chaum~\cite{chaum1983blind}, who proposed a
-digital payment system that would provide (some) customer anonymity
+digital payment system that would provide some customer anonymity
 while disclosing the identity of the merchants.  Chaum's digital cash
-(DigiCash) system had some limitations and ultimately failed to be widely
+system DigiCash had some limitations and ultimately failed to be widely
 adopted.  In our assessment, key reasons for DigiCash's failure that
 Taler avoids include:
 
 \begin{itemize}
  \item The use of patents to protect the technology; a payment system
-   must be libre --- free software --- to have a chance for widespread
-   adoption.
+   should be free software (libre) to have a chance for widespread adoption.
  \item The use of off-line payments and thus deferred detection of
    double-spending, which could require the mint to attempt to recover
    funds from customers via the legal system.  This creates a
@@ -311,7 +309,7 @@ Taler avoids include:
    payments might have been a necessary feature.  However, today
    requiring network connectivity is feasible and avoids the business
    risks associated with deferred fraud detection.
- \item % In addition to the risk of legal disputes with fradulent
+ \item % In addition to the risk of legal disputes with fraudulent
    % merchants and customers,
    Chaum's published design does not clearly
    limit the financial damage a mint might suffer from the
@@ -331,7 +329,7 @@ Taler avoids include:
 
 Chaum's original digital cash system~\cite{chaum1983blind} was
 extended by Brands~\cite{brands1993efficient} with the ability to {\em
-  divide} coins and thus spend (certain) fractions of a coin using
+  divide} coins and thus spend certain fractions of a coin using
 restrictive blind signatures.  Compared to Taler, performing
 fractional payments is cryptographically way more expensive and
 moreover the transactions performed with ``divisions'' from the same
@@ -359,13 +357,12 @@ the mint.  Instead of always paying, the customer ``gambles'' with the
 merchant for each microdonation.  Only if the merchant wins, the
 microdonation is upgraded to a macropayment to be deposited at the
 mint.  Peppercoin does not provide customer-anonymity.  The proposed
-statistical method for mints detecting fraudulent cooperation between
+statistical method by which mints detect fraudulent cooperation between
 customers and merchants at the expense of the mint not only creates
-legal risks for the mint (who has to make a statistical argument), but
-also would require the mint to learn about microdonations where the
-merchant did not get upgraded to a macropayment.  Thus, it is unclear
-how Peppercoin would actually reduce the computational burden on the
-mint.
+legal risks for the mint, but would also require that the mint learns
+about microdonations where the merchant did not get upgraded to a 
+macropayment.  It is therefore unclear how Peppercoin would actually
+reduce the computational burden on the mint.
 
 
 \section{Design}
@@ -424,7 +421,7 @@ from customers using legal means.
 
 Electronic coins are trivially copied between machines.  Thus, we must
 clarify what kinds of operations can even be expected to be taxed.
-After all, without instrusive measures to take away control of the
+After all, without intrusive measures to take away control of the
 computing platform from its users, copying an electronic wallet from
 one computer to another can hardly be prevented by a payment system.
 Furthermore, it would also hardly be appropriate to tax the moving of
@@ -625,7 +622,7 @@ fresh coin.
 
 %As with other operations, the refreshing protocol must also protect
 %the mint from double-spending; similarly, the customer has to have
-%cryptographic evidence if there is any misbehaviour by the mint.
+%cryptographic evidence if there is any misbehavior by the mint.
 %Finally, the mint may choose to charge a transaction fee for
 %refreshing by reducing the value of the generated fresh coins
 %in relation to the value of the melted coins.
@@ -657,7 +654,7 @@ because it is certified by the auditors.
 As we are dealing with financial transactions, we explicitly describe
 whenever entities need to safely commit data to persistent storage.
 As long as those commitments persist, the protocol can be safely
-resumed at any step.  Commitments to disk are cummulative, that is an
+resumed at any step.  Commitments to disk are cumulative, that is an
 additional commitment does not erase the previously committed
 information.  Keys and thus coins always have a well-known expiration
 date; information committed to disk can be discarded after the
@@ -729,7 +726,7 @@ $\widetilde{C} := S_K(C_p)$:
   transaction, $a$ is data relevant to the contract indicating which services
   or goods the merchant will deliver to the customer, $f$ is the price of the offer,
   and $p$ is the merchant's payment information (e.g. his IBAN number) and $r$ is
-  a random nounce.  The merchant commits $\langle \mathcal{A}
+  a random nonce.  The merchant commits $\langle \mathcal{A}
   \rangle$ to disk and sends $\mathcal{A}$ to the customer.
 \item\label{deposit} The customer must possess or acquire a coin minted by a mint that is
   accepted by the merchant, i.e. $K$ should be publicly signed by some $D_j
@@ -947,7 +944,7 @@ the certification process.
 
 The refresh protocol offers an easy way to enable refunds to
 customers, even if they are anonymous.  Refunds can be supported
-by including a public signing key of the mechant in the transaction
+by including a public signing key of the merchant in the transaction
 details, and having the customer keep the private key of the spent
 coins on file.
 
@@ -982,7 +979,7 @@ check and not also all previous owners of the physical check.
 As with any unconditionally anonymous payment system, the ``Perfect
 Crime'' attack~\cite{solms1992perfect} where blackmail is used to
 force the mint to issue anonymous coins also continues to apply in
-principle.  However, as mentioned Taler does faciliate limits on
+principle.  However, as mentioned Taler does facilitate limits on
 withdrawals, which we believe is a better trade-off than the
 problematic escrow systems where the necessary intransparency
 actually facilitates voluntary cooperation between the mint and
@@ -1033,7 +1030,7 @@ in courts.  Taler's implementation is designed to export evidence and
 upholds the core principles described in~\cite{fc2014murdoch}.  In
 particular, in providing the cryptographic proofs as evidence none of
 the participants have to disclose their core secrets, the process is
-covered by standard testing proceedures, and the full trusted
+covered by standard testing procedures, and the full trusted
 computing base (TCB) is public and free software.
 
 %\subsection{System Performance}
@@ -1292,7 +1289,7 @@ One issue in this protocol is that the customer may use a worthless
 coin by offering a coin that has already been spent.  This kind of
 fraud would only be detected if the customer actually lost the coin
 flip, and at this point the merchant might not be able to recover from
-the loss.  A fradulent anonymous customer may run the protocol using
+the loss.  A fraudulent anonymous customer may run the protocol using
 already spent coins until the coin flip is in his favor.
 
 As with incremental spending, lock permissions could be used to ensure
@@ -1327,7 +1324,7 @@ The following steps are executed for microdonations with upgrade probability $p$
 \end{enumerate}
 
 Evidently the customer can ``cheat'' by aborting the transaction in
-Step 3 of the microdonation protocol if the outcome is unfavourable ---
+Step 3 of the microdonation protocol if the outcome is unfavorable ---
 and repeat until he wins.  This is why Taler is suitable for
 microdonations --- where the customer voluntarily contributes ---
 and not for micropayments.
