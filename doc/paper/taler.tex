@@ -389,18 +389,18 @@ Taler's security model assumes that cryptographic primitives are
 secure and that each participant is under full control of his system.
 The contact information of the mint is known to both customer and
 merchant from the start.  Furthermore, the merchant communication's
-authenticity is assured to the customer (for example using X.509
-certificates~\cite{rfc5280}) and we assume that an anonymous, reliable
+authenticity is assured to the customer, such as by using X.509
+certificates~\cite{rfc5280}, and we assume that an anonymous, reliable
 bi-directional communication channel can be established by the
-customer to both the mint and the merchant.
+customer to both the mint and the merchant, such as by using Tor.
 
 The mint is trusted to hold funds of its customers and to forward them
 when receiving the respective deposit instructions from the merchants.
 Customer and merchant can have some assurances about the mint's
 liquidity and operation, as the mint has proven reserves, is subject
-to the law, and can have its business regularly audited (for
-example, by the government or a trusted third party auditor).
-Regular audits of the mint's accounts must reveal any possible fraud
+to the law, and can have its business regularly audited
+ by a government or third party.
+Regular audits of the mint's accounts should reveal any possible fraud
 before the mint is allowed to destroy the corresponding accumulated
 cryptographic proofs and book its fees as profits.
 %
@@ -419,7 +419,7 @@ from customers using legal means.
 
 \subsection{Taxability and Entities}
 
-Electronic coins are trivially copied between machines.  Thus, we must
+As electronic coins are trivially copied between machines, we should
 clarify what kinds of operations can even be expected to be taxed.
 After all, without intrusive measures to take away control of the
 computing platform from its users, copying an electronic wallet from
@@ -440,48 +440,48 @@ credentials represented by the private key.  In a payment system this
 means that either entity could spent the associated funds.  Assuming
 the payment system has effective double-spending detection, this means
 that either entity has to constantly fear that the funds might no
-longer be available to it.  Thus, sharing coins by copying a private
-key implies mutual trust between the two parties, in which case Taler
-will treat them as the same entity.  In Taler, making funds available
-by copying a private key and thus sharing control is {\bf not}
-considered a {\em transaction} and thus {\bf not} recorded for
-taxation.
+longer be available to it.  It follows that sharing coins by copying
+a private key implies mutual trust between the two parties, in which
+case Taler will treat them as the same entity.  
+In Taler, making funds available by copying a private key and thus
+sharing control is {\bf not} considered a {\em transaction} and 
+thus {\bf not} recorded for taxation.
 
 Taler ensures taxability only when some entity acquires exclusive
 control over the value of digital coins, which requires an interaction
-with the mint.  For such transactions, the state can obtain
-information from the mint (or the bank) that identifies the entity
-that received the digital coins as well as the exact value of those
-coins.  Taler also allows the mint (and thus the state) to learn the
-value of digital coins withdrawn by a customer --- but not how, where
-or when they were spent.
+with the mint.  For such transactions, the state can obtain information
+from the mint, or a bank, that identifies the entity that received the
+digital coins as well as the exact value of those coins.  
+Taler also allows the mint, and hence the state, to learn the value of 
+digital coins withdrawn by a customer---but not how, where, or when
+they were spent.
 
 \subsection{Anonymity}
 
-An anonymous communication channel (e.g. via Tor~\cite{tor-design}) is
+An anonymous communication channel such as Tor~\cite{tor-design} is
 used for all communication between the customer and the merchant.
-Thus, the customer can remain anonymous limited only by the anonymous
-communication channel; however, the payment system does additionally
-reveal that the customer is one of the patrons of the mint.
-Naturally, the customer-merchant business operation might leak other
-information about the customer, such as a shipping address.
-Information leakage from shipping is in theory avoidable~\cite{apod}.
-Nevertheless, for Taler as a payment system, information leakage
-specific to the business logic is outside of the scope of the design.
+Ideally, the customer's anonymity is limited only by this channel;
+however, the payment system does additionally reveal that the customer
+is one of the patrons of the mint.
+There are naturally risks that the customer-merchant business operation 
+may leak identifying information about the customer.   At least, customers
+have some options to defend their privacy against nosey merchants however,
+possibly even when dealing with physical goods \cite{apod}.
+We consider information leakage specific to the business logic to be
+outside of the scope of the design of Taler.
 
-The customer may use an anonymous communication channel for the
-communication with the mint to avoid leaking IP address information;
-however, the mint will anyway be able to determine the customer's
-identity from the wire transfer or some other authentication process
-that the customer initiates to withdraw anonymous digital cash.  In
-fact, this is desirable as there might be rules and regulations
+Ideally, customer should use an anonymous communication channel with 
+the mint to avoid leaking IP address information; however, the mint 
+would typically learn the customer's identity from the wire transfer
+that funds the customer's withdraw anonymous digital coins.  
+In fact, this is desirable as there might be rules and regulations
 designed to limit the amount of anonymous digital cash that an
 individual customer can withdraw in a given time period, similar to
 how states today sometimes impose limits on cash
-withdrawals~\cite{france2015cash,greece2015cash}.  Taler is only
-anonymous with respect to {\em payments}, as the mint will be unable
-to link the known identity of the customer that withdrew anonymous
-digital currency to the {\em purchase} performed later at the
+withdrawals~\cite{france2015cash,greece2015cash}.  
+Taler is only anonymous with respect to {\em payments}, as the mint
+will be unable to link the known identity of the customer that withdrew
+anonymous digital currency to the {\em purchase} performed later at the
 merchant.  In this respect, Taler provides exactly the same scheme for
 unconditional anonymous payments as was proposed by
 Chaum~\cite{chaum1983blind,chaum1990untraceable} over 30 years ago.
@@ -518,51 +518,51 @@ The mint is expected to have multiple {\em coin signing key} pairs
 available for signing, each representing a different coin
 denomination.
 
-The coin signing keys have an expiration date (typically measured in
-years), and coins signed with a coin signing key must be spent (or
-exchanged for new coins) before that expiration date.  This allows the
-mint to limit the amount of state it needs to keep to detect
-double spending attempts.  Furthermore, the mint is expected to use each coin
-signing key only for a limited number of coins, for example by
-limiting its use to sign coins to a week or a month.  That way, if the
-private coin signing key were to be compromised, the mint can detect
-this once more coins are redeemed than the total that was signed into
-existence using the respective coin signing key.  In this case, the
-mint can allow the original set of customers to exchange the coins
-that were signed with the compromised private key, while refusing
-further transactions from merchants if they involve those coins.  As a
-result, the financial damage of losing a private signing key can be
+These coin signing keys have an expiration date, before which any coins
+signed with it must be spent or refreshed.  It follows the mint can
+eventually discard records of old transactions, thus limiting the
+records that the mint must retain and search to detect double-spending
+attempts.  Furthermore, the mint is expected to use each coin signing
+key only for a limited number of coins.
+% for example by limiting its use to sign coins to a week or a month.  
+In this way, if a private coin signing key were to be compromised,
+the mint would detect this once more coins were redeemed than the total
+that was signed into existence using that coin signing key.  
+In this case, the mint could allow authentic customers to exchange their
+unspent coins that were signed with the compromised private key, 
+while refusing further anonymous transactions involving those coins. 
+As a result, the financial damage of losing a private signing key can be
 limited to at most twice the amount originally signed with that key.
 To ensure that the mint does not enable deanonymization of users by
-signing each coin with a fresh coin signing key, the mint must
-publicly announce the coin signing keys in advance.  Those
-announcements are expected to be signed with an off-line long-term
-private {\em master signing key} of the mint and the auditor.
+signing each coin with a fresh coin signing key, the mint must publicly
+announce the coin signing keys in advance.  Those announcements are
+expected to be signed with an off-line long-term private {\em master
+signing key} of the mint and the auditor.
 
-Before a customer can withdraw a coin from the mint, he has to pay the
-mint the value of the coin, as well as processing fees.  This is done
-using other means of payments, such as wire transfers or
-by having a personal {\em reserve} at the mint (which is equivalent to
-a bank account with a positive balance).  Taler assumes that the
-customer has a {\em withdrawal authorization key} to identify himself
-as authorized to withdraw funds from the reserve.  By signing the
-withdrawal request messages using the withdrawal authorization key,
-the customer can prove to the mint that he is the individual
-authorized to withdraw anonymous digital coins from the reserve.  The
-mint will record the withdrawal messages with the reserve record as
+Before a customer can withdraw a coin from the mint, 
+he has to pay the mint the value of the coin, as well as processing fees. 
+This is done using other means of payments, such as wire transfers or
+by having a personal {\em reserve} at the mint,
+ which is equivalent to a bank account with a positive balance.  
+Taler assumes that the customer has a {\em withdrawal authorization key}
+to identify himself as authorized to withdraw funds from the reserve. 
+By signing the withdrawal request messages using this withdrawal 
+authorization key, the customer can prove to the mint that he is the 
+individual authorized to withdraw anonymous digital coins from his reserve.
+The mint will record the withdrawal messages with the reserve record as
 proof that the anonymous digital coin was created for the correct
-customer.  We note that the specifics of how the customer
-authenticates to the mint are orthogonal to the rest of the system,
-and multiple methods can be supported.
+customer.  We note that the specifics of how the customer authenticates 
+to the mint are orthogonal to the rest of the system, and
+ multiple methods can be supported.
 %To put it differently, unlike
 %modern cryptocurrencies like BitCoin, Taler's design simply
 %acknowledges that primitive accumulation~\cite{engels1844} predates
 %the system and that a secure method to authenticate owners exists.
 
 After a coin is minted, the customer is the only entity that knows the
-private key of the coin, making him the \emph{owner} of the coin.  The
-coin can be identified by the mint by its public key; however, due to
-the use of blind signatures, the mint does not learn the public key
+private key of the coin, making him the \emph{owner} of the coin.  
+The coin can be identified by the mint by its public key; however, due
+to the use of blind signatures, the mint does not learn the public key
 during the minting process.  Knowledge of the private key of the coin
 enables the owner to spent the coin.  If the private key is shared
 with others, they also become owners of the coin.
@@ -598,27 +598,27 @@ continues to directly use the coin in other transactions, merchants
 and the mint could link the various transactions as they all share the
 same public key for the coin.
 
-Thus, the owner might want to exchange such a {\em dirty} coin for a
-{\em fresh} coin to ensure unlinkability of future transactions with
-the previous operation.  Even if a coin is not dirty, the owner of a
-coin may want to exchange a coin if the respective coin signing key is
-about to expire.  All of these operations are supported with the {\em
-  coin refreshing protocol}, which allows the owner of a coin to {\em
-  melt} existing coins (redeeming their remaining value) for fresh
-coins with a new public-private key pairs.  Refreshing does not use
-the ordinary spending operation as the owner of a coin should not have
-to pay taxes on this operation.  Because of this, the refreshing
-protocol must assure that owner stays the same.  After all, the coin
-refreshing protocol must not be usable for transactions, as
-transactions in Taler must be taxable.
+The owner of such a {\em dirty} coin might therefore want to exchange it
+for a {\em fresh} coin to ensure unlinkability with future transactions.
+% with the previous operation.  
+Even if a coin is not dirty, the owner of a coin may want to exchange it
+if the respective coin signing key is about to expire.  All of these
+operations are supported with the {\em coin refreshing protocol}, which
+allows the owner of a coin to {\em melt} it for fresh coins of the same
+value with a new public-private key pairs.  Refreshing does not use the
+ordinary spending operation as the owner of a coin should not have to
+pay taxes on this operation.  Because of this, the refreshing protocol
+must assure that owner stays the same. 
+% After all, the coin refreshing protocol must not be usable for transactions, as
+% transactions in Taler must be taxable.
 
-Thus, one main goal of the refreshing protocol is that the mint must
-not be able to link the fresh coin's public key to the public key of
-the dirty coin.  The second main goal is to enable the mint to ensure
-that the owner of the dirty coin can determine the private key of the
-fresh coin.  This way, refreshing cannot be used to construct a
-transaction --- the owner of the dirty coin remains in control of the
-fresh coin.
+% Meh, this paragraph sucks : 
+We therefore demand two main properties from the refresh protocol:
+First, the mint must not be able to link the fresh coin's public key to
+the public key of the dirty coin.  Second, the mint can ensure that the
+owner of the dirty coin can determine the private key of the
+fresh coin, thereby preventing the refresh protocol from being used to
+construct a transaction.
 
 %As with other operations, the refreshing protocol must also protect
 %the mint from double-spending; similarly, the customer has to have
