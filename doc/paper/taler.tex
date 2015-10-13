@@ -203,7 +203,7 @@ We give a concise example of how these properties interact:
 A customer may want to pay \EUR{49,99} using a \EUR{100,00} coin.
 the system must thus support giving change in the form of spendable coins,
 say a \EUR{0,01} coin and a \EUR{50,00} coin.
-A merchant cannot simply give the customer their coins in another transaction,
+A merchant cannot simply give the customer their coins in another transaction;
 however, as this reverses the role of merchant and customer, and
 our taxability requirement would deanonymize the customer.  The customer
 also cannot withdraw exact change from his account from the mint, as this
@@ -642,20 +642,19 @@ construct a transaction.
 
 % In this section, we describe the protocols for Taler in detail.
 
-For the sake of brevity, we assume that a recipient of a signed
-message always first checks that the signature is valid, even though
-this is not explicitly stated below.  Also, whenever a signed message
-is transmitted, it is assumed that the receiver is told the public key
-(or knows it from the context) and that the signature contains
-additional identification as to the purpose of the signature, making
-it impossible to use a signature in a different context.
+We shall assume for the sake of brevity that a recipient of a signed 
+message always first checks that the signature is valid, aborting the
+operation if not.  Additionally, we assume that the receiver of a
+signed message is either told the public key, or knows it from the
+context, and that the signature contains additional identification as
+to the purpose of the signature, making it impossible to use a signature
+in a different context.
 
-When the mint signs messages (not coins), an {\em online message
-  signing key} of the mint is used.  The mint's long-term offline key
-is used to certify both the coin signing keys as well as the online
-message signing key of the mint.  The mint's long-term offline key is
-assumed to be well-known to both customers and merchants, for example
-because it is certified by the auditors.
+The mint has an {\em online message signing key} used for signing 
+messages, as opposed to coins.  The mint's long-term offline key is used
+to certify both the coin signing keys and the online message signing key
+of the mint.  The mint's long-term offline key is assumed to be known to
+both customers and merchants and is certified by the auditors.
 
 As we are dealing with financial transactions, we explicitly describe
 whenever entities need to safely commit data to persistent storage.
@@ -667,10 +666,9 @@ date; information committed to disk can be discarded after the
 expiration date of the respective public key.  Customers can also
 discard information once the respective coins have been fully spent,
 and merchants may discard information once payments from the mint have
-been received (assuming records are also no longer needed for tax
-authorities).  The mint's bank transfers dealing in traditional
-currency are expected to be recorded for tax authorities to ensure
-taxability.
+been received, assuming the records are also no longer needed for tax
+purposes.  The mint's bank transfers dealing in traditional currency
+are expected to be recorded for tax authorities to ensure taxability.
 
 \subsection{Withdrawal}
 
@@ -687,7 +685,7 @@ the mint:
            \item coin key $C := (c_s,C_p)$ with private key $c_s$ and public key $C_p := c_s G$,
            \item blinding factor $b$, and commits $\langle W, C, b \rangle$ to disk.
         \end{itemize}
-  \item The customer transfers an amount of money corresponding to (at least) $K_p$ to the mint, with $W_p$ in the subject line of the transaction.
+  \item The customer transfers an amount of money corresponding to at least $K_p$ to the mint, with $W_p$ in the subject line of the transaction.
   \item The mint receives the transaction and credits the $W_p$ reserve with the respective amount in its database.
   \item The customer sends $S_W(B_b(C_p))$ to the mint to request withdrawal of $C$; here, $B_b$ denotes Chaum-style blinding with blinding factor $b$.
   \item The mint checks if the same withdrawal request was issued before; in this case, it sends $S_{K}(B_b(C_p))$ to the customer.\footnote{Here $S_K$
@@ -700,10 +698,10 @@ the mint:
         \end{enumerate}
         and then sends $S_{K}(B_b(C_p))$ to the customer.
         If the guards for the transaction fail, the mint sends a descriptive error back to the customer,
-        with proof that it operated correctly (i.e. by showing the transaction history for the reserve).
-  \item The customer computes (and verifies) the unblinded signature $S_K(C_p) = U_b(S_K(B_b(C_p)))$.
-        The customer writes $\langle S_K(C_p), c_s \rangle$ to disk (effectively adding the coin to the
-        local wallet) for future use.
+        with proof that it operated correctly.
+        Assuming the signature was valid, this would involve showing the transaction history for the reserve.
+  \item The customer computes and verifies the unblinded signature $S_K(C_p) = U_b(S_K(B_b(C_p)))$.
+        The customer saves the coin $\langle S_K(C_p), c_s \rangle$ to local wallet on disk.
 \end{enumerate}
 We note that the authorization to create and access a reserve using a
 withdrawal key $W$ is just one way to establish that the customer is
@@ -719,36 +717,33 @@ merchant trusts the specific mint that minted the coin.  Merchants are
 identified by their key $M := (m_s, M_p)$ where the public key $M_p$
 must be known to the customer a priori.
 
-The following steps describe the protocol between customer, merchant and mint
-for a transaction involving a coin $C := (c_s, C_p)$, which was previously signed
-by a mint's denomination key $K$, i.e. the customer possesses
-$\widetilde{C} := S_K(C_p)$:
+We now describe the protocol between the customer, merchant, and mint
+for a transaction in which the customer spends a coin $C := (c_s, C_p)$
+with signature $\widetilde{C} := S_K(C_p)$
+ where $K$ is the mint's demonination key.
 
 \begin{enumerate}
-\item\label{contract} Let $\vec{D} := D_1, \ldots, D_n$ be the list of
-  mints accepted by the merchant where each $D_j$ is a mint's public
-  key.  The merchant creates a digitally signed contract $\mathcal{A}
-  := S_M(m, f, a, H(p, r), \vec{D})$ where $m$ is an identifier for this
-  transaction, $a$ is data relevant to the contract indicating which services
-  or goods the merchant will deliver to the customer, $f$ is the price of the offer,
-  and $p$ is the merchant's payment information (e.g. his IBAN number) and $r$ is
-  a random nonce.  The merchant commits $\langle \mathcal{A}
-  \rangle$ to disk and sends $\mathcal{A}$ to the customer.
-\item\label{deposit} The customer must possess or acquire a coin minted by a mint that is
-  accepted by the merchant, i.e. $K$ should be publicly signed by some $D_j
-  \in \{D_1, D_2, \ldots, D_n\}$, and has a value $\geq f$. (The customer
-  can of course also use multiple coins where the total value adds up to
-  the cost of the transaction and run the following steps for each of
-  the coins. However, for simplicity of the exposition here we will
-  assume that one coin is sufficient.)
-%
-  The customer then generates a \emph{deposit-permission} $\mathcal{D} :=
+\item\label{contract}
+  Let $\vec{D} := D_1, \ldots, D_n$ be the list of mints accepted by
+  the merchant where each $D_j$ is a mint's public key.  
+  The merchant creates a digitally signed contract
+    $\mathcal{A} := S_M(m, f, a, H(p, r), \vec{D})$
+  where $m$ is an identifier for this transaction, $a$ is data relevant
+  to the contract indicating which services or goods the merchant will
+  deliver to the customer, $f$ is the price of the offer, and
+  $p$ is the merchant's payment information (e.g. his IBAN number), and
+  $r$ is a random nonce.  The merchant commits $\langle \mathcal{A} \rangle$
+  to disk and sends $\mathcal{A}$ to the customer.
+\item\label{deposit} 
+  The customer should already possess a coin minted by a mint that is
+  accepted by the merchant, meaning $K$ should be publicly signed by
+  some $D_j \in \{D_1, D_2, \ldots, D_n\}$, and has a value $\geq f$. 
+\item  The customer generates a \emph{deposit-permission} $\mathcal{D} :=
   S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$
   and sends $\langle \mathcal{D}, D_j\rangle$ to the merchant,
   where $D_j$ is the mint which signed $K$.
 \item The merchant gives $(\mathcal{D}, p, r)$ to the mint, revealing $p$
   only to the mint.
-
 \item The mint validates $\mathcal{D}$ and checks for double spending.
   If the coin has been involved in previous transactions and the new
   one would exceed its remaining value, it sends an error
@@ -756,15 +751,21 @@ $\widetilde{C} := S_K(C_p)$:
 %
   If double spending is not found, the mint commits $\langle \mathcal{D} \rangle$ to disk
   and notifies the merchant that the deposit operation was successful.
-
 \item The merchant commits and forwards the notification from the mint to the
-  customer, confirming the success (or failure) of the operation.
+  customer, confirming the success or failure of the operation.
 \end{enumerate}
+
+We have simplified the exposition by assuming that one coin suffices, but
+in practice a customer can use multiple coins from the same mint where
+the total value adds up to $f$ by running the following steps for
+each of the coins.  There is a risk of metadata leakage if a customer
+acquires a coin in responce to the merchant, or if a customer uses
+coings issued by multiple mints together.
 
 If a transaction is aborted after Step~\ref{deposit},
 subsequent transactions with the same coin could be linked to the coin,
 but not directly to the coin's owner.  The same applies to partially
-spent coins (where $f$ is smaller than the actual value of the coin).
+spent coins where $f$ is smaller than the actual value of the coin.
 To unlink subsequent transactions from a coin, the customer has to
 execute the coin refreshing protocol with the mint.
 
@@ -803,34 +804,40 @@ execute the coin refreshing protocol with the mint.
 
 \subsection{Refreshing} \label{sec:refreshing}
 
-The following refreshing protocol is executed in order to melt a dirty
-coin $C'$ of denomination $K$ to obtain a fresh coin $\widetilde{C}$
+We now describe the refresh protocol whereby a dirty coin $C'$ of 
+denomination $K$ is melted to obtain a fresh coin $\widetilde{C}$
 with the same denomination.  In practice, Taler uses a natural
 extension where multiple fresh coins are generated a the same time to
-enable giving precise change matching any amount.  In the
-protocol, $\kappa \ge 3$ is a security parameter and $G$ is the
+enable giving precise change matching any amount.  
+In the protocol, $\kappa \ge 3$ is a security parameter and $G$ is the
 generator of the elliptic curve.
 
 \begin{enumerate}
   \item For each $i = 1,\ldots,\kappa$, the customer randomly generates
     \begin{itemize}
-      \item transfer key $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$ where $T^{(i)}_p := t^{(i)}_s G$,
-      \item coin key pair \\ $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$ where $C^{(i)}_p := c^{(i)}_s G$,
+      \item transfer key $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$
+            where $T^{(i)}_p := t^{(i)}_s G$,
+      \item coin key pair $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$
+            where $C^{(i)}_p := c^{(i)}_s G$, and
       \item blinding factors $b^{(i)}$.
     \end{itemize}
-    The customer then computes $E^{(i)} := E_{K_i}\left(c_s^{(i)}, b^{(i)}\right)$ where $K_i := H(c'_s T_p^{(i)})$. (The encryption key $K_i$ is
-    computed by multiplying the private key $c'_s$ of the original coin with the point on the curve
-    that represents the public key $T^{(i)}_p$ of the transfer key $T^{(i)}$. This is basically DH between coin and transfer key.),
-    and commits $\langle C', \vec{T}, \vec{C}, \vec{b} \rangle$ to disk.
+    The customer then computes
+      $E^{(i)} := E_{K_i}\left(c_s^{(i)}, b^{(i)}\right)$
+    where $K_i := H(c'_s T_p^{(i)})$, and
+    commits $\langle C', \vec{T}, \vec{C}, \vec{b} \rangle$ to disk.
+
+    Our computation of $K_i$ is a effectively a Diffie-Hellman operation
+    between the private key $c'_s$ of the original coin with
+    the public transfer key $T_p^{(i)}_p$.
   \item The customer computes $B^{(i)} := B_{b^{(i)}}(C^{(i)}_p)$  for $i \in \{1,\ldots,\kappa\}$ and sends a commitment
     $S_{C'}(\vec{E}, \vec{B}, \vec{T_p}))$ to the mint.
-  \item The mint generates a random\footnote{Auditing processes need to assure $\gamma$ is unpredictable until this time to
-    prevent the mint from assisting tax evasion.} $\gamma$ with $1 \le \gamma \le \kappa$ and
+  \item The mint generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
     marks $C'_p$ as spent by committing
     $\langle C', \gamma, S_{C'}(\vec{E}, \vec{B}, \vec{T}) \rangle$ to disk.
-  \item The mint sends $S_K(C'_p, \gamma)$ to the customer.\footnote{Instead of $K$, it is also
-    possible to use any equivalent mint signing key known to the customer here, as $K$ merely
-    serves as proof to the customer that the mint selected this particular $\gamma$.}
+    Auditing processes should assure that $\gamma$ is unpredictable until
+    this time to prevent the mint from assisting tax evasion.
+  \item The mint sends $S_{K'}(C'_p, \gamma)$ to the customer where
+    $K'$ is the mint's message signing key. 
   \item The customer commits $\langle C', S_K(C'_p, \gamma) \rangle$ to disk.
   \item The customer computes $\mathfrak{R} := \left(t_s^{(i)}\right)_{i \ne \gamma}$
         and sends $S_{C'}(\mathfrak{R})$ to the mint.
@@ -920,31 +927,30 @@ client should record the interaction and enable the user to file a
 bug report.
 
 The second case is a faulty mint service provider.  Such faults will
-be detected because of protocol violations (for example, by providing
-a faulty proof or no proof).  In this case, the client is expected to
+be detected because of protocol violations, such as providing
+a faulty proof or no proof.  In this case, the client is expected to
 notify the auditor, providing a transcript of the interaction.  The
-auditor can then (anonymously) replay the transaction, and either
-provide the (now) correct response to the client or take appropriate
+auditor can then anonymously replay the transaction, and either
+provide the now correct response to the client or take appropriate
 legal action against the faulty provider.
 
 The third case are transient failures, such as network failures or
 temporary hardware failures at the mint service provider.  Here, the
-client may receive an explicit protocol indication (such as an HTTP
-response code 500 ``internal server error'') or simply no response.
+client may receive an explicit protocol indication, such as an HTTP
+response code 500 ``internal server error'' or simply no response.
 The appropriate behavior for the client is to automatically retry
-(after 1s, twice more at randomized times within 1 minute). If those
-three attempts fail, the user should be informed about the delay.  The
-client should then retry another three times within the next 24h, and
-after that time the auditor be informed about the outage.
+after 1s, and twice more at randomized times within 1 minute. 
+If those three attempts fail, the user should be informed about the
+delay.  The client should then retry another three times within the
+next 24h, and after that time the auditor be informed about the outage.
 
 Using this process, short term failures should be effectively obscured
 from the user, while malicious behavior is reported to the auditor who
-can then presumably rectify the situation, for example by shutting
-down the operator (while providing an opportunity for customers to
-receive refunds for the coins in circulation).  To ensure that such
-refunds are possible, the operator is expected to always provide
-adequate securities for the amount of coins in circulation as part of
-the certification process.
+can then presumably rectify the situation, such as by shutting down
+the operator and helping customers to regain refunds for coins in 
+their wallets.  To ensure that such refunds are possible, the operator
+is expected to always provide adequate securities for the amount of
+coins in circulation as part of the certification process.
 
 \subsection{Refunds}
 
@@ -955,29 +961,29 @@ details, and having the customer keep the private key of the spent
 coins on file.
 
 Given this, the merchant can simply sign a {\em refund confirmation}
-and share it with the mint (and the customer).  Assuming the mint has
-a way to recover the funds from the merchant (or simply not performed
-the wire transfer yet), the mint can simply add the value of the
-refunded transaction back to the original coin, re-enabling those
-funds to be spent again by the original customer.
+and share it with the mint and the customer.  Assuming the mint has
+a way to recover the funds from the merchant, or has not yet performed
+the wire transfer, the mint can simply add the value of the refunded
+transaction back to the original coin, re-enabling those funds to be 
+spent again by the original customer.
 
-The (anonymous) customer -- but nobody else -- can then use the
-refresh protocol to melt the refunded coin and create a fresh coin
-that is unlinkable to the refunded transaction.
+This anonymous customer can then use the refresh protocol to melt the
+refunded coin and create a fresh coin that is unlinkable to the 
+refunded transaction.
 
 
 \section{Discussion}
 
 Taler's security is largely equivalent to that of Chaum's original
-design without online checks (and without the cut-and-choose
-revelation of double-spending customers for offline spending).  We
-specifically note that the digital equivalent of the ``Columbian Black
-Market Exchange''~\cite{fatf1997} is a theoretical problem for both
-Chaum and Taler, as individuals with a strong mutual trust foundation
-can simply copy electronic coins and thereby establish a limited form
-of black transfers.  However, unlike the situation with physical
-checks with blank recipients in the Columbian black market, the
-transitivity is limited as each participant can deposit the electronic
+design without online checks or the cut-and-choose revelation of
+double-spending customers for offline spending. 
+We specifically note that the digital equivalent of the ``Columbian 
+Black Market Exchange''~\cite{fatf1997} is a theoretical problem for 
+both Chaum and Taler, as individuals with a strong mutual trust
+foundation can simply copy electronic coins and thereby establish a 
+limited form of black transfers.  However, unlike the situation with
+physical checks with blank recipients in the Columbian black market,
+the transitivity is limited as each participant can deposit the electronic
 coins and thereby cheat any other participant, while in the Columbian
 black market each participant only needs to trust the issuer of the
 check and not also all previous owners of the physical check.
