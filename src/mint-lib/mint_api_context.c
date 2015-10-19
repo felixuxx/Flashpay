@@ -238,7 +238,7 @@ MAC_easy_to_closure (CURL *eh)
   GNUNET_assert (CURLE_OK ==
                  curl_easy_getinfo (eh,
                                     CURLINFO_PRIVATE,
-                                    (char *) &job));
+                                    (char **) &job));
   return job->jcc_cls;
 }
 
