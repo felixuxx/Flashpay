@@ -44,17 +44,14 @@
       field.
       </p>
 
-    <input id="wire-funds-button" type="button" value="Wire funds" disabled=true></input>
+    <input id="wire-funds-button" type="button" value="Wire funds" disabled=true
+      onclick='wire_funds();'></input>
     </div>
       <form id="reserve-form" name="tform" action="/fake_wire_transfer.php" method="POST">
         <div class="participation" id="fake-wire">
           <br>
           Paste your reserve public key here (right-click, "paste"):
           <input type="text" name="reserve_pk"></input>
-	  <select id="mint" name="mint_url">
-            <option value="demo.taler.net">mint @taler.net</option>
-            <option value="localmint">localmint (**)</option>
-	  </select>
           <br>
           Amount to credit to your reserve: 
           <select id="amount" name="kudos_amount">
@@ -90,13 +87,16 @@
 
 
 
+  function wire_funds(){
+    var trigger = new Event("taler-create-reserve");
+    document.body.dispatchEvent(trigger);
+  };
+
   /* The mint signals itself to the wallet */
   function signal_me(){
     var eve = new Event('taler-wire-mfirst');
     document.body.dispatchEvent(eve);
   };
-
-
 
   function has_taler_wallet_cb(){
     var button = document.getElementById("wire-funds-button");
