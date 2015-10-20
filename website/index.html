@@ -1,1 +1,113 @@
-Tue Oct 20 21:18:05 CEST 2015
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Taler's "Toy" Shop</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+    <script>
+        /*
+        @licstart  The following is the entire license notice for the
+        JavaScript code in this page.
+
+        Copyright (C) 2015 GNUnet e.V.
+
+        The JavaScript code in this page is free software: you can
+        redistribute it and/or modify it under the terms of the GNU
+        Lesser General Public License (GNU LGPL) as published by the Free Software
+        Foundation, either version 2.1 of the License, or (at your option)
+        any later version.  The code is distributed WITHOUT ANY WARRANTY;
+        without even the implied warranty of MERCHANTABILITY or FITNESS
+        FOR A PARTICULAR PURPOSE.  See the GNU LGPL for more details.
+
+        As additional permission under GNU LGPL version 2.1 section 7, you
+        may distribute non-source (e.g., minimized or compacted) forms of
+        that code without the copy of the GNU LGPL normally required by
+        section 4, provided you include this license notice and a URL
+        through which recipients can access the Corresponding Source.
+
+        @licend  The above is the entire license notice
+        for the JavaScript code in this page.
+        */
+    </script>
+</head>
+<body id="css-zen-garden" onload="signal_me()">
+    <div class="explanation" id="zen-explanation" role="article">
+      <h1>Welcome to the Taler "Demo" Mint</h1>
+      <p>Through this page, you can wire funds to our demonstrator mint
+         in order to create your reserves from where withdraw your coins.
+	 Once the reserve is created, the withdrawing of coins will be
+	 entirely handled by the wallet, with no intervention required
+	 to the user.
+      </p>
+      <p>
+      By clicking the button "Wire funds", your wallet will be triggered to
+      create a new reserve's key which needs to be pasted in the dedicated
+      field.
+      </p>
+
+    <input id="wire-funds-button" type="button" value="Wire funds" disabled=true></input>
+    </div>
+      <form id="reserve-form" name="tform" action="/fake_wire_transfer.php" method="POST">
+        <div class="participation" id="fake-wire">
+          <br>
+          Paste your reserve public key here (right-click, "paste"):
+          <input type="text" name="reserve_pk"></input>
+	  <select id="mint" name="mint_url">
+            <option value="demo.taler.net">mint @taler.net</option>
+            <option value="localmint">localmint (**)</option>
+	  </select>
+          <br>
+          Amount to credit to your reserve: 
+          <select id="amount" name="kudos_amount">
+            <option value="1">1 KUDOS</option>
+            <option value="2">2 KUDOS</option>
+            <option value="5">5 KUDOS</option>
+            <option value="10">10 KUDOS</option>
+            <option value="1000">1000 KUDOS</option>
+          </select>
+          <br>
+          <input type="submit" value="Submit"></input>
+          <br>
+        </div>
+      </form>
+    </div>
+  <script type="text/javascript">
+  
+  /* The wallet should send this signal only when:
+     - it gets installed
+     - it gets a 'taler-wire-mfirst' event */
+
+  document.body.addEventListener("taler-wallet-installed",
+                                 has_taler_wallet_cb,
+				 false);
+
+  document.body.addEventListener("taler-unload",
+                                 no_taler_wallet_cb,
+				 false);
+
+  document.body.addEventListener("taler-wire-wack",
+                                 has_taler_wallet_cb,
+				 false);
+
+
+
+  /* The mint signals itself to the wallet */
+  function signal_me(){
+    var eve = new Event('taler-wire-mfirst');
+    document.body.dispatchEvent(eve);
+  };
+
+
+
+  function has_taler_wallet_cb(){
+    var button = document.getElementById("wire-funds-button");
+    button.removeAttribute("disabled");
+  }
+
+  function no_taler_wallet_cb(){
+    var button = document.getElementById("wire-funds-button");
+    button.setAttribute("disabled", "true");
+  }
+
+  </script>
+</body>
+</html>
