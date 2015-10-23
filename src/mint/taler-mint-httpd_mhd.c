@@ -31,8 +31,6 @@
 #include "taler-mint-httpd_responses.h"
 #include "taler-mint-httpd.h"
 #include "taler-mint-httpd_mhd.h"
-#include "taler-mint-httpd_responses.h"
-
 
 /**
  * Function to call to handle the request by sending
