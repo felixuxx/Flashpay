@@ -224,7 +224,7 @@ signing a deposit message with this private key.  This deposit message
 specifies the fraction of the coin's value to be paid to the merchant.
 A key contribution of Taler is the {\em refresh} protocol, which enables
 a customer to exchange the residual value of the exchanged coin for
-unlinkable fleshy anonymized change.
+unlinkable freshly anonymized change.
 
 Taler mints ensure that all transactions involving the same coin
 do not exceed the total value of the coin simply by
@@ -238,7 +238,7 @@ It becomes tricky to extract the value of the tainted coins without linking
 to the aborted transaction and risking deanonymization.
 As with support for fractional payments, Taler addresses these problems by
 allowing customers to refresh tainted coins, thereby destroying the link
-between the refunded or aborted transaction and the coin.
+between the refunded or aborted transaction and the new coin.
 
 Taler ensures that the {\em entity} of the user owning the new coin is
 the same as the entity of the user owning the old coin, thus making
