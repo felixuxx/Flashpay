@@ -1362,7 +1362,8 @@ superscript $(i)$ is used to indicate one of the elements of a vector
 during the cut-and-choose protocol.  Bold-face is used to indicate a
 vector over these elements.  A line above indicates a value computed
 by the verifier during the cut-and-choose operation.  We use $f()$ to
-indicate the application of a function $f$ to one or more arguments.
+indicate the application of a function $f$ to one or more arguments. Records of
+data being committed to disk are represented in between $\langle\rangle$.
 
 \begin{description}
   \item[$K_s$]{Private (RSA) key of the mint used for coin signing}
@@ -1405,7 +1406,7 @@ indicate the application of a function $f$ to one or more arguments.
   \item[$i$]{Index over cut-and-choose set, $i \in \{1,\ldots,\kappa\}$}
   \item[$\gamma$]{Selected index in cut-and-choose protocol, $\gamma \in \{1,\ldots,\kappa\}$}
   \item[$t^{(i)}_s$]{private transfer key, a scalar}
-  \item[$T^{(i)}_s$]{private transfer key, point on a curve (same curve must be used for $C_p$)}
+  \item[$T^{(i)}_p$]{public transfer key, point on a curve (same curve must be used for $C_p$)}
   \item[$T^{(i)}$]{public-private transfer key pair $T^{(i)} := (t^{(i)}_s,T^{(i)}_s)$}
   \item[$\vec{T}$]{Vector of $T^{(i)}$}
   \item[$c_s^{(i)}$]{Secret key corresponding to a fresh coin, scalar on a curve}
@@ -1414,7 +1415,7 @@ indicate the application of a function $f$ to one or more arguments.
   \item[$\vec{C}$]{Vector of $C^{(i)}$ (public and private keys)}
   \item[$b^{(i)}$]{Blinding factor for RSA-style blind signatures}
   \item[$\vec{b}$]{Vector of $b^{(i)}$}
-  \item[$B^(i)$]{Blinding of $C_p^{(i)}$}
+  \item[$B^{(i)}$]{Blinding of $C_p^{(i)}$}
   \item[$\vec{B}$]{Vector of $B^{(i)}$}
   \item[$K_i$]{Symmetric encryption key derived from ECDH operation via hashing}
   \item[$E_{K_i}()$]{Symmetric encryption using key $K_i$}
