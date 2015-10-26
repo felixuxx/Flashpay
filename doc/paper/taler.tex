@@ -826,14 +826,14 @@ generator of the elliptic curve.
     where $K_i := H(c'_s T_p^{(i)})$, and
     commits $\langle C', \vec{T}, \vec{C}, \vec{b} \rangle$ to disk.
 
-    Our computation of $K_i$ is a effectively a Diffie-Hellman operation
+    Our computation of $K_i$ is effectively a Diffie-Hellman operation
     between the private key $c'_s$ of the original coin with
-    the public transfer key $T_p^{(i)}_p$.
+    the public transfer key $T_p^{(i)}$.
   \item The customer computes $B^{(i)} := B_{b^{(i)}}(C^{(i)}_p)$  for $i \in \{1,\ldots,\kappa\}$ and sends a commitment
-    $S_{C'}(\vec{E}, \vec{B}, \vec{T_p}))$ to the mint.
+    $S_{C'}(\vec{E}, \vec{B}, \vec{T_p})$ to the mint.
   \item The mint generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
     marks $C'_p$ as spent by committing
-    $\langle C', \gamma, S_{C'}(\vec{E}, \vec{B}, \vec{T}) \rangle$ to disk.
+    $\langle C', \gamma, S_{C'}(\vec{E}, \vec{B}, \vec{T_p}) \rangle$ to disk.
     Auditing processes should assure that $\gamma$ is unpredictable until
     this time to prevent the mint from assisting tax evasion.
   \item The mint sends $S_{K'}(C'_p, \gamma)$ to the customer where
@@ -881,7 +881,7 @@ request $S_{C'}(\mathtt{link})$ with $(T^{(\gamma)}_p$, $E^{(\gamma)},
 %
 This allows the owner of the melted coin to also obtain the private
 key of the new coin, even if the refreshing protocol was illicitly
-executed with the help of another party who generated $C_s$ and only
+executed with the help of another party who generated $\vec{c_s}$ and only
 provided $\vec{C_p}$ and other required information to the old owner.
 As a result, linking ensures that access to the new coins minted by
 the refresh protocol is always {\em shared} with the owner of the
