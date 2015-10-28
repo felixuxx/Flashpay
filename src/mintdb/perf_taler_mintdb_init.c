@@ -26,7 +26,7 @@
 
 
 #define CURRENCY "EUR"
-#define PERF_TALER_MINTDB_RSA_SIZE 256
+#define PERF_TALER_MINTDB_RSA_SIZE 512
 
 
 /**
@@ -597,7 +597,7 @@ struct TALER_MINTDB_RefreshCommitCoin *
 PERF_TALER_MINTDB_refresh_commit_coin_copy (struct TALER_MINTDB_RefreshCommitCoin *commit_coin)
 {
   struct TALER_MINTDB_RefreshCommitCoin *copy;
-  
+
   copy = GNUNET_new (struct TALER_MINTDB_RefreshCommitCoin);
   copy->refresh_link = GNUNET_new (struct TALER_RefreshLinkEncrypted);
   *copy->refresh_link = *commit_coin->refresh_link;
