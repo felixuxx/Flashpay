@@ -148,6 +148,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
     TMH_PARSE_member_uint64 ("transaction_id", &deposit.transaction_id),
     TMH_PARSE_member_time_abs ("timestamp", &deposit.timestamp),
     TMH_PARSE_member_time_abs ("refund_deadline", &deposit.refund_deadline),
+    TMH_PARSE_member_time_abs ("edate", &deposit.wire_deadline),
     TMH_PARSE_MEMBER_END
   };
 

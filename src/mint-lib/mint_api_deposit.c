@@ -358,6 +358,8 @@ verify_signatures (const struct TALER_MINT_DenomPublicKey *dki,
  *
  * @param mint the mint handle; the mint must be ready to operate
  * @param amount the amount to be deposited
+ * @param wire_deadline date until which the merchant would like the mint to settle the balance (advisory, the mint cannot be
+ *        forced to settle in the past or upon very short notice, but of course a well-behaved mint will limit aggregation based on the advice received)
  * @param wire_details the merchant’s account details, in a format supported by the mint
  * @param h_contract hash of the contact of the merchant with the customer (further details are never disclosed to the mint)
  * @param coin_pub coin’s public key
@@ -376,6 +378,7 @@ verify_signatures (const struct TALER_MINT_DenomPublicKey *dki,
 struct TALER_MINT_DepositHandle *
 TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
                     const struct TALER_Amount *amount,
+                    struct GNUNET_TIME_Absolute wire_deadline,
                     json_t *wire_details,
                     const struct GNUNET_HashCode *h_contract,
                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -398,6 +401,7 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
   struct GNUNET_HashCode h_wire;
   struct TALER_Amount amount_without_fee;
 
+  (void) TALER_round_abs_time (&wire_deadline);
   if (GNUNET_YES !=
       MAH_handle_is_ready (mint))
   {
@@ -444,7 +448,8 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
                            " s:o, s:o," /* coin_pub, denom_pub */
                            " s:o, s:o," /* ub_sig, timestamp */
                            " s:I, s:o," /* transaction id, merchant_pub */
-                           " s:o, s:o}", /* refund_deadline, coin_sig */
+                           " s:o, s:o," /* refund_deadline, wire_deadline */
+                           " s:o}",     /* coin_sig */
                            "f", TALER_json_from_amount (amount),
                            "wire", wire_details,
                            "H_wire", TALER_json_from_data (&h_wire,
@@ -460,6 +465,7 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
                            "merchant_pub", TALER_json_from_data (merchant_pub,
                                                                  sizeof (*merchant_pub)),
                            "refund_deadline", TALER_json_from_abs (refund_deadline),
+                           "edate", TALER_json_from_abs (wire_deadline),
                            "coin_sig", TALER_json_from_data (coin_sig,
                                                              sizeof (*coin_sig))
                            );

@@ -1399,6 +1399,7 @@ interpreter_run (void *cls,
       struct TALER_CoinSpendPublicKeyP coin_pub;
       struct TALER_CoinSpendSignatureP coin_sig;
       struct GNUNET_TIME_Absolute refund_deadline;
+      struct GNUNET_TIME_Absolute wire_deadline;
       struct GNUNET_TIME_Absolute timestamp;
       struct TALER_MerchantPublicKeyP merchant_pub;
       json_t *wire;
@@ -1474,6 +1475,7 @@ interpreter_run (void *cls,
       {
         refund_deadline = GNUNET_TIME_UNIT_ZERO_ABS;
       }
+      wire_deadline = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_DAYS);
       timestamp = GNUNET_TIME_absolute_get ();
       TALER_round_abs_time (&timestamp);
       {
@@ -1502,6 +1504,7 @@ interpreter_run (void *cls,
       cmd->details.deposit.dh
         = TALER_MINT_deposit (mint,
                               &amount,
+                              wire_deadline,
                               wire,
                               &h_contract,
                               &coin_pub,

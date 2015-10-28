@@ -276,6 +276,14 @@ struct TALER_MINTDB_Deposit
   struct GNUNET_TIME_Absolute refund_deadline;
 
   /**
+   * How much time does the merchant have to execute the wire transfer?
+   * This time is advisory for aggregating transactions, not a hard
+   * constraint (as the merchant can theoretically pick any time,
+   * including one in the past).
+   */
+  struct GNUNET_TIME_Absolute wire_deadline;
+
+  /**
    * Fraction of the coin's remaining value to be deposited, including
    * depositing fee (if any).  The coin is identified by @e coin_pub.
    */
@@ -528,6 +536,8 @@ struct TALER_MINTDB_Session;
  * @param deposit_fee amount the mint gets to keep as transaction fees
  * @param transaction_id unique transaction ID chosen by the merchant
  * @param h_contract hash of the contract between merchant and customer
+ * @param wire_deadline by which the merchant adviced that he would like the
+ *        wire transfer to be executed
  * @param wire wire details for the merchant
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -538,6 +548,7 @@ typedef int
                                 const struct TALER_Amount *deposit_fee,
                                 uint64_t transaction_id,
                                 const struct GNUNET_HashCode *h_contract,
+                                struct GNUNET_TIME_Absolute wire_deadline,
                                 const json_t *wire);
 
 

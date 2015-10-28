@@ -322,7 +322,6 @@ validate_sepa (const json_t *wire)
   const char *iban;
   const char *name;
   const char *bic;
-  const char *edate;
   uint64_t r;
   const char *address;
 
@@ -334,7 +333,6 @@ validate_sepa (const json_t *wire)
                   "s:s " /* IBAN: iban */
                   "s:s " /* name: beneficiary name */
                   "s:s " /* BIC: beneficiary bank's BIC */
-                  "s:s " /* edate: transfer execution date */
                   "s:i " /* r: random 64-bit integer nounce */
                   "s?s " /* address: address of the beneficiary */
                   "}",
@@ -342,7 +340,6 @@ validate_sepa (const json_t *wire)
                   "IBAN", &iban,
                   "name", &name,
                   "bic", &bic,
-                  "edate", &edate,
                   "r", &r,
                   "address", &address));
   if (1 != validate_iban (iban))

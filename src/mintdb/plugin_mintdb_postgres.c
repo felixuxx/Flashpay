@@ -439,6 +439,7 @@ postgres_create_tables (void *cls,
           ",deposit_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",timestamp INT8 NOT NULL"
           ",refund_deadline INT8 NOT NULL"
+          ",wire_deadline INT8 NOT NULL"
           ",merchant_pub BYTEA NOT NULL CHECK (LENGTH(merchant_pub)=32)"
           ",h_contract BYTEA NOT NULL CHECK (LENGTH(h_contract)=64)"
           ",h_wire BYTEA NOT NULL CHECK (LENGTH(h_wire)=64)"
@@ -821,6 +822,7 @@ postgres_prepare (PGconn *db_conn)
            ",deposit_fee_curr"
            ",timestamp"
            ",refund_deadline"
+           ",wire_deadline"
            ",merchant_pub"
            ",h_contract"
            ",h_wire"
@@ -828,8 +830,8 @@ postgres_prepare (PGconn *db_conn)
            ",wire"
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-           " $11, $12, $13, $14, $15, $16, $17);",
-           17, NULL);
+           " $11, $12, $13, $14, $15, $16, $17, $18);",
+           18, NULL);
   /* Fetch an existing deposit request, used to ensure idempotency
      during /deposit processing. Used in #postgres_have_deposit(). */
   PREPARE ("get_deposit",
@@ -839,6 +841,7 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_curr"
            ",timestamp"
            ",refund_deadline"
+           ",wire_deadline"
            ",h_contract"
            ",h_wire"
            " FROM deposits"
@@ -859,6 +862,7 @@ postgres_prepare (PGconn *db_conn)
            ",deposit_fee_val"
            ",deposit_fee_frac"
            ",deposit_fee_curr"
+           ",wire_deadline"
            ",transaction_id"
            ",h_contract"
            ",wire"
@@ -1880,6 +1884,8 @@ postgres_have_deposit (void *cls,
                                           &deposit2.timestamp),
       TALER_PQ_result_spec_absolute_time ("refund_deadline",
                                           &deposit2.refund_deadline),
+      TALER_PQ_result_spec_absolute_time ("wire_deadline",
+                                          &deposit2.wire_deadline),
       TALER_PQ_result_spec_auto_from_type ("h_contract",
                                            &deposit2.h_contract),
       TALER_PQ_result_spec_auto_from_type ("h_wire",
@@ -1987,6 +1993,7 @@ postgres_iterate_deposits (void *cls,
   {
     struct TALER_Amount amount_with_fee;
     struct TALER_Amount deposit_fee;
+    struct GNUNET_TIME_Absolute wire_deadline;
     struct GNUNET_HashCode h_contract;
     json_t *wire;
     uint64_t transaction_id;
@@ -2001,6 +2008,8 @@ postgres_iterate_deposits (void *cls,
                                    &amount_with_fee),
       TALER_PQ_result_spec_amount ("deposit_fee",
                                    &deposit_fee),
+      TALER_PQ_result_spec_absolute_time ("wire_deadline",
+                                          &wire_deadline),
       TALER_PQ_result_spec_auto_from_type ("h_contract",
                                            &h_contract),
       TALER_PQ_result_spec_json ("wire",
@@ -2021,6 +2030,7 @@ postgres_iterate_deposits (void *cls,
                       &deposit_fee,
                       transaction_id,
                       &h_contract,
+                      wire_deadline,
                       wire);
     TALER_PQ_cleanup_result (rs);
     PQclear (result);
@@ -2058,6 +2068,7 @@ postgres_insert_deposit (void *cls,
       TALER_PQ_query_param_amount (&deposit->deposit_fee),
       TALER_PQ_query_param_absolute_time (&deposit->timestamp),
       TALER_PQ_query_param_absolute_time (&deposit->refund_deadline),
+      TALER_PQ_query_param_absolute_time (&deposit->wire_deadline),
       TALER_PQ_query_param_auto_from_type (&deposit->merchant_pub),
       TALER_PQ_query_param_auto_from_type (&deposit->h_contract),
       TALER_PQ_query_param_auto_from_type (&deposit->h_wire),

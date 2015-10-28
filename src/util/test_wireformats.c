@@ -30,7 +30,6 @@ static const char * const valid_wire_str =
 \"IBAN\":\"DE67830654080004822650\",                 \
 \"name\":\"GNUnet e.V.\",                               \
 \"bic\":\"GENODEF1SLR\",                                 \
-\"edate\":\"1449930207000\",                                \
 \"r\":123456789,                                     \
 \"address\": \"foobar\"}";
 
@@ -40,7 +39,6 @@ static const char * const invalid_wire_str =
 \"IBAN\":\"XX67830654080004822650\",                 \
 \"name\":\"GNUnet e.V.\",                               \
 \"bic\":\"GENODEF1SLR\",                                 \
-\"edate\":\"1449930207000\",                                \
 \"r\":123456789,                                     \
 \"address\": \"foobar\"}";
 
@@ -50,7 +48,6 @@ static const char * const invalid_wire_str2 =
 \"IBAN\":\"DE67830654080004822651\",                 \
 \"name\":\"GNUnet e.V.\",                               \
 \"bic\":\"GENODEF1SLR\",                                 \
-\"edate\":\"1449930207000\",                                \
 \"r\":123456789,                                     \
 \"address\": \"foobar\"}";
 
@@ -60,7 +57,6 @@ static const char * const unsupported_wire_str =
 \"IBAN\":\"DE67830654080004822650\",                 \
 \"name\":\"GNUnet e.V.\",                               \
 \"bic\":\"GENODEF1SLR\",                                 \
-\"edate\":\"1449930207000\",                                \
 \"r\":123456789,                                     \
 \"address\": \"foobar\"}";
 

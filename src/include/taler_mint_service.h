@@ -505,6 +505,8 @@ typedef void
  *
  * @param mint the mint handle; the mint must be ready to operate
  * @param amount the amount to be deposited
+ * @param wire_deadline execution date, until which the merchant would like the mint to settle the balance (advisory, the mint cannot be
+ *        forced to settle in the past or upon very short notice, but of course a well-behaved mint will limit aggregation based on the advice received)
  * @param wire_details the merchant’s account details, in a format supported by the mint
  * @param h_contract hash of the contact of the merchant with the customer (further details are never disclosed to the mint)
  * @param coin_pub coin’s public key
@@ -523,6 +525,7 @@ typedef void
 struct TALER_MINT_DepositHandle *
 TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
                     const struct TALER_Amount *amount,
+                    struct GNUNET_TIME_Absolute wire_deadline,
                     json_t *wire_details,
                     const struct GNUNET_HashCode *h_contract,
                     const struct TALER_CoinSpendPublicKeyP *coin_pub,

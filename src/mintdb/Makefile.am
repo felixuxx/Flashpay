@@ -49,12 +49,12 @@ check_PROGRAMS = \
   test-mintdb-deposits \
   test-mintdb-keyio \
   test-mintdb-postgres \
-	test-perf-taler-mintdb \
+  test-perf-taler-mintdb \
   perf-mintdb
 
 TESTS = \
   test-mintdb-postgres \
-	test-perf-taler-mintdb
+  test-perf-taler-mintdb
 
 test_mintdb_deposits_SOURCES = \
   test_mintdb_deposits.c
