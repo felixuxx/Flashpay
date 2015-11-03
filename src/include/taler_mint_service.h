@@ -362,7 +362,8 @@ TALER_MINT_test_signing_key (const struct TALER_MINT_Keys *keys,
  *
  * @param keys the mint's key set
  * @param pk public key of the denomination to lookup
- * @return details about the given denomination key
+ * @return details about the given denomination key, NULL if the key is not
+ * found
  */
 const struct TALER_MINT_DenomPublicKey *
 TALER_MINT_get_denomination_key (const struct TALER_MINT_Keys *keys,

@@ -619,12 +619,17 @@ TMH_KS_acquire_ (const char *location)
   {
     key_state = GNUNET_new (struct TMH_KS_StateHandle);
     key_state->hash_context = GNUNET_CRYPTO_hash_context_start ();
+
+
     key_state->denom_keys_array = json_array ();
     GNUNET_assert (NULL != key_state->denom_keys_array);
+
     key_state->sign_keys_array = json_array ();
     GNUNET_assert (NULL != key_state->sign_keys_array);
+
     key_state->auditors_array = json_array ();
     GNUNET_assert (NULL != key_state->auditors_array);
+
     key_state->denomkey_map = GNUNET_CONTAINER_multihashmap_create (32,
                                                                     GNUNET_NO);
     key_state->reload_time = GNUNET_TIME_absolute_get ();
