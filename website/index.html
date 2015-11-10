@@ -89,7 +89,12 @@
 
 
   function wire_funds(){
-    var trigger = new Event("taler-create-reserve");
+    let wallet_param = {
+    'currencies' : new Array("KUDOS"),
+    'input_name' : 'reserve-pk-id',
+    'base_url' : window.location.host
+    };
+    var trigger = new CustomEvent("taler-create-reserve", {detail: wallet_param});
     document.body.dispatchEvent(trigger);
   };
 
