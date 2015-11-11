@@ -795,8 +795,6 @@ struct TALER_MintWireSupportMethodsPS
 };
 
 
-
-
 /**
  * @brief Format used to generate the signature on a request to obtain
  * the wire transfer identifier associated with a deposit.
