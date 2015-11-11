@@ -404,10 +404,11 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
 static json_t *
 compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
 {
-  json_t *transaction;
+  json_t *details;
   const char *type;
   struct TALER_Amount value;
   json_t *history;
+  const struct TALER_CoinSpendSignatureP *sig;
   const struct TALER_MINTDB_TransactionList *pos;
 
   history = json_array ();
@@ -420,7 +421,7 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
         struct TALER_DepositRequestPS dr;
         const struct TALER_MINTDB_Deposit *deposit = pos->details.deposit;
 
-        type = "deposit";
+        type = "DEPOSIT";
         value = deposit->amount_with_fee;
         dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
         dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
@@ -435,12 +436,12 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
                            &deposit->deposit_fee);
         dr.merchant = deposit->merchant_pub;
         dr.coin_pub = deposit->coin.coin_pub;
-
+        sig = &deposit->csig;
 	/* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
                                         &dr.purpose,
-                                        &deposit->csig.eddsa_signature,
+                                        &sig->eddsa_signature,
                                         &deposit->coin.coin_pub.eddsa_pub))
 	{
 	  GNUNET_break (0);
@@ -448,8 +449,8 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
 	  return NULL;
 	}
 
-        transaction = TALER_json_from_eddsa_sig (&dr.purpose,
-                                                 &deposit->csig.eddsa_signature);
+        details = TALER_json_from_data (&dr.purpose,
+                                        sizeof (struct TALER_DepositRequestPS));
         break;
       }
     case TALER_MINTDB_TT_REFRESH_MELT:
@@ -457,7 +458,7 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
         struct TALER_RefreshMeltCoinAffirmationPS ms;
         const struct TALER_MINTDB_RefreshMelt *melt = pos->details.melt;
 
-        type = "melt";
+        type = "MELT";
         value = melt->amount_with_fee;
         ms.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
         ms.purpose.size = htonl (sizeof (struct TALER_RefreshMeltCoinAffirmationPS));
@@ -467,12 +468,12 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
         TALER_amount_hton (&ms.melt_fee,
                            &melt->melt_fee);
         ms.coin_pub = melt->coin.coin_pub;
-
+        sig = &melt->coin_sig;
 	/* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
                                         &ms.purpose,
-                                        &melt->coin_sig.eddsa_signature,
+                                        &sig->eddsa_signature,
                                         &melt->coin.coin_pub.eddsa_pub))
 	{
 	  GNUNET_break (0);
@@ -480,18 +481,20 @@ compile_transaction_history (const struct TALER_MINTDB_TransactionList *tl)
 	  return NULL;
 	}
 
-        transaction = TALER_json_from_eddsa_sig (&ms.purpose,
-                                                 &melt->coin_sig.eddsa_signature);
+        details = TALER_json_from_data (&ms.purpose,
+                                        sizeof (struct TALER_RefreshMeltCoinAffirmationPS));
       }
       break;
     default:
       GNUNET_assert (0);
     }
     json_array_append_new (history,
-                           json_pack ("{s:s, s:o, s:o}",
+                           json_pack ("{s:s, s:o, s:o, s:o}",
                                       "type", type,
                                       "amount", TALER_json_from_amount (&value),
-                                      "signature", transaction));
+                                      "signature", TALER_json_from_data (sig,
+                                                                         sizeof (struct TALER_CoinSpendSignatureP)),
+                                      "details", details));
   }
   return history;
 }
@@ -539,7 +542,6 @@ compile_reserve_history (const struct TALER_MINTDB_ReserveHistory *rh,
   struct TALER_Amount withdraw_total;
   struct TALER_Amount value;
   json_t *json_history;
-  json_t *transaction;
   int ret;
   const struct TALER_MINTDB_ReserveHistory *pos;
   struct TALER_WithdrawRequestPS wr;
@@ -609,14 +611,13 @@ compile_reserve_history (const struct TALER_MINTDB_ReserveHistory *rh,
       GNUNET_CRYPTO_rsa_public_key_hash (pos->details.withdraw->denom_pub.rsa_public_key,
                                          &wr.h_denomination_pub);
       wr.h_coin_envelope = pos->details.withdraw->h_coin_envelope;
-
-      transaction = TALER_json_from_eddsa_sig (&wr.purpose,
-                                               &pos->details.withdraw->reserve_sig.eddsa_signature);
-
       json_array_append_new (json_history,
-                             json_pack ("{s:s, s:o, s:o}",
+                             json_pack ("{s:s, s:o, s:o, s:o}",
                                         "type", "WITHDRAW",
-                                        "signature", transaction,
+                                        "signature", TALER_json_from_data (&pos->details.withdraw->reserve_sig,
+                                                                           sizeof (struct TALER_ReserveSignatureP)),
+                                        "details", TALER_json_from_data (&wr,
+                                                                         sizeof (wr)),
                                         "amount", TALER_json_from_amount (&value)));
       break;
     }

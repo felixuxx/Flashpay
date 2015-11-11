@@ -69,11 +69,6 @@ enum MAJ_Command
   MAJ_CMD_RSA_SIGNATURE,
 
   /**
-   * Parse object with EdDSA signature and purpose at current position.
-   */
-  MAJ_CMD_EDDSA_SIGNATURE,
-
-  /**
    * Parse `const char *` JSON string at current position.
    */
   MAJ_CMD_STRING,
@@ -307,20 +302,6 @@ MAJ_spec_json (const char *name,
 struct MAJ_Specification
 MAJ_spec_amount (const char *name,
                  struct TALER_Amount *amount);
-
-
-/**
- * Specification for parsing an EdDSA object signature with purpose.
- * Also validates the signature (!).
- *
- * @param name name of the JSON field
- * @param purpose_p where to store the purpose
- * @param pub_key public key to use for validation
- */
-struct MAJ_Specification
-MAJ_spec_eddsa_signed_purpose (const char *name,
-                               struct GNUNET_CRYPTO_EccSignaturePurpose **purpose_p,
-                               const struct GNUNET_CRYPTO_EddsaPublicKey *pub_key);
 
 
 /**

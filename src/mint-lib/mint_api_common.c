@@ -62,13 +62,20 @@ TALER_MINT_verify_coin_history_ (const char *currency,
   {
     json_t *transaction;
     struct TALER_Amount amount;
-    struct GNUNET_CRYPTO_EccSignaturePurpose *purpose;
+    struct TALER_CoinSpendSignatureP sig;
+    void *details;
+    size_t details_size;
+    const char *type;
     struct MAJ_Specification spec[] = {
       MAJ_spec_amount ("amount",
                        &amount),
-      MAJ_spec_eddsa_signed_purpose ("signature",
-                                     &purpose,
-                                     &coin_pub->eddsa_pub),
+      MAJ_spec_string ("type",
+                       &type),
+      MAJ_spec_fixed_auto ("signature",
+                           &sig),
+      MAJ_spec_varsize ("details",
+                        &details,
+                        &details_size),
       MAJ_spec_end
     };
 
@@ -81,57 +88,90 @@ TALER_MINT_verify_coin_history_ (const char *currency,
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
-    switch (ntohl (purpose->purpose))
+    if (0 == strcasecmp (type,
+                         "DEPOSIT"))
     {
-    case TALER_SIGNATURE_WALLET_COIN_DEPOSIT:
-      {
-        const struct TALER_DepositRequestPS *dr;
-        struct TALER_Amount dr_amount;
+      const struct TALER_DepositRequestPS *dr;
+      struct TALER_Amount dr_amount;
 
-        if (ntohl (purpose->size) != sizeof (struct TALER_DepositRequestPS))
-        {
-          GNUNET_break (0);
-          MAJ_parse_free (spec);
-          return GNUNET_SYSERR;
-        }
-        dr = (const struct TALER_DepositRequestPS *) purpose;
-        TALER_amount_ntoh (&dr_amount,
-                           &dr->amount_with_fee);
-        if (0 != TALER_amount_cmp (&dr_amount,
-                                   &amount))
-        {
-          GNUNET_break (0);
-          MAJ_parse_free (spec);
-          return GNUNET_SYSERR;
-        }
-      }
-      break;
-    case TALER_SIGNATURE_WALLET_COIN_MELT:
+      if (details_size != sizeof (struct TALER_DepositRequestPS))
       {
-        const struct TALER_RefreshMeltCoinAffirmationPS *rm;
-        struct TALER_Amount rm_amount;
-
-        if (ntohl (purpose->size) != sizeof (struct TALER_RefreshMeltCoinAffirmationPS))
-        {
-          GNUNET_break (0);
-          MAJ_parse_free (spec);
-          return GNUNET_SYSERR;
-        }
-        rm = (const struct TALER_RefreshMeltCoinAffirmationPS *) purpose;
-        TALER_amount_ntoh (&rm_amount,
-                           &rm->amount_with_fee);
-        if (0 != TALER_amount_cmp (&rm_amount,
-                                   &amount))
-        {
-          GNUNET_break (0);
-          MAJ_parse_free (spec);
-          return GNUNET_SYSERR;
-        }
+        GNUNET_break_op (0);
+        MAJ_parse_free (spec);
+        return GNUNET_SYSERR;
       }
-      break;
-    default:
+      dr = (const struct TALER_DepositRequestPS *) details;
+      if (details_size != ntohl (dr->purpose.size))
+      {
+        GNUNET_break_op (0);
+        MAJ_parse_free (spec);
+        return GNUNET_SYSERR;
+      }
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
+                                      &dr->purpose,
+                                      &sig.eddsa_signature,
+                                      &coin_pub->eddsa_pub))
+        {
+        GNUNET_break_op (0);
+        MAJ_parse_free (spec);
+        return GNUNET_SYSERR;
+      }
+
+       // FIXME: check sig!
+      TALER_amount_ntoh (&dr_amount,
+                         &dr->amount_with_fee);
+      if (0 != TALER_amount_cmp (&dr_amount,
+                                 &amount))
+        {
+          GNUNET_break (0);
+          MAJ_parse_free (spec);
+          return GNUNET_SYSERR;
+        }
+    }
+    else if (0 == strcasecmp (type,
+                              "MELT"))
+    {
+      const struct TALER_RefreshMeltCoinAffirmationPS *rm;
+      struct TALER_Amount rm_amount;
+
+      if (details_size != sizeof (struct TALER_RefreshMeltCoinAffirmationPS))
+      {
+        GNUNET_break_op (0);
+        MAJ_parse_free (spec);
+        return GNUNET_SYSERR;
+      }
+      rm = (const struct TALER_RefreshMeltCoinAffirmationPS *) details;
+      if (details_size != ntohl (rm->purpose.size))
+      {
+        GNUNET_break_op (0);
+        MAJ_parse_free (spec);
+        return GNUNET_SYSERR;
+      }
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
+                                      &rm->purpose,
+                                      &sig.eddsa_signature,
+                                      &coin_pub->eddsa_pub))
+      {
+        GNUNET_break_op (0);
+        MAJ_parse_free (spec);
+        return GNUNET_SYSERR;
+      }
+      TALER_amount_ntoh (&rm_amount,
+                         &rm->amount_with_fee);
+      if (0 != TALER_amount_cmp (&rm_amount,
+                                 &amount))
+      {
+        GNUNET_break_op (0);
+        MAJ_parse_free (spec);
+        return GNUNET_SYSERR;
+      }
+    }
+    else
+    {
       /* signature not supported, new version on server? */
-      GNUNET_break (0);
+      GNUNET_break_op (0);
       MAJ_parse_free (spec);
       return GNUNET_SYSERR;
     }
