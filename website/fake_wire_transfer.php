@@ -43,13 +43,26 @@ $reserve_pk = $_POST['reserve_pk'];
 $kudos_amount = $_POST['kudos_amount'];
 $mint = $_SERVER['SERVER_NAME'];
 
+// check if the webform has given a well formed amount
+$ret = preg_match ('/[0-9]+(\.[0-9][0-9]?)? [A-Z]+/', $kudos_amount, $matches);
+if ($matches[0] != $_POST['kudos_amount'])
+{
+  http_response_code(400); // BAD REQUEST
+  echo "Malformed amount given";
+  return;
+}
+$amount_chunks = preg_split('/[ \.]/', $_POST['kudos_amount']);
+$amount_fraction = 0;
+if (count($amount_chunks) > 2)
+  $amount_fraction = (double) ("0." . $amount_chunks[1]);
+$amount_fraction = $amount_fraction * 1000000;
 // pack the JSON
 $json = json_encode (array ('reserve_pub' => $reserve_pk, 
                             'execution_date' => "/Date(" . time() . ")/",
                             'wire' => array ('type' => 'test'),
-                            'amount' => array ('value' => intval($kudos_amount),
-	                                       'fraction' => 0,
-					       'currency' => 'KUDOS'))); // TODO 'KUDOS' example needs 'KUDOS' denom keys ..
+                            'amount' => array ('value' => intval($amount_chunks[0]),
+	                                       'fraction' => $amount_fraction,
+					       'currency' => $amount_chunks[count($amount_chunks) - 1])));
 
 // craft the HTTP request
 $req = new http\Client\Request ("POST",

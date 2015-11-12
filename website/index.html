@@ -48,19 +48,21 @@
     <input id="wire-funds-button" type="button" value="Wire funds" disabled=true
       onclick='wire_funds();'></input>
     </div>
-      <form id="reserve-form" name="tform" action="/fake_wire_transfer.php" method="POST">
+      <form id="reserve-form" name="tform" action="/fake_wire_transfer.php" method="POST" onsubmit="signal_reserve()">
         <div class="participation" id="fake-wire">
           <br>
           Paste your reserve public key here (right-click, "paste"):
-          <input type="text" name="reserve_pk"></input>
+          <input type="text" id="reserve-pk-input" name="reserve_pk"></input>
           <br>
           Amount to credit to your reserve: 
-          <select id="amount" name="kudos_amount">
-            <option value="1">1 KUDOS</option>
-            <option value="2">2 KUDOS</option>
-            <option value="5">5 KUDOS</option>
-            <option value="10">10 KUDOS</option>
-            <option value="1000">1000 KUDOS</option>
+          <select id="reserve-amn-id" name="kudos_amount">
+            <option value="1 KUDOS">1 KUDOS</option>
+            <option value="2 KUDOS">2 KUDOS</option>
+            <option value="3.01 KUDOS">3.01 KUDOS</option>
+            <option value="5 KUDOS">5 KUDOS</option>
+            <option value="10 KUDOS">10 KUDOS</option>
+            <option value="10.50 KUDOS">10.50 KUDOS</option>
+            <option value="1000 KUDOS">1000 KUDOS</option>
           </select>
           <br>
           <input type="submit" value="Submit"></input>
@@ -73,6 +75,11 @@
   /* The wallet should send this signal only when:
      - it gets installed
      - it gets a 'taler-wire-mfirst' event */
+
+  function signal_reserve(){
+    var reserve_submitted = new Event("reserve-submitted");
+    document.body.dispatchEvent(reserve_submitted); 
+  };
 
   document.body.addEventListener("taler-wallet-present",
                                  has_taler_wallet_cb,
@@ -89,9 +96,10 @@
 
 
   function wire_funds(){
-    let wallet_param = {
+    var wallet_param = {
     'currencies' : new Array("KUDOS"),
-    'input_name' : 'reserve-pk-id',
+    'input_amount' : 'reserve-amn-id',
+    'input_pub' : 'reserve-pk-input',
     'base_url' : window.location.host
     };
     var trigger = new CustomEvent("taler-create-reserve", {detail: wallet_param});
