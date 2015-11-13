@@ -31,7 +31,7 @@
 </head>
 <body id="css-zen-garden" onload="signal_me()">
     <div class="explanation" id="zen-explanation" role="article">
-      <h1>Welcome to the Taler "Demo" Mint</h1>
+      <h1>Welcome to the KUDOS bank!</h1>
       <p>Through this page, you can wire funds to our demonstrator mint
          in order to create your reserves from where withdraw your coins.
 	 Once the reserve is created, the withdrawing of coins will be
@@ -39,22 +39,16 @@
 	 to the user.
       </p>
       <p>
-      By clicking the button "Wire funds", your wallet will be triggered to
-      create a new reserve's key which needs to be pasted in the dedicated
-      field. Fill the desired amount to fund into the key's dialog, in order
-      to make the wallet check when the mint get all the funds for the reserve.
+      Enter the deisired amount, and click 'Select mint'. Your wallet
+      will make you choose a mint and will automatically submit all the
+      needed data into the bank's system. At the end of the withdrawal,
+      the wallet will show you the 'All coins withdrawn' nice message.
       </p>
 
-    <input id="wire-funds-button" type="button" value="Wire funds" disabled=true
-      onclick='wire_funds();'></input>
     </div>
-      <form id="reserve-form" name="tform" action="/fake_wire_transfer.php" method="POST" onsubmit="signal_reserve()">
-        <div class="participation" id="fake-wire">
-          <br>
-          Paste your reserve public key here (right-click, "paste"):
-          <input type="text" id="reserve-pk-input" name="reserve_pk"></input>
-          <br>
-          Amount to credit to your reserve: 
+      <form id="reserve-form" name="tform" action="/fake_wire_transfer.php" method="POST">
+          <input type="text" id="reserve-pk-input" name="reserve_pk" hidden></input>
+          Amount to withdraw: 
           <select id="reserve-amn-id" name="kudos_amount">
             <option value="1 KUDOS">1 KUDOS</option>
             <option value="2 KUDOS">2 KUDOS</option>
@@ -62,25 +56,18 @@
             <option value="5 KUDOS">5 KUDOS</option>
             <option value="10 KUDOS">10 KUDOS</option>
             <option value="10.50 KUDOS">10.50 KUDOS</option>
-            <option value="1000 KUDOS">1000 KUDOS</option>
+            <option value="1000.3 KUDOS">1000.3 KUDOS</option>
           </select>
-          <br>
-          <input type="submit" value="Submit"></input>
-          <br>
-        </div>
+          <input type="text" id="kudos-mint" hidden></input>
+          <input id="select-mint"
+	         type="button"
+		 value="Select mint"
+		 onclick="wire_funds()"
+		 disabled></input>
       </form>
     </div>
   <script type="text/javascript">
   
-  /* The wallet should send this signal only when:
-     - it gets installed
-     - it gets a 'taler-wire-mfirst' event */
-
-  function signal_reserve(){
-    var reserve_submitted = new Event("reserve-submitted");
-    document.body.dispatchEvent(reserve_submitted); 
-  };
-
   document.body.addEventListener("taler-wallet-present",
                                  has_taler_wallet_cb,
 				 false);
@@ -93,14 +80,14 @@
                                  signal_me,
 				 false);
 
-
-
   function wire_funds(){
     var wallet_param = {
-    'currencies' : new Array("KUDOS"),
-    'input_amount' : 'reserve-amn-id',
+    //'currencies' : new Array("KUDOS"), not anymore: must be given by the mint
+    'form_id' : 'reserve-form',
+    'input_amount' : 'reserve-amn-id', 
     'input_pub' : 'reserve-pk-input',
-    'base_url' : window.location.host
+    'mint_rcv' : 'kudos-mint'
+    //'base_url' : window.location.host not anymore: must be given by the mint
     };
     var trigger = new CustomEvent("taler-create-reserve", {detail: wallet_param});
     document.body.dispatchEvent(trigger);
@@ -113,12 +100,12 @@
   };
 
   function has_taler_wallet_cb(){
-    var button = document.getElementById("wire-funds-button");
+    var button = document.getElementById("select-mint");
     button.removeAttribute("disabled");
   }
 
   function no_taler_wallet_cb(){
-    var button = document.getElementById("wire-funds-button");
+    var button = document.getElementById("select-mint");
     button.setAttribute("disabled", "true");
   }
 
