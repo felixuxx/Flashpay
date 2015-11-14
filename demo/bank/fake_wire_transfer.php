@@ -42,7 +42,7 @@
 $reserve_pk = $_POST['reserve_pk'];
 $kudos_amount = $_POST['kudos_amount'];
 $mint = $_POST['mint_rcv'];
-
+echo $mint;
 // check if the webform has given a well formed amount
 $ret = preg_match ('/[0-9]+(\.[0-9][0-9]?)? [A-Z]+/', $kudos_amount, $matches);
 if ($matches[0] != $_POST['kudos_amount'])
