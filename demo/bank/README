@@ -1,0 +1,3 @@
+This directory is the root of the "demo" bank website. The
+page being served simulates what a real bank does when transferring
+funds to some mint via SEPA.
