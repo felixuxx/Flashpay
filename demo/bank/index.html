@@ -82,11 +82,10 @@
 
   function wire_funds(){
     var wallet_param = {
-    //'currencies' : new Array("KUDOS"), not anymore: must be given by the mint
-    'form_id' : 'reserve-form',
-    'input_amount' : 'reserve-amn-id', 
-    'input_pub' : 'reserve-pk-input',
-    'mint_rcv' : 'kudos-mint'
+    form_id : 'reserve-form',
+    input_amount : 'reserve-amn-id', 
+    input_pub : 'reserve-pk-input',
+    mint_rcv : 'kudos-mint'
     //'base_url' : window.location.host not anymore: must be given by the mint
     };
     var trigger = new CustomEvent("taler-create-reserve", {detail: wallet_param});
