@@ -312,6 +312,39 @@ verify_signatures (const struct TALER_MINT_DenomPublicKey *dki,
                      &dki->fee_deposit);
   dr.merchant = *merchant_pub;
   dr.coin_pub = *coin_pub;
+  
+  char *contract_str = GNUNET_STRINGS_data_to_string_alloc (h_contract,
+                                                            sizeof (struct GNUNET_HashCode));
+  char *wire_str = GNUNET_STRINGS_data_to_string_alloc (h_wire,
+                                                        sizeof (struct GNUNET_HashCode));
+  char *merchant_pub_str = GNUNET_STRINGS_data_to_string_alloc (merchant_pub,
+                                                                sizeof (struct TALER_MerchantPublicKeyP));
+  char *coin_pub_str = GNUNET_STRINGS_data_to_string_alloc (coin_pub,
+                                                            sizeof (struct TALER_CoinSpendPublicKeyP));
+  printf ("verifying:\ncontract [%s]\nwire [%s]\n"
+          "timestamp [%llu]\nrefund deadline [%llu]\n"
+	  "transaction id [%llu]\namount [%s %llu.%lu]\n"
+	  "fee deposit [%s %llu.%lu]\nmerch pub [%s]\n"
+	  "coin pub [%s]\n",
+	  contract_str,
+	  wire_str,
+	  timestamp.abs_value_us,
+	  refund_deadline.abs_value_us,
+	  transaction_id,
+	  amount->currency,
+	  amount->value,
+	  amount->fraction,
+	  dki->fee_deposit.currency,
+	  dki->fee_deposit.value,
+	  dki->fee_deposit.fraction,
+          merchant_pub_str,
+	  coin_pub_str);
+
+  GNUNET_free (contract_str);
+  GNUNET_free (wire_str);
+  GNUNET_free (merchant_pub_str);
+  GNUNET_free (coin_pub_str);
+
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
                                   &dr.purpose,
