@@ -351,10 +351,10 @@ handle_mhd_request (void *cls,
                           upload_data_size);
   }
   return TMH_MHD_handler_static_response (&h404,
-                                             connection,
-                                             con_cls,
-                                             upload_data,
-                                             upload_data_size);
+                                          connection,
+                                          con_cls,
+                                          upload_data,
+                                          upload_data_size);
 }
 
 
