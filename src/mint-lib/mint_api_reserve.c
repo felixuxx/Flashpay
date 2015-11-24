@@ -167,13 +167,14 @@ parse_reserve_history (json_t *history,
     else if (0 == strcasecmp (type,
                               "WITHDRAW"))
     {
-      struct GNUNET_CRYPTO_EccSignaturePurpose *purpose;
-      const struct TALER_WithdrawRequestPS *withdraw_purpose;
+      struct TALER_ReserveSignatureP sig;
+      struct TALER_WithdrawRequestPS withdraw_purpose;
       struct TALER_Amount amount_from_purpose;
       struct MAJ_Specification withdraw_spec[] = {
-        MAJ_spec_eddsa_signed_purpose ("signature",
-                                       &purpose,
-                                       &reserve_pub->eddsa_pub),
+        MAJ_spec_fixed_auto ("signature",
+                             &sig),
+        MAJ_spec_fixed_auto ("details",
+                             &withdraw_purpose),
         MAJ_spec_end
       };
       unsigned int i;
@@ -186,17 +187,19 @@ parse_reserve_history (json_t *history,
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      /* Check that the signature actually signed a withdraw request */
-      if ( (ntohl (purpose->purpose) != TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW) ||
-           (ntohl (purpose->size) != sizeof (struct TALER_WithdrawRequestPS)) )
+      /* Check that the signature is a valid withdraw request */
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW,
+                                      &withdraw_purpose.purpose,
+                                      &sig.eddsa_signature,
+                                      &reserve_pub->eddsa_pub))
       {
         GNUNET_break_op (0);
         MAJ_parse_free (withdraw_spec);
         return GNUNET_SYSERR;
       }
-      withdraw_purpose = (const struct TALER_WithdrawRequestPS *) purpose;
       TALER_amount_ntoh (&amount_from_purpose,
-                         &withdraw_purpose->amount_with_fee);
+                         &withdraw_purpose.amount_with_fee);
       if (0 != TALER_amount_cmp (&amount,
                                  &amount_from_purpose))
       {
@@ -211,8 +214,8 @@ parse_reserve_history (json_t *history,
          "uuid" array to remember the hashes of all
          purposes, and compare the hashes to find
          duplicates. */
-      GNUNET_CRYPTO_hash (withdraw_purpose,
-                          ntohl (withdraw_purpose->purpose.size),
+      GNUNET_CRYPTO_hash (&withdraw_purpose,
+                          ntohl (withdraw_purpose.purpose.size),
                           &uuid[uuid_off]);
       for (i=0;i<uuid_off;i++)
       {

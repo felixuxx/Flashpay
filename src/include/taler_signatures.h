@@ -132,6 +132,12 @@
  */
 #define TALER_SIGNATURE_MERCHANT_REFUND 1102
 
+/**
+ * Signature where the merchant confirms that he needs the wire
+ * transfer identifier for a deposit operation.
+ */
+#define TALER_SIGNATURE_MERCHANT_DEPOSIT_WTID 1103
+
 
 /*********************/
 /* Wallet signatures */
@@ -300,8 +306,7 @@ struct TALER_DepositRequestPS
 
   /**
    * The Merchant's public key.  Allows the merchant to later refund
-   * the transaction.  All zeros if nobody is allowed to refund the
-   * transaction later.
+   * the transaction or to inquire about the wire transfer identifier.
    */
   struct TALER_MerchantPublicKeyP merchant;
 
@@ -372,8 +377,7 @@ struct TALER_DepositConfirmationPS
 
   /**
    * The Merchant's public key.  Allows the merchant to later refund
-   * the transaction.  All zeros if nobody is allowed to refund the
-   * transaction later.
+   * the transaction or to inquire about the wire transfer identifier.
    */
   struct TALER_MerchantPublicKeyP merchant;
 
@@ -789,6 +793,56 @@ struct TALER_MintWireSupportMethodsPS
   struct GNUNET_HashCode h_wire_types GNUNET_PACKED;
 
 };
+
+
+/**
+ * @brief Format used to generate the signature on a request to obtain
+ * the wire transfer identifier associated with a deposit.
+ */
+struct TALER_DepositTrackPS
+{
+  /**
+   * Purpose must be #TALER_SIGNATURE_MERCHANT_DEPOSIT_WTID.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash over the contract for which this deposit is made.
+   */
+  struct GNUNET_HashCode h_contract GNUNET_PACKED;
+
+  /**
+   * Hash over the wiring information of the merchant.
+   */
+  struct GNUNET_HashCode h_wire GNUNET_PACKED;
+
+  /**
+   * Merchant-generated transaction ID to detect duplicate
+   * transactions.  The merchant must communicate a merchant-unique ID
+   * to the customer for each transaction.  Note that different coins
+   * that are part of the same transaction can use the same
+   * transaction ID.  The transaction ID is useful for later disputes,
+   * and the merchant's contract offer (@e h_contract) with the
+   * customer should include the offer's term and transaction ID
+   * signed with a key from the merchant.
+   */
+  uint64_t transaction_id GNUNET_PACKED;
+
+  /**
+   * The Merchant's public key.  The deposit inquiry request is to be
+   * signed by the corresponding private key (using EdDSA).
+   */
+  struct TALER_MerchantPublicKeyP merchant;
+
+  /**
+   * The coin's public key.  This is the value that must have been
+   * signed (blindly) by the Mint.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+};
+
+
 
 
 GNUNET_NETWORK_STRUCT_END

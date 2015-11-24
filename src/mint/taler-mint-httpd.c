@@ -33,6 +33,7 @@
 #include "taler-mint-httpd_reserve.h"
 #include "taler-mint-httpd_wire.h"
 #include "taler-mint-httpd_refresh.h"
+#include "taler-mint-httpd_tracking.h"
 #include "taler-mint-httpd_keystate.h"
 #if HAVE_DEVELOPER
 #include "taler-mint-httpd_test.h"
@@ -253,6 +254,19 @@ handle_mhd_request (void *cls,
         NULL, 0,
         &TMH_ADMIN_handler_admin_add_incoming, MHD_HTTP_OK },
       { "/admin/add/incoming", NULL, "text/plain",
+        "Only POST is allowed", 0,
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+
+      { "/wire/deposits", MHD_HTTP_METHOD_GET, "application/json",
+        NULL, 0,
+        &TMH_TRACKING_handler_wire_deposits, MHD_HTTP_OK },
+      { "/wire/deposits", NULL, "text/plain",
+        "Only GET is allowed", 0,
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+      { "/deposit/wtid", MHD_HTTP_METHOD_POST, "application/json",
+        NULL, 0,
+        &TMH_TRACKING_handler_deposit_wtid, MHD_HTTP_OK },
+      { "/deposit/wtid", NULL, "text/plain",
         "Only POST is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 

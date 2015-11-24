@@ -213,49 +213,6 @@ parse_json (json_t *root,
       }
       break;
 
-    case MAJ_CMD_EDDSA_SIGNATURE:
-      {
-        struct TALER_CoinSpendSignatureP sig;
-        struct GNUNET_CRYPTO_EccSignaturePurpose *purpose;
-        size_t size;
-        struct MAJ_Specification sig_spec[] = {
-          MAJ_spec_fixed_auto ("eddsa_sig", &sig),
-          MAJ_spec_varsize ("eddsa_val", (void**) &purpose, &size),
-          MAJ_spec_end
-        };
-
-        if (GNUNET_OK !=
-            MAJ_parse_json (pos,
-                            sig_spec))
-        {
-          GNUNET_break_op (0);
-          MAJ_parse_free (sig_spec);
-          return i;
-        }
-        if (size != ntohl (purpose->size))
-        {
-          GNUNET_break_op (0);
-          MAJ_parse_free (sig_spec);
-          return i;
-        }
-
-        if (GNUNET_OK !=
-            GNUNET_CRYPTO_eddsa_verify (ntohl (purpose->purpose),
-                                        purpose,
-                                        &sig.eddsa_signature,
-                                        spec[i].details.eddsa_signature.pub_key))
-        {
-	  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		      "Failed to verify signature of purpose %u\n",
-		      ntohl (purpose->purpose));
-          GNUNET_break_op (0);
-          MAJ_parse_free (sig_spec);
-          return i;
-        }
-        *spec[i].details.eddsa_signature.purpose_p = purpose;
-      }
-      break;
-
     case MAJ_CMD_UINT16:
       {
         json_int_t val;
@@ -336,10 +293,6 @@ parse_free (struct MAJ_Specification *spec,
     case MAJ_CMD_RSA_SIGNATURE:
       GNUNET_CRYPTO_rsa_signature_free (*spec[i].details.rsa_signature);
       *spec[i].details.rsa_signature = NULL;
-      break;
-    case MAJ_CMD_EDDSA_SIGNATURE:
-      GNUNET_free (*spec[i].details.eddsa_signature.purpose_p);
-      *spec[i].details.eddsa_signature.purpose_p = NULL;
       break;
     case MAJ_CMD_JSON_OBJECT:
       json_decref (*spec[i].details.obj);
@@ -530,30 +483,6 @@ MAJ_spec_rsa_signature (const char *name,
       .cmd = MAJ_CMD_RSA_SIGNATURE,
       .field = name,
       .details.rsa_signature = sig
-    };
-  return ret;
-}
-
-
-/**
- * Specification for parsing an EdDSA object signature with purpose.
- * Also validates the signature (!).
- *
- * @param name name of the JSON field
- * @param purpose_p where to store the purpose
- * @param pub_key public key to use for validation
- */
-struct MAJ_Specification
-MAJ_spec_eddsa_signed_purpose (const char *name,
-                               struct GNUNET_CRYPTO_EccSignaturePurpose **purpose_p,
-                               const struct GNUNET_CRYPTO_EddsaPublicKey *pub_key)
-{
-  struct MAJ_Specification ret =
-    {
-      .cmd = MAJ_CMD_EDDSA_SIGNATURE,
-      .field = name,
-      .details.eddsa_signature.purpose_p = purpose_p,
-      .details.eddsa_signature.pub_key = pub_key
     };
   return ret;
 }

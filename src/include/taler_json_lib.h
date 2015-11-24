@@ -53,18 +53,6 @@ TALER_json_from_abs (struct GNUNET_TIME_Absolute stamp);
 
 
 /**
- * Convert a signature (with purpose) to a JSON object representation.
- *
- * @param purpose purpose of the signature
- * @param signature the signature
- * @return the JSON reporesentation of the signature with purpose
- */
-json_t *
-TALER_json_from_eddsa_sig (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-                           const struct GNUNET_CRYPTO_EddsaSignature *signature);
-
-
-/**
  * Convert RSA public key to JSON.
  *
  * @param pk public key to convert
@@ -93,7 +81,8 @@ TALER_json_from_rsa_signature (struct GNUNET_CRYPTO_rsa_Signature *sig);
  * @return json string that encodes @a data
  */
 json_t *
-TALER_json_from_data (const void *data, size_t size);
+TALER_json_from_data (const void *data,
+                      size_t size);
 
 
 /**
