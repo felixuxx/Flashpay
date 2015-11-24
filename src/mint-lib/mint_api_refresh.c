@@ -676,6 +676,7 @@ serialize_melt_data (const struct MeltData *md,
   unsigned int j;
 
   size = 0;
+  asize = (size_t) -1; /* make the compiler happy */
   buf = NULL;
   /* we do 2 iterations, #1 to determine total size, #2 to
      actually construct the buffer */
