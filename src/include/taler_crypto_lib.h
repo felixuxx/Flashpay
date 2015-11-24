@@ -190,7 +190,7 @@ struct TALER_AuditorPublicKeyP
 
 
 /**
- * @brief Type of the public key used by the auditor.
+ * @brief Type of signatures used by the auditor.
  */
 struct TALER_AuditorSignatureP
 {
