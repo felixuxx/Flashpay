@@ -332,8 +332,7 @@ postgres_create_tables (void *cls,
   SQLEXEC_INDEX ("CREATE INDEX reserves_out_h_blind_ev_index ON "
                  "reserves_out (h_blind_ev)");
   /* Table with coins that have been (partially) spent, used to track
-     coin information only once.
-     TODO: maybe eliminate, this might be over-normalization (#3811) */
+     coin information only once. */
   SQLEXEC("CREATE TABLE IF NOT EXISTS known_coins "
           "(coin_pub BYTEA NOT NULL PRIMARY KEY"
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
