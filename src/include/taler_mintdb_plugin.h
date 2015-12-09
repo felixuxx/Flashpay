@@ -569,6 +569,23 @@ typedef void
 
 
 /**
+ * Function called with the results of the lookup of the
+ * wire transfer identifier information.
+ * 
+ * @param cls closure
+ * @param wtid base32-encoded wire transfer identifier, NULL
+ *         if the transaction was not yet done
+ * @param execution_time when was the transaction done, or
+ *         when we expect it to be done (if @a wtid was NULL);
+ *         #GNUNET_TIME_UNIT_FOREVER_ABS if the /deposit is unknown
+ *         to the mint
+ */
+typedef void
+(*TALER_MINTDB_DepositWtidCallback)(void *cls,
+				    const char *wtid,
+				    struct GNUNET_TIME_Absolute execution_time);
+
+/**
  * @brief The plugin API, returned from the plugin's "init" function.
  * The argument given to "init" is simply a configuration handle.
  */
@@ -1176,6 +1193,31 @@ struct TALER_MINTDB_Plugin
   (*free_coin_transaction_list) (void *cls,
                                  struct TALER_MINTDB_TransactionList *list);
 
+
+  /**
+   * Try to find the wire transfer details for a deposit operation.
+   * If we did not execute the deposit yet, return when it is supposed
+   * to be executed.
+   * 
+   * @param cls closure
+   * @param h_contract hash of the contract
+   * @param h_wire hash of merchant wire details
+   * @param coin_pub public key of deposited coin
+   * @param merchant_pub merchant public key
+   * @param transaction_id transaction identifier
+   * @param cb function to call with the result
+   * @param cb_cls closure to pass to @a cb
+   * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*wire_lookup_deposit_wtid)(void *cls,
+			      const struct GNUNET_HashCode *h_contract,
+			      const struct GNUNET_HashCode *h_wire,
+			      const struct TALER_CoinSpendPublicKeyP *coin_pub,
+			      const struct TALER_MerchantPublicKeyP *merchant_pub,
+			      uint64_t transaction_id,
+			      TALER_MINTDB_DepositWtidCallback cb,
+			      void *cb_cls);
 
 };
 

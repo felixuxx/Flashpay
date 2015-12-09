@@ -1551,4 +1551,97 @@ TMH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
 }
 
 
+/**
+ * Closure for #handle_wtid_data.
+ */
+struct DepositWtidContext 
+{
+
+  /**
+   * Where should we send the reply?
+   */
+  struct MHD_Connection *connection;
+
+  /**
+   * MHD result code to return.
+   */
+  int res;
+};
+
+
+/**
+ * Function called with the results of the lookup of the
+ * wire transfer identifier information.
+ * 
+ * @param cls our context for transmission
+ * @param wtid base32-encoded wire transfer identifier, NULL
+ *         if the transaction was not yet done
+ * @param execution_time when was the transaction done, or
+ *         when we expect it to be done (if @a wtid was NULL);
+ *         #GNUNET_TIME_UNIT_FOREVER_ABS if the /deposit is unknown
+ *         to the mint
+ */
+static void
+handle_wtid_data (void *cls,
+		  const char *wtid,
+		  struct GNUNET_TIME_Absolute execution_time)
+{
+  struct DepositWtidContext *ctx = cls;
+
+  if (NULL == wtid)
+  {
+    if (GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us == 
+	execution_time.abs_value_us)
+      return TMH_RESPONSE_reply_deposit_unknown (ctx->connection);
+    else
+      return TMH_RESPONSE_reply_deposit_pending (ctx->connection);
+  }
+  else
+  {
+    return TMH_RESPONSE_reply_deposit_wtid (ctx->connection);
+  }  
+}
+
+
+/**
+ * Execute a "/deposit/wtid".  Returns the transfer information
+ * associated with the given deposit.
+ *
+ * @param connection the MHD connection to handle
+ * @param h_contract hash of the contract
+ * @param h_wire hash of the wire details
+ * @param coin_pub public key of the coin to link
+ * @param merchant_pub public key of the merchant
+ * @param transaction_id transaction ID of the merchant
+ * @return MHD result code
+ */
+int
+TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
+                             const struct GNUNET_HashCode *h_contract,
+			     const struct GNUNET_HashCode *h_wire,
+			     const struct TALER_CoinSpendPublicKeyP *coin_pub,
+			     const struct TALER_MerchantPublicKeyP *merchant_pub,
+			     uint64_t transaction_id)
+{
+  int ret;
+  struct DepositWtidContext ctx;
+
+  ctx.connection = connection;
+  ret = TMH_plugin->wire_lookup_deposit_wtid (TMH_plugin->cls,
+					      h_contract,
+					      h_wire,
+					      coin_pub,
+					      merchant_pub,
+					      transaction_id,
+					      &handle_wtid_data,
+					      connection);
+  if (GNUNET_SYSERR == ret)
+  {
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
+  return ctx.res;
+}
+
+
 /* end of taler-mint-httpd_db.c */

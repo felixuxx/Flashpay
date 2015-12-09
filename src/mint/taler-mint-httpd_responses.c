@@ -1050,4 +1050,55 @@ TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
 }
 
 
+/**
+ * A merchant asked for details about a deposit, but
+ * we do not know anything about the deposit. Generate the
+ * 404 reply.
+ *
+ * @param connection connection to the client
+ * @param 
+ * @return MHD result code
+ */
+int
+TMH_RESPONSE_reply_deposit_unknown (struct MHD_Connection *connection,
+				    ...)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return MHD_NO;
+}
+
+
+/**
+ * A merchant asked for details about a deposit, but
+ * we did not execute the deposit yet. Generate a 202 reply.
+ *
+ * @param connection connection to the client
+ * @param 
+ * @return MHD result code
+ */
+int
+TMH_RESPONSE_reply_deposit_pending (struct MHD_Connection *connection,
+				    ...)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return MHD_NO;
+}
+
+
+/**
+ * A merchant asked for details about a deposit.  Provide
+ * them. Generates the 200 reply.
+ *
+ * @param connection connection to the client
+ * @param 
+ * @return MHD result code
+ */
+int
+TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
+				 ...)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return MHD_NO;
+}
+
 /* end of taler-mint-httpd_responses.c */
