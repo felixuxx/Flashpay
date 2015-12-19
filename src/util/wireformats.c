@@ -334,7 +334,7 @@ validate_sepa (const json_t *wire)
                   "s:s," /* name: beneficiary name */
                   "s:s," /* BIC: beneficiary bank's BIC */
                   "s:i," /* r: random 64-bit integer nounce */
-                  "s?s"  /* address: address of the beneficiary */
+                  "s:s"  /* address: address of the beneficiary */
                   "}",
                   "type", &type,
                   "IBAN", &iban,

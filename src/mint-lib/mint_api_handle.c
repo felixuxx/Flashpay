@@ -695,6 +695,10 @@ MAH_path_to_url (struct TALER_MINT_Handle *h,
 {
   char *url;
 
+  if ( ('/' == path[0]) &&
+       (0 < strlen (h->url)) &&
+       ('/' == h->url[strlen (h->url) - 1]) )
+    path++; /* avoid generating URL with "//" from concat */
   GNUNET_asprintf (&url,
                    "%s%s",
                    h->url,
