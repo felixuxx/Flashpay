@@ -1592,13 +1592,13 @@ handle_wtid_data (void *cls,
   {
     if (GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us == 
 	execution_time.abs_value_us)
-      return TMH_RESPONSE_reply_deposit_unknown (ctx->connection);
+      ctx->res = TMH_RESPONSE_reply_deposit_unknown (ctx->connection);
     else
-      return TMH_RESPONSE_reply_deposit_pending (ctx->connection);
+      ctx->res = TMH_RESPONSE_reply_deposit_pending (ctx->connection);
   }
   else
   {
-    return TMH_RESPONSE_reply_deposit_wtid (ctx->connection);
+    ctx->res = TMH_RESPONSE_reply_deposit_wtid (ctx->connection);
   }  
 }
 
