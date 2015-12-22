@@ -1524,6 +1524,7 @@ interpreter_run (void *cls,
         fail (is);
         return;
       }
+      json_decref (wire);
       trigger_context_task ();
       return;
     }

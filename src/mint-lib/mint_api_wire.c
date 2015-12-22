@@ -358,6 +358,7 @@ request_wire_method (struct TALER_MINT_WireHandle *wh)
                          GNUNET_YES,
                          &handle_wire_method_finished,
                          wh);
+  TALER_MINT_perform (ctx);
 }
 
 

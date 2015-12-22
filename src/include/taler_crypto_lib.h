@@ -102,6 +102,18 @@ struct TALER_MerchantPrivateKeyP
 
 
 /**
+ * @brief Type of signatures made by merchants.
+ */
+struct TALER_MerchantSignatureP
+{
+  /**
+   * Taler uses EdDSA for merchants.
+   */
+  struct GNUNET_CRYPTO_EddsaSignature eddsa_sig;
+};
+
+
+/**
  * @brief Type of transfer public keys used during refresh
  * operations.
  */

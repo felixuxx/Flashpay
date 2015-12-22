@@ -3355,13 +3355,42 @@ postgres_get_coin_transactions (void *cls,
     }
     PQclear (result);
   }
-  /* FIXME: Handle locked coins (#3625) */
   return head;
  cleanup:
   if (NULL != head)
     common_free_coin_transaction_list (cls,
                                        head);
   return NULL;
+}
+
+
+/**
+ * Try to find the wire transfer details for a deposit operation.
+ * If we did not execute the deposit yet, return when it is supposed
+ * to be executed.
+ * 
+ * @param cls closure
+ * @param h_contract hash of the contract
+ * @param h_wire hash of merchant wire details
+ * @param coin_pub public key of deposited coin
+ * @param merchant_pub merchant public key
+ * @param transaction_id transaction identifier
+ * @param cb function to call with the result
+ * @param cb_cls closure to pass to @a cb
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_wire_lookup_deposit_wtid (void *cls,
+				   const struct GNUNET_HashCode *h_contract,
+				   const struct GNUNET_HashCode *h_wire,
+				   const struct TALER_CoinSpendPublicKeyP *coin_pub,
+				   const struct TALER_MerchantPublicKeyP *merchant_pub,
+				   uint64_t transaction_id,
+				   TALER_MINTDB_DepositWtidCallback cb,
+				   void *cb_cls)
+{
+  GNUNET_break (0); // not implemented
+  return GNUNET_SYSERR;
 }
 
 
@@ -3436,6 +3465,7 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->get_transfer = &postgres_get_transfer;
   plugin->get_coin_transactions = &postgres_get_coin_transactions;
   plugin->free_coin_transaction_list = &common_free_coin_transaction_list;
+  plugin->wire_lookup_deposit_wtid = &postgres_wire_lookup_deposit_wtid;
   return plugin;
 }
 

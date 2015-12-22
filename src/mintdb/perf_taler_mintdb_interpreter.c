@@ -1735,7 +1735,7 @@ interpret (struct PERF_TALER_MINTDB_interpreter_state *state)
                                                             1,
                                                             1,
                                                             refresh_commit);
-                                                            
+          GNUNET_assert (GNUNET_OK == ret);                                                  
         }
         break;
 

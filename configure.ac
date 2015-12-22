@@ -142,6 +142,11 @@ AS_IF([test $jansson = 0],
 *** ]])])
 
 
+# test for postgres
+AX_LIB_POSTGRESQL([9.3])
+if test "$found_postgresql" = "yes"; then
+  postgres=true
+fi
 
 else
 
@@ -195,11 +200,6 @@ AC_SUBST(TALER_LIB_LDFLAGS)
 AC_SUBST(TALER_PLUGIN_LDFLAGS)
 
 
-# test for postgres
-AX_LIB_POSTGRESQL([9.3])
-if test "$found_postgresql" = "yes"; then
-  postgres=true
-fi
 AM_CONDITIONAL(HAVE_POSTGRESQL, test x$postgres = xtrue)
 
 # check for libgnurl
