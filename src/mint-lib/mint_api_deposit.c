@@ -497,6 +497,9 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
                           json_dumps (deposit_obj,
                                       JSON_COMPACT)));
   json_decref (deposit_obj);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "URL for deposit: `%s'",
+              dh->url);
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
