@@ -604,6 +604,10 @@ keys_completed_cb (void *cls,
   json_t *resp_obj;
   long response_code;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Received keys from URL `%s'.\n",
+              kr->url);
+
   resp_obj = MAC_download_get_result (&kr->db,
                                       eh,
                                       &response_code);
@@ -743,6 +747,9 @@ TALER_MINT_connect (struct TALER_MINT_Context *ctx,
   kr = GNUNET_new (struct KeysRequest);
   kr->mint = mint;
   kr->url = MAH_path_to_url (mint, "/keys");
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Requesting keys with URL `%s'.\n",
+              kr->url);
   c = curl_easy_init ();
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (c,
