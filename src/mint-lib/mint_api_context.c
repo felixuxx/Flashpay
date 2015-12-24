@@ -346,11 +346,6 @@ TALER_MINT_get_select_info (struct TALER_MINT_Context *ctx,
                  curl_multi_timeout (ctx->multi,
                                      &to));
 
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "CURL-given timeout is %ld, old timeout is %ld\n",
-              to, timeout);
-
-
   /* Only if what we got back from curl is smaller than what we
      already had (-1 == infinity!), then update timeout */
   if ( (to < *timeout) &&
@@ -358,7 +353,7 @@ TALER_MINT_get_select_info (struct TALER_MINT_Context *ctx,
     *timeout = to;
   if ( (-1 == (*timeout)) &&
        (NULL != ctx->jobs_head) )
-    *timeout = 1000 * 60 * 5; /* curl is not always good about giving timeouts */
+    *timeout = to;
 }
 
 
