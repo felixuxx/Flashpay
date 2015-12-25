@@ -319,6 +319,16 @@ verify_signatures (const struct TALER_MINT_DenomPublicKey *dki,
                                   &coin_pub->eddsa_pub))
   {
     TALER_LOG_WARNING ("Invalid coin signature on /deposit request\n");
+    {
+      char *s;
+      s = TALER_amount_to_string (amount);
+      TALER_LOG_DEBUG ("... amount_with_fee was %s\n", s);
+      GNUNET_free (s);
+      s = TALER_amount_to_string (&dki->fee_deposit);
+      TALER_LOG_DEBUG ("... deposit_fee was %s\n", s);
+      GNUNET_free (s);
+    }
+
     return GNUNET_SYSERR;
   }
 
@@ -498,7 +508,7 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
                                       JSON_COMPACT)));
   json_decref (deposit_obj);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "URL for deposit: `%s'",
+              "URL for deposit: `%s'\n",
               dh->url);
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
