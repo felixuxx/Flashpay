@@ -334,14 +334,17 @@ TALER_MINT_get_select_info (struct TALER_MINT_Context *ctx,
                             long *timeout)
 {
   long to;
+  int m;
 
+  m = -1;
   GNUNET_assert (CURLM_OK ==
                  curl_multi_fdset (ctx->multi,
                                    read_fd_set,
                                    write_fd_set,
                                    except_fd_set,
-                                   max_fd));
+                                   &m));
   to = *timeout;
+  *max_fd = GNUNET_MAX (m, *max_fd);
   GNUNET_assert (CURLM_OK ==
                  curl_multi_timeout (ctx->multi,
                                      &to));
