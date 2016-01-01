@@ -603,6 +603,7 @@ keys_completed_cb (void *cls,
   struct TALER_MINT_Handle *mint = kr->mint;
   json_t *resp_obj;
   long response_code;
+  TALER_MINT_CertificationCallback cb;
 
   resp_obj = MAC_download_get_result (&kr->db,
                                       eh,
@@ -638,11 +639,11 @@ keys_completed_cb (void *cls,
     free_keys_request (kr);
     mint->state = MHS_FAILED;
     /* notify application that we failed */
-    if (NULL != mint->cert_cb)
+    if (NULL != (cb = mint->cert_cb))
     {
-      mint->cert_cb (mint->cert_cb_cls,
-                     NULL);
       mint->cert_cb = NULL;
+      cb (mint->cert_cb_cls,
+	  NULL);
     }
     return;
   }
@@ -650,11 +651,11 @@ keys_completed_cb (void *cls,
   free_keys_request (kr);
   mint->state = MHS_CERT;
   /* notify application about the key information */
-  if (NULL != mint->cert_cb)
+  if (NULL != (cb = mint->cert_cb))
   {
-    mint->cert_cb (mint->cert_cb_cls,
-                   &mint->key_data);
     mint->cert_cb = NULL;
+    cb (mint->cert_cb_cls,
+	&mint->key_data);
   }
 }
 
