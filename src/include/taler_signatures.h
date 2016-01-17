@@ -880,6 +880,7 @@ struct TALER_ConfirmWirePS
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
+  // FIXME: add details (#3888:10056)
 
 };
 
