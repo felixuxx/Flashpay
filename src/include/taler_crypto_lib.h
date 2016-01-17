@@ -428,6 +428,37 @@ struct TALER_RefreshLinkDecrypted
 };
 
 
+/**
+ * Binary information encoded in Crockford's Base32 in wire transfer
+ * subjects of transfers from Taler to a merchant.  The actual value
+ * is chosen by the mint and has no particular semantics, other than
+ * being unique so that the mint can lookup details about the wire
+ * transfer when needed.
+ */
+struct TALER_WireTransferIdentifierP
+{
+
+  /**
+   * Raw value.  Note that typical payment systems (SEPA, ACH) support
+   * at least two lines of 27 ASCII characters to encode a transaction
+   * subject or "details", for a total of 54 characters.  (The payment
+   * system protocols often support more lines, but the forms presented
+   * to customers are usually limited to 54 characters.)
+   *
+   * With a Base32-encoding of 5 bit per character, this gives us 270
+   * bits or (rounded down) 33 bytes.  So we use the first 32 bytes to
+   * encode the actual value (i.e. a 256-bit / 32-byte public key or
+   * a hash code), and the last byte for a minimalistic checksum.
+   */
+  uint8_t raw[32];
+
+  /**
+   * Checksum using CRC8 over the @e raw data.
+   */
+  uint8_t crc8;
+};
+
+
 GNUNET_NETWORK_STRUCT_END
 
 

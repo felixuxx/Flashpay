@@ -1552,9 +1552,189 @@ TMH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
 
 
 /**
+ * Closure for #handle_transaction_data.
+ */
+struct WtidTransactionContext
+{
+
+  /**
+   * Total amount of the wire transfer, as calculated by
+   * summing up the individual amounts. To be rounded down
+   * to calculate the real transfer amount at the end.
+   * Only valid if @e is_valid is #GNUNET_YES.
+   */
+  struct TALER_Amount total;
+
+  /**
+   * Public key of the merchant, only valid if @e is_valid
+   * is #GNUNET_YES.
+   */
+  struct TALER_MerchantPublicKeyP merchant_pub;
+
+  /**
+   * Hash of the wire details of the merchant (identical for all
+   * deposits), only valid if @e is_valid is #GNUNET_YES.
+   */
+  struct GNUNET_HashCode h_wire;
+
+  /**
+   * JSON array with details about the individual deposits.
+   */
+  json_t *deposits;
+
+  /**
+   * Initially #GNUNET_NO, if we found no deposits so far.  Set to
+   * #GNUNET_YES if we got transaction data, and the database replies
+   * remained consistent with respect to @e merchant_pub and @e h_wire
+   * (as they should).  Set to #GNUNET_SYSERR if we encountered an
+   * internal error.
+   */
+  int is_valid;
+
+};
+
+
+/**
+ * Function called with the results of the lookup of the
+ * transaction data for the given wire transfer identifier.
+ *
+ * @param cls our context for transmission
+ * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
+ * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
+ * @param h_contract which contract was this payment about
+ * @param transaction_id merchant's transaction ID for the payment
+ * @param coin_pub which public key was this payment about
+ * @param deposit_value amount contributed by this coin in total
+ * @param deposit_fee deposit fee charged by mint for this coin
+ */
+static void
+handle_transaction_data (void *cls,
+                         const struct TALER_MerchantPublicKeyP *merchant_pub,
+                         const struct GNUNET_HashCode *h_wire,
+                         const struct GNUNET_HashCode *h_contract,
+                         uint64_t transaction_id,
+                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                         const struct TALER_Amount *deposit_value,
+                         const struct TALER_Amount *deposit_fee)
+{
+  struct WtidTransactionContext *ctx = cls;
+  struct TALER_Amount delta;
+
+  if (GNUNET_SYSERR == ctx->is_valid)
+    return;
+  if (GNUNET_NO == ctx->is_valid)
+  {
+    ctx->merchant_pub = *merchant_pub;
+    ctx->h_wire = *h_wire;
+    ctx->is_valid = GNUNET_YES;
+    if (GNUNET_OK !=
+        TALER_amount_subtract (&ctx->total,
+                               deposit_value,
+                               deposit_fee))
+    {
+      GNUNET_break (0);
+      ctx->is_valid = GNUNET_SYSERR;
+      return;
+    }
+  }
+  else
+  {
+    if ( (0 != memcmp (&ctx->merchant_pub,
+                       merchant_pub,
+                       sizeof (struct TALER_MerchantPublicKeyP))) ||
+         (0 != memcmp (&ctx->h_wire,
+                       h_wire,
+                       sizeof (struct GNUNET_HashCode))) )
+    {
+      GNUNET_break (0);
+      ctx->is_valid = GNUNET_SYSERR;
+      return;
+    }
+    if (GNUNET_OK !=
+        TALER_amount_subtract (&delta,
+                               deposit_value,
+                               deposit_fee))
+    {
+      GNUNET_break (0);
+      ctx->is_valid = GNUNET_SYSERR;
+      return;
+    }
+    if (GNUNET_OK !=
+        TALER_amount_add (&ctx->total,
+                          &ctx->total,
+                          &delta))
+    {
+      GNUNET_break (0);
+      ctx->is_valid = GNUNET_SYSERR;
+      return;
+    }
+  }
+  /* NOTE: We usually keep JSON stuff out of the _DB file, and this
+     is also ugly if we ever add signatures over this data. (#4135) */
+  json_array_append (ctx->deposits,
+                     json_pack ("{s:o, s:o, s:o, s:I, s:o}",
+                                "deposit_value", TALER_json_from_amount (deposit_value),
+                                "deposit_fee", TALER_json_from_amount (deposit_fee),
+                                "H_contract", TALER_json_from_data (h_contract,
+                                                                    sizeof (struct GNUNET_HashCode)),
+                                "transaction_id", (json_int_t) transaction_id,
+                                "coin_pub", TALER_json_from_data (coin_pub,
+                                                                  sizeof (struct TALER_CoinSpendPublicKeyP))));
+}
+
+
+/**
+ * Execute a "/wire/deposits".  Returns the transaction information
+ * associated with the given wire transfer identifier.
+ *
+ * @param connection the MHD connection to handle
+ * @param wtid wire transfer identifier to resolve
+ * @return MHD result code
+ */
+int
+TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
+                             const struct TALER_WireTransferIdentifierP *wtid)
+{
+  int ret;
+  struct WtidTransactionContext ctx;
+
+  ctx.is_valid = GNUNET_NO;
+  ctx.deposits = json_array ();
+  ret = TMH_plugin->lookup_wire_transactions (TMH_plugin->cls,
+                                              &wtid->raw,
+                                              sizeof (wtid->raw),
+                                              &handle_transaction_data,
+                                              &ctx);
+  if (GNUNET_SYSERR == ret)
+  {
+    GNUNET_break (0);
+    json_decref (ctx.deposits);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
+  if (GNUNET_SYSERR == ctx.is_valid)
+  {
+    GNUNET_break (0);
+    json_decref (ctx.deposits);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
+  if (GNUNET_NO == ctx.is_valid)
+  {
+    json_decref (ctx.deposits);
+    return TMH_RESPONSE_reply_arg_unknown (connection,
+                                           "wtid");
+  }
+  return TMH_RESPONSE_reply_wire_deposit_details (connection,
+                                                  &ctx.total,
+                                                  &ctx.merchant_pub,
+                                                  &ctx.h_wire,
+                                                  ctx.deposits);
+}
+
+
+/**
  * Closure for #handle_wtid_data.
  */
-struct DepositWtidContext 
+struct DepositWtidContext
 {
 
   /**
@@ -1572,7 +1752,7 @@ struct DepositWtidContext
 /**
  * Function called with the results of the lookup of the
  * wire transfer identifier information.
- * 
+ *
  * @param cls our context for transmission
  * @param wtid base32-encoded wire transfer identifier, NULL
  *         if the transaction was not yet done
@@ -1590,16 +1770,19 @@ handle_wtid_data (void *cls,
 
   if (NULL == wtid)
   {
-    if (GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us == 
+    if (GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us ==
 	execution_time.abs_value_us)
       ctx->res = TMH_RESPONSE_reply_deposit_unknown (ctx->connection);
     else
-      ctx->res = TMH_RESPONSE_reply_deposit_pending (ctx->connection);
+      ctx->res = TMH_RESPONSE_reply_deposit_pending (ctx->connection,
+                                                     execution_time);
   }
   else
   {
-    ctx->res = TMH_RESPONSE_reply_deposit_wtid (ctx->connection);
-  }  
+    ctx->res = TMH_RESPONSE_reply_deposit_wtid (ctx->connection,
+                                                wtid,
+                                                execution_time);
+  }
 }
 
 
@@ -1627,6 +1810,7 @@ TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
   struct DepositWtidContext ctx;
 
   ctx.connection = connection;
+  ctx.res = MHD_NO; /* this value should never be read... */
   ret = TMH_plugin->wire_lookup_deposit_wtid (TMH_plugin->cls,
 					      h_contract,
 					      h_wire,
@@ -1634,7 +1818,7 @@ TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
 					      merchant_pub,
 					      transaction_id,
 					      &handle_wtid_data,
-					      connection);
+					      &ctx);
   if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);

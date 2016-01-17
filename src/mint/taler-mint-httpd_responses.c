@@ -1056,15 +1056,15 @@ TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
  * 404 reply.
  *
  * @param connection connection to the client
- * @param 
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_deposit_unknown (struct MHD_Connection *connection,
-				    ...)
+TMH_RESPONSE_reply_deposit_unknown (struct MHD_Connection *connection)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return MHD_NO;
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       "{s:s}",
+                                       "error", "Deposit unknown");
 }
 
 
@@ -1073,15 +1073,17 @@ TMH_RESPONSE_reply_deposit_unknown (struct MHD_Connection *connection,
  * we did not execute the deposit yet. Generate a 202 reply.
  *
  * @param connection connection to the client
- * @param 
+ * @param planned_exec_time planned execution time
  * @return MHD result code
  */
 int
 TMH_RESPONSE_reply_deposit_pending (struct MHD_Connection *connection,
-				    ...)
+				    struct GNUNET_TIME_Absolute planned_exec_time)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return MHD_NO;
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_FOUND,
+                                       "{s:o}",
+                                       "execution_time", TALER_json_from_abs (planned_exec_time));
 }
 
 
@@ -1090,15 +1092,58 @@ TMH_RESPONSE_reply_deposit_pending (struct MHD_Connection *connection,
  * them. Generates the 200 reply.
  *
  * @param connection connection to the client
- * @param 
+ * @param wtid wire transfer identifier (as 0-terminated string)
+ * @param exec_time execution time of the wire transfer
  * @return MHD result code
  */
 int
 TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
-				 ...)
+				 const char *wtid,
+                                 struct GNUNET_TIME_Absolute exec_time)
+{
+  struct TALER_ConfirmWirePS cw;
+  struct TALER_MintPublicKeyP pub;
+  struct TALER_MintSignatureP sig;
+
+  cw.purpose.purpose = htonl (TALER_SIGNATURE_MINT_CONFIRM_WIRE);
+  cw.purpose.size = htonl (sizeof (struct TALER_ConfirmWirePS));
+  // FIXME: fill in rest of 'cw'!
+  TMH_KS_sign (&cw.purpose,
+               &pub,
+               &sig);
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_FOUND,
+                                       "{s:s, s:o, s:o, s:o}",
+                                       "wtid", wtid,
+                                       "execution_time", TALER_json_from_abs (exec_time),
+                                       "mint_sig", TALER_json_from_data (&sig,
+                                                                         sizeof (sig)),
+                                       "mint_pub", TALER_json_from_data (&pub,
+                                                                         sizeof (pub)));
+}
+
+
+/**
+ * A merchant asked for transaction details about a wire transfer.
+ * Provide them. Generates the 200 reply.
+ *
+ * @param connection connection to the client
+ * @param total total amount that was transferred
+ * @param merchant_pub public key of the merchant
+ * @param h_wire destination account
+ * @param deposits details about the combined deposits
+ * @return MHD result code
+ */
+int
+TMH_RESPONSE_reply_wire_deposit_details (struct MHD_Connection *connection,
+                                         const struct TALER_Amount *total,
+                                         const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                         const struct GNUNET_HashCode *h_wire,
+                                         json_t *deposits)
 {
   GNUNET_break (0); // FIXME: not implemented
   return MHD_NO;
 }
+
 
 /* end of taler-mint-httpd_responses.c */

@@ -3365,10 +3365,33 @@ postgres_get_coin_transactions (void *cls,
 
 
 /**
+ * Lookup the list of Taler transactions that was aggregated
+ * into a wire transfer by the respective @a raw_wtid.
+ *
+ * @param cls closure
+ * @param raw_wtid the raw wire transfer identifier we used
+ * @param raw_len number of bytes in @a raw_wtid (right now always 32)
+ * @param cb function to call on each transaction found
+ * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on database errors
+ */
+static int
+postgres_lookup_wire_transactions (void *cls,
+                                   const void *raw_wtid,
+                                   size_t raw_len,
+                                   TALER_MINTDB_TransactionDataCallback cb,
+                                   void *cb_cls)
+{
+  GNUNET_break (0); // not implemented!
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Try to find the wire transfer details for a deposit operation.
  * If we did not execute the deposit yet, return when it is supposed
  * to be executed.
- * 
+ *
  * @param cls closure
  * @param h_contract hash of the contract
  * @param h_wire hash of merchant wire details
@@ -3465,6 +3488,7 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->get_transfer = &postgres_get_transfer;
   plugin->get_coin_transactions = &postgres_get_coin_transactions;
   plugin->free_coin_transaction_list = &common_free_coin_transaction_list;
+  plugin->lookup_wire_transactions = &postgres_lookup_wire_transactions;
   plugin->wire_lookup_deposit_wtid = &postgres_wire_lookup_deposit_wtid;
   return plugin;
 }

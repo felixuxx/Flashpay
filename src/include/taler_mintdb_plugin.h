@@ -571,7 +571,7 @@ typedef void
 /**
  * Function called with the results of the lookup of the
  * wire transfer identifier information.
- * 
+ *
  * @param cls closure
  * @param wtid base32-encoded wire transfer identifier, NULL
  *         if the transaction was not yet done
@@ -584,6 +584,31 @@ typedef void
 (*TALER_MINTDB_DepositWtidCallback)(void *cls,
 				    const char *wtid,
 				    struct GNUNET_TIME_Absolute execution_time);
+
+
+/**
+ * Function called with the results of the lookup of the
+ * transaction data associated with a wire transfer identifier.
+ *
+ * @param cls closure
+ * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
+ * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
+ * @param h_contract which contract was this payment about
+ * @param transaction_id merchant's transaction ID for the payment
+ * @param coin_pub which public key was this payment about
+ * @param deposit_value amount contributed by this coin in total
+ * @param deposit_fee deposit fee charged by mint for this coin
+ */
+typedef void
+(*TALER_MINTDB_TransactionDataCallback)(void *cls,
+                                        const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                        const struct GNUNET_HashCode *h_wire,
+                                        const struct GNUNET_HashCode *h_contract,
+                                        uint64_t transaction_id,
+                                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                        const struct TALER_Amount *deposit_value,
+                                        const struct TALER_Amount *deposit_fee);
+
 
 /**
  * @brief The plugin API, returned from the plugin's "init" function.
@@ -1195,10 +1220,29 @@ struct TALER_MINTDB_Plugin
 
 
   /**
+   * Lookup the list of Taler transactions that was aggregated
+   * into a wire transfer by the respective @a raw_wtid.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param raw_wtid the raw wire transfer identifier we used
+   * @param raw_len number of bytes in @a raw_wtid (right now always 32)
+   * @param cb function to call on each transaction found
+   * @param cb_cls closure for @a cb
+   * @return #GNUNET_OK on success, #GNUNET_SYSERR on database errors
+   */
+  int
+  (*lookup_wire_transactions) (void *cls,
+                               const void *raw_wtid,
+                               size_t raw_len,
+                               TALER_MINTDB_TransactionDataCallback cb,
+                               void *cb_cls);
+
+
+  /**
    * Try to find the wire transfer details for a deposit operation.
    * If we did not execute the deposit yet, return when it is supposed
    * to be executed.
-   * 
+   *
    * @param cls closure
    * @param h_contract hash of the contract
    * @param h_wire hash of merchant wire details

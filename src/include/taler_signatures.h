@@ -106,6 +106,11 @@
  */
 #define TALER_SIGNATURE_MINT_WIRE_TYPES 1036
 
+/**
+ * Signature where the Mint confirms the /deposit/wtid response.
+ */
+#define TALER_SIGNATURE_MINT_CONFIRM_WIRE 1036
+
 
 /*********************/
 /* Wallet signatures */
@@ -863,6 +868,20 @@ struct TALER_ContractPS
 };
 
 
+/**
+ * Details affirmed by the mint about a wire transfer the mint
+ * claims to have done with respect to a deposit operation.
+ */
+struct TALER_ConfirmWirePS
+{
+  /**
+   * Purpose header for the signature over the contract with
+   * purpose #TALER_SIGNATURE_MINT_CONFIRM_WIRE.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+
+};
 
 GNUNET_NETWORK_STRUCT_END
 

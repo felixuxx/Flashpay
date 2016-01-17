@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -46,8 +46,24 @@ TMH_TRACKING_handler_wire_deposits (struct TMH_RequestHandler *rh,
                                     const char *upload_data,
                                     size_t *upload_data_size)
 {
-  GNUNET_break (0); // not implemented
-  return MHD_NO;
+  struct TALER_WireTransferIdentifierP wtid;
+  int res;
+
+  res = TMH_PARSE_mhd_request_arg_data (connection,
+                                        "wtid",
+                                        &wtid,
+                                        sizeof (struct TALER_WireTransferIdentifierP));
+  if (GNUNET_SYSERR == res)
+    return MHD_NO; /* internal error */
+  if (GNUNET_NO == res)
+    return MHD_YES; /* parse error */
+  if (wtid.crc8 !=
+      GNUNET_CRYPTO_crc8_n (&wtid.raw,
+                            sizeof (wtid.raw)))
+    return TMH_RESPONSE_reply_arg_invalid (connection,
+                                           "wtid");
+  return TMH_DB_execute_wire_deposits (connection,
+                                       &wtid);
 }
 
 
@@ -57,7 +73,7 @@ TMH_TRACKING_handler_wire_deposits (struct TMH_RequestHandler *rh,
  *
  * @param connection the MHD connection to handle
  * @param tps signed request to execute
- * @param merchant_pub public key from the merchant 
+ * @param merchant_pub public key from the merchant
  * @param merchant_sig signature from the merchant (to be checked)
  * @param transaction_id transaction ID (in host byte order)
  * @return MHD result code

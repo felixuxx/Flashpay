@@ -253,12 +253,10 @@ TMH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection
  * 404 reply.
  *
  * @param connection connection to the client
- * @param 
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_deposit_unknown (struct MHD_Connection *connection,
-				    ...);
+TMH_RESPONSE_reply_deposit_unknown (struct MHD_Connection *connection);
 
 
 /**
@@ -266,12 +264,12 @@ TMH_RESPONSE_reply_deposit_unknown (struct MHD_Connection *connection,
  * we did not execute the deposit yet. Generate a 202 reply.
  *
  * @param connection connection to the client
- * @param 
+ * @param planned_exec_time planned execution time
  * @return MHD result code
  */
 int
 TMH_RESPONSE_reply_deposit_pending (struct MHD_Connection *connection,
-				    ...);
+				    struct GNUNET_TIME_Absolute planned_exec_time);
 
 
 /**
@@ -279,12 +277,33 @@ TMH_RESPONSE_reply_deposit_pending (struct MHD_Connection *connection,
  * them. Generates the 200 reply.
  *
  * @param connection connection to the client
- * @param 
+ * @param wtid wire transfer identifier (as 0-terminated string)
+ * @param exec_time execution time of the wire transfer
  * @return MHD result code
  */
 int
 TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
-				 ...);
+				 const char *wtid,
+                                 struct GNUNET_TIME_Absolute exec_time);
+
+
+/**
+ * A merchant asked for transaction details about a wire transfer.
+ * Provide them. Generates the 200 reply.
+ *
+ * @param connection connection to the client
+ * @param total total amount that was transferred
+ * @param merchant_pub public key of the merchant
+ * @param h_wire destination account
+ * @param deposits details about the combined deposits
+ * @return MHD result code
+ */
+int
+TMH_RESPONSE_reply_wire_deposit_details (struct MHD_Connection *connection,
+                                         const struct TALER_Amount *total,
+                                         const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                         const struct GNUNET_HashCode *h_wire,
+                                         json_t *deposits);
 
 
 /**

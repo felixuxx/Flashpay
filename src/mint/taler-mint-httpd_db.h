@@ -193,6 +193,19 @@ TMH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
 
 
 /**
+ * Execute a "/wire/deposits".  Returns the transaction information
+ * associated with the given wire transfer identifier.
+ *
+ * @param connection the MHD connection to handle
+ * @param wtid wire transfer identifier to resolve
+ * @return MHD result code
+ */
+int
+TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
+                              const struct TALER_WireTransferIdentifierP *wtid);
+
+
+/**
  * Execute a "/deposit/wtid".  Returns the transfer information
  * associated with the given deposit.
  *
@@ -211,6 +224,7 @@ TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
 			     const struct TALER_CoinSpendPublicKeyP *coin_pub,
 			     const struct TALER_MerchantPublicKeyP *merchant_pub,
 			     uint64_t transaction_id);
+
 
 #endif
 /* TALER_MINT_HTTPD_DB_H */
