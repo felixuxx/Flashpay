@@ -434,6 +434,14 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
     TALER_LOG_WARNING ("Denomination key unknown to mint\n");
     return NULL;
   }
+  if (GNUNET_SYSERR ==
+      TALER_amount_subtract (&amount_without_fee,
+                             amount,
+                             &dki->fee_deposit))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
 
   if (GNUNET_OK !=
       verify_signatures (dki,
@@ -492,9 +500,6 @@ TALER_MINT_deposit (struct TALER_MINT_Handle *mint,
   dh->depconf.transaction_id = GNUNET_htonll (transaction_id);
   dh->depconf.timestamp = GNUNET_TIME_absolute_hton (timestamp);
   dh->depconf.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
-  TALER_amount_subtract (&amount_without_fee,
-                         amount,
-                         &dki->fee_deposit);
   TALER_amount_hton (&dh->depconf.amount_without_fee,
                      &amount_without_fee);
   dh->depconf.coin_pub = *coin_pub;
