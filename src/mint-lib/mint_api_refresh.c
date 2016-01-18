@@ -334,12 +334,9 @@ free_melt_data (struct MeltData *md)
 
   for (i=0;i<TALER_CNC_KAPPA;i++)
   {
-    if (NULL != md->fresh_coins)
-    {
-      for (j=0;j<md->num_fresh_coins;j++)
-        free_fresh_coin (&md->fresh_coins[i][j]);
-      GNUNET_free (md->fresh_coins[i]);
-    }
+    for (j=0;j<md->num_fresh_coins;j++)
+      free_fresh_coin (&md->fresh_coins[i][j]);
+    GNUNET_free (md->fresh_coins[i]);
   }
   /* Finally, clean up a bit...
      (NOTE: compilers might optimize this away, so this is
@@ -774,7 +771,7 @@ deserialize_melt_data (const char *buf,
                                      &buf[off],
                                      buf_size - off,
                                      &ok);
-  if (off != buf_size)        
+  if (off != buf_size)
   {
     GNUNET_break (0);
     ok = GNUNET_NO;
