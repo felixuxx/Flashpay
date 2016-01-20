@@ -429,13 +429,15 @@ struct TALER_RefreshLinkDecrypted
 
 
 /**
- * Binary information encoded in Crockford's Base32 in wire transfer
- * subjects of transfers from Taler to a merchant.  The actual value
- * is chosen by the mint and has no particular semantics, other than
- * being unique so that the mint can lookup details about the wire
- * transfer when needed.
+ * Length of the raw value in the Taler wire transfer identifier
+ * (in binary representation).
  */
-struct TALER_WireTransferIdentifierP
+#define TALER_WIRE_TRANSFER_IDENTIFIER_LEN 32
+
+/**
+ * Raw value of a wire transfer subjects, without the checksum.
+ */
+struct TALER_WireTransferIdentifierRawP
 {
 
   /**
@@ -450,7 +452,24 @@ struct TALER_WireTransferIdentifierP
    * encode the actual value (i.e. a 256-bit / 32-byte public key or
    * a hash code), and the last byte for a minimalistic checksum.
    */
-  uint8_t raw[32];
+  uint8_t raw[TALER_WIRE_TRANSFER_IDENTIFIER_LEN];
+};
+
+
+/**
+ * Binary information encoded in Crockford's Base32 in wire transfer
+ * subjects of transfers from Taler to a merchant.  The actual value
+ * is chosen by the mint and has no particular semantics, other than
+ * being unique so that the mint can lookup details about the wire
+ * transfer when needed.
+ */
+struct TALER_WireTransferIdentifierP
+{
+
+  /**
+   * Raw value.
+   */
+  struct TALER_WireTransferIdentifierRawP raw;
 
   /**
    * Checksum using CRC8 over the @e raw data.

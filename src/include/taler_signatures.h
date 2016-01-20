@@ -880,7 +880,65 @@ struct TALER_ConfirmWirePS
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
-  // FIXME: add details (#3888:10056)
+  /**
+   * Hash over the wiring information of the merchant.
+   */
+  struct GNUNET_HashCode h_wire GNUNET_PACKED;
+
+  /**
+   * Hash over the contract for which this deposit is made.
+   */
+  struct GNUNET_HashCode h_contract GNUNET_PACKED;
+
+  /**
+   * Raw value (binary encoding) of the wire transfer subject.
+   */
+  struct TALER_WireTransferIdentifierRawP raw;
+
+  /**
+   * The coin's public key.  This is the value that must have been
+   * signed (blindly) by the Mint.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Merchant-generated transaction ID to detect duplicate
+   * transactions.  The merchant must communicate a merchant-unique ID
+   * to the customer for each transaction.  Note that different coins
+   * that are part of the same transaction can use the same
+   * transaction ID.  The transaction ID is useful for later disputes,
+   * and the merchant's contract offer (@e h_contract) with the
+   * customer should include the offer's term and transaction ID
+   * signed with a key from the merchant.
+   */
+  uint64_t transaction_id GNUNET_PACKED;
+
+  /**
+   * When did the mint execute this transfer? Note that the
+   * timestamp may not be exactly the same on the wire, i.e.
+   * because the wire has a different timezone or resolution.
+   */
+  struct GNUNET_TIME_AbsoluteNBO execution_time;
+
+  /**
+   * The contribution of @e coin_pub to the total transfer volume.
+   * This is the value of the deposit minus the fee.
+   */
+  struct TALER_AmountNBO coin_contribution;
+
+  /**
+   * The total amount the mint transferred in the transaction.
+   * Note that we may be aggregating multiple coin's @e coin_contribution
+   * values into a single wire transfer, so this value may be larger
+   * than that of @e coin_contribution.  It may also be smaller, as
+   * @e coin_contribution may be say "1.123456" but the wire unit may
+   * be rounded down, i.e. to "1.12" (depending on the transfer method).
+   *
+   * Note that the mint books the deltas from rounding down as profit,
+   * so aggregating transfers is a good thing for the merchant (as it
+   * reduces rounding down expenses).
+   */
+  struct TALER_AmountNBO total_amount;
 
 };
 
