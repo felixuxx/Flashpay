@@ -194,7 +194,7 @@ parse_refresh_link_ok (struct TALER_MINT_RefreshLinkHandle *rlh,
     };
 
     if (GNUNET_OK !=
-	MAJ_parse_json (json_array_get (json, 
+	MAJ_parse_json (json_array_get (json,
 					session),
 			spec))
     {
@@ -218,7 +218,7 @@ parse_refresh_link_ok (struct TALER_MINT_RefreshLinkHandle *rlh,
     struct TALER_CoinSpendPrivateKeyP coin_privs[num_coins];
     struct TALER_DenominationSignature sigs[num_coins];
     struct TALER_DenominationPublicKey pubs[num_coins];
-      
+
     off_coin = 0;
     for (session=0;session<json_array_size (json); session++)
     {
@@ -233,7 +233,7 @@ parse_refresh_link_ok (struct TALER_MINT_RefreshLinkHandle *rlh,
       };
 
       if (GNUNET_OK !=
-	  MAJ_parse_json (json_array_get (json, 
+	  MAJ_parse_json (json_array_get (json,
 					  session),
 			  spec))
       {
@@ -246,13 +246,13 @@ parse_refresh_link_ok (struct TALER_MINT_RefreshLinkHandle *rlh,
 	MAJ_parse_free (spec);
 	return GNUNET_SYSERR;
       }
-      
+
       /* decode all coins */
       for (i=0;i<json_array_size (jsona);i++)
       {
 	if (GNUNET_OK !=
 	    parse_refresh_link_coin (rlh,
-				     json_array_get (jsona, 
+				     json_array_get (jsona,
 						     i),
 				     &trans_pub,
 				     &secret_enc,
@@ -274,7 +274,8 @@ parse_refresh_link_ok (struct TALER_MINT_RefreshLinkHandle *rlh,
       }
       off_coin += json_array_size (jsona);
       MAJ_parse_free (spec);
-    }
+    } /* end of for (session) */
+
     if (off_coin == num_coins)
     {
       rlh->link_cb (rlh->link_cb_cls,
