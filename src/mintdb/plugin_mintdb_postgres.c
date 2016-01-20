@@ -3366,19 +3366,17 @@ postgres_get_coin_transactions (void *cls,
 
 /**
  * Lookup the list of Taler transactions that was aggregated
- * into a wire transfer by the respective @a raw_wtid.
+ * into a wire transfer by the respective @a wtid.
  *
  * @param cls closure
- * @param raw_wtid the raw wire transfer identifier we used
- * @param raw_len number of bytes in @a raw_wtid (right now always 32)
+ * @param wtid the raw wire transfer identifier we used
  * @param cb function to call on each transaction found
  * @param cb_cls closure for @a cb
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on database errors
  */
 static int
 postgres_lookup_wire_transactions (void *cls,
-                                   const void *raw_wtid,
-                                   size_t raw_len,
+                                   const struct TALER_WireTransferIdentifierRawP *wtid,
                                    TALER_MINTDB_TransactionDataCallback cb,
                                    void *cb_cls)
 {

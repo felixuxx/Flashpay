@@ -893,7 +893,7 @@ struct TALER_ConfirmWirePS
   /**
    * Raw value (binary encoding) of the wire transfer subject.
    */
-  struct TALER_WireTransferIdentifierRawP raw;
+  struct TALER_WireTransferIdentifierRawP wtid;
 
   /**
    * The coin's public key.  This is the value that must have been
@@ -903,13 +903,13 @@ struct TALER_ConfirmWirePS
 
   /**
    * Merchant-generated transaction ID to detect duplicate
-   * transactions.  The merchant must communicate a merchant-unique ID
-   * to the customer for each transaction.  Note that different coins
-   * that are part of the same transaction can use the same
-   * transaction ID.  The transaction ID is useful for later disputes,
-   * and the merchant's contract offer (@e h_contract) with the
-   * customer should include the offer's term and transaction ID
-   * signed with a key from the merchant.
+   * transactions, in big endian.  The merchant must communicate a
+   * merchant-unique ID to the customer for each transaction.  Note
+   * that different coins that are part of the same transaction can
+   * use the same transaction ID.  The transaction ID is useful for
+   * later disputes, and the merchant's contract offer (@e h_contract)
+   * with the customer should include the offer's term and transaction
+   * ID signed with a key from the merchant.
    */
   uint64_t transaction_id GNUNET_PACKED;
 

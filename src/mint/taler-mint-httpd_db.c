@@ -1702,7 +1702,6 @@ TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
   ctx.deposits = json_array ();
   ret = TMH_plugin->lookup_wire_transactions (TMH_plugin->cls,
                                               &wtid->raw,
-                                              sizeof (wtid->raw),
                                               &handle_transaction_data,
                                               &ctx);
   if (GNUNET_SYSERR == ret)
@@ -1743,6 +1742,26 @@ struct DepositWtidContext
   struct MHD_Connection *connection;
 
   /**
+   * Hash of the contract we are looking up.
+   */
+  struct GNUNET_HashCode h_contract;
+
+  /**
+   * Hash of the wire transfer details we are looking up.
+   */
+  struct GNUNET_HashCode h_wire;
+
+  /**
+   * Public key we are looking up.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Transaction ID we are looking up.
+   */
+  uint64_t transaction_id;
+
+  /**
    * MHD result code to return.
    */
   int res;
@@ -1754,8 +1773,11 @@ struct DepositWtidContext
  * wire transfer identifier information.
  *
  * @param cls our context for transmission
- * @param wtid base32-encoded wire transfer identifier, NULL
+ * @param wtid raw wire transfer identifier, NULL
  *         if the transaction was not yet done
+ * @param coin_contribution how much did the coin we asked about
+ *        contribute to the total transfer value? (deposit value minus fee)
+ * @param total_amount how much was the total wire transfer?
  * @param execution_time when was the transaction done, or
  *         when we expect it to be done (if @a wtid was NULL);
  *         #GNUNET_TIME_UNIT_FOREVER_ABS if the /deposit is unknown
@@ -1763,7 +1785,9 @@ struct DepositWtidContext
  */
 static void
 handle_wtid_data (void *cls,
-		  const char *wtid,
+		  const struct TALER_WireTransferIdentifierRawP *wtid,
+                  const struct TALER_Amount *coin_contribution,
+                  const struct TALER_Amount *total_amount,
 		  struct GNUNET_TIME_Absolute execution_time)
 {
   struct DepositWtidContext *ctx = cls;
@@ -1780,6 +1804,12 @@ handle_wtid_data (void *cls,
   else
   {
     ctx->res = TMH_RESPONSE_reply_deposit_wtid (ctx->connection,
+                                                &ctx->h_contract,
+                                                &ctx->h_wire,
+                                                &ctx->coin_pub,
+                                                coin_contribution,
+                                                total_amount,
+                                                ctx->transaction_id,
                                                 wtid,
                                                 execution_time);
   }
@@ -1810,6 +1840,10 @@ TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
   struct DepositWtidContext ctx;
 
   ctx.connection = connection;
+  ctx.h_contract = *h_contract;
+  ctx.h_wire = *h_wire;
+  ctx.coin_pub = *coin_pub;
+  ctx.transaction_id = transaction_id;
   ctx.res = MHD_NO; /* this value should never be read... */
   ret = TMH_plugin->wire_lookup_deposit_wtid (TMH_plugin->cls,
 					      h_contract,

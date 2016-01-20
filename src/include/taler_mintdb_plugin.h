@@ -573,8 +573,11 @@ typedef void
  * wire transfer identifier information.
  *
  * @param cls closure
- * @param wtid base32-encoded wire transfer identifier, NULL
+ * @param wtid wire transfer identifier, NULL
  *         if the transaction was not yet done
+ * @param coin_contribution how much did the coin we asked about
+ *        contribute to the total transfer value? (deposit value minus fee)
+ * @param total_amount how much was the total wire transfer?
  * @param execution_time when was the transaction done, or
  *         when we expect it to be done (if @a wtid was NULL);
  *         #GNUNET_TIME_UNIT_FOREVER_ABS if the /deposit is unknown
@@ -582,7 +585,9 @@ typedef void
  */
 typedef void
 (*TALER_MINTDB_DepositWtidCallback)(void *cls,
-				    const char *wtid,
+				    const struct TALER_WireTransferIdentifierRawP *wtid,
+                                    const struct TALER_Amount *coin_contribution,
+                                    const struct TALER_Amount *total_amount,
 				    struct GNUNET_TIME_Absolute execution_time);
 
 
@@ -1224,16 +1229,14 @@ struct TALER_MINTDB_Plugin
    * into a wire transfer by the respective @a raw_wtid.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param raw_wtid the raw wire transfer identifier we used
-   * @param raw_len number of bytes in @a raw_wtid (right now always 32)
+   * @param wtid the raw wire transfer identifier we used
    * @param cb function to call on each transaction found
    * @param cb_cls closure for @a cb
    * @return #GNUNET_OK on success, #GNUNET_SYSERR on database errors
    */
   int
   (*lookup_wire_transactions) (void *cls,
-                               const void *raw_wtid,
-                               size_t raw_len,
+                               const struct TALER_WireTransferIdentifierRawP *wtid,
                                TALER_MINTDB_TransactionDataCallback cb,
                                void *cb_cls);
 

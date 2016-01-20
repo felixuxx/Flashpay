@@ -1092,34 +1092,69 @@ TMH_RESPONSE_reply_deposit_pending (struct MHD_Connection *connection,
  * them. Generates the 200 reply.
  *
  * @param connection connection to the client
- * @param wtid wire transfer identifier (as 0-terminated string)
+ * @param h_contract hash of the contract
+ * @param h_wire hash of wire account details
+ * @param coin_pub public key of the coin
+ * @param coin_contribution how much did the coin we asked about
+ *        contribute to the total transfer value? (deposit value minus fee)
+ * @param total_amount how much was the total wire transfer?
+ * @param transaction_id merchant transaction identifier
+ * @param wtid raw wire transfer identifier
  * @param exec_time execution time of the wire transfer
  * @return MHD result code
  */
 int
 TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
-				 const char *wtid,
+                                 const struct GNUNET_HashCode *h_contract,
+                                 const struct GNUNET_HashCode *h_wire,
+                                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                 const struct TALER_Amount *coin_contribution,
+                                 const struct TALER_Amount *total_amount,
+                                 uint64_t transaction_id,
+				 const struct TALER_WireTransferIdentifierRawP *wtid,
                                  struct GNUNET_TIME_Absolute exec_time)
 {
   struct TALER_ConfirmWirePS cw;
   struct TALER_MintPublicKeyP pub;
   struct TALER_MintSignatureP sig;
+  struct TALER_WireTransferIdentifierP wtid_crc;
+  char *wtid_s;
+  int ret;
 
+  /* Create signature for the reply */
   cw.purpose.purpose = htonl (TALER_SIGNATURE_MINT_CONFIRM_WIRE);
   cw.purpose.size = htonl (sizeof (struct TALER_ConfirmWirePS));
-  // FIXME: fill in rest of 'cw'!
+  cw.h_wire = *h_wire;
+  cw.h_contract = *h_contract;
+  cw.wtid = *wtid;
+  cw.coin_pub = *coin_pub;
+  cw.transaction_id = GNUNET_htonll (transaction_id);
+  cw.execution_time = GNUNET_TIME_absolute_hton (exec_time);
+  TALER_amount_hton (&cw.coin_contribution,
+                     coin_contribution);
+  TALER_amount_hton (&cw.total_amount,
+                     total_amount);
   TMH_KS_sign (&cw.purpose,
                &pub,
                &sig);
-  return TMH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_FOUND,
+  /* Compute checksum and crockford encoding if wire transfer subject */
+  wtid_crc.raw = *wtid;
+  wtid_crc.crc8 = GNUNET_CRYPTO_crc8_n (wtid,
+                                        sizeof (struct TALER_WireTransferIdentifierRawP));
+
+  wtid_s = GNUNET_STRINGS_data_to_string_alloc (&wtid_crc,
+                                                sizeof (wtid_crc));
+  ret = TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
                                        "{s:s, s:o, s:o, s:o}",
-                                       "wtid", wtid,
+                                       "wtid", wtid_s,
                                        "execution_time", TALER_json_from_abs (exec_time),
                                        "mint_sig", TALER_json_from_data (&sig,
                                                                          sizeof (sig)),
                                        "mint_pub", TALER_json_from_data (&pub,
                                                                          sizeof (pub)));
+  GNUNET_free (wtid_s);
+  return ret;
 }
 
 
@@ -1141,8 +1176,16 @@ TMH_RESPONSE_reply_wire_deposit_details (struct MHD_Connection *connection,
                                          const struct GNUNET_HashCode *h_wire,
                                          json_t *deposits)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return MHD_NO;
+  /* FIXME: #4135: signing not implemented here */
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:o, s:o, s:o, s:o}",
+                                       "total", TALER_json_from_amount (total),
+                                       "merchant_pub", TALER_json_from_data (merchant_pub,
+                                                                             sizeof (struct TALER_MerchantPublicKeyP)),
+                                       "h_wire", TALER_json_from_data (h_wire,
+                                                                       sizeof (struct GNUNET_HashCode)),
+                                       "deposits", deposits);
 }
 
 

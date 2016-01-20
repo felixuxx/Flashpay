@@ -277,13 +277,23 @@ TMH_RESPONSE_reply_deposit_pending (struct MHD_Connection *connection,
  * them. Generates the 200 reply.
  *
  * @param connection connection to the client
- * @param wtid wire transfer identifier (as 0-terminated string)
+ * @param h_contract hash of the contract
+ * @param h_wire hash of wire account details
+ * @param coin_pub public key of the coin
+ * @param transaction_id merchant transaction identifier
+ * @param wtid raw wire transfer identifier
  * @param exec_time execution time of the wire transfer
  * @return MHD result code
  */
 int
 TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
-				 const char *wtid,
+                                 const struct GNUNET_HashCode *h_contract,
+                                 const struct GNUNET_HashCode *h_wire,
+                                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                 const struct TALER_Amount *coin_contribution,
+                                 const struct TALER_Amount *total_amount,
+                                 uint64_t transaction_id,
+				 const struct TALER_WireTransferIdentifierRawP *wtid,
                                  struct GNUNET_TIME_Absolute exec_time);
 
 
