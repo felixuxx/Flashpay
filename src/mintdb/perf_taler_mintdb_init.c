@@ -67,9 +67,11 @@ PERF_TALER_MINTDB_denomination_init ()
       properties.expire_withdraw = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get_forever_());
       properties.expire_spend = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get_forever_());
       properties.expire_legal = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get_forever_());
-      TALER_string_to_amount (CURRENCY ":1.1", &amount);
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_string_to_amount (CURRENCY ":1.1", &amount));
       TALER_amount_hton (&properties.value, &amount);
-      TALER_string_to_amount (CURRENCY ":0.1", &amount);
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_string_to_amount (CURRENCY ":0.1", &amount));
       TALER_amount_hton (&properties.fee_withdraw, &amount);
       TALER_amount_hton (&properties.fee_deposit, &amount);
       TALER_amount_hton (&properties.fee_refresh, &amount);
@@ -502,10 +504,12 @@ PERF_TALER_MINTDB_refresh_melt_init (struct GNUNET_HashCode *session,
                               &to_sign.purpose,
                               &coin_sig.eddsa_signature);
   }
-  GNUNET_assert (GNUNET_OK == TALER_string_to_amount (CURRENCY ":1.1",
-                                                      &amount));
-  GNUNET_assert (GNUNET_OK == TALER_string_to_amount (CURRENCY ":0.1",
-                                                      &amount_with_fee));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":1.1",
+                                         &amount));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":0.1",
+                                         &amount_with_fee));
   melt = GNUNET_new (struct TALER_MINTDB_RefreshMelt);
   melt->coin.coin_pub = coin->public_info.coin_pub;
   melt->coin.denom_sig.rsa_signature =
