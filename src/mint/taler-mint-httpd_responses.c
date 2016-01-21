@@ -1117,11 +1117,7 @@ TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
   struct TALER_ConfirmWirePS cw;
   struct TALER_MintPublicKeyP pub;
   struct TALER_MintSignatureP sig;
-  struct TALER_WireTransferIdentifierP wtid_crc;
-  char *wtid_s;
-  int ret;
 
-  /* Create signature for the reply */
   cw.purpose.purpose = htonl (TALER_SIGNATURE_MINT_CONFIRM_WIRE);
   cw.purpose.size = htonl (sizeof (struct TALER_ConfirmWirePS));
   cw.h_wire = *h_wire;
@@ -1137,24 +1133,18 @@ TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
   TMH_KS_sign (&cw.purpose,
                &pub,
                &sig);
-  /* Compute checksum and crockford encoding if wire transfer subject */
-  wtid_crc.raw = *wtid;
-  wtid_crc.crc8 = GNUNET_CRYPTO_crc8_n (wtid,
-                                        sizeof (struct TALER_WireTransferIdentifierRawP));
-
-  wtid_s = GNUNET_STRINGS_data_to_string_alloc (&wtid_crc,
-                                                sizeof (wtid_crc));
-  ret = TMH_RESPONSE_reply_json_pack (connection,
+  return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
-                                       "{s:s, s:o, s:o, s:o}",
-                                       "wtid", wtid_s,
+                                       "{s:o, s:o, s:o, s:o, s:o, s:o}",
+                                       "wtid", TALER_json_from_data (wtid,
+                                                                     sizeof (*wtid)),
                                        "execution_time", TALER_json_from_abs (exec_time),
+                                       "coin_contribution", TALER_json_from_amount (coin_contribution),
+                                       "total_amount", TALER_json_from_amount (total_amount),
                                        "mint_sig", TALER_json_from_data (&sig,
                                                                          sizeof (sig)),
                                        "mint_pub", TALER_json_from_data (&pub,
                                                                          sizeof (pub)));
-  GNUNET_free (wtid_s);
-  return ret;
 }
 
 

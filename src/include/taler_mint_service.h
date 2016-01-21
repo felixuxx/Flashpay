@@ -1172,8 +1172,7 @@ struct TALER_MINT_DepositWtidHandle;
  * @param wtid wire transfer identifier used by the mint, NULL if mint did not
  *                  yet execute the transaction
  * @param execution_time actual or planned execution time for the wire transfer
- * @param coin_contribution original value of the deposited coin (may be NULL)
- * @param coin_fee fee of charged by the mint for the deposit (may be NULL)
+ * @param coin_contribution contribution to the @a total_amount of the deposited coin (may be NULL)
  * @param total_amount total amount of the wire transfer, or NULL if the mint could
  *             not provide any @a wtid (set only if @a http_status is #MHD_HTTP_OK)
  */
@@ -1184,12 +1183,11 @@ typedef void
                                   const struct TALER_WireTransferIdentifierRawP *wtid,
                                   struct GNUNET_TIME_Absolute execution_time,
                                   const struct TALER_Amount *coin_contribution,
-                                  const struct TALER_Amount *coin_fee,
                                   const struct TALER_Amount *total_amount);
 
 
 /**
- * Obtain the wire transfer details for a given transaction.
+ * Obtain the wire transfer details for a given deposit.
  *
  * @param mint the mint to query
  * @param merchant_priv the merchant's private key
@@ -1217,7 +1215,6 @@ TALER_MINT_deposit_wtid (struct TALER_MINT_Handle *mint,
  * handle if a response is already served for it.
  *
  * @param dwh the wire deposits request handle
- *
  */
 void
 TALER_MINT_deposit_wtid_cancel (struct TALER_MINT_DepositWtidHandle *dwh);
