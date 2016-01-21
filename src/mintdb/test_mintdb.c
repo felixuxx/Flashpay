@@ -458,7 +458,6 @@ run (void *cls,
 {
   struct TALER_MINTDB_Session *session;
   struct TALER_ReservePublicKeyP reserve_pub;
-  struct TALER_Amount amount;
   struct DenomKeyPair *dkp;
   struct TALER_MINTDB_CollectableBlindcoin cbc;
   struct TALER_MINTDB_CollectableBlindcoin cbc2;
@@ -566,11 +565,7 @@ run (void *cls,
     = GNUNET_CRYPTO_rsa_sign (dkp->priv.rsa_private_key,
                               &cbc.h_coin_envelope,
                               sizeof (cbc.h_coin_envelope));
-  (void) memcpy (&cbc.reserve_pub,
-                 &reserve_pub,
-                 sizeof (reserve_pub));
-  amount.value--;
-  amount.fraction--;
+  cbc.reserve_pub = reserve_pub;
   cbc.amount_with_fee = value;
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (CURRENCY, &cbc.withdraw_fee));
@@ -655,9 +650,7 @@ run (void *cls,
           plugin->have_deposit (plugin->cls,
                                 session,
                                 &deposit));
-  (void) memcpy (&deposit2,
-                 &deposit,
-                 sizeof (deposit));
+  deposit2 = deposit;
   deposit2.transaction_id++;     /* should fail if transaction id is different */
   FAILIF (GNUNET_NO !=
           plugin->have_deposit (plugin->cls,
@@ -669,9 +662,7 @@ run (void *cls,
           plugin->have_deposit (plugin->cls,
                                 session,
                                 &deposit2));
-  (void) memcpy (&deposit2.merchant_pub,
-                 &deposit.merchant_pub,
-                 sizeof (deposit.merchant_pub));
+  deposit2.merchant_pub = deposit.merchant_pub;
   RND_BLK (&deposit2.coin.coin_pub); /* should fail if coin is different */
   FAILIF (GNUNET_NO !=
           plugin->have_deposit (plugin->cls,
