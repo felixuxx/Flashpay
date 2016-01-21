@@ -1059,5 +1059,168 @@ void
 TALER_MINT_admin_add_incoming_cancel (struct TALER_MINT_AdminAddIncomingHandle *aai);
 
 
+/* ********************* /wire/deposits *********************** */
+
+/**
+ * @brief A /wire/deposits Handle
+ */
+struct TALER_MINT_WireDepositsHandle;
+
+
+/**
+ * Details for one of the /deposit operations that the
+ * mint combined into a single wire transfer.
+ */
+struct TALER_WireDepositDetails
+{
+  /**
+   * Hash of the contract.
+   */
+  struct GNUNET_HashCode h_contract;
+
+  /**
+   * Which coin was deposited?
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Value of the deposit (including fee).
+   */
+  struct TALER_Amount coin_contribution;
+
+  /**
+   * Fee charged by the mint for the deposit.
+   */
+  struct TALER_Amount coin_fee;
+
+  /**
+   * Merchant's transaction identifier.
+   */
+  uint64_t transaction_id;
+
+};
+
+
+/**
+ * Function called with detailed wire transfer data, including all
+ * of the coin transactions that were combined into the wire transfer.
+ *
+ * @param cls closure
+ * @param http_status HTTP status code we got, 0 on mint protocol violation
+ * @param json original json reply (may include signatures, those have then been
+ *        validated already)
+ * @param wtid extracted wire transfer identifier, or NULL if the mint could
+ *             not provide any (set only if @a http_status is #MHD_HTTP_OK)
+ * @param total_amount total amount of the wire transfer, or NULL if the mint could
+ *             not provide any @a wtid (set only if @a http_status is #MHD_HTTP_OK)
+ * @param details_length length of the @a details array
+ * @param details array with details about the combined transactions
+ */
+typedef void
+(*TALER_MINT_WireDepositsCallback)(void *cls,
+                                   unsigned int http_status,
+                                   json_t *json,
+                                   const struct GNUNET_HashCode *h_wire,
+                                   const struct TALER_Amount *total_amount,
+                                   unsigned int details_length,
+                                   const struct TALER_WireDepositDetails *details);
+
+
+/**
+ * Query the mint about which transactions were combined
+ * to create a wire transfer.
+ *
+ * @param mint mint to query
+ * @param wtid raw wire transfer identifier to get information about
+ * @param cb callback to call
+ * @param cb_cls closure for @a cb
+ * @return handle to cancel operation
+ */
+struct TALER_MINT_WireDepositsHandle *
+TALER_MINT_wire_deposits (struct TALER_MINT_Handle *mint,
+                          const struct TALER_WireTransferIdentifierRawP *wtid,
+                          TALER_MINT_WireDepositsCallback cb,
+                          void *cb_cls);
+
+
+/**
+ * Cancel wire deposits request.  This function cannot be used on a request
+ * handle if a response is already served for it.
+ *
+ * @param wdh the wire deposits request handle
+ */
+void
+TALER_MINT_wire_deposits_cancel (struct TALER_MINT_WireDepositsHandle *wdh);
+
+
+/* ********************* /deposit/wtid *********************** */
+
+
+/**
+ * @brief A /deposit/wtid Handle
+ */
+struct TALER_MINT_DepositWtidHandle;
+
+
+/**
+ * Function called with detailed wire transfer data.
+ *
+ * @param cls closure
+ * @param http_status HTTP status code we got, 0 on mint protocol violation
+ * @param json original json reply (may include signatures, those have then been
+ *        validated already)
+ * @param wtid wire transfer identifier used by the mint, NULL if mint did not
+ *                  yet execute the transaction
+ * @param execution_time actual or planned execution time for the wire transfer
+ * @param coin_contribution original value of the deposited coin (may be NULL)
+ * @param coin_fee fee of charged by the mint for the deposit (may be NULL)
+ * @param total_amount total amount of the wire transfer, or NULL if the mint could
+ *             not provide any @a wtid (set only if @a http_status is #MHD_HTTP_OK)
+ */
+typedef void
+(*TALER_MINT_DepositWtidCallback)(void *cls,
+                                  unsigned int http_status,
+                                  json_t *json,
+                                  const struct TALER_WireTransferIdentifierRawP *wtid,
+                                  struct GNUNET_TIME_Absolute execution_time,
+                                  const struct TALER_Amount *coin_contribution,
+                                  const struct TALER_Amount *coin_fee,
+                                  const struct TALER_Amount *total_amount);
+
+
+/**
+ * Obtain the wire transfer details for a given transaction.
+ *
+ * @param mint the mint to query
+ * @param merchant_priv the merchant's private key
+ * @param h_wire hash of merchant's wire transfer details
+ * @param h_contract hash of the contract
+ * @param coin_pub public key of the coin
+ * @param transaction_id transaction identifier
+ * @param cb function to call with the result
+ * @param cb_cls closure for @a cb
+ * @return handle to abort request
+ */
+struct TALER_MINT_DepositWtidHandle *
+TALER_MINT_deposit_wtid (struct TALER_MINT_Handle *mint,
+                         const struct TALER_MerchantPrivateKeyP *merchant_priv,
+                         const struct GNUNET_HashCode *h_wire,
+                         const struct GNUNET_HashCode *h_contract,
+                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                         uint64_t transaction_id,
+                         TALER_MINT_DepositWtidCallback cb,
+                         void *cb_cls);
+
+
+/**
+ * Cancel deposit wtid request.  This function cannot be used on a request
+ * handle if a response is already served for it.
+ *
+ * @param dwh the wire deposits request handle
+ *
+ */
+void
+TALER_MINT_deposit_wtid_cancel (struct TALER_MINT_DepositWtidHandle *dwh);
+
 
 #endif  /* _TALER_MINT_SERVICE_H */
