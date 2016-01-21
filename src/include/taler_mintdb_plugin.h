@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -1265,6 +1265,33 @@ struct TALER_MINTDB_Plugin
 			      uint64_t transaction_id,
 			      TALER_MINTDB_DepositWtidCallback cb,
 			      void *cb_cls);
+
+
+  /**
+   * Function called to insert aggregation information into the DB.
+   *
+   * @param cls closure
+   * @param wtid the raw wire transfer identifier we used
+   * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
+   * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
+   * @param h_contract which contract was this payment about
+   * @param transaction_id merchant's transaction ID for the payment
+   * @param coin_pub which public key was this payment about
+   * @param deposit_value amount contributed by this coin in total
+   * @param deposit_fee deposit fee charged by mint for this coin
+   * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*insert_aggregation_tracking)(void *cls,
+                                 const struct TALER_WireTransferIdentifierRawP *wtid,
+                                 const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                 const struct GNUNET_HashCode *h_wire,
+                                 const struct GNUNET_HashCode *h_contract,
+                                 uint64_t transaction_id,
+                                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                 const struct TALER_Amount *deposit_value,
+                                 const struct TALER_Amount *deposit_fee);
+
 
 };
 

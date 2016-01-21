@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -445,9 +445,34 @@ postgres_create_tables (void *cls,
           ",coin_sig BYTEA NOT NULL CHECK (LENGTH(coin_sig)=64)"
           ",wire TEXT NOT NULL"
           ")");
-  /* Index for get_deposit statement on coin_pub, transactiojn_id and merchant_pub */
+  /* Index for get_deposit statement on coin_pub, transaction_id and merchant_pub */
   SQLEXEC_INDEX("CREATE INDEX deposits_coin_pub_index "
                 "ON deposits(coin_pub, transaction_id, merchant_pub)");
+  /* Table for the tracking API, mapping from wire transfer identifiers
+     to transactions and back */
+  SQLEXEC("CREATE TABLE IF NOT EXISTS aggregation_tracking "
+          "(h_contract BYTEA PRIMARY KEY CHECK (LENGTH(h_contract)=64)"
+          ",h_wire BYTEA PRIMARY KEY CHECK (LENGTH(h_wire)=64)"
+          ",coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)"
+          ",merchant_pub BYTEA NOT NULL CHECK (LENGTH(merchant_pub)=32)"
+          ",transaction_id INT8 NOT NULL"
+          ",wtid_raw BYTEA NOT NULL CHECK (LENGTH(merchant_pub)=" TALER_WIRE_TRANSFER_IDENTIFIER_LEN_STR ")"
+          ",execution_time INT8 NOT NULL"
+          ",coin_amount_val INT8 NOT NULL"
+          ",coin_amount_frac INT4 NOT NULL"
+          ",coin_amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",transaction_total_val INT8 NOT NULL"
+          ",transaction_total_frac INT4 NOT NULL"
+          ",transaction_total_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ")");
+  /* Index for lookup_transactions statement on wtid */
+  SQLEXEC_INDEX("CREATE INDEX aggregation_tracking_wtid_index "
+                "ON aggregation_tracking(wtid_raw)");
+  /* Index for lookup_deposit_wtid statement */
+  SQLEXEC_INDEX("CREATE INDEX aggregation_tracking_deposit_index "
+                "ON aggregation_tracking(coin_pub,h_contract,h_wire,transaction_id,merchant_pub)");
+
+
 #undef SQLEXEC
 #undef SQLEXEC_INDEX
 
@@ -947,6 +972,63 @@ postgres_prepare (PGconn *db_conn)
            "  AND rm.oldcoin_index = rcl.oldcoin_index"
            "  AND rcl.cnc_index=rs.noreveal_index",
            1, NULL);
+  /* Used in #postgres_lookup_wire_transactions */
+  PREPARE ("lookup_transactions",
+           "SELECT"
+           " h_contract"
+           ",h_wire"
+           ",coin_pub"
+           ",merchant_pub"
+           ",transaction_id"
+           ",execution_time"
+           ",coin_amount_val"
+           ",coin_amount_frac"
+           ",coin_amount_curr"
+           ",transaction_total_val"
+           ",transaction_total_frac"
+           ",transaction_total_curr"
+           " FROM aggregation_tracking"
+           " WHERE wtid_raw=$1",
+           1, NULL);
+  /* Used in #postgres_wire_lookup_deposit_wtid */
+  PREPARE ("lookup_deposit_wtid",
+           "SELECT"
+           " wtid_raw"
+           ",execution_time"
+           ",coin_amount_val"
+           ",coin_amount_frac"
+           ",coin_amount_curr"
+           ",transaction_total_val"
+           ",transaction_total_frac"
+           ",transaction_total_curr"
+           " FROM aggregation_tracking"
+           " WHERE"
+           " coin_pub=$1 AND"
+           " h_contract=$2 AND"
+           " h_wire=$3 AND"
+           " transaction_id=$4 AND"
+           " merchant_pub=$5",
+           5, NULL);
+  /* Used in #postgres_insert_aggregation_tracking */
+  PREPARE ("insert_aggregation_tracking",
+           "INSERT INTO aggregation_tracking "
+           "(h_contract"
+           ",h_wire"
+           ",coin_pub"
+           ",merchant_pub"
+           ",transaction_id"
+           ",wtid_raw"
+           ",execution_time"
+           ",coin_amount_val"
+           ",coin_amount_frac"
+           ",coin_amount_curr"
+           ",transaction_total_val"
+           ",transaction_total_frac"
+           ",transaction_total_curr"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
+           13, NULL);
+
   return GNUNET_OK;
 #undef PREPARE
 }
@@ -3416,6 +3498,36 @@ postgres_wire_lookup_deposit_wtid (void *cls,
 
 
 /**
+ * Function called to insert aggregation information into the DB.
+ *
+ * @param cls closure
+ * @param wtid the raw wire transfer identifier we used
+ * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
+ * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
+ * @param h_contract which contract was this payment about
+ * @param transaction_id merchant's transaction ID for the payment
+ * @param coin_pub which public key was this payment about
+ * @param deposit_value amount contributed by this coin in total
+ * @param deposit_fee deposit fee charged by mint for this coin
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_insert_aggregation_tracking (void *cls,
+                                      const struct TALER_WireTransferIdentifierRawP *wtid,
+                                      const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                      const struct GNUNET_HashCode *h_wire,
+                                      const struct GNUNET_HashCode *h_contract,
+                                      uint64_t transaction_id,
+                                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                      const struct TALER_Amount *deposit_value,
+                                      const struct TALER_Amount *deposit_fee)
+{
+  GNUNET_break (0); // not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -3466,7 +3578,6 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->have_deposit = &postgres_have_deposit;
   plugin->iterate_deposits = &postgres_iterate_deposits;
   plugin->insert_deposit = &postgres_insert_deposit;
-
   plugin->get_refresh_session = &postgres_get_refresh_session;
   plugin->create_refresh_session = &postgres_create_refresh_session;
   plugin->insert_refresh_melt = &postgres_insert_refresh_melt;
@@ -3477,7 +3588,6 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->get_refresh_commit_coins = &postgres_get_refresh_commit_coins;
   plugin->insert_refresh_commit_links = &postgres_insert_refresh_commit_links;
   plugin->get_refresh_commit_links = &postgres_get_refresh_commit_links;
-
   plugin->get_melt_commitment = &postgres_get_melt_commitment;
   plugin->free_melt_commitment = &common_free_melt_commitment;
   plugin->insert_refresh_out = &postgres_insert_refresh_out;
@@ -3488,6 +3598,7 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->free_coin_transaction_list = &common_free_coin_transaction_list;
   plugin->lookup_wire_transactions = &postgres_lookup_wire_transactions;
   plugin->wire_lookup_deposit_wtid = &postgres_wire_lookup_deposit_wtid;
+  plugin->insert_aggregation_tracking = &postgres_insert_aggregation_tracking;
   return plugin;
 }
 

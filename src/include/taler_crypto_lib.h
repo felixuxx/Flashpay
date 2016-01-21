@@ -435,6 +435,11 @@ struct TALER_RefreshLinkDecrypted
 #define TALER_WIRE_TRANSFER_IDENTIFIER_LEN 32
 
 /**
+ * #TALER_WIRE_TRANSFER_IDENTIFIER_LEN as a string.
+ */
+#define TALER_WIRE_TRANSFER_IDENTIFIER_LEN_STR "32"
+
+/**
  * Raw value of a wire transfer subjects, without the checksum.
  */
 struct TALER_WireTransferIdentifierRawP
