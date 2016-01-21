@@ -875,6 +875,26 @@ postgres_prepare (PGconn *db_conn)
            "  (merchant_pub=$3)"
            " )",
            3, NULL);
+  /* Fetch an existing deposit request.
+     Used in #postgres_wire_lookup_deposit_wtid(). */
+  PREPARE ("get_deposit_for_wtid",
+           "SELECT"
+           " amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           ",deposit_fee_val"
+           ",deposit_fee_frac"
+           ",deposit_fee_curr"
+           ",wire_deadline"
+           " FROM deposits"
+           " WHERE ("
+           "  (coin_pub=$1) AND"
+           "  (transaction_id=$2) AND"
+           "  (merchant_pub=$3) AND"
+           "  (h_contract=$4) AND"
+           "  (h_wire=$5)"
+           " )",
+           5, NULL);
 
   /* Used in #postgres_iterate_deposits() */
   PREPARE ("deposits_iterate",
@@ -972,7 +992,7 @@ postgres_prepare (PGconn *db_conn)
            "  AND rm.oldcoin_index = rcl.oldcoin_index"
            "  AND rcl.cnc_index=rs.noreveal_index",
            1, NULL);
-  /* Used in #postgres_lookup_wire_transactions */
+  /* Used in #postgres_lookup_wire_transfer */
   PREPARE ("lookup_transactions",
            "SELECT"
            " h_contract"
@@ -984,9 +1004,12 @@ postgres_prepare (PGconn *db_conn)
            ",coin_amount_val"
            ",coin_amount_frac"
            ",coin_amount_curr"
-           ",transaction_total_val"
-           ",transaction_total_frac"
-           ",transaction_total_curr"
+           ",coin_fee_val"
+           ",coin_fee_frac"
+           ",coin_fee_curr"
+           ",transfer_total_val"
+           ",transfer_total_frac"
+           ",transfer_total_curr"
            " FROM aggregation_tracking"
            " WHERE wtid_raw=$1",
            1, NULL);
@@ -998,9 +1021,12 @@ postgres_prepare (PGconn *db_conn)
            ",coin_amount_val"
            ",coin_amount_frac"
            ",coin_amount_curr"
-           ",transaction_total_val"
-           ",transaction_total_frac"
-           ",transaction_total_curr"
+           ",coin_fee_val"
+           ",coin_fee_frac"
+           ",coin_fee_curr"
+           ",transfer_total_val"
+           ",transfer_total_frac"
+           ",transfer_total_curr"
            " FROM aggregation_tracking"
            " WHERE"
            " coin_pub=$1 AND"
@@ -1022,12 +1048,15 @@ postgres_prepare (PGconn *db_conn)
            ",coin_amount_val"
            ",coin_amount_frac"
            ",coin_amount_curr"
-           ",transaction_total_val"
-           ",transaction_total_frac"
-           ",transaction_total_curr"
+           ",coin_fee_val"
+           ",coin_fee_frac"
+           ",coin_fee_curr"
+           ",transfer_total_val"
+           ",transfer_total_frac"
+           ",transfer_total_curr"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
-           13, NULL);
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
+           16, NULL);
 
   return GNUNET_OK;
 #undef PREPARE
@@ -3455,17 +3484,83 @@ postgres_get_coin_transactions (void *cls,
  * @param wtid the raw wire transfer identifier we used
  * @param cb function to call on each transaction found
  * @param cb_cls closure for @a cb
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on database errors
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on database errors,
+ *         #GNUNET_NO if we found no results
  */
 static int
-postgres_lookup_wire_transactions (void *cls,
-                                   struct TALER_MINTDB_Session *session,
-                                   const struct TALER_WireTransferIdentifierRawP *wtid,
-                                   TALER_MINTDB_TransactionDataCallback cb,
-                                   void *cb_cls)
+postgres_lookup_wire_transfer (void *cls,
+                               struct TALER_MINTDB_Session *session,
+                               const struct TALER_WireTransferIdentifierRawP *wtid,
+                               TALER_MINTDB_WireTransferDataCallback cb,
+                               void *cb_cls)
 {
-  GNUNET_break (0); // not implemented!
-  return GNUNET_SYSERR;
+  PGresult *result;
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_auto_from_type (wtid),
+    TALER_PQ_query_param_end
+  };
+  int nrows;
+  int i;
+
+  /* check if the melt record exists and get it */
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "lookup_transactions",
+                                   params);
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "lookup_wire_transfer() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  for (i=0;i<nrows;i++)
+  {
+    struct GNUNET_HashCode h_contract;
+    struct GNUNET_HashCode h_wire;
+    struct TALER_CoinSpendPublicKeyP coin_pub;
+    struct TALER_MerchantPublicKeyP merchant_pub;
+    uint64_t transaction_id;
+    struct GNUNET_TIME_Absolute exec_time;
+    struct TALER_Amount coin_amount;
+    struct TALER_Amount coin_fee;
+    struct TALER_Amount transfer_amount;
+    struct TALER_PQ_ResultSpec rs[] = {
+      TALER_PQ_result_spec_auto_from_type ("h_contract", &h_contract),
+      TALER_PQ_result_spec_auto_from_type ("h_wire", &h_wire),
+      TALER_PQ_result_spec_auto_from_type ("coin_pub", &coin_pub),
+      TALER_PQ_result_spec_auto_from_type ("merchant_pub", &merchant_pub),
+      TALER_PQ_result_spec_uint64 ("transaction_id", &transaction_id),
+      TALER_PQ_result_spec_absolute_time ("execution_time", &exec_time),
+      TALER_PQ_result_spec_amount ("coin_amount", &coin_amount),
+      TALER_PQ_result_spec_amount ("coin_fee", &coin_fee),
+      TALER_PQ_result_spec_amount ("transfer_total", &transfer_amount),
+      TALER_PQ_result_spec_end
+    };
+    if (GNUNET_OK != TALER_PQ_extract_result (result, rs, i))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    cb (cb_cls,
+        &merchant_pub,
+        &h_wire,
+        &h_contract,
+        transaction_id,
+        &coin_pub,
+        &coin_amount,
+        &coin_fee,
+        &transfer_amount);
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -3483,7 +3578,8 @@ postgres_lookup_wire_transactions (void *cls,
  * @param transaction_id transaction identifier
  * @param cb function to call with the result
  * @param cb_cls closure to pass to @a cb
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors,
+ *         #GNUNET_NO if nothing was found
  */
 static int
 postgres_wire_lookup_deposit_wtid (void *cls,
@@ -3496,8 +3592,127 @@ postgres_wire_lookup_deposit_wtid (void *cls,
 				   TALER_MINTDB_DepositWtidCallback cb,
 				   void *cb_cls)
 {
-  GNUNET_break (0); // not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_auto_from_type (coin_pub),
+    TALER_PQ_query_param_auto_from_type (h_contract),
+    TALER_PQ_query_param_auto_from_type (h_wire),
+    TALER_PQ_query_param_uint64 (&transaction_id),
+    TALER_PQ_query_param_auto_from_type (merchant_pub),
+    TALER_PQ_query_param_end
+  };
+  int nrows;
+
+  /* check if the melt record exists and get it */
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "lookup_deposit_wtid",
+                                   params);
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "lookup_wire_transfer() returned 0 matching rows\n");
+    PQclear (result);
+
+    /* Check if transaction exists in deposits, so that we just
+       do not have a WTID yet, if so, do call the CB with a NULL wtid
+       and return GNUNET_YES! */
+    {
+      struct TALER_PQ_QueryParam params2[] = {
+        TALER_PQ_query_param_auto_from_type (coin_pub),
+        TALER_PQ_query_param_uint64 (&transaction_id),
+        TALER_PQ_query_param_auto_from_type (merchant_pub),
+        TALER_PQ_query_param_auto_from_type (h_contract),
+        TALER_PQ_query_param_auto_from_type (h_wire),
+        TALER_PQ_query_param_end
+      };
+
+      result = TALER_PQ_exec_prepared (session->conn,
+                                       "get_deposit_for_wtid",
+                                       params2);
+      if (PGRES_TUPLES_OK != PQresultStatus (result))
+      {
+        BREAK_DB_ERR (result);
+        PQclear (result);
+        return GNUNET_SYSERR;
+      }
+    }
+    nrows = PQntuples (result);
+    if (0 == nrows)
+    {
+      PQclear (result);
+      return GNUNET_NO;
+    }
+
+    /* Ok, we're aware of the transaction, but it has not yet been
+       executed */
+    {
+      struct GNUNET_TIME_Absolute exec_time;
+      struct TALER_Amount coin_amount;
+      struct TALER_Amount coin_fee;
+      struct TALER_PQ_ResultSpec rs[] = {
+        TALER_PQ_result_spec_amount ("coin_amount", &coin_amount),
+        TALER_PQ_result_spec_amount ("deposit_fee", &coin_fee),
+        TALER_PQ_result_spec_absolute_time ("wire_deadline", &exec_time),
+        TALER_PQ_result_spec_end
+      };
+      if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
+      {
+        GNUNET_break (0);
+        PQclear (result);
+        return GNUNET_SYSERR;
+      }
+      cb (cb_cls,
+          NULL,
+          &coin_amount,
+          &coin_fee,
+          NULL,
+          exec_time);
+      PQclear (result);
+      return GNUNET_YES;
+    }
+  }
+  if (1 != nrows)
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  {
+    struct TALER_WireTransferIdentifierRawP wtid;
+    struct GNUNET_TIME_Absolute exec_time;
+    struct TALER_Amount coin_amount;
+    struct TALER_Amount coin_fee;
+    struct TALER_Amount transaction_amount;
+    struct TALER_PQ_ResultSpec rs[] = {
+      TALER_PQ_result_spec_auto_from_type ("wtid_raw", &wtid),
+      TALER_PQ_result_spec_absolute_time ("execution_time", &exec_time),
+      TALER_PQ_result_spec_amount ("coin_amount", &coin_amount),
+      TALER_PQ_result_spec_amount ("coin_fee", &coin_fee),
+      TALER_PQ_result_spec_amount ("transfer_total", &transaction_amount),
+      TALER_PQ_result_spec_end
+    };
+    if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    cb (cb_cls,
+        &wtid,
+        &coin_amount,
+        &coin_fee,
+        &transaction_amount,
+        exec_time);
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -3512,8 +3727,9 @@ postgres_wire_lookup_deposit_wtid (void *cls,
  * @param h_contract which contract was this payment about
  * @param transaction_id merchant's transaction ID for the payment
  * @param coin_pub which public key was this payment about
- * @param deposit_value amount contributed by this coin in total
- * @param deposit_fee deposit fee charged by mint for this coin
+ * @param coin_value amount contributed by this coin in total
+ * @param coin_fee deposit fee charged by mint for this coin
+ * @param transfer_value total amount of the wire transfer
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
  */
 static int
@@ -3527,7 +3743,8 @@ postgres_insert_aggregation_tracking (void *cls,
                                       struct GNUNET_TIME_Absolute execution_time,
                                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                       const struct TALER_Amount *coin_value,
-                                      const struct TALER_Amount *transaction_value)
+                                      const struct TALER_Amount *coin_fee,
+                                      const struct TALER_Amount *transfer_value)
 {
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type (h_contract),
@@ -3538,7 +3755,8 @@ postgres_insert_aggregation_tracking (void *cls,
     TALER_PQ_query_param_auto_from_type (wtid),
     TALER_PQ_query_param_absolute_time (&execution_time),
     TALER_PQ_query_param_amount (coin_value),
-    TALER_PQ_query_param_amount (transaction_value),
+    TALER_PQ_query_param_amount (coin_fee),
+    TALER_PQ_query_param_amount (transfer_value),
     TALER_PQ_query_param_end
   };
   PGresult *result;
@@ -3560,9 +3778,6 @@ postgres_insert_aggregation_tracking (void *cls,
   }
   PQclear (result);
   return GNUNET_OK;
-
-  GNUNET_break (0); // not implemented
-  return GNUNET_SYSERR;
 }
 
 
@@ -3635,7 +3850,7 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->get_transfer = &postgres_get_transfer;
   plugin->get_coin_transactions = &postgres_get_coin_transactions;
   plugin->free_coin_transaction_list = &common_free_coin_transaction_list;
-  plugin->lookup_wire_transactions = &postgres_lookup_wire_transactions;
+  plugin->lookup_wire_transfer = &postgres_lookup_wire_transfer;
   plugin->wire_lookup_deposit_wtid = &postgres_wire_lookup_deposit_wtid;
   plugin->insert_aggregation_tracking = &postgres_insert_aggregation_tracking;
   return plugin;
