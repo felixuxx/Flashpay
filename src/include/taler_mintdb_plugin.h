@@ -1229,6 +1229,7 @@ struct TALER_MINTDB_Plugin
    * into a wire transfer by the respective @a raw_wtid.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session database connection
    * @param wtid the raw wire transfer identifier we used
    * @param cb function to call on each transaction found
    * @param cb_cls closure for @a cb
@@ -1236,6 +1237,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*lookup_wire_transactions) (void *cls,
+                               struct TALER_MINTDB_Session *session,
                                const struct TALER_WireTransferIdentifierRawP *wtid,
                                TALER_MINTDB_TransactionDataCallback cb,
                                void *cb_cls);
@@ -1247,6 +1249,7 @@ struct TALER_MINTDB_Plugin
    * to be executed.
    *
    * @param cls closure
+   * @param session database connection
    * @param h_contract hash of the contract
    * @param h_wire hash of merchant wire details
    * @param coin_pub public key of deposited coin
@@ -1258,6 +1261,7 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*wire_lookup_deposit_wtid)(void *cls,
+                              struct TALER_MINTDB_Session *session,
 			      const struct GNUNET_HashCode *h_contract,
 			      const struct GNUNET_HashCode *h_wire,
 			      const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -1271,26 +1275,30 @@ struct TALER_MINTDB_Plugin
    * Function called to insert aggregation information into the DB.
    *
    * @param cls closure
+   * @param session database connection
    * @param wtid the raw wire transfer identifier we used
    * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
    * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
    * @param h_contract which contract was this payment about
    * @param transaction_id merchant's transaction ID for the payment
+   * @param execution_time when did we execute the transaction
    * @param coin_pub which public key was this payment about
-   * @param deposit_value amount contributed by this coin in total
-   * @param deposit_fee deposit fee charged by mint for this coin
+   * @param coin_value amount contributed by this coin to the total
+   * @param transaction_value total amount of the wire transaction
    * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
    */
   int
   (*insert_aggregation_tracking)(void *cls,
+                                 struct TALER_MINTDB_Session *session,
                                  const struct TALER_WireTransferIdentifierRawP *wtid,
                                  const struct TALER_MerchantPublicKeyP *merchant_pub,
                                  const struct GNUNET_HashCode *h_wire,
                                  const struct GNUNET_HashCode *h_contract,
                                  uint64_t transaction_id,
+                                 struct GNUNET_TIME_Absolute execution_time,
                                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                 const struct TALER_Amount *deposit_value,
-                                 const struct TALER_Amount *deposit_fee);
+                                 const struct TALER_Amount *coin_value,
+                                 const struct TALER_Amount *transaction_value);
 
 
 };

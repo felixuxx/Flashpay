@@ -1697,10 +1697,18 @@ TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
 {
   int ret;
   struct WtidTransactionContext ctx;
+  struct TALER_MINTDB_Session *session;
 
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
+                                                  TMH_test_mode)))
+  {
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
   ctx.is_valid = GNUNET_NO;
   ctx.deposits = json_array ();
   ret = TMH_plugin->lookup_wire_transactions (TMH_plugin->cls,
+                                              session,
                                               &wtid->raw,
                                               &handle_transaction_data,
                                               &ctx);
@@ -1838,7 +1846,14 @@ TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
 {
   int ret;
   struct DepositWtidContext ctx;
+  struct TALER_MINTDB_Session *session;
 
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
+                                                  TMH_test_mode)))
+  {
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
   ctx.connection = connection;
   ctx.h_contract = *h_contract;
   ctx.h_wire = *h_wire;
@@ -1846,6 +1861,7 @@ TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
   ctx.transaction_id = transaction_id;
   ctx.res = MHD_NO; /* this value should never be read... */
   ret = TMH_plugin->wire_lookup_deposit_wtid (TMH_plugin->cls,
+                                              session,
 					      h_contract,
 					      h_wire,
 					      coin_pub,

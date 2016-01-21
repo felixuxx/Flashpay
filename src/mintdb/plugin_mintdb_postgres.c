@@ -3451,6 +3451,7 @@ postgres_get_coin_transactions (void *cls,
  * into a wire transfer by the respective @a wtid.
  *
  * @param cls closure
+ * @param session database connection
  * @param wtid the raw wire transfer identifier we used
  * @param cb function to call on each transaction found
  * @param cb_cls closure for @a cb
@@ -3458,6 +3459,7 @@ postgres_get_coin_transactions (void *cls,
  */
 static int
 postgres_lookup_wire_transactions (void *cls,
+                                   struct TALER_MINTDB_Session *session,
                                    const struct TALER_WireTransferIdentifierRawP *wtid,
                                    TALER_MINTDB_TransactionDataCallback cb,
                                    void *cb_cls)
@@ -3473,6 +3475,7 @@ postgres_lookup_wire_transactions (void *cls,
  * to be executed.
  *
  * @param cls closure
+ * @param session database connection
  * @param h_contract hash of the contract
  * @param h_wire hash of merchant wire details
  * @param coin_pub public key of deposited coin
@@ -3484,6 +3487,7 @@ postgres_lookup_wire_transactions (void *cls,
  */
 static int
 postgres_wire_lookup_deposit_wtid (void *cls,
+                                   struct TALER_MINTDB_Session *session,
 				   const struct GNUNET_HashCode *h_contract,
 				   const struct GNUNET_HashCode *h_wire,
 				   const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -3501,6 +3505,7 @@ postgres_wire_lookup_deposit_wtid (void *cls,
  * Function called to insert aggregation information into the DB.
  *
  * @param cls closure
+ * @param session database connection
  * @param wtid the raw wire transfer identifier we used
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
@@ -3513,15 +3518,49 @@ postgres_wire_lookup_deposit_wtid (void *cls,
  */
 static int
 postgres_insert_aggregation_tracking (void *cls,
+                                      struct TALER_MINTDB_Session *session,
                                       const struct TALER_WireTransferIdentifierRawP *wtid,
                                       const struct TALER_MerchantPublicKeyP *merchant_pub,
                                       const struct GNUNET_HashCode *h_wire,
                                       const struct GNUNET_HashCode *h_contract,
                                       uint64_t transaction_id,
+                                      struct GNUNET_TIME_Absolute execution_time,
                                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                      const struct TALER_Amount *deposit_value,
-                                      const struct TALER_Amount *deposit_fee)
+                                      const struct TALER_Amount *coin_value,
+                                      const struct TALER_Amount *transaction_value)
 {
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_auto_from_type (h_contract),
+    TALER_PQ_query_param_auto_from_type (h_wire),
+    TALER_PQ_query_param_auto_from_type (coin_pub),
+    TALER_PQ_query_param_auto_from_type (merchant_pub),
+    TALER_PQ_query_param_uint64 (&transaction_id),
+    TALER_PQ_query_param_auto_from_type (wtid),
+    TALER_PQ_query_param_absolute_time (&execution_time),
+    TALER_PQ_query_param_amount (coin_value),
+    TALER_PQ_query_param_amount (transaction_value),
+    TALER_PQ_query_param_end
+  };
+  PGresult *result;
+
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "insert_aggregation_tracking",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  if (0 != strcmp ("1", PQcmdTuples (result)))
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+
   GNUNET_break (0); // not implemented
   return GNUNET_SYSERR;
 }
