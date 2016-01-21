@@ -469,8 +469,8 @@ PERF_TALER_MINTDB_refresh_session_free (struct TALER_MINTDB_RefreshSession *refr
 {
   if (NULL == refresh_session)
     return GNUNET_OK;
-  return GNUNET_OK;
   GNUNET_free (refresh_session);
+  return GNUNET_OK;
 }
 
 
