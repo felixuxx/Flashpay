@@ -46,22 +46,17 @@ TMH_TRACKING_handler_wire_deposits (struct TMH_RequestHandler *rh,
                                     const char *upload_data,
                                     size_t *upload_data_size)
 {
-  struct TALER_WireTransferIdentifierP wtid;
+  struct TALER_WireTransferIdentifierRawP wtid;
   int res;
 
   res = TMH_PARSE_mhd_request_arg_data (connection,
                                         "wtid",
                                         &wtid,
-                                        sizeof (struct TALER_WireTransferIdentifierP));
+                                        sizeof (struct TALER_WireTransferIdentifierRawP));
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
     return MHD_YES; /* parse error */
-  if (wtid.crc8 !=
-      GNUNET_CRYPTO_crc8_n (&wtid.raw,
-                            sizeof (wtid.raw)))
-    return TMH_RESPONSE_reply_arg_invalid (connection,
-                                           "wtid");
   return TMH_DB_execute_wire_deposits (connection,
                                        &wtid);
 }

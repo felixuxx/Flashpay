@@ -1704,7 +1704,7 @@ handle_transaction_data (void *cls,
  */
 int
 TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
-                             const struct TALER_WireTransferIdentifierP *wtid)
+                             const struct TALER_WireTransferIdentifierRawP *wtid)
 {
   int ret;
   struct WtidTransactionContext ctx;
@@ -1720,7 +1720,7 @@ TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
   ctx.deposits = json_array ();
   ret = TMH_plugin->lookup_wire_transfer (TMH_plugin->cls,
                                           session,
-                                          &wtid->raw,
+                                          wtid,
                                           &handle_transaction_data,
                                           &ctx);
   if (GNUNET_SYSERR == ret)

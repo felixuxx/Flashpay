@@ -202,7 +202,7 @@ TMH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
  */
 int
 TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
-                              const struct TALER_WireTransferIdentifierP *wtid);
+                              const struct TALER_WireTransferIdentifierRawP *wtid);
 
 
 /**

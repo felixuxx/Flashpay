@@ -1086,7 +1086,7 @@ struct TALER_WireDepositDetails
   /**
    * Value of the deposit (including fee).
    */
-  struct TALER_Amount coin_contribution;
+  struct TALER_Amount coin_value;
 
   /**
    * Fee charged by the mint for the deposit.

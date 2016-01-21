@@ -232,6 +232,20 @@ parse_json (json_t *root,
       }
       break;
 
+    case MAJ_CMD_UINT64:
+      {
+        json_int_t val;
+
+        if (! json_is_integer (pos))
+        {
+          GNUNET_break_op (0);
+          return i;
+        }
+        val = json_integer_value (pos);
+        *spec[i].details.u64 = (uint64_t) val;
+      }
+      break;
+
     case MAJ_CMD_JSON_OBJECT:
       {
         if (! (json_is_object (pos) || json_is_array (pos)) )
@@ -423,6 +437,26 @@ MAJ_spec_uint16 (const char *name,
       .cmd = MAJ_CMD_UINT16,
       .field = name,
       .details.u16 = u16
+    };
+  return ret;
+}
+
+
+/**
+ * 64-bit integer.
+ *
+ * @param name name of the JSON field
+ * @param[out] u64 where to store the integer found under @a name
+ */
+struct MAJ_Specification
+MAJ_spec_uint64 (const char *name,
+                 uint64_t *u64)
+{
+  struct MAJ_Specification ret =
+    {
+      .cmd = MAJ_CMD_UINT64,
+      .field = name,
+      .details.u64 = u64
     };
   return ret;
 }
