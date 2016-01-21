@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -305,8 +305,10 @@ test_melting (struct TALER_MINTDB_Session *session)
   RND_BLK (&refresh_session);
   RND_BLK (&session_hash);
   melts = NULL;
+  dkp = NULL;
   new_dkp = NULL;
   new_denom_pubs = NULL;
+  ret_denom_pubs = NULL;
   /* create and test a refresh session */
   refresh_session.num_oldcoins = MELT_OLD_COINS;
   refresh_session.num_newcoins = 1;
@@ -324,11 +326,11 @@ test_melting (struct TALER_MINTDB_Session *session)
                        sizeof (refresh_session)));
 
   /* create a denomination (value: 1; fraction: 100) */
-  dkp = create_denom_key_pair(512, session,
-                              &value,
-                              &fee_withdraw,
-                              &fee_deposit,
-                              &fee_refresh);
+  dkp = create_denom_key_pair (512, session,
+                               &value,
+                               &fee_withdraw,
+                               &fee_deposit,
+                               &fee_refresh);
   /* create MELT_OLD_COINS number of refresh melts */
   melts = GNUNET_new_array (MELT_OLD_COINS, struct TALER_MINTDB_RefreshMelt);
   for (cnt=0; cnt < MELT_OLD_COINS; cnt++)
@@ -416,7 +418,8 @@ test_melting (struct TALER_MINTDB_Session *session)
   ret = GNUNET_OK;
 
  drop:
-  destroy_denom_key_pair (dkp);
+  if (NULL != dkp)
+    destroy_denom_key_pair (dkp);
   if (NULL != melts)
   {
     for (cnt = 0; cnt < MELT_OLD_COINS; cnt++)

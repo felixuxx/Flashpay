@@ -451,8 +451,8 @@ postgres_create_tables (void *cls,
   /* Table for the tracking API, mapping from wire transfer identifiers
      to transactions and back */
   SQLEXEC("CREATE TABLE IF NOT EXISTS aggregation_tracking "
-          "(h_contract BYTEA PRIMARY KEY CHECK (LENGTH(h_contract)=64)"
-          ",h_wire BYTEA PRIMARY KEY CHECK (LENGTH(h_wire)=64)"
+          "(h_contract BYTEA CHECK (LENGTH(h_contract)=64)"
+          ",h_wire BYTEA CHECK (LENGTH(h_wire)=64)"
           ",coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)"
           ",merchant_pub BYTEA NOT NULL CHECK (LENGTH(merchant_pub)=32)"
           ",transaction_id INT8 NOT NULL"
@@ -461,9 +461,12 @@ postgres_create_tables (void *cls,
           ",coin_amount_val INT8 NOT NULL"
           ",coin_amount_frac INT4 NOT NULL"
           ",coin_amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ",transaction_total_val INT8 NOT NULL"
-          ",transaction_total_frac INT4 NOT NULL"
-          ",transaction_total_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",coin_fee_val INT8 NOT NULL"
+          ",coin_fee_frac INT4 NOT NULL"
+          ",coin_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",transfer_total_val INT8 NOT NULL"
+          ",transfer_total_frac INT4 NOT NULL"
+          ",transfer_total_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ")");
   /* Index for lookup_transactions statement on wtid */
   SQLEXEC_INDEX("CREATE INDEX aggregation_tracking_wtid_index "
