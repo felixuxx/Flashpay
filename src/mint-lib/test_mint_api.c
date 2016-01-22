@@ -2510,7 +2510,7 @@ run (void *cls,
        the mint knows about the deposit, but has no WTID yet. */
     { .oc = OC_DEPOSIT_WTID,
       .label = "deposit-wtid-found",
-      .expected_response_code = MHD_HTTP_FOUND,
+      .expected_response_code = MHD_HTTP_ACCEPTED,
       .details.deposit_wtid.deposit_ref = "deposit-simple" },
     /* Try resolving a deposit's WTID for a failed deposit.
        As the deposit failed, the answer should be that

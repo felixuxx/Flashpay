@@ -49,11 +49,6 @@ struct TALER_MINT_WireDepositsHandle
   char *url;
 
   /**
-   * JSON encoding of the request to POST.
-   */
-  char *json_enc;
-
-  /**
    * Handle for the request.
    */
   struct MAC_Job *job;
@@ -217,7 +212,8 @@ TALER_MINT_wire_deposits (struct TALER_MINT_Handle *mint,
 {
   struct TALER_MINT_WireDepositsHandle *wdh;
   struct TALER_MINT_Context *ctx;
-  json_t *wdh_obj;
+  char *buf;
+  char *path;
   CURL *eh;
 
   if (GNUNET_YES !=
@@ -227,33 +223,26 @@ TALER_MINT_wire_deposits (struct TALER_MINT_Handle *mint,
     return NULL;
   }
 
-  wdh_obj = json_pack ("{s:o}",
-                       "wtid", TALER_json_from_data (wtid,
-                                                     sizeof (struct TALER_WireTransferIdentifierRawP)));
-
   wdh = GNUNET_new (struct TALER_MINT_WireDepositsHandle);
   wdh->mint = mint;
   wdh->cb = cb;
   wdh->cb_cls = cb_cls;
-  wdh->url = MAH_path_to_url (mint, "/wire/deposits");
+
+  buf = GNUNET_STRINGS_data_to_string_alloc (wtid,
+                                             sizeof (struct TALER_WireTransferIdentifierRawP));
+  GNUNET_asprintf (&path,
+                   "/wire/deposits?wtid=%s",
+                   buf);
+  wdh->url = MAH_path_to_url (wdh->mint,
+                              path);
+  GNUNET_free (buf);
+  GNUNET_free (path);
 
   eh = curl_easy_init ();
-  GNUNET_assert (NULL != (wdh->json_enc =
-                          json_dumps (wdh_obj,
-                                      JSON_COMPACT)));
-  json_decref (wdh_obj);
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    wdh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDS,
-                                   wdh->json_enc));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_POSTFIELDSIZE,
-                                   strlen (wdh->json_enc)));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_WRITEFUNCTION,
@@ -288,7 +277,6 @@ TALER_MINT_wire_deposits_cancel (struct TALER_MINT_WireDepositsHandle *wdh)
   }
   GNUNET_free_non_null (wdh->db.buf);
   GNUNET_free (wdh->url);
-  GNUNET_free (wdh->json_enc);
   GNUNET_free (wdh);
 }
 
