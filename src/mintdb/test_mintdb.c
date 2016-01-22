@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file mint/test_mintdb.c
+ * @file mintdb/test_mintdb.c
  * @brief test cases for DB interaction functions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
@@ -443,6 +443,114 @@ test_melting (struct TALER_MINTDB_Session *session)
 
 
 /**
+ * Callback that should never be called.
+ */
+static void
+cb_wt_never (void *cls,
+             const struct TALER_MerchantPublicKeyP *merchant_pub,
+             const struct GNUNET_HashCode *h_wire,
+             const struct GNUNET_HashCode *h_contract,
+             uint64_t transaction_id,
+             const struct TALER_CoinSpendPublicKeyP *coin_pub,
+             const struct TALER_Amount *coin_value,
+             const struct TALER_Amount *coin_fee,
+             const struct TALER_Amount *transfer_value)
+{
+  GNUNET_assert (0); /* this statement should be unreachable */
+}
+
+
+/**
+ * Callback that should never be called.
+ */
+static void
+cb_wtid_never (void *cls,
+               const struct TALER_WireTransferIdentifierRawP *wtid,
+               const struct TALER_Amount *coin_contribution,
+               const struct TALER_Amount *coin_fee,
+               const struct TALER_Amount *total_amount,
+               struct GNUNET_TIME_Absolute execution_time)
+{
+  GNUNET_assert (0);
+}
+
+
+static struct TALER_MerchantPublicKeyP merchant_pub_wt;
+static struct GNUNET_HashCode h_wire_wt;
+static struct GNUNET_HashCode h_contract_wt;
+static uint64_t transaction_id_wt;
+static struct TALER_CoinSpendPublicKeyP coin_pub_wt;
+static struct TALER_Amount coin_value_wt;
+static struct TALER_Amount coin_fee_wt;
+static struct TALER_Amount transfer_value_wt;
+static struct GNUNET_TIME_Absolute execution_time_wt;
+static struct TALER_WireTransferIdentifierRawP wtid_wt;
+
+
+/**
+ * Callback that should be called with the WT data.
+ */
+static void
+cb_wt_check (void *cls,
+             const struct TALER_MerchantPublicKeyP *merchant_pub,
+             const struct GNUNET_HashCode *h_wire,
+             const struct GNUNET_HashCode *h_contract,
+             uint64_t transaction_id,
+             const struct TALER_CoinSpendPublicKeyP *coin_pub,
+             const struct TALER_Amount *coin_value,
+             const struct TALER_Amount *coin_fee,
+             const struct TALER_Amount *transfer_value)
+{
+  GNUNET_assert (cls == &cb_wt_never);
+  GNUNET_assert (0 == memcmp (merchant_pub,
+                              &merchant_pub_wt,
+                              sizeof (struct TALER_MerchantPublicKeyP)));
+  GNUNET_assert (0 == memcmp (h_wire,
+                              &h_wire_wt,
+                              sizeof (struct GNUNET_HashCode)));
+  GNUNET_assert (0 == memcmp (h_contract,
+                              &h_contract_wt,
+                              sizeof (struct GNUNET_HashCode)));
+  GNUNET_assert (transaction_id == transaction_id_wt);
+  GNUNET_assert (0 == memcmp (coin_pub,
+                              &coin_pub_wt,
+                              sizeof (struct TALER_CoinSpendPublicKeyP)));
+  GNUNET_assert (0 == TALER_amount_cmp (coin_value,
+                                        &coin_value_wt));
+  GNUNET_assert (0 == TALER_amount_cmp (coin_fee,
+                                        &coin_fee_wt));
+  GNUNET_assert (0 == TALER_amount_cmp (transfer_value,
+                                        &transfer_value_wt));
+}
+
+
+/**
+ * Callback that should be called with the WT data.
+ */
+static void
+cb_wtid_check (void *cls,
+               const struct TALER_WireTransferIdentifierRawP *wtid,
+               const struct TALER_Amount *coin_contribution,
+               const struct TALER_Amount *coin_fee,
+               const struct TALER_Amount *total_amount,
+               struct GNUNET_TIME_Absolute execution_time)
+{
+  GNUNET_assert (cls == &cb_wtid_never);
+  GNUNET_assert (0 == memcmp (wtid,
+                              &wtid_wt,
+                              sizeof (struct TALER_WireTransferIdentifierRawP)));
+  GNUNET_assert (execution_time.abs_value_us ==
+                 execution_time_wt.abs_value_us);
+  GNUNET_assert (0 == TALER_amount_cmp (coin_contribution,
+                                        &coin_value_wt));
+  GNUNET_assert (0 == TALER_amount_cmp (coin_fee,
+                                        &coin_fee_wt));
+  GNUNET_assert (0 == TALER_amount_cmp (total_amount,
+                                        &transfer_value_wt));
+}
+
+
+/**
  * Main function that will be run by the scheduler.
  *
  * @param cls closure
@@ -467,6 +575,7 @@ run (void *cls,
   struct TALER_MINTDB_CollectableBlindcoin *withdraw;
   struct TALER_MINTDB_Deposit deposit;
   struct TALER_MINTDB_Deposit deposit2;
+  struct TALER_WireTransferIdentifierRawP wtid;
   json_t *wire;
   json_t *just;
   const char * const json_wire_str =
@@ -669,6 +778,72 @@ run (void *cls,
                                 session,
                                 &deposit2));
   FAILIF (GNUNET_OK != test_melting (session));
+
+  /* setup values for wire transfer aggregation data */
+  memset (&wtid, 42, sizeof (wtid));
+  memset (&merchant_pub_wt, 43, sizeof (merchant_pub_wt));
+  memset (&h_wire_wt, 44, sizeof (h_wire_wt));
+  memset (&h_contract_wt, 45, sizeof (h_contract_wt));
+  memset (&coin_pub_wt, 46, sizeof (coin_pub_wt));
+  transaction_id_wt = 47;
+  execution_time_wt = GNUNET_TIME_absolute_get ();
+  memset (&merchant_pub_wt, 48, sizeof (merchant_pub_wt));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY "KUDOS:1.000010",
+                                         &coin_value_wt));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY "KUDOS:0.000010",
+                                         &coin_fee_wt));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY "KUDOS:1.000000",
+                                         &transfer_value_wt));
+
+  FAILIF (GNUNET_NO !=
+          plugin->lookup_wire_transfer (plugin->cls,
+                                        session,
+                                        &wtid_wt,
+                                        &cb_wt_never,
+                                        NULL));
+  FAILIF (GNUNET_NO !=
+          plugin->wire_lookup_deposit_wtid (plugin->cls,
+                                            session,
+                                            &h_contract_wt,
+                                            &h_wire_wt,
+                                            &coin_pub_wt,
+                                            &merchant_pub_wt,
+                                            transaction_id_wt,
+                                            &cb_wtid_never,
+                                            NULL));
+  /* insert WT data */
+  FAILIF (GNUNET_OK !=
+          plugin->insert_aggregation_tracking (plugin->cls,
+                                               session,
+                                               &wtid_wt,
+                                               &merchant_pub_wt,
+                                               &h_wire_wt,
+                                               &h_contract_wt,
+                                               transaction_id_wt,
+                                               execution_time_wt,
+                                               &coin_pub_wt,
+                                               &coin_value_wt,
+                                               &coin_fee_wt,
+                                               &transfer_value_wt));
+  FAILIF (GNUNET_OK !=
+          plugin->lookup_wire_transfer (plugin->cls,
+                                        session,
+                                        &wtid_wt,
+                                        &cb_wt_check,
+                                        &cb_wt_never));
+  FAILIF (GNUNET_OK !=
+          plugin->wire_lookup_deposit_wtid (plugin->cls,
+                                            session,
+                                            &h_contract_wt,
+                                            &h_wire_wt,
+                                            &coin_pub_wt,
+                                            &merchant_pub_wt,
+                                            transaction_id_wt,
+                                            &cb_wtid_check,
+                                            &cb_wtid_never));
   result = 0;
 
  drop:

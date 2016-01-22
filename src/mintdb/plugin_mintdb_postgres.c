@@ -711,7 +711,7 @@ postgres_prepare (PGconn *db_conn)
            "SELECT"
            " denom_pub"
            ",denom_sig"
-           " FROM known_coins "
+           " FROM known_coins"
            " WHERE coin_pub=$1",
            1, NULL);
   /* Used in #postgres_insert_known_coin() to store
