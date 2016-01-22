@@ -121,13 +121,12 @@ TMH_TRACKING_handler_deposit_wtid (struct TMH_RequestHandler *rh,
   struct TALER_DepositTrackPS tps;
   uint64_t transaction_id;
   struct TALER_MerchantSignatureP merchant_sig;
-  struct TALER_MerchantPublicKeyP merchant_pub;
   struct TMH_PARSE_FieldSpecification spec[] = {
     TMH_PARSE_member_fixed ("H_wire", &tps.h_wire),
     TMH_PARSE_member_fixed ("H_contract", &tps.h_contract),
     TMH_PARSE_member_fixed ("coin_pub", &tps.coin_pub),
     TMH_PARSE_member_uint64 ("transaction_id", &transaction_id),
-    TMH_PARSE_member_fixed ("merchant_pub", &merchant_pub),
+    TMH_PARSE_member_fixed ("merchant_pub", &tps.merchant),
     TMH_PARSE_member_fixed ("merchant_sig", &merchant_sig),
     TMH_PARSE_MEMBER_END
   };
@@ -154,7 +153,7 @@ TMH_TRACKING_handler_deposit_wtid (struct TMH_RequestHandler *rh,
   tps.transaction_id = GNUNET_htonll (transaction_id);
   res = check_and_handle_deposit_wtid_request (connection,
 					       &tps,
-					       &merchant_pub,
+					       &tps.merchant,
 					       &merchant_sig,
 					       transaction_id);
   TMH_PARSE_release_data (spec);

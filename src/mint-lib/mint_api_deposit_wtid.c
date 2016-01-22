@@ -300,7 +300,6 @@ TALER_MINT_deposit_wtid (struct TALER_MINT_Handle *mint,
                  GNUNET_CRYPTO_eddsa_sign (&merchant_priv->eddsa_priv,
                                            &dtp.purpose,
                                            &merchant_sig.eddsa_sig));
-
   deposit_wtid_obj = json_pack ("{s:o, s:o," /* H_wire, H_contract */
                                 " s:o, s:I," /* coin_pub, transaction_id */
                                 " s:o, s:o}", /* merchant_pub, merchant_sig */

@@ -757,7 +757,7 @@ TALER_MINT_connect (struct TALER_MINT_Context *ctx,
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (c,
                                    CURLOPT_VERBOSE,
-                                   1));
+                                   0));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (c,
                                    CURLOPT_STDERR,
