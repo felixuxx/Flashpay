@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -1887,7 +1887,7 @@ TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
   ctx.h_wire = *h_wire;
   ctx.coin_pub = *coin_pub;
   ctx.transaction_id = transaction_id;
-  ctx.res = MHD_NO; /* this value should never be read... */
+  ctx.res = GNUNET_SYSERR;
   ret = TMH_plugin->wire_lookup_deposit_wtid (TMH_plugin->cls,
                                               session,
 					      h_contract,
@@ -1900,10 +1900,20 @@ TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
   if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);
+    GNUNET_break (GNUNET_SYSERR == ctx.res);
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   if (GNUNET_NO == ret)
+  {
+    GNUNET_break (GNUNET_SYSERR == ctx.res);
     return TMH_RESPONSE_reply_deposit_unknown (connection);
+  }
+  if (GNUNET_SYSERR == ctx.res)
+  {
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_error (connection,
+                                              "bug resolving deposit wtid");
+  }
   return ctx.res;
 }
 
