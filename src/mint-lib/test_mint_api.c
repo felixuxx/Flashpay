@@ -1311,6 +1311,7 @@ wire_deposits_cb (void *cls,
   struct Command *cmd = &is->commands[is->ip];
   const struct Command *ref;
 
+  cmd->details.wire_deposits.wdh = NULL;
   ref = find_command (is,
                       cmd->details.wire_deposits.wtid_ref);
   if (cmd->expected_response_code != http_status)
@@ -1397,6 +1398,7 @@ deposit_wtid_cb (void *cls,
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
 
+  cmd->details.deposit_wtid.dwh = NULL;
   if (cmd->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -2352,7 +2354,7 @@ run (void *cls,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
-      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":1 } }",
+      .details.deposit.contract = "{ \"items\":[{ \"name\":\"ice cream\", \"value\":1 }]}",
       .details.deposit.transaction_id = 1 },
 
     /* Try to overdraw funds ... */
@@ -2369,7 +2371,7 @@ run (void *cls,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":43 }",
-      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":1 } }",
+      .details.deposit.contract = "{ \"items\":[{ \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 1 },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
        transaction ID) */
@@ -2379,7 +2381,7 @@ run (void *cls,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
-      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":1 } }",
+      .details.deposit.contract = "{ \"items\":[\"name\":\"ice cream\", \"value\":1 }] }",
       .details.deposit.transaction_id = 2 },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
        contract) */
@@ -2389,7 +2391,7 @@ run (void *cls,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
-      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":2 } }",
+      .details.deposit.contract = "{ \"items\":[{ \"name\":\"ice cream\", \"value\":2 } ] }",
       .details.deposit.transaction_id = 1 },
 
     /* ***************** /refresh testing ******************** */
@@ -2414,7 +2416,7 @@ run (void *cls,
       .details.deposit.amount = "EUR:1",
       .details.deposit.coin_ref = "refresh-withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
-      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\"EUR:1 } }",
+      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\"EUR:1 } ] }",
       .details.deposit.transaction_id = 42421 },
 
     /* Melt the rest of the coin's value (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
@@ -2448,7 +2450,7 @@ run (void *cls,
       .details.deposit.coin_ref = "refresh-reveal-1",
       .details.deposit.coin_idx = 0,
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
-      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":3 } }",
+      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }",
       .details.deposit.transaction_id = 2 },
 
     /* Test successfully spending coins from the refresh operation:
@@ -2460,7 +2462,7 @@ run (void *cls,
       .details.deposit.coin_ref = "refresh-reveal-1",
       .details.deposit.coin_idx = 4,
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
-      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":3 } }",
+      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }",
       .details.deposit.transaction_id = 2 },
 
     /* Test running a failing melt operation (same operation again must fail) */
@@ -2473,6 +2475,35 @@ run (void *cls,
     // FIXME: also test with coin that was already melted
     // (signature differs from coin that was deposited...)
     /* *************** end of /refresh testing ************** */
+
+    /* ************** Test tracking API ******************** */
+    /* Try resolving a deposit's WTID, as we never triggered
+       execution of transactions, the answer should be that
+       the mint knows about the deposit, but has no WTID yet. */
+    { .oc = OC_DEPOSIT_WTID,
+      .label = "deposit-wtid-found",
+      .expected_response_code = MHD_HTTP_FOUND,
+      .details.deposit_wtid.deposit_ref = "deposit-simple" },
+    /* Try resolving a deposit's WTID for a failed deposit.
+       As the deposit failed, the answer should be that
+       the mint does NOT know about the deposit. */
+    { .oc = OC_DEPOSIT_WTID,
+      .label = "deposit-wtid-failing",
+      .expected_response_code = MHD_HTTP_NOT_FOUND,
+      .details.deposit_wtid.deposit_ref = "deposit-double-2" },
+    /* Try resolving an undefined (all zeros) WTID; this
+       should fail as obviously the mint didn't use that
+       WTID value for any transaction. */
+    { .oc = OC_WIRE_DEPOSITS,
+      .label = "wire-deposit-failing",
+      .expected_response_code = MHD_HTTP_NOT_FOUND },
+
+    /* TODO: trigger aggregation logic and then check the
+       cases where tracking succeeds! */
+
+    /* ************** End of tracking API testing************* */
+
+
 #endif
 
     { .oc = OC_END }
