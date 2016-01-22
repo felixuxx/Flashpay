@@ -1081,7 +1081,7 @@ TMH_RESPONSE_reply_deposit_pending (struct MHD_Connection *connection,
 				    struct GNUNET_TIME_Absolute planned_exec_time)
 {
   return TMH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_FOUND,
+                                       MHD_HTTP_ACCEPTED,
                                        "{s:o}",
                                        "execution_time", TALER_json_from_abs (planned_exec_time));
 }
