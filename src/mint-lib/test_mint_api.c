@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -1617,7 +1617,9 @@ interpreter_run (void *cls,
       struct GNUNET_TIME_Absolute refund_deadline;
       struct GNUNET_TIME_Absolute wire_deadline;
       struct GNUNET_TIME_Absolute timestamp;
+      struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
       struct TALER_MerchantPublicKeyP merchant_pub;
+      json_t *contract;
       json_t *wire;
 
       GNUNET_assert (NULL !=
@@ -1660,37 +1662,51 @@ interpreter_run (void *cls,
         fail (is);
         return;
       }
-      GNUNET_CRYPTO_hash (cmd->details.deposit.contract,
-                          strlen (cmd->details.deposit.contract),
-                          &h_contract);
+      contract = json_loads (cmd->details.deposit.contract,
+                             JSON_REJECT_DUPLICATES,
+                             NULL);
+      if (NULL == contract)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failed to parse contract details `%s' at %u/%s\n",
+                    cmd->details.deposit.contract,
+                    is->ip,
+                    cmd->label);
+        fail (is);
+        return;
+      }
+      TALER_hash_json (contract,
+                       &h_contract);
       wire = json_loads (cmd->details.deposit.wire_details,
                          JSON_REJECT_DUPLICATES,
                          NULL);
       if (NULL == wire)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Failed to parse wire details `%s' at %u\n",
+                    "Failed to parse wire details `%s' at %u/%s\n",
                     cmd->details.deposit.wire_details,
-                    is->ip);
+                    is->ip,
+                    cmd->label);
         fail (is);
         return;
       }
       GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                           &coin_pub.eddsa_pub);
 
+      priv = GNUNET_CRYPTO_eddsa_key_create ();
+      cmd->details.deposit.merchant_priv.eddsa_priv = *priv;
+      GNUNET_free (priv);
       if (0 != cmd->details.deposit.refund_deadline.rel_value_us)
       {
-        struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
-
-        priv = GNUNET_CRYPTO_eddsa_key_create ();
-        cmd->details.deposit.merchant_priv.eddsa_priv = *priv;
-        GNUNET_free (priv);
         refund_deadline = GNUNET_TIME_relative_to_absolute (cmd->details.deposit.refund_deadline);
       }
       else
       {
         refund_deadline = GNUNET_TIME_UNIT_ZERO_ABS;
       }
+      GNUNET_CRYPTO_eddsa_key_get_public (&cmd->details.deposit.merchant_priv.eddsa_priv,
+                                          &merchant_pub.eddsa_pub);
+
       wire_deadline = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_DAYS);
       timestamp = GNUNET_TIME_absolute_get ();
       TALER_round_abs_time (&timestamp);
@@ -2122,6 +2138,10 @@ do_shutdown (void *cls,
     case OC_WIRE:
       if (NULL != cmd->details.wire.wh)
       {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
         TALER_MINT_wire_cancel (cmd->details.wire.wh);
         cmd->details.wire.wh = NULL;
       }
@@ -2129,6 +2149,10 @@ do_shutdown (void *cls,
     case OC_WIRE_DEPOSITS:
       if (NULL != cmd->details.wire_deposits.wdh)
       {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
         TALER_MINT_wire_deposits_cancel (cmd->details.wire_deposits.wdh);
         cmd->details.wire_deposits.wdh = NULL;
       }
@@ -2136,6 +2160,10 @@ do_shutdown (void *cls,
     case OC_DEPOSIT_WTID:
       if (NULL != cmd->details.deposit_wtid.dwh)
       {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
         TALER_MINT_deposit_wtid_cancel (cmd->details.deposit_wtid.dwh);
         cmd->details.deposit_wtid.dwh = NULL;
       }
@@ -2354,7 +2382,7 @@ run (void *cls,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
-      .details.deposit.contract = "{ \"items\":[{ \"name\":\"ice cream\", \"value\":1 }]}",
+      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 1 },
 
     /* Try to overdraw funds ... */
@@ -2371,7 +2399,7 @@ run (void *cls,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":43 }",
-      .details.deposit.contract = "{ \"items\":[{ \"name\":\"ice cream\", \"value\":1 } ] }",
+      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 1 },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
        transaction ID) */
@@ -2381,7 +2409,7 @@ run (void *cls,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
-      .details.deposit.contract = "{ \"items\":[\"name\":\"ice cream\", \"value\":1 }] }",
+      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 2 },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
        contract) */
@@ -2416,7 +2444,7 @@ run (void *cls,
       .details.deposit.amount = "EUR:1",
       .details.deposit.coin_ref = "refresh-withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
-      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\"EUR:1 } ] }",
+      .details.deposit.contract = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:1\" } ] }",
       .details.deposit.transaction_id = 42421 },
 
     /* Melt the rest of the coin's value (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
