@@ -3620,7 +3620,7 @@ postgres_wire_lookup_deposit_wtid (void *cls,
   if (0 == nrows)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "lookup_wire_transfer() returned 0 matching rows\n");
+                "lookup_deposit_wtid returned 0 matching rows\n");
     PQclear (result);
 
     /* Check if transaction exists in deposits, so that we just
@@ -3649,6 +3649,8 @@ postgres_wire_lookup_deposit_wtid (void *cls,
     nrows = PQntuples (result);
     if (0 == nrows)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "get_deposit_for_wtid returned 0 matching rows\n");
       PQclear (result);
       return GNUNET_NO;
     }
@@ -3660,11 +3662,12 @@ postgres_wire_lookup_deposit_wtid (void *cls,
       struct TALER_Amount coin_amount;
       struct TALER_Amount coin_fee;
       struct TALER_PQ_ResultSpec rs[] = {
-        TALER_PQ_result_spec_amount ("coin_amount", &coin_amount),
+        TALER_PQ_result_spec_amount ("amount_with_fee", &coin_amount),
         TALER_PQ_result_spec_amount ("deposit_fee", &coin_fee),
         TALER_PQ_result_spec_absolute_time ("wire_deadline", &exec_time),
         TALER_PQ_result_spec_end
       };
+
       if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
       {
         GNUNET_break (0);
