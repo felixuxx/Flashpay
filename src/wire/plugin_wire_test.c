@@ -60,8 +60,21 @@ static int
 test_amount_round (void *cls,
                    struct TALER_Amount *amount)
 {
-  GNUNET_break (0);
-  return GNUNET_SYSERR;
+  struct TestClosure *tc = cls;
+  uint32_t delta;
+
+  if (0 != strcasecmp (amount->currency,
+                       tc->currency))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  /* 'test' method supports 1/100 of the unit currency, i.e. 0.01 CUR */
+  delta = amount->fraction % (TALER_AMOUNT_FRAC_BASE / 100);
+  if (0 == delta)
+    return GNUNET_NO;
+  amount->fraction -= delta;
+  return GNUNET_OK;
 }
 
 
@@ -74,8 +87,9 @@ test_amount_round (void *cls,
 static int
 test_wire_validate (const json_t *wire)
 {
-  GNUNET_break (0);
-  return GNUNET_SYSERR;
+  GNUNET_break (0); /* FIXME: we still need to define the
+                       proper wire format for 'test' */
+  return GNUNET_YES;
 }
 
 
@@ -94,7 +108,7 @@ static struct TALER_WIRE_PrepareHandle *
 test_prepare_wire_transfer (void *cls,
                             const json_t *wire,
                             const struct TALER_Amount *amount,
-                            const void *wtid,
+                            const struct TALER_WireTransferIdentifierRawP *wtid,
                             TALER_WIRE_PrepareTransactionCallback ptc,
                             void *ptc_cls)
 {

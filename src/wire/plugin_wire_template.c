@@ -60,7 +60,15 @@ static int
 template_amount_round (void *cls,
                        struct TALER_Amount *amount)
 {
-  GNUNET_break (0);
+  struct TemplateClosure *tc = cls;
+
+  if (0 != strcasecmp (amount->currency,
+                       tc->currency))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_break (0); // not implemented
   return GNUNET_SYSERR;
 }
 
@@ -94,7 +102,7 @@ static struct TALER_WIRE_PrepareHandle *
 template_prepare_wire_transfer (void *cls,
                                 const json_t *wire,
                                 const struct TALER_Amount *amount,
-                                const void *wtid,
+                                const struct TALER_WireTransferIdentifierRawP *wtid,
                                 TALER_WIRE_PrepareTransactionCallback ptc,
                                 void *ptc_cls)
 {

@@ -123,7 +123,7 @@ struct TALER_WIRE_Plugin
   (*prepare_wire_transfer) (void *cls,
                             const json_t *wire,
                             const struct TALER_Amount *amount,
-                            const void *wtid,
+                            const struct TALER_WireTransferIdentifierRawP *wtid,
                             TALER_WIRE_PrepareTransactionCallback ptc,
                             void *ptc_cls);
 
