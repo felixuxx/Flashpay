@@ -288,7 +288,7 @@ TALER_MINT_perform (struct TALER_MINT_Context *ctx)
     GNUNET_assert (CURLE_OK ==
                    curl_easy_getinfo (cmsg->easy_handle,
                                       CURLINFO_PRIVATE,
-                                      (char *) &job));
+                                      (char **) &job));
     GNUNET_assert (job->ctx == ctx);
     job->jcc (job->jcc_cls,
               cmsg->easy_handle);

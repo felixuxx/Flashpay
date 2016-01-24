@@ -46,22 +46,17 @@ TMH_TRACKING_handler_wire_deposits (struct TMH_RequestHandler *rh,
                                     const char *upload_data,
                                     size_t *upload_data_size)
 {
-  struct TALER_WireTransferIdentifierP wtid;
+  struct TALER_WireTransferIdentifierRawP wtid;
   int res;
 
   res = TMH_PARSE_mhd_request_arg_data (connection,
                                         "wtid",
                                         &wtid,
-                                        sizeof (struct TALER_WireTransferIdentifierP));
+                                        sizeof (struct TALER_WireTransferIdentifierRawP));
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
     return MHD_YES; /* parse error */
-  if (wtid.crc8 !=
-      GNUNET_CRYPTO_crc8_n (&wtid.raw,
-                            sizeof (wtid.raw)))
-    return TMH_RESPONSE_reply_arg_invalid (connection,
-                                           "wtid");
   return TMH_DB_execute_wire_deposits (connection,
                                        &wtid);
 }
@@ -126,13 +121,12 @@ TMH_TRACKING_handler_deposit_wtid (struct TMH_RequestHandler *rh,
   struct TALER_DepositTrackPS tps;
   uint64_t transaction_id;
   struct TALER_MerchantSignatureP merchant_sig;
-  struct TALER_MerchantPublicKeyP merchant_pub;
   struct TMH_PARSE_FieldSpecification spec[] = {
     TMH_PARSE_member_fixed ("H_wire", &tps.h_wire),
     TMH_PARSE_member_fixed ("H_contract", &tps.h_contract),
     TMH_PARSE_member_fixed ("coin_pub", &tps.coin_pub),
     TMH_PARSE_member_uint64 ("transaction_id", &transaction_id),
-    TMH_PARSE_member_fixed ("merchant_pub", &merchant_pub),
+    TMH_PARSE_member_fixed ("merchant_pub", &tps.merchant),
     TMH_PARSE_member_fixed ("merchant_sig", &merchant_sig),
     TMH_PARSE_MEMBER_END
   };
@@ -159,7 +153,7 @@ TMH_TRACKING_handler_deposit_wtid (struct TMH_RequestHandler *rh,
   tps.transaction_id = GNUNET_htonll (transaction_id);
   res = check_and_handle_deposit_wtid_request (connection,
 					       &tps,
-					       &merchant_pub,
+					       &tps.merchant,
 					       &merchant_sig,
 					       transaction_id);
   TMH_PARSE_release_data (spec);

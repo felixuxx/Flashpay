@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -1566,6 +1566,12 @@ struct WtidTransactionContext
   struct TALER_Amount total;
 
   /**
+   * Value we find in the DB for the @e total; only valid if @e is_valid
+   * is #GNUNET_YES.
+   */
+  struct TALER_Amount db_transaction_value;
+
+  /**
    * Public key of the merchant, only valid if @e is_valid
    * is #GNUNET_YES.
    */
@@ -1606,6 +1612,7 @@ struct WtidTransactionContext
  * @param coin_pub which public key was this payment about
  * @param deposit_value amount contributed by this coin in total
  * @param deposit_fee deposit fee charged by mint for this coin
+ * @param transaction_value total value of the wire transaction
  */
 static void
 handle_transaction_data (void *cls,
@@ -1615,7 +1622,8 @@ handle_transaction_data (void *cls,
                          uint64_t transaction_id,
                          const struct TALER_CoinSpendPublicKeyP *coin_pub,
                          const struct TALER_Amount *deposit_value,
-                         const struct TALER_Amount *deposit_fee)
+                         const struct TALER_Amount *deposit_fee,
+                         const struct TALER_Amount *transaction_value)
 {
   struct WtidTransactionContext *ctx = cls;
   struct TALER_Amount delta;
@@ -1626,6 +1634,7 @@ handle_transaction_data (void *cls,
   {
     ctx->merchant_pub = *merchant_pub;
     ctx->h_wire = *h_wire;
+    ctx->db_transaction_value = *transaction_value;
     ctx->is_valid = GNUNET_YES;
     if (GNUNET_OK !=
         TALER_amount_subtract (&ctx->total,
@@ -1644,7 +1653,9 @@ handle_transaction_data (void *cls,
                        sizeof (struct TALER_MerchantPublicKeyP))) ||
          (0 != memcmp (&ctx->h_wire,
                        h_wire,
-                       sizeof (struct GNUNET_HashCode))) )
+                       sizeof (struct GNUNET_HashCode))) ||
+         (0 != TALER_amount_cmp (transaction_value,
+                                 &ctx->db_transaction_value)) )
     {
       GNUNET_break (0);
       ctx->is_valid = GNUNET_SYSERR;
@@ -1693,17 +1704,25 @@ handle_transaction_data (void *cls,
  */
 int
 TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
-                             const struct TALER_WireTransferIdentifierP *wtid)
+                             const struct TALER_WireTransferIdentifierRawP *wtid)
 {
   int ret;
   struct WtidTransactionContext ctx;
+  struct TALER_MINTDB_Session *session;
 
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
+                                                  TMH_test_mode)))
+  {
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
   ctx.is_valid = GNUNET_NO;
   ctx.deposits = json_array ();
-  ret = TMH_plugin->lookup_wire_transactions (TMH_plugin->cls,
-                                              &wtid->raw,
-                                              &handle_transaction_data,
-                                              &ctx);
+  ret = TMH_plugin->lookup_wire_transfer (TMH_plugin->cls,
+                                          session,
+                                          wtid,
+                                          &handle_transaction_data,
+                                          &ctx);
   if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);
@@ -1722,8 +1741,15 @@ TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
     return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "wtid");
   }
+  if (0 != TALER_amount_cmp (&ctx.total,
+                             &ctx.db_transaction_value))
+  {
+    /* FIXME: this CAN actually differ, due to rounding
+       down. But we should still check that the values
+       do match after rounding 'total' down! */
+  }
   return TMH_RESPONSE_reply_wire_deposit_details (connection,
-                                                  &ctx.total,
+                                                  &ctx.db_transaction_value,
                                                   &ctx.merchant_pub,
                                                   &ctx.h_wire,
                                                   ctx.deposits);
@@ -1776,7 +1802,8 @@ struct DepositWtidContext
  * @param wtid raw wire transfer identifier, NULL
  *         if the transaction was not yet done
  * @param coin_contribution how much did the coin we asked about
- *        contribute to the total transfer value? (deposit value minus fee)
+ *        contribute to the total transfer value? (deposit value including fee)
+ * @param coin_fee how much did the mint charge for the deposit fee
  * @param total_amount how much was the total wire transfer?
  * @param execution_time when was the transaction done, or
  *         when we expect it to be done (if @a wtid was NULL);
@@ -1787,31 +1814,40 @@ static void
 handle_wtid_data (void *cls,
 		  const struct TALER_WireTransferIdentifierRawP *wtid,
                   const struct TALER_Amount *coin_contribution,
+                  const struct TALER_Amount *coin_fee,
                   const struct TALER_Amount *total_amount,
 		  struct GNUNET_TIME_Absolute execution_time)
 {
   struct DepositWtidContext *ctx = cls;
+  struct TALER_Amount coin_delta;
 
   if (NULL == wtid)
   {
-    if (GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us ==
-	execution_time.abs_value_us)
-      ctx->res = TMH_RESPONSE_reply_deposit_unknown (ctx->connection);
-    else
-      ctx->res = TMH_RESPONSE_reply_deposit_pending (ctx->connection,
-                                                     execution_time);
+    ctx->res = TMH_RESPONSE_reply_deposit_pending (ctx->connection,
+                                                   execution_time);
   }
   else
   {
-    ctx->res = TMH_RESPONSE_reply_deposit_wtid (ctx->connection,
-                                                &ctx->h_contract,
-                                                &ctx->h_wire,
-                                                &ctx->coin_pub,
-                                                coin_contribution,
-                                                total_amount,
-                                                ctx->transaction_id,
-                                                wtid,
-                                                execution_time);
+    if (GNUNET_SYSERR ==
+        TALER_amount_subtract (&coin_delta,
+                               coin_contribution,
+                               coin_fee))
+    {
+      GNUNET_break (0);
+      ctx->res = TMH_RESPONSE_reply_internal_db_error (ctx->connection);
+    }
+    else
+    {
+      ctx->res = TMH_RESPONSE_reply_deposit_wtid (ctx->connection,
+                                                  &ctx->h_contract,
+                                                  &ctx->h_wire,
+                                                  &ctx->coin_pub,
+                                                  &coin_delta,
+                                                  total_amount,
+                                                  ctx->transaction_id,
+                                                  wtid,
+                                                  execution_time);
+    }
   }
 }
 
@@ -1838,14 +1874,22 @@ TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
 {
   int ret;
   struct DepositWtidContext ctx;
+  struct TALER_MINTDB_Session *session;
 
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
+                                                  TMH_test_mode)))
+  {
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
   ctx.connection = connection;
   ctx.h_contract = *h_contract;
   ctx.h_wire = *h_wire;
   ctx.coin_pub = *coin_pub;
   ctx.transaction_id = transaction_id;
-  ctx.res = MHD_NO; /* this value should never be read... */
+  ctx.res = GNUNET_SYSERR;
   ret = TMH_plugin->wire_lookup_deposit_wtid (TMH_plugin->cls,
+                                              session,
 					      h_contract,
 					      h_wire,
 					      coin_pub,
@@ -1856,7 +1900,19 @@ TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
   if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);
+    GNUNET_break (GNUNET_SYSERR == ctx.res);
     return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
+  if (GNUNET_NO == ret)
+  {
+    GNUNET_break (GNUNET_SYSERR == ctx.res);
+    return TMH_RESPONSE_reply_deposit_unknown (connection);
+  }
+  if (GNUNET_SYSERR == ctx.res)
+  {
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_error (connection,
+                                              "bug resolving deposit wtid");
   }
   return ctx.res;
 }

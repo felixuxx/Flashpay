@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015 GNUnet e.V.
+  Copyright (C) 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -185,6 +185,17 @@ parse_refresh_link_ok (struct TALER_MINT_RefreshLinkHandle *rlh,
     return GNUNET_SYSERR;
   }
   num_coins = 0;
+  /* Theoretically, a coin may have been melted repeatedly
+     into different sessions; so the response is an array
+     which contains information by melting session.  That
+     array contains another array.  However, our API returns
+     a single 1d array, so we flatten the 2d array that is
+     returned into a single array. Note that usually a coin
+     is melted at most once, and so we'll only run this
+     loop once for 'session=0' in most cases.
+
+     num_coins tracks the size of the 1d array we return,
+     whilst 'i' and 'session' track the 2d array. */
   for (session=0;session<json_array_size (json); session++)
   {
     json_t *jsona;
@@ -212,13 +223,17 @@ parse_refresh_link_ok (struct TALER_MINT_RefreshLinkHandle *rlh,
     num_coins += json_array_size (jsona);
     MAJ_parse_free (spec);
   }
+  /* Now that we know how big the 1d array is, allocate
+     and fill it. */
   {
-    unsigned int off_coin;
+    unsigned int off_coin; /* index into 1d array */
     unsigned int i;
     struct TALER_CoinSpendPrivateKeyP coin_privs[num_coins];
     struct TALER_DenominationSignature sigs[num_coins];
     struct TALER_DenominationPublicKey pubs[num_coins];
 
+    memset (sigs, 0, sizeof (sigs));
+    memset (pubs, 0, sizeof (pubs));
     off_coin = 0;
     for (session=0;session<json_array_size (json); session++)
     {
@@ -265,6 +280,7 @@ parse_refresh_link_ok (struct TALER_MINT_RefreshLinkHandle *rlh,
 	}
       }
       /* check if we really got all, then invoke callback */
+      off_coin += i;
       if (i != json_array_size (jsona))
       {
 	GNUNET_break_op (0);
@@ -272,7 +288,6 @@ parse_refresh_link_ok (struct TALER_MINT_RefreshLinkHandle *rlh,
 	MAJ_parse_free (spec);
 	break;
       }
-      off_coin += json_array_size (jsona);
       MAJ_parse_free (spec);
     } /* end of for (session) */
 
@@ -295,9 +310,13 @@ parse_refresh_link_ok (struct TALER_MINT_RefreshLinkHandle *rlh,
     }
 
     /* clean up */
-    for (i=0;i<num_coins;i++)
+    for (i=0;i<off_coin;i++)
+    {
       if (NULL != sigs[i].rsa_signature)
         GNUNET_CRYPTO_rsa_signature_free (sigs[i].rsa_signature);
+      if (NULL != pubs[i].rsa_public_key)
+        GNUNET_CRYPTO_rsa_public_key_free (pubs[i].rsa_public_key);
+    }
   }
   return ret;
 }

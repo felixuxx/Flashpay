@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -111,7 +111,17 @@ enum OpCode
   /**
    * Verify the mint's /wire-method.
    */
-  OC_WIRE
+  OC_WIRE,
+
+  /**
+   * Verify mint's /wire/deposits method.
+   */
+  OC_WIRE_DEPOSITS,
+
+  /**
+   * Verify mint's /deposit/wtid method.
+   */
+  OC_DEPOSIT_WTID
 
 };
 
@@ -469,6 +479,60 @@ struct Command
       const char *format;
 
     } wire;
+
+    /**
+     * Information for the /wire/deposits's command.
+     */
+    struct {
+
+      /**
+       * Handle to the wire deposits request.
+       */
+      struct TALER_MINT_WireDepositsHandle *wdh;
+
+      /**
+       * Reference to a /deposit/wtid command. If set, we use the
+       * WTID from that command.
+       */
+      const char *wtid_ref;
+
+      /**
+       * WTID to use (used if @e wtid_ref is NULL).
+       */
+      struct TALER_WireTransferIdentifierRawP wtid;
+
+      /* TODO: may want to add list of deposits we expected
+         to see aggregated here in the future. */
+
+    } wire_deposits;
+
+    /**
+     * Information for the /deposit/wtid command.
+     */
+    struct {
+
+      /**
+       * Handle to the deposit wtid request.
+       */
+      struct TALER_MINT_DepositWtidHandle *dwh;
+
+      /**
+       * Which /deposit operation should we obtain WTID data for?
+       */
+      const char *deposit_ref;
+
+      /**
+       * What is the expected total amount? Only used if
+       * @e expected_response_code was #MHD_HTTP_OK.
+       */
+      struct TALER_Amount total_amount_expected;
+
+      /**
+       * Wire transfer identifier, set if #MHD_HTTP_OK was the response code.
+       */
+      struct TALER_WireTransferIdentifierRawP wtid;
+
+    } deposit_wtid;
 
   } details;
 
@@ -1220,6 +1284,158 @@ wire_cb (void *cls,
 
 
 /**
+ * Function called with detailed wire transfer data, including all
+ * of the coin transactions that were combined into the wire transfer.
+ *
+ * @param cls closure
+ * @param http_status HTTP status code we got, 0 on mint protocol violation
+ * @param json original json reply (may include signatures, those have then been
+ *        validated already)
+ * @param wtid extracted wire transfer identifier, or NULL if the mint could
+ *             not provide any (set only if @a http_status is #MHD_HTTP_OK)
+ * @param total_amount total amount of the wire transfer, or NULL if the mint could
+ *             not provide any @a wtid (set only if @a http_status is #MHD_HTTP_OK)
+ * @param details_length length of the @a details array
+ * @param details array with details about the combined transactions
+ */
+static void
+wire_deposits_cb (void *cls,
+                  unsigned int http_status,
+                  json_t *json,
+                  const struct GNUNET_HashCode *h_wire,
+                  const struct TALER_Amount *total_amount,
+                  unsigned int details_length,
+                  const struct TALER_WireDepositDetails *details)
+{
+  struct InterpreterState *is = cls;
+  struct Command *cmd = &is->commands[is->ip];
+  const struct Command *ref;
+
+  cmd->details.wire_deposits.wdh = NULL;
+  ref = find_command (is,
+                      cmd->details.wire_deposits.wtid_ref);
+  if (cmd->expected_response_code != http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u to command %s\n",
+                http_status,
+                cmd->label);
+    json_dumpf (json, stderr, 0);
+    fail (is);
+    return;
+  }
+  switch (http_status)
+  {
+  case MHD_HTTP_OK:
+    if (0 != TALER_amount_cmp (total_amount,
+                               &ref->details.deposit_wtid.total_amount_expected))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Total amount missmatch to command %s\n",
+                  http_status,
+                  cmd->label);
+      json_dumpf (json, stderr, 0);
+      fail (is);
+      return;
+    }
+    if (NULL != ref->details.deposit_wtid.deposit_ref)
+    {
+      const struct Command *dep;
+      struct GNUNET_HashCode hw;
+
+      dep = find_command (is,
+                          ref->details.deposit_wtid.deposit_ref);
+      GNUNET_CRYPTO_hash (dep->details.deposit.wire_details,
+                          strlen (dep->details.deposit.wire_details),
+                          &hw);
+      if (0 != memcmp (&hw,
+                       h_wire,
+                       sizeof (struct GNUNET_HashCode)))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Wire hash missmatch to command %s\n",
+                    cmd->label);
+        json_dumpf (json, stderr, 0);
+        fail (is);
+        return;
+      }
+    }
+    break;
+  default:
+    break;
+  }
+
+  /* move to next command */
+  is->ip++;
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
+}
+
+
+/**
+ * Function called with detailed wire transfer data.
+ *
+ * @param cls closure
+ * @param http_status HTTP status code we got, 0 on mint protocol violation
+ * @param json original json reply (may include signatures, those have then been
+ *        validated already)
+ * @param wtid wire transfer identifier used by the mint, NULL if mint did not
+ *                  yet execute the transaction
+ * @param execution_time actual or planned execution time for the wire transfer
+ * @param coin_contribution contribution to the @a total_amount of the deposited coin (may be NULL)
+ * @param total_amount total amount of the wire transfer, or NULL if the mint could
+ *             not provide any @a wtid (set only if @a http_status is #MHD_HTTP_OK)
+ */
+static void
+deposit_wtid_cb (void *cls,
+                 unsigned int http_status,
+                 json_t *json,
+                 const struct TALER_WireTransferIdentifierRawP *wtid,
+                 struct GNUNET_TIME_Absolute execution_time,
+                 const struct TALER_Amount *coin_contribution,
+                 const struct TALER_Amount *total_amount)
+{
+  struct InterpreterState *is = cls;
+  struct Command *cmd = &is->commands[is->ip];
+
+  cmd->details.deposit_wtid.dwh = NULL;
+  if (cmd->expected_response_code != http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u to command %s\n",
+                http_status,
+                cmd->label);
+    json_dumpf (json, stderr, 0);
+    fail (is);
+    return;
+  }
+  switch (http_status)
+  {
+  case MHD_HTTP_OK:
+    cmd->details.deposit_wtid.wtid = *wtid;
+    if (0 != TALER_amount_cmp (total_amount,
+                               &cmd->details.deposit_wtid.total_amount_expected))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Total amount missmatch to command %s\n",
+                  cmd->label);
+      json_dumpf (json, stderr, 0);
+      fail (is);
+      return;
+    }
+    break;
+  default:
+    break;
+  }
+
+  /* move to next command */
+  is->ip++;
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
+}
+
+
+/**
  * Run the main interpreter loop that performs mint operations.
  *
  * @param cls contains the `struct InterpreterState`
@@ -1401,7 +1617,9 @@ interpreter_run (void *cls,
       struct GNUNET_TIME_Absolute refund_deadline;
       struct GNUNET_TIME_Absolute wire_deadline;
       struct GNUNET_TIME_Absolute timestamp;
+      struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
       struct TALER_MerchantPublicKeyP merchant_pub;
+      json_t *contract;
       json_t *wire;
 
       GNUNET_assert (NULL !=
@@ -1444,37 +1662,51 @@ interpreter_run (void *cls,
         fail (is);
         return;
       }
-      GNUNET_CRYPTO_hash (cmd->details.deposit.contract,
-                          strlen (cmd->details.deposit.contract),
-                          &h_contract);
+      contract = json_loads (cmd->details.deposit.contract,
+                             JSON_REJECT_DUPLICATES,
+                             NULL);
+      if (NULL == contract)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failed to parse contract details `%s' at %u/%s\n",
+                    cmd->details.deposit.contract,
+                    is->ip,
+                    cmd->label);
+        fail (is);
+        return;
+      }
+      TALER_hash_json (contract,
+                       &h_contract);
       wire = json_loads (cmd->details.deposit.wire_details,
                          JSON_REJECT_DUPLICATES,
                          NULL);
       if (NULL == wire)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Failed to parse wire details `%s' at %u\n",
+                    "Failed to parse wire details `%s' at %u/%s\n",
                     cmd->details.deposit.wire_details,
-                    is->ip);
+                    is->ip,
+                    cmd->label);
         fail (is);
         return;
       }
       GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                           &coin_pub.eddsa_pub);
 
+      priv = GNUNET_CRYPTO_eddsa_key_create ();
+      cmd->details.deposit.merchant_priv.eddsa_priv = *priv;
+      GNUNET_free (priv);
       if (0 != cmd->details.deposit.refund_deadline.rel_value_us)
       {
-        struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
-
-        priv = GNUNET_CRYPTO_eddsa_key_create ();
-        cmd->details.deposit.merchant_priv.eddsa_priv = *priv;
-        GNUNET_free (priv);
         refund_deadline = GNUNET_TIME_relative_to_absolute (cmd->details.deposit.refund_deadline);
       }
       else
       {
         refund_deadline = GNUNET_TIME_UNIT_ZERO_ABS;
       }
+      GNUNET_CRYPTO_eddsa_key_get_public (&cmd->details.deposit.merchant_priv.eddsa_priv,
+                                          &merchant_pub.eddsa_pub);
+
       wire_deadline = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_DAYS);
       timestamp = GNUNET_TIME_absolute_get ();
       TALER_round_abs_time (&timestamp);
@@ -1686,6 +1918,85 @@ interpreter_run (void *cls,
                                             is);
     trigger_context_task ();
     return;
+  case OC_WIRE_DEPOSITS:
+    if (NULL != cmd->details.wire_deposits.wtid_ref)
+    {
+      ref = find_command (is,
+                          cmd->details.wire_deposits.wtid_ref);
+      GNUNET_assert (NULL != ref);
+      cmd->details.wire_deposits.wtid = ref->details.deposit_wtid.wtid;
+    }
+    cmd->details.wire_deposits.wdh
+      = TALER_MINT_wire_deposits (mint,
+                                  &cmd->details.wire_deposits.wtid,
+                                  &wire_deposits_cb,
+                                  is);
+    trigger_context_task ();
+    return;
+  case OC_DEPOSIT_WTID:
+    {
+      struct GNUNET_HashCode h_wire;
+      struct GNUNET_HashCode h_contract;
+      json_t *wire;
+      json_t *contract;
+      const struct Command *coin;
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+
+      ref = find_command (is,
+                          cmd->details.deposit_wtid.deposit_ref);
+      GNUNET_assert (NULL != ref);
+      coin = find_command (is,
+                           ref->details.deposit.coin_ref);
+      GNUNET_assert (NULL != coin);
+      switch (coin->oc)
+      {
+      case OC_WITHDRAW_SIGN:
+        GNUNET_CRYPTO_eddsa_key_get_public (&coin->details.reserve_withdraw.coin_priv.eddsa_priv,
+                                            &coin_pub.eddsa_pub);
+        break;
+      case OC_REFRESH_REVEAL:
+        {
+          const struct FreshCoin *fc;
+          unsigned int idx;
+
+          idx = ref->details.deposit.coin_idx;
+          GNUNET_assert (idx < coin->details.refresh_reveal.num_fresh_coins);
+          fc = &coin->details.refresh_reveal.fresh_coins[idx];
+
+          GNUNET_CRYPTO_eddsa_key_get_public (&fc->coin_priv.eddsa_priv,
+                                              &coin_pub.eddsa_pub);
+        }
+        break;
+      default:
+        GNUNET_assert (0);
+      }
+
+      wire = json_loads (ref->details.deposit.wire_details,
+                         JSON_REJECT_DUPLICATES,
+                         NULL);
+      GNUNET_assert (NULL != wire);
+      TALER_hash_json (wire,
+                       &h_wire);
+      json_decref (wire);
+      contract = json_loads (ref->details.deposit.contract,
+                             JSON_REJECT_DUPLICATES,
+                             NULL);
+      GNUNET_assert (NULL != contract);
+      TALER_hash_json (contract,
+                       &h_contract);
+      json_decref (contract);
+      cmd->details.deposit_wtid.dwh
+        = TALER_MINT_deposit_wtid (mint,
+                                   &ref->details.deposit.merchant_priv,
+                                   &h_wire,
+                                   &h_contract,
+                                   &coin_pub,
+                                   ref->details.deposit.transaction_id,
+                                   &deposit_wtid_cb,
+                                   is);
+      trigger_context_task ();
+    }
+    return;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unknown instruction %d at %u (%s)\n",
@@ -1695,8 +2006,6 @@ interpreter_run (void *cls,
     fail (is);
     return;
   }
-  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                       is);
 }
 
 
@@ -1829,8 +2138,34 @@ do_shutdown (void *cls,
     case OC_WIRE:
       if (NULL != cmd->details.wire.wh)
       {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
         TALER_MINT_wire_cancel (cmd->details.wire.wh);
         cmd->details.wire.wh = NULL;
+      }
+      break;
+    case OC_WIRE_DEPOSITS:
+      if (NULL != cmd->details.wire_deposits.wdh)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
+        TALER_MINT_wire_deposits_cancel (cmd->details.wire_deposits.wdh);
+        cmd->details.wire_deposits.wdh = NULL;
+      }
+      break;
+    case OC_DEPOSIT_WTID:
+      if (NULL != cmd->details.deposit_wtid.dwh)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
+        TALER_MINT_deposit_wtid_cancel (cmd->details.deposit_wtid.dwh);
+        cmd->details.deposit_wtid.dwh = NULL;
       }
       break;
     default:
@@ -2047,7 +2382,7 @@ run (void *cls,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
-      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":1 } }",
+      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 1 },
 
     /* Try to overdraw funds ... */
@@ -2064,7 +2399,7 @@ run (void *cls,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":43 }",
-      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":1 } }",
+      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 1 },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
        transaction ID) */
@@ -2074,7 +2409,7 @@ run (void *cls,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
-      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":1 } }",
+      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 2 },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
        contract) */
@@ -2084,7 +2419,7 @@ run (void *cls,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
-      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":2 } }",
+      .details.deposit.contract = "{ \"items\":[{ \"name\":\"ice cream\", \"value\":2 } ] }",
       .details.deposit.transaction_id = 1 },
 
     /* ***************** /refresh testing ******************** */
@@ -2109,7 +2444,7 @@ run (void *cls,
       .details.deposit.amount = "EUR:1",
       .details.deposit.coin_ref = "refresh-withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
-      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\"EUR:1 } }",
+      .details.deposit.contract = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:1\" } ] }",
       .details.deposit.transaction_id = 42421 },
 
     /* Melt the rest of the coin's value (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
@@ -2143,7 +2478,7 @@ run (void *cls,
       .details.deposit.coin_ref = "refresh-reveal-1",
       .details.deposit.coin_idx = 0,
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
-      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":3 } }",
+      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }",
       .details.deposit.transaction_id = 2 },
 
     /* Test successfully spending coins from the refresh operation:
@@ -2155,7 +2490,7 @@ run (void *cls,
       .details.deposit.coin_ref = "refresh-reveal-1",
       .details.deposit.coin_idx = 4,
       .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account\":42 }",
-      .details.deposit.contract = "{ \"items\"={ \"name\":\"ice cream\", \"value\":3 } }",
+      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }",
       .details.deposit.transaction_id = 2 },
 
     /* Test running a failing melt operation (same operation again must fail) */
@@ -2168,6 +2503,35 @@ run (void *cls,
     // FIXME: also test with coin that was already melted
     // (signature differs from coin that was deposited...)
     /* *************** end of /refresh testing ************** */
+
+    /* ************** Test tracking API ******************** */
+    /* Try resolving a deposit's WTID, as we never triggered
+       execution of transactions, the answer should be that
+       the mint knows about the deposit, but has no WTID yet. */
+    { .oc = OC_DEPOSIT_WTID,
+      .label = "deposit-wtid-found",
+      .expected_response_code = MHD_HTTP_ACCEPTED,
+      .details.deposit_wtid.deposit_ref = "deposit-simple" },
+    /* Try resolving a deposit's WTID for a failed deposit.
+       As the deposit failed, the answer should be that
+       the mint does NOT know about the deposit. */
+    { .oc = OC_DEPOSIT_WTID,
+      .label = "deposit-wtid-failing",
+      .expected_response_code = MHD_HTTP_NOT_FOUND,
+      .details.deposit_wtid.deposit_ref = "deposit-double-2" },
+    /* Try resolving an undefined (all zeros) WTID; this
+       should fail as obviously the mint didn't use that
+       WTID value for any transaction. */
+    { .oc = OC_WIRE_DEPOSITS,
+      .label = "wire-deposit-failing",
+      .expected_response_code = MHD_HTTP_NOT_FOUND },
+
+    /* TODO: trigger aggregation logic and then check the
+       cases where tracking succeeds! */
+
+    /* ************** End of tracking API testing************* */
+
+
 #endif
 
     { .oc = OC_END }
