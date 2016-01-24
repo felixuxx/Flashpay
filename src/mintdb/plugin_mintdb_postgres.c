@@ -3806,6 +3806,7 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
                                &db_conn_destroy))
   {
     TALER_LOG_ERROR ("Cannnot create pthread key.\n");
+    GNUNET_free (pg);
     return NULL;
   }
   if (GNUNET_OK !=
@@ -3815,8 +3816,9 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
                                              &pg->connection_cfg_str))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "mint",
+                               "mintdb-postgres",
                                "db_conn_str");
+    GNUNET_free (pg);
     return NULL;
   }
   plugin = GNUNET_new (struct TALER_MINTDB_Plugin);
