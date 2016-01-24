@@ -20,7 +20,8 @@ talerinclude_HEADERS = \
   taler_mintdb_lib.h \
   taler_mintdb_plugin.h \
   taler_pq_lib.h \
-  taler_signatures.h
+  taler_signatures.h \
+  taler_wire_plugin.h
 
 endif
 
