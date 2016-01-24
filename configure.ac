@@ -357,6 +357,7 @@ AC_CONFIG_FILES([Makefile
                  src/include/Makefile
                  src/util/Makefile
                  src/pq/Makefile
+                 src/wire/Makefile
                  src/mintdb/Makefile
                  src/mint/Makefile
                  src/mint-tools/Makefile

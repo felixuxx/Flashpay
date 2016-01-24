@@ -22,6 +22,8 @@
 #define TALER_WIRE_PLUGIN_H
 
 #include <gnunet/gnunet_util_lib.h>
+#include <jansson.h>
+#include "taler_util.h"
 
 
 /**
@@ -103,7 +105,7 @@ struct TALER_WIRE_Plugin
    * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
    */
   int
-  wire_validate (const json_t *wire);
+  (*wire_validate) (const json_t *wire);
 
 
   /**
@@ -151,7 +153,7 @@ struct TALER_WIRE_Plugin
   (*execute_wire_transfer) (void *cls,
                             const char *buf,
                             size_t buf_size,
-                            TALER_WIRE_ConfirmatinCallback cc,
+                            TALER_WIRE_ConfirmationCallback cc,
                             void *cc_cls);
 
 
