@@ -22,7 +22,7 @@
 
 #include "platform.h"
 #include "taler_util.h"
-#include "taler_wire_plugin.h"
+#include "taler_wire_lib.h"
 
 
 /* Valid SEPA data */
@@ -62,51 +62,6 @@ static const char * const unsupported_wire_str =
 \"address\": \"foobar\"}";
 
 
-/**
- * Initialize the plugin.
- *
- * @param cfg configuration to use
- * @return #GNUNET_OK on success
- */
-static struct TALER_WIRE_Plugin *
-wire_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
-                  const char *plugin_name)
-{
-  char *lib_name;
-  struct TALER_WIRE_Plugin *plugin;
-
-  (void) GNUNET_asprintf (&lib_name,
-                          "libtaler_plugin_wire_%s",
-                          plugin_name);
-  plugin = GNUNET_PLUGIN_load (lib_name,
-                               (void *) cfg);
-  if (NULL != plugin)
-    plugin->library_name = lib_name;
-  else
-    GNUNET_free (lib_name);
-  return plugin;
-}
-
-
-/**
- * Shutdown the plugin.
- *
- * @param plugin the plugin to unload
- */
-static void
-wire_plugin_unload (struct TALER_WIRE_Plugin *plugin)
-{
-  char *lib_name;
-
-  if (NULL == plugin)
-    return;
-  lib_name = plugin->library_name;
-  GNUNET_assert (NULL == GNUNET_PLUGIN_unload (lib_name,
-                                               plugin));
-  GNUNET_free (lib_name);
-}
-
-
 int
 main(int argc,
      const char *const argv[])
@@ -125,8 +80,8 @@ main(int argc,
                                          "mint",
                                          "currency",
                                          "EUR");
-  plugin = wire_plugin_load (cfg,
-                             "sepa");
+  plugin = TALER_WIRE_plugin_load (cfg,
+                                   "sepa");
   GNUNET_assert (NULL != plugin);
   (void) memset(&error, 0, sizeof(error));
   GNUNET_assert (NULL != (wire = json_loads (unsupported_wire_str, 0, NULL)));
@@ -141,7 +96,7 @@ main(int argc,
   GNUNET_assert (NULL != (wire = json_loads (valid_wire_str, 0, &error)));
   ret = plugin->wire_validate (wire);
   json_decref (wire);
-  wire_plugin_unload (plugin);
+  TALER_WIRE_plugin_unload (plugin);
   GNUNET_CONFIGURATION_destroy (cfg);
   if (GNUNET_NO == ret)
     return 1;

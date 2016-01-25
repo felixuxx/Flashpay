@@ -15,6 +15,9 @@ plugin_LTLIBRARIES = \
 noinst_LTLIBRARIES = \
   libtaler_plugin_wire_template.la
 
+lib_LTLIBRARIES = \
+  libtalerwire.la
+
 
 libtaler_plugin_wire_test_la_SOURCES = \
   plugin_wire_test.c
@@ -47,6 +50,15 @@ libtaler_plugin_wire_template_la_LDFLAGS = \
   -lgnunetutil $(XLIB)
 
 
+libtalerwire_la_SOURCES = \
+  wire.c
+libtalerwire_la_LIBADD = \
+  -lgnunetutil
+  $(XLIB)
+libtalerwire_la_LDFLAGS = \
+  -version-info 0:0:0 \
+  -export-dynamic -no-undefined
+
 
 TESTS = \
  test_sepa_wireformat
@@ -61,4 +73,5 @@ test_sepa_wireformat_SOURCES = \
 test_sepa_wireformat_LDADD = \
   -lgnunetutil \
   -ljansson \
+  libtalerwire.la \
   $(top_builddir)/src/util/libtalerutil.la

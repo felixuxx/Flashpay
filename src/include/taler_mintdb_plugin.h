@@ -1145,10 +1145,10 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*insert_refresh_out) (void *cls,
-                                 struct TALER_MINTDB_Session *session,
-                                 const struct GNUNET_HashCode *session_hash,
-                                 uint16_t newcoin_index,
-                                 const struct TALER_DenominationSignature *ev_sig);
+                         struct TALER_MINTDB_Session *session,
+                         const struct GNUNET_HashCode *session_hash,
+                         uint16_t newcoin_index,
+                         const struct TALER_DenominationSignature *ev_sig);
 
 
   /**

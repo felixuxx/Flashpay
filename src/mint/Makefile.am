@@ -15,6 +15,7 @@ taler_mint_aggregator_SOURCES = \
 taler_mint_aggregator_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/mintdb/libtalermintdb.la \
   -ljansson \
   -lgnunetutil
