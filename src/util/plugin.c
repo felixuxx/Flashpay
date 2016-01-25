@@ -19,6 +19,9 @@
  * @author Christian Grothoff
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
+#include "platform.h"
+#include "taler_util.h"
+#include <ltdl.h>
 
 /**
  * Libtool search path before we started.

@@ -45,3 +45,20 @@ libtaler_plugin_wire_template_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil $(XLIB)
+
+
+
+TESTS = \
+ test_sepa_wireformat
+
+check_PROGRAMS= \
+ test_sepa_wireformat
+
+
+
+test_sepa_wireformat_SOURCES = \
+  test_sepa_wireformat.c
+test_sepa_wireformat_LDADD = \
+  -lgnunetutil \
+  -ljansson \
+  $(top_builddir)/src/util/libtalerutil.la
