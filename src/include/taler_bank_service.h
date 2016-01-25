@@ -16,6 +16,7 @@
 /**
  * @file include/taler_bank_service.h
  * @brief C interface of libtalerbank, a C library to use the Taler bank's HTTP API
+ *        This is currently ONLY used to provide the "test" wire transfer protocol.
  * @author Christian Grothoff
  */
 #ifndef _TALER_BANK_SERVICE_H

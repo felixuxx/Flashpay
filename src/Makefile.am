@@ -7,7 +7,7 @@ if WALLET_ONLY
 SUBDIRS = include util
 else
 
-SUBDIRS = include util $(PQ_DIR) wire mintdb mint mint-tools
+SUBDIRS = include util $(PQ_DIR) bank-lib wire mintdb mint mint-tools
 if HAVE_LIBCURL
  SUBDIRS += mint-lib
 else
