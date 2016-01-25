@@ -543,6 +543,8 @@ struct TALER_MINTDB_Session;
  */
 typedef int
 (*TALER_MINTDB_DepositIterator)(void *cls,
+                                // unsigned long long rowid, /* ? */
+                                // May also need/want Merchant pub!?
                                 uint64_t id,
                                 const struct TALER_Amount *amount_with_fee,
                                 const struct TALER_Amount *deposit_fee,
@@ -894,6 +896,78 @@ struct TALER_MINTDB_Plugin
 
 
   /**
+   * Mark a deposit as tiny, thereby declaring that it cannot be
+   * executed by itself and should no longer be returned by
+   * @e iterate_ready_deposits()
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param deposit_rowid identifies the deposit row to modify
+   * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+   */
+  int
+  (*mark_deposit_tiny) (void *cls,
+                        struct TALER_MINTDB_Session *session,
+                        unsigned long long rowid);
+
+
+  /**
+   * Mark a deposit as done, thereby declaring that it cannot be
+   * executed at all anymore, and should no longer be returned by
+   * @e iterate_ready_deposits() or @e iterate_matching_deposits().
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param deposit_rowid identifies the deposit row to modify
+   * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+   */
+  int
+  (*mark_deposit_done) (void *cls,
+                        struct TALER_MINTDB_Session *session,
+                        unsigned long long rowid);
+
+
+  /**
+   * Obtain information about deposits that are ready to be executed.
+   * Such deposits must not be marked as "tiny" or "done", and the
+   * execution time must be in the past.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param deposit_cb function to call for ONE such deposit
+   * @param deposit_cb_cls closure for @a deposit_cb
+   * @return number of rows processed, 0 if none exist,
+   *         #GNUNET_SYSERR on error
+   */
+  int
+  (*iterate_ready_deposits) (void *cls,
+                             struct TALER_MINTDB_Session *session,
+                             TALER_MINTDB_DepositIterator deposit_cb,
+                             void *deposit_cb_cls);
+
+
+  /**
+   * Obtain information about other pending deposits for the same
+   * destination.  Those deposits must not already be "done".
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param h_wire destination of the wire transfer
+   * @param FIXME: do we also need merchant_pub here?
+   * @param deposit_cb function to call for each deposit
+   * @param deposit_cb_cls closure for @a deposit_cb
+   * @return number of rows processed, 0 if none exist,
+   *         #GNUNET_SYSERR on error
+   */
+  int
+  (*iterate_matching_deposits) (void *cls,
+                                struct TALER_MINTDB_Session *session,
+                                const struct GNUNET_HashCode *h_wire,
+                                TALER_MINTDB_DepositIterator deposit_cb,
+                                void *deposit_cb_cls);
+
+
+  /**
    * Obtain information about deposits.  Iterates over all deposits
    * above a certain ID.  Use a @a min_id of 0 to start at the beginning.
    * This operation is executed in its own transaction in transaction
@@ -907,6 +981,7 @@ struct TALER_MINTDB_Plugin
    * @param deposit_cb_cls closure for @a deposit_cb
    * @return number of rows processed, 0 if none exist,
    *         #GNUNET_SYSERR on error
+   * @deprecated this is likely dead
    */
   int
   (*iterate_deposits) (void *cls,
@@ -1377,7 +1452,6 @@ struct TALER_MINTDB_Plugin
                                const char *type,
                                TALER_MINTDB_WirePreparationCallback cb,
                                void *cb_cls);
-
 
 
 };
