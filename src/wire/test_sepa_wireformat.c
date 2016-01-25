@@ -130,7 +130,7 @@ main(int argc,
   GNUNET_assert (NULL != plugin);
   (void) memset(&error, 0, sizeof(error));
   GNUNET_assert (NULL != (wire = json_loads (unsupported_wire_str, 0, NULL)));
-  GNUNET_assert (GNUNET_NO == plugin->wire_validate (wire));
+  GNUNET_assert (GNUNET_YES != plugin->wire_validate (wire));
   json_decref (wire);
   GNUNET_assert (NULL != (wire = json_loads (invalid_wire_str, 0, NULL)));
   GNUNET_assert (GNUNET_NO == plugin->wire_validate (wire));

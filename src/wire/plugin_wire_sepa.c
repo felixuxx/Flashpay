@@ -385,6 +385,14 @@ sepa_wire_validate (const json_t *wire)
     TALER_json_warn (error);
     return GNUNET_SYSERR;
   }
+  if (0 != strcasecmp (type,
+                       "sepa"))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+		"Transfer type `%s' invalid\n",
+		type);
+    return GNUNET_SYSERR;
+  }
   if (1 != validate_iban (iban))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
