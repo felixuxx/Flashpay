@@ -9,6 +9,7 @@ endif
 plugindir = $(libdir)/taler
 
 plugin_LTLIBRARIES = \
+  libtaler_plugin_wire_sepa.la \
   libtaler_plugin_wire_test.la
 
 noinst_LTLIBRARIES = \
@@ -25,6 +26,15 @@ libtaler_plugin_wire_test_la_LDFLAGS = \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil $(XLIB)
 
+
+libtaler_plugin_wire_sepa_la_SOURCES = \
+  plugin_wire_sepa.c
+libtaler_plugin_wire_sepa_la_LIBADD = \
+  $(LTLIBINTL)
+libtaler_plugin_wire_sepa_la_LDFLAGS = \
+  $(TALER_PLUGIN_LDFLAGS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil $(XLIB)
 
 
 libtaler_plugin_wire_template_la_SOURCES = \
