@@ -30,8 +30,8 @@
  * Callback with prepared transaction.
  *
  * @param cls closure
- * @param buf transaction data to persist
- * @param buf_size number of bytes in @a buf
+ * @param buf transaction data to persist, NULL on error
+ * @param buf_size number of bytes in @a buf, 0 on error
  */
 typedef void
 (*TALER_WIRE_PrepareTransactionCallback) (void *cls,

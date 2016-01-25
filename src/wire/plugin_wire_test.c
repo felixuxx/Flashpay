@@ -240,6 +240,29 @@ test_wire_validate (const json_t *wire)
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+/**
+ * Format we used for serialized transaction data.
+ */
+struct BufFormatP
+{
+
+  /**
+   * The wire transfer identifier.
+   */
+  struct TALER_WireTransferIdentifierRawP wtid;
+
+  /**
+   * The amount.
+   */
+  struct TALER_AmountNBO amount;
+
+  /* followed by serialized 'wire' JSON data */
+
+};
+GNUNET_NETWORK_STRUCT_END
+
+
 /**
  * Prepare for exeuction of a wire transfer.  Calls the
  * callback with the serialized state.
@@ -252,12 +275,44 @@ do_prepare (void *cls,
             const struct GNUNET_SCHEDULER_TaskContext *sct)
 {
   struct TALER_WIRE_PrepareHandle *pth = cls;
-  char buf[42]; // FIXME: init: serialize buf!
+  char *wire_enc;
+  size_t len;
+  struct BufFormatP bf;
 
   pth->task = NULL;
-  pth->ptc (pth->ptc_cls,
-            buf,
-            sizeof (buf));
+  /* serialize the state into a 'buf' */
+  wire_enc = json_dumps (pth->wire,
+                         JSON_COMPACT | JSON_SORT_KEYS);
+  if (NULL == wire_enc)
+  {
+    GNUNET_break (0);
+    pth->ptc (pth->ptc_cls,
+              NULL,
+              0);
+    GNUNET_free (pth);
+    return;
+  }
+  len = strlen (wire_enc) + 1;
+  bf.wtid = pth->wtid;
+  TALER_amount_hton (&bf.amount,
+                     &pth->amount);
+  {
+    char buf[sizeof (struct BufFormatP) + len];
+
+    memcpy (buf,
+            &bf,
+            sizeof (struct BufFormatP));
+    memcpy (&buf[sizeof (struct BufFormatP)],
+            wire_enc,
+            len);
+
+    /* finally give the state back */
+    pth->ptc (pth->ptc_cls,
+              buf,
+              sizeof (buf));
+  }
+  free (wire_enc); /* not using GNUNET_free(),
+                      as this one is allocated by libjansson */
   GNUNET_free (pth);
 }
 
@@ -373,10 +428,27 @@ test_execute_wire_transfer (void *cls,
   struct TALER_WIRE_ExecuteHandle *eh;
   json_t *wire;
   struct TALER_Amount amount;
-  struct TALER_WireTransferIdentifierRawP wtid;
+  struct BufFormatP bf;
 
-  /* FIXME: deserialize buf */
-  wire = NULL;
+  if ( (buf_size <= sizeof (struct BufFormatP)) ||
+       ('\0' != buf[buf_size -1]) )
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  memcpy (&bf,
+          buf,
+          sizeof (bf));
+  TALER_amount_ntoh (&amount,
+                     &bf.amount);
+  wire = json_loads (&buf[sizeof (struct BufFormatP)],
+                     JSON_REJECT_DUPLICATES,
+                     NULL);
+  if (NULL == wire)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
 
   GNUNET_assert (GNUNET_YES ==
                  test_wire_validate (wire));
@@ -384,11 +456,12 @@ test_execute_wire_transfer (void *cls,
   eh->cc = cc;
   eh->cc_cls = cc_cls;
   eh->aaih = TALER_BANK_admin_add_incoming (tc->bank,
-                                            &wtid,
+                                            &bf.wtid,
                                             &amount,
                                             wire,
                                             &execute_cb,
                                             eh);
+  json_decref (wire);
   if (NULL == eh->aaih)
   {
     GNUNET_break (0);
