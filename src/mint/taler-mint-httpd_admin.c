@@ -24,6 +24,7 @@
 #include "taler-mint-httpd_admin.h"
 #include "taler-mint-httpd_parsing.h"
 #include "taler-mint-httpd_responses.h"
+#include "taler-mint-httpd_validation.h"
 
 
 /**
@@ -144,8 +145,7 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   if (GNUNET_YES !=
-      TALER_json_validate_wireformat (TMH_expected_wire_formats,
-				      wire))
+      TMH_json_validate_wireformat (wire))
   {
     GNUNET_break_op (0);
     TMH_PARSE_release_data (spec);
