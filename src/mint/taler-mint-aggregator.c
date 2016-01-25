@@ -220,9 +220,11 @@ run (void *cls,
     return;
   }
   /* FIXME: finish aggregate computation */
-  /* FIXME: insert pre-commit data for transaction into DB */
-  /* FIXME: mark transactions selected for aggregate as finished */
+  /* wire_plugin->prepare_wire_transfer () -- ASYNC! */
+  /* db_plugin->wire_prepare_data_insert () -- transactional! */
+  /* db_plugin->XXX () -- mark transactions selected for aggregate as finished */
 
+  /* then finally: commit! */
   if (GNUNET_OK !=
       db_plugin->commit (db_plugin->cls,
                          session))
@@ -231,12 +233,15 @@ run (void *cls,
                 "Failed to commit database transaction!\n");
   }
 
-  /* FIXME: run 2nd transaction:
-     - begin
-     - select pre-commit data from DB
-     - execute wire transfer
-     - insert aggregation tracking information into DB
-     - commit!
+  /* While possible, run 2nd type of transaction:
+     db_plugin->start()
+     - select pre-commit data from DB:
+     db_plugin->wire_prepare_data_iterate ()
+     - execute wire transfer (successfully!)
+     wire_plugin->execute_wire_transfer() # ASYNC!
+     db_plugin->wire_prepare_data_mark_finished ()
+     db_plugin->insert_aggregation_tracking ()
+     db_plugin->commit()
   */
 
 

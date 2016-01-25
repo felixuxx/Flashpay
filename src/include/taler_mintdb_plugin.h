@@ -619,6 +619,19 @@ typedef void
 
 
 /**
+ * Callback with data about a prepared transaction.
+ *
+ * @param cls closure
+ * @param buf transaction data that was persisted, NULL on error
+ * @param buf_size number of bytes in @a buf, 0 on error
+ */
+typedef void
+(*TALER_MINTDB_WirePreparationCallback) (void *cls,
+                                         const char *buf,
+                                         size_t buf_size);
+
+
+/**
  * @brief The plugin API, returned from the plugin's "init" function.
  * The argument given to "init" is simply a configuration handle.
  */
@@ -1308,7 +1321,66 @@ struct TALER_MINTDB_Plugin
                                  const struct TALER_Amount *transfer_value);
 
 
+
+  /**
+   * Function called to insert wire transfer commit data into the DB.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param type type fo the wire transfer (i.e. "sepa")
+   * @param buf buffer with wire transfer preparation data
+   * @param buf_size number of bytes in @a buf
+   * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*wire_prepare_data_insert)(void *cls,
+                              struct TALER_MINTDB_Session *session,
+                              const char *type,
+                              const char *buf,
+                              size_t buf_size);
+
+
+  /**
+   * Function called to mark wire transfer commit data as finished.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param type type fo the wire transfer (i.e. "sepa")
+   * @param buf buffer with wire transfer preparation data
+   * @param buf_size number of bytes in @a buf
+   * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*wire_prepare_data_mark_finished)(void *cls,
+                                     struct TALER_MINTDB_Session *session,
+                                     const char *type,
+                                     const char *buf,
+                                     size_t buf_size);
+
+
+  /**
+   * Function called to iterate over unfinished wire transfer
+   * preparation data. Fetches at most one item.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param type type fo the wire transfer (i.e. "sepa")
+   * @param cb function to call for ONE unfinished item
+   * @param cb_cls closure for @a cb
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_NO if there are no entries,
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*wire_prepare_data_iterate)(void *cls,
+                               struct TALER_MINTDB_Session *session,
+                               const char *type,
+                               TALER_MINTDB_WirePreparationCallback cb,
+                               void *cb_cls);
+
+
+
 };
 
 
-#endif /* _NEURO_MINT_DB_H */
+#endif /* _TALER_MINT_DB_H */
