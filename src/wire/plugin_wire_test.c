@@ -288,6 +288,12 @@ test_prepare_wire_transfer (void *cls,
   struct TestClosure *tc = cls;
   struct TALER_WIRE_PrepareHandle *pth;
 
+  if (GNUNET_YES !=
+      test_wire_validate (wire))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   pth = GNUNET_new (struct TALER_WIRE_PrepareHandle);
   pth->tc = tc;
   pth->wire = (json_t *) wire;
@@ -372,6 +378,8 @@ test_execute_wire_transfer (void *cls,
   /* FIXME: deserialize buf */
   wire = NULL;
 
+  GNUNET_assert (GNUNET_YES ==
+                 test_wire_validate (wire));
   eh = GNUNET_new (struct TALER_WIRE_ExecuteHandle);
   eh->cc = cc;
   eh->cc_cls = cc_cls;
