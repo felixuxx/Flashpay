@@ -7,7 +7,17 @@ if USE_COVERAGE
 endif
 
 bin_PROGRAMS = \
+  taler-mint-aggregator \
   taler-mint-httpd
+
+taler_mint_aggregator_SOURCES = \
+  taler-mint-aggregator.c
+taler_mint_aggregator_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/mintdb/libtalermintdb.la \
+  -ljansson \
+  -lgnunetutil
 
 taler_mint_httpd_SOURCES = \
   taler-mint-httpd.c taler-mint-httpd.h \
