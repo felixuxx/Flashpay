@@ -53,7 +53,7 @@ libtaler_plugin_wire_template_la_LDFLAGS = \
 libtalerwire_la_SOURCES = \
   wire.c
 libtalerwire_la_LIBADD = \
-  -lgnunetutil
+  -lgnunetutil \
   $(XLIB)
 libtalerwire_la_LDFLAGS = \
   -version-info 0:0:0 \
@@ -75,3 +75,4 @@ test_sepa_wireformat_LDADD = \
   -ljansson \
   libtalerwire.la \
   $(top_builddir)/src/util/libtalerutil.la
+
