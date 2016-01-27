@@ -954,7 +954,7 @@ postgres_prepare (PGconn *db_conn)
            " WHERE"
            " tiny=false AND"
            " done=false"
-           " ORDER BY execution_time ASC"
+           " ORDER BY wire_deadline ASC"
            " LIMIT 1;",
            0, NULL);
 
@@ -977,7 +977,7 @@ postgres_prepare (PGconn *db_conn)
            " merchant_pub=$1 AND"
            " h_wire=$2 AND"
            " done=false"
-           " ORDER BY execution_time ASC"
+           " ORDER BY wire_deadline ASC"
            " LIMIT $3",
            3, NULL);
 
