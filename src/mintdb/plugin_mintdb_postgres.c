@@ -1161,8 +1161,8 @@ postgres_prepare (PGconn *db_conn)
            " WHERE serial_id=$1",
            1, NULL);
 
-  /* Used in #postgres_wire_prepare_data_iterate() */
-  PREPARE ("wire_prepare_data_iterate",
+  /* Used in #postgres_wire_prepare_data_get() */
+  PREPARE ("wire_prepare_data_get",
            "SELECT"
            " serial_id"
            ",buf"
@@ -4064,7 +4064,7 @@ postgres_insert_aggregation_tracking (void *cls,
  *
  * @param cls closure
  * @param session database connection
- * @param type type fo the wire transfer (i.e. "sepa")
+ * @param type type of the wire transfer (i.e. "sepa")
  * @param buf buffer with wire transfer preparation data
  * @param buf_size number of bytes in @a buf
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
@@ -4076,8 +4076,24 @@ postgres_wire_prepare_data_insert (void *cls,
                                    const char *buf,
                                    size_t buf_size)
 {
-  GNUNET_break (0); // not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_fixed_size (type, strlen (type) + 1),
+    TALER_PQ_query_param_fixed_size (buf, buf_size),
+    TALER_PQ_query_param_end
+  };
+
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "wire_prepare_data_insert",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -4086,25 +4102,38 @@ postgres_wire_prepare_data_insert (void *cls,
  *
  * @param cls closure
  * @param session database connection
- * @param type type fo the wire transfer (i.e. "sepa")
- * @param buf buffer with wire transfer preparation data
- * @param buf_size number of bytes in @a buf
+ * @param rowid which entry to mark as finished
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
  */
 static int
 postgres_wire_prepare_data_mark_finished (void *cls,
                                           struct TALER_MINTDB_Session *session,
-                                          const char *type,
-                                          const char *buf,
-                                          size_t buf_size)
+                                          unsigned long long rowid)
 {
-  GNUNET_break (0); // not implemented
-  return GNUNET_SYSERR;
+  uint64_t serial_id = rowid;
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_uint64 (&serial_id),
+    TALER_PQ_query_param_end
+  };
+  PGresult *result;
+
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "wire_prepare_data_mark_done",
+                                   params);
+  if (PGRES_COMMAND_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
 /**
- * Function called to iterate over unfinished wire transfer
+ * Function called to get an unfinished wire transfer
  * preparation data. Fetches at most one item.
  *
  * @param cls closure
@@ -4117,14 +4146,69 @@ postgres_wire_prepare_data_mark_finished (void *cls,
  *         #GNUNET_SYSERR on DB errors
  */
 static int
-postgres_wire_prepare_data_iterate (void *cls,
-                                    struct TALER_MINTDB_Session *session,
-                                    const char *type,
-                                    TALER_MINTDB_WirePreparationCallback cb,
-                                    void *cb_cls)
+postgres_wire_prepare_data_get (void *cls,
+                                struct TALER_MINTDB_Session *session,
+                                const char *type,
+                                TALER_MINTDB_WirePreparationCallback cb,
+                                void *cb_cls)
 {
-  GNUNET_break (0); // not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_fixed_size (type, strlen (type) + 1),
+    TALER_PQ_query_param_end
+  };
+
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "wire_prepare_data_get",
+                                   params);
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    QUERY_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  if (0 == PQntuples (result))
+  {
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  if (1 != PQntuples (result))
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  {
+    uint64_t serial_id;
+    void *buf = NULL;
+    size_t buf_size;
+    struct TALER_PQ_ResultSpec rs[] = {
+      TALER_PQ_result_spec_uint64 ("serial_id",
+                                   &serial_id),
+      TALER_PQ_result_spec_variable_size ("buf",
+                                          &buf,
+                                          &buf_size),
+      TALER_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        TALER_PQ_extract_result (result,
+                                 rs,
+                                 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    cb (cb_cls,
+        serial_id,
+        buf,
+        buf_size);
+    TALER_PQ_cleanup_result (rs);
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -4207,7 +4291,7 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->insert_aggregation_tracking = &postgres_insert_aggregation_tracking;
   plugin->wire_prepare_data_insert = &postgres_wire_prepare_data_insert;
   plugin->wire_prepare_data_mark_finished = &postgres_wire_prepare_data_mark_finished;
-  plugin->wire_prepare_data_iterate = &postgres_wire_prepare_data_iterate;
+  plugin->wire_prepare_data_get = &postgres_wire_prepare_data_get;
   return plugin;
 }
 

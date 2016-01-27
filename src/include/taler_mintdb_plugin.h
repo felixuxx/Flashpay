@@ -1383,7 +1383,7 @@ struct TALER_MINTDB_Plugin
    *
    * @param cls closure
    * @param session database connection
-   * @param type type fo the wire transfer (i.e. "sepa")
+   * @param type type of the wire transfer (i.e. "sepa")
    * @param buf buffer with wire transfer preparation data
    * @param buf_size number of bytes in @a buf
    * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
@@ -1401,21 +1401,17 @@ struct TALER_MINTDB_Plugin
    *
    * @param cls closure
    * @param session database connection
-   * @param type type fo the wire transfer (i.e. "sepa")
-   * @param buf buffer with wire transfer preparation data
-   * @param buf_size number of bytes in @a buf
+   * @param rowid which entry to mark as finished
    * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
    */
   int
   (*wire_prepare_data_mark_finished)(void *cls,
                                      struct TALER_MINTDB_Session *session,
-                                     const char *type,
-                                     const char *buf,
-                                     size_t buf_size);
+                                     unsigned long long rowid);
 
 
   /**
-   * Function called to iterate over unfinished wire transfer
+   * Function called to get an unfinished wire transfer
    * preparation data. Fetches at most one item.
    *
    * @param cls closure
@@ -1428,11 +1424,11 @@ struct TALER_MINTDB_Plugin
    *         #GNUNET_SYSERR on DB errors
    */
   int
-  (*wire_prepare_data_iterate)(void *cls,
-                               struct TALER_MINTDB_Session *session,
-                               const char *type,
-                               TALER_MINTDB_WirePreparationCallback cb,
-                               void *cb_cls);
+  (*wire_prepare_data_get)(void *cls,
+                           struct TALER_MINTDB_Session *session,
+                           const char *type,
+                           TALER_MINTDB_WirePreparationCallback cb,
+                           void *cb_cls);
 
 
 };
