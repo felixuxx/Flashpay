@@ -477,6 +477,18 @@ postgres_create_tables (void *cls,
   SQLEXEC_INDEX("CREATE INDEX aggregation_tracking_deposit_index "
                 "ON aggregation_tracking(coin_pub,h_contract,h_wire,transaction_id,merchant_pub)");
 
+  /* This table contains the pre-commit data for
+     wire transfers the mint is about to execute. */
+  SQLEXEC("CREATE TABLE IF NOT EXISTS prewire "
+          "(serial_id BIGSERIAL PRIMARY KEY"
+          ",type TEXT NOT NULL"
+          ",finished BOOLEAN NOT NULL DEFAULT false"
+          ",buf BYTEA NOT NULL"
+          ")");
+  /* Index for prepare_data_iterate statement */
+  SQLEXEC_INDEX("CREATE INDEX prepare_iteration_index "
+                "ON prewire(type,finished)");
+
 
 #undef SQLEXEC
 #undef SQLEXEC_INDEX
@@ -588,6 +600,7 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5);",
            5, NULL);
+
   /* Used in #postgres_reserves_update() when the reserve is updated */
   PREPARE ("reserve_update",
            "UPDATE reserves"
@@ -597,6 +610,7 @@ postgres_prepare (PGconn *db_conn)
            ",current_balance_frac=$3 "
            "WHERE current_balance_curr=$4 AND reserve_pub=$5",
            5, NULL);
+
   /* Used in #postgres_reserves_in_insert() to store transaction details */
   PREPARE ("reserves_in_add_transaction",
            "INSERT INTO reserves_in "
@@ -609,6 +623,7 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5, $6);",
            6, NULL);
+
   /* Used in #postgres_get_reserve_history() to obtain inbound transactions
      for a reserve */
   PREPARE ("reserves_in_get_transactions",
@@ -621,6 +636,7 @@ postgres_prepare (PGconn *db_conn)
            " FROM reserves_in"
            " WHERE reserve_pub=$1",
            1, NULL);
+
   /* Used in #postgres_insert_withdraw_info() to store
      the signature of a blinded coin with the blinded coin's
      details before returning it during /reserve/withdraw. We store
@@ -645,6 +661,7 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);",
            12, NULL);
+
   /* Used in #postgres_get_withdraw_info() to
      locate the response for a /reserve/withdraw request
      using the hash of the blinded message.  Used to
@@ -665,6 +682,7 @@ postgres_prepare (PGconn *db_conn)
            " FROM reserves_out"
            " WHERE h_blind_ev=$1",
            1, NULL);
+
   /* Used during #postgres_get_reserve_history() to
      obtain all of the /reserve/withdraw operations that
      have been performed on a given reserve. (i.e. to
@@ -685,6 +703,7 @@ postgres_prepare (PGconn *db_conn)
            " FROM reserves_out"
            " WHERE reserve_pub=$1;",
            1, NULL);
+
   /* Used in #postgres_get_refresh_session() to fetch
      high-level information about a refresh session */
   PREPARE ("get_refresh_session",
@@ -695,6 +714,7 @@ postgres_prepare (PGconn *db_conn)
            " FROM refresh_sessions "
            " WHERE session_hash=$1 ",
            1, NULL);
+
   /* Used in #postgres_create_refresh_session() to store
      high-level information about a refresh session */
   PREPARE ("insert_refresh_session",
@@ -706,6 +726,7 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4);",
            4, NULL);
+
   /* Used in #postgres_get_known_coin() to fetch
      the denomination public key and signature for
      a coin known to the mint. */
@@ -716,6 +737,7 @@ postgres_prepare (PGconn *db_conn)
            " FROM known_coins"
            " WHERE coin_pub=$1",
            1, NULL);
+
   /* Used in #postgres_insert_known_coin() to store
      the denomination public key and signature for
      a coin known to the mint. */
@@ -727,6 +749,7 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1,$2,$3);",
            3, NULL);
+
   /* Store information about the desired denominations for a
      refresh operation, used in #postgres_insert_refresh_order() */
   PREPARE ("insert_refresh_order",
@@ -737,6 +760,7 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3);",
            3, NULL);
+
   /* Obtain information about the desired denominations for a
      refresh operation, used in #postgres_get_refresh_order() */
   PREPARE ("get_refresh_order",
@@ -762,6 +786,7 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);",
            10, NULL);
+
   /* Used in #postgres_get_refresh_melt to obtain information
      about melted coins */
   PREPARE ("get_refresh_melt",
@@ -777,6 +802,7 @@ postgres_prepare (PGconn *db_conn)
            " FROM refresh_melts"
            " WHERE session_hash=$1 AND oldcoin_index=$2",
            2, NULL);
+
   /* Query the 'refresh_melts' by coin public key */
   PREPARE ("get_refresh_melt_by_coin",
            "SELECT"
@@ -792,6 +818,7 @@ postgres_prepare (PGconn *db_conn)
            " FROM refresh_melts"
            " WHERE coin_pub=$1",
            1, NULL);
+
   /* Used in #postgres_insert_refresh_commit_links() to
      store commitments */
   PREPARE ("insert_refresh_commit_link",
@@ -804,6 +831,7 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5);",
            5, NULL);
+
   /* Used in #postgres_get_refresh_commit_links() to
      retrieve original commitments during /refresh/reveal */
   PREPARE ("get_refresh_commit_link",
@@ -813,6 +841,7 @@ postgres_prepare (PGconn *db_conn)
            " FROM refresh_commit_link"
            " WHERE session_hash=$1 AND cnc_index=$2 AND oldcoin_index=$3",
            3, NULL);
+
   /* Used in #postgres_insert_refresh_commit_coins() to
      store coin commitments. */
   PREPARE ("insert_refresh_commit_coin",
@@ -825,6 +854,7 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5);",
            5, NULL);
+
   /* Used in #postgres_get_refresh_commit_coins() to
      retrieve the original coin envelopes, to either be
      verified or signed. */
@@ -835,6 +865,7 @@ postgres_prepare (PGconn *db_conn)
            " FROM refresh_commit_coin"
            " WHERE session_hash=$1 AND cnc_index=$2 AND newcoin_index=$3",
            3, NULL);
+
   /* Store information about a /deposit the mint is to execute.
      Used in #postgres_insert_deposit(). */
   PREPARE ("insert_deposit",
@@ -861,6 +892,7 @@ postgres_prepare (PGconn *db_conn)
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
            " $11, $12, $13, $14, $15, $16, $17, $18);",
            18, NULL);
+
   /* Fetch an existing deposit request, used to ensure idempotency
      during /deposit processing. Used in #postgres_have_deposit(). */
   PREPARE ("get_deposit",
@@ -880,6 +912,7 @@ postgres_prepare (PGconn *db_conn)
            "  (merchant_pub=$3)"
            " )",
            3, NULL);
+
   /* Fetch an existing deposit request.
      Used in #postgres_wire_lookup_deposit_wtid(). */
   PREPARE ("get_deposit_for_wtid",
@@ -924,6 +957,7 @@ postgres_prepare (PGconn *db_conn)
            " ORDER BY execution_time ASC"
            " LIMIT 1;",
            0, NULL);
+
   /* Used in #postgres_iterate_matching_deposits() */
   PREPARE ("deposits_iterate_matching",
            "SELECT"
@@ -946,12 +980,14 @@ postgres_prepare (PGconn *db_conn)
            " ORDER BY execution_time ASC"
            " LIMIT $3",
            3, NULL);
+
   /* Used in #postgres_mark_deposit_tiny() */
   PREPARE ("mark_deposit_tiny",
            "UPDATE deposits"
            " SET tiny=true"
            " WHERE serial_id=$1",
            1, NULL);
+
   /* Used in #postgres_mark_deposit_done() */
   PREPARE ("mark_deposit_done",
            "UPDATE deposits"
@@ -993,6 +1029,7 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3)",
            3, NULL);
+
   /* Used in #postgres_get_link_data_list().  We use the session_hash
      to obtain the "noreveal_index" for that session, and then select
      the encrypted link vectors (link_vector_enc) and the
@@ -1018,6 +1055,7 @@ postgres_prepare (PGconn *db_conn)
            "  AND ro.newcoin_index=rc.newcoin_index"
            "  AND rcc.cnc_index=rs.noreveal_index",
            1, NULL);
+
   /* Used in #postgres_get_transfer().  Given the public key of a
      melted coin, we obtain the corresponding encrypted link secret
      and the transfer public key.  This is done by first finding
@@ -1036,6 +1074,7 @@ postgres_prepare (PGconn *db_conn)
            "  AND rm.oldcoin_index = rcl.oldcoin_index"
            "  AND rcl.cnc_index=rs.noreveal_index",
            1, NULL);
+
   /* Used in #postgres_lookup_wire_transfer */
   PREPARE ("lookup_transactions",
            "SELECT"
@@ -1057,6 +1096,7 @@ postgres_prepare (PGconn *db_conn)
            " FROM aggregation_tracking"
            " WHERE wtid_raw=$1",
            1, NULL);
+
   /* Used in #postgres_wire_lookup_deposit_wtid */
   PREPARE ("lookup_deposit_wtid",
            "SELECT"
@@ -1079,6 +1119,7 @@ postgres_prepare (PGconn *db_conn)
            " transaction_id=$4 AND"
            " merchant_pub=$5",
            5, NULL);
+
   /* Used in #postgres_insert_aggregation_tracking */
   PREPARE ("insert_aggregation_tracking",
            "INSERT INTO aggregation_tracking "
@@ -1101,6 +1142,37 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
            16, NULL);
+
+
+  /* Used in #postgres_wire_prepare_data_insert() to store
+     wire transfer information before actually committing it with the bank */
+  PREPARE ("wire_prepare_data_insert",
+           "INSERT INTO prewire "
+           "(type"
+           ",buf"
+           ") VALUES "
+           "($1, $2)",
+           2, NULL);
+
+  /* Used in #postgres_wire_prepare_data_mark_finished() */
+  PREPARE ("wire_prepare_data_mark_done",
+           "UPDATE prewire"
+           " SET finished=true"
+           " WHERE serial_id=$1",
+           1, NULL);
+
+  /* Used in #postgres_wire_prepare_data_iterate() */
+  PREPARE ("wire_prepare_data_iterate",
+           "SELECT"
+           " serial_id"
+           ",buf"
+           " FROM prewire"
+           " WHERE"
+           " type=$1 AND"
+           " finished=false"
+           " ORDER BY serial_id ASC"
+           " LIMIT 1",
+           1, NULL);
 
   return GNUNET_OK;
 #undef PREPARE

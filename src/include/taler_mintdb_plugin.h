@@ -626,11 +626,13 @@ typedef void
  * Callback with data about a prepared transaction.
  *
  * @param cls closure
+ * @param rowid row identifier used to mark prepared transaction as done
  * @param buf transaction data that was persisted, NULL on error
  * @param buf_size number of bytes in @a buf, 0 on error
  */
 typedef void
 (*TALER_MINTDB_WirePreparationCallback) (void *cls,
+                                         unsigned long long rowid,
                                          const char *buf,
                                          size_t buf_size);
 
