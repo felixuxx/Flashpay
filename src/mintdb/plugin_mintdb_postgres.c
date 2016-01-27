@@ -3988,6 +3988,75 @@ postgres_insert_aggregation_tracking (void *cls,
 
 
 /**
+ * Function called to insert wire transfer commit data into the DB.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param type type fo the wire transfer (i.e. "sepa")
+ * @param buf buffer with wire transfer preparation data
+ * @param buf_size number of bytes in @a buf
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_wire_prepare_data_insert (void *cls,
+                                   struct TALER_MINTDB_Session *session,
+                                   const char *type,
+                                   const char *buf,
+                                   size_t buf_size)
+{
+  GNUNET_break (0); // not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Function called to mark wire transfer commit data as finished.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param type type fo the wire transfer (i.e. "sepa")
+ * @param buf buffer with wire transfer preparation data
+ * @param buf_size number of bytes in @a buf
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_wire_prepare_data_mark_finished (void *cls,
+                                          struct TALER_MINTDB_Session *session,
+                                          const char *type,
+                                          const char *buf,
+                                          size_t buf_size)
+{
+  GNUNET_break (0); // not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Function called to iterate over unfinished wire transfer
+ * preparation data. Fetches at most one item.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param type type fo the wire transfer (i.e. "sepa")
+ * @param cb function to call for ONE unfinished item
+ * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if there are no entries,
+ *         #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_wire_prepare_data_iterate (void *cls,
+                                    struct TALER_MINTDB_Session *session,
+                                    const char *type,
+                                    TALER_MINTDB_WirePreparationCallback cb,
+                                    void *cb_cls)
+{
+  GNUNET_break (0); // not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -4064,6 +4133,9 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->lookup_wire_transfer = &postgres_lookup_wire_transfer;
   plugin->wire_lookup_deposit_wtid = &postgres_wire_lookup_deposit_wtid;
   plugin->insert_aggregation_tracking = &postgres_insert_aggregation_tracking;
+  plugin->wire_prepare_data_insert = &postgres_wire_prepare_data_insert;
+  plugin->wire_prepare_data_mark_finished = &postgres_wire_prepare_data_mark_finished;
+  plugin->wire_prepare_data_iterate = &postgres_wire_prepare_data_iterate;
   return plugin;
 }
 

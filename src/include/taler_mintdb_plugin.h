@@ -1376,7 +1376,6 @@ struct TALER_MINTDB_Plugin
                                  const struct TALER_Amount *transfer_value);
 
 
-
   /**
    * Function called to insert wire transfer commit data into the DB.
    *
