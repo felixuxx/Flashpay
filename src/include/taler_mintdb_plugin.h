@@ -530,22 +530,24 @@ struct TALER_MINTDB_Session;
  * corresponding wire transaction.
  *
  * @param cls closure
- * @param id transaction ID (used as future `min_id` to avoid
- *           iterating over transactions more than once)
+ * @param rowid unique ID for the deposit in our DB, used for marking
+ *              it as 'tiny' or 'done'
+ * @param merchant_pub public key of the merchant
+ * @param coin_pub public key of the coin
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the mint gets to keep as transaction fees
  * @param transaction_id unique transaction ID chosen by the merchant
  * @param h_contract hash of the contract between merchant and customer
  * @param wire_deadline by which the merchant adviced that he would like the
  *        wire transfer to be executed
- * @param wire wire details for the merchant
+ * @param wire wire details for the merchant, NULL from iterate_matching_deposits()
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
 (*TALER_MINTDB_DepositIterator)(void *cls,
-                                // unsigned long long rowid, /* ? */
-                                // May also need/want Merchant pub!?
-                                uint64_t id,
+                                unsigned long long rowid,
+                                const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                 const struct TALER_Amount *amount_with_fee,
                                 const struct TALER_Amount *deposit_fee,
                                 uint64_t transaction_id,
@@ -940,10 +942,10 @@ struct TALER_MINTDB_Plugin
    *         #GNUNET_SYSERR on error
    */
   int
-  (*iterate_ready_deposits) (void *cls,
-                             struct TALER_MINTDB_Session *session,
-                             TALER_MINTDB_DepositIterator deposit_cb,
-                             void *deposit_cb_cls);
+  (*get_ready_deposit) (void *cls,
+                        struct TALER_MINTDB_Session *session,
+                        TALER_MINTDB_DepositIterator deposit_cb,
+                        void *deposit_cb_cls);
 
 
   /**
@@ -953,9 +955,10 @@ struct TALER_MINTDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to the database
    * @param h_wire destination of the wire transfer
-   * @param FIXME: do we also need merchant_pub here?
+   * @param merchant_pub public key of the merchant
    * @param deposit_cb function to call for each deposit
    * @param deposit_cb_cls closure for @a deposit_cb
+   * @param limit maximum number of matching deposits to return
    * @return number of rows processed, 0 if none exist,
    *         #GNUNET_SYSERR on error
    */
@@ -963,33 +966,10 @@ struct TALER_MINTDB_Plugin
   (*iterate_matching_deposits) (void *cls,
                                 struct TALER_MINTDB_Session *session,
                                 const struct GNUNET_HashCode *h_wire,
+                                const struct TALER_MerchantPublicKeyP *merchant_pub,
                                 TALER_MINTDB_DepositIterator deposit_cb,
-                                void *deposit_cb_cls);
-
-
-  /**
-   * Obtain information about deposits.  Iterates over all deposits
-   * above a certain ID.  Use a @a min_id of 0 to start at the beginning.
-   * This operation is executed in its own transaction in transaction
-   * mode "REPEATABLE READ", i.e. we should only see valid deposits.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to the database
-   * @param min_id deposit to start at
-   * @param limit maximum number of transactions to fetch
-   * @param deposit_cb function to call for each deposit
-   * @param deposit_cb_cls closure for @a deposit_cb
-   * @return number of rows processed, 0 if none exist,
-   *         #GNUNET_SYSERR on error
-   * @deprecated this is likely dead
-   */
-  int
-  (*iterate_deposits) (void *cls,
-                       struct TALER_MINTDB_Session *session,
-                       uint64_t min_id,
-                       uint32_t limit,
-                       TALER_MINTDB_DepositIterator deposit_cb,
-                       void *deposit_cb_cls);
+                                void *deposit_cb_cls,
+                                uint32_t limit);
 
 
   /**

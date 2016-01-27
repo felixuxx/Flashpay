@@ -148,8 +148,9 @@ mint_serve_process_config (const char *mint_directory)
  * with the goal of executing the corresponding wire transaction.
  *
  * @param cls closure
- * @param id transaction ID (used as future `min_id` to avoid
- *           iterating over transactions more than once)
+ * @param row_id identifies database entry
+ * @param merchant_pub public key of the merchant
+ * @param coin_pub public key of the coin
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the mint gets to keep as transaction fees
  * @param transaction_id unique transaction ID chosen by the merchant
@@ -161,7 +162,9 @@ mint_serve_process_config (const char *mint_directory)
  */
 static int
 deposit_cb (void *cls,
-            uint64_t id,
+            unsigned long long row_id,
+            const struct TALER_MerchantPublicKeyP *merchant_pub,
+            const struct TALER_CoinSpendPublicKeyP *coin_pub,
             const struct TALER_Amount *amount_with_fee,
             const struct TALER_Amount *deposit_fee,
             uint64_t transaction_id,
@@ -204,12 +207,12 @@ run (void *cls,
     *global_ret = GNUNET_SYSERR;
     return;
   }
-  ret = db_plugin->iterate_deposits (db_plugin->cls,
-                                     session,
-                                     0 /* FIXME: remove? */,
-                                     128 /* FIXME: make configurable? */,
-                                     &deposit_cb,
-                                     NULL);
+  ret = db_plugin->get_ready_deposit (db_plugin->cls,
+                                      session,
+                                      &deposit_cb,
+                                      NULL);
+  // FIXME: handle 0 == ret...
+
   if (GNUNET_OK != ret)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

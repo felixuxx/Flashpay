@@ -425,7 +425,7 @@ postgres_create_tables (void *cls,
   /* This table contains the wire transfers the mint is supposed to
      execute to transmit funds to the merchants (and manage refunds). */
   SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
-          "(serial_id BIGSERIAL"
+          "(serial_id BIGSERIAL PRIMARY KEY"
           ",coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)"
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",denom_sig BYTEA NOT NULL"
@@ -444,6 +444,8 @@ postgres_create_tables (void *cls,
           ",h_wire BYTEA NOT NULL CHECK (LENGTH(h_wire)=64)"
           ",coin_sig BYTEA NOT NULL CHECK (LENGTH(coin_sig)=64)"
           ",wire TEXT NOT NULL"
+          ",tiny BOOLEAN NOT NULL DEFAULT false"
+          ",done BOOLEAN NOT NULL DEFAULT false"
           ")");
   /* Index for get_deposit statement on coin_pub, transaction_id and merchant_pub */
   SQLEXEC_INDEX("CREATE INDEX deposits_coin_pub_index "
@@ -899,8 +901,8 @@ postgres_prepare (PGconn *db_conn)
            " )",
            5, NULL);
 
-  /* Used in #postgres_iterate_deposits() */
-  PREPARE ("deposits_iterate",
+  /* Used in #postgres_get_ready_deposit() */
+  PREPARE ("deposits_get_ready",
            "SELECT"
            " serial_id"
            ",amount_with_fee_val"
@@ -913,11 +915,50 @@ postgres_prepare (PGconn *db_conn)
            ",transaction_id"
            ",h_contract"
            ",wire"
+           ",merchant_pub"
+           ",coin_pub"
            " FROM deposits"
-           " WHERE serial_id>=$1"
-           " ORDER BY serial_id ASC"
-           " LIMIT $2;",
-           2, NULL);
+           " WHERE"
+           " tiny=false AND"
+           " done=false"
+           " ORDER BY execution_time ASC"
+           " LIMIT 1;",
+           0, NULL);
+  /* Used in #postgres_iterate_matching_deposits() */
+  PREPARE ("deposits_iterate_matching",
+           "SELECT"
+           " serial_id"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           ",deposit_fee_val"
+           ",deposit_fee_frac"
+           ",deposit_fee_curr"
+           ",wire_deadline"
+           ",transaction_id"
+           ",h_contract"
+           ",coin_pub"
+           " FROM deposits"
+           " WHERE"
+           " merchant_pub=$1 AND"
+           " h_wire=$2 AND"
+           " done=false"
+           " ORDER BY execution_time ASC"
+           " LIMIT $3",
+           3, NULL);
+  /* Used in #postgres_mark_deposit_tiny() */
+  PREPARE ("mark_deposit_tiny",
+           "UPDATE deposits"
+           " SET tiny=true"
+           " WHERE serial_id=$1",
+           1, NULL);
+  /* Used in #postgres_mark_deposit_done() */
+  PREPARE ("mark_deposit_done",
+           "UPDATE deposits"
+           " SET done=true"
+           " WHERE serial_id=$1",
+           1, NULL);
+
   /* Used in #postgres_get_coin_transactions() to obtain information
      about how a coin has been spend with /deposit requests. */
   PREPARE ("get_deposit_with_coin_pub",
@@ -2039,82 +2080,133 @@ postgres_have_deposit (void *cls,
 
 
 /**
- * Obtain information about deposits.  Iterates over all deposits
- * above a certain ID.  Use a @a min_id of 0 to start at the beginning.
- * This operation is executed in its own transaction in transaction
- * mode "REPEATABLE READ", i.e. we should only see valid deposits.
+ * Mark a deposit as tiny, thereby declaring that it cannot be
+ * executed by itself and should no longer be returned by
+ * @e iterate_ready_deposits()
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to the database
- * @param min_id deposit to start at
- * @param limit maximum number of transactions to fetch
- * @param deposit_cb function to call for each deposit
+ * @param deposit_rowid identifies the deposit row to modify
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+static int
+postgres_mark_deposit_tiny (void *cls,
+                            struct TALER_MINTDB_Session *session,
+                            unsigned long long rowid)
+{
+  uint64_t serial_id = rowid;
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_uint64 (&serial_id),
+    TALER_PQ_query_param_end
+  };
+  PGresult *result;
+
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "mark_deposit_tiny",
+                                   params);
+  if (PGRES_COMMAND_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Mark a deposit as done, thereby declaring that it cannot be
+ * executed at all anymore, and should no longer be returned by
+ * @e iterate_ready_deposits() or @e iterate_matching_deposits().
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to the database
+ * @param deposit_rowid identifies the deposit row to modify
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+static int
+postgres_mark_deposit_done (void *cls,
+                            struct TALER_MINTDB_Session *session,
+                            unsigned long long rowid)
+{
+  uint64_t serial_id = rowid;
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_uint64 (&serial_id),
+    TALER_PQ_query_param_end
+  };
+  PGresult *result;
+
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "mark_deposit_done",
+                                   params);
+  if (PGRES_COMMAND_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Obtain information about deposits that are ready to be executed.
+ * Such deposits must not be marked as "tiny" or "done", and the
+ * execution time must be in the past.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to the database
+ * @param deposit_cb function to call for ONE such deposit
  * @param deposit_cb_cls closure for @a deposit_cb
  * @return number of rows processed, 0 if none exist,
  *         #GNUNET_SYSERR on error
  */
 static int
-postgres_iterate_deposits (void *cls,
-                           struct TALER_MINTDB_Session *session,
-                           uint64_t min_id,
-                           uint32_t limit,
-                           TALER_MINTDB_DepositIterator deposit_cb,
-                           void *deposit_cb_cls)
+postgres_get_ready_deposit (void *cls,
+                            struct TALER_MINTDB_Session *session,
+                            TALER_MINTDB_DepositIterator deposit_cb,
+                            void *deposit_cb_cls)
 {
   struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_uint64 (&min_id),
-    TALER_PQ_query_param_uint32 (&limit),
     TALER_PQ_query_param_end
   };
   PGresult *result;
-  unsigned int i;
   unsigned int n;
-
-  if (GNUNET_OK !=
-      postgres_start (cls, session))
-    return GNUNET_SYSERR;
-  result = PQexec (session->conn,
-                   "SET TRANSACTION REPEATABLE READ");
-  if (PGRES_COMMAND_OK !=
-      PQresultStatus (result))
-  {
-    TALER_LOG_ERROR ("Failed to set transaction to REPEATABL EREAD: %s\n",
-                     PQresultErrorMessage (result));
-    GNUNET_break (0);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
+  int ret;
 
   result = TALER_PQ_exec_prepared (session->conn,
-                                   "deposits_iterate",
+                                   "deposits_get_ready",
                                    params);
   if (PGRES_TUPLES_OK !=
       PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
     PQclear (result);
-    postgres_rollback (cls, session);
     return GNUNET_SYSERR;
   }
   if (0 == (n = PQntuples (result)))
   {
     PQclear (result);
-    postgres_rollback (cls, session);
     return 0;
   }
-  for (i=0;i<n;i++)
+  GNUNET_break (1 == n);
   {
     struct TALER_Amount amount_with_fee;
     struct TALER_Amount deposit_fee;
     struct GNUNET_TIME_Absolute wire_deadline;
     struct GNUNET_HashCode h_contract;
-    json_t *wire;
+    struct TALER_MerchantPublicKeyP merchant_pub;
+    struct TALER_CoinSpendPublicKeyP coin_pub;
     uint64_t transaction_id;
-    uint64_t id;
-    int ret;
+    uint64_t serial_id;
+    json_t *wire;
     struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_uint64 ("id",
-                                   &id),
+      TALER_PQ_result_spec_uint64 ("serial_id",
+                                   &serial_id),
       TALER_PQ_result_spec_uint64 ("transaction_id",
                                    &transaction_id),
       TALER_PQ_result_spec_amount ("amount_with_fee",
@@ -2125,20 +2217,25 @@ postgres_iterate_deposits (void *cls,
                                           &wire_deadline),
       TALER_PQ_result_spec_auto_from_type ("h_contract",
                                            &h_contract),
+      TALER_PQ_result_spec_auto_from_type ("merchant_pub",
+                                           &merchant_pub),
+      TALER_PQ_result_spec_auto_from_type ("coin_pub",
+                                           &coin_pub),
       TALER_PQ_result_spec_json ("wire",
                                  &wire),
       TALER_PQ_result_spec_end
     };
     if (GNUNET_OK !=
-        TALER_PQ_extract_result (result, rs, i))
+        TALER_PQ_extract_result (result, rs, 0))
     {
       GNUNET_break (0);
       PQclear (result);
-      postgres_rollback (cls, session);
       return GNUNET_SYSERR;
     }
     ret = deposit_cb (deposit_cb_cls,
-                      id,
+                      serial_id,
+                      &merchant_pub,
+                      &coin_pub,
                       &amount_with_fee,
                       &deposit_fee,
                       transaction_id,
@@ -2147,10 +2244,113 @@ postgres_iterate_deposits (void *cls,
                       wire);
     TALER_PQ_cleanup_result (rs);
     PQclear (result);
+  }
+  return (GNUNET_OK == ret) ? 1 : 0;
+}
+
+
+/**
+ * Obtain information about other pending deposits for the same
+ * destination.  Those deposits must not already be "done".
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to the database
+ * @param h_wire destination of the wire transfer
+ * @param merchant_pub public key of the merchant
+ * @param deposit_cb function to call for each deposit
+ * @param deposit_cb_cls closure for @a deposit_cb
+ * @param limit maximum number of matching deposits to return
+ * @return number of rows processed, 0 if none exist,
+ *         #GNUNET_SYSERR on error
+ */
+static int
+postgres_iterate_matching_deposits (void *cls,
+                                    struct TALER_MINTDB_Session *session,
+                                    const struct GNUNET_HashCode *h_wire,
+                                    const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                    TALER_MINTDB_DepositIterator deposit_cb,
+                                    void *deposit_cb_cls,
+                                    uint32_t limit)
+{
+  struct TALER_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_auto_from_type (merchant_pub),
+    TALER_PQ_query_param_auto_from_type (h_wire),
+    TALER_PQ_query_param_uint32 (&limit),
+    TALER_PQ_query_param_end
+  };
+  PGresult *result;
+  unsigned int i;
+  unsigned int n;
+
+  result = TALER_PQ_exec_prepared (session->conn,
+                                   "deposits_iterate_matching",
+                                   params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  if (0 == (n = PQntuples (result)))
+  {
+    PQclear (result);
+    return 0;
+  }
+  if (n > limit)
+    n = limit;
+  for (i=0;i<n;i++)
+  {
+    struct TALER_Amount amount_with_fee;
+    struct TALER_Amount deposit_fee;
+    struct GNUNET_TIME_Absolute wire_deadline;
+    struct GNUNET_HashCode h_contract;
+    struct TALER_MerchantPublicKeyP merchant_pub;
+    struct TALER_CoinSpendPublicKeyP coin_pub;
+    uint64_t transaction_id;
+    uint64_t serial_id;
+    int ret;
+    struct TALER_PQ_ResultSpec rs[] = {
+      TALER_PQ_result_spec_uint64 ("serial_id",
+                                   &serial_id),
+      TALER_PQ_result_spec_uint64 ("transaction_id",
+                                   &transaction_id),
+      TALER_PQ_result_spec_amount ("amount_with_fee",
+                                   &amount_with_fee),
+      TALER_PQ_result_spec_amount ("deposit_fee",
+                                   &deposit_fee),
+      TALER_PQ_result_spec_absolute_time ("wire_deadline",
+                                          &wire_deadline),
+      TALER_PQ_result_spec_auto_from_type ("h_contract",
+                                           &h_contract),
+      TALER_PQ_result_spec_auto_from_type ("merchant_pub",
+                                           &merchant_pub),
+      TALER_PQ_result_spec_auto_from_type ("coin_pub",
+                                           &coin_pub),
+      TALER_PQ_result_spec_end
+    };
+    if (GNUNET_OK !=
+        TALER_PQ_extract_result (result, rs, i))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    ret = deposit_cb (deposit_cb_cls,
+                      serial_id,
+                      &merchant_pub,
+                      &coin_pub,
+                      &amount_with_fee,
+                      &deposit_fee,
+                      transaction_id,
+                      &h_contract,
+                      wire_deadline,
+                      NULL);
+    TALER_PQ_cleanup_result (rs);
+    PQclear (result);
     if (GNUNET_OK != ret)
       break;
   }
-  postgres_rollback (cls, session);
   return i;
 }
 
@@ -3838,7 +4038,10 @@ libtaler_plugin_mintdb_postgres_init (void *cls)
   plugin->get_reserve_history = &postgres_get_reserve_history;
   plugin->free_reserve_history = &common_free_reserve_history;
   plugin->have_deposit = &postgres_have_deposit;
-  plugin->iterate_deposits = &postgres_iterate_deposits;
+  plugin->mark_deposit_tiny = &postgres_mark_deposit_tiny;
+  plugin->mark_deposit_done = &postgres_mark_deposit_done;
+  plugin->get_ready_deposit = &postgres_get_ready_deposit;
+  plugin->iterate_matching_deposits = &postgres_iterate_matching_deposits;
   plugin->insert_deposit = &postgres_insert_deposit;
   plugin->get_refresh_session = &postgres_get_refresh_session;
   plugin->create_refresh_session = &postgres_create_refresh_session;
