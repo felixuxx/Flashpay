@@ -1097,7 +1097,6 @@ TMH_RESPONSE_reply_deposit_pending (struct MHD_Connection *connection,
  * @param coin_pub public key of the coin
  * @param coin_contribution how much did the coin we asked about
  *        contribute to the total transfer value? (deposit value minus fee)
- * @param total_amount how much was the total wire transfer?
  * @param transaction_id merchant transaction identifier
  * @param wtid raw wire transfer identifier
  * @param exec_time execution time of the wire transfer
@@ -1109,7 +1108,6 @@ TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
                                  const struct GNUNET_HashCode *h_wire,
                                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                  const struct TALER_Amount *coin_contribution,
-                                 const struct TALER_Amount *total_amount,
                                  uint64_t transaction_id,
 				 const struct TALER_WireTransferIdentifierRawP *wtid,
                                  struct GNUNET_TIME_Absolute exec_time)
@@ -1128,8 +1126,6 @@ TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
   cw.execution_time = GNUNET_TIME_absolute_hton (exec_time);
   TALER_amount_hton (&cw.coin_contribution,
                      coin_contribution);
-  TALER_amount_hton (&cw.total_amount,
-                     total_amount);
   TMH_KS_sign (&cw.purpose,
                &pub,
                &sig);
@@ -1140,7 +1136,6 @@ TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
                                                                      sizeof (*wtid)),
                                        "execution_time", TALER_json_from_abs (exec_time),
                                        "coin_contribution", TALER_json_from_amount (coin_contribution),
-                                       "total_amount", TALER_json_from_amount (total_amount),
                                        "mint_sig", TALER_json_from_data (&sig,
                                                                          sizeof (sig)),
                                        "mint_pub", TALER_json_from_data (&pub,

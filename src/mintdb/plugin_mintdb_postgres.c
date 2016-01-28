@@ -466,9 +466,6 @@ postgres_create_tables (void *cls,
           ",coin_fee_val INT8 NOT NULL"
           ",coin_fee_frac INT4 NOT NULL"
           ",coin_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ",transfer_total_val INT8 NOT NULL"
-          ",transfer_total_frac INT4 NOT NULL"
-          ",transfer_total_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ")");
   /* Index for lookup_transactions statement on wtid */
   SQLEXEC_INDEX("CREATE INDEX aggregation_tracking_wtid_index "
@@ -1090,9 +1087,6 @@ postgres_prepare (PGconn *db_conn)
            ",coin_fee_val"
            ",coin_fee_frac"
            ",coin_fee_curr"
-           ",transfer_total_val"
-           ",transfer_total_frac"
-           ",transfer_total_curr"
            " FROM aggregation_tracking"
            " WHERE wtid_raw=$1",
            1, NULL);
@@ -1108,9 +1102,6 @@ postgres_prepare (PGconn *db_conn)
            ",coin_fee_val"
            ",coin_fee_frac"
            ",coin_fee_curr"
-           ",transfer_total_val"
-           ",transfer_total_frac"
-           ",transfer_total_curr"
            " FROM aggregation_tracking"
            " WHERE"
            " coin_pub=$1 AND"
@@ -1136,12 +1127,9 @@ postgres_prepare (PGconn *db_conn)
            ",coin_fee_val"
            ",coin_fee_frac"
            ",coin_fee_curr"
-           ",transfer_total_val"
-           ",transfer_total_frac"
-           ",transfer_total_curr"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
-           16, NULL);
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
+           13, NULL);
 
 
   /* Used in #postgres_wire_prepare_data_insert() to store
@@ -3950,7 +3938,6 @@ postgres_wire_lookup_deposit_wtid (void *cls,
           NULL,
           &coin_amount,
           &coin_fee,
-          NULL,
           exec_time);
       PQclear (result);
       return GNUNET_YES;
@@ -3967,13 +3954,11 @@ postgres_wire_lookup_deposit_wtid (void *cls,
     struct GNUNET_TIME_Absolute exec_time;
     struct TALER_Amount coin_amount;
     struct TALER_Amount coin_fee;
-    struct TALER_Amount transaction_amount;
     struct TALER_PQ_ResultSpec rs[] = {
       TALER_PQ_result_spec_auto_from_type ("wtid_raw", &wtid),
       TALER_PQ_result_spec_absolute_time ("execution_time", &exec_time),
       TALER_PQ_result_spec_amount ("coin_amount", &coin_amount),
       TALER_PQ_result_spec_amount ("coin_fee", &coin_fee),
-      TALER_PQ_result_spec_amount ("transfer_total", &transaction_amount),
       TALER_PQ_result_spec_end
     };
     if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
@@ -3986,7 +3971,6 @@ postgres_wire_lookup_deposit_wtid (void *cls,
         &wtid,
         &coin_amount,
         &coin_fee,
-        &transaction_amount,
         exec_time);
   }
   PQclear (result);
@@ -4007,7 +3991,6 @@ postgres_wire_lookup_deposit_wtid (void *cls,
  * @param coin_pub which public key was this payment about
  * @param coin_value amount contributed by this coin in total
  * @param coin_fee deposit fee charged by mint for this coin
- * @param transfer_value total amount of the wire transfer
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
  */
 static int
@@ -4021,8 +4004,7 @@ postgres_insert_aggregation_tracking (void *cls,
                                       struct GNUNET_TIME_Absolute execution_time,
                                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                       const struct TALER_Amount *coin_value,
-                                      const struct TALER_Amount *coin_fee,
-                                      const struct TALER_Amount *transfer_value)
+                                      const struct TALER_Amount *coin_fee)
 {
   struct TALER_PQ_QueryParam params[] = {
     TALER_PQ_query_param_auto_from_type (h_contract),
@@ -4034,7 +4016,6 @@ postgres_insert_aggregation_tracking (void *cls,
     TALER_PQ_query_param_absolute_time (&execution_time),
     TALER_PQ_query_param_amount (coin_value),
     TALER_PQ_query_param_amount (coin_fee),
-    TALER_PQ_query_param_amount (transfer_value),
     TALER_PQ_query_param_end
   };
   PGresult *result;

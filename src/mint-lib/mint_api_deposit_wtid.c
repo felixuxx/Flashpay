@@ -148,9 +148,7 @@ handle_deposit_wtid_finished (void *cls,
   const struct TALER_WireTransferIdentifierRawP *wtid = NULL;
   struct GNUNET_TIME_Absolute execution_time = GNUNET_TIME_UNIT_FOREVER_ABS;
   const struct TALER_Amount *coin_contribution = NULL;
-  const struct TALER_Amount *total_amount = NULL;
   struct TALER_Amount coin_contribution_s;
-  struct TALER_Amount total_amount_s;
 
   dwh->job = NULL;
   json = MAC_download_get_result (&dwh->db,
@@ -166,7 +164,6 @@ handle_deposit_wtid_finished (void *cls,
         MAJ_spec_fixed_auto ("wtid", &dwh->depconf.wtid),
         MAJ_spec_absolute_time ("execution_time", &execution_time),
         MAJ_spec_amount ("coin_contribution", &coin_contribution_s),
-        MAJ_spec_amount ("total_amount", &total_amount_s),
         MAJ_spec_end
       };
 
@@ -183,9 +180,6 @@ handle_deposit_wtid_finished (void *cls,
       TALER_amount_hton (&dwh->depconf.coin_contribution,
                          &coin_contribution_s);
       coin_contribution = &coin_contribution_s;
-      TALER_amount_hton (&dwh->depconf.total_amount,
-                         &total_amount_s);
-      total_amount = &total_amount_s;
       if (GNUNET_OK !=
           verify_deposit_wtid_signature_ok (dwh,
                                             json))
@@ -244,8 +238,7 @@ handle_deposit_wtid_finished (void *cls,
            json,
            wtid,
            execution_time,
-           coin_contribution,
-           total_amount);
+           coin_contribution);
   json_decref (json);
   TALER_MINT_deposit_wtid_cancel (dwh);
 }

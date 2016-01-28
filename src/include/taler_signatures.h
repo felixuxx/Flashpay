@@ -953,20 +953,6 @@ struct TALER_ConfirmWirePS
    */
   struct TALER_AmountNBO coin_contribution;
 
-  /**
-   * The total amount the mint transferred in the transaction.
-   * Note that we may be aggregating multiple coin's @e coin_contribution
-   * values into a single wire transfer, so this value may be larger
-   * than that of @e coin_contribution.  It may also be smaller, as
-   * @e coin_contribution may be say "1.123456" but the wire unit may
-   * be rounded down, i.e. to "1.12" (depending on the transfer method).
-   *
-   * Note that the mint books the deltas from rounding down as profit,
-   * so aggregating transfers is a good thing for the merchant (as it
-   * reduces rounding down expenses).
-   */
-  struct TALER_AmountNBO total_amount;
-
 };
 
 GNUNET_NETWORK_STRUCT_END

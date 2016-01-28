@@ -1804,7 +1804,6 @@ struct DepositWtidContext
  * @param coin_contribution how much did the coin we asked about
  *        contribute to the total transfer value? (deposit value including fee)
  * @param coin_fee how much did the mint charge for the deposit fee
- * @param total_amount how much was the total wire transfer?
  * @param execution_time when was the transaction done, or
  *         when we expect it to be done (if @a wtid was NULL);
  *         #GNUNET_TIME_UNIT_FOREVER_ABS if the /deposit is unknown
@@ -1815,7 +1814,6 @@ handle_wtid_data (void *cls,
 		  const struct TALER_WireTransferIdentifierRawP *wtid,
                   const struct TALER_Amount *coin_contribution,
                   const struct TALER_Amount *coin_fee,
-                  const struct TALER_Amount *total_amount,
 		  struct GNUNET_TIME_Absolute execution_time)
 {
   struct DepositWtidContext *ctx = cls;
@@ -1843,7 +1841,6 @@ handle_wtid_data (void *cls,
                                                   &ctx->h_wire,
                                                   &ctx->coin_pub,
                                                   &coin_delta,
-                                                  total_amount,
                                                   ctx->transaction_id,
                                                   wtid,
                                                   execution_time);

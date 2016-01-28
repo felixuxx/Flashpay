@@ -583,7 +583,6 @@ typedef void
  * @param coin_contribution how much did the coin we asked about
  *        contribute to the total transfer value? (deposit value including fee)
  * @param coin_fee how much did the mint charge for the deposit fee
- * @param total_amount how much was the total wire transfer?
  * @param execution_time when was the transaction done, or
  *         when we expect it to be done (if @a wtid was NULL)
  */
@@ -592,7 +591,6 @@ typedef void
 				    const struct TALER_WireTransferIdentifierRawP *wtid,
                                     const struct TALER_Amount *coin_contribution,
                                     const struct TALER_Amount *coin_fee,
-                                    const struct TALER_Amount *total_amount,
 				    struct GNUNET_TIME_Absolute execution_time);
 
 
@@ -1360,7 +1358,6 @@ struct TALER_MINTDB_Plugin
    * @param coin_pub which public key was this payment about
    * @param coin_value amount contributed by this coin in total
    * @param coin_fee deposit fee charged by mint for this coin
-   * @param transfer_value total amount of the wire transfer
    * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
    */
   int
@@ -1374,8 +1371,7 @@ struct TALER_MINTDB_Plugin
                                  struct GNUNET_TIME_Absolute execution_time,
                                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                  const struct TALER_Amount *coin_value,
-                                 const struct TALER_Amount *coin_fee,
-                                 const struct TALER_Amount *transfer_value);
+                                 const struct TALER_Amount *coin_fee);
 
 
   /**

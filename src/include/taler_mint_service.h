@@ -1173,8 +1173,6 @@ struct TALER_MINT_DepositWtidHandle;
  *                  yet execute the transaction
  * @param execution_time actual or planned execution time for the wire transfer
  * @param coin_contribution contribution to the @a total_amount of the deposited coin (may be NULL)
- * @param total_amount total amount of the wire transfer, or NULL if the mint could
- *             not provide any @a wtid (set only if @a http_status is #MHD_HTTP_OK)
  */
 typedef void
 (*TALER_MINT_DepositWtidCallback)(void *cls,
@@ -1182,8 +1180,7 @@ typedef void
                                   json_t *json,
                                   const struct TALER_WireTransferIdentifierRawP *wtid,
                                   struct GNUNET_TIME_Absolute execution_time,
-                                  const struct TALER_Amount *coin_contribution,
-                                  const struct TALER_Amount *total_amount);
+                                  const struct TALER_Amount *coin_contribution);
 
 
 /**
