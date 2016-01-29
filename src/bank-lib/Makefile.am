@@ -31,3 +31,15 @@ libtalerbank_la_LIBADD += -lgnurl
 endif
 endif
 
+check_PROGRAMS = \
+  test_bank_api
+
+TESTS = \
+  $(check_PROGRAMS)
+
+test_bank_api_SOURCES = \
+  test_bank_api.c
+test_bank_api_LDADD = \
+  libtalerbank.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil

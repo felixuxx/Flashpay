@@ -395,7 +395,7 @@ TALER_BANK_fini (struct TALER_BANK_Context *ctx)
  * @return the full URI to use with cURL
  */
 char *
-MAH_path_to_url (struct TALER_BANK_Context *h,
+BAC_path_to_url (struct TALER_BANK_Context *h,
                  const char *path)
 {
   char *url;
