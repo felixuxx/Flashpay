@@ -133,7 +133,7 @@ typedef void
  * @param reserve_pub public key of the reserve
  * @param amount amount that was deposited
  * @param execution_date when did we receive the amount
- * @param wire wire details
+ * @param account_no account number (53 bits at most)
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
  * @return NULL
@@ -144,7 +144,7 @@ struct TALER_BANK_AdminAddIncomingHandle *
 TALER_BANK_admin_add_incoming (struct TALER_BANK_Context *bank,
                                const struct TALER_WireTransferIdentifierRawP *wtid,
                                const struct TALER_Amount *amount,
-                               const json_t *wire,
+                               uint64_t account_no,
                                TALER_BANK_AdminAddIncomingResultCallback res_cb,
                                void *res_cb_cls);
 
