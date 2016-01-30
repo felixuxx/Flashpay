@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -1056,15 +1056,15 @@ TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
  * 404 reply.
  *
  * @param connection connection to the client
- * @param 
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_deposit_unknown (struct MHD_Connection *connection,
-				    ...)
+TMH_RESPONSE_reply_deposit_unknown (struct MHD_Connection *connection)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return MHD_NO;
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       "{s:s}",
+                                       "error", "Deposit unknown");
 }
 
 
@@ -1073,15 +1073,17 @@ TMH_RESPONSE_reply_deposit_unknown (struct MHD_Connection *connection,
  * we did not execute the deposit yet. Generate a 202 reply.
  *
  * @param connection connection to the client
- * @param 
+ * @param planned_exec_time planned execution time
  * @return MHD result code
  */
 int
 TMH_RESPONSE_reply_deposit_pending (struct MHD_Connection *connection,
-				    ...)
+				    struct GNUNET_TIME_Absolute planned_exec_time)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return MHD_NO;
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_ACCEPTED,
+                                       "{s:o}",
+                                       "execution_time", TALER_json_from_abs (planned_exec_time));
 }
 
 
@@ -1090,15 +1092,86 @@ TMH_RESPONSE_reply_deposit_pending (struct MHD_Connection *connection,
  * them. Generates the 200 reply.
  *
  * @param connection connection to the client
- * @param 
+ * @param h_contract hash of the contract
+ * @param h_wire hash of wire account details
+ * @param coin_pub public key of the coin
+ * @param coin_contribution how much did the coin we asked about
+ *        contribute to the total transfer value? (deposit value minus fee)
+ * @param transaction_id merchant transaction identifier
+ * @param wtid raw wire transfer identifier
+ * @param exec_time execution time of the wire transfer
  * @return MHD result code
  */
 int
 TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
-				 ...)
+                                 const struct GNUNET_HashCode *h_contract,
+                                 const struct GNUNET_HashCode *h_wire,
+                                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                 const struct TALER_Amount *coin_contribution,
+                                 uint64_t transaction_id,
+				 const struct TALER_WireTransferIdentifierRawP *wtid,
+                                 struct GNUNET_TIME_Absolute exec_time)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return MHD_NO;
+  struct TALER_ConfirmWirePS cw;
+  struct TALER_MintPublicKeyP pub;
+  struct TALER_MintSignatureP sig;
+
+  cw.purpose.purpose = htonl (TALER_SIGNATURE_MINT_CONFIRM_WIRE);
+  cw.purpose.size = htonl (sizeof (struct TALER_ConfirmWirePS));
+  cw.h_wire = *h_wire;
+  cw.h_contract = *h_contract;
+  cw.wtid = *wtid;
+  cw.coin_pub = *coin_pub;
+  cw.transaction_id = GNUNET_htonll (transaction_id);
+  cw.execution_time = GNUNET_TIME_absolute_hton (exec_time);
+  TALER_amount_hton (&cw.coin_contribution,
+                     coin_contribution);
+  TMH_KS_sign (&cw.purpose,
+               &pub,
+               &sig);
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:o, s:o, s:o, s:o, s:o, s:o}",
+                                       "wtid", TALER_json_from_data (wtid,
+                                                                     sizeof (*wtid)),
+                                       "execution_time", TALER_json_from_abs (exec_time),
+                                       "coin_contribution", TALER_json_from_amount (coin_contribution),
+                                       "mint_sig", TALER_json_from_data (&sig,
+                                                                         sizeof (sig)),
+                                       "mint_pub", TALER_json_from_data (&pub,
+                                                                         sizeof (pub)));
 }
+
+
+/**
+ * A merchant asked for transaction details about a wire transfer.
+ * Provide them. Generates the 200 reply.
+ *
+ * @param connection connection to the client
+ * @param total total amount that was transferred
+ * @param merchant_pub public key of the merchant
+ * @param h_wire destination account
+ * @param deposits details about the combined deposits
+ * @return MHD result code
+ */
+int
+TMH_RESPONSE_reply_wire_deposit_details (struct MHD_Connection *connection,
+                                         const struct TALER_Amount *total,
+                                         const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                         const struct GNUNET_HashCode *h_wire,
+                                         json_t *deposits)
+{
+  /* FIXME: #4135: signing not implemented here */
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:o, s:o, s:o, s:o}",
+                                       "total", TALER_json_from_amount (total),
+                                       "merchant_pub", TALER_json_from_data (merchant_pub,
+                                                                             sizeof (struct TALER_MerchantPublicKeyP)),
+                                       "h_wire", TALER_json_from_data (h_wire,
+                                                                       sizeof (struct GNUNET_HashCode)),
+                                       "deposits", deposits);
+}
+
 
 /* end of taler-mint-httpd_responses.c */

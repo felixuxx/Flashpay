@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -755,7 +755,7 @@ TALER_MINT_connect (struct TALER_MINT_Context *ctx,
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (c,
                                    CURLOPT_VERBOSE,
-                                   1));
+                                   0));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (c,
                                    CURLOPT_STDERR,

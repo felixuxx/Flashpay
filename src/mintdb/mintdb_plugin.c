@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2015 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -82,68 +82,6 @@ TALER_MINTDB_plugin_unload (struct TALER_MINTDB_Plugin *plugin)
   GNUNET_free (lib_name);
 }
 
-
-/**
- * Libtool search path before we started.
- */
-static char *old_dlsearchpath;
-
-
-/**
- * Setup libtool paths.
- */
-void __attribute__ ((constructor))
-plugin_init ()
-{
-  int err;
-  const char *opath;
-  char *path;
-  char *cpath;
-
-  err = lt_dlinit ();
-  if (err > 0)
-  {
-    FPRINTF (stderr,
-             _("Initialization of plugin mechanism failed: %s!\n"),
-             lt_dlerror ());
-    return;
-  }
-  opath = lt_dlgetsearchpath ();
-  if (NULL != opath)
-    old_dlsearchpath = GNUNET_strdup (opath);
-  path = TALER_OS_installation_get_path (GNUNET_OS_IPK_LIBDIR);
-  if (NULL != path)
-  {
-    if (NULL != opath)
-    {
-      GNUNET_asprintf (&cpath, "%s:%s", opath, path);
-      lt_dlsetsearchpath (cpath);
-      GNUNET_free (path);
-      GNUNET_free (cpath);
-    }
-    else
-    {
-      lt_dlsetsearchpath (path);
-      GNUNET_free (path);
-    }
-  }
-}
-
-
-/**
- * Shutdown libtool.
- */
-void __attribute__ ((destructor))
-plugin_fini ()
-{
-  lt_dlsetsearchpath (old_dlsearchpath);
-  if (NULL != old_dlsearchpath)
-  {
-    GNUNET_free (old_dlsearchpath);
-    old_dlsearchpath = NULL;
-  }
-  lt_dlexit ();
-}
 
 
 /* end of mintdb_plugin.c */

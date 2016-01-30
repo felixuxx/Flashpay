@@ -199,6 +199,10 @@ TALER_PLUGIN_LDFLAGS="-export-dynamic -avoid-version -module -no-undefined"
 AC_SUBST(TALER_LIB_LDFLAGS)
 AC_SUBST(TALER_PLUGIN_LDFLAGS)
 
+CFLAGS_SAVE=$CFLAGS
+LDFLAGS_SAVE=$LDFLAGS
+LIBS_SAVE="$LIBS"
+
 
 AM_CONDITIONAL(HAVE_POSTGRESQL, test x$postgres = xtrue)
 
@@ -248,6 +252,10 @@ then
     AC_MSG_NOTICE([WARNING: libgnurl not found, trying to use libcurl-gnutls instead.])
   fi
 fi
+
+CFLAGS=$CFLAGS_SAVE
+LDFLAGS=$LDFLAGS_SAVE
+LIBS=$LIBS_SAVE
 
 
 # should developer logic be compiled (not-for-production code)?
@@ -349,6 +357,8 @@ AC_CONFIG_FILES([Makefile
                  src/include/Makefile
                  src/util/Makefile
                  src/pq/Makefile
+                 src/bank-lib/Makefile
+                 src/wire/Makefile
                  src/mintdb/Makefile
                  src/mint/Makefile
                  src/mint-tools/Makefile

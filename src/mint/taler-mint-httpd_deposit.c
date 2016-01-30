@@ -34,6 +34,7 @@
 #include "taler-mint-httpd_deposit.h"
 #include "taler-mint-httpd_responses.h"
 #include "taler-mint-httpd_keystate.h"
+#include "taler-mint-httpd_validation.h"
 
 
 /**
@@ -162,8 +163,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
     return MHD_YES; /* failure */
 
   if (GNUNET_YES !=
-      TALER_json_validate_wireformat (TMH_expected_wire_formats,
-				      wire))
+      TMH_json_validate_wireformat (wire))
   {
     TMH_PARSE_release_data (spec);
     return TMH_RESPONSE_reply_arg_unknown (connection,

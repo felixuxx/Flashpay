@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -1552,15 +1552,240 @@ TMH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
 
 
 /**
+ * Closure for #handle_transaction_data.
+ */
+struct WtidTransactionContext
+{
+
+  /**
+   * Total amount of the wire transfer, as calculated by
+   * summing up the individual amounts. To be rounded down
+   * to calculate the real transfer amount at the end.
+   * Only valid if @e is_valid is #GNUNET_YES.
+   */
+  struct TALER_Amount total;
+
+  /**
+   * Value we find in the DB for the @e total; only valid if @e is_valid
+   * is #GNUNET_YES.
+   */
+  struct TALER_Amount db_transaction_value;
+
+  /**
+   * Public key of the merchant, only valid if @e is_valid
+   * is #GNUNET_YES.
+   */
+  struct TALER_MerchantPublicKeyP merchant_pub;
+
+  /**
+   * Hash of the wire details of the merchant (identical for all
+   * deposits), only valid if @e is_valid is #GNUNET_YES.
+   */
+  struct GNUNET_HashCode h_wire;
+
+  /**
+   * JSON array with details about the individual deposits.
+   */
+  json_t *deposits;
+
+  /**
+   * Initially #GNUNET_NO, if we found no deposits so far.  Set to
+   * #GNUNET_YES if we got transaction data, and the database replies
+   * remained consistent with respect to @e merchant_pub and @e h_wire
+   * (as they should).  Set to #GNUNET_SYSERR if we encountered an
+   * internal error.
+   */
+  int is_valid;
+
+};
+
+
+/**
+ * Function called with the results of the lookup of the
+ * transaction data for the given wire transfer identifier.
+ *
+ * @param cls our context for transmission
+ * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
+ * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
+ * @param h_contract which contract was this payment about
+ * @param transaction_id merchant's transaction ID for the payment
+ * @param coin_pub which public key was this payment about
+ * @param deposit_value amount contributed by this coin in total
+ * @param deposit_fee deposit fee charged by mint for this coin
+ * @param transaction_value total value of the wire transaction
+ */
+static void
+handle_transaction_data (void *cls,
+                         const struct TALER_MerchantPublicKeyP *merchant_pub,
+                         const struct GNUNET_HashCode *h_wire,
+                         const struct GNUNET_HashCode *h_contract,
+                         uint64_t transaction_id,
+                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                         const struct TALER_Amount *deposit_value,
+                         const struct TALER_Amount *deposit_fee,
+                         const struct TALER_Amount *transaction_value)
+{
+  struct WtidTransactionContext *ctx = cls;
+  struct TALER_Amount delta;
+
+  if (GNUNET_SYSERR == ctx->is_valid)
+    return;
+  if (GNUNET_NO == ctx->is_valid)
+  {
+    ctx->merchant_pub = *merchant_pub;
+    ctx->h_wire = *h_wire;
+    ctx->db_transaction_value = *transaction_value;
+    ctx->is_valid = GNUNET_YES;
+    if (GNUNET_OK !=
+        TALER_amount_subtract (&ctx->total,
+                               deposit_value,
+                               deposit_fee))
+    {
+      GNUNET_break (0);
+      ctx->is_valid = GNUNET_SYSERR;
+      return;
+    }
+  }
+  else
+  {
+    if ( (0 != memcmp (&ctx->merchant_pub,
+                       merchant_pub,
+                       sizeof (struct TALER_MerchantPublicKeyP))) ||
+         (0 != memcmp (&ctx->h_wire,
+                       h_wire,
+                       sizeof (struct GNUNET_HashCode))) ||
+         (0 != TALER_amount_cmp (transaction_value,
+                                 &ctx->db_transaction_value)) )
+    {
+      GNUNET_break (0);
+      ctx->is_valid = GNUNET_SYSERR;
+      return;
+    }
+    if (GNUNET_OK !=
+        TALER_amount_subtract (&delta,
+                               deposit_value,
+                               deposit_fee))
+    {
+      GNUNET_break (0);
+      ctx->is_valid = GNUNET_SYSERR;
+      return;
+    }
+    if (GNUNET_OK !=
+        TALER_amount_add (&ctx->total,
+                          &ctx->total,
+                          &delta))
+    {
+      GNUNET_break (0);
+      ctx->is_valid = GNUNET_SYSERR;
+      return;
+    }
+  }
+  /* NOTE: We usually keep JSON stuff out of the _DB file, and this
+     is also ugly if we ever add signatures over this data. (#4135) */
+  json_array_append (ctx->deposits,
+                     json_pack ("{s:o, s:o, s:o, s:I, s:o}",
+                                "deposit_value", TALER_json_from_amount (deposit_value),
+                                "deposit_fee", TALER_json_from_amount (deposit_fee),
+                                "H_contract", TALER_json_from_data (h_contract,
+                                                                    sizeof (struct GNUNET_HashCode)),
+                                "transaction_id", (json_int_t) transaction_id,
+                                "coin_pub", TALER_json_from_data (coin_pub,
+                                                                  sizeof (struct TALER_CoinSpendPublicKeyP))));
+}
+
+
+/**
+ * Execute a "/wire/deposits".  Returns the transaction information
+ * associated with the given wire transfer identifier.
+ *
+ * @param connection the MHD connection to handle
+ * @param wtid wire transfer identifier to resolve
+ * @return MHD result code
+ */
+int
+TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
+                             const struct TALER_WireTransferIdentifierRawP *wtid)
+{
+  int ret;
+  struct WtidTransactionContext ctx;
+  struct TALER_MINTDB_Session *session;
+
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
+                                                  TMH_test_mode)))
+  {
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
+  ctx.is_valid = GNUNET_NO;
+  ctx.deposits = json_array ();
+  ret = TMH_plugin->lookup_wire_transfer (TMH_plugin->cls,
+                                          session,
+                                          wtid,
+                                          &handle_transaction_data,
+                                          &ctx);
+  if (GNUNET_SYSERR == ret)
+  {
+    GNUNET_break (0);
+    json_decref (ctx.deposits);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
+  if (GNUNET_SYSERR == ctx.is_valid)
+  {
+    GNUNET_break (0);
+    json_decref (ctx.deposits);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
+  if (GNUNET_NO == ctx.is_valid)
+  {
+    json_decref (ctx.deposits);
+    return TMH_RESPONSE_reply_arg_unknown (connection,
+                                           "wtid");
+  }
+  if (0 != TALER_amount_cmp (&ctx.total,
+                             &ctx.db_transaction_value))
+  {
+    /* FIXME: this CAN actually differ, due to rounding
+       down. But we should still check that the values
+       do match after rounding 'total' down! */
+  }
+  return TMH_RESPONSE_reply_wire_deposit_details (connection,
+                                                  &ctx.db_transaction_value,
+                                                  &ctx.merchant_pub,
+                                                  &ctx.h_wire,
+                                                  ctx.deposits);
+}
+
+
+/**
  * Closure for #handle_wtid_data.
  */
-struct DepositWtidContext 
+struct DepositWtidContext
 {
 
   /**
    * Where should we send the reply?
    */
   struct MHD_Connection *connection;
+
+  /**
+   * Hash of the contract we are looking up.
+   */
+  struct GNUNET_HashCode h_contract;
+
+  /**
+   * Hash of the wire transfer details we are looking up.
+   */
+  struct GNUNET_HashCode h_wire;
+
+  /**
+   * Public key we are looking up.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Transaction ID we are looking up.
+   */
+  uint64_t transaction_id;
 
   /**
    * MHD result code to return.
@@ -1572,10 +1797,13 @@ struct DepositWtidContext
 /**
  * Function called with the results of the lookup of the
  * wire transfer identifier information.
- * 
+ *
  * @param cls our context for transmission
- * @param wtid base32-encoded wire transfer identifier, NULL
+ * @param wtid raw wire transfer identifier, NULL
  *         if the transaction was not yet done
+ * @param coin_contribution how much did the coin we asked about
+ *        contribute to the total transfer value? (deposit value including fee)
+ * @param coin_fee how much did the mint charge for the deposit fee
  * @param execution_time when was the transaction done, or
  *         when we expect it to be done (if @a wtid was NULL);
  *         #GNUNET_TIME_UNIT_FOREVER_ABS if the /deposit is unknown
@@ -1583,23 +1811,41 @@ struct DepositWtidContext
  */
 static void
 handle_wtid_data (void *cls,
-		  const char *wtid,
+		  const struct TALER_WireTransferIdentifierRawP *wtid,
+                  const struct TALER_Amount *coin_contribution,
+                  const struct TALER_Amount *coin_fee,
 		  struct GNUNET_TIME_Absolute execution_time)
 {
   struct DepositWtidContext *ctx = cls;
+  struct TALER_Amount coin_delta;
 
   if (NULL == wtid)
   {
-    if (GNUNET_TIME_UNIT_FOREVER_ABS.abs_value_us == 
-	execution_time.abs_value_us)
-      ctx->res = TMH_RESPONSE_reply_deposit_unknown (ctx->connection);
-    else
-      ctx->res = TMH_RESPONSE_reply_deposit_pending (ctx->connection);
+    ctx->res = TMH_RESPONSE_reply_deposit_pending (ctx->connection,
+                                                   execution_time);
   }
   else
   {
-    ctx->res = TMH_RESPONSE_reply_deposit_wtid (ctx->connection);
-  }  
+    if (GNUNET_SYSERR ==
+        TALER_amount_subtract (&coin_delta,
+                               coin_contribution,
+                               coin_fee))
+    {
+      GNUNET_break (0);
+      ctx->res = TMH_RESPONSE_reply_internal_db_error (ctx->connection);
+    }
+    else
+    {
+      ctx->res = TMH_RESPONSE_reply_deposit_wtid (ctx->connection,
+                                                  &ctx->h_contract,
+                                                  &ctx->h_wire,
+                                                  &ctx->coin_pub,
+                                                  &coin_delta,
+                                                  ctx->transaction_id,
+                                                  wtid,
+                                                  execution_time);
+    }
+  }
 }
 
 
@@ -1625,20 +1871,45 @@ TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
 {
   int ret;
   struct DepositWtidContext ctx;
+  struct TALER_MINTDB_Session *session;
 
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
+                                                  TMH_test_mode)))
+  {
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
   ctx.connection = connection;
+  ctx.h_contract = *h_contract;
+  ctx.h_wire = *h_wire;
+  ctx.coin_pub = *coin_pub;
+  ctx.transaction_id = transaction_id;
+  ctx.res = GNUNET_SYSERR;
   ret = TMH_plugin->wire_lookup_deposit_wtid (TMH_plugin->cls,
+                                              session,
 					      h_contract,
 					      h_wire,
 					      coin_pub,
 					      merchant_pub,
 					      transaction_id,
 					      &handle_wtid_data,
-					      connection);
+					      &ctx);
   if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);
+    GNUNET_break (GNUNET_SYSERR == ctx.res);
     return TMH_RESPONSE_reply_internal_db_error (connection);
+  }
+  if (GNUNET_NO == ret)
+  {
+    GNUNET_break (GNUNET_SYSERR == ctx.res);
+    return TMH_RESPONSE_reply_deposit_unknown (connection);
+  }
+  if (GNUNET_SYSERR == ctx.res)
+  {
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_internal_error (connection,
+                                              "bug resolving deposit wtid");
   }
   return ctx.res;
 }

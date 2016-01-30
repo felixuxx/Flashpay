@@ -79,6 +79,11 @@ enum MAJ_Command
   MAJ_CMD_UINT16,
 
   /**
+   * Parse `uint64_t` integer at the current position.
+   */
+  MAJ_CMD_UINT64,
+
+  /**
    * Parse JSON object at the current position.
    */
   MAJ_CMD_JSON_OBJECT,
@@ -192,6 +197,11 @@ struct MAJ_Specification
     uint16_t *u16;
 
     /**
+     * Where to store 64-bit integer.
+     */
+    uint64_t *u64;
+
+    /**
      * Where to store a JSON object.
      */
     json_t **obj;
@@ -280,6 +290,17 @@ MAJ_spec_absolute_time (const char *name,
 struct MAJ_Specification
 MAJ_spec_uint16 (const char *name,
                  uint16_t *u16);
+
+
+/**
+ * 64-bit integer.
+ *
+ * @param name name of the JSON field
+ * @param[out] u64 where to store the integer found under @a name
+ */
+struct MAJ_Specification
+MAJ_spec_uint64 (const char *name,
+                 uint64_t *u64);
 
 
 /**

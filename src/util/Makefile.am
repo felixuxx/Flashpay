@@ -33,6 +33,7 @@ libtalerutil_la_SOURCES = \
   util.c \
   json.c \
   os_installation.c \
+  plugin.c \
   wireformats.c
 
 libtalerutil_la_LIBADD = \
@@ -48,14 +49,12 @@ libtalerutil_la_LDFLAGS = \
 TESTS = \
  test_amount \
  test_crypto \
- test_json \
- test_wireformats
+ test_json
 
 check_PROGRAMS= \
  test_amount \
  test_crypto \
- test_json \
- test_wireformats
+ test_json
 
 
 test_amount_SOURCES = \
@@ -73,13 +72,6 @@ test_crypto_LDADD = \
 test_json_SOURCES = \
   test_json.c
 test_json_LDADD = \
-  -lgnunetutil \
-  -ljansson \
-  libtalerutil.la
-
-test_wireformats_SOURCES = \
-  test_wireformats.c
-test_wireformats_LDADD = \
   -lgnunetutil \
   -ljansson \
   libtalerutil.la

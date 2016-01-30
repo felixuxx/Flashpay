@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2014 Christian Grothoff (and other contributing authors)
+  (C) 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -15,14 +15,15 @@
 */
 
 /**
- * @file util/test_wireformats.c
- * @brief Tests for JSON validations
+ * @file wire/test_sepa_wireformat.c
+ * @brief Tests for JSON SEPA format validation
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
 
 #include "platform.h"
 #include "taler_util.h"
-#include "taler_json_lib.h"
+#include "taler_wire_lib.h"
+
 
 /* Valid SEPA data */
 static const char * const valid_wire_str =
@@ -65,33 +66,39 @@ int
 main(int argc,
      const char *const argv[])
 {
-  const char *unsupported[] = {
-    "unsupported",
-    NULL
-  };
-  const char *sepa[] = {
-    "SEPA",
-    NULL
-  };
   json_t *wire;
   json_error_t error;
   int ret;
+  struct GNUNET_CONFIGURATION_Handle *cfg;
+  struct TALER_WIRE_Plugin *plugin;
 
-  GNUNET_log_setup ("test-json-validations", "WARNING", NULL);
+  GNUNET_log_setup ("test-sepa-wireformats",
+                    "WARNING",
+                    NULL);
+  cfg = GNUNET_CONFIGURATION_create ();
+  GNUNET_CONFIGURATION_set_value_string (cfg,
+                                         "mint",
+                                         "currency",
+                                         "EUR");
+  plugin = TALER_WIRE_plugin_load (cfg,
+                                   "sepa");
+  GNUNET_assert (NULL != plugin);
   (void) memset(&error, 0, sizeof(error));
   GNUNET_assert (NULL != (wire = json_loads (unsupported_wire_str, 0, NULL)));
-  GNUNET_assert (1 != TALER_json_validate_wireformat (unsupported, wire));
+  GNUNET_assert (GNUNET_YES != plugin->wire_validate (wire));
   json_decref (wire);
   GNUNET_assert (NULL != (wire = json_loads (invalid_wire_str, 0, NULL)));
-  GNUNET_assert (1 != TALER_json_validate_wireformat (sepa, wire));
+  GNUNET_assert (GNUNET_NO == plugin->wire_validate (wire));
   json_decref (wire);
   GNUNET_assert (NULL != (wire = json_loads (invalid_wire_str2, 0, NULL)));
-  GNUNET_assert (1 != TALER_json_validate_wireformat (sepa, wire));
+  GNUNET_assert (GNUNET_NO == plugin->wire_validate (wire));
   json_decref (wire);
   GNUNET_assert (NULL != (wire = json_loads (valid_wire_str, 0, &error)));
-  ret = TALER_json_validate_wireformat (sepa, wire);
+  ret = plugin->wire_validate (wire);
   json_decref (wire);
-  if (1 == ret)
-    return 0;
-  return 1;
+  TALER_WIRE_plugin_unload (plugin);
+  GNUNET_CONFIGURATION_destroy (cfg);
+  if (GNUNET_NO == ret)
+    return 1;
+  return 0;
 }

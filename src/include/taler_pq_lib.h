@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -156,7 +156,7 @@ struct TALER_PQ_QueryParam
  * @param x pointer to the query parameter to pass
  */
 struct TALER_PQ_QueryParam
-TALER_PQ_query_param_amount_nbo(const struct TALER_AmountNBO *x);
+TALER_PQ_query_param_amount_nbo (const struct TALER_AmountNBO *x);
 
 
 /**
@@ -168,7 +168,7 @@ TALER_PQ_query_param_amount_nbo(const struct TALER_AmountNBO *x);
  * @param x pointer to the query parameter to pass
  */
 struct TALER_PQ_QueryParam
-TALER_PQ_query_param_amount(const struct TALER_Amount *x);
+TALER_PQ_query_param_amount (const struct TALER_Amount *x);
 
 
 /**
@@ -178,7 +178,7 @@ TALER_PQ_query_param_amount(const struct TALER_Amount *x);
  * @param x the query parameter to pass.
  */
 struct TALER_PQ_QueryParam
-TALER_PQ_query_param_rsa_public_key(const struct GNUNET_CRYPTO_rsa_PublicKey *x);
+TALER_PQ_query_param_rsa_public_key (const struct GNUNET_CRYPTO_rsa_PublicKey *x);
 
 
 /**
@@ -188,7 +188,7 @@ TALER_PQ_query_param_rsa_public_key(const struct GNUNET_CRYPTO_rsa_PublicKey *x)
  * @param x the query parameter to pass
  */
 struct TALER_PQ_QueryParam
-TALER_PQ_query_param_rsa_signature(const struct GNUNET_CRYPTO_rsa_Signature *x);
+TALER_PQ_query_param_rsa_signature (const struct GNUNET_CRYPTO_rsa_Signature *x);
 
 
 /**
@@ -198,7 +198,7 @@ TALER_PQ_query_param_rsa_signature(const struct GNUNET_CRYPTO_rsa_Signature *x);
  * @param x pointer to the query parameter to pass
  */
 struct TALER_PQ_QueryParam
-TALER_PQ_query_param_absolute_time(const struct GNUNET_TIME_Absolute *x);
+TALER_PQ_query_param_absolute_time (const struct GNUNET_TIME_Absolute *x);
 
 
 /**
@@ -208,7 +208,7 @@ TALER_PQ_query_param_absolute_time(const struct GNUNET_TIME_Absolute *x);
  * @param x pointer to the query parameter to pass
  */
 struct TALER_PQ_QueryParam
-TALER_PQ_query_param_absolute_time_nbo(const struct GNUNET_TIME_AbsoluteNBO *x);
+TALER_PQ_query_param_absolute_time_nbo (const struct GNUNET_TIME_AbsoluteNBO *x);
 
 
 /**

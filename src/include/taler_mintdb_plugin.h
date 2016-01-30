@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -530,20 +530,24 @@ struct TALER_MINTDB_Session;
  * corresponding wire transaction.
  *
  * @param cls closure
- * @param id transaction ID (used as future `min_id` to avoid
- *           iterating over transactions more than once)
+ * @param rowid unique ID for the deposit in our DB, used for marking
+ *              it as 'tiny' or 'done'
+ * @param merchant_pub public key of the merchant
+ * @param coin_pub public key of the coin
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the mint gets to keep as transaction fees
  * @param transaction_id unique transaction ID chosen by the merchant
  * @param h_contract hash of the contract between merchant and customer
  * @param wire_deadline by which the merchant adviced that he would like the
  *        wire transfer to be executed
- * @param wire wire details for the merchant
+ * @param wire wire details for the merchant, NULL from iterate_matching_deposits()
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
 (*TALER_MINTDB_DepositIterator)(void *cls,
-                                uint64_t id,
+                                unsigned long long rowid,
+                                const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                 const struct TALER_Amount *amount_with_fee,
                                 const struct TALER_Amount *deposit_fee,
                                 uint64_t transaction_id,
@@ -570,20 +574,66 @@ typedef void
 
 /**
  * Function called with the results of the lookup of the
- * wire transfer identifier information.
- * 
+ * wire transfer identifier information.  Only called if
+ * we are at least aware of the transaction existing.
+ *
  * @param cls closure
- * @param wtid base32-encoded wire transfer identifier, NULL
+ * @param wtid wire transfer identifier, NULL
  *         if the transaction was not yet done
+ * @param coin_contribution how much did the coin we asked about
+ *        contribute to the total transfer value? (deposit value including fee)
+ * @param coin_fee how much did the mint charge for the deposit fee
  * @param execution_time when was the transaction done, or
- *         when we expect it to be done (if @a wtid was NULL);
- *         #GNUNET_TIME_UNIT_FOREVER_ABS if the /deposit is unknown
- *         to the mint
+ *         when we expect it to be done (if @a wtid was NULL)
  */
 typedef void
 (*TALER_MINTDB_DepositWtidCallback)(void *cls,
-				    const char *wtid,
+				    const struct TALER_WireTransferIdentifierRawP *wtid,
+                                    const struct TALER_Amount *coin_contribution,
+                                    const struct TALER_Amount *coin_fee,
 				    struct GNUNET_TIME_Absolute execution_time);
+
+
+/**
+ * Function called with the results of the lookup of the
+ * transaction data associated with a wire transfer identifier.
+ *
+ * @param cls closure
+ * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
+ * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
+ * @param h_contract which contract was this payment about
+ * @param transaction_id merchant's transaction ID for the payment
+ * @param coin_pub which public key was this payment about
+ * @param coin_value amount contributed by this coin in total (with fee)
+ * @param coin_fee applicable fee for this coin
+ * @param transfer_value total amount of the wire transfer
+ */
+typedef void
+(*TALER_MINTDB_WireTransferDataCallback)(void *cls,
+                                         const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                         const struct GNUNET_HashCode *h_wire,
+                                         const struct GNUNET_HashCode *h_contract,
+                                         uint64_t transaction_id,
+                                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                         const struct TALER_Amount *coin_value,
+                                         const struct TALER_Amount *coin_fee,
+                                         const struct TALER_Amount *transfer_value);
+
+
+/**
+ * Callback with data about a prepared transaction.
+ *
+ * @param cls closure
+ * @param rowid row identifier used to mark prepared transaction as done
+ * @param buf transaction data that was persisted, NULL on error
+ * @param buf_size number of bytes in @a buf, 0 on error
+ */
+typedef void
+(*TALER_MINTDB_WirePreparationCallback) (void *cls,
+                                         unsigned long long rowid,
+                                         const char *buf,
+                                         size_t buf_size);
+
 
 /**
  * @brief The plugin API, returned from the plugin's "init" function.
@@ -848,27 +898,78 @@ struct TALER_MINTDB_Plugin
 
 
   /**
-   * Obtain information about deposits.  Iterates over all deposits
-   * above a certain ID.  Use a @a min_id of 0 to start at the beginning.
-   * This operation is executed in its own transaction in transaction
-   * mode "REPEATABLE READ", i.e. we should only see valid deposits.
+   * Mark a deposit as tiny, thereby declaring that it cannot be
+   * executed by itself and should no longer be returned by
+   * @e iterate_ready_deposits()
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to the database
-   * @param min_id deposit to start at
-   * @param limit maximum number of transactions to fetch
-   * @param deposit_cb function to call for each deposit
+   * @param deposit_rowid identifies the deposit row to modify
+   * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+   */
+  int
+  (*mark_deposit_tiny) (void *cls,
+                        struct TALER_MINTDB_Session *session,
+                        unsigned long long rowid);
+
+
+  /**
+   * Mark a deposit as done, thereby declaring that it cannot be
+   * executed at all anymore, and should no longer be returned by
+   * @e iterate_ready_deposits() or @e iterate_matching_deposits().
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param deposit_rowid identifies the deposit row to modify
+   * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+   */
+  int
+  (*mark_deposit_done) (void *cls,
+                        struct TALER_MINTDB_Session *session,
+                        unsigned long long rowid);
+
+
+  /**
+   * Obtain information about deposits that are ready to be executed.
+   * Such deposits must not be marked as "tiny" or "done", and the
+   * execution time must be in the past.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param deposit_cb function to call for ONE such deposit
    * @param deposit_cb_cls closure for @a deposit_cb
    * @return number of rows processed, 0 if none exist,
    *         #GNUNET_SYSERR on error
    */
   int
-  (*iterate_deposits) (void *cls,
-                       struct TALER_MINTDB_Session *session,
-                       uint64_t min_id,
-                       uint32_t limit,
-                       TALER_MINTDB_DepositIterator deposit_cb,
-                       void *deposit_cb_cls);
+  (*get_ready_deposit) (void *cls,
+                        struct TALER_MINTDB_Session *session,
+                        TALER_MINTDB_DepositIterator deposit_cb,
+                        void *deposit_cb_cls);
+
+
+  /**
+   * Obtain information about other pending deposits for the same
+   * destination.  Those deposits must not already be "done".
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param h_wire destination of the wire transfer
+   * @param merchant_pub public key of the merchant
+   * @param deposit_cb function to call for each deposit
+   * @param deposit_cb_cls closure for @a deposit_cb
+   * @param limit maximum number of matching deposits to return
+   * @return number of rows processed, 0 if none exist,
+   *         #GNUNET_SYSERR on error
+   */
+  int
+  (*iterate_matching_deposits) (void *cls,
+                                struct TALER_MINTDB_Session *session,
+                                const struct GNUNET_HashCode *h_wire,
+                                const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                TALER_MINTDB_DepositIterator deposit_cb,
+                                void *deposit_cb_cls,
+                                uint32_t limit);
 
 
   /**
@@ -1112,10 +1213,10 @@ struct TALER_MINTDB_Plugin
    */
   int
   (*insert_refresh_out) (void *cls,
-                                 struct TALER_MINTDB_Session *session,
-                                 const struct GNUNET_HashCode *session_hash,
-                                 uint16_t newcoin_index,
-                                 const struct TALER_DenominationSignature *ev_sig);
+                         struct TALER_MINTDB_Session *session,
+                         const struct GNUNET_HashCode *session_hash,
+                         uint16_t newcoin_index,
+                         const struct TALER_DenominationSignature *ev_sig);
 
 
   /**
@@ -1195,11 +1296,32 @@ struct TALER_MINTDB_Plugin
 
 
   /**
+   * Lookup the list of Taler transactions that was aggregated
+   * into a wire transfer by the respective @a raw_wtid.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session database connection
+   * @param wtid the raw wire transfer identifier we used
+   * @param cb function to call on each transaction found
+   * @param cb_cls closure for @a cb
+   * @return #GNUNET_OK on success, #GNUNET_SYSERR on database errors,
+   *         #GNUNET_NO if we found no results
+   */
+  int
+  (*lookup_wire_transfer) (void *cls,
+                           struct TALER_MINTDB_Session *session,
+                           const struct TALER_WireTransferIdentifierRawP *wtid,
+                           TALER_MINTDB_WireTransferDataCallback cb,
+                           void *cb_cls);
+
+
+  /**
    * Try to find the wire transfer details for a deposit operation.
    * If we did not execute the deposit yet, return when it is supposed
    * to be executed.
-   * 
+   *
    * @param cls closure
+   * @param session database connection
    * @param h_contract hash of the contract
    * @param h_wire hash of merchant wire details
    * @param coin_pub public key of deposited coin
@@ -1207,10 +1329,12 @@ struct TALER_MINTDB_Plugin
    * @param transaction_id transaction identifier
    * @param cb function to call with the result
    * @param cb_cls closure to pass to @a cb
-   * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+   * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors,
+   *         #GNUNET_NO if nothing was found
    */
   int
   (*wire_lookup_deposit_wtid)(void *cls,
+                              struct TALER_MINTDB_Session *session,
 			      const struct GNUNET_HashCode *h_contract,
 			      const struct GNUNET_HashCode *h_wire,
 			      const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -1219,7 +1343,91 @@ struct TALER_MINTDB_Plugin
 			      TALER_MINTDB_DepositWtidCallback cb,
 			      void *cb_cls);
 
+
+  /**
+   * Function called to insert aggregation information into the DB.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param wtid the raw wire transfer identifier we used
+   * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
+   * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
+   * @param h_contract which contract was this payment about
+   * @param transaction_id merchant's transaction ID for the payment
+   * @param execution_time when did we execute the transaction
+   * @param coin_pub which public key was this payment about
+   * @param coin_value amount contributed by this coin in total
+   * @param coin_fee deposit fee charged by mint for this coin
+   * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*insert_aggregation_tracking)(void *cls,
+                                 struct TALER_MINTDB_Session *session,
+                                 const struct TALER_WireTransferIdentifierRawP *wtid,
+                                 const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                 const struct GNUNET_HashCode *h_wire,
+                                 const struct GNUNET_HashCode *h_contract,
+                                 uint64_t transaction_id,
+                                 struct GNUNET_TIME_Absolute execution_time,
+                                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                 const struct TALER_Amount *coin_value,
+                                 const struct TALER_Amount *coin_fee);
+
+
+  /**
+   * Function called to insert wire transfer commit data into the DB.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param type type of the wire transfer (i.e. "sepa")
+   * @param buf buffer with wire transfer preparation data
+   * @param buf_size number of bytes in @a buf
+   * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*wire_prepare_data_insert)(void *cls,
+                              struct TALER_MINTDB_Session *session,
+                              const char *type,
+                              const char *buf,
+                              size_t buf_size);
+
+
+  /**
+   * Function called to mark wire transfer commit data as finished.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param rowid which entry to mark as finished
+   * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*wire_prepare_data_mark_finished)(void *cls,
+                                     struct TALER_MINTDB_Session *session,
+                                     unsigned long long rowid);
+
+
+  /**
+   * Function called to get an unfinished wire transfer
+   * preparation data. Fetches at most one item.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param type type fo the wire transfer (i.e. "sepa")
+   * @param cb function to call for ONE unfinished item
+   * @param cb_cls closure for @a cb
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_NO if there are no entries,
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*wire_prepare_data_get)(void *cls,
+                           struct TALER_MINTDB_Session *session,
+                           const char *type,
+                           TALER_MINTDB_WirePreparationCallback cb,
+                           void *cb_cls);
+
+
 };
 
 
-#endif /* _NEURO_MINT_DB_H */
+#endif /* _TALER_MINT_DB_H */

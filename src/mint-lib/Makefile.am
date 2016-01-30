@@ -20,10 +20,12 @@ libtalermint_la_SOURCES = \
   mint_api_handle.c mint_api_handle.h \
   mint_api_admin.c \
   mint_api_deposit.c \
+  mint_api_deposit_wtid.c \
   mint_api_refresh.c \
   mint_api_refresh_link.c \
   mint_api_reserve.c \
-  mint_api_wire.c
+  mint_api_wire.c \
+  mint_api_wire_deposits.c
 
 libtalermint_la_LIBADD = \
   -lgnunetutil \

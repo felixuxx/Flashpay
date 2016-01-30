@@ -27,6 +27,7 @@
 
 #include <microhttpd.h>
 
+
 /**
  * Which currency is used by this mint?
  */
@@ -51,13 +52,6 @@ extern int TMH_test_mode;
  * Main directory with mint data.
  */
 extern char *TMH_mint_directory;
-
-/**
- * In which formats does this MINT expect wiring instructions?
- * NULL-terminated array of 0-terminated wire format types,
- * suitable for passing to #TALER_json_validate_wireformat().
- */
-extern const char **TMH_expected_wire_formats;
 
 /**
  * Master public key (according to the

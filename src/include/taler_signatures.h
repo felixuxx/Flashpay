@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -105,6 +105,11 @@
  * Signature where the Mint confirms the /wire response.
  */
 #define TALER_SIGNATURE_MINT_WIRE_TYPES 1036
+
+/**
+ * Signature where the Mint confirms the /deposit/wtid response.
+ */
+#define TALER_SIGNATURE_MINT_CONFIRM_WIRE 1036
 
 
 /*********************/
@@ -855,6 +860,33 @@ struct TALER_ContractPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
+   * Merchant-generated transaction ID to detect duplicate
+   * transactions, in big endian.  The merchant must communicate a
+   * merchant-unique ID to the customer for each transaction.  Note
+   * that different coins that are part of the same transaction can
+   * use the same transaction ID.  The transaction ID is useful for
+   * later disputes, and the merchant's contract offer (@e h_contract)
+   * with the customer should include the offer's term and transaction
+   * ID signed with a key from the merchant.  This field must match
+   * the corresponding field in the JSON contract.
+   */
+  uint64_t transaction_id GNUNET_PACKED;
+
+  /**
+   * The total amount to be paid to the merchant. Note that if deposit
+   * fees are higher than @e max_fee, the actual total must be higher
+   * to cover the additional fees.  This field must match the
+   * corresponding field in the JSON contract.
+   */
+  struct TALER_AmountNBO total_amount;
+
+  /**
+   * The maximum fee the merchant is willing to cover.  This field
+   * must match the corresponding field in the JSON contract.
+   */
+  struct TALER_AmountNBO max_fee;
+
+  /**
    * Hash of the JSON contract in UTF-8 including 0-termination,
    * using JSON_COMPACT | JSON_SORT_KEYS
    */
@@ -863,6 +895,65 @@ struct TALER_ContractPS
 };
 
 
+/**
+ * Details affirmed by the mint about a wire transfer the mint
+ * claims to have done with respect to a deposit operation.
+ */
+struct TALER_ConfirmWirePS
+{
+  /**
+   * Purpose header for the signature over the contract with
+   * purpose #TALER_SIGNATURE_MINT_CONFIRM_WIRE.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash over the wiring information of the merchant.
+   */
+  struct GNUNET_HashCode h_wire GNUNET_PACKED;
+
+  /**
+   * Hash over the contract for which this deposit is made.
+   */
+  struct GNUNET_HashCode h_contract GNUNET_PACKED;
+
+  /**
+   * Raw value (binary encoding) of the wire transfer subject.
+   */
+  struct TALER_WireTransferIdentifierRawP wtid;
+
+  /**
+   * The coin's public key.  This is the value that must have been
+   * signed (blindly) by the Mint.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Merchant-generated transaction ID to detect duplicate
+   * transactions, in big endian.  The merchant must communicate a
+   * merchant-unique ID to the customer for each transaction.  Note
+   * that different coins that are part of the same transaction can
+   * use the same transaction ID.  The transaction ID is useful for
+   * later disputes, and the merchant's contract offer (@e h_contract)
+   * with the customer should include the offer's term and transaction
+   * ID signed with a key from the merchant.
+   */
+  uint64_t transaction_id GNUNET_PACKED;
+
+  /**
+   * When did the mint execute this transfer? Note that the
+   * timestamp may not be exactly the same on the wire, i.e.
+   * because the wire has a different timezone or resolution.
+   */
+  struct GNUNET_TIME_AbsoluteNBO execution_time;
+
+  /**
+   * The contribution of @e coin_pub to the total transfer volume.
+   * This is the value of the deposit minus the fee.
+   */
+  struct TALER_AmountNBO coin_contribution;
+
+};
 
 GNUNET_NETWORK_STRUCT_END
 

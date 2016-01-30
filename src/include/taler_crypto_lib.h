@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 Christian Grothoff (and other contributing authors)
+  Copyright (C) 2014, 2015 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -425,6 +425,61 @@ struct TALER_RefreshLinkDecrypted
    */
   struct TALER_DenominationBlindingKey blinding_key;
 
+};
+
+
+/**
+ * Length of the raw value in the Taler wire transfer identifier
+ * (in binary representation).
+ */
+#define TALER_WIRE_TRANSFER_IDENTIFIER_LEN 32
+
+/**
+ * #TALER_WIRE_TRANSFER_IDENTIFIER_LEN as a string.
+ */
+#define TALER_WIRE_TRANSFER_IDENTIFIER_LEN_STR "32"
+
+/**
+ * Raw value of a wire transfer subjects, without the checksum.
+ */
+struct TALER_WireTransferIdentifierRawP
+{
+
+  /**
+   * Raw value.  Note that typical payment systems (SEPA, ACH) support
+   * at least two lines of 27 ASCII characters to encode a transaction
+   * subject or "details", for a total of 54 characters.  (The payment
+   * system protocols often support more lines, but the forms presented
+   * to customers are usually limited to 54 characters.)
+   *
+   * With a Base32-encoding of 5 bit per character, this gives us 270
+   * bits or (rounded down) 33 bytes.  So we use the first 32 bytes to
+   * encode the actual value (i.e. a 256-bit / 32-byte public key or
+   * a hash code), and the last byte for a minimalistic checksum.
+   */
+  uint8_t raw[TALER_WIRE_TRANSFER_IDENTIFIER_LEN];
+};
+
+
+/**
+ * Binary information encoded in Crockford's Base32 in wire transfer
+ * subjects of transfers from Taler to a merchant.  The actual value
+ * is chosen by the mint and has no particular semantics, other than
+ * being unique so that the mint can lookup details about the wire
+ * transfer when needed.
+ */
+struct TALER_WireTransferIdentifierP
+{
+
+  /**
+   * Raw value.
+   */
+  struct TALER_WireTransferIdentifierRawP raw;
+
+  /**
+   * Checksum using CRC8 over the @e raw data.
+   */
+  uint8_t crc8;
 };
 
 
