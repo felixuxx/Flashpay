@@ -608,12 +608,10 @@ keys_completed_cb (void *cls,
   resp_obj = MAC_download_get_result (&kr->db,
                                       eh,
                                       &response_code);
-
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Received keys from URL `%s' with status %ld.\n",
               kr->url,
               response_code);
-
   switch (response_code) {
   case 0:
     break;
