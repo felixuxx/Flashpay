@@ -226,7 +226,9 @@ test_amount_round (void *cls,
 
 
 /**
- * Check if the given wire format JSON object is correctly formatted
+ * Check if the given wire format JSON object is correctly formatted.
+ * Right now, the only thing we require is a field
+ * "account_number" which must contain a positive 53-bit integer.
  *
  * @param wire the JSON wire format object
  * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
@@ -234,8 +236,25 @@ test_amount_round (void *cls,
 static int
 test_wire_validate (const json_t *wire)
 {
-  GNUNET_break (0); /* FIXME: we still need to define the
-                       proper wire format for 'test' */
+  json_error_t error;
+  json_int_t account_no;
+
+  if (0 !=
+      json_unpack_ex ((json_t *) wire,
+		      &error,
+		      0,
+		      "{s:I}",
+		      "account_number", &account_no))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if ( (account_no < 0) ||
+       (account_no > (1LL << 53)) )
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   return GNUNET_YES;
 }
 
@@ -427,7 +446,9 @@ test_execute_wire_transfer (void *cls,
   struct TestClosure *tc = cls;
   struct TALER_WIRE_ExecuteHandle *eh;
   json_t *wire;
+  json_error_t error;
   struct TALER_Amount amount;
+  json_int_t account_no;
   struct BufFormatP bf;
 
   if ( (buf_size <= sizeof (struct BufFormatP)) ||
@@ -449,16 +470,26 @@ test_execute_wire_transfer (void *cls,
     GNUNET_break (0);
     return NULL;
   }
-
   GNUNET_assert (GNUNET_YES ==
                  test_wire_validate (wire));
+  if (0 !=
+      json_unpack_ex (wire,
+		      &error,
+		      0,
+		      "{s:I}",
+		      "account_number", &account_no))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  
   eh = GNUNET_new (struct TALER_WIRE_ExecuteHandle);
   eh->cc = cc;
   eh->cc_cls = cc_cls;
   eh->aaih = TALER_BANK_admin_add_incoming (tc->bank,
                                             &bf.wtid,
                                             &amount,
-                                            wire,
+					    (uint64_t) account_no,
                                             &execute_cb,
                                             eh);
   json_decref (wire);
