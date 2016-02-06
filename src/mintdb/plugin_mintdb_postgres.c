@@ -1365,19 +1365,19 @@ postgres_insert_denomination_info (void *cls,
   PGresult *result;
   int ret;
 
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
-    TALER_PQ_query_param_auto_from_type (&issue->properties.master),
-    TALER_PQ_query_param_auto_from_type (&issue->signature),
-    TALER_PQ_query_param_absolute_time_nbo (&issue->properties.start),
-    TALER_PQ_query_param_absolute_time_nbo (&issue->properties.expire_withdraw),
-    TALER_PQ_query_param_absolute_time_nbo (&issue->properties.expire_spend),
-    TALER_PQ_query_param_absolute_time_nbo (&issue->properties.expire_legal),
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
+    GNUNET_PQ_query_param_auto_from_type (&issue->properties.master),
+    GNUNET_PQ_query_param_auto_from_type (&issue->signature),
+    GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.start),
+    GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.expire_withdraw),
+    GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.expire_spend),
+    GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.expire_legal),
     TALER_PQ_query_param_amount_nbo (&issue->properties.value),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fee_withdraw),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fee_deposit),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fee_refresh),
-    TALER_PQ_query_param_end
+    GNUNET_PQ_query_param_end
   };
   /* check fees match coin currency */
   GNUNET_assert (GNUNET_YES ==
@@ -1390,7 +1390,7 @@ postgres_insert_denomination_info (void *cls,
                  TALER_amount_cmp_currency_nbo (&issue->properties.value,
                                                 &issue->properties.fee_refresh));
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "denomination_insert",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
@@ -1423,12 +1423,12 @@ postgres_get_denomination_info (void *cls,
                                 struct TALER_MINTDB_DenominationKeyInformationP *issue)
 {
   PGresult *result;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
+    GNUNET_PQ_query_param_end
   };
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "denomination_get",
                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -1454,18 +1454,18 @@ postgres_get_denomination_info (void *cls,
     return GNUNET_OK;
   }
   {
-    struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_auto_from_type ("master_pub",
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("master_pub",
                                            &issue->properties.master),
-      TALER_PQ_result_spec_auto_from_type ("master_sig",
+      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
                                            &issue->signature),
-      TALER_PQ_result_spec_absolute_time_nbo ("valid_from",
+      GNUNET_PQ_result_spec_absolute_time_nbo ("valid_from",
                                               &issue->properties.start),
-      TALER_PQ_result_spec_absolute_time_nbo ("expire_withdraw",
+      GNUNET_PQ_result_spec_absolute_time_nbo ("expire_withdraw",
                                               &issue->properties.expire_withdraw),
-      TALER_PQ_result_spec_absolute_time_nbo ("expire_spend",
+      GNUNET_PQ_result_spec_absolute_time_nbo ("expire_spend",
                                               &issue->properties.expire_spend),
-      TALER_PQ_result_spec_absolute_time_nbo ("expire_legal",
+      GNUNET_PQ_result_spec_absolute_time_nbo ("expire_legal",
                                               &issue->properties.expire_legal),
       TALER_PQ_result_spec_amount_nbo ("coin",
                                        &issue->properties.value),
@@ -1475,11 +1475,11 @@ postgres_get_denomination_info (void *cls,
                                        &issue->properties.fee_deposit),
       TALER_PQ_result_spec_amount_nbo ("fee_refresh",
                                        &issue->properties.fee_refresh),
-      TALER_PQ_result_spec_end
+      GNUNET_PQ_result_spec_end
     };
 
     EXITIF (GNUNET_OK !=
-            TALER_PQ_extract_result (result,
+            GNUNET_PQ_extract_result (result,
                                      rs,
                                      0));
   }
@@ -1508,12 +1508,12 @@ postgres_reserve_get (void *cls,
                       struct TALER_MINTDB_Reserve *reserve)
 {
   PGresult *result;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type(&reserve->pub),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type(&reserve->pub),
+    GNUNET_PQ_query_param_end
   };
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "reserve_get",
                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -1528,14 +1528,14 @@ postgres_reserve_get (void *cls,
     return GNUNET_NO;
   }
   {
-    struct TALER_PQ_ResultSpec rs[] = {
+    struct GNUNET_PQ_ResultSpec rs[] = {
       TALER_PQ_result_spec_amount("current_balance", &reserve->balance),
-      TALER_PQ_result_spec_absolute_time("expiration_date", &reserve->expiry),
-      TALER_PQ_result_spec_end
+      GNUNET_PQ_result_spec_absolute_time("expiration_date", &reserve->expiry),
+      GNUNET_PQ_result_spec_end
     };
 
     EXITIF (GNUNET_OK !=
-            TALER_PQ_extract_result (result,
+            GNUNET_PQ_extract_result (result,
                                      rs,
                                      0));
   }
@@ -1567,13 +1567,13 @@ reserves_update (void *cls,
 
   if (NULL == reserve)
     return GNUNET_SYSERR;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_absolute_time (&reserve->expiry),
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_absolute_time (&reserve->expiry),
     TALER_PQ_query_param_amount (&reserve->balance),
-    TALER_PQ_query_param_auto_from_type (&reserve->pub),
-    TALER_PQ_query_param_end
+    GNUNET_PQ_query_param_auto_from_type (&reserve->pub),
+    GNUNET_PQ_query_param_end
   };
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "reserve_update",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus(result))
@@ -1643,16 +1643,16 @@ postgres_reserves_in_insert (void *cls,
        for a new reserve it can't be a duplicate 'add' operation,
        and as the 'add' operation may need the reserve entry
        as a foreign key. */
-    struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_query_param_auto_from_type (reserve_pub),
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (reserve_pub),
       TALER_PQ_query_param_amount (balance),
-      TALER_PQ_query_param_absolute_time (&expiry),
-      TALER_PQ_query_param_end
+      GNUNET_PQ_query_param_absolute_time (&expiry),
+      GNUNET_PQ_query_param_end
     };
 
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Reserve does not exist; creating a new one\n");
-    result = TALER_PQ_exec_prepared (session->conn,
+    result = GNUNET_PQ_exec_prepared (session->conn,
                                      "reserve_create",
                                      params);
     if (PGRES_COMMAND_OK != PQresultStatus(result))
@@ -1669,15 +1669,15 @@ postgres_reserves_in_insert (void *cls,
      anything) and return #GNUNET_NO to indicate that this failure
      is kind-of harmless (already executed). */
   {
-    struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_query_param_auto_from_type (&reserve.pub),
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (&reserve.pub),
       TALER_PQ_query_param_amount (balance),
       TALER_PQ_query_param_json (details),
-      TALER_PQ_query_param_absolute_time (&execution_time),
-      TALER_PQ_query_param_end
+      GNUNET_PQ_query_param_absolute_time (&execution_time),
+      GNUNET_PQ_query_param_end
     };
 
-    result = TALER_PQ_exec_prepared (session->conn,
+    result = GNUNET_PQ_exec_prepared (session->conn,
                                      "reserves_in_add_transaction",
                                      params);
   }
@@ -1764,14 +1764,14 @@ postgres_get_withdraw_info (void *cls,
                             struct TALER_MINTDB_CollectableBlindcoin *collectable)
 {
   PGresult *result;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (h_blind),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_blind),
+    GNUNET_PQ_query_param_end
   };
   int ret;
 
   ret = GNUNET_SYSERR;
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "get_withdraw_info",
                                    params);
 
@@ -1786,24 +1786,24 @@ postgres_get_withdraw_info (void *cls,
     goto cleanup;
   }
   {
-    struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_rsa_public_key ("denom_pub",
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
                                            &collectable->denom_pub.rsa_public_key),
-      TALER_PQ_result_spec_rsa_signature ("denom_sig",
+      GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
                                           &collectable->sig.rsa_signature),
-      TALER_PQ_result_spec_auto_from_type ("reserve_sig",
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
                                            &collectable->reserve_sig),
-      TALER_PQ_result_spec_auto_from_type ("reserve_pub",
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                            &collectable->reserve_pub),
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &collectable->amount_with_fee),
       TALER_PQ_result_spec_amount ("withdraw_fee",
                                    &collectable->withdraw_fee),
-      TALER_PQ_result_spec_end
+      GNUNET_PQ_result_spec_end
     };
 
     if (GNUNET_OK !=
-        TALER_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result, rs, 0))
     {
       GNUNET_break (0);
       goto cleanup;
@@ -1840,20 +1840,20 @@ postgres_insert_withdraw_info (void *cls,
   int ret = GNUNET_SYSERR;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute expiry;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (&collectable->h_coin_envelope),
-    TALER_PQ_query_param_rsa_public_key (collectable->denom_pub.rsa_public_key),
-    TALER_PQ_query_param_rsa_signature (collectable->sig.rsa_signature),
-    TALER_PQ_query_param_auto_from_type (&collectable->reserve_pub),
-    TALER_PQ_query_param_auto_from_type (&collectable->reserve_sig),
-    TALER_PQ_query_param_absolute_time (&now),
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&collectable->h_coin_envelope),
+    GNUNET_PQ_query_param_rsa_public_key (collectable->denom_pub.rsa_public_key),
+    GNUNET_PQ_query_param_rsa_signature (collectable->sig.rsa_signature),
+    GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_pub),
+    GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_sig),
+    GNUNET_PQ_query_param_absolute_time (&now),
     TALER_PQ_query_param_amount (&collectable->amount_with_fee),
     TALER_PQ_query_param_amount (&collectable->withdraw_fee),
-    TALER_PQ_query_param_end
+    GNUNET_PQ_query_param_end
   };
 
   now = GNUNET_TIME_absolute_get ();
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "insert_withdraw_info",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
@@ -1922,12 +1922,12 @@ postgres_get_reserve_history (void *cls,
   ret = GNUNET_SYSERR;
   {
     struct TALER_MINTDB_BankTransfer *bt;
-    struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_query_param_auto_from_type (reserve_pub),
-      TALER_PQ_query_param_end
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+      GNUNET_PQ_query_param_end
     };
 
-    result = TALER_PQ_exec_prepared (session->conn,
+    result = GNUNET_PQ_exec_prepared (session->conn,
                                      "reserves_in_get_transactions",
                                      params);
     if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -1945,17 +1945,17 @@ postgres_get_reserve_history (void *cls,
     {
       bt = GNUNET_new (struct TALER_MINTDB_BankTransfer);
       {
-        struct TALER_PQ_ResultSpec rs[] = {
+        struct GNUNET_PQ_ResultSpec rs[] = {
           TALER_PQ_result_spec_amount ("balance",
                                        &bt->amount),
-          TALER_PQ_result_spec_absolute_time ("execution_date",
+          GNUNET_PQ_result_spec_absolute_time ("execution_date",
                                               &bt->execution_date),
           TALER_PQ_result_spec_json ("details",
                                      &bt->wire),
-          TALER_PQ_result_spec_end
+          GNUNET_PQ_result_spec_end
         };
         if (GNUNET_YES !=
-            TALER_PQ_extract_result (result, rs, --rows))
+            GNUNET_PQ_extract_result (result, rs, --rows))
         {
           GNUNET_break (0);
           GNUNET_free (bt);
@@ -1980,15 +1980,15 @@ postgres_get_reserve_history (void *cls,
     PQclear (result);
   }
   {
-    struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_query_param_auto_from_type (reserve_pub),
-      TALER_PQ_query_param_end
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+      GNUNET_PQ_query_param_end
     };
 
     GNUNET_assert (NULL != rh);
     GNUNET_assert (NULL != rh_tail);
     GNUNET_assert (NULL == rh_tail->next);
-    result = TALER_PQ_exec_prepared (session->conn,
+    result = GNUNET_PQ_exec_prepared (session->conn,
                                      "get_reserves_out",
                                      params);
     if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -2004,23 +2004,23 @@ postgres_get_reserve_history (void *cls,
 
       cbc = GNUNET_new (struct TALER_MINTDB_CollectableBlindcoin);
       {
-        struct TALER_PQ_ResultSpec rs[] = {
-          TALER_PQ_result_spec_auto_from_type ("h_blind_ev",
+        struct GNUNET_PQ_ResultSpec rs[] = {
+          GNUNET_PQ_result_spec_auto_from_type ("h_blind_ev",
                                                &cbc->h_coin_envelope),
-          TALER_PQ_result_spec_rsa_public_key ("denom_pub",
+          GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
                                                &cbc->denom_pub.rsa_public_key),
-          TALER_PQ_result_spec_rsa_signature ("denom_sig",
+          GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
                                               &cbc->sig.rsa_signature),
-          TALER_PQ_result_spec_auto_from_type ("reserve_sig",
+          GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
                                                &cbc->reserve_sig),
           TALER_PQ_result_spec_amount ("amount_with_fee",
                                        &cbc->amount_with_fee),
           TALER_PQ_result_spec_amount ("withdraw_fee",
                                        &cbc->withdraw_fee),
-          TALER_PQ_result_spec_end
+          GNUNET_PQ_result_spec_end
         };
         if (GNUNET_YES !=
-            TALER_PQ_extract_result (result, rs, --rows))
+            GNUNET_PQ_extract_result (result, rs, --rows))
         {
           GNUNET_break (0);
           GNUNET_free (cbc);
@@ -2063,15 +2063,15 @@ postgres_have_deposit (void *cls,
                        struct TALER_MINTDB_Session *session,
                        const struct TALER_MINTDB_Deposit *deposit)
 {
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
-    TALER_PQ_query_param_uint64 (&deposit->transaction_id),
-    TALER_PQ_query_param_auto_from_type (&deposit->merchant_pub),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
+    GNUNET_PQ_query_param_uint64 (&deposit->transaction_id),
+    GNUNET_PQ_query_param_auto_from_type (&deposit->merchant_pub),
+    GNUNET_PQ_query_param_end
   };
   PGresult *result;
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "get_deposit",
                                    params);
   if (PGRES_TUPLES_OK !=
@@ -2091,23 +2091,23 @@ postgres_have_deposit (void *cls,
      also matches, and if not report inconsistencies. */
   {
     struct TALER_MINTDB_Deposit deposit2;
-    struct TALER_PQ_ResultSpec rs[] = {
+    struct GNUNET_PQ_ResultSpec rs[] = {
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &deposit2.amount_with_fee),
-      TALER_PQ_result_spec_absolute_time ("timestamp",
+      GNUNET_PQ_result_spec_absolute_time ("timestamp",
                                           &deposit2.timestamp),
-      TALER_PQ_result_spec_absolute_time ("refund_deadline",
+      GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
                                           &deposit2.refund_deadline),
-      TALER_PQ_result_spec_absolute_time ("wire_deadline",
+      GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
                                           &deposit2.wire_deadline),
-      TALER_PQ_result_spec_auto_from_type ("h_contract",
+      GNUNET_PQ_result_spec_auto_from_type ("h_contract",
                                            &deposit2.h_contract),
-      TALER_PQ_result_spec_auto_from_type ("h_wire",
+      GNUNET_PQ_result_spec_auto_from_type ("h_wire",
                                            &deposit2.h_wire),
-      TALER_PQ_result_spec_end
+      GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
-        TALER_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result, rs, 0))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -2155,13 +2155,13 @@ postgres_mark_deposit_tiny (void *cls,
                             unsigned long long rowid)
 {
   uint64_t serial_id = rowid;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_uint64 (&serial_id),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
   };
   PGresult *result;
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "mark_deposit_tiny",
                                    params);
   if (PGRES_COMMAND_OK !=
@@ -2192,13 +2192,13 @@ postgres_mark_deposit_done (void *cls,
                             unsigned long long rowid)
 {
   uint64_t serial_id = rowid;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_uint64 (&serial_id),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
   };
   PGresult *result;
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "mark_deposit_done",
                                    params);
   if (PGRES_COMMAND_OK !=
@@ -2231,14 +2231,14 @@ postgres_get_ready_deposit (void *cls,
                             TALER_MINTDB_DepositIterator deposit_cb,
                             void *deposit_cb_cls)
 {
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_end
   };
   PGresult *result;
   unsigned int n;
   int ret;
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "deposits_get_ready",
                                    params);
   if (PGRES_TUPLES_OK !=
@@ -2264,29 +2264,29 @@ postgres_get_ready_deposit (void *cls,
     uint64_t transaction_id;
     uint64_t serial_id;
     json_t *wire;
-    struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_uint64 ("serial_id",
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial_id",
                                    &serial_id),
-      TALER_PQ_result_spec_uint64 ("transaction_id",
+      GNUNET_PQ_result_spec_uint64 ("transaction_id",
                                    &transaction_id),
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &amount_with_fee),
       TALER_PQ_result_spec_amount ("deposit_fee",
                                    &deposit_fee),
-      TALER_PQ_result_spec_absolute_time ("wire_deadline",
+      GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
                                           &wire_deadline),
-      TALER_PQ_result_spec_auto_from_type ("h_contract",
+      GNUNET_PQ_result_spec_auto_from_type ("h_contract",
                                            &h_contract),
-      TALER_PQ_result_spec_auto_from_type ("merchant_pub",
+      GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
                                            &merchant_pub),
-      TALER_PQ_result_spec_auto_from_type ("coin_pub",
+      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                            &coin_pub),
       TALER_PQ_result_spec_json ("wire",
                                  &wire),
-      TALER_PQ_result_spec_end
+      GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
-        TALER_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result, rs, 0))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -2302,7 +2302,7 @@ postgres_get_ready_deposit (void *cls,
                       &h_contract,
                       wire_deadline,
                       wire);
-    TALER_PQ_cleanup_result (rs);
+    GNUNET_PQ_cleanup_result (rs);
     PQclear (result);
   }
   return (GNUNET_OK == ret) ? 1 : 0;
@@ -2332,17 +2332,17 @@ postgres_iterate_matching_deposits (void *cls,
                                     void *deposit_cb_cls,
                                     uint32_t limit)
 {
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (merchant_pub),
-    TALER_PQ_query_param_auto_from_type (h_wire),
-    TALER_PQ_query_param_uint32 (&limit),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (merchant_pub),
+    GNUNET_PQ_query_param_auto_from_type (h_wire),
+    GNUNET_PQ_query_param_uint32 (&limit),
+    GNUNET_PQ_query_param_end
   };
   PGresult *result;
   unsigned int i;
   unsigned int n;
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "deposits_iterate_matching",
                                    params);
   if (PGRES_TUPLES_OK !=
@@ -2370,27 +2370,27 @@ postgres_iterate_matching_deposits (void *cls,
     uint64_t transaction_id;
     uint64_t serial_id;
     int ret;
-    struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_uint64 ("serial_id",
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial_id",
                                    &serial_id),
-      TALER_PQ_result_spec_uint64 ("transaction_id",
+      GNUNET_PQ_result_spec_uint64 ("transaction_id",
                                    &transaction_id),
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &amount_with_fee),
       TALER_PQ_result_spec_amount ("deposit_fee",
                                    &deposit_fee),
-      TALER_PQ_result_spec_absolute_time ("wire_deadline",
+      GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
                                           &wire_deadline),
-      TALER_PQ_result_spec_auto_from_type ("h_contract",
+      GNUNET_PQ_result_spec_auto_from_type ("h_contract",
                                            &h_contract),
-      TALER_PQ_result_spec_auto_from_type ("merchant_pub",
+      GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
                                            &merchant_pub),
-      TALER_PQ_result_spec_auto_from_type ("coin_pub",
+      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                            &coin_pub),
-      TALER_PQ_result_spec_end
+      GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
-        TALER_PQ_extract_result (result, rs, i))
+        GNUNET_PQ_extract_result (result, rs, i))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -2406,7 +2406,7 @@ postgres_iterate_matching_deposits (void *cls,
                       &h_contract,
                       wire_deadline,
                       NULL);
-    TALER_PQ_cleanup_result (rs);
+    GNUNET_PQ_cleanup_result (rs);
     PQclear (result);
     if (GNUNET_OK != ret)
       break;
@@ -2432,24 +2432,24 @@ postgres_insert_deposit (void *cls,
   int ret;
 
   {
-    struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
-      TALER_PQ_query_param_rsa_public_key (deposit->coin.denom_pub.rsa_public_key),
-      TALER_PQ_query_param_rsa_signature (deposit->coin.denom_sig.rsa_signature),
-      TALER_PQ_query_param_uint64 (&deposit->transaction_id),
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
+      GNUNET_PQ_query_param_rsa_public_key (deposit->coin.denom_pub.rsa_public_key),
+      GNUNET_PQ_query_param_rsa_signature (deposit->coin.denom_sig.rsa_signature),
+      GNUNET_PQ_query_param_uint64 (&deposit->transaction_id),
       TALER_PQ_query_param_amount (&deposit->amount_with_fee),
       TALER_PQ_query_param_amount (&deposit->deposit_fee),
-      TALER_PQ_query_param_absolute_time (&deposit->timestamp),
-      TALER_PQ_query_param_absolute_time (&deposit->refund_deadline),
-      TALER_PQ_query_param_absolute_time (&deposit->wire_deadline),
-      TALER_PQ_query_param_auto_from_type (&deposit->merchant_pub),
-      TALER_PQ_query_param_auto_from_type (&deposit->h_contract),
-      TALER_PQ_query_param_auto_from_type (&deposit->h_wire),
-      TALER_PQ_query_param_auto_from_type (&deposit->csig),
+      GNUNET_PQ_query_param_absolute_time (&deposit->timestamp),
+      GNUNET_PQ_query_param_absolute_time (&deposit->refund_deadline),
+      GNUNET_PQ_query_param_absolute_time (&deposit->wire_deadline),
+      GNUNET_PQ_query_param_auto_from_type (&deposit->merchant_pub),
+      GNUNET_PQ_query_param_auto_from_type (&deposit->h_contract),
+      GNUNET_PQ_query_param_auto_from_type (&deposit->h_wire),
+      GNUNET_PQ_query_param_auto_from_type (&deposit->csig),
       TALER_PQ_query_param_json (deposit->wire),
-      TALER_PQ_query_param_end
+      GNUNET_PQ_query_param_end
     };
-    result = TALER_PQ_exec_prepared (session->conn,
+    result = GNUNET_PQ_exec_prepared (session->conn,
                                      "insert_deposit",
                                      params);
   }
@@ -2486,12 +2486,12 @@ postgres_get_refresh_session (void *cls,
                               struct TALER_MINTDB_RefreshSession *refresh_session)
 {
   PGresult *result;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (session_hash),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (session_hash),
+    GNUNET_PQ_query_param_end
   };
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "get_refresh_session",
                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -2517,17 +2517,17 @@ postgres_get_refresh_session (void *cls,
           0,
           sizeof (struct TALER_MINTDB_RefreshSession));
   {
-    struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_uint16 ("num_oldcoins",
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint16 ("num_oldcoins",
                                    &refresh_session->num_oldcoins),
-      TALER_PQ_result_spec_uint16 ("num_newcoins",
+      GNUNET_PQ_result_spec_uint16 ("num_newcoins",
                                    &refresh_session->num_newcoins),
-      TALER_PQ_result_spec_uint16 ("noreveal_index",
+      GNUNET_PQ_result_spec_uint16 ("noreveal_index",
                                    &refresh_session->noreveal_index),
-      TALER_PQ_result_spec_end
+      GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
-        TALER_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result, rs, 0))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -2556,15 +2556,15 @@ postgres_create_refresh_session (void *cls,
                                  const struct TALER_MINTDB_RefreshSession *refresh_session)
 {
   PGresult *result;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (session_hash),
-    TALER_PQ_query_param_uint16 (&refresh_session->num_oldcoins),
-    TALER_PQ_query_param_uint16 (&refresh_session->num_newcoins),
-    TALER_PQ_query_param_uint16 (&refresh_session->noreveal_index),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (session_hash),
+    GNUNET_PQ_query_param_uint16 (&refresh_session->num_oldcoins),
+    GNUNET_PQ_query_param_uint16 (&refresh_session->num_newcoins),
+    GNUNET_PQ_query_param_uint16 (&refresh_session->noreveal_index),
+    GNUNET_PQ_query_param_end
   };
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "insert_refresh_session",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
@@ -2593,13 +2593,13 @@ insert_known_coin (void *cls,
                    const struct TALER_CoinPublicInfo *coin_info)
 {
   PGresult *result;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (&coin_info->coin_pub),
-    TALER_PQ_query_param_rsa_public_key (coin_info->denom_pub.rsa_public_key),
-    TALER_PQ_query_param_rsa_signature (coin_info->denom_sig.rsa_signature),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&coin_info->coin_pub),
+    GNUNET_PQ_query_param_rsa_public_key (coin_info->denom_pub.rsa_public_key),
+    GNUNET_PQ_query_param_rsa_signature (coin_info->denom_sig.rsa_signature),
+    GNUNET_PQ_query_param_end
   };
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "insert_known_coin",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
@@ -2631,13 +2631,13 @@ get_known_coin (void *cls,
                 struct TALER_CoinPublicInfo *coin_info)
 {
   PGresult *result;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (coin_pub),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_end
   };
   int nrows;
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "get_known_coin",
                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -2656,16 +2656,16 @@ get_known_coin (void *cls,
   if (NULL == coin_info)
     return GNUNET_YES;
   {
-    struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_rsa_public_key ("denom_pub",
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
                                            &coin_info->denom_pub.rsa_public_key),
-      TALER_PQ_result_spec_rsa_signature ("denom_sig",
+      GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
                                           &coin_info->denom_sig.rsa_signature),
-      TALER_PQ_result_spec_end
+      GNUNET_PQ_result_spec_end
     };
 
     if (GNUNET_OK !=
-        TALER_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result, rs, 0))
     {
       PQclear (result);
       GNUNET_break (0);
@@ -2696,14 +2696,14 @@ postgres_insert_refresh_melt (void *cls,
                               const struct TALER_MINTDB_RefreshMelt *melt)
 {
   PGresult *result;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (&melt->coin.coin_pub),
-    TALER_PQ_query_param_auto_from_type (&melt->session_hash),
-    TALER_PQ_query_param_uint16 (&oldcoin_index),
-    TALER_PQ_query_param_auto_from_type (&melt->coin_sig),
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&melt->coin.coin_pub),
+    GNUNET_PQ_query_param_auto_from_type (&melt->session_hash),
+    GNUNET_PQ_query_param_uint16 (&oldcoin_index),
+    GNUNET_PQ_query_param_auto_from_type (&melt->coin_sig),
     TALER_PQ_query_param_amount (&melt->amount_with_fee),
     TALER_PQ_query_param_amount (&melt->melt_fee),
-    TALER_PQ_query_param_end
+    GNUNET_PQ_query_param_end
   };
   int ret;
 
@@ -2729,7 +2729,7 @@ postgres_insert_refresh_melt (void *cls,
     }
   }
   /* insert the melt */
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "insert_refresh_melt",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
@@ -2766,15 +2766,15 @@ postgres_get_refresh_melt (void *cls,
   struct TALER_CoinSpendSignatureP coin_sig;
   struct TALER_Amount amount_with_fee;
   struct TALER_Amount melt_fee;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (session_hash),
-    TALER_PQ_query_param_uint16 (&oldcoin_index),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (session_hash),
+    GNUNET_PQ_query_param_uint16 (&oldcoin_index),
+    GNUNET_PQ_query_param_end
   };
   int nrows;
 
   /* check if the melt record exists and get it */
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "get_refresh_melt",
                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -2793,14 +2793,14 @@ postgres_get_refresh_melt (void *cls,
   }
   GNUNET_assert (1 == nrows);    /* due to primary key constraint */
   {
-    struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_auto_from_type ("coin_pub", &coin.coin_pub),
-      TALER_PQ_result_spec_auto_from_type ("coin_sig", &coin_sig),
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("coin_pub", &coin.coin_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_sig", &coin_sig),
       TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
       TALER_PQ_result_spec_amount ("melt_fee", &melt_fee),
-      TALER_PQ_result_spec_end
+      GNUNET_PQ_result_spec_end
     };
-    if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
+    if (GNUNET_OK != GNUNET_PQ_extract_result (result, rs, 0))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -2856,13 +2856,13 @@ postgres_insert_refresh_order (void *cls,
     PGresult *result;
 
     {
-      struct TALER_PQ_QueryParam params[] = {
-        TALER_PQ_query_param_uint16 (&newcoin_off),
-        TALER_PQ_query_param_auto_from_type (session_hash),
-        TALER_PQ_query_param_rsa_public_key (denom_pubs[i].rsa_public_key),
-        TALER_PQ_query_param_end
+      struct GNUNET_PQ_QueryParam params[] = {
+        GNUNET_PQ_query_param_uint16 (&newcoin_off),
+        GNUNET_PQ_query_param_auto_from_type (session_hash),
+        GNUNET_PQ_query_param_rsa_public_key (denom_pubs[i].rsa_public_key),
+        GNUNET_PQ_query_param_end
       };
-      result = TALER_PQ_exec_prepared (session->conn,
+      result = GNUNET_PQ_exec_prepared (session->conn,
                                        "insert_refresh_order",
                                        params);
     }
@@ -2931,13 +2931,13 @@ postgres_get_refresh_order (void *cls,
     PGresult *result;
 
     {
-      struct TALER_PQ_QueryParam params[] = {
-        TALER_PQ_query_param_auto_from_type (session_hash),
-        TALER_PQ_query_param_uint16 (&newcoin_off),
-        TALER_PQ_query_param_end
+      struct GNUNET_PQ_QueryParam params[] = {
+        GNUNET_PQ_query_param_auto_from_type (session_hash),
+        GNUNET_PQ_query_param_uint16 (&newcoin_off),
+        GNUNET_PQ_query_param_end
       };
 
-      result = TALER_PQ_exec_prepared (session->conn,
+      result = GNUNET_PQ_exec_prepared (session->conn,
                                        "get_refresh_order",
                                        params);
     }
@@ -2957,13 +2957,13 @@ postgres_get_refresh_order (void *cls,
     }
     GNUNET_assert (1 == PQntuples (result));
     {
-      struct TALER_PQ_ResultSpec rs[] = {
-        TALER_PQ_result_spec_rsa_public_key ("denom_pub",
+      struct GNUNET_PQ_ResultSpec rs[] = {
+        GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
                                              &denom_pubs[i].rsa_public_key),
-        TALER_PQ_result_spec_end
+        GNUNET_PQ_result_spec_end
       };
       if (GNUNET_OK !=
-          TALER_PQ_extract_result (result, rs, 0))
+          GNUNET_PQ_extract_result (result, rs, 0))
       {
         PQclear (result);
         GNUNET_break (0);
@@ -3015,17 +3015,17 @@ postgres_insert_refresh_commit_coins (void *cls,
     }
     coin_off = (uint16_t) i;
     {
-      struct TALER_PQ_QueryParam params[] = {
-        TALER_PQ_query_param_auto_from_type (session_hash),
-        TALER_PQ_query_param_uint16 (&cnc_index),
-        TALER_PQ_query_param_uint16 (&coin_off),
-        TALER_PQ_query_param_fixed_size (rle,
+      struct GNUNET_PQ_QueryParam params[] = {
+        GNUNET_PQ_query_param_auto_from_type (session_hash),
+        GNUNET_PQ_query_param_uint16 (&cnc_index),
+        GNUNET_PQ_query_param_uint16 (&coin_off),
+        GNUNET_PQ_query_param_fixed_size (rle,
                                          rle_size),
-        TALER_PQ_query_param_fixed_size (commit_coins[i].coin_ev,
+        GNUNET_PQ_query_param_fixed_size (commit_coins[i].coin_ev,
                                          commit_coins[i].coin_ev_size),
-        TALER_PQ_query_param_end
+        GNUNET_PQ_query_param_end
       };
-      result = TALER_PQ_exec_prepared (session->conn,
+      result = GNUNET_PQ_exec_prepared (session->conn,
                                        "insert_refresh_commit_coin",
                                        params);
     }
@@ -3099,11 +3099,11 @@ postgres_get_refresh_commit_coins (void *cls,
   for (i=0;i<(unsigned int) num_newcoins;i++)
   {
     uint16_t newcoin_off = (uint16_t) i;
-    struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_query_param_auto_from_type (session_hash),
-      TALER_PQ_query_param_uint16 (&cnc_index),
-      TALER_PQ_query_param_uint16 (&newcoin_off),
-      TALER_PQ_query_param_end
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (session_hash),
+      GNUNET_PQ_query_param_uint16 (&cnc_index),
+      GNUNET_PQ_query_param_uint16 (&newcoin_off),
+      GNUNET_PQ_query_param_end
     };
     void *c_buf;
     size_t c_buf_size;
@@ -3112,7 +3112,7 @@ postgres_get_refresh_commit_coins (void *cls,
     struct TALER_RefreshLinkEncrypted *rl;
     PGresult *result;
 
-    result = TALER_PQ_exec_prepared (session->conn,
+    result = GNUNET_PQ_exec_prepared (session->conn,
                                      "get_refresh_commit_coin",
                                      params);
     if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -3129,18 +3129,18 @@ postgres_get_refresh_commit_coins (void *cls,
       return GNUNET_NO;
     }
     {
-      struct TALER_PQ_ResultSpec rs[] = {
-        TALER_PQ_result_spec_variable_size ("link_vector_enc",
+      struct GNUNET_PQ_ResultSpec rs[] = {
+        GNUNET_PQ_result_spec_variable_size ("link_vector_enc",
                                             &rl_buf,
                                             &rl_buf_size),
-        TALER_PQ_result_spec_variable_size ("coin_ev",
+        GNUNET_PQ_result_spec_variable_size ("coin_ev",
                                             &c_buf,
                                             &c_buf_size),
-        TALER_PQ_result_spec_end
+        GNUNET_PQ_result_spec_end
       };
 
       if (GNUNET_YES !=
-          TALER_PQ_extract_result (result, rs, 0))
+          GNUNET_PQ_extract_result (result, rs, 0))
       {
         PQclear (result);
         free_cc_result (commit_coins, i);
@@ -3190,16 +3190,16 @@ postgres_insert_refresh_commit_links (void *cls,
 
   for (i=0;i<num_links;i++)
   {
-    struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_query_param_auto_from_type (session_hash),
-      TALER_PQ_query_param_auto_from_type (&links[i].transfer_pub),
-      TALER_PQ_query_param_uint16 (&cnc_index),
-      TALER_PQ_query_param_uint16 (&i),
-      TALER_PQ_query_param_auto_from_type (&links[i].shared_secret_enc),
-      TALER_PQ_query_param_end
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (session_hash),
+      GNUNET_PQ_query_param_auto_from_type (&links[i].transfer_pub),
+      GNUNET_PQ_query_param_uint16 (&cnc_index),
+      GNUNET_PQ_query_param_uint16 (&i),
+      GNUNET_PQ_query_param_auto_from_type (&links[i].shared_secret_enc),
+      GNUNET_PQ_query_param_end
     };
 
-    PGresult *result = TALER_PQ_exec_prepared (session->conn,
+    PGresult *result = GNUNET_PQ_exec_prepared (session->conn,
 					       "insert_refresh_commit_link",
 					       params);
     if (PGRES_COMMAND_OK != PQresultStatus (result))
@@ -3246,15 +3246,15 @@ postgres_get_refresh_commit_links (void *cls,
 
   for (i=0;i<num_links;i++)
   {
-    struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_query_param_auto_from_type (session_hash),
-      TALER_PQ_query_param_uint16 (&cnc_index),
-      TALER_PQ_query_param_uint16 (&i),
-      TALER_PQ_query_param_end
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (session_hash),
+      GNUNET_PQ_query_param_uint16 (&cnc_index),
+      GNUNET_PQ_query_param_uint16 (&i),
+      GNUNET_PQ_query_param_end
     };
     PGresult *result;
 
-    result = TALER_PQ_exec_prepared (session->conn,
+    result = GNUNET_PQ_exec_prepared (session->conn,
 				     "get_refresh_commit_link",
 				     params);
     if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -3269,16 +3269,16 @@ postgres_get_refresh_commit_links (void *cls,
       return GNUNET_NO;
     }
     {
-      struct TALER_PQ_ResultSpec rs[] = {
-	TALER_PQ_result_spec_auto_from_type ("transfer_pub",
+      struct GNUNET_PQ_ResultSpec rs[] = {
+	GNUNET_PQ_result_spec_auto_from_type ("transfer_pub",
 					     &links[i].transfer_pub),
-	TALER_PQ_result_spec_auto_from_type ("link_secret_enc",
+	GNUNET_PQ_result_spec_auto_from_type ("link_secret_enc",
 					     &links[i].shared_secret_enc),
-	TALER_PQ_result_spec_end
+	GNUNET_PQ_result_spec_end
       };
 
       if (GNUNET_YES !=
-	  TALER_PQ_extract_result (result, rs, 0))
+	  GNUNET_PQ_extract_result (result, rs, 0))
       {
 	PQclear (result);
 	return GNUNET_SYSERR;
@@ -3391,14 +3391,14 @@ postgres_insert_refresh_out (void *cls,
                              const struct TALER_DenominationSignature *ev_sig)
 {
   PGresult *result;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (session_hash),
-    TALER_PQ_query_param_uint16 (&newcoin_index),
-    TALER_PQ_query_param_rsa_signature (ev_sig->rsa_signature),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (session_hash),
+    GNUNET_PQ_query_param_uint16 (&newcoin_index),
+    GNUNET_PQ_query_param_rsa_signature (ev_sig->rsa_signature),
+    GNUNET_PQ_query_param_end
   };
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "insert_refresh_out",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
@@ -3430,13 +3430,13 @@ postgres_get_link_data_list (void *cls,
   struct TALER_MINTDB_LinkDataList *pos;
   int i;
   int nrows;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (session_hash),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (session_hash),
+    GNUNET_PQ_query_param_end
   };
   PGresult *result;
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "get_link",
                                    params);
 
@@ -3461,19 +3461,19 @@ postgres_get_link_data_list (void *cls,
     struct GNUNET_CRYPTO_rsa_Signature *sig;
     void *ld_buf;
     size_t ld_buf_size;
-    struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_variable_size ("link_vector_enc",
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_variable_size ("link_vector_enc",
                                           &ld_buf,
                                           &ld_buf_size),
-      TALER_PQ_result_spec_rsa_signature ("ev_sig",
+      GNUNET_PQ_result_spec_rsa_signature ("ev_sig",
                                           &sig),
-      TALER_PQ_result_spec_rsa_public_key ("denom_pub",
+      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
                                            &denom_pub),
-      TALER_PQ_result_spec_end
+      GNUNET_PQ_result_spec_end
     };
 
     if (GNUNET_OK !=
-        TALER_PQ_extract_result (result, rs, i))
+        GNUNET_PQ_extract_result (result, rs, i))
     {
       PQclear (result);
       GNUNET_break (0);
@@ -3525,15 +3525,15 @@ postgres_get_transfer (void *cls,
                        TALER_MINTDB_TransferDataCallback tdc,
                        void *tdc_cls)
 {
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (coin_pub),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_end
   };
   PGresult *result;
   int nrows;
   int i;
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "get_transfer",
                                    params);
   if (PGRES_TUPLES_OK !=
@@ -3555,15 +3555,15 @@ postgres_get_transfer (void *cls,
     struct GNUNET_HashCode session_hash;
     struct TALER_TransferPublicKeyP transfer_pub;
     struct TALER_EncryptedLinkSecretP shared_secret_enc;
-    struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_auto_from_type ("transfer_pub", &transfer_pub),
-      TALER_PQ_result_spec_auto_from_type ("link_secret_enc", &shared_secret_enc),
-      TALER_PQ_result_spec_auto_from_type ("session_hash", &session_hash),
-      TALER_PQ_result_spec_end
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("transfer_pub", &transfer_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("link_secret_enc", &shared_secret_enc),
+      GNUNET_PQ_result_spec_auto_from_type ("session_hash", &session_hash),
+      GNUNET_PQ_result_spec_end
     };
 
     if (GNUNET_OK !=
-        TALER_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result, rs, 0))
     {
       PQclear (result);
       GNUNET_break (0);
@@ -3598,16 +3598,16 @@ postgres_get_coin_transactions (void *cls,
   head = NULL;
   /* check deposits */
   {
-    struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_query_param_auto_from_type (&coin_pub->eddsa_pub),
-      TALER_PQ_query_param_end
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (&coin_pub->eddsa_pub),
+      GNUNET_PQ_query_param_end
     };
     int nrows;
     int i;
     PGresult *result;
     struct TALER_MINTDB_TransactionList *tl;
 
-    result = TALER_PQ_exec_prepared (session->conn,
+    result = GNUNET_PQ_exec_prepared (session->conn,
                                      "get_deposit_with_coin_pub",
                                      params);
     if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -3623,36 +3623,36 @@ postgres_get_coin_transactions (void *cls,
 
       deposit = GNUNET_new (struct TALER_MINTDB_Deposit);
       {
-        struct TALER_PQ_ResultSpec rs[] = {
-          TALER_PQ_result_spec_rsa_public_key ("denom_pub",
+        struct GNUNET_PQ_ResultSpec rs[] = {
+          GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
                                                &deposit->coin.denom_pub.rsa_public_key),
-          TALER_PQ_result_spec_rsa_signature ("denom_sig",
+          GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
                                               &deposit->coin.denom_sig.rsa_signature),
-          TALER_PQ_result_spec_uint64 ("transaction_id",
+          GNUNET_PQ_result_spec_uint64 ("transaction_id",
                                        &deposit->transaction_id),
           TALER_PQ_result_spec_amount ("amount_with_fee",
                                        &deposit->amount_with_fee),
           TALER_PQ_result_spec_amount ("deposit_fee",
                                        &deposit->deposit_fee),
-          TALER_PQ_result_spec_absolute_time ("timestamp",
+          GNUNET_PQ_result_spec_absolute_time ("timestamp",
                                               &deposit->timestamp),
-          TALER_PQ_result_spec_absolute_time ("refund_deadline",
+          GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
                                               &deposit->refund_deadline),
-          TALER_PQ_result_spec_auto_from_type ("merchant_pub",
+          GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
                                                &deposit->merchant_pub),
-          TALER_PQ_result_spec_auto_from_type ("h_contract",
+          GNUNET_PQ_result_spec_auto_from_type ("h_contract",
                                                &deposit->h_contract),
-          TALER_PQ_result_spec_auto_from_type ("h_wire",
+          GNUNET_PQ_result_spec_auto_from_type ("h_wire",
                                                &deposit->h_wire),
           TALER_PQ_result_spec_json ("wire",
                                      &deposit->wire),
-          TALER_PQ_result_spec_auto_from_type ("coin_sig",
+          GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                                &deposit->csig),
-          TALER_PQ_result_spec_end
+          GNUNET_PQ_result_spec_end
         };
 
         if (GNUNET_OK !=
-            TALER_PQ_extract_result (result, rs, i))
+            GNUNET_PQ_extract_result (result, rs, i))
         {
           GNUNET_break (0);
           GNUNET_free (deposit);
@@ -3672,9 +3672,9 @@ postgres_get_coin_transactions (void *cls,
   }
   /* Handle refreshing */
   {
-    struct TALER_PQ_QueryParam params[] = {
-      TALER_PQ_query_param_auto_from_type (&coin_pub->eddsa_pub),
-      TALER_PQ_query_param_end
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (&coin_pub->eddsa_pub),
+      GNUNET_PQ_query_param_end
     };
     int nrows;
     int i;
@@ -3682,7 +3682,7 @@ postgres_get_coin_transactions (void *cls,
     struct TALER_MINTDB_TransactionList *tl;
 
     /* check if the melt record exists and get it */
-    result = TALER_PQ_exec_prepared (session->conn,
+    result = GNUNET_PQ_exec_prepared (session->conn,
                                      "get_refresh_melt_by_coin",
                                      params);
     if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -3698,20 +3698,20 @@ postgres_get_coin_transactions (void *cls,
 
       melt = GNUNET_new (struct TALER_MINTDB_RefreshMelt);
       {
-        struct TALER_PQ_ResultSpec rs[] = {
-          TALER_PQ_result_spec_auto_from_type ("session_hash",
+        struct GNUNET_PQ_ResultSpec rs[] = {
+          GNUNET_PQ_result_spec_auto_from_type ("session_hash",
                                                &melt->session_hash),
           /* oldcoin_index not needed */
-          TALER_PQ_result_spec_auto_from_type ("coin_sig",
+          GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                                &melt->coin_sig),
           TALER_PQ_result_spec_amount ("amount_with_fee",
                                        &melt->amount_with_fee),
           TALER_PQ_result_spec_amount ("melt_fee",
                                        &melt->melt_fee),
-          TALER_PQ_result_spec_end
+          GNUNET_PQ_result_spec_end
         };
         if (GNUNET_OK !=
-            TALER_PQ_extract_result (result, rs, 0))
+            GNUNET_PQ_extract_result (result, rs, 0))
         {
           GNUNET_break (0);
           GNUNET_free (melt);
@@ -3758,15 +3758,15 @@ postgres_lookup_wire_transfer (void *cls,
                                void *cb_cls)
 {
   PGresult *result;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (wtid),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (wtid),
+    GNUNET_PQ_query_param_end
   };
   int nrows;
   int i;
 
   /* check if the melt record exists and get it */
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "lookup_transactions",
                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -3794,19 +3794,19 @@ postgres_lookup_wire_transfer (void *cls,
     struct TALER_Amount coin_amount;
     struct TALER_Amount coin_fee;
     struct TALER_Amount transfer_amount;
-    struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_auto_from_type ("h_contract", &h_contract),
-      TALER_PQ_result_spec_auto_from_type ("h_wire", &h_wire),
-      TALER_PQ_result_spec_auto_from_type ("coin_pub", &coin_pub),
-      TALER_PQ_result_spec_auto_from_type ("merchant_pub", &merchant_pub),
-      TALER_PQ_result_spec_uint64 ("transaction_id", &transaction_id),
-      TALER_PQ_result_spec_absolute_time ("execution_time", &exec_time),
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("h_contract", &h_contract),
+      GNUNET_PQ_result_spec_auto_from_type ("h_wire", &h_wire),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_pub", &coin_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("merchant_pub", &merchant_pub),
+      GNUNET_PQ_result_spec_uint64 ("transaction_id", &transaction_id),
+      GNUNET_PQ_result_spec_absolute_time ("execution_time", &exec_time),
       TALER_PQ_result_spec_amount ("coin_amount", &coin_amount),
       TALER_PQ_result_spec_amount ("coin_fee", &coin_fee),
       TALER_PQ_result_spec_amount ("transfer_total", &transfer_amount),
-      TALER_PQ_result_spec_end
+      GNUNET_PQ_result_spec_end
     };
-    if (GNUNET_OK != TALER_PQ_extract_result (result, rs, i))
+    if (GNUNET_OK != GNUNET_PQ_extract_result (result, rs, i))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -3856,18 +3856,18 @@ postgres_wire_lookup_deposit_wtid (void *cls,
 				   void *cb_cls)
 {
   PGresult *result;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (coin_pub),
-    TALER_PQ_query_param_auto_from_type (h_contract),
-    TALER_PQ_query_param_auto_from_type (h_wire),
-    TALER_PQ_query_param_uint64 (&transaction_id),
-    TALER_PQ_query_param_auto_from_type (merchant_pub),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_auto_from_type (h_contract),
+    GNUNET_PQ_query_param_auto_from_type (h_wire),
+    GNUNET_PQ_query_param_uint64 (&transaction_id),
+    GNUNET_PQ_query_param_auto_from_type (merchant_pub),
+    GNUNET_PQ_query_param_end
   };
   int nrows;
 
   /* check if the melt record exists and get it */
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "lookup_deposit_wtid",
                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -3887,16 +3887,16 @@ postgres_wire_lookup_deposit_wtid (void *cls,
        do not have a WTID yet, if so, do call the CB with a NULL wtid
        and return GNUNET_YES! */
     {
-      struct TALER_PQ_QueryParam params2[] = {
-        TALER_PQ_query_param_auto_from_type (coin_pub),
-        TALER_PQ_query_param_uint64 (&transaction_id),
-        TALER_PQ_query_param_auto_from_type (merchant_pub),
-        TALER_PQ_query_param_auto_from_type (h_contract),
-        TALER_PQ_query_param_auto_from_type (h_wire),
-        TALER_PQ_query_param_end
+      struct GNUNET_PQ_QueryParam params2[] = {
+        GNUNET_PQ_query_param_auto_from_type (coin_pub),
+        GNUNET_PQ_query_param_uint64 (&transaction_id),
+        GNUNET_PQ_query_param_auto_from_type (merchant_pub),
+        GNUNET_PQ_query_param_auto_from_type (h_contract),
+        GNUNET_PQ_query_param_auto_from_type (h_wire),
+        GNUNET_PQ_query_param_end
       };
 
-      result = TALER_PQ_exec_prepared (session->conn,
+      result = GNUNET_PQ_exec_prepared (session->conn,
                                        "get_deposit_for_wtid",
                                        params2);
       if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -3921,14 +3921,14 @@ postgres_wire_lookup_deposit_wtid (void *cls,
       struct GNUNET_TIME_Absolute exec_time;
       struct TALER_Amount coin_amount;
       struct TALER_Amount coin_fee;
-      struct TALER_PQ_ResultSpec rs[] = {
+      struct GNUNET_PQ_ResultSpec rs[] = {
         TALER_PQ_result_spec_amount ("amount_with_fee", &coin_amount),
         TALER_PQ_result_spec_amount ("deposit_fee", &coin_fee),
-        TALER_PQ_result_spec_absolute_time ("wire_deadline", &exec_time),
-        TALER_PQ_result_spec_end
+        GNUNET_PQ_result_spec_absolute_time ("wire_deadline", &exec_time),
+        GNUNET_PQ_result_spec_end
       };
 
-      if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
+      if (GNUNET_OK != GNUNET_PQ_extract_result (result, rs, 0))
       {
         GNUNET_break (0);
         PQclear (result);
@@ -3954,14 +3954,14 @@ postgres_wire_lookup_deposit_wtid (void *cls,
     struct GNUNET_TIME_Absolute exec_time;
     struct TALER_Amount coin_amount;
     struct TALER_Amount coin_fee;
-    struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_auto_from_type ("wtid_raw", &wtid),
-      TALER_PQ_result_spec_absolute_time ("execution_time", &exec_time),
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("wtid_raw", &wtid),
+      GNUNET_PQ_result_spec_absolute_time ("execution_time", &exec_time),
       TALER_PQ_result_spec_amount ("coin_amount", &coin_amount),
       TALER_PQ_result_spec_amount ("coin_fee", &coin_fee),
-      TALER_PQ_result_spec_end
+      GNUNET_PQ_result_spec_end
     };
-    if (GNUNET_OK != TALER_PQ_extract_result (result, rs, 0))
+    if (GNUNET_OK != GNUNET_PQ_extract_result (result, rs, 0))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -4006,21 +4006,21 @@ postgres_insert_aggregation_tracking (void *cls,
                                       const struct TALER_Amount *coin_value,
                                       const struct TALER_Amount *coin_fee)
 {
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_auto_from_type (h_contract),
-    TALER_PQ_query_param_auto_from_type (h_wire),
-    TALER_PQ_query_param_auto_from_type (coin_pub),
-    TALER_PQ_query_param_auto_from_type (merchant_pub),
-    TALER_PQ_query_param_uint64 (&transaction_id),
-    TALER_PQ_query_param_auto_from_type (wtid),
-    TALER_PQ_query_param_absolute_time (&execution_time),
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_contract),
+    GNUNET_PQ_query_param_auto_from_type (h_wire),
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_auto_from_type (merchant_pub),
+    GNUNET_PQ_query_param_uint64 (&transaction_id),
+    GNUNET_PQ_query_param_auto_from_type (wtid),
+    GNUNET_PQ_query_param_absolute_time (&execution_time),
     TALER_PQ_query_param_amount (coin_value),
     TALER_PQ_query_param_amount (coin_fee),
-    TALER_PQ_query_param_end
+    GNUNET_PQ_query_param_end
   };
   PGresult *result;
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "insert_aggregation_tracking",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
@@ -4058,13 +4058,13 @@ postgres_wire_prepare_data_insert (void *cls,
                                    size_t buf_size)
 {
   PGresult *result;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_fixed_size (type, strlen (type) + 1),
-    TALER_PQ_query_param_fixed_size (buf, buf_size),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_fixed_size (type, strlen (type) + 1),
+    GNUNET_PQ_query_param_fixed_size (buf, buf_size),
+    GNUNET_PQ_query_param_end
   };
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "wire_prepare_data_insert",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
@@ -4092,13 +4092,13 @@ postgres_wire_prepare_data_mark_finished (void *cls,
                                           unsigned long long rowid)
 {
   uint64_t serial_id = rowid;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_uint64 (&serial_id),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
   };
   PGresult *result;
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "wire_prepare_data_mark_done",
                                    params);
   if (PGRES_COMMAND_OK !=
@@ -4134,12 +4134,12 @@ postgres_wire_prepare_data_get (void *cls,
                                 void *cb_cls)
 {
   PGresult *result;
-  struct TALER_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_fixed_size (type, strlen (type) + 1),
-    TALER_PQ_query_param_end
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_fixed_size (type, strlen (type) + 1),
+    GNUNET_PQ_query_param_end
   };
 
-  result = TALER_PQ_exec_prepared (session->conn,
+  result = GNUNET_PQ_exec_prepared (session->conn,
                                    "wire_prepare_data_get",
                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
@@ -4164,17 +4164,17 @@ postgres_wire_prepare_data_get (void *cls,
     uint64_t serial_id;
     void *buf = NULL;
     size_t buf_size;
-    struct TALER_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_uint64 ("serial_id",
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial_id",
                                    &serial_id),
-      TALER_PQ_result_spec_variable_size ("buf",
+      GNUNET_PQ_result_spec_variable_size ("buf",
                                           &buf,
                                           &buf_size),
-      TALER_PQ_result_spec_end
+      GNUNET_PQ_result_spec_end
     };
 
     if (GNUNET_OK !=
-        TALER_PQ_extract_result (result,
+        GNUNET_PQ_extract_result (result,
                                  rs,
                                  0))
     {
@@ -4186,7 +4186,7 @@ postgres_wire_prepare_data_get (void *cls,
         serial_id,
         buf,
         buf_size);
-    TALER_PQ_cleanup_result (rs);
+    GNUNET_PQ_cleanup_result (rs);
   }
   PQclear (result);
   return GNUNET_OK;

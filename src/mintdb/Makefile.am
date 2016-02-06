@@ -26,6 +26,7 @@ libtaler_plugin_mintdb_postgres_la_LDFLAGS = \
   $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lpq \
+  -lgnunetpq \
   -lgnunetutil $(XLIB)
 
 lib_LTLIBRARIES = \

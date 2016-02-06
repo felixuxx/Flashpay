@@ -12,8 +12,8 @@ lib_LTLIBRARIES = \
   libtalerpq.la
 
 libtalerpq_la_SOURCES = \
-  db_pq.c \
-  pq_helper.c
+  pq_query_helper.c \
+  pq_result_helper.c
 
 libtalerpq_la_LIBADD = \
   $(top_builddir)/src/util/libtalerutil.la  \
@@ -36,5 +36,7 @@ test_pq_SOURCES = \
 test_pq_LDADD = \
   libtalerpq.la \
   $(top_builddir)/src/util/libtalerutil.la  \
-  -lgnunetutil -ljansson \
+  -lgnunetpq \
+  -lgnunetutil \
+  -ljansson \
   -lpq $(XLIB)
