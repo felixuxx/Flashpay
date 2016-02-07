@@ -453,8 +453,7 @@ cb_wt_never (void *cls,
              uint64_t transaction_id,
              const struct TALER_CoinSpendPublicKeyP *coin_pub,
              const struct TALER_Amount *coin_value,
-             const struct TALER_Amount *coin_fee,
-             const struct TALER_Amount *transfer_value)
+             const struct TALER_Amount *coin_fee)
 {
   GNUNET_assert (0); /* this statement should be unreachable */
 }
@@ -468,7 +467,6 @@ cb_wtid_never (void *cls,
                const struct TALER_WireTransferIdentifierRawP *wtid,
                const struct TALER_Amount *coin_contribution,
                const struct TALER_Amount *coin_fee,
-               const struct TALER_Amount *total_amount,
                struct GNUNET_TIME_Absolute execution_time)
 {
   GNUNET_assert (0);
@@ -498,8 +496,7 @@ cb_wt_check (void *cls,
              uint64_t transaction_id,
              const struct TALER_CoinSpendPublicKeyP *coin_pub,
              const struct TALER_Amount *coin_value,
-             const struct TALER_Amount *coin_fee,
-             const struct TALER_Amount *transfer_value)
+             const struct TALER_Amount *coin_fee)
 {
   GNUNET_assert (cls == &cb_wt_never);
   GNUNET_assert (0 == memcmp (merchant_pub,
@@ -519,8 +516,6 @@ cb_wt_check (void *cls,
                                         &coin_value_wt));
   GNUNET_assert (0 == TALER_amount_cmp (coin_fee,
                                         &coin_fee_wt));
-  GNUNET_assert (0 == TALER_amount_cmp (transfer_value,
-                                        &transfer_value_wt));
 }
 
 
@@ -532,7 +527,6 @@ cb_wtid_check (void *cls,
                const struct TALER_WireTransferIdentifierRawP *wtid,
                const struct TALER_Amount *coin_contribution,
                const struct TALER_Amount *coin_fee,
-               const struct TALER_Amount *total_amount,
                struct GNUNET_TIME_Absolute execution_time)
 {
   GNUNET_assert (cls == &cb_wtid_never);
@@ -545,8 +539,6 @@ cb_wtid_check (void *cls,
                                         &coin_value_wt));
   GNUNET_assert (0 == TALER_amount_cmp (coin_fee,
                                         &coin_fee_wt));
-  GNUNET_assert (0 == TALER_amount_cmp (total_amount,
-                                        &transfer_value_wt));
 }
 
 
@@ -826,8 +818,7 @@ run (void *cls,
                                                execution_time_wt,
                                                &coin_pub_wt,
                                                &coin_value_wt,
-                                               &coin_fee_wt,
-                                               &transfer_value_wt));
+                                               &coin_fee_wt));
   FAILIF (GNUNET_OK !=
           plugin->lookup_wire_transfer (plugin->cls,
                                         session,

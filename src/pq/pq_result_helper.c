@@ -72,11 +72,25 @@ extract_amount_nbo_helper (PGresult *result,
                         frac_name);
   curr_num = PQfnumber (result,
                         curr_name);
-  if ( (val_num < 0) ||
-       (frac_num < 0) ||
-       (curr_num < 0) )
+  if (val_num < 0) 
   {
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"Field `%s' does not exist in result\n",
+		val_name);
+    return GNUNET_SYSERR;
+  }
+  if (frac_num < 0)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"Field `%s' does not exist in result\n",
+		frac_name);
+    return GNUNET_SYSERR;
+  }
+  if (curr_num < 0)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"Field `%s' does not exist in result\n",
+		curr_name);
     return GNUNET_SYSERR;
   }
   if ( (PQgetisnull (result,

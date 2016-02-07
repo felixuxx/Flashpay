@@ -3739,7 +3739,7 @@ postgres_get_coin_transactions (void *cls,
 
 
 /**
- * Lookup the list of Taler transactions that was aggregated
+ * Lookup the list of Taler transactions that were aggregated
  * into a wire transfer by the respective @a wtid.
  *
  * @param cls closure
@@ -3793,7 +3793,6 @@ postgres_lookup_wire_transfer (void *cls,
     struct GNUNET_TIME_Absolute exec_time;
     struct TALER_Amount coin_amount;
     struct TALER_Amount coin_fee;
-    struct TALER_Amount transfer_amount;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("h_contract", &h_contract),
       GNUNET_PQ_result_spec_auto_from_type ("h_wire", &h_wire),
@@ -3803,8 +3802,7 @@ postgres_lookup_wire_transfer (void *cls,
       GNUNET_PQ_result_spec_absolute_time ("execution_time", &exec_time),
       TALER_PQ_result_spec_amount ("coin_amount", &coin_amount),
       TALER_PQ_result_spec_amount ("coin_fee", &coin_fee),
-      TALER_PQ_result_spec_amount ("transfer_total", &transfer_amount),
-      GNUNET_PQ_result_spec_end
+       GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK != GNUNET_PQ_extract_result (result, rs, i))
     {
@@ -3819,8 +3817,7 @@ postgres_lookup_wire_transfer (void *cls,
         transaction_id,
         &coin_pub,
         &coin_amount,
-        &coin_fee,
-        &transfer_amount);
+        &coin_fee);
   }
   PQclear (result);
   return GNUNET_OK;

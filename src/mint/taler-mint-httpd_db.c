@@ -1566,12 +1566,6 @@ struct WtidTransactionContext
   struct TALER_Amount total;
 
   /**
-   * Value we find in the DB for the @e total; only valid if @e is_valid
-   * is #GNUNET_YES.
-   */
-  struct TALER_Amount db_transaction_value;
-
-  /**
    * Public key of the merchant, only valid if @e is_valid
    * is #GNUNET_YES.
    */
@@ -1612,7 +1606,6 @@ struct WtidTransactionContext
  * @param coin_pub which public key was this payment about
  * @param deposit_value amount contributed by this coin in total
  * @param deposit_fee deposit fee charged by mint for this coin
- * @param transaction_value total value of the wire transaction
  */
 static void
 handle_transaction_data (void *cls,
@@ -1622,8 +1615,7 @@ handle_transaction_data (void *cls,
                          uint64_t transaction_id,
                          const struct TALER_CoinSpendPublicKeyP *coin_pub,
                          const struct TALER_Amount *deposit_value,
-                         const struct TALER_Amount *deposit_fee,
-                         const struct TALER_Amount *transaction_value)
+                         const struct TALER_Amount *deposit_fee)
 {
   struct WtidTransactionContext *ctx = cls;
   struct TALER_Amount delta;
@@ -1634,7 +1626,6 @@ handle_transaction_data (void *cls,
   {
     ctx->merchant_pub = *merchant_pub;
     ctx->h_wire = *h_wire;
-    ctx->db_transaction_value = *transaction_value;
     ctx->is_valid = GNUNET_YES;
     if (GNUNET_OK !=
         TALER_amount_subtract (&ctx->total,
@@ -1653,9 +1644,7 @@ handle_transaction_data (void *cls,
                        sizeof (struct TALER_MerchantPublicKeyP))) ||
          (0 != memcmp (&ctx->h_wire,
                        h_wire,
-                       sizeof (struct GNUNET_HashCode))) ||
-         (0 != TALER_amount_cmp (transaction_value,
-                                 &ctx->db_transaction_value)) )
+                       sizeof (struct GNUNET_HashCode))) )
     {
       GNUNET_break (0);
       ctx->is_valid = GNUNET_SYSERR;
@@ -1741,15 +1730,8 @@ TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
     return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "wtid");
   }
-  if (0 != TALER_amount_cmp (&ctx.total,
-                             &ctx.db_transaction_value))
-  {
-    /* FIXME: this CAN actually differ, due to rounding
-       down. But we should still check that the values
-       do match after rounding 'total' down! */
-  }
   return TMH_RESPONSE_reply_wire_deposit_details (connection,
-                                                  &ctx.db_transaction_value,
+                                                  &ctx.total,
                                                   &ctx.merchant_pub,
                                                   &ctx.h_wire,
                                                   ctx.deposits);

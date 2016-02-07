@@ -606,7 +606,6 @@ typedef void
  * @param coin_pub which public key was this payment about
  * @param coin_value amount contributed by this coin in total (with fee)
  * @param coin_fee applicable fee for this coin
- * @param transfer_value total amount of the wire transfer
  */
 typedef void
 (*TALER_MINTDB_WireTransferDataCallback)(void *cls,
@@ -616,8 +615,7 @@ typedef void
                                          uint64_t transaction_id,
                                          const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                          const struct TALER_Amount *coin_value,
-                                         const struct TALER_Amount *coin_fee,
-                                         const struct TALER_Amount *transfer_value);
+                                         const struct TALER_Amount *coin_fee);
 
 
 /**

@@ -1392,8 +1392,7 @@ deposit_wtid_cb (void *cls,
                  json_t *json,
                  const struct TALER_WireTransferIdentifierRawP *wtid,
                  struct GNUNET_TIME_Absolute execution_time,
-                 const struct TALER_Amount *coin_contribution,
-                 const struct TALER_Amount *total_amount)
+                 const struct TALER_Amount *coin_contribution)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
@@ -1413,16 +1412,6 @@ deposit_wtid_cb (void *cls,
   {
   case MHD_HTTP_OK:
     cmd->details.deposit_wtid.wtid = *wtid;
-    if (0 != TALER_amount_cmp (total_amount,
-                               &cmd->details.deposit_wtid.total_amount_expected))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Total amount missmatch to command %s\n",
-                  cmd->label);
-      json_dumpf (json, stderr, 0);
-      fail (is);
-      return;
-    }
     break;
   default:
     break;
