@@ -98,7 +98,7 @@ TMH_VALIDATION_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
   {
     (void) GNUNET_asprintf (&lib_name,
                             "libtaler_plugin_wire_%s",
-                            lib_name);
+                            token);
     p = GNUNET_new (struct Plugin);
     p->type = GNUNET_strdup (token);
     p->plugin = GNUNET_PLUGIN_load (lib_name,
