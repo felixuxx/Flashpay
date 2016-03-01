@@ -26,7 +26,7 @@ taler-exchange-keyup -d test-exchange-home -m test-exchange-home/master.priv
 # Run Exchange HTTPD (in background)
 taler-exchange-httpd -d test-exchange-home &
 # Give HTTP time to start
-sleep 2
+sleep 5
 # Run test...
 cat test_taler_exchange_httpd.data | grep -v ^\# | awk '{ print "curl -d '\''" $2 "'\'' http://localhost:8081"$1 }' | bash
 # Stop HTTP server
