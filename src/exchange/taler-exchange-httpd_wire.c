@@ -104,7 +104,7 @@ TMH_WIRE_handler_wire_test (struct TMH_RequestHandler *rh,
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
-					     "exchange-wire-test",
+					     "wire-test",
 					     "REDIRECT_URL",
 					     &wire_test_redirect))
   {
@@ -168,7 +168,7 @@ TMH_WIRE_handler_wire_sepa (struct TMH_RequestHandler *rh,
   /* Fetch reply */
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                               "exchange-wire-sepa",
+                                               "wire-sepa",
                                                "SEPA_RESPONSE_FILE",
                                                &sepa_wire_file))
   {
