@@ -394,7 +394,7 @@ os_get_taler_path ()
   if (NULL != (ret = get_path_from_proc_maps ()))
     return ret;
   /* try path *first*, before /proc/exe, as /proc/exe can be wrong */
-  if (NULL != (ret = get_path_from_PATH ("taler-mint-httpd")))
+  if (NULL != (ret = get_path_from_PATH ("taler-exchange-httpd")))
     return ret;
   if (NULL != (ret = get_path_from_proc_exe ()))
     return ret;
@@ -409,7 +409,7 @@ os_get_taler_path ()
   if (NULL != (ret = get_path_from_NSGetExecutablePath ()))
     return ret;
 #endif
-  if (NULL != (ret = get_path_from_PATH ("taler-mint-httpd")))
+  if (NULL != (ret = get_path_from_PATH ("taler-exchange-httpd")))
     return ret;
   /* other attempts here */
   LOG (GNUNET_ERROR_TYPE_ERROR,

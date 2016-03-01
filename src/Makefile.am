@@ -3,16 +3,24 @@ AM_CPPFLAGS = -I$(top_srcdir)/src/include
 if HAVE_POSTGRESQL
   PQ_DIR = pq
 endif
+if HAVE_LIBCURL
+  BANK_LIB = bank-lib
+else
+if HAVE_LIBGNURL
+  BANK_LIB = bank-lib
+endif
+endif
+
 if WALLET_ONLY
 SUBDIRS = include util
 else
 
-SUBDIRS = include util $(PQ_DIR) bank-lib wire mintdb mint mint-tools
+SUBDIRS = include util $(PQ_DIR) $(BANK_LIB) wire exchangedb exchange exchange-tools
 if HAVE_LIBCURL
- SUBDIRS += mint-lib
+ SUBDIRS += exchange-lib
 else
 if HAVE_LIBGNURL
- SUBDIRS += mint-lib
+ SUBDIRS += exchange-lib
 endif
 endif
 

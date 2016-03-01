@@ -1,0 +1,81 @@
+# This Makefile.am is in the public domain
+AM_CPPFLAGS = -I$(top_srcdir)/src/include
+
+if USE_COVERAGE
+  AM_CFLAGS = --coverage -O0
+  XLIB = -lgcov
+endif
+
+bin_PROGRAMS = \
+  taler-auditor-sign \
+  taler-exchange-keyup \
+  taler-exchange-keycheck \
+  taler-exchange-reservemod \
+  taler-exchange-sepa \
+  taler-exchange-dbinit
+
+taler_exchange_keyup_SOURCES = \
+  taler-exchange-keyup.c
+taler_exchange_keyup_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  -lgnunetutil $(XLIB)
+taler_exchange_keyup_LDFLAGS = $(POSTGRESQL_LDFLAGS)
+
+taler_auditor_sign_SOURCES = \
+  taler-auditor-sign.c
+taler_auditor_sign_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  -lgnunetutil $(XLIB)
+
+
+taler_exchange_sepa_SOURCES = \
+  taler-exchange-sepa.c
+taler_exchange_sepa_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil -ljansson $(XLIB)
+taler_exchange_sepa_LDFLAGS = $(POSTGRESQL_LDFLAGS)
+
+taler_exchange_keycheck_SOURCES = \
+  taler-exchange-keycheck.c
+taler_exchange_keycheck_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  -lgnunetutil  $(XLIB)
+taler_exchange_keycheck_LDFLAGS = $(POSTGRESQL_LDFLAGS)
+
+taler_exchange_reservemod_SOURCES = \
+  taler-exchange-reservemod.c
+taler_exchange_reservemod_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  -lgnunetutil -ljansson $(XLIB)
+taler_exchange_reservemod_LDFLAGS = \
+  $(POSTGRESQL_LDFLAGS)
+taler_exchange_reservemod_CPPFLAGS = \
+  -I$(top_srcdir)/src/include \
+  -I$(top_srcdir)/src/pq/ \
+  $(POSTGRESQL_CPPFLAGS)
+
+taler_exchange_dbinit_SOURCES = \
+  taler-exchange-dbinit.c
+taler_exchange_dbinit_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  -lgnunetutil  $(XLIB)
+taler_exchange_dbinit_LDFLAGS = \
+  $(POSTGRESQL_LDFLAGS)
+taler_exchange_dbinit_CPPFLAGS = \
+  -I$(top_srcdir)/src/include \
+  -I$(top_srcdir)/src/pq/ \
+  $(POSTGRESQL_CPPFLAGS)

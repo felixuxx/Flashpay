@@ -17,7 +17,7 @@
 #
 #
 AC_PREREQ([2.69])
-AC_INIT([taler-mint], [0.0.0], [taler-bug@gnunet.org])
+AC_INIT([taler-exchange], [0.0.0], [taler-bug@gnunet.org])
 AC_CONFIG_SRCDIR([src/util/json.c])
 AC_CONFIG_HEADERS([taler_config.h])
 # support for non-recursive builds
@@ -359,9 +359,9 @@ AC_CONFIG_FILES([Makefile
                  src/pq/Makefile
                  src/bank-lib/Makefile
                  src/wire/Makefile
-                 src/mintdb/Makefile
-                 src/mint/Makefile
-                 src/mint-tools/Makefile
-                 src/mint-lib/Makefile
+                 src/exchangedb/Makefile
+                 src/exchange/Makefile
+                 src/exchange-tools/Makefile
+                 src/exchange-lib/Makefile
                  ])
 AC_OUTPUT

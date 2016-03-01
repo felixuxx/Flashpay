@@ -10,9 +10,9 @@ taler.conf \- Taler configuration file.
 
 The basic structure of the configuration file is the following.  The file is split into sections.  Every section begins with "[SECTIONNAME]" and contains a number of options of the form "OPTION=VALUE".  Empty lines and lines beginning with a "#" are treated as comments.
 
-.SH MINT OPTIONS
+.SH EXCHANGE OPTIONS
 
-The following options are from the "[mint]" section and used by most mint tools:
+The following options are from the "[exchange]" section and used by most exchange tools:
 
 .IP CURRENCY
     Name of the currency, i.e. "EUR" for Euro.
@@ -23,32 +23,32 @@ The following options are from the "[mint]" section and used by most mint tools:
 .IP PORT
     Port on which the HTTP server listens, i.e. 8080.
 .IP MASTER_PUBLIC_KEY
-    Crockford Base32-encoded master public key, public version of the mint\'s long\-time offline signing key.
+    Crockford Base32-encoded master public key, public version of the exchange\'s long\-time offline signing key.
 
 
 .SH WIRE transfer details
 
-The following options must be in section "[mint-wire-test]":
+The following options must be in section "[exchange-wire-test]":
 
 .IP REDIRECT_URL
     URL to redirect /wire/test to. Should contain a Web form the user can use to charge his wallet with coins in a "test" currency for testing. If this option is not provided, /wire/test will return "501 NOT IMPLEMENTED".
 
-The following options must be in section "[mint-wire-sepa]":
+The following options must be in section "[exchange-wire-sepa]":
 
 .IP SEPA_RESPONSE_FILE
-    Filename with the JSON body for the /wire/sepa response, signed using the mint's long-term offline master key.  If this option is not provided, /wire/test will return "501 NOT IMPLEMENTED".  Use "taler-mint-sepa" to create the SEPA_RESPONSE_FILE.
+    Filename with the JSON body for the /wire/sepa response, signed using the exchange's long-term offline master key.  If this option is not provided, /wire/test will return "501 NOT IMPLEMENTED".  Use "taler-exchange-sepa" to create the SEPA_RESPONSE_FILE.
 
 
 .SH Postgres database options
 
-The following options must be in section "[mintdb-postgres]":
+The following options must be in section "[exchangedb-postgres]":
 
 .IP DB_CONN_STR
     How to access the database, i.e. "postgres:///taler" to use the "taler" database. Testcases use "talercheck".
 
 .SH COIN OPTIONS
 
-The following options must be in sections starting with "[coin_]" and are used by taler\-mint\-keyup to create denomination keys:
+The following options must be in sections starting with "[coin_]" and are used by taler\-exchange\-keyup to create denomination keys:
 
 .IP VALUE
     Value of the coin, i.e. "EUR:1.50" for 1 Euro and 50 Cents (per coin).
@@ -69,7 +69,7 @@ The following options must be in sections starting with "[coin_]" and are used b
 
 .SH KEY OPTIONS
 
-The following options are from the "[mint_keys]" section and used by most taler\-mint\-keyup to create keys:
+The following options are from the "[exchange_keys]" section and used by most taler\-exchange\-keyup to create keys:
 
 .IP SIGNKEY_DURATION
     For how long is a signing key valid?
@@ -85,5 +85,5 @@ The following options are from the "[mint_keys]" section and used by most taler\
 Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
 
 .SH "SEE ALSO"
-\fBtaler\-mint\-httpd\fP(1), \fBtaler\-mint\-keyup\fP(1), \fBtaler\-mint\-reservemod\fP(1), \fBtaler\-mint\-dbinit\fP(1), \fBtaler\-mint\-sepa(1)
+\fBtaler\-exchange\-httpd\fP(1), \fBtaler\-exchange\-keyup\fP(1), \fBtaler\-exchange\-reservemod\fP(1), \fBtaler\-exchange\-dbinit\fP(1), \fBtaler\-exchange\-sepa(1)
 

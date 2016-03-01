@@ -553,12 +553,12 @@ libtaler_plugin_wire_test_init (void *cls)
   tc = GNUNET_new (struct TestClosure);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "mint",
+                                             "exchange",
                                              "CURRENCY",
                                              &tc->currency))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "mint",
+                               "exchange",
                                "CURRENCY");
     GNUNET_free (uri);
     GNUNET_free (tc);

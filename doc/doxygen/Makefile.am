@@ -5,14 +5,14 @@ all:
 "\tmake full - full documentation with dependency graphs (slow)\n" \
 "\tmake fast - fast mode without dependency graphs"
 
-full: taler-mint.doxy
+full: taler-exchange.doxy
 	doxygen $<
 
-fast: taler-mint.doxy
+fast: taler-exchange.doxy
 	sed 's/\(HAVE_DOT.*=\).*/\1 NO/' $< | doxygen -
 
 clean:
 	rm -rf html
 
 
-EXTRA_DIST = taler-mint.doxy
+EXTRA_DIST = taler-exchange.doxy

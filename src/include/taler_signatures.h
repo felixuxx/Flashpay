@@ -54,62 +54,62 @@
 #define TALER_IDLE_RESERVE_EXPIRATION_TIME GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_YEARS, 5)
 
 /*********************************************/
-/* Mint offline signatures (with master key) */
+/* Exchange offline signatures (with master key) */
 /*********************************************/
 
 /**
- * Purpose for signing public keys signed by the mint master key.
+ * Purpose for signing public keys signed by the exchange master key.
  */
 #define TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY 1024
 
 /**
- * Purpose for denomination keys signed by the mint master key.
+ * Purpose for denomination keys signed by the exchange master key.
  */
 #define TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY 1025
 
 /**
- * Signature where the Mint confirms its SEPA details in
+ * Signature where the Exchange confirms its SEPA details in
  * the /wire/sepa response.
  */
 #define TALER_SIGNATURE_MASTER_SEPA_DETAILS 1026
 
 
 /*********************************************/
-/* Mint online signatures (with signing key) */
+/* Exchange online signatures (with signing key) */
 /*********************************************/
 
 /**
- * Purpose for the state of a reserve, signed by the mint's signing
+ * Purpose for the state of a reserve, signed by the exchange's signing
  * key.
  */
-#define TALER_SIGNATURE_MINT_RESERVE_STATUS 1032
+#define TALER_SIGNATURE_EXCHANGE_RESERVE_STATUS 1032
 
 /**
- * Signature where the Mint confirms a deposit request.
+ * Signature where the Exchange confirms a deposit request.
  */
-#define TALER_SIGNATURE_MINT_CONFIRM_DEPOSIT 1033
+#define TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT 1033
 
 /**
- * Signature where the mint (current signing key) confirms the
+ * Signature where the exchange (current signing key) confirms the
  * no-reveal index for cut-and-choose and the validity of the melted
  * coins.
  */
-#define TALER_SIGNATURE_MINT_CONFIRM_MELT 1034
+#define TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT 1034
 
 /**
- * Signature where the Mint confirms the full /keys response set.
+ * Signature where the Exchange confirms the full /keys response set.
  */
-#define TALER_SIGNATURE_MINT_KEY_SET 1035
+#define TALER_SIGNATURE_EXCHANGE_KEY_SET 1035
 
 /**
- * Signature where the Mint confirms the /wire response.
+ * Signature where the Exchange confirms the /wire response.
  */
-#define TALER_SIGNATURE_MINT_WIRE_TYPES 1036
+#define TALER_SIGNATURE_EXCHANGE_WIRE_TYPES 1036
 
 /**
- * Signature where the Mint confirms the /deposit/wtid response.
+ * Signature where the Exchange confirms the /deposit/wtid response.
  */
-#define TALER_SIGNATURE_MINT_CONFIRM_WIRE 1036
+#define TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE 1036
 
 
 /*********************/
@@ -118,9 +118,9 @@
 
 /**
  * Signature where the auditor confirms that he is
- * aware of certain denomination keys from the mint.
+ * aware of certain denomination keys from the exchange.
  */
-#define TALER_SIGNATURE_AUDITOR_MINT_KEYS 1064
+#define TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS 1064
 
 
 /***********************/
@@ -176,7 +176,7 @@
 /**
  * EdDSA test signature.
  */
-#define TALER_SIGNATURE_MINT_TEST_EDDSA 1303
+#define TALER_SIGNATURE_EXCHANGE_TEST_EDDSA 1303
 
 
 
@@ -202,7 +202,7 @@ struct TALER_WithdrawRequestPS
   struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
-   * Value of the coin being minted (matching the denomination key)
+   * Value of the coin being exchangeed (matching the denomination key)
    * plus the transaction fee.  We include this in what is being
    * signed so that we can verify a reserve's remaining total balance
    * without needing to access the respective denomination key
@@ -211,14 +211,14 @@ struct TALER_WithdrawRequestPS
   struct TALER_AmountNBO amount_with_fee;
 
   /**
-   * Withdrawl fee charged by the mint.  This must match the Mint's
+   * Withdrawl fee charged by the exchange.  This must match the Exchange's
    * denomination key's withdrawl fee.  If the client puts in an
    * invalid withdrawl fee (too high or too low) that does not match
-   * the Mint's denomination key, the withdraw operation is invalid
-   * and will be rejected by the mint.  The @e amount_with_fee minus
+   * the Exchange's denomination key, the withdraw operation is invalid
+   * and will be rejected by the exchange.  The @e amount_with_fee minus
    * the @e withdraw_fee is must match the value of the generated
    * coin.  We include this in what is being signed so that we can
-   * verify a mint's accounting without needing to access the
+   * verify a exchange's accounting without needing to access the
    * respective denomination key information each time.
    */
   struct TALER_AmountNBO withdraw_fee;
@@ -229,7 +229,7 @@ struct TALER_WithdrawRequestPS
   struct GNUNET_HashCode h_denomination_pub GNUNET_PACKED;
 
   /**
-   * Hash of the (blinded) message to be signed by the Mint.
+   * Hash of the (blinded) message to be signed by the Exchange.
    */
   struct GNUNET_HashCode h_coin_envelope GNUNET_PACKED;
 };
@@ -260,12 +260,12 @@ struct TALER_DepositRequestPS
   /**
    * Time when this request was generated.  Used, for example, to
    * assess when (roughly) the income was achieved for tax purposes.
-   * Note that the Mint will only check that the timestamp is not "too
+   * Note that the Exchange will only check that the timestamp is not "too
    * far" into the future (i.e. several days).  The fact that the
    * timestamp falls within the validity period of the coin's
    * denomination key is irrelevant for the validity of the deposit
    * request, as obviously the customer and merchant could conspire to
-   * set any timestamp.  Also, the Mint must accept very old deposit
+   * set any timestamp.  Also, the Exchange must accept very old deposit
    * requests, as the merchant might have been unable to transmit the
    * deposit request in a timely fashion (so back-dating is not
    * prevented).
@@ -293,17 +293,17 @@ struct TALER_DepositRequestPS
 
   /**
    * Amount to be deposited, including deposit fee charged by the
-   * mint.  This is the total amount that the coin's value at the mint
+   * exchange.  This is the total amount that the coin's value at the exchange
    * will be reduced by.
    */
   struct TALER_AmountNBO amount_with_fee;
 
   /**
-   * Depositing fee charged by the mint.  This must match the Mint's
+   * Depositing fee charged by the exchange.  This must match the Exchange's
    * denomination key's depositing fee.  If the client puts in an
    * invalid deposit fee (too high or too low) that does not match the
-   * Mint's denomination key, the deposit operation is invalid and
-   * will be rejected by the mint.  The @e amount_with_fee minus the
+   * Exchange's denomination key, the deposit operation is invalid and
+   * will be rejected by the exchange.  The @e amount_with_fee minus the
    * @e deposit_fee is the amount that will be transferred to the
    * account identified by @e h_wire.
    */
@@ -317,7 +317,7 @@ struct TALER_DepositRequestPS
 
   /**
    * The coin's public key.  This is the value that must have been
-   * signed (blindly) by the Mint.  The deposit request is to be
+   * signed (blindly) by the Exchange.  The deposit request is to be
    * signed by the corresponding private key (using EdDSA).
    */
   struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -327,13 +327,13 @@ struct TALER_DepositRequestPS
 
 /**
  * @brief Format used to generate the signature on a confirmation
- * from the mint that a deposit request succeeded.
+ * from the exchange that a deposit request succeeded.
  */
 struct TALER_DepositConfirmationPS
 {
   /**
-   * Purpose must be #TALER_SIGNATURE_MINT_CONFIRM_DEPOSIT.  Signed
-   * by a `struct TALER_MintPublicKeyP` using EdDSA.
+   * Purpose must be #TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT.  Signed
+   * by a `struct TALER_ExchangePublicKeyP` using EdDSA.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -362,7 +362,7 @@ struct TALER_DepositConfirmationPS
    * How much time does the @e merchant have to issue a refund
    * request?  Zero if refunds are not allowed.  After this time, the
    * coin cannot be refunded.  Note that the wire transfer will not be
-   * performed by the mint until the refund deadline.  This value
+   * performed by the exchange until the refund deadline.  This value
    * is taken from the original deposit request.
    */
   struct GNUNET_TIME_AbsoluteNBO refund_deadline;
@@ -375,7 +375,7 @@ struct TALER_DepositConfirmationPS
 
   /**
    * The coin's public key.  This is the value that must have been
-   * signed (blindly) by the Mint.  The deposit request is to be
+   * signed (blindly) by the Exchange.  The deposit request is to be
    * signed by the corresponding private key (using EdDSA).
    */
   struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -417,11 +417,11 @@ struct TALER_RefreshMeltCoinAffirmationPS
   struct TALER_AmountNBO amount_with_fee;
 
   /**
-   * Melting fee charged by the mint.  This must match the Mint's
+   * Melting fee charged by the exchange.  This must match the Exchange's
    * denomination key's melting fee.  If the client puts in an invalid
-   * melting fee (too high or too low) that does not match the Mint's
+   * melting fee (too high or too low) that does not match the Exchange's
    * denomination key, the melting operation is invalid and will be
-   * rejected by the mint.  The @e amount_with_fee minus the @e
+   * rejected by the exchange.  The @e amount_with_fee minus the @e
    * melt_fee is the amount that will be credited to the melting
    * session.
    */
@@ -429,7 +429,7 @@ struct TALER_RefreshMeltCoinAffirmationPS
 
   /**
    * The coin's public key.  This is the value that must have been
-   * signed (blindly) by the Mint.  The deposit request is to be
+   * signed (blindly) by the Exchange.  The deposit request is to be
    * signed by the corresponding private key (using EdDSA).
    */
   struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -437,16 +437,16 @@ struct TALER_RefreshMeltCoinAffirmationPS
 
 
 /**
- * @brief Format of the block signed by the Mint in response to a successful
- * "/refresh/melt" request.  Hereby the mint affirms that all of the
- * coins were successfully melted.  This also commits the mint to a
+ * @brief Format of the block signed by the Exchange in response to a successful
+ * "/refresh/melt" request.  Hereby the exchange affirms that all of the
+ * coins were successfully melted.  This also commits the exchange to a
  * particular index to not be revealed during the refresh.
  */
 struct TALER_RefreshMeltConfirmationPS
 {
   /**
-   * Purpose is #TALER_SIGNATURE_MINT_CONFIRM_MELT.   Signed
-   * by a `struct TALER_MintPublicKeyP` using EdDSA.
+   * Purpose is #TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT.   Signed
+   * by a `struct TALER_ExchangePublicKeyP` using EdDSA.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -469,14 +469,14 @@ struct TALER_RefreshMeltConfirmationPS
 
 
 /**
- * @brief Information about a signing key of the mint.  Signing keys are used
- * to sign mint messages other than coins, i.e. to confirm that a
+ * @brief Information about a signing key of the exchange.  Signing keys are used
+ * to sign exchange messages other than coins, i.e. to confirm that a
  * deposit was successful or that a refresh was accepted.
  */
-struct TALER_MintSigningKeyValidityPS
+struct TALER_ExchangeSigningKeyValidityPS
 {
   /**
-   * Signature over the signing key (by the master key of the mint).
+   * Signature over the signing key (by the master key of the exchange).
    *
    * FIXME: should be moved outside of the "PS" struct, this is ugly.
    * (and makes this struct different from all of the others)
@@ -489,8 +489,8 @@ struct TALER_MintSigningKeyValidityPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Master public key of the mint corresponding to @e signature.
-   * This is the long-term offline master key of the mint.
+   * Master public key of the exchange corresponding to @e signature.
+   * This is the long-term offline master key of the exchange.
    */
   struct TALER_MasterPublicKeyP master_public_key;
 
@@ -501,7 +501,7 @@ struct TALER_MintSigningKeyValidityPS
 
   /**
    * When does this signing key expire? Note: This is currently when
-   * the Mint will definitively stop using it.  Signatures made with
+   * the Exchange will definitively stop using it.  Signatures made with
    * the key remain valid until @e end.  When checking validity periods,
    * clients should allow for some overlap between keys and tolerate
    * the use of either key during the overlap time (due to the
@@ -512,31 +512,31 @@ struct TALER_MintSigningKeyValidityPS
   /**
    * When do signatures with this signing key become invalid?  After
    * this point, these signatures cannot be used in (legal) disputes
-   * anymore, as the Mint is then allowed to destroy its side of the
+   * anymore, as the Exchange is then allowed to destroy its side of the
    * evidence.  @e end is expected to be significantly larger than @e
    * expire (by a year or more).
    */
   struct GNUNET_TIME_AbsoluteNBO end;
 
   /**
-   * The public online signing key that the mint will use
+   * The public online signing key that the exchange will use
    * between @e start and @e expire.
    */
-  struct TALER_MintPublicKeyP signkey_pub;
+  struct TALER_ExchangePublicKeyP signkey_pub;
 };
 
 
 /**
- * @brief Signature made by the mint over the full set of keys, used
- * to detect cheating mints that give out different sets to
+ * @brief Signature made by the exchange over the full set of keys, used
+ * to detect cheating exchanges that give out different sets to
  * different users.
  */
-struct TALER_MintKeySetPS
+struct TALER_ExchangeKeySetPS
 {
 
   /**
-   * Purpose is #TALER_SIGNATURE_MINT_KEY_SET.   Signed
-   * by a `struct TALER_MintPublicKeyP` using EdDSA.
+   * Purpose is #TALER_SIGNATURE_EXCHANGE_KEY_SET.   Signed
+   * by a `struct TALER_ExchangePublicKeyP` using EdDSA.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -565,7 +565,7 @@ struct TALER_DenominationKeyValidityPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * The long-term offline master key of the mint that was
+   * The long-term offline master key of the exchange that was
    * used to create @e signature.
    */
   struct TALER_MasterPublicKeyP master;
@@ -576,14 +576,14 @@ struct TALER_DenominationKeyValidityPS
   struct GNUNET_TIME_AbsoluteNBO start;
 
   /**
-   * The mint will sign fresh coins between @e start and this time.
+   * The exchange will sign fresh coins between @e start and this time.
    * @e expire_withdraw will be somewhat larger than @e start to
    * ensure a sufficiently large anonymity set, while also allowing
-   * the Mint to limit the financial damage in case of a key being
-   * compromised.  Thus, mints with low volume are expected to have a
-   * longer withdraw period (@e expire_withdraw - @e start) than mints
+   * the Exchange to limit the financial damage in case of a key being
+   * compromised.  Thus, exchanges with low volume are expected to have a
+   * longer withdraw period (@e expire_withdraw - @e start) than exchanges
    * with high transaction volume.  The period may also differ between
-   * types of coins.  A mint may also have a few denomination keys
+   * types of coins.  A exchange may also have a few denomination keys
    * with the same value with overlapping validity periods, to address
    * issues such as clock skew.
    */
@@ -592,7 +592,7 @@ struct TALER_DenominationKeyValidityPS
   /**
    * Coins signed with the denomination key must be spent or refreshed
    * between @e start and this expiration time.  After this time, the
-   * mint will refuse transactions involving this key as it will
+   * exchange will refuse transactions involving this key as it will
    * "drop" the table with double-spending information (shortly after)
    * this time.  Note that wallets should refresh coins significantly
    * before this time to be on the safe side.  @e expire_spend must be
@@ -604,7 +604,7 @@ struct TALER_DenominationKeyValidityPS
   /**
    * When do signatures with this denomination key become invalid?
    * After this point, these signatures cannot be used in (legal)
-   * disputes anymore, as the Mint is then allowed to destroy its side
+   * disputes anymore, as the Exchange is then allowed to destroy its side
    * of the evidence.  @e expire_legal is expected to be significantly
    * larger than @e expire_spend (by a year or more).
    */
@@ -616,19 +616,19 @@ struct TALER_DenominationKeyValidityPS
   struct TALER_AmountNBO value;
 
   /**
-   * The fee the mint charges when a coin of this type is withdrawn.
+   * The fee the exchange charges when a coin of this type is withdrawn.
    * (can be zero).
    */
   struct TALER_AmountNBO fee_withdraw;
 
   /**
-   * The fee the mint charges when a coin of this type is deposited.
+   * The fee the exchange charges when a coin of this type is deposited.
    * (can be zero).
    */
   struct TALER_AmountNBO fee_deposit;
 
   /**
-   * The fee the mint charges when a coin of this type is refreshed.
+   * The fee the exchange charges when a coin of this type is refreshed.
    * (can be zero).
    */
   struct TALER_AmountNBO fee_refresh;
@@ -645,18 +645,18 @@ struct TALER_DenominationKeyValidityPS
 /**
  * @brief Information signed by an auditor affirming
  * the master public key and the denomination keys
- * of a mint.
+ * of a exchange.
  */
-struct TALER_MintKeyValidityPS
+struct TALER_ExchangeKeyValidityPS
 {
 
   /**
-   * Purpose is #TALER_SIGNATURE_AUDITOR_MINT_KEYS.
+   * Purpose is #TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * The long-term offline master key of the mint, affirmed by the
+   * The long-term offline master key of the exchange, affirmed by the
    * auditor.
    */
   struct TALER_MasterPublicKeyP master;
@@ -667,14 +667,14 @@ struct TALER_MintKeyValidityPS
   struct GNUNET_TIME_AbsoluteNBO start;
 
   /**
-   * The mint will sign fresh coins between @e start and this time.
+   * The exchange will sign fresh coins between @e start and this time.
    * @e expire_withdraw will be somewhat larger than @e start to
    * ensure a sufficiently large anonymity set, while also allowing
-   * the Mint to limit the financial damage in case of a key being
-   * compromised.  Thus, mints with low volume are expected to have a
-   * longer withdraw period (@e expire_withdraw - @e start) than mints
+   * the Exchange to limit the financial damage in case of a key being
+   * compromised.  Thus, exchanges with low volume are expected to have a
+   * longer withdraw period (@e expire_withdraw - @e start) than exchanges
    * with high transaction volume.  The period may also differ between
-   * types of coins.  A mint may also have a few denomination keys
+   * types of coins.  A exchange may also have a few denomination keys
    * with the same value with overlapping validity periods, to address
    * issues such as clock skew.
    */
@@ -683,7 +683,7 @@ struct TALER_MintKeyValidityPS
   /**
    * Coins signed with the denomination key must be spent or refreshed
    * between @e start and this expiration time.  After this time, the
-   * mint will refuse transactions involving this key as it will
+   * exchange will refuse transactions involving this key as it will
    * "drop" the table with double-spending information (shortly after)
    * this time.  Note that wallets should refresh coins significantly
    * before this time to be on the safe side.  @e expire_spend must be
@@ -695,7 +695,7 @@ struct TALER_MintKeyValidityPS
   /**
    * When do signatures with this denomination key become invalid?
    * After this point, these signatures cannot be used in (legal)
-   * disputes anymore, as the Mint is then allowed to destroy its side
+   * disputes anymore, as the Exchange is then allowed to destroy its side
    * of the evidence.  @e expire_legal is expected to be significantly
    * larger than @e expire_spend (by a year or more).
    */
@@ -707,19 +707,19 @@ struct TALER_MintKeyValidityPS
   struct TALER_AmountNBO value;
 
   /**
-   * The fee the mint charges when a coin of this type is withdrawn.
+   * The fee the exchange charges when a coin of this type is withdrawn.
    * (can be zero).
    */
   struct TALER_AmountNBO fee_withdraw;
 
   /**
-   * The fee the mint charges when a coin of this type is deposited.
+   * The fee the exchange charges when a coin of this type is deposited.
    * (can be zero).
    */
   struct TALER_AmountNBO fee_deposit;
 
   /**
-   * The fee the mint charges when a coin of this type is refreshed.
+   * The fee the exchange charges when a coin of this type is refreshed.
    * (can be zero).
    */
   struct TALER_AmountNBO fee_refresh;
@@ -737,7 +737,7 @@ struct TALER_MintKeyValidityPS
  * @brief For each (old) coin being melted, we have a `struct
  * RefreshCommitLinkP` that allows the user to find the shared secret
  * to decrypt the respective refresh links for the new coins in the
- * `struct TALER_MINTDB_RefreshCommitCoin`.
+ * `struct TALER_EXCHANGEDB_RefreshCommitCoin`.
  *
  * Part of the construction of the refresh session's hash and
  * thus of what is signed there.
@@ -759,8 +759,8 @@ struct TALER_RefreshCommitLinkP
 
 
 /**
- * @brief Information signed by the mint's master
- * key affirming the SEPA details for the mint.
+ * @brief Information signed by the exchange's master
+ * key affirming the SEPA details for the exchange.
  */
 struct TALER_MasterWireSepaDetailsPS
 {
@@ -780,19 +780,19 @@ struct TALER_MasterWireSepaDetailsPS
 
 
 /**
- * @brief Information signed by a mint's online signing key affirming
- * the wire formats supported by the mint.
+ * @brief Information signed by a exchange's online signing key affirming
+ * the wire formats supported by the exchange.
  */
-struct TALER_MintWireSupportMethodsPS
+struct TALER_ExchangeWireSupportMethodsPS
 {
 
   /**
-   * Purpose is #TALER_SIGNATURE_MINT_WIRE_TYPES.
+   * Purpose is #TALER_SIGNATURE_EXCHANGE_WIRE_TYPES.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Hash over the various wire formats supported by this mint
+   * Hash over the various wire formats supported by this exchange
    * (all as 0-terminated strings).
    */
   struct GNUNET_HashCode h_wire_types GNUNET_PACKED;
@@ -841,7 +841,7 @@ struct TALER_DepositTrackPS
 
   /**
    * The coin's public key.  This is the value that must have been
-   * signed (blindly) by the Mint.
+   * signed (blindly) by the Exchange.
    */
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
@@ -896,14 +896,14 @@ struct TALER_ContractPS
 
 
 /**
- * Details affirmed by the mint about a wire transfer the mint
+ * Details affirmed by the exchange about a wire transfer the exchange
  * claims to have done with respect to a deposit operation.
  */
 struct TALER_ConfirmWirePS
 {
   /**
    * Purpose header for the signature over the contract with
-   * purpose #TALER_SIGNATURE_MINT_CONFIRM_WIRE.
+   * purpose #TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -924,7 +924,7 @@ struct TALER_ConfirmWirePS
 
   /**
    * The coin's public key.  This is the value that must have been
-   * signed (blindly) by the Mint.
+   * signed (blindly) by the Exchange.
    */
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
@@ -941,7 +941,7 @@ struct TALER_ConfirmWirePS
   uint64_t transaction_id GNUNET_PACKED;
 
   /**
-   * When did the mint execute this transfer? Note that the
+   * When did the exchange execute this transfer? Note that the
    * timestamp may not be exactly the same on the wire, i.e.
    * because the wire has a different timezone or resolution.
    */

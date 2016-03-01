@@ -501,12 +501,12 @@ libtaler_plugin_wire_sepa_init (void *cls)
   sc = GNUNET_new (struct SepaClosure);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "mint",
+                                             "exchange",
                                              "CURRENCY",
                                              &sc->currency))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "mint",
+                               "exchange",
                                "CURRENCY");
     GNUNET_free (sc);
     return NULL;

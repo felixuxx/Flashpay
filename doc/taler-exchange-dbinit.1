@@ -1,0 +1,29 @@
+.TH TALER\-EXCHANGE\-DBINIT 1 "Apr 22, 2015" "GNU Taler"
+
+.SH NAME
+taler\-exchange\-dbinit \- Initialize Taler exchange database.
+
+.SH SYNOPSIS
+.B taler\-exchange\-dbinit
+.RI [ options ]
+.br
+
+.SH DESCRIPTION
+\fBtaler\-exchange\-dbinit\fP is a command line tool to initialize the Taler exchange database.  It creates the necessary tables and indices for the Taler exchange to operate.
+
+.SH OPTIONS
+.B
+.IP "\-d DIRNAME,  \-\-exchange-dir=DIRNAME"
+Use the configuration and other resources for the exchange to operate from DIRNAME.
+.B
+.IP "\-h, \-\-help"
+Print short help on options.
+.B
+.IP "\-v, \-\-version"
+Print version information.
+
+.SH BUGS
+Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
+
+.SH "SEE ALSO"
+\fBtaler\-exchange\-httpd\fP(1), \fBtaler\-exchange\-keyup\fP(1), \fBtaler\-exchange\-reservemod\fP(1), \fBtaler.conf\fP(5)
