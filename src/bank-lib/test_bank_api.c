@@ -103,9 +103,14 @@ struct Command
       const char *amount;
 
       /**
-       * Account number.
+       * Credited account number.
        */
-      uint64_t account_no;
+      uint64_t credit_account_no;
+
+      /**
+       * Debited account number.
+       */
+      uint64_t debit_account_no;
 
       /**
        * Wire transfer identifier to use.  Initialized to
@@ -310,7 +315,8 @@ interpreter_run (void *cls,
       = TALER_BANK_admin_add_incoming (ctx,
                                        &cmd->details.admin_add_incoming.wtid,
                                        &amount,
-                                       cmd->details.admin_add_incoming.account_no,
+                                       cmd->details.admin_add_incoming.debit_account_no,
+                                       cmd->details.admin_add_incoming.credit_account_no,
                                        &add_incoming_cb,
                                        is);
     if (NULL == cmd->details.admin_add_incoming.aih)
@@ -470,7 +476,8 @@ run (void *cls,
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "deposit-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.account_no = 42,
+      .details.admin_add_incoming.credit_account_no = 1,
+      .details.admin_add_incoming.debit_account_no = 2,
       .details.admin_add_incoming.amount = "EUR:5.01" },
 
     { .oc = OC_END }

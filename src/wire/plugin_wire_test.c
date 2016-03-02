@@ -44,6 +44,11 @@ struct TestClosure
   char *currency;
 
   /**
+   * Number of the account that the exchange has at the bank.
+   */
+  uint64_t exchange_account_no;
+
+  /**
    * Handle to the bank task, or NULL.
    */
   struct GNUNET_SCHEDULER_Task *bt;
@@ -482,7 +487,7 @@ test_execute_wire_transfer (void *cls,
     GNUNET_break (0);
     return NULL;
   }
-  
+
   eh = GNUNET_new (struct TALER_WIRE_ExecuteHandle);
   eh->cc = cc;
   eh->cc_cls = cc_cls;
@@ -551,19 +556,6 @@ libtaler_plugin_wire_test_init (void *cls)
     return NULL;
   }
   tc = GNUNET_new (struct TestClosure);
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "mint",
-                                             "CURRENCY",
-                                             &tc->currency))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "mint",
-                               "CURRENCY");
-    GNUNET_free (uri);
-    GNUNET_free (tc);
-    return NULL;
-  }
   tc->bank = TALER_BANK_init (uri);
   if (NULL == tc->bank)
   {
