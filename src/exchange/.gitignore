@@ -1,0 +1,6 @@
+taler-exchange-dbinit
+taler-exchange-keycheck
+taler-exchange-keyup
+taler-exchange-pursemod
+taler-exchange-reservemod
+taler-exchange-httpd

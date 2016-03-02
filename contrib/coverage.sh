@@ -1,5 +1,5 @@
 #!/bin/sh
-# Run from 'taler-mint/' top-level directory to generate
+# Run from 'taler-exchange/' top-level directory to generate
 # code coverage data.
 TOP=`pwd`
 mkdir -p doc/coverage/

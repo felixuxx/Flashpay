@@ -1,0 +1,41 @@
+.TH TALER\-EXCHANGE\-SEPA 1 "Apr 22, 2015" "GNU Taler"
+
+.SH NAME
+taler\-exchange\-sepa \- Create the master-key signed response to /wire/sepa.
+
+.SH SYNOPSIS
+.B taler\-exchange\-sepa
+.RI [ options ]
+.br
+
+.SH DESCRIPTION
+\fBtaler\-exchange\-sepa\fP is used to create the exchange's reply to a /wire/sepa request.  It converts the bank details into the appropriate signed response.  This needs to be done using the long-term offline master key.
+
+.SH OPTIONS
+.B
+.IP "\-b BIC,  \-\-bic=BIC"
+Specifies the BIC code to use.
+.B
+.IP "\-i IBAN,  \-\-iban=IBAN"
+Specifies the IBAN to use.
+.B
+.IP "\-n NAME,  \-\-name=NAME"
+Specifies the name of the account holder.
+.B
+.IP "\-m MASTERKEYFILE,  \-\-master=MASTERKEYFILE"
+Specifies the name of the file containing the exchange's master key.
+.B
+.IP "\-o FILENAME,  \-\-output=FILENAME"
+Where to write the SEPA_RESPONSE_FILE.
+.B
+.IP "\-h, \-\-help"
+Print short help on options.
+.B
+.IP "\-v, \-\-version"
+Print version information.
+
+.SH BUGS
+Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
+
+.SH "SEE ALSO"
+\fBtaler\-exchange\-httpd\fP(1), \fBtaler.conf\fP(5)

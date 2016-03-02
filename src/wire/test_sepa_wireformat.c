@@ -77,7 +77,7 @@ main(int argc,
                     NULL);
   cfg = GNUNET_CONFIGURATION_create ();
   GNUNET_CONFIGURATION_set_value_string (cfg,
-                                         "mint",
+                                         "exchange",
                                          "currency",
                                          "EUR");
   plugin = TALER_WIRE_plugin_load (cfg,

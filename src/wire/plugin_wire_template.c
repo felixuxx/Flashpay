@@ -197,12 +197,12 @@ libtaler_plugin_wire_template_init (void *cls)
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "mint",
+                                             "exchange",
                                              "CURRENCY",
                                              &tc->currency))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "mint",
+                               "exchange",
                                "CURRENCY");
     GNUNET_free (tc->bank_uri);
     GNUNET_free (tc);

@@ -421,7 +421,7 @@ TALER_json_validate_wireformat (const char **allowed,
   if (NULL == allowed[i])
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Wireformat `%s' does not match mint's allowed formats\n",
+                "Wireformat `%s' does not match exchange's allowed formats\n",
                 stype);
     return GNUNET_NO;
   }

@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file mint-lib/mint_api_json.h
+ * @file exchange-lib/exchange_api_json.h
  * @brief functions to parse incoming requests (JSON snippets)
  * @author Florian Dold
  * @author Benedikt Mueller
@@ -349,4 +349,4 @@ BAJ_spec_rsa_signature (const char *name,
 
 
 
-/* end of mint_api_json.h */
+/* end of exchange_api_json.h */

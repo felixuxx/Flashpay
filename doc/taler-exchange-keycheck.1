@@ -1,0 +1,29 @@
+.TH TALER\-EXCHANGE\-KEYCHECK 1 "Apr 22, 2015" "GNU Taler"
+
+.SH NAME
+taler\-exchange\-keycheck \- Check validity of Taler signing and denomination keys.
+
+.SH SYNOPSIS
+.B taler\-exchange\-keycheck
+.RI [ options ]
+.br
+
+.SH DESCRIPTION
+\fBtaler\-exchange\-keycheck\fP can be used to check if the signing and denomination keys in the operation directory are well-formed. This can be useful after importing fresh keys from the offline system to ensure that the files are correct.
+
+.SH OPTIONS
+.B
+.IP "\-d DIRNAME,  \-\-exchange-dir=DIRNAME"
+Use the configuration and other resources for the exchange to operate from DIRNAME.
+.B
+.IP "\-h, \-\-help"
+Print short help on options.
+.B
+.IP "\-v, \-\-version"
+Print version information.
+
+.SH BUGS
+Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
+
+.SH "SEE ALSO"
+\fBtaler\-exchange\-httpd\fP(1), \fBtaler\-exchange\-keyup\fP(1), \fBtaler\-exchange\-dbinit\fP(1), \fBtaler.conf\fP(5)

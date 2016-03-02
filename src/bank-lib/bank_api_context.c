@@ -390,7 +390,7 @@ TALER_BANK_fini (struct TALER_BANK_Context *ctx)
 /**
  * Obtain the URL to use for an API request.
  *
- * @param h the mint handle to query
+ * @param h the exchange handle to query
  * @param path Taler API path (i.e. "/reserve/withdraw")
  * @return the full URI to use with cURL
  */

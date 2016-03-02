@@ -6,7 +6,7 @@ What is Taler?
 
 Taler is an electronic payment system providing the ability to pay
 anonymously using digital cash.  Taler consists of a network protocol
-definition (using a RESTful API over HTTP), a Mint (which creates
+definition (using a RESTful API over HTTP), a Exchange (which creates
 digital coins), a Wallet (which allows customers to manage, store and
 spend digital coins), and a Merchant website which allows customers to
 spend their digital coins.  Naturally, each Merchant is different, but
@@ -19,7 +19,7 @@ is free software and a GNU package (http://www.gnu.org/).
 
 This is not even a release yet, but some raw development prototype
 that does not work yet.  This package also only includes the Taler
-mint, not the other components of the system.
+exchange, not the other components of the system.
 
 Documentation about Taler can be found at http://taler.net/.
 
@@ -27,7 +27,7 @@ Documentation about Taler can be found at http://taler.net/.
 Dependencies:
 =============
 
-These are the direct dependencies for running a Taler mint:
+These are the direct dependencies for running a Taler exchange:
 
 - GNUnet            >= 0.10.2
 - GNU libmicrohttpd >= 0.9.38
@@ -48,50 +48,50 @@ src/util/
 src/pq/
   -- Postgres-specific utility functions
 
-src/mintdb/
-  -- Mint database backend (with DB-specific plugins)
+src/exchangedb/
+  -- Exchange database backend (with DB-specific plugins)
 
-src/mint/
-  -- taler mint server
+src/exchange/
+  -- taler exchange server
 
-src/mint-tools/
-  -- taler mint helper programs
+src/exchange-tools/
+  -- taler exchange helper programs
 
-src/mint-lib/
-  -- libtalermint: C API to issue HTTP requests to mint
+src/exchange-lib/
+  -- libtalerexchange: C API to issue HTTP requests to exchange
 
 
 Getting Started
 ==============
 
-The following steps illustrate how to set up a mint HTTP server.
-They take as a stub for configuring the mint the content of 'contrib/mint-template/config/'.
+The following steps illustrate how to set up a exchange HTTP server.
+They take as a stub for configuring the exchange the content of 'contrib/exchange-template/config/'.
 
 1) Create a 'test/' directory and copy the stubs in it:
 
 mkdir -p test/config/
-cp mint/contrib/mint-template/config/* test/config/
+cp exchange/contrib/exchange-template/config/* test/config/
 cd test/
 
-2) Create the mint's master with the tool 'gnunet-ecc':
+2) Create the exchange's master with the tool 'gnunet-ecc':
 
 gnunet-ecc -g1 master.priv
 
-3) Edit config/mint-common.conf by replacing the right value on the line with the
+3) Edit config/exchange-common.conf by replacing the right value on the line with the
 MASTER_PUBLIC_KEY entry with the fresh generated (ASCII version of) master.priv.
 This ASCII version is obtained by issuing:
 
 gnunet-ecc -p master.priv
 
-4) Generate other mint related keys ('denomination' and 'signing' keys), by issuing:
+4) Generate other exchange related keys ('denomination' and 'signing' keys), by issuing:
 
-taler-mint-keyup -d `pwd` -m master.priv
+taler-exchange-keyup -d `pwd` -m master.priv
 
 5) Check with:
 
-taler-mint-keycheck -d `pwd`
+taler-exchange-keycheck -d `pwd`
 
-6) A mint needs a database to operate, so the following instructions relate to
+6) A exchange needs a database to operate, so the following instructions relate to
 how to set up PostgreSQL. On debian, the two packages needed are:
 
 * postgresql
@@ -99,8 +99,8 @@ how to set up PostgreSQL. On debian, the two packages needed are:
 
 For other operating systems, please refer to the relevant documentation.
 
-In this settlement, the mint wll use a database called 'talercheck' and will
-run under the username through which 'taler-mint-httpd' is launched. Thus assuming
+In this settlement, the exchange wll use a database called 'talercheck' and will
+run under the username through which 'taler-exchange-httpd' is launched. Thus assuming
 that this user is 'demo', we need to create a 'demo' role for postgresql and make
 him the owner of 'talercheck' database.
 
@@ -117,7 +117,7 @@ CREATE DATABASE talercheck OWNER demo;
 # quit with CTRL-D
 
 7) If any previous step has been successful, it is now possbile to start up the
-mint web server (by default it will listen on port 4241); issue:
+exchange web server (by default it will listen on port 4241); issue:
 
 
-taler-mint-httpd -d `pwd` # assuming we did not move outside of the 'test' directory
+taler-exchange-httpd -d `pwd` # assuming we did not move outside of the 'test' directory
