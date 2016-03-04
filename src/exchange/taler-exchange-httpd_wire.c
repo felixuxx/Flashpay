@@ -117,13 +117,14 @@ TMH_WIRE_handler_wire_test (struct TMH_RequestHandler *rh,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (cfg,
 					     "wire-test",
-					     "BANK_ACCOUNT_NUMBER",
+					     "BANK_ACCOUNT_NO_INCOMING",
 					     &account_number))
   {
     /* oopsie, configuration error */
     MHD_destroy_response (response);
+    GNUNET_free (bank_uri);
     return TMH_RESPONSE_reply_internal_error (connection,
-					      "BANK_URI not configured");
+					      "BANK_ACCOUNT_NO_INCOMING not configured");
   }
   ret = TMH_RESPONSE_reply_json_pack (connection,
                                       MHD_HTTP_OK,

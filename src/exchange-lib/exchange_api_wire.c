@@ -84,6 +84,25 @@ struct TALER_EXCHANGE_WireHandle
 
 /**
  * Verify that the signature on the "200 OK" response
+ * for /wire/test from the exchange is valid.
+ * Accepts everything.
+ *
+ * @param wh wire handle
+ * @param json json reply with the signature
+ * @return #GNUNET_SYSERR if @a json is invalid,
+ *         #GNUNET_NO if the method is unknown,
+ *         #GNUNET_OK if the json is valid
+ */
+static int
+verify_wire_test_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
+                               json_t *json)
+{
+  return GNUNET_OK;
+}
+
+
+/**
+ * Verify that the signature on the "200 OK" response
  * for /wire/sepa from the exchange is valid.
  *
  * @param wh wire handle
@@ -182,6 +201,7 @@ verify_wire_method_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
     int (*handler)(const struct TALER_EXCHANGE_WireHandle *wh,
                    json_t *json);
   } handlers[] = {
+    { "test", &verify_wire_test_signature_ok },
     { "sepa", &verify_wire_sepa_signature_ok },
     { NULL, NULL }
   };

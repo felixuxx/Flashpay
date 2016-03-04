@@ -150,7 +150,8 @@ handle_admin_add_incoming_finished (void *cls,
  * @param reserve_pub public key of the reserve
  * @param amount amount that was deposited
  * @param execution_date when did we receive the amount
- * @param account_no account number (53 bits at most)
+ * @param debit_account_no account number to withdraw from (53 bits at most)
+ * @param credit_account_no account number to deposit into (53 bits at most)
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
  * @return NULL
@@ -161,7 +162,8 @@ struct TALER_BANK_AdminAddIncomingHandle *
 TALER_BANK_admin_add_incoming (struct TALER_BANK_Context *bank,
                                const struct TALER_WireTransferIdentifierRawP *wtid,
                                const struct TALER_Amount *amount,
-                               uint64_t account_no,
+                               uint64_t debit_account_no,
+                               uint64_t credit_account_no,
                                TALER_BANK_AdminAddIncomingResultCallback res_cb,
                                void *res_cb_cls)
 {
@@ -169,12 +171,13 @@ TALER_BANK_admin_add_incoming (struct TALER_BANK_Context *bank,
   json_t *admin_obj;
   CURL *eh;
 
-  admin_obj = json_pack ("{s:o, s:o," /* reserve_pub/amount */
-                         " s:I}", /* execution_Date/wire */
+  admin_obj = json_pack ("{s:o, s:o,"
+                         " s:I, s:I}",
                          "wtid", TALER_json_from_data (wtid,
                                                        sizeof (*wtid)),
                          "amount", TALER_json_from_amount (amount),
-                         "account", (json_int_t) account_no);
+                         "debit_account", (json_int_t) debit_account_no,
+                         "credit_account", (json_int_t) credit_account_no);
   aai = GNUNET_new (struct TALER_BANK_AdminAddIncomingHandle);
   aai->bank = bank;
   aai->cb = res_cb;

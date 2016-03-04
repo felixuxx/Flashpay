@@ -44,6 +44,11 @@ struct TestClosure
   char *currency;
 
   /**
+   * Number of the account that the exchange has at the bank.
+   */
+  unsigned long long exchange_account_no;
+
+  /**
    * Handle to the bank task, or NULL.
    */
   struct GNUNET_SCHEDULER_Task *bt;
@@ -489,6 +494,7 @@ test_execute_wire_transfer (void *cls,
   eh->aaih = TALER_BANK_admin_add_incoming (tc->bank,
                                             &bf.wtid,
                                             &amount,
+                                            (uint64_t) tc->exchange_account_no,
 					    (uint64_t) account_no,
                                             &execute_cb,
                                             eh);
@@ -551,6 +557,19 @@ libtaler_plugin_wire_test_init (void *cls)
     return NULL;
   }
   tc = GNUNET_new (struct TestClosure);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (cfg,
+                                             "wire-test",
+                                             "BANK_ACCOUNT_NO_OUTGOING",
+                                             &tc->exchange_account_no))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "wire-test",
+                               "BANK_ACCOUNT_NO_OUTGOING");
+    GNUNET_free (uri);
+    GNUNET_free (tc);
+    return NULL;
+  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
