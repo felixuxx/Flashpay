@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015 GNUnet e.V.
+  Copyright (C) 2015, 2016 GNUnet e.V. and INRIA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -83,7 +83,8 @@ TMH_WIRE_handler_wire_test (struct TMH_RequestHandler *rh,
 {
   struct MHD_Response *response;
   int ret;
-  char *wire_test_redirect;
+  char *bank_uri;
+  unsigned long long account_number;
 
   response = MHD_create_response_from_buffer (0, NULL,
                                               MHD_RESPMEM_PERSISTENT);
@@ -105,22 +106,32 @@ TMH_WIRE_handler_wire_test (struct TMH_RequestHandler *rh,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
 					     "wire-test",
-					     "REDIRECT_URL",
-					     &wire_test_redirect))
+					     "BANK_URI",
+					     &bank_uri))
   {
     /* oopsie, configuration error */
     MHD_destroy_response (response);
     return TMH_RESPONSE_reply_internal_error (connection,
-					      "REDIRECT_URL not configured");
+					      "BANK_URI not configured");
   }
-  MHD_add_response_header (response,
-                           MHD_HTTP_HEADER_LOCATION,
-                           wire_test_redirect);
-  GNUNET_free (wire_test_redirect);
-  ret = MHD_queue_response (connection,
-                            rh->response_code,
-                            response);
-  MHD_destroy_response (response);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (cfg,
+					     "wire-test",
+					     "BANK_ACCOUNT_NUMBER",
+					     &account_number))
+  {
+    /* oopsie, configuration error */
+    MHD_destroy_response (response);
+    return TMH_RESPONSE_reply_internal_error (connection,
+					      "BANK_URI not configured");
+  }
+  ret = TMH_RESPONSE_reply_json_pack (connection,
+                                      MHD_HTTP_OK,
+                                      "{s:s, s:I, s:s}",
+                                      "type", "test",
+                                      "account_number", (json_int_t) account_number,
+                                      "bank_uri", bank_uri);
+  GNUNET_free (bank_uri);
   return ret;
 }
 
