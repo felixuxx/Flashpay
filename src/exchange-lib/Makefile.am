@@ -57,6 +57,4 @@ test_exchange_api_LDADD = \
 
 EXTRA_DIST = \
   test-exchange-home/config/exchange-common.conf \
-  test-exchange-home/master.priv \
-  test-exchange-home/denomkeys/ \
-  test-exchange-home/signkeys/
+  test-exchange-home/master.priv
