@@ -39,6 +39,8 @@ src/exchange-tools/taler-exchange-keyup
 src/exchange-tools/taler-exchange-reservemod
 src/exchange-tools/taler-exchange-sepa
 src/exchangedb/perf-exchangedb
+src/json/test_json
+src/wire/test_sepa_wireformat
 src/pq/test_pq
 src/util/test_amount
 src/util/test_crypto
