@@ -1028,6 +1028,7 @@ reveal_cb (void *cls,
   }
   ref = find_command (is,
                       cmd->details.refresh_reveal.melt_ref);
+  GNUNET_assert (NULL != ref);
   cmd->details.refresh_reveal.num_fresh_coins = num_coins;
   switch (http_status)
   {
@@ -1096,6 +1097,7 @@ link_cb (void *cls,
   }
   ref = find_command (is,
                       cmd->details.refresh_link.reveal_ref);
+  GNUNET_assert (NULL != ref);
   switch (http_status)
   {
   case MHD_HTTP_OK:
@@ -1313,8 +1315,6 @@ wire_deposits_cb (void *cls,
   const struct Command *ref;
 
   cmd->details.wire_deposits.wdh = NULL;
-  ref = find_command (is,
-                      cmd->details.wire_deposits.wtid_ref);
   if (cmd->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -1328,6 +1328,9 @@ wire_deposits_cb (void *cls,
   switch (http_status)
   {
   case MHD_HTTP_OK:
+    ref = find_command (is,
+                        cmd->details.wire_deposits.wtid_ref);
+    GNUNET_assert (NULL != ref);
     if (0 != TALER_amount_cmp (total_amount,
                                &ref->details.deposit_wtid.total_amount_expected))
     {
@@ -1346,6 +1349,7 @@ wire_deposits_cb (void *cls,
 
       dep = find_command (is,
                           ref->details.deposit_wtid.deposit_ref);
+      GNUNET_assert (NULL != dep);
       GNUNET_CRYPTO_hash (dep->details.deposit.wire_details,
                           strlen (dep->details.deposit.wire_details),
                           &hw);
@@ -1850,13 +1854,14 @@ interpreter_run (void *cls,
   case OC_REFRESH_REVEAL:
     ref = find_command (is,
                         cmd->details.refresh_reveal.melt_ref);
+    GNUNET_assert (NULL != ref);
     cmd->details.refresh_reveal.rrh
       = TALER_EXCHANGE_refresh_reveal (exchange,
-                                   ref->details.refresh_melt.refresh_data_length,
-                                   ref->details.refresh_melt.refresh_data,
-                                   ref->details.refresh_melt.noreveal_index,
-                                   &reveal_cb,
-                                   is);
+                                       ref->details.refresh_melt.refresh_data_length,
+                                       ref->details.refresh_melt.refresh_data,
+                                       ref->details.refresh_melt.noreveal_index,
+                                       &reveal_cb,
+                                       is);
     if (NULL == cmd->details.refresh_reveal.rrh)
     {
       GNUNET_break (0);
@@ -1869,9 +1874,11 @@ interpreter_run (void *cls,
     /* find reveal command */
     ref = find_command (is,
                         cmd->details.refresh_link.reveal_ref);
+    GNUNET_assert (NULL != ref);
     /* find melt command */
     ref = find_command (is,
                         ref->details.refresh_reveal.melt_ref);
+    GNUNET_assert (NULL != ref);
     /* find reserve_withdraw command */
     {
       unsigned int idx;
@@ -1886,6 +1893,7 @@ interpreter_run (void *cls,
       md = &ref->details.refresh_melt.melted_coins[idx];
       ref = find_command (is,
                           md->coin_ref);
+      GNUNET_assert (NULL != ref);
     }
     GNUNET_assert (OC_WITHDRAW_SIGN == ref->oc);
     /* finally, use private key from withdraw sign command */
