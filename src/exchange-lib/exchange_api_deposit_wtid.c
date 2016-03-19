@@ -25,9 +25,9 @@
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
+#include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "exchange_api_common.h"
-#include "exchange_api_json.h"
 #include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
@@ -98,15 +98,16 @@ verify_deposit_wtid_signature_ok (const struct TALER_EXCHANGE_DepositWtidHandle 
   struct TALER_ExchangeSignatureP exchange_sig;
   struct TALER_ExchangePublicKeyP exchange_pub;
   const struct TALER_EXCHANGE_Keys *key_state;
-  struct MAJ_Specification spec[] = {
-    MAJ_spec_fixed_auto ("exchange_sig", &exchange_sig),
-    MAJ_spec_fixed_auto ("exchange_pub", &exchange_pub),
-    MAJ_spec_end
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
+    GNUNET_JSON_spec_end()
   };
 
   if (GNUNET_OK !=
-      MAJ_parse_json (json,
-                      spec))
+      GNUNET_JSON_parse (json,
+                         spec,
+                         NULL, NULL))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -161,16 +162,17 @@ handle_deposit_wtid_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     {
-      struct MAJ_Specification spec[] = {
-        MAJ_spec_fixed_auto ("wtid", &dwh->depconf.wtid),
-        MAJ_spec_absolute_time ("execution_time", &execution_time),
-        MAJ_spec_amount ("coin_contribution", &coin_contribution_s),
-        MAJ_spec_end
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("wtid", &dwh->depconf.wtid),
+        GNUNET_JSON_spec_absolute_time ("execution_time", &execution_time),
+        TALER_JSON_spec_amount ("coin_contribution", &coin_contribution_s),
+        GNUNET_JSON_spec_end()
       };
 
       if (GNUNET_OK !=
-          MAJ_parse_json (json,
-                          spec))
+          GNUNET_JSON_parse (json,
+                             spec,
+                             NULL, NULL))
       {
         GNUNET_break_op (0);
         response_code = 0;
@@ -193,14 +195,15 @@ handle_deposit_wtid_finished (void *cls,
   case MHD_HTTP_ACCEPTED:
     {
       /* Transaction known, but not executed yet */
-      struct MAJ_Specification spec[] = {
-        MAJ_spec_absolute_time ("execution_time", &execution_time),
-        MAJ_spec_end
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_absolute_time ("execution_time", &execution_time),
+        GNUNET_JSON_spec_end()
       };
 
       if (GNUNET_OK !=
-          MAJ_parse_json (json,
-                          spec))
+          GNUNET_JSON_parse (json,
+                             spec,
+                             NULL, NULL))
       {
         GNUNET_break_op (0);
         response_code = 0;

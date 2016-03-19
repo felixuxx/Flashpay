@@ -22,13 +22,11 @@
  */
 #include "platform.h"
 #include <curl/curl.h>
-#include <jansson.h>
-#include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
+#include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "taler_signatures.h"
 #include "exchange_api_context.h"
-#include "exchange_api_json.h"
 #include "exchange_api_handle.h"
 
 
@@ -189,23 +187,24 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
   struct GNUNET_TIME_Absolute valid_from;
   struct GNUNET_TIME_Absolute valid_until;
   struct GNUNET_TIME_Absolute valid_legal;
-  struct MAJ_Specification spec[] = {
-    MAJ_spec_fixed_auto ("master_sig",
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("master_sig",
                          &sig),
-    MAJ_spec_fixed_auto ("key",
+    GNUNET_JSON_spec_fixed_auto ("key",
                          &sign_key_issue.signkey_pub),
-    MAJ_spec_absolute_time ("stamp_start",
+    GNUNET_JSON_spec_absolute_time ("stamp_start",
                             &valid_from),
-    MAJ_spec_absolute_time ("stamp_expire",
+    GNUNET_JSON_spec_absolute_time ("stamp_expire",
                             &valid_until),
-    MAJ_spec_absolute_time ("stamp_end",
+    GNUNET_JSON_spec_absolute_time ("stamp_end",
                             &valid_legal),
-    MAJ_spec_end
+    GNUNET_JSON_spec_end()
   };
 
   if (GNUNET_OK !=
-      MAJ_parse_json (sign_key_obj,
-                      spec))
+      GNUNET_JSON_parse (sign_key_obj,
+                         spec,
+                         NULL, NULL))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -264,33 +263,33 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
   struct GNUNET_CRYPTO_rsa_PublicKey *pk;
   struct GNUNET_CRYPTO_EddsaSignature sig;
 
-  struct MAJ_Specification spec[] = {
-    MAJ_spec_fixed_auto ("master_sig",
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("master_sig",
                          &sig),
-    MAJ_spec_absolute_time ("stamp_expire_deposit",
+    GNUNET_JSON_spec_absolute_time ("stamp_expire_deposit",
                             &deposit_valid_until),
-    MAJ_spec_absolute_time ("stamp_expire_withdraw",
+    GNUNET_JSON_spec_absolute_time ("stamp_expire_withdraw",
                             &withdraw_valid_until),
-    MAJ_spec_absolute_time ("stamp_start",
+    GNUNET_JSON_spec_absolute_time ("stamp_start",
                             &valid_from),
-    MAJ_spec_absolute_time ("stamp_expire_legal",
+    GNUNET_JSON_spec_absolute_time ("stamp_expire_legal",
                             &expire_legal),
-    MAJ_spec_amount ("value",
+    TALER_JSON_spec_amount ("value",
                      &value),
-    MAJ_spec_amount ("fee_withdraw",
+    TALER_JSON_spec_amount ("fee_withdraw",
                      &fee_withdraw),
-    MAJ_spec_amount ("fee_deposit",
+    TALER_JSON_spec_amount ("fee_deposit",
                      &fee_deposit),
-    MAJ_spec_amount ("fee_refresh",
+    TALER_JSON_spec_amount ("fee_refresh",
                      &fee_refresh),
-    MAJ_spec_rsa_public_key ("denom_pub",
+    GNUNET_JSON_spec_rsa_public_key ("denom_pub",
                              &pk),
-    MAJ_spec_end
+    GNUNET_JSON_spec_end()
   };
 
   if (GNUNET_OK !=
-      MAJ_parse_json (denom_key_obj,
-                      spec))
+      GNUNET_JSON_parse (denom_key_obj,
+                         spec, NULL, NULL))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -337,7 +336,7 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
   return GNUNET_OK;
 
  EXITIF_exit:
-  MAJ_parse_free (spec);
+  GNUNET_JSON_parse_free (spec);
   return GNUNET_SYSERR;
 }
 
@@ -362,18 +361,19 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
   unsigned int off;
   unsigned int i;
   struct TALER_ExchangeKeyValidityPS kv;
-  struct MAJ_Specification spec[] = {
-    MAJ_spec_fixed_auto ("auditor_pub",
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("auditor_pub",
                          &auditor->auditor_pub),
-    MAJ_spec_json ("denomination_keys",
+    GNUNET_JSON_spec_json ("denomination_keys",
                    &keys),
-    MAJ_spec_end
+    GNUNET_JSON_spec_end()
   };
 
   auditor->auditor_url = NULL; /* #3987 */
   if (GNUNET_OK !=
-      MAJ_parse_json (auditor_obj,
-                      spec))
+      GNUNET_JSON_parse (auditor_obj,
+                         spec,
+                         NULL, NULL))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -391,17 +391,18 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     struct GNUNET_HashCode denom_h;
     const struct TALER_EXCHANGE_DenomPublicKey *dk;
     unsigned int j;
-    struct MAJ_Specification spec[] = {
-      MAJ_spec_fixed_auto ("denom_pub_h",
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_fixed_auto ("denom_pub_h",
                            &denom_h),
-      MAJ_spec_fixed_auto ("auditor_sig",
+      GNUNET_JSON_spec_fixed_auto ("auditor_sig",
                            &auditor_sig),
-      MAJ_spec_end
+      GNUNET_JSON_spec_end()
     };
 
     if (GNUNET_OK !=
-        MAJ_parse_json (key,
-                        spec))
+        GNUNET_JSON_parse (key,
+                           spec,
+                           NULL, NULL))
       {
       GNUNET_break_op (0);
       continue;
@@ -476,21 +477,22 @@ decode_keys_json (json_t *resp_obj,
   hash_context = GNUNET_CRYPTO_hash_context_start ();
   /* parse the master public key and issue date of the response */
   {
-    struct MAJ_Specification spec[] = {
-      MAJ_spec_fixed_auto ("master_public_key",
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_fixed_auto ("master_public_key",
                            &key_data->master_pub),
-      MAJ_spec_fixed_auto ("eddsa_sig",
+      GNUNET_JSON_spec_fixed_auto ("eddsa_sig",
                            &sig),
-      MAJ_spec_fixed_auto ("eddsa_pub",
+      GNUNET_JSON_spec_fixed_auto ("eddsa_pub",
                            &pub),
-      MAJ_spec_absolute_time ("list_issue_date",
+      GNUNET_JSON_spec_absolute_time ("list_issue_date",
                               &list_issue_date),
-      MAJ_spec_end
+      GNUNET_JSON_spec_end()
     };
 
     EXITIF (GNUNET_OK !=
-            MAJ_parse_json (resp_obj,
-                            spec));
+            GNUNET_JSON_parse (resp_obj,
+                               spec,
+                               NULL, NULL));
   }
 
   /* parse the signing keys */

@@ -21,11 +21,10 @@
  */
 #include "platform.h"
 #include <curl/curl.h>
-#include <jansson.h>
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_exchange_service.h"
-#include "exchange_api_json.h"
+#include "taler_json_lib.h"
 #include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
@@ -101,11 +100,11 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
   size_t link_enc_size;
   struct GNUNET_CRYPTO_rsa_Signature *bsig;
   struct GNUNET_CRYPTO_rsa_PublicKey *rpub;
-  struct MAJ_Specification spec[] = {
-    MAJ_spec_varsize ("link_enc", &link_enc, &link_enc_size),
-    MAJ_spec_rsa_public_key ("denom_pub", &rpub),
-    MAJ_spec_rsa_signature ("ev_sig", &bsig),
-    MAJ_spec_end
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_varsize ("link_enc", &link_enc, &link_enc_size),
+    GNUNET_JSON_spec_rsa_public_key ("denom_pub", &rpub),
+    GNUNET_JSON_spec_rsa_signature ("ev_sig", &bsig),
+    GNUNET_JSON_spec_end()
   };
   struct TALER_RefreshLinkEncrypted *rle;
   struct TALER_RefreshLinkDecrypted *rld;
@@ -113,8 +112,9 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
 
   /* parse reply */
   if (GNUNET_OK !=
-      MAJ_parse_json (json,
-                      spec))
+      GNUNET_JSON_parse (json,
+                         spec,
+                         NULL, NULL))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -126,7 +126,7 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
   if (NULL == rle)
   {
     GNUNET_break_op (0);
-    MAJ_parse_free (spec);
+    GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -136,7 +136,7 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
                                   &secret))
   {
     GNUNET_break_op (0);
-    MAJ_parse_free (spec);
+    GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
   }
   rld = TALER_refresh_decrypt (rle,
@@ -144,7 +144,7 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
   if (NULL == rld)
   {
     GNUNET_break_op (0);
-    MAJ_parse_free (spec);
+    GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
   }
 
@@ -158,7 +158,7 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
   /* clean up */
   GNUNET_free (rld);
   pub->rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (rpub);
-  MAJ_parse_free (spec);
+  GNUNET_JSON_parse_free (spec);
   return GNUNET_OK;
 }
 
@@ -199,15 +199,16 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
   for (session=0;session<json_array_size (json); session++)
   {
     json_t *jsona;
-    struct MAJ_Specification spec[] = {
-      MAJ_spec_json ("new_coins", &jsona),
-      MAJ_spec_end
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_json ("new_coins", &jsona),
+      GNUNET_JSON_spec_end()
     };
 
     if (GNUNET_OK !=
-	MAJ_parse_json (json_array_get (json,
-					session),
-			spec))
+	GNUNET_JSON_parse (json_array_get (json,
+                                           session),
+                           spec,
+                           NULL, NULL))
     {
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
@@ -215,13 +216,13 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
     if (! json_is_array (jsona))
     {
       GNUNET_break_op (0);
-      MAJ_parse_free (spec);
+      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
 
     /* count all coins over all sessions */
     num_coins += json_array_size (jsona);
-    MAJ_parse_free (spec);
+    GNUNET_JSON_parse_free (spec);
   }
   /* Now that we know how big the 1d array is, allocate
      and fill it. */
@@ -240,17 +241,18 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
       json_t *jsona;
       struct TALER_TransferPublicKeyP trans_pub;
       struct TALER_EncryptedLinkSecretP secret_enc;
-      struct MAJ_Specification spec[] = {
-	MAJ_spec_json ("new_coins", &jsona),
-	MAJ_spec_fixed_auto ("transfer_pub", &trans_pub),
-	MAJ_spec_fixed_auto ("secret_enc", &secret_enc),
-	MAJ_spec_end
+      struct GNUNET_JSON_Specification spec[] = {
+	GNUNET_JSON_spec_json ("new_coins", &jsona),
+	GNUNET_JSON_spec_fixed_auto ("transfer_pub", &trans_pub),
+	GNUNET_JSON_spec_fixed_auto ("secret_enc", &secret_enc),
+	GNUNET_JSON_spec_end()
       };
 
       if (GNUNET_OK !=
-	  MAJ_parse_json (json_array_get (json,
-					  session),
-			  spec))
+	  GNUNET_JSON_parse (json_array_get (json,
+                                             session),
+                             spec,
+                             NULL, NULL))
       {
 	GNUNET_break_op (0);
 	return GNUNET_SYSERR;
@@ -258,7 +260,7 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
       if (! json_is_array (jsona))
       {
 	GNUNET_break_op (0);
-	MAJ_parse_free (spec);
+	GNUNET_JSON_parse_free (spec);
 	return GNUNET_SYSERR;
       }
 
@@ -285,10 +287,10 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
       {
 	GNUNET_break_op (0);
 	ret = GNUNET_SYSERR;
-	MAJ_parse_free (spec);
+	GNUNET_JSON_parse_free (spec);
 	break;
       }
-      MAJ_parse_free (spec);
+      GNUNET_JSON_parse_free (spec);
     } /* end of for (session) */
 
     if (off_coin == num_coins)

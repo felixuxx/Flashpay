@@ -27,7 +27,6 @@
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
-#include "exchange_api_json.h"
 #include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"

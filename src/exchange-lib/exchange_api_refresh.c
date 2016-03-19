@@ -28,7 +28,6 @@
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "exchange_api_common.h"
-#include "exchange_api_json.h"
 #include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
@@ -1086,17 +1085,18 @@ verify_refresh_melt_signature_ok (struct TALER_EXCHANGE_RefreshMeltHandle *rmh,
   struct TALER_ExchangeSignatureP exchange_sig;
   struct TALER_ExchangePublicKeyP exchange_pub;
   const struct TALER_EXCHANGE_Keys *key_state;
-  struct MAJ_Specification spec[] = {
-    MAJ_spec_fixed_auto ("exchange_sig", &exchange_sig),
-    MAJ_spec_fixed_auto ("exchange_pub", &exchange_pub),
-    MAJ_spec_uint16 ("noreveal_index", noreveal_index),
-    MAJ_spec_end
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
+    GNUNET_JSON_spec_uint16 ("noreveal_index", noreveal_index),
+    GNUNET_JSON_spec_end()
   };
   struct TALER_RefreshMeltConfirmationPS confirm;
 
   if (GNUNET_OK !=
-      MAJ_parse_json (json,
-                      spec))
+      GNUNET_JSON_parse (json,
+                         spec,
+                         NULL, NULL))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -1156,19 +1156,20 @@ verify_refresh_melt_signature_forbidden (struct TALER_EXCHANGE_RefreshMeltHandle
   struct TALER_Amount total;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   unsigned int i;
-  struct MAJ_Specification spec[] = {
-    MAJ_spec_json ("history", &history),
-    MAJ_spec_fixed_auto ("coin_pub", &coin_pub),
-    MAJ_spec_amount ("original_value", &original_value),
-    MAJ_spec_amount ("requested_value", &melt_value_with_fee),
-    MAJ_spec_end
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("history", &history),
+    GNUNET_JSON_spec_fixed_auto ("coin_pub", &coin_pub),
+    TALER_JSON_spec_amount ("original_value", &original_value),
+    TALER_JSON_spec_amount ("requested_value", &melt_value_with_fee),
+    GNUNET_JSON_spec_end()
   };
   const struct MeltedCoin *mc;
 
   /* parse JSON reply */
   if (GNUNET_OK !=
-      MAJ_parse_json (json,
-                      spec))
+      GNUNET_JSON_parse (json,
+                         spec,
+                         NULL, NULL))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -1731,14 +1732,15 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshRevealHandle *rrh,
 {
   unsigned int i;
   json_t *jsona;
-  struct MAJ_Specification spec[] = {
-    MAJ_spec_json ("ev_sigs", &jsona),
-    MAJ_spec_end
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("ev_sigs", &jsona),
+    GNUNET_JSON_spec_end()
   };
 
   if (GNUNET_OK !=
-      MAJ_parse_json (json,
-		      spec))
+      GNUNET_JSON_parse (json,
+                         spec,
+                         NULL, NULL))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -1765,9 +1767,9 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshRevealHandle *rrh,
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct GNUNET_HashCode coin_hash;
 
-    struct MAJ_Specification spec[] = {
-      MAJ_spec_rsa_signature ("ev_sig", &blind_sig),
-      MAJ_spec_end
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_rsa_signature ("ev_sig", &blind_sig),
+      GNUNET_JSON_spec_end()
     };
 
     fc = &rrh->md->fresh_coins[rrh->noreveal_index][i];
@@ -1776,8 +1778,9 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshRevealHandle *rrh,
     GNUNET_assert (NULL != jsonai);
 
     if (GNUNET_OK !=
-        MAJ_parse_json (jsonai,
-                        spec))
+        GNUNET_JSON_parse (jsonai,
+                           spec,
+                           NULL, NULL))
     {
       GNUNET_break_op (0);
       return GNUNET_SYSERR;

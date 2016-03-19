@@ -29,7 +29,6 @@
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "exchange_api_common.h"
-#include "exchange_api_json.h"
 #include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
@@ -109,15 +108,16 @@ verify_deposit_signature_ok (const struct TALER_EXCHANGE_DepositHandle *dh,
   struct TALER_ExchangeSignatureP exchange_sig;
   struct TALER_ExchangePublicKeyP exchange_pub;
   const struct TALER_EXCHANGE_Keys *key_state;
-  struct MAJ_Specification spec[] = {
-    MAJ_spec_fixed_auto ("sig", &exchange_sig),
-    MAJ_spec_fixed_auto ("pub", &exchange_pub),
-    MAJ_spec_end
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("sig", &exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("pub", &exchange_pub),
+    GNUNET_JSON_spec_end()
   };
 
   if (GNUNET_OK !=
-      MAJ_parse_json (json,
-                      spec))
+      GNUNET_JSON_parse (json,
+                         spec,
+                         NULL, NULL))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;

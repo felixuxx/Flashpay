@@ -24,10 +24,9 @@
 #include <jansson.h>
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
-#include <gnunet/gnunet_json_lib.h>
 #include "taler_exchange_service.h"
 #include "exchange_api_common.h"
-#include "exchange_api_json.h"
+#include "taler_json_lib.h"
 #include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
@@ -102,17 +101,18 @@ handle_wire_deposits_finished (void *cls,
       struct TALER_Amount total_amount;
       struct TALER_MerchantPublicKeyP merchant_pub;
       unsigned int num_details;
-      struct MAJ_Specification spec[] = {
-        MAJ_spec_fixed_auto ("H_wire", &h_wire),
-        MAJ_spec_fixed_auto ("merchant_pub", &merchant_pub),
-        MAJ_spec_amount ("total_amount", &total_amount),
-        MAJ_spec_json ("details", &details_j),
-        MAJ_spec_end
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("H_wire", &h_wire),
+        GNUNET_JSON_spec_fixed_auto ("merchant_pub", &merchant_pub),
+        TALER_JSON_spec_amount ("total_amount", &total_amount),
+        GNUNET_JSON_spec_json ("details", &details_j),
+        GNUNET_JSON_spec_end()
       };
 
       if (GNUNET_OK !=
-          MAJ_parse_json (json,
-                          spec))
+          GNUNET_JSON_parse (json,
+                             spec,
+                             NULL, NULL))
       {
         GNUNET_break_op (0);
         response_code = 0;
@@ -127,18 +127,19 @@ handle_wire_deposits_finished (void *cls,
         {
           struct TALER_WireDepositDetails *detail = &details[i];
           struct json_t *detail_j = json_array_get (details_j, i);
-          struct MAJ_Specification spec_detail[] = {
-            MAJ_spec_fixed_auto ("H_contract", &detail->h_contract),
-            MAJ_spec_amount ("deposit_value", &detail->coin_value),
-            MAJ_spec_amount ("deposit_fee", &detail->coin_fee),
-            MAJ_spec_uint64 ("transaction_id", &detail->transaction_id),
-            MAJ_spec_fixed_auto ("coin_pub", &detail->coin_pub),
-            MAJ_spec_end
+          struct GNUNET_JSON_Specification spec_detail[] = {
+            GNUNET_JSON_spec_fixed_auto ("H_contract", &detail->h_contract),
+            TALER_JSON_spec_amount ("deposit_value", &detail->coin_value),
+            TALER_JSON_spec_amount ("deposit_fee", &detail->coin_fee),
+            GNUNET_JSON_spec_uint64 ("transaction_id", &detail->transaction_id),
+            GNUNET_JSON_spec_fixed_auto ("coin_pub", &detail->coin_pub),
+            GNUNET_JSON_spec_end()
           };
 
           if (GNUNET_OK !=
-              MAJ_parse_json (detail_j,
-                              spec_detail))
+              GNUNET_JSON_parse (detail_j,
+                                 spec_detail,
+                                 NULL, NULL))
           {
             GNUNET_break_op (0);
             response_code = 0;

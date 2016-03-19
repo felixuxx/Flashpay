@@ -26,7 +26,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_exchange_service.h"
-#include "exchange_api_json.h"
+#include "taler_json_lib.h"
 #include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
@@ -117,19 +117,20 @@ parse_reserve_history (json_t *history,
     json_t *transaction;
     struct TALER_Amount amount;
     const char *type;
-    struct MAJ_Specification hist_spec[] = {
-      MAJ_spec_string ("type", &type),
-      MAJ_spec_amount ("amount",
+    struct GNUNET_JSON_Specification hist_spec[] = {
+      GNUNET_JSON_spec_string ("type", &type),
+      TALER_JSON_spec_amount ("amount",
                        &amount),
       /* 'wire' and 'signature' are optional depending on 'type'! */
-      MAJ_spec_end
+      GNUNET_JSON_spec_end()
     };
 
     transaction = json_array_get (history,
                                   off);
     if (GNUNET_OK !=
-        MAJ_parse_json (transaction,
-                        hist_spec))
+        GNUNET_JSON_parse (transaction,
+                           hist_spec,
+                           NULL, NULL))
     {
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
@@ -171,19 +172,20 @@ parse_reserve_history (json_t *history,
       struct TALER_ReserveSignatureP sig;
       struct TALER_WithdrawRequestPS withdraw_purpose;
       struct TALER_Amount amount_from_purpose;
-      struct MAJ_Specification withdraw_spec[] = {
-        MAJ_spec_fixed_auto ("signature",
+      struct GNUNET_JSON_Specification withdraw_spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("signature",
                              &sig),
-        MAJ_spec_fixed_auto ("details",
+        GNUNET_JSON_spec_fixed_auto ("details",
                              &withdraw_purpose),
-        MAJ_spec_end
+        GNUNET_JSON_spec_end()
       };
       unsigned int i;
 
       rhistory[off].type = TALER_EXCHANGE_RTT_WITHDRAWAL;
       if (GNUNET_OK !=
-          MAJ_parse_json (transaction,
-                          withdraw_spec))
+          GNUNET_JSON_parse (transaction,
+                             withdraw_spec,
+                             NULL, NULL))
       {
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
@@ -196,7 +198,7 @@ parse_reserve_history (json_t *history,
                                       &reserve_pub->eddsa_pub))
       {
         GNUNET_break_op (0);
-        MAJ_parse_free (withdraw_spec);
+        GNUNET_JSON_parse_free (withdraw_spec);
         return GNUNET_SYSERR;
       }
       TALER_amount_ntoh (&amount_from_purpose,
@@ -205,7 +207,7 @@ parse_reserve_history (json_t *history,
                                  &amount_from_purpose))
       {
         GNUNET_break_op (0);
-        MAJ_parse_free (withdraw_spec);
+        GNUNET_JSON_parse_free (withdraw_spec);
         return GNUNET_SYSERR;
       }
       rhistory[off].details.out_authorization_sig = json_object_get (transaction,
@@ -225,7 +227,7 @@ parse_reserve_history (json_t *history,
                          sizeof (struct GNUNET_HashCode)))
         {
           GNUNET_break_op (0);
-          MAJ_parse_free (withdraw_spec);
+          GNUNET_JSON_parse_free (withdraw_spec);
           return GNUNET_SYSERR;
         }
       }
@@ -238,7 +240,7 @@ parse_reserve_history (json_t *history,
       {
         /* overflow in history already!? inconceivable! Bad exchange! */
         GNUNET_break_op (0);
-        MAJ_parse_free (withdraw_spec);
+        GNUNET_JSON_parse_free (withdraw_spec);
         return GNUNET_SYSERR;
       }
       /* end type==WITHDRAW */
@@ -296,14 +298,15 @@ handle_reserve_status_finished (void *cls,
       unsigned int len;
       struct TALER_Amount balance;
       struct TALER_Amount balance_from_history;
-      struct MAJ_Specification spec[] = {
-        MAJ_spec_amount ("balance", &balance),
-        MAJ_spec_end
+      struct GNUNET_JSON_Specification spec[] = {
+        TALER_JSON_spec_amount ("balance", &balance),
+        GNUNET_JSON_spec_end()
       };
 
       if (GNUNET_OK !=
-          MAJ_parse_json (json,
-                          spec))
+          GNUNET_JSON_parse (json,
+                             spec,
+                             NULL, NULL))
       {
         GNUNET_break_op (0);
         response_code = 0;
@@ -563,14 +566,15 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
   struct GNUNET_CRYPTO_rsa_Signature *blind_sig;
   struct GNUNET_CRYPTO_rsa_Signature *sig;
   struct TALER_DenominationSignature dsig;
-  struct MAJ_Specification spec[] = {
-    MAJ_spec_rsa_signature ("ev_sig", &blind_sig),
-    MAJ_spec_end
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_rsa_signature ("ev_sig", &blind_sig),
+    GNUNET_JSON_spec_end()
   };
 
   if (GNUNET_OK !=
-      MAJ_parse_json (json,
-                      spec))
+      GNUNET_JSON_parse (json,
+                         spec,
+                         NULL, NULL))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -622,14 +626,15 @@ reserve_withdraw_payment_required (struct TALER_EXCHANGE_ReserveWithdrawHandle *
   struct TALER_Amount requested_amount;
   json_t *history;
   size_t len;
-  struct MAJ_Specification spec[] = {
-    MAJ_spec_amount ("balance", &balance),
-    MAJ_spec_end
+  struct GNUNET_JSON_Specification spec[] = {
+    TALER_JSON_spec_amount ("balance", &balance),
+    GNUNET_JSON_spec_end()
   };
 
   if (GNUNET_OK !=
-      MAJ_parse_json (json,
-                      spec))
+      GNUNET_JSON_parse (json,
+                         spec,
+                         NULL, NULL))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;

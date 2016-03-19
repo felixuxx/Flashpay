@@ -21,7 +21,7 @@
  */
 #include "platform.h"
 #include "exchange_api_common.h"
-#include "exchange_api_json.h"
+#include "taler_json_lib.h"
 #include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
@@ -66,24 +66,25 @@ TALER_EXCHANGE_verify_coin_history_ (const char *currency,
     void *details;
     size_t details_size;
     const char *type;
-    struct MAJ_Specification spec[] = {
-      MAJ_spec_amount ("amount",
+    struct GNUNET_JSON_Specification spec[] = {
+      TALER_JSON_spec_amount ("amount",
                        &amount),
-      MAJ_spec_string ("type",
+      GNUNET_JSON_spec_string ("type",
                        &type),
-      MAJ_spec_fixed_auto ("signature",
+      GNUNET_JSON_spec_fixed_auto ("signature",
                            &sig),
-      MAJ_spec_varsize ("details",
+      GNUNET_JSON_spec_varsize ("details",
                         &details,
                         &details_size),
-      MAJ_spec_end
+      GNUNET_JSON_spec_end()
     };
 
     transaction = json_array_get (history,
                                   off);
     if (GNUNET_OK !=
-        MAJ_parse_json (transaction,
-                        spec))
+        GNUNET_JSON_parse (transaction,
+                           spec,
+                           NULL, NULL))
     {
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
@@ -97,14 +98,14 @@ TALER_EXCHANGE_verify_coin_history_ (const char *currency,
       if (details_size != sizeof (struct TALER_DepositRequestPS))
       {
         GNUNET_break_op (0);
-        MAJ_parse_free (spec);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       dr = (const struct TALER_DepositRequestPS *) details;
       if (details_size != ntohl (dr->purpose.size))
       {
         GNUNET_break_op (0);
-        MAJ_parse_free (spec);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       if (GNUNET_OK !=
@@ -114,7 +115,7 @@ TALER_EXCHANGE_verify_coin_history_ (const char *currency,
                                       &coin_pub->eddsa_pub))
         {
         GNUNET_break_op (0);
-        MAJ_parse_free (spec);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
 
@@ -125,7 +126,7 @@ TALER_EXCHANGE_verify_coin_history_ (const char *currency,
                                  &amount))
         {
           GNUNET_break (0);
-          MAJ_parse_free (spec);
+          GNUNET_JSON_parse_free (spec);
           return GNUNET_SYSERR;
         }
     }
@@ -138,14 +139,14 @@ TALER_EXCHANGE_verify_coin_history_ (const char *currency,
       if (details_size != sizeof (struct TALER_RefreshMeltCoinAffirmationPS))
       {
         GNUNET_break_op (0);
-        MAJ_parse_free (spec);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       rm = (const struct TALER_RefreshMeltCoinAffirmationPS *) details;
       if (details_size != ntohl (rm->purpose.size))
       {
         GNUNET_break_op (0);
-        MAJ_parse_free (spec);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       if (GNUNET_OK !=
@@ -155,7 +156,7 @@ TALER_EXCHANGE_verify_coin_history_ (const char *currency,
                                       &coin_pub->eddsa_pub))
       {
         GNUNET_break_op (0);
-        MAJ_parse_free (spec);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       TALER_amount_ntoh (&rm_amount,
@@ -164,7 +165,7 @@ TALER_EXCHANGE_verify_coin_history_ (const char *currency,
                                  &amount))
       {
         GNUNET_break_op (0);
-        MAJ_parse_free (spec);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
     }
@@ -172,7 +173,7 @@ TALER_EXCHANGE_verify_coin_history_ (const char *currency,
     {
       /* signature not supported, new version on server? */
       GNUNET_break_op (0);
-      MAJ_parse_free (spec);
+      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
     if (GNUNET_OK !=
@@ -182,10 +183,10 @@ TALER_EXCHANGE_verify_coin_history_ (const char *currency,
     {
       /* overflow in history already!? inconceivable! Bad exchange! */
       GNUNET_break_op (0);
-      MAJ_parse_free (spec);
+      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
-    MAJ_parse_free (spec);
+    GNUNET_JSON_parse_free (spec);
   }
   return GNUNET_OK;
 }

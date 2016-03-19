@@ -25,9 +25,9 @@
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_exchange_service.h"
+#include "taler_json_lib.h"
 #include "taler_wire_plugin.h"
 #include "exchange_api_common.h"
-#include "exchange_api_json.h"
 #include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 
@@ -311,17 +311,18 @@ verify_wire_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
   json_t *methods;
   const struct TALER_EXCHANGE_Keys *key_state;
   struct GNUNET_HashContext *hc;
-  struct MAJ_Specification spec[] = {
-    MAJ_spec_fixed_auto ("sig", &exchange_sig),
-    MAJ_spec_fixed_auto ("pub", &exchange_pub),
-    MAJ_spec_json ("methods", &methods),
-    MAJ_spec_end
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("sig", &exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("pub", &exchange_pub),
+    GNUNET_JSON_spec_json ("methods", &methods),
+    GNUNET_JSON_spec_end()
   };
   unsigned int i;
 
   if (GNUNET_OK !=
-      MAJ_parse_json (json,
-                      spec))
+      GNUNET_JSON_parse (json,
+                         spec,
+                         NULL, NULL))
   {
     GNUNET_break_op (0);
     return NULL;
@@ -329,7 +330,7 @@ verify_wire_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
   if (! json_is_array (methods))
   {
     GNUNET_break_op (0);
-    MAJ_parse_free (spec);
+    GNUNET_JSON_parse_free (spec);
     return NULL;
   }
 
@@ -351,7 +352,7 @@ verify_wire_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
     {
       GNUNET_CRYPTO_hash_context_abort (hc);
       GNUNET_break_op (0);
-      MAJ_parse_free (spec);
+      GNUNET_JSON_parse_free (spec);
       return NULL;
     }
     method = json_string_value (element);
@@ -371,7 +372,7 @@ verify_wire_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
                                   &exchange_pub.eddsa_pub))
   {
     GNUNET_break_op (0);
-    MAJ_parse_free (spec);
+    GNUNET_JSON_parse_free (spec);
     return NULL;
   }
   return methods;
