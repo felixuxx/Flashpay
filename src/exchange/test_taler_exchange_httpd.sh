@@ -28,7 +28,7 @@ taler-exchange-httpd -d test-exchange-home &
 # Give HTTP time to start
 sleep 5
 # Run test...
-cat test_taler_exchange_httpd.data | grep -v ^\# | awk '{ print "curl -d '\''" $2 "'\'' http://localhost:8081"$1 }' | bash
+cat test_taler_exchange_httpd.data | grep -v ^\# | awk '{ print "curl -d \47"  $2 "\47 http://localhost:8081" $1 }' | bash
 # Stop HTTP server
 kill -TERM %%
 # FIXME: not sure this is the 'correct' return code...
