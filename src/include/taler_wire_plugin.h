@@ -101,11 +101,15 @@ struct TALER_WIRE_Plugin
   /**
    * Check if the given wire format JSON object is correctly formatted
    *
+   * @param cls the @e cls of this struct with the plugin-specific state
    * @param wire the JSON wire format object
+   * @param master_pub public key of the exchange to verify against
    * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
    */
   int
-  (*wire_validate) (const json_t *wire);
+  (*wire_validate) (void *cls,
+                    const json_t *wire,
+                    const struct TALER_MasterPublicKeyP *master_pub);
 
 
   /**

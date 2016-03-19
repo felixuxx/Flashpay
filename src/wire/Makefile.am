@@ -36,7 +36,9 @@ libtaler_plugin_wire_sepa_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_wire_sepa_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
+  $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetjson \
   -lgnunetutil $(XLIB)
 
 
@@ -75,4 +77,3 @@ test_sepa_wireformat_LDADD = \
   -ljansson \
   libtalerwire.la \
   $(top_builddir)/src/util/libtalerutil.la
-

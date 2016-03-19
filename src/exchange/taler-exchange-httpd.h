@@ -57,7 +57,7 @@ extern char *TMH_exchange_directory;
  * Master public key (according to the
  * configuration in the exchange directory).
  */
-extern struct GNUNET_CRYPTO_EddsaPublicKey TMH_master_public_key;
+extern struct TALER_MasterPublicKeyP TMH_master_public_key;
 
 /**
  * Private key of the exchange we use to sign messages.

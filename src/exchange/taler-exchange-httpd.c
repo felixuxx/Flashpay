@@ -65,7 +65,7 @@ struct GNUNET_CONFIGURATION_Handle *cfg;
  * Master public key (according to the
  * configuration in the exchange directory).
  */
-struct GNUNET_CRYPTO_EddsaPublicKey TMH_master_public_key;
+struct TALER_MasterPublicKeyP TMH_master_public_key;
 
 /**
  * Our DB plugin.
@@ -424,7 +424,7 @@ exchange_serve_process_config (const char *exchange_directory)
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_public_key_from_string (TMH_master_public_key_str,
                                                   strlen (TMH_master_public_key_str),
-                                                  &TMH_master_public_key))
+                                                  &TMH_master_public_key.eddsa_pub))
   {
     fprintf (stderr,
              "Invalid master public key given in exchange configuration.");

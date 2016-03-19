@@ -28,6 +28,9 @@ libtalerexchange_la_SOURCES = \
   exchange_api_wire_deposits.c
 
 libtalerexchange_la_LIBADD = \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetjson \
   -lgnunetutil \
   -ljansson \
   $(XLIB)
@@ -51,6 +54,7 @@ test_exchange_api_SOURCES = \
 test_exchange_api_LDADD = \
   libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil \
   -ljansson

@@ -25,11 +25,11 @@
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_exchange_service.h"
+#include "taler_wire_plugin.h"
 #include "exchange_api_common.h"
 #include "exchange_api_json.h"
 #include "exchange_api_context.h"
 #include "exchange_api_handle.h"
-#include "taler_signatures.h"
 
 
 /**
@@ -84,93 +84,6 @@ struct TALER_EXCHANGE_WireHandle
 
 /**
  * Verify that the signature on the "200 OK" response
- * for /wire/test from the exchange is valid.
- * Accepts everything.
- *
- * @param wh wire handle
- * @param json json reply with the signature
- * @return #GNUNET_SYSERR if @a json is invalid,
- *         #GNUNET_NO if the method is unknown,
- *         #GNUNET_OK if the json is valid
- */
-static int
-verify_wire_test_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
-                               json_t *json)
-{
-  return GNUNET_OK;
-}
-
-
-/**
- * Verify that the signature on the "200 OK" response
- * for /wire/sepa from the exchange is valid.
- *
- * @param wh wire handle
- * @param json json reply with the signature
- * @return #GNUNET_SYSERR if @a json is invalid,
- *         #GNUNET_NO if the method is unknown,
- *         #GNUNET_OK if the json is valid
- */
-static int
-verify_wire_sepa_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
-                               json_t *json)
-{
-  struct TALER_MasterSignatureP exchange_sig;
-  struct TALER_MasterWireSepaDetailsPS mp;
-  const char *receiver_name;
-  const char *iban;
-  const char *bic;
-  const struct TALER_EXCHANGE_Keys *key_state;
-  struct GNUNET_HashContext *hc;
-  struct MAJ_Specification spec[] = {
-    MAJ_spec_fixed_auto ("sig", &exchange_sig),
-    MAJ_spec_string ("receiver_name", &receiver_name),
-    MAJ_spec_string ("iban", &iban),
-    MAJ_spec_string ("bic", &bic),
-    MAJ_spec_end
-  };
-
-  if (GNUNET_OK !=
-      MAJ_parse_json (json,
-                      spec))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-
-  key_state = TALER_EXCHANGE_get_keys (wh->exchange);
-  mp.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SEPA_DETAILS);
-  mp.purpose.size = htonl (sizeof (struct TALER_MasterWireSepaDetailsPS));
-  hc = GNUNET_CRYPTO_hash_context_start ();
-  GNUNET_CRYPTO_hash_context_read (hc,
-                                   receiver_name,
-                                   strlen (receiver_name) + 1);
-  GNUNET_CRYPTO_hash_context_read (hc,
-                                   iban,
-                                   strlen (iban) + 1);
-  GNUNET_CRYPTO_hash_context_read (hc,
-                                   bic,
-                                   strlen (bic) + 1);
-  GNUNET_CRYPTO_hash_context_finish (hc,
-                                     &mp.h_sepa_details);
-
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SEPA_DETAILS,
-                                  &mp.purpose,
-                                  &exchange_sig.eddsa_signature,
-                                  &key_state->master_pub.eddsa_pub))
-  {
-    GNUNET_break_op (0);
-    MAJ_parse_free (spec);
-    return GNUNET_SYSERR;
-  }
-  MAJ_parse_free (spec);
-  return GNUNET_OK;
-}
-
-
-/**
- * Verify that the signature on the "200 OK" response
  * for /wire/METHOD from the exchange is valid.
  *
  * @param wh wire handle with key material
@@ -185,37 +98,33 @@ verify_wire_method_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
                                  const char *method,
                                  json_t *json)
 {
-  struct
+  const struct TALER_EXCHANGE_Keys *key_state;
+  struct TALER_WIRE_Plugin *plugin;
+  char *lib_name;
+  int ret;
+
+  key_state = TALER_EXCHANGE_get_keys (wh->exchange);
+  (void) GNUNET_asprintf (&lib_name,
+                          "libtaler_plugin_wire_%s",
+                          method);
+  plugin = GNUNET_PLUGIN_load (lib_name,
+                               NULL);
+  if (NULL == plugin)
   {
-    /**
-     * Name fo the method.
-     */
-    const char *method;
-
-    /**
-     * Handler to invoke to verify signature.
-     *
-     * @param wh wire handle with key material
-     * @param json json reply with signature to verify
-     */
-    int (*handler)(const struct TALER_EXCHANGE_WireHandle *wh,
-                   json_t *json);
-  } handlers[] = {
-    { "test", &verify_wire_test_signature_ok },
-    { "sepa", &verify_wire_sepa_signature_ok },
-    { NULL, NULL }
-  };
-  unsigned int i;
-
-  for (i=0;NULL != handlers[i].method; i++)
-    if (0 == strcasecmp (handlers[i].method,
-                         method))
-      return handlers[i].handler (wh,
-                                  json);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Wire transfer method `%s' not supported\n",
-              method);
-  return GNUNET_NO;
+    GNUNET_free (lib_name);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Wire transfer method `%s' not supported\n",
+                method);
+    return GNUNET_NO;
+  }
+  plugin->library_name = lib_name;
+  ret = plugin->wire_validate (plugin->cls,
+                               json,
+                               &key_state->master_pub);
+  GNUNET_PLUGIN_unload (lib_name,
+                        plugin);
+  GNUNET_free (lib_name);
+  return (GNUNET_YES == ret) ? GNUNET_OK : GNUNET_SYSERR;
 }
 
 
@@ -312,6 +221,7 @@ handle_wire_method_finished (void *cls,
           json_string_value (json_array_get (wh->methods,
                                              wh->methods_off-1)),
           json);
+  json_decref (json);
   /* trigger request for the next /wire/method */
   request_wire_method (wh);
 }

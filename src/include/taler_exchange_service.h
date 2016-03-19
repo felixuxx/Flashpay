@@ -22,6 +22,7 @@
 #ifndef _TALER_EXCHANGE_SERVICE_H
 #define _TALER_EXCHANGE_SERVICE_H
 
+#include <jansson.h>
 #include "taler_util.h"
 
 /* ********************* event loop *********************** */
@@ -292,7 +293,7 @@ struct TALER_EXCHANGE_Keys
  */
 typedef void
 (*TALER_EXCHANGE_CertificationCallback) (void *cls,
-                                     const struct TALER_EXCHANGE_Keys *keys);
+                                         const struct TALER_EXCHANGE_Keys *keys);
 
 
 /**
@@ -319,10 +320,10 @@ struct TALER_EXCHANGE_Handle;
  */
 struct TALER_EXCHANGE_Handle *
 TALER_EXCHANGE_connect (struct TALER_EXCHANGE_Context *ctx,
-                    const char *url,
-                    TALER_EXCHANGE_CertificationCallback cert_cb,
-                    void *cert_cb_cls,
-                    ...);
+                        const char *url,
+                        TALER_EXCHANGE_CertificationCallback cert_cb,
+                        void *cert_cb_cls,
+                        ...);
 
 
 /**
@@ -354,7 +355,7 @@ TALER_EXCHANGE_get_keys (const struct TALER_EXCHANGE_Handle *exchange);
  */
 int
 TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
-                             const struct TALER_ExchangePublicKeyP *pub);
+                                 const struct TALER_ExchangePublicKeyP *pub);
 
 
 /**
@@ -367,7 +368,7 @@ TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
  */
 const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_EXCHANGE_get_denomination_key (const struct TALER_EXCHANGE_Keys *keys,
-                                 const struct TALER_DenominationPublicKey *pk);
+                                     const struct TALER_DenominationPublicKey *pk);
 
 
 /**
@@ -379,7 +380,7 @@ TALER_EXCHANGE_get_denomination_key (const struct TALER_EXCHANGE_Keys *keys,
  */
 const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_EXCHANGE_get_denomination_key_by_hash (const struct TALER_EXCHANGE_Keys *keys,
-                                         const struct GNUNET_HashCode *hc);
+                                             const struct GNUNET_HashCode *hc);
 
 
 /* *********************  /wire *********************** */
@@ -423,9 +424,9 @@ struct TALER_EXCHANGE_WireHandle;
  */
 typedef void
 (*TALER_EXCHANGE_WireResultCallback) (void *cls,
-                                  unsigned int http_status,
-                                  const char *method,
-                                  json_t *obj);
+                                      unsigned int http_status,
+                                      const char *method,
+                                      json_t *obj);
 
 
 /**

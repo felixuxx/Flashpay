@@ -24,6 +24,7 @@
 #include <jansson.h>
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_json_lib.h>
 #include "taler_exchange_service.h"
 #include "exchange_api_json.h"
 #include "exchange_api_context.h"
@@ -859,12 +860,12 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                                            &reserve_sig.eddsa_signature));
   withdraw_obj = json_pack ("{s:o, s:o," /* denom_pub and coin_ev */
                             " s:o, s:o}",/* reserve_pub and reserve_sig */
-                            "denom_pub", TALER_json_from_rsa_public_key (pk->key.rsa_public_key),
-                            "coin_ev", TALER_json_from_data (coin_ev,
+                            "denom_pub", GNUNET_JSON_from_rsa_public_key (pk->key.rsa_public_key),
+                            "coin_ev", GNUNET_JSON_from_data (coin_ev,
                                                              coin_ev_size),
-                            "reserve_pub", TALER_json_from_data (&wsh->reserve_pub,
+                            "reserve_pub", GNUNET_JSON_from_data (&wsh->reserve_pub,
                                                                  sizeof (struct TALER_ReservePublicKeyP)),
-                            "reserve_sig", TALER_json_from_data (&reserve_sig,
+                            "reserve_sig", GNUNET_JSON_from_data (&reserve_sig,
                                                                  sizeof (reserve_sig)));
   GNUNET_free (coin_ev);
 

@@ -21,6 +21,8 @@
 #include "platform.h"
 #include <pthread.h>
 #include <jansson.h>
+#include <gnunet/gnunet_json_lib.h>
+#include "taler_json_lib.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
 
@@ -1673,12 +1675,12 @@ handle_transaction_data (void *cls,
      is also ugly if we ever add signatures over this data. (#4135) */
   json_array_append (ctx->deposits,
                      json_pack ("{s:o, s:o, s:o, s:I, s:o}",
-                                "deposit_value", TALER_json_from_amount (deposit_value),
-                                "deposit_fee", TALER_json_from_amount (deposit_fee),
-                                "H_contract", TALER_json_from_data (h_contract,
+                                "deposit_value", TALER_JSON_from_amount (deposit_value),
+                                "deposit_fee", TALER_JSON_from_amount (deposit_fee),
+                                "H_contract", GNUNET_JSON_from_data (h_contract,
                                                                     sizeof (struct GNUNET_HashCode)),
                                 "transaction_id", (json_int_t) transaction_id,
-                                "coin_pub", TALER_json_from_data (coin_pub,
+                                "coin_pub", GNUNET_JSON_from_data (coin_pub,
                                                                   sizeof (struct TALER_CoinSpendPublicKeyP))));
 }
 

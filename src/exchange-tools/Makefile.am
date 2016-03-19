@@ -38,7 +38,9 @@ taler_exchange_sepa_SOURCES = \
 taler_exchange_sepa_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetutil -ljansson $(XLIB)
+  -lgnunetjson \
+  -lgnunetutil \
+  -ljansson $(XLIB)
 taler_exchange_sepa_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 
 taler_exchange_keycheck_SOURCES = \

@@ -24,6 +24,8 @@
 #include <jansson.h>
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_json_lib.h>
+#include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "exchange_api_common.h"
 #include "exchange_api_json.h"
@@ -1373,17 +1375,17 @@ melted_coin_to_json (const struct GNUNET_HashCode *melt_session_hash,
                             &confirm_sig.eddsa_signature);
   return json_pack ("{s:o, s:o, s:o, s:o, s:o}",
                     "coin_pub",
-                    TALER_json_from_data (&melt.coin_pub,
+                    GNUNET_JSON_from_data (&melt.coin_pub,
                                           sizeof (melt.coin_pub)),
                     "denom_pub",
-                    TALER_json_from_rsa_public_key (mc->pub_key.rsa_public_key),
+                    GNUNET_JSON_from_rsa_public_key (mc->pub_key.rsa_public_key),
                     "denom_sig",
-                    TALER_json_from_rsa_signature (mc->sig.rsa_signature),
+                    GNUNET_JSON_from_rsa_signature (mc->sig.rsa_signature),
                     "confirm_sig",
-                    TALER_json_from_data (&confirm_sig,
+                    GNUNET_JSON_from_data (&confirm_sig,
                                           sizeof (confirm_sig)),
                     "value_with_fee",
-                    TALER_json_from_amount (&mc->melt_amount_with_fee));
+                    TALER_JSON_from_amount (&mc->melt_amount_with_fee));
 }
 
 
@@ -1472,7 +1474,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
       GNUNET_CRYPTO_ecdhe_key_get_public (&mc->transfer_priv[j].ecdhe_priv,
                                           &transfer_pub.ecdhe_pub);
       json_array_append (tmp,
-                         TALER_json_from_data (&transfer_pub,
+                         GNUNET_JSON_from_data (&transfer_pub,
                                                sizeof (transfer_pub)));
     }
     json_array_append (transfer_pubs,
@@ -1497,7 +1499,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
                                              &trans_sec,
                                              &els));
       json_array_append (tmp,
-                         TALER_json_from_data (&els,
+                         GNUNET_JSON_from_data (&els,
                                                sizeof (els)));
     }
     json_array_append (secret_encs,
@@ -1508,7 +1510,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   for (i=0;i<md->num_fresh_coins;i++)
   {
     json_array_append (new_denoms,
-                       TALER_json_from_rsa_public_key
+                       GNUNET_JSON_from_rsa_public_key
                        (md->fresh_pks[i].rsa_public_key));
   }
 
@@ -1533,7 +1535,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
                                                  &buf_len);
       GNUNET_assert (NULL != buf);
       json_array_append (tmp,
-                         TALER_json_from_data (buf,
+                         GNUNET_JSON_from_data (buf,
                                                buf_len));
       GNUNET_free (buf);
       GNUNET_free (rle);
@@ -1564,7 +1566,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
                                               md->fresh_pks[i].rsa_public_key,
                                               &coin_ev);
       json_array_append (tmp,
-                         TALER_json_from_data (coin_ev,
+                         GNUNET_JSON_from_data (coin_ev,
                                                coin_ev_size));
       GNUNET_free (coin_ev);
     }
@@ -1975,7 +1977,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
       const struct MeltedCoin *mc = &md->melted_coins[i];
 
       json_array_append (tmp,
-                         TALER_json_from_data (&mc->transfer_priv[j],
+                         GNUNET_JSON_from_data (&mc->transfer_priv[j],
                                                sizeof (struct TALER_TransferPrivateKeyP)));
     }
     json_array_append (transfer_privs,
@@ -1985,7 +1987,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   /* build main JSON request */
   reveal_obj = json_pack ("{s:o, s:o}",
                           "session_hash",
-                          TALER_json_from_data (&md->melt_session_hash,
+                          GNUNET_JSON_from_data (&md->melt_session_hash,
                                                 sizeof (struct GNUNET_HashCode)),
                           "transfer_privs",
                           transfer_privs);

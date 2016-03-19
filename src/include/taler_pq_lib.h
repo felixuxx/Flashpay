@@ -24,6 +24,7 @@
 #define TALER_PQ_LIB_H_
 
 #include <libpq-fe.h>
+#include <jansson.h>
 #include <gnunet/gnunet_pq_lib.h>
 #include "taler_util.h"
 

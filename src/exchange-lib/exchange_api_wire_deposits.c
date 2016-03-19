@@ -24,6 +24,7 @@
 #include <jansson.h>
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_json_lib.h>
 #include "taler_exchange_service.h"
 #include "exchange_api_common.h"
 #include "exchange_api_json.h"

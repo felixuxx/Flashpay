@@ -19,6 +19,7 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
+#include <gnunet/gnunet_json_lib.h>
 #include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_validation.h"
@@ -57,9 +58,9 @@ TMH_WIRE_handler_wire (struct TMH_RequestHandler *rh,
                                        MHD_HTTP_OK,
                                        "{s:o, s:o, s:o}",
                                        "methods", methods,
-                                       "sig", TALER_json_from_data (&sig,
+                                       "sig", GNUNET_JSON_from_data (&sig,
                                                                     sizeof (sig)),
-                                       "pub", TALER_json_from_data (&pub,
+                                       "pub", GNUNET_JSON_from_data (&pub,
                                                                     sizeof (pub)));
 }
 

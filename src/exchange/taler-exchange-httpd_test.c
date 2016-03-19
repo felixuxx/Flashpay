@@ -21,6 +21,7 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_json_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
 #include "taler_signatures.h"
@@ -90,7 +91,7 @@ TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
 				       MHD_HTTP_OK,
 				       "{s:o}",
 				       "output",
-				       TALER_json_from_data (&hc, sizeof (struct GNUNET_HashCode)));
+				       GNUNET_JSON_from_data (&hc, sizeof (struct GNUNET_HashCode)));
 }
 
 
@@ -164,7 +165,7 @@ TMH_TEST_handler_test_encrypt (struct TMH_RequestHandler *rh,
 						 &skey,
 						 &iv,
 						 out));
-  json = TALER_json_from_data (out,
+  json = GNUNET_JSON_from_data (out,
 			       in_ptr_size);
   GNUNET_free (out);
   TMH_PARSE_release_data (spec);
@@ -231,7 +232,7 @@ TMH_TEST_handler_test_hkdf (struct TMH_RequestHandler *rh,
 		     in_ptr_size,
 		     NULL, 0);
   TMH_PARSE_release_data (spec);
-  json = TALER_json_from_data (&hc,
+  json = GNUNET_JSON_from_data (&hc,
 			       sizeof (struct GNUNET_HashCode));
   return TMH_RESPONSE_reply_json_pack (connection,
 				       MHD_HTTP_OK,
@@ -302,7 +303,7 @@ TMH_TEST_handler_test_ecdhe (struct TMH_RequestHandler *rh,
 				       MHD_HTTP_OK,
 				       "{s:o}",
 				       "ecdh_hash",
-				       TALER_json_from_data (&hc,
+				       GNUNET_JSON_from_data (&hc,
 							     sizeof (hc)));
 }
 
@@ -387,10 +388,10 @@ TMH_TEST_handler_test_eddsa (struct TMH_RequestHandler *rh,
 				       MHD_HTTP_OK,
 				       "{s:o, s:o}",
 				       "eddsa_pub",
-				       TALER_json_from_data (&pub,
+				       GNUNET_JSON_from_data (&pub,
 							     sizeof (pub)),
 				       "eddsa_sig",
-				       TALER_json_from_data (&sig,
+				       GNUNET_JSON_from_data (&sig,
 							     sizeof (sig)));
 }
 
@@ -435,7 +436,7 @@ TMH_TEST_handler_test_rsa_get (struct TMH_RequestHandler *rh,
 				      MHD_HTTP_OK,
 				      "{s:o}",
 				      "rsa_pub",
-				      TALER_json_from_rsa_public_key (pub));
+				      GNUNET_JSON_from_rsa_public_key (pub));
   GNUNET_CRYPTO_rsa_public_key_free (pub);
   return res;
 }
@@ -509,7 +510,7 @@ TMH_TEST_handler_test_rsa_sign (struct TMH_RequestHandler *rh,
 				      MHD_HTTP_OK,
 				      "{s:o}",
 				      "rsa_blind_sig",
-				      TALER_json_from_rsa_signature (sig));
+				      GNUNET_JSON_from_rsa_signature (sig));
   GNUNET_CRYPTO_rsa_signature_free (sig);
   return res;
 }
@@ -578,7 +579,7 @@ TMH_TEST_handler_test_transfer (struct TMH_RequestHandler *rh,
 				       MHD_HTTP_OK,
 				       "{s:o}",
 				       "secret",
-				       TALER_json_from_data (&secret,
+				       GNUNET_JSON_from_data (&secret,
 							     sizeof (secret)));
 }
 

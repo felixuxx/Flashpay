@@ -518,7 +518,7 @@ exchange_keys_update_signkeys ()
                                "must be longer than signkey_duration");
     return GNUNET_SYSERR;
   }
-  TALER_round_rel_time (&signkey_duration);
+  GNUNET_TIME_round_rel (&signkey_duration);
   GNUNET_asprintf (&signkey_dir,
                    "%s" DIR_SEPARATOR_STR TALER_EXCHANGEDB_DIR_SIGNING_KEYS,
                    exchange_directory);
@@ -600,7 +600,7 @@ get_cointype_params (const char *ct,
                                "duration_withdraw");
     return GNUNET_SYSERR;
   }
-  TALER_round_rel_time (&params->duration_withdraw);
+  GNUNET_TIME_round_rel (&params->duration_withdraw);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            ct,
@@ -612,7 +612,7 @@ get_cointype_params (const char *ct,
                                "duration_spend");
     return GNUNET_SYSERR;
   }
-  TALER_round_rel_time (&params->duration_spend);
+  GNUNET_TIME_round_rel (&params->duration_spend);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            ct,
@@ -624,7 +624,7 @@ get_cointype_params (const char *ct,
                                "duration_legal");
     return GNUNET_SYSERR;
   }
-  TALER_round_rel_time (&params->duration_legal);
+  GNUNET_TIME_round_rel (&params->duration_legal);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            ct,
@@ -636,7 +636,7 @@ get_cointype_params (const char *ct,
                                "exchange_denom_duration_overlap");
     return GNUNET_SYSERR;
   }
-  TALER_round_rel_time (&params->duration_overlap);
+  GNUNET_TIME_round_rel (&params->duration_overlap);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (kcfg,
                                              ct,
@@ -927,7 +927,7 @@ main (int argc,
   {
     now = GNUNET_TIME_absolute_get ();
   }
-  TALER_round_abs_time (&now);
+  GNUNET_TIME_round_abs (&now);
 
   kcfg = TALER_config_load (exchange_directory);
   if (NULL == kcfg)
@@ -1017,7 +1017,7 @@ main (int argc,
                                _("must not be zero"));
     return GNUNET_SYSERR;
   }
-  TALER_round_rel_time (&lookahead_sign);
+  GNUNET_TIME_round_rel (&lookahead_sign);
   lookahead_sign_stamp = GNUNET_TIME_absolute_add (now,
                                                    lookahead_sign);
 

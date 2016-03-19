@@ -24,8 +24,9 @@
 #include <jansson.h>
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_json_lib.h>
 #include "taler_bank_service.h"
-#include "bank_api_json.h"
+#include "taler_json_lib.h"
 #include "bank_api_context.h"
 #include "taler_signatures.h"
 
@@ -173,9 +174,9 @@ TALER_BANK_admin_add_incoming (struct TALER_BANK_Context *bank,
 
   admin_obj = json_pack ("{s:o, s:o,"
                          " s:I, s:I}",
-                         "wtid", TALER_json_from_data (wtid,
+                         "wtid", GNUNET_JSON_from_data (wtid,
                                                        sizeof (*wtid)),
-                         "amount", TALER_json_from_amount (amount),
+                         "amount", TALER_JSON_from_amount (amount),
                          "debit_account", (json_int_t) debit_account_no,
                          "credit_account", (json_int_t) credit_account_no);
   aai = GNUNET_new (struct TALER_BANK_AdminAddIncomingHandle);

@@ -23,6 +23,7 @@
 #include "taler_util.h"
 #include "taler_signatures.h"
 #include "taler_exchange_service.h"
+#include "taler_json_lib.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
 
@@ -1502,7 +1503,7 @@ interpreter_run (void *cls,
       return;
     }
     execution_date = GNUNET_TIME_absolute_get ();
-    TALER_round_abs_time (&execution_date);
+    GNUNET_TIME_round_abs (&execution_date);
     cmd->details.admin_add_incoming.aih
       = TALER_EXCHANGE_admin_add_incoming (exchange,
                                        &reserve_pub,
@@ -1664,7 +1665,7 @@ interpreter_run (void *cls,
         fail (is);
         return;
       }
-      TALER_hash_json (contract,
+      TALER_JSON_hash (contract,
                        &h_contract);
       wire = json_loads (cmd->details.deposit.wire_details,
                          JSON_REJECT_DUPLICATES,
@@ -1698,7 +1699,7 @@ interpreter_run (void *cls,
 
       wire_deadline = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_DAYS);
       timestamp = GNUNET_TIME_absolute_get ();
-      TALER_round_abs_time (&timestamp);
+      GNUNET_TIME_round_abs (&timestamp);
       {
         struct TALER_DepositRequestPS dr;
 
@@ -1706,7 +1707,7 @@ interpreter_run (void *cls,
         dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
         dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
         dr.h_contract = h_contract;
-        TALER_hash_json (wire,
+        TALER_JSON_hash (wire,
                          &dr.h_wire);
         dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
         dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
@@ -1964,14 +1965,14 @@ interpreter_run (void *cls,
                          JSON_REJECT_DUPLICATES,
                          NULL);
       GNUNET_assert (NULL != wire);
-      TALER_hash_json (wire,
+      TALER_JSON_hash (wire,
                        &h_wire);
       json_decref (wire);
       contract = json_loads (ref->details.deposit.contract,
                              JSON_REJECT_DUPLICATES,
                              NULL);
       GNUNET_assert (NULL != contract);
-      TALER_hash_json (contract,
+      TALER_JSON_hash (contract,
                        &h_contract);
       json_decref (contract);
       cmd->details.deposit_wtid.dwh
@@ -2349,7 +2350,7 @@ run (void *cls,
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "create-reserve-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.wire = "{ \"type\":\"TEST\", \"bank\":\"source bank\", \"account_number\":42 }",
+      .details.admin_add_incoming.wire = "{ \"type\":\"test\", \"bank\":\"source bank\", \"account_number\":42 }",
       .details.admin_add_incoming.amount = "EUR:5.01" },
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     { .oc = OC_WITHDRAW_SIGN,
@@ -2370,7 +2371,7 @@ run (void *cls,
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account_number\":42 }",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank\":\"dest bank\", \"account_number\":42 }",
       .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 1 },
 
@@ -2387,7 +2388,7 @@ run (void *cls,
       .expected_response_code = MHD_HTTP_FORBIDDEN,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account_number\":43 }",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank\":\"dest bank\", \"account_number\":43 }",
       .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 1 },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
@@ -2397,7 +2398,7 @@ run (void *cls,
       .expected_response_code = MHD_HTTP_FORBIDDEN,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account_number\":42 }",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank\":\"dest bank\", \"account_number\":42 }",
       .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 2 },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
@@ -2407,7 +2408,7 @@ run (void *cls,
       .expected_response_code = MHD_HTTP_FORBIDDEN,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account_number\":42 }",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank\":\"dest bank\", \"account_number\":42 }",
       .details.deposit.contract = "{ \"items\":[{ \"name\":\"ice cream\", \"value\":2 } ] }",
       .details.deposit.transaction_id = 1 },
 
@@ -2417,7 +2418,7 @@ run (void *cls,
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "refresh-create-reserve-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.wire = "{ \"type\":\"TEST\", \"bank\":\"source bank\", \"account_number\":424 }",
+      .details.admin_add_incoming.wire = "{ \"type\":\"test\", \"bank\":\"source bank\", \"account_number\":424 }",
       .details.admin_add_incoming.amount = "EUR:5.01" },
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     { .oc = OC_WITHDRAW_SIGN,
@@ -2432,7 +2433,7 @@ run (void *cls,
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit.amount = "EUR:1",
       .details.deposit.coin_ref = "refresh-withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account_number\":42 }",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank\":\"dest bank\", \"account_number\":42 }",
       .details.deposit.contract = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:1\" } ] }",
       .details.deposit.transaction_id = 42421 },
 

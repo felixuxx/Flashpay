@@ -14,6 +14,7 @@ taler_exchange_aggregator_SOURCES = \
   taler-exchange-aggregator.c
 taler_exchange_aggregator_LDADD = \
   $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
@@ -36,11 +37,13 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_validation.c taler-exchange-httpd_validation.h
 taler_exchange_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   -lmicrohttpd \
-  -ljansson \
   -lgnunetutil \
+  -lgnunetjson \
+  -ljansson \
   -lpthread
 
 if HAVE_DEVELOPER

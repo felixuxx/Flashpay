@@ -29,6 +29,7 @@
 #include <pthread.h>
 #include "taler_exchangedb_lib.h"
 #include "taler_exchangedb_plugin.h"
+#include "taler_json_lib.h"
 #include "taler_wire_lib.h"
 
 /**
@@ -277,7 +278,7 @@ deposit_cb (void *cls,
   au->row_id = row_id;
   au->wire = (json_t *) wire;
   au->execution_time = GNUNET_TIME_absolute_get ();
-  TALER_hash_json (au->wire,
+  TALER_JSON_hash (au->wire,
                    &au->h_wire);
   json_incref (au->wire);
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,

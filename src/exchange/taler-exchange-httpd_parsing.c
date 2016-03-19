@@ -24,6 +24,7 @@
 
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
+#include "taler_json_lib.h"
 #include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_responses.h"
 
@@ -786,10 +787,15 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
     case TMH_PARSE_JNC_RET_AMOUNT:
       {
         struct TALER_Amount *where = va_arg (argp, void *);
+        struct GNUNET_JSON_Specification spec[] = {
+          TALER_JSON_spec_amount (NULL, where),
+          GNUNET_JSON_spec_end ()
+        };
 
         if (GNUNET_OK !=
-            TALER_json_to_amount ((json_t *) root,
-                                  where))
+            GNUNET_JSON_parse ((json_t *) root,
+                               spec,
+                               NULL, NULL))
         {
           GNUNET_break_op (0);
           ret = (MHD_YES !=
@@ -823,10 +829,15 @@ TMH_PARSE_navigate_json (struct MHD_Connection *connection,
     case TMH_PARSE_JNC_RET_TIME_ABSOLUTE:
       {
         struct GNUNET_TIME_Absolute *where = va_arg (argp, void *);
+        struct GNUNET_JSON_Specification spec[] = {
+          GNUNET_JSON_spec_absolute_time (NULL, where),
+          GNUNET_JSON_spec_end ()
+        };
 
         if (GNUNET_OK !=
-            TALER_json_to_abs ((json_t *) root,
-                               where))
+            GNUNET_JSON_parse ((json_t *) root,
+                               spec,
+                               NULL, NULL))
         {
           GNUNET_break_op (0);
           ret = (MHD_YES !=

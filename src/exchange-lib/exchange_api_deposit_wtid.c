@@ -24,6 +24,7 @@
 #include <jansson.h>
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_json_lib.h>
 #include "taler_exchange_service.h"
 #include "exchange_api_common.h"
 #include "exchange_api_json.h"
@@ -296,16 +297,16 @@ TALER_EXCHANGE_deposit_wtid (struct TALER_EXCHANGE_Handle *exchange,
   deposit_wtid_obj = json_pack ("{s:o, s:o," /* H_wire, H_contract */
                                 " s:o, s:I," /* coin_pub, transaction_id */
                                 " s:o, s:o}", /* merchant_pub, merchant_sig */
-                                "H_wire", TALER_json_from_data (h_wire,
+                                "H_wire", GNUNET_JSON_from_data (h_wire,
                                                                 sizeof (struct GNUNET_HashCode)),
-                                "H_contract", TALER_json_from_data (h_contract,
+                                "H_contract", GNUNET_JSON_from_data (h_contract,
                                                                     sizeof (struct GNUNET_HashCode)),
-                                "coin_pub", TALER_json_from_data (coin_pub,
+                                "coin_pub", GNUNET_JSON_from_data (coin_pub,
                                                                   sizeof (*coin_pub)),
                                 "transaction_id", (json_int_t) transaction_id,
-                                "merchant_pub", TALER_json_from_data (&dtp.merchant,
+                                "merchant_pub", GNUNET_JSON_from_data (&dtp.merchant,
                                                                       sizeof (struct TALER_MerchantPublicKeyP)),
-                                "merchant_sig", TALER_json_from_data (&merchant_sig,
+                                "merchant_sig", GNUNET_JSON_from_data (&merchant_sig,
                                                                       sizeof (merchant_sig)));
 
   dwh = GNUNET_new (struct TALER_EXCHANGE_DepositWtidHandle);

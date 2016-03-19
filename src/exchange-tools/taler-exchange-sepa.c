@@ -20,6 +20,7 @@
  */
 #include <platform.h>
 #include <jansson.h>
+#include <gnunet/gnunet_json_lib.h>
 #include "taler_crypto_lib.h"
 #include "taler_signatures.h"
 
@@ -33,6 +34,11 @@ static char *masterkeyfile;
  * Account holder name.
  */
 static char *sepa_name;
+
+/**
+ * Account holder address.
+ */
+static char *sepa_address;
 
 /**
  * IBAN number.
@@ -63,6 +69,9 @@ main (int argc,
       char *const *argv)
 {
   static const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    {'a', "address", "ADDRESS",
+     "account holder address", 1,
+     &GNUNET_GETOPT_set_string, &sepa_address},
     {'b', "bic", "BICCODE",
      "bank BIC code", 1,
      &GNUNET_GETOPT_set_string, &bic},
@@ -88,6 +97,7 @@ main (int argc,
   struct GNUNET_HashContext *hc;
   json_t *reply;
   char *json_str;
+  struct GNUNET_HashCode salt;
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-exchange-sepa",
@@ -112,8 +122,20 @@ main (int argc,
              masterkeyfile);
     return 1;
   }
+  if ( (NULL == sepa_address) ||
+       (NULL == iban) ||
+       (NULL == sepa_name) ||
+       (NULL == bic) )
+  {
+    fprintf (stderr,
+             "Required arguments missing\n");
+    return 1;
+  }
 
   /* Compute message to sign */
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
+                              &salt,
+                              sizeof (salt));
   hc = GNUNET_CRYPTO_hash_context_start ();
   GNUNET_CRYPTO_hash_context_read (hc,
 				   sepa_name,
@@ -132,27 +154,31 @@ main (int argc,
 			    &wsd.purpose,
 			    &sig.eddsa_signature);
   GNUNET_free (eddsa_priv);
-  
+
   /* build JSON message */
-  reply = json_pack ("{s:s, s:s, s:s, s:o}",
+  reply = json_pack ("{s:s, s:s, s:s, s:s, s:s, s:o, s:o}",
+                     "type", "sepa",
+                     "address", sepa_address,
 		     "receiver_name", sepa_name,
 		     "iban", iban,
 		     "bic", bic,
-		     "sig", TALER_json_from_data (&sig,
-						  sizeof (sig)));
+                     "salt", GNUNET_JSON_from_data (&salt,
+                                                    sizeof (salt)),
+		     "sig", GNUNET_JSON_from_data (&sig,
+                                                   sizeof (sig)));
   GNUNET_assert (NULL != reply);
 
   /* dump result to stdout */
   json_str = json_dumps (reply, JSON_INDENT(2));
   GNUNET_assert (NULL != json_str);
- 
+
   if (NULL != output_filename)
   {
     fclose (stdout);
     stdout = fopen (output_filename,
 		    "w+");
   }
-  fprintf (stdout, 
+  fprintf (stdout,
 	   "%s",
 	   json_str);
   fflush (stdout);

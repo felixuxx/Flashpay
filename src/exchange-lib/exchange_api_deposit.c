@@ -25,6 +25,8 @@
 #include <jansson.h>
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_json_lib.h>
+#include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "exchange_api_common.h"
 #include "exchange_api_json.h"
@@ -411,7 +413,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_HashCode h_wire;
   struct TALER_Amount amount_without_fee;
 
-  (void) TALER_round_abs_time (&wire_deadline);
+  (void) GNUNET_TIME_round_abs (&wire_deadline);
   if (GNUNET_YES !=
       MAH_handle_is_ready (exchange))
   {
@@ -420,7 +422,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   }
   /* initialize h_wire */
   if (GNUNET_OK !=
-      TALER_hash_json (wire_details,
+      TALER_JSON_hash (wire_details,
                        &h_wire))
   {
     GNUNET_break (0);
@@ -468,23 +470,23 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                            " s:I, s:o," /* transaction id, merchant_pub */
                            " s:o, s:o," /* refund_deadline, wire_deadline */
                            " s:o}",     /* coin_sig */
-                           "f", TALER_json_from_amount (amount),
+                           "f", TALER_JSON_from_amount (amount),
                            "wire", wire_details,
-                           "H_wire", TALER_json_from_data (&h_wire,
+                           "H_wire", GNUNET_JSON_from_data (&h_wire,
                                                            sizeof (h_wire)),
-                           "H_contract", TALER_json_from_data (h_contract,
+                           "H_contract", GNUNET_JSON_from_data (h_contract,
                                                                sizeof (struct GNUNET_HashCode)),
-                           "coin_pub", TALER_json_from_data (coin_pub,
+                           "coin_pub", GNUNET_JSON_from_data (coin_pub,
                                                              sizeof (*coin_pub)),
-                           "denom_pub", TALER_json_from_rsa_public_key (denom_pub->rsa_public_key),
-                           "ub_sig", TALER_json_from_rsa_signature (denom_sig->rsa_signature),
-                           "timestamp", TALER_json_from_abs (timestamp),
+                           "denom_pub", GNUNET_JSON_from_rsa_public_key (denom_pub->rsa_public_key),
+                           "ub_sig", GNUNET_JSON_from_rsa_signature (denom_sig->rsa_signature),
+                           "timestamp", GNUNET_JSON_from_time_abs (timestamp),
                            "transaction_id", (json_int_t) transaction_id,
-                           "merchant_pub", TALER_json_from_data (merchant_pub,
+                           "merchant_pub", GNUNET_JSON_from_data (merchant_pub,
                                                                  sizeof (*merchant_pub)),
-                           "refund_deadline", TALER_json_from_abs (refund_deadline),
-                           "edate", TALER_json_from_abs (wire_deadline),
-                           "coin_sig", TALER_json_from_data (coin_sig,
+                           "refund_deadline", GNUNET_JSON_from_time_abs (refund_deadline),
+                           "edate", GNUNET_JSON_from_time_abs (wire_deadline),
+                           "coin_sig", GNUNET_JSON_from_data (coin_sig,
                                                              sizeof (*coin_sig))
                            );
 

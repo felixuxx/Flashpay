@@ -21,6 +21,7 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
+#include "taler-exchange-httpd.h"
 #include "taler-exchange-httpd_validation.h"
 #include "taler_wire_plugin.h"
 
@@ -172,7 +173,9 @@ TMH_json_validate_wireformat (const json_t *wire)
   for (p=wire_head; NULL != p; p = p->next)
     if (0 == strcasecmp (p->type,
                          stype))
-      return p->plugin->wire_validate (wire);
+      return p->plugin->wire_validate (p->plugin->cls,
+                                       wire,
+                                       &TMH_master_public_key);
   return GNUNET_NO;
 }
 

@@ -76,11 +76,15 @@ template_amount_round (void *cls,
 /**
  * Check if the given wire format JSON object is correctly formatted
  *
+ * @param cls the @e cls of this struct with the plugin-specific state
  * @param wire the JSON wire format object
+ * @param master_pub public key of the exchange to verify against
  * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
 static int
-template_wire_validate (const json_t *wire)
+template_wire_validate (void *cls,
+                        const json_t *wire,
+                        const struct TALER_MasterPublicKeyP *master_pub)
 {
   GNUNET_break (0);
   return GNUNET_SYSERR;

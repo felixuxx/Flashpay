@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016 GNUnet e.V.
+  Copyright (C) 2016 GNUnet e.V. & Inria
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -23,6 +23,8 @@
  */
 #include "platform.h"
 #include "taler_wire_plugin.h"
+#include "taler_signatures.h"
+#include <gnunet/gnunet_json_lib.h>
 
 
 /**
@@ -58,6 +60,8 @@ sepa_amount_round (void *cls,
   struct SepaClosure *sc = cls;
   uint32_t delta;
 
+  if (NULL == sc->currency)
+    return GNUNET_SYSERR;
   if (0 != strcasecmp (amount->currency,
                        sc->currency))
   {
@@ -348,41 +352,115 @@ validate_iban (const char *iban)
 
 
 /**
+ * Verify that the signature in the @a json for /wire/sepa is valid.
+ *
+ * @param json json reply with the signature
+ * @param master_pub public key of the exchange to verify against
+ * @return #GNUNET_SYSERR if @a json is invalid,
+ *         #GNUNET_NO if the method is unknown,
+ *         #GNUNET_OK if the json is valid
+ */
+static int
+verify_wire_sepa_signature_ok (const json_t *json,
+                               const struct TALER_MasterPublicKeyP *master_pub)
+{
+  struct TALER_MasterSignatureP exchange_sig;
+  struct TALER_MasterWireSepaDetailsPS mp;
+  const char *receiver_name;
+  const char *iban;
+  const char *bic;
+  struct GNUNET_HashContext *hc;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("sig", &exchange_sig),
+    GNUNET_JSON_spec_string ("receiver_name", &receiver_name),
+    GNUNET_JSON_spec_string ("iban", &iban),
+    GNUNET_JSON_spec_string ("bic", &bic),
+    GNUNET_JSON_spec_end()
+  };
+
+  if (NULL == master_pub)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Skipping signature check as master public key not given\n");
+    return GNUNET_OK;
+  }
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (json, spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  mp.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SEPA_DETAILS);
+  mp.purpose.size = htonl (sizeof (struct TALER_MasterWireSepaDetailsPS));
+  hc = GNUNET_CRYPTO_hash_context_start ();
+  GNUNET_CRYPTO_hash_context_read (hc,
+                                   receiver_name,
+                                   strlen (receiver_name) + 1);
+  GNUNET_CRYPTO_hash_context_read (hc,
+                                   iban,
+                                   strlen (iban) + 1);
+  GNUNET_CRYPTO_hash_context_read (hc,
+                                   bic,
+                                   strlen (bic) + 1);
+  GNUNET_CRYPTO_hash_context_finish (hc,
+                                     &mp.h_sepa_details);
+
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SEPA_DETAILS,
+                                  &mp.purpose,
+                                  &exchange_sig.eddsa_signature,
+                                  &master_pub->eddsa_pub))
+  {
+    GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_JSON_parse_free (spec);
+  return GNUNET_OK;
+}
+
+
+/**
  * Check if the given wire format JSON object is correctly formatted
  *
+ * @param cls the @e cls of this struct with the plugin-specific state
  * @param wire the JSON wire format object
+ * @param master_pub public key of the exchange to verify against
  * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
 static int
-sepa_wire_validate (const json_t *wire)
+sepa_wire_validate (void *cls,
+                    const json_t *wire,
+                    const struct TALER_MasterPublicKeyP *master_pub)
 {
   json_error_t error;
   const char *type;
   const char *iban;
   const char *name;
   const char *bic;
-  uint64_t r;
-  const char *address;
 
   if (0 != json_unpack_ex
       ((json_t *) wire,
-       &error, JSON_STRICT,
+       &error, 0,
        "{"
-       "s:s," /* TYPE: sepa */
-       "s:s," /* IBAN: iban */
-       "s:s," /* name: beneficiary name */
-       "s:s," /* BIC: beneficiary bank's BIC */
-       "s:i," /* r: random 64-bit integer nounce */
-       "s:s"  /* address: address of the beneficiary */
+       "s:s," /* type: sepa */
+       "s:s," /* iban: IBAN */
+       "s:s," /* receiver_name: beneficiary name */
+       "s:s" /* bic: beneficiary bank's BIC */
        "}",
        "type", &type,
-       "IBAN", &iban,
-       "name", &name,
-       "bic", &bic,
-       "r", &r,
-       "address", &address))
+       "iban", &iban,
+       "receiver_name", &name,
+       "bic", &bic))
   {
-    TALER_json_warn (error);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "JSON parsing failed at %s:%u: %s (%s)\n",
+                __FILE__, __LINE__,
+                error.text, error.source);
+    json_dumpf (wire, stderr, 0);
+    fprintf (stderr, "\n");
     return GNUNET_SYSERR;
   }
   if (0 != strcasecmp (type,
@@ -398,6 +476,15 @@ sepa_wire_validate (const json_t *wire)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 		"IBAN `%s' invalid\n",
 		iban);
+    return GNUNET_NO;
+  }
+  /* FIXME: don't parse again, integrate properly... */
+  if (GNUNET_OK !=
+      verify_wire_sepa_signature_ok (wire,
+                                     master_pub))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Signature invalid\n");
     return GNUNET_NO;
   }
   return GNUNET_YES;
@@ -499,19 +586,21 @@ libtaler_plugin_wire_sepa_init (void *cls)
   struct TALER_WIRE_Plugin *plugin;
 
   sc = GNUNET_new (struct SepaClosure);
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "exchange",
-                                             "CURRENCY",
-                                             &sc->currency))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "CURRENCY");
-    GNUNET_free (sc);
-    return NULL;
-  }
-
+  if (NULL != cfg)
+    {
+      if (GNUNET_OK !=
+          GNUNET_CONFIGURATION_get_value_string (cfg,
+                                                 "exchange",
+                                                 "CURRENCY",
+                                                 &sc->currency))
+        {
+          GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                     "exchange",
+                                     "CURRENCY");
+          GNUNET_free (sc);
+          return NULL;
+        }
+    }
   plugin = GNUNET_new (struct TALER_WIRE_Plugin);
   plugin->cls = sc;
   plugin->amount_round = &sepa_amount_round;
@@ -536,7 +625,7 @@ libtaler_plugin_wire_sepa_done (void *cls)
   struct TALER_WIRE_Plugin *plugin = cls;
   struct SepaClosure *sc = plugin->cls;
 
-  GNUNET_free (sc->currency);
+  GNUNET_free_non_null (sc->currency);
   GNUNET_free (sc);
   GNUNET_free (plugin);
   return NULL;

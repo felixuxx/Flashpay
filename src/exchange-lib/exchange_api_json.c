@@ -22,6 +22,7 @@
  */
 #include "platform.h"
 #include "exchange_api_json.h"
+#include "taler_json_lib.h"
 
 /**
  * Navigate and parse data in a JSON tree.
@@ -53,24 +54,39 @@ parse_json (json_t *root,
       GNUNET_assert (0);
       return i;
     case MAJ_CMD_AMOUNT:
-      if (GNUNET_OK !=
-          TALER_json_to_amount (pos,
-                                spec[i].details.amount))
       {
-        GNUNET_break_op (0);
-        return i;
-      }
-      break;
-    case MAJ_CMD_TIME_ABSOLUTE:
-      if (GNUNET_OK !=
-          TALER_json_to_abs (pos,
-                             spec[i].details.abs_time))
-      {
-        GNUNET_break_op (0);
-        return i;
-      }
-      break;
+        struct GNUNET_JSON_Specification nspec[] = {
+          TALER_JSON_spec_amount (NULL, spec[i].details.amount),
+          GNUNET_JSON_spec_end ()
+        };
 
+        if (GNUNET_OK !=
+            GNUNET_JSON_parse (pos,
+                               nspec,
+                               NULL, NULL))
+        {
+          GNUNET_break_op (0);
+          return i;
+        }
+        break;
+      }
+    case MAJ_CMD_TIME_ABSOLUTE:
+      {
+        struct GNUNET_JSON_Specification nspec[] = {
+          GNUNET_JSON_spec_absolute_time (NULL, spec[i].details.abs_time),
+          GNUNET_JSON_spec_end ()
+        };
+
+        if (GNUNET_OK !=
+            GNUNET_JSON_parse (pos,
+                               nspec,
+                               NULL, NULL))
+        {
+          GNUNET_break_op (0);
+          return i;
+        }
+        break;
+      }
     case MAJ_CMD_STRING:
       {
         const char *str;

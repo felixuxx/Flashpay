@@ -24,6 +24,8 @@
 #include <jansson.h>
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_json_lib.h>
+#include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "exchange_api_json.h"
 #include "exchange_api_context.h"
@@ -174,7 +176,7 @@ TALER_EXCHANGE_admin_add_incoming (struct TALER_EXCHANGE_Handle *exchange,
   CURL *eh;
 
   GNUNET_assert (GNUNET_OK ==
-                 TALER_round_abs_time (&execution_date));
+                 GNUNET_TIME_round_abs (&execution_date));
   if (GNUNET_YES !=
       MAH_handle_is_ready (exchange))
   {
@@ -183,10 +185,10 @@ TALER_EXCHANGE_admin_add_incoming (struct TALER_EXCHANGE_Handle *exchange,
   }
   admin_obj = json_pack ("{s:o, s:o," /* reserve_pub/amount */
                          " s:o, s:O}", /* execution_Date/wire */
-                         "reserve_pub", TALER_json_from_data (reserve_pub,
+                         "reserve_pub", GNUNET_JSON_from_data (reserve_pub,
                                                                sizeof (*reserve_pub)),
-                         "amount", TALER_json_from_amount (amount),
-                         "execution_date", TALER_json_from_abs (execution_date),
+                         "amount", TALER_JSON_from_amount (amount),
+                         "execution_date", GNUNET_JSON_from_time_abs (execution_date),
                          "wire", wire);
   aai = GNUNET_new (struct TALER_EXCHANGE_AdminAddIncomingHandle);
   aai->exchange = exchange;

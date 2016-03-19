@@ -1,5 +1,5 @@
 # This Makefile.am is in the public domain
-AM_CPPFLAGS = -I$(top_srcdir)/src/include $(LIBGCRYPT_CFLAGS) $(POSTGRESQL_CPPFLAGS)
+AM_CPPFLAGS = -I$(top_srcdir)/src/include $(LIBGCRYPT_CFLAGS)
 
 if USE_COVERAGE
   AM_CFLAGS = --coverage -O0
@@ -31,15 +31,12 @@ libtalerutil_la_SOURCES = \
   amount.c \
   crypto.c \
   util.c \
-  json.c \
   os_installation.c \
-  plugin.c \
-  wireformats.c
+  plugin.c
 
 libtalerutil_la_LIBADD = \
   -lgnunetutil \
   $(LIBGCRYPT_LIBS) \
-  -ljansson \
   -lmicrohttpd $(XLIB)
 
 libtalerutil_la_LDFLAGS = \
@@ -48,13 +45,11 @@ libtalerutil_la_LDFLAGS = \
 
 TESTS = \
  test_amount \
- test_crypto \
- test_json
+ test_crypto
 
 check_PROGRAMS= \
  test_amount \
- test_crypto \
- test_json
+ test_crypto
 
 
 test_amount_SOURCES = \
@@ -67,11 +62,4 @@ test_crypto_SOURCES = \
   test_crypto.c
 test_crypto_LDADD = \
   -lgnunetutil \
-  libtalerutil.la
-
-test_json_SOURCES = \
-  test_json.c
-test_json_LDADD = \
-  -lgnunetutil \
-  -ljansson \
   libtalerutil.la

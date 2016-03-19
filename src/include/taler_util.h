@@ -24,8 +24,6 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_amount_lib.h"
 #include "taler_crypto_lib.h"
-#include "taler_json_lib.h"
-
 
 
 /* Define logging functions */
@@ -95,30 +93,6 @@ TALER_b2s (const void *buf,
  * @return string representing the binary obj buffer
  */
 #define TALER_B2S(obj) TALER_b2s (obj, sizeof (*obj))
-
-
-/**
- * Round a time value so that it is suitable for transmission
- * via JSON encodings.
- *
- * @param at time to round
- * @return #GNUNET_OK if time was already rounded, #GNUNET_NO if
- *         it was just now rounded
- */
-int
-TALER_round_abs_time (struct GNUNET_TIME_Absolute *at);
-
-
-/**
- * Round a time value so that it is suitable for transmission
- * via JSON encodings.
- *
- * @param rt time to round
- * @return #GNUNET_OK if time was already rounded, #GNUNET_NO if
- *         it was just now rounded
- */
-int
-TALER_round_rel_time (struct GNUNET_TIME_Relative *rt);
 
 
 /**

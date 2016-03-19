@@ -22,6 +22,7 @@
 #ifndef TALER_EXCHANGEDB_PLUGIN_H
 #define TALER_EXCHANGEDB_PLUGIN_H
 
+#include <jansson.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_exchangedb_lib.h"
 

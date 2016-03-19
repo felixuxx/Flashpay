@@ -27,9 +27,11 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_json_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
 #include <pthread.h>
+#include "taler_json_lib.h"
 #include "taler-exchange-httpd_parsing.h"
 #include "taler-exchange-httpd_deposit.h"
 #include "taler-exchange-httpd_responses.h"
@@ -170,7 +172,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
                                            "wire");
   }
   if (GNUNET_OK !=
-      TALER_hash_json (wire,
+      TALER_JSON_hash (wire,
                        &my_h_wire))
   {
     TALER_LOG_WARNING ("Failed to parse JSON wire format specification for /deposit request\n");

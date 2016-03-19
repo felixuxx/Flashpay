@@ -72,7 +72,7 @@ extract_amount_nbo_helper (PGresult *result,
                         frac_name);
   curr_num = PQfnumber (result,
                         curr_name);
-  if (val_num < 0) 
+  if (val_num < 0)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
 		"Field `%s' does not exist in result\n",
@@ -140,7 +140,7 @@ extract_amount_nbo_helper (PGresult *result,
  *   #GNUNET_YES if all results could be extracted
  *   #GNUNET_NO if at least one result was NULL
  *   #GNUNET_SYSERR if a result was invalid (non-existing field)
- */ 
+ */
 static int
 extract_amount_nbo (void *cls,
 		    PGresult *result,
@@ -153,7 +153,7 @@ extract_amount_nbo (void *cls,
   char *frac_name;
   char *curr_name;
   int ret;
-  
+
   GNUNET_asprintf (&val_name,
 		   "%s_val",
 		   fname);
@@ -189,7 +189,7 @@ TALER_PQ_result_spec_amount_nbo (const char *name,
 {
   struct GNUNET_PQ_ResultSpec res =
     { &extract_amount_nbo, NULL, NULL,
-      (void *) amount, sizeof (*amount), 
+      (void *) amount, sizeof (*amount),
       name, NULL };
   return res;
 }
@@ -208,7 +208,7 @@ TALER_PQ_result_spec_amount_nbo (const char *name,
  *   #GNUNET_YES if all results could be extracted
  *   #GNUNET_NO if at least one result was NULL
  *   #GNUNET_SYSERR if a result was invalid (non-existing field)
- */ 
+ */
 static int
 extract_amount (void *cls,
 		PGresult *result,
@@ -223,7 +223,7 @@ extract_amount (void *cls,
   char *curr_name;
   struct TALER_AmountNBO amount_nbo;
   int ret;
-  
+
   GNUNET_asprintf (&val_name,
 		   "%s_val",
 		   fname);
@@ -280,7 +280,7 @@ TALER_PQ_result_spec_amount (const char *name,
  *   #GNUNET_YES if all results could be extracted
  *   #GNUNET_NO if at least one result was NULL
  *   #GNUNET_SYSERR if a result was invalid (non-existing field)
- */ 
+ */
 static int
 extract_json (void *cls,
 	      PGresult *result,
@@ -294,7 +294,7 @@ extract_json (void *cls,
   int fnum;
   json_error_t json_error;
   size_t slen;
-  
+
   fnum = PQfnumber (result,
 		    fname);
   if (fnum < 0)
@@ -320,10 +320,11 @@ extract_json (void *cls,
 		       &json_error);
   if (NULL == *j_dst)
   {
-    TALER_json_warn (json_error);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-		"Failed to parse JSON result for field `%s'\n",
-		fname);
+		"Failed to parse JSON result for field `%s': %s (%s)\n",
+		fname,
+                json_error.text,
+                json_error.source);
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -364,7 +365,7 @@ TALER_PQ_result_spec_json (const char *name,
 {
   struct GNUNET_PQ_ResultSpec res =
     { &extract_json, &clean_json, NULL,
-      (void *) jp, 0, 
+      (void *) jp, 0,
       name, NULL };
   return res;
 }
