@@ -63,9 +63,9 @@ TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
   void *in_ptr;
   size_t in_ptr_size;
   struct GNUNET_HashCode hc;
-  struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_variable ("input", &in_ptr, &in_ptr_size),
-    TMH_PARSE_MEMBER_END
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_varsize ("input", &in_ptr, &in_ptr_size),
+    GNUNET_JSON_spec_end ()
   };
 
   res = TMH_PARSE_post_json (connection,
@@ -85,7 +85,7 @@ TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
   GNUNET_CRYPTO_hash (in_ptr,
 		      in_ptr_size,
 		      &hc);
-  TMH_PARSE_release_data (spec);
+  GNUNET_JSON_parse_free (spec);
   json_decref (json);
   return TMH_RESPONSE_reply_json_pack (connection,
 				       MHD_HTTP_OK,
@@ -126,10 +126,10 @@ TMH_TEST_handler_test_encrypt (struct TMH_RequestHandler *rh,
   struct GNUNET_CRYPTO_SymmetricSessionKey skey;
   void *in_ptr;
   size_t in_ptr_size;
-  struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_variable ("input", &in_ptr, &in_ptr_size),
-    TMH_PARSE_member_fixed ("key_hash", &key),
-    TMH_PARSE_MEMBER_END
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_varsize ("input", &in_ptr, &in_ptr_size),
+    GNUNET_JSON_spec_fixed_auto ("key_hash", &key),
+    GNUNET_JSON_spec_end ()
   };
   char *out;
 
@@ -168,7 +168,7 @@ TMH_TEST_handler_test_encrypt (struct TMH_RequestHandler *rh,
   json = GNUNET_JSON_from_data (out,
 			       in_ptr_size);
   GNUNET_free (out);
-  TMH_PARSE_release_data (spec);
+  GNUNET_JSON_parse_free (spec);
   return TMH_RESPONSE_reply_json_pack (connection,
 				       MHD_HTTP_OK,
 				       "{s:o}",
@@ -206,9 +206,9 @@ TMH_TEST_handler_test_hkdf (struct TMH_RequestHandler *rh,
   struct GNUNET_HashCode hc;
   void *in_ptr;
   size_t in_ptr_size;
-  struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_variable ("input", &in_ptr, &in_ptr_size),
-    TMH_PARSE_MEMBER_END
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_varsize ("input", &in_ptr, &in_ptr_size),
+    GNUNET_JSON_spec_end ()
   };
 
   res = TMH_PARSE_post_json (connection,
@@ -231,7 +231,7 @@ TMH_TEST_handler_test_hkdf (struct TMH_RequestHandler *rh,
 		     in_ptr,
 		     in_ptr_size,
 		     NULL, 0);
-  TMH_PARSE_release_data (spec);
+  GNUNET_JSON_parse_free (spec);
   json = GNUNET_JSON_from_data (&hc,
 			       sizeof (struct GNUNET_HashCode));
   return TMH_RESPONSE_reply_json_pack (connection,
@@ -268,10 +268,10 @@ TMH_TEST_handler_test_ecdhe (struct TMH_RequestHandler *rh,
   struct GNUNET_CRYPTO_EcdhePublicKey pub;
   struct GNUNET_CRYPTO_EcdhePrivateKey priv;
   struct GNUNET_HashCode hc;
-  struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_fixed ("ecdhe_pub", &pub),
-    TMH_PARSE_member_fixed ("ecdhe_priv", &priv),
-    TMH_PARSE_MEMBER_END
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("ecdhe_pub", &pub),
+    GNUNET_JSON_spec_fixed_auto ("ecdhe_priv", &priv),
+    GNUNET_JSON_spec_end ()
   };
 
   res = TMH_PARSE_post_json (connection,
@@ -294,11 +294,11 @@ TMH_TEST_handler_test_ecdhe (struct TMH_RequestHandler *rh,
 			      &pub,
 			      &hc))
   {
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_internal_error (connection,
 					      "Failed to perform ECDH");
   }
-  TMH_PARSE_release_data (spec);
+  GNUNET_JSON_parse_free (spec);
   return TMH_RESPONSE_reply_json_pack (connection,
 				       MHD_HTTP_OK,
 				       "{s:o}",
@@ -335,10 +335,10 @@ TMH_TEST_handler_test_eddsa (struct TMH_RequestHandler *rh,
   struct GNUNET_CRYPTO_EddsaPublicKey pub;
   struct GNUNET_CRYPTO_EddsaSignature sig;
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-  struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_fixed ("eddsa_pub", &pub),
-    TMH_PARSE_member_fixed ("eddsa_sig", &sig),
-    TMH_PARSE_MEMBER_END
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("eddsa_pub", &pub),
+    GNUNET_JSON_spec_fixed_auto ("eddsa_sig", &sig),
+    GNUNET_JSON_spec_end ()
   };
   struct GNUNET_CRYPTO_EddsaPrivateKey *pk;
 
@@ -365,11 +365,11 @@ TMH_TEST_handler_test_eddsa (struct TMH_RequestHandler *rh,
 				  &sig,
 				  &pub))
   {
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_signature_invalid (connection,
 						 "eddsa_sig");
   }
-  TMH_PARSE_release_data (spec);
+  GNUNET_JSON_parse_free (spec);
   pk = GNUNET_CRYPTO_eddsa_key_create ();
   purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_TEST_EDDSA);
   if (GNUNET_OK !=
@@ -466,9 +466,9 @@ TMH_TEST_handler_test_rsa_sign (struct TMH_RequestHandler *rh,
   struct GNUNET_CRYPTO_rsa_Signature *sig;
   void *in_ptr;
   size_t in_ptr_size;
-  struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_variable ("blind_ev", &in_ptr, &in_ptr_size),
-    TMH_PARSE_MEMBER_END
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_varsize ("blind_ev", &in_ptr, &in_ptr_size),
+    GNUNET_JSON_spec_end ()
   };
 
   res = TMH_PARSE_post_json (connection,
@@ -491,7 +491,7 @@ TMH_TEST_handler_test_rsa_sign (struct TMH_RequestHandler *rh,
   if (NULL == rsa_pk)
   {
     GNUNET_break (0);
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_internal_error (connection,
 					      "Failed to create RSA key");
   }
@@ -501,11 +501,11 @@ TMH_TEST_handler_test_rsa_sign (struct TMH_RequestHandler *rh,
   if (NULL == sig)
   {
     GNUNET_break (0);
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_internal_error (connection,
 					      "Failed to RSA-sign");
   }
-  TMH_PARSE_release_data (spec);
+  GNUNET_JSON_parse_free (spec);
   res = TMH_RESPONSE_reply_json_pack (connection,
 				      MHD_HTTP_OK,
 				      "{s:o}",
@@ -542,11 +542,11 @@ TMH_TEST_handler_test_transfer (struct TMH_RequestHandler *rh,
   struct TALER_EncryptedLinkSecretP secret_enc;
   struct TALER_TransferPrivateKeyP trans_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
-  struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_fixed ("secret_enc", &secret_enc),
-    TMH_PARSE_member_fixed ("trans_priv", &trans_priv),
-    TMH_PARSE_member_fixed ("coin_pub", &coin_pub),
-    TMH_PARSE_MEMBER_END
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("secret_enc", &secret_enc),
+    GNUNET_JSON_spec_fixed_auto ("trans_priv", &trans_priv),
+    GNUNET_JSON_spec_fixed_auto ("coin_pub", &coin_pub),
+    GNUNET_JSON_spec_end ()
   };
   struct TALER_LinkSecretP secret;
 
@@ -571,7 +571,7 @@ TMH_TEST_handler_test_transfer (struct TMH_RequestHandler *rh,
 				 &coin_pub,
 				 &secret))
   {
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_internal_error (connection,
 					      "Failed to decrypt secret");
   }

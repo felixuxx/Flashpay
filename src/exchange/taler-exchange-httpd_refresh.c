@@ -192,13 +192,13 @@ get_coin_public_info (struct MHD_Connection *connection,
   struct TALER_DenominationSignature sig;
   struct TALER_DenominationPublicKey pk;
   struct TALER_Amount amount;
-  struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_fixed ("coin_pub", &r_melt_detail->coin_info.coin_pub),
-    TMH_PARSE_member_denomination_signature ("denom_sig", &sig),
-    TMH_PARSE_member_denomination_public_key ("denom_pub", &pk),
-    TMH_PARSE_member_fixed ("confirm_sig", &melt_sig),
-    TMH_PARSE_member_amount ("value_with_fee", &amount),
-    TMH_PARSE_MEMBER_END
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("coin_pub", &r_melt_detail->coin_info.coin_pub),
+    TALER_JSON_spec_denomination_signature ("denom_sig", &sig),
+    TALER_JSON_spec_denomination_public_key ("denom_pub", &pk),
+    GNUNET_JSON_spec_fixed_auto ("confirm_sig", &melt_sig),
+    TALER_JSON_spec_amount ("value_with_fee", &amount),
+    GNUNET_JSON_spec_end ()
   };
 
   ret = TMH_PARSE_json_data (connection,
@@ -216,7 +216,7 @@ get_coin_public_info (struct MHD_Connection *connection,
       TALER_test_coin_valid (&r_melt_detail->coin_info))
   {
     GNUNET_break_op (0);
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     r_melt_detail->coin_info.denom_sig.rsa_signature = NULL;
     r_melt_detail->coin_info.denom_pub.rsa_public_key = NULL;
     return (MHD_YES ==
@@ -409,12 +409,16 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   {
     char *buf;
     size_t buf_size;
+    struct GNUNET_JSON_Specification spec[] = {
+      TALER_JSON_spec_denomination_public_key (NULL,
+                                                &denom_pubs[i]),
+      GNUNET_JSON_spec_end ()
+    };
 
-    res = TMH_PARSE_navigate_json (connection,
-                                   new_denoms,
-                                   TMH_PARSE_JNC_INDEX, (int) i,
-                                   TMH_PARSE_JNC_RET_RSA_PUBLIC_KEY,
-                                   &denom_pubs[i].rsa_public_key);
+    res = TMH_PARSE_json_array (connection,
+                                new_denoms,
+                                spec,
+                                i, -1);
     if (GNUNET_OK != res)
     {
       res = (GNUNET_NO == res) ? MHD_YES : MHD_NO;
@@ -436,6 +440,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
     /* decode JSON data on coin to melt */
     struct TALER_AmountNBO melt_amount;
 
+    // FIXME: check json_array_get() return value for NULL!
     res = get_coin_public_info (connection,
                                 json_array_get (melt_coins, i),
                                 &coin_melt_details[i]);
@@ -482,15 +487,23 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
       char *link_enc;
       size_t link_enc_size;
       struct TALER_EXCHANGEDB_RefreshCommitCoin *rcc = &commit_coin[i][j];
+      struct GNUNET_JSON_Specification coin_spec[] = {
+        GNUNET_JSON_spec_varsize (NULL,
+                                  (void **) &rcc->coin_ev,
+                                  &rcc->coin_ev_size),
+        GNUNET_JSON_spec_end ()
+      };
+      struct GNUNET_JSON_Specification link_spec[] = {
+        GNUNET_JSON_spec_varsize (NULL,
+                                  (void **) &link_enc,
+                                  &link_enc_size),
+        GNUNET_JSON_spec_end ()
+      };
 
-      res = TMH_PARSE_navigate_json (connection,
-                                     coin_evs,
-                                     TMH_PARSE_JNC_INDEX, (int) i,
-                                     TMH_PARSE_JNC_INDEX, (int) j,
-                                     TMH_PARSE_JNC_RET_DATA_VAR,
-                                     &rcc->coin_ev,
-                                     &rcc->coin_ev_size);
-
+      res = TMH_PARSE_json_array (connection,
+                                  coin_evs,
+                                  coin_spec,
+                                  i, j, -1);
       if (GNUNET_OK != res)
       {
         GNUNET_break_op (0);
@@ -501,13 +514,10 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        rcc->coin_ev,
                                        rcc->coin_ev_size);
-      res = TMH_PARSE_navigate_json (connection,
-                                     link_encs,
-                                     TMH_PARSE_JNC_INDEX, (int) i,
-                                     TMH_PARSE_JNC_INDEX, (int) j,
-                                     TMH_PARSE_JNC_RET_DATA_VAR,
-                                     &link_enc,
-                                     &link_enc_size);
+      res = TMH_PARSE_json_array (connection,
+                                  link_encs,
+                                  link_spec,
+                                  i, j, -1);
       if (GNUNET_OK != res)
       {
         GNUNET_break_op (0);
@@ -520,7 +530,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        link_enc,
                                        link_enc_size);
-      GNUNET_free (link_enc);
+      GNUNET_JSON_parse_free (link_spec);
     }
   }
 
@@ -531,27 +541,29 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
     for (j = 0; j < num_oldcoins; j++)
     {
       struct TALER_RefreshCommitLinkP *rcl = &commit_link[i][j];
+      struct GNUNET_JSON_Specification trans_spec[] = {
+        GNUNET_JSON_spec_fixed_auto (NULL, &rcl->transfer_pub),
+        GNUNET_JSON_spec_end ()
+      };
+      struct GNUNET_JSON_Specification sec_spec[] = {
+        GNUNET_JSON_spec_fixed_auto (NULL, &rcl->shared_secret_enc),
+        GNUNET_JSON_spec_end ()
+      };
 
-      res = TMH_PARSE_navigate_json (connection,
-                                     transfer_pubs,
-                                     TMH_PARSE_JNC_INDEX, (int) i,
-                                     TMH_PARSE_JNC_INDEX, (int) j,
-                                     TMH_PARSE_JNC_RET_DATA,
-                                     &rcl->transfer_pub,
-                                     sizeof (struct TALER_TransferPublicKeyP));
+      res = TMH_PARSE_json_array (connection,
+                                  transfer_pubs,
+                                  trans_spec,
+                                  i, j, -1);
       if (GNUNET_OK != res)
       {
         GNUNET_break_op (0);
         res = (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
         goto cleanup;
       }
-      res = TMH_PARSE_navigate_json (connection,
-                                     secret_encs,
-                                     TMH_PARSE_JNC_INDEX, (int) i,
-                                     TMH_PARSE_JNC_INDEX, (int) j,
-                                     TMH_PARSE_JNC_RET_DATA,
-                                     &rcl->shared_secret_enc,
-                                     sizeof (struct TALER_EncryptedLinkSecretP));
+      res = TMH_PARSE_json_array (connection,
+                                  secret_encs,
+                                  sec_spec,
+                                  i, j, -1);
       if (GNUNET_OK != res)
       {
         GNUNET_break_op (0);
@@ -646,15 +658,16 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
   unsigned int num_oldcoins;
   unsigned int num_newcoins;
   json_t *coin_detail;
+  json_t *trans_detail;
   int res;
-  struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_array ("new_denoms", &new_denoms),
-    TMH_PARSE_member_array ("melt_coins", &melt_coins),
-    TMH_PARSE_member_array ("coin_evs", &coin_evs),
-    TMH_PARSE_member_array ("link_encs", &link_encs),
-    TMH_PARSE_member_array ("transfer_pubs", &transfer_pubs),
-    TMH_PARSE_member_array ("secret_encs", &secret_encs),
-    TMH_PARSE_MEMBER_END
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("new_denoms", &new_denoms),
+    GNUNET_JSON_spec_json ("melt_coins", &melt_coins),
+    GNUNET_JSON_spec_json ("coin_evs", &coin_evs),
+    GNUNET_JSON_spec_json ("link_encs", &link_encs),
+    GNUNET_JSON_spec_json ("transfer_pubs", &transfer_pubs),
+    GNUNET_JSON_spec_json ("secret_encs", &secret_encs),
+    GNUNET_JSON_spec_end ()
   };
 
   res = TMH_PARSE_post_json (connection,
@@ -678,43 +691,36 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
   if (TALER_CNC_KAPPA != json_array_size (coin_evs))
   {
     GNUNET_break_op (0);
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "coin_evs");
   }
   if (TALER_CNC_KAPPA != json_array_size (transfer_pubs))
   {
     GNUNET_break_op (0);
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "transfer_pubs");
   }
-  res = TMH_PARSE_navigate_json (connection,
-                                 coin_evs,
-                                 TMH_PARSE_JNC_INDEX, (int) 0,
-                                 TMH_PARSE_JNC_RET_TYPED_JSON,
-                                 JSON_ARRAY, &coin_detail);
-  if (GNUNET_OK != res)
+  coin_detail = json_array_get (coin_evs, 0);
+  if (NULL == coin_detail)
   {
+    // FIXME: generate proper HTTP response!
     GNUNET_break_op (0);
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   num_newcoins = json_array_size (coin_detail);
-  json_decref (coin_detail);
-  res = TMH_PARSE_navigate_json (connection,
-                                 transfer_pubs,
-                                 TMH_PARSE_JNC_INDEX, (int) 0,
-                                 TMH_PARSE_JNC_RET_TYPED_JSON,
-                                 JSON_ARRAY, &coin_detail);
-  if (GNUNET_OK != res)
+
+  trans_detail = json_array_get (transfer_pubs, 0);
+  if (NULL == trans_detail)
   {
+    // FIXME: generate proper HTTP response!
     GNUNET_break_op (0);
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
-  num_oldcoins = json_array_size (coin_detail);
-  json_decref (coin_detail);
+  num_oldcoins = json_array_size (trans_detail);
   res = handle_refresh_melt_json (connection,
                                   new_denoms,
                                   melt_coins,
@@ -724,7 +730,7 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
                                   num_newcoins,
                                   coin_evs,
                                   link_encs);
-  TMH_PARSE_release_data (spec);
+  GNUNET_JSON_parse_free (spec);
   return res;
 }
 
@@ -763,15 +769,16 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
       break;
     for (j = 0; j < num_oldcoins; j++)
     {
+      struct GNUNET_JSON_Specification tp_spec[] = {
+        GNUNET_JSON_spec_fixed_auto (NULL, &transfer_privs[i][j]),
+        GNUNET_JSON_spec_end ()
+      };
       if (GNUNET_OK != res)
         break;
-      res = TMH_PARSE_navigate_json (connection,
-                                     tp_json,
-                                     TMH_PARSE_JNC_INDEX, (int) i,
-                                     TMH_PARSE_JNC_INDEX, (int) j,
-                                     TMH_PARSE_JNC_RET_DATA,
-                                     &transfer_privs[i][j],
-                                     sizeof (struct TALER_TransferPrivateKeyP));
+      res = TMH_PARSE_json_array (connection,
+                                  tp_json,
+                                  tp_spec,
+                                  i, j, -1);
       GNUNET_break_op (GNUNET_OK == res);
     }
   }
@@ -817,10 +824,10 @@ TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
   json_t *reveal_detail;
   json_t *root;
   json_t *transfer_privs;
-  struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_fixed ("session_hash", &session_hash),
-    TMH_PARSE_member_array ("transfer_privs", &transfer_privs),
-    TMH_PARSE_MEMBER_END
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("session_hash", &session_hash),
+    GNUNET_JSON_spec_json ("transfer_privs", &transfer_privs),
+    GNUNET_JSON_spec_end ()
   };
 
   res = TMH_PARSE_post_json (connection,
@@ -846,30 +853,25 @@ TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
   /* Note we do +1 as 1 row (cut-and-choose!) is missing! */
   if (TALER_CNC_KAPPA != json_array_size (transfer_privs) + 1)
   {
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     GNUNET_break_op (0);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "transfer_privs");
   }
-  res = TMH_PARSE_navigate_json (connection,
-                                 transfer_privs,
-                                 TMH_PARSE_JNC_INDEX, 0,
-                                 TMH_PARSE_JNC_RET_TYPED_JSON,
-                                 JSON_ARRAY,
-                                 &reveal_detail);
-  if (GNUNET_OK != res)
+  reveal_detail = json_array_get (transfer_privs, 0);
+  if (NULL == reveal_detail)
   {
-    TMH_PARSE_release_data (spec);
+    // FIXME: generate proper HTTP response!
+    GNUNET_JSON_parse_free (spec);
     GNUNET_break_op (0);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   num_oldcoins = json_array_size (reveal_detail);
-  json_decref (reveal_detail);
   res = handle_refresh_reveal_json (connection,
                                     &session_hash,
                                     num_oldcoins,
                                     transfer_privs);
-  TMH_PARSE_release_data (spec);
+  GNUNET_JSON_parse_free (spec);
   return res;
 }
 

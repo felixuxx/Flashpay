@@ -121,14 +121,14 @@ TMH_TRACKING_handler_deposit_wtid (struct TMH_RequestHandler *rh,
   struct TALER_DepositTrackPS tps;
   uint64_t transaction_id;
   struct TALER_MerchantSignatureP merchant_sig;
-  struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_fixed ("H_wire", &tps.h_wire),
-    TMH_PARSE_member_fixed ("H_contract", &tps.h_contract),
-    TMH_PARSE_member_fixed ("coin_pub", &tps.coin_pub),
-    TMH_PARSE_member_uint64 ("transaction_id", &transaction_id),
-    TMH_PARSE_member_fixed ("merchant_pub", &tps.merchant),
-    TMH_PARSE_member_fixed ("merchant_sig", &merchant_sig),
-    TMH_PARSE_MEMBER_END
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("H_wire", &tps.h_wire),
+    GNUNET_JSON_spec_fixed_auto ("H_contract", &tps.h_contract),
+    GNUNET_JSON_spec_fixed_auto ("coin_pub", &tps.coin_pub),
+    GNUNET_JSON_spec_uint64 ("transaction_id", &transaction_id),
+    GNUNET_JSON_spec_fixed_auto ("merchant_pub", &tps.merchant),
+    GNUNET_JSON_spec_fixed_auto ("merchant_sig", &merchant_sig),
+    GNUNET_JSON_spec_end ()
   };
 
   res = TMH_PARSE_post_json (connection,
@@ -156,7 +156,7 @@ TMH_TRACKING_handler_deposit_wtid (struct TMH_RequestHandler *rh,
 					       &tps.merchant,
 					       &merchant_sig,
 					       transaction_id);
-  TMH_PARSE_release_data (spec);
+  GNUNET_JSON_parse_free (spec);
   json_decref (json);
   return res;
 }

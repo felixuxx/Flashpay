@@ -140,19 +140,19 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   struct TMH_KS_StateHandle *ks;
   struct GNUNET_HashCode my_h_wire;
-  struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_denomination_public_key ("denom_pub", &deposit.coin.denom_pub),
-    TMH_PARSE_member_denomination_signature ("ub_sig", &deposit.coin.denom_sig),
-    TMH_PARSE_member_fixed ("coin_pub", &deposit.coin.coin_pub),
-    TMH_PARSE_member_fixed ("merchant_pub", &deposit.merchant_pub),
-    TMH_PARSE_member_fixed ("H_contract", &deposit.h_contract),
-    TMH_PARSE_member_fixed ("H_wire", &deposit.h_wire),
-    TMH_PARSE_member_fixed ("coin_sig",  &deposit.csig),
-    TMH_PARSE_member_uint64 ("transaction_id", &deposit.transaction_id),
-    TMH_PARSE_member_time_abs ("timestamp", &deposit.timestamp),
-    TMH_PARSE_member_time_abs ("refund_deadline", &deposit.refund_deadline),
-    TMH_PARSE_member_time_abs ("edate", &deposit.wire_deadline),
-    TMH_PARSE_MEMBER_END
+  struct GNUNET_JSON_Specification spec[] = {
+    TALER_JSON_spec_denomination_public_key ("denom_pub", &deposit.coin.denom_pub),
+    TALER_JSON_spec_denomination_signature ("ub_sig", &deposit.coin.denom_sig),
+    GNUNET_JSON_spec_fixed_auto ("coin_pub", &deposit.coin.coin_pub),
+    GNUNET_JSON_spec_fixed_auto ("merchant_pub", &deposit.merchant_pub),
+    GNUNET_JSON_spec_fixed_auto ("H_contract", &deposit.h_contract),
+    GNUNET_JSON_spec_fixed_auto ("H_wire", &deposit.h_wire),
+    GNUNET_JSON_spec_fixed_auto ("coin_sig",  &deposit.csig),
+    GNUNET_JSON_spec_uint64 ("transaction_id", &deposit.transaction_id),
+    GNUNET_JSON_spec_absolute_time ("timestamp", &deposit.timestamp),
+    GNUNET_JSON_spec_absolute_time ("refund_deadline", &deposit.refund_deadline),
+    GNUNET_JSON_spec_absolute_time ("edate", &deposit.wire_deadline),
+    GNUNET_JSON_spec_end ()
   };
 
   memset (&deposit, 0, sizeof (deposit));
@@ -167,7 +167,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   if (GNUNET_YES !=
       TMH_json_validate_wireformat (wire))
   {
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "wire");
   }
@@ -176,7 +176,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
                        &my_h_wire))
   {
     TALER_LOG_WARNING ("Failed to parse JSON wire format specification for /deposit request\n");
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "wire");
   }
@@ -185,7 +185,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
 		   sizeof (struct GNUNET_HashCode)))
   {
     /* Client hashed contract differently than we did, reject */
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "H_wire");
   }
@@ -196,7 +196,7 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
   if (NULL == dki)
   {
     TMH_KS_release (ks);
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "denom_pub");
   }
@@ -209,13 +209,13 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
                               &deposit.deposit_fee))
   {
     /* Total amount smaller than fee, invalid */
-     TMH_PARSE_release_data (spec);
+     GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "f");
   }
   res = verify_and_execute_deposit (connection,
                                     &deposit);
-  TMH_PARSE_release_data (spec);
+  GNUNET_JSON_parse_free (spec);
   return res;
 }
 
@@ -247,10 +247,10 @@ TMH_DEPOSIT_handler_deposit (struct TMH_RequestHandler *rh,
   json_t *wire;
   int res;
   struct TALER_Amount amount;
-  struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_object ("wire", &wire),
-    TMH_PARSE_member_amount ("f", &amount),
-    TMH_PARSE_MEMBER_END
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("wire", &wire),
+    TALER_JSON_spec_amount ("f", &amount),
+    GNUNET_JSON_spec_end ()
   };
 
   res = TMH_PARSE_post_json (connection,
@@ -274,7 +274,7 @@ TMH_DEPOSIT_handler_deposit (struct TMH_RequestHandler *rh,
                                           json,
                                           &amount,
                                           wire);
-  TMH_PARSE_release_data (spec);
+  GNUNET_JSON_parse_free (spec);
   json_decref (json);
   return res;
 }

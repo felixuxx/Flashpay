@@ -58,6 +58,30 @@ TALER_JSON_spec_amount (const char *name,
 
 
 /**
+ * Generate line in parser specification for denomination public key.
+ *
+ * @param field name of the field
+ * @param[out] pk key to initialize
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_denomination_public_key (const char *field,
+                                         struct TALER_DenominationPublicKey *pk);
+
+
+/**
+ * Generate line in parser specification for denomination signature.
+ *
+ * @param field name of the field
+ * @param sig the signature to initialize
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_denomination_signature (const char *field,
+                                        struct TALER_DenominationSignature *sig);
+
+
+/**
  * Hash a JSON for binary signing.
  *
  * @param[in] json some JSON value to hash

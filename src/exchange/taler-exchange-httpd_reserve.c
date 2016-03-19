@@ -101,17 +101,17 @@ TMH_RESERVE_handler_reserve_withdraw (struct TMH_RequestHandler *rh,
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   struct TMH_KS_StateHandle *ks;
 
-  struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_variable ("coin_ev",
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_varsize ("coin_ev",
                                (void **) &blinded_msg,
                                &blinded_msg_len),
-    TMH_PARSE_member_fixed ("reserve_pub",
+    GNUNET_JSON_spec_fixed_auto ("reserve_pub",
                             &wsrd.reserve_pub),
-    TMH_PARSE_member_fixed ("reserve_sig",
+    GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                             &signature),
-    TMH_PARSE_member_denomination_public_key ("denom_pub",
+    TALER_JSON_spec_denomination_public_key ("denom_pub",
                                               &denomination_pub),
-    TMH_PARSE_MEMBER_END
+    GNUNET_JSON_spec_end ()
   };
 
   res = TMH_PARSE_post_json (connection,
@@ -135,7 +135,7 @@ TMH_RESERVE_handler_reserve_withdraw (struct TMH_RequestHandler *rh,
 					TMH_KS_DKU_WITHDRAW);
   if (NULL == dki)
   {
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     TMH_KS_release (ks);
     return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "denom_pub");
@@ -169,7 +169,7 @@ TMH_RESERVE_handler_reserve_withdraw (struct TMH_RequestHandler *rh,
                                   &wsrd.reserve_pub.eddsa_pub))
   {
     TALER_LOG_WARNING ("Client supplied invalid signature for /reserve/withdraw request\n");
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_signature_invalid (connection,
                                                  "reserve_sig");
   }
@@ -179,7 +179,7 @@ TMH_RESERVE_handler_reserve_withdraw (struct TMH_RequestHandler *rh,
                                          blinded_msg,
                                          blinded_msg_len,
                                          &signature);
-  TMH_PARSE_release_data (spec);
+  GNUNET_JSON_parse_free (spec);
   return res;
 }
 

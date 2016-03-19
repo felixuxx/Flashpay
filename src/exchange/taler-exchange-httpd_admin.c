@@ -113,12 +113,12 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
   struct GNUNET_TIME_Absolute at;
   json_t *wire;
   json_t *root;
-  struct TMH_PARSE_FieldSpecification spec[] = {
-    TMH_PARSE_member_fixed ("reserve_pub", &reserve_pub),
-    TMH_PARSE_member_amount ("amount", &amount),
-    TMH_PARSE_member_time_abs ("execution_date", &at),
-    TMH_PARSE_member_object ("wire", &wire),
-    TMH_PARSE_MEMBER_END
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("reserve_pub", &reserve_pub),
+    TALER_JSON_spec_amount ("amount", &amount),
+    GNUNET_JSON_spec_absolute_time ("execution_date", &at),
+    GNUNET_JSON_spec_json ("wire", &wire),
+    GNUNET_JSON_spec_end ()
   };
   int res;
 
@@ -148,7 +148,7 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
       TMH_json_validate_wireformat (wire))
   {
     GNUNET_break_op (0);
-    TMH_PARSE_release_data (spec);
+    GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "wire");
   }
@@ -157,7 +157,7 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
                                            &amount,
                                            at,
                                            wire);
-  TMH_PARSE_release_data (spec);
+  GNUNET_JSON_parse_free (spec);
   return res;
 }
 
