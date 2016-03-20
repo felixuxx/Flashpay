@@ -495,9 +495,9 @@ TMH_TEST_handler_test_rsa_sign (struct TMH_RequestHandler *rh,
     return TMH_RESPONSE_reply_internal_error (connection,
 					      "Failed to create RSA key");
   }
-  sig = GNUNET_CRYPTO_rsa_sign (rsa_pk,
-				in_ptr,
-				in_ptr_size);
+  sig = GNUNET_CRYPTO_rsa_sign_blinded (rsa_pk,
+					in_ptr,
+					in_ptr_size);
   if (NULL == sig)
   {
     GNUNET_break (0);

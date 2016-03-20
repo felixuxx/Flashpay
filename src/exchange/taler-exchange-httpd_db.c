@@ -453,9 +453,9 @@ execute_reserve_withdraw_transaction (struct MHD_Connection *connection,
 
   /* Balance is good, sign the coin! */
   denom_sig->rsa_signature
-    = GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
-                              blinded_msg,
-                              blinded_msg_len);
+    = GNUNET_CRYPTO_rsa_sign_blinded (dki->denom_priv.rsa_private_key,
+                                      blinded_msg,
+                                      blinded_msg_len);
   if (NULL == denom_sig->rsa_signature)
   {
     GNUNET_break (0);
@@ -1112,9 +1112,9 @@ refresh_exchange_coin (struct MHD_Connection *connection,
     return ev_sig;
   }
   ev_sig.rsa_signature
-      = GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
-                                commit_coin->coin_ev,
-                                commit_coin->coin_ev_size);
+      = GNUNET_CRYPTO_rsa_sign_blinded (dki->denom_priv.rsa_private_key,
+                                        commit_coin->coin_ev,
+                                        commit_coin->coin_ev_size);
   if (NULL == ev_sig.rsa_signature)
   {
     GNUNET_break (0);
