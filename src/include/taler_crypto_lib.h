@@ -299,7 +299,7 @@ struct TALER_DenominationSignature
   /**
    * Taler uses RSA for blinding.
    */
-  struct GNUNET_CRYPTO_rsa_Signature *rsa_signature;
+  struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
 };
 
 
@@ -311,7 +311,7 @@ struct TALER_DenominationPublicKey
   /**
    * Taler uses RSA for signing coins.
    */
-  struct GNUNET_CRYPTO_rsa_PublicKey *rsa_public_key;
+  struct GNUNET_CRYPTO_RsaPublicKey *rsa_public_key;
 };
 
 
@@ -323,7 +323,7 @@ struct TALER_DenominationPrivateKey
   /**
    * Taler uses RSA for signing coins.
    */
-  struct GNUNET_CRYPTO_rsa_PrivateKey *rsa_private_key;
+  struct GNUNET_CRYPTO_RsaPrivateKey *rsa_private_key;
 };
 
 

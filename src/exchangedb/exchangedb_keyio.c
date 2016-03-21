@@ -128,7 +128,7 @@ TALER_EXCHANGEDB_denomination_key_read (const char *filename,
   uint64_t size;
   size_t offset;
   void *data;
-  struct GNUNET_CRYPTO_rsa_PrivateKey *priv;
+  struct GNUNET_CRYPTO_RsaPrivateKey *priv;
 
   if (GNUNET_OK != GNUNET_DISK_file_size (filename,
                                           &size,

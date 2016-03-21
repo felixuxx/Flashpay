@@ -1762,8 +1762,8 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshRevealHandle *rrh,
     const struct FreshCoin *fc;
     struct TALER_DenominationPublicKey *pk;
     json_t *jsonai;
-    struct GNUNET_CRYPTO_rsa_Signature *blind_sig;
-    struct GNUNET_CRYPTO_rsa_Signature *sig;
+    struct GNUNET_CRYPTO_RsaSignature *blind_sig;
+    struct GNUNET_CRYPTO_RsaSignature *sig;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct GNUNET_HashCode coin_hash;
 

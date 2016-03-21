@@ -33,7 +33,7 @@
 /**
  * Private key the test module uses for signing.
  */
-static struct GNUNET_CRYPTO_rsa_PrivateKey *rsa_pk;
+static struct GNUNET_CRYPTO_RsaPrivateKey *rsa_pk;
 
 
 /**
@@ -415,7 +415,7 @@ TMH_TEST_handler_test_rsa_get (struct TMH_RequestHandler *rh,
                                size_t *upload_data_size)
 {
   int res;
-  struct GNUNET_CRYPTO_rsa_PublicKey *pub;
+  struct GNUNET_CRYPTO_RsaPublicKey *pub;
 
   if (NULL == rsa_pk)
     rsa_pk = GNUNET_CRYPTO_rsa_private_key_create (1024);
@@ -463,7 +463,7 @@ TMH_TEST_handler_test_rsa_sign (struct TMH_RequestHandler *rh,
 {
   json_t *json;
   int res;
-  struct GNUNET_CRYPTO_rsa_Signature *sig;
+  struct GNUNET_CRYPTO_RsaSignature *sig;
   void *in_ptr;
   size_t in_ptr_size;
   struct GNUNET_JSON_Specification spec[] = {
