@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 Inria & GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -125,8 +125,8 @@ struct TALER_EXCHANGEDB_DenominationKeyIssueInformation
  */
 typedef int
 (*TALER_EXCHANGEDB_SigningKeyIterator)(void *cls,
-                                   const char *filename,
-                                   const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *ski);
+                                       const char *filename,
+                                       const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *ski);
 
 
 /**
@@ -143,8 +143,8 @@ typedef int
  */
 int
 TALER_EXCHANGEDB_signing_keys_iterate (const char *exchange_base_dir,
-                                   TALER_EXCHANGEDB_SigningKeyIterator it,
-                                   void *it_cls);
+                                       TALER_EXCHANGEDB_SigningKeyIterator it,
+                                       void *it_cls);
 
 
 
@@ -160,8 +160,8 @@ TALER_EXCHANGEDB_signing_keys_iterate (const char *exchange_base_dir,
  */
 typedef int
 (*TALER_EXCHANGEDB_DenominationKeyIterator)(void *cls,
-                                        const char *alias,
-                                        const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
+                                            const char *alias,
+                                            const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
 
 
 /**
@@ -179,8 +179,8 @@ typedef int
  */
 int
 TALER_EXCHANGEDB_denomination_keys_iterate (const char *exchange_base_dir,
-                                        TALER_EXCHANGEDB_DenominationKeyIterator it,
-                                        void *it_cls);
+                                            TALER_EXCHANGEDB_DenominationKeyIterator it,
+                                            void *it_cls);
 
 
 /**
@@ -192,7 +192,7 @@ TALER_EXCHANGEDB_denomination_keys_iterate (const char *exchange_base_dir,
  */
 int
 TALER_EXCHANGEDB_denomination_key_write (const char *filename,
-                                     const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
+                                         const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
 
 
 /**
@@ -204,7 +204,7 @@ TALER_EXCHANGEDB_denomination_key_write (const char *filename,
  */
 int
 TALER_EXCHANGEDB_denomination_key_read (const char *filename,
-                                    struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
+                                        struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
 
 
 /**
@@ -212,6 +212,7 @@ TALER_EXCHANGEDB_denomination_key_read (const char *filename,
  *
  * @param cls closure
  * @param apub the auditor's public key
+ * @param auditor_url URL of the auditor
  * @param mpub the exchange's public key (as expected by the auditor)
  * @param dki_len length of @a asig and @a dki arrays
  * @param asigs array of the auditor's signatures over the @a dks, of length @a dki_len
@@ -222,11 +223,12 @@ TALER_EXCHANGEDB_denomination_key_read (const char *filename,
  */
 typedef int
 (*TALER_EXCHANGEDB_AuditorIterator)(void *cls,
-                                const struct TALER_AuditorPublicKeyP *apub,
-                                const struct TALER_MasterPublicKeyP *mpub,
-                                unsigned int dki_len,
-                                const struct TALER_AuditorSignatureP *asigs,
-                                const struct TALER_DenominationKeyValidityPS *dki);
+                                    const struct TALER_AuditorPublicKeyP *apub,
+                                    const char *auditor_url,
+                                    const struct TALER_MasterPublicKeyP *mpub,
+                                    unsigned int dki_len,
+                                    const struct TALER_AuditorSignatureP *asigs,
+                                    const struct TALER_DenominationKeyValidityPS *dki);
 
 
 /**
@@ -244,8 +246,8 @@ typedef int
  */
 int
 TALER_EXCHANGEDB_auditor_iterate (const char *exchange_base_dir,
-                              TALER_EXCHANGEDB_AuditorIterator it,
-                              void *it_cls);
+                                  TALER_EXCHANGEDB_AuditorIterator it,
+                                  void *it_cls);
 
 
 /**
@@ -253,6 +255,7 @@ TALER_EXCHANGEDB_auditor_iterate (const char *exchange_base_dir,
  *
  * @param filename the file where to write the auditor information to
  * @param apub the auditor's public key
+ * @param auditor_url the URL of the auditor
  * @param asigs the auditor's signatures, array of length @a dki_len
  * @param mpub the exchange's public key (as expected by the auditor)
  * @param dki_len length of @a dki and @a asigs arrays
@@ -261,11 +264,12 @@ TALER_EXCHANGEDB_auditor_iterate (const char *exchange_base_dir,
  */
 int
 TALER_EXCHANGEDB_auditor_write (const char *filename,
-                            const struct TALER_AuditorPublicKeyP *apub,
-                            const struct TALER_AuditorSignatureP *asigs,
-                            const struct TALER_MasterPublicKeyP *mpub,
-                            unsigned int dki_len,
-                            const struct TALER_DenominationKeyValidityPS *dki);
+                                const struct TALER_AuditorPublicKeyP *apub,
+                                const char *auditor_url,
+                                const struct TALER_AuditorSignatureP *asigs,
+                                const struct TALER_MasterPublicKeyP *mpub,
+                                unsigned int dki_len,
+                                const struct TALER_DenominationKeyValidityPS *dki);
 
 
 /**
@@ -285,7 +289,6 @@ TALER_EXCHANGEDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg);
  */
 void
 TALER_EXCHANGEDB_plugin_unload (struct TALER_EXCHANGEDB_Plugin *plugin);
-
 
 
 #endif

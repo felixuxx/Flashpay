@@ -360,16 +360,18 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
   unsigned int len;
   unsigned int off;
   unsigned int i;
+  const char *auditor_url;
   struct TALER_ExchangeKeyValidityPS kv;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("auditor_pub",
-                         &auditor->auditor_pub),
+                                 &auditor->auditor_pub),
+    GNUNET_JSON_spec_string ("auditor_url",
+                             &auditor_url),
     GNUNET_JSON_spec_json ("denomination_keys",
-                   &keys),
+                           &keys),
     GNUNET_JSON_spec_end()
   };
 
-  auditor->auditor_url = NULL; /* #3987 */
   if (GNUNET_OK !=
       GNUNET_JSON_parse (auditor_obj,
                          spec,
@@ -378,8 +380,12 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  auditor->auditor_url = GNUNET_strdup (auditor_url);
   kv.purpose.purpose = htonl (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS);
   kv.purpose.size = htonl (sizeof (struct TALER_ExchangeKeyValidityPS));
+  GNUNET_CRYPTO_hash (auditor_url,
+                      strlen (auditor_url) + 1,
+                      &kv.auditor_url_hash);
   kv.master = key_data->master_pub;
   len = json_array_size (keys);
   auditor->denom_keys = GNUNET_new_array (len,

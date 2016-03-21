@@ -656,8 +656,13 @@ struct TALER_ExchangeKeyValidityPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
+   * Hash of the auditor's URL.
+   */
+  struct GNUNET_HashCode auditor_url_hash;
+
+  /**
    * The long-term offline master key of the exchange, affirmed by the
-   * auditor.
+   * auditor.  Hashed string, including 0-terminator.
    */
   struct TALER_MasterPublicKeyP master;
 
