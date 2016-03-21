@@ -260,7 +260,7 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
   struct TALER_Amount fee_deposit;
   struct TALER_Amount fee_refresh;
   struct TALER_DenominationKeyValidityPS denom_key_issue;
-  struct GNUNET_CRYPTO_rsa_PublicKey *pk;
+  struct GNUNET_CRYPTO_RsaPublicKey *pk;
   struct GNUNET_CRYPTO_EddsaSignature sig;
 
   struct GNUNET_JSON_Specification spec[] = {

@@ -563,8 +563,8 @@ static int
 reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
                   json_t *json)
 {
-  struct GNUNET_CRYPTO_rsa_Signature *blind_sig;
-  struct GNUNET_CRYPTO_rsa_Signature *sig;
+  struct GNUNET_CRYPTO_RsaSignature *blind_sig;
+  struct GNUNET_CRYPTO_RsaSignature *sig;
   struct TALER_DenominationSignature dsig;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_rsa_signature ("ev_sig", &blind_sig),

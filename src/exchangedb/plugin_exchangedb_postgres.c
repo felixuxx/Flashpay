@@ -3457,8 +3457,8 @@ postgres_get_link_data_list (void *cls,
   for (i = 0; i < nrows; i++)
   {
     struct TALER_RefreshLinkEncrypted *link_enc;
-    struct GNUNET_CRYPTO_rsa_PublicKey *denom_pub;
-    struct GNUNET_CRYPTO_rsa_Signature *sig;
+    struct GNUNET_CRYPTO_RsaPublicKey *denom_pub;
+    struct GNUNET_CRYPTO_RsaSignature *sig;
     void *ld_buf;
     size_t ld_buf_size;
     struct GNUNET_PQ_ResultSpec rs[] = {

@@ -98,8 +98,8 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
 {
   void *link_enc;
   size_t link_enc_size;
-  struct GNUNET_CRYPTO_rsa_Signature *bsig;
-  struct GNUNET_CRYPTO_rsa_PublicKey *rpub;
+  struct GNUNET_CRYPTO_RsaSignature *bsig;
+  struct GNUNET_CRYPTO_RsaPublicKey *rpub;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_varsize ("link_enc", &link_enc, &link_enc_size),
     GNUNET_JSON_spec_rsa_public_key ("denom_pub", &rpub),
