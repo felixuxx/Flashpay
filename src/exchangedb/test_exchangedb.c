@@ -336,6 +336,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   for (cnt=0; cnt < MELT_OLD_COINS; cnt++)
   {
     RND_BLK (&melts[cnt].coin.coin_pub);
+    // This appears to be broken because it needs to be a hash of a coin public key
     melts[cnt].coin.denom_sig.rsa_signature =
         GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.rsa_private_key,
                                     &melts[cnt].coin.coin_pub,
