@@ -50,6 +50,11 @@ static char *exchange_request_file;
 static char *output_file;
 
 /**
+ * URL of the auditor (informative for the user).
+ */
+static char *auditor_url;
+
+/**
  * Master public key of the exchange.
  */
 static struct TALER_MasterPublicKeyP master_public_key;
@@ -134,6 +139,10 @@ main (int argc,
     {'m', "exchange-key", "KEY",
      "public key of the exchange (Crockford base32 encoded)", 1,
      &GNUNET_GETOPT_set_filename, &exchange_public_key},
+    {'u', "auditor-url", "URL",
+     "URL of the auditor (informative link for the user)", 1,
+     &GNUNET_GETOPT_set_string, &auditor_url},
+    TALER_GETOPT_OPTION_HELP ("Private key of the auditor to use for signing"),
     {'r', "exchange-request", "FILE",
      "set of keys the exchange requested the auditor to sign", 1,
      &GNUNET_GETOPT_set_string, &exchange_request_file},
@@ -166,6 +175,12 @@ main (int argc,
   {
     fprintf (stderr,
              "Auditor key file not given\n");
+    return 1;
+  }
+  if (NULL == auditor_url)
+  {
+    fprintf (stderr,
+             "Auditor URL not given\n");
     return 1;
   }
   eddsa_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (auditor_key_file);
@@ -240,6 +255,9 @@ main (int argc,
   dks_len = in_size / sizeof (struct TALER_DenominationKeyValidityPS);
   kv.purpose.purpose = htonl (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS);
   kv.purpose.size = htonl (sizeof (struct TALER_ExchangeKeyValidityPS));
+  GNUNET_CRYPTO_hash (auditor_url,
+                      strlen (auditor_url) + 1,
+                      &kv.auditor_url_hash);
   kv.master = master_public_key;
   dks = GNUNET_new_array (dks_len,
                           struct TALER_DenominationKeyValidityPS);
@@ -281,8 +299,6 @@ main (int argc,
     GNUNET_CRYPTO_eddsa_sign (eddsa_priv,
                               &kv.purpose,
                               &sigs[i].eddsa_sig);
-
-
   }
 
   if (NULL == output_file)
@@ -298,11 +314,12 @@ main (int argc,
   /* write result to disk */
   if (GNUNET_OK !=
       TALER_EXCHANGEDB_auditor_write (output_file,
-                                  &apub,
-                                  sigs,
-                                  &master_public_key,
-                                  dks_len,
-                                  dks))
+                                      &apub,
+                                      auditor_url,
+                                      sigs,
+                                      &master_public_key,
+                                      dks_len,
+                                      dks))
   {
     fprintf (stderr,
              "Failed to write to file `%s': %s\n",

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 Inria & GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -93,8 +93,8 @@ signkeys_iterate_dir_iter (void *cls,
  */
 int
 TALER_EXCHANGEDB_signing_keys_iterate (const char *exchange_base_dir,
-                                   TALER_EXCHANGEDB_SigningKeyIterator it,
-                                   void *it_cls)
+                                       TALER_EXCHANGEDB_SigningKeyIterator it,
+                                       void *it_cls)
 {
   char *signkey_dir;
   struct SignkeysIterateContext skc;
@@ -123,7 +123,7 @@ TALER_EXCHANGEDB_signing_keys_iterate (const char *exchange_base_dir,
  */
 int
 TALER_EXCHANGEDB_denomination_key_read (const char *filename,
-                                    struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+                                        struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
 {
   uint64_t size;
   size_t offset;
@@ -186,7 +186,7 @@ TALER_EXCHANGEDB_denomination_key_read (const char *filename,
  */
 int
 TALER_EXCHANGEDB_denomination_key_write (const char *filename,
-                                     const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+                                         const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
 {
   char *priv_enc;
   size_t priv_enc_size;
@@ -331,8 +331,8 @@ denomkeys_iterate_topdir_iter (void *cls,
  */
 int
 TALER_EXCHANGEDB_denomination_keys_iterate (const char *exchange_base_dir,
-                                        TALER_EXCHANGEDB_DenominationKeyIterator it,
-                                        void *it_cls)
+                                            TALER_EXCHANGEDB_DenominationKeyIterator it,
+                                            void *it_cls)
 {
   char *dir;
   struct DenomkeysIterateContext dic;
@@ -388,6 +388,11 @@ struct AuditorFileHeaderP
    */
   struct TALER_MasterPublicKeyP mpub;
 
+  /**
+   * Number of signatures and DKI entries in this file.
+   */
+  uint32_t dki_len;
+
 };
 GNUNET_NETWORK_STRUCT_END
 
@@ -412,7 +417,9 @@ auditor_iter (void *cls,
   struct AuditorFileHeaderP *af;
   const struct TALER_AuditorSignatureP *sigs;
   const struct TALER_DenominationKeyValidityPS *dki;
-  unsigned int len;
+  const char *auditor_url;
+  unsigned int dki_len;
+  size_t url_len;
   int ret;
 
   if (GNUNET_OK != GNUNET_DISK_file_size (filename,
@@ -425,10 +432,7 @@ auditor_iter (void *cls,
                 filename);
     return GNUNET_SYSERR;
   }
-  if ( (size < sizeof (struct AuditorFileHeaderP)) ||
-       (0 != (len = ((size - sizeof (struct AuditorFileHeaderP)) %
-                     (sizeof (struct TALER_DenominationKeyValidityPS) +
-                      sizeof (struct TALER_AuditorSignatureP))))) )
+  if (size < sizeof (struct AuditorFileHeaderP))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -445,12 +449,49 @@ auditor_iter (void *cls,
     GNUNET_free (af);
     return GNUNET_SYSERR;
   }
+  dki_len = ntohl (af->dki_len);
+  if (0 == dki_len)
+  {
+    GNUNET_break_op (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "No signed keys in %s\n",
+                filename);
+    GNUNET_free (af);
+    return GNUNET_SYSERR;
+  }
+  if ( (size - sizeof (struct AuditorFileHeaderP)) / dki_len <
+       (sizeof (struct TALER_DenominationKeyValidityPS) +
+        sizeof (struct TALER_AuditorSignatureP)) )
+  {
+    GNUNET_break_op (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Malformed key file %s\n",
+                filename);
+    GNUNET_free (af);
+    return GNUNET_SYSERR;
+  }
+  url_len = size
+    - sizeof (struct AuditorFileHeaderP)
+    - dki_len * (sizeof (struct TALER_DenominationKeyValidityPS) +
+                 sizeof (struct TALER_AuditorSignatureP));
   sigs = (const struct TALER_AuditorSignatureP *) &af[1];
-  dki = (const struct TALER_DenominationKeyValidityPS *) &sigs[len];
+  dki = (const struct TALER_DenominationKeyValidityPS *) &sigs[dki_len];
+  auditor_url = (const char *) &dki[dki_len];
+  if ( (0 == url_len) ||
+       ('\0' != auditor_url[url_len - 1]) )
+  {
+    GNUNET_break_op (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Malformed key file %s\n",
+                filename);
+    GNUNET_free (af);
+    return GNUNET_SYSERR;
+  }
   ret = aic->it (aic->it_cls,
                  &af->apub,
+                 auditor_url,
                  &af->mpub,
-                 len,
+                 dki_len,
                  sigs,
                  dki);
   GNUNET_free (af);
@@ -473,8 +514,8 @@ auditor_iter (void *cls,
  */
 int
 TALER_EXCHANGEDB_auditor_iterate (const char *exchange_base_dir,
-                              TALER_EXCHANGEDB_AuditorIterator it,
-                              void *it_cls)
+                                  TALER_EXCHANGEDB_AuditorIterator it,
+                                  void *it_cls)
 {
   char *dir;
   struct AuditorIterateContext aic;
@@ -498,6 +539,7 @@ TALER_EXCHANGEDB_auditor_iterate (const char *exchange_base_dir,
  *
  * @param filename the file where to write the auditor information to
  * @param apub the auditor's public key
+ * @param auditor_url the URL of the auditor
  * @param asigs the auditor's signatures, array of length @a dki_len
  * @param mpub the exchange's public key (as expected by the auditor)
  * @param dki_len length of @a dki
@@ -506,11 +548,12 @@ TALER_EXCHANGEDB_auditor_iterate (const char *exchange_base_dir,
  */
 int
 TALER_EXCHANGEDB_auditor_write (const char *filename,
-                            const struct TALER_AuditorPublicKeyP *apub,
-                            const struct TALER_AuditorSignatureP *asigs,
-                            const struct TALER_MasterPublicKeyP *mpub,
-                            unsigned int dki_len,
-                            const struct TALER_DenominationKeyValidityPS *dki)
+                                const struct TALER_AuditorPublicKeyP *apub,
+                                const char *auditor_url,
+                                const struct TALER_AuditorSignatureP *asigs,
+                                const struct TALER_MasterPublicKeyP *mpub,
+                                unsigned int dki_len,
+                                const struct TALER_DenominationKeyValidityPS *dki)
 {
   struct AuditorFileHeaderP af;
   struct GNUNET_DISK_FileHandle *fh;
@@ -521,6 +564,7 @@ TALER_EXCHANGEDB_auditor_write (const char *filename,
 
   af.apub = *apub;
   af.mpub = *mpub;
+  af.dki_len = htonl ((uint32_t) dki_len);
   ret = GNUNET_SYSERR;
   if (NULL == (fh = GNUNET_DISK_file_open
                (filename,
@@ -544,6 +588,12 @@ TALER_EXCHANGEDB_auditor_write (const char *filename,
   if (wsize ==
       GNUNET_DISK_file_write (fh,
                               dki,
+                              wsize))
+    ret = GNUNET_OK;
+  wsize = strlen (auditor_url) + 1;
+  if (wsize ==
+      GNUNET_DISK_file_write (fh,
+                              auditor_url,
                               wsize))
     ret = GNUNET_OK;
  cleanup:

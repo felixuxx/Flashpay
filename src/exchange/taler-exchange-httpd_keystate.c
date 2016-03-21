@@ -419,6 +419,7 @@ reload_keys_sign_iter (void *cls,
  * Convert information from an auditor to a JSON object.
  *
  * @param apub the auditor's public key
+ * @param auditor_url URL of the auditor
  * @param dki_len length of @a dki and @a asigs arrays
  * @param asigs the auditor's signatures
  * @param dki array of denomination coin data signed by the auditor
@@ -426,6 +427,7 @@ reload_keys_sign_iter (void *cls,
  */
 static json_t *
 auditor_to_json (const struct TALER_AuditorPublicKeyP *apub,
+                 const char *auditor_url,
                  unsigned int dki_len,
                  const struct TALER_AuditorSignatureP **asigs,
                  const struct TALER_DenominationKeyValidityPS **dki)
@@ -442,10 +444,11 @@ auditor_to_json (const struct TALER_AuditorPublicKeyP *apub,
                                                             sizeof (struct GNUNET_HashCode)),
                                       "auditor_sig",
                                       GNUNET_JSON_from_data (asigs[i],
-                                                            sizeof (struct TALER_AuditorSignatureP))));
+                                                             sizeof (struct TALER_AuditorSignatureP))));
   return
-    json_pack ("{s:o, s:o}",
+    json_pack ("{s:o, s:s, s:o}",
                "denomination_keys", ja,
+               "auditor_url", auditor_url,
                "auditor_pub",
                GNUNET_JSON_from_data (apub,
                                      sizeof (struct TALER_AuditorPublicKeyP)));
@@ -460,6 +463,7 @@ auditor_to_json (const struct TALER_AuditorPublicKeyP *apub,
  *
  * @param cls closure with the `struct TMH_KS_StateHandle *`
  * @param apub the auditor's public key
+ * @param auditor_url URL of the auditor
  * @param mpub the exchange's public key (as expected by the auditor)
  * @param dki_len length of @a dki and @a asigs
  * @param asigs array with the auditor's signatures, of length @a dki_len
@@ -471,6 +475,7 @@ auditor_to_json (const struct TALER_AuditorPublicKeyP *apub,
 static int
 reload_auditor_iter (void *cls,
                      const struct TALER_AuditorPublicKeyP *apub,
+                     const char *auditor_url,
                      const struct TALER_MasterPublicKeyP *mpub,
                      unsigned int dki_len,
                      const struct TALER_AuditorSignatureP *asigs,
@@ -508,6 +513,7 @@ reload_auditor_iter (void *cls,
   /* add auditor information to our /keys response */
   json_array_append_new (ctx->auditors_array,
                          auditor_to_json (apub,
+                                          auditor_url,
                                           keep,
                                           kept_asigs,
                                           kept_dkis));

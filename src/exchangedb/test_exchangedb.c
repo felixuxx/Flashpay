@@ -337,9 +337,9 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   {
     RND_BLK (&melts[cnt].coin.coin_pub);
     melts[cnt].coin.denom_sig.rsa_signature =
-        GNUNET_CRYPTO_rsa_sign (dkp->priv.rsa_private_key,
-                                &melts[cnt].coin.coin_pub,
-                                sizeof (melts[cnt].coin.coin_pub));
+        GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.rsa_private_key,
+                                    &melts[cnt].coin.coin_pub,
+                                    sizeof (melts[cnt].coin.coin_pub));
     melts[cnt].coin.denom_pub = dkp->pub;
     RND_BLK (&melts[cnt].coin_sig);
     melts[cnt].session_hash = session_hash;
@@ -663,9 +663,9 @@ run (void *cls,
   RND_BLK(&cbc.reserve_sig);
   cbc.denom_pub = dkp->pub;
   cbc.sig.rsa_signature
-    = GNUNET_CRYPTO_rsa_sign (dkp->priv.rsa_private_key,
-                              &cbc.h_coin_envelope,
-                              sizeof (cbc.h_coin_envelope));
+    = GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.rsa_private_key,
+                                  &cbc.h_coin_envelope,
+                                  sizeof (cbc.h_coin_envelope));
   cbc.reserve_pub = reserve_pub;
   cbc.amount_with_fee = value;
   GNUNET_assert (GNUNET_OK ==

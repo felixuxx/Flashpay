@@ -351,9 +351,9 @@ PERF_TALER_EXCHANGEDB_coin_init (
   coin->public_info.denom_pub.rsa_public_key =
     GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key);
   coin->public_info.denom_sig.rsa_signature =
-    GNUNET_CRYPTO_rsa_sign (dki->denom_priv.rsa_private_key,
-                            &coin->public_info.coin_pub,
-                            sizeof (struct TALER_CoinSpendPublicKeyP));
+    GNUNET_CRYPTO_rsa_sign_fdh (dki->denom_priv.rsa_private_key,
+                                &coin->public_info.coin_pub,
+                                sizeof (struct TALER_CoinSpendPublicKeyP));
   GNUNET_assert (NULL != coin->public_info.denom_pub.rsa_public_key);
   GNUNET_assert (NULL != coin->public_info.denom_sig.rsa_signature);
 
