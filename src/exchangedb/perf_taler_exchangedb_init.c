@@ -350,6 +350,7 @@ PERF_TALER_EXCHANGEDB_coin_init (
                                       &coin->public_info.coin_pub.eddsa_pub);
   coin->public_info.denom_pub.rsa_public_key =
     GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key);
+  // This is broken at the moment because it needs to be a hash of a coin public key.
   coin->public_info.denom_sig.rsa_signature =
     GNUNET_CRYPTO_rsa_sign_fdh (dki->denom_priv.rsa_private_key,
                                 &coin->public_info.coin_pub,
