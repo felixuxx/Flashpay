@@ -135,7 +135,8 @@ handle_admin_add_incoming_finished (void *cls,
     break;
   }
   aai->cb (aai->cb_cls,
-           response_code);
+           response_code,
+           json);
   json_decref (json);
   TALER_BANK_admin_add_incoming_cancel (aai);
 }
@@ -174,7 +175,7 @@ TALER_BANK_admin_add_incoming (struct TALER_BANK_Context *bank,
 
   admin_obj = json_pack ("{s:o, s:o,"
                          " s:I, s:I}",
-                         "wtid", GNUNET_JSON_from_data (wtid,
+                         "wid", GNUNET_JSON_from_data (wtid,
                                                        sizeof (*wtid)),
                          "amount", TALER_JSON_from_amount (amount),
                          "debit_account", (json_int_t) debit_account_no,

@@ -246,10 +246,12 @@ interpreter_run (void *cls,
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
+ * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
 static void
 add_incoming_cb (void *cls,
-                 unsigned int http_status)
+                 unsigned int http_status,
+                 json_t *json)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
@@ -258,6 +260,14 @@ add_incoming_cb (void *cls,
   if (cmd->expected_response_code != http_status)
   {
     GNUNET_break (0);
+    if (NULL != json)
+    {
+      fprintf (stderr,
+               "Unexpected response code %u:\n",
+               http_status);
+      json_dumpf (json, stderr, 0);
+      fprintf (stderr, "\n");
+    }
     fail (is);
     return;
   }

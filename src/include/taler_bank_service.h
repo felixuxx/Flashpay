@@ -22,6 +22,7 @@
 #ifndef _TALER_BANK_SERVICE_H
 #define _TALER_BANK_SERVICE_H
 
+#include <jansson.h>
 #include "taler_util.h"
 
 /* ********************* event loop *********************** */
@@ -117,10 +118,12 @@ struct TALER_BANK_AdminAddIncomingHandle;
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
+ * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
 typedef void
 (*TALER_BANK_AdminAddIncomingResultCallback) (void *cls,
-                                              unsigned int http_status);
+                                              unsigned int http_status,
+                                              json_t *json);
 
 
 /**

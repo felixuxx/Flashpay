@@ -43,4 +43,5 @@ test_bank_api_SOURCES = \
 test_bank_api_LDADD = \
   libtalerbank.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetutil
+  -lgnunetutil \
+  -ljansson
