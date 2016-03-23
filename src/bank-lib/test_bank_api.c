@@ -517,25 +517,25 @@ main (int argc,
   bankd = GNUNET_OS_start_process (GNUNET_NO,
                                    GNUNET_OS_INHERIT_STD_ALL,
                                    NULL, NULL, NULL,
-                                   "taler-bank-httpd",
-                                   "taler-bank-httpd",
-                                   "-d", "test-bank-home",
+                                   "taler-bank-manage",
+                                   "taler-bank-manage",
+                                   "--bareserver", "8081",
                                    NULL);
   if (NULL == bankd)
   {
     fprintf (stderr,
-             "taler-bank-httpd not found, skipping test\n");
+             "taler-bank-manage not found, skipping test\n");
     return 77; /* report 'skip' */
   }
   /* give child time to start and bind against the socket */
   fprintf (stderr,
-           "Waiting for taler-bank-httpd to be ready");
+           "Waiting for taler-bank-manage to be ready");
   do
     {
       fprintf (stderr, ".");
       sleep (1);
     }
-  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/keys -o /dev/null -O /dev/null"));
+  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/ -o /dev/null -O /dev/null"));
   fprintf (stderr, "\n");
   result = GNUNET_SYSERR;
   GNUNET_SCHEDULER_run (&run, NULL);
