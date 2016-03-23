@@ -510,6 +510,7 @@ main (int argc,
       char * const *argv)
 {
   struct GNUNET_OS_Process *bankd;
+  unsigned int cnt;
 
   GNUNET_log_setup ("test-bank-api",
                     "WARNING",
@@ -530,19 +531,30 @@ main (int argc,
   /* give child time to start and bind against the socket */
   fprintf (stderr,
            "Waiting for taler-bank-manage to be ready");
+  cnt = 0;
   do
     {
       fprintf (stderr, ".");
       sleep (1);
+      cnt++;
+      if (cnt > 30)
+        break;
     }
   while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/ -o /dev/null -O /dev/null"));
   fprintf (stderr, "\n");
   result = GNUNET_SYSERR;
-  GNUNET_SCHEDULER_run (&run, NULL);
+  if (cnt <= 30)
+    GNUNET_SCHEDULER_run (&run, NULL);
   GNUNET_OS_process_kill (bankd,
                           SIGTERM);
   GNUNET_OS_process_wait (bankd);
   GNUNET_OS_process_destroy (bankd);
+  if (cnt > 30)
+  {
+    fprintf (stderr,
+             "taler-bank-manage failed to start properly.\n");
+    return 77;
+  }
   return (GNUNET_OK == result) ? 0 : 1;
 }
 
