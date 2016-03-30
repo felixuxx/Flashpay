@@ -59,4 +59,25 @@ check_SCRIPTS += \
   test_taler_exchange_httpd_afl.sh
 endif
 
-TESTS = $(check_SCRIPTS)
+test_taler_exchange_aggregator_postgres_SOURCES = \
+  test_taler_exchange_aggregator.c
+test_taler_exchange_aggregator_postgres_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lmicrohttpd \
+  -lgnunetutil \
+  -lgnunetjson \
+  -ljansson \
+  -lpthread
+
+check_PROGRAMS = \
+  test_taler_exchange_aggregator-postgres
+
+TESTS = \
+  $(check_SCRIPTS) \
+  $(check_PROGRAMS)
+
+
+EXTRA_DIST = \
+  test-taler-exchange-aggregator-postgres.conf

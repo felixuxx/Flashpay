@@ -867,31 +867,31 @@ int
 main (int argc,
       char *const argv[])
 {
-   static const struct GNUNET_GETOPT_CommandLineOption options[] = {
+  static const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_OPTION_END
   };
-   char *argv2[] = {
-     "test-exchange-db-<plugin_name>", /* will be replaced later */
-     "-c", "test-exchange-db-<plugin_name>.conf", /* will be replaced later */
-     NULL,
-   };
-   const char *plugin_name;
-   char *config_filename;
-   char *testname;
+  char *argv2[] = {
+    "test-exchange-db-<plugin_name>", /* will be replaced later */
+    "-c", "test-exchange-db-<plugin_name>.conf", /* will be replaced later */
+    NULL,
+  };
+  const char *plugin_name;
+  char *config_filename;
+  char *testname;
 
-   result = -1;
-   if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
-   {
-     GNUNET_break (0);
-     return -1;
-   }
-   plugin_name++;
-   (void) GNUNET_asprintf (&testname,
-                           "test-exchange-db-%s", plugin_name);
-   (void) GNUNET_asprintf (&config_filename,
-                           "%s.conf", testname);
-   argv2[0] = argv[0];
-   argv2[2] = config_filename;
+  result = -1;
+  if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
+  {
+    GNUNET_break (0);
+    return -1;
+  }
+  plugin_name++;
+  (void) GNUNET_asprintf (&testname,
+                          "test-exchange-db-%s", plugin_name);
+  (void) GNUNET_asprintf (&config_filename,
+                          "%s.conf", testname);
+  argv2[0] = argv[0];
+  argv2[2] = config_filename;
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run ((sizeof (argv2)/sizeof (char *)) - 1, argv2,
                           testname,

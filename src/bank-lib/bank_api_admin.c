@@ -175,7 +175,7 @@ TALER_BANK_admin_add_incoming (struct TALER_BANK_Context *bank,
 
   admin_obj = json_pack ("{s:o, s:o,"
                          " s:I, s:I}",
-                         "wid", GNUNET_JSON_from_data (wtid,
+                         "wtid", GNUNET_JSON_from_data (wtid,
                                                        sizeof (*wtid)), /* #4340 */
                          "amount", TALER_JSON_from_amount (amount),
                          "debit_account", (json_int_t) debit_account_no,

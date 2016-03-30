@@ -1,0 +1,35 @@
+.TH TALER\-EXCHANGE\-AGGREGATOR 1 "Mar 30, 2016" "GNU Taler"
+
+.SH NAME
+taler\-exchange\-aggregator \- Aggregate and execute exchange transactions
+
+.SH SYNOPSIS
+.B taler\-exchange\-aggregator
+.RI [ options ]
+.br
+
+.SH DESCRIPTION
+\fBtaler\-exchange\-aggregator\fP is a command line tool to run pending transactions from the Taler exchange.
+
+.SH OPTIONS
+.B
+.IP "\-d DIRNAME,  \-\-exchange-dir=DIRNAME"
+Use the configuration and other resources for the exchange to operate from DIRNAME.
+.B
+.IP "\-f WIREFORMAT,  \-\-format=WIREFORMAT"
+Overrides WIREFORMAT option from the configuation file.
+.B
+.IP "\-h, \-\-help"
+Print short help on options.
+.B
+.IP "\-t,  \-\-test"
+Run in test mode (use temporary tables).  Only useful for testcases.
+.B
+.IP "\-v, \-\-version"
+Print version information.
+.B
+.SH BUGS
+Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
+
+.SH "SEE ALSO"
+\fBtaler\-exchange\-dbinit\fP(1), \fBtaler\-exchange\-keyup\fP(1), \fBtaler\-exchange\-httpd\fP(1), \fBtaler.conf\fP(5)

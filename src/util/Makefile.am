@@ -47,7 +47,7 @@ TESTS = \
  test_amount \
  test_crypto
 
-check_PROGRAMS= \
+check_PROGRAMS = \
  test_amount \
  test_crypto
 

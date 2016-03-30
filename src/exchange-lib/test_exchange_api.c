@@ -2543,9 +2543,9 @@ run (void *cls,
   ctx_task = GNUNET_SCHEDULER_add_now (&context_task,
                                        ctx);
   exchange = TALER_EXCHANGE_connect (ctx,
-                             "http://localhost:8081",
-                             &cert_cb, is,
-                             TALER_EXCHANGE_OPTION_END);
+                                     "http://localhost:8081",
+                                     &cert_cb, is,
+                                     TALER_EXCHANGE_OPTION_END);
   GNUNET_assert (NULL != exchange);
   shutdown_task
     = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_relative_multiply
@@ -2581,12 +2581,12 @@ main (int argc,
   GNUNET_OS_process_wait (proc);
   GNUNET_OS_process_destroy (proc);
   exchanged = GNUNET_OS_start_process (GNUNET_NO,
-                                   GNUNET_OS_INHERIT_STD_ALL,
-                                   NULL, NULL, NULL,
-                                   "taler-exchange-httpd",
-                                   "taler-exchange-httpd",
-                                   "-d", "test-exchange-home",
-                                   NULL);
+                                       GNUNET_OS_INHERIT_STD_ALL,
+                                       NULL, NULL, NULL,
+                                       "taler-exchange-httpd",
+                                       "taler-exchange-httpd",
+                                       "-d", "test-exchange-home",
+                                       NULL);
   /* give child time to start and bind against the socket */
   fprintf (stderr, "Waiting for taler-exchange-httpd to be ready");
   do

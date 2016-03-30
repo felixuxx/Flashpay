@@ -546,15 +546,15 @@ struct TALER_EXCHANGEDB_Session;
  */
 typedef int
 (*TALER_EXCHANGEDB_DepositIterator)(void *cls,
-                                unsigned long long rowid,
-                                const struct TALER_MerchantPublicKeyP *merchant_pub,
-                                const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                const struct TALER_Amount *amount_with_fee,
-                                const struct TALER_Amount *deposit_fee,
-                                uint64_t transaction_id,
-                                const struct GNUNET_HashCode *h_contract,
-                                struct GNUNET_TIME_Absolute wire_deadline,
-                                const json_t *wire);
+                                    unsigned long long rowid,
+                                    const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                    const struct TALER_Amount *amount_with_fee,
+                                    const struct TALER_Amount *deposit_fee,
+                                    uint64_t transaction_id,
+                                    const struct GNUNET_HashCode *h_contract,
+                                    struct GNUNET_TIME_Absolute wire_deadline,
+                                    const json_t *wire);
 
 
 /**
@@ -568,9 +568,9 @@ typedef int
  */
 typedef void
 (*TALER_EXCHANGEDB_TransferDataCallback)(void *cls,
-                                     const struct GNUNET_HashCode *session_hash,
-                                     const struct TALER_TransferPublicKeyP *transfer_pub,
-                                     const struct TALER_EncryptedLinkSecretP *shared_secret_enc);
+                                         const struct GNUNET_HashCode *session_hash,
+                                         const struct TALER_TransferPublicKeyP *transfer_pub,
+                                         const struct TALER_EncryptedLinkSecretP *shared_secret_enc);
 
 
 /**
@@ -589,10 +589,10 @@ typedef void
  */
 typedef void
 (*TALER_EXCHANGEDB_DepositWtidCallback)(void *cls,
-				    const struct TALER_WireTransferIdentifierRawP *wtid,
-                                    const struct TALER_Amount *coin_contribution,
-                                    const struct TALER_Amount *coin_fee,
-				    struct GNUNET_TIME_Absolute execution_time);
+                                        const struct TALER_WireTransferIdentifierRawP *wtid,
+                                        const struct TALER_Amount *coin_contribution,
+                                        const struct TALER_Amount *coin_fee,
+                                        struct GNUNET_TIME_Absolute execution_time);
 
 
 /**
@@ -610,13 +610,13 @@ typedef void
  */
 typedef void
 (*TALER_EXCHANGEDB_WireTransferDataCallback)(void *cls,
-                                         const struct TALER_MerchantPublicKeyP *merchant_pub,
-                                         const struct GNUNET_HashCode *h_wire,
-                                         const struct GNUNET_HashCode *h_contract,
-                                         uint64_t transaction_id,
-                                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                         const struct TALER_Amount *coin_value,
-                                         const struct TALER_Amount *coin_fee);
+                                             const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                             const struct GNUNET_HashCode *h_wire,
+                                             const struct GNUNET_HashCode *h_contract,
+                                             uint64_t transaction_id,
+                                             const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                             const struct TALER_Amount *coin_value,
+                                             const struct TALER_Amount *coin_fee);
 
 
 /**
@@ -629,9 +629,9 @@ typedef void
  */
 typedef void
 (*TALER_EXCHANGEDB_WirePreparationCallback) (void *cls,
-                                         unsigned long long rowid,
-                                         const char *buf,
-                                         size_t buf_size);
+                                             unsigned long long rowid,
+                                             const char *buf,
+                                             size_t buf_size);
 
 
 /**

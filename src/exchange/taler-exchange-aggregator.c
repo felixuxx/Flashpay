@@ -68,6 +68,11 @@ static struct TALER_WIRE_Plugin *wire_plugin;
 static struct GNUNET_SCHEDULER_Task *task;
 
 /**
+ * #GNUNET_YES if we are in test mode and are using temporary tables.
+ */
+static int test_mode;
+
+/**
  * Limit on the number of transactions we aggregate at once.  Note
  * that the limit must be big enough to ensure that when transactions
  * of the smallest possible unit are aggregated, they do surpass the
@@ -448,7 +453,7 @@ run_aggregation (void *cls,
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
     return;
   if (NULL == (session = db_plugin->get_session (db_plugin->cls,
-                                                 GNUNET_NO)))
+                                                 test_mode)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain database session!\n");
@@ -813,7 +818,7 @@ run_transfers (void *cls,
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
     return;
   if (NULL == (session = db_plugin->get_session (db_plugin->cls,
-                                                 GNUNET_NO)))
+                                                 test_mode)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain database session!\n");
@@ -878,6 +883,10 @@ main (int argc,
     {'f', "format", "WIREFORMAT",
      "wireformat to use, overrides WIREFORMAT option in [exchange] section", 1,
      &GNUNET_GETOPT_set_filename, &exchange_wireformat},
+    TALER_GETOPT_OPTION_HELP ("background process that aggregates and executes wire transfers to merchants"),
+    {'t', "test", NULL,
+     "run in test mode with temporary tables", 0,
+     &GNUNET_GETOPT_set_one, &test_mode},
     TALER_GETOPT_OPTION_HELP ("background process that aggregates and executes wire transfers to merchants"),
     GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
