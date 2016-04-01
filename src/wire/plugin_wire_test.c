@@ -419,22 +419,40 @@ test_prepare_wire_transfer_cancel (void *cls,
  * @param cls closure with the `struct TALER_WIRE_ExecuteHandle`
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
+ * @param json detailed response from the HTTPD, or NULL if reply was not JSON
  */
 static void
 execute_cb (void *cls,
-            unsigned int http_status)
+            unsigned int http_status,
+            json_t *json)
 {
   struct TALER_WIRE_ExecuteHandle *eh = cls;
-  char s[14];
+  json_t *reason;
+  const char *emsg;
+  char *s;
 
   eh->aaih = NULL;
-  GNUNET_snprintf (s,
-                   sizeof (s),
-                   "%u",
-                   http_status);
+  emsg = NULL;
+  if (NULL != json)
+  {
+    reason = json_object_get (json,
+                              "reason");
+    if (NULL != reason)
+      emsg = json_string_value (reason);
+  }
+  if (NULL != emsg)
+    GNUNET_asprintf (&s,
+                     "%u (%s)",
+                     http_status,
+                     emsg);
+  else
+    GNUNET_asprintf (&s,
+                     "%u",
+                     http_status);
   eh->cc (eh->cc_cls,
           (MHD_HTTP_OK == http_status) ? GNUNET_OK : GNUNET_SYSERR,
           (MHD_HTTP_OK == http_status) ? NULL : s);
+  GNUNET_free (s);
   GNUNET_free (eh);
 }
 
