@@ -1227,6 +1227,7 @@ wire_cb (void *cls,
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
 
+  cmd->details.wire.wh = NULL;
   if (cmd->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

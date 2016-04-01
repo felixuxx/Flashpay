@@ -28,20 +28,23 @@ The following options are from the "[exchange]" section and used by most exchang
 
 .SH WIRE transfer details
 
-The following options must be in section "[exchange-wire-test]":
+The following options must be in section "[wire\-incoming\-test]" and "[wire\-outgoing\-test]":
 
-.IP REDIRECT_URL
-    URL to redirect /wire/test to. Should contain a Web form the user can use to charge his wallet with coins in a "test" currency for testing. If this option is not provided, /wire/test will return "501 NOT IMPLEMENTED".
+.IP BANK_URI
+    URL of the Taler bank.
 
-The following options must be in section "[exchange-wire-sepa]":
+.IP BANK_ACCOUNT_NUMBER
+    Number of the bank account of the exchange.
+
+The following options must be in section "[wire\-incoming\-sepa]" and "[wire\-outgoing\-sepa]":
 
 .IP SEPA_RESPONSE_FILE
-    Filename with the JSON body for the /wire/sepa response, signed using the exchange's long-term offline master key.  If this option is not provided, /wire/test will return "501 NOT IMPLEMENTED".  Use "taler-exchange-sepa" to create the SEPA_RESPONSE_FILE.
+    Filename with the JSON body for the /wire response, signed using the exchange\'s long-term offline master key.  Use taler\-exchange\-sepa to create the SEPA_RESPONSE_FILE.
 
 
 .SH Postgres database options
 
-The following options must be in section "[exchangedb-postgres]":
+The following options must be in section "[exchangedb\-postgres]":
 
 .IP DB_CONN_STR
     How to access the database, i.e. "postgres:///taler" to use the "taler" database. Testcases use "talercheck".
@@ -86,4 +89,3 @@ Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic 
 
 .SH "SEE ALSO"
 \fBtaler\-exchange\-httpd\fP(1), \fBtaler\-exchange\-keyup\fP(1), \fBtaler\-exchange\-reservemod\fP(1), \fBtaler\-exchange\-dbinit\fP(1), \fBtaler\-exchange\-sepa(1)
-
