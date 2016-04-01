@@ -221,7 +221,7 @@ TMH_VALIDATION_get_wire_methods (const char *prefix)
   {
     plugin = p->plugin;
     GNUNET_asprintf (&account_name,
-                     "%s-%s\n",
+                     "%s-%s",
                      prefix,
                      p->type);
     method = plugin->get_wire_details (plugin->cls,
