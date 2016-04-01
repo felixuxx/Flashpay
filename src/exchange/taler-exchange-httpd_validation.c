@@ -200,33 +200,39 @@ TMH_VALIDATION_test_method (const char *type)
 
 
 /**
- * Obtain supported validation methods as a JSON array,
- * and as a hash.
+ * Obtain JSON of the supported wire methods for a given
+ * account name prefix.
  *
- * @param[out] h set to the hash of the JSON methods
+ * @param prefix prefix for the account, the suffix will
+ *        be determined by the name of the plugin
  * @return JSON array with the supported validation methods
  */
 json_t *
-TMH_VALIDATION_get_methods (struct GNUNET_HashCode *h)
+TMH_VALIDATION_get_wire_methods (const char *prefix)
 {
   json_t *methods;
-  struct GNUNET_HashContext *hc;
-  const char *wf;
+  json_t *method;
   struct Plugin *p;
+  struct TALER_WIRE_Plugin *plugin;
+  char *account_name;
 
-  methods = json_array ();
-  hc = GNUNET_CRYPTO_hash_context_start ();
+  methods = json_object ();
   for (p=wire_head;NULL != p;p = p->next)
   {
-    wf = p->type;
-    json_array_append_new (methods,
-                           json_string (wf));
-    GNUNET_CRYPTO_hash_context_read (hc,
-                                     wf,
-                                     strlen (wf) + 1);
+    plugin = p->plugin;
+    GNUNET_asprintf (&account_name,
+                     "%s-%s\n",
+                     prefix,
+                     p->type);
+    method = plugin->get_wire_details (plugin->cls,
+                                       cfg,
+                                       account_name);
+    if (NULL != method)
+      json_object_set_new (methods,
+                           p->type,
+                           method);
+    GNUNET_free (account_name);
   }
-  GNUNET_CRYPTO_hash_context_finish (hc,
-                                     h);
   return methods;
 }
 

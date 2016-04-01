@@ -99,6 +99,21 @@ struct TALER_WIRE_Plugin
 
 
   /**
+   * Obtain wire transfer details in the plugin-specific format
+   * from the configuration.
+   *
+   * @param cls closure
+   * @param cfg configuration with details about wire accounts
+   * @param account_name which section in the configuration should we parse
+   * @return NULL if @a cfg fails to have valid wire details for @a account_name
+   */
+  json_t *
+  (*get_wire_details)(void *cls,
+                      const struct GNUNET_CONFIGURATION_Handle *cfg,
+                      const char *account_name);
+
+
+  /**
    * Check if the given wire format JSON object is correctly formatted
    *
    * @param cls the @e cls of this struct with the plugin-specific state

@@ -63,14 +63,15 @@ TMH_VALIDATION_test_method (const char *type);
 
 
 /**
- * Obtain supported validation methods as a JSON array,
- * and as a hash.
+ * Obtain JSON of the supported wire methods for a given
+ * account name prefix.
  *
- * @param[out] h set to the hash of the JSON methods
+ * @param prefix prefix for the account, the suffix will
+ *        be determined by the name of the plugin
  * @return JSON array with the supported validation methods
  */
 json_t *
-TMH_VALIDATION_get_methods (struct GNUNET_HashCode *h);
+TMH_VALIDATION_get_wire_methods (const char *prefix);
 
 
 #endif

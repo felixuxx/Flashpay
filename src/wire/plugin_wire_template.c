@@ -74,6 +74,25 @@ template_amount_round (void *cls,
 
 
 /**
+ * Obtain wire transfer details in the plugin-specific format
+ * from the configuration.
+ *
+ * @param cls closure
+ * @param cfg configuration with details about wire accounts
+ * @param account_name which section in the configuration should we parse
+ * @return NULL if @a cfg fails to have valid wire details for @a account_name
+ */
+static json_t *
+template_get_wire_details (void *cls,
+                           const struct GNUNET_CONFIGURATION_Handle *cfg,
+                           const char *account_name)
+{
+  GNUNET_break (0);
+  return NULL;
+}
+
+
+/**
  * Check if the given wire format JSON object is correctly formatted
  *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -216,6 +235,7 @@ libtaler_plugin_wire_template_init (void *cls)
   plugin = GNUNET_new (struct TALER_WIRE_Plugin);
   plugin->cls = tc;
   plugin->amount_round = &template_amount_round;
+  plugin->get_wire_details = &template_get_wire_details;
   plugin->wire_validate = &template_wire_validate;
   plugin->prepare_wire_transfer = &template_prepare_wire_transfer;
   plugin->prepare_wire_transfer_cancel = &template_prepare_wire_transfer_cancel;

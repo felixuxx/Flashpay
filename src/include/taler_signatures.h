@@ -102,11 +102,6 @@
 #define TALER_SIGNATURE_EXCHANGE_KEY_SET 1035
 
 /**
- * Signature where the Exchange confirms the /wire response.
- */
-#define TALER_SIGNATURE_EXCHANGE_WIRE_TYPES 1036
-
-/**
  * Signature where the Exchange confirms the /deposit/wtid response.
  */
 #define TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE 1036
@@ -780,27 +775,6 @@ struct TALER_MasterWireSepaDetailsPS
    * code (all as 0-terminated strings).
    */
   struct GNUNET_HashCode h_sepa_details GNUNET_PACKED;
-
-};
-
-
-/**
- * @brief Information signed by a exchange's online signing key affirming
- * the wire formats supported by the exchange.
- */
-struct TALER_ExchangeWireSupportMethodsPS
-{
-
-  /**
-   * Purpose is #TALER_SIGNATURE_EXCHANGE_WIRE_TYPES.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Hash over the various wire formats supported by this exchange
-   * (all as 0-terminated strings).
-   */
-  struct GNUNET_HashCode h_wire_types GNUNET_PACKED;
 
 };
 

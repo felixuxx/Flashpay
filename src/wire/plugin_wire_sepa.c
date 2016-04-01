@@ -380,7 +380,7 @@ verify_wire_sepa_signature_ok (const json_t *json,
 
   if (NULL == master_pub)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Skipping signature check as master public key not given\n");
     return GNUNET_OK;
   }
@@ -488,6 +488,63 @@ sepa_wire_validate (void *cls,
     return GNUNET_NO;
   }
   return GNUNET_YES;
+}
+
+
+/**
+ * Obtain wire transfer details in the plugin-specific format
+ * from the configuration.
+ *
+ * @param cls closure
+ * @param cfg configuration with details about wire accounts
+ * @param account_name which section in the configuration should we parse
+ * @return NULL if @a cfg fails to have valid wire details for @a account_name
+ */
+static json_t *
+sepa_get_wire_details (void *cls,
+                       const struct GNUNET_CONFIGURATION_Handle *cfg,
+                       const char *account_name)
+{
+  char *sepa_wire_file;
+  json_error_t err;
+  json_t *ret;
+
+  /* Fetch reply */
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                               account_name,
+                                               "SEPA_RESPONSE_FILE",
+                                               &sepa_wire_file))
+  {
+    return NULL;
+  }
+  ret = json_load_file (sepa_wire_file,
+                        JSON_REJECT_DUPLICATES,
+                        &err);
+  if (NULL == ret)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to parse JSON in %s: %s (%s:%u)\n",
+                sepa_wire_file,
+                err.text,
+                err.source,
+                err.line);
+    GNUNET_free (sepa_wire_file);
+    return NULL;
+  }
+  if (GNUNET_YES != sepa_wire_validate (cls,
+                                        ret,
+                                        NULL))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to validate SEPA data in %s\n",
+                sepa_wire_file);
+    GNUNET_free (sepa_wire_file);
+    json_decref (ret);
+    return NULL;
+  }
+  GNUNET_free (sepa_wire_file);
+  return ret;
 }
 
 
@@ -604,6 +661,7 @@ libtaler_plugin_wire_sepa_init (void *cls)
   plugin = GNUNET_new (struct TALER_WIRE_Plugin);
   plugin->cls = sc;
   plugin->amount_round = &sepa_amount_round;
+  plugin->get_wire_details = &sepa_get_wire_details;
   plugin->wire_validate = &sepa_wire_validate;
   plugin->prepare_wire_transfer = &sepa_prepare_wire_transfer;
   plugin->prepare_wire_transfer_cancel = &sepa_prepare_wire_transfer_cancel;

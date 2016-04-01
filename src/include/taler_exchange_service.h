@@ -396,53 +396,35 @@ struct TALER_EXCHANGE_WireHandle;
  * Callbacks of this type are used to serve the result of submitting a
  * wire format inquiry request to a exchange.
  *
- * The callback is invoked multiple times, once for each supported @a
- * method.  Finally, it is invoked one more time with cls/0/NULL/NULL
- * to indicate the end of the iteration.  If any request fails to
- * generate a valid response from the exchange, @a http_status will also
- * be zero and the iteration will also end.  Thus, the iteration
- * always ends with a final call with an @a http_status of 0. If the
- * @a http_status is already 0 on the first call, then the response to
- * the /wire request was invalid.  Later, clients can tell the
- * difference between @a http_status of 0 indicating a failed
- * /wire/method request and a regular end of the iteration by @a
- * method being non-NULL.  If the exchange simply correctly asserts that
- * it does not support any methods, @a method will be NULL but the @a
- * http_status will be #MHD_HTTP_OK for the first call (followed by a
- * cls/0/NULL/NULL call to signal the end of the iteration).
+ * If the request fails to generate a valid response from the
+ * exchange, @a http_status will also be zero.
  *
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful request;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
- * @param method wire format method supported, i.e. "test" or "sepa", or NULL
- *            if already the /wire request failed.
  * @param obj the received JSON reply, if successful this should be the wire
- *            format details as provided by /wire/METHOD/, or NULL if the
- *            reply was not in JSON format (in this case, the client might
- *            want to do an HTTP request to /wire/METHOD/ with a browser to
- *            provide more information to the user about the @a method).
+ *            format details as provided by /wire, or NULL if the
+ *            reply was not in JSON format.
  */
 typedef void
 (*TALER_EXCHANGE_WireResultCallback) (void *cls,
                                       unsigned int http_status,
-                                      const char *method,
                                       json_t *obj);
 
 
 /**
- * Obtain information about a exchange's wire instructions.
- * A exchange may provide wire instructions for creating
- * a reserve.  The wire instructions also indicate
- * which wire formats merchants may use with the exchange.
- * This API is typically used by a wallet for wiring
- * funds, and possibly by a merchant to determine
- * supported wire formats.
+ * Obtain information about a exchange's wire instructions.  A
+ * exchange may provide wire instructions for creating a reserve.  The
+ * wire instructions also indicate which wire formats merchants may
+ * use with the exchange.  This API is typically used by a wallet for
+ * wiring funds, and possibly by a merchant to determine supported
+ * wire formats.
  *
  * Note that while we return the (main) response verbatim to the
  * caller for further processing, we do already verify that the
  * response is well-formed (i.e. that signatures included in the
- * response are all valid).  If the exchange's reply is not well-formed,
- * we return an HTTP status code of zero to @a cb.
+ * response are all valid).  If the exchange's reply is not
+ * well-formed, we return an HTTP status code of zero to @a cb.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param wire_cb the callback to call when a reply for this request is available
@@ -451,8 +433,8 @@ typedef void
  */
 struct TALER_EXCHANGE_WireHandle *
 TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
-                 TALER_EXCHANGE_WireResultCallback wire_cb,
-                 void *wire_cb_cls);
+                     TALER_EXCHANGE_WireResultCallback wire_cb,
+                     void *wire_cb_cls);
 
 
 /**

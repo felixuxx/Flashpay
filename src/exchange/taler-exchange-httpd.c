@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 Inria and GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -174,20 +174,6 @@ handle_mhd_request (void *cls,
         NULL, 0,
         &TMH_WIRE_handler_wire, MHD_HTTP_OK },
       { "/wire", NULL, "text/plain",
-        "Only GET is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-      { "/wire/test", MHD_HTTP_METHOD_GET, "application/json",
-        NULL, 0,
-        &TMH_WIRE_handler_wire_test, MHD_HTTP_FOUND },
-      { "/wire/test", NULL, "text/plain",
-        "Only GET is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
-      { "/wire/sepa", MHD_HTTP_METHOD_GET, "application/json",
-        NULL, 0,
-        &TMH_WIRE_handler_wire_sepa, MHD_HTTP_OK },
-      { "/wire/sepa", NULL, "text/plain",
         "Only GET is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 

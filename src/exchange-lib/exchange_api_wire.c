@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 Inria and GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -129,257 +129,6 @@ verify_wire_method_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
 
 
 /**
- * Perform the next /wire/method request or signal
- * the end of the iteration.
- *
- * @param wh the wire handle
- * @return a handle for this request
- */
-static void
-request_wire_method (struct TALER_EXCHANGE_WireHandle *wh);
-
-
-/**
- * Function called when we're done processing the
- * HTTP /wire/METHOD request.
- *
- * @param cls the `struct TALER_EXCHANGE_WireHandle`
- * @param eh the curl request handle
- */
-static void
-handle_wire_method_finished (void *cls,
-                             CURL *eh)
-{
-  struct TALER_EXCHANGE_WireHandle *wh = cls;
-  long response_code;
-  json_t *json;
-
-  wh->job = NULL;
-  json = MAC_download_get_result (&wh->db,
-                                  eh,
-                                  &response_code);
-  switch (response_code)
-  {
-  case 0:
-    break;
-  case MHD_HTTP_OK:
-    {
-      const char *method;
-
-      method = json_string_value (json_array_get (wh->methods,
-                                                  wh->methods_off - 1));
-      if (GNUNET_OK !=
-          verify_wire_method_signature_ok (wh,
-                                           method,
-                                           json))
-      {
-        GNUNET_break_op (0);
-        response_code = 0;
-        break;
-      }
-      break;
-    }
-  case MHD_HTTP_FOUND:
-    /* /wire/test returns a 302 redirect, we should just give
-       this information back to the callback below */
-    break;
-  case MHD_HTTP_BAD_REQUEST:
-    /* This should never happen, either us or the exchange is buggy
-       (or API version conflict); just pass JSON reply to the application */
-    break;
-  case MHD_HTTP_NOT_FOUND:
-    /* Nothing really to verify, this should never
-       happen, we should pass the JSON reply to the application */
-    break;
-  case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    /* Server had an internal issue; we should retry, but this API
-       leaves this to the application */
-    break;
-  default:
-    /* unexpected response code */
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u\n",
-                response_code);
-    GNUNET_break (0);
-    response_code = 0;
-    break;
-  }
-  if (0 == response_code)
-  {
-    /* signal end of iteration */
-    wh->cb (wh->cb_cls,
-            0,
-            NULL,
-            NULL);
-    json_decref (json);
-    TALER_EXCHANGE_wire_cancel (wh);
-    return;
-  }
-  /* pass on successful reply */
-  wh->cb (wh->cb_cls,
-          response_code,
-          json_string_value (json_array_get (wh->methods,
-                                             wh->methods_off-1)),
-          json);
-  json_decref (json);
-  /* trigger request for the next /wire/method */
-  request_wire_method (wh);
-}
-
-
-/**
- * Perform the next /wire/method request or signal
- * the end of the iteration.
- *
- * @param wh the wire handle
- * @return a handle for this request
- */
-static void
-request_wire_method (struct TALER_EXCHANGE_WireHandle *wh)
-{
-  struct TALER_EXCHANGE_Context *ctx;
-  CURL *eh;
-  char *path;
-
-  if (json_array_size (wh->methods) <= wh->methods_off)
-  {
-    /* we are done, signal end of iteration */
-    wh->cb (wh->cb_cls,
-            0,
-            NULL,
-            NULL);
-    TALER_EXCHANGE_wire_cancel (wh);
-    return;
-  }
-  GNUNET_free_non_null (wh->db.buf);
-  wh->db.buf = NULL;
-  wh->db.buf_size = 0;
-  wh->db.eno = 0;
-  GNUNET_free_non_null (wh->url);
-  GNUNET_asprintf (&path,
-                   "/wire/%s",
-                   json_string_value (json_array_get (wh->methods,
-                                                      wh->methods_off++)));
-  wh->url = MAH_path_to_url (wh->exchange,
-                             path);
-  GNUNET_free (path);
-
-  eh = curl_easy_init ();
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_URL,
-                                   wh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEFUNCTION,
-                                   &MAC_download_cb));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEDATA,
-                                   &wh->db));
-  /* The default is 'disabled', but let's be sure */
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_FOLLOWLOCATION,
-                                   (long) 0));
-  ctx = MAH_handle_to_context (wh->exchange);
-  wh->job = MAC_job_add (ctx,
-                         eh,
-                         GNUNET_YES,
-                         &handle_wire_method_finished,
-                         wh);
-  TALER_EXCHANGE_perform (ctx);
-}
-
-
-/**
- * Verify that the signature on the "200 OK" response
- * for /wire from the exchange is valid.
- *
- * @param wh wire handle
- * @param json json reply with the signature
- * @return NULL if @a json is invalid, otherwise the
- *         "methods" array (with an RC of 1)
- */
-static json_t *
-verify_wire_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
-                          json_t *json)
-{
-  struct TALER_ExchangeSignatureP exchange_sig;
-  struct TALER_ExchangePublicKeyP exchange_pub;
-  struct TALER_ExchangeWireSupportMethodsPS mp;
-  json_t *methods;
-  const struct TALER_EXCHANGE_Keys *key_state;
-  struct GNUNET_HashContext *hc;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("sig", &exchange_sig),
-    GNUNET_JSON_spec_fixed_auto ("pub", &exchange_pub),
-    GNUNET_JSON_spec_json ("methods", &methods),
-    GNUNET_JSON_spec_end()
-  };
-  unsigned int i;
-
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (json,
-                         spec,
-                         NULL, NULL))
-  {
-    GNUNET_break_op (0);
-    return NULL;
-  }
-  if (! json_is_array (methods))
-  {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    return NULL;
-  }
-
-  key_state = TALER_EXCHANGE_get_keys (wh->exchange);
-  if (GNUNET_OK !=
-      TALER_EXCHANGE_test_signing_key (key_state,
-                                   &exchange_pub))
-  {
-    GNUNET_break_op (0);
-    return NULL;
-  }
-  hc = GNUNET_CRYPTO_hash_context_start ();
-  for (i=0;i<json_array_size (methods);i++)
-  {
-    const json_t *element = json_array_get (methods, i);
-    const char *method;
-
-    if (! json_is_string (element))
-    {
-      GNUNET_CRYPTO_hash_context_abort (hc);
-      GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
-      return NULL;
-    }
-    method = json_string_value (element);
-    GNUNET_CRYPTO_hash_context_read (hc,
-                                     method,
-                                     strlen (method) + 1);
-  }
-  mp.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_WIRE_TYPES);
-  mp.purpose.size = htonl (sizeof (struct TALER_ExchangeWireSupportMethodsPS));
-  GNUNET_CRYPTO_hash_context_finish (hc,
-                                     &mp.h_wire_types);
-
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_WIRE_TYPES,
-                                  &mp.purpose,
-                                  &exchange_sig.eddsa_signature,
-                                  &exchange_pub.eddsa_pub))
-  {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    return NULL;
-  }
-  return methods;
-}
-
-
-/**
  * Function called when we're done processing the
  * HTTP /wire request.
  *
@@ -404,19 +153,47 @@ handle_wire_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     {
-      json_t *methods;
+      const char *key;
+      json_t *method;
+      json_t *keep;
+      int ret;
 
-      if (NULL ==
-          (methods = verify_wire_signature_ok (wh,
-                                               json)))
+      /* We 'keep' methods that we support and that are well-formed;
+         we fail (by setting response_code=0) if any method that we do
+         support fails to verify. */
+      keep = json_object ();
+      json_object_foreach (json, key, method) {
+        ret = verify_wire_method_signature_ok (wh,
+                                               key,
+                                               method);
+        if (GNUNET_SYSERR == ret)
+        {
+          /* bogus reply */
+          GNUNET_break_op (0);
+          response_code = 0;
+        }
+        /* GNUNET_NO: not understood by us, simply skip! */
+        if (GNUNET_OK == ret)
+        {
+          /* supported and valid, keep! */
+          json_object_set (keep,
+                           key,
+                           method);
+        }
+      }
+      if (0 != response_code)
       {
-        GNUNET_break_op (0);
-        response_code = 0;
+        /* all supported methods were valid, use 'keep' for 'json' */
+        json_decref (json);
+        json = keep;
         break;
       }
-      wh->methods = methods;
-      request_wire_method (wh);
-      return;
+      else
+      {
+        /* some supported methods were invalid, release 'keep', preserve
+           full 'json' for application-level error handling. */
+        json_decref (keep);
+      }
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
@@ -440,19 +217,9 @@ handle_wire_finished (void *cls,
     response_code = 0;
     break;
   }
-  if (0 != response_code)
-  {
-    /* pass on successful reply */
-    wh->cb (wh->cb_cls,
-            response_code,
-            NULL,
-            json);
-  }
-  /* signal end of iteration */
   wh->cb (wh->cb_cls,
-          0,
-          NULL,
-          NULL);
+          response_code,
+          json);
   if (NULL != json)
     json_decref (json);
   TALER_EXCHANGE_wire_cancel (wh);
@@ -481,8 +248,8 @@ handle_wire_finished (void *cls,
  */
 struct TALER_EXCHANGE_WireHandle *
 TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
-                 TALER_EXCHANGE_WireResultCallback wire_cb,
-                 void *wire_cb_cls)
+                     TALER_EXCHANGE_WireResultCallback wire_cb,
+                     void *wire_cb_cls)
 {
   struct TALER_EXCHANGE_WireHandle *wh;
   struct TALER_EXCHANGE_Context *ctx;

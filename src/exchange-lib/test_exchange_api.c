@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V. and Inria
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -1213,76 +1213,56 @@ find_pk (const struct TALER_EXCHANGE_Keys *keys,
  * Callbacks called with the result(s) of a
  * wire format inquiry request to the exchange.
  *
- * The callback is invoked multiple times, once for each supported @a
- * method.  Finally, it is invoked one more time with cls/0/NULL/NULL
- * to indicate the end of the iteration.  If any request fails to
- * generate a valid response from the exchange, @a http_status will also
- * be zero and the iteration will also end.  Thus, the iteration
- * always ends with a final call with an @a http_status of 0. If the
- * @a http_status is already 0 on the first call, then the response to
- * the /wire request was invalid.  Later, clients can tell the
- * difference between @a http_status of 0 indicating a failed
- * /wire/method request and a regular end of the iteration by @a
- * method being non-NULL.  If the exchange simply correctly asserts that
- * it does not support any methods, @a method will be NULL but the @a
- * http_status will be #MHD_HTTP_OK for the first call (followed by a
- * cls/0/NULL/NULL call to signal the end of the iteration).
- *
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful request;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
- * @param method wire format method supported, i.e. "test" or "sepa", or NULL
- *            if already the /wire request failed.
  * @param obj the received JSON reply, if successful this should be the wire
- *            format details as provided by /wire/METHOD/, or NULL if the
- *            reply was not in JSON format (in this case, the client might
- *            want to do an HTTP request to /wire/METHOD/ with a browser to
- *            provide more information to the user about the @a method).
+ *            format details as provided by /wire.
  */
 static void
 wire_cb (void *cls,
          unsigned int http_status,
-         const char *method,
          json_t *obj)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
 
-  if (0 == http_status)
-  {
-    /* 0 always signals the end of the iteration */
-    cmd->details.wire.wh = NULL;
-  }
-  else if ( (NULL != method) &&
-            (0 != strcasecmp (method,
-                              cmd->details.wire.format)) )
-  {
-    /* not the method we care about, skip */
-    return;
-  }
   if (cmd->expected_response_code != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s/%s\n",
+                "Unexpected response code %u to command %s\n",
                 http_status,
-                cmd->label,
-                method);
+                cmd->label);
     json_dumpf (obj, stderr, 0);
     fail (is);
     return;
   }
-  if (0 == http_status)
+  switch (http_status)
   {
-    /* end of iteration, move to next command */
-    is->ip++;
-    is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                         is);
-    return;
+  case MHD_HTTP_OK:
+    {
+      json_t *method;
+
+      method = json_object_get (obj,
+                                cmd->details.wire.format);
+      if (NULL == method)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Expected method `%s' not included in response to command %s\n",
+                    cmd->details.wire.format,
+                    cmd->label);
+        json_dumpf (obj, stderr, 0);
+        fail (is);
+        return;
+      }
+    }
+    break;
+  default:
+    break;
   }
-  /* For now, we only support to be called only once
-     with a "positive" result; so we switch to an
-     expected value of 0 for the 2nd iteration */
-  cmd->expected_response_code = 0;
+  is->ip++;
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
 }
 
 
@@ -1899,9 +1879,9 @@ interpreter_run (void *cls,
     /* finally, use private key from withdraw sign command */
     cmd->details.refresh_link.rlh
       = TALER_EXCHANGE_refresh_link (exchange,
-                                 &ref->details.reserve_withdraw.coin_priv,
-                                 &link_cb,
-                                 is);
+                                     &ref->details.reserve_withdraw.coin_priv,
+                                     &link_cb,
+                                     is);
     if (NULL == cmd->details.refresh_link.rlh)
     {
       GNUNET_break (0);
@@ -1912,8 +1892,8 @@ interpreter_run (void *cls,
     return;
   case OC_WIRE:
     cmd->details.wire.wh = TALER_EXCHANGE_wire (exchange,
-                                            &wire_cb,
-                                            is);
+                                                &wire_cb,
+                                                is);
     trigger_context_task ();
     return;
   case OC_WIRE_DEPOSITS:
@@ -1926,9 +1906,9 @@ interpreter_run (void *cls,
     }
     cmd->details.wire_deposits.wdh
       = TALER_EXCHANGE_wire_deposits (exchange,
-                                  &cmd->details.wire_deposits.wtid,
-                                  &wire_deposits_cb,
-                                  is);
+                                      &cmd->details.wire_deposits.wtid,
+                                      &wire_deposits_cb,
+                                      is);
     trigger_context_task ();
     return;
   case OC_DEPOSIT_WTID:
@@ -2337,14 +2317,14 @@ run (void *cls,
 #if WIRE_TEST
     { .oc = OC_WIRE,
       .label = "wire-test",
-      /* /wire/test replies with a 200 OK */
+      /* expecting 'test' method in response */
       .expected_response_code = MHD_HTTP_OK,
       .details.wire.format = "test" },
 #endif
 #if WIRE_SEPA
     { .oc = OC_WIRE,
       .label = "wire-sepa",
-      /* /wire/sepa replies with a 200 redirect */
+      /* expecting 'sepa' method in response */
       .expected_response_code = MHD_HTTP_OK,
       .details.wire.format = "sepa" },
 #endif

@@ -233,6 +233,58 @@ test_amount_round (void *cls,
 
 
 /**
+ * Obtain wire transfer details in the plugin-specific format
+ * from the configuration.
+ *
+ * @param cls closure
+ * @param cfg configuration with details about wire accounts
+ * @param account_name which section in the configuration should we parse
+ * @return NULL if @a cfg fails to have valid wire details for @a account_name
+ */
+static json_t *
+test_get_wire_details (void *cls,
+                       const struct GNUNET_CONFIGURATION_Handle *cfg,
+                       const char *account_name)
+{
+  json_t *ret;
+  char *bank_uri;
+  unsigned long long account_number;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+					     account_name,
+					     "BANK_URI",
+					     &bank_uri))
+  {
+    /* oopsie, configuration error */
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               account_name,
+                               "BANK_URI");
+    return NULL;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (cfg,
+					     account_name,
+					     "BANK_ACCOUNT_NUMBER",
+					     &account_number))
+  {
+    /* oopsie, configuration error */
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               account_name,
+                               "BANK_URI");
+    GNUNET_free (bank_uri);
+    return NULL;
+  }
+  ret = json_pack ("{s:s, s:I, s:s}",
+                   "type", "test",
+                   "account_number", (json_int_t) account_number,
+                   "bank_uri", bank_uri);
+  GNUNET_free (bank_uri);
+  return ret;
+}
+
+
+/**
  * Check if the given wire format JSON object is correctly formatted.
  * Right now, the only thing we require is a field
  * "account_number" which must contain a positive 53-bit integer.
@@ -628,6 +680,7 @@ libtaler_plugin_wire_test_init (void *cls)
   plugin = GNUNET_new (struct TALER_WIRE_Plugin);
   plugin->cls = tc;
   plugin->amount_round = &test_amount_round;
+  plugin->get_wire_details = &test_get_wire_details;
   plugin->wire_validate = &test_wire_validate;
   plugin->prepare_wire_transfer = &test_prepare_wire_transfer;
   plugin->prepare_wire_transfer_cancel = &test_prepare_wire_transfer_cancel;

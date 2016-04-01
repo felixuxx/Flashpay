@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 Inria and GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -43,40 +43,5 @@ TMH_WIRE_handler_wire (struct TMH_RequestHandler *rh,
                        const char *upload_data,
                        size_t *upload_data_size);
 
-
-/**
- * Handle a "/wire/test" request.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
- * @return MHD result code
- */
-int
-TMH_WIRE_handler_wire_test (struct TMH_RequestHandler *rh,
-                            struct MHD_Connection *connection,
-                            void **connection_cls,
-                            const char *upload_data,
-                            size_t *upload_data_size);
-
-
-/**
- * Handle a "/wire/sepa" request.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
- * @return MHD result code
- */
-int
-TMH_WIRE_handler_wire_sepa (struct TMH_RequestHandler *rh,
-			    struct MHD_Connection *connection,
-			    void **connection_cls,
-			    const char *upload_data,
-			    size_t *upload_data_size);
 
 #endif
