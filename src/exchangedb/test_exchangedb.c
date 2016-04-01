@@ -335,12 +335,15 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   melts = GNUNET_new_array (MELT_OLD_COINS, struct TALER_EXCHANGEDB_RefreshMelt);
   for (cnt=0; cnt < MELT_OLD_COINS; cnt++)
   {
+    struct GNUNET_HashCode hc;
+
     RND_BLK (&melts[cnt].coin.coin_pub);
-    // This appears to be broken because it needs to be a hash of a coin public key
+    GNUNET_CRYPTO_hash (&melts[cnt].coin.coin_pub,
+                        sizeof (melts[cnt].coin.coin_pub),
+                        &hc);
     melts[cnt].coin.denom_sig.rsa_signature =
         GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.rsa_private_key,
-                                    &melts[cnt].coin.coin_pub,
-                                    sizeof (melts[cnt].coin.coin_pub));
+                                    &hc);
     melts[cnt].coin.denom_pub = dkp->pub;
     RND_BLK (&melts[cnt].coin_sig);
     melts[cnt].session_hash = session_hash;
@@ -569,6 +572,7 @@ run (void *cls,
   struct TALER_EXCHANGEDB_Deposit deposit;
   struct TALER_EXCHANGEDB_Deposit deposit2;
   struct TALER_WireTransferIdentifierRawP wtid;
+  struct GNUNET_HashCode hc;
   json_t *wire;
   json_t *just;
   const char * const json_wire_str =
@@ -663,10 +667,12 @@ run (void *cls,
   RND_BLK(&cbc.h_coin_envelope);
   RND_BLK(&cbc.reserve_sig);
   cbc.denom_pub = dkp->pub;
+  GNUNET_CRYPTO_hash (&cbc.h_coin_envelope,
+                      sizeof (cbc.h_coin_envelope),
+                      &hc);
   cbc.sig.rsa_signature
     = GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.rsa_private_key,
-                                  &cbc.h_coin_envelope,
-                                  sizeof (cbc.h_coin_envelope));
+                                  &hc);
   cbc.reserve_pub = reserve_pub;
   cbc.amount_with_fee = value;
   GNUNET_assert (GNUNET_OK ==
@@ -890,6 +896,7 @@ main (int argc,
                           "test-exchange-db-%s", plugin_name);
   (void) GNUNET_asprintf (&config_filename,
                           "%s.conf", testname);
+
   argv2[0] = argv[0];
   argv2[2] = config_filename;
   if (GNUNET_OK !=
