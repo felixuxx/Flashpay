@@ -53,6 +53,7 @@ check_PROGRAMS = \
   test-perf-taler-exchangedb \
   perf-exchangedb
 
+AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 TESTS = \
   test-exchangedb-postgres \
   test-perf-taler-exchangedb

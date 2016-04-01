@@ -74,6 +74,8 @@ test_taler_exchange_aggregator_postgres_LDADD = \
 check_PROGRAMS = \
   test_taler_exchange_aggregator-postgres
 
+AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
+
 TESTS = \
   $(check_SCRIPTS) \
   $(check_PROGRAMS)

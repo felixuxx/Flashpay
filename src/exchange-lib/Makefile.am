@@ -45,6 +45,8 @@ endif
 check_PROGRAMS = \
   test_exchange_api
 
+AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
+
 TESTS = \
   $(check_PROGRAMS)
 

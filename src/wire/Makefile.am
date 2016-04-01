@@ -62,6 +62,8 @@ libtalerwire_la_LDFLAGS = \
   -export-dynamic -no-undefined
 
 
+AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
+
 TESTS = \
  test_sepa_wireformat
 
