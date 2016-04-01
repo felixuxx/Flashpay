@@ -272,7 +272,7 @@ test_get_wire_details (void *cls,
     /* oopsie, configuration error */
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                account_name,
-                               "BANK_URI");
+                               "BANK_ACCOUNT_NUMBER");
     GNUNET_free (bank_uri);
     return NULL;
   }
