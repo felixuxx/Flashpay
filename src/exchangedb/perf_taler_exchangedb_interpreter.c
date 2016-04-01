@@ -759,7 +759,7 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {   
+          {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
@@ -785,7 +785,7 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {   
+          {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
@@ -804,7 +804,7 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_COIN != cmd[ret].exposed.type)
-          {   
+          {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
@@ -828,7 +828,7 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {   
+          {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
@@ -853,7 +853,7 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {   
+          {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
@@ -873,7 +873,7 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_DENOMINATION_INFO != cmd[ret].exposed.type)
-          {   
+          {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
@@ -898,14 +898,14 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {   
+          {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.get_refresh_order.label_hash);
             return GNUNET_SYSERR;
           }
-          cmd[i].details.get_refresh_order.index_hash = ret; 
+          cmd[i].details.get_refresh_order.index_hash = ret;
         }
         break;
 
@@ -923,15 +923,15 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {   
+          {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.insert_refresh_commit_coin.label_hash);
             return GNUNET_SYSERR;
           }
-          cmd[i].details.insert_refresh_commit_coin.index_hash = ret; 
-        } 
+          cmd[i].details.insert_refresh_commit_coin.index_hash = ret;
+        }
        break;
 
       case PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_COMMIT_COIN:
@@ -948,14 +948,14 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {   
+          {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.get_refresh_commit_coin.label_hash);
             return GNUNET_SYSERR;
           }
-          cmd[i].details.get_refresh_commit_coin.index_hash = ret; 
+          cmd[i].details.get_refresh_commit_coin.index_hash = ret;
         }
         break;
 
@@ -973,14 +973,14 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {   
+          {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.insert_refresh_commit_link.label_hash);
             return GNUNET_SYSERR;
           }
-          cmd[i].details.insert_refresh_commit_link.index_hash = ret; 
+          cmd[i].details.insert_refresh_commit_link.index_hash = ret;
         }
         break;
 
@@ -998,14 +998,14 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {   
+          {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.get_refresh_commit_link.label_hash);
             return GNUNET_SYSERR;
           }
-          cmd[i].details.get_refresh_commit_link.index_hash = ret; 
+          cmd[i].details.get_refresh_commit_link.index_hash = ret;
         }
         break;
 
@@ -1023,14 +1023,14 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {   
+          {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.get_melt_commitment.label_hash);
             return GNUNET_SYSERR;
           }
-          cmd[i].details.get_melt_commitment.index_hash = ret; 
+          cmd[i].details.get_melt_commitment.index_hash = ret;
         }
         break;
 
@@ -1048,14 +1048,14 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {   
+          {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.insert_refresh_out.label_hash);
             return GNUNET_SYSERR;
           }
-          cmd[i].details.insert_refresh_out.index_hash = ret; 
+          cmd[i].details.insert_refresh_out.index_hash = ret;
         }
         break;
 
@@ -1073,14 +1073,14 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {   
+          {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.get_link_data_list.label_hash);
             return GNUNET_SYSERR;
           }
-          cmd[i].details.get_link_data_list.index_hash = ret; 
+          cmd[i].details.get_link_data_list.index_hash = ret;
         }
         break;
 
@@ -1098,14 +1098,14 @@ cmd_init (struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
             return GNUNET_SYSERR;
           }
           if (PERF_TALER_EXCHANGEDB_REFRESH_HASH != cmd[ret].exposed.type)
-          {   
+          {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "%d:Wrong type reference to %s\n",
                         i,
                         cmd[i].details.get_transfer.label_hash);
             return GNUNET_SYSERR;
           }
-          cmd[i].details.get_transfer.index_hash = ret; 
+          cmd[i].details.get_transfer.index_hash = ret;
         }
         break;
 
@@ -1538,7 +1538,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           int ret;
           struct PERF_TALER_EXCHANGEDB_Data *data;
 
-          denom_index = state->cmd[state->i].details.get_denomination.index_denom; 
+          denom_index = state->cmd[state->i].details.get_denomination.index_denom;
           data = &state->cmd[denom_index].exposed;
           ret = state->plugin->get_denomination_info (state->plugin->cls,
                                                       state->session,
@@ -1735,7 +1735,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
                                                             1,
                                                             1,
                                                             refresh_commit);
-          GNUNET_assert (GNUNET_OK == ret);                                                  
+          GNUNET_assert (GNUNET_OK == ret);
         }
         break;
 
@@ -1743,7 +1743,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
         {
           unsigned int hash_index;
           struct TALER_EXCHANGEDB_RefreshCommitCoin refresh_commit;
-            
+
           hash_index = state->cmd[state->i].details.insert_refresh_commit_coin.index_hash;
           state->plugin->get_refresh_commit_coins (state->plugin->cls,
                                                    state->session,
@@ -1837,9 +1837,9 @@ PERF_TALER_EXCHANGEDB_interpret (struct TALER_EXCHANGEDB_Plugin *db_plugin,
  */
 int
 PERF_TALER_EXCHANGEDB_run_benchmark (const char *benchmark_name,
-                                 const char *configuration_file,
-                                 struct PERF_TALER_EXCHANGEDB_Cmd *init,
-                                 struct PERF_TALER_EXCHANGEDB_Cmd *benchmark)
+                                     const char *configuration_file,
+                                     struct PERF_TALER_EXCHANGEDB_Cmd *init,
+                                     struct PERF_TALER_EXCHANGEDB_Cmd *benchmark)
 {
   struct TALER_EXCHANGEDB_Plugin *plugin;
   struct GNUNET_CONFIGURATION_Handle *config;
@@ -1927,9 +1927,8 @@ PERF_TALER_EXCHANGEDB_run_benchmark (const char *benchmark_name,
                     "INFO",
                     NULL);
   config = GNUNET_CONFIGURATION_create ();
-
-  ret = GNUNET_CONFIGURATION_load (config,
-                                   configuration_file);
+  ret = GNUNET_CONFIGURATION_parse (config,
+                                    configuration_file);
   if (GNUNET_OK != ret)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

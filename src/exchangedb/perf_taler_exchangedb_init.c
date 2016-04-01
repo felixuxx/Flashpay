@@ -486,7 +486,7 @@ PERF_TALER_EXCHANGEDB_refresh_session_free (struct TALER_EXCHANGEDB_RefreshSessi
  */
 struct TALER_EXCHANGEDB_RefreshMelt *
 PERF_TALER_EXCHANGEDB_refresh_melt_init (struct GNUNET_HashCode *session,
-                                     struct PERF_TALER_EXCHANGEDB_Coin *coin)
+                                         struct PERF_TALER_EXCHANGEDB_Coin *coin)
 {
   struct TALER_EXCHANGEDB_RefreshMelt *melt;
   struct TALER_CoinSpendSignatureP coin_sig;

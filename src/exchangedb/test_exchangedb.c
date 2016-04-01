@@ -549,17 +549,14 @@ cb_wtid_check (void *cls,
 /**
  * Main function that will be run by the scheduler.
  *
- * @param cls closure
- * @param args remaining command-line arguments
- * @param cfgfile name of the configuration file used (for saving, can be NULL!)
- * @param cfg configuration
+ * @param cls closure with config
+ * @param tc unused
  */
 static void
 run (void *cls,
-     char *const *args,
-     const char *cfgfile,
-     const struct GNUNET_CONFIGURATION_Handle *cfg)
+     const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
+  struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct TALER_EXCHANGEDB_Session *session;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct DenomKeyPair *dkp;
@@ -572,7 +569,6 @@ run (void *cls,
   struct TALER_EXCHANGEDB_Deposit deposit;
   struct TALER_EXCHANGEDB_Deposit deposit2;
   struct TALER_WireTransferIdentifierRawP wtid;
-  struct GNUNET_HashCode hc;
   json_t *wire;
   json_t *just;
   const char * const json_wire_str =
@@ -659,6 +655,7 @@ run (void *cls,
                          value.value * 2,
                          value.fraction * 2,
                          value.currency));
+  result = 5;
   dkp = create_denom_key_pair (1024, session,
                                &value,
                                &fee_withdraw,
@@ -667,12 +664,9 @@ run (void *cls,
   RND_BLK(&cbc.h_coin_envelope);
   RND_BLK(&cbc.reserve_sig);
   cbc.denom_pub = dkp->pub;
-  GNUNET_CRYPTO_hash (&cbc.h_coin_envelope,
-                      sizeof (cbc.h_coin_envelope),
-                      &hc);
   cbc.sig.rsa_signature
     = GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.rsa_private_key,
-                                  &hc);
+                                  &cbc.h_coin_envelope);
   cbc.reserve_pub = reserve_pub;
   cbc.amount_with_fee = value;
   GNUNET_assert (GNUNET_OK ==
@@ -699,10 +693,12 @@ run (void *cls,
   FAILIF (0 != memcmp (&cbc2.reserve_pub,
                        &cbc.reserve_pub,
                        sizeof (cbc2.reserve_pub)));
+  result = 6;
   FAILIF (GNUNET_OK !=
           GNUNET_CRYPTO_rsa_verify (&cbc.h_coin_envelope,
                                     cbc2.sig.rsa_signature,
                                     dkp->pub.rsa_public_key));
+  result = 7;
   rh = plugin->get_reserve_history (plugin->cls,
                                     session,
                                     &reserve_pub);
@@ -873,17 +869,10 @@ int
 main (int argc,
       char *const argv[])
 {
-  static const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_END
-  };
-  char *argv2[] = {
-    "test-exchange-db-<plugin_name>", /* will be replaced later */
-    "-c", "test-exchange-db-<plugin_name>.conf", /* will be replaced later */
-    NULL,
-  };
   const char *plugin_name;
   char *config_filename;
   char *testname;
+  struct GNUNET_CONFIGURATION_Handle *cfg;
 
   result = -1;
   if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
@@ -896,19 +885,18 @@ main (int argc,
                           "test-exchange-db-%s", plugin_name);
   (void) GNUNET_asprintf (&config_filename,
                           "%s.conf", testname);
-
-  argv2[0] = argv[0];
-  argv2[2] = config_filename;
+  cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK !=
-      GNUNET_PROGRAM_run ((sizeof (argv2)/sizeof (char *)) - 1, argv2,
-                          testname,
-                          "Test cases for exchange database helper functions.",
-                          options, &run, NULL))
+      GNUNET_CONFIGURATION_parse (cfg,
+                                  config_filename))
   {
+    GNUNET_break (0);
     GNUNET_free (config_filename);
     GNUNET_free (testname);
-    return 3;
+    return 2;
   }
+  GNUNET_SCHEDULER_run (&run, cfg);
+  GNUNET_CONFIGURATION_destroy (cfg);
   GNUNET_free (config_filename);
   GNUNET_free (testname);
   return result;
