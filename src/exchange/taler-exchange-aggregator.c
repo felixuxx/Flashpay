@@ -93,8 +93,6 @@ static unsigned int aggregation_limit = 10000;
 static int
 exchange_serve_process_config (const char *exchange_directory)
 {
-  char *type;
-
   cfg = TALER_config_load (exchange_directory);
   if (NULL == cfg)
   {
@@ -130,7 +128,7 @@ exchange_serve_process_config (const char *exchange_directory)
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
                                              "wireformat",
-                                             &type))
+                                             &exchange_wireformat))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
@@ -143,21 +141,18 @@ exchange_serve_process_config (const char *exchange_directory)
   {
     fprintf (stderr,
              "Failed to initialize DB subsystem\n");
-    GNUNET_free (type);
     return GNUNET_SYSERR;
   }
 
   if (NULL ==
       (wire_plugin = TALER_WIRE_plugin_load (cfg,
-                                             type)))
+                                             exchange_wireformat)))
   {
     fprintf (stderr,
              "Failed to load wire plugin for `%s'\n",
-             type);
-    GNUNET_free (type);
+             exchange_wireformat);
     return GNUNET_SYSERR;
   }
-  GNUNET_free (type);
 
   return GNUNET_OK;
 }
