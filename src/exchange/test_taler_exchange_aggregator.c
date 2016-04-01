@@ -59,17 +59,14 @@ run_aggregator ()
 /**
  * Main function that will be run by the scheduler.
  *
- * @param cls closure
- * @param args remaining command-line arguments
- * @param cfgfile name of the configuration file used (for saving, can be NULL!)
- * @param cfg configuration
+ * @param cls closure with configuration
+ * @param tc unused
  */
 static void
 run (void *cls,
-     char *const *args,
-     const char *cfgfile,
-     const struct GNUNET_CONFIGURATION_Handle *cfg)
+     const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
+  struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct TALER_EXCHANGEDB_Plugin *plugin;
   struct TALER_EXCHANGEDB_Session *session;
 
@@ -100,16 +97,9 @@ int
 main (int argc,
       char *const argv[])
 {
-  static const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_END
-  };
-  char *argv2[] = {
-    "test-taler-exchange-aggregator-<plugin_name>", /* will be replaced later */
-    "-c", "test-taler-exchange-aggregator-<plugin_name>.conf", /* will be replaced later */
-    NULL,
-  };
   const char *plugin_name;
   char *testname;
+  struct GNUNET_CONFIGURATION_Handle *cfg;
 
   result = -1;
   if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
@@ -122,18 +112,18 @@ main (int argc,
                           "test-taler-exchange-aggregator-%s", plugin_name);
   (void) GNUNET_asprintf (&config_filename,
                           "%s.conf", testname);
-  argv2[0] = argv[0];
-  argv2[2] = config_filename;
+  cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK !=
-      GNUNET_PROGRAM_run ((sizeof (argv2)/sizeof (char *)) - 1, argv2,
-                          testname,
-                          "Test cases for exchange aggregator.",
-                          options, &run, NULL))
+      GNUNET_CONFIGURATION_parse (cfg,
+                                  config_filename))
   {
+    GNUNET_break (0);
     GNUNET_free (config_filename);
     GNUNET_free (testname);
-    return 3;
+    return 2;
   }
+  GNUNET_SCHEDULER_run (&run, cfg);
+  GNUNET_CONFIGURATION_destroy (cfg);
   GNUNET_free (config_filename);
   GNUNET_free (testname);
   return result;
