@@ -11,7 +11,7 @@ bin_PROGRAMS = \
   taler-exchange-keyup \
   taler-exchange-keycheck \
   taler-exchange-reservemod \
-  taler-exchange-sepa \
+  taler-exchange-wire \
   taler-exchange-dbinit
 
 taler_exchange_keyup_SOURCES = \
@@ -33,15 +33,15 @@ taler_auditor_sign_LDADD = \
   -lgnunetutil $(XLIB)
 
 
-taler_exchange_sepa_SOURCES = \
-  taler-exchange-sepa.c
-taler_exchange_sepa_LDADD = \
+taler_exchange_wire_SOURCES = \
+  taler-exchange-wire.c
+taler_exchange_wire_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson $(XLIB)
-taler_exchange_sepa_LDFLAGS = $(POSTGRESQL_LDFLAGS)
+taler_exchange_wire_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 
 taler_exchange_keycheck_SOURCES = \
   taler-exchange-keycheck.c

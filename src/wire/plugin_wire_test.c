@@ -22,6 +22,7 @@
 #include "platform.h"
 #include "taler_wire_plugin.h"
 #include "taler_bank_service.h"
+#include "taler_signatures.h"
 
 /* only for HTTP status codes */
 #include <microhttpd.h>
@@ -286,6 +287,38 @@ test_get_wire_details (void *cls,
 
 
 /**
+ * Compute purpose for signing.
+ *
+ * @param account number of the account
+ * @param bank_uri URI of the bank
+ * @param[out] mp purpose to be signed
+ */
+static void
+compute_purpose (uint64_t account,
+                 const char *bank_uri,
+                 struct TALER_MasterWireDetailsPS *wsd)
+{
+  struct GNUNET_HashContext *hc;
+  uint64_t n = GNUNET_htonll (account);
+
+  wsd->purpose.size = htonl (sizeof (struct TALER_MasterWireDetailsPS));
+  wsd->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_TEST_DETAILS);
+  hc = GNUNET_CRYPTO_hash_context_start ();
+  GNUNET_CRYPTO_hash_context_read (hc,
+				   "test",
+				   strlen ("test") + 1);
+  GNUNET_CRYPTO_hash_context_read (hc,
+				   &n,
+                                   sizeof (n));
+  GNUNET_CRYPTO_hash_context_read (hc,
+				   bank_uri,
+				   strlen (bank_uri) + 1);
+  GNUNET_CRYPTO_hash_context_finish (hc,
+				     &wsd->h_sepa_details);
+}
+
+
+/**
  * Check if the given wire format JSON object is correctly formatted.
  * Right now, the only thing we require is a field
  * "account_number" which must contain a positive 53-bit integer.
@@ -319,6 +352,10 @@ test_wire_validate (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+  /* FIXME: should check signature here in the future!
+     (note: right now the sig is not properly provided
+     by the exchange due to the way account data is
+     specified in the configuration) */
   return GNUNET_YES;
 }
 
@@ -511,6 +548,61 @@ execute_cb (void *cls,
 
 
 /**
+ * Sign wire transfer details in the plugin-specific format.
+ *
+ * @param cls closure
+ * @param in wire transfer details in JSON format
+ * @param key private signing key to use
+ * @param salt salt to add
+ * @param[out] sig where to write the signature
+ * @return #GNUNET_OK on success
+ */
+static int
+test_sign_wire_details (void *cls,
+                        const json_t *in,
+                        const struct TALER_MasterPrivateKeyP *key,
+                        const struct GNUNET_HashCode *salt,
+                        struct TALER_MasterSignatureP *sig)
+{
+  struct TALER_MasterWireDetailsPS wsd;
+  const char *bank_uri;
+  const char *type;
+  json_int_t account;
+  json_error_t err;
+
+  if (0 !=
+      json_unpack_ex ((json_t *) in,
+                      &err,
+                      0 /* flags */,
+                      "{s:s, s:s, s:I}",
+                      "type", &type,
+                      "bank_uri", &bank_uri,
+                      "account_number", &account))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to unpack JSON: %s (at %u)\n",
+                err.text,
+                err.position);
+    return GNUNET_SYSERR;
+  }
+  if (0 != strcmp (type,
+                   "test"))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "`type' must be `test' for test wire details\n");
+    return GNUNET_SYSERR;
+  }
+  compute_purpose (account,
+                   bank_uri,
+                   &wsd);
+  GNUNET_CRYPTO_eddsa_sign (&key->eddsa_priv,
+			    &wsd.purpose,
+			    &sig->eddsa_signature);
+  return GNUNET_OK;
+}
+
+
+/**
  * Execute a wire transfer.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -682,6 +774,7 @@ libtaler_plugin_wire_test_init (void *cls)
   plugin->cls = tc;
   plugin->amount_round = &test_amount_round;
   plugin->get_wire_details = &test_get_wire_details;
+  plugin->sign_wire_details = &test_sign_wire_details;
   plugin->wire_validate = &test_wire_validate;
   plugin->prepare_wire_transfer = &test_prepare_wire_transfer;
   plugin->prepare_wire_transfer_cancel = &test_prepare_wire_transfer_cancel;

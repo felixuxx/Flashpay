@@ -69,9 +69,15 @@
 
 /**
  * Signature where the Exchange confirms its SEPA details in
- * the /wire/sepa response.
+ * the /wire response.
  */
 #define TALER_SIGNATURE_MASTER_SEPA_DETAILS 1026
+
+/**
+ * Signature where the Exchange confirms its TEST details in
+ * the /wire response.
+ */
+#define TALER_SIGNATURE_MASTER_TEST_DETAILS 1027
 
 
 /*********************************************/
@@ -762,11 +768,12 @@ struct TALER_RefreshCommitLinkP
  * @brief Information signed by the exchange's master
  * key affirming the SEPA details for the exchange.
  */
-struct TALER_MasterWireSepaDetailsPS
+struct TALER_MasterWireDetailsPS
 {
 
   /**
-   * Purpose is #TALER_SIGNATURE_MASTER_SEPA_DETAILS.
+   * Purpose is #TALER_SIGNATURE_MASTER_SEPA_DETAILS or
+   * #TALER_SIGNATURE_MASTER_TEST_DETAILS.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 

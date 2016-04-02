@@ -10,6 +10,7 @@ man_MANS = \
   taler-exchange-keyup.1 \
   taler-exchange-keycheck.1 \
   taler-exchange-reservemod.1 \
+  taler-exchange-wire.1 \
   taler.conf.5
 
 EXTRA_DIST = \

@@ -114,6 +114,24 @@ struct TALER_WIRE_Plugin
 
 
   /**
+   * Sign wire transfer details in the plugin-specific format.
+   *
+   * @param cls closure
+   * @param in wire transfer details in JSON format
+   * @param key private signing key to use
+   * @param salt salt to add
+   * @param[out] sig where to write the signature
+   * @return #GNUNET_OK on success
+   */
+  int
+  (*sign_wire_details)(void *cls,
+                       const json_t *in,
+                       const struct TALER_MasterPrivateKeyP *key,
+                       const struct GNUNET_HashCode *salt,
+                       struct TALER_MasterSignatureP *sig);
+
+
+  /**
    * Check if the given wire format JSON object is correctly formatted
    *
    * @param cls the @e cls of this struct with the plugin-specific state

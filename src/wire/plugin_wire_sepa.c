@@ -352,6 +352,42 @@ validate_iban (const char *iban)
 
 
 /**
+ * Compute purpose for signing.
+ *
+ * @param sepa_name name of the account holder
+ * @param iban bank account number in IBAN format
+ * @param bic bank identifier
+ * @param[out] mp purpose to be signed
+ */
+static void
+compute_purpose (const char *sepa_name,
+                 const char *iban,
+                 const char *bic,
+                 struct TALER_MasterWireDetailsPS *wsd)
+{
+  struct GNUNET_HashContext *hc;
+
+  wsd->purpose.size = htonl (sizeof (struct TALER_MasterWireDetailsPS));
+  wsd->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SEPA_DETAILS);
+  hc = GNUNET_CRYPTO_hash_context_start ();
+  GNUNET_CRYPTO_hash_context_read (hc,
+				   "sepa",
+				   strlen ("sepa") + 1);
+  GNUNET_CRYPTO_hash_context_read (hc,
+				   sepa_name,
+				   strlen (sepa_name) + 1);
+  GNUNET_CRYPTO_hash_context_read (hc,
+				   iban,
+				   strlen (iban) + 1);
+  GNUNET_CRYPTO_hash_context_read (hc,
+				   bic,
+				   strlen (bic) + 1);
+  GNUNET_CRYPTO_hash_context_finish (hc,
+				     &wsd->h_sepa_details);
+}
+
+
+/**
  * Verify that the signature in the @a json for /wire/sepa is valid.
  *
  * @param json json reply with the signature
@@ -365,14 +401,13 @@ verify_wire_sepa_signature_ok (const json_t *json,
                                const struct TALER_MasterPublicKeyP *master_pub)
 {
   struct TALER_MasterSignatureP exchange_sig;
-  struct TALER_MasterWireSepaDetailsPS mp;
-  const char *receiver_name;
+  struct TALER_MasterWireDetailsPS mp;
+  const char *name;
   const char *iban;
   const char *bic;
-  struct GNUNET_HashContext *hc;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("sig", &exchange_sig),
-    GNUNET_JSON_spec_string ("receiver_name", &receiver_name),
+    GNUNET_JSON_spec_string ("name", &name),
     GNUNET_JSON_spec_string ("iban", &iban),
     GNUNET_JSON_spec_string ("bic", &bic),
     GNUNET_JSON_spec_end()
@@ -391,22 +426,10 @@ verify_wire_sepa_signature_ok (const json_t *json,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-
-  mp.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SEPA_DETAILS);
-  mp.purpose.size = htonl (sizeof (struct TALER_MasterWireSepaDetailsPS));
-  hc = GNUNET_CRYPTO_hash_context_start ();
-  GNUNET_CRYPTO_hash_context_read (hc,
-                                   receiver_name,
-                                   strlen (receiver_name) + 1);
-  GNUNET_CRYPTO_hash_context_read (hc,
-                                   iban,
-                                   strlen (iban) + 1);
-  GNUNET_CRYPTO_hash_context_read (hc,
-                                   bic,
-                                   strlen (bic) + 1);
-  GNUNET_CRYPTO_hash_context_finish (hc,
-                                     &mp.h_sepa_details);
-
+  compute_purpose (name,
+                   iban,
+                   bic,
+                   &mp);
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SEPA_DETAILS,
                                   &mp.purpose,
@@ -447,12 +470,12 @@ sepa_wire_validate (void *cls,
        "{"
        "s:s," /* type: sepa */
        "s:s," /* iban: IBAN */
-       "s:s," /* receiver_name: beneficiary name */
+       "s:s," /* name: beneficiary name */
        "s:s" /* bic: beneficiary bank's BIC */
        "}",
        "type", &type,
        "iban", &iban,
-       "receiver_name", &name,
+       "name", &name,
        "bic", &bic))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -545,6 +568,70 @@ sepa_get_wire_details (void *cls,
   }
   GNUNET_free (sepa_wire_file);
   return ret;
+}
+
+
+/**
+ * Sign wire transfer details in the plugin-specific format.
+ *
+ * @param cls closure
+ * @param in wire transfer details in JSON format
+ * @param key private signing key to use
+ * @param salt salt to add
+ * @param[out] sig where to write the signature
+ * @return #GNUNET_OK on success
+ */
+static int
+sepa_sign_wire_details (void *cls,
+                        const json_t *in,
+                        const struct TALER_MasterPrivateKeyP *key,
+                        const struct GNUNET_HashCode *salt,
+                        struct TALER_MasterSignatureP *sig)
+{
+  struct TALER_MasterWireDetailsPS wsd;
+  const char *sepa_name;
+  const char *iban;
+  const char *bic;
+  const char *type;
+  json_error_t err;
+
+  if (0 !=
+      json_unpack_ex ((json_t *) in,
+                      &err,
+                      0 /* flags */,
+                      "{s:s, s:s, s:s, s:s}",
+                      "type", &type,
+                      "name", &sepa_name,
+                      "iban", &iban,
+                      "bic", &bic))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to unpack JSON: %s (at %u)\n",
+                err.text,
+                err.position);
+    return GNUNET_SYSERR;
+  }
+  if (0 != strcmp (type,
+                   "sepa"))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "`type' must be `sepa' for SEPA wire details\n");
+    return GNUNET_SYSERR;
+  }
+  if (1 != validate_iban (iban))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "IBAN invalid in SEPA wire details\n");
+    return GNUNET_SYSERR;
+  }
+  compute_purpose (sepa_name,
+                   iban,
+                   bic,
+                   &wsd);
+  GNUNET_CRYPTO_eddsa_sign (&key->eddsa_priv,
+			    &wsd.purpose,
+			    &sig->eddsa_signature);
+  return GNUNET_OK;
 }
 
 
@@ -662,6 +749,7 @@ libtaler_plugin_wire_sepa_init (void *cls)
   plugin->cls = sc;
   plugin->amount_round = &sepa_amount_round;
   plugin->get_wire_details = &sepa_get_wire_details;
+  plugin->sign_wire_details = &sepa_sign_wire_details;
   plugin->wire_validate = &sepa_wire_validate;
   plugin->prepare_wire_transfer = &sepa_prepare_wire_transfer;
   plugin->prepare_wire_transfer_cancel = &sepa_prepare_wire_transfer_cancel;

@@ -172,6 +172,28 @@ template_execute_wire_transfer (void *cls,
 
 
 /**
+ * Sign wire transfer details in the plugin-specific format.
+ *
+ * @param cls closure
+ * @param in wire transfer details in JSON format
+ * @param key private signing key to use
+ * @param salt salt to add
+ * @param[out] sig where to write the signature
+ * @return #GNUNET_OK on success
+ */
+static int
+template_sign_wire_details (void *cls,
+                            const json_t *in,
+                            const struct TALER_MasterPrivateKeyP *key,
+                            const struct GNUNET_HashCode *salt,
+                            struct TALER_MasterSignatureP *sig)
+{
+  GNUNET_break (0);
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Abort execution of a wire transfer. For example, because we are
  * shutting down.  Note that if an execution is aborted, it may or
  * may not still succeed. The caller MUST run @e
@@ -236,6 +258,7 @@ libtaler_plugin_wire_template_init (void *cls)
   plugin->cls = tc;
   plugin->amount_round = &template_amount_round;
   plugin->get_wire_details = &template_get_wire_details;
+  plugin->sign_wire_details = &template_sign_wire_details;
   plugin->wire_validate = &template_wire_validate;
   plugin->prepare_wire_transfer = &template_prepare_wire_transfer;
   plugin->prepare_wire_transfer_cancel = &template_prepare_wire_transfer_cancel;
