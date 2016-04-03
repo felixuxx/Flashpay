@@ -4056,7 +4056,7 @@ postgres_wire_prepare_data_insert (void *cls,
 {
   PGresult *result;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_fixed_size (type, strlen (type) + 1),
+    GNUNET_PQ_query_param_string (type),
     GNUNET_PQ_query_param_fixed_size (buf, buf_size),
     GNUNET_PQ_query_param_end
   };
@@ -4132,7 +4132,7 @@ postgres_wire_prepare_data_get (void *cls,
 {
   PGresult *result;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_fixed_size (type, strlen (type) + 1),
+    GNUNET_PQ_query_param_string (type),
     GNUNET_PQ_query_param_end
   };
 

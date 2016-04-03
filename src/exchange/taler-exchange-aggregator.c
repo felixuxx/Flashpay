@@ -482,10 +482,18 @@ run_aggregation (void *cls,
       *global_ret = GNUNET_SYSERR;
       return;
     }
-    /* nothing to do, sleep for a minute and try again */
-    task = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_MINUTES,
-                                         &run_aggregation,
-                                         global_ret);
+    if (GNUNET_YES == test_mode)
+    {
+      /* in test mode, shutdown if we end up being idle */
+      GNUNET_SCHEDULER_shutdown ();
+    }
+    else
+    {
+      /* nothing to do, sleep for a minute and try again */
+      task = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_MINUTES,
+                                           &run_aggregation,
+                                           global_ret);
+    }
     return;
   }
   /* Now try to find other deposits to aggregate */
