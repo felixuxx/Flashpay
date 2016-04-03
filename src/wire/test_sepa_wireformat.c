@@ -29,7 +29,7 @@
 static const char * const valid_wire_str =
     "{ \"type\":\"SEPA\", \
 \"iban\":\"DE67830654080004822650\",                 \
-\"receiver_name\":\"GNUnet e.V.\",                               \
+\"name\":\"GNUnet e.V.\",                               \
 \"bic\":\"GENODEF1SLR\",                                 \
 \"salt\":\"123456789\",                                     \
 \"address\": \"foobar\"}";
@@ -38,7 +38,7 @@ static const char * const valid_wire_str =
 static const char * const invalid_wire_str =
     "{ \"type\":\"SEPA\", \
 \"iban\":\"XX67830654080004822650\",                 \
-\"receiver_name\":\"GNUnet e.V.\",                               \
+\"name\":\"GNUnet e.V.\",                               \
 \"bic\":\"GENODEF1SLR\",                                 \
 \"salt\":\"123456789\",                                     \
 \"address\": \"foobar\"}";
@@ -47,7 +47,7 @@ static const char * const invalid_wire_str =
 static const char * const invalid_wire_str2 =
     "{ \"type\":\"SEPA\", \
 \"iban\":\"DE67830654080004822651\",                 \
-\"receiver_name\":\"GNUnet e.V.\",                               \
+\"name\":\"GNUnet e.V.\",                               \
 \"bic\":\"GENODEF1SLR\",                                 \
 \"salt\":\"123456789\",                                     \
 \"address\": \"foobar\"}";
@@ -56,7 +56,7 @@ static const char * const invalid_wire_str2 =
 static const char * const unsupported_wire_str =
     "{ \"type\":\"unsupported\", \
 \"iban\":\"DE67830654080004822650\",                 \
-\"receiver_name\":\"GNUnet e.V.\",                               \
+\"name\":\"GNUnet e.V.\",                               \
 \"bic\":\"GENODEF1SLR\",                                 \
 \"salt\":\"123456789\",                                     \
 \"address\": \"foobar\"}";
