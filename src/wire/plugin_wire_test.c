@@ -762,6 +762,7 @@ libtaler_plugin_wire_test_init (void *cls)
       return NULL;
     }
     tc->bank = TALER_BANK_init (uri);
+    GNUNET_free (uri);
     if (NULL == tc->bank)
     {
       GNUNET_break (0);

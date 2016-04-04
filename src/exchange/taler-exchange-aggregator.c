@@ -472,6 +472,8 @@ run_aggregation (void *cls,
                                       au);
   if (GNUNET_OK != ret)
   {
+    if (NULL != au->wire)
+      json_decref (au->wire);
     GNUNET_free (au);
     db_plugin->rollback (db_plugin->cls,
                          session);
@@ -510,6 +512,8 @@ run_aggregation (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to execute deposit iteration!\n");
     GNUNET_free_non_null (au->additional_rows);
+    if (NULL != au->wire)
+      json_decref (au->wire);
     GNUNET_free (au);
     db_plugin->rollback (db_plugin->cls,
                          session);
@@ -538,6 +542,8 @@ run_aggregation (void *cls,
                   "Failed to start database transaction!\n");
       *global_ret = GNUNET_SYSERR;
       GNUNET_free_non_null (au->additional_rows);
+      if (NULL != au->wire)
+        json_decref (au->wire);
       GNUNET_free (au);
       return;
     }
@@ -564,6 +570,8 @@ run_aggregation (void *cls,
                   "Failed to commit database transaction!\n");
     }
     GNUNET_free_non_null (au->additional_rows);
+    if (NULL != au->wire)
+      json_decref (au->wire);
     GNUNET_free (au);
     /* start again */
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
@@ -586,6 +594,8 @@ run_aggregation (void *cls,
     db_plugin->rollback (db_plugin->cls,
                          session);
     GNUNET_free_non_null (au->additional_rows);
+    if (NULL != au->wire)
+      json_decref (au->wire);
     GNUNET_free (au);
     /* start again */
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
@@ -625,6 +635,8 @@ prepare_cb (void *cls,
   struct TALER_EXCHANGEDB_Session *session = au->session;
 
   GNUNET_free_non_null (au->additional_rows);
+  if (NULL != au->wire)
+    json_decref (au->wire);
   GNUNET_free (au);
   if (NULL == buf)
   {

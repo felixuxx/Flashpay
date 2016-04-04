@@ -1480,8 +1480,8 @@ postgres_get_denomination_info (void *cls,
 
     EXITIF (GNUNET_OK !=
             GNUNET_PQ_extract_result (result,
-                                     rs,
-                                     0));
+                                      rs,
+                                      0));
   }
   PQclear (result);
   return GNUNET_OK;
@@ -1954,7 +1954,7 @@ postgres_get_reserve_history (void *cls,
                                      &bt->wire),
           GNUNET_PQ_result_spec_end
         };
-        if (GNUNET_YES !=
+        if (GNUNET_OK !=
             GNUNET_PQ_extract_result (result, rs, --rows))
         {
           GNUNET_break (0);
@@ -2019,7 +2019,7 @@ postgres_get_reserve_history (void *cls,
                                        &cbc->withdraw_fee),
           GNUNET_PQ_result_spec_end
         };
-        if (GNUNET_YES !=
+        if (GNUNET_OK !=
             GNUNET_PQ_extract_result (result, rs, --rows))
         {
           GNUNET_break (0);
@@ -2285,6 +2285,7 @@ postgres_get_ready_deposit (void *cls,
                                  &wire),
       GNUNET_PQ_result_spec_end
     };
+
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result, rs, 0))
     {

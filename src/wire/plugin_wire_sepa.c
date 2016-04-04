@@ -731,20 +731,20 @@ libtaler_plugin_wire_sepa_init (void *cls)
 
   sc = GNUNET_new (struct SepaClosure);
   if (NULL != cfg)
+  {
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "exchange",
+                                               "CURRENCY",
+                                               &sc->currency))
     {
-      if (GNUNET_OK !=
-          GNUNET_CONFIGURATION_get_value_string (cfg,
-                                                 "exchange",
-                                                 "CURRENCY",
-                                                 &sc->currency))
-        {
-          GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                     "exchange",
-                                     "CURRENCY");
-          GNUNET_free (sc);
-          return NULL;
-        }
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "CURRENCY");
+      GNUNET_free (sc);
+      return NULL;
     }
+  }
   plugin = GNUNET_new (struct TALER_WIRE_Plugin);
   plugin->cls = sc;
   plugin->amount_round = &sepa_amount_round;
