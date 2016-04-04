@@ -375,6 +375,9 @@ do_deposit (struct Command *cmd)
   int ret;
 
   memset (&deposit, 0, sizeof (deposit));
+  /* we derive the merchant's private key from the
+     name, to ensure that the same name always
+     results in the same key pair. */
   GNUNET_CRYPTO_kdf (&merchant_priv,
                      sizeof (struct TALER_MerchantPrivateKeyP),
                      "merchant-priv",
@@ -384,6 +387,8 @@ do_deposit (struct Command *cmd)
                      NULL, 0);
   GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv.eddsa_priv,
                                       &deposit.merchant_pub.eddsa_pub);
+  /* contract is just picked at random;
+     note: we may want to write this back to 'cmd' in the future. */
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
                                     &deposit.h_contract);
   if ( (GNUNET_OK !=
@@ -396,6 +401,9 @@ do_deposit (struct Command *cmd)
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+  /* Build JSON for wire details;
+     note that this simple method may fail in the future if we implement
+     and enforce signature checking on test-wire account details */
   deposit.wire = json_pack ("{s:s, s:s, s:I}",
                             "type", "test",
                             "bank_uri", "http://localhost:8082/",
@@ -407,9 +415,20 @@ do_deposit (struct Command *cmd)
   deposit.timestamp = GNUNET_TIME_absolute_get ();
   deposit.wire_deadline = GNUNET_TIME_relative_to_absolute (cmd->details.deposit.wire_deadline);
 
-  ret = plugin->insert_deposit (plugin->cls,
+  /* finally, actually perform the DB operation */
+  if ( (GNUNET_OK !=
+        plugin->start (plugin->cls,
+                       session)) ||
+       (GNUNET_OK !=
+        plugin->insert_deposit (plugin->cls,
                                 session,
-                                &deposit);
+                                &deposit)) ||
+       (GNUNET_OK !=
+        plugin->commit (plugin->cls,
+                        session)) )
+    ret = GNUNET_SYSERR;
+  else
+    ret = GNUNET_OK;
   json_decref (deposit.wire);
   return ret;
 }
