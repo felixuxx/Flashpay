@@ -290,6 +290,16 @@ static struct Transaction *transactions_head;
  */
 static struct Transaction *transactions_tail;
 
+/**
+ * Private key we use for fake coins.
+ */
+static struct GNUNET_CRYPTO_RsaPrivateKey *coin_pk;
+
+/**
+ * Public key we use for fake coins.
+ */
+static struct GNUNET_CRYPTO_RsaPublicKey *coin_pub;
+
 
 /**
  * Interprets the commands from the test program.
@@ -383,6 +393,47 @@ maint_child_death (void *cls,
 
 }
 
+/**
+ * Setup (fake) information about a coin used in deposit.
+ *
+ * @param[out] issue information to initialize with "valid" data
+ */
+static void
+fake_issue (struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
+{
+  memset (issue, 0, sizeof (struct TALER_EXCHANGEDB_DenominationKeyInformationP));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount_nbo ("EUR:1",
+                                             &issue->properties.value));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount_nbo ("EUR:0.1",
+                                             &issue->properties.fee_withdraw));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount_nbo ("EUR:0.1",
+                                             &issue->properties.fee_deposit));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount_nbo ("EUR:0.1",
+                                             &issue->properties.fee_refresh));
+}
+
+
+/**
+ * Setup (fake) information about a coin used in deposit.
+ *
+ * @param[out] coin information to initialize with "valid" data
+ */
+static void
+fake_coin (struct TALER_CoinPublicInfo *coin)
+{
+  struct GNUNET_HashCode hc;
+
+  coin->denom_pub.rsa_public_key = coin_pub;
+  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
+                                    &hc);
+  coin->denom_sig.rsa_signature = GNUNET_CRYPTO_rsa_sign_fdh (coin_pk,
+                                                              &hc);
+}
+
 
 /**
  * Helper function to fake a deposit operation.
@@ -423,6 +474,7 @@ do_deposit (struct Command *cmd)
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+  fake_coin (&deposit.coin);
   /* Build JSON for wire details;
      note that this simple method may fail in the future if we implement
      and enforce signature checking on test-wire account details */
@@ -451,6 +503,7 @@ do_deposit (struct Command *cmd)
     ret = GNUNET_SYSERR;
   else
     ret = GNUNET_OK;
+  GNUNET_CRYPTO_rsa_signature_free (deposit.coin.denom_sig.rsa_signature);
   json_decref (deposit.wire);
   return ret;
 }
@@ -590,7 +643,7 @@ static void
 run_test ()
 {
   static struct Command commands[] = {
-    /* FIXME: prime DB */
+    /* test running with empty DB */
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
       .label = "run-aggregator-on-empty-db"
@@ -599,6 +652,57 @@ run_test ()
       .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
       .label = "expect-empty-transactions-on-start"
     },
+    /* test simple deposit */
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 5s */
+      .details.deposit.amount_with_fee = "EUR:1",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-1"
+    },
+
+    /* The above step is already known to fail (with an error message)
+       right now, so we skip the rest of the test. */
+    {
+      .opcode = OPCODE_TERMINATE_SKIP,
+      .label = "testcase-incomplete-terminating-with-skip"
+    },
+
+
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTION,
+      .label = "expect-deposit-1",
+      .details.expect_transaction.debit_account = 1,
+      .details.expect_transaction.credit_account = 4,
+      .details.expect_transaction.amount = "EUR:1"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-on-start"
+    },
+    /* test idempotency: run again on transactions already done */
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 5s */
+      .details.deposit.amount_with_fee = "EUR:1",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-on-start"
+    },
+
     {
       .opcode = OPCODE_TERMINATE_SKIP,
       .label = "testcase-incomplete-terminating-with-skip"
@@ -851,19 +955,43 @@ run (void *cls,
      const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
+  struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
+  struct TALER_DenominationPublicKey dpk;
 
   plugin = TALER_EXCHANGEDB_plugin_load (cfg);
   if (GNUNET_OK !=
       plugin->create_tables (plugin->cls,
                              GNUNET_YES))
   {
+    GNUNET_break (0);
     TALER_EXCHANGEDB_plugin_unload (plugin);
+    plugin = NULL;
     result = 77;
     return;
   }
   session = plugin->get_session (plugin->cls,
                                  GNUNET_YES);
   GNUNET_assert (NULL != session);
+  fake_issue (&issue);
+  dpk.rsa_public_key = coin_pub;
+  if ( (GNUNET_OK !=
+        plugin->start (plugin->cls,
+                       session)) ||
+       (GNUNET_OK !=
+        plugin->insert_denomination_info (plugin->cls,
+                                          session,
+                                          &dpk,
+                                          &issue)) ||
+       (GNUNET_OK !=
+        plugin->commit (plugin->cls,
+                        session)) )
+    {
+      GNUNET_break (0);
+      TALER_EXCHANGEDB_plugin_unload (plugin);
+      plugin = NULL;
+      result = 77;
+      return;
+    }
   child_death_task =
     GNUNET_SCHEDULER_add_read_file (GNUNET_TIME_UNIT_FOREVER_REL,
 				    GNUNET_DISK_pipe_handle (sigpipe,
@@ -945,7 +1073,11 @@ main (int argc,
   GNUNET_assert (NULL != sigpipe);
   shc_chld =
     GNUNET_SIGNAL_handler_install (GNUNET_SIGCHLD, &sighandler_child_death);
+  coin_pk = GNUNET_CRYPTO_rsa_private_key_create (1024);
+  coin_pub = GNUNET_CRYPTO_rsa_private_key_get_public (coin_pk);
   GNUNET_SCHEDULER_run (&run, cfg);
+  GNUNET_CRYPTO_rsa_private_key_free (coin_pk);
+  GNUNET_CRYPTO_rsa_public_key_free (coin_pub);
   GNUNET_SIGNAL_handler_uninstall (shc_chld);
   shc_chld = NULL;
   GNUNET_DISK_pipe_close (sigpipe);
