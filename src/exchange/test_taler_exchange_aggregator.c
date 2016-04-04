@@ -134,7 +134,29 @@ struct Command
      * specifies which transaction we expected.  Note that
      * the WTID will be set, not checked!
      */
-    struct Transaction expect_transaction;
+    struct {
+
+      /**
+       * Amount to be transferred.
+       */
+      const char *amount;
+
+      /**
+       * Account to debit.
+       */
+      uint64_t debit_account;
+
+      /**
+       * Account to credit.
+       */
+      uint64_t credit_account;
+
+      /**
+       * Subject of the transfer, set by the command.
+       */
+      struct TALER_WireTransferIdentifierRawP wtid;
+
+    } expect_transaction;
 
     /**
      * If @e opcode is #OPCODE_DATABASE_DEPOST, this
@@ -514,16 +536,24 @@ interpreter (void *cls,
       break;
     case OPCODE_EXPECT_TRANSACTION:
       {
-        const struct Transaction *want = &cmd->details.expect_transaction;
+        struct TALER_Amount want_amount;
         struct Transaction *t;
         int found;
 
+        if (GNUNET_OK !=
+            TALER_string_to_amount (cmd->details.expect_transaction.amount,
+                                    &want_amount))
+        {
+          GNUNET_break (0);
+          fail (cmd);
+          return;
+        }
         found = GNUNET_NO;
         for (t = transactions_head; NULL != t; t = t->next)
         {
-          if ( (want->debit_account == t->debit_account) &&
-               (want->credit_account == t->credit_account) &&
-               (0 == TALER_amount_cmp (&want->amount,
+          if ( (cmd->details.expect_transaction.debit_account == t->debit_account) &&
+               (cmd->details.expect_transaction.credit_account == t->credit_account) &&
+               (0 == TALER_amount_cmp (&want_amount,
                                        &t->amount)) )
           {
             GNUNET_CONTAINER_DLL_remove (transactions_head,
@@ -579,7 +609,22 @@ run_test ()
       .label = "testing test logic",
       .details.expect_transaction.debit_account = 1,
       .details.expect_transaction.credit_account = 1,
-      .details.expect_transaction.amount = { 1, 0, "EUR" }
+      .details.expect_transaction.amount = "EUR:1"
+    },
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "deposit",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
+      .details.deposit.amount_with_fee = "EUR:1",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_WAIT,
+      .label = "wait (5s)",
+      .details.wait_delay = { 1000LL * 1000 * 5 } /* 5s */
     }
   };
   static struct State state = {
