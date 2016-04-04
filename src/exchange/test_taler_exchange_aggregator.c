@@ -91,6 +91,16 @@ enum OpCode {
   OPCODE_EXPECT_TRANSACTIONS_EMPTY,
 
   /**
+   * Execute deposit operation against database.
+   */
+  OPCODE_DATABASE_DEPOSIT,
+
+  /**
+   * Wait a certain amount of time.
+   */
+  OPCODE_WAIT,
+
+  /**
    * Expect that we have received the specified transaction.
    */
   OPCODE_EXPECT_TRANSACTION,
@@ -125,6 +135,50 @@ struct Command
      * the WTID will be set, not checked!
      */
     struct Transaction expect_transaction;
+
+    /**
+     * If @e opcode is #OPCODE_DATABASE_DEPOST, this
+     * specifies which deposit operation we should fake.
+     */
+    struct {
+
+      /**
+       * Each merchant name is automatically mapped to a unique
+       * merchant public key.
+       */
+      const char *merchant_name;
+
+      /**
+       * Merchant account number, is mapped to wire details.
+       */
+      uint64_t merchant_account;
+
+      /**
+       * Merchant's transaction ID.
+       */
+      uint64_t transaction_id;
+
+      /**
+       * By when does the merchant request the funds to be wired.
+       */
+      struct GNUNET_TIME_Relative wire_deadline;
+
+      /**
+       * What is the total amount (including exchange fees).
+       */
+      const char *amount_with_fee;
+
+      /**
+       * How high are the exchange fees? Must be smaller than @e amount_with_fee.
+       */
+      const char *deposit_fee;
+
+    } deposit;
+
+    /**
+     * How long should we wait if the opcode is #OPCODE_WAIT.
+     */
+    struct GNUNET_TIME_Relative wait_delay;
 
   } details;
 
@@ -309,6 +363,59 @@ maint_child_death (void *cls,
 
 
 /**
+ * Helper function to fake a deposit operation.
+ *
+ * @return #GNUNET_OK on success
+ */
+static int
+do_deposit (struct Command *cmd)
+{
+  struct TALER_EXCHANGEDB_Deposit deposit;
+  struct TALER_MerchantPrivateKeyP merchant_priv;
+  int ret;
+
+  memset (&deposit, 0, sizeof (deposit));
+  GNUNET_CRYPTO_kdf (&merchant_priv,
+                     sizeof (struct TALER_MerchantPrivateKeyP),
+                     "merchant-priv",
+                     strlen ("merchant-priv"),
+                     cmd->details.deposit.merchant_name,
+                     strlen (cmd->details.deposit.merchant_name),
+                     NULL, 0);
+  GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv.eddsa_priv,
+                                      &deposit.merchant_pub.eddsa_pub);
+  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
+                                    &deposit.h_contract);
+  if ( (GNUNET_OK !=
+        TALER_string_to_amount (cmd->details.deposit.amount_with_fee,
+                                &deposit.amount_with_fee)) ||
+       (GNUNET_OK !=
+        TALER_string_to_amount (cmd->details.deposit.deposit_fee,
+                                &deposit.deposit_fee)) )
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  deposit.wire = json_pack ("{s:s, s:s, s:I}",
+                            "type", "test",
+                            "bank_uri", "http://localhost:8082/",
+                            "account_number", (json_int_t) cmd->details.deposit.merchant_account);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_hash (deposit.wire,
+                                  &deposit.h_wire));
+  deposit.transaction_id = cmd->details.deposit.transaction_id;
+  deposit.timestamp = GNUNET_TIME_absolute_get ();
+  deposit.wire_deadline = GNUNET_TIME_relative_to_absolute (cmd->details.deposit.wire_deadline);
+
+  ret = plugin->insert_deposit (plugin->cls,
+                                session,
+                                &deposit);
+  json_decref (deposit.wire);
+  return ret;
+}
+
+
+/**
  * Fail the testcase at the current command.
  */
 static void
@@ -349,6 +456,12 @@ interpreter (void *cls,
       result = 77;
       GNUNET_SCHEDULER_shutdown ();
       return;
+    case OPCODE_WAIT:
+      state->ioff++;
+      GNUNET_SCHEDULER_add_delayed (cmd->details.wait_delay,
+                                    &interpreter,
+                                    state);
+      return;
     case OPCODE_RUN_AGGREGATOR:
       GNUNET_assert (NULL == aggregator_state);
       aggregator_state = state;
@@ -365,6 +478,15 @@ interpreter (void *cls,
     return;
     case OPCODE_EXPECT_TRANSACTIONS_EMPTY:
       if (NULL != transactions_head)
+      {
+        fail (cmd);
+        return;
+      }
+      state->ioff++;
+      break;
+    case OPCODE_DATABASE_DEPOSIT:
+      if (GNUNET_OK !=
+          do_deposit (cmd))
       {
         fail (cmd);
         return;
