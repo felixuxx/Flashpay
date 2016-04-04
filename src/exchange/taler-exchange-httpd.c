@@ -121,7 +121,7 @@ handle_mhd_completion_callback (void *cls,
 
 
 /**
- * Handle a request coming from libmicrohttpd.
+ * Handle incoming HTTP request.
  *
  * @param cls closure for MHD daemon (unused)
  * @param connection the connection
