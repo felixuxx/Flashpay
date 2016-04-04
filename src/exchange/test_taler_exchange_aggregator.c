@@ -86,6 +86,16 @@ enum OpCode {
   OPCODE_RUN_AGGREGATOR,
 
   /**
+   * Expect that we have exhaustively gone over all transactions.
+   */
+  OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+
+  /**
+   * Expect that we have received the specified transaction.
+   */
+  OPCODE_EXPECT_TRANSACTION,
+
+  /**
    * Finish testcase with success.
    */
   OPCODE_TERMINATE_SUCCESS
@@ -97,7 +107,26 @@ enum OpCode {
 struct Command
 {
 
+  /**
+   * What instruction should we run?
+   */
   enum OpCode opcode;
+
+  /**
+   * Human-readable label for the command.
+   */
+  const char *label;
+
+  union {
+
+    /**
+     * If @e opcode is #OPCODE_EXPECT_TRANSACTION, this
+     * specifies which transaction we expected.  Note that
+     * the WTID will be set, not checked!
+     */
+    struct Transaction expect_transaction;
+
+  } details;
 
 };
 
@@ -280,6 +309,20 @@ maint_child_death (void *cls,
 
 
 /**
+ * Fail the testcase at the current command.
+ */
+static void
+fail (struct Command *cmd)
+{
+  fprintf (stderr,
+           "Testcase failed at command `%s'\n",
+           cmd->label);
+  result = 2;
+  GNUNET_SCHEDULER_shutdown ();
+}
+
+
+/**
  * Interprets the commands from the test program.
  *
  * @param cls the `struct State` of the interpreter
@@ -290,33 +333,80 @@ interpreter (void *cls,
              const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   struct State *state = cls;
-  struct Command *cmd = &state->commands[state->ioff];
 
-  switch (cmd->opcode)
+  while (1)
   {
-  case OPCODE_TERMINATE_SKIP:
-    /* return skip: test not finished, but did not fail either */
-    result = 77;
-    GNUNET_SCHEDULER_shutdown ();
+    struct Command *cmd = &state->commands[state->ioff];
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Running command %u (%s)\n",
+                state->ioff,
+                cmd->label);
+    switch (cmd->opcode)
+    {
+    case OPCODE_TERMINATE_SKIP:
+      /* return skip: test not finished, but did not fail either */
+      result = 77;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    case OPCODE_RUN_AGGREGATOR:
+      GNUNET_assert (NULL == aggregator_state);
+      aggregator_state = state;
+      aggregator_proc
+        = GNUNET_OS_start_process (GNUNET_NO,
+                                   GNUNET_OS_INHERIT_STD_ALL,
+                                   NULL, NULL, NULL,
+                                   "taler-exchange-aggregator",
+                                   "taler-exchange-aggregator",
+                                   /* "-c", config_filename, */
+                                   "-d", "test-exchange-home",
+                                   "-t", /* enable temporary tables */
+                                   NULL);
     return;
-  case OPCODE_RUN_AGGREGATOR:
-    GNUNET_assert (NULL == aggregator_state);
-    aggregator_state = state;
-    aggregator_proc
-      = GNUNET_OS_start_process (GNUNET_NO,
-                                 GNUNET_OS_INHERIT_STD_ALL,
-                                 NULL, NULL, NULL,
-                                 "taler-exchange-aggregator",
-                                 "taler-exchange-aggregator",
-                                 /* "-c", config_filename, */
-                                 "-d", "test-exchange-home",
-                                 "-t", /* enable temporary tables */
-                                 NULL);
-    return;
-  case OPCODE_TERMINATE_SUCCESS:
-    result = 0;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
+    case OPCODE_EXPECT_TRANSACTIONS_EMPTY:
+      if (NULL != transactions_head)
+      {
+        fail (cmd);
+        return;
+      }
+      state->ioff++;
+      break;
+    case OPCODE_EXPECT_TRANSACTION:
+      {
+        const struct Transaction *want = &cmd->details.expect_transaction;
+        struct Transaction *t;
+        int found;
+
+        found = GNUNET_NO;
+        for (t = transactions_head; NULL != t; t = t->next)
+        {
+          if ( (want->debit_account == t->debit_account) &&
+               (want->credit_account == t->credit_account) &&
+               (0 == TALER_amount_cmp (&want->amount,
+                                       &t->amount)) )
+          {
+            GNUNET_CONTAINER_DLL_remove (transactions_head,
+                                         transactions_tail,
+                                         t);
+            cmd->details.expect_transaction.wtid = t->wtid;
+            GNUNET_free (t);
+            found = GNUNET_YES;
+            break;
+          }
+        }
+        if (GNUNET_NO == found)
+        {
+          fail (cmd);
+          return;
+        }
+        state->ioff++;
+        break;
+      }
+    case OPCODE_TERMINATE_SUCCESS:
+      result = 0;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
   }
 }
 
@@ -331,16 +421,32 @@ run_test ()
   static struct Command commands[] = {
     /* FIXME: prime DB */
     {
-      .opcode = OPCODE_RUN_AGGREGATOR
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-on-empty-db"
     },
     {
-      .opcode = OPCODE_TERMINATE_SKIP
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-on-start"
+    },
+    {
+      .opcode = OPCODE_TERMINATE_SKIP,
+      .label = "testcase-incomplete-terminating-with-skip"
+    },
+    /* note: rest not reached, just sample code */
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTION,
+      .label = "testing test logic",
+      .details.expect_transaction.debit_account = 1,
+      .details.expect_transaction.credit_account = 1,
+      .details.expect_transaction.amount = { 1, 0, "EUR" }
     }
   };
   static struct State state = {
     .commands = commands
   };
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Launching interpreter\n");
   GNUNET_SCHEDULER_add_now (&interpreter,
                             &state);
 }
@@ -636,6 +742,9 @@ main (int argc,
                           "test-taler-exchange-aggregator-%s", plugin_name);
   (void) GNUNET_asprintf (&config_filename,
                           "%s.conf", testname);
+  GNUNET_log_setup ("test_taler_exchange_aggregator",
+                    "WARNING",
+                    NULL);
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_parse (cfg,
