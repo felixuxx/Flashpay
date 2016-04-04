@@ -21,6 +21,7 @@
  */
 #include "platform.h"
 #include "taler_util.h"
+#include <gnunet/gnunet_json_lib.h>
 #include "taler_exchangedb_plugin.h"
 #include <microhttpd.h>
 
@@ -310,7 +311,7 @@ handle_mhd_completion_callback (void *cls,
                                 void **con_cls,
                                 enum MHD_RequestTerminationCode toe)
 {
-  TMH_PARSE_post_cleanup_callback (*con_cls);
+  GNUNET_JSON_post_parser_cleanup (*con_cls);
   *con_cls = NULL;
 }
 
@@ -353,6 +354,92 @@ handle_mhd_request (void *cls,
 
 
 /**
+ * Task run whenever HTTP server operations are pending.
+ *
+ * @param cls NULL
+ * @param tc scheduler context
+ */
+static void
+run_mhd (void *cls,
+         const struct GNUNET_SCHEDULER_TaskContext *tc);
+
+
+/**
+ * Schedule MHD.  This function should be called initially when an
+ * MHD is first getting its client socket, and will then automatically
+ * always be called later whenever there is work to be done.
+ */
+static void
+schedule_httpd ()
+{
+  fd_set rs;
+  fd_set ws;
+  fd_set es;
+  struct GNUNET_NETWORK_FDSet *wrs;
+  struct GNUNET_NETWORK_FDSet *wws;
+  int max;
+  int haveto;
+  MHD_UNSIGNED_LONG_LONG timeout;
+  struct GNUNET_TIME_Relative tv;
+
+  FD_ZERO (&rs);
+  FD_ZERO (&ws);
+  FD_ZERO (&es);
+  max = -1;
+  if (MHD_YES != MHD_get_fdset (mhd_bank, &rs, &ws, &es, &max))
+  {
+    GNUNET_assert (0);
+    return;
+  }
+  haveto = MHD_get_timeout (mhd_bank, &timeout);
+  if (MHD_YES == haveto)
+    tv.rel_value_us = (uint64_t) timeout * 1000LL;
+  else
+    tv = GNUNET_TIME_UNIT_FOREVER_REL;
+  if (-1 != max)
+  {
+    wrs = GNUNET_NETWORK_fdset_create ();
+    wws = GNUNET_NETWORK_fdset_create ();
+    GNUNET_NETWORK_fdset_copy_native (wrs, &rs, max + 1);
+    GNUNET_NETWORK_fdset_copy_native (wws, &ws, max + 1);
+  }
+  else
+  {
+    wrs = NULL;
+    wws = NULL;
+  }
+  if (NULL != mhd_task)
+    GNUNET_SCHEDULER_cancel (mhd_task);
+  mhd_task =
+    GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
+                                 tv,
+                                 wrs,
+                                 wws,
+                                 &run_mhd, NULL);
+  if (NULL != wrs)
+    GNUNET_NETWORK_fdset_destroy (wrs);
+  if (NULL != wws)
+    GNUNET_NETWORK_fdset_destroy (wws);
+}
+
+
+/**
+ * Task run whenever HTTP server operations are pending.
+ *
+ * @param cls NULL
+ * @param tc scheduler context
+ */
+static void
+run_mhd (void *cls,
+         const struct GNUNET_SCHEDULER_TaskContext *tc)
+{
+  mhd_task = NULL;
+  MHD_run (mhd_bank);
+  schedule_httpd ();
+}
+
+
+/**
  * Main function that will be run by the scheduler.
  *
  * @param cls closure with configuration
@@ -386,7 +473,7 @@ run (void *cls,
                                   &shutdown_action,
                                   NULL);
   result = 1; /* test failed for undefined reason */
-  mhd_bank = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
+  mhd_bank = MHD_start_daemon (MHD_USE_DEBUG,
                                8082,
                                NULL, NULL,
                                &handle_mhd_request, NULL,
@@ -397,7 +484,7 @@ run (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  mhd_task = FIXME;
+  schedule_httpd ();
   run_test ();
 }
 
