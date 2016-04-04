@@ -22,8 +22,53 @@
 #include "platform.h"
 #include "taler_util.h"
 #include <gnunet/gnunet_json_lib.h>
+#include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 #include <microhttpd.h>
+
+
+/**
+ * Maximum POST request size (for /admin/add/incoming)
+ */
+#define REQUEST_BUFFER_MAX (4*1024)
+
+/**
+ * Details about a transcation we (as the simulated bank) received.
+ */
+struct Transaction
+{
+
+  /**
+   * We store transactions in a DLL.
+   */
+  struct Transaction *next;
+
+  /**
+   * We store transactions in a DLL.
+   */
+  struct Transaction *prev;
+
+  /**
+   * Amount to be transferred.
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * Account to debit.
+   */
+  uint64_t debit_account;
+
+  /**
+   * Account to credit.
+   */
+  uint64_t credit_account;
+
+  /**
+   * Subject of the transfer.
+   */
+  struct TALER_WireTransferIdentifierRawP wtid;
+};
+
 
 /**
  * Commands for the interpreter.
@@ -129,6 +174,16 @@ static struct MHD_Daemon *mhd_bank;
  * Task running HTTP server for the "test" bank.
  */
 static struct GNUNET_SCHEDULER_Task *mhd_task;
+
+/**
+ * We store transactions in a DLL.
+ */
+static struct Transaction *transactions_head;
+
+/**
+ * We store transactions in a DLL.
+ */
+static struct Transaction *transactions_tail;
 
 
 /**
@@ -339,6 +394,12 @@ handle_mhd_request (void *cls,
                     size_t *upload_data_size,
                     void **con_cls)
 {
+  enum GNUNET_JSON_PostResult pr;
+  json_t *json;
+  struct Transaction *t;
+  struct MHD_Response *resp;
+  int ret;
+
   if (0 != strcasecmp (url,
                        "/admin/add/incoming"))
   {
@@ -348,8 +409,56 @@ handle_mhd_request (void *cls,
     return MHD_NO;
   }
   /* FIXME: to be implemented! */
-  GNUNET_break (0);
-  return MHD_NO;
+  pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
+                                con_cls,
+                                upload_data,
+                                upload_data_size,
+                                &json);
+  switch (pr)
+  {
+  case GNUNET_JSON_PR_OUT_OF_MEMORY:
+    GNUNET_break (0);
+    return MHD_NO;
+  case GNUNET_JSON_PR_CONTINUE:
+    return MHD_YES;
+  case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
+    GNUNET_break (0);
+    return MHD_NO;
+  case GNUNET_JSON_PR_JSON_INVALID:
+    GNUNET_break (0);
+    return MHD_NO;
+  case GNUNET_JSON_PR_SUCCESS:
+    break;
+  }
+  t = GNUNET_new (struct Transaction);
+  {
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_fixed_auto ("wtid", &t->wtid),
+      GNUNET_JSON_spec_uint64 ("debit_account", &t->debit_account),
+      GNUNET_JSON_spec_uint64 ("credit_account", &t->credit_account),
+      TALER_JSON_spec_amount ("amount", &t->amount),
+      GNUNET_JSON_spec_end ()
+    };
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (json,
+                           spec,
+                           NULL, NULL))
+    {
+      GNUNET_break (0);
+      json_decref (json);
+      return MHD_NO;
+    }
+    GNUNET_CONTAINER_DLL_insert (transactions_head,
+                                 transactions_tail,
+                                 t);
+  }
+  json_decref (json);
+  resp = MHD_create_response_from_buffer (0, "", MHD_RESPMEM_PERSISTENT);
+  ret = MHD_queue_response (connection,
+                            MHD_HTTP_OK,
+                            resp);
+  MHD_destroy_response (resp);
+  return ret;
 }
 
 

@@ -64,6 +64,7 @@ test_taler_exchange_aggregator_postgres_SOURCES = \
 test_taler_exchange_aggregator_postgres_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lmicrohttpd \
   -lgnunetutil \
