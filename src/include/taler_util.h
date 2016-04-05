@@ -122,18 +122,6 @@ TALER_config_get_denom (struct GNUNET_CONFIGURATION_Handle *cfg,
 
 
 /**
- * Get the path to a specific Taler installation directory or, with
- * #GNUNET_OS_IPK_SELF_PREFIX, the current running apps installation
- * directory.
- *
- * @param dirkind what kind of directory is desired?
- * @return a pointer to the dir path (to be freed by the caller)
- */
-char *
-TALER_OS_installation_get_path (enum GNUNET_OS_InstallationPathKind dirkind);
-
-
-/**
  * Print out details on command line options (implements --help).
  *
  * @param ctx command line processing context
