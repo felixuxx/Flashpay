@@ -668,25 +668,19 @@ run_test ()
       .label = "run-aggregator-deposit-1"
     },
 
-    /* The above step is already known to fail (with an error message)
-       right now, so we skip the rest of the test. */
-    {
-      .opcode = OPCODE_TERMINATE_SKIP,
-      .label = "testcase-incomplete-terminating-with-skip"
-    },
-
-
     {
       .opcode = OPCODE_EXPECT_TRANSACTION,
       .label = "expect-deposit-1",
-      .details.expect_transaction.debit_account = 1,
+      .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
       .details.expect_transaction.amount = "EUR:1"
     },
+
     {
       .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
       .label = "expect-empty-transactions-on-start"
     },
+
     /* test idempotency: run again on transactions already done */
     {
       .opcode = OPCODE_DATABASE_DEPOSIT,
@@ -701,6 +695,11 @@ run_test ()
     {
       .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
       .label = "expect-empty-transactions-on-start"
+    },
+
+    {
+      .opcode = OPCODE_TERMINATE_SUCCESS,
+      .label = "testcase-incomplete-terminating-with-skip"
     },
 
     {
@@ -804,7 +803,6 @@ handle_mhd_request (void *cls,
     GNUNET_break_op (0);
     return MHD_NO;
   }
-  /* FIXME: to be implemented! */
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
                                 con_cls,
                                 upload_data,
@@ -848,6 +846,10 @@ handle_mhd_request (void *cls,
                                  transactions_tail,
                                  t);
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Receiving incoming wire transfer: %llu->%llu\n",
+              (unsigned long long) t->debit_account,
+              (unsigned long long) t->credit_account);
   json_decref (json);
   resp = MHD_create_response_from_buffer (0, "", MHD_RESPMEM_PERSISTENT);
   ret = MHD_queue_response (connection,

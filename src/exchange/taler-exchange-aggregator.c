@@ -237,8 +237,9 @@ shutdown_task (void *cls,
       json_decref (au->wire);
     au = NULL;
     GNUNET_free (au);
-
   }
+  TALER_EXCHANGEDB_plugin_unload (db_plugin);
+  TALER_WIRE_plugin_unload (wire_plugin);
 }
 
 
@@ -366,6 +367,9 @@ deposit_cb (void *cls,
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &au->wtid,
                               sizeof (au->wtid));
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Starting aggregation under WTID %s\n",
+              TALER_B2S (&au->wtid));
   if (GNUNET_OK !=
       db_plugin->insert_aggregation_tracking (db_plugin->cls,
                                               au->session,
@@ -523,8 +527,11 @@ run_aggregation (void *cls,
   unsigned int i;
   int ret;
 
+  task = NULL;
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
     return;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Checking for ready deposits to aggregate\n");
   if (NULL == (session = db_plugin->get_session (db_plugin->cls,
                                                  test_mode)))
   {
@@ -563,6 +570,8 @@ run_aggregation (void *cls,
       global_ret = GNUNET_SYSERR;
       return;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "No more ready deposits, going to sleep\n");
     if (GNUNET_YES == test_mode)
     {
       /* in test mode, shutdown if we end up being idle */
@@ -578,6 +587,9 @@ run_aggregation (void *cls,
     return;
   }
   /* Now try to find other deposits to aggregate */
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Found ready deposit for %s, aggregating\n",
+              TALER_B2S (&au->merchant_pub));
   ret = db_plugin->iterate_matching_deposits (db_plugin->cls,
                                               session,
                                               &au->h_wire,
@@ -608,6 +620,8 @@ run_aggregation (void *cls,
   if ( (0 == au->total_amount.value) &&
        (0 == au->total_amount.fraction) )
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Aggregate value too low for transfer\n");
     /* Rollback ongoing transaction, as we will not use the respective
        WTID and thus need to remove the tracking data */
     db_plugin->rollback (db_plugin->cls,
@@ -659,6 +673,15 @@ run_aggregation (void *cls,
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                      NULL);
     return;
+  }
+  {
+    char *amount_s;
+
+    amount_s = TALER_amount_to_string (&au->total_amount);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Preparing wire transfer of %s to %s\n",
+                amount_s,
+                TALER_B2S (&au->merchant_pub));
   }
   au->ph = wire_plugin->prepare_wire_transfer (wire_plugin->cls,
                                                au->wire,
@@ -757,7 +780,8 @@ prepare_cb (void *cls,
                                      NULL);
     return;
   }
-
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Preparation complete, switching to transfer mode\n");
   /* run alternative task: actually do wire transfer! */
   task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                    NULL);
@@ -817,6 +841,8 @@ wire_confirm_cb (void *cls,
                                      NULL);
     return;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Wire transfer complete\n");
   /* continue with #run_transfers(), just to guard
      against the unlikely case that there are more. */
   task = GNUNET_SCHEDULER_add_now (&run_transfers,
@@ -840,6 +866,9 @@ wire_prepare_cb (void *cls,
                  size_t buf_size)
 {
   wpd->row_id = rowid;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Starting wire transfer %llu\n",
+              rowid);
   wpd->eh = wire_plugin->execute_wire_transfer (wire_plugin->cls,
                                                 buf,
                                                 buf_size,
@@ -872,6 +901,9 @@ run_transfers (void *cls,
   int ret;
   struct TALER_EXCHANGEDB_Session *session;
 
+  task = NULL;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Checking for pending wire transfers\n");
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
     return;
   if (NULL == (session = db_plugin->get_session (db_plugin->cls,
@@ -911,6 +943,8 @@ run_transfers (void *cls,
   if (GNUNET_NO == ret)
   {
     /* no more prepared wire transfers, go back to aggregation! */
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "No more pending wire transfers, starting aggregation\n");
     db_plugin->rollback (db_plugin->cls,
                          session);
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
@@ -934,7 +968,7 @@ run (void *cls,
      const struct GNUNET_SCHEDULER_TaskContext *tc)
 {
   task = GNUNET_SCHEDULER_add_now (&run_transfers,
-                                   cls);
+                                   NULL);
   GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_FOREVER_REL,
                                 &shutdown_task,
                                 cls);
@@ -991,8 +1025,6 @@ main (int argc,
   global_ret = GNUNET_OK;
   GNUNET_SCHEDULER_run (&run, NULL);
 
-  TALER_EXCHANGEDB_plugin_unload (db_plugin);
-  TALER_WIRE_plugin_unload (wire_plugin);
   return (GNUNET_SYSERR == global_ret) ? 1 : 0;
 }
 
