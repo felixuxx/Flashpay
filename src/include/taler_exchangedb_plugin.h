@@ -947,6 +947,17 @@ struct TALER_EXCHANGEDB_Plugin
                         void *deposit_cb_cls);
 
 
+/**
+ * Maximum number of results we return from iterate_matching_deposits().
+ *
+ * Limit on the number of transactions we aggregate at once.  Note
+ * that the limit must be big enough to ensure that when transactions
+ * of the smallest possible unit are aggregated, they do surpass the
+ * "tiny" threshold beyond which we never trigger a wire transaction!
+ */
+#define TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT 10000
+#define TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT_STR "10000"
+
   /**
    * Obtain information about other pending deposits for the same
    * destination.  Those deposits must not already be "done".
@@ -957,7 +968,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param merchant_pub public key of the merchant
    * @param deposit_cb function to call for each deposit
    * @param deposit_cb_cls closure for @a deposit_cb
-   * @param limit maximum number of matching deposits to return
+   * @param limit maximum number of matching deposits to return; should
+   *        be #TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT, larger values
+   *        are not supported, smaller values would be inefficient.
    * @return number of rows processed, 0 if none exist,
    *         #GNUNET_SYSERR on error
    */

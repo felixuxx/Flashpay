@@ -78,9 +78,10 @@ static int test_mode;
  * of the smallest possible unit are aggregated, they do surpass the
  * "tiny" threshold beyond which we never trigger a wire transaction!
  *
- * TODO: make configurable (via config file or command line option)
+ * Note: do not change here, Postgres requires us to hard-code the
+ * LIMIT in the prepared statement.
  */
-static unsigned int aggregation_limit = 10000;
+static unsigned int aggregation_limit = TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT;
 
 
 /**
