@@ -32,7 +32,7 @@
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 int
-TALER_JSON_hash (json_t *json,
+TALER_JSON_hash (const json_t *json,
                  struct GNUNET_HashCode *hc)
 {
   char *wire_enc;

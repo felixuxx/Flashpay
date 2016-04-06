@@ -38,7 +38,7 @@ src/exchange-tools/taler-exchange-dbinit
 src/exchange-tools/taler-exchange-keycheck
 src/exchange-tools/taler-exchange-keyup
 src/exchange-tools/taler-exchange-reservemod
-src/exchange-tools/taler-exchange-sepa
+src/exchange-tools/taler-exchange-wire
 src/exchangedb/perf-exchangedb
 src/json/test_json
 src/wire/test_sepa_wireformat
