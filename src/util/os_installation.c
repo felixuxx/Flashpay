@@ -35,12 +35,14 @@ static const struct GNUNET_OS_ProjectData taler_pd = {
   .libname = "libtalerutil",
   .project_dirname = "taler",
   .binary_name = "taler-exchange-httpd",
-  .env_varname = "TALER_PREFIX"
+  .env_varname = "TALER_PREFIX",
+  .bug_email = "taler@gnu.org",
+  .homepage = "http://www.gnu.org/s/taler/",
 };
 
 
 /**
- * Return default project data used by gnunet-gtk.
+ * Return default project data used by Taler.
  */
 const struct GNUNET_OS_ProjectData *
 TALER_project_data_default (void)

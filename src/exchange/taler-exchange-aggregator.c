@@ -993,11 +993,10 @@ main (int argc,
     {'f', "format", "WIREFORMAT",
      "wireformat to use, overrides WIREFORMAT option in [exchange] section", 1,
      &GNUNET_GETOPT_set_filename, &exchange_wireformat},
-    TALER_GETOPT_OPTION_HELP ("background process that aggregates and executes wire transfers to merchants"),
+    GNUNET_GETOPT_OPTION_HELP ("background process that aggregates and executes wire transfers to merchants"),
     {'t', "test", NULL,
      "run in test mode with temporary tables", 0,
      &GNUNET_GETOPT_set_one, &test_mode},
-    TALER_GETOPT_OPTION_HELP ("background process that aggregates and executes wire transfers to merchants"),
     GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };

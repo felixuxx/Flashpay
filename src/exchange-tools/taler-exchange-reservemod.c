@@ -69,7 +69,7 @@ main (int argc, char *const *argv)
     {'D', "details", "JSON",
      "details about the bank transaction which justify why we add this amount", 1,
      &GNUNET_GETOPT_set_string, &details},
-    TALER_GETOPT_OPTION_HELP ("Deposit funds into a Taler reserve"),
+    GNUNET_GETOPT_OPTION_HELP ("Deposit funds into a Taler reserve"),
     {'R', "reserve", "KEY",
      "reserve (public key) to modify", 1,
      &GNUNET_GETOPT_set_string, &reserve_pub_str},

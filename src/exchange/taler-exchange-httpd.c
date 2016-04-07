@@ -630,7 +630,7 @@ main (int argc,
      "run in test-mode using FILENAME as the HTTP request to process", 1,
      &GNUNET_GETOPT_set_filename, &input_filename},
 #endif
-    TALER_GETOPT_OPTION_HELP ("HTTP server providing a RESTful API to access a Taler exchange"),
+    GNUNET_GETOPT_OPTION_HELP ("HTTP server providing a RESTful API to access a Taler exchange"),
     GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };

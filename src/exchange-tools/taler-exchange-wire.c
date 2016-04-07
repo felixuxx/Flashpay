@@ -72,7 +72,7 @@ main (int argc,
     {'o', "output", "FILE",
      "where to write the result", 1,
      &GNUNET_GETOPT_set_filename, &output_filename},
-    TALER_GETOPT_OPTION_HELP ("Setup /wire response"),
+    GNUNET_GETOPT_OPTION_HELP ("Setup /wire response"),
     GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
