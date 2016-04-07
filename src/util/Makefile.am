@@ -31,8 +31,7 @@ libtalerutil_la_SOURCES = \
   amount.c \
   crypto.c \
   util.c \
-  os_installation.c \
-  plugin.c
+  os_installation.c
 
 libtalerutil_la_LIBADD = \
   -lgnunetutil \
