@@ -6,7 +6,7 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
-plugindir = $(libdir)/taler-exchange
+plugindir = $(libdir)/taler
 
 if HAVE_POSTGRESQL
 plugin_LTLIBRARIES = \

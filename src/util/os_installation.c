@@ -33,7 +33,7 @@
  */
 static const struct GNUNET_OS_ProjectData taler_pd = {
   .libname = "libtalerutil",
-  .project_dirname = "taler-exchange",
+  .project_dirname = "taler",
   .binary_name = "taler-exchange-httpd",
   .env_varname = "TALER_PREFIX"
 };

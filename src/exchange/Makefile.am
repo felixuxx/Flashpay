@@ -6,7 +6,7 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
-pkgcfgdir= $(pkgdatadir)/config.d/
+pkgcfgdir = $(prefix)/share/taler/config.d/
 
 pkgcfg_DATA = \
   exchange.conf
