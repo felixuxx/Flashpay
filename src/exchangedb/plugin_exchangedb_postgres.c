@@ -952,7 +952,7 @@ postgres_prepare (PGconn *db_conn)
            " tiny=false AND"
            " done=false"
            " ORDER BY wire_deadline ASC"
-           " LIMIT 1;",
+           " LIMIT 1",
            0, NULL);
 
   /* Used in #postgres_iterate_matching_deposits() */
@@ -975,8 +975,8 @@ postgres_prepare (PGconn *db_conn)
            " h_wire=$2 AND"
            " done=false"
            " ORDER BY wire_deadline ASC"
-           " LIMIT $3",
-           3, NULL);
+           " LIMIT " TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT_STR,
+           2, NULL);
 
   /* Used in #postgres_mark_deposit_tiny() */
   PREPARE ("mark_deposit_tiny",
@@ -2336,7 +2336,6 @@ postgres_iterate_matching_deposits (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (merchant_pub),
     GNUNET_PQ_query_param_auto_from_type (h_wire),
-    GNUNET_PQ_query_param_uint32 (&limit),
     GNUNET_PQ_query_param_end
   };
   PGresult *result;
@@ -2344,8 +2343,8 @@ postgres_iterate_matching_deposits (void *cls,
   unsigned int n;
 
   result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "deposits_iterate_matching",
-                                   params);
+                                    "deposits_iterate_matching",
+                                    params);
   if (PGRES_TUPLES_OK !=
       PQresultStatus (result))
   {
@@ -2366,28 +2365,25 @@ postgres_iterate_matching_deposits (void *cls,
     struct TALER_Amount deposit_fee;
     struct GNUNET_TIME_Absolute wire_deadline;
     struct GNUNET_HashCode h_contract;
-    struct TALER_MerchantPublicKeyP merchant_pub;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     uint64_t transaction_id;
     uint64_t serial_id;
     int ret;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial_id",
-                                   &serial_id),
+                                    &serial_id),
       GNUNET_PQ_result_spec_uint64 ("transaction_id",
-                                   &transaction_id),
+                                    &transaction_id),
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &amount_with_fee),
       TALER_PQ_result_spec_amount ("deposit_fee",
                                    &deposit_fee),
       GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
-                                          &wire_deadline),
+                                           &wire_deadline),
       GNUNET_PQ_result_spec_auto_from_type ("h_contract",
-                                           &h_contract),
-      GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
-                                           &merchant_pub),
+                                            &h_contract),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
-                                           &coin_pub),
+                                            &coin_pub),
       GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
@@ -2399,7 +2395,7 @@ postgres_iterate_matching_deposits (void *cls,
     }
     ret = deposit_cb (deposit_cb_cls,
                       serial_id,
-                      &merchant_pub,
+                      merchant_pub,
                       &coin_pub,
                       &amount_with_fee,
                       &deposit_fee,

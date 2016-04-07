@@ -178,7 +178,7 @@ context_task (void *cls,
                                         rs,
                                         ws,
                                         &context_task,
-                                        cls);
+                                        tc);
   GNUNET_NETWORK_fdset_destroy (rs);
   GNUNET_NETWORK_fdset_destroy (ws);
 }

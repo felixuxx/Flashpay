@@ -20,6 +20,7 @@
  */
 #include "platform.h"
 #include "taler_exchangedb_lib.h"
+#include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 
 static int result;
@@ -547,6 +548,70 @@ cb_wtid_check (void *cls,
 
 
 /**
+ * Function called with details about deposits that
+ * have been made.  Called in the test on the
+ * deposit given in @a cls.
+ *
+ * @param cls closure a `struct TALER_EXCHANGEDB_Deposit *`
+ * @param rowid unique ID for the deposit in our DB, used for marking
+ *              it as 'tiny' or 'done'
+ * @param merchant_pub public key of the merchant
+ * @param coin_pub public key of the coin
+ * @param amount_with_fee amount that was deposited including fee
+ * @param deposit_fee amount the exchange gets to keep as transaction fees
+ * @param transaction_id unique transaction ID chosen by the merchant
+ * @param h_contract hash of the contract between merchant and customer
+ * @param wire_deadline by which the merchant adviced that he would like the
+ *        wire transfer to be executed
+ * @param wire wire details for the merchant, NULL from iterate_matching_deposits()
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR if deposit does
+ *         not match our expectations
+ */
+static int
+deposit_cb (void *cls,
+            unsigned long long rowid,
+            const struct TALER_MerchantPublicKeyP *merchant_pub,
+            const struct TALER_CoinSpendPublicKeyP *coin_pub,
+            const struct TALER_Amount *amount_with_fee,
+            const struct TALER_Amount *deposit_fee,
+            uint64_t transaction_id,
+            const struct GNUNET_HashCode *h_contract,
+            struct GNUNET_TIME_Absolute wire_deadline,
+            const json_t *wire)
+{
+  struct TALER_EXCHANGEDB_Deposit *deposit = cls;
+  struct GNUNET_HashCode h_wire;
+
+  if (NULL != wire)
+    TALER_JSON_hash (wire, &h_wire);
+  if ( (0 != memcmp (merchant_pub,
+                     &deposit->merchant_pub,
+                     sizeof (struct TALER_MerchantPublicKeyP))) ||
+       (0 != TALER_amount_cmp (amount_with_fee,
+                               &deposit->amount_with_fee)) ||
+       (0 != TALER_amount_cmp (deposit_fee,
+                               &deposit->deposit_fee)) ||
+       (0 != memcmp (h_contract,
+                     &deposit->h_contract,
+                     sizeof (struct GNUNET_HashCode))) ||
+       (0 != memcmp (coin_pub,
+                     &deposit->coin.coin_pub,
+                     sizeof (struct TALER_CoinSpendPublicKeyP))) ||
+       (transaction_id != deposit->transaction_id) ||
+       ( (NULL != wire) &&
+         (0 != memcmp (&h_wire,
+                       &deposit->h_wire,
+                       sizeof (struct GNUNET_HashCode))) ) )
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  return GNUNET_OK;
+}
+
+
+/**
  * Main function that will be run by the scheduler.
  *
  * @param cls closure with config
@@ -739,14 +804,16 @@ run (void *cls,
   RND_BLK (&deposit.csig);
   RND_BLK (&deposit.merchant_pub);
   RND_BLK (&deposit.h_contract);
-  RND_BLK (&deposit.h_wire);
   wire = json_loads (json_wire_str, 0, NULL);
+  TALER_JSON_hash (wire,
+                   &deposit.h_wire);
   deposit.wire = wire;
   deposit.transaction_id =
       GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
   deposit.amount_with_fee = value;
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (CURRENCY, &deposit.deposit_fee));
+  result = 8;
   FAILIF (GNUNET_OK !=
           plugin->insert_deposit (plugin->cls,
                                   session, &deposit));
@@ -754,6 +821,15 @@ run (void *cls,
           plugin->have_deposit (plugin->cls,
                                 session,
                                 &deposit));
+  result = 9;
+  FAILIF (1 !=
+          plugin->iterate_matching_deposits (plugin->cls,
+                                             session,
+                                             &deposit.h_wire,
+                                             &deposit.merchant_pub,
+                                             &deposit_cb, &deposit,
+                                             2));
+  result = 10;
   deposit2 = deposit;
   deposit2.transaction_id++;     /* should fail if transaction id is different */
   FAILIF (GNUNET_NO !=
@@ -880,6 +956,9 @@ main (int argc,
     GNUNET_break (0);
     return -1;
   }
+  GNUNET_log_setup (argv[0],
+                    "WARNING",
+                    NULL);
   plugin_name++;
   (void) GNUNET_asprintf (&testname,
                           "test-exchange-db-%s", plugin_name);

@@ -80,6 +80,7 @@ test_exchangedb_postgres_SOURCES = \
   test_exchangedb.c
 test_exchangedb_postgres_LDADD = \
   libtalerexchangedb.la \
+  $(top_builddir)/src/json/libtalerjson.la \
   $(top_srcdir)/src/util/libtalerutil.la \
   $(top_srcdir)/src/pq/libtalerpq.la \
   -lgnunetutil -ljansson

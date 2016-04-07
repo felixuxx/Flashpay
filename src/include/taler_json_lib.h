@@ -89,7 +89,7 @@ TALER_JSON_spec_denomination_signature (const char *field,
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 int
-TALER_JSON_hash (json_t *json,
+TALER_JSON_hash (const json_t *json,
                  struct GNUNET_HashCode *hc);
 
 #endif /* TALER_JSON_LIB_H_ */
