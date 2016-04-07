@@ -6,7 +6,7 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
-plugindir = $(libdir)/taler
+plugindir = $(libdir)/taler-exchange
 
 plugin_LTLIBRARIES = \
   libtaler_plugin_wire_sepa.la \
