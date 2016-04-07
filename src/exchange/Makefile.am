@@ -6,6 +6,11 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
+pkgcfgdir= $(pkgdatadir)/config.d/
+
+pkgcfg_DATA = \
+  exchange.conf
+
 bin_PROGRAMS = \
   taler-exchange-aggregator \
   taler-exchange-httpd
