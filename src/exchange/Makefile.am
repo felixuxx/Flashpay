@@ -88,4 +88,5 @@ TESTS = \
 
 
 EXTRA_DIST = \
-  test-taler-exchange-aggregator-postgres.conf
+  test-taler-exchange-aggregator-postgres.conf \
+  exchange.conf

@@ -87,8 +87,8 @@ test_exchangedb_postgres_LDADD = \
 
 test_perf_taler_exchangedb_SOURCES = \
   test_perf_taler_exchangedb.c \
-  perf_taler_exchangedb_init.c \
-  perf_taler_exchangedb_interpreter.c
+  perf_taler_exchangedb_init.c perf_taler_exchangedb_init.h \
+  perf_taler_exchangedb_interpreter.c perf_taler_exchangedb_interpreter.h
 test_perf_taler_exchangedb_LDADD = \
   libtalerexchangedb.la \
   $(top_srcdir)/src/util/libtalerutil.la \
@@ -98,8 +98,8 @@ test_perf_taler_exchangedb_LDADD = \
 
 perf_exchangedb_SOURCES = \
   perf_taler_exchangedb.c \
-  perf_taler_exchangedb_init.c \
-  perf_taler_exchangedb_interpreter.c
+  perf_taler_exchangedb_init.c perf_taler_exchangedb_init.h \
+  perf_taler_exchangedb_interpreter.c perf_taler_exchangedb_interpreter.h
 perf_exchangedb_LDADD = \
   libtalerexchangedb.la \
   $(top_srcdir)/src/util/libtalerutil.la \
