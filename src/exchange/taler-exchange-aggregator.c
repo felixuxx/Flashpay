@@ -198,11 +198,9 @@ static unsigned int aggregation_limit = TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT
  * We're being aborted with CTRL-C (or SIGTERM). Shut down.
  *
  * @param cls closure
- * @param tc scheduler context
  */
 static void
-shutdown_task (void *cls,
-               const struct GNUNET_SCHEDULER_TaskContext *tc)
+shutdown_task (void *cls)
 {
   if (NULL != task)
   {
@@ -517,17 +515,17 @@ prepare_cb (void *cls,
  * into larger wire transfers.
  *
  * @param cls NULL
- * @param tc scheduler context
  */
 static void
-run_aggregation (void *cls,
-                 const struct GNUNET_SCHEDULER_TaskContext *tc)
+run_aggregation (void *cls)
 {
   struct TALER_EXCHANGEDB_Session *session;
   unsigned int i;
   int ret;
+  const struct GNUNET_SCHEDULER_TaskContext *tc;
 
   task = NULL;
+  tc = GNUNET_SCHEDULER_get_task_context ();
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
     return;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -713,11 +711,9 @@ run_aggregation (void *cls,
  * do.
  *
  * @param cls pointer to an `int` which we will return from main()
- * @param tc scheduler context
  */
 static void
-run_transfers (void *cls,
-               const struct GNUNET_SCHEDULER_TaskContext *tc);
+run_transfers (void *cls);
 
 
 /**
@@ -895,15 +891,16 @@ wire_prepare_cb (void *cls,
  * @param tc scheduler context
  */
 static void
-run_transfers (void *cls,
-               const struct GNUNET_SCHEDULER_TaskContext *tc)
+run_transfers (void *cls)
 {
   int ret;
   struct TALER_EXCHANGEDB_Session *session;
+  const struct GNUNET_SCHEDULER_TaskContext *tc;
 
   task = NULL;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking for pending wire transfers\n");
+  tc = GNUNET_SCHEDULER_get_task_context ();
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
     return;
   if (NULL == (session = db_plugin->get_session (db_plugin->cls,
@@ -961,11 +958,9 @@ run_transfers (void *cls,
  * First task.
  *
  * @param cls closure, NULL
- * @param tc scheduler context
  */
 static void
-run (void *cls,
-     const struct GNUNET_SCHEDULER_TaskContext *tc)
+run (void *cls)
 {
   task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                    NULL);

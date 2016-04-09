@@ -305,22 +305,18 @@ static struct GNUNET_CRYPTO_RsaPublicKey *coin_pub;
  * Interprets the commands from the test program.
  *
  * @param cls the `struct State` of the interpreter
- * @param tc scheduler context
  */
 static void
-interpreter (void *cls,
-             const struct GNUNET_SCHEDULER_TaskContext *tc);
+interpreter (void *cls);
 
 
 /**
  * Task triggered whenever we are to shutdown.
  *
  * @param cls closure, NULL if we need to self-restart
- * @param tc context
  */
 static void
-shutdown_action (void *cls,
-                 const struct GNUNET_SCHEDULER_TaskContext *tc)
+shutdown_action (void *cls)
 {
   shutdown_task = NULL;
   if (NULL != mhd_task)
@@ -355,18 +351,18 @@ shutdown_action (void *cls,
  * process died).
  *
  * @param cls closure, NULL if we need to self-restart
- * @param tc context
  */
 static void
-maint_child_death (void *cls,
-                   const struct GNUNET_SCHEDULER_TaskContext *tc)
+maint_child_death (void *cls)
 {
   const struct GNUNET_DISK_FileHandle *pr;
   char c[16];
   struct State *state;
+  const struct GNUNET_SCHEDULER_TaskContext *tc;
 
   child_death_task = NULL;
   pr = GNUNET_DISK_pipe_handle (sigpipe, GNUNET_DISK_PIPE_END_READ);
+  tc = GNUNET_SCHEDULER_get_task_context ();
   if (0 == (tc->reason & GNUNET_SCHEDULER_REASON_READ_READY))
   {
     /* shutdown scheduled us, ignore! */
@@ -384,7 +380,7 @@ maint_child_death (void *cls,
   aggregator_state->ioff++;
   state = aggregator_state;
   aggregator_state = NULL;
-  interpreter (state, NULL);
+  interpreter (state);
   if (NULL == shutdown_task)
     return;
   child_death_task = GNUNET_SCHEDULER_add_read_file (GNUNET_TIME_UNIT_FOREVER_REL,
@@ -527,11 +523,9 @@ fail (struct Command *cmd)
  * Interprets the commands from the test program.
  *
  * @param cls the `struct State` of the interpreter
- * @param tc scheduler context
  */
 static void
-interpreter (void *cls,
-             const struct GNUNET_SCHEDULER_TaskContext *tc)
+interpreter (void *cls)
 {
   struct State *state = cls;
 
@@ -864,11 +858,9 @@ handle_mhd_request (void *cls,
  * Task run whenever HTTP server operations are pending.
  *
  * @param cls NULL
- * @param tc scheduler context
  */
 static void
-run_mhd (void *cls,
-         const struct GNUNET_SCHEDULER_TaskContext *tc);
+run_mhd (void *cls);
 
 
 /**
@@ -934,11 +926,9 @@ schedule_httpd ()
  * Task run whenever HTTP server operations are pending.
  *
  * @param cls NULL
- * @param tc scheduler context
  */
 static void
-run_mhd (void *cls,
-         const struct GNUNET_SCHEDULER_TaskContext *tc)
+run_mhd (void *cls)
 {
   mhd_task = NULL;
   MHD_run (mhd_bank);
@@ -950,11 +940,9 @@ run_mhd (void *cls,
  * Main function that will be run by the scheduler.
  *
  * @param cls closure with configuration
- * @param tc unused
  */
 static void
-run (void *cls,
-     const struct GNUNET_SCHEDULER_TaskContext *tc)
+run (void *cls)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;

@@ -573,11 +573,9 @@ struct InterpreterState
  * Task that runs the context's event loop with the GNUnet scheduler.
  *
  * @param cls unused
- * @param tc scheduler context (unused)
  */
 static void
-context_task (void *cls,
-              const struct GNUNET_SCHEDULER_TaskContext *tc);
+context_task (void *cls);
 
 
 /**
@@ -641,11 +639,9 @@ find_command (const struct InterpreterState *is,
  * Run the main interpreter loop that performs exchange operations.
  *
  * @param cls contains the `struct InterpreterState`
- * @param tc scheduler context
  */
 static void
-interpreter_run (void *cls,
-                 const struct GNUNET_SCHEDULER_TaskContext *tc);
+interpreter_run (void *cls);
 
 
 /**
@@ -1414,11 +1410,9 @@ deposit_wtid_cb (void *cls,
  * Run the main interpreter loop that performs exchange operations.
  *
  * @param cls contains the `struct InterpreterState`
- * @param tc scheduler context
  */
 static void
-interpreter_run (void *cls,
-                 const struct GNUNET_SCHEDULER_TaskContext *tc)
+interpreter_run (void *cls)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
@@ -1428,8 +1422,10 @@ interpreter_run (void *cls,
   struct TALER_Amount amount;
   struct GNUNET_TIME_Absolute execution_date;
   json_t *wire;
+  const struct GNUNET_SCHEDULER_TaskContext *tc;
 
   is->task = NULL;
+  tc = GNUNET_SCHEDULER_get_task_context ();
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
   {
     fprintf (stderr,
@@ -1993,11 +1989,9 @@ interpreter_run (void *cls,
  * Cleans up our state.
  *
  * @param cls the interpreter state.
- * @param tc unused
  */
 static void
-do_shutdown (void *cls,
-             const struct GNUNET_SCHEDULER_TaskContext *tc)
+do_shutdown (void *cls)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd;
@@ -2218,11 +2212,9 @@ cert_cb (void *cls,
  * Task that runs the context's event loop with the GNUnet scheduler.
  *
  * @param cls unused
- * @param tc scheduler context (unused)
  */
 static void
-context_task (void *cls,
-              const struct GNUNET_SCHEDULER_TaskContext *tc)
+context_task (void *cls)
 {
   long timeout;
   int max_fd;
@@ -2274,13 +2266,9 @@ context_task (void *cls,
  * Main function that will be run by the scheduler.
  *
  * @param cls closure
- * @param args remaining command-line arguments
- * @param cfgfile name of the configuration file used (for saving, can be NULL!)
- * @param config configuration
  */
 static void
-run (void *cls,
-     const struct GNUNET_SCHEDULER_TaskContext *tc)
+run (void *cls)
 {
   struct InterpreterState *is;
   static struct MeltDetails melt_coins_1[] = {

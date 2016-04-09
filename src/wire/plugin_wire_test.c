@@ -131,11 +131,9 @@ struct TALER_WIRE_ExecuteHandle
  * scheduler.
  *
  * @param cls our `struct TestClosure`
- * @param tc scheduler context (unused)
  */
 static void
-context_task (void *cls,
-              const struct GNUNET_SCHEDULER_TaskContext *sct)
+context_task (void *cls)
 {
   struct TestClosure *tc = cls;
   long timeout;
@@ -388,11 +386,9 @@ GNUNET_NETWORK_STRUCT_END
  * callback with the serialized state.
  *
  * @param cls the `struct TALER_WIRE_PrepareHandle`
- * @param sct unused
  */
 static void
-do_prepare (void *cls,
-            const struct GNUNET_SCHEDULER_TaskContext *sct)
+do_prepare (void *cls)
 {
   struct TALER_WIRE_PrepareHandle *pth = cls;
   char *wire_enc;

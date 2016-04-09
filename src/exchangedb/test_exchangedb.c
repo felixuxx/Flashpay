@@ -615,11 +615,9 @@ deposit_cb (void *cls,
  * Main function that will be run by the scheduler.
  *
  * @param cls closure with config
- * @param tc unused
  */
 static void
-run (void *cls,
-     const struct GNUNET_SCHEDULER_TaskContext *tc)
+run (void *cls)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct TALER_EXCHANGEDB_Session *session;
