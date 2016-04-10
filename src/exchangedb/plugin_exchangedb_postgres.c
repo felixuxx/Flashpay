@@ -950,10 +950,11 @@ postgres_prepare (PGconn *db_conn)
            " FROM deposits"
            " WHERE"
            " tiny=false AND"
-           " done=false"
+           " done=false AND"
+           " wire_deadline<$1"
            " ORDER BY wire_deadline ASC"
            " LIMIT 1",
-           0, NULL);
+           1, NULL);
 
   /* Used in #postgres_iterate_matching_deposits() */
   PREPARE ("deposits_iterate_matching",
@@ -2231,7 +2232,9 @@ postgres_get_ready_deposit (void *cls,
                             TALER_EXCHANGEDB_DepositIterator deposit_cb,
                             void *deposit_cb_cls)
 {
+  struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_end
   };
   PGresult *result;
