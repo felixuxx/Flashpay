@@ -2404,10 +2404,10 @@ postgres_iterate_matching_deposits (void *cls,
                       wire_deadline,
                       NULL);
     GNUNET_PQ_cleanup_result (rs);
-    PQclear (result);
     if (GNUNET_OK != ret)
       break;
   }
+  PQclear (result);
   return i;
 }
 
