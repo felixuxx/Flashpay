@@ -281,6 +281,11 @@ static struct MHD_Daemon *mhd_bank;
 static struct GNUNET_SCHEDULER_Task *mhd_task;
 
 /**
+ * Task running the interpreter().
+ */
+static struct GNUNET_SCHEDULER_Task *int_task;
+
+/**
  * We store transactions in a DLL.
  */
 static struct Transaction *transactions_head;
@@ -323,6 +328,11 @@ shutdown_action (void *cls)
   {
     GNUNET_SCHEDULER_cancel (mhd_task);
     mhd_task = NULL;
+  }
+  if (NULL != int_task)
+  {
+    GNUNET_SCHEDULER_cancel (int_task);
+    int_task = NULL;
   }
   if (NULL != mhd_bank)
   {
@@ -529,6 +539,7 @@ interpreter (void *cls)
 {
   struct State *state = cls;
 
+  int_task = NULL;
   while (1)
   {
     struct Command *cmd = &state->commands[state->ioff];
@@ -546,9 +557,9 @@ interpreter (void *cls)
       return;
     case OPCODE_WAIT:
       state->ioff++;
-      GNUNET_SCHEDULER_add_delayed (cmd->details.wait_delay,
-                                    &interpreter,
-                                    state);
+      int_task = GNUNET_SCHEDULER_add_delayed (cmd->details.wait_delay,
+                                               &interpreter,
+                                               state);
       return;
     case OPCODE_RUN_AGGREGATOR:
       GNUNET_assert (NULL == aggregator_state);
@@ -567,6 +578,22 @@ interpreter (void *cls)
     case OPCODE_EXPECT_TRANSACTIONS_EMPTY:
       if (NULL != transactions_head)
       {
+        struct Transaction *t;
+
+        fprintf (stderr,
+                 "Expected empty transaction set, but I have:\n");
+        for (t = transactions_head; NULL != t; t = t->next)
+        {
+          char *s;
+
+          s = TALER_amount_to_string (&t->amount);
+          fprintf (stderr,
+                   "%llu -> %llu (%s)\n",
+                   (unsigned long long) t->debit_account,
+                   (unsigned long long) t->credit_account,
+                   s);
+          GNUNET_free (s);
+        }
         fail (cmd);
         return;
       }
@@ -614,6 +641,20 @@ interpreter (void *cls)
         }
         if (GNUNET_NO == found)
         {
+          fprintf (stderr,
+                   "Did not find matching transaction!\nI have:\n");
+          for (t = transactions_head; NULL != t; t = t->next)
+          {
+            char *s;
+
+            s = TALER_amount_to_string (&t->amount);
+            fprintf (stderr,
+                     "%llu -> %llu (%s)\n",
+                     (unsigned long long) t->debit_account,
+                     (unsigned long long) t->credit_account,
+                     s);
+            GNUNET_free (s);
+          }
           fail (cmd);
           return;
         }
@@ -646,14 +687,15 @@ run_test ()
       .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
       .label = "expect-empty-transactions-on-start"
     },
+
     /* test simple deposit */
     {
       .opcode = OPCODE_DATABASE_DEPOSIT,
-      .label = "do-deposit-",
+      .label = "do-deposit-1",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
-      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 5s */
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:1",
       .details.deposit.deposit_fee = "EUR:0"
     },
@@ -677,51 +719,304 @@ run_test ()
 
     /* test idempotency: run again on transactions already done */
     {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-1"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-after-1"
+    },
+
+    /* test combining deposits */
+    {
       .opcode = OPCODE_DATABASE_DEPOSIT,
-      .label = "do-deposit-",
+      .label = "do-deposit-2a",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
-      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 5s */
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:1",
       .details.deposit.deposit_fee = "EUR:0"
     },
     {
-      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
-      .label = "expect-empty-transactions-on-start"
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-2b",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
+      .details.deposit.amount_with_fee = "EUR:1",
+      .details.deposit.deposit_fee = "EUR:0"
     },
-
     {
-      .opcode = OPCODE_TERMINATE_SUCCESS,
-      .label = "testcase-incomplete-terminating-with-skip"
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-2"
     },
-
-    {
-      .opcode = OPCODE_TERMINATE_SKIP,
-      .label = "testcase-incomplete-terminating-with-skip"
-    },
-    /* note: rest not reached, just sample code */
     {
       .opcode = OPCODE_EXPECT_TRANSACTION,
-      .label = "testing test logic",
-      .details.expect_transaction.debit_account = 1,
-      .details.expect_transaction.credit_account = 1,
-      .details.expect_transaction.amount = "EUR:1"
+      .label = "expect-deposit-2",
+      .details.expect_transaction.debit_account = 3,
+      .details.expect_transaction.credit_account = 4,
+      .details.expect_transaction.amount = "EUR:2"
+    },
+
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-after-2"
+    },
+
+    /* test NOT combining deposits of different accounts or keys */
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-3a",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
+      .details.deposit.amount_with_fee = "EUR:1",
+      .details.deposit.deposit_fee = "EUR:0"
     },
     {
       .opcode = OPCODE_DATABASE_DEPOSIT,
-      .label = "deposit",
+      .label = "do-deposit-3b",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 5,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
+      .details.deposit.amount_with_fee = "EUR:1",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-3c",
+      .details.deposit.merchant_name = "alice",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
+      .details.deposit.amount_with_fee = "EUR:1",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-3"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTION,
+      .label = "expect-deposit-3a",
+      .details.expect_transaction.debit_account = 3,
+      .details.expect_transaction.credit_account = 4,
+      .details.expect_transaction.amount = "EUR:1"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTION,
+      .label = "expect-deposit-3b",
+      .details.expect_transaction.debit_account = 3,
+      .details.expect_transaction.credit_account = 4,
+      .details.expect_transaction.amount = "EUR:1"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTION,
+      .label = "expect-deposit-3c",
+      .details.expect_transaction.debit_account = 3,
+      .details.expect_transaction.credit_account = 5,
+      .details.expect_transaction.amount = "EUR:1"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-after-3"
+    },
+
+    /* test NOT running deposits instantly, but after delay */
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-4a",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
-      .details.deposit.amount_with_fee = "EUR:1",
+      .details.deposit.amount_with_fee = "EUR:0.01",
       .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-4b",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
+      .details.deposit.amount_with_fee = "EUR:0.01",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-4-early"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-after-4-fast"
     },
     {
       .opcode = OPCODE_WAIT,
       .label = "wait (5s)",
-      .details.wait_delay = { 1000LL * 1000 * 5 } /* 5s */
+      .details.wait_delay = { 1000LL * 1000 * 6 } /* 6s */
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-4-delayed"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTION,
+      .label = "expect-deposit-4",
+      .details.expect_transaction.debit_account = 3,
+      .details.expect_transaction.credit_account = 4,
+      .details.expect_transaction.amount = "EUR:0.02"
+    },
+
+    /* test picking all deposits at earliest deadline */
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-5a",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 10 }, /* 10s */
+      .details.deposit.amount_with_fee = "EUR:0.01",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-5b",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
+      .details.deposit.amount_with_fee = "EUR:0.01",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-5-early"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-after-5-early"
+    },
+    {
+      .opcode = OPCODE_WAIT,
+      .label = "wait (5s)",
+      .details.wait_delay = { 1000LL * 1000 * 6 } /* 6s */
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-5-delayed"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTION,
+      .label = "expect-deposit-5",
+      .details.expect_transaction.debit_account = 3,
+      .details.expect_transaction.credit_account = 4,
+      .details.expect_transaction.amount = "EUR:0.02"
+    },
+
+    /* Test NEVER running 'tiny' unless they make up minimum unit */
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-6a",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
+      .details.deposit.amount_with_fee = "EUR:0.002",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-6a-tiny"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-after-6a-tiny"
+    },
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-6b",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
+      .details.deposit.amount_with_fee = "EUR:0.002",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-6c",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
+      .details.deposit.amount_with_fee = "EUR:0.002",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-6c-tiny"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-after-6c-tiny"
+    },
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-6d",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
+      .details.deposit.amount_with_fee = "EUR:0.002",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-6d-tiny"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-after-6d-tiny"
+    },
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-6e",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
+      .details.deposit.amount_with_fee = "EUR:0.002",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-6e"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTION,
+      .label = "expect-deposit-6",
+      .details.expect_transaction.debit_account = 3,
+      .details.expect_transaction.credit_account = 4,
+      .details.expect_transaction.amount = "EUR:0.01"
+    },
+
+    /* TODO: might want to test "profiteering" from
+       rounding down... */
+
+    /* Everything tested, terminate with success */
+    {
+      .opcode = OPCODE_TERMINATE_SUCCESS,
+      .label = "testcase-complete-terminating-with-success"
+    },
+    /* note: rest not reached, this is just sample code */
+    {
+      .opcode = OPCODE_TERMINATE_SKIP,
+      .label = "testcase-incomplete-terminating-with-skip"
     }
   };
   static struct State state = {
@@ -730,8 +1025,8 @@ run_test ()
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching interpreter\n");
-  GNUNET_SCHEDULER_add_now (&interpreter,
-                            &state);
+  int_task = GNUNET_SCHEDULER_add_now (&interpreter,
+                                       &state);
 }
 
 
