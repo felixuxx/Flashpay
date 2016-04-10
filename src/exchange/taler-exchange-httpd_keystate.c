@@ -650,9 +650,9 @@ TMH_KS_acquire_ (const char *location)
     TALER_EXCHANGEDB_signing_keys_iterate (TMH_exchange_directory,
                                        &reload_keys_sign_iter,
                                        key_state);
-    TALER_EXCHANGEDB_auditor_iterate (TMH_exchange_directory,
-                                  &reload_auditor_iter,
-                                  key_state);
+    TALER_EXCHANGEDB_auditor_iterate (cfg,
+                                      &reload_auditor_iter,
+                                      key_state);
     ks.purpose.size = htonl (sizeof (ks));
     ks.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET);
     ks.list_issue_date = GNUNET_TIME_absolute_hton (key_state->reload_time);

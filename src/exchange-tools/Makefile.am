@@ -1,6 +1,14 @@
 # This Makefile.am is in the public domain
 AM_CPPFLAGS = -I$(top_srcdir)/src/include
 
+pkgcfgdir = $(prefix)/share/taler/config.d/
+
+pkgcfg_DATA = \
+  auditor.conf \
+  exchange-signkeys.conf \
+  coins.conf
+
+
 if USE_COVERAGE
   AM_CFLAGS = --coverage -O0
   XLIB = -lgcov
@@ -81,3 +89,7 @@ taler_exchange_dbinit_CPPFLAGS = \
   -I$(top_srcdir)/src/include \
   -I$(top_srcdir)/src/pq/ \
   $(POSTGRESQL_CPPFLAGS)
+
+
+EXTRA_DIST = \
+  auditor.conf

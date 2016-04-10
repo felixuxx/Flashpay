@@ -46,6 +46,11 @@ static char *method;
  */
 static char *output_filename;
 
+/**
+ * Our configuration.
+ */
+static struct GNUNET_CONFIGURATION_Handle *cfg;
+
 
 /**
  * The main function of the taler-exchange-sepa tool.  This tool is used
@@ -59,7 +64,9 @@ int
 main (int argc,
       char *const *argv)
 {
-  static const struct GNUNET_GETOPT_CommandLineOption options[] = {
+  char *cfgfile = NULL;
+  const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_OPTION_CFG_FILE (&cfgfile),
     {'j', "json", "JSON",
      "account information in JSON format", 1,
      &GNUNET_GETOPT_set_string, &json_in},
@@ -95,10 +102,26 @@ main (int argc,
                          options,
                          argc, argv) < 0)
     return 1;
-  if (NULL == masterkeyfile)
+  cfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_load (cfg,
+                                                  cfgfile))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                _("Malformed configuration file `%s', exit ...\n"),
+                cfgfile);
+    GNUNET_free_non_null (cfgfile);
+    return 1;
+  }
+  GNUNET_free_non_null (cfgfile);
+  if ( (NULL == masterkeyfile) &&
+       (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                                 "exchange-master",
+                                                 "MASTER_PRIV_FILE",
+                                                 &masterkeyfile)) )
   {
     fprintf (stderr,
-             "Master key file not given\n");
+             "Master key file not given in neither configuration nor command-line\n");
     return 1;
   }
   eddsa_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (masterkeyfile);

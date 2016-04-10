@@ -37,12 +37,6 @@
  */
 #define TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS "denomkeys"
 
-/**
- * Subdirectory under the exchange's base directory which contains
- * the exchange's auditing information.
- */
-#define TALER_EXCHANGEDB_DIR_AUDITORS "auditors"
-
 
 GNUNET_NETWORK_STRUCT_BEGIN
 
@@ -234,9 +228,7 @@ typedef int
 /**
  * Call @a it with information for each auditor found in the @a exchange_base_dir.
  *
- * @param exchange_base_dir base directory for the exchange,
- *                      the signing keys must be in the #TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS
- *                      subdirectory
+ * @param cfg configuration to use
  * @param it function to call with auditor information
  * @param it_cls closure for @a it
  * @return -1 on error, 0 if no files were found, otherwise
@@ -245,7 +237,7 @@ typedef int
  *         as maybe none of the files were well-formed)
  */
 int
-TALER_EXCHANGEDB_auditor_iterate (const char *exchange_base_dir,
+TALER_EXCHANGEDB_auditor_iterate (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                   TALER_EXCHANGEDB_AuditorIterator it,
                                   void *it_cls);
 

@@ -2539,13 +2539,15 @@ main (int argc,
   GNUNET_log_setup ("test-exchange-api",
                     "WARNING",
                     NULL);
+  /* These might get in the way... */
+  unsetenv ("XDG_DATA_HOME");
+  unsetenv ("XDG_CONFIG_HOME");
   proc = GNUNET_OS_start_process (GNUNET_NO,
                                   GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,
                                   "taler-exchange-keyup",
                                   "taler-exchange-keyup",
-                                  "-d", "test-exchange-home",
-                                  "-m", "test-exchange-home/master.priv",
+                                  "-c", "test_exchange_api.conf",
                                   NULL);
   GNUNET_OS_process_wait (proc);
   GNUNET_OS_process_destroy (proc);
@@ -2554,7 +2556,7 @@ main (int argc,
                                        NULL, NULL, NULL,
                                        "taler-exchange-httpd",
                                        "taler-exchange-httpd",
-                                       "-d", "test-exchange-home",
+                                       "-c", "test_exchange_api.conf",
                                        NULL);
   /* give child time to start and bind against the socket */
   fprintf (stderr, "Waiting for taler-exchange-httpd to be ready");

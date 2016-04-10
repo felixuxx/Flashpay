@@ -502,9 +502,7 @@ auditor_iter (void *cls,
 /**
  * Call @a it with information for each auditor found in the @a exchange_base_dir.
  *
- * @param exchange_base_dir base directory for the exchange,
- *                      the signing keys must be in the #TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS
- *                      subdirectory
+ * @param cfg configuration to use
  * @param it function to call with auditor information
  * @param it_cls closure for @a it
  * @return -1 on error, 0 if no files were found, otherwise
@@ -513,23 +511,26 @@ auditor_iter (void *cls,
  *         as maybe none of the files were well-formed)
  */
 int
-TALER_EXCHANGEDB_auditor_iterate (const char *exchange_base_dir,
+TALER_EXCHANGEDB_auditor_iterate (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                   TALER_EXCHANGEDB_AuditorIterator it,
                                   void *it_cls)
 {
-  char *dir;
   struct AuditorIterateContext aic;
   int ret;
+  char *auditor_base_dir;
 
-  GNUNET_asprintf (&dir,
-                   "%s" DIR_SEPARATOR_STR TALER_EXCHANGEDB_DIR_AUDITORS,
-                   exchange_base_dir);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                               "exchangedb",
+                                               "AUDITOR_BASE_DIR",
+                                               &auditor_base_dir))
+    return -1;
   aic.it = it;
   aic.it_cls = it_cls;
-  ret = GNUNET_DISK_directory_scan (dir,
+  ret = GNUNET_DISK_directory_scan (auditor_base_dir,
                                     &auditor_iter,
                                     &aic);
-  GNUNET_free (dir);
+  GNUNET_free (auditor_base_dir);
   return ret;
 }
 

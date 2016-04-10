@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -104,8 +104,8 @@ static int
 exchange_signkeys_check ()
 {
   if (0 > TALER_EXCHANGEDB_signing_keys_iterate (exchange_directory,
-                                       &signkeys_iter,
-                                       NULL))
+                                                 &signkeys_iter,
+                                                 NULL))
     return GNUNET_NO;
   return GNUNET_OK;
 }
@@ -186,8 +186,8 @@ static int
 exchange_denomkeys_check ()
 {
   if (0 > TALER_EXCHANGEDB_denomination_keys_iterate (exchange_directory,
-                                                  &denomkeys_iter,
-                                                  NULL))
+                                                      &denomkeys_iter,
+                                                      NULL))
     return GNUNET_NO;
   return GNUNET_OK;
 }
@@ -203,11 +203,10 @@ exchange_denomkeys_check ()
 int
 main (int argc, char *const *argv)
 {
-  static const struct GNUNET_GETOPT_CommandLineOption options[] = {
+  char *cfgfile;
+  const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_OPTION_CFG_FILE (&cfgfile),
     GNUNET_GETOPT_OPTION_HELP ("gnunet-exchange-keycheck OPTIONS"),
-    {'d', "directory", "DIRECTORY",
-     "exchange directory with keys to check", 1,
-     &GNUNET_GETOPT_set_filename, &exchange_directory},
     GNUNET_GETOPT_OPTION_END
   };
 
@@ -220,20 +219,29 @@ main (int argc, char *const *argv)
                          options,
                          argc, argv) < 0)
     return 1;
-  if (NULL == exchange_directory)
+  kcfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_load (kcfg,
+                                                  cfgfile))
   {
-    fprintf (stderr,
-             "Exchange directory not given\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                _("Malformed configuration file `%s', exit ...\n"),
+                cfgfile);
+    GNUNET_free_non_null (cfgfile);
+    return 1;
+  }
+  GNUNET_free_non_null (cfgfile);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (kcfg,
+                                               "exchange",
+                                               "KEYDIR",
+                                               &exchange_directory))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "KEYDIR");
     return 1;
   }
 
-  kcfg = TALER_config_load (exchange_directory);
-  if (NULL == kcfg)
-  {
-    fprintf (stderr,
-             "Failed to load exchange configuration\n");
-    return 1;
-  }
   if ( (GNUNET_OK != exchange_signkeys_check ()) ||
        (GNUNET_OK != exchange_denomkeys_check ()) )
   {

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -876,10 +876,9 @@ int
 main (int argc,
       char *const *argv)
 {
-  static const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    {'d', "exchange-dir", "DIR",
-     "exchange directory with keys to update", 1,
-     &GNUNET_GETOPT_set_filename, &exchange_directory},
+  char *cfgfile = NULL;
+  const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_OPTION_CFG_FILE (&cfgfile),
     GNUNET_GETOPT_OPTION_HELP ("Setup signing and denomination keys for a Taler exchange"),
     {'m', "master-key", "FILE",
      "master key file (private key)", 1,
@@ -905,12 +904,17 @@ main (int argc,
                          options,
                          argc, argv) < 0)
     return 1;
-  if (NULL == exchange_directory)
+  kcfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_load (kcfg,
+                                                  cfgfile))
   {
-    fprintf (stderr,
-             "Exchange directory not given\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                _("Malformed configuration file `%s', exit ...\n"),
+                cfgfile);
+    GNUNET_free_non_null (cfgfile);
     return 1;
   }
+  GNUNET_free_non_null (cfgfile);
   if (NULL != pretend_time_str)
   {
     if (GNUNET_OK !=
@@ -928,18 +932,26 @@ main (int argc,
     now = GNUNET_TIME_absolute_get ();
   }
   GNUNET_TIME_round_abs (&now);
-
-  kcfg = TALER_config_load (exchange_directory);
-  if (NULL == kcfg)
+  if ( (NULL == masterkeyfile) &&
+       (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_filename (kcfg,
+                                                 "exchange",
+                                                 "MASTER_PRIV_FILE",
+                                                 &masterkeyfile)) )
   {
     fprintf (stderr,
-             "Failed to load exchange configuration\n");
+             "Master key file not given in neither configuration nor command-line\n");
     return 1;
   }
-  if (NULL == masterkeyfile)
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (kcfg,
+                                               "exchange",
+                                               "KEYDIR",
+                                               &exchange_directory))
   {
-    fprintf (stderr,
-             "Master key file not given\n");
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "KEYDIR");
     return 1;
   }
   eddsa_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (masterkeyfile);

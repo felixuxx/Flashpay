@@ -360,16 +360,20 @@ handle_mhd_request (void *cls,
  * @return #GNUNET_OK on success
  */
 static int
-exchange_serve_process_config (const char *exchange_directory)
+exchange_serve_process_config ()
 {
   unsigned long long port;
   char *TMH_master_public_key_str;
 
-  cfg = TALER_config_load (exchange_directory);
-  if (NULL == cfg)
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                               "exchange",
+                                               "KEYDIR",
+                                               &TMH_exchange_directory))
   {
-    fprintf (stderr,
-             "Failed to load exchange configuration\n");
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "KEYDIR");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -615,13 +619,12 @@ int
 main (int argc,
       char *const *argv)
 {
-  static const struct GNUNET_GETOPT_CommandLineOption options[] = {
+  char *cfgfile = NULL;
+  const struct GNUNET_GETOPT_CommandLineOption options[] = {
     {'C', "connection-close", NULL,
      "force HTTP connections to be closed after each request", 0,
      &GNUNET_GETOPT_set_one, &TMH_exchange_connection_close},
-    {'d', "exchange-dir", "DIR",
-     "exchange directory with configuration and keys for operating the exchange", 1,
-     &GNUNET_GETOPT_set_filename, &TMH_exchange_directory},
+    GNUNET_GETOPT_OPTION_CFG_FILE (&cfgfile),
     {'t', "timeout", "SECONDS",
      "after how long do connections timeout by default (in seconds)", 1,
      &GNUNET_GETOPT_set_uint, &connection_timeout},
@@ -645,15 +648,18 @@ main (int argc,
                          options,
                          argc, argv))
     return 1;
-  if (NULL == TMH_exchange_directory)
+  cfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_load (cfg, cfgfile))
   {
-    fprintf (stderr,
-             "Exchange directory not specified\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                _("Malformed configuration file `%s', exit ...\n"),
+                cfgfile);
+    GNUNET_free_non_null (cfgfile);
     return 1;
   }
-
+  GNUNET_free_non_null (cfgfile);
   if (GNUNET_OK !=
-      exchange_serve_process_config (TMH_exchange_directory))
+      exchange_serve_process_config ())
     return 1;
 
   mydaemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,

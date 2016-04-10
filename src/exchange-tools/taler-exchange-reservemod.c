@@ -51,6 +51,7 @@ static struct TALER_EXCHANGEDB_Plugin *plugin;
 int
 main (int argc, char *const *argv)
 {
+  char *cfgfile = NULL;
   char *reserve_pub_str = NULL;
   char *add_str = NULL;
   struct TALER_Amount add_value;
@@ -63,10 +64,8 @@ main (int argc, char *const *argv)
     {'a', "add", "DENOM",
      "value to add", 1,
      &GNUNET_GETOPT_set_string, &add_str},
-    {'d', "exchange-dir", "DIR",
-     "exchange directory with keys to update", 1,
-     &GNUNET_GETOPT_set_filename, &exchange_directory},
-    {'D', "details", "JSON",
+    GNUNET_GETOPT_OPTION_CFG_FILE (&cfgfile),
+    {'d', "details", "JSON",
      "details about the bank transaction which justify why we add this amount", 1,
      &GNUNET_GETOPT_set_string, &details},
     GNUNET_GETOPT_OPTION_HELP ("Deposit funds into a Taler reserve"),
@@ -87,10 +86,29 @@ main (int argc, char *const *argv)
                          options,
                          argc, argv) < 0)
     return 1;
-  if (NULL == exchange_directory)
+  cfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_load (cfg,
+                                                  cfgfile))
   {
-    fprintf (stderr,
-             "Exchange directory not given\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                _("Malformed configuration file `%s', exit ...\n"),
+                cfgfile);
+    GNUNET_free_non_null (cfgfile);
+    GNUNET_free_non_null (add_str);
+    GNUNET_free_non_null (details);
+    GNUNET_free_non_null (reserve_pub_str);
+    return 1;
+  }
+  GNUNET_free_non_null (cfgfile);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                               "exchange",
+                                               "KEYDIR",
+                                               &exchange_directory))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "KEYDIR");
     GNUNET_free_non_null (add_str);
     GNUNET_free_non_null (details);
     GNUNET_free_non_null (reserve_pub_str);
@@ -133,16 +151,6 @@ main (int argc, char *const *argv)
    return 1;
   }
 
-  cfg = TALER_config_load (exchange_directory);
-  if (NULL == cfg)
-  {
-    fprintf (stderr,
-             "Failed to load exchange configuration\n");
-    GNUNET_free_non_null (add_str);
-    GNUNET_free_non_null (details);
-    GNUNET_free_non_null (reserve_pub_str);
-   return 1;
-  }
   ret = 1;
   if (NULL ==
       (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))

@@ -6,6 +6,15 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
+
+pkgcfgdir = $(prefix)/share/taler/config.d/
+
+pkgcfg_DATA = \
+  paths.conf
+
+EXTRA_DIST = \
+  paths.conf
+
 if WALLET_ONLY
 lib_LTLIBRARIES = \
   libtalerutil_wallet.la

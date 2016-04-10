@@ -59,6 +59,11 @@ static char *auditor_url;
  */
 static struct TALER_MasterPublicKeyP master_public_key;
 
+/**
+ * Our configuration.
+ */
+static struct GNUNET_CONFIGURATION_Handle *cfg;
+
 
 /**
  * Print denomination key details for diagnostics.
@@ -131,10 +136,12 @@ int
 main (int argc,
       char *const *argv)
 {
-  static const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    {'a', "auditor-key", "FILE",
+  char *cfgfile = NULL;
+  const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    {'a', "auditor-key", "FILENAME",
      "file containing the private key of the auditor", 1,
      &GNUNET_GETOPT_set_filename, &auditor_key_file},
+    GNUNET_GETOPT_OPTION_CFG_FILE (&cfgfile),
     GNUNET_GETOPT_OPTION_HELP ("Private key of the auditor to use for signing"),
     {'m', "exchange-key", "KEY",
      "public key of the exchange (Crockford base32 encoded)", 1,
@@ -142,10 +149,10 @@ main (int argc,
     {'u', "auditor-url", "URL",
      "URL of the auditor (informative link for the user)", 1,
      &GNUNET_GETOPT_set_string, &auditor_url},
-    {'r', "exchange-request", "FILE",
+    {'r', "exchange-request", "FILENAME",
      "set of keys the exchange requested the auditor to sign", 1,
      &GNUNET_GETOPT_set_string, &exchange_request_file},
-    {'o', "output", "FILE",
+    {'o', "output", "FILENAME",
      "where to write our signature", 1,
      &GNUNET_GETOPT_set_string, &output_file},
     GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
@@ -163,20 +170,41 @@ main (int argc,
   unsigned int i;
 
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-exchange-keyup",
+                 GNUNET_log_setup ("taler-auditor-sign",
                                    "WARNING",
                                    NULL));
-  if (GNUNET_GETOPT_run ("taler-exchange-keyup",
+  if (GNUNET_GETOPT_run ("taler-auditor-sign",
                          options,
                          argc, argv) < 0)
     return 1;
-  if (NULL == auditor_key_file)
+  cfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_load (cfg,
+                                                  cfgfile))
   {
-    fprintf (stderr,
-             "Auditor key file not given\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                _("Malformed configuration file `%s', exit ...\n"),
+                cfgfile);
+    GNUNET_free_non_null (cfgfile);
     return 1;
   }
-  if (NULL == auditor_url)
+  GNUNET_free_non_null (cfgfile);
+  if ( (NULL == auditor_key_file) &&
+       (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                                 "auditor",
+                                                 "AUDITOR_PRIV_FILE",
+                                                 &auditor_key_file)) )
+  {
+    fprintf (stderr,
+             "Auditor key file not given in neither configuration nor command-line\n");
+    return 1;
+  }
+  if ( (NULL == auditor_url) &&
+       (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "auditor",
+                                               "AUDITOR_URL",
+                                               &auditor_url)) )
   {
     fprintf (stderr,
              "Auditor URL not given\n");
@@ -328,6 +356,7 @@ main (int argc,
     GNUNET_free (dks);
     return 1;
   }
+
   GNUNET_free (sigs);
   GNUNET_free (dks);
   GNUNET_free (eddsa_priv);

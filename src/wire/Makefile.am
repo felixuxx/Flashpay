@@ -6,6 +6,17 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
+pkgcfgdir = $(prefix)/share/taler/config.d/
+
+pkgcfg_DATA = \
+  wire-sepa.conf \
+  wire-test.conf
+
+
+EXTRA_DIST = \
+  wire-sepa.conf \
+  wire-test.conf
+
 plugindir = $(libdir)/taler
 
 plugin_LTLIBRARIES = \

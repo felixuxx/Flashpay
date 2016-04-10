@@ -96,17 +96,6 @@ TALER_b2s (const void *buf,
 
 
 /**
- * Load configuration by parsing all configuration
- * files in the given directory.
- *
- * @param base_dir directory with the configuration files
- * @return NULL on error, otherwise configuration
- */
-struct GNUNET_CONFIGURATION_Handle *
-TALER_config_load (const char *base_dir);
-
-
-/**
  * Obtain denomination amount from configuration file.
  *
  * @param section section of the configuration to access

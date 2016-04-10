@@ -6,6 +6,17 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
+pkgcfgdir = $(prefix)/share/taler/config.d/
+
+pkgcfg_DATA = \
+  exchangedb.conf \
+  exchangedb-postgres.conf
+
+EXTRA_DIST = \
+  exchangedb.conf \
+  exchangedb-postgres.conf
+
+
 plugindir = $(libdir)/taler
 
 if HAVE_POSTGRESQL

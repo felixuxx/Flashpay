@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # This file is part of TALER
-# Copyright (C) 2015 GNUnet e.V.
+# Copyright (C) 2015, 2016 Inria and GNUnet e.V.
 #
 #  TALER is free software; you can redistribute it and/or modify it under the
 #  terms of the GNU Affero General Public License as published by the Free Software
@@ -19,15 +19,19 @@
 # taler-exchange-httpd.  Basically, the goal is to make sure that the
 # HTTP server survives (and produces the 'correct' error code).
 #
-# We read the JSON snippets to POST from test_taler_exchange_httpd.data
+#
+# Clear environment from variables that override config.
+export XDG_DATA_HOME=
+export XDG_CONFIG_HOME=
 #
 # Setup keys.
-taler-exchange-keyup -d test-exchange-home -m test-exchange-home/master.priv
+taler-exchange-keyup -c test_taler_exchange_httpd.conf
 # Run Exchange HTTPD (in background)
-taler-exchange-httpd -d test-exchange-home &
+taler-exchange-httpd -c test_taler_exchange_httpd.conf &
 # Give HTTP time to start
 sleep 5
-# Run test...
+# Finally run test...
+# We read the JSON snippets to POST from test_taler_exchange_httpd.data
 cat test_taler_exchange_httpd.data | grep -v ^\# | awk '{ print "curl -d \47"  $2 "\47 http://localhost:8081" $1 }' | bash
 # Stop HTTP server
 kill -TERM %%

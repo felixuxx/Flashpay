@@ -20,23 +20,7 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
-#include <libpq-fe.h>
 #include "taler_exchangedb_plugin.h"
-
-/**
- * Exchange directory with the keys.
- */
-static char *exchange_base_dir;
-
-/**
- * Our configuration.
- */
-static struct GNUNET_CONFIGURATION_Handle *cfg;
-
-/**
- * Our DB plugin.
- */
-static struct TALER_EXCHANGEDB_Plugin *plugin;
 
 
 /**
@@ -51,14 +35,15 @@ int
 main (int argc,
       char *const *argv)
 {
-  static const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    {'d', "exchange-dir", "DIR",
-     "exchange directory", 1,
-     &GNUNET_GETOPT_set_filename, &exchange_base_dir},
+  char *cfgfile = NULL;
+  const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_OPTION_CFG_FILE (&cfgfile),
     GNUNET_GETOPT_OPTION_HELP ("Initialize Taler Exchange database"),
     GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
+  struct GNUNET_CONFIGURATION_Handle *cfg;
+  struct TALER_EXCHANGEDB_Plugin *plugin;
 
   if (GNUNET_GETOPT_run ("taler-exchange-dbinit",
                          options,
@@ -69,24 +54,23 @@ main (int argc,
                  GNUNET_log_setup ("taler-exchange-dbinit",
                                    "INFO",
                                    NULL));
-  if (NULL == exchange_base_dir)
+  cfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_load (cfg,
+                                                  cfgfile))
   {
-    fprintf (stderr,
-             "Exchange base directory not given.\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                _("Malformed configuration file `%s', exit ...\n"),
+                cfgfile);
+    GNUNET_free_non_null (cfgfile);
     return 1;
   }
-  cfg = TALER_config_load (exchange_base_dir);
-  if (NULL == cfg)
-  {
-    fprintf (stderr,
-             "Failed to load exchange configuration.\n");
-    return 1;
-  }
+  GNUNET_free_non_null (cfgfile);
   if (NULL ==
       (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
   {
     fprintf (stderr,
              "Failed to initialize database plugin.\n");
+    GNUNET_CONFIGURATION_destroy (cfg);
     return 1;
   }
   if (GNUNET_OK !=
@@ -96,9 +80,11 @@ main (int argc,
     fprintf (stderr,
              "Failed to initialize database.\n");
     TALER_EXCHANGEDB_plugin_unload (plugin);
+    GNUNET_CONFIGURATION_destroy (cfg);
     return 1;
   }
   TALER_EXCHANGEDB_plugin_unload (plugin);
+  GNUNET_CONFIGURATION_destroy (cfg);
   return 0;
 }
 

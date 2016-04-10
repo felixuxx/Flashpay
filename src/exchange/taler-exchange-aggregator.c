@@ -135,11 +135,6 @@ static char *exchange_currency_string;
 static char *exchange_wireformat;
 
 /**
- * Base directory of the exchange (global)
- */
-static char *exchange_directory;
-
-/**
  * The exchange's configuration (global)
  */
 static struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -238,26 +233,20 @@ shutdown_task (void *cls)
   }
   TALER_EXCHANGEDB_plugin_unload (db_plugin);
   TALER_WIRE_plugin_unload (wire_plugin);
+  GNUNET_CONFIGURATION_destroy (cfg);
+  cfg = NULL;
 }
 
 
 /**
- * Load configuration parameters for the exchange
- * server into the corresponding global variables.
+ * Parse configuration parameters for the exchange server into the
+ * corresponding global variables.
  *
- * @param exchange_directory the exchange's directory
  * @return #GNUNET_OK on success
  */
 static int
-exchange_serve_process_config (const char *exchange_directory)
+exchange_serve_process_config ()
 {
-  cfg = TALER_config_load (exchange_directory);
-  if (NULL == cfg)
-  {
-    fprintf (stderr,
-             "Failed to load exchange configuration\n");
-    return GNUNET_SYSERR;
-  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
@@ -311,7 +300,6 @@ exchange_serve_process_config (const char *exchange_directory)
              exchange_wireformat);
     return GNUNET_SYSERR;
   }
-
   return GNUNET_OK;
 }
 
@@ -958,10 +946,24 @@ run_transfers (void *cls)
  * First task.
  *
  * @param cls closure, NULL
+ * @param args remaining command-line arguments
+ * @param cfgfile name of the configuration file used (for saving, can be NULL!)
+ * @param c configuration
  */
 static void
-run (void *cls)
+run (void *cls,
+     char *const *args,
+     const char *cfgfile,
+     const struct GNUNET_CONFIGURATION_Handle *c)
 {
+  cfg = GNUNET_CONFIGURATION_dup (c);
+  if (GNUNET_OK != exchange_serve_process_config ())
+  {
+    GNUNET_CONFIGURATION_destroy (cfg);
+    cfg = NULL;
+    global_ret = 1;
+    return;
+  }
   task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                    NULL);
   GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_FOREVER_REL,
@@ -982,13 +984,9 @@ main (int argc,
       char *const *argv)
 {
   static const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    {'d', "exchange-dir", "DIR",
-     "exchange directory with configuration and keys for operating the exchange", 1,
-     &GNUNET_GETOPT_set_filename, &exchange_directory},
     {'f', "format", "WIREFORMAT",
      "wireformat to use, overrides WIREFORMAT option in [exchange] section", 1,
      &GNUNET_GETOPT_set_filename, &exchange_wireformat},
-    GNUNET_GETOPT_OPTION_HELP ("background process that aggregates and executes wire transfers to merchants"),
     {'t', "test", NULL,
      "run in test mode with temporary tables", 0,
      &GNUNET_GETOPT_set_one, &test_mode},
@@ -996,30 +994,17 @@ main (int argc,
     GNUNET_GETOPT_OPTION_END
   };
 
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-exchange-aggregator",
-                                   "INFO",
-                                   NULL));
-  if (0 >=
-      GNUNET_GETOPT_run ("taler-exchange-aggregator",
-                         options,
-                         argc, argv))
-    return 1;
-  if (NULL == exchange_directory)
-  {
-    fprintf (stderr,
-             "Exchange directory not specified\n");
-    return 1;
-  }
+  if (GNUNET_OK != GNUNET_STRINGS_get_utf8_args (argc, argv,
+                                                 &argc, &argv))
+    return 2;
   if (GNUNET_OK !=
-      exchange_serve_process_config (exchange_directory))
-  {
+      GNUNET_PROGRAM_run (argc, argv,
+                          "taler-exchange-aggregator",
+                          gettext_noop ("background process that aggregates and executes wire transfers to merchants"),
+                          options,
+                          &run, NULL))
     return 1;
-  }
-  global_ret = GNUNET_OK;
-  GNUNET_SCHEDULER_run (&run, NULL);
-
-  return (GNUNET_SYSERR == global_ret) ? 1 : 0;
+  return global_ret;
 }
 
 /* end of taler-exchange-aggregator.c */

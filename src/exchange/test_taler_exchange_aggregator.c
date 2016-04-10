@@ -570,8 +570,7 @@ interpreter (void *cls)
                                    NULL, NULL, NULL,
                                    "taler-exchange-aggregator",
                                    "taler-exchange-aggregator",
-                                   /* "-c", config_filename, */
-                                   "-d", "test-exchange-home",
+                                   "-c", "test_taler_exchange_httpd.conf",
                                    "-t", /* enable temporary tables */
                                    NULL);
     return;
@@ -1523,6 +1522,9 @@ main (int argc,
                           "test-taler-exchange-aggregator-%s", plugin_name);
   (void) GNUNET_asprintf (&config_filename,
                           "%s.conf", testname);
+  /* these might get in the way */
+  unsetenv ("XDG_DATA_HOME");
+  unsetenv ("XDG_CONFIG_HOME");
   GNUNET_log_setup ("test_taler_exchange_aggregator",
                     "WARNING",
                     NULL);
