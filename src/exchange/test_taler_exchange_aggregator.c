@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016 GNUnet e.V.
+  (C) 2016 Inria and GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -1005,8 +1005,190 @@ run_test ()
       .details.expect_transaction.amount = "EUR:0.01"
     },
 
-    /* TODO: might want to test "profiteering" from
-       rounding down... */
+    /* Test profiteering if wire deadline is short */
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-7a",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
+      .details.deposit.amount_with_fee = "EUR:0.009",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-7a-tiny"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-after-7a-tiny"
+    },
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-7b",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
+      .details.deposit.amount_with_fee = "EUR:0.009",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-7-profit"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTION,
+      .label = "expect-deposit-7",
+      .details.expect_transaction.debit_account = 3,
+      .details.expect_transaction.credit_account = 4,
+      .details.expect_transaction.amount = "EUR:0.01"
+    },
+    /* Now check profit was actually taken */
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-7c",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
+      .details.deposit.amount_with_fee = "EUR:0.022",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-7c-loss"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTION,
+      .label = "expect-deposit-7",
+      .details.expect_transaction.debit_account = 3,
+      .details.expect_transaction.credit_account = 4,
+      .details.expect_transaction.amount = "EUR:0.02"
+    },
+
+    /* Test that aggregation would happen fully if wire deadline is long */
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-8a",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
+      .details.deposit.amount_with_fee = "EUR:0.009",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-8a-tiny"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-after-8a-tiny"
+    },
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-8b",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
+      .details.deposit.amount_with_fee = "EUR:0.009",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-8b-tiny"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-after-8b-tiny"
+    },
+    /* now trigger aggregate with large transaction and short deadline */
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-8c",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
+      .details.deposit.amount_with_fee = "EUR:0.022",
+      .details.deposit.deposit_fee = "EUR:0"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-8"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTION,
+      .label = "expect-deposit-8",
+      .details.expect_transaction.debit_account = 3,
+      .details.expect_transaction.credit_account = 4,
+      .details.expect_transaction.amount = "EUR:0.04"
+    },
+
+
+    /* Test aggregation with fees and rounding profits */
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-9a",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
+      .details.deposit.amount_with_fee = "EUR:0.009",
+      .details.deposit.deposit_fee = "EUR:0.001"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-9a-tiny"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-after-9a-tiny"
+    },
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-9b",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
+      .details.deposit.amount_with_fee = "EUR:0.009",
+      .details.deposit.deposit_fee = "EUR:0.002"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-9b-tiny"
+    },
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty-transactions-after-9b-tiny"
+    },
+    /* now trigger aggregate with large transaction and short deadline */
+    {
+      .opcode = OPCODE_DATABASE_DEPOSIT,
+      .label = "do-deposit-9c",
+      .details.deposit.merchant_name = "bob",
+      .details.deposit.merchant_account = 4,
+      .details.deposit.transaction_id = 1,
+      .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
+      .details.deposit.amount_with_fee = "EUR:0.022",
+      .details.deposit.deposit_fee = "EUR:0.008"
+    },
+    {
+      .opcode = OPCODE_RUN_AGGREGATOR,
+      .label = "run-aggregator-deposit-9"
+    },
+    /* 0.009 + 0.009 + 0.022 - 0.001 - 0.002 - 0.008 = 0.029 => 0.02 */
+    {
+      .opcode = OPCODE_EXPECT_TRANSACTION,
+      .label = "expect-deposit-9",
+      .details.expect_transaction.debit_account = 3,
+      .details.expect_transaction.credit_account = 4,
+      .details.expect_transaction.amount = "EUR:0.02"
+    },
 
     /* Everything tested, terminate with success */
     {

@@ -352,7 +352,7 @@ deposit_cb (void *cls,
                              deposit_fee))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Fatally malformed record at %llu\n",
+                "Fatally malformed record at row %llu\n",
                 row_id);
     return GNUNET_SYSERR;
   }
