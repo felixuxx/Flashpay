@@ -76,16 +76,27 @@ libtalerwire_la_LDFLAGS = \
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
 TESTS = \
- test_sepa_wireformat
+ test_sepa_wireformat \
+ test_wire_plugin
 
 check_PROGRAMS= \
- test_sepa_wireformat
+ test_sepa_wireformat \
+ test_wire_plugin
 
 
 
 test_sepa_wireformat_SOURCES = \
   test_sepa_wireformat.c
 test_sepa_wireformat_LDADD = \
+  -lgnunetutil \
+  -ljansson \
+  libtalerwire.la \
+  $(top_builddir)/src/util/libtalerutil.la
+
+
+test_wire_plugin_SOURCES = \
+  test_wire_plugin.c
+test_wire_plugin_LDADD = \
   -lgnunetutil \
   -ljansson \
   libtalerwire.la \
