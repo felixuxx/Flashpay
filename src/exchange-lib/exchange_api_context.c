@@ -327,11 +327,11 @@ TALER_EXCHANGE_perform (struct TALER_EXCHANGE_Context *ctx)
  */
 void
 TALER_EXCHANGE_get_select_info (struct TALER_EXCHANGE_Context *ctx,
-                            fd_set *read_fd_set,
-                            fd_set *write_fd_set,
-                            fd_set *except_fd_set,
-                            int *max_fd,
-                            long *timeout)
+                                fd_set *read_fd_set,
+                                fd_set *write_fd_set,
+                                fd_set *except_fd_set,
+                                int *max_fd,
+                                long *timeout)
 {
   long to;
   int m;

@@ -38,9 +38,9 @@
  */
 int
 TALER_EXCHANGE_verify_coin_history_ (const char *currency,
-                                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                 json_t *history,
-                                 struct TALER_Amount *total)
+                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                     json_t *history,
+                                     struct TALER_Amount *total)
 {
   size_t len;
   size_t off;
@@ -119,7 +119,6 @@ TALER_EXCHANGE_verify_coin_history_ (const char *currency,
         return GNUNET_SYSERR;
       }
 
-       // FIXME: check sig!
       TALER_amount_ntoh (&dr_amount,
                          &dr->amount_with_fee);
       if (0 != TALER_amount_cmp (&dr_amount,

@@ -34,8 +34,8 @@
  */
 int
 TALER_EXCHANGE_verify_coin_history_ (const char *currency,
-                                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                 json_t *history,
-                                 struct TALER_Amount *total);
+                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                     json_t *history,
+                                     struct TALER_Amount *total);
 
 /* end of exchange_api_common.h */

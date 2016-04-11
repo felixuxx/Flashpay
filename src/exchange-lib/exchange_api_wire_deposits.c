@@ -101,12 +101,12 @@ handle_wire_deposits_finished (void *cls,
       struct TALER_Amount total_amount;
       struct TALER_MerchantPublicKeyP merchant_pub;
       unsigned int num_details;
-      struct TALER_ExchangePublicKeyP pub;
-      struct TALER_ExchangeSignatureP sig;
+      struct TALER_ExchangePublicKeyP exchange_pub;
+      struct TALER_ExchangeSignatureP exchange_sig;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("H_wire", &h_wire),
-        GNUNET_JSON_spec_fixed_auto ("exchange_pub", &pub),
-        GNUNET_JSON_spec_fixed_auto ("exchange_sig", &sig),
+        GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
+        GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("merchant_pub", &merchant_pub),
         TALER_JSON_spec_amount ("total_amount", &total_amount),
         GNUNET_JSON_spec_json ("details", &details_j),
@@ -126,7 +126,11 @@ handle_wire_deposits_finished (void *cls,
       {
         struct TALER_WireDepositDetails details[num_details];
         unsigned int i;
+        struct GNUNET_HashContext *hash_context;
+        struct TALER_WireDepositDetailP dd;
+        struct TALER_WireDepositDataPS wdp;
 
+        hash_context = GNUNET_CRYPTO_hash_context_start ();
         for (i=0;i<num_details;i++)
         {
           struct TALER_WireDepositDetails *detail = &details[i];
@@ -149,10 +153,45 @@ handle_wire_deposits_finished (void *cls,
             response_code = 0;
             break;
           }
+          /* build up big hash for signature checking later */
+          dd.h_contract = detail->h_contract;
+          dd.transaction_id = GNUNET_htonll (detail->transaction_id);
+          dd.coin_pub = detail->coin_pub;
+          TALER_amount_hton (&dd.deposit_value,
+                             &detail->coin_value);
+          TALER_amount_hton (&dd.deposit_fee,
+                             &detail->coin_fee);
+          GNUNET_CRYPTO_hash_context_read (hash_context,
+                                           &dd,
+                                           sizeof (struct TALER_WireDepositDetailP));
+        }
+        /* Check signature */
+        wdp.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT);
+        wdp.purpose.size = htonl (sizeof (struct TALER_WireDepositDataPS));
+        TALER_amount_hton (&wdp.total,
+                           &total_amount);
+        wdp.merchant_pub = merchant_pub;
+        wdp.h_wire = h_wire;
+        GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                           &wdp.h_details);
+        if ( (0 == response_code /* avoid crypto if things are already wrong */) &&
+             (GNUNET_OK !=
+              TALER_EXCHANGE_test_signing_key (TALER_EXCHANGE_get_keys (wdh->exchange),
+                                               &exchange_pub)) )
+        {
+          GNUNET_break_op (0);
+          response_code = 0;
+        }
+        if ( (0 == response_code /* avoid crypto if things are already wrong */) &&
+             (GNUNET_OK !=
+              TALER_EXCHANGE_test_signing_key (TALER_EXCHANGE_get_keys (wdh->exchange),
+                                               &exchange_pub)) )
+        {
+          GNUNET_break_op (0);
+          response_code = 0;
         }
         if (0 == response_code)
           break;
-        /* FIXME: check signature (#4135) */
         wdh->cb (wdh->cb_cls,
                  response_code,
                  json,
