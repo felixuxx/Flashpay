@@ -528,7 +528,7 @@ main (int argc,
   }
   /* give child time to start and bind against the socket */
   fprintf (stderr,
-           "Waiting for taler-bank-manage to be ready");
+           "Waiting for taler-bank-manage to be ready\n");
   cnt = 0;
   do
     {
