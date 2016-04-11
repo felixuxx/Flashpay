@@ -476,7 +476,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 1,
       .details.admin_add_incoming.debit_account_no = 2,
-      .details.admin_add_incoming.amount = "EUR:5.01" },
+      .details.admin_add_incoming.amount = "PUDOS:5.01" },
 
     { .oc = OC_END }
   };
