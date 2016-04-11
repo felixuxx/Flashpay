@@ -112,6 +112,11 @@
  */
 #define TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE 1036
 
+/**
+ * Signature where the Exchange confirms the /wire/deposit response.
+ */
+#define TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT 1037
+
 
 /*********************/
 /* Wallet signatures */
@@ -833,6 +838,76 @@ struct TALER_DepositTrackPS
 
 };
 
+
+/**
+ * @brief Format internally used for packing the detailed information
+ * to generate the signature for /wire/deposit signatures.
+ */
+struct TALER_WireDepositDetailP
+{
+
+  /**
+   * Hash of the contract
+   */
+  struct GNUNET_HashCode h_contract;
+
+  /**
+   * Merchant's transaction ID in NBO.
+   */
+  uint64_t transaction_id GNUNET_PACKED;
+
+  /**
+   * Coin's public key.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Total value of the coin.
+   */
+  struct TALER_AmountNBO deposit_value;
+
+  /**
+   * Fees charged by the exchange for the deposit.
+   */
+  struct TALER_AmountNBO deposit_fee;
+
+};
+
+
+/**
+ * @brief Format used to generate the signature for /wire/deposit
+ * replies.
+ */
+struct TALER_WireDepositDataPS
+{
+  /**
+   * Purpose header for the signature over the contract with
+   * purpose #TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Total amount that was transferred.
+   */
+  struct TALER_AmountNBO total;
+
+  /**
+   * Public key of the merchant (for all aggregated transactions).
+   */
+  struct TALER_MerchantPublicKeyP merchant_pub;
+
+  /**
+   * Hash of wire details of the merchant.
+   */
+  struct GNUNET_HashCode h_wire;
+
+  /**
+   * Hash of the individual deposits that were aggregated,
+   * each in the format of a `struct TALER_WireDepositDetailP`.
+   */
+  struct GNUNET_HashCode h_details;
+
+};
 
 /**
  * The contract sent by the merchant to the wallet.

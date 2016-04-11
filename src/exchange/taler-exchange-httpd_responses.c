@@ -1163,13 +1163,26 @@ TMH_RESPONSE_reply_wire_deposit_details (struct MHD_Connection *connection,
 {
   const struct TMH_WireDepositDetail *wdd_pos;
   json_t *deposits;
+  struct TALER_WireDepositDetailP dd;
+  struct GNUNET_HashContext *hash_context;
+  struct TALER_WireDepositDataPS wdp;
+  struct TALER_ExchangePublicKeyP pub;
+  struct TALER_ExchangeSignatureP sig;
 
   deposits = json_array ();
-
-  /* NOTE: We usually keep JSON stuff out of the _DB file, and this
-     is also ugly if we ever add signatures over this data. (#4135) */
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
   for (wdd_pos = wdd_head; NULL != wdd_pos; wdd_pos = wdd_pos->next)
   {
+    dd.h_contract = wdd_pos->h_contract;
+    dd.transaction_id = GNUNET_htonll (wdd_pos->transaction_id);
+    dd.coin_pub = wdd_pos->coin_pub;
+    TALER_amount_hton (&dd.deposit_value,
+                       &wdd_pos->deposit_value);
+    TALER_amount_hton (&dd.deposit_fee,
+                       &wdd_pos->deposit_fee);
+    GNUNET_CRYPTO_hash_context_read (hash_context,
+                                     &dd,
+                                     sizeof (struct TALER_WireDepositDetailP));
     json_array_append (deposits,
                        json_pack ("{s:o, s:o, s:o, s:I, s:o}",
                                   "deposit_value", TALER_JSON_from_amount (&wdd_pos->deposit_value),
@@ -1180,7 +1193,17 @@ TMH_RESPONSE_reply_wire_deposit_details (struct MHD_Connection *connection,
                                   "coin_pub", GNUNET_JSON_from_data (&wdd_pos->coin_pub,
                                                                      sizeof (struct TALER_CoinSpendPublicKeyP))));
   }
-  /* FIXME: #4135: signing not implemented here */
+  wdp.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT);
+  wdp.purpose.size = htonl (sizeof (struct TALER_WireDepositDataPS));
+  TALER_amount_hton (&wdp.total,
+                     total);
+  wdp.merchant_pub = *merchant_pub;
+  wdp.h_wire = *h_wire;
+  GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                     &wdp.h_details);
+  TMH_KS_sign (&wdp.purpose,
+               &pub,
+               &sig);
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:o, s:o, s:o, s:o}",
@@ -1189,7 +1212,11 @@ TMH_RESPONSE_reply_wire_deposit_details (struct MHD_Connection *connection,
                                                                              sizeof (struct TALER_MerchantPublicKeyP)),
                                        "h_wire", GNUNET_JSON_from_data (h_wire,
                                                                        sizeof (struct GNUNET_HashCode)),
-                                       "deposits", deposits);
+                                       "deposits", deposits,
+                                       "exchange_sig", GNUNET_JSON_from_data (&sig,
+                                                                              sizeof (sig)),
+                                       "exchange_pub", GNUNET_JSON_from_data (&pub,
+                                                                              sizeof (pub)));
 }
 
 

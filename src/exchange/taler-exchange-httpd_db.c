@@ -1718,6 +1718,8 @@ TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   ctx.is_valid = GNUNET_NO;
+  ctx.wdd_head = NULL;
+  ctx.wdd_tail = NULL;
   ret = TMH_plugin->lookup_wire_transfer (TMH_plugin->cls,
                                           session,
                                           wtid,

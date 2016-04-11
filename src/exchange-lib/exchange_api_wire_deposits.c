@@ -101,8 +101,12 @@ handle_wire_deposits_finished (void *cls,
       struct TALER_Amount total_amount;
       struct TALER_MerchantPublicKeyP merchant_pub;
       unsigned int num_details;
+      struct TALER_ExchangePublicKeyP pub;
+      struct TALER_ExchangeSignatureP sig;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("H_wire", &h_wire),
+        GNUNET_JSON_spec_fixed_auto ("exchange_pub", &pub),
+        GNUNET_JSON_spec_fixed_auto ("exchange_sig", &sig),
         GNUNET_JSON_spec_fixed_auto ("merchant_pub", &merchant_pub),
         TALER_JSON_spec_amount ("total_amount", &total_amount),
         GNUNET_JSON_spec_json ("details", &details_j),
@@ -148,6 +152,7 @@ handle_wire_deposits_finished (void *cls,
         }
         if (0 == response_code)
           break;
+        /* FIXME: check signature (#4135) */
         wdh->cb (wdh->cb_cls,
                  response_code,
                  json,
@@ -208,9 +213,9 @@ handle_wire_deposits_finished (void *cls,
  */
 struct TALER_EXCHANGE_WireDepositsHandle *
 TALER_EXCHANGE_wire_deposits (struct TALER_EXCHANGE_Handle *exchange,
-                          const struct TALER_WireTransferIdentifierRawP *wtid,
-                          TALER_EXCHANGE_WireDepositsCallback cb,
-                          void *cb_cls)
+                              const struct TALER_WireTransferIdentifierRawP *wtid,
+                              TALER_EXCHANGE_WireDepositsCallback cb,
+                              void *cb_cls)
 {
   struct TALER_EXCHANGE_WireDepositsHandle *wdh;
   struct TALER_EXCHANGE_Context *ctx;
