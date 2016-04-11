@@ -44,6 +44,7 @@ src/exchange-tools/taler-exchange-wire
 src/exchangedb/perf-exchangedb
 src/json/test_json
 src/wire/test_sepa_wireformat
+src/wire/test_wire_plugin
 src/pq/test_pq
 src/util/test_amount
 src/util/test_crypto

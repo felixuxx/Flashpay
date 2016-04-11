@@ -539,6 +539,9 @@ sepa_get_wire_details (void *cls,
                                                "SEPA_RESPONSE_FILE",
                                                &sepa_wire_file))
   {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               account_name,
+                               "SEPA_RESPONSE_FILE");
     return NULL;
   }
   ret = json_load_file (sepa_wire_file,
