@@ -15,7 +15,8 @@ pkgcfg_DATA = \
 
 EXTRA_DIST = \
   wire-sepa.conf \
-  wire-test.conf
+  wire-test.conf \
+  test_wire_plugin.conf
 
 plugindir = $(libdir)/taler
 
@@ -97,6 +98,7 @@ test_sepa_wireformat_LDADD = \
 test_wire_plugin_SOURCES = \
   test_wire_plugin.c
 test_wire_plugin_LDADD = \
+  -lgnunetjson \
   -lgnunetutil \
   -ljansson \
   libtalerwire.la \
