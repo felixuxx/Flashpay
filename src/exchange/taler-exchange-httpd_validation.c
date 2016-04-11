@@ -24,7 +24,6 @@
 #include "taler-exchange-httpd.h"
 #include "taler-exchange-httpd_validation.h"
 #include "taler_wire_lib.h"
-#include "taler_wire_plugin.h"
 
 
 /**

@@ -22,7 +22,6 @@
 #include <jansson.h>
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_crypto_lib.h"
-#include "taler_wire_plugin.h"
 #include "taler_wire_lib.h"
 #include "taler_signatures.h"
 
