@@ -23,6 +23,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler-exchange-httpd.h"
 #include "taler-exchange-httpd_validation.h"
+#include "taler_wire_lib.h"
 #include "taler_wire_plugin.h"
 
 
@@ -76,7 +77,6 @@ TMH_VALIDATION_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   struct Plugin *p;
   char *wireformats;
-  char *lib_name;
   const char *token;
 
   /* Find out list of supported wire formats */
@@ -97,24 +97,19 @@ TMH_VALIDATION_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
        token = strtok (NULL,
                        " "))
   {
-    (void) GNUNET_asprintf (&lib_name,
-                            "libtaler_plugin_wire_%s",
-                            token);
     p = GNUNET_new (struct Plugin);
     p->type = GNUNET_strdup (token);
-    p->plugin = GNUNET_PLUGIN_load (lib_name,
-                                    (void *) cfg);
+    p->plugin = TALER_WIRE_plugin_load (cfg,
+                                        token);
     if (NULL == p->plugin)
     {
       GNUNET_free (p);
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to load plugin %s\n",
-                  lib_name);
-      GNUNET_free (lib_name);
+                  token);
       TMH_VALIDATION_done ();
       return GNUNET_SYSERR;
     }
-    p->plugin->library_name = lib_name;
     GNUNET_CONTAINER_DLL_insert (wire_head,
                                  wire_tail,
                                  p);
@@ -131,17 +126,13 @@ void
 TMH_VALIDATION_done ()
 {
   struct Plugin *p;
-  char *lib_name;
 
   while (NULL != (p = wire_head))
   {
     GNUNET_CONTAINER_DLL_remove (wire_head,
                                  wire_tail,
                                  p);
-    lib_name = p->plugin->library_name;
-    GNUNET_assert (NULL == GNUNET_PLUGIN_unload (lib_name,
-                                                 p->plugin));
-    GNUNET_free (lib_name);
+    TALER_WIRE_plugin_unload (p->plugin);
     GNUNET_free (p->type);
     GNUNET_free (p);
   }

@@ -45,6 +45,7 @@ taler_exchange_wire_SOURCES = \
   taler-exchange-wire.c
 taler_exchange_wire_LDADD = \
   $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetjson \
   -lgnunetutil \

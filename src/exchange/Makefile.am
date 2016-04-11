@@ -42,9 +42,10 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_validation.c taler-exchange-httpd_validation.h
 taler_exchange_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/util/libtalerutil.la \
   -lmicrohttpd \
   -lgnunetutil \
   -lgnunetjson \

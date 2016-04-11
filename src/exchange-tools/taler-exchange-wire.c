@@ -23,6 +23,7 @@
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_crypto_lib.h"
 #include "taler_wire_plugin.h"
+#include "taler_wire_lib.h"
 #include "taler_signatures.h"
 
 
@@ -90,7 +91,6 @@ main (int argc,
   json_error_t err;
   char *json_out;
   struct GNUNET_HashCode salt;
-  char *lib_name;
   struct TALER_WIRE_Plugin *plugin;
 
   GNUNET_assert (GNUNET_OK ==
@@ -159,20 +159,15 @@ main (int argc,
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &salt,
                               sizeof (salt));
- (void) GNUNET_asprintf (&lib_name,
-                         "libtaler_plugin_wire_%s",
-                         method);
-  plugin = GNUNET_PLUGIN_load (lib_name,
-                               NULL);
+  plugin = TALER_WIRE_plugin_load (cfg,
+                                   method);
   if (NULL == plugin)
   {
-    GNUNET_free (lib_name);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Wire transfer method `%s' not supported\n",
                 method);
     return 1;
   }
-  plugin->library_name = lib_name;
   if (GNUNET_OK !=
       plugin->sign_wire_details (plugin->cls,
                                  j,
@@ -182,14 +177,10 @@ main (int argc,
   {
     /* sign function should have logged applicable errors */
     json_decref (j);
-    GNUNET_PLUGIN_unload (lib_name,
-                          plugin);
-    GNUNET_free (lib_name);
+    TALER_WIRE_plugin_unload (plugin);
     return 1;
   }
-  GNUNET_PLUGIN_unload (lib_name,
-                        plugin);
-  GNUNET_free (lib_name);
+  TALER_WIRE_plugin_unload (plugin);
   GNUNET_free (eddsa_priv);
 
   /* add signature and salt to JSON message */
