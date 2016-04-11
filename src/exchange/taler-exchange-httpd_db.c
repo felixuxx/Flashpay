@@ -1580,6 +1580,16 @@ struct WtidTransactionContext
   struct GNUNET_HashCode h_wire;
 
   /**
+   * Head of DLL with details for /wire/deposit response.
+   */
+  struct TMH_WireDepositDetail *wdd_head;
+
+  /**
+   * Head of DLL with details for /wire/deposit response.
+   */
+  struct TMH_WireDepositDetail *wdd_tail;
+
+  /**
    * JSON array with details about the individual deposits.
    */
   json_t *deposits;
@@ -1621,6 +1631,7 @@ handle_transaction_data (void *cls,
 {
   struct WtidTransactionContext *ctx = cls;
   struct TALER_Amount delta;
+  struct TMH_WireDepositDetail *wdd;
 
   if (GNUNET_SYSERR == ctx->is_valid)
     return;
@@ -1671,17 +1682,15 @@ handle_transaction_data (void *cls,
       return;
     }
   }
-  /* NOTE: We usually keep JSON stuff out of the _DB file, and this
-     is also ugly if we ever add signatures over this data. (#4135) */
-  json_array_append (ctx->deposits,
-                     json_pack ("{s:o, s:o, s:o, s:I, s:o}",
-                                "deposit_value", TALER_JSON_from_amount (deposit_value),
-                                "deposit_fee", TALER_JSON_from_amount (deposit_fee),
-                                "H_contract", GNUNET_JSON_from_data (h_contract,
-                                                                    sizeof (struct GNUNET_HashCode)),
-                                "transaction_id", (json_int_t) transaction_id,
-                                "coin_pub", GNUNET_JSON_from_data (coin_pub,
-                                                                  sizeof (struct TALER_CoinSpendPublicKeyP))));
+  wdd = GNUNET_new (struct TMH_WireDepositDetail);
+  wdd->deposit_value = *deposit_value;
+  wdd->deposit_fee = *deposit_fee;
+  wdd->h_contract = *h_contract;
+  wdd->transaction_id = transaction_id;
+  wdd->coin_pub = *coin_pub;
+  GNUNET_CONTAINER_DLL_insert (ctx->wdd_head,
+                               ctx->wdd_tail,
+                               wdd);
 }
 
 
@@ -1700,6 +1709,7 @@ TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
   int ret;
   struct WtidTransactionContext ctx;
   struct TALER_EXCHANGEDB_Session *session;
+  struct TMH_WireDepositDetail *wdd;
 
   if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
                                                   TMH_test_mode)))
@@ -1708,7 +1718,6 @@ TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
     return TMH_RESPONSE_reply_internal_db_error (connection);
   }
   ctx.is_valid = GNUNET_NO;
-  ctx.deposits = json_array ();
   ret = TMH_plugin->lookup_wire_transfer (TMH_plugin->cls,
                                           session,
                                           wtid,
@@ -1717,26 +1726,35 @@ TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
   if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);
-    json_decref (ctx.deposits);
-    return TMH_RESPONSE_reply_internal_db_error (connection);
+    ret = TMH_RESPONSE_reply_internal_db_error (connection);
+    goto cleanup;
   }
   if (GNUNET_SYSERR == ctx.is_valid)
   {
     GNUNET_break (0);
-    json_decref (ctx.deposits);
-    return TMH_RESPONSE_reply_internal_db_error (connection);
+    ret = TMH_RESPONSE_reply_internal_db_error (connection);
+    goto cleanup;
   }
   if (GNUNET_NO == ctx.is_valid)
   {
-    json_decref (ctx.deposits);
-    return TMH_RESPONSE_reply_arg_unknown (connection,
-                                           "wtid");
+    ret = TMH_RESPONSE_reply_arg_unknown (connection,
+                                          "wtid");
+    goto cleanup;
   }
-  return TMH_RESPONSE_reply_wire_deposit_details (connection,
-                                                  &ctx.total,
-                                                  &ctx.merchant_pub,
-                                                  &ctx.h_wire,
-                                                  ctx.deposits);
+  ret = TMH_RESPONSE_reply_wire_deposit_details (connection,
+                                                 &ctx.total,
+                                                 &ctx.merchant_pub,
+                                                 &ctx.h_wire,
+                                                 ctx.wdd_head);
+ cleanup:
+  while (NULL != (wdd = ctx.wdd_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (ctx.wdd_head,
+                                 ctx.wdd_tail,
+                                 wdd);
+    GNUNET_free (wdd);
+  }
+  return ret;
 }
 
 

@@ -1133,13 +1133,13 @@ TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
                                        MHD_HTTP_OK,
                                        "{s:o, s:o, s:o, s:o, s:o, s:o}",
                                        "wtid", GNUNET_JSON_from_data (wtid,
-                                                                     sizeof (*wtid)),
+                                                                      sizeof (*wtid)),
                                        "execution_time", GNUNET_JSON_from_time_abs (exec_time),
                                        "coin_contribution", TALER_JSON_from_amount (coin_contribution),
                                        "exchange_sig", GNUNET_JSON_from_data (&sig,
-                                                                         sizeof (sig)),
+                                                                              sizeof (sig)),
                                        "exchange_pub", GNUNET_JSON_from_data (&pub,
-                                                                         sizeof (pub)));
+                                                                              sizeof (pub)));
 }
 
 
@@ -1151,7 +1151,7 @@ TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
  * @param total total amount that was transferred
  * @param merchant_pub public key of the merchant
  * @param h_wire destination account
- * @param deposits details about the combined deposits
+ * @param wdd_head linked list with details about the combined deposits
  * @return MHD result code
  */
 int
@@ -1159,8 +1159,27 @@ TMH_RESPONSE_reply_wire_deposit_details (struct MHD_Connection *connection,
                                          const struct TALER_Amount *total,
                                          const struct TALER_MerchantPublicKeyP *merchant_pub,
                                          const struct GNUNET_HashCode *h_wire,
-                                         json_t *deposits)
+                                         const struct TMH_WireDepositDetail *wdd_head)
 {
+  const struct TMH_WireDepositDetail *wdd_pos;
+  json_t *deposits;
+
+  deposits = json_array ();
+
+  /* NOTE: We usually keep JSON stuff out of the _DB file, and this
+     is also ugly if we ever add signatures over this data. (#4135) */
+  for (wdd_pos = wdd_head; NULL != wdd_pos; wdd_pos = wdd_pos->next)
+  {
+    json_array_append (deposits,
+                       json_pack ("{s:o, s:o, s:o, s:I, s:o}",
+                                  "deposit_value", TALER_JSON_from_amount (&wdd_pos->deposit_value),
+                                  "deposit_fee", TALER_JSON_from_amount (&wdd_pos->deposit_fee),
+                                  "H_contract", GNUNET_JSON_from_data (&wdd_pos->h_contract,
+                                                                       sizeof (struct GNUNET_HashCode)),
+                                  "transaction_id", (json_int_t) wdd_pos->transaction_id,
+                                  "coin_pub", GNUNET_JSON_from_data (&wdd_pos->coin_pub,
+                                                                     sizeof (struct TALER_CoinSpendPublicKeyP))));
+  }
   /* FIXME: #4135: signing not implemented here */
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,

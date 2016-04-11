@@ -298,6 +298,49 @@ TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
 
 
 /**
+ * Detail for /wire/deposit response.
+ */
+struct TMH_WireDepositDetail
+{
+
+  /**
+   * We keep deposit details in a DLL.
+   */
+  struct TMH_WireDepositDetail *next;
+
+  /**
+   * We keep deposit details in a DLL.
+   */
+  struct TMH_WireDepositDetail *prev;
+
+  /**
+   * Hash of the contract
+   */
+  struct GNUNET_HashCode h_contract;
+
+  /**
+   * Merchant's transaction ID.
+   */
+  uint64_t transaction_id;
+
+  /**
+   * Coin's public key.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Total value of the coin.
+   */
+  struct TALER_Amount deposit_value;
+
+  /**
+   * Fees charged by the exchange for the deposit.
+   */
+  struct TALER_Amount deposit_fee;
+};
+
+
+/**
  * A merchant asked for transaction details about a wire transfer.
  * Provide them. Generates the 200 reply.
  *
@@ -305,7 +348,7 @@ TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
  * @param total total amount that was transferred
  * @param merchant_pub public key of the merchant
  * @param h_wire destination account
- * @param deposits details about the combined deposits
+ * @param wdd_head linked list with details about the combined deposits
  * @return MHD result code
  */
 int
@@ -313,7 +356,7 @@ TMH_RESPONSE_reply_wire_deposit_details (struct MHD_Connection *connection,
                                          const struct TALER_Amount *total,
                                          const struct TALER_MerchantPublicKeyP *merchant_pub,
                                          const struct GNUNET_HashCode *h_wire,
-                                         json_t *deposits);
+                                         const struct TMH_WireDepositDetail *wdd_head);
 
 
 /**
