@@ -145,7 +145,8 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   if (GNUNET_YES !=
-      TMH_json_validate_wireformat (wire))
+      TMH_json_validate_wireformat (wire,
+                                    GNUNET_NO))
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);

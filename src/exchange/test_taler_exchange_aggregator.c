@@ -481,9 +481,7 @@ do_deposit (struct Command *cmd)
     return GNUNET_SYSERR;
   }
   fake_coin (&deposit.coin);
-  /* Build JSON for wire details;
-     note that this simple method may fail in the future if we implement
-     and enforce signature checking on test-wire account details */
+  /* Build JSON for wire details */
   deposit.wire = json_pack ("{s:s, s:s, s:I}",
                             "type", "test",
                             "bank_uri", "http://localhost:8082/",

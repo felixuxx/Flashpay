@@ -47,10 +47,12 @@ TMH_VALIDATION_done (void);
  * a wire address.
  *
  * @param wire the JSON wire format object
+ * @param ours #GNUNET_YES if the signature should match our master key
  * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
 int
-TMH_json_validate_wireformat (const json_t *wire);
+TMH_json_validate_wireformat (const json_t *wire,
+                              int ours);
 
 /**
  * Check if we support the given wire method.

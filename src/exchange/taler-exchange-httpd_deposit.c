@@ -165,7 +165,8 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
     return MHD_YES; /* failure */
 
   if (GNUNET_YES !=
-      TMH_json_validate_wireformat (wire))
+      TMH_json_validate_wireformat (wire,
+                                    GNUNET_NO))
   {
     GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_arg_unknown (connection,

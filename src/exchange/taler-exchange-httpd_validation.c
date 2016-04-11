@@ -153,10 +153,12 @@ TMH_VALIDATION_done ()
  * a wire address.
  *
  * @param wire the JSON wire format object
+ * @param ours #GNUNET_YES if the signature should match our master key
  * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
 int
-TMH_json_validate_wireformat (const json_t *wire)
+TMH_json_validate_wireformat (const json_t *wire,
+                              int ours)
 {
   const char *stype;
   json_error_t error;
@@ -175,7 +177,9 @@ TMH_json_validate_wireformat (const json_t *wire)
                          stype))
       return p->plugin->wire_validate (p->plugin->cls,
                                        wire,
-                                       &TMH_master_public_key);
+                                       (GNUNET_YES == ours)
+                                       ? &TMH_master_public_key
+                                       : NULL);
   return GNUNET_NO;
 }
 
@@ -227,6 +231,16 @@ TMH_VALIDATION_get_wire_methods (const char *prefix)
     method = plugin->get_wire_details (plugin->cls,
                                        cfg,
                                        account_name);
+    if (GNUNET_YES !=
+        TMH_json_validate_wireformat (method,
+                                      GNUNET_YES))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Account details for method `%s' ill-formed. Disabling method\n",
+                  p->type);
+      json_decref (method);
+      method = NULL;
+    }
     if (NULL != method)
       json_object_set_new (methods,
                            p->type,

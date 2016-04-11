@@ -2327,7 +2327,7 @@ run (void *cls)
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "create-reserve-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.wire = "{ \"type\":\"test\", \"bank\":\"source bank\", \"account_number\":42 }",
+      .details.admin_add_incoming.wire = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42 }",
       .details.admin_add_incoming.amount = "EUR:5.01" },
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     { .oc = OC_WITHDRAW_SIGN,
@@ -2348,7 +2348,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank\":\"dest bank\", \"account_number\":42 }",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
       .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 1 },
 
@@ -2365,7 +2365,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_FORBIDDEN,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank\":\"dest bank\", \"account_number\":43 }",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":43  }",
       .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 1 },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
@@ -2375,7 +2375,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_FORBIDDEN,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank\":\"dest bank\", \"account_number\":42 }",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
       .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 2 },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
@@ -2385,7 +2385,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_FORBIDDEN,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank\":\"dest bank\", \"account_number\":42 }",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
       .details.deposit.contract = "{ \"items\":[{ \"name\":\"ice cream\", \"value\":2 } ] }",
       .details.deposit.transaction_id = 1 },
 
@@ -2395,7 +2395,7 @@ run (void *cls)
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "refresh-create-reserve-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.wire = "{ \"type\":\"test\", \"bank\":\"source bank\", \"account_number\":424 }",
+      .details.admin_add_incoming.wire = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":424  }",
       .details.admin_add_incoming.amount = "EUR:5.01" },
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     { .oc = OC_WITHDRAW_SIGN,
@@ -2410,7 +2410,7 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit.amount = "EUR:1",
       .details.deposit.coin_ref = "refresh-withdraw-coin-1",
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank\":\"dest bank\", \"account_number\":42 }",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
       .details.deposit.contract = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:1\" } ] }",
       .details.deposit.transaction_id = 42421 },
 
@@ -2444,7 +2444,7 @@ run (void *cls)
       .details.deposit.amount = "EUR:1",
       .details.deposit.coin_ref = "refresh-reveal-1",
       .details.deposit.coin_idx = 0,
-      .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account_number\":42 }",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
       .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }",
       .details.deposit.transaction_id = 2 },
 
@@ -2456,7 +2456,7 @@ run (void *cls)
       .details.deposit.amount = "EUR:0.1",
       .details.deposit.coin_ref = "refresh-reveal-1",
       .details.deposit.coin_idx = 4,
-      .details.deposit.wire_details = "{ \"type\":\"TEST\", \"bank\":\"dest bank\", \"account_number\":42 }",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
       .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }",
       .details.deposit.transaction_id = 2 },
 
