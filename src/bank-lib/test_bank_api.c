@@ -518,7 +518,7 @@ main (int argc,
                                    NULL, NULL, NULL,
                                    "taler-bank-manage",
                                    "taler-bank-manage",
-                                   "--bareserver", "8081",
+                                   "serve-http", "--port", "8081",
                                    NULL);
   if (NULL == bankd)
   {
