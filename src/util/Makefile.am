@@ -15,6 +15,18 @@ pkgcfg_DATA = \
 EXTRA_DIST = \
   paths.conf
 
+dist_bin_SCRIPTS = taler-config
+
+# See https://www.gnu.org/software/autoconf/manual/autoconf-2.63/html_node/Installation-Directory-Variables.html
+# for and explanation and why this ugliness is necessary.
+edit = sed -e 's|@libdir[@]|$(libdir)|g'
+taler-config: Makefile $(srcdir)/taler-config.in
+	rm -f $@ $@.tmp
+	$(edit) '$(srcdir)/$@.in' >$@.tmp
+	chmod +x $@.tmp
+	chmod a-w $@.tmp
+	mv $@.tmp $@
+
 if WALLET_ONLY
 lib_LTLIBRARIES = \
   libtalerutil_wallet.la
