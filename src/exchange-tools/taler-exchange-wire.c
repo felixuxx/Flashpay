@@ -154,6 +154,9 @@ main (int argc,
              (unsigned int) err.position);
     return 1;
   }
+  json_object_set_new (j,
+                       "type",
+                       json_string (method));
   key.eddsa_priv = *eddsa_priv;
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &salt,
