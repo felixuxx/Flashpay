@@ -1,0 +1,38 @@
+.TH TALER\-EXCHANGE\-KEYUP 1 "Apr 22, 2015" "GNU Taler"
+
+.SH NAME
+taler\-exchange\-keyup \- Setup Taler exchange denomination and signing keys.
+
+.SH SYNOPSIS
+.B taler\-exchange\-keyup
+.RI [ options ]
+.br
+
+.SH DESCRIPTION
+\fBtaler\-exchange\-keyup\fP is a command line tool to setup Taler denomination and signing keys.  This tool requires access to the exchange's long-term offline signing key and should be run in a secure (offline) environment under strict controls. The resulting keys can then be copied to the main online directory where the Taler HTTP server operates.
+
+.SH OPTIONS
+.B
+.IP "\-d DIRNAME,  \-\-exchange-dir=DIRNAME"
+Use the configuration and other resources for the exchange to operate from DIRNAME.
+.B
+.IP "\-h, \-\-help"
+Print short help on options.
+.B
+.IP "\-m FILE,  \-\-master-key=FILE"
+Location of the private EdDSA offline master key of the exchange.
+.B
+.IP "\-o FILE,  \-\-ouptut=FILE"
+Where to write a denomination key signing request file to be given to the auditor.
+.B
+.IP "\-t TIMESTAMP,  \-\-time=TIMESTAMP"
+Operate as if the current time was TIMESTAMP.
+.B
+.IP "\-v, \-\-version"
+Print version information.
+
+.SH BUGS
+Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
+
+.SH "SEE ALSO"
+\fBtaler\-exchange\-httpd\fP(1), \fBtaler\-exchange\-keyup\fP(1), \fBtaler\-exchange\-keycheck\fP(1), \fBtaler.conf\fP(5)

@@ -99,13 +99,50 @@ struct TALER_WIRE_Plugin
 
 
   /**
+   * Obtain wire transfer details in the plugin-specific format
+   * from the configuration.
+   *
+   * @param cls closure
+   * @param cfg configuration with details about wire accounts
+   * @param account_name which section in the configuration should we parse
+   * @return NULL if @a cfg fails to have valid wire details for @a account_name
+   */
+  json_t *
+  (*get_wire_details)(void *cls,
+                      const struct GNUNET_CONFIGURATION_Handle *cfg,
+                      const char *account_name);
+
+
+  /**
+   * Sign wire transfer details in the plugin-specific format.
+   *
+   * @param cls closure
+   * @param in wire transfer details in JSON format
+   * @param key private signing key to use
+   * @param salt salt to add
+   * @param[out] sig where to write the signature
+   * @return #GNUNET_OK on success
+   */
+  int
+  (*sign_wire_details)(void *cls,
+                       const json_t *in,
+                       const struct TALER_MasterPrivateKeyP *key,
+                       const struct GNUNET_HashCode *salt,
+                       struct TALER_MasterSignatureP *sig);
+
+
+  /**
    * Check if the given wire format JSON object is correctly formatted
    *
+   * @param cls the @e cls of this struct with the plugin-specific state
    * @param wire the JSON wire format object
+   * @param master_pub public key of the exchange to verify against
    * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
    */
   int
-  (*wire_validate) (const json_t *wire);
+  (*wire_validate) (void *cls,
+                    const json_t *wire,
+                    const struct TALER_MasterPublicKeyP *master_pub);
 
 
   /**

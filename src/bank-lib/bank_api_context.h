@@ -21,6 +21,7 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
+#include <jansson.h>
 #include <curl/curl.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_bank_service.h"

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016 GNUnet e.V.
+  Copyright (C) 2016 GNUnet e.V. & Inria
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -22,6 +22,7 @@
 #include "platform.h"
 #include "taler_wire_plugin.h"
 #include "taler_bank_service.h"
+#include "taler_signatures.h"
 
 /* only for HTTP status codes */
 #include <microhttpd.h>
@@ -34,19 +35,30 @@ struct TestClosure
 {
 
   /**
-   * Handle to the bank for sending funds to the bank.
-   */
-  struct TALER_BANK_Context *bank;
-
-  /**
    * Which currency do we support?
    */
   char *currency;
 
   /**
+   * URI of our bank.
+   */
+  char *bank_uri;
+
+  /**
+   * Handle to the bank for sending funds to the bank.
+   */
+  struct TALER_BANK_Context *bank;
+
+  /**
    * Handle to the bank task, or NULL.
    */
   struct GNUNET_SCHEDULER_Task *bt;
+
+  /**
+   * Number of the account that the exchange has at the bank for
+   * outgoing transfers.
+   */
+  unsigned long long exchange_account_outgoing_no;
 
 };
 
@@ -124,11 +136,9 @@ struct TALER_WIRE_ExecuteHandle
  * scheduler.
  *
  * @param cls our `struct TestClosure`
- * @param tc scheduler context (unused)
  */
 static void
-context_task (void *cls,
-              const struct GNUNET_SCHEDULER_TaskContext *sct)
+context_task (void *cls)
 {
   struct TestClosure *tc = cls;
   long timeout;
@@ -171,7 +181,7 @@ context_task (void *cls,
                                         rs,
                                         ws,
                                         &context_task,
-                                        cls);
+                                        tc);
   GNUNET_NETWORK_fdset_destroy (rs);
   GNUNET_NETWORK_fdset_destroy (ws);
 }
@@ -210,6 +220,13 @@ test_amount_round (void *cls,
   struct TestClosure *tc = cls;
   uint32_t delta;
 
+  if (NULL == tc->currency)
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "CURRENCY");
+    return GNUNET_SYSERR; /* not configured with currency */
+  }
   if (0 != strcasecmp (amount->currency,
                        tc->currency))
   {
@@ -226,27 +243,69 @@ test_amount_round (void *cls,
 
 
 /**
+ * Compute purpose for signing.
+ *
+ * @param account number of the account
+ * @param bank_uri URI of the bank
+ * @param[out] mp purpose to be signed
+ */
+static void
+compute_purpose (uint64_t account,
+                 const char *bank_uri,
+                 struct TALER_MasterWireDetailsPS *wsd)
+{
+  struct GNUNET_HashContext *hc;
+  uint64_t n = GNUNET_htonll (account);
+
+  wsd->purpose.size = htonl (sizeof (struct TALER_MasterWireDetailsPS));
+  wsd->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_TEST_DETAILS);
+  hc = GNUNET_CRYPTO_hash_context_start ();
+  GNUNET_CRYPTO_hash_context_read (hc,
+				   "test",
+				   strlen ("test") + 1);
+  GNUNET_CRYPTO_hash_context_read (hc,
+				   &n,
+                                   sizeof (n));
+  GNUNET_CRYPTO_hash_context_read (hc,
+				   bank_uri,
+				   strlen (bank_uri) + 1);
+  GNUNET_CRYPTO_hash_context_finish (hc,
+				     &wsd->h_sepa_details);
+}
+
+
+/**
  * Check if the given wire format JSON object is correctly formatted.
  * Right now, the only thing we require is a field
  * "account_number" which must contain a positive 53-bit integer.
  *
+ * @param cls the @e cls of this struct with the plugin-specific state
  * @param wire the JSON wire format object
+ * @param master_pub public key of the exchange to verify against
  * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
 static int
-test_wire_validate (const json_t *wire)
+test_wire_validate (void *cls,
+                    const json_t *wire,
+                    const struct TALER_MasterPublicKeyP *master_pub)
 {
+  struct TestClosure *tc = cls;
   json_error_t error;
   json_int_t account_no;
+  const char *bank_uri;
+  const char *sig_s;
+  struct TALER_MasterWireDetailsPS wsd;
+  struct TALER_MasterSignatureP sig;
 
   if (0 !=
       json_unpack_ex ((json_t *) wire,
 		      &error,
 		      0,
-		      "{s:I}",
-		      "account_number", &account_no))
+		      "{s:I, s:s}",
+		      "account_number", &account_no,
+                      "bank_uri", &bank_uri))
   {
-    GNUNET_break (0);
+    GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
   if ( (account_no < 0) ||
@@ -255,7 +314,116 @@ test_wire_validate (const json_t *wire)
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+  if ( (NULL != tc->bank_uri) &&
+       (0 != strcmp (bank_uri,
+                     tc->bank_uri)) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Wire specifies bank URI %s, but this exchange only supports %s\n",
+                bank_uri,
+                tc->bank_uri);
+    return GNUNET_NO;
+  }
+  if (NULL == master_pub)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Skipping signature check as master public key not given\n");
+    return GNUNET_OK;
+  }
+  if (0 !=
+      json_unpack_ex ((json_t *) wire,
+		      &error,
+		      0,
+		      "{s:s}",
+                      "sig", &sig_s))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Signature check required, but signature is missing\n");
+    return GNUNET_NO;
+  }
+  compute_purpose (account_no,
+                   bank_uri,
+                   &wsd);
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (sig_s,
+                                     strlen (sig_s),
+                                     &sig,
+                                     sizeof (sig)))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_TEST_DETAILS,
+                                  &wsd.purpose,
+                                  &sig.eddsa_signature,
+                                  &master_pub->eddsa_pub))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   return GNUNET_YES;
+}
+
+
+/**
+ * Obtain wire transfer details in the plugin-specific format
+ * from the configuration.
+ *
+ * @param cls closure
+ * @param cfg configuration with details about wire accounts
+ * @param account_name which section in the configuration should we parse
+ * @return NULL if @a cfg fails to have valid wire details for @a account_name
+ */
+static json_t *
+test_get_wire_details (void *cls,
+                       const struct GNUNET_CONFIGURATION_Handle *cfg,
+                       const char *account_name)
+{
+  struct TestClosure *tc = cls;
+  char *test_wire_file;
+  json_error_t err;
+  json_t *ret;
+
+  /* Fetch reply */
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                               account_name,
+                                               "TEST_RESPONSE_FILE",
+                                               &test_wire_file))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               account_name,
+                               "TEST_RESPONSE_FILE");
+    return NULL;
+  }
+  ret = json_load_file (test_wire_file,
+                        JSON_REJECT_DUPLICATES,
+                        &err);
+  if (NULL == ret)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to parse JSON in %s: %s (%s:%u)\n",
+                test_wire_file,
+                err.text,
+                err.source,
+                err.line);
+    GNUNET_free (test_wire_file);
+    return NULL;
+  }
+  if (GNUNET_YES != test_wire_validate (tc,
+                                        ret,
+                                        NULL))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to validate TEST wire data in %s\n",
+                test_wire_file);
+    GNUNET_free (test_wire_file);
+    json_decref (ret);
+    return NULL;
+  }
+  GNUNET_free (test_wire_file);
+  return ret;
 }
 
 
@@ -287,11 +455,9 @@ GNUNET_NETWORK_STRUCT_END
  * callback with the serialized state.
  *
  * @param cls the `struct TALER_WIRE_PrepareHandle`
- * @param sct unused
  */
 static void
-do_prepare (void *cls,
-            const struct GNUNET_SCHEDULER_TaskContext *sct)
+do_prepare (void *cls)
 {
   struct TALER_WIRE_PrepareHandle *pth = cls;
   char *wire_enc;
@@ -363,9 +529,11 @@ test_prepare_wire_transfer (void *cls,
   struct TALER_WIRE_PrepareHandle *pth;
 
   if (GNUNET_YES !=
-      test_wire_validate (wire))
+      test_wire_validate (tc,
+                          wire,
+                          NULL))
   {
-    GNUNET_break (0);
+    GNUNET_break_op (0);
     return NULL;
   }
   pth = GNUNET_new (struct TALER_WIRE_PrepareHandle);
@@ -406,23 +574,96 @@ test_prepare_wire_transfer_cancel (void *cls,
  * @param cls closure with the `struct TALER_WIRE_ExecuteHandle`
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
+ * @param json detailed response from the HTTPD, or NULL if reply was not JSON
  */
 static void
 execute_cb (void *cls,
-            unsigned int http_status)
+            unsigned int http_status,
+            json_t *json)
 {
   struct TALER_WIRE_ExecuteHandle *eh = cls;
-  char s[14];
+  json_t *reason;
+  const char *emsg;
+  char *s;
 
   eh->aaih = NULL;
-  GNUNET_snprintf (s,
-                   sizeof (s),
-                   "%u",
-                   http_status);
+  emsg = NULL;
+  if (NULL != json)
+  {
+    reason = json_object_get (json,
+                              "reason");
+    if (NULL != reason)
+      emsg = json_string_value (reason);
+  }
+  if (NULL != emsg)
+    GNUNET_asprintf (&s,
+                     "%u (%s)",
+                     http_status,
+                     emsg);
+  else
+    GNUNET_asprintf (&s,
+                     "%u",
+                     http_status);
   eh->cc (eh->cc_cls,
           (MHD_HTTP_OK == http_status) ? GNUNET_OK : GNUNET_SYSERR,
           (MHD_HTTP_OK == http_status) ? NULL : s);
+  GNUNET_free (s);
   GNUNET_free (eh);
+}
+
+
+/**
+ * Sign wire transfer details in the plugin-specific format.
+ *
+ * @param cls closure
+ * @param in wire transfer details in JSON format
+ * @param key private signing key to use
+ * @param salt salt to add
+ * @param[out] sig where to write the signature
+ * @return #GNUNET_OK on success
+ */
+static int
+test_sign_wire_details (void *cls,
+                        const json_t *in,
+                        const struct TALER_MasterPrivateKeyP *key,
+                        const struct GNUNET_HashCode *salt,
+                        struct TALER_MasterSignatureP *sig)
+{
+  struct TALER_MasterWireDetailsPS wsd;
+  const char *bank_uri;
+  const char *type;
+  json_int_t account;
+  json_error_t err;
+
+  if (0 !=
+      json_unpack_ex ((json_t *) in,
+                      &err,
+                      0 /* flags */,
+                      "{s:s, s:s, s:I}",
+                      "type", &type,
+                      "bank_uri", &bank_uri,
+                      "account_number", &account))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to unpack JSON: %s (at %u)\n",
+                err.text,
+                err.position);
+    return GNUNET_SYSERR;
+  }
+  if (0 != strcmp (type,
+                   "test"))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "`type' must be `test' for test wire details\n");
+    return GNUNET_SYSERR;
+  }
+  compute_purpose (account,
+                   bank_uri,
+                   &wsd);
+  GNUNET_CRYPTO_eddsa_sign (&key->eddsa_priv,
+			    &wsd.purpose,
+			    &sig->eddsa_signature);
+  return GNUNET_OK;
 }
 
 
@@ -451,6 +692,12 @@ test_execute_wire_transfer (void *cls,
   json_int_t account_no;
   struct BufFormatP bf;
 
+  if (NULL == tc->bank)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Bank not initialized, cannot do transfers!\n");
+    return NULL; /* not initialized with configuration, cannot do transfers */
+  }
   if ( (buf_size <= sizeof (struct BufFormatP)) ||
        ('\0' != buf[buf_size -1]) )
   {
@@ -471,7 +718,9 @@ test_execute_wire_transfer (void *cls,
     return NULL;
   }
   GNUNET_assert (GNUNET_YES ==
-                 test_wire_validate (wire));
+                 test_wire_validate (tc,
+                                     wire,
+                                     NULL));
   if (0 !=
       json_unpack_ex (wire,
 		      &error,
@@ -482,13 +731,14 @@ test_execute_wire_transfer (void *cls,
     GNUNET_break (0);
     return NULL;
   }
-  
+
   eh = GNUNET_new (struct TALER_WIRE_ExecuteHandle);
   eh->cc = cc;
   eh->cc_cls = cc_cls;
   eh->aaih = TALER_BANK_admin_add_incoming (tc->bank,
                                             &bf.wtid,
                                             &amount,
+                                            (uint64_t) tc->exchange_account_outgoing_no,
 					    (uint64_t) account_no,
                                             &execute_cb,
                                             eh);
@@ -537,45 +787,63 @@ libtaler_plugin_wire_test_init (void *cls)
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct TestClosure *tc;
   struct TALER_WIRE_Plugin *plugin;
-  char *uri;
 
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "wire-test",
-                                             "bank_uri",
-                                             &uri))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "wire-test",
-                               "bank_uri");
-    return NULL;
-  }
   tc = GNUNET_new (struct TestClosure);
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "mint",
-                                             "CURRENCY",
-                                             &tc->currency))
+  if (NULL != cfg)
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "mint",
-                               "CURRENCY");
-    GNUNET_free (uri);
-    GNUNET_free (tc);
-    return NULL;
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "wire-outgoing-test",
+                                               "BANK_URI",
+                                               &tc->bank_uri))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "wire-outgoing-test",
+                                 "BANK_URI");
+      GNUNET_free (tc);
+      return NULL;
+    }
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_number (cfg,
+                                               "wire-outgoing-test",
+                                               "EXCHANGE_ACCOUNT_NUMBER",
+                                               &tc->exchange_account_outgoing_no))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "wire-outgoing-test",
+                                 "EXCHANGE_ACCOUNT_NUMBER");
+      GNUNET_free (tc->bank_uri);
+      GNUNET_free (tc);
+      return NULL;
+    }
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "exchange",
+                                               "CURRENCY",
+                                               &tc->currency))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "CURRENCY");
+      GNUNET_free (tc->bank_uri);
+      GNUNET_free (tc);
+      return NULL;
+    }
+    tc->bank = TALER_BANK_init (tc->bank_uri);
+    if (NULL == tc->bank)
+    {
+      GNUNET_break (0);
+      GNUNET_free (tc->currency);
+      GNUNET_free (tc->bank_uri);
+      GNUNET_free (tc);
+      return NULL;
+    }
   }
-  tc->bank = TALER_BANK_init (uri);
-  if (NULL == tc->bank)
-  {
-    GNUNET_break (0);
-    GNUNET_free (tc->currency);
-    GNUNET_free (tc);
-    return NULL;
-  }
-
   plugin = GNUNET_new (struct TALER_WIRE_Plugin);
   plugin->cls = tc;
   plugin->amount_round = &test_amount_round;
+  plugin->get_wire_details = &test_get_wire_details;
+  plugin->sign_wire_details = &test_sign_wire_details;
   plugin->wire_validate = &test_wire_validate;
   plugin->prepare_wire_transfer = &test_prepare_wire_transfer;
   plugin->prepare_wire_transfer_cancel = &test_prepare_wire_transfer_cancel;
@@ -602,8 +870,13 @@ libtaler_plugin_wire_test_done (void *cls)
     GNUNET_SCHEDULER_cancel (tc->bt);
     tc->bt = NULL;
   }
-  TALER_BANK_fini (tc->bank);
-  GNUNET_free (tc->currency);
+  if (NULL != tc->bank)
+  {
+    TALER_BANK_fini (tc->bank);
+    tc->bank = NULL;
+  }
+  GNUNET_free_non_null (tc->currency);
+  GNUNET_free_non_null (tc->bank_uri);
   GNUNET_free (tc);
   GNUNET_free (plugin);
   return NULL;

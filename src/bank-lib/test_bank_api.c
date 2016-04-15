@@ -103,9 +103,14 @@ struct Command
       const char *amount;
 
       /**
-       * Account number.
+       * Credited account number.
        */
-      uint64_t account_no;
+      uint64_t credit_account_no;
+
+      /**
+       * Debited account number.
+       */
+      uint64_t debit_account_no;
 
       /**
        * Wire transfer identifier to use.  Initialized to
@@ -158,11 +163,9 @@ struct InterpreterState
  * Task that runs the context's event loop with the GNUnet scheduler.
  *
  * @param cls unused
- * @param tc scheduler context (unused)
  */
 static void
-context_task (void *cls,
-              const struct GNUNET_SCHEDULER_TaskContext *tc);
+context_task (void *cls);
 
 
 /**
@@ -228,11 +231,9 @@ find_command (const struct InterpreterState *is,
  * Run the main interpreter loop that performs bank operations.
  *
  * @param cls contains the `struct InterpreterState`
- * @param tc scheduler context
  */
 static void
-interpreter_run (void *cls,
-                 const struct GNUNET_SCHEDULER_TaskContext *tc);
+interpreter_run (void *cls);
 
 
 /**
@@ -241,10 +242,12 @@ interpreter_run (void *cls,
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
+ * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
 static void
 add_incoming_cb (void *cls,
-                 unsigned int http_status)
+                 unsigned int http_status,
+                 json_t *json)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
@@ -253,6 +256,14 @@ add_incoming_cb (void *cls,
   if (cmd->expected_response_code != http_status)
   {
     GNUNET_break (0);
+    if (NULL != json)
+    {
+      fprintf (stderr,
+               "Unexpected response code %u:\n",
+               http_status);
+      json_dumpf (json, stderr, 0);
+      fprintf (stderr, "\n");
+    }
     fail (is);
     return;
   }
@@ -266,17 +277,17 @@ add_incoming_cb (void *cls,
  * Run the main interpreter loop that performs bank operations.
  *
  * @param cls contains the `struct InterpreterState`
- * @param tc scheduler context
  */
 static void
-interpreter_run (void *cls,
-                 const struct GNUNET_SCHEDULER_TaskContext *tc)
+interpreter_run (void *cls)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
   struct TALER_Amount amount;
+  const struct GNUNET_SCHEDULER_TaskContext *tc;
 
   is->task = NULL;
+  tc = GNUNET_SCHEDULER_get_task_context ();
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
   {
     fprintf (stderr,
@@ -310,7 +321,8 @@ interpreter_run (void *cls,
       = TALER_BANK_admin_add_incoming (ctx,
                                        &cmd->details.admin_add_incoming.wtid,
                                        &amount,
-                                       cmd->details.admin_add_incoming.account_no,
+                                       cmd->details.admin_add_incoming.debit_account_no,
+                                       cmd->details.admin_add_incoming.credit_account_no,
                                        &add_incoming_cb,
                                        is);
     if (NULL == cmd->details.admin_add_incoming.aih)
@@ -338,11 +350,9 @@ interpreter_run (void *cls,
  * Cleans up our state.
  *
  * @param cls the interpreter state.
- * @param tc unused
  */
 static void
-do_shutdown (void *cls,
-             const struct GNUNET_SCHEDULER_TaskContext *tc)
+do_shutdown (void *cls)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd;
@@ -399,11 +409,9 @@ do_shutdown (void *cls,
  * Task that runs the context's event loop with the GNUnet scheduler.
  *
  * @param cls unused
- * @param tc scheduler context (unused)
  */
 static void
-context_task (void *cls,
-              const struct GNUNET_SCHEDULER_TaskContext *tc)
+context_task (void *cls)
 {
   long timeout;
   int max_fd;
@@ -455,13 +463,9 @@ context_task (void *cls,
  * Main function that will be run by the scheduler.
  *
  * @param cls closure
- * @param args remaining command-line arguments
- * @param cfgfile name of the configuration file used (for saving, can be NULL!)
- * @param config configuration
  */
 static void
-run (void *cls,
-     const struct GNUNET_SCHEDULER_TaskContext *tc)
+run (void *cls)
 {
   struct InterpreterState *is;
   static struct Command commands[] =
@@ -470,8 +474,9 @@ run (void *cls,
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "deposit-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.account_no = 42,
-      .details.admin_add_incoming.amount = "EUR:5.01" },
+      .details.admin_add_incoming.credit_account_no = 1,
+      .details.admin_add_incoming.debit_account_no = 2,
+      .details.admin_add_incoming.amount = "PUDOS:5.01" },
 
     { .oc = OC_END }
   };
@@ -503,6 +508,7 @@ main (int argc,
       char * const *argv)
 {
   struct GNUNET_OS_Process *bankd;
+  unsigned int cnt;
 
   GNUNET_log_setup ("test-bank-api",
                     "WARNING",
@@ -510,32 +516,43 @@ main (int argc,
   bankd = GNUNET_OS_start_process (GNUNET_NO,
                                    GNUNET_OS_INHERIT_STD_ALL,
                                    NULL, NULL, NULL,
-                                   "taler-bank-httpd",
-                                   "taler-bank-httpd",
-                                   "-d", "test-bank-home",
+                                   "taler-bank-manage",
+                                   "taler-bank-manage",
+                                   "serve-http", "--port", "8081",
                                    NULL);
   if (NULL == bankd)
   {
     fprintf (stderr,
-             "taler-bank-httpd not found, skipping test\n");
+             "taler-bank-manage not found, skipping test\n");
     return 77; /* report 'skip' */
   }
   /* give child time to start and bind against the socket */
   fprintf (stderr,
-           "Waiting for taler-bank-httpd to be ready");
+           "Waiting for taler-bank-manage to be ready\n");
+  cnt = 0;
   do
     {
       fprintf (stderr, ".");
       sleep (1);
+      cnt++;
+      if (cnt > 30)
+        break;
     }
-  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/keys -o /dev/null -O /dev/null"));
+  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/ -o /dev/null -O /dev/null"));
   fprintf (stderr, "\n");
   result = GNUNET_SYSERR;
-  GNUNET_SCHEDULER_run (&run, NULL);
+  if (cnt <= 30)
+    GNUNET_SCHEDULER_run (&run, NULL);
   GNUNET_OS_process_kill (bankd,
                           SIGTERM);
   GNUNET_OS_process_wait (bankd);
   GNUNET_OS_process_destroy (bankd);
+  if (cnt > 30)
+  {
+    fprintf (stderr,
+             "taler-bank-manage failed to start properly.\n");
+    return 77;
+  }
   return (GNUNET_OK == result) ? 0 : 1;
 }
 

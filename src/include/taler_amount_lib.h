@@ -128,6 +128,19 @@ TALER_string_to_amount (const char *str,
 
 
 /**
+ * Parse denomination description, in the format "T:V.F".
+ *
+ * @param str denomination description
+ * @param denom denomination to write the result to, in NBO
+ * @return #GNUNET_OK if the string is a valid denomination specification,
+ *         #GNUNET_SYSERR if it is invalid.
+ */
+int
+TALER_string_to_amount_nbo (const char *str,
+                            struct TALER_AmountNBO *denom);
+
+
+/**
  * Get the value of "zero" in a particular currency.
  *
  * @param cur currency description

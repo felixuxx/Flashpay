@@ -1,0 +1,39 @@
+.TH TALER\-EXCHANGE\-HTTPD 1 "Apr 22, 2015" "GNU Taler"
+
+.SH NAME
+taler\-exchange\-httpd \- Run Taler exchange (with RESTful API)
+
+.SH SYNOPSIS
+.B taler\-exchange\-httpd
+.RI [ options ]
+.br
+
+.SH DESCRIPTION
+\fBtaler\-exchange\-httpd\fP is a command line tool to run the Taler exchange (HTTP server).  The required configuration, keys and database must exist before running this command.
+
+.SH OPTIONS
+.B
+.IP "\-C,  \-\-connection-close"
+Force each HTTP connection to be closed after each request (useful in combination with \-f to avoid having to wait for nc to time out).
+.B
+.IP "\-d DIRNAME,  \-\-exchange-dir=DIRNAME"
+Use the configuration and other resources for the exchange to operate from DIRNAME.
+.B
+.IP "\-h, \-\-help"
+Print short help on options.
+.B
+.IP "\-v, \-\-version"
+Print version information.
+.B
+.IP "\-f FILENAME, \-\-file\-input=FILENAME"
+This option is only available if the exchange was compiled with the configure option
+\-\-enable\-developer\-mode.  It is used for generating test cases against the exchange using AFL.  When this option is present, the HTTP server will (1) terminate after the first client's HTTP connection is completed, and (2) automatically start such a client using a helper process based on the 'nc' or 'ncat' binary using FILENAME as the standard input to the helper process.  As a result, the process will effectively run with FILENAME as the input from an HTTP client and then immediately exit.  This is useful to test taler\-exchange\-httpd against many different possible inputs in a controlled way.
+.B
+.IP \"-t SECONDS, \-\-timeout=SECONDS"
+Specifies the number of SECONDS after which the HTTPD should close (idle) HTTP connections.
+
+.SH BUGS
+Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
+
+.SH "SEE ALSO"
+\fBtaler\-exchange\-dbinit\fP(1), \fBtaler\-exchange\-keyup\fP(1), \fBtaler\-exchange\-reservemod\fP(1), \fBtaler.conf\fP(5)

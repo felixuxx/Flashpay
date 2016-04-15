@@ -28,37 +28,37 @@
 /* Valid SEPA data */
 static const char * const valid_wire_str =
     "{ \"type\":\"SEPA\", \
-\"IBAN\":\"DE67830654080004822650\",                 \
+\"iban\":\"DE67830654080004822650\",                 \
 \"name\":\"GNUnet e.V.\",                               \
 \"bic\":\"GENODEF1SLR\",                                 \
-\"r\":123456789,                                     \
+\"salt\":\"123456789\",                                     \
 \"address\": \"foobar\"}";
 
 /* IBAN has wrong country code */
 static const char * const invalid_wire_str =
     "{ \"type\":\"SEPA\", \
-\"IBAN\":\"XX67830654080004822650\",                 \
+\"iban\":\"XX67830654080004822650\",                 \
 \"name\":\"GNUnet e.V.\",                               \
 \"bic\":\"GENODEF1SLR\",                                 \
-\"r\":123456789,                                     \
+\"salt\":\"123456789\",                                     \
 \"address\": \"foobar\"}";
 
 /* IBAN has wrong checksum */
 static const char * const invalid_wire_str2 =
     "{ \"type\":\"SEPA\", \
-\"IBAN\":\"DE67830654080004822651\",                 \
+\"iban\":\"DE67830654080004822651\",                 \
 \"name\":\"GNUnet e.V.\",                               \
 \"bic\":\"GENODEF1SLR\",                                 \
-\"r\":123456789,                                     \
+\"salt\":\"123456789\",                                     \
 \"address\": \"foobar\"}";
 
 /* Unsupported wireformat type */
 static const char * const unsupported_wire_str =
     "{ \"type\":\"unsupported\", \
-\"IBAN\":\"DE67830654080004822650\",                 \
+\"iban\":\"DE67830654080004822650\",                 \
 \"name\":\"GNUnet e.V.\",                               \
 \"bic\":\"GENODEF1SLR\",                                 \
-\"r\":123456789,                                     \
+\"salt\":\"123456789\",                                     \
 \"address\": \"foobar\"}";
 
 
@@ -77,7 +77,7 @@ main(int argc,
                     NULL);
   cfg = GNUNET_CONFIGURATION_create ();
   GNUNET_CONFIGURATION_set_value_string (cfg,
-                                         "mint",
+                                         "exchange",
                                          "currency",
                                          "EUR");
   plugin = TALER_WIRE_plugin_load (cfg,
@@ -85,16 +85,24 @@ main(int argc,
   GNUNET_assert (NULL != plugin);
   (void) memset(&error, 0, sizeof(error));
   GNUNET_assert (NULL != (wire = json_loads (unsupported_wire_str, 0, NULL)));
-  GNUNET_assert (GNUNET_YES != plugin->wire_validate (wire));
+  GNUNET_assert (GNUNET_YES != plugin->wire_validate (NULL,
+                                                      wire,
+                                                      NULL));
   json_decref (wire);
   GNUNET_assert (NULL != (wire = json_loads (invalid_wire_str, 0, NULL)));
-  GNUNET_assert (GNUNET_NO == plugin->wire_validate (wire));
+  GNUNET_assert (GNUNET_NO == plugin->wire_validate (NULL,
+                                                     wire,
+                                                     NULL));
   json_decref (wire);
   GNUNET_assert (NULL != (wire = json_loads (invalid_wire_str2, 0, NULL)));
-  GNUNET_assert (GNUNET_NO == plugin->wire_validate (wire));
+  GNUNET_assert (GNUNET_NO == plugin->wire_validate (NULL,
+                                                     wire,
+                                                     NULL));
   json_decref (wire);
   GNUNET_assert (NULL != (wire = json_loads (valid_wire_str, 0, &error)));
-  ret = plugin->wire_validate (wire);
+  ret = plugin->wire_validate (NULL,
+                               wire,
+                               NULL);
   json_decref (wire);
   TALER_WIRE_plugin_unload (plugin);
   GNUNET_CONFIGURATION_destroy (cfg);

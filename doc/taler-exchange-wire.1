@@ -1,0 +1,38 @@
+.TH TALER\-EXCHANGE\-WIRE 1 "Apr 2, 2016" "GNU Taler"
+
+.SH NAME
+taler\-exchange\-wire \- Create the master-key signed responses to /wire.
+
+.SH SYNOPSIS
+.B taler\-exchange\-wire
+.RI [ options ]
+.br
+
+.SH DESCRIPTION
+\fBtaler\-exchange\-wire\fP is used to create the exchange's reply to a /wire request.  It converts the bank details into the appropriate signed response.  This needs to be done using the long-term offline master key.
+
+.SH OPTIONS
+.B
+.IP "\-j JSON,  \-\-json=JSON"
+Gives JSON with all of the relevant account details in a method-specific format.
+.B
+.IP "\-t METHOD,  \-\-type=METHOD"
+Specifies the wire transfer method to use. Common are 'test' and 'sepa'.
+.B
+.IP "\-m MASTERKEYFILE,  \-\-master=MASTERKEYFILE"
+Specifies the name of the file containing the exchange's master key.
+.B
+.IP "\-o FILENAME,  \-\-output=FILENAME"
+Where to write the SEPA_RESPONSE_FILE.
+.B
+.IP "\-h, \-\-help"
+Print short help on options.
+.B
+.IP "\-v, \-\-version"
+Print version information.
+
+.SH BUGS
+Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
+
+.SH "SEE ALSO"
+\fBtaler\-exchange\-httpd\fP(1), \fBtaler.conf\fP(5)

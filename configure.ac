@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 #
 #  This file is part of TALER
-#  Copyright (C) 2014, 2015 GNUnet e.V.
+#  Copyright (C) 2014, 2015, 2016 GNUnet e.V. and Inria
 #
 #  TALER is free software; you can redistribute it and/or modify it under the
 #  terms of the GNU General Public License as published by the Free Software
@@ -17,8 +17,8 @@
 #
 #
 AC_PREREQ([2.69])
-AC_INIT([taler-mint], [0.0.0], [taler-bug@gnunet.org])
-AC_CONFIG_SRCDIR([src/util/json.c])
+AC_INIT([taler-exchange], [0.0.0], [taler-bug@gnunet.org])
+AC_CONFIG_SRCDIR([src/util/util.c])
 AC_CONFIG_HEADERS([taler_config.h])
 # support for non-recursive builds
 AM_INIT_AUTOMAKE([subdir-objects])
@@ -354,14 +354,15 @@ AC_CONFIG_FILES([Makefile
                  doc/Makefile
                  doc/doxygen/Makefile
                  src/Makefile
-                 src/include/Makefile
-                 src/util/Makefile
-                 src/pq/Makefile
                  src/bank-lib/Makefile
+                 src/exchangedb/Makefile
+                 src/exchange/Makefile
+                 src/exchange-tools/Makefile
+                 src/exchange-lib/Makefile
+                 src/include/Makefile
+                 src/json/Makefile
+                 src/pq/Makefile
+                 src/util/Makefile
                  src/wire/Makefile
-                 src/mintdb/Makefile
-                 src/mint/Makefile
-                 src/mint-tools/Makefile
-                 src/mint-lib/Makefile
                  ])
 AC_OUTPUT

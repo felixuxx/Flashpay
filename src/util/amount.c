@@ -151,6 +151,30 @@ TALER_string_to_amount (const char *str,
 
 
 /**
+ * Parse denomination description, in the format "T:V.F".
+ *
+ * @param str denomination description
+ * @param denom denomination to write the result to, in NBO
+ * @return #GNUNET_OK if the string is a valid denomination specification,
+ *         #GNUNET_SYSERR if it is invalid.
+ */
+int
+TALER_string_to_amount_nbo (const char *str,
+                            struct TALER_AmountNBO *denom)
+{
+  struct TALER_Amount amount;
+
+  if (GNUNET_OK !=
+      TALER_string_to_amount (str,
+                              &amount))
+    return GNUNET_SYSERR;
+  TALER_amount_hton (denom,
+                     &amount);
+  return GNUNET_OK;
+}
+
+
+/**
  * Convert amount from host to network representation.
  *
  * @param res where to store amount in network representation

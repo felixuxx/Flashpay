@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -17,14 +17,18 @@
  * @file include/taler_json_lib.h
  * @brief helper functions for JSON processing using libjansson
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
+ * @author Christian Grothoff
  */
-#ifndef TALER_json_LIB_H_
-#define TALER_json_LIB_H_
+#ifndef TALER_JSON_LIB_H_
+#define TALER_JSON_LIB_H_
 
 #include <jansson.h>
+#include <gnunet/gnunet_json_lib.h>
+#include "taler_util.h"
 
 /**
  * Print JSON parsing related error information
+ * @deprecated
  */
 #define TALER_json_warn(error)                                         \
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,                                \
@@ -39,106 +43,42 @@
  * @return a json object describing the amount
  */
 json_t *
-TALER_json_from_amount (const struct TALER_Amount *amount);
+TALER_JSON_from_amount (const struct TALER_Amount *amount);
 
 
 /**
- * Convert absolute timestamp to a json string.
+ * Provide specification to parse given JSON object to an amount.
  *
- * @param stamp the time stamp
- * @return a json string with the timestamp in @a stamp
- */
-json_t *
-TALER_json_from_abs (struct GNUNET_TIME_Absolute stamp);
-
-
-/**
- * Convert RSA public key to JSON.
- *
- * @param pk public key to convert
- * @return corresponding JSON encoding
- */
-json_t *
-TALER_json_from_rsa_public_key (struct GNUNET_CRYPTO_rsa_PublicKey *pk);
-
-
-/**
- * Convert RSA signature to JSON.
- *
- * @param sig signature to convert
- * @return corresponding JSON encoding
- */
-json_t *
-TALER_json_from_rsa_signature (struct GNUNET_CRYPTO_rsa_Signature *sig);
-
-
-/**
- * Convert binary data to a JSON string
- * with the base32crockford encoding.
- *
- * @param data binary data
- * @param size size of @a data in bytes
- * @return json string that encodes @a data
- */
-json_t *
-TALER_json_from_data (const void *data,
-                      size_t size);
-
-
-/**
- * Parse given JSON object to Amount
- *
- * @param json the json object representing Amount
+ * @param name name of the amount field in the JSON
  * @param[out] r_amount where the amount has to be written
- * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
-int
-TALER_json_to_amount (json_t *json,
-                      struct TALER_Amount *r_amount);
-
-/**
- * Parse given JSON object to absolute time.
- *
- * @param json the json object representing absolute time in seconds
- * @param[out] abs where the time has to be written
- * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
- */
-int
-TALER_json_to_abs (json_t *json,
-                   struct GNUNET_TIME_Absolute *abs);
-
-/**
- * Parse given JSON object to data
- *
- * @param json the json object representing data
- * @param out the pointer to hold the parsed data.
- * @param out_size the size of @a out
- * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
- */
-int
-TALER_json_to_data (json_t *json,
-                    void *out,
-                    size_t out_size);
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_amount (const char *name,
+                        struct TALER_Amount *r_amount);
 
 
 /**
- * Convert JSON to RSA public key.
+ * Generate line in parser specification for denomination public key.
  *
- * @param json JSON encoding to convert
- * @return corresponding public key
+ * @param field name of the field
+ * @param[out] pk key to initialize
+ * @return corresponding field spec
  */
-struct GNUNET_CRYPTO_rsa_PublicKey *
-TALER_json_to_rsa_public_key (json_t *json);
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_denomination_public_key (const char *field,
+                                         struct TALER_DenominationPublicKey *pk);
 
 
 /**
- * Convert JSON to RSA signature.
+ * Generate line in parser specification for denomination signature.
  *
- * @param json JSON encoding to convert
- * @return corresponding signature
+ * @param field name of the field
+ * @param sig the signature to initialize
+ * @return corresponding field spec
  */
-struct GNUNET_CRYPTO_rsa_Signature *
-TALER_json_to_rsa_signature (json_t *json);
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_denomination_signature (const char *field,
+                                        struct TALER_DenominationSignature *sig);
 
 
 /**
@@ -149,22 +89,9 @@ TALER_json_to_rsa_signature (json_t *json);
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 int
-TALER_hash_json (json_t *json,
+TALER_JSON_hash (const json_t *json,
                  struct GNUNET_HashCode *hc);
 
-
-/**
- * Check if the given wire format JSON object is correctly formatted
- *
- * @param allowed NULL-terminated array of allowed wire format types
- * @param wire the JSON wire format object
- * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
- */
-int
-TALER_json_validate_wireformat (const char **allowed,
-                                const json_t *wire);
-
-
-#endif /* TALER_json_LIB_H_ */
+#endif /* TALER_JSON_LIB_H_ */
 
 /* End of taler_json_lib.h */

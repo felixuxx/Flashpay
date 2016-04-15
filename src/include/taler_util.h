@@ -24,8 +24,6 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_amount_lib.h"
 #include "taler_crypto_lib.h"
-#include "taler_json_lib.h"
-
 
 
 /* Define logging functions */
@@ -98,41 +96,6 @@ TALER_b2s (const void *buf,
 
 
 /**
- * Round a time value so that it is suitable for transmission
- * via JSON encodings.
- *
- * @param at time to round
- * @return #GNUNET_OK if time was already rounded, #GNUNET_NO if
- *         it was just now rounded
- */
-int
-TALER_round_abs_time (struct GNUNET_TIME_Absolute *at);
-
-
-/**
- * Round a time value so that it is suitable for transmission
- * via JSON encodings.
- *
- * @param rt time to round
- * @return #GNUNET_OK if time was already rounded, #GNUNET_NO if
- *         it was just now rounded
- */
-int
-TALER_round_rel_time (struct GNUNET_TIME_Relative *rt);
-
-
-/**
- * Load configuration by parsing all configuration
- * files in the given directory.
- *
- * @param base_dir directory with the configuration files
- * @return NULL on error, otherwise configuration
- */
-struct GNUNET_CONFIGURATION_Handle *
-TALER_config_load (const char *base_dir);
-
-
-/**
  * Obtain denomination amount from configuration file.
  *
  * @param section section of the configuration to access
@@ -146,41 +109,5 @@ TALER_config_get_denom (struct GNUNET_CONFIGURATION_Handle *cfg,
                         const char *option,
                         struct TALER_Amount *denom);
 
-
-/**
- * Get the path to a specific Taler installation directory or, with
- * #GNUNET_OS_IPK_SELF_PREFIX, the current running apps installation
- * directory.
- *
- * @param dirkind what kind of directory is desired?
- * @return a pointer to the dir path (to be freed by the caller)
- */
-char *
-TALER_OS_installation_get_path (enum GNUNET_OS_InstallationPathKind dirkind);
-
-
-/**
- * Print out details on command line options (implements --help).
- *
- * @param ctx command line processing context
- * @param scls additional closure (points to about text)
- * @param option name of the option
- * @param value not used (NULL)
- * @return #GNUNET_NO (do not continue, not an error)
- */
-int
-TALER_GETOPT_format_help_ (struct GNUNET_GETOPT_CommandLineProcessorContext *ctx,
-			   void *scls,
-			   const char *option,
-			   const char *value);
-
-/**
- * Macro defining the option to print the command line
- * help text (-h option).
- *
- * @param about string with brief description of the application
- */
-#define TALER_GETOPT_OPTION_HELP(about) \
-  { 'h', "help", (const char *) NULL, gettext_noop("print this help"), 0, &TALER_GETOPT_format_help_, (void *) about }
 
 #endif

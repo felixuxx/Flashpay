@@ -22,6 +22,7 @@
 #ifndef _TALER_BANK_SERVICE_H
 #define _TALER_BANK_SERVICE_H
 
+#include <jansson.h>
 #include "taler_util.h"
 
 /* ********************* event loop *********************** */
@@ -117,10 +118,12 @@ struct TALER_BANK_AdminAddIncomingHandle;
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
+ * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
 typedef void
 (*TALER_BANK_AdminAddIncomingResultCallback) (void *cls,
-                                              unsigned int http_status);
+                                              unsigned int http_status,
+                                              json_t *json);
 
 
 /**
@@ -133,7 +136,8 @@ typedef void
  * @param reserve_pub public key of the reserve
  * @param amount amount that was deposited
  * @param execution_date when did we receive the amount
- * @param account_no account number (53 bits at most)
+ * @param debit_account_no account number to withdraw from (53 bits at most)
+ * @param credit_account_no account number to deposit into (53 bits at most)
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
  * @return NULL
@@ -144,7 +148,8 @@ struct TALER_BANK_AdminAddIncomingHandle *
 TALER_BANK_admin_add_incoming (struct TALER_BANK_Context *bank,
                                const struct TALER_WireTransferIdentifierRawP *wtid,
                                const struct TALER_Amount *amount,
-                               uint64_t account_no,
+                               uint64_t debit_account_no,
+                               uint64_t credit_account_no,
                                TALER_BANK_AdminAddIncomingResultCallback res_cb,
                                void *res_cb_cls);
 

@@ -140,23 +140,23 @@ struct TALER_TransferPrivateKeyP
 
 
 /**
- * @brief Type of online public keys used by the mint to sign
+ * @brief Type of online public keys used by the exchange to sign
  * messages.
  */
-struct TALER_MintPublicKeyP
+struct TALER_ExchangePublicKeyP
 {
   /**
-   * Taler uses EdDSA for online mint message signing.
+   * Taler uses EdDSA for online exchange message signing.
    */
   struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
 };
 
 
 /**
- * @brief Type of online public keys used by the mint to
+ * @brief Type of online public keys used by the exchange to
  * sign messages.
  */
-struct TALER_MintPrivateKeyP
+struct TALER_ExchangePrivateKeyP
 {
   /**
    * Taler uses EdDSA for online signatures sessions.
@@ -166,9 +166,9 @@ struct TALER_MintPrivateKeyP
 
 
 /**
- * @brief Type of signatures used by the mint to sign messages online.
+ * @brief Type of signatures used by the exchange to sign messages online.
  */
-struct TALER_MintSignatureP
+struct TALER_ExchangeSignatureP
 {
   /**
    * Taler uses EdDSA for online signatures sessions.
@@ -178,7 +178,7 @@ struct TALER_MintSignatureP
 
 
 /**
- * @brief Type of the offline master public key used by the mint.
+ * @brief Type of the offline master public key used by the exchange.
  */
 struct TALER_MasterPublicKeyP
 {
@@ -214,7 +214,7 @@ struct TALER_AuditorSignatureP
 
 
 /**
- * @brief Type of the offline master public keys used by the mint.
+ * @brief Type of the offline master public keys used by the exchange.
  */
 struct TALER_MasterPrivateKeyP
 {
@@ -226,7 +226,7 @@ struct TALER_MasterPrivateKeyP
 
 
 /**
- * @brief Type of signatures by the offline master public key used by the mint.
+ * @brief Type of signatures by the offline master public key used by the exchange.
  */
 struct TALER_MasterSignatureP
 {
@@ -299,7 +299,7 @@ struct TALER_DenominationSignature
   /**
    * Taler uses RSA for blinding.
    */
-  struct GNUNET_CRYPTO_rsa_Signature *rsa_signature;
+  struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
 };
 
 
@@ -311,7 +311,7 @@ struct TALER_DenominationPublicKey
   /**
    * Taler uses RSA for signing coins.
    */
-  struct GNUNET_CRYPTO_rsa_PublicKey *rsa_public_key;
+  struct GNUNET_CRYPTO_RsaPublicKey *rsa_public_key;
 };
 
 
@@ -323,7 +323,7 @@ struct TALER_DenominationPrivateKey
   /**
    * Taler uses RSA for signing coins.
    */
-  struct GNUNET_CRYPTO_rsa_PrivateKey *rsa_private_key;
+  struct GNUNET_CRYPTO_RsaPrivateKey *rsa_private_key;
 };
 
 
@@ -464,8 +464,8 @@ struct TALER_WireTransferIdentifierRawP
 /**
  * Binary information encoded in Crockford's Base32 in wire transfer
  * subjects of transfers from Taler to a merchant.  The actual value
- * is chosen by the mint and has no particular semantics, other than
- * being unique so that the mint can lookup details about the wire
+ * is chosen by the exchange and has no particular semantics, other than
+ * being unique so that the exchange can lookup details about the wire
  * transfer when needed.
  */
 struct TALER_WireTransferIdentifierP

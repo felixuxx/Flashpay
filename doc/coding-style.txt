@@ -14,10 +14,10 @@ Naming conventions:
     SHOULD NOT be included from outside of their own directory
   + end in "_lib" for "simple" libraries
   + end in "_plugin" for plugins
-  + end in "_service" for libraries accessing a service, i.e. the mint
+  + end in "_service" for libraries accessing a service, i.e. the exchange
 
 * binaries:
-  + taler-mint-xxx: mint programs
+  + taler-exchange-xxx: exchange programs
   + taler-merchant-xxx: merchant programs (demos)
   + taler-wallet-xxx: wallet programs
   + plugins should be libtaler_plugin_xxx_yyy.so: plugin yyy for API xxx
@@ -25,16 +25,16 @@ Naming conventions:
 
 * logging
   + tools use their full name in GNUNET_log_setup
-    (i.e. 'taler-mint-keyup') and log using plain 'GNUNET_log'.
+    (i.e. 'taler-exchange-keyup') and log using plain 'GNUNET_log'.
   + pure libraries (without associated service) use 'GNUNET_log_from'
     with the component set to their library name (without lib or '.so'),
     which should also be their directory name (i.e. 'util')
   + plugin libraries (without associated service) use 'GNUNET_log_from'
     with the component set to their type and plugin name (without lib or '.so'),
-    which should also be their directory name (i.e. 'mintdb-postgres')
+    which should also be their directory name (i.e. 'exchangedb-postgres')
   + libraries with associated service) use 'GNUNET_log_from'
     with the name of the service,  which should also be their
-    directory name (i.e. 'mint')
+    directory name (i.e. 'exchange')
 
 * configuration
   + same rules as for GNUnet
@@ -44,7 +44,7 @@ Naming conventions:
     MUST match the subdirectory of src/ in which the symbol is defined
   + from libtalerutil start just with TALER_, without subsystemname
   + if scope is ONE binary and symbols are not in a shared library,
-    use binary-specific prefix (such as TMH = taler-mint-httpd) for
+    use binary-specific prefix (such as TMH = taler-exchange-httpd) for
     globals, possibly followed by the subsystem (TMH_DB_xxx).
 
 * structs:

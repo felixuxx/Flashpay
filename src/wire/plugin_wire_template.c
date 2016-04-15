@@ -74,13 +74,36 @@ template_amount_round (void *cls,
 
 
 /**
+ * Obtain wire transfer details in the plugin-specific format
+ * from the configuration.
+ *
+ * @param cls closure
+ * @param cfg configuration with details about wire accounts
+ * @param account_name which section in the configuration should we parse
+ * @return NULL if @a cfg fails to have valid wire details for @a account_name
+ */
+static json_t *
+template_get_wire_details (void *cls,
+                           const struct GNUNET_CONFIGURATION_Handle *cfg,
+                           const char *account_name)
+{
+  GNUNET_break (0);
+  return NULL;
+}
+
+
+/**
  * Check if the given wire format JSON object is correctly formatted
  *
+ * @param cls the @e cls of this struct with the plugin-specific state
  * @param wire the JSON wire format object
+ * @param master_pub public key of the exchange to verify against
  * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
 static int
-template_wire_validate (const json_t *wire)
+template_wire_validate (void *cls,
+                        const json_t *wire,
+                        const struct TALER_MasterPublicKeyP *master_pub)
 {
   GNUNET_break (0);
   return GNUNET_SYSERR;
@@ -149,6 +172,28 @@ template_execute_wire_transfer (void *cls,
 
 
 /**
+ * Sign wire transfer details in the plugin-specific format.
+ *
+ * @param cls closure
+ * @param in wire transfer details in JSON format
+ * @param key private signing key to use
+ * @param salt salt to add
+ * @param[out] sig where to write the signature
+ * @return #GNUNET_OK on success
+ */
+static int
+template_sign_wire_details (void *cls,
+                            const json_t *in,
+                            const struct TALER_MasterPrivateKeyP *key,
+                            const struct GNUNET_HashCode *salt,
+                            struct TALER_MasterSignatureP *sig)
+{
+  GNUNET_break (0);
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Abort execution of a wire transfer. For example, because we are
  * shutting down.  Note that if an execution is aborted, it may or
  * may not still succeed. The caller MUST run @e
@@ -197,12 +242,12 @@ libtaler_plugin_wire_template_init (void *cls)
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "mint",
+                                             "exchange",
                                              "CURRENCY",
                                              &tc->currency))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "mint",
+                               "exchange",
                                "CURRENCY");
     GNUNET_free (tc->bank_uri);
     GNUNET_free (tc);
@@ -212,6 +257,8 @@ libtaler_plugin_wire_template_init (void *cls)
   plugin = GNUNET_new (struct TALER_WIRE_Plugin);
   plugin->cls = tc;
   plugin->amount_round = &template_amount_round;
+  plugin->get_wire_details = &template_get_wire_details;
+  plugin->sign_wire_details = &template_sign_wire_details;
   plugin->wire_validate = &template_wire_validate;
   plugin->prepare_wire_transfer = &template_prepare_wire_transfer;
   plugin->prepare_wire_transfer_cancel = &template_prepare_wire_transfer_cancel;
