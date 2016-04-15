@@ -210,6 +210,8 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
                                          &spent,
                                          &spent))
   {
+    TMH_plugin->rollback (TMH_plugin->cls,
+                          session);
     TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
                                             tl);
     return TMH_RESPONSE_reply_internal_db_error (connection);
