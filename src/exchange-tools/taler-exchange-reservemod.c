@@ -31,14 +31,168 @@
 static char *exchange_directory;
 
 /**
- * Handle to the exchange's configuration
- */
-static struct GNUNET_CONFIGURATION_Handle *cfg;
-
-/**
  * Our DB plugin.
  */
 static struct TALER_EXCHANGEDB_Plugin *plugin;
+
+/**
+ * Public key of the reserve as a string.
+ */
+static char *reserve_pub_str;
+
+/**
+ * Amount to add as a string.
+ */
+static char *add_str;
+
+/**
+ * Details about the wire transfer in JSON format.
+ */
+static char *details;
+
+/**
+ * Return value from main().
+ */
+static int global_ret;
+
+
+/**
+ * Run the database transaction.
+ *
+ * @param reserve_pub public key of the reserve to use
+ * @param add_value value to add
+ * @param jdetails JSON details
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on hard error,
+ *         #GNUNET_NO if record exists
+ */
+static int
+run_transaction (const struct TALER_ReservePublicKeyP *reserve_pub,
+                 const struct TALER_Amount *add_value,
+                 json_t *jdetails)
+{
+  int ret;
+  struct TALER_EXCHANGEDB_Session *session;
+
+  session = plugin->get_session (plugin->cls,
+                                 GNUNET_NO);
+  if (NULL == session)
+  {
+    fprintf (stderr,
+             "Failed to initialize DB session\n");
+    return GNUNET_SYSERR;
+  }
+  /* FIXME: maybe allow passing timestamp via command-line? */
+  ret = plugin->reserves_in_insert (plugin->cls,
+                                    session,
+                                    reserve_pub,
+                                    add_value,
+                                    GNUNET_TIME_absolute_get (),
+                                    jdetails);
+  if (GNUNET_SYSERR == ret)
+  {
+    fprintf (stderr,
+             "Failed to update reserve.\n");
+  }
+  if (GNUNET_NO == ret)
+  {
+    fprintf (stderr,
+             "Record exists, reserve not updated.\n");
+  }
+  return ret;
+}
+
+
+/**
+ * Main function that will be run.
+ *
+ * @param cls closure
+ * @param args remaining command-line arguments
+ * @param cfgfile name of the configuration file used (for saving, can be NULL!)
+ * @param cfg configuration
+ */
+static void
+run (void *cls,
+     char *const *args,
+     const char *cfgfile,
+     const struct GNUNET_CONFIGURATION_Handle *cfg)
+{
+  struct TALER_Amount add_value;
+  json_t *jdetails;
+  json_error_t error;
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                               "exchange",
+                                               "KEYDIR",
+                                               &exchange_directory))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "KEYDIR");
+    global_ret = 1;
+    return;
+  }
+  if ((NULL == reserve_pub_str) ||
+      (GNUNET_OK !=
+       GNUNET_STRINGS_string_to_data (reserve_pub_str,
+                                      strlen (reserve_pub_str),
+                                      &reserve_pub,
+                                      sizeof (struct TALER_ReservePublicKeyP))))
+  {
+    fprintf (stderr,
+             "Parsing reserve key invalid\n");
+    global_ret = 1;
+    return;
+  }
+  if ( (NULL == add_str) ||
+       (GNUNET_OK !=
+        TALER_string_to_amount (add_str,
+                                &add_value)) )
+  {
+    fprintf (stderr,
+             "Failed to parse currency amount `%s'\n",
+             add_str);
+    global_ret = 1;
+    return;
+  }
+  if (NULL == details)
+  {
+    fprintf (stderr,
+             "No wiring details given (justification required)\n");
+    global_ret = 1;
+    return;
+  }
+  jdetails = json_loads (details,
+                         JSON_REJECT_DUPLICATES,
+                         &error);
+  if (NULL == jdetails)
+  {
+    fprintf (stderr,
+             "Failed to parse JSON transaction details `%s': %s (%s)\n",
+             details,
+             error.text,
+             error.source);
+    global_ret = 1;
+    return;
+  }
+
+  if (NULL ==
+      (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
+  {
+    fprintf (stderr,
+             "Failed to initialize database plugin.\n");
+    global_ret = 1;
+    return;
+  }
+  if (GNUNET_SYSERR ==
+      run_transaction (&reserve_pub,
+                       &add_value,
+                       jdetails))
+    global_ret = 1;
+  TALER_EXCHANGEDB_plugin_unload (plugin);
+  json_decref (jdetails);
+}
 
 
 /**
@@ -51,20 +205,10 @@ static struct TALER_EXCHANGEDB_Plugin *plugin;
 int
 main (int argc, char *const *argv)
 {
-  char *cfgfile = NULL;
-  char *reserve_pub_str = NULL;
-  char *add_str = NULL;
-  struct TALER_Amount add_value;
-  char *details = NULL;
-  json_t *jdetails;
-  json_error_t error;
-  struct TALER_ReservePublicKeyP reserve_pub;
-  struct TALER_EXCHANGEDB_Session *session;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     {'a', "add", "DENOM",
      "value to add", 1,
      &GNUNET_GETOPT_set_string, &add_str},
-    GNUNET_GETOPT_OPTION_CFG_FILE (&cfgfile),
     {'d', "details", "JSON",
      "details about the bank transaction which justify why we add this amount", 1,
      &GNUNET_GETOPT_set_string, &details},
@@ -72,143 +216,21 @@ main (int argc, char *const *argv)
     {'R', "reserve", "KEY",
      "reserve (public key) to modify", 1,
      &GNUNET_GETOPT_set_string, &reserve_pub_str},
-    GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
-  int ret;
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-exchange-reservemod",
                                    "WARNING",
                                    NULL));
-
-  if (GNUNET_GETOPT_run ("taler-exchange-reservemod",
-                         options,
-                         argc, argv) < 0)
-    return 1;
-  cfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_load (cfg,
-                                                  cfgfile))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                _("Malformed configuration file `%s', exit ...\n"),
-                cfgfile);
-    GNUNET_free_non_null (cfgfile);
-    GNUNET_free_non_null (add_str);
-    GNUNET_free_non_null (details);
-    GNUNET_free_non_null (reserve_pub_str);
-    return 1;
-  }
-  GNUNET_free_non_null (cfgfile);
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                               "exchange",
-                                               "KEYDIR",
-                                               &exchange_directory))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "KEYDIR");
-    GNUNET_free_non_null (add_str);
-    GNUNET_free_non_null (details);
-    GNUNET_free_non_null (reserve_pub_str);
+      GNUNET_PROGRAM_run (argc, argv,
+                          "taler-exchange-reservemod",
+			  "Deposit funds into a Taler reserve",
+			  options,
+			  &run, NULL))
     return 1;
-  }
-  if ((NULL == reserve_pub_str) ||
-      (GNUNET_OK !=
-       GNUNET_STRINGS_string_to_data (reserve_pub_str,
-                                      strlen (reserve_pub_str),
-                                      &reserve_pub,
-                                      sizeof (struct TALER_ReservePublicKeyP))))
-  {
-    fprintf (stderr,
-             "Parsing reserve key invalid\n");
-    GNUNET_free_non_null (add_str);
-    GNUNET_free_non_null (details);
-    GNUNET_free_non_null (reserve_pub_str);
-    return 1;
-  }
-  if ( (NULL == add_str) ||
-       (GNUNET_OK !=
-        TALER_string_to_amount (add_str,
-                                &add_value)) )
-  {
-    fprintf (stderr,
-             "Failed to parse currency amount `%s'\n",
-             add_str);
-    GNUNET_free_non_null (add_str);
-    GNUNET_free_non_null (details);
-    GNUNET_free_non_null (reserve_pub_str);
-    return 1;
-  }
-
-  if (NULL == details)
-  {
-    fprintf (stderr,
-             "No wiring details given (justification required)\n");
-   GNUNET_free_non_null (add_str);
-   GNUNET_free_non_null (reserve_pub_str);
-   return 1;
-  }
-
-  ret = 1;
-  if (NULL ==
-      (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
-  {
-    fprintf (stderr,
-             "Failed to initialize database plugin.\n");
-    goto cleanup;
-  }
-
-  session = plugin->get_session (plugin->cls,
-                                 GNUNET_NO);
-  if (NULL == session)
-  {
-    fprintf (stderr,
-             "Failed to initialize DB session\n");
-    goto cleanup;
-  }
-  jdetails = json_loads (details,
-                         JSON_REJECT_DUPLICATES,
-                         &error);
-  if (NULL == jdetails)
-  {
-    fprintf (stderr,
-             "Failed to parse JSON transaction details `%s': %s (%s)\n",
-             details,
-             error.text,
-             error.source);
-    goto cleanup;
-  }
-  /* FIXME: maybe allow passing timestamp via command-line? */
-  ret = plugin->reserves_in_insert (plugin->cls,
-				    session,
-				    &reserve_pub,
-				    &add_value,
-                                    GNUNET_TIME_absolute_get (),
-				    jdetails);
-  json_decref (jdetails);
-  if (GNUNET_SYSERR == ret)
-  {
-    fprintf (stderr,
-             "Failed to update reserve.\n");
-    goto cleanup;
-  }
-  if (GNUNET_NO == ret)
-  {
-    fprintf (stderr,
-             "Record exists, reserve not updated.\n");
-  }
-  ret = 0;
- cleanup:
-  if (NULL != plugin)
-    TALER_EXCHANGEDB_plugin_unload (plugin);
-  if (NULL != cfg)
-    GNUNET_CONFIGURATION_destroy (cfg);
-  GNUNET_free_non_null (add_str);
-  GNUNET_free_non_null (details);
-  GNUNET_free_non_null (reserve_pub_str);
-  return ret;
+  return global_ret;
 }
 
 /* end taler-exchange-reservemod.c */

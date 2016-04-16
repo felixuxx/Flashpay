@@ -34,8 +34,12 @@ static char *exchange_directory;
 /**
  * Our configuration.
  */
-static struct GNUNET_CONFIGURATION_Handle *kcfg;
+static const struct GNUNET_CONFIGURATION_Handle *kcfg;
 
+/**
+ * Return value from main().
+ */
+static int global_ret;
 
 /**
  * Function called on each signing key.
@@ -194,42 +198,20 @@ exchange_denomkeys_check ()
 
 
 /**
- * The main function of the keyup tool
+ * Main function that will be run.
  *
- * @param argc number of arguments from the command line
- * @param argv command line arguments
- * @return 0 ok, 1 on error
+ * @param cls closure
+ * @param args remaining command-line arguments
+ * @param cfgfile name of the configuration file used (for saving, can be NULL!)
+ * @param cfg configuration
  */
-int
-main (int argc, char *const *argv)
+static void
+run (void *cls,
+     char *const *args,
+     const char *cfgfile,
+     const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
-  char *cfgfile;
-  const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_CFG_FILE (&cfgfile),
-    GNUNET_GETOPT_OPTION_HELP ("gnunet-exchange-keycheck OPTIONS"),
-    GNUNET_GETOPT_OPTION_END
-  };
-
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-exchange-keycheck",
-                                   "WARNING",
-                                   NULL));
-
-  if (GNUNET_GETOPT_run ("taler-exchange-keycheck",
-                         options,
-                         argc, argv) < 0)
-    return 1;
-  kcfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_load (kcfg,
-                                                  cfgfile))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                _("Malformed configuration file `%s', exit ...\n"),
-                cfgfile);
-    GNUNET_free_non_null (cfgfile);
-    return 1;
-  }
-  GNUNET_free_non_null (cfgfile);
+  kcfg = cfg;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (kcfg,
                                                "exchange",
@@ -239,17 +221,46 @@ main (int argc, char *const *argv)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "KEYDIR");
-    return 1;
+    global_ret = 1;
+    return;
   }
 
   if ( (GNUNET_OK != exchange_signkeys_check ()) ||
        (GNUNET_OK != exchange_denomkeys_check ()) )
   {
-    GNUNET_CONFIGURATION_destroy (kcfg);
-    return 1;
+    global_ret = 1;
+    return;
   }
-  GNUNET_CONFIGURATION_destroy (kcfg);
-  return 0;
+}
+
+
+/**
+ * The main function of the keyup tool
+ *
+ * @param argc number of arguments from the command line
+ * @param argv command line arguments
+ * @return 0 ok, 1 on error
+ */
+int
+main (int argc, char *const *argv)
+{
+  const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_OPTION_END
+  };
+
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_log_setup ("taler-exchange-keycheck",
+                                   "WARNING",
+                                   NULL));
+  if (GNUNET_OK !=
+      GNUNET_PROGRAM_run (argc, argv,
+                          "taler-exchange-keycheck",
+			  "Check keys of the exchange for validity",
+			  options,
+			  &run, NULL))
+    return 1;
+  return global_ret;
+
 }
 
 /* end of taler-exchange-keycheck.c */

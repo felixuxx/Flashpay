@@ -1064,7 +1064,7 @@ main (int argc,
                  GNUNET_log_setup ("taler-exchange-keyup",
                                    "WARNING",
                                    NULL));
-    
+
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
 			 "taler-exchange-keyup",
