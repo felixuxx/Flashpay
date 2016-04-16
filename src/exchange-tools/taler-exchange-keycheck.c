@@ -41,6 +41,7 @@ static const struct GNUNET_CONFIGURATION_Handle *kcfg;
  */
 static int global_ret;
 
+
 /**
  * Function called on each signing key.
  *

@@ -83,6 +83,10 @@ main (int argc,
     GNUNET_GETOPT_OPTION_END
   };
 
+  /* force linker to link against libtalerutil; if we do
+     not do this, the linker may "optimize" libtalerutil
+     away and skip #TALER_OS_init(), which we do need */
+  (void) TALER_project_data_default ();
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-exchange-dbinit",
                                    "INFO",
