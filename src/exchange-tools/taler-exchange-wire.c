@@ -22,6 +22,7 @@
 #include <jansson.h>
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_crypto_lib.h"
+#include "taler_util.h"
 #include "taler_wire_lib.h"
 #include "taler_signatures.h"
 
@@ -50,6 +51,7 @@ static char *output_filename;
  * Return value from main().
  */
 static int global_ret;
+
 
 /**
  * Main function that will be run.
@@ -211,6 +213,10 @@ main (int argc,
     GNUNET_GETOPT_OPTION_END
   };
 
+  /* force linker to link against libtalerutil; if we do
+     not do this, the linker may "optimize" libtalerutil
+     away and skip #TALER_OS_init(), which we do need */
+  (void) TALER_project_data_default ();
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-exchange-wire",
                                    "WARNING",

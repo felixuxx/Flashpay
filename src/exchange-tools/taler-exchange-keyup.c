@@ -871,7 +871,7 @@ exchange_keys_update_denomkeys ()
  * @param cls closure
  * @param args remaining command-line arguments
  * @param cfgfile name of the configuration file used (for saving, can be NULL!)
- * @param c configuration
+ * @param cfg configuration
  */
 static void
 run (void *cls,
@@ -1048,7 +1048,7 @@ main (int argc,
       char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
-      {'m', "master-key", "FILE",
+    {'m', "master-key", "FILE",
      "master key file (private key)", 1,
      &GNUNET_GETOPT_set_filename, &masterkeyfile},
     {'o', "output", "FILE",

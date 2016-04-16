@@ -110,4 +110,11 @@ TALER_config_get_denom (const struct GNUNET_CONFIGURATION_Handle *cfg,
                         struct TALER_Amount *denom);
 
 
+/**
+ * Return default project data used by Taler.
+ */
+const struct GNUNET_OS_ProjectData *
+TALER_project_data_default (void);
+
+
 #endif

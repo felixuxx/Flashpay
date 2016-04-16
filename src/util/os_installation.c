@@ -39,6 +39,7 @@ static const struct GNUNET_OS_ProjectData taler_pd = {
   .bug_email = "taler@gnu.org",
   .homepage = "http://www.gnu.org/s/taler/",
   .config_file = "taler.conf",
+  .user_config_file = "~/.config/taler.conf",
 };
 
 
