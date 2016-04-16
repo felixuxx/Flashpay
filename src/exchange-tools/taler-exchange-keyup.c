@@ -181,7 +181,7 @@ static char *pretend_time_str;
 /**
  * Handle to the exchange's configuration
  */
-static struct GNUNET_CONFIGURATION_Handle *kcfg;
+static const struct GNUNET_CONFIGURATION_Handle *kcfg;
 
 /**
  * Time when the key update is executed.  Either the actual current time, or a
@@ -203,6 +203,12 @@ static struct TALER_MasterPublicKeyP master_public_key;
  * Until what time do we provide keys?
  */
 static struct GNUNET_TIME_Absolute lookahead_sign_stamp;
+
+/**
+ * Return value from main().
+ */
+static int global_ret;
+
 
 
 /**
@@ -860,61 +866,23 @@ exchange_keys_update_denomkeys ()
 
 
 /**
- * The main function of the taler-exchange-keyup tool.  This tool is used
- * to create the signing and denomination keys for the exchange.  It uses
- * the long-term offline private key and writes the (additional) key
- * files to the respective exchange directory (from where they can then be
- * copied to the online server).  Note that we need (at least) the
- * most recent generated previous keys so as to align the validity
- * periods.
+ * Main function that will be run.
  *
- * @param argc number of arguments from the command line
- * @param argv command line arguments
- * @return 0 ok, 1 on error
+ * @param cls closure
+ * @param args remaining command-line arguments
+ * @param cfgfile name of the configuration file used (for saving, can be NULL!)
+ * @param c configuration
  */
-int
-main (int argc,
-      char *const *argv)
+static void
+run (void *cls,
+     char *const *args,
+     const char *cfgfile,
+     const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
-  char *cfgfile = NULL;
-  const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_CFG_FILE (&cfgfile),
-    GNUNET_GETOPT_OPTION_HELP ("Setup signing and denomination keys for a Taler exchange"),
-    {'m', "master-key", "FILE",
-     "master key file (private key)", 1,
-     &GNUNET_GETOPT_set_filename, &masterkeyfile},
-    {'o', "output", "FILE",
-     "auditor denomination key signing request file to create", 1,
-     &GNUNET_GETOPT_set_filename, &auditorrequestfile},
-    {'t', "time", "TIMESTAMP",
-     "pretend it is a different time for the update", 0,
-     &GNUNET_GETOPT_set_string, &pretend_time_str},
-    GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
-    GNUNET_GETOPT_OPTION_END
-  };
   struct GNUNET_TIME_Relative lookahead_sign;
   struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
 
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-exchange-keyup",
-                                   "WARNING",
-                                   NULL));
-
-  if (GNUNET_GETOPT_run ("taler-exchange-keyup",
-                         options,
-                         argc, argv) < 0)
-    return 1;
-  kcfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_load (kcfg,
-                                                  cfgfile))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                _("Malformed configuration file `%s', exit ...\n"),
-                cfgfile);
-    GNUNET_free_non_null (cfgfile);
-    return 1;
-  }
-  GNUNET_free_non_null (cfgfile);
+  kcfg = cfg;
   if (NULL != pretend_time_str)
   {
     if (GNUNET_OK !=
@@ -924,7 +892,8 @@ main (int argc,
       fprintf (stderr,
                "timestamp `%s' invalid\n",
                pretend_time_str);
-      return 1;
+      global_ret = 1;
+      return;
     }
   }
   else
@@ -941,7 +910,8 @@ main (int argc,
   {
     fprintf (stderr,
              "Master key file not given in neither configuration nor command-line\n");
-    return 1;
+    global_ret = 1;
+    return;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (kcfg,
@@ -952,7 +922,8 @@ main (int argc,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "KEYDIR");
-    return 1;
+    global_ret = 1;
+    return;
   }
   eddsa_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (masterkeyfile);
   if (NULL == eddsa_priv)
@@ -960,7 +931,8 @@ main (int argc,
     fprintf (stderr,
              "Failed to initialize master key from file `%s'\n",
              masterkeyfile);
-    return 1;
+    global_ret = 1;
+    return;
   }
   master_priv.eddsa_priv = *eddsa_priv;
   GNUNET_free (eddsa_priv);
@@ -977,7 +949,8 @@ main (int argc,
                "Failed to open `%s' for writing: %s\n",
                auditorrequestfile,
                STRERROR (errno));
-      return 1;
+      global_ret = 1;
+      return;
     }
   }
 
@@ -995,7 +968,8 @@ main (int argc,
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "exchange",
                                  "master_public_key");
-      return 1;
+      global_ret = 1;
+      return;
     }
     if (0 !=
         memcmp (&master_public_key,
@@ -1006,7 +980,8 @@ main (int argc,
                                  "exchange",
                                  "master_public_key",
                                  _("does not match with private key"));
-      return 1;
+      global_ret = 1;
+      return;
     }
   }
 
@@ -1019,7 +994,8 @@ main (int argc,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange_keys",
                                "lookahead_sign");
-    return GNUNET_SYSERR;
+    global_ret = 1;
+    return;
   }
   if (0 == lookahead_sign.rel_value_us)
   {
@@ -1027,7 +1003,8 @@ main (int argc,
                                "exchange_keys",
                                "lookahead_sign",
                                _("must not be zero"));
-    return GNUNET_SYSERR;
+    global_ret = 1;
+    return;
   }
   GNUNET_TIME_round_rel (&lookahead_sign);
   lookahead_sign_stamp = GNUNET_TIME_absolute_add (now,
@@ -1036,16 +1013,66 @@ main (int argc,
 
   /* finally, do actual work */
   if (GNUNET_OK != exchange_keys_update_signkeys ())
-    return 1;
-
+  {
+    global_ret = 1;
+    return;
+  }
   if (GNUNET_OK != exchange_keys_update_denomkeys ())
-    return 1;
+  {
+    global_ret = 1;
+    return;
+  }
   if (NULL != auditor_output_file)
   {
     FCLOSE (auditor_output_file);
     auditor_output_file = NULL;
   }
-  return 0;
+}
+
+
+/**
+ * The main function of the taler-exchange-keyup tool.  This tool is used
+ * to create the signing and denomination keys for the exchange.  It uses
+ * the long-term offline private key and writes the (additional) key
+ * files to the respective exchange directory (from where they can then be
+ * copied to the online server).  Note that we need (at least) the
+ * most recent generated previous keys so as to align the validity
+ * periods.
+ *
+ * @param argc number of arguments from the command line
+ * @param argv command line arguments
+ * @return 0 ok, 1 on error
+ */
+int
+main (int argc,
+      char *const *argv)
+{
+  const struct GNUNET_GETOPT_CommandLineOption options[] = {
+      {'m', "master-key", "FILE",
+     "master key file (private key)", 1,
+     &GNUNET_GETOPT_set_filename, &masterkeyfile},
+    {'o', "output", "FILE",
+     "auditor denomination key signing request file to create", 1,
+     &GNUNET_GETOPT_set_filename, &auditorrequestfile},
+    {'t', "time", "TIMESTAMP",
+     "pretend it is a different time for the update", 0,
+     &GNUNET_GETOPT_set_string, &pretend_time_str},
+     GNUNET_GETOPT_OPTION_END
+  };
+
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_log_setup ("taler-exchange-keyup",
+                                   "WARNING",
+                                   NULL));
+    
+  if (GNUNET_OK !=
+      GNUNET_PROGRAM_run (argc, argv,
+			 "taler-exchange-keyup",
+			  "Setup signing and denomination keys for a Taler exchange",
+			  options,
+			  &run, NULL))
+    return 1;
+  return global_ret;
 }
 
 /* end of taler-exchange-keyup.c */

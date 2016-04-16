@@ -69,7 +69,7 @@ TALER_b2s (const void *buf,
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 int
-TALER_config_get_denom (struct GNUNET_CONFIGURATION_Handle *cfg,
+TALER_config_get_denom (const struct GNUNET_CONFIGURATION_Handle *cfg,
                         const char *section,
                         const char *option,
                         struct TALER_Amount *denom)
