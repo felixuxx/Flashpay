@@ -77,7 +77,7 @@ run (void *cls,
   if ( (NULL == masterkeyfile) &&
        (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                                 "exchange-master",
+                                                 "exchange",
                                                  "MASTER_PRIV_FILE",
                                                  &masterkeyfile)) )
   {
