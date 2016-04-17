@@ -9,6 +9,9 @@ endif
 lib_LTLIBRARIES = \
   libtalerbank.la
 
+noinst_LTLIBRARIES = \
+  libfakebank.la
+
 libtalerbank_la_LDFLAGS = \
   -version-info 0:0:0 \
   -no-undefined
@@ -23,6 +26,17 @@ libtalerbank_la_LIBADD = \
   -lgnunetutil \
   -ljansson \
   $(XLIB)
+
+libfakebank_la_SOURCES = \
+  fakebank.c
+
+libfakebank_la_LIBADD = \
+  $(top_builddir)/src/json/libtalerjson.la \
+  -lgnunetjson \
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
+
 
 if HAVE_LIBCURL
 libtalerbank_la_LIBADD += -lcurl

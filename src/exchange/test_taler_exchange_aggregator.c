@@ -25,49 +25,8 @@
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 #include <microhttpd.h>
+#include "fakebank.h"
 
-
-/**
- * Maximum POST request size (for /admin/add/incoming)
- */
-#define REQUEST_BUFFER_MAX (4*1024)
-
-/**
- * Details about a transcation we (as the simulated bank) received.
- */
-struct Transaction
-{
-
-  /**
-   * We store transactions in a DLL.
-   */
-  struct Transaction *next;
-
-  /**
-   * We store transactions in a DLL.
-   */
-  struct Transaction *prev;
-
-  /**
-   * Amount to be transferred.
-   */
-  struct TALER_Amount amount;
-
-  /**
-   * Account to debit.
-   */
-  uint64_t debit_account;
-
-  /**
-   * Account to credit.
-   */
-  uint64_t credit_account;
-
-  /**
-   * Subject of the transfer.
-   */
-  struct TALER_WireTransferIdentifierRawP wtid;
-};
 
 
 /**
@@ -271,29 +230,9 @@ static struct GNUNET_OS_Process *aggregator_proc;
 static struct State *aggregator_state;
 
 /**
- * HTTP server we run to pretend to be the "test" bank.
- */
-static struct MHD_Daemon *mhd_bank;
-
-/**
- * Task running HTTP server for the "test" bank.
- */
-static struct GNUNET_SCHEDULER_Task *mhd_task;
-
-/**
  * Task running the interpreter().
  */
 static struct GNUNET_SCHEDULER_Task *int_task;
-
-/**
- * We store transactions in a DLL.
- */
-static struct Transaction *transactions_head;
-
-/**
- * We store transactions in a DLL.
- */
-static struct Transaction *transactions_tail;
 
 /**
  * Private key we use for fake coins.
@@ -304,6 +243,11 @@ static struct GNUNET_CRYPTO_RsaPrivateKey *coin_pk;
  * Public key we use for fake coins.
  */
 static struct GNUNET_CRYPTO_RsaPublicKey *coin_pub;
+
+/**
+ * Handle for our fake bank.
+ */
+static struct FAKEBANK_Handle *fb;
 
 
 /**
@@ -324,20 +268,15 @@ static void
 shutdown_action (void *cls)
 {
   shutdown_task = NULL;
-  if (NULL != mhd_task)
-  {
-    GNUNET_SCHEDULER_cancel (mhd_task);
-    mhd_task = NULL;
-  }
   if (NULL != int_task)
   {
     GNUNET_SCHEDULER_cancel (int_task);
     int_task = NULL;
   }
-  if (NULL != mhd_bank)
+  if (NULL != fb)
   {
-    MHD_stop_daemon (mhd_bank);
-    mhd_bank = NULL;
+    FAKEBANK_stop (fb);
+    fb = NULL;
   }
   if (NULL == aggregator_proc)
   {
@@ -573,24 +512,8 @@ interpreter (void *cls)
                                    NULL);
     return;
     case OPCODE_EXPECT_TRANSACTIONS_EMPTY:
-      if (NULL != transactions_head)
+      if (GNUNET_OK != FAKEBANK_check_empty (fb))
       {
-        struct Transaction *t;
-
-        fprintf (stderr,
-                 "Expected empty transaction set, but I have:\n");
-        for (t = transactions_head; NULL != t; t = t->next)
-        {
-          char *s;
-
-          s = TALER_amount_to_string (&t->amount);
-          fprintf (stderr,
-                   "%llu -> %llu (%s)\n",
-                   (unsigned long long) t->debit_account,
-                   (unsigned long long) t->credit_account,
-                   s);
-          GNUNET_free (s);
-        }
         fail (cmd);
         return;
       }
@@ -608,8 +531,6 @@ interpreter (void *cls)
     case OPCODE_EXPECT_TRANSACTION:
       {
         struct TALER_Amount want_amount;
-        struct Transaction *t;
-        int found;
 
         if (GNUNET_OK !=
             TALER_string_to_amount (cmd->details.expect_transaction.amount,
@@ -619,39 +540,13 @@ interpreter (void *cls)
           fail (cmd);
           return;
         }
-        found = GNUNET_NO;
-        for (t = transactions_head; NULL != t; t = t->next)
+        if (GNUNET_OK !=
+            FAKEBANK_check (fb,
+                            &want_amount,
+                            cmd->details.expect_transaction.debit_account,
+                            cmd->details.expect_transaction.credit_account,
+                            &cmd->details.expect_transaction.wtid))
         {
-          if ( (cmd->details.expect_transaction.debit_account == t->debit_account) &&
-               (cmd->details.expect_transaction.credit_account == t->credit_account) &&
-               (0 == TALER_amount_cmp (&want_amount,
-                                       &t->amount)) )
-          {
-            GNUNET_CONTAINER_DLL_remove (transactions_head,
-                                         transactions_tail,
-                                         t);
-            cmd->details.expect_transaction.wtid = t->wtid;
-            GNUNET_free (t);
-            found = GNUNET_YES;
-            break;
-          }
-        }
-        if (GNUNET_NO == found)
-        {
-          fprintf (stderr,
-                   "Did not find matching transaction!\nI have:\n");
-          for (t = transactions_head; NULL != t; t = t->next)
-          {
-            char *s;
-
-            s = TALER_amount_to_string (&t->amount);
-            fprintf (stderr,
-                     "%llu -> %llu (%s)\n",
-                     (unsigned long long) t->debit_account,
-                     (unsigned long long) t->credit_account,
-                     s);
-            GNUNET_free (s);
-          }
           fail (cmd);
           return;
         }
@@ -1209,205 +1104,6 @@ run_test ()
 }
 
 
-/**
- * Function called whenever MHD is done with a request.  If the
- * request was a POST, we may have stored a `struct Buffer *` in the
- * @a con_cls that might still need to be cleaned up.  Call the
- * respective function to free the memory.
- *
- * @param cls client-defined closure
- * @param connection connection handle
- * @param con_cls value as set by the last call to
- *        the #MHD_AccessHandlerCallback
- * @param toe reason for request termination
- * @see #MHD_OPTION_NOTIFY_COMPLETED
- * @ingroup request
- */
-static void
-handle_mhd_completion_callback (void *cls,
-                                struct MHD_Connection *connection,
-                                void **con_cls,
-                                enum MHD_RequestTerminationCode toe)
-{
-  GNUNET_JSON_post_parser_cleanup (*con_cls);
-  *con_cls = NULL;
-}
-
-
-/**
- * Handle incoming HTTP request.
- *
- * @param cls closure for MHD daemon (unused)
- * @param connection the connection
- * @param url the requested url
- * @param method the method (POST, GET, ...)
- * @param version HTTP version (ignored)
- * @param upload_data request data
- * @param upload_data_size size of @a upload_data in bytes
- * @param con_cls closure for request (a `struct Buffer *`)
- * @return MHD result code
- */
-static int
-handle_mhd_request (void *cls,
-                    struct MHD_Connection *connection,
-                    const char *url,
-                    const char *method,
-                    const char *version,
-                    const char *upload_data,
-                    size_t *upload_data_size,
-                    void **con_cls)
-{
-  enum GNUNET_JSON_PostResult pr;
-  json_t *json;
-  struct Transaction *t;
-  struct MHD_Response *resp;
-  int ret;
-
-  if (0 != strcasecmp (url,
-                       "/admin/add/incoming"))
-  {
-    /* Unexpected URI path, just close the connection. */
-    /* we're rather impolite here, but it's a testcase. */
-    GNUNET_break_op (0);
-    return MHD_NO;
-  }
-  pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
-                                con_cls,
-                                upload_data,
-                                upload_data_size,
-                                &json);
-  switch (pr)
-  {
-  case GNUNET_JSON_PR_OUT_OF_MEMORY:
-    GNUNET_break (0);
-    return MHD_NO;
-  case GNUNET_JSON_PR_CONTINUE:
-    return MHD_YES;
-  case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
-    GNUNET_break (0);
-    return MHD_NO;
-  case GNUNET_JSON_PR_JSON_INVALID:
-    GNUNET_break (0);
-    return MHD_NO;
-  case GNUNET_JSON_PR_SUCCESS:
-    break;
-  }
-  t = GNUNET_new (struct Transaction);
-  {
-    struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_fixed_auto ("wtid", &t->wtid),
-      GNUNET_JSON_spec_uint64 ("debit_account", &t->debit_account),
-      GNUNET_JSON_spec_uint64 ("credit_account", &t->credit_account),
-      TALER_JSON_spec_amount ("amount", &t->amount),
-      GNUNET_JSON_spec_end ()
-    };
-    if (GNUNET_OK !=
-        GNUNET_JSON_parse (json,
-                           spec,
-                           NULL, NULL))
-    {
-      GNUNET_break (0);
-      json_decref (json);
-      return MHD_NO;
-    }
-    GNUNET_CONTAINER_DLL_insert (transactions_head,
-                                 transactions_tail,
-                                 t);
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Receiving incoming wire transfer: %llu->%llu\n",
-              (unsigned long long) t->debit_account,
-              (unsigned long long) t->credit_account);
-  json_decref (json);
-  resp = MHD_create_response_from_buffer (0, "", MHD_RESPMEM_PERSISTENT);
-  ret = MHD_queue_response (connection,
-                            MHD_HTTP_OK,
-                            resp);
-  MHD_destroy_response (resp);
-  return ret;
-}
-
-
-/**
- * Task run whenever HTTP server operations are pending.
- *
- * @param cls NULL
- */
-static void
-run_mhd (void *cls);
-
-
-/**
- * Schedule MHD.  This function should be called initially when an
- * MHD is first getting its client socket, and will then automatically
- * always be called later whenever there is work to be done.
- */
-static void
-schedule_httpd ()
-{
-  fd_set rs;
-  fd_set ws;
-  fd_set es;
-  struct GNUNET_NETWORK_FDSet *wrs;
-  struct GNUNET_NETWORK_FDSet *wws;
-  int max;
-  int haveto;
-  MHD_UNSIGNED_LONG_LONG timeout;
-  struct GNUNET_TIME_Relative tv;
-
-  FD_ZERO (&rs);
-  FD_ZERO (&ws);
-  FD_ZERO (&es);
-  max = -1;
-  if (MHD_YES != MHD_get_fdset (mhd_bank, &rs, &ws, &es, &max))
-  {
-    GNUNET_assert (0);
-    return;
-  }
-  haveto = MHD_get_timeout (mhd_bank, &timeout);
-  if (MHD_YES == haveto)
-    tv.rel_value_us = (uint64_t) timeout * 1000LL;
-  else
-    tv = GNUNET_TIME_UNIT_FOREVER_REL;
-  if (-1 != max)
-  {
-    wrs = GNUNET_NETWORK_fdset_create ();
-    wws = GNUNET_NETWORK_fdset_create ();
-    GNUNET_NETWORK_fdset_copy_native (wrs, &rs, max + 1);
-    GNUNET_NETWORK_fdset_copy_native (wws, &ws, max + 1);
-  }
-  else
-  {
-    wrs = NULL;
-    wws = NULL;
-  }
-  if (NULL != mhd_task)
-    GNUNET_SCHEDULER_cancel (mhd_task);
-  mhd_task =
-    GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-                                 tv,
-                                 wrs,
-                                 wws,
-                                 &run_mhd, NULL);
-  if (NULL != wrs)
-    GNUNET_NETWORK_fdset_destroy (wrs);
-  if (NULL != wws)
-    GNUNET_NETWORK_fdset_destroy (wws);
-}
-
-
-/**
- * Task run whenever HTTP server operations are pending.
- *
- * @param cls NULL
- */
-static void
-run_mhd (void *cls)
-{
-  mhd_task = NULL;
-  MHD_run (mhd_bank);
-  schedule_httpd ();
-}
 
 
 /**
@@ -1466,18 +1162,13 @@ run (void *cls)
                                   &shutdown_action,
                                   NULL);
   result = 1; /* test failed for undefined reason */
-  mhd_bank = MHD_start_daemon (MHD_USE_DEBUG,
-                               8082,
-                               NULL, NULL,
-                               &handle_mhd_request, NULL,
-                               MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
-                               MHD_OPTION_END);
-  if (NULL == mhd_bank)
+  fb = FAKEBANK_start (8082);
+  if (NULL == fb)
   {
     GNUNET_SCHEDULER_shutdown ();
+    result = 77;
     return;
   }
-  schedule_httpd ();
   run_test ();
 }
 
