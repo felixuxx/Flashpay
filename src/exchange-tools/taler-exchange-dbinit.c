@@ -23,6 +23,50 @@
 #include "taler_exchangedb_plugin.h"
 
 
+
+/**
+ * Return value from main().
+ */
+static int global_ret;
+
+/**
+ * Main function that will be run.
+ *
+ * @param cls closure
+ * @param args remaining command-line arguments
+ * @param cfgfile name of the configuration file used (for saving, can be NULL!)
+ * @param cfg configuration
+ */
+static void
+run (void *cls,
+     char *const *args,
+     const char *cfgfile,
+     const struct GNUNET_CONFIGURATION_Handle *cfg)
+{
+  struct TALER_EXCHANGEDB_Plugin *plugin;
+
+  if (NULL ==
+      (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
+  {
+    fprintf (stderr,
+             "Failed to initialize database plugin.\n");
+    global_ret = 1;
+    return;
+  }
+  if (GNUNET_OK !=
+      plugin->create_tables (plugin->cls,
+                             GNUNET_NO))
+  {
+    fprintf (stderr,
+             "Failed to initialize database.\n");
+    TALER_EXCHANGEDB_plugin_unload (plugin);
+    global_ret = 1;
+    return;
+  }
+  TALER_EXCHANGEDB_plugin_unload (plugin);
+}
+
+
 /**
  * The main function of the database initialization tool.
  * Used to initialize the Taler Exchange's database.
@@ -35,57 +79,27 @@ int
 main (int argc,
       char *const *argv)
 {
-  char *cfgfile = NULL;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_CFG_FILE (&cfgfile),
-    GNUNET_GETOPT_OPTION_HELP ("Initialize Taler Exchange database"),
-    GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
-  struct GNUNET_CONFIGURATION_Handle *cfg;
-  struct TALER_EXCHANGEDB_Plugin *plugin;
 
-  if (GNUNET_GETOPT_run ("taler-exchange-dbinit",
-                         options,
-                         argc, argv) < 0)
-    return 1;
-
+  /* force linker to link against libtalerutil; if we do
+     not do this, the linker may "optimize" libtalerutil
+     away and skip #TALER_OS_init(), which we do need */
+  (void) TALER_project_data_default ();
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-exchange-dbinit",
                                    "INFO",
                                    NULL));
-  cfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_load (cfg,
-                                                  cfgfile))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                _("Malformed configuration file `%s', exit ...\n"),
-                cfgfile);
-    GNUNET_free_non_null (cfgfile);
-    return 1;
-  }
-  GNUNET_free_non_null (cfgfile);
-  if (NULL ==
-      (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
-  {
-    fprintf (stderr,
-             "Failed to initialize database plugin.\n");
-    GNUNET_CONFIGURATION_destroy (cfg);
-    return 1;
-  }
   if (GNUNET_OK !=
-      plugin->create_tables (plugin->cls,
-                             GNUNET_NO))
-  {
-    fprintf (stderr,
-             "Failed to initialize database.\n");
-    TALER_EXCHANGEDB_plugin_unload (plugin);
-    GNUNET_CONFIGURATION_destroy (cfg);
+      GNUNET_PROGRAM_run (argc, argv,
+                          "taler-exchange-dbinit",
+			  "Initialize Taler exchange database",
+			  options,
+			  &run, NULL))
     return 1;
-  }
-  TALER_EXCHANGEDB_plugin_unload (plugin);
-  GNUNET_CONFIGURATION_destroy (cfg);
-  return 0;
+  return global_ret;
 }
+
 
 /* end of taler-exchange-dbinit.c */
