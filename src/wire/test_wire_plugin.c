@@ -42,6 +42,16 @@ struct TestBlock {
    */
   const char *json_proto;
 
+  /**
+   * Amount to give to the rounding function.
+   */
+  const char *round_in;
+
+  /**
+   * Expected result from rounding.
+   */
+  const char *round_out;
+
 };
 
 
@@ -50,9 +60,21 @@ struct TestBlock {
  * to use for the tests.
  */
 static struct TestBlock tests[] = {
-  { "sepa", "{  \"type\":\"sepa\", \"iban\":\"DE67830654080004822650\", \"name\":\"GNUnet e.V.\", \"bic\":\"GENODEF1SLR\" }" },
-  { "test", "{  \"type\":\"test\", \"bank_uri\":\"http://localhost/\", \"account_number\":42 }" },
-  { NULL, NULL }
+  {
+    .plugin_name = "sepa",
+    .json_proto = "{  \"type\":\"sepa\", \"iban\":\"DE67830654080004822650\", \"name\":\"GNUnet e.V.\", \"bic\":\"GENODEF1SLR\" }",
+    .round_in = "EUR:0.123456",
+    .round_out = "EUR:0.12",
+  },
+  {
+    .plugin_name = "test",
+    .json_proto = "{  \"type\":\"test\", \"bank_uri\":\"http://localhost/\", \"account_number\":42 }",
+    .round_in = "KUDOS:0.123456",
+    .round_out = "KUDOS:0.12",
+  },
+  {
+    NULL, NULL, NULL, NULL
+  }
 };
 
 
@@ -75,19 +97,21 @@ static struct GNUNET_CONFIGURATION_Handle *cfg;
 /**
  * Run the test.
  *
- * @param name of the test
+ * @param test details of the test
  * @param plugin plugin to test
  * @param wire wire details for testing
  * @return #GNUNET_OK on success
  */
 static int
-run_test (const char *name,
+run_test (const struct TestBlock *test,
           struct TALER_WIRE_Plugin *plugin,
           json_t *wire)
 {
   struct GNUNET_HashCode salt;
   struct TALER_MasterSignatureP sig;
   json_t *lwire;
+  struct TALER_Amount in;
+  struct TALER_Amount expect;
 
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &salt,
@@ -121,7 +145,7 @@ run_test (const char *name,
   /* load wire details from file */
   lwire = plugin->get_wire_details (plugin->cls,
                                     cfg,
-                                    name);
+                                    test->plugin_name);
   if (NULL == lwire)
   {
     GNUNET_break (0);
@@ -137,6 +161,39 @@ run_test (const char *name,
     return GNUNET_SYSERR;
   }
   json_decref (lwire);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (test->round_in,
+                                         &in));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (test->round_out,
+                                         &expect));
+  if (GNUNET_OK !=
+      plugin->amount_round (plugin->cls,
+                            &in))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 != TALER_amount_cmp (&in, &expect))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_NO !=
+      plugin->amount_round (plugin->cls,
+                            &in))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  memset (&in, 0, sizeof (in));
+  if (GNUNET_SYSERR !=
+      plugin->amount_round (plugin->cls,
+                            &in))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 
@@ -172,7 +229,7 @@ main (int argc,
     GNUNET_assert (NULL != plugin);
     wire = json_loads (test->json_proto, 0, NULL);
     GNUNET_assert (NULL != wire);
-    ret = run_test (test->plugin_name, plugin, wire);
+    ret = run_test (test, plugin, wire);
     json_decref (wire);
     TALER_WIRE_plugin_unload (plugin);
     if (GNUNET_OK != ret)
