@@ -1403,10 +1403,10 @@ melted_coin_to_json (const struct GNUNET_HashCode *melt_session_hash,
  */
 struct TALER_EXCHANGE_RefreshMeltHandle *
 TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
-                         size_t refresh_data_length,
-                         const char *refresh_data,
-                         TALER_EXCHANGE_RefreshMeltCallback melt_cb,
-                         void *melt_cb_cls)
+                             size_t refresh_data_length,
+                             const char *refresh_data,
+                             TALER_EXCHANGE_RefreshMeltCallback melt_cb,
+                             void *melt_cb_cls)
 {
   json_t *melt_obj;
   json_t *new_denoms;

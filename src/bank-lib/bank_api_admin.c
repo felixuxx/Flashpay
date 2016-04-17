@@ -25,9 +25,9 @@
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
+#include <gnunet/gnunet_curl_lib.h>
 #include "taler_bank_service.h"
 #include "taler_json_lib.h"
-#include "bank_api_context.h"
 #include "taler_signatures.h"
 
 
@@ -38,14 +38,9 @@ struct TALER_BANK_AdminAddIncomingHandle
 {
 
   /**
-   * The connection to bank this request handle will use
-   */
-  struct TALER_BANK_Context *bank;
-
-  /**
    * The url for this request.
    */
-  char *url;
+  char *request_url;
 
   /**
    * JSON encoding of the request to POST.
@@ -55,7 +50,7 @@ struct TALER_BANK_AdminAddIncomingHandle
   /**
    * Handle for the request.
    */
-  struct BAC_Job *job;
+  struct GNUNET_CURL_Job *job;
 
   /**
    * HTTP headers for the request.
@@ -72,12 +67,35 @@ struct TALER_BANK_AdminAddIncomingHandle
    */
   void *cb_cls;
 
-  /**
-   * Download buffer
-   */
-  struct BAC_DownloadBuffer db;
-
 };
+
+
+
+/**
+ * Obtain the URL to use for an API request.
+ *
+ * @param u base URL of the bank
+ * @param path Taler API path (i.e. "/reserve/withdraw")
+ * @return the full URI to use with cURL
+ */
+static char *
+path_to_url (const char *u,
+             const char *path)
+{
+  char *url;
+
+  if ( ('/' == path[0]) &&
+       (0 < strlen (u)) &&
+       ('/' == u[strlen (u) - 1]) )
+    path++; /* avoid generating URL with "//" from concat */
+  GNUNET_asprintf (&url,
+                   "%s%s",
+                   u,
+                   path);
+  return url;
+}
+
+
 
 
 /**
@@ -85,20 +103,17 @@ struct TALER_BANK_AdminAddIncomingHandle
  * HTTP /admin/add/incoming request.
  *
  * @param cls the `struct TALER_BANK_AdminAddIncomingHandle`
- * @param eh the curl request handle
+ * @param response_code HTTP response code, 0 on error
+ * @param json parsed JSON result, NULL on error
  */
 static void
 handle_admin_add_incoming_finished (void *cls,
-                                    CURL *eh)
+                                    long response_code,
+                                    const json_t *json)
 {
   struct TALER_BANK_AdminAddIncomingHandle *aai = cls;
-  long response_code;
-  json_t *json;
 
   aai->job = NULL;
-  json = BAC_download_get_result (&aai->db,
-                                  eh,
-                                  &response_code);
   switch (response_code)
   {
   case 0:
@@ -137,7 +152,6 @@ handle_admin_add_incoming_finished (void *cls,
   aai->cb (aai->cb_cls,
            response_code,
            json);
-  json_decref (json);
   TALER_BANK_admin_add_incoming_cancel (aai);
 }
 
@@ -148,7 +162,8 @@ handle_admin_add_incoming_finished (void *cls,
  * API and thus not accessible to typical bank clients, but only
  * to the operators of the bank.
  *
- * @param bank the bank handle; the bank must be ready to operate
+ * @param ctx curl context for the event loop
+ * @param bank_base_url URL of the bank
  * @param reserve_pub public key of the reserve
  * @param amount amount that was deposited
  * @param execution_date when did we receive the amount
@@ -161,7 +176,8 @@ handle_admin_add_incoming_finished (void *cls,
  *         In this case, the callback is not called.
  */
 struct TALER_BANK_AdminAddIncomingHandle *
-TALER_BANK_admin_add_incoming (struct TALER_BANK_Context *bank,
+TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
+                               const char *bank_base_url,
                                const struct TALER_WireTransferIdentifierRawP *wtid,
                                const struct TALER_Amount *amount,
                                uint64_t debit_account_no,
@@ -181,10 +197,10 @@ TALER_BANK_admin_add_incoming (struct TALER_BANK_Context *bank,
                          "debit_account", (json_int_t) debit_account_no,
                          "credit_account", (json_int_t) credit_account_no);
   aai = GNUNET_new (struct TALER_BANK_AdminAddIncomingHandle);
-  aai->bank = bank;
   aai->cb = res_cb;
   aai->cb_cls = res_cb_cls;
-  aai->url = BAC_path_to_url (bank, "/admin/add/incoming");
+  aai->request_url = path_to_url (bank_base_url,
+                                  "/admin/add/incoming");
 
   eh = curl_easy_init ();
   GNUNET_assert (NULL != (aai->json_enc =
@@ -194,7 +210,7 @@ TALER_BANK_admin_add_incoming (struct TALER_BANK_Context *bank,
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
-                                   aai->url));
+                                   aai->request_url));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDS,
@@ -203,19 +219,11 @@ TALER_BANK_admin_add_incoming (struct TALER_BANK_Context *bank,
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (aai->json_enc)));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEFUNCTION,
-                                   &BAC_download_cb));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEDATA,
-                                   &aai->db));
-  aai->job = BAC_job_add (bank,
-                          eh,
-                          GNUNET_YES,
-                          &handle_admin_add_incoming_finished,
-                          aai);
+  aai->job = GNUNET_CURL_job_add (ctx,
+                                  eh,
+                                  GNUNET_YES,
+                                  &handle_admin_add_incoming_finished,
+                                  aai);
   return aai;
 }
 
@@ -231,12 +239,11 @@ TALER_BANK_admin_add_incoming_cancel (struct TALER_BANK_AdminAddIncomingHandle *
 {
   if (NULL != aai->job)
   {
-    BAC_job_cancel (aai->job);
+    GNUNET_CURL_job_cancel (aai->job);
     aai->job = NULL;
   }
   curl_slist_free_all (aai->headers);
-  GNUNET_free_non_null (aai->db.buf);
-  GNUNET_free (aai->url);
+  GNUNET_free (aai->request_url);
   GNUNET_free (aai->json_enc);
   GNUNET_free (aai);
 }

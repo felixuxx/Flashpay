@@ -14,11 +14,11 @@ libtalerbank_la_LDFLAGS = \
   -no-undefined
 
 libtalerbank_la_SOURCES = \
-  bank_api_context.c bank_api_context.h \
   bank_api_admin.c
 
 libtalerbank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
+  -lgnunetcurl \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson \
@@ -43,5 +43,6 @@ test_bank_api_SOURCES = \
 test_bank_api_LDADD = \
   libtalerbank.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
   -lgnunetutil \
   -ljansson

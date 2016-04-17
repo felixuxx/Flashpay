@@ -23,84 +23,8 @@
 #define _TALER_BANK_SERVICE_H
 
 #include <jansson.h>
+#include <gnunet/gnunet_curl_lib.h>
 #include "taler_util.h"
-
-/* ********************* event loop *********************** */
-
-/**
- * @brief Handle to this library context.  This is where the
- * main event loop logic lives.
- */
-struct TALER_BANK_Context;
-
-
-/**
- * Initialise a context.  A context should be used for each thread and should
- * not be shared among multiple threads.
- *
- * @param url HTTP base URL for the bank
- * @return the context, NULL on error (failure to initialize)
- */
-struct TALER_BANK_Context *
-TALER_BANK_init (const char *url);
-
-
-/**
- * Obtain the information for a select() call to wait until
- * #TALER_BANK_perform() is ready again.  Note that calling
- * any other TALER_BANK-API may also imply that the library
- * is again ready for #TALER_BANK_perform().
- *
- * Basically, a client should use this API to prepare for select(),
- * then block on select(), then call #TALER_BANK_perform() and then
- * start again until the work with the context is done.
- *
- * This function will NOT zero out the sets and assumes that @a max_fd
- * and @a timeout are already set to minimal applicable values.  It is
- * safe to give this API FD-sets and @a max_fd and @a timeout that are
- * already initialized to some other descriptors that need to go into
- * the select() call.
- *
- * @param ctx context to get the event loop information for
- * @param read_fd_set will be set for any pending read operations
- * @param write_fd_set will be set for any pending write operations
- * @param except_fd_set is here because curl_multi_fdset() has this argument
- * @param max_fd set to the highest FD included in any set;
- *        if the existing sets have no FDs in it, the initial
- *        value should be "-1". (Note that `max_fd + 1` will need
- *        to be passed to select().)
- * @param timeout set to the timeout in milliseconds (!); -1 means
- *        no timeout (NULL, blocking forever is OK), 0 means to
- *        proceed immediately with #TALER_BANK_perform().
- */
-void
-TALER_BANK_get_select_info (struct TALER_BANK_Context *ctx,
-                            fd_set *read_fd_set,
-                            fd_set *write_fd_set,
-                            fd_set *except_fd_set,
-                            int *max_fd,
-                            long *timeout);
-
-
-/**
- * Run the main event loop for the Taler interaction.
- *
- * @param ctx the library context
- */
-void
-TALER_BANK_perform (struct TALER_BANK_Context *ctx);
-
-
-/**
- * Cleanup library initialisation resources.  This function should be called
- * after using this library to cleanup the resources occupied during library's
- * initialisation.
- *
- * @param ctx the library context
- */
-void
-TALER_BANK_fini (struct TALER_BANK_Context *ctx);
-
 
 /* ********************* /admin/add/incoming *********************** */
 
@@ -123,7 +47,7 @@ struct TALER_BANK_AdminAddIncomingHandle;
 typedef void
 (*TALER_BANK_AdminAddIncomingResultCallback) (void *cls,
                                               unsigned int http_status,
-                                              json_t *json);
+                                              const json_t *json);
 
 
 /**
@@ -132,7 +56,8 @@ typedef void
  * API and thus not accessible to typical bank clients, but only
  * to the operators of the bank.
  *
- * @param bank the bank handle; the bank must be ready to operate
+ * @param ctx curl context for the event loop
+ * @param bank_base_url URL of the bank
  * @param reserve_pub public key of the reserve
  * @param amount amount that was deposited
  * @param execution_date when did we receive the amount
@@ -145,7 +70,8 @@ typedef void
  *         In this case, the callback is not called.
  */
 struct TALER_BANK_AdminAddIncomingHandle *
-TALER_BANK_admin_add_incoming (struct TALER_BANK_Context *bank,
+TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
+                               const char *bank_base_url,
                                const struct TALER_WireTransferIdentifierRawP *wtid,
                                const struct TALER_Amount *amount,
                                uint64_t debit_account_no,

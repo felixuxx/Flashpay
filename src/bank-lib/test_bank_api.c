@@ -23,13 +23,14 @@
 #include "taler_signatures.h"
 #include "taler_bank_service.h"
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_curl_lib.h>
 #include <microhttpd.h>
 
 
 /**
  * Main execution context for the main loop.
  */
-static struct TALER_BANK_Context *ctx;
+static struct GNUNET_CURL_Context *ctx;
 
 /**
  * Task run on shutdown.
@@ -247,7 +248,7 @@ interpreter_run (void *cls);
 static void
 add_incoming_cb (void *cls,
                  unsigned int http_status,
-                 json_t *json)
+                 const json_t *json)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
@@ -319,6 +320,7 @@ interpreter_run (void *cls)
                                 sizeof (cmd->details.admin_add_incoming.wtid));
     cmd->details.admin_add_incoming.aih
       = TALER_BANK_admin_add_incoming (ctx,
+                                       "http://localhost:8081",
                                        &cmd->details.admin_add_incoming.wtid,
                                        &amount,
                                        cmd->details.admin_add_incoming.debit_account_no,
@@ -399,7 +401,7 @@ do_shutdown (void *cls)
   }
   if (NULL != ctx)
   {
-    TALER_BANK_fini (ctx);
+    GNUNET_CURL_fini (ctx);
     ctx = NULL;
   }
 }
@@ -423,18 +425,18 @@ context_task (void *cls)
   struct GNUNET_TIME_Relative delay;
 
   ctx_task = NULL;
-  TALER_BANK_perform (ctx);
+  GNUNET_CURL_perform (ctx);
   max_fd = -1;
   timeout = -1;
   FD_ZERO (&read_fd_set);
   FD_ZERO (&write_fd_set);
   FD_ZERO (&except_fd_set);
-  TALER_BANK_get_select_info (ctx,
-                              &read_fd_set,
-                              &write_fd_set,
-                              &except_fd_set,
-                              &max_fd,
-                              &timeout);
+  GNUNET_CURL_get_select_info (ctx,
+                               &read_fd_set,
+                               &write_fd_set,
+                               &except_fd_set,
+                               &max_fd,
+                               &timeout);
   if (timeout >= 0)
     delay = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,
                                            timeout);
@@ -484,7 +486,7 @@ run (void *cls)
   is = GNUNET_new (struct InterpreterState);
   is->commands = commands;
 
-  ctx = TALER_BANK_init ("http://localhost:8081");
+  ctx = GNUNET_CURL_init ();
   GNUNET_assert (NULL != ctx);
   ctx_task = GNUNET_SCHEDULER_add_now (&context_task,
                                        ctx);
