@@ -389,7 +389,7 @@ TALER_EXCHANGE_fini (struct TALER_EXCHANGE_Context *ctx)
  * @param bufptr data downloaded via HTTP
  * @param size size of an item in @a bufptr
  * @param nitems number of items in @a bufptr
- * @param cls the `struct KeysRequest`
+ * @param cls the `struct MAC_DownloadBuffer`
  * @return number of bytes processed from @a bufptr
  */
 size_t
