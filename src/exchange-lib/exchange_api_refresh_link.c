@@ -23,9 +23,9 @@
 #include <curl/curl.h>
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
 #include "taler_json_lib.h"
-#include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
 
@@ -49,7 +49,7 @@ struct TALER_EXCHANGE_RefreshLinkHandle
   /**
    * Handle for the request.
    */
-  struct MAC_Job *job;
+  struct GNUNET_CURL_Job *job;
 
   /**
    * Function to call with the result.
@@ -60,11 +60,6 @@ struct TALER_EXCHANGE_RefreshLinkHandle
    * Closure for @e cb.
    */
   void *link_cb_cls;
-
-  /**
-   * Download buffer
-   */
-  struct MAC_DownloadBuffer db;
 
   /**
    * Private key of the coin, required to decode link information.
@@ -89,7 +84,7 @@ struct TALER_EXCHANGE_RefreshLinkHandle
  */
 static int
 parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
-                         json_t *json,
+                         const json_t *json,
                          const struct TALER_TransferPublicKeyP *trans_pub,
                          const struct TALER_EncryptedLinkSecretP *secret_enc,
                          struct TALER_CoinSpendPrivateKeyP *coin_priv,
@@ -173,7 +168,7 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
  */
 static int
 parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
-                       json_t *json)
+                       const json_t *json)
 {
   unsigned int session;
   unsigned int num_coins;
@@ -329,20 +324,17 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
  * HTTP /refresh/link request.
  *
  * @param cls the `struct TALER_EXCHANGE_RefreshLinkHandle`
- * @param eh the curl request handle
+ * @param response_code HTTP response code, 0 on error
+ * @param json parsed JSON result, NULL on error
  */
 static void
 handle_refresh_link_finished (void *cls,
-                              CURL *eh)
+                              long response_code,
+                              const json_t *json)
 {
   struct TALER_EXCHANGE_RefreshLinkHandle *rlh = cls;
-  long response_code;
-  json_t *json;
 
   rlh->job = NULL;
-  json = MAC_download_get_result (&rlh->db,
-                                  eh,
-                                  &response_code);
   switch (response_code)
   {
   case 0:
@@ -382,7 +374,6 @@ handle_refresh_link_finished (void *cls,
                   response_code,
                   0, NULL, NULL, NULL,
                   json);
-  json_decref (json);
   TALER_EXCHANGE_refresh_link_cancel (rlh);
 }
 
@@ -409,7 +400,7 @@ TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
 {
   struct TALER_EXCHANGE_RefreshLinkHandle *rlh;
   CURL *eh;
-  struct TALER_EXCHANGE_Context *ctx;
+  struct GNUNET_CURL_Context *ctx;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   char *pub_str;
   char *arg_str;
@@ -443,16 +434,8 @@ TALER_EXCHANGE_refresh_link (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    rlh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEFUNCTION,
-                                   &MAC_download_cb));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEDATA,
-                                   &rlh->db));
   ctx = MAH_handle_to_context (exchange);
-  rlh->job = MAC_job_add (ctx,
+  rlh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
                           &handle_refresh_link_finished,
@@ -472,10 +455,9 @@ TALER_EXCHANGE_refresh_link_cancel (struct TALER_EXCHANGE_RefreshLinkHandle *rlh
 {
   if (NULL != rlh->job)
   {
-    MAC_job_cancel (rlh->job);
+    GNUNET_CURL_job_cancel (rlh->job);
     rlh->job = NULL;
   }
-  GNUNET_free_non_null (rlh->db.buf);
   GNUNET_free (rlh->url);
   GNUNET_free (rlh);
 }

@@ -15,7 +15,6 @@ libtalerexchange_la_LDFLAGS = \
 
 libtalerexchange_la_SOURCES = \
   exchange_api_common.c exchange_api_common.h \
-  exchange_api_context.c exchange_api_context.h \
   exchange_api_handle.c exchange_api_handle.h \
   exchange_api_admin.c \
   exchange_api_deposit.c \
@@ -29,6 +28,7 @@ libtalerexchange_la_SOURCES = \
 libtalerexchange_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson \
@@ -57,6 +57,7 @@ test_exchange_api_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
   -lgnunetutil \
   -ljansson
 

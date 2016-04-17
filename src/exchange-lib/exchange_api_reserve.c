@@ -25,9 +25,9 @@
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
+#include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
 #include "taler_json_lib.h"
-#include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
 
@@ -53,7 +53,7 @@ struct TALER_EXCHANGE_ReserveStatusHandle
   /**
    * Handle for the request.
    */
-  struct MAC_Job *job;
+  struct GNUNET_CURL_Job *job;
 
   /**
    * Function to call with the result.
@@ -69,11 +69,6 @@ struct TALER_EXCHANGE_ReserveStatusHandle
    * Closure for @a cb.
    */
   void *cb_cls;
-
-  /**
-   * Download buffer
-   */
-  struct MAC_DownloadBuffer db;
 
 };
 
@@ -94,7 +89,7 @@ struct TALER_EXCHANGE_ReserveStatusHandle
  *         #GNUNET_SYSERR if there was a protocol violation in @a history
  */
 static int
-parse_reserve_history (json_t *history,
+parse_reserve_history (const json_t *history,
                        const struct TALER_ReservePublicKeyP *reserve_pub,
                        const char *currency,
                        struct TALER_Amount *balance,
@@ -273,20 +268,17 @@ parse_reserve_history (json_t *history,
  * HTTP /reserve/status request.
  *
  * @param cls the `struct TALER_EXCHANGE_ReserveStatusHandle`
- * @param eh curl handle of the request that finished
+ * @param response_code HTTP response code, 0 on error
+ * @param json parsed JSON result, NULL on error
  */
 static void
 handle_reserve_status_finished (void *cls,
-                                CURL *eh)
+                                long response_code,
+                                const json_t *json)
 {
   struct TALER_EXCHANGE_ReserveStatusHandle *wsh = cls;
-  long response_code;
-  json_t *json;
 
   wsh->job = NULL;
-  json = MAC_download_get_result (&wsh->db,
-                                  eh,
-                                  &response_code);
   switch (response_code)
   {
   case 0:
@@ -382,7 +374,6 @@ handle_reserve_status_finished (void *cls,
              json,
              NULL,
              0, NULL);
-  json_decref (json);
   TALER_EXCHANGE_reserve_status_cancel (wsh);
 }
 
@@ -405,12 +396,12 @@ handle_reserve_status_finished (void *cls,
  */
 struct TALER_EXCHANGE_ReserveStatusHandle *
 TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
-                           const struct TALER_ReservePublicKeyP *reserve_pub,
-                           TALER_EXCHANGE_ReserveStatusResultCallback cb,
-                           void *cb_cls)
+                               const struct TALER_ReservePublicKeyP *reserve_pub,
+                               TALER_EXCHANGE_ReserveStatusResultCallback cb,
+                               void *cb_cls)
 {
   struct TALER_EXCHANGE_ReserveStatusHandle *wsh;
-  struct TALER_EXCHANGE_Context *ctx;
+  struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   char *pub_str;
   char *arg_str;
@@ -441,16 +432,8 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    wsh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEFUNCTION,
-                                   &MAC_download_cb));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEDATA,
-                                   &wsh->db));
   ctx = MAH_handle_to_context (exchange);
-  wsh->job = MAC_job_add (ctx,
+  wsh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_NO,
                           &handle_reserve_status_finished,
@@ -470,10 +453,9 @@ TALER_EXCHANGE_reserve_status_cancel (struct TALER_EXCHANGE_ReserveStatusHandle 
 {
   if (NULL != wsh->job)
   {
-    MAC_job_cancel (wsh->job);
+    GNUNET_CURL_job_cancel (wsh->job);
     wsh->job = NULL;
   }
-  GNUNET_free_non_null (wsh->db.buf);
   GNUNET_free (wsh->url);
   GNUNET_free (wsh);
 }
@@ -505,7 +487,7 @@ struct TALER_EXCHANGE_ReserveWithdrawHandle
   /**
    * Handle for the request.
    */
-  struct MAC_Job *job;
+  struct GNUNET_CURL_Job *job;
 
   /**
    * Function to call with the result.
@@ -526,11 +508,6 @@ struct TALER_EXCHANGE_ReserveWithdrawHandle
    * Closure for @a cb.
    */
   void *cb_cls;
-
-  /**
-   * Download buffer
-   */
-  struct MAC_DownloadBuffer db;
 
   /**
    * Hash of the public key of the coin we are signing.
@@ -561,7 +538,7 @@ struct TALER_EXCHANGE_ReserveWithdrawHandle
  */
 static int
 reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
-                  json_t *json)
+                     const json_t *json)
 {
   struct GNUNET_CRYPTO_RsaSignature *blind_sig;
   struct GNUNET_CRYPTO_RsaSignature *sig;
@@ -619,7 +596,7 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
  */
 static int
 reserve_withdraw_payment_required (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
-                                   json_t *json)
+                                   const json_t *json)
 {
   struct TALER_Amount balance;
   struct TALER_Amount balance_from_history;
@@ -702,20 +679,17 @@ reserve_withdraw_payment_required (struct TALER_EXCHANGE_ReserveWithdrawHandle *
  * HTTP /reserve/withdraw request.
  *
  * @param cls the `struct TALER_EXCHANGE_ReserveWithdrawHandle`
- * @param eh curl handle of the request that finished
+ * @param response_code HTTP response code, 0 on error
+ * @param json parsed JSON result, NULL on error
  */
 static void
 handle_reserve_withdraw_finished (void *cls,
-                                  CURL *eh)
+                                  long response_code,
+                                  const json_t *json)
 {
   struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh = cls;
-  long response_code;
-  json_t *json;
 
   wsh->job = NULL;
-  json = MAC_download_get_result (&wsh->db,
-                                  eh,
-                                  &response_code);
   switch (response_code)
   {
   case 0:
@@ -774,7 +748,6 @@ handle_reserve_withdraw_finished (void *cls,
              response_code,
              NULL,
              json);
-  json_decref (json);
   TALER_EXCHANGE_reserve_withdraw_cancel (wsh);
 }
 
@@ -801,18 +774,18 @@ handle_reserve_withdraw_finished (void *cls,
  */
 struct TALER_EXCHANGE_ReserveWithdrawHandle *
 TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
-                             const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                             const struct TALER_ReservePrivateKeyP *reserve_priv,
-                             const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                             const struct TALER_DenominationBlindingKey *blinding_key,
-                             TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
-                             void *res_cb_cls)
+                                 const struct TALER_EXCHANGE_DenomPublicKey *pk,
+                                 const struct TALER_ReservePrivateKeyP *reserve_priv,
+                                 const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                                 const struct TALER_DenominationBlindingKey *blinding_key,
+                                 TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
+                                 void *res_cb_cls)
 {
   struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh;
   struct TALER_WithdrawRequestPS req;
   struct TALER_ReserveSignatureP reserve_sig;
   struct TALER_CoinSpendPublicKeyP coin_pub;
-  struct TALER_EXCHANGE_Context *ctx;
+  struct GNUNET_CURL_Context *ctx;
   struct TALER_Amount amount_with_fee;
   char *coin_ev;
   size_t coin_ev_size;
@@ -894,16 +867,8 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (wsh->json_enc)));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEFUNCTION,
-                                   &MAC_download_cb));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEDATA,
-                                   &wsh->db));
   ctx = MAH_handle_to_context (exchange);
-  wsh->job = MAC_job_add (ctx,
+  wsh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
                           &handle_reserve_withdraw_finished,
@@ -923,10 +888,9 @@ TALER_EXCHANGE_reserve_withdraw_cancel (struct TALER_EXCHANGE_ReserveWithdrawHan
 {
   if (NULL != sign->job)
   {
-    MAC_job_cancel (sign->job);
+    GNUNET_CURL_job_cancel (sign->job);
     sign->job = NULL;
   }
-  GNUNET_free_non_null (sign->db.buf);
   GNUNET_free (sign->url);
   GNUNET_free (sign->json_enc);
   GNUNET_free (sign);

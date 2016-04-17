@@ -25,10 +25,10 @@
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
+#include <gnunet/gnunet_curl_lib.h>
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "exchange_api_common.h"
-#include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
 
@@ -1044,7 +1044,7 @@ struct TALER_EXCHANGE_RefreshMeltHandle
   /**
    * Handle for the request.
    */
-  struct MAC_Job *job;
+  struct GNUNET_CURL_Job *job;
 
   /**
    * Function to call with refresh melt failure results.
@@ -1055,11 +1055,6 @@ struct TALER_EXCHANGE_RefreshMeltHandle
    * Closure for @e result_cb and @e melt_failure_cb.
    */
   void *melt_cb_cls;
-
-  /**
-   * Download buffer
-   */
-  struct MAC_DownloadBuffer db;
 
   /**
    * Actual information about the melt operation.
@@ -1079,7 +1074,7 @@ struct TALER_EXCHANGE_RefreshMeltHandle
  */
 static int
 verify_refresh_melt_signature_ok (struct TALER_EXCHANGE_RefreshMeltHandle *rmh,
-                                  json_t *json,
+                                  const json_t *json,
                                   uint16_t *noreveal_index)
 {
   struct TALER_ExchangeSignatureP exchange_sig;
@@ -1148,7 +1143,7 @@ verify_refresh_melt_signature_ok (struct TALER_EXCHANGE_RefreshMeltHandle *rmh,
  */
 static int
 verify_refresh_melt_signature_forbidden (struct TALER_EXCHANGE_RefreshMeltHandle *rmh,
-                                         json_t *json)
+                                         const json_t *json)
 {
   json_t *history;
   struct TALER_Amount original_value;
@@ -1265,21 +1260,18 @@ verify_refresh_melt_signature_forbidden (struct TALER_EXCHANGE_RefreshMeltHandle
  * HTTP /refresh/melt request.
  *
  * @param cls the `struct TALER_EXCHANGE_RefreshMeltHandle`
- * @param eh the curl request handle
+ * @param response_code HTTP response code, 0 on error
+ * @param json parsed JSON result, NULL on error
  */
 static void
 handle_refresh_melt_finished (void *cls,
-                              CURL *eh)
+                              long response_code,
+                              const json_t *json)
 {
   struct TALER_EXCHANGE_RefreshMeltHandle *rmh = cls;
-  long response_code;
-  json_t *json;
   uint16_t noreveal_index = TALER_CNC_KAPPA; /* invalid value */
 
   rmh->job = NULL;
-  json = MAC_download_get_result (&rmh->db,
-                                  eh,
-                                  &response_code);
   switch (response_code)
   {
   case 0:
@@ -1343,7 +1335,6 @@ handle_refresh_melt_finished (void *cls,
                   response_code,
                   UINT16_MAX,
                   json);
-  json_decref (json);
   TALER_EXCHANGE_refresh_melt_cancel (rmh);
 }
 
@@ -1427,7 +1418,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   json_t *tmp;
   struct TALER_EXCHANGE_RefreshMeltHandle *rmh;
   CURL *eh;
-  struct TALER_EXCHANGE_Context *ctx;
+  struct GNUNET_CURL_Context *ctx;
   struct MeltData *md;
   unsigned int i;
   unsigned int j;
@@ -1610,16 +1601,8 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (rmh->json_enc)));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEFUNCTION,
-                                   &MAC_download_cb));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEDATA,
-                                   &rmh->db));
   ctx = MAH_handle_to_context (exchange);
-  rmh->job = MAC_job_add (ctx,
+  rmh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
                           &handle_refresh_melt_finished,
@@ -1639,10 +1622,9 @@ TALER_EXCHANGE_refresh_melt_cancel (struct TALER_EXCHANGE_RefreshMeltHandle *rmh
 {
   if (NULL != rmh->job)
   {
-    MAC_job_cancel (rmh->job);
+    GNUNET_CURL_job_cancel (rmh->job);
     rmh->job = NULL;
   }
-  GNUNET_free_non_null (rmh->db.buf);
   free_melt_data (rmh->md); /* does not free 'md' itself */
   GNUNET_free (rmh->md);
   GNUNET_free (rmh->url);
@@ -1678,7 +1660,7 @@ struct TALER_EXCHANGE_RefreshRevealHandle
   /**
    * Handle for the request.
    */
-  struct MAC_Job *job;
+  struct GNUNET_CURL_Job *job;
 
   /**
    * Function to call with the result.
@@ -1689,11 +1671,6 @@ struct TALER_EXCHANGE_RefreshRevealHandle
    * Closure for @e reveal_cb.
    */
   void *reveal_cb_cls;
-
-  /**
-   * Download buffer
-   */
-  struct MAC_DownloadBuffer db;
 
   /**
    * Actual information about the melt operation.
@@ -1726,7 +1703,7 @@ struct TALER_EXCHANGE_RefreshRevealHandle
  */
 static int
 refresh_reveal_ok (struct TALER_EXCHANGE_RefreshRevealHandle *rrh,
-                   json_t *json,
+                   const json_t *json,
                    struct TALER_CoinSpendPrivateKeyP *coin_privs,
                    struct TALER_DenominationSignature *sigs)
 {
@@ -1820,20 +1797,17 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshRevealHandle *rrh,
  * HTTP /refresh/reveal request.
  *
  * @param cls the `struct TALER_EXCHANGE_RefreshHandle`
- * @param eh the curl request handle
+ * @param response_code HTTP response code, 0 on error
+ * @param json parsed JSON result, NULL on error
  */
 static void
 handle_refresh_reveal_finished (void *cls,
-                                CURL *eh)
+                                long response_code,
+                                const json_t *json)
 {
   struct TALER_EXCHANGE_RefreshRevealHandle *rrh = cls;
-  long response_code;
-  json_t *json;
 
   rrh->job = NULL;
-  json = MAC_download_get_result (&rrh->db,
-                                  eh,
-                                  &response_code);
   switch (response_code)
   {
   case 0:
@@ -1896,7 +1870,6 @@ handle_refresh_reveal_finished (void *cls,
                     response_code,
                     0, NULL, NULL,
                     json);
-  json_decref (json);
   TALER_EXCHANGE_refresh_reveal_cancel (rrh);
 }
 
@@ -1936,7 +1909,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   json_t *reveal_obj;
   json_t *tmp;
   CURL *eh;
-  struct TALER_EXCHANGE_Context *ctx;
+  struct GNUNET_CURL_Context *ctx;
   struct MeltData *md;
   unsigned int i;
   unsigned int j;
@@ -2022,16 +1995,8 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (rrh->json_enc)));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEFUNCTION,
-                                   &MAC_download_cb));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEDATA,
-                                   &rrh->db));
   ctx = MAH_handle_to_context (rrh->exchange);
-  rrh->job = MAC_job_add (ctx,
+  rrh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
                           &handle_refresh_reveal_finished,
@@ -2051,10 +2016,9 @@ TALER_EXCHANGE_refresh_reveal_cancel (struct TALER_EXCHANGE_RefreshRevealHandle 
 {
   if (NULL != rrh->job)
   {
-    MAC_job_cancel (rrh->job);
+    GNUNET_CURL_job_cancel (rrh->job);
     rrh->job = NULL;
   }
-  GNUNET_free_non_null (rrh->db.buf);
   GNUNET_free (rrh->url);
   GNUNET_free (rrh->json_enc);
   free_melt_data (rrh->md); /* does not free 'md' itself */

@@ -26,10 +26,10 @@
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
+#include <gnunet/gnunet_curl_lib.h>
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "exchange_api_common.h"
-#include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
 
@@ -58,7 +58,7 @@ struct TALER_EXCHANGE_DepositHandle
   /**
    * Handle for the request.
    */
-  struct MAC_Job *job;
+  struct GNUNET_CURL_Job *job;
 
   /**
    * Function to call with the result.
@@ -69,11 +69,6 @@ struct TALER_EXCHANGE_DepositHandle
    * Closure for @a cb.
    */
   void *cb_cls;
-
-  /**
-   * Download buffer
-   */
-  struct MAC_DownloadBuffer db;
 
   /**
    * Information the exchange should sign in response.
@@ -103,7 +98,7 @@ struct TALER_EXCHANGE_DepositHandle
  */
 static int
 verify_deposit_signature_ok (const struct TALER_EXCHANGE_DepositHandle *dh,
-                             json_t *json)
+                             const json_t *json)
 {
   struct TALER_ExchangeSignatureP exchange_sig;
   struct TALER_ExchangePublicKeyP exchange_pub;
@@ -153,7 +148,7 @@ verify_deposit_signature_ok (const struct TALER_EXCHANGE_DepositHandle *dh,
  */
 static int
 verify_deposit_signature_forbidden (const struct TALER_EXCHANGE_DepositHandle *dh,
-                                    json_t *json)
+                                    const json_t *json)
 {
   json_t *history;
   struct TALER_Amount total;
@@ -162,9 +157,9 @@ verify_deposit_signature_forbidden (const struct TALER_EXCHANGE_DepositHandle *d
                              "history");
   if (GNUNET_OK !=
       TALER_EXCHANGE_verify_coin_history_ (dh->coin_value.currency,
-                                       &dh->depconf.coin_pub,
-                                       history,
-                                       &total))
+                                           &dh->depconf.coin_pub,
+                                           history,
+                                           &total))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -196,20 +191,17 @@ verify_deposit_signature_forbidden (const struct TALER_EXCHANGE_DepositHandle *d
  * HTTP /deposit request.
  *
  * @param cls the `struct TALER_EXCHANGE_DepositHandle`
- * @param eh the curl request handle
+ * @param response_code HTTP response code, 0 on error
+ * @param json parsed JSON result, NULL on error
  */
 static void
 handle_deposit_finished (void *cls,
-                         CURL *eh)
+                         long response_code,
+                         const json_t *json)
 {
   struct TALER_EXCHANGE_DepositHandle *dh = cls;
-  long response_code;
-  json_t *json;
 
   dh->job = NULL;
-  json = MAC_download_get_result (&dh->db,
-                                  eh,
-                                  &response_code);
   switch (response_code)
   {
   case 0:
@@ -262,7 +254,6 @@ handle_deposit_finished (void *cls,
   dh->cb (dh->cb_cls,
           response_code,
           json);
-  json_decref (json);
   TALER_EXCHANGE_deposit_cancel (dh);
 }
 
@@ -407,7 +398,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_EXCHANGE_Keys *key_state;
   const struct TALER_EXCHANGE_DenomPublicKey *dki;
   struct TALER_EXCHANGE_DepositHandle *dh;
-  struct TALER_EXCHANGE_Context *ctx;
+  struct GNUNET_CURL_Context *ctx;
   json_t *deposit_obj;
   CURL *eh;
   struct GNUNET_HashCode h_wire;
@@ -529,16 +520,8 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (dh->json_enc)));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEFUNCTION,
-                                   &MAC_download_cb));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEDATA,
-                                   &dh->db));
   ctx = MAH_handle_to_context (exchange);
-  dh->job = MAC_job_add (ctx,
+  dh->job = GNUNET_CURL_job_add (ctx,
                          eh,
                          GNUNET_YES,
                          &handle_deposit_finished,
@@ -558,10 +541,9 @@ TALER_EXCHANGE_deposit_cancel (struct TALER_EXCHANGE_DepositHandle *deposit)
 {
   if (NULL != deposit->job)
   {
-    MAC_job_cancel (deposit->job);
+    GNUNET_CURL_job_cancel (deposit->job);
     deposit->job = NULL;
   }
-  GNUNET_free_non_null (deposit->db.buf);
   GNUNET_free (deposit->url);
   GNUNET_free (deposit->json_enc);
   GNUNET_free (deposit);

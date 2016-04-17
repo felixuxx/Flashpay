@@ -24,10 +24,10 @@
 #include <jansson.h>
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
 #include "exchange_api_common.h"
 #include "taler_json_lib.h"
-#include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
 
@@ -51,7 +51,7 @@ struct TALER_EXCHANGE_WireDepositsHandle
   /**
    * Handle for the request.
    */
-  struct MAC_Job *job;
+  struct GNUNET_CURL_Job *job;
 
   /**
    * Function to call with the result.
@@ -63,11 +63,6 @@ struct TALER_EXCHANGE_WireDepositsHandle
    */
   void *cb_cls;
 
-  /**
-   * Download buffer
-   */
-  struct MAC_DownloadBuffer db;
-
 };
 
 
@@ -76,20 +71,17 @@ struct TALER_EXCHANGE_WireDepositsHandle
  * HTTP /wire/deposits request.
  *
  * @param cls the `struct TALER_EXCHANGE_WireDepositsHandle`
- * @param eh the curl request handle
+ * @param response_code HTTP response code, 0 on error
+ * @param json parsed JSON result, NULL on error
  */
 static void
 handle_wire_deposits_finished (void *cls,
-                               CURL *eh)
+                               long response_code,
+                               const json_t *json)
 {
   struct TALER_EXCHANGE_WireDepositsHandle *wdh = cls;
-  long response_code;
-  json_t *json;
 
   wdh->job = NULL;
-  json = MAC_download_get_result (&wdh->db,
-                                  eh,
-                                  &response_code);
   switch (response_code)
   {
   case 0:
@@ -199,7 +191,6 @@ handle_wire_deposits_finished (void *cls,
                  &total_amount,
                  num_details,
                  details);
-        json_decref (json);
         TALER_EXCHANGE_wire_deposits_cancel (wdh);
         return;
       }
@@ -235,7 +226,6 @@ handle_wire_deposits_finished (void *cls,
            response_code,
            json,
            NULL, NULL, 0, NULL);
-  json_decref (json);
   TALER_EXCHANGE_wire_deposits_cancel (wdh);
 }
 
@@ -257,7 +247,7 @@ TALER_EXCHANGE_wire_deposits (struct TALER_EXCHANGE_Handle *exchange,
                               void *cb_cls)
 {
   struct TALER_EXCHANGE_WireDepositsHandle *wdh;
-  struct TALER_EXCHANGE_Context *ctx;
+  struct GNUNET_CURL_Context *ctx;
   char *buf;
   char *path;
   CURL *eh;
@@ -289,16 +279,8 @@ TALER_EXCHANGE_wire_deposits (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    wdh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEFUNCTION,
-                                   &MAC_download_cb));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEDATA,
-                                   &wdh->db));
   ctx = MAH_handle_to_context (exchange);
-  wdh->job = MAC_job_add (ctx,
+  wdh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
                           &handle_wire_deposits_finished,
@@ -318,10 +300,9 @@ TALER_EXCHANGE_wire_deposits_cancel (struct TALER_EXCHANGE_WireDepositsHandle *w
 {
   if (NULL != wdh->job)
   {
-    MAC_job_cancel (wdh->job);
+    GNUNET_CURL_job_cancel (wdh->job);
     wdh->job = NULL;
   }
-  GNUNET_free_non_null (wdh->db.buf);
   GNUNET_free (wdh->url);
   GNUNET_free (wdh);
 }

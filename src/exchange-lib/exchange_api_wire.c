@@ -24,11 +24,11 @@
 #include <jansson.h>
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
 #include "taler_json_lib.h"
 #include "taler_wire_plugin.h"
 #include "exchange_api_common.h"
-#include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 
 
@@ -51,7 +51,7 @@ struct TALER_EXCHANGE_WireHandle
   /**
    * Handle for the request.
    */
-  struct MAC_Job *job;
+  struct GNUNET_CURL_Job *job;
 
   /**
    * Function to call with the result.
@@ -62,11 +62,6 @@ struct TALER_EXCHANGE_WireHandle
    * Closure for @a cb.
    */
   void *cb_cls;
-
-  /**
-   * Download buffer
-   */
-  struct MAC_DownloadBuffer db;
 
   /**
    * Set to the "methods" JSON array returned by the
@@ -96,7 +91,7 @@ struct TALER_EXCHANGE_WireHandle
 static int
 verify_wire_method_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
                                  const char *method,
-                                 json_t *json)
+                                 const json_t *json)
 {
   const struct TALER_EXCHANGE_Keys *key_state;
   struct TALER_WIRE_Plugin *plugin;
@@ -133,20 +128,18 @@ verify_wire_method_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
  * HTTP /wire request.
  *
  * @param cls the `struct TALER_EXCHANGE_WireHandle`
- * @param eh the curl request handle
+ * @param response_code HTTP response code, 0 on error
+ * @param json parsed JSON result, NULL on error
  */
 static void
 handle_wire_finished (void *cls,
-                      CURL *eh)
+                      long response_code,
+                      const json_t *json)
 {
   struct TALER_EXCHANGE_WireHandle *wh = cls;
-  long response_code;
-  json_t *json;
+  json_t *keep = NULL;
 
   wh->job = NULL;
-  json = MAC_download_get_result (&wh->db,
-                                  eh,
-                                  &response_code);
   switch (response_code)
   {
   case 0:
@@ -155,14 +148,13 @@ handle_wire_finished (void *cls,
     {
       const char *key;
       json_t *method;
-      json_t *keep;
       int ret;
 
       /* We 'keep' methods that we support and that are well-formed;
          we fail (by setting response_code=0) if any method that we do
          support fails to verify. */
       keep = json_object ();
-      json_object_foreach (json, key, method) {
+      json_object_foreach ((json_t *) json, key, method) {
         ret = verify_wire_method_signature_ok (wh,
                                                key,
                                                method);
@@ -184,8 +176,6 @@ handle_wire_finished (void *cls,
       if (0 != response_code)
       {
         /* all supported methods were valid, use 'keep' for 'json' */
-        json_decref (json);
-        json = keep;
         break;
       }
       else
@@ -193,6 +183,7 @@ handle_wire_finished (void *cls,
         /* some supported methods were invalid, release 'keep', preserve
            full 'json' for application-level error handling. */
         json_decref (keep);
+        keep = NULL;
       }
     }
     break;
@@ -219,9 +210,9 @@ handle_wire_finished (void *cls,
   }
   wh->cb (wh->cb_cls,
           response_code,
-          json);
-  if (NULL != json)
-    json_decref (json);
+          (NULL != keep) ? keep : json);
+  if (NULL != keep)
+    json_decref (keep);
   TALER_EXCHANGE_wire_cancel (wh);
 }
 
@@ -252,7 +243,7 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
                      void *wire_cb_cls)
 {
   struct TALER_EXCHANGE_WireHandle *wh;
-  struct TALER_EXCHANGE_Context *ctx;
+  struct GNUNET_CURL_Context *ctx;
   CURL *eh;
 
   if (GNUNET_YES !=
@@ -272,16 +263,8 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    wh->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEFUNCTION,
-                                   &MAC_download_cb));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEDATA,
-                                   &wh->db));
   ctx = MAH_handle_to_context (exchange);
-  wh->job = MAC_job_add (ctx,
+  wh->job = GNUNET_CURL_job_add (ctx,
                          eh,
                          GNUNET_YES,
                          &handle_wire_finished,
@@ -301,7 +284,7 @@ TALER_EXCHANGE_wire_cancel (struct TALER_EXCHANGE_WireHandle *wh)
 {
   if (NULL != wh->job)
   {
-    MAC_job_cancel (wh->job);
+    GNUNET_CURL_job_cancel (wh->job);
     wh->job = NULL;
   }
   if (NULL != wh->methods)
@@ -309,7 +292,6 @@ TALER_EXCHANGE_wire_cancel (struct TALER_EXCHANGE_WireHandle *wh)
     json_decref (wh->methods);
     wh->methods = NULL;
   }
-  GNUNET_free_non_null (wh->db.buf);
   GNUNET_free (wh->url);
   GNUNET_free (wh);
 }

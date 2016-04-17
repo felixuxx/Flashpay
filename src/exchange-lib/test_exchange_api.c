@@ -40,7 +40,7 @@
 /**
  * Main execution context for the main loop.
  */
-static struct TALER_EXCHANGE_Context *ctx;
+static struct GNUNET_CURL_Context *ctx;
 
 /**
  * Handle to access the exchange.
@@ -655,7 +655,7 @@ interpreter_run (void *cls);
 static void
 add_incoming_cb (void *cls,
                  unsigned int http_status,
-                 json_t *full_response)
+                 const json_t *full_response)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
@@ -756,7 +756,7 @@ compare_reserve_withdraw_history (const struct TALER_EXCHANGE_ReserveHistory *h,
 static void
 reserve_status_cb (void *cls,
                    unsigned int http_status,
-                   json_t *json,
+                   const json_t *json,
                    const struct TALER_Amount *balance,
                    unsigned int history_length,
                    const struct TALER_EXCHANGE_ReserveHistory *history)
@@ -873,7 +873,7 @@ static void
 reserve_withdraw_cb (void *cls,
                      unsigned int http_status,
                      const struct TALER_DenominationSignature *sig,
-                     json_t *full_response)
+                     const json_t *full_response)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
@@ -928,7 +928,7 @@ reserve_withdraw_cb (void *cls,
 static void
 deposit_cb (void *cls,
             unsigned int http_status,
-            json_t *obj)
+            const json_t *obj)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
@@ -964,7 +964,7 @@ static void
 melt_cb (void *cls,
          unsigned int http_status,
          uint16_t noreveal_index,
-         json_t *full_response)
+         const json_t *full_response)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
@@ -1004,7 +1004,7 @@ reveal_cb (void *cls,
            unsigned int num_coins,
            const struct TALER_CoinSpendPrivateKeyP *coin_privs,
            const struct TALER_DenominationSignature *sigs,
-           json_t *full_response)
+           const json_t *full_response)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
@@ -1071,7 +1071,7 @@ link_cb (void *cls,
          const struct TALER_CoinSpendPrivateKeyP *coin_privs,
          const struct TALER_DenominationSignature *sigs,
          const struct TALER_DenominationPublicKey *pubs,
-         json_t *full_response)
+         const json_t *full_response)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
@@ -1218,7 +1218,7 @@ find_pk (const struct TALER_EXCHANGE_Keys *keys,
 static void
 wire_cb (void *cls,
          unsigned int http_status,
-         json_t *obj)
+         const json_t *obj)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
@@ -1281,7 +1281,7 @@ wire_cb (void *cls,
 static void
 wire_deposits_cb (void *cls,
                   unsigned int http_status,
-                  json_t *json,
+                  const json_t *json,
                   const struct GNUNET_HashCode *h_wire,
                   const struct TALER_Amount *total_amount,
                   unsigned int details_length,
@@ -1371,7 +1371,7 @@ wire_deposits_cb (void *cls,
 static void
 deposit_wtid_cb (void *cls,
                  unsigned int http_status,
-                 json_t *json,
+                 const json_t *json,
                  const struct TALER_WireTransferIdentifierRawP *wtid,
                  struct GNUNET_TIME_Absolute execution_time,
                  const struct TALER_Amount *coin_contribution)
@@ -2168,7 +2168,7 @@ do_shutdown (void *cls)
   }
   if (NULL != ctx)
   {
-    TALER_EXCHANGE_fini (ctx);
+    GNUNET_CURL_fini (ctx);
     ctx = NULL;
   }
 }
@@ -2226,18 +2226,18 @@ context_task (void *cls)
   struct GNUNET_TIME_Relative delay;
 
   ctx_task = NULL;
-  TALER_EXCHANGE_perform (ctx);
+  GNUNET_CURL_perform (ctx);
   max_fd = -1;
   timeout = -1;
   FD_ZERO (&read_fd_set);
   FD_ZERO (&write_fd_set);
   FD_ZERO (&except_fd_set);
-  TALER_EXCHANGE_get_select_info (ctx,
-                              &read_fd_set,
-                              &write_fd_set,
-                              &except_fd_set,
-                              &max_fd,
-                              &timeout);
+  GNUNET_CURL_get_select_info (ctx,
+                               &read_fd_set,
+                               &write_fd_set,
+                               &except_fd_set,
+                               &max_fd,
+                               &timeout);
   if (timeout >= 0)
     delay = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,
                                            timeout);
@@ -2507,7 +2507,7 @@ run (void *cls)
   is = GNUNET_new (struct InterpreterState);
   is->commands = commands;
 
-  ctx = TALER_EXCHANGE_init ();
+  ctx = GNUNET_CURL_init ();
   GNUNET_assert (NULL != ctx);
   ctx_task = GNUNET_SCHEDULER_add_now (&context_task,
                                        ctx);

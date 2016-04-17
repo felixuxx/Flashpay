@@ -30,7 +30,7 @@
  * @param h the exchange handle to query
  * @return ctx context to execute jobs in
  */
-struct TALER_EXCHANGE_Context *
+struct GNUNET_CURL_Context *
 MAH_handle_to_context (struct TALER_EXCHANGE_Handle *h);
 
 

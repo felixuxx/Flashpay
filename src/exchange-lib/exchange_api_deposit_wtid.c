@@ -25,10 +25,10 @@
 #include <microhttpd.h> /* just for HTTP status codes */
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
+#include <gnunet/gnunet_curl_lib.h>
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "exchange_api_common.h"
-#include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
 
@@ -57,7 +57,7 @@ struct TALER_EXCHANGE_DepositWtidHandle
   /**
    * Handle for the request.
    */
-  struct MAC_Job *job;
+  struct GNUNET_CURL_Job *job;
 
   /**
    * Function to call with the result.
@@ -68,11 +68,6 @@ struct TALER_EXCHANGE_DepositWtidHandle
    * Closure for @a cb.
    */
   void *cb_cls;
-
-  /**
-   * Download buffer
-   */
-  struct MAC_DownloadBuffer db;
 
   /**
    * Information the exchange should sign in response.
@@ -93,7 +88,7 @@ struct TALER_EXCHANGE_DepositWtidHandle
  */
 static int
 verify_deposit_wtid_signature_ok (const struct TALER_EXCHANGE_DepositWtidHandle *dwh,
-                                  json_t *json)
+                                  const json_t *json)
 {
   struct TALER_ExchangeSignatureP exchange_sig;
   struct TALER_ExchangePublicKeyP exchange_pub;
@@ -138,24 +133,21 @@ verify_deposit_wtid_signature_ok (const struct TALER_EXCHANGE_DepositWtidHandle 
  * HTTP /deposit/wtid request.
  *
  * @param cls the `struct TALER_EXCHANGE_DepositWtidHandle`
- * @param eh the curl request handle
+ * @param response_code HTTP response code, 0 on error
+ * @param json parsed JSON result, NULL on error
  */
 static void
 handle_deposit_wtid_finished (void *cls,
-                              CURL *eh)
+                              long response_code,
+                              const json_t *json)
 {
   struct TALER_EXCHANGE_DepositWtidHandle *dwh = cls;
-  long response_code;
-  json_t *json;
   const struct TALER_WireTransferIdentifierRawP *wtid = NULL;
   struct GNUNET_TIME_Absolute execution_time = GNUNET_TIME_UNIT_FOREVER_ABS;
   const struct TALER_Amount *coin_contribution = NULL;
   struct TALER_Amount coin_contribution_s;
 
   dwh->job = NULL;
-  json = MAC_download_get_result (&dwh->db,
-                                  eh,
-                                  &response_code);
   switch (response_code)
   {
   case 0:
@@ -243,7 +235,6 @@ handle_deposit_wtid_finished (void *cls,
            wtid,
            execution_time,
            coin_contribution);
-  json_decref (json);
   TALER_EXCHANGE_deposit_wtid_cancel (dwh);
 }
 
@@ -263,18 +254,18 @@ handle_deposit_wtid_finished (void *cls,
  */
 struct TALER_EXCHANGE_DepositWtidHandle *
 TALER_EXCHANGE_deposit_wtid (struct TALER_EXCHANGE_Handle *exchange,
-                         const struct TALER_MerchantPrivateKeyP *merchant_priv,
-                         const struct GNUNET_HashCode *h_wire,
-                         const struct GNUNET_HashCode *h_contract,
-                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                         uint64_t transaction_id,
-                         TALER_EXCHANGE_DepositWtidCallback cb,
-                         void *cb_cls)
+                             const struct TALER_MerchantPrivateKeyP *merchant_priv,
+                             const struct GNUNET_HashCode *h_wire,
+                             const struct GNUNET_HashCode *h_contract,
+                             const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                             uint64_t transaction_id,
+                             TALER_EXCHANGE_DepositWtidCallback cb,
+                             void *cb_cls)
 {
   struct TALER_DepositTrackPS dtp;
   struct TALER_MerchantSignatureP merchant_sig;
   struct TALER_EXCHANGE_DepositWtidHandle *dwh;
-  struct TALER_EXCHANGE_Context *ctx;
+  struct GNUNET_CURL_Context *ctx;
   json_t *deposit_wtid_obj;
   CURL *eh;
 
@@ -341,16 +332,8 @@ TALER_EXCHANGE_deposit_wtid (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (eh,
                                    CURLOPT_POSTFIELDSIZE,
                                    strlen (dwh->json_enc)));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEFUNCTION,
-                                   &MAC_download_cb));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_WRITEDATA,
-                                   &dwh->db));
   ctx = MAH_handle_to_context (exchange);
-  dwh->job = MAC_job_add (ctx,
+  dwh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
                           &handle_deposit_wtid_finished,
@@ -370,10 +353,9 @@ TALER_EXCHANGE_deposit_wtid_cancel (struct TALER_EXCHANGE_DepositWtidHandle *dwh
 {
   if (NULL != dwh->job)
   {
-    MAC_job_cancel (dwh->job);
+    GNUNET_CURL_job_cancel (dwh->job);
     dwh->job = NULL;
   }
-  GNUNET_free_non_null (dwh->db.buf);
   GNUNET_free (dwh->url);
   GNUNET_free (dwh->json_enc);
   GNUNET_free (dwh);

@@ -23,10 +23,10 @@
 #include "platform.h"
 #include <curl/curl.h>
 #include <microhttpd.h>
+#include <gnunet/gnunet_curl_lib.h>
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "taler_signatures.h"
-#include "exchange_api_context.h"
 #include "exchange_api_handle.h"
 
 
@@ -78,7 +78,7 @@ struct TALER_EXCHANGE_Handle
   /**
    * The context of this handle
    */
-  struct TALER_EXCHANGE_Context *ctx;
+  struct GNUNET_CURL_Context *ctx;
 
   /**
    * The URL of the exchange (i.e. "http://exchange.taler.net/")
@@ -134,14 +134,9 @@ struct KeysRequest
   char *url;
 
   /**
-   * Entry for this request with the `struct TALER_EXCHANGE_Context`.
+   * Entry for this request with the `struct GNUNET_CURL_Context`.
    */
-  struct MAC_Job *job;
-
-  /**
-   * Data structure for the download.
-   */
-  struct MAC_DownloadBuffer db;
+  struct GNUNET_CURL_Job *job;
 
 };
 
@@ -156,7 +151,6 @@ struct KeysRequest
 static void
 free_keys_request (struct KeysRequest *kr)
 {
-  GNUNET_free_non_null (kr->db.buf);
   GNUNET_free (kr->url);
   GNUNET_free (kr);
 }
@@ -468,7 +462,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error (malformed JSON)
  */
 static int
-decode_keys_json (json_t *resp_obj,
+decode_keys_json (const json_t *resp_obj,
                   struct TALER_EXCHANGE_Keys *key_data)
 {
   struct GNUNET_TIME_Absolute list_issue_date;
@@ -601,21 +595,18 @@ decode_keys_json (json_t *resp_obj,
  * is complete.
  *
  * @param cls the `struct KeysRequest`
- * @param eh easy handle of the original request
+ * @param response_code HTTP response code, 0 on error
+ * @param resp_obj parsed JSON result, NULL on error
  */
 static void
 keys_completed_cb (void *cls,
-                   CURL *eh)
+                   long response_code,
+                   const json_t *resp_obj)
 {
   struct KeysRequest *kr = cls;
   struct TALER_EXCHANGE_Handle *exchange = kr->exchange;
-  json_t *resp_obj;
-  long response_code;
   TALER_EXCHANGE_CertificationCallback cb;
 
-  resp_obj = MAC_download_get_result (&kr->db,
-                                      eh,
-                                      &response_code);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Received keys from URL `%s' with status %ld.\n",
               kr->url,
@@ -636,8 +627,6 @@ keys_completed_cb (void *cls,
                 response_code);
     break;
   }
-  if (NULL != resp_obj)
-    json_decref (resp_obj);
 
   if (MHD_HTTP_OK != response_code)
   {
@@ -675,7 +664,7 @@ keys_completed_cb (void *cls,
  * @param h the exchange handle to query
  * @return ctx context to execute jobs in
  */
-struct TALER_EXCHANGE_Context *
+struct GNUNET_CURL_Context *
 MAH_handle_to_context (struct TALER_EXCHANGE_Handle *h)
 {
   return h->ctx;
@@ -738,11 +727,11 @@ MAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
  * @return the exchange handle; NULL upon error
  */
 struct TALER_EXCHANGE_Handle *
-TALER_EXCHANGE_connect (struct TALER_EXCHANGE_Context *ctx,
-                    const char *url,
-                    TALER_EXCHANGE_CertificationCallback cert_cb,
-                    void *cert_cb_cls,
-                    ...)
+TALER_EXCHANGE_connect (struct GNUNET_CURL_Context *ctx,
+                        const char *url,
+                        TALER_EXCHANGE_CertificationCallback cert_cb,
+                        void *cert_cb_cls,
+                        ...)
 {
   struct TALER_EXCHANGE_Handle *exchange;
   struct KeysRequest *kr;
@@ -772,19 +761,11 @@ TALER_EXCHANGE_connect (struct TALER_EXCHANGE_Context *ctx,
                  curl_easy_setopt (c,
                                    CURLOPT_URL,
                                    kr->url));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (c,
-                                   CURLOPT_WRITEFUNCTION,
-                                   &MAC_download_cb));
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (c,
-                                   CURLOPT_WRITEDATA,
-                                   &kr->db));
-  kr->job = MAC_job_add (exchange->ctx,
-                         c,
-                         GNUNET_NO,
-                         &keys_completed_cb,
-                         kr);
+  kr->job = GNUNET_CURL_job_add (exchange->ctx,
+                                 c,
+                                 GNUNET_NO,
+                                 &keys_completed_cb,
+                                 kr);
   exchange->kr = kr;
   return exchange;
 }
@@ -802,7 +783,7 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
 
   if (NULL != exchange->kr)
   {
-    MAC_job_cancel (exchange->kr->job);
+    GNUNET_CURL_job_cancel (exchange->kr->job);
     free_keys_request (exchange->kr);
     exchange->kr = NULL;
   }
@@ -832,7 +813,7 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
  */
 int
 TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
-                             const struct TALER_ExchangePublicKeyP *pub)
+                                 const struct TALER_ExchangePublicKeyP *pub)
 {
   struct GNUNET_TIME_Absolute now;
   unsigned int i;

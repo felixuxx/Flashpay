@@ -24,6 +24,7 @@
 
 #include <jansson.h>
 #include "taler_util.h"
+#include <gnunet/gnunet_curl_lib.h>
 
 /* ********************* event loop *********************** */
 
@@ -319,7 +320,7 @@ struct TALER_EXCHANGE_Handle;
  * @return the exchange handle; NULL upon error
  */
 struct TALER_EXCHANGE_Handle *
-TALER_EXCHANGE_connect (struct TALER_EXCHANGE_Context *ctx,
+TALER_EXCHANGE_connect (struct GNUNET_CURL_Context *ctx,
                         const char *url,
                         TALER_EXCHANGE_CertificationCallback cert_cb,
                         void *cert_cb_cls,
@@ -409,7 +410,7 @@ struct TALER_EXCHANGE_WireHandle;
 typedef void
 (*TALER_EXCHANGE_WireResultCallback) (void *cls,
                                       unsigned int http_status,
-                                      json_t *obj);
+                                      const json_t *obj);
 
 
 /**
@@ -469,7 +470,7 @@ struct TALER_EXCHANGE_DepositHandle;
 typedef void
 (*TALER_EXCHANGE_DepositResultCallback) (void *cls,
                                          unsigned int http_status,
-                                         json_t *obj);
+                                         const json_t *obj);
 
 
 /**
@@ -612,7 +613,7 @@ struct TALER_EXCHANGE_ReserveHistory
 typedef void
 (*TALER_EXCHANGE_ReserveStatusResultCallback) (void *cls,
                                                unsigned int http_status,
-                                               json_t *json,
+                                               const json_t *json,
                                                const struct TALER_Amount *balance,
                                                unsigned int history_length,
                                                const struct TALER_EXCHANGE_ReserveHistory *history);
@@ -674,7 +675,7 @@ typedef void
 (*TALER_EXCHANGE_ReserveWithdrawResultCallback) (void *cls,
                                                  unsigned int http_status,
                                                  const struct TALER_DenominationSignature *sig,
-                                                 json_t *full_response);
+                                                 const json_t *full_response);
 
 
 /**
@@ -797,9 +798,9 @@ struct TALER_EXCHANGE_RefreshMeltHandle;
  */
 typedef void
 (*TALER_EXCHANGE_RefreshMeltCallback) (void *cls,
-                                   unsigned int http_status,
-                                   uint16_t noreveal_index,
-                                   json_t *full_response);
+                                       unsigned int http_status,
+                                       uint16_t noreveal_index,
+                                       const json_t *full_response);
 
 
 /**
@@ -866,7 +867,7 @@ typedef void
                                          unsigned int num_coins,
                                          const struct TALER_CoinSpendPrivateKeyP *coin_privs,
                                          const struct TALER_DenominationSignature *sigs,
-                                         json_t *full_response);
+                                         const json_t *full_response);
 
 
 /**
@@ -947,7 +948,7 @@ typedef void
                                        const struct TALER_CoinSpendPrivateKeyP *coin_privs,
                                        const struct TALER_DenominationSignature *sigs,
                                        const struct TALER_DenominationPublicKey *pubs,
-                                       json_t *full_response);
+                                       const json_t *full_response);
 
 
 /**
@@ -1003,7 +1004,7 @@ struct TALER_EXCHANGE_AdminAddIncomingHandle;
 typedef void
 (*TALER_EXCHANGE_AdminAddIncomingResultCallback) (void *cls,
                                                   unsigned int http_status,
-                                                  json_t *full_response);
+                                                  const json_t *full_response);
 
 
 /**
@@ -1103,7 +1104,7 @@ struct TALER_WireDepositDetails
 typedef void
 (*TALER_EXCHANGE_WireDepositsCallback)(void *cls,
                                        unsigned int http_status,
-                                       json_t *json,
+                                       const json_t *json,
                                        const struct GNUNET_HashCode *h_wire,
                                        const struct TALER_Amount *total_amount,
                                        unsigned int details_length,
@@ -1161,7 +1162,7 @@ struct TALER_EXCHANGE_DepositWtidHandle;
 typedef void
 (*TALER_EXCHANGE_DepositWtidCallback)(void *cls,
                                       unsigned int http_status,
-                                      json_t *json,
+                                      const json_t *json,
                                       const struct TALER_WireTransferIdentifierRawP *wtid,
                                       struct GNUNET_TIME_Absolute execution_time,
                                       const struct TALER_Amount *coin_contribution);
