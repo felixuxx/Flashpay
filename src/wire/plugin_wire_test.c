@@ -23,6 +23,7 @@
 #include "taler_wire_plugin.h"
 #include "taler_bank_service.h"
 #include "taler_signatures.h"
+#include <gnunet/gnunet_curl_lib.h>
 
 /* only for HTTP status codes */
 #include <microhttpd.h>
@@ -45,9 +46,9 @@ struct TestClosure
   char *bank_uri;
 
   /**
-   * Handle to the bank for sending funds to the bank.
+   * Handle to the context for sending funds to the bank.
    */
-  struct TALER_BANK_Context *bank;
+  struct GNUNET_CURL_Context *ctx;
 
   /**
    * Handle to the bank task, or NULL.
@@ -151,18 +152,18 @@ context_task (void *cls)
   struct GNUNET_TIME_Relative delay;
 
   tc->bt = NULL;
-  TALER_BANK_perform (tc->bank);
+  GNUNET_CURL_perform (tc->ctx);
   max_fd = -1;
   timeout = -1;
   FD_ZERO (&read_fd_set);
   FD_ZERO (&write_fd_set);
   FD_ZERO (&except_fd_set);
-  TALER_BANK_get_select_info (tc->bank,
-                              &read_fd_set,
-                              &write_fd_set,
-                              &except_fd_set,
-                              &max_fd,
-                              &timeout);
+  GNUNET_CURL_get_select_info (tc->ctx,
+                               &read_fd_set,
+                               &write_fd_set,
+                               &except_fd_set,
+                               &max_fd,
+                               &timeout);
   if (timeout >= 0)
     delay = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,
                                            timeout);
@@ -579,7 +580,7 @@ test_prepare_wire_transfer_cancel (void *cls,
 static void
 execute_cb (void *cls,
             unsigned int http_status,
-            json_t *json)
+            const json_t *json)
 {
   struct TALER_WIRE_ExecuteHandle *eh = cls;
   json_t *reason;
@@ -692,7 +693,7 @@ test_execute_wire_transfer (void *cls,
   json_int_t account_no;
   struct BufFormatP bf;
 
-  if (NULL == tc->bank)
+  if (NULL == tc->ctx)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Bank not initialized, cannot do transfers!\n");
@@ -735,7 +736,8 @@ test_execute_wire_transfer (void *cls,
   eh = GNUNET_new (struct TALER_WIRE_ExecuteHandle);
   eh->cc = cc;
   eh->cc_cls = cc_cls;
-  eh->aaih = TALER_BANK_admin_add_incoming (tc->bank,
+  eh->aaih = TALER_BANK_admin_add_incoming (tc->ctx,
+                                            tc->bank_uri,
                                             &bf.wtid,
                                             &amount,
                                             (uint64_t) tc->exchange_account_outgoing_no,
@@ -829,8 +831,8 @@ libtaler_plugin_wire_test_init (void *cls)
       GNUNET_free (tc);
       return NULL;
     }
-    tc->bank = TALER_BANK_init (tc->bank_uri);
-    if (NULL == tc->bank)
+    tc->ctx = GNUNET_CURL_init ();
+    if (NULL == tc->ctx)
     {
       GNUNET_break (0);
       GNUNET_free (tc->currency);
@@ -870,10 +872,10 @@ libtaler_plugin_wire_test_done (void *cls)
     GNUNET_SCHEDULER_cancel (tc->bt);
     tc->bt = NULL;
   }
-  if (NULL != tc->bank)
+  if (NULL != tc->ctx)
   {
-    TALER_BANK_fini (tc->bank);
-    tc->bank = NULL;
+    GNUNET_CURL_fini (tc->ctx);
+    tc->ctx = NULL;
   }
   GNUNET_free_non_null (tc->currency);
   GNUNET_free_non_null (tc->bank_uri);

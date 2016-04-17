@@ -39,6 +39,7 @@ libtaler_plugin_wire_test_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
   -lgnunetutil $(XLIB)
 
 
