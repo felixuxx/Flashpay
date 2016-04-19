@@ -21,8 +21,8 @@
 #
 #
 # Clear environment from variables that override config.
-export XDG_DATA_HOME=
-export XDG_CONFIG_HOME=
+unset XDG_DATA_HOME
+unset XDG_CONFIG_HOME
 #
 # Setup keys.
 taler-exchange-keyup -c test_taler_exchange_httpd.conf
