@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2014, 2015 GNUnet e.V.
+   Copyright (C) 2014, 2015, 2016 Inria and GNUnet e.V.
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -17,6 +17,7 @@
  * @file exchangedb/perf_taler_exchangedb.c
  * @brief Exchange database performance analysis
  * @author Nicolas Fournier
+ * @author Christian Grothoff
  */
 #include "platform.h"
 #include "perf_taler_exchangedb_interpreter.h"

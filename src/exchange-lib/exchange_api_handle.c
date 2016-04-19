@@ -253,29 +253,32 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
   struct TALER_Amount fee_withdraw;
   struct TALER_Amount fee_deposit;
   struct TALER_Amount fee_refresh;
+  struct TALER_Amount fee_refund;
   struct TALER_DenominationKeyValidityPS denom_key_issue;
   struct GNUNET_CRYPTO_RsaPublicKey *pk;
   struct GNUNET_CRYPTO_EddsaSignature sig;
 
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("master_sig",
-                         &sig),
+				 &sig),
     GNUNET_JSON_spec_absolute_time ("stamp_expire_deposit",
-                            &deposit_valid_until),
+				    &deposit_valid_until),
     GNUNET_JSON_spec_absolute_time ("stamp_expire_withdraw",
-                            &withdraw_valid_until),
+				    &withdraw_valid_until),
     GNUNET_JSON_spec_absolute_time ("stamp_start",
-                            &valid_from),
+				    &valid_from),
     GNUNET_JSON_spec_absolute_time ("stamp_expire_legal",
-                            &expire_legal),
+				    &expire_legal),
     TALER_JSON_spec_amount ("value",
-                     &value),
+			    &value),
     TALER_JSON_spec_amount ("fee_withdraw",
-                     &fee_withdraw),
+			    &fee_withdraw),
     TALER_JSON_spec_amount ("fee_deposit",
-                     &fee_deposit),
+			    &fee_deposit),
     TALER_JSON_spec_amount ("fee_refresh",
-                     &fee_refresh),
+			    &fee_refresh),
+    TALER_JSON_spec_amount ("fee_refund",
+			    &fee_refund),
     GNUNET_JSON_spec_rsa_public_key ("denom_pub",
                              &pk),
     GNUNET_JSON_spec_end()
@@ -309,6 +312,8 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
                      &fee_deposit);
   TALER_amount_hton (&denom_key_issue.fee_refresh,
                      &fee_refresh);
+  TALER_amount_hton (&denom_key_issue.fee_refund,
+                     &fee_refund);
   EXITIF (GNUNET_SYSERR ==
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
                                       &denom_key_issue.purpose,
@@ -327,6 +332,7 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
   denom_key->fee_withdraw = fee_withdraw;
   denom_key->fee_deposit = fee_deposit;
   denom_key->fee_refresh = fee_refresh;
+  denom_key->fee_refund = fee_refund;
   return GNUNET_OK;
 
  EXITIF_exit:
@@ -435,6 +441,8 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
                        &dk->fee_deposit);
     TALER_amount_hton (&kv.fee_refresh,
                        &dk->fee_refresh);
+    TALER_amount_hton (&kv.fee_refund,
+                       &dk->fee_refund);
     kv.denom_hash = dk->h_key;
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS,

@@ -79,8 +79,7 @@ PERF_TALER_EXCHANGEDB_denomination_init (void);
  * @return a copy of @a deposit; NULL if error
  */
 struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *
-PERF_TALER_EXCHANGEDB_denomination_copy (
-  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
+PERF_TALER_EXCHANGEDB_denomination_copy (const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
 
 
 /**
@@ -88,8 +87,7 @@ PERF_TALER_EXCHANGEDB_denomination_copy (
  * @param dki pointer to the struct to free
  */
 int
-PERF_TALER_EXCHANGEDB_denomination_free (
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
+PERF_TALER_EXCHANGEDB_denomination_free (struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
 
 
 /**
@@ -122,8 +120,7 @@ PERF_TALER_EXCHANGEDB_reserve_free (struct PERF_TALER_EXCHANGEDB_Reserve *reserv
  * @param dki the denomination key used to sign the key
  */
 struct TALER_EXCHANGEDB_Deposit *
-PERF_TALER_EXCHANGEDB_deposit_init (
-  const struct PERF_TALER_EXCHANGEDB_Coin *coin);
+PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coin);
 
 
 /**
@@ -150,9 +147,8 @@ PERF_TALER_EXCHANGEDB_deposit_free (struct TALER_EXCHANGEDB_Deposit *deposit);
  * @return a randomly generated CollectableBlindcoin
  */
 struct PERF_TALER_EXCHANGEDB_Coin *
-PERF_TALER_EXCHANGEDB_coin_init (
-  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
-  const struct PERF_TALER_EXCHANGEDB_Reserve *reserve);
+PERF_TALER_EXCHANGEDB_coin_init (const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
+				 const struct PERF_TALER_EXCHANGEDB_Reserve *reserve);
 
 
 /**
@@ -161,8 +157,7 @@ PERF_TALER_EXCHANGEDB_coin_init (
  * @return a copy of coin; NULL if error
  */
 struct PERF_TALER_EXCHANGEDB_Coin *
-PERF_TALER_EXCHANGEDB_coin_copy (
-  const struct PERF_TALER_EXCHANGEDB_Coin *coin);
+PERF_TALER_EXCHANGEDB_coin_copy (const struct PERF_TALER_EXCHANGEDB_Coin *coin);
 
 
 /**
@@ -170,8 +165,7 @@ PERF_TALER_EXCHANGEDB_coin_copy (
  * @param coin pointer to the structure to free
  */
 int
-PERF_TALER_EXCHANGEDB_coin_free (
-  struct PERF_TALER_EXCHANGEDB_Coin *coin);
+PERF_TALER_EXCHANGEDB_coin_free (struct PERF_TALER_EXCHANGEDB_Coin *coin);
 
 
 /**
@@ -186,15 +180,14 @@ PERF_TALER_EXCHANGEDB_refresh_session_init (void);
  */
 int
 PERF_TALER_EXCHANGEDB_refresh_session_copy (struct TALER_EXCHANGEDB_RefreshSession *session, 
-                                        struct TALER_EXCHANGEDB_RefreshSession *copy);
+					    struct TALER_EXCHANGEDB_RefreshSession *copy);
 
 
 /**
  * Frees memory of a refresh_session
  */
 int
-PERF_TALER_EXCHANGEDB_refresh_session_free (
-  struct TALER_EXCHANGEDB_RefreshSession *refresh_session);
+PERF_TALER_EXCHANGEDB_refresh_session_free (struct TALER_EXCHANGEDB_RefreshSession *refresh_session);
 
 
 /**

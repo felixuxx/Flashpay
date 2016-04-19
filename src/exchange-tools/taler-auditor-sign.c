@@ -103,6 +103,12 @@ print_dk (const struct TALER_DenominationKeyValidityPS *dk)
            "Refresh fee: %s\n",
            s = TALER_amount_to_string (&a));
   GNUNET_free (s);
+  TALER_amount_ntoh (&a,
+                     &dk->fee_refund);
+  fprintf (stdout,
+           "Refund fee: %s\n",
+           s = TALER_amount_to_string (&a));
+  GNUNET_free (s);
 
   fprintf (stdout,
            "Validity start time: %s\n",

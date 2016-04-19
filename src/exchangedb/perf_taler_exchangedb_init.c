@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2014, 2015 GNUnet e.V.
+   Copyright (C) 2014, 2015, 2016 Inria & GNUnet e.V.
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -17,6 +17,7 @@
  * @file exchangedb/perf_taler_exchangedb_init.c
  * @brief Interpreter library for exchange database performance analysis
  * @author Nicolas Fournier
+ * @author Christian Grothoff
  */
 #include "platform.h"
 #include "perf_taler_exchangedb_init.h"
@@ -75,6 +76,7 @@ PERF_TALER_EXCHANGEDB_denomination_init ()
       TALER_amount_hton (&properties.fee_withdraw, &amount);
       TALER_amount_hton (&properties.fee_deposit, &amount);
       TALER_amount_hton (&properties.fee_refresh, &amount);
+      TALER_amount_hton (&properties.fee_refund, &amount);
       GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
                                          &properties.denom_hash);
       issue.properties = properties;

@@ -16,7 +16,8 @@
 /**
  * @file exchangedb/test_exchangedb.c
  * @brief test cases for DB interaction functions
- * @author Sree Harsha Totakura <sreeharsha@totakura.in>
+ * @author Sree Harsha Totakura
+ * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_exchangedb_lib.h"
@@ -114,7 +115,8 @@ create_denom_key_pair (unsigned int size,
                        const struct TALER_Amount *value,
                        const struct TALER_Amount *fee_withdraw,
                        const struct TALER_Amount *fee_deposit,
-                       const struct TALER_Amount *fee_refresh)
+                       const struct TALER_Amount *fee_refresh,
+                       const struct TALER_Amount *fee_refund)
 {
   struct DenomKeyPair *dkp;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation dki;
@@ -147,6 +149,7 @@ create_denom_key_pair (unsigned int size,
   TALER_amount_hton (&dki.issue.properties.fee_withdraw, fee_withdraw);
   TALER_amount_hton (&dki.issue.properties.fee_deposit, fee_deposit);
   TALER_amount_hton (&dki.issue.properties.fee_refresh, fee_refresh);
+  TALER_amount_hton (&dki.issue.properties.fee_refund, fee_refund);
   GNUNET_CRYPTO_rsa_public_key_hash (dkp->pub.rsa_public_key,
                                      &dki.issue.properties.denom_hash);
   if (GNUNET_OK !=
@@ -166,11 +169,11 @@ static struct TALER_Amount value;
 static struct TALER_Amount fee_withdraw;
 static struct TALER_Amount fee_deposit;
 static struct TALER_Amount fee_refresh;
+static struct TALER_Amount fee_refund;
 static struct TALER_Amount amount_with_fee;
 
 static void
-free_refresh_commit_coins_array(struct TALER_EXCHANGEDB_RefreshCommitCoin
-                                *commit_coins,
+free_refresh_commit_coins_array(struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins,
                                 unsigned int size)
 {
   unsigned int cnt;
@@ -205,7 +208,7 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
   uint16_t cnc_index;
   int ret;
 
-  #define COIN_ENC_MAX_SIZE 512
+#define COIN_ENC_MAX_SIZE 512
   ret = GNUNET_SYSERR;
   ret_commit_coins = NULL;
   commit_coins = GNUNET_new_array (MELT_NEW_COINS,
@@ -331,7 +334,8 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
                                &value,
                                &fee_withdraw,
                                &fee_deposit,
-                               &fee_refresh);
+                               &fee_refresh,
+			       &fee_refund);
   /* create MELT_OLD_COINS number of refresh melts */
   melts = GNUNET_new_array (MELT_OLD_COINS, struct TALER_EXCHANGEDB_RefreshMelt);
   for (cnt=0; cnt < MELT_OLD_COINS; cnt++)
@@ -394,7 +398,8 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
                                           &value,
                                           &fee_withdraw,
                                           &fee_deposit,
-                                          &fee_refresh);
+                                          &fee_refresh,
+					  &fee_refund);
     new_denom_pubs[cnt]=new_dkp[cnt]->pub;
   }
   FAILIF (GNUNET_OK != plugin->insert_refresh_order (plugin->cls,
@@ -684,6 +689,9 @@ run (void *cls)
                  TALER_string_to_amount (CURRENCY ":0.000010",
                                          &fee_refresh));
   GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":0.000010",
+                                         &fee_refund));
+  GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.000010",
                                          &amount_with_fee));
 
@@ -723,7 +731,8 @@ run (void *cls)
                                &value,
                                &fee_withdraw,
                                &fee_deposit,
-                               &fee_refresh);
+                               &fee_refresh,
+			       &fee_refund);
   RND_BLK(&cbc.h_coin_envelope);
   RND_BLK(&cbc.reserve_sig);
   cbc.denom_pub = dkp->pub;

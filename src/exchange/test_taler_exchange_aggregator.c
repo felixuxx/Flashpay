@@ -359,6 +359,9 @@ fake_issue (struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount_nbo ("EUR:0.1",
                                              &issue->properties.fee_refresh));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount_nbo ("EUR:0.1",
+                                             &issue->properties.fee_refund));
 }
 
 

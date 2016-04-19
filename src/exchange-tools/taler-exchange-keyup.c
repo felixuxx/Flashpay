@@ -79,6 +79,11 @@ struct CoinTypeNBOP
   struct TALER_AmountNBO fee_refresh;
 
   /**
+   * What is the fee charged for refunds?
+   */
+  struct TALER_AmountNBO fee_refund;
+
+  /**
    * Key size in NBO.
    */
   uint32_t rsa_keysize;
@@ -139,6 +144,11 @@ struct CoinTypeParams
    * What is the fee charged for melting?
    */
   struct TALER_Amount fee_refresh;
+
+  /**
+   * What is the fee charged for refunds?
+   */
+  struct TALER_Amount fee_refund;
 
   /**
    * Time at which this coin is supposed to become valid.
@@ -261,6 +271,8 @@ hash_coin_type (const struct CoinTypeParams *p,
                      &p->fee_deposit);
   TALER_amount_hton (&p_nbo.fee_refresh,
                      &p->fee_refresh);
+  TALER_amount_hton (&p_nbo.fee_refund,
+                     &p->fee_refund);
   p_nbo.rsa_keysize = htonl (p->rsa_keysize);
   GNUNET_CRYPTO_hash (&p_nbo,
                       sizeof (struct CoinTypeNBOP),
@@ -707,6 +719,17 @@ get_cointype_params (const char *ct,
                                "fee_refresh");
     return GNUNET_SYSERR;
   }
+  if (GNUNET_OK !=
+      TALER_config_get_denom (kcfg,
+                              ct,
+                              "fee_refund",
+                              &params->fee_refund))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "fee_refund");
+    return GNUNET_SYSERR;
+  }
 
   dir = get_cointype_dir (params);
   get_anchor (dir,
@@ -756,6 +779,8 @@ create_denomkey_issue (const struct CoinTypeParams *params,
                      &params->fee_deposit);
   TALER_amount_hton (&dki->issue.properties.fee_refresh,
                      &params->fee_refresh);
+  TALER_amount_hton (&dki->issue.properties.fee_refund,
+                     &params->fee_refund);
   dki->issue.properties.purpose.purpose
     = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
   dki->issue.properties.purpose.size
@@ -776,7 +801,7 @@ create_denomkey_issue (const struct CoinTypeParams *params,
  */
 static void
 exchange_keys_update_cointype (void *cls,
-                           const char *coin_alias)
+			       const char *coin_alias)
 {
   int *ret = cls;
   struct CoinTypeParams p;

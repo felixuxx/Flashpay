@@ -122,9 +122,14 @@ struct TALER_EXCHANGE_DenomPublicKey
   struct TALER_Amount fee_deposit;
 
   /**
-   *The applicable fee to melt/refresh a coin of this denomination
+   * The applicable fee to melt/refresh a coin of this denomination
    */
   struct TALER_Amount fee_refresh;
+
+  /**
+   * The applicable fee to refund a coin of this denomination
+   */
+  struct TALER_Amount fee_refund;
 };
 
 

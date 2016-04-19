@@ -272,6 +272,9 @@ postgres_create_tables (void *cls,
            ",fee_refresh_val INT8 NOT NULL"
            ",fee_refresh_frac INT4 NOT NULL"
            ",fee_refresh_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",fee_refund_val INT8 NOT NULL"
+           ",fee_refund_frac INT4 NOT NULL"
+           ",fee_refund_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
            ")");
   /* reserves table is for summarization of a reserve.  It is updated when new
      funds are added and existing funds are withdrawn.  The 'expiration_date'
@@ -544,10 +547,14 @@ postgres_prepare (PGconn *db_conn)
            ",fee_refresh_val"
            ",fee_refresh_frac"
            ",fee_refresh_curr" /* must match coin_curr */
+           ",fee_refund_val"
+           ",fee_refund_frac"
+           ",fee_refund_curr" /* must match coin_curr */
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-           " $11, $12, $13, $14, $15, $16, $17, $18, $19);",
-           19, NULL);
+           " $11, $12, $13, $14, $15, $16, $17, $18,"
+	   " $19, $20, $21, $22);",
+           22, NULL);
 
   /* Used in #postgres_get_denomination_info() */
   PREPARE ("denomination_get",
@@ -570,6 +577,9 @@ postgres_prepare (PGconn *db_conn)
            ",fee_refresh_val"
            ",fee_refresh_frac"
            ",fee_refresh_curr" /* must match coin_curr */
+           ",fee_refund_val"
+           ",fee_refund_frac"
+           ",fee_refund_curr" /* must match coin_curr */
            " FROM denominations"
            " WHERE pub=$1;",
            1, NULL);
@@ -1378,6 +1388,7 @@ postgres_insert_denomination_info (void *cls,
     TALER_PQ_query_param_amount_nbo (&issue->properties.fee_withdraw),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fee_deposit),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fee_refresh),
+    TALER_PQ_query_param_amount_nbo (&issue->properties.fee_refund),
     GNUNET_PQ_query_param_end
   };
   /* check fees match coin currency */
@@ -1390,6 +1401,9 @@ postgres_insert_denomination_info (void *cls,
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency_nbo (&issue->properties.value,
                                                 &issue->properties.fee_refresh));
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency_nbo (&issue->properties.value,
+                                                &issue->properties.fee_refund));
 
   result = GNUNET_PQ_exec_prepared (session->conn,
                                    "denomination_insert",
@@ -1476,6 +1490,8 @@ postgres_get_denomination_info (void *cls,
                                        &issue->properties.fee_deposit),
       TALER_PQ_result_spec_amount_nbo ("fee_refresh",
                                        &issue->properties.fee_refresh),
+      TALER_PQ_result_spec_amount_nbo ("fee_refund",
+                                       &issue->properties.fee_refund),
       GNUNET_PQ_result_spec_end
     };
 

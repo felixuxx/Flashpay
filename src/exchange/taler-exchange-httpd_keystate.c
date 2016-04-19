@@ -133,6 +133,7 @@ denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
   struct TALER_Amount fee_withdraw;
   struct TALER_Amount fee_deposit;
   struct TALER_Amount fee_refresh;
+  struct TALER_Amount fee_refund;
 
   TALER_amount_ntoh (&value,
                      &dki->properties.value);
@@ -142,8 +143,10 @@ denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
                      &dki->properties.fee_deposit);
   TALER_amount_ntoh (&fee_refresh,
                      &dki->properties.fee_refresh);
+  TALER_amount_ntoh (&fee_refund,
+                     &dki->properties.fee_refund);
   return
-    json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+    json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                "master_sig",
                GNUNET_JSON_from_data (&dki->signature,
                                      sizeof (struct GNUNET_CRYPTO_EddsaSignature)),
@@ -164,7 +167,9 @@ denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
                "fee_deposit",
                TALER_JSON_from_amount (&fee_deposit),
                "fee_refresh",
-               TALER_JSON_from_amount (&fee_refresh));
+               TALER_JSON_from_amount (&fee_refresh),
+               "fee_refund",
+               TALER_JSON_from_amount (&fee_refund));
 }
 
 

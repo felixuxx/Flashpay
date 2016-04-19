@@ -640,6 +640,13 @@ struct TALER_DenominationKeyValidityPS
   struct TALER_AmountNBO fee_refresh;
 
   /**
+   * The fee the exchange charges when a coin of this type is refunded.
+   * (can be zero).  Note that refund fees are charged to the customer;
+   * if a refund is given, the deposit fee is also refunded.
+   */
+  struct TALER_AmountNBO fee_refund;
+
+  /**
    * Hash code of the denomination public key. (Used to avoid having
    * the variable-size RSA key in this struct.)
    */
@@ -734,6 +741,12 @@ struct TALER_ExchangeKeyValidityPS
    * (can be zero).
    */
   struct TALER_AmountNBO fee_refresh;
+
+  /**
+   * The fee the exchange charges when a coin of this type is refreshed.
+   * (can be zero).
+   */
+  struct TALER_AmountNBO fee_refund;
 
   /**
    * Hash code of the denomination public key. (Used to avoid having
