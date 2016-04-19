@@ -224,7 +224,7 @@ test_amount_round (void *cls,
   if (NULL == tc->currency)
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
+                               "taler",
                                "CURRENCY");
     return GNUNET_SYSERR; /* not configured with currency */
   }
@@ -820,12 +820,12 @@ libtaler_plugin_wire_test_init (void *cls)
     }
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_string (cfg,
-                                               "exchange",
+                                               "taler",
                                                "CURRENCY",
                                                &tc->currency))
     {
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchange",
+                                 "taler",
                                  "CURRENCY");
       GNUNET_free (tc->bank_uri);
       GNUNET_free (tc);
