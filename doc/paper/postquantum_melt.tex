@@ -1,0 +1,306 @@
+\documentclass{llncs}
+%\usepackage[margin=1in,a4paper]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{palatino}
+\usepackage{xspace}
+\usepackage{microtype}
+\usepackage{tikz,eurosym}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usetikzlibrary{shapes,arrows}
+\usetikzlibrary{positioning}
+\usetikzlibrary{calc}
+
+% Relate to:
+% http://fc14.ifca.ai/papers/fc14_submission_124.pdf
+
+% Terminology:
+% - SEPA-transfer -- avoid 'SEPA transaction' as we use
+%       'transaction' already when we talk about taxable
+%        transfers of Taler coins and database 'transactions'.
+% - wallet = coins at customer
+% - reserve = currency entrusted to exchange waiting for withdrawal
+% - deposit = SEPA to exchange
+% - withdrawal = exchange to customer
+% - spending = customer to merchant
+% - redeeming = merchant to exchange (and then exchange SEPA to merchant)
+% - refreshing = customer-exchange-customer
+% - dirty coin = coin with exposed public key
+% - fresh coin = coin that was refreshed or is new
+% - coin signing key = exchange's online key used to (blindly) sign coin
+% - message signing key = exchange's online key to sign exchange messages
+% - exchange master key = exchange's key used to sign other exchange keys
+% - owner = entity that knows coin private key
+% - transaction = coin ownership transfer that should be taxed
+% - sharing = coin copying that should not be taxed
+
+
+\title{Post-quantum anonymity in Taler}
+
+\begin{document}
+\mainmatter
+
+\author{Jeffrey Burdges}
+\institute{Intria / GNUnet / Taler}
+
+
+\maketitle
+
+\begin{abstract}
+David Chaum's original RSA blind sgnatures provide information theoretic
+anonymity for customers' purchases.  In practice, there are many schemes
+that weaken this to provide properties.  We describe a refresh protocol
+for Taler that provides customers with post-quantum anonymity.
+It replaces an elliptic curve Diffe-Hellman operation with a unique
+hash-based encryption scheme for the proof-of-trust via key knoledge
+property that Taler requires to distinguish untaxable operations from
+taxable purchases. 
+\end{abstract}
+
+
+\section{Introduction}
+
+David Chaum's RSA blind sgnatures \cite{} can provide financial
+security for the exchange, or traditionally mint,
+ assuming RSA-CTI \cite{,}. 
+
+A typical exchange deployment must record all spent coins to prevent
+double spending.  It would therefore rotate ``denomination'' signing
+keys every few weeks or months to keep this database from expanding
+indefinitely \cite{Taler??}.  As a consequence, our exchange has
+ample time to respond to advances in cryptgraphy by increasing their
+key sizes, updating wallet software with new algorithms, or
+even shutting down.
+
+In particular, there is no chance that quantum computers will emerge
+and become inexpensive within the lifetime of a demonination key.
+Indeed, even a quantum computer that existed only in secret posses
+little threat because the risk of exposing that secret probably exceeds
+the exchange's value. 
+
+\smallskip
+
+We cannot make the same bold pronouncement for the customers' anonymity
+however.  We must additionally ask if customers' transactions can be
+deanonymized in the future by the nvention of quantum computes, or
+mathematical advances. 
+
+David Chaum's original RSA blind sgnatures provide even information
+theoretic anonymity for customers, giving the desired negative answer.
+There are however many related schemes that add desirable properties
+at the expense of customers' anonymity.  In particular, any scheme
+that supports offline merchants must add a deanonymization attack
+when coins are double spent \cite{B??}.  
+
+Importantly, there are reasons why exchanges must replace coins that
+do not involve actual financial transactons, like to reissue a coin
+before the exchange rotates the denomination key that signed it, or
+protect users' anonymity after a merchant recieves a coin, but fails
+to process it or deliver good.
+
+In Taler, coins can be partially spent by signing with the coin's key
+for only a portion of the value determined by the coin's denomination
+key.  This allows precise payments but taints the coin with a
+transaction,  which frequently entail user data like a shipng address.  
+To correct this, a customer does a second transaction with the exchange
+where they sign over the partially spent coin's risidual balance
+in exchange for new freshly anonymized coins.  
+Taler employs this {\em refresh} or {\em melt protocol} for
+both for coins tainted through partial spending or merchant failures,
+as well as for coin replacement due to denomination key roration.
+
+If this protocol were simply a second transaction, then customers
+would retain information theoreticaly secure anonymity.  
+In Taler however, we require that the exchange learns acurate income
+information for merchants.  If we use a regular transaction, then
+a customer could conspire to help the merchant hide their income
+\cite[]{Taler??}.
+To prevent this, the refresh protocol requires that a customer prove
+that they could learn the private key of the resulting new coins.
+
+At this point, Taler employs an elliptic curve Diffie-Hellman key
+exchange between the coin's signing key and a new linking key 
+\cite[??]{Taler??}.  As the public linking key is exposed,
+an adversary with a quantum computer could trace any coins involved
+in either partial spending operations or aborted transactions.
+A refresh prompted by denomination key rotation incurs no anonymity
+risks regardless.
+
+\smallskip
+
+We could add an existing post-quantum key exchange, but these all
+incur significantly larger key sizes, requiring more badwidth and
+storage space for the exchange, and take longer to run.
+In addition, the established post-quantum key exchanges based on
+Ring-LWE, like New Hope \cite{}, require that both keys be
+ephemeral.  
+Super-singular isogenies \cite{,} would work ``out of the box'',
+if it were already packeged in said box.
+
+Instead, we observe that 
+
+
+
+
+
+
+
+In this paper, we describe a post-quantum 
+
+It replaces an elliptic curve Diffe-Hellman operation with a unique
+hash-based encryption scheme for the proof-of-trust via key knoledge
+property that Taler requires to distinguish untaxable operations from
+taxable purchases. 
+
+...
+
+\smallskip
+
+We observe that several elliptic curve blind signature schemes provide
+information theoreticly secure blinding as well, but 
+ Schnorr sgnatures require an extra round trip \cite{??}, and
+ pairing based schemes offer no advnatages over RSA \cite{??}.
+
+There are several schemes like Anonize \cite{} in Brave \cite{}, 
+or Zcash \cite{} used in similar situations to blind signatures. 
+% https://github.com/brave/ledger/blob/master/documentation/Ledger-Principles.md
+In these systems, anonymity is not post-quantum due to the zero-knowledge
+proofs they employ.
+
+
+
+
+\section{Background}
+
+
+\section{Refresh}
+
+
+Let $\kappa$ and $\theta$ denote
+ the exchange's security parameter and
+ the maximum number of coins returned by a refresh, respectively. 
+
+We define a Merkle tree/sequence function 
+  $\mlink(m,i,j) = H(m || "YeyCoins!" || i || j)$ 
+        Actual linking key for jth cut of ith target coin
+  $\mhide(m,i,j) = H( \mlink(m,i,j) )$
+        Linking key hidden for Merkle
+  $\mcoin(m,i) = H( \mhide(m,i,1) || \ldots || \mhide(m,i,\kappa) )$
+        Merkle root for refresh into the ith coin
+  $\mroot(m) = M( \m_coin(m,1), \ldots, \mcoin(m,\theta) )$
+        Merkle root for refresh of the entire coin
+  $mpath(m,i)$ is the nodes adjacent to Merkle path to $\mcoin(m,i)$
+If $\theta$ is small then $M(x[1],\ldots,x[\theta])$ could be simply be
+the concatenate and hash function $H( x[1] || ... || x[\theta] )$ like
+in $\mcoin$, giving $O(n)$ time.  If $\theta$ is large, then $M$ should
+be a hash tree to give $O(\log n)$ time.  We could use $M$ in $\mcoin$
+too if $\kappa$ were large, but concatenate and hash wins for $\kappa=3$.
+All these hash functions should have a purpose string.
+
+
+A coin now consists of 
+  a Ed25519 public key $C = c G$,
+  a Merkle root $M = \mroot(m)$, and 
+  an RSA signature $S = S_d(C || M)$ by a denomination key $d$.
+There was a blinding factor $b$ used in the creation of the coin's signature $S$.
+In addition, there was a value $s$ such that 
+  $c = H(\textr{"Ed25519"} || s)$,
+  $m = H(\textr{"Merkle"} || s)$, and
+  $b = H(\textr{"Blind"} || s)$,
+but we try not to retain $s$ if possible.
+
+
+We have a tainted coin $(C,M,S)$ that we wish to
+ refresh into $n \le \theta$ untained coins.  
+For simplicity, we allow $x'$ to stand for the component
+ normally denoted $x$ of the $i$th new coin being created.  
+So $C' = c' G$, $M' = \mroot(m')$, and $b'$ must be derived from $s'$.
+For $j=1\cdots\kappa$,
+ we allow $x^j$ to denote the $j$th cut of the $i$th coin.  
+So again
+ $C^j = c^j G$, $M^j = \mroot(m^j)$, and $b^j$ must be derived from $s^j$.
+
+Wallet phase 1.
+  For $j=1 \cdots \kappa$:
+    Create random $s^j$ and $l^j$.
+    Compute $c^j$, $m^j$, and $b^j$ from $s^j$ as above.
+    Compute $C^j = c^j G$ and $L^j = l^j G$ too.
+    Compute $B^j = B_{b^j}(C^j || \mroot(m^j))$.
+    Set $k = H(\mlink(m,i,j) || l^j C)$
+    Encrypt $E^j = E_k(s^j,l^j)$.
+  Send commitment $S' = S_C( (L^j,E^1,B^1), \ldots, (E^\kappa,B^\kappa) )$
+%  Note : If $\mlink$ were a stream cypher then $E()$ could just be xor.
+
+Exchange phase 1.
+  Pick random $\gamma \in \{1 \cdots \kappa\}$.
+  Mark $C$ as spent by saving $(C,gamma,S')$.
+  Send gamma and $S(C,gamma,...)$
+
+Wallet phase 2.
+  Save ...
+  Set $\Beta_gamma = \mhide(m,i,gamma) = H( \mlink(m,i,gamma) )$ and
+      $\beta_i = \mlink(m,i,j)$ for $j=1\cdots\kappa$ not $\gamma$
+  Prepare a responce tuple $R^j$ consisting of 
+    $Beta_gamma$,  $(beta_j,l^j)$ for $j=1\cdots\kappa$ not $\gamma$,  
+    and  $\mpath(m,i)$, including $\mcoin(m,i)$,
+  Send $S_C(R^j)$.
+
+Exchange phase 2.
+  Set $Beta_j = H(beta_j)$ for $j=1\ldots\kappa$ except $\gamma$,
+    keep $Beta_gamma$ untouched.
+  Verify $M$ with $\mpath(m,i)$ including $\mcoin(m,i)$.
+  Verify $\mcoin(m,i) = H( Beta_1 || .. || Beta_kappa )$.
+  For $j=1 \cdots \kappa$ except $\gamma$:
+    Decrypt $s^j$ from $E^i$ using $k = H(beta_j || l^j C)$
+    Compute $c^j$, $m^j$, and $b^j$ from $s^j$.
+    Compute $C^j = c^j G$ too.
+    Verify $B^i = B_{b^j}(C^j || \mroot(m^j))$.
+  If verifications pass then send $S_{d_i}(B^\gamma)$.
+
+
+\section{Withdrawal}
+
+
+\bibliographystyle{alpha}
+\bibliography{taler,rfc}
+
+% \newpage
+% \appendix
+
+% \section{}
+
+
+
+\end{document}
+
+
+
+$l$ denotes Merkle tree levels
+yields $2^l$ leaves
+costs $2^{l+1}$ hashing operations
+
+$a$ denotes number of leaves used
+yields $2^{a l}$ outcomes
+
+
+
+
+
+
+commit  H(h)  and  h l C  and  E_{l C)(..)
+reveal h and l
+
+
+
+x_n ... x_1 c G
+
+
+
+
+
+
+waiting period of 10 min
+
+
+
+
