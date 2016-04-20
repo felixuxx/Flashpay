@@ -506,6 +506,7 @@ typedef void
  * @param amount the amount to be refunded; must be larger than the refund fee
  *        (as that fee is still being subtracted), and smaller than the amount 
  *        (with deposit fee) of the original deposit contribution of this coin
+ * @param refund_fee fee applicable to this coin for the refund
  * @param h_contract hash of the contact of the merchant with the customer that is being refunded
  * @param transaction_id transaction id for the transaction being refunded, must match @a h_contract
  * @param coin_pub coin’s public key of the coin from the original deposit operation
@@ -522,6 +523,7 @@ typedef void
 struct TALER_EXCHANGE_RefundHandle *
 TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 		       const struct TALER_Amount *amount,
+		       const struct TALER_Amount *refund_fee,
 		       const struct GNUNET_HashCode *h_contract,
 		       const struct TALER_CoinSpendPublicKeyP *coin_pub,
 		       uint64_t rtransaction_id,
