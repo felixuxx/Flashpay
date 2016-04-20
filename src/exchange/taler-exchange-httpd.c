@@ -30,6 +30,7 @@
 #include "taler-exchange-httpd_mhd.h"
 #include "taler-exchange-httpd_admin.h"
 #include "taler-exchange-httpd_deposit.h"
+#include "taler-exchange-httpd_refund.h"
 #include "taler-exchange-httpd_reserve.h"
 #include "taler-exchange-httpd_wire.h"
 #include "taler-exchange-httpd_refresh.h"
@@ -197,6 +198,14 @@ handle_mhd_request (void *cls,
         NULL, 0,
         &TMH_DEPOSIT_handler_deposit, MHD_HTTP_OK },
       { "/deposit", NULL, "text/plain",
+        "Only POST is allowed", 0,
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+
+      /* Refunding coins */
+      { "/refund", MHD_HTTP_METHOD_POST, "application/json",
+        NULL, 0,
+        &TMH_REFUND_handler_refund, MHD_HTTP_OK },
+      { "/refund", NULL, "text/plain",
         "Only POST is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 

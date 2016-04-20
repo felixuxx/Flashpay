@@ -35,6 +35,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_mhd.c taler-exchange-httpd_mhd.h \
   taler-exchange-httpd_parsing.c taler-exchange-httpd_parsing.h \
   taler-exchange-httpd_refresh.c taler-exchange-httpd_refresh.h \
+  taler-exchange-httpd_refund.c taler-exchange-httpd_refund.h \
   taler-exchange-httpd_reserve.c taler-exchange-httpd_reserve.h \
   taler-exchange-httpd_responses.c taler-exchange-httpd_responses.h \
   taler-exchange-httpd_tracking.c taler-exchange-httpd_tracking.h \

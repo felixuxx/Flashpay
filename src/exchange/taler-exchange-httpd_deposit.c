@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 Inria and GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -21,9 +21,6 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
- *
- * TODO:
- * - ugly if-construction for deposit type
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -119,28 +116,37 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
 
 
 /**
- * Handle a "/deposit" request.  This function parses the
- * JSON information and then calls #verify_and_execute_deposit()
- * to verify the signatures and execute the deposit.
+ * Handle a "/deposit" request.  Parses the JSON, and, if successful,
+ * passes the JSON data to #verify_and_execute_deposit() to further
+ * check the details of the operation specified.  If everything checks
+ * out, this will ultimately lead to the "/deposit" being executed, or
+ * rejected.
  *
+ * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param root root of the posted JSON
- * @param amount how much should be deposited
- * @param wire json describing the wire details (?)
+ * @param[in,out] connection_cls the connection's closure (can be updated)
+ * @param upload_data upload data
+ * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
  * @return MHD result code
   */
-static int
-parse_and_handle_deposit_request (struct MHD_Connection *connection,
-                                  const json_t *root,
-                                  const struct TALER_Amount *amount,
-                                  json_t *wire)
+int
+TMH_DEPOSIT_handler_deposit (struct TMH_RequestHandler *rh,
+                             struct MHD_Connection *connection,
+                             void **connection_cls,
+                             const char *upload_data,
+                             size_t *upload_data_size)
 {
+  json_t *json;
   int res;
+  json_t *wire;
   struct TALER_EXCHANGEDB_Deposit deposit;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   struct TMH_KS_StateHandle *ks;
   struct GNUNET_HashCode my_h_wire;
+  struct TALER_Amount amount;
   struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("wire", &wire),
+    TALER_JSON_spec_amount ("f", &amount),
     TALER_JSON_spec_denomination_public_key ("denom_pub", &deposit.coin.denom_pub),
     TALER_JSON_spec_denomination_signature ("ub_sig", &deposit.coin.denom_sig),
     GNUNET_JSON_spec_fixed_auto ("coin_pub", &deposit.coin.coin_pub),
@@ -155,10 +161,20 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
     GNUNET_JSON_spec_end ()
   };
 
+  res = TMH_PARSE_post_json (connection,
+                             connection_cls,
+                             upload_data,
+                             upload_data_size,
+                             &json);
+  if (GNUNET_SYSERR == res)
+    return MHD_NO;
+  if ( (GNUNET_NO == res) || (NULL == json) )
+    return MHD_YES;
   memset (&deposit, 0, sizeof (deposit));
   res = TMH_PARSE_json_data (connection,
-                             root,
+                             json,
                              spec);
+  json_decref (json);
   if (GNUNET_SYSERR == res)
     return MHD_NO; /* hard failure */
   if (GNUNET_NO == res)
@@ -205,78 +221,18 @@ parse_and_handle_deposit_request (struct MHD_Connection *connection,
                      &dki->issue.properties.fee_deposit);
   TMH_KS_release (ks);
   deposit.wire = wire;
-  deposit.amount_with_fee = *amount;
+  deposit.amount_with_fee = amount;
   if (-1 == TALER_amount_cmp (&deposit.amount_with_fee,
                               &deposit.deposit_fee))
   {
     /* Total amount smaller than fee, invalid */
-     GNUNET_JSON_parse_free (spec);
+    GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "f");
   }
   res = verify_and_execute_deposit (connection,
                                     &deposit);
   GNUNET_JSON_parse_free (spec);
-  return res;
-}
-
-
-/**
- * Handle a "/deposit" request.  Parses the JSON in the post to find
- * the "type" (either DIRECT_DEPOSIT or INCREMENTAL_DEPOSIT), and, if
- * successful, passes the JSON data to
- * #parse_and_handle_deposit_request() to further check the details
- * of the operation specified in the "wire" field of the JSON data.
- * If everything checks out, this will ultimately lead to the
- * "/deposit" being executed, or rejected.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
- * @return MHD result code
-  */
-int
-TMH_DEPOSIT_handler_deposit (struct TMH_RequestHandler *rh,
-                             struct MHD_Connection *connection,
-                             void **connection_cls,
-                             const char *upload_data,
-                             size_t *upload_data_size)
-{
-  json_t *json;
-  json_t *wire;
-  int res;
-  struct TALER_Amount amount;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("wire", &wire),
-    TALER_JSON_spec_amount ("f", &amount),
-    GNUNET_JSON_spec_end ()
-  };
-
-  res = TMH_PARSE_post_json (connection,
-                             connection_cls,
-                             upload_data,
-                             upload_data_size,
-                             &json);
-  if (GNUNET_SYSERR == res)
-    return MHD_NO;
-  if ( (GNUNET_NO == res) || (NULL == json) )
-    return MHD_YES;
-  res = TMH_PARSE_json_data (connection,
-                             json,
-                             spec);
-  if (GNUNET_OK != res)
-  {
-    json_decref (json);
-    return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
-  }
-  res = parse_and_handle_deposit_request (connection,
-                                          json,
-                                          &amount,
-                                          wire);
-  GNUNET_JSON_parse_free (spec);
-  json_decref (json);
   return res;
 }
 

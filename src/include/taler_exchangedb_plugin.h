@@ -299,6 +299,67 @@ struct TALER_EXCHANGEDB_Deposit
 
 
 /**
+ * @brief Specification for a /refund operation.  The combination of
+ * the coin's public key, the merchant's public key and the
+ * transaction ID must be unique.  While a coin can (theoretically) be
+ * deposited at the same merchant twice (with partial spending), the
+ * merchant must either use a different public key or a different
+ * transaction ID for the two transactions.  The same goes for
+ * refunds, hence we also have a "rtransaction" ID which is disjoint
+ * from the transaction ID.  The same coin must not be used twice at
+ * the same merchant for the same transaction or rtransaction ID.
+ */
+struct TALER_EXCHANGEDB_Refund
+{
+  /**
+   * Information about the coin that is being refunded.
+   */
+  struct TALER_CoinPublicInfo coin;
+
+  /**
+   * Public key of the merchant. 
+   */
+  struct TALER_MerchantPublicKeyP merchant_pub;
+  
+  /**
+   * Signature from the merchant affirming the refund. 
+   */
+  struct TALER_MerchantSignatureP merchant_sig;
+
+  /**
+   * Hash over the contract between merchant and customer
+   * (remains unknown to the Exchange).
+   */
+  struct GNUNET_HashCode h_contract;
+
+  /**
+   * Merchant-generated transaction ID to detect duplicate
+   * transactions, of the original transaction that is being
+   * refunded.
+   */
+  uint64_t transaction_id;
+  
+  /**
+   * Merchant-generated REFUND transaction ID to detect duplicate
+   * refunds.
+   */
+  uint64_t rtransaction_id;
+
+  /**
+   * Fraction of the original deposit's value to be refunded, including
+   * refund fee (if any).  The coin is identified by @e coin_pub.
+   */
+  struct TALER_Amount refund_amount;
+
+  /**
+   * Refund fee to be covered by the customer.
+   */
+  struct TALER_Amount refund_fee;
+
+};
+
+
+/**
  * @brief Global information for a refreshing session.  Includes
  * dimensions of the operation, security parameters and
  * client signatures from "/refresh/melt" and "/refresh/commit".
