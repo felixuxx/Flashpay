@@ -15,6 +15,10 @@ if WALLET_ONLY
 SUBDIRS = include util
 else
 
+pkgcfgdir = $(prefix)/share/taler/config.d/
+pkgcfg_DATA = \
+  taler.conf
+
 SUBDIRS = include util json $(PQ_DIR) $(BANK_LIB) wire exchangedb exchange exchange-tools
 if HAVE_LIBCURL
  SUBDIRS += exchange-lib

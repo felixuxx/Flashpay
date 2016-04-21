@@ -387,12 +387,12 @@ exchange_serve_process_config ()
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "exchange",
+                                             "taler",
                                              "currency",
                                              &TMH_exchange_currency_string))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
+                               "taler",
                                "currency");
     return GNUNET_SYSERR;
   }
