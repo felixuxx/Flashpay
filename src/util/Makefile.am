@@ -9,18 +9,20 @@ endif
 
 pkgcfgdir = $(prefix)/share/taler/config.d/
 
+
 pkgcfg_DATA = \
   paths.conf
 
 EXTRA_DIST = \
   paths.conf
 
-dist_bin_SCRIPTS = taler-config
+templated_scripts = taler-config taler-arm
+dist_bin_SCRIPTS = $(templated_scripts)
 
 # See https://www.gnu.org/software/autoconf/manual/autoconf-2.63/html_node/Installation-Directory-Variables.html
-# for and explanation and why this ugliness is necessary.
+# for an explanation and why this ugliness is necessary.
 edit = sed -e 's|@libdir[@]|$(libdir)|g'
-taler-config: Makefile $(srcdir)/taler-config.in
+$(templated_scripts): %: Makefile $(srcdir)/%.in
 	rm -f $@ $@.tmp
 	$(edit) '$(srcdir)/$@.in' >$@.tmp
 	chmod +x $@.tmp
