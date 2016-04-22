@@ -795,24 +795,24 @@ libtaler_plugin_wire_test_init (void *cls)
   {
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_string (cfg,
-                                               "wire-outgoing-test",
+                                               "exchange-wire-outgoing-test",
                                                "BANK_URI",
                                                &tc->bank_uri))
     {
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "wire-outgoing-test",
+                                 "exchange-wire-outgoing-test",
                                  "BANK_URI");
       GNUNET_free (tc);
       return NULL;
     }
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_number (cfg,
-                                               "wire-outgoing-test",
+                                               "exchange-wire-outgoing-test",
                                                "EXCHANGE_ACCOUNT_NUMBER",
                                                &tc->exchange_account_outgoing_no))
     {
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "wire-outgoing-test",
+                                 "exchange-wire-outgoing-test",
                                  "EXCHANGE_ACCOUNT_NUMBER");
       GNUNET_free (tc->bank_uri);
       GNUNET_free (tc);

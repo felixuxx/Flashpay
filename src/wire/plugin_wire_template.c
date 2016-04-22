@@ -230,12 +230,12 @@ libtaler_plugin_wire_template_init (void *cls)
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "wire-template",
+                                             "exchange-wire-template",
                                              "bank_uri",
                                              &tc->bank_uri))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "wire-template",
+                               "exchange-wire-template",
                                "bank_uri");
     GNUNET_free (tc);
     return NULL;

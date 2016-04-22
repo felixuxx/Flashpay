@@ -46,7 +46,7 @@ TMH_WIRE_handler_wire (struct TMH_RequestHandler *rh,
   static json_t *wire_methods;
 
   if (NULL == wire_methods)
-    wire_methods = TMH_VALIDATION_get_wire_methods ("wire-incoming");
+    wire_methods = TMH_VALIDATION_get_wire_methods ("exchange-wire-incoming");
 
   return TMH_RESPONSE_reply_json (connection,
                                   wire_methods,
