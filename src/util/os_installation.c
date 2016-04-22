@@ -36,6 +36,7 @@ static const struct GNUNET_OS_ProjectData taler_pd = {
   .project_dirname = "taler",
   .binary_name = "taler-exchange-httpd",
   .env_varname = "TALER_PREFIX",
+  .base_config_varname = "TALER_BASE_CONFIG",
   .bug_email = "taler@gnu.org",
   .homepage = "http://www.gnu.org/s/taler/",
   .config_file = "taler.conf",
