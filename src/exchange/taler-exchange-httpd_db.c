@@ -246,7 +246,7 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
   }
 
   COMMIT_TRANSACTION(session, connection);
-  GNUNET_assert (GNUNET_OK ==
+  GNUNET_assert (GNUNET_SYSERR !=
                  TALER_amount_subtract (&amount_without_fee,
                                         &deposit->amount_with_fee,
                                         &deposit->deposit_fee));
