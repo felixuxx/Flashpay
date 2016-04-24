@@ -98,6 +98,60 @@ AS_IF([test $libgnunetutil != 1],
 *** ]])])
 
 
+# Check for GNUnet's libgnunetjson.
+libgnunetjson=0
+AC_MSG_CHECKING([for libgnunetjson])
+AC_ARG_WITH(gnunet,
+            [AS_HELP_STRING([--with-gnunet=PFX], [base of GNUnet installation])],
+            [AC_MSG_RESULT([given as $with_gnunet])],
+            [AC_MSG_RESULT(not given)
+             with_gnunet=yes])
+AS_CASE([$with_gnunet],
+        [yes], [],
+        [no], [AC_MSG_ERROR([--with-gnunet is required])],
+        [LDFLAGS="-L$with_gnunet/lib $LDFLAGS"
+         CPPFLAGS="-I$with_gnunet/include $CPPFLAGS"])
+AC_CHECK_HEADERS([gnunet/platform.h gnunet/gnunet_json_lib.h],
+ [AC_CHECK_LIB([gnunetjson], [GNUNET_JSON_parse], libgnunetjson=1)],
+  [], [#ifdef HAVE_GNUNET_PLATFORM_H
+        #include <gnunet/platform.h>
+       #endif])
+AS_IF([test $libgnunetjson != 1],
+  [AC_MSG_ERROR([[
+***
+*** You need libgnunetjson to build this program.
+*** Make sure you have libjansson installed while
+*** building GNUnet.
+*** ]])])
+
+
+# Check for GNUnet's libgnunetcurl.
+libgnunetcurl=0
+AC_MSG_CHECKING([for libgnunetcurl])
+AC_ARG_WITH(gnunet,
+            [AS_HELP_STRING([--with-gnunet=PFX], [base of GNUnet installation])],
+            [AC_MSG_RESULT([given as $with_gnunet])],
+            [AC_MSG_RESULT(not given)
+             with_gnunet=yes])
+AS_CASE([$with_gnunet],
+        [yes], [],
+        [no], [AC_MSG_ERROR([--with-gnunet is required])],
+        [LDFLAGS="-L$with_gnunet/lib $LDFLAGS"
+         CPPFLAGS="-I$with_gnunet/include $CPPFLAGS"])
+AC_CHECK_HEADERS([gnunet/platform.h gnunet/gnunet_curl_lib.h],
+ [AC_CHECK_LIB([gnunetcurl], [GNUNET_CURL_get_select_info], libgnunetcurl=1)],
+  [], [#ifdef HAVE_GNUNET_PLATFORM_H
+        #include <gnunet/platform.h>
+       #endif])
+AS_IF([test $libgnunetcurl != 1],
+  [AC_MSG_ERROR([[
+***
+*** You need libgnunetcurl to build this program.
+*** Make sure you have libcurl or libgnurl installed while
+*** building GNUnet.
+*** ]])])
+
+
 # check for libmicrohttpd
 microhttpd=0
 AC_MSG_CHECKING([for microhttpd])
