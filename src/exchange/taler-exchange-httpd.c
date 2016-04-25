@@ -520,6 +520,7 @@ exchange_serve_process_config ()
     else if (0 == strcmp (serve_type, "unix"))
     {
       struct sockaddr_un s_un;
+      char *modestring;
       unsigned long long mode;
 
       if (GNUNET_OK !=
@@ -545,10 +546,10 @@ exchange_serve_process_config ()
       }
 
       if (GNUNET_OK !=
-          GNUNET_CONFIGURATION_get_value_number (cfg,
+          GNUNET_CONFIGURATION_get_value_string (cfg,
                                                  "exchange",
                                                  "unixpath_mode",
-                                                 &mode))
+                                                 &modestring))
       {
         GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                    "exchange",
@@ -557,7 +558,18 @@ exchange_serve_process_config ()
         TMH_VALIDATION_done ();
         return GNUNET_SYSERR;
       }
-      unixpath_mode = (mode_t) mode;
+      errno = 0;
+      unixpath_mode = (mode_t) strtoul (modestring, NULL, 8);
+      if (0 != errno)
+      {
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   "exchange",
+                                   "unixpath_mode",
+                                   "unixpath_mode required");
+        TMH_VALIDATION_done ();
+        return GNUNET_SYSERR;
+      }
+
     }
     else
     {
@@ -803,6 +815,7 @@ main (int argc,
       fprintf (stderr, "chmod failed: %s\n", strerror (errno));
       return 1;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "set socket '%s' to mode %o", unixpath, unixpath_mode);
 
     mydaemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
                                  0,
