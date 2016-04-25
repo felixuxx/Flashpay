@@ -814,7 +814,7 @@ main (int argc,
       fprintf (stderr, "chmod failed: %s\n", strerror (errno));
       return 1;
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "set socket '%s' to mode %o", serve_unixpath, unixpath_mode);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "set socket '%s' to mode %o\n", serve_unixpath, unixpath_mode);
 
     mydaemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
                                  0,
