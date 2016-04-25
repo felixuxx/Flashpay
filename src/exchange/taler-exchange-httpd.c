@@ -101,10 +101,15 @@ static struct MHD_Daemon *mydaemon;
 static uint16_t serve_port;
 
 /**
- * Path for the unix domain socket
+ * Path for the unix domain-socket
  * to run the daemon on.
  */
 static char *serve_unixpath;
+
+/**
+ * File mode for unix-domain socket.
+ */
+static mode_t unixpath_mode;
 
 
 /**
@@ -515,6 +520,8 @@ exchange_serve_process_config ()
     else if (0 == strcmp (serve_type, "unix"))
     {
       struct sockaddr_un s_un;
+      unsigned long long mode;
+
       if (GNUNET_OK !=
           GNUNET_CONFIGURATION_get_value_filename (cfg,
                                                    "exchange",
@@ -536,6 +543,21 @@ exchange_serve_process_config ()
         TMH_VALIDATION_done ();
         return GNUNET_SYSERR;
       }
+
+      if (GNUNET_OK !=
+          GNUNET_CONFIGURATION_get_value_number (cfg,
+                                                 "exchange",
+                                                 "unixpath_mode",
+                                                 &mode))
+      {
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   "exchange",
+                                   "unixpath_mode",
+                                   "unixpath_mode required");
+        TMH_VALIDATION_done ();
+        return GNUNET_SYSERR;
+      }
+      unixpath_mode = (mode_t) mode;
     }
     else
     {
@@ -744,6 +766,7 @@ main (int argc,
   {
     struct GNUNET_NETWORK_Handle *nh;
     struct sockaddr_un *un;
+    int fh;
 
     if (sizeof (un->sun_path) <= strlen (serve_unixpath))
     {
@@ -773,11 +796,19 @@ main (int argc,
       return 1;
     }
 
+    fh = GNUNET_NETWORK_get_fd (nh);
+
+    if (0 != fchmod (fh, unixpath_mode))
+    {
+      fprintf (stderr, "chmod failed: %s\n", strerror (errno));
+      return 1;
+    }
+
     mydaemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
                                  0,
                                  NULL, NULL,
                                  &handle_mhd_request, NULL,
-                                 MHD_OPTION_LISTEN_SOCKET, GNUNET_NETWORK_get_fd (nh),
+                                 MHD_OPTION_LISTEN_SOCKET, fh,
                                  MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
                                  MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
                                  MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
