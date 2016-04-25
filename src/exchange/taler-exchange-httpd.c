@@ -566,8 +566,10 @@ exchange_serve_process_config ()
                                    "unixpath_mode",
                                    "unixpath_mode required");
         TMH_VALIDATION_done ();
+        GNUNET_free (modestring);
         return GNUNET_SYSERR;
       }
+      GNUNET_free (modestring);
 
     }
     else
