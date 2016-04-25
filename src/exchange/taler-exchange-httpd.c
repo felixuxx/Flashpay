@@ -685,63 +685,6 @@ handle_mhd_logs (void *cls,
 
 
 /**
- * Make a socket non-inheritable to child processes
- *
- * @param fd the socket to make non-inheritable
- * @return #GNUNET_OK on success, #GNUNET_SYSERR otherwise
- */
-static int
-socket_set_inheritable (int fd)
-{
-  int i;
-  i = fcntl (fd, F_GETFD);
-  if (i < 0)
-    return GNUNET_SYSERR;
-  if (i == (i | FD_CLOEXEC))
-    return GNUNET_OK;
-  i |= FD_CLOEXEC;
-  if (fcntl (fd, F_SETFD, i) < 0)
-    return GNUNET_SYSERR;
-  return GNUNET_OK;
-}
-
-
-
-/**
- * Set if a socket should use blocking or non-blocking IO.
- *
- * @param fd socket
- * @param doBlock blocking mode
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
- */
-int
-socket_set_blocking (int fd,
-                     int doBlock)
-{
-  int flags = fcntl (fd, F_GETFL);
-  if (flags == -1)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  if (doBlock)
-    flags &= ~O_NONBLOCK;
-
-  else
-    flags |= O_NONBLOCK;
-  if (0 != fcntl (fd,
-                  F_SETFL,
-                  flags))
-
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
-
-
-/**
  * The main function of the taler-exchange-httpd server ("the exchange").
  *
  * @param argc number of arguments from the command line
@@ -799,39 +742,40 @@ main (int argc,
 
   if (NULL != serve_unixpath)
   {
-    int sock;
+    struct GNUNET_NETWORK_Handle *nh;
     struct sockaddr_un *un;
+
+    if (sizeof (un->sun_path) <= strlen (serve_unixpath))
+    {
+      fprintf (stderr, "unixpath too long\n");
+      return 1;
+    }
 
     un = GNUNET_new (struct sockaddr_un);
     un->sun_family = AF_UNIX;
-    sock = socket (AF_UNIX, SOCK_STREAM, 0);
-    if (-1 == sock)
-    {
-      GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                           "socket");
-      return 1;
-    }
     strncpy (un->sun_path, serve_unixpath, sizeof (un->sun_path) - 1);
-    socket_set_inheritable (sock);
-    socket_set_blocking (sock, GNUNET_NO);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Binding to unix-domain socket '%s'\n", serve_unixpath);
-    if (0 != bind (sock, un, sizeof (*un)))
+
+    if (NULL == (nh = GNUNET_NETWORK_socket_create (AF_UNIX, SOCK_STREAM, 0)))
     {
-      GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                           "bind");
+      fprintf (stderr, "create failed for AF_UNIX\n");
       return 1;
     }
-    if (0 != listen (sock, UNIX_BACKLOG))
+    if (GNUNET_OK != GNUNET_NETWORK_socket_bind (nh, (void *) un, sizeof (struct sockaddr_un)))
     {
-      GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                           "listen");
+      fprintf (stderr, "bind failed for AF_UNIX\n");
       return 1;
     }
+    if (GNUNET_OK != GNUNET_NETWORK_socket_listen (nh, UNIX_BACKLOG))
+    {
+      fprintf (stderr, "listen failed for AF_UNIX\n");
+      return 1;
+    }
+
     mydaemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
                                  0,
                                  NULL, NULL,
                                  &handle_mhd_request, NULL,
-                                 MHD_OPTION_LISTEN_SOCKET, sock,
+                                 MHD_OPTION_LISTEN_SOCKET, GNUNET_NETWORK_get_fd (nh),
                                  MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
                                  MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
                                  MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
@@ -839,6 +783,7 @@ main (int argc,
                                  MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
 #endif
                                  MHD_OPTION_END);
+    GNUNET_NETWORK_socket_free_memory_only_ (nh);
   }
   else
   {
