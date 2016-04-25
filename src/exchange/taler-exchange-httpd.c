@@ -755,6 +755,8 @@ main (int argc,
     un->sun_family = AF_UNIX;
     strncpy (un->sun_path, serve_unixpath, sizeof (un->sun_path) - 1);
 
+    GNUNET_NETWORK_unix_precheck (un);
+
     if (NULL == (nh = GNUNET_NETWORK_socket_create (AF_UNIX, SOCK_STREAM, 0)))
     {
       fprintf (stderr, "create failed for AF_UNIX\n");
