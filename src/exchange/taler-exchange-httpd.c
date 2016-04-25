@@ -521,7 +521,6 @@ exchange_serve_process_config ()
     {
       struct sockaddr_un s_un;
       char *modestring;
-      unsigned long long mode;
 
       if (GNUNET_OK !=
           GNUNET_CONFIGURATION_get_value_filename (cfg,
@@ -815,7 +814,7 @@ main (int argc,
       fprintf (stderr, "chmod failed: %s\n", strerror (errno));
       return 1;
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "set socket '%s' to mode %o", unixpath, unixpath_mode);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "set socket '%s' to mode %o", serve_unixpath, unixpath_mode);
 
     mydaemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
                                  0,
