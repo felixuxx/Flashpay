@@ -42,6 +42,13 @@
 #include "taler_exchangedb_plugin.h"
 #include "taler-exchange-httpd_validation.h"
 
+
+/**
+ * Backlog for listen operation on unix
+ * domain sockets.
+ */
+#define UNIX_BACKLOG 500
+
 /**
  * Which currency is used by this exchange?
  */
@@ -92,6 +99,12 @@ static struct MHD_Daemon *mydaemon;
  * Port to run the daemon on.
  */
 static uint16_t serve_port;
+
+/**
+ * Path for the unix domain socket
+ * to run the daemon on.
+ */
+static char *serve_unixpath;
 
 
 /**
@@ -453,30 +466,84 @@ exchange_serve_process_config ()
                                GNUNET_YES);
   }
 
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_number (cfg,
-                                             "exchange",
-                                             "port",
-                                             &port))
   {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "port",
-                               "port number required");
-    TMH_VALIDATION_done ();
-    return GNUNET_SYSERR;
+    const char *choices[] = {"tcp", "unix"};
+    const char *serve_type;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_choice (cfg,
+                                               "exchange",
+                                               "serve",
+                                               choices,
+                                               &serve_type))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "serve",
+                                 "serve type required");
+      TMH_VALIDATION_done ();
+      return GNUNET_SYSERR;
+    }
+
+    if (0 == strcmp (serve_type, "tcp"))
+    {
+      if (GNUNET_OK !=
+          GNUNET_CONFIGURATION_get_value_number (cfg,
+                                                 "exchange",
+                                                 "port",
+                                                 &port))
+      {
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   "exchange",
+                                   "port",
+                                   "port number required");
+        TMH_VALIDATION_done ();
+        return GNUNET_SYSERR;
+      }
+
+      if ( (0 == port) ||
+           (port > UINT16_MAX) )
+      {
+        fprintf (stderr,
+                 "Invalid configuration (value out of range): %llu is not a valid port\n",
+                 port);
+        TMH_VALIDATION_done ();
+        return GNUNET_SYSERR;
+      }
+      serve_port = (uint16_t) port;
+    }
+    else if (0 == strcmp (serve_type, "unix"))
+    {
+      struct sockaddr_un s_un;
+      if (GNUNET_OK !=
+          GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                                   "exchange",
+                                                   "unixpath",
+                                                   &serve_unixpath))
+      {
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   "exchange",
+                                   "unixpath",
+                                   "unixpath required");
+        TMH_VALIDATION_done ();
+        return GNUNET_SYSERR;
+      }
+
+      if (strlen (serve_unixpath) >= sizeof (s_un.sun_path))
+      {
+        fprintf (stderr,
+                 "Invalid configuration: unix path too long\n");
+        TMH_VALIDATION_done ();
+        return GNUNET_SYSERR;
+      }
+    }
+    else
+    {
+      // not reached
+      GNUNET_assert (0);
+    }
   }
 
-  if ( (0 == port) ||
-       (port > UINT16_MAX) )
-  {
-    fprintf (stderr,
-             "Invalid configuration (value out of range): %llu is not a valid port\n",
-             port);
-    TMH_VALIDATION_done ();
-    return GNUNET_SYSERR;
-  }
-  serve_port = (uint16_t) port;
 
   return GNUNET_OK;
 }
@@ -618,6 +685,63 @@ handle_mhd_logs (void *cls,
 
 
 /**
+ * Make a socket non-inheritable to child processes
+ *
+ * @param fd the socket to make non-inheritable
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR otherwise
+ */
+static int
+socket_set_inheritable (int fd)
+{
+  int i;
+  i = fcntl (fd, F_GETFD);
+  if (i < 0)
+    return GNUNET_SYSERR;
+  if (i == (i | FD_CLOEXEC))
+    return GNUNET_OK;
+  i |= FD_CLOEXEC;
+  if (fcntl (fd, F_SETFD, i) < 0)
+    return GNUNET_SYSERR;
+  return GNUNET_OK;
+}
+
+
+
+/**
+ * Set if a socket should use blocking or non-blocking IO.
+ *
+ * @param fd socket
+ * @param doBlock blocking mode
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+socket_set_blocking (int fd,
+                     int doBlock)
+{
+  int flags = fcntl (fd, F_GETFL);
+  if (flags == -1)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (doBlock)
+    flags &= ~O_NONBLOCK;
+
+  else
+    flags |= O_NONBLOCK;
+  if (0 != fcntl (fd,
+                  F_SETFL,
+                  flags))
+
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * The main function of the taler-exchange-httpd server ("the exchange").
  *
  * @param argc number of arguments from the command line
@@ -673,17 +797,63 @@ main (int argc,
       exchange_serve_process_config ())
     return 1;
 
-  mydaemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
-                               serve_port,
-                               NULL, NULL,
-                               &handle_mhd_request, NULL,
-                               MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
-                               MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
-                               MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
+  if (NULL != serve_unixpath)
+  {
+    int sock;
+    struct sockaddr_un *un;
+
+    un = GNUNET_new (struct sockaddr_un);
+    un->sun_family = AF_UNIX;
+    sock = socket (AF_UNIX, SOCK_STREAM, 0);
+    if (-1 == sock)
+    {
+      GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                           "socket");
+      return 1;
+    }
+    strncpy (un->sun_path, serve_unixpath, sizeof (un->sun_path) - 1);
+    socket_set_inheritable (sock);
+    socket_set_blocking (sock, GNUNET_NO);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Binding to unix-domain socket '%s'\n", serve_unixpath);
+    if (0 != bind (sock, un, sizeof (*un)))
+    {
+      GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                           "bind");
+      return 1;
+    }
+    if (0 != listen (sock, UNIX_BACKLOG))
+    {
+      GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                           "listen");
+      return 1;
+    }
+    mydaemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
+                                 0,
+                                 NULL, NULL,
+                                 &handle_mhd_request, NULL,
+                                 MHD_OPTION_LISTEN_SOCKET, sock,
+                                 MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
+                                 MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
+                                 MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
 #if HAVE_DEVELOPER
-                               MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
+                                 MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
 #endif
-                               MHD_OPTION_END);
+                                 MHD_OPTION_END);
+  }
+  else
+  {
+    mydaemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
+                                 serve_port,
+                                 NULL, NULL,
+                                 &handle_mhd_request, NULL,
+                                 MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
+                                 MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
+                                 MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
+#if HAVE_DEVELOPER
+                                 MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
+#endif
+                                 MHD_OPTION_END);
+  }
 
   if (NULL == mydaemon)
   {
