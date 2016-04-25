@@ -820,6 +820,8 @@ main (int argc,
   }
   else
   {
+    // FIXME: refactor two calls to MHD_start_daemon
+    // into one, using an options array instead of varags
     mydaemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
                                  serve_port,
                                  NULL, NULL,
