@@ -787,6 +787,17 @@ main (int argc,
       return 1;
     }
 
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Creating listen socket '%s' with mode %o\n",
+                serve_unixpath, unixpath_mode);
+
+    if (GNUNET_OK != GNUNET_DISK_directory_create_for_file (unixpath))
+    {
+      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                                "mkdir",
+                                serve_unixpath);
+    }
+
     un = GNUNET_new (struct sockaddr_un);
     un->sun_family = AF_UNIX;
     strncpy (un->sun_path, serve_unixpath, sizeof (un->sun_path) - 1);
