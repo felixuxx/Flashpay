@@ -791,7 +791,7 @@ main (int argc,
                 "Creating listen socket '%s' with mode %o\n",
                 serve_unixpath, unixpath_mode);
 
-    if (GNUNET_OK != GNUNET_DISK_directory_create_for_file (unixpath))
+    if (GNUNET_OK != GNUNET_DISK_directory_create_for_file (serve_unixpath))
     {
       GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
                                 "mkdir",
