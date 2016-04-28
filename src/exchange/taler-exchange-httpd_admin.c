@@ -54,6 +54,9 @@ check_permissions (struct MHD_Connection *connection)
   addr = ci->client_addr;
   switch (addr->sa_family)
   {
+  case AF_UNIX:
+    /* We rely on file system permissions here */
+    return GNUNET_YES;
   case AF_INET:
     {
       const struct sockaddr_in *sin = (const struct sockaddr_in *) addr;
