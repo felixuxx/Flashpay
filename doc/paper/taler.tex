@@ -418,9 +418,16 @@ and that he paid his obligations.
 Neither the merchant nor the customer may have any ability to {\em
   effectively} defraud the exchange or the state collecting taxes.  Here,
 ``effectively'' means that the expected return for fraud is negative.
+In particular, Taler employs a full domain hash (FDH) with RSA signatures
+so that ``one-more forgery'' is hard assuming the RSA known-target
+inversion problem is hard.\cite[Theorem12]{RSA-HDF-KTIvCTI}
+% \cite[Theorem 6.2]{OneMoreInversion}
 Note that customers do not need to be trusted in any way, and that in
 particular it is never necessary for anyone to try to recover funds
 from customers using legal means.
+
+
+
 
 
 \subsection{Taxability and Entities}
