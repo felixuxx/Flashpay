@@ -14,7 +14,9 @@ pkgcfg_DATA = \
 
 EXTRA_DIST = \
   exchangedb.conf \
-  exchangedb-postgres.conf
+  exchangedb-postgres.conf \
+  plugin_exchangedb_common.c \
+  test-exchange-db-postgres.conf
 
 
 plugindir = $(libdir)/taler
@@ -23,10 +25,6 @@ if HAVE_POSTGRESQL
 plugin_LTLIBRARIES = \
   libtaler_plugin_exchangedb_postgres.la
 endif
-
-EXTRA_DIST = \
-  plugin_exchangedb_common.c \
-  test-exchange-db-postgres.conf
 
 libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   plugin_exchangedb_postgres.c
