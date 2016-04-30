@@ -194,11 +194,6 @@ static struct GNUNET_DISK_PipeHandle *sigpipe;
 static struct GNUNET_SCHEDULER_Task *child_death_task;
 
 /**
- * ID of task called whenever are shutting down.
- */
-static struct GNUNET_SCHEDULER_Task *shutdown_task;
-
-/**
  * Return value from main().
  */
 static int result;
@@ -267,7 +262,6 @@ interpreter (void *cls);
 static void
 shutdown_action (void *cls)
 {
-  shutdown_task = NULL;
   if (NULL != int_task)
   {
     GNUNET_SCHEDULER_cancel (int_task);
@@ -278,15 +272,18 @@ shutdown_action (void *cls)
     FAKEBANK_stop (fb);
     fb = NULL;
   }
-  if (NULL == aggregator_proc)
+  if (NULL != child_death_task)
   {
     GNUNET_SCHEDULER_cancel (child_death_task);
     child_death_task = NULL;
   }
-  else
+  if (NULL != aggregator_proc)
   {
     GNUNET_break (0 == GNUNET_OS_process_kill (aggregator_proc,
                                                SIGKILL));
+    GNUNET_OS_process_wait (aggregator_proc);
+    GNUNET_OS_process_destroy (aggregator_proc);
+    aggregator_proc = NULL;
   }
   plugin->drop_temporary (plugin->cls,
                           session);
@@ -312,16 +309,6 @@ maint_child_death (void *cls)
   child_death_task = NULL;
   pr = GNUNET_DISK_pipe_handle (sigpipe, GNUNET_DISK_PIPE_END_READ);
   tc = GNUNET_SCHEDULER_get_task_context ();
-  if (0 == (tc->reason & GNUNET_SCHEDULER_REASON_READ_READY))
-  {
-    /* shutdown scheduled us, ignore! */
-    child_death_task =
-      GNUNET_SCHEDULER_add_read_file (GNUNET_TIME_UNIT_FOREVER_REL,
-                                      pr,
-                                      &maint_child_death,
-                                      NULL);
-    return;
-  }
   GNUNET_break (0 < GNUNET_DISK_file_read (pr, &c, sizeof (c)));
   GNUNET_OS_process_wait (aggregator_proc);
   GNUNET_OS_process_destroy (aggregator_proc);
@@ -330,8 +317,6 @@ maint_child_death (void *cls)
   state = aggregator_state;
   aggregator_state = NULL;
   interpreter (state);
-  if (NULL == shutdown_task)
-    return;
   child_death_task = GNUNET_SCHEDULER_add_read_file (GNUNET_TIME_UNIT_FOREVER_REL,
                                                      pr,
                                                      &maint_child_death, NULL);
@@ -1160,10 +1145,8 @@ run (void *cls)
 				    GNUNET_DISK_pipe_handle (sigpipe,
 							     GNUNET_DISK_PIPE_END_READ),
 				    &maint_child_death, NULL);
-  shutdown_task =
-    GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_FOREVER_REL,
-                                  &shutdown_action,
-                                  NULL);
+  GNUNET_SCHEDULER_add_shutdown (&shutdown_action,
+                                 NULL);
   result = 1; /* test failed for undefined reason */
   fb = FAKEBANK_start (8082);
   if (NULL == fb)

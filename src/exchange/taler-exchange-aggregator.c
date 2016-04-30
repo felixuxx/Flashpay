@@ -966,9 +966,8 @@ run (void *cls,
   }
   task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                    NULL);
-  GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_FOREVER_REL,
-                                &shutdown_task,
-                                cls);
+  GNUNET_SCHEDULER_add_shutdown (&shutdown_task,
+                                 cls);
 }
 
 
