@@ -135,34 +135,18 @@ First, we describe attaching contemporary post-quantum key exchanges,
 based on either super-singular eliptic curve isogenies \cite{SIDH} or
 ring learning with errors (Ring-LWE) \cite{Peikert14,NewHope}.
 These provide strong post-quantum security so long as the underlying
-scheme retain their post-quantum security.
+scheme remains secure; however, these schemes youth leaves them
+relatively untested.
 
-Second, we propose a hash based scheme that 
+Second, we propose a hash based scheme whose anonymity garentee needs
+only the one-way assumption on our hash function.  In this scheme,
+the vible security paramater is numerically far smaller than in the
+key exchange systems, but covers query complexity which we believe
+suffices.
 
-Merkle tree based scheme that provides a
- query complexity bound suitable for current deployments, and
- depends only upon the strength of the hash function used.
-
-
-
-
-much smaller 
-
-
-
-but these all
-incur significantly larger key sizes, requiring more badwidth and
-storage space for the exchange, and take longer to run.
-In addition, the established post-quantum key exchanges based on
-Ring-LWE, like New Hope \cite{}, require that both keys be
-ephemeral.  
-Super-singular isogenies \cite{,} would work ``out of the box'',
-if it were already packeged in said box.
-
-Instead, we observe that 
-
-
-
+We describe this hash based proof-of-encryption-to-self scheme in
+parallel with the 
+As is the practice with hash based signature schemes 
 
 
 
@@ -192,20 +176,39 @@ proofs they employ.
 
 \section{Taler's refresh protocol}
 
-We first describe Taler's refresh protocol adding place holders
-$\eta$, $\lambda$, $\Lambda$, $\mu$, and $\Mu$ for key material 
-involved in post-quantum operations.  We view $\Lambda$ and $\Mu$
-as public keys with respective private keys $\lambda$ and $\mu$,
-and $\eta$ as the symetric key resulting from the key exchange
-between them.  
+\def\Mu{M}
+\def\Eta{}
+\def\newmathrm#1{\expandafter\newcommand\csname #1\endcsname{\mathrm{#1}}}
+\newmathrm{CPK}
+\newmathrm{CSK}
+\newmathrm{LPK}
+\newmathrm{LSK}
+\newmathrm{KEX}
 
-We require there be effeciently computable
+
+We shall describe Taler's refresh protocol in this section.
+All notation defined here persists throughout the remainder of
+ the article.
+
+We let $\kappa$ denote the exchange's taxation security parameter,
+meaning the highest marginal tax rate is $1/\kappa$.  Also, let 
+$\theta$ denote the maximum number of coins returned by a refresh.
+
+\smallskip
+
+We label place holders $\eta$, $\lambda$, $\Lambda$, $\mu$, and $\Mu$
+for key material involved in post-quantum operations.  
+We view $\Lambda$ and $\Mu$ as public keys with respective
+ private keys $\lambda$ and $\mu$, and
+$\eta$ as the symetric key resulting from the key exchange between them.
+
+We need effeciently computable functions
   $\CPK$, $\CSK$, $\LPK$, $\LSK$, $\KEX_2$ and $\KEX_3$  such that 
 \begin{itemize}
 \item  $\mu = \CSK(s)$ for a random bitstring $s$,
        $\Mu = \CPK(\mu)$,
-\item  $\lambda = \LSK(t,\mu)$ and $\Lambda = \LPK(t,\mu)$
-       for a random bitstring $t$, and
+\item  $\lambda = \LSK(t,\mu)$ for a bitstring $t$, 
+       $\Lambda = \LPK(\lambda)$, and
 \item $\eta = \KEX_2(\lambda,\Mu) = \KEX_3(\Lambda,\mu)$.
 \end{itemize}
 In particular, if $\KEX_3(\Lambda,\mu)$ would fail
@@ -216,10 +219,6 @@ If these are all read as empty, then our description below reduces
 to Taler's existing refresh protocol. 
 
 \smallskip
-
-We let $\kappa$ denote the exchange's taxation security parameter,
-meaning the highest marginal tax rate is $1/\kappa$.  Also, let 
-$\theta$ denote the maximum number of coins returned by a refresh.
 
 A coin $(C,\Mu,S)$ consists of 
   a Ed25519 public key $C = c G$,
@@ -235,16 +234,16 @@ There was of course a blinding factor $b$ used in the creation of
 the coin's signature $S$.  In addition, there was a private seed $s$
 used to generate $c$, $b$, and $\mu$, but we need not retain $s$
 outside the refresh protocol.
-$$ c = H(\textr{"Ed25519"} || s)
+$$ c = H(\textrm{"Ed25519"} || s)
 \qquad \mu = \CSK(s)
-\qquad b = H(\textr{"Blind"} || s) $$
+\qquad b = H(\textrm{"Blind"} || s) $$
 
 \smallskip
 
 We begin refresh with a possibly tainted coin $(C,\Mu,S)$ that
 we wish to refresh into $n \le \theta$ untainted coins.  
 
-In the change sitaution, our coin $(C,M,S)$ was partially spent and 
+In the change sitaution, our coin $(C,\Mu,S)$ was partially spent and 
 retains only a part of the value determined by the denominaton $d$.
 There is usually no denomination that matchets this risidual value
 so we must refresh from one coin into $n \le \theta$.
@@ -255,8 +254,8 @@ we let $x_{j,i}$ denote the value normally denoted $x$ of
 % So $C_{j,i} = c_{j,i} G$, $\Mu_{j,i}$, $m_{j,i}$, and $b^{j,i}$
 %  must be derived from $s^{j,i}$ as above.
 We need only consider one such new coin at a time usually, 
-so let $x'$ denote $x^{j,i}$ when $i$ and $j$ are clear from context.
-So as above $c'$, $\mu'$, and $b_j$ are derived from $s_j$,
+so let $x'$ denote $x_{j,i}$ when $i$ and $j$ are clear from context.
+In other words, $c'$, $\mu'$, and $b_j$ are derived from $s_j$,
  and both $C' = c' G$ and $\Mu' = \CSK(s')$.
 
 \paragraph{Wallet phase 1.}
@@ -265,10 +264,10 @@ So as above $c'$, $\mu'$, and $b_j$ are derived from $s_j$,
    \begin{itemize}
    \item  Create random $\zeta_j$ and $l_j$.
    \item  Also compute $L_j = l_j G$.
-   \item  Generate $\lambda_j$, $\Lambda_j$, and
-            $\eta_j = \KEX_2(\lambda,\Mu)$ as appropriate
-            using $\mu$. % or possibly $\Mu$.
-   \item  Set the linking commitment $\Gamma_{j,0} = (L_j,\Lambda_j)$. 
+   \item  Generate $\lambda_j = \LSK((j,i),\mu)$,
+          $\Lambda_j = \LPK(\lambda_j)$, and
+            $\eta_j = \KEX_2(\lambda_j,\Mu)$.
+   \item  Set the linking commitment $\Gamma_{j,0} = (L_j,E_{l_j C}(\Lambda_j))$. 
    \item  Set $k_j = H(l_j C || \eta_j)$.
 \smallskip
    \item  For $i=1 \cdots n$:
@@ -277,8 +276,8 @@ So as above $c'$, $\mu'$, and $b_j$ are derived from $s_j$,
       \item  Derive $c'$, $m'$, and $b'$ from $s'$ as above.
       \item  Compute $C' = c' G$ and $\Mu' = \CPK(m')$ too.
       \item  Compute $B_{j,i} = B_{b'}(C' || \Mu')$.
-      \item  Encrypt $\Eta_{j,i} = E_{k_j}(s')$. 
-      \item  Set the coin commitments $\Gamma_{j,i} = (\Eta_{j,i},B_{j,i})$
+      \item  Encrypt $\Gamma'_{j,i} = E_{k_j}(s')$. 
+      \item  Set the coin commitments $\Gamma_{j,i} = (\Gamma'_{j,i},B_{j,i})$
 \end{itemize}
 \smallskip
 \end{itemize}
@@ -314,11 +313,11 @@ So as above $c'$, $\mu'$, and $b_j$ are derived from $s_j$,
 \item  For $j = 1 \cdots \kappa$ except $\gamma$:
    \begin{itemize}
    \item  Compute $\eta_j = \KEX_2(\lambda_j,\Mu)$.
-   \item  Verify that $\Lambda_j = \LPK(???)$
+   \item  Verify that $\Lambda_j = \LPK(\lambda_j)$
    \item  Set $k_j = H(l_j C || \eta_j)$.
    \item  For $i=1 \cdots n$:
      \begin{itemize}
-     \item  Decrypt $s' = D_{k_j}(\Eta_{j,i})$.
+     \item  Decrypt $s' = D_{k_j}(\Gamma'_{j,i})$.
      \item  Compute $c'$, $m'$, and $b'$ from $s_j$.
      \item  Compute $C' = c' G$ too.
      \item  Verify $B' = B_{b'}(C' || \Mu')$.
@@ -333,13 +332,29 @@ replacing $\Gamma_*$ with both $\Gamma_{\gamma,0}$ and
 It's clear this requires the wallet send that signature in some phase,
 but also the wallet must accept a phase 2 responce to a phase 1 request.
 
+\smallskip
+
+There is good reason to fear tax evasion committed during the
+initial withdrawal of a coin as well.  A merchant simply provides
+the customer with a blinded but unpurchased coin and asks them to
+pay to withdraw it.
+
+\subsection{Withdrawal}\label{subsec:withdrawal}
+
+In Taler, we may address tax fraud on initial withdrawal by turning
+withdrawal into a refresh from a pseudo-coin $(C,\Mu)$ consisting of
+ the user's reserve key \cite[??]{Taler} and
+ a post-quantum public key $\Mu$.
+We see below however that our public key algorithm has very different
+security requirements in this case, impacting our algorithm choices.
+
 
 \section{Post-quantum key exchanges}
 
-In \cite{SIDH}, there is a Diffie-Helman like key exchange (SIDH)
-based on computing super-singular eliptic curve isogenies which
-functions as a drop in replacement, or more likely addition, for
-Taler's refresh protocol.
+In \cite{SIDH?,SIDH16}, there is a Diffie-Helman like key exchange
+(SIDH) based on computing super-singular eliptic curve isogenies 
+which functions as a drop in replacement, or more likely addition,
+for Taler's refresh protocol.
 
 In SIDH, private keys are the kernel of an isogeny in the 2-torsion
 or the 3-torsion of the base curve.  Isogenies based on 2-torsion can
@@ -348,11 +363,22 @@ This rigidity makes constructing signature schemes with SIDH hard
 \cite{}, but does not impact our use case.  
 
 We let $\mu$ and $\Mu$ be the SIDH 2-torsion private and public keys,
-repectively.  We simlarly let $\lambda_j$ and $\Lambda_j$ be the
+repectively.  We simlarly let $\lambda$ and $\Lambda$ be the
 SIDH 3-torsion private and public keys.  
-% DO IT :
-We define $\CPK$, $\CSK$, $\LPK$, $\LSK$, $\KEX_2$ and $\KEX_3$
- as appropriate from \cite{SIDH} too.  
+
+We envision the 2-torsion secret key generation function $\CSK(s)$
+for $\mu$ being deterministic with seed $s$, but the 3-torsion secret
+key generation function $\LSK()$ ignores the arguments given above 
+Our 2-torsion and 3-torsion public key derivation functions
+$\CPK(\mu)$ and $\LPK(\lambda)$ along with our two key derivation
+functions $\KEX_2$ and $\KEX_3$, all work as described in
+\cite[\S6]{SIDH16}.
+
+% We refer to \cite[\S6]{SIDH16}, \cite[??]{SIDH?15?}, and
+% \cite[]{SIDH?11?} for further discussion of the implementation.
+
+There is no relationship between $\mu$ and $\lambda$ in SIDH, so
+$\Lambda$ cannot itself leak any information about $C$.
 
 \smallskip
 
@@ -360,21 +386,34 @@ Ring-LWE based key exchanges like \cite{Peikert14,NewHope} require
 that both Alice and Bob's keys be ephemeral because the success or
 failure of the key exchange leaks one bit about both keys\cite{}.
 As a result, authentication with Ring-LWE based schemes remains
-problematic\cite{}.
+harder than with discrete log schemes\cite{}.
 
 We observe however that the Taler wallet controls both sides during 
 the refresh protocol, so the wallet can ensure that the key exchange 
 always succeeds.  In fact, the Ring-LWE paramaters could be tunned to
-make the probability of failure arbitrarily high, saving the exchange
-bandwidth, storage, and verification time.
-
+leave the probability of failure rather high, saving the exchange
+bandwidth, storage, and verification time.  
 
 We let $\mu$ and $\Mu$ be Alice (initator) side the private and public
 keys, repectively.  We simlarly let $\lambda_j$ and $\Lambda_j$ be the
 Bob (respondent) private and public keys. 
 % DO IT :
 Again now, $\CPK$, $\CSK$, $\LPK$, $\LSK$, $\KEX_2$ and $\KEX_3$
-can be defined from \cite{Peikert14,NewHope}.  % DO IT
+can be defined from \cite{Peikert14,NewHope}.  
+
+\smallskip
+
+At present, the SIDH implemention in \cite{SIDH16} requires about
+one third the key material and 100?? times as much CPU time as the
+Ring-LWE implemention in \cite{NewHope}.
+As noted above, Ring-LWE admits significant optimizations for the
+Taler refresh situation.
+
+We observe however that the Ring-LWE public key $\Lambda$ has a risk
+of leaking information about $\Mu$.  In particular, if polynomial $a$
+depends upon $\Mu$, like in \cite{NewHope}, then anonymity explicity
+depends upon the Ring-LWE problem\cite{}.  
+...
 
 
 \section{Hashed-based one-sided public keys}
@@ -383,50 +422,76 @@ We now define our hash-based encryption scheme.
 Let $\delta$ denote our query security paramater and
  let $\mu$ be a bit string.
 For $j \le \kappa$, we define a Merkle tree $T_j$ of height $\delta$
-with leaves $\eta_{j,t} = H(\mu || "YeyCoins!" || t || j)$
- for $t \le 2^\delta$.
-Let $\Lambda_j$ denote the root of $T_j$, making
- $\LPK(j,\mu)$ the Merkle tree root function.
-Set $\Mu = H(\Lambda_1 || \cdots || \Lambda_\kappa)$,
+with leaves $\eta_j = H(\mu || "YeyCoins!" || t || j)$
+ for some leaf index $t \le 2^\delta$. 
+Let $t_j$ denote the root of $T_j$.
+Set $\Mu = H(t_1 || \cdots || t_\kappa)$,
  which defines $\CPK(\mu)$.
 
-Now let $\lambda_{j,t}$ consist of $(j,t,\eta_{j,t})$ along with
-both the Merkle tree path that proves $\eta_{j,i}$ is a leaf of $T_j$,
-and $(\Lambda_1,\ldots,\Lambda_\kappa)$,
- making $\LSK(t,\mu)$ an embelished Merkle tree path function.
+Now let $\lambda_j = \LSK((t,j),\mu)$ consist of
+$(t,j,\eta_j)$ along with both
+ the Merkle tree path that proves $\eta_j$ is a leaf of $T_j$,
+and $(t_1,\ldots,t_\kappa)$,
+ making $\LSK$ an embelished Merkle tree path function.
+Also let $\Lambda_j = \LPK(\lambda_j)$ be $(t,j)$
 
-We define $\KEX_2(\lambda_{j,t},\Mu) = \eta_{j,t}$
- if $\lambda_{j,t}$ proves that $\eta_{j,t}$ is a leaf for $\Mu$,
+We define $\KEX_2(\lambda_j,\Mu)$ to be $\eta_j$
+ if $\lambda_j$ proves that $\eta_j$ is the $t$ leaf for $\Mu$,
 or empty otherwise.
+$\KEX_3(\Lambda_j,\mu)$ simply recomputes $\eta_j$ as above.
+If $\KEX_2$ works then so does $\KEX_3$.
+
+As $\Lambda_j = (t,j)$, it matters that $\lambda_j$ actually
+demonstrates the position $t$ in the Merkle tree.
+
+... proofs ...
+
+\smallskip
+
+We observe that $\CPK$ has running time $O(2^\delta)$, severely
+limiting $\delta$.  We lack the time-space trade offs resolve
+this issue for hash-based signature (see \cite{SPHINCS}).
+
+Imagine that $\delta = 0$ so that $T_j = H(\eta_j)$.
+In this scenario, a hostile exchange could request two different
+$\gamma$ to learn all $\eta_j$, if the wallet reruns its second
+phase.  In principle, the wallet saves the exchange's signed 
+choice of $\gamma$ before revealing $\eta_j$ for $j \neq \gamma$.
+It follows that even $\delta = 0$ does technically provides
+post-quantum anonymity,
+
+We must worry about attacks that rewind the wallet from phase 2 to
+phase 1, or even parallelism bugs where the wallet answer concurrent
+requests.  We cannot remove the curve25519 exchange $l_j C$ from the
+refresh protocol becausenn such attacks would represent serious risks
+without it.  With our $l_j C$ component, there is little reason for
+an attacker to pursue $\eta_j$ alone unless they expect to break
+curve25519 in the future, either through mathematical advances or
+by building a quantum computer.  
+
+We therefore view $\delta$ as a query complexity paramater whose 
+optimial setting depends upo nthe strength of the overall protocoll. 
+
+\smallskip
+
+We can magnify the effective $\delta$ by using multiple $\eta_j$.
+
+... analysis ...
+% multiple withdrawals
+
+We believe this provides sufficent post-quantum security for
+refreshing change.  
 
 
-$\Mu = H(\Lambda_1 || \cdots || \Lambda_\kappa)$
+\section{Hash and Ring-LWE hybrid}
 
-$\KEX_3(\Lambda,\mu)$
+We noted above in \S\ref{subsec:withdrawal} that exchange might
+require a refresh-like operation when coins are initially withdrawn.
 
+...
+% Use birthday about on Alice vs Bob keys
 
-
-$H(\eta_{j,i})$ along with a path 
-
-$\eta$, $\lambda$, $\Lambda$, $\mu$, and $\Mu$ for key material 
-
-
-We require there be effeciently computable
-  $\CPK$, $\CSK$, $\LPK$, $\LSK$, $\KEX_2$ and $\KEX_3$  such that 
-\begin{itemize}
-\item  $\mu = \CSK(s)$ for a random bitstring $s$,
-       $\Mu = \CPK(\mu)$,
-\item  $\lambda = \LSK(t,\mu)$ and $\Lambda = \LPK(t,\mu)$
-       for a random bitstring $t$, and
-\item $\eta = \KEX_2(\lambda,\Mu) = \KEX_3(\Lambda,\mu)$.
-\end{itemize}
-In particular, if $\KEX_3(\Lambda,\mu)$ would fail
- then $\KEX_2(\lambda,\Mu)$ must fail too.
-
-\begin{itemize}
-\item 
-\item 
-\end{itemize}
+\section{Conclusions}
 
 
 \bibliographystyle{alpha}
@@ -441,99 +506,22 @@ In particular, if $\KEX_3(\Lambda,\mu)$ would fail
 
 \end{document}
 
+\begin{itemize}
+\item 
+\item 
+\end{itemize}
 
 
 
 
 
 
-Let $\kappa$ and $\theta$ denote
- the exchange's security parameter and
- the maximum number of coins returned by a refresh, respectively. 
+Crazy pants ideas : 
 
-We define a Merkle tree/sequence function 
-  $\mlink(m,i,j) = H(m || "YeyCoins!" || i || j)$ 
-        Actual linking key for jth cut of ith target coin
-  $\mhide(m,i,j) = H( \mlink(m,i,j) )$
-        Linking key hidden for Merkle
-  $\mcoin(m,i) = H( \mhide(m,i,1) || \ldots || \mhide(m,i,\kappa) )$
-        Merkle root for refresh into the ith coin
-  $\mroot(m) = M( \m_coin(m,1), \ldots, \mcoin(m,\theta) )$
-        Merkle root for refresh of the entire coin
-  $mpath(m,i)$ is the nodes adjacent to Merkle path to $\mcoin(m,i)$
-If $\theta$ is small then $M(x[1],\ldots,x[\theta])$ could be simply be
-the concatenate and hash function $H( x[1] || ... || x[\theta] )$ like
-in $\mcoin$, giving $O(n)$ time.  If $\theta$ is large, then $M$ should
-be a hash tree to give $O(\log n)$ time.  We could use $M$ in $\mcoin$
-too if $\kappa$ were large, but concatenate and hash wins for $\kappa=3$.
-All these hash functions should have a purpose string.
+Use a larger Mrkle tree with start points seeded throughout 
 
-
-A coin now consists of 
-  a Ed25519 public key $C = c G$,
-  a Merkle root $M = \mroot(m)$, and 
-  an RSA signature $S = S_d(C || M)$ by a denomination key $d$.
-There was a blinding factor $b$ used in the creation of the coin's signature $S$.
-In addition, there was a value $s$ such that 
-  $c = H(\textr{"Ed25519"} || s)$,
-  $m = H(\textr{"Merkle"} || s)$, and
-  $b = H(\textr{"Blind"} || s)$,
-but we try not to retain $s$ if possible.
-
-
-
-We have a tainted coin $(C,M,S)$ that we wish to
- refresh into $n \le \theta$ untained coins.  
-For simplicity, we allow $x'$ to stand for the component
- normally denoted $x$ of the $i$th new coin being created.  
-So $C' = c' G$, $M' = \mroot(m')$, and $b'$ must be derived from $s'$.
-For $j=1\cdots\kappa$,
- we allow $x^j$ to denote the $j$th cut of the $i$th coin.  
-So again
- $C^j = c^j G$, $M^j = \mroot(m^j)$, and $b^j$ must be derived from $s^j$.
-
-Wallet phase 1.
-  For $j=1 \cdots \kappa$:
-    Create random $s^j$ and $l^j$.
-    Compute $c^j$, $m^j$, and $b^j$ from $s^j$ as above.
-    Compute $C^j = c^j G$ and $L^j = l^j G$ too.
-    Compute $B^j = B_{b^j}(C^j || \mroot(m^j))$.
-    Set $k = H(\mlink(m,i,j) || l^j C)$
-    Encrypt $E^j = E_k(s^j,l^j)$.
-  Send commitment $S' = S_C( (L^j,E^1,B^1), \ldots, (E^\kappa,B^\kappa) )$
-%  Note : If $\mlink$ were a stream cypher then $E()$ could just be xor.
-
-Exchange phase 1.
-  Pick random $\gamma \in \{1 \cdots \kappa\}$.
-  Mark $C$ as spent by saving $(C,gamma,S')$.
-  Send gamma and $S(C,gamma,...)$
-
-Wallet phase 2.
-  Save ...
-  Set $\Beta_gamma = \mhide(m,i,gamma) = H( \mlink(m,i,gamma) )$ and
-      $\beta_i = \mlink(m,i,j)$ for $j=1\cdots\kappa$ not $\gamma$
-  Prepare a responce tuple $R^j$ consisting of 
-    $Beta_gamma$,  $(beta_j,l^j)$ for $j=1\cdots\kappa$ not $\gamma$,  
-    and  $\mpath(m,i)$, including $\mcoin(m,i)$,
-  Send $S_C(R^j)$.
-
-Exchange phase 2.
-  Set $Beta_j = H(beta_j)$ for $j=1\ldots\kappa$ except $\gamma$,
-    keep $Beta_gamma$ untouched.
-  Verify $M$ with $\mpath(m,i)$ including $\mcoin(m,i)$.
-  Verify $\mcoin(m,i) = H( Beta_1 || .. || Beta_kappa )$.
-  For $j=1 \cdots \kappa$ except $\gamma$:
-    Decrypt $s^j$ from $E^i$ using $k = H(beta_j || l^j C)$
-    Compute $c^j$, $m^j$, and $b^j$ from $s^j$.
-    Compute $C^j = c^j G$ too.
-    Verify $B^i = B_{b^j}(C^j || \mroot(m^j))$.
-  If verifications pass then send $S_{d_i}(B^\gamma)$.
-
-
-\section{Withdrawal}
-
-
-
+Use a Merkle tree of SWIFFT hash functions becuase
+ their additive homomorphic property lets you keep the form of a polynomial
 
 
 
