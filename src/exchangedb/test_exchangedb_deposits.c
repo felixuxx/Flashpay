@@ -19,7 +19,6 @@
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
 #include "platform.h"
-#include <libpq-fe.h>
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_pq_lib.h"
 #include "taler_exchangedb_lib.h"
@@ -44,11 +43,6 @@
 
 
 /**
- * Should we not interact with a temporary table?
- */
-static int persistent;
-
-/**
  * Testcase result
  */
 static int result;
@@ -58,20 +52,16 @@ static int result;
  */
 static struct TALER_EXCHANGEDB_Plugin *plugin;
 
+
 /**
  * Main function that will be run by the scheduler.
  *
- * @param cls closure
- * @param args remaining command-line arguments
- * @param cfgfile name of the configuration file used (for saving, can be NULL!)
- * @param cfg configuration
+ * @param cls configuration
  */
 static void
-run (void *cls,
-     char *const *args,
-     const char *cfgfile,
-     const struct GNUNET_CONFIGURATION_Handle *cfg)
+run (void *cls)
 {
+  const struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   static const char wire[] = "{"
       "\"type\":\"SEPA\","
       "\"IBAN\":\"DE67830654080004822650\","
@@ -84,11 +74,15 @@ run (void *cls,
 
   deposit = NULL;
   EXITIF (NULL == (plugin = TALER_EXCHANGEDB_plugin_load (cfg)));
-  EXITIF (GNUNET_OK !=
-          plugin->create_tables (plugin->cls,
-                                 ! persistent));
+  if (GNUNET_OK !=
+      plugin->create_tables (plugin->cls,
+                             GNUNET_YES))
+  {
+    result = 77;
+    goto EXITIF_exit;
+  }
   session = plugin->get_session (plugin->cls,
-                                 ! persistent);
+                                 GNUNET_YES);
   EXITIF (NULL == session);
   deposit = GNUNET_malloc (sizeof (struct TALER_EXCHANGEDB_Deposit) + sizeof (wire));
   /* Makeup a random coin public key */
@@ -117,7 +111,6 @@ run (void *cls,
                                 session,
                                 deposit));
   result = GNUNET_OK;
-
  EXITIF_exit:
   GNUNET_free_non_null (deposit);
   if (NULL != plugin)
@@ -132,21 +125,38 @@ int
 main (int argc,
       char *const argv[])
 {
-  static const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    {'T', "persist", NULL,
-     gettext_noop ("Use a persistent database table instead of a temporary one"),
-     GNUNET_NO, &GNUNET_GETOPT_set_one, &persistent},
-    GNUNET_GETOPT_OPTION_END
-  };
+  const char *plugin_name;
+  char *config_filename;
+  char *testname;
+  struct GNUNET_CONFIGURATION_Handle *cfg;
 
-
-  persistent = GNUNET_NO;
-  result = GNUNET_SYSERR;
+  result = -1;
+  if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
+  {
+    GNUNET_break (0);
+    return -1;
+  }
+  GNUNET_log_setup (argv[0],
+                    "WARNING",
+                    NULL);
+  plugin_name++;
+  (void) GNUNET_asprintf (&testname,
+                          "test-exchange-db-%s", plugin_name);
+  (void) GNUNET_asprintf (&config_filename,
+                          "%s.conf", testname);
+  cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK !=
-      GNUNET_PROGRAM_run (argc, argv,
-                          "test-exchange-deposits",
-                          "testcase for exchange deposits",
-                          options, &run, NULL))
-    return 3;
-  return (GNUNET_OK == result) ? 0 : 1;
+      GNUNET_CONFIGURATION_parse (cfg,
+                                  config_filename))
+  {
+    GNUNET_break (0);
+    GNUNET_free (config_filename);
+    GNUNET_free (testname);
+    return 2;
+  }
+  GNUNET_SCHEDULER_run (&run, cfg);
+  GNUNET_CONFIGURATION_destroy (cfg);
+  GNUNET_free (config_filename);
+  GNUNET_free (testname);
+  return result;
 }

@@ -172,9 +172,10 @@ static struct TALER_Amount fee_refresh;
 static struct TALER_Amount fee_refund;
 static struct TALER_Amount amount_with_fee;
 
+
 static void
-free_refresh_commit_coins_array(struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins,
-                                unsigned int size)
+free_refresh_commit_coins_array (struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins,
+                                 unsigned int size)
 {
   unsigned int cnt;
   struct TALER_EXCHANGEDB_RefreshCommitCoin *ccoin;
@@ -281,6 +282,7 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
     free_refresh_commit_coins_array (commit_coins, MELT_NEW_COINS);
   return ret;
 }
+
 
 /**
  * Function to test melting of coins as part of a refresh session
@@ -658,14 +660,14 @@ run (void *cls)
   if (NULL ==
       (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
   {
-    result = 1;
+    result = 77;
     return;
   }
   if (GNUNET_OK !=
       plugin->create_tables (plugin->cls,
                              GNUNET_YES))
   {
-    result = 2;
+    result = 77;
     goto drop;
   }
   if (NULL ==

@@ -1833,7 +1833,8 @@ PERF_TALER_EXCHANGEDB_interpret (struct TALER_EXCHANGEDB_Plugin *db_plugin,
  * @param init the commands to use for the database initialisation,
  * if #NULL the standard initialization is used
  * @param benchmark the commands for the benchmark
- * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure, #GNUNET_NO
+ *        if we failed to init the database
  */
 int
 PERF_TALER_EXCHANGEDB_run_benchmark (const char *benchmark_name,
@@ -1940,7 +1941,7 @@ PERF_TALER_EXCHANGEDB_run_benchmark (const char *benchmark_name,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Error connectiong to the database\n");
-    return ret;
+    return GNUNET_NO;
   }
   ret = plugin->create_tables (plugin->cls,
                                GNUNET_YES);
@@ -1948,7 +1949,7 @@ PERF_TALER_EXCHANGEDB_run_benchmark (const char *benchmark_name,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Error while creating the database architecture\n");
-    return ret;
+    return GNUNET_NO;
   }
   /*
    * Running the initialization
@@ -1958,7 +1959,7 @@ PERF_TALER_EXCHANGEDB_run_benchmark (const char *benchmark_name,
     init = init_def;
   }
   ret = PERF_TALER_EXCHANGEDB_interpret (plugin,
-                                     init);
+                                         init);
   if (GNUNET_OK != ret)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
