@@ -342,9 +342,9 @@ pay to withdraw it.
 \subsection{Withdrawal}\label{subsec:withdrawal}
 
 In Taler, we may address tax fraud on initial withdrawal by turning
-withdrawal into a refresh from a pseudo-coin $(C,\Mu)$ consisting of
- the user's reserve key \cite[??]{Taler} and
- a post-quantum public key $\Mu$.
+withdrawal into a refresh from a pseudo-coin $(C,\Mu)$ in which 
+ $C$ is the user's reserve key \cite[??]{Taler} and
+ $\Mu$ s a post-quantum public key kept with $C$.
 We see below however that our public key algorithm has very different
 security requirements in this case, impacting our algorithm choices.
 
@@ -485,8 +485,16 @@ refreshing change.
 
 \section{Hash and Ring-LWE hybrid}
 
-We noted above in \S\ref{subsec:withdrawal} that exchange might
-require a refresh-like operation when coins are initially withdrawn.
+We noted in \S\ref{subsec:withdrawal} above that exchange might
+require that initial withdrawals employs a refresh-like operation.
+In this scenarion, we refresh from a pseudo-coin $(C,\Mu)$ where
+ $C$ is the user's reserve key \cite[??]{Taler} and
+ $\Mu$ s a post-quantum public key kept with $C$.
+As a result, our hash-based scheme should increase the security
+paramater $\delta$ to allow a query for every  withdrawal operation.
+
+Instead, we propose using a Merkle tree of Alice side Ring-LWE keys,
+while continuing to invent the Bob side Ring-LWE key.  
 
 ...
 % Use birthday about on Alice vs Bob keys
