@@ -1,0 +1,349 @@
+/*
+  This file is part of TALER
+  Copyright (C) 2016 GNUnet e.V.
+
+  TALER is free software; you can redistribute it and/or modify it under the
+  terms of the GNU General Public License as published by the Free Software
+  Foundation; either version 3, or (at your option) any later version.
+
+  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License along with
+  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
+*/
+/**
+ * @file bank/test_bank_interpreter.c
+ * @brief interpreter for tests of the bank's HTTP API interface
+ * @author Christian Grothoff
+ */
+#include "platform.h"
+#include "taler_util.h"
+#include "taler_signatures.h"
+#include "taler_bank_service.h"
+#include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_curl_lib.h>
+#include <microhttpd.h>
+#include "test_bank_interpreter.h"
+
+
+
+/**
+ * State of the interpreter loop.
+ */
+struct InterpreterState
+{
+  /**
+   * Keys from the bank.
+   */
+  const struct TALER_BANK_Keys *keys;
+
+  /**
+   * Commands the interpreter will run.
+   */
+  struct TBI_Command *commands;
+
+  /**
+   * Interpreter task (if one is scheduled).
+   */
+  struct GNUNET_SCHEDULER_Task *task;
+
+  /**
+   * Main execution context for the main loop.
+   */
+  struct GNUNET_CURL_Context *ctx;
+
+  /**
+   * Task run on timeout.
+   */
+  struct GNUNET_SCHEDULER_Task *timeout_task;
+
+  /**
+   * Context for running the main loop with GNUnet's SCHEDULER API.
+   */
+  struct GNUNET_CURL_RescheduleContext *rc;
+
+  /**
+   * Where to store the final result.
+   */
+  int *resultp;
+
+  /**
+   * Instruction pointer.  Tells #interpreter_run() which
+   * instruction to run next.
+   */
+  unsigned int ip;
+
+};
+
+
+/**
+ * The testcase failed, return with an error code.
+ *
+ * @param is interpreter state to clean up
+ */
+static void
+fail (struct InterpreterState *is)
+{
+  *is->resultp = GNUNET_SYSERR;
+  GNUNET_SCHEDULER_shutdown ();
+}
+
+
+#if 0
+/**
+ * Find a command by label.
+ *
+ * @param is interpreter state to search
+ * @param label label to look for
+ * @return NULL if command was not found
+ */
+static const struct TBI_Command *
+find_command (const struct InterpreterState *is,
+              const char *label)
+{
+  unsigned int i;
+  const struct TBI_Command *cmd;
+
+  if (NULL == label)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Attempt to lookup command for empty label\n");
+    return NULL;
+  }
+  for (i=0;TBI_OC_END != (cmd = &is->commands[i])->oc;i++)
+    if ( (NULL != cmd->label) &&
+         (0 == strcmp (cmd->label,
+                       label)) )
+      return cmd;
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "Command not found: %s\n",
+              label);
+  return NULL;
+}
+#endif
+
+
+/**
+ * Run the main interpreter loop that performs bank operations.
+ *
+ * @param cls contains the `struct InterpreterState`
+ */
+static void
+interpreter_run (void *cls);
+
+
+/**
+ * Function called upon completion of our /admin/add/incoming request.
+ *
+ * @param cls closure with the interpreter state
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the bank's reply is bogus (fails to follow the protocol)
+ * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
+ */
+static void
+add_incoming_cb (void *cls,
+                 unsigned int http_status,
+                 const json_t *json)
+{
+  struct InterpreterState *is = cls;
+  struct TBI_Command *cmd = &is->commands[is->ip];
+
+  cmd->details.admin_add_incoming.aih = NULL;
+  if (cmd->expected_response_code != http_status)
+  {
+    GNUNET_break (0);
+    if (NULL != json)
+    {
+      fprintf (stderr,
+               "Unexpected response code %u:\n",
+               http_status);
+      json_dumpf (json, stderr, 0);
+      fprintf (stderr, "\n");
+    }
+    fail (is);
+    return;
+  }
+  is->ip++;
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
+}
+
+
+/**
+ * Run the main interpreter loop that performs bank operations.
+ *
+ * @param cls contains the `struct InterpreterState`
+ */
+static void
+interpreter_run (void *cls)
+{
+  struct InterpreterState *is = cls;
+  struct TBI_Command *cmd = &is->commands[is->ip];
+  struct TALER_Amount amount;
+  const struct GNUNET_SCHEDULER_TaskContext *tc;
+
+  is->task = NULL;
+  tc = GNUNET_SCHEDULER_get_task_context ();
+  if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
+  {
+    fprintf (stderr,
+             "Test aborted by shutdown request\n");
+    fail (is);
+    return;
+  }
+  switch (cmd->oc)
+  {
+  case TBI_OC_END:
+    *is->resultp = GNUNET_OK;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  case TBI_OC_ADMIN_ADD_INCOMING:
+
+    if (GNUNET_OK !=
+        TALER_string_to_amount (cmd->details.admin_add_incoming.amount,
+                                &amount))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to parse amount `%s' at %u\n",
+                  cmd->details.admin_add_incoming.amount,
+                  is->ip);
+      fail (is);
+      return;
+    }
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
+                                &cmd->details.admin_add_incoming.wtid,
+                                sizeof (cmd->details.admin_add_incoming.wtid));
+    cmd->details.admin_add_incoming.aih
+      = TALER_BANK_admin_add_incoming (is->ctx,
+                                       "http://localhost:8081",
+                                       &cmd->details.admin_add_incoming.wtid,
+                                       &amount,
+                                       cmd->details.admin_add_incoming.debit_account_no,
+                                       cmd->details.admin_add_incoming.credit_account_no,
+                                       &add_incoming_cb,
+                                       is);
+    if (NULL == cmd->details.admin_add_incoming.aih)
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
+    return;
+  default:
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unknown instruction %d at %u (%s)\n",
+                cmd->oc,
+                is->ip,
+                cmd->label);
+    fail (is);
+    return;
+  }
+}
+
+
+/**
+ * Function run on timeout.
+ *
+ * @param cls the `struct InterpreterState`
+ */
+static void
+do_timeout (void *cls)
+{
+  struct InterpreterState *is = cls;
+
+  is->timeout_task = NULL;
+  GNUNET_SCHEDULER_shutdown ();
+}
+
+
+/**
+ * Function run when the test terminates (good or bad).
+ * Cleans up our state.
+ *
+ * @param cls the interpreter state.
+ */
+static void
+do_shutdown (void *cls)
+{
+  struct InterpreterState *is = cls;
+  struct TBI_Command *cmd;
+  unsigned int i;
+
+  if (NULL != is->timeout_task)
+  {
+    GNUNET_SCHEDULER_cancel (is->timeout_task);
+    is->timeout_task = NULL;
+  }
+
+  for (i=0;TBI_OC_END != (cmd = &is->commands[i])->oc;i++)
+  {
+    switch (cmd->oc)
+    {
+    case TBI_OC_END:
+      GNUNET_assert (0);
+      break;
+    case TBI_OC_ADMIN_ADD_INCOMING:
+      if (NULL != cmd->details.admin_add_incoming.aih)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
+        TALER_BANK_admin_add_incoming_cancel (cmd->details.admin_add_incoming.aih);
+        cmd->details.admin_add_incoming.aih = NULL;
+      }
+      break;
+    default:
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unknown instruction %d at %u (%s)\n",
+                  cmd->oc,
+                  i,
+                  cmd->label);
+      break;
+    }
+  }
+  if (NULL != is->task)
+  {
+    GNUNET_SCHEDULER_cancel (is->task);
+    is->task = NULL;
+  }
+  GNUNET_CURL_fini (is->ctx);
+  is->ctx = NULL;
+  GNUNET_CURL_gnunet_rc_destroy (is->rc);
+  GNUNET_free (is);
+}
+
+
+/**
+ * Entry point to the interpeter.
+ *
+ * @param resultp where to store the final result
+ * @param bank_port on which port to launch the bank, 0 for none
+ * @param commands list of commands to run
+ */
+void
+TBI_run_interpreter (int *resultp,
+                     uint16_t bank_port,
+                     struct TBI_Command *commands)
+{
+  struct InterpreterState *is;
+
+  is = GNUNET_new (struct InterpreterState);
+  is->resultp = resultp;
+  is->commands = commands;
+  is->ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
+                              &is->rc);
+  GNUNET_assert (NULL != is->ctx);
+  is->rc = GNUNET_CURL_gnunet_rc_create (is->ctx);
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
+  is->timeout_task
+    = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_relative_multiply
+                                    (GNUNET_TIME_UNIT_SECONDS, 150),
+                                    &do_timeout, is);
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown, is);
+}
+
+/* end of test_bank_interpeter.c */

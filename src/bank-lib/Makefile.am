@@ -53,6 +53,7 @@ TESTS = \
   $(check_PROGRAMS)
 
 test_bank_api_SOURCES = \
+  test_bank_interpreter.c test_bank_interpreter.h \
   test_bank_api.c
 test_bank_api_LDADD = \
   libtalerbank.la \
