@@ -663,18 +663,27 @@ run (void *cls)
     result = 77;
     return;
   }
+  if (NULL !=
+      (session = plugin->get_session (plugin->cls)))
+  {
+    if (GNUNET_OK !=
+        plugin->drop_tables (plugin->cls,
+                             session))
+    {
+      result = 77;
+      goto drop;
+    }
+  }
   if (GNUNET_OK !=
-      plugin->create_tables (plugin->cls,
-                             GNUNET_YES))
+      plugin->create_tables (plugin->cls))
   {
     result = 77;
     goto drop;
   }
   if (NULL ==
-      (session = plugin->get_session (plugin->cls,
-                                      GNUNET_YES)))
+      (session = plugin->get_session (plugin->cls)))
   {
-    result = 3;
+    result = 77;
     goto drop;
   }
   RND_BLK (&reserve_pub);
@@ -934,8 +943,8 @@ run (void *cls)
   rh = NULL;
   if (NULL != session)
     GNUNET_break (GNUNET_OK ==
-                  plugin->drop_temporary (plugin->cls,
-                                          session));
+                  plugin->drop_tables (plugin->cls,
+                                       session));
   if (NULL != dkp)
     destroy_denom_key_pair (dkp);
   if (NULL != cbc.sig.rsa_signature)

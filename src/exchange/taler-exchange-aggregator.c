@@ -173,7 +173,7 @@ static struct AggregationUnit *au;
 static int global_ret;
 
 /**
- * #GNUNET_YES if we are in test mode and are using temporary tables.
+ * #GNUNET_YES if we are in test mode and should exit when idle.
  */
 static int test_mode;
 
@@ -518,8 +518,7 @@ run_aggregation (void *cls)
     return;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking for ready deposits to aggregate\n");
-  if (NULL == (session = db_plugin->get_session (db_plugin->cls,
-                                                 test_mode)))
+  if (NULL == (session = db_plugin->get_session (db_plugin->cls)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain database session!\n");
@@ -891,8 +890,7 @@ run_transfers (void *cls)
   tc = GNUNET_SCHEDULER_get_task_context ();
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
     return;
-  if (NULL == (session = db_plugin->get_session (db_plugin->cls,
-                                                 test_mode)))
+  if (NULL == (session = db_plugin->get_session (db_plugin->cls)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain database session!\n");
@@ -987,7 +985,7 @@ main (int argc,
      "wireformat to use, overrides WIREFORMAT option in [exchange] section", 1,
      &GNUNET_GETOPT_set_filename, &exchange_wireformat},
     {'t', "test", NULL,
-     "run in test mode with temporary tables", 0,
+     "run in test mode and exit when idle", 0,
      &GNUNET_GETOPT_set_one, &test_mode},
     GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END

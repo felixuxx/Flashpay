@@ -250,8 +250,7 @@ reload_keys_denom_iter (void *cls,
   GNUNET_CRYPTO_hash_context_read (ctx->hash_context,
                                    &denom_key_hash,
                                    sizeof (struct GNUNET_HashCode));
-  session = TMH_plugin->get_session (TMH_plugin->cls,
-                                     TMH_test_mode);
+  session = TMH_plugin->get_session (TMH_plugin->cls);
   if (NULL == session)
     return GNUNET_SYSERR;
   /* Try to insert DKI into DB until we succeed; note that if the DB

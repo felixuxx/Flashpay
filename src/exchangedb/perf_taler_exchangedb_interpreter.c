@@ -1369,7 +1369,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
         break;
 
       case PERF_TALER_EXCHANGEDB_CMD_NEW_SESSION:
-        state->session = state->plugin->get_session (state->plugin->cls, GNUNET_YES);
+        state->session = state->plugin->get_session (state->plugin->cls);
         break;
 
       case PERF_TALER_EXCHANGEDB_CMD_START_TRANSACTION:
@@ -1816,8 +1816,7 @@ PERF_TALER_EXCHANGEDB_interpret (struct TALER_EXCHANGEDB_Plugin *db_plugin,
   ret = cmd_init (cmd);
   if (GNUNET_SYSERR == ret)
     return ret;
-  state.session = db_plugin->get_session (db_plugin->cls,
-                                          GNUNET_YES);
+  state.session = db_plugin->get_session (db_plugin->cls);
   GNUNET_assert (NULL != state.session);
   ret = interpret (&state);
   cmd_clean (cmd);
@@ -1943,8 +1942,7 @@ PERF_TALER_EXCHANGEDB_run_benchmark (const char *benchmark_name,
                 "Error connectiong to the database\n");
     return GNUNET_NO;
   }
-  ret = plugin->create_tables (plugin->cls,
-                               GNUNET_YES);
+  ret = plugin->create_tables (plugin->cls);
   if (GNUNET_OK != ret)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -1981,10 +1979,9 @@ PERF_TALER_EXCHANGEDB_run_benchmark (const char *benchmark_name,
   {
     struct TALER_EXCHANGEDB_Session *session;
 
-    session = plugin->get_session (plugin->cls,
-                                   GNUNET_YES);
-    ret = plugin->drop_temporary (plugin->cls,
-                                  session);
+    session = plugin->get_session (plugin->cls);
+    ret = plugin->drop_tables (plugin->cls,
+                               session);
     if (GNUNET_OK != ret)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

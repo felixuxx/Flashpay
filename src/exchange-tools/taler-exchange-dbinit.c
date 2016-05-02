@@ -54,8 +54,7 @@ run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      plugin->create_tables (plugin->cls,
-                             GNUNET_NO))
+      plugin->create_tables (plugin->cls))
   {
     fprintf (stderr,
              "Failed to initialize database.\n");

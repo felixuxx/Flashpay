@@ -717,36 +717,31 @@ struct TALER_EXCHANGEDB_Plugin
    * Connect to the db if the connection does not exist yet.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param temporary #GNUNET_YES to use a temporary schema; #GNUNET_NO to use the
-   *        database default one
    * @param the database connection, or NULL on error
    */
   struct TALER_EXCHANGEDB_Session *
-  (*get_session) (void *cls,
-                  int temporary);
+  (*get_session) (void *cls);
 
 
   /**
-   * Drop the temporary taler schema.  This is only useful for testcases.
+   * Drop the Taler tables.  This should only be used in testcases.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
    */
   int
-  (*drop_temporary) (void *cls,
-                     struct TALER_EXCHANGEDB_Session *db);
+  (*drop_tables) (void *cls,
+                  struct TALER_EXCHANGEDB_Session *db);
 
 
   /**
    * Create the necessary tables if they are not present
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param temporary should we use a temporary schema
    * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
    */
   int
-  (*create_tables) (void *cls,
-                    int temporary);
+  (*create_tables) (void *cls);
 
 
   /**

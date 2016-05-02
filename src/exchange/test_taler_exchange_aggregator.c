@@ -285,8 +285,8 @@ shutdown_action (void *cls)
     GNUNET_OS_process_destroy (aggregator_proc);
     aggregator_proc = NULL;
   }
-  plugin->drop_temporary (plugin->cls,
-                          session);
+  plugin->drop_tables (plugin->cls,
+                       session);
   TALER_EXCHANGEDB_plugin_unload (plugin);
   plugin = NULL;
 }
@@ -1106,8 +1106,7 @@ run (void *cls)
 
   plugin = TALER_EXCHANGEDB_plugin_load (cfg);
   if (GNUNET_OK !=
-      plugin->create_tables (plugin->cls,
-                             GNUNET_YES))
+      plugin->create_tables (plugin->cls))
   {
     GNUNET_break (0);
     TALER_EXCHANGEDB_plugin_unload (plugin);
@@ -1115,8 +1114,7 @@ run (void *cls)
     result = 77;
     return;
   }
-  session = plugin->get_session (plugin->cls,
-                                 GNUNET_YES);
+  session = plugin->get_session (plugin->cls);
   GNUNET_assert (NULL != session);
   fake_issue (&issue);
   dpk.rsa_public_key = coin_pub;
