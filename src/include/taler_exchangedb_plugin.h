@@ -205,8 +205,7 @@ struct TALER_EXCHANGEDB_ReserveHistory
  * merchant must either use a different public key or a different
  * transaction ID for the two transactions.  The same coin must not
  * be used twice at the same merchant for the same transaction
- * (as determined by transaction ID).  (Note: we might want to
- * fix #3819 and include at least h_contract as well.)
+ * (as determined by transaction ID).
  */
 struct TALER_EXCHANGEDB_Deposit
 {
@@ -317,12 +316,12 @@ struct TALER_EXCHANGEDB_Refund
   struct TALER_CoinPublicInfo coin;
 
   /**
-   * Public key of the merchant. 
+   * Public key of the merchant.
    */
   struct TALER_MerchantPublicKeyP merchant_pub;
-  
+
   /**
-   * Signature from the merchant affirming the refund. 
+   * Signature from the merchant affirming the refund.
    */
   struct TALER_MerchantSignatureP merchant_sig;
 
@@ -338,7 +337,7 @@ struct TALER_EXCHANGEDB_Refund
    * refunded.
    */
   uint64_t transaction_id;
-  
+
   /**
    * Merchant-generated REFUND transaction ID to detect duplicate
    * refunds.
