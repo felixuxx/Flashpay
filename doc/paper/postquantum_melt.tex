@@ -351,6 +351,8 @@ security requirements in this case, impacting our algorithm choices.
 
 \section{Post-quantum key exchanges}
 
+% \subsection{Isogenies between super-singular elliptic curves}
+
 In \cite{SIDH?,SIDH16}, there is a Diffie-Helman like key exchange
 (SIDH) based on computing super-singular eliptic curve isogenies 
 which functions as a drop in replacement, or more likely addition,
@@ -360,7 +362,7 @@ In SIDH, private keys are the kernel of an isogeny in the 2-torsion
 or the 3-torsion of the base curve.  Isogenies based on 2-torsion can
 only be paired with isogenies based on 3-torsion, and visa versa.  
 This rigidity makes constructing signature schemes with SIDH hard
-\cite{}, but does not impact our use case.  
+\cite{??SIDHsig??}, but does not impact our use case.  
 
 We let $\mu$ and $\Mu$ be the SIDH 2-torsion private and public keys,
 repectively.  We simlarly let $\lambda$ and $\Lambda$ be the
@@ -373,47 +375,85 @@ Our 2-torsion and 3-torsion public key derivation functions
 $\CPK(\mu)$ and $\LPK(\lambda)$ along with our two key derivation
 functions $\KEX_2$ and $\KEX_3$, all work as described in
 \cite[\S6]{SIDH16}.
+% We refer to \cite[??]{SIDH?15?} and \cite[]{SIDH?11?} for further background.
 
-% We refer to \cite[\S6]{SIDH16}, \cite[??]{SIDH?15?}, and
-% \cite[]{SIDH?11?} for further discussion of the implementation.
+If using SIDH, then we naturally depend upon the security assumption
+used in SIDH, but combining this with ECDH is stronger than either
+alone.  
 
-There is no relationship between $\mu$ and $\lambda$ in SIDH, so
-$\Lambda$ cannot itself leak any information about $C$.
+... proof ...
+
+At least, there is no relationship between $\mu$ and $\lambda$ in
+SIDH though, so $\Lambda$ cannot itself leak any information about
+$(C,\Mu,S)$.  
+
+% \smallskip
+
+We note that $\Lambda$ contains two points used by $\KEX_3$ to
+evaluate its secret isogeny but not used by $\KEX_2$.  We do not
+consider this a weakness for taxability because the cut and choose
+protocol already requires that the exchange verify the public
+key $\Lambda_j$ for $j \neq \gamma$. 
 
 \smallskip
+% \subsection{Ring Learning with Errors}
 
-Ring-LWE based key exchanges like \cite{Peikert14,NewHope} require
-that both Alice and Bob's keys be ephemeral because the success or
-failure of the key exchange leaks one bit about both keys\cite{}.
-As a result, authentication with Ring-LWE based schemes remains
-harder than with discrete log schemes\cite{}.
+In \cite{Peikert14,NewHope}, there is another key exchange based on
+a variant of the Ring-LWE problem.  Ring-LWE key exchange has a
+worrying relationship with this hidden subgroup problem on dihedral
+groups \cite{??,??}, but also a reasuring relationship with NP-hard
+problems.
 
-We observe however that the Taler wallet controls both sides during 
-the refresh protocol, so the wallet can ensure that the key exchange 
-always succeeds.  In fact, the Ring-LWE paramaters could be tunned to
-leave the probability of failure rather high, saving the exchange
-bandwidth, storage, and verification time.  
-
-We let $\mu$ and $\Mu$ be Alice (initator) side the private and public
-keys, repectively.  We simlarly let $\lambda_j$ and $\Lambda_j$ be the
-Bob (respondent) private and public keys. 
-% DO IT :
+We again let $\mu$ and $\Mu$ denote the Alice (initator) side the
+private and public keys, repectively.  We likewise let $\lambda$
+and $\Lambda$ be the Bob (respondent) private and public keys. 
+% DO IT?
 Again now, $\CPK$, $\CSK$, $\LPK$, $\LSK$, $\KEX_2$ and $\KEX_3$
 can be defined from \cite{Peikert14,NewHope}.  
 
-\smallskip
+A priori, one worried that unlinkability might fail even without
+the Ring-LWE key exchange itself being broken because $\lambda_j$
+and $\Lambda_j$ are constructed using the public key $\Mu$. 
+
+First, the polynomial $a$ commonly depends upon $\Mu$, like in
+\cite{NewHope}, so unlinkability explicity depends upon the Ring-LWE
+problem\cite{}.  [[ PROOF ??? ]]
+
+Second, the reconciliation information in $\Lambda$ might leak
+additional information about $\lambda$.  
+[[ LITTERATURE ADDRESSES THIS POINT ??? ]]
+
+Ring-LWE key exchanges require that both Alice and Bob's keys be
+ephemeral because the success or failure of the key exchange
+leaks one bit about both keys\cite{}.  As a result, authentication
+with Ring-LWE based schemes remains harder than with discrete log
+schemes\cite{??RLWEsig??}, and this situation impacts us as well.
+
+A Taler wallet should control both sides during the refresh protocol,
+ which produces an interesting connundrum.
+An honest wallet could ensure that the key exchange always succeeds.
+If wallets were honest, then one could tune the Ring-LWE paramaters
+to leave the probability of failure rather high,
+ saving the exchange bandwidth, storage, and verification time.
+A dishonest wallet and merchant could conversely search the key space
+to find an exchange that fails, meaning the wallet could aid the
+merchant in tax evasion. 
+
+[[ IS THE FOLLOWING IMPOSSIBLE ??? ]]
+
+If possible, we should  tune the Ring-LWE paramaters to reduce costs
+to the exchange, and boost the unlinkability for the users, while 
+simultaniously
+
+% \smallskip
+% \subsection{Comparson}
 
 At present, the SIDH implemention in \cite{SIDH16} requires about
 one third the key material and 100?? times as much CPU time as the
 Ring-LWE implemention in \cite{NewHope}.
-As noted above, Ring-LWE admits significant optimizations for the
-Taler refresh situation.
-
-We observe however that the Ring-LWE public key $\Lambda$ has a risk
-of leaking information about $\Mu$.  In particular, if polynomial $a$
-depends upon $\Mu$, like in \cite{NewHope}, then anonymity explicity
-depends upon the Ring-LWE problem\cite{}.  
-...
+[[ We believe this provides a strong reason to continue exploring 
+paramater choices for Ring-LWE key exchange along with protocol tweaks.  
+... ]]
 
 
 \section{Hashed-based one-sided public keys}
@@ -493,13 +533,15 @@ In this scenarion, we refresh from a pseudo-coin $(C,\Mu)$ where
 As a result, our hash-based scheme should increase the security
 paramater $\delta$ to allow a query for every  withdrawal operation.
 
-Instead, we propose using a Merkle tree of Alice side Ring-LWE keys,
-while continuing to invent the Bob side Ring-LWE key.  
+Instead, ...
+[[ ??? we propose using a Merkle tree of Alice side Ring-LWE keys,
+while continuing to invent the Bob side Ring-LWE key. ??? ]]
 
-...
-% Use birthday about on Alice vs Bob keys
+% Use birthday about on Alice vs Bob keys?
 
 \section{Conclusions}
+
+...
 
 
 \bibliographystyle{alpha}
@@ -519,6 +561,10 @@ while continuing to invent the Bob side Ring-LWE key.
 \item 
 \end{itemize}
 
+\begin{itemize}
+\item 
+\item 
+\end{itemize}
 
 
 
