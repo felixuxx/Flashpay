@@ -51,9 +51,9 @@ struct TestClosure
   struct GNUNET_CURL_Context *ctx;
 
   /**
-   * Handle to the bank task, or NULL.
+   * Scheduler context for running the @e ctx.
    */
-  struct GNUNET_SCHEDULER_Task *bt;
+  struct GNUNET_CURL_RescheduleContext *rc;
 
   /**
    * Number of the account that the exchange has at the bank for
@@ -131,78 +131,6 @@ struct TALER_WIRE_ExecuteHandle
   void *cc_cls;
 };
 
-
-/**
- * Task that runs the bank's context's event loop with the GNUnet
- * scheduler.
- *
- * @param cls our `struct TestClosure`
- */
-static void
-context_task (void *cls)
-{
-  struct TestClosure *tc = cls;
-  long timeout;
-  int max_fd;
-  fd_set read_fd_set;
-  fd_set write_fd_set;
-  fd_set except_fd_set;
-  struct GNUNET_NETWORK_FDSet *rs;
-  struct GNUNET_NETWORK_FDSet *ws;
-  struct GNUNET_TIME_Relative delay;
-
-  tc->bt = NULL;
-  GNUNET_CURL_perform (tc->ctx);
-  max_fd = -1;
-  timeout = -1;
-  FD_ZERO (&read_fd_set);
-  FD_ZERO (&write_fd_set);
-  FD_ZERO (&except_fd_set);
-  GNUNET_CURL_get_select_info (tc->ctx,
-                               &read_fd_set,
-                               &write_fd_set,
-                               &except_fd_set,
-                               &max_fd,
-                               &timeout);
-  if (timeout >= 0)
-    delay = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,
-                                           timeout);
-  else
-    delay = GNUNET_TIME_UNIT_FOREVER_REL;
-  rs = GNUNET_NETWORK_fdset_create ();
-  GNUNET_NETWORK_fdset_copy_native (rs,
-                                    &read_fd_set,
-                                    max_fd + 1);
-  ws = GNUNET_NETWORK_fdset_create ();
-  GNUNET_NETWORK_fdset_copy_native (ws,
-                                    &write_fd_set,
-                                    max_fd + 1);
-  tc->bt = GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-                                        delay,
-                                        rs,
-                                        ws,
-                                        &context_task,
-                                        tc);
-  GNUNET_NETWORK_fdset_destroy (rs);
-  GNUNET_NETWORK_fdset_destroy (ws);
-}
-
-
-/**
- * Run the bank task now.
- *
- * @param cls context for which we should initiate running the task
- */
-static void
-run_bt (void *cls)
-{
-  struct TestClosure *tc = cls;
-
-  if (NULL != tc->bt)
-    GNUNET_SCHEDULER_cancel (tc->bt);
-  tc->bt = GNUNET_SCHEDULER_add_now (&context_task,
-                                     tc);
-}
 
 
 /**
@@ -832,8 +760,9 @@ libtaler_plugin_wire_test_init (void *cls)
       GNUNET_free (tc);
       return NULL;
     }
-    tc->ctx = GNUNET_CURL_init (&run_bt,
-                                tc);
+    tc->ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
+                                &tc->rc);
+    tc->rc = GNUNET_CURL_gnunet_rc_create (tc->ctx);
     if (NULL == tc->ctx)
     {
       GNUNET_break (0);
@@ -869,15 +798,15 @@ libtaler_plugin_wire_test_done (void *cls)
   struct TALER_WIRE_Plugin *plugin = cls;
   struct TestClosure *tc = plugin->cls;
 
-  if (NULL != tc->bt)
-  {
-    GNUNET_SCHEDULER_cancel (tc->bt);
-    tc->bt = NULL;
-  }
   if (NULL != tc->ctx)
   {
     GNUNET_CURL_fini (tc->ctx);
     tc->ctx = NULL;
+  }
+  if (NULL != tc->rc)
+  {
+    GNUNET_CURL_gnunet_rc_destroy (tc->rc);
+    tc->rc = NULL;
   }
   GNUNET_free_non_null (tc->currency);
   GNUNET_free_non_null (tc->bank_uri);

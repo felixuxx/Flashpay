@@ -38,9 +38,9 @@ static struct GNUNET_CURL_Context *ctx;
 static struct GNUNET_SCHEDULER_Task *timeout_task;
 
 /**
- * Task that runs the main event loop.
+ * Context for running the main loop with GNUnet's SCHEDULER API.
  */
-static struct GNUNET_SCHEDULER_Task *ctx_task;
+static struct GNUNET_CURL_RescheduleContext *rc;
 
 /**
  * Result of the testcases, #GNUNET_OK on success
@@ -158,29 +158,6 @@ struct InterpreterState
   unsigned int ip;
 
 };
-
-
-/**
- * Task that runs the context's event loop with the GNUnet scheduler.
- *
- * @param cls unused
- */
-static void
-context_task (void *cls);
-
-
-/**
- * Run the context task, the working set has changed.
- *
- * @param cls NULL
- */
-static void
-trigger_context_task (void *cls)
-{
-  GNUNET_SCHEDULER_cancel (ctx_task);
-  ctx_task = GNUNET_SCHEDULER_add_now (&context_task,
-                                       NULL);
-}
 
 
 /**
@@ -413,70 +390,12 @@ do_shutdown (void *cls)
     is->task = NULL;
   }
   GNUNET_free (is);
-  if (NULL != ctx_task)
-  {
-    GNUNET_SCHEDULER_cancel (ctx_task);
-    ctx_task = NULL;
-  }
   if (NULL != ctx)
   {
     GNUNET_CURL_fini (ctx);
     ctx = NULL;
   }
-}
-
-
-/**
- * Task that runs the context's event loop with the GNUnet scheduler.
- *
- * @param cls unused
- */
-static void
-context_task (void *cls)
-{
-  long timeout;
-  int max_fd;
-  fd_set read_fd_set;
-  fd_set write_fd_set;
-  fd_set except_fd_set;
-  struct GNUNET_NETWORK_FDSet *rs;
-  struct GNUNET_NETWORK_FDSet *ws;
-  struct GNUNET_TIME_Relative delay;
-
-  ctx_task = NULL;
-  GNUNET_CURL_perform (ctx);
-  max_fd = -1;
-  timeout = -1;
-  FD_ZERO (&read_fd_set);
-  FD_ZERO (&write_fd_set);
-  FD_ZERO (&except_fd_set);
-  GNUNET_CURL_get_select_info (ctx,
-                               &read_fd_set,
-                               &write_fd_set,
-                               &except_fd_set,
-                               &max_fd,
-                               &timeout);
-  if (timeout >= 0)
-    delay = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,
-                                           timeout);
-  else
-    delay = GNUNET_TIME_UNIT_FOREVER_REL;
-  rs = GNUNET_NETWORK_fdset_create ();
-  GNUNET_NETWORK_fdset_copy_native (rs,
-                                    &read_fd_set,
-                                    max_fd + 1);
-  ws = GNUNET_NETWORK_fdset_create ();
-  GNUNET_NETWORK_fdset_copy_native (ws,
-                                    &write_fd_set,
-                                    max_fd + 1);
-  ctx_task = GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-                                          delay,
-                                          rs,
-                                          ws,
-                                          &context_task,
-                                          cls);
-  GNUNET_NETWORK_fdset_destroy (rs);
-  GNUNET_NETWORK_fdset_destroy (ws);
+  GNUNET_CURL_gnunet_rc_destroy (rc);
 }
 
 
@@ -504,12 +423,10 @@ run (void *cls)
 
   is = GNUNET_new (struct InterpreterState);
   is->commands = commands;
-
-  ctx = GNUNET_CURL_init (&trigger_context_task,
-                          NULL);
+  ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
+                          &rc);
+  rc = GNUNET_CURL_gnunet_rc_create (ctx);
   GNUNET_assert (NULL != ctx);
-  ctx_task = GNUNET_SCHEDULER_add_now (&context_task,
-                                       ctx);
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
                                        is);
   timeout_task
