@@ -14,8 +14,8 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file bank/test_bank_api.c
- * @brief testcase to test bank's HTTP API interface against the "real" bank
+ * @file bank/test_bank_api_with_fakebank.c
+ * @brief testcase to test bank's HTTP API interface against the fakebank
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -51,7 +51,7 @@ run (void *cls)
   };
 
   TBI_run_interpreter (resultp,
-                       GNUNET_NO /* we use the "real" taler bank */,
+                       GNUNET_YES,
                        commands);
 }
 
@@ -66,55 +66,13 @@ int
 main (int argc,
       char * const *argv)
 {
-  struct GNUNET_OS_Process *bankd;
-  unsigned int cnt;
   int result;
 
-  GNUNET_log_setup ("test-bank-api",
+  GNUNET_log_setup ("test-bank-api-with-fakebank",
                     "WARNING",
                     NULL);
-  bankd = GNUNET_OS_start_process (GNUNET_NO,
-                                   GNUNET_OS_INHERIT_STD_ALL,
-                                   NULL, NULL, NULL,
-                                   "taler-bank-manage",
-                                   "taler-bank-manage",
-                                   "serve-http",
-				   "--port", "8081",
-                                   NULL);
-  if (NULL == bankd)
-  {
-    fprintf (stderr,
-             "taler-bank-manage not found, skipping test\n");
-    return 77; /* report 'skip' */
-  }
-  /* give child time to start and bind against the socket */
-  fprintf (stderr,
-           "Waiting for taler-bank-manage to be ready\n");
-  cnt = 0;
-  do
-    {
-      fprintf (stderr, ".");
-      sleep (1);
-      cnt++;
-      if (cnt > 30)
-        break;
-    }
-  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/ -o /dev/null -O /dev/null"));
-  fprintf (stderr, "\n");
-  result = GNUNET_SYSERR;
-  if (cnt <= 30)
-    GNUNET_SCHEDULER_run (&run, &result);
-  GNUNET_OS_process_kill (bankd,
-                          SIGTERM);
-  GNUNET_OS_process_wait (bankd);
-  GNUNET_OS_process_destroy (bankd);
-  if (cnt > 30)
-  {
-    fprintf (stderr,
-             "taler-bank-manage failed to start properly.\n");
-    return 77;
-  }
+  GNUNET_SCHEDULER_run (&run, &result);
   return (GNUNET_OK == result) ? 0 : 1;
 }
 
-/* end of test_bank_api.c */
+/* end of test_bank_api_with_fakebank.c */

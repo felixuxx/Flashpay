@@ -48,14 +48,14 @@ static struct GNUNET_CURL_Context *ctx;
 static struct TALER_EXCHANGE_Handle *exchange;
 
 /**
- * Task run on shutdown.
+ * Context for running the CURL event loop.
  */
-static struct GNUNET_SCHEDULER_Task *shutdown_task;
+static struct GNUNET_CURL_RescheduleContext *rc;
 
 /**
- * Task that runs the main event loop.
+ * Task run on timeout.
  */
-static struct GNUNET_SCHEDULER_Task *ctx_task;
+static struct GNUNET_SCHEDULER_Task *timeout_task;
 
 /**
  * Result of the testcases, #GNUNET_OK on success
@@ -567,27 +567,6 @@ struct InterpreterState
   unsigned int ip;
 
 };
-
-
-/**
- * Task that runs the context's event loop with the GNUnet scheduler.
- *
- * @param cls unused
- */
-static void
-context_task (void *cls);
-
-
-/**
- * Run the context task, the working set has changed.
- */
-static void
-trigger_context_task ()
-{
-  GNUNET_SCHEDULER_cancel (ctx_task);
-  ctx_task = GNUNET_SCHEDULER_add_now (&context_task,
-                                       NULL);
-}
 
 
 /**
@@ -1499,7 +1478,6 @@ interpreter_run (void *cls)
       fail (is);
       return;
     }
-    trigger_context_task ();
     return;
   case OC_WITHDRAW_STATUS:
     GNUNET_assert (NULL !=
@@ -1515,7 +1493,6 @@ interpreter_run (void *cls)
                                    &reserve_pub,
                                    &reserve_status_cb,
                                    is);
-    trigger_context_task ();
     return;
   case OC_WITHDRAW_SIGN:
     GNUNET_assert (NULL !=
@@ -1575,7 +1552,6 @@ interpreter_run (void *cls)
       fail (is);
       return;
     }
-    trigger_context_task ();
     return;
   case OC_DEPOSIT:
     {
@@ -1728,7 +1704,6 @@ interpreter_run (void *cls)
         return;
       }
       json_decref (wire);
-      trigger_context_task ();
       return;
     }
   case OC_REFRESH_MELT:
@@ -1826,7 +1801,6 @@ interpreter_run (void *cls)
         }
       }
     }
-    trigger_context_task ();
     return;
   case OC_REFRESH_REVEAL:
     ref = find_command (is,
@@ -1845,7 +1819,6 @@ interpreter_run (void *cls)
       fail (is);
       return;
     }
-    trigger_context_task ();
     return;
   case OC_REFRESH_LINK:
     /* find reveal command */
@@ -1885,13 +1858,11 @@ interpreter_run (void *cls)
       fail (is);
       return;
     }
-    trigger_context_task ();
     return;
   case OC_WIRE:
     cmd->details.wire.wh = TALER_EXCHANGE_wire (exchange,
                                                 &wire_cb,
                                                 is);
-    trigger_context_task ();
     return;
   case OC_WIRE_DEPOSITS:
     if (NULL != cmd->details.wire_deposits.wtid_ref)
@@ -1906,7 +1877,6 @@ interpreter_run (void *cls)
                                       &cmd->details.wire_deposits.wtid,
                                       &wire_deposits_cb,
                                       is);
-    trigger_context_task ();
     return;
   case OC_DEPOSIT_WTID:
     {
@@ -1969,7 +1939,6 @@ interpreter_run (void *cls)
                                    ref->details.deposit.transaction_id,
                                    &deposit_wtid_cb,
                                    is);
-      trigger_context_task ();
     }
     return;
   default:
@@ -1981,6 +1950,19 @@ interpreter_run (void *cls)
     fail (is);
     return;
   }
+}
+
+
+/**
+ * Function run when the test terminates (good or bad) with timeout.
+ *
+ * @param cls NULL
+ */
+static void
+do_timeout (void *cls)
+{
+  timeout_task = NULL;
+  GNUNET_SCHEDULER_shutdown ();
 }
 
 
@@ -1997,7 +1979,6 @@ do_shutdown (void *cls)
   struct Command *cmd;
   unsigned int i;
 
-  shutdown_task = NULL;
   for (i=0;OC_END != (cmd = &is->commands[i])->oc;i++)
   {
     switch (cmd->oc)
@@ -2156,11 +2137,6 @@ do_shutdown (void *cls)
     is->task = NULL;
   }
   GNUNET_free (is);
-  if (NULL != ctx_task)
-  {
-    GNUNET_SCHEDULER_cancel (ctx_task);
-    ctx_task = NULL;
-  }
   if (NULL != exchange)
   {
     TALER_EXCHANGE_disconnect (exchange);
@@ -2170,6 +2146,16 @@ do_shutdown (void *cls)
   {
     GNUNET_CURL_fini (ctx);
     ctx = NULL;
+  }
+  if (NULL != rc)
+  {
+    GNUNET_CURL_gnunet_rc_destroy (rc);
+    rc = NULL;
+  }
+  if (NULL != timeout_task)
+  {
+    GNUNET_SCHEDULER_cancel (timeout_task);
+    timeout_task = NULL;
   }
 }
 
@@ -2205,60 +2191,6 @@ cert_cb (void *cls,
   is->keys = keys;
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
                                        is);
-}
-
-
-/**
- * Task that runs the context's event loop with the GNUnet scheduler.
- *
- * @param cls unused
- */
-static void
-context_task (void *cls)
-{
-  long timeout;
-  int max_fd;
-  fd_set read_fd_set;
-  fd_set write_fd_set;
-  fd_set except_fd_set;
-  struct GNUNET_NETWORK_FDSet *rs;
-  struct GNUNET_NETWORK_FDSet *ws;
-  struct GNUNET_TIME_Relative delay;
-
-  ctx_task = NULL;
-  GNUNET_CURL_perform (ctx);
-  max_fd = -1;
-  timeout = -1;
-  FD_ZERO (&read_fd_set);
-  FD_ZERO (&write_fd_set);
-  FD_ZERO (&except_fd_set);
-  GNUNET_CURL_get_select_info (ctx,
-                               &read_fd_set,
-                               &write_fd_set,
-                               &except_fd_set,
-                               &max_fd,
-                               &timeout);
-  if (timeout >= 0)
-    delay = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,
-                                           timeout);
-  else
-    delay = GNUNET_TIME_UNIT_FOREVER_REL;
-  rs = GNUNET_NETWORK_fdset_create ();
-  GNUNET_NETWORK_fdset_copy_native (rs,
-                                    &read_fd_set,
-                                    max_fd + 1);
-  ws = GNUNET_NETWORK_fdset_create ();
-  GNUNET_NETWORK_fdset_copy_native (ws,
-                                    &write_fd_set,
-                                    max_fd + 1);
-  ctx_task = GNUNET_SCHEDULER_add_select (GNUNET_SCHEDULER_PRIORITY_DEFAULT,
-                                          delay,
-                                          rs,
-                                          ws,
-                                          &context_task,
-                                          cls);
-  GNUNET_NETWORK_fdset_destroy (rs);
-  GNUNET_NETWORK_fdset_destroy (ws);
 }
 
 
@@ -2507,19 +2439,20 @@ run (void *cls)
   is = GNUNET_new (struct InterpreterState);
   is->commands = commands;
 
-  ctx = GNUNET_CURL_init ();
+  ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
+                          &rc);
+  rc = GNUNET_CURL_gnunet_rc_create (ctx);
   GNUNET_assert (NULL != ctx);
-  ctx_task = GNUNET_SCHEDULER_add_now (&context_task,
-                                       ctx);
   exchange = TALER_EXCHANGE_connect (ctx,
                                      "http://localhost:8081",
                                      &cert_cb, is,
                                      TALER_EXCHANGE_OPTION_END);
   GNUNET_assert (NULL != exchange);
-  shutdown_task
+  timeout_task
     = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_relative_multiply
                                     (GNUNET_TIME_UNIT_SECONDS, 150),
-                                    &do_shutdown, is);
+                                    &do_timeout, NULL);
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown, is);
 }
 
 

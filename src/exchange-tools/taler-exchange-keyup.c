@@ -765,7 +765,7 @@ create_denomkey_issue (const struct CoinTypeParams *params,
   dki->issue.properties.expire_withdraw =
       GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
                                                            params->duration_withdraw));
-  dki->issue.properties.expire_spend =
+  dki->issue.properties.expire_deposit =
     GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (params->anchor,
                                                          params->duration_spend));
   dki->issue.properties.expire_legal =

@@ -81,11 +81,6 @@ struct TALER_MasterPublicKeyP TMH_master_public_key;
 struct TALER_EXCHANGEDB_Plugin *TMH_plugin;
 
 /**
- * Are we running in test mode?
- */
-int TMH_test_mode;
-
-/**
  * Default timeout in seconds for HTTP requests.
  */
 static unsigned int connection_timeout = 30;
@@ -466,9 +461,7 @@ exchange_serve_process_config ()
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Running in TEST mode! Database contents will not persist!\n");
-    TMH_test_mode = GNUNET_YES;
-    TMH_plugin->create_tables (TMH_plugin->cls,
-                               GNUNET_YES);
+    TMH_plugin->create_tables (TMH_plugin->cls);
   }
 
   {
@@ -905,19 +898,6 @@ main (int argc,
     GNUNET_break (0);
     MHD_stop_daemon (mydaemon);
     break;
-  }
-
-  if (GNUNET_YES == TMH_test_mode)
-  {
-    struct TALER_EXCHANGEDB_Session *session;
-
-    session = TMH_plugin->get_session (TMH_plugin->cls,
-                                       GNUNET_YES);
-    if (NULL == session)
-      GNUNET_break (0);
-    else
-      TMH_plugin->drop_temporary (TMH_plugin->cls,
-                                  session);
   }
   TALER_EXCHANGEDB_plugin_unload (TMH_plugin);
   TMH_VALIDATION_done ();

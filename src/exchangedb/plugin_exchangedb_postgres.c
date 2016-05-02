@@ -30,15 +30,6 @@
 #include "plugin_exchangedb_common.c"
 
 /**
- * For testing / experiments, we set the Postgres schema to
- * #TALER_TEMP_SCHEMA_NAME so we can easily purge everything
- * associated with a test.  We *also* should use the database
- * "talercheck" instead of "taler" for testing, but we're doing
- * both: better safe than sorry.
- */
-#define TALER_TEMP_SCHEMA_NAME "taler_temporary"
-
-/**
  * Log a query error.
  *
  * @param result PQ result object of the query that failed
@@ -138,39 +129,48 @@ struct PostgresClosure
 
 
 
-/**
- * Set the given connection to use a temporary schema
- *
- * @param db the database connection
- * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon error
- */
-static int
-set_temporary_schema (PGconn *db)
-{
-  SQLEXEC_(db,
-           "CREATE SCHEMA IF NOT EXISTS " TALER_TEMP_SCHEMA_NAME ";"
-           "SET search_path to " TALER_TEMP_SCHEMA_NAME ";");
-  return GNUNET_OK;
- SQLEXEC_fail:
-  return GNUNET_SYSERR;
-}
-
 
 /**
- * Drop the temporary taler schema.  This is only useful for testcases
+ * Drop all Taler tables.  This should only be used by testcases.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database session to use
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 static int
-postgres_drop_temporary (void *cls,
-                         struct TALER_EXCHANGEDB_Session *session)
+postgres_drop_tables (void *cls,
+                      struct TALER_EXCHANGEDB_Session *session)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Dropping temporary tables\n");
+              "Dropping ALL tables\n");
   SQLEXEC_ (session->conn,
-            "DROP SCHEMA " TALER_TEMP_SCHEMA_NAME " CASCADE;");
+            "DROP TABLE IF EXISTS prewire;");
+  SQLEXEC_ (session->conn,
+            "DROP TABLE IF EXISTS aggregation_tracking;");
+  SQLEXEC_ (session->conn,
+            "DROP TABLE IF EXISTS deposits;");
+  SQLEXEC_ (session->conn,
+            "DROP TABLE IF EXISTS refresh_out;");
+  SQLEXEC_ (session->conn,
+            "DROP TABLE IF EXISTS refresh_commit_coin;");
+  SQLEXEC_ (session->conn,
+            "DROP TABLE IF EXISTS refresh_commit_link;");
+  SQLEXEC_ (session->conn,
+            "DROP TABLE IF EXISTS refresh_order;");
+  SQLEXEC_ (session->conn,
+            "DROP TABLE IF EXISTS refresh_melts;");
+  SQLEXEC_ (session->conn,
+            "DROP TABLE IF EXISTS refresh_sessions;");
+  SQLEXEC_ (session->conn,
+            "DROP TABLE IF EXISTS known_coins;");
+  SQLEXEC_ (session->conn,
+            "DROP TABLE IF EXISTS reserves_out;");
+  SQLEXEC_ (session->conn,
+            "DROP TABLE IF EXISTS reserves_in;");
+  SQLEXEC_ (session->conn,
+            "DROP TABLE IF EXISTS reserves;");
+  SQLEXEC_ (session->conn,
+            "DROP TABLE IF EXISTS denominations;");
   return GNUNET_OK;
  SQLEXEC_fail:
   return GNUNET_SYSERR;
@@ -215,12 +215,10 @@ pq_notice_processor_cb (void *arg,
  * Create the necessary tables if they are not present
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param temporary should we use a temporary schema
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 static int
-postgres_create_tables (void *cls,
-                        int temporary)
+postgres_create_tables (void *cls)
 {
   struct PostgresClosure *pc = cls;
   PGconn *conn;
@@ -239,12 +237,6 @@ postgres_create_tables (void *cls,
   PQsetNoticeProcessor (conn,
                         &pq_notice_processor_cb,
                         NULL);
-  if ( (GNUNET_YES == temporary) &&
-       (GNUNET_SYSERR == set_temporary_schema (conn)))
-  {
-    PQfinish (conn);
-    return GNUNET_SYSERR;
-  }
 #define SQLEXEC(sql) SQLEXEC_(conn, sql);
 #define SQLEXEC_INDEX(sql) SQLEXEC_IGNORE_ERROR_(conn, sql);
   /* Denomination table for holding the publicly available information of
@@ -258,7 +250,7 @@ postgres_create_tables (void *cls,
            ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
            ",valid_from INT8 NOT NULL"
            ",expire_withdraw INT8 NOT NULL"
-           ",expire_spend INT8 NOT NULL"
+           ",expire_deposit INT8 NOT NULL"
            ",expire_legal INT8 NOT NULL"
            ",coin_val INT8 NOT NULL" /* value of this denom */
            ",coin_frac INT4 NOT NULL" /* fractional value of this denom */
@@ -533,7 +525,7 @@ postgres_prepare (PGconn *db_conn)
            ",master_sig"
            ",valid_from"
            ",expire_withdraw"
-           ",expire_spend"
+           ",expire_deposit"
            ",expire_legal"
            ",coin_val" /* value of this denom */
            ",coin_frac" /* fractional value of this denom */
@@ -563,7 +555,7 @@ postgres_prepare (PGconn *db_conn)
            ",master_sig"
            ",valid_from"
            ",expire_withdraw"
-           ",expire_spend"
+           ",expire_deposit"
            ",expire_legal"
            ",coin_val"  /* value of this denom */
            ",coin_frac" /* fractional value of this denom */
@@ -1200,13 +1192,10 @@ db_conn_destroy (void *cls)
  * Connect to the db if the connection does not exist yet.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param temporary #GNUNET_YES to use a temporary schema; #GNUNET_NO to use the
- *        database default one
  * @return the database connection, or NULL on error
  */
 static struct TALER_EXCHANGEDB_Session *
-postgres_get_session (void *cls,
-                      int temporary)
+postgres_get_session (void *cls)
 {
   struct PostgresClosure *pc = cls;
   PGconn *db_conn;
@@ -1229,12 +1218,6 @@ postgres_get_session (void *cls,
   PQsetNoticeProcessor (db_conn,
                         &pq_notice_processor_cb,
                         NULL);
-  if ( (GNUNET_YES == temporary) &&
-       (GNUNET_SYSERR == set_temporary_schema(db_conn)) )
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
   if (GNUNET_OK !=
       postgres_prepare (db_conn))
   {
@@ -1382,7 +1365,7 @@ postgres_insert_denomination_info (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&issue->signature),
     GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.start),
     GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.expire_withdraw),
-    GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.expire_spend),
+    GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.expire_deposit),
     GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.expire_legal),
     TALER_PQ_query_param_amount_nbo (&issue->properties.value),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fee_withdraw),
@@ -1478,8 +1461,8 @@ postgres_get_denomination_info (void *cls,
                                               &issue->properties.start),
       GNUNET_PQ_result_spec_absolute_time_nbo ("expire_withdraw",
                                               &issue->properties.expire_withdraw),
-      GNUNET_PQ_result_spec_absolute_time_nbo ("expire_spend",
-                                              &issue->properties.expire_spend),
+      GNUNET_PQ_result_spec_absolute_time_nbo ("expire_deposit",
+                                              &issue->properties.expire_deposit),
       GNUNET_PQ_result_spec_absolute_time_nbo ("expire_legal",
                                               &issue->properties.expire_legal),
       TALER_PQ_result_spec_amount_nbo ("coin",
@@ -4243,7 +4226,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin = GNUNET_new (struct TALER_EXCHANGEDB_Plugin);
   plugin->cls = pg;
   plugin->get_session = &postgres_get_session;
-  plugin->drop_temporary = &postgres_drop_temporary;
+  plugin->drop_tables = &postgres_drop_tables;
   plugin->create_tables = &postgres_create_tables;
   plugin->start = &postgres_start;
   plugin->commit = &postgres_commit;

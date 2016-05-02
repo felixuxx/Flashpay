@@ -467,7 +467,7 @@
 
 /**
  * Get informations about a refresh session
- * 
+ *
  * @param _label the label of the command
  * @param _label_hash the label of the hash to search
  */
@@ -933,8 +933,8 @@ union PERF_TALER_EXCHANGEDB_CMD_Details
      */
     const char *label_denom;
     unsigned int index_denom;
-  } insert_denomination;  
-  
+  } insert_denomination;
+
   /**
    * Extra data requiered by the #PERF_TALER_EXCHANGEDB_CMD_GET_DENOMINATION command
    */
@@ -1283,13 +1283,14 @@ struct PERF_TALER_EXCHANGEDB_Cmd
  * @param init the commands to use for the database initialisation,
  * if #NULL the standard initialization is used
  * @param benchmark the commands for the benchmark
- * @return GNUNET_OK upon success; GNUNET_SYSERR upon failure
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure,
+ *         #GNUNET_NO if we failed to init the database
  */
 int
 PERF_TALER_EXCHANGEDB_run_benchmark (const char *benchmark_name,
-                                 const char *configuration_file,
-                                 struct PERF_TALER_EXCHANGEDB_Cmd *init,
-                                 struct PERF_TALER_EXCHANGEDB_Cmd *benchmark);
+                                     const char *configuration_file,
+                                     struct PERF_TALER_EXCHANGEDB_Cmd *init,
+                                     struct PERF_TALER_EXCHANGEDB_Cmd *benchmark);
 
 
 /**
@@ -1300,9 +1301,8 @@ PERF_TALER_EXCHANGEDB_run_benchmark (const char *benchmark_name,
  * @param cmd the commands to run
  */
 int
-PERF_TALER_EXCHANGEDB_interpret(
-  struct TALER_EXCHANGEDB_Plugin *db_plugin,
-  struct PERF_TALER_EXCHANGEDB_Cmd cmd[]);
+PERF_TALER_EXCHANGEDB_interpret(struct TALER_EXCHANGEDB_Plugin *db_plugin,
+                                struct PERF_TALER_EXCHANGEDB_Cmd cmd[]);
 
 
 /**

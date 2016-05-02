@@ -73,8 +73,7 @@ run_transaction (const struct TALER_ReservePublicKeyP *reserve_pub,
   int ret;
   struct TALER_EXCHANGEDB_Session *session;
 
-  session = plugin->get_session (plugin->cls,
-                                 GNUNET_NO);
+  session = plugin->get_session (plugin->cls);
   if (NULL == session)
   {
     fprintf (stderr,

@@ -56,7 +56,6 @@ libtalerexchangedb_la_LDFLAGS = \
 
 
 check_PROGRAMS = \
-  test-exchangedb-deposits \
   test-exchangedb-keyio \
   test-exchangedb-postgres \
   test-perf-taler-exchangedb \
@@ -65,17 +64,8 @@ check_PROGRAMS = \
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 TESTS = \
   test-exchangedb-postgres \
-  test-perf-taler-exchangedb
-
-test_exchangedb_deposits_SOURCES = \
-  test_exchangedb_deposits.c
-test_exchangedb_deposits_LDADD = \
-  libtalerexchangedb.la \
-  $(top_srcdir)/src/util/libtalerutil.la \
-  $(top_srcdir)/src/pq/libtalerpq.la \
-  -lgnunetutil \
-  -ljansson \
-  -lpq
+  test-perf-taler-exchangedb \
+  test-exchangedb-keyio
 
 test_exchangedb_keyio_SOURCES = \
   test_exchangedb_keyio.c

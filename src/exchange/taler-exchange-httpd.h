@@ -44,11 +44,6 @@ extern int TMH_exchange_connection_close;
 extern struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
- * Are we running in test mode?
- */
-extern int TMH_test_mode;
-
-/**
  * Main directory with exchange data.
  */
 extern char *TMH_exchange_directory;

@@ -160,8 +160,7 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   int ret;
 
-  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                  TMH_test_mode)))
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
@@ -278,8 +277,7 @@ TMH_DB_execute_reserve_status (struct MHD_Connection *connection,
   struct TALER_EXCHANGEDB_ReserveHistory *rh;
   int res;
 
-  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                  TMH_test_mode)))
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
@@ -524,8 +522,7 @@ TMH_DB_execute_reserve_withdraw (struct MHD_Connection *connection,
   GNUNET_CRYPTO_hash (blinded_msg,
                       blinded_msg_len,
                       &h_blind);
-  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                  TMH_test_mode)))
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
@@ -725,8 +722,7 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
   int res;
   unsigned int i;
 
-  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                  TMH_test_mode)))
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
@@ -1237,8 +1233,7 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
   unsigned int j;
   unsigned int off;
 
-  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                  TMH_test_mode)))
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
@@ -1465,8 +1460,7 @@ TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
   int res;
   unsigned int i;
 
-  if (NULL == (ctx.session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                      TMH_test_mode)))
+  if (NULL == (ctx.session = TMH_plugin->get_session (TMH_plugin->cls)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
@@ -1528,8 +1522,7 @@ TMH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
   struct TALER_EXCHANGEDB_Session *session;
   int ret;
 
-  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                  TMH_test_mode)))
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
@@ -1713,8 +1706,7 @@ TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
   struct TALER_EXCHANGEDB_Session *session;
   struct TMH_WireDepositDetail *wdd;
 
-  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                  TMH_test_mode)))
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);
@@ -1879,8 +1871,7 @@ TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
   struct DepositWtidContext ctx;
   struct TALER_EXCHANGEDB_Session *session;
 
-  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls,
-                                                  TMH_test_mode)))
+  if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls)))
   {
     GNUNET_break (0);
     return TMH_RESPONSE_reply_internal_db_error (connection);

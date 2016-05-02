@@ -35,6 +35,7 @@
 #define NB_WITHDRAW_INIT  1
 #define NB_WITHDRAW_SAVE  1
 
+
 /**
  * Allocate, copies and free all the data used in the interpreter
  * Used to check for memory leaks
@@ -42,7 +43,8 @@
 static void
 test_allocate ()
 {
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki, *dki_copy;
+  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
+  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki_copy;
   struct PERF_TALER_EXCHANGEDB_Reserve *reserve, *reserve_copy;
   struct PERF_TALER_EXCHANGEDB_Coin *coin, *coin_copy;
   struct TALER_EXCHANGEDB_Deposit *deposit, *deposit_copy;
@@ -67,6 +69,7 @@ test_allocate ()
   PERF_TALER_EXCHANGEDB_deposit_free (deposit);
   PERF_TALER_EXCHANGEDB_deposit_free (deposit_copy);
 }
+
 
 /**
  * Runs the performances tests for the exchange database
@@ -170,13 +173,15 @@ main (int argc, char ** argv)
     // End of deposit initialization
     PERF_TALER_EXCHANGEDB_INIT_CMD_END ("end"),
   };
-  
+
   test_allocate ();
   ret = PERF_TALER_EXCHANGEDB_run_benchmark ("test-perf-taler-exchangedb",
-                                         "./test-exchange-db-postgres.conf",
-                                         init,
-                                         benchmark);
+                                             "./test-exchange-db-postgres.conf",
+                                             init,
+                                             benchmark);
   if (GNUNET_SYSERR == ret)
     return 1;
+  if (GNUNET_NO == ret)
+    return 77; /* testcase skipped */
   return 0;
 }

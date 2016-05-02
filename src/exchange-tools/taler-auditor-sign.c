@@ -118,7 +118,7 @@ print_dk (const struct TALER_DenominationKeyValidityPS *dk)
            GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dk->expire_withdraw)));
   fprintf (stdout,
            "Deposit end time: %s\n",
-           GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dk->expire_spend)));
+           GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dk->expire_deposit)));
   fprintf (stdout,
            "Legal dispute end time: %s\n",
            GNUNET_STRINGS_absolute_time_to_string (GNUNET_TIME_absolute_ntoh (dk->expire_legal)));
@@ -320,7 +320,7 @@ main (int argc,
       print_dk (dk);
     kv.start = dk->start;
     kv.expire_withdraw = dk->expire_withdraw;
-    kv.expire_spend = dk->expire_spend;
+    kv.expire_deposit = dk->expire_deposit;
     kv.expire_legal = dk->expire_legal;
     kv.value = dk->value;
     kv.fee_withdraw = dk->fee_withdraw;

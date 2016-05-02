@@ -137,7 +137,7 @@ create_denom_key_pair (unsigned int size,
   dki.issue.properties.expire_withdraw = GNUNET_TIME_absolute_hton
       (GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
                                  GNUNET_TIME_UNIT_HOURS));
-  dki.issue.properties.expire_spend = GNUNET_TIME_absolute_hton
+  dki.issue.properties.expire_deposit = GNUNET_TIME_absolute_hton
       (GNUNET_TIME_absolute_add
        (GNUNET_TIME_absolute_get (),
         GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 2)));
@@ -172,9 +172,10 @@ static struct TALER_Amount fee_refresh;
 static struct TALER_Amount fee_refund;
 static struct TALER_Amount amount_with_fee;
 
+
 static void
-free_refresh_commit_coins_array(struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins,
-                                unsigned int size)
+free_refresh_commit_coins_array (struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins,
+                                 unsigned int size)
 {
   unsigned int cnt;
   struct TALER_EXCHANGEDB_RefreshCommitCoin *ccoin;
@@ -281,6 +282,7 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
     free_refresh_commit_coins_array (commit_coins, MELT_NEW_COINS);
   return ret;
 }
+
 
 /**
  * Function to test melting of coins as part of a refresh session
@@ -658,21 +660,30 @@ run (void *cls)
   if (NULL ==
       (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
   {
-    result = 1;
+    result = 77;
     return;
   }
-  if (GNUNET_OK !=
-      plugin->create_tables (plugin->cls,
-                             GNUNET_YES))
+  if (NULL !=
+      (session = plugin->get_session (plugin->cls)))
   {
-    result = 2;
+    if (GNUNET_OK !=
+        plugin->drop_tables (plugin->cls,
+                             session))
+    {
+      result = 77;
+      goto drop;
+    }
+  }
+  if (GNUNET_OK !=
+      plugin->create_tables (plugin->cls))
+  {
+    result = 77;
     goto drop;
   }
   if (NULL ==
-      (session = plugin->get_session (plugin->cls,
-                                      GNUNET_YES)))
+      (session = plugin->get_session (plugin->cls)))
   {
-    result = 3;
+    result = 77;
     goto drop;
   }
   RND_BLK (&reserve_pub);
@@ -932,8 +943,8 @@ run (void *cls)
   rh = NULL;
   if (NULL != session)
     GNUNET_break (GNUNET_OK ==
-                  plugin->drop_temporary (plugin->cls,
-                                          session));
+                  plugin->drop_tables (plugin->cls,
+                                       session));
   if (NULL != dkp)
     destroy_denom_key_pair (dkp);
   if (NULL != cbc.sig.rsa_signature)

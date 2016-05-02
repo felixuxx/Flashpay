@@ -285,8 +285,8 @@ shutdown_action (void *cls)
     GNUNET_OS_process_destroy (aggregator_proc);
     aggregator_proc = NULL;
   }
-  plugin->drop_temporary (plugin->cls,
-                          session);
+  plugin->drop_tables (plugin->cls,
+                       session);
   TALER_EXCHANGEDB_plugin_unload (plugin);
   plugin = NULL;
 }
@@ -304,11 +304,9 @@ maint_child_death (void *cls)
   const struct GNUNET_DISK_FileHandle *pr;
   char c[16];
   struct State *state;
-  const struct GNUNET_SCHEDULER_TaskContext *tc;
 
   child_death_task = NULL;
   pr = GNUNET_DISK_pipe_handle (sigpipe, GNUNET_DISK_PIPE_END_READ);
-  tc = GNUNET_SCHEDULER_get_task_context ();
   GNUNET_break (0 < GNUNET_DISK_file_read (pr, &c, sizeof (c)));
   GNUNET_OS_process_wait (aggregator_proc);
   GNUNET_OS_process_destroy (aggregator_proc);
@@ -1108,8 +1106,7 @@ run (void *cls)
 
   plugin = TALER_EXCHANGEDB_plugin_load (cfg);
   if (GNUNET_OK !=
-      plugin->create_tables (plugin->cls,
-                             GNUNET_YES))
+      plugin->create_tables (plugin->cls))
   {
     GNUNET_break (0);
     TALER_EXCHANGEDB_plugin_unload (plugin);
@@ -1117,8 +1114,7 @@ run (void *cls)
     result = 77;
     return;
   }
-  session = plugin->get_session (plugin->cls,
-                                 GNUNET_YES);
+  session = plugin->get_session (plugin->cls);
   GNUNET_assert (NULL != session);
   fake_issue (&issue);
   dpk.rsa_public_key = coin_pub;
