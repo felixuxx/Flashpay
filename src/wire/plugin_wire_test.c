@@ -191,11 +191,13 @@ context_task (void *cls)
 /**
  * Run the bank task now.
  *
- * @param tc context for which we should initiate running the task
+ * @param cls context for which we should initiate running the task
  */
 static void
-run_bt (struct TestClosure *tc)
+run_bt (void *cls)
 {
+  struct TestClosure *tc = cls;
+
   if (NULL != tc->bt)
     GNUNET_SCHEDULER_cancel (tc->bt);
   tc->bt = GNUNET_SCHEDULER_add_now (&context_task,
@@ -751,7 +753,6 @@ test_execute_wire_transfer (void *cls,
     GNUNET_free (eh);
     return NULL;
   }
-  run_bt (tc);
   return eh;
 }
 
@@ -831,7 +832,8 @@ libtaler_plugin_wire_test_init (void *cls)
       GNUNET_free (tc);
       return NULL;
     }
-    tc->ctx = GNUNET_CURL_init ();
+    tc->ctx = GNUNET_CURL_init (&run_bt,
+                                tc);
     if (NULL == tc->ctx)
     {
       GNUNET_break (0);

@@ -304,11 +304,9 @@ maint_child_death (void *cls)
   const struct GNUNET_DISK_FileHandle *pr;
   char c[16];
   struct State *state;
-  const struct GNUNET_SCHEDULER_TaskContext *tc;
 
   child_death_task = NULL;
   pr = GNUNET_DISK_pipe_handle (sigpipe, GNUNET_DISK_PIPE_END_READ);
-  tc = GNUNET_SCHEDULER_get_task_context ();
   GNUNET_break (0 < GNUNET_DISK_file_read (pr, &c, sizeof (c)));
   GNUNET_OS_process_wait (aggregator_proc);
   GNUNET_OS_process_destroy (aggregator_proc);

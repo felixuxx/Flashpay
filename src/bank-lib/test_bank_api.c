@@ -171,9 +171,11 @@ context_task (void *cls);
 
 /**
  * Run the context task, the working set has changed.
+ *
+ * @param cls NULL
  */
 static void
-trigger_context_task ()
+trigger_context_task (void *cls)
 {
   GNUNET_SCHEDULER_cancel (ctx_task);
   ctx_task = GNUNET_SCHEDULER_add_now (&context_task,
@@ -333,7 +335,6 @@ interpreter_run (void *cls)
       fail (is);
       return;
     }
-    trigger_context_task ();
     return;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -486,7 +487,8 @@ run (void *cls)
   is = GNUNET_new (struct InterpreterState);
   is->commands = commands;
 
-  ctx = GNUNET_CURL_init ();
+  ctx = GNUNET_CURL_init (&trigger_context_task,
+                          NULL);
   GNUNET_assert (NULL != ctx);
   ctx_task = GNUNET_SCHEDULER_add_now (&context_task,
                                        ctx);
