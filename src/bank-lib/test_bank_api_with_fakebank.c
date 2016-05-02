@@ -51,7 +51,7 @@ run (void *cls)
   };
 
   TBI_run_interpreter (resultp,
-                       8080,
+                       GNUNET_YES,
                        commands);
 }
 

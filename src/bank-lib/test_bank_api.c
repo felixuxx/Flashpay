@@ -51,7 +51,7 @@ run (void *cls)
   };
 
   TBI_run_interpreter (resultp,
-                       0 /* we use the "real" taler bank */,
+                       GNUNET_NO /* we use the "real" taler bank */,
                        commands);
 }
 

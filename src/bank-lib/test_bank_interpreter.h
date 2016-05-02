@@ -116,12 +116,12 @@ struct TBI_Command
  * Entry point to the interpeter.
  *
  * @param resultp where to store the final result
- * @param bank_port on which port to launch the bank, 0 for none
+ * @param run_bank #GNUNET_YES to run the fakebank
  * @param commands list of commands to run
  */
 void
 TBI_run_interpreter (int *resultp,
-                     uint16_t bank_port,
+                     int run_bank,
                      struct TBI_Command *commands);
 
 #endif
