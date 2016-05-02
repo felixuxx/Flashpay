@@ -26,7 +26,7 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include <microhttpd.h>
 #include "test_bank_interpreter.h"
-
+#include "fakebank.h"
 
 
 /**
@@ -68,6 +68,11 @@ struct InterpreterState
    * Where to store the final result.
    */
   int *resultp;
+
+  /**
+   * Fakebank, or NULL if we are not using the fakebank.
+   */
+  struct FAKEBANK_Handle *fakebank;
 
   /**
    * Instruction pointer.  Tells #interpreter_run() which
@@ -154,11 +159,11 @@ add_incoming_cb (void *cls,
   if (cmd->expected_response_code != http_status)
   {
     GNUNET_break (0);
+    fprintf (stderr,
+             "Unexpected response code %u:\n",
+             http_status);
     if (NULL != json)
     {
-      fprintf (stderr,
-               "Unexpected response code %u:\n",
-               http_status);
       json_dumpf (json, stderr, 0);
       fprintf (stderr, "\n");
     }
@@ -309,6 +314,11 @@ do_shutdown (void *cls)
     GNUNET_SCHEDULER_cancel (is->task);
     is->task = NULL;
   }
+  if (NULL != is->fakebank)
+  {
+    FAKEBANK_stop (is->fakebank);
+    is->fakebank = NULL;
+  }
   GNUNET_CURL_fini (is->ctx);
   is->ctx = NULL;
   GNUNET_CURL_gnunet_rc_destroy (is->rc);
@@ -331,6 +341,8 @@ TBI_run_interpreter (int *resultp,
   struct InterpreterState *is;
 
   is = GNUNET_new (struct InterpreterState);
+  if (0 != bank_port)
+    is->fakebank = FAKEBANK_start (bank_port);
   is->resultp = resultp;
   is->commands = commands;
   is->ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,

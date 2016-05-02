@@ -47,7 +47,8 @@ endif
 endif
 
 check_PROGRAMS = \
-  test_bank_api
+  test_bank_api \
+  test_bank_api_with_fakebank
 
 TESTS = \
   $(check_PROGRAMS)
@@ -57,6 +58,19 @@ test_bank_api_SOURCES = \
   test_bank_api.c
 test_bank_api_LDADD = \
   libtalerbank.la \
+  libfakebank.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson
+
+
+test_bank_api_with_fakebank_SOURCES = \
+  test_bank_interpreter.c test_bank_interpreter.h \
+  test_bank_api_with_fakebank.c
+test_bank_api_with_fakebank_LDADD = \
+  libtalerbank.la \
+  libfakebank.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
   -lgnunetutil \
