@@ -33,9 +33,9 @@
 static struct GNUNET_CURL_Context *ctx;
 
 /**
- * Task run on shutdown.
+ * Task run on timeout.
  */
-static struct GNUNET_SCHEDULER_Task *shutdown_task;
+static struct GNUNET_SCHEDULER_Task *timeout_task;
 
 /**
  * Task that runs the main event loop.
@@ -349,6 +349,19 @@ interpreter_run (void *cls)
 
 
 /**
+ * Function run on timeout.
+ *
+ * @param cls NULL
+ */
+static void
+do_timeout (void *cls)
+{
+  timeout_task = NULL;
+  GNUNET_SCHEDULER_shutdown ();
+}
+
+
+/**
  * Function run when the test terminates (good or bad).
  * Cleans up our state.
  *
@@ -361,7 +374,12 @@ do_shutdown (void *cls)
   struct Command *cmd;
   unsigned int i;
 
-  shutdown_task = NULL;
+  if (NULL != timeout_task)
+  {
+    GNUNET_SCHEDULER_cancel (timeout_task);
+    timeout_task = NULL;
+  }
+
   for (i=0;OC_END != (cmd = &is->commands[i])->oc;i++)
   {
     switch (cmd->oc)
@@ -494,10 +512,11 @@ run (void *cls)
                                        ctx);
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
                                        is);
-  shutdown_task
+  timeout_task
     = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_relative_multiply
                                     (GNUNET_TIME_UNIT_SECONDS, 150),
-                                    &do_shutdown, is);
+                                    &do_timeout, is);
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown, is);
 }
 
 
