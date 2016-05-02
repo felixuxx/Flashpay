@@ -155,7 +155,7 @@ denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
                "stamp_expire_withdraw",
                GNUNET_JSON_from_time_abs (GNUNET_TIME_absolute_ntoh (dki->properties.expire_withdraw)),
                "stamp_expire_deposit",
-               GNUNET_JSON_from_time_abs (GNUNET_TIME_absolute_ntoh (dki->properties.expire_spend)),
+               GNUNET_JSON_from_time_abs (GNUNET_TIME_absolute_ntoh (dki->properties.expire_deposit)),
                "stamp_expire_legal",
                GNUNET_JSON_from_time_abs (GNUNET_TIME_absolute_ntoh (dki->properties.expire_legal)),
                "denom_pub",
@@ -236,7 +236,7 @@ reload_keys_denom_iter (void *cls,
     return GNUNET_OK;
   }
   now = GNUNET_TIME_absolute_get ();
-  if (GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_spend).abs_value_us <
+  if (GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_deposit).abs_value_us <
       now.abs_value_us)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -749,7 +749,7 @@ TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
     break;
   case TMH_KS_DKU_DEPOSIT:
     if (now.abs_value_us >
-	GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_spend).abs_value_us)
+	GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_deposit).abs_value_us)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 		  "Not returning DKI for %s, as time to spend coin has passed\n",

@@ -659,18 +659,18 @@ struct TALER_DenominationKeyValidityPS
    * exchange will refuse transactions involving this key as it will
    * "drop" the table with double-spending information (shortly after)
    * this time.  Note that wallets should refresh coins significantly
-   * before this time to be on the safe side.  @e expire_spend must be
+   * before this time to be on the safe side.  @e expire_deposit must be
    * significantly larger than @e expire_withdraw (by months or even
    * years).
    */
-  struct GNUNET_TIME_AbsoluteNBO expire_spend;
+  struct GNUNET_TIME_AbsoluteNBO expire_deposit;
 
   /**
    * When do signatures with this denomination key become invalid?
    * After this point, these signatures cannot be used in (legal)
    * disputes anymore, as the Exchange is then allowed to destroy its side
    * of the evidence.  @e expire_legal is expected to be significantly
-   * larger than @e expire_spend (by a year or more).
+   * larger than @e expire_deposit (by a year or more).
    */
   struct GNUNET_TIME_AbsoluteNBO expire_legal;
 
@@ -762,18 +762,18 @@ struct TALER_ExchangeKeyValidityPS
    * exchange will refuse transactions involving this key as it will
    * "drop" the table with double-spending information (shortly after)
    * this time.  Note that wallets should refresh coins significantly
-   * before this time to be on the safe side.  @e expire_spend must be
+   * before this time to be on the safe side.  @e expire_deposit must be
    * significantly larger than @e expire_withdraw (by months or even
    * years).
    */
-  struct GNUNET_TIME_AbsoluteNBO expire_spend;
+  struct GNUNET_TIME_AbsoluteNBO expire_deposit;
 
   /**
    * When do signatures with this denomination key become invalid?
    * After this point, these signatures cannot be used in (legal)
    * disputes anymore, as the Exchange is then allowed to destroy its side
    * of the evidence.  @e expire_legal is expected to be significantly
-   * larger than @e expire_spend (by a year or more).
+   * larger than @e expire_deposit (by a year or more).
    */
   struct GNUNET_TIME_AbsoluteNBO expire_legal;
 

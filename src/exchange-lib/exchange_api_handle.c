@@ -247,7 +247,7 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
 {
   struct GNUNET_TIME_Absolute valid_from;
   struct GNUNET_TIME_Absolute withdraw_valid_until;
-  struct GNUNET_TIME_Absolute deposit_valid_until;
+  struct GNUNET_TIME_Absolute expire_deposit;
   struct GNUNET_TIME_Absolute expire_legal;
   struct TALER_Amount value;
   struct TALER_Amount fee_withdraw;
@@ -262,7 +262,7 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
     GNUNET_JSON_spec_fixed_auto ("master_sig",
 				 &sig),
     GNUNET_JSON_spec_absolute_time ("stamp_expire_deposit",
-				    &deposit_valid_until),
+				    &expire_deposit),
     GNUNET_JSON_spec_absolute_time ("stamp_expire_withdraw",
 				    &withdraw_valid_until),
     GNUNET_JSON_spec_absolute_time ("stamp_start",
@@ -302,7 +302,7 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
   denom_key_issue.master = *master_key;
   denom_key_issue.start = GNUNET_TIME_absolute_hton (valid_from);
   denom_key_issue.expire_withdraw = GNUNET_TIME_absolute_hton (withdraw_valid_until);
-  denom_key_issue.expire_spend = GNUNET_TIME_absolute_hton (deposit_valid_until);
+  denom_key_issue.expire_deposit = GNUNET_TIME_absolute_hton (expire_deposit);
   denom_key_issue.expire_legal = GNUNET_TIME_absolute_hton (expire_legal);
   TALER_amount_hton (&denom_key_issue.value,
                      &value);
@@ -326,7 +326,7 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
   denom_key->h_key = denom_key_issue.denom_hash;
   denom_key->valid_from = valid_from;
   denom_key->withdraw_valid_until = withdraw_valid_until;
-  denom_key->deposit_valid_until = deposit_valid_until;
+  denom_key->expire_deposit = expire_deposit;
   denom_key->expire_legal = expire_legal;
   denom_key->value = value;
   denom_key->fee_withdraw = fee_withdraw;
@@ -431,7 +431,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     }
     kv.start = GNUNET_TIME_absolute_hton (dk->valid_from);
     kv.expire_withdraw = GNUNET_TIME_absolute_hton (dk->withdraw_valid_until);
-    kv.expire_spend = GNUNET_TIME_absolute_hton (dk->deposit_valid_until);
+    kv.expire_deposit = GNUNET_TIME_absolute_hton (dk->expire_deposit);
     kv.expire_legal = GNUNET_TIME_absolute_hton (dk->expire_legal);
     TALER_amount_hton (&kv.value,
                        &dk->value);

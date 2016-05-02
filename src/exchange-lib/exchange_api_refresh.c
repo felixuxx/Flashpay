@@ -73,7 +73,7 @@ struct MeltedCoinP
   /**
    * Timestamp indicating when coins of this denomination become invalid.
    */
-  struct GNUNET_TIME_AbsoluteNBO deposit_valid_until;
+  struct GNUNET_TIME_AbsoluteNBO expire_deposit;
 
   /**
    * Size of the encoded public key that follows.
@@ -189,7 +189,7 @@ struct MeltedCoin
   /**
    * Timestamp indicating when coins of this denomination become invalid.
    */
-  struct GNUNET_TIME_Absolute deposit_valid_until;
+  struct GNUNET_TIME_Absolute expire_deposit;
 
   /**
    * Denomination key of the original coin.
@@ -396,7 +396,7 @@ serialize_melted_coin (const struct MeltedCoin *mc,
                      &mc->original_value);
   for (i=0;i<TALER_CNC_KAPPA;i++)
     mcp.transfer_priv[i] = mc->transfer_priv[i];
-  mcp.deposit_valid_until = GNUNET_TIME_absolute_hton (mc->deposit_valid_until);
+  mcp.expire_deposit = GNUNET_TIME_absolute_hton (mc->expire_deposit);
   mcp.pbuf_size = htons ((uint16_t) pbuf_size);
   mcp.sbuf_size = htons ((uint16_t) sbuf_size);
   memcpy (&buf[off],
@@ -478,7 +478,7 @@ deserialize_melted_coin (struct MeltedCoin *mc,
                      &mcp.original_value);
   for (i=0;i<TALER_CNC_KAPPA;i++)
     mc->transfer_priv[i] = mcp.transfer_priv[i];
-  mc->deposit_valid_until = GNUNET_TIME_absolute_ntoh (mcp.deposit_valid_until);
+  mc->expire_deposit = GNUNET_TIME_absolute_ntoh (mcp.expire_deposit);
   return off;
 }
 
@@ -891,8 +891,8 @@ TALER_EXCHANGE_refresh_prepare (unsigned int num_melts,
       md.melted_coins[i].transfer_priv[j].ecdhe_priv = *tpk;
       GNUNET_free (tpk);
     }
-    md.melted_coins[i].deposit_valid_until
-      = melt_pks[i].deposit_valid_until;
+    md.melted_coins[i].expire_deposit
+      = melt_pks[i].expire_deposit;
     md.melted_coins[i].pub_key.rsa_public_key
       = GNUNET_CRYPTO_rsa_public_key_dup (melt_pks[i].key.rsa_public_key);
     md.melted_coins[i].sig.rsa_signature

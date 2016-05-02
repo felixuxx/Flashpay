@@ -258,7 +258,7 @@ postgres_create_tables (void *cls,
            ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
            ",valid_from INT8 NOT NULL"
            ",expire_withdraw INT8 NOT NULL"
-           ",expire_spend INT8 NOT NULL"
+           ",expire_deposit INT8 NOT NULL"
            ",expire_legal INT8 NOT NULL"
            ",coin_val INT8 NOT NULL" /* value of this denom */
            ",coin_frac INT4 NOT NULL" /* fractional value of this denom */
@@ -533,7 +533,7 @@ postgres_prepare (PGconn *db_conn)
            ",master_sig"
            ",valid_from"
            ",expire_withdraw"
-           ",expire_spend"
+           ",expire_deposit"
            ",expire_legal"
            ",coin_val" /* value of this denom */
            ",coin_frac" /* fractional value of this denom */
@@ -563,7 +563,7 @@ postgres_prepare (PGconn *db_conn)
            ",master_sig"
            ",valid_from"
            ",expire_withdraw"
-           ",expire_spend"
+           ",expire_deposit"
            ",expire_legal"
            ",coin_val"  /* value of this denom */
            ",coin_frac" /* fractional value of this denom */
@@ -1382,7 +1382,7 @@ postgres_insert_denomination_info (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&issue->signature),
     GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.start),
     GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.expire_withdraw),
-    GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.expire_spend),
+    GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.expire_deposit),
     GNUNET_PQ_query_param_absolute_time_nbo (&issue->properties.expire_legal),
     TALER_PQ_query_param_amount_nbo (&issue->properties.value),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fee_withdraw),
@@ -1478,8 +1478,8 @@ postgres_get_denomination_info (void *cls,
                                               &issue->properties.start),
       GNUNET_PQ_result_spec_absolute_time_nbo ("expire_withdraw",
                                               &issue->properties.expire_withdraw),
-      GNUNET_PQ_result_spec_absolute_time_nbo ("expire_spend",
-                                              &issue->properties.expire_spend),
+      GNUNET_PQ_result_spec_absolute_time_nbo ("expire_deposit",
+                                              &issue->properties.expire_deposit),
       GNUNET_PQ_result_spec_absolute_time_nbo ("expire_legal",
                                               &issue->properties.expire_legal),
       TALER_PQ_result_spec_amount_nbo ("coin",

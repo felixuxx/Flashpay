@@ -66,7 +66,7 @@ PERF_TALER_EXCHANGEDB_denomination_init ()
                                           &properties.master.eddsa_pub);
       properties.start = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get());
       properties.expire_withdraw = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get_forever_());
-      properties.expire_spend = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get_forever_());
+      properties.expire_deposit = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get_forever_());
       properties.expire_legal = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get_forever_());
       GNUNET_assert (GNUNET_OK ==
                      TALER_string_to_amount (CURRENCY ":1.1", &amount));

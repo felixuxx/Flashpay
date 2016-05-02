@@ -137,7 +137,7 @@ create_denom_key_pair (unsigned int size,
   dki.issue.properties.expire_withdraw = GNUNET_TIME_absolute_hton
       (GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
                                  GNUNET_TIME_UNIT_HOURS));
-  dki.issue.properties.expire_spend = GNUNET_TIME_absolute_hton
+  dki.issue.properties.expire_deposit = GNUNET_TIME_absolute_hton
       (GNUNET_TIME_absolute_add
        (GNUNET_TIME_absolute_get (),
         GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 2)));

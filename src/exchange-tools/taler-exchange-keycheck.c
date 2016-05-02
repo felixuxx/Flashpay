@@ -145,7 +145,7 @@ denomkeys_iter (void *cls,
   if ( (0 != GNUNET_TIME_absolute_ntoh (dki->issue.properties.start).abs_value_us % 1000000) ||
        (0 != GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_withdraw).abs_value_us % 1000000) ||
        (0 != GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_legal).abs_value_us % 1000000) ||
-       (0 != GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_spend).abs_value_us % 1000000) )
+       (0 != GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_deposit).abs_value_us % 1000000) )
   {
     fprintf (stderr,
              "Timestamps are not multiples of a round second\n");
