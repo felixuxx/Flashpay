@@ -684,11 +684,13 @@ TMH_KS_acquire_ (const char *location)
                                                          sizeof (struct TALER_ExchangePublicKeyP)),
                       "eddsa_sig", GNUNET_JSON_from_data (&sig,
                                                          sizeof (struct TALER_ExchangeSignatureP)));
+    GNUNET_assert (NULL != keys);
     key_state->auditors_array = NULL;
     key_state->sign_keys_array = NULL;
     key_state->denom_keys_array = NULL;
     key_state->keys_json = json_dumps (keys,
                                        JSON_INDENT (2));
+    GNUNET_assert (NULL != key_state->keys_json);
     json_decref (keys);
     internal_key_state = key_state;
   }
