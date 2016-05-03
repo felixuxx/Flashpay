@@ -26,6 +26,8 @@
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
+#include "fakebank.h"
+
 
 /**
  * Is the configuration file is set to include wire format 'test'?
@@ -56,6 +58,11 @@ static struct GNUNET_CURL_RescheduleContext *rc;
  * Task run on timeout.
  */
 static struct GNUNET_SCHEDULER_Task *timeout_task;
+
+/**
+ * Handle to our fakebank.
+ */
+static struct FAKEBANK_Handle *fakebank;
 
 /**
  * Result of the testcases, #GNUNET_OK on success
@@ -127,7 +134,17 @@ enum OpCode
   /**
    * Run the aggregator to execute deposits.
    */
-  OC_RUN_AGGREGATOR
+  OC_RUN_AGGREGATOR,
+
+  /**
+   * Check that the fakebank has received a certain transaction.
+   */
+  OC_CHECK_BANK_DEPOSIT,
+
+  /**
+   * Check that the fakebank has not received any other transactions.
+   */
+  OC_CHECK_BANK_DEPOSITS_EMPTY
 
 };
 
@@ -548,6 +565,30 @@ struct Command
       struct GNUNET_OS_Process *aggregator_proc;
 
     } run_aggregator;
+
+    struct {
+
+      /**
+       * Which amount do we expect to see transferred?
+       */
+      const char *amount;
+
+      /**
+       * Which account do we expect to be debited?
+       */
+      uint64_t account_debit;
+
+      /**
+       * Which account do we expect to be credited?
+       */
+      uint64_t account_credit;
+
+      /**
+       * Set (!) to the wire transfer identifier observed.
+       */
+      struct TALER_WireTransferIdentifierRawP wtid;
+
+    } check_bank_deposit;
 
   } details;
 
@@ -1685,20 +1726,20 @@ interpreter_run (void *cls)
       }
       cmd->details.deposit.dh
         = TALER_EXCHANGE_deposit (exchange,
-                              &amount,
-                              wire_deadline,
-                              wire,
-                              &h_contract,
-                              &coin_pub,
-                              coin_pk_sig,
-                              &coin_pk->key,
-                              timestamp,
-                              cmd->details.deposit.transaction_id,
-                              &merchant_pub,
-                              refund_deadline,
-                              &coin_sig,
-                              &deposit_cb,
-                              is);
+                                  &amount,
+                                  wire_deadline,
+                                  wire,
+                                  &h_contract,
+                                  &coin_pub,
+                                  coin_pk_sig,
+                                  &coin_pk->key,
+                                  timestamp,
+                                  cmd->details.deposit.transaction_id,
+                                  &merchant_pub,
+                                  refund_deadline,
+                                  &coin_sig,
+                                  &deposit_cb,
+                                  is);
       if (NULL == cmd->details.deposit.dh)
       {
         GNUNET_break (0);
@@ -1873,7 +1914,19 @@ interpreter_run (void *cls)
       ref = find_command (is,
                           cmd->details.wire_deposits.wtid_ref);
       GNUNET_assert (NULL != ref);
-      cmd->details.wire_deposits.wtid = ref->details.deposit_wtid.wtid;
+      switch (ref->oc)
+      {
+      case OC_DEPOSIT_WTID:
+        cmd->details.wire_deposits.wtid = ref->details.deposit_wtid.wtid;
+        break;
+      case OC_CHECK_BANK_DEPOSIT:
+        cmd->details.wire_deposits.wtid = ref->details.check_bank_deposit.wtid;
+        break;
+      default:
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
     }
     cmd->details.wire_deposits.wdh
       = TALER_EXCHANGE_wire_deposits (exchange,
@@ -1964,6 +2017,45 @@ interpreter_run (void *cls)
       GNUNET_OS_process_wait (cmd->details.run_aggregator.aggregator_proc);
       GNUNET_OS_process_destroy (cmd->details.run_aggregator.aggregator_proc);
       cmd->details.run_aggregator.aggregator_proc = NULL;
+      next_command (is);
+      return;
+    }
+  case OC_CHECK_BANK_DEPOSIT:
+    {
+      if (GNUNET_OK !=
+          TALER_string_to_amount (cmd->details.check_bank_deposit.amount,
+                                  &amount))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failed to parse amount `%s' at %u\n",
+                    cmd->details.reserve_withdraw.amount,
+                    is->ip);
+        fail (is);
+        return;
+      }
+      if (GNUNET_OK !=
+          FAKEBANK_check (fakebank,
+                          &amount,
+                          cmd->details.check_bank_deposit.account_debit,
+                          cmd->details.check_bank_deposit.account_credit,
+                          &cmd->details.check_bank_deposit.wtid))
+      {
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
+      next_command (is);
+      return;
+    }
+  case OC_CHECK_BANK_DEPOSITS_EMPTY:
+    {
+      if (GNUNET_OK !=
+          FAKEBANK_check_empty (fakebank))
+      {
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
       next_command (is);
       return;
     }
@@ -2159,6 +2251,10 @@ do_shutdown (void *cls)
         cmd->details.run_aggregator.aggregator_proc = NULL;
       }
       break;
+    case OC_CHECK_BANK_DEPOSIT:
+      break;
+    case OC_CHECK_BANK_DEPOSITS_EMPTY:
+      break;
     default:
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Unknown instruction %d at %u (%s)\n",
@@ -2174,6 +2270,11 @@ do_shutdown (void *cls)
     is->task = NULL;
   }
   GNUNET_free (is);
+  if (NULL != fakebank)
+  {
+    FAKEBANK_stop (fakebank);
+    fakebank = NULL;
+  }
   if (NULL != exchange)
   {
     TALER_EXCHANGE_disconnect (exchange);
@@ -2465,6 +2566,9 @@ run (void *cls)
     { .oc = OC_RUN_AGGREGATOR,
       .label = "run-aggregator" },
 
+    { .oc = OC_CHECK_BANK_DEPOSITS_EMPTY,
+      .label = "check_bank_empty" },
+
     /* TODO: trigger aggregation logic and then check the
        cases where tracking succeeds! */
 
@@ -2481,8 +2585,9 @@ run (void *cls)
 
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
                           &rc);
-  rc = GNUNET_CURL_gnunet_rc_create (ctx);
   GNUNET_assert (NULL != ctx);
+  rc = GNUNET_CURL_gnunet_rc_create (ctx);
+  fakebank = FAKEBANK_start (8082);
   exchange = TALER_EXCHANGE_connect (ctx,
                                      "http://localhost:8081",
                                      &cert_cb, is,

@@ -1,5 +1,5 @@
 # This Makefile.am is in the public domain
-AM_CPPFLAGS = -I$(top_srcdir)/src/include
+AM_CPPFLAGS = -I$(top_srcdir)/src/include -I$(top_srcdir)/src/bank-lib
 
 if USE_COVERAGE
   AM_CFLAGS = --coverage -O0
@@ -55,6 +55,7 @@ test_exchange_api_SOURCES = \
 test_exchange_api_LDADD = \
   libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/bank-lib/libfakebank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
