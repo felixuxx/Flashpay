@@ -418,7 +418,7 @@ struct TALER_RefundRequestPS
 
   /**
    * The coin's public key.  This is the value that must have been
-   * signed (blindly) by the Exchange.  
+   * signed (blindly) by the Exchange.
    */
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
@@ -912,7 +912,7 @@ struct TALER_DepositTrackPS
 
 /**
  * @brief Format internally used for packing the detailed information
- * to generate the signature for /wire/deposit signatures.
+ * to generate the signature for /wire/deposits signatures.
  */
 struct TALER_WireDepositDetailP
 {

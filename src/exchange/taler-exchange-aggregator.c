@@ -29,6 +29,35 @@
 #include "taler_wire_lib.h"
 
 
+
+
+/**
+ * Information we keep for each loaded wire plugin.
+ */
+struct WirePlugin
+{
+  /**
+   * Plugins are kept in a DLL.
+   */
+  struct WirePlugin *next;
+
+  /**
+   * Plugins are kept in a DLL.
+   */
+  struct WirePlugin *prev;
+
+  /**
+   * Handle to the plugin.
+   */
+  struct TALER_WIRE_Plugin *wire_plugin;
+
+  /**
+   * Name of the plugin.
+   */
+  char *type;
+};
+
+
 /**
  * Data we keep to #run_transfers().  There is at most
  * one of these around at any given point in time.
@@ -45,6 +74,11 @@ struct WirePrepareData
    * Wire execution handle.
    */
   struct TALER_WIRE_ExecuteHandle *eh;
+
+  /**
+   * Wire plugin used for this preparation.
+   */
+  struct WirePlugin *wp;
 
   /**
    * Row ID of the transfer.
@@ -96,6 +130,11 @@ struct AggregationUnit
   json_t *wire;
 
   /**
+   * Wire plugin to be used for the preparation.
+   */
+  struct WirePlugin *wp;
+
+  /**
    * Database session for all of our transactions.
    */
   struct TALER_EXCHANGEDB_Session *session;
@@ -130,11 +169,6 @@ struct AggregationUnit
 static char *exchange_currency_string;
 
 /**
- * Which wireformat should be supported by this aggregator?
- */
-static char *exchange_wireformat;
-
-/**
  * The exchange's configuration (global)
  */
 static struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -145,9 +179,14 @@ static struct GNUNET_CONFIGURATION_Handle *cfg;
 static struct TALER_EXCHANGEDB_Plugin *db_plugin;
 
 /**
- * Our wire plugin.
+ * Head of list of loaded wire plugins.
  */
-static struct TALER_WIRE_Plugin *wire_plugin;
+static struct WirePlugin *wp_head;
+
+/**
+ * Tail of list of loaded wire plugins.
+ */
+static struct WirePlugin *wp_tail;
 
 /**
  * Next task to run, if any.
@@ -190,6 +229,69 @@ static unsigned int aggregation_limit = TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT
 
 
 /**
+ * Extract wire plugin type from @a wire address
+ *
+ * @param wire a wire address
+ * @return NULL if @a wire is ill-formed
+ */
+const char *
+extract_type (const json_t *wire)
+{
+  const char *type;
+  json_t *t;
+
+  t = json_object_get (wire, "type");
+  if (NULL == t)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  type = json_string_value (t);
+  if (NULL == type)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  return type;
+}
+
+
+/**
+ * Find the wire plugin for the given wire address.
+ *
+ * @param type wire plugin type we need a plugin for
+ * @return NULL on error
+ */
+static struct WirePlugin *
+find_plugin (const char *type)
+{
+  struct WirePlugin *wp;
+
+  if (NULL == type)
+    return NULL;
+  for (wp = wp_head; NULL != wp; wp = wp->next)
+    if (0 == strcmp (type,
+                     wp->type))
+      return wp;
+  wp = GNUNET_new (struct WirePlugin);
+  wp->wire_plugin = TALER_WIRE_plugin_load (cfg,
+                                            type);
+  if (NULL == wp->wire_plugin)
+  {
+    fprintf (stderr,
+             "Failed to load wire plugin for `%s'\n",
+             type);
+    GNUNET_free (wp);
+    return NULL;
+  }
+  wp->type = GNUNET_strdup (type);
+  GNUNET_CONTAINER_DLL_insert (wp_head,
+                               wp_tail,
+                               wp);
+  return wp;
+}
+
+/**
  * We're being aborted with CTRL-C (or SIGTERM). Shut down.
  *
  * @param cls closure
@@ -197,6 +299,8 @@ static unsigned int aggregation_limit = TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT
 static void
 shutdown_task (void *cls)
 {
+  struct WirePlugin *wp;
+
   if (NULL != task)
   {
     GNUNET_SCHEDULER_cancel (task);
@@ -206,8 +310,8 @@ shutdown_task (void *cls)
   {
     if (NULL != wpd->eh)
     {
-      wire_plugin->execute_wire_transfer_cancel (wire_plugin->cls,
-                                                 wpd->eh);
+      wpd->wp->wire_plugin->execute_wire_transfer_cancel (wpd->wp->wire_plugin->cls,
+                                                          wpd->eh);
       wpd->eh = NULL;
     }
     db_plugin->rollback (db_plugin->cls,
@@ -219,8 +323,8 @@ shutdown_task (void *cls)
   {
     if (NULL != au->ph)
     {
-      wire_plugin->prepare_wire_transfer_cancel (wire_plugin->cls,
-                                                 au->ph);
+      au->wp->wire_plugin->prepare_wire_transfer_cancel (au->wp->wire_plugin->cls,
+                                                         au->ph);
       au->ph = NULL;
     }
     db_plugin->rollback (db_plugin->cls,
@@ -232,7 +336,15 @@ shutdown_task (void *cls)
     GNUNET_free (au);
   }
   TALER_EXCHANGEDB_plugin_unload (db_plugin);
-  TALER_WIRE_plugin_unload (wire_plugin);
+  while (NULL != (wp = wp_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (wp_head,
+                                 wp_tail,
+                                 wp);
+    TALER_WIRE_plugin_unload (wp->wire_plugin);
+    GNUNET_free (wp->type);
+    GNUNET_free (wp);
+  }
   GNUNET_CONFIGURATION_destroy (cfg);
   cfg = NULL;
 }
@@ -266,22 +378,6 @@ exchange_serve_process_config ()
              (unsigned int) TALER_CURRENCY_LEN);
     return GNUNET_SYSERR;
   }
-  if (NULL != exchange_wireformat)
-    GNUNET_CONFIGURATION_set_value_string (cfg,
-                                           "exchange",
-                                           "wireformat",
-                                           exchange_wireformat);
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "exchange",
-                                             "wireformat",
-                                             &exchange_wireformat))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "wireformat");
-    return GNUNET_SYSERR;
-  }
 
   if (NULL ==
       (db_plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
@@ -291,15 +387,6 @@ exchange_serve_process_config ()
     return GNUNET_SYSERR;
   }
 
-  if (NULL ==
-      (wire_plugin = TALER_WIRE_plugin_load (cfg,
-                                             exchange_wireformat)))
-  {
-    fprintf (stderr,
-             "Failed to load wire plugin for `%s'\n",
-             exchange_wireformat);
-    return GNUNET_SYSERR;
-  }
   return GNUNET_OK;
 }
 
@@ -511,6 +598,7 @@ run_aggregation (void *cls)
   unsigned int i;
   int ret;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
+  struct WirePlugin *wp;
 
   task = NULL;
   tc = GNUNET_SCHEDULER_get_task_context ();
@@ -571,6 +659,19 @@ run_aggregation (void *cls)
     }
     return;
   }
+
+  wp = find_plugin (extract_type (au->wire));
+  if (NULL == wp)
+  {
+    json_decref (au->wire);
+    GNUNET_free (au);
+    au = NULL;
+    db_plugin->rollback (db_plugin->cls,
+                         session);
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+
   /* Now try to find other deposits to aggregate */
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Found ready deposit for %s, aggregating\n",
@@ -588,8 +689,7 @@ run_aggregation (void *cls)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to execute deposit iteration!\n");
     GNUNET_free_non_null (au->additional_rows);
-    if (NULL != au->wire)
-      json_decref (au->wire);
+    json_decref (au->wire);
     GNUNET_free (au);
     au = NULL;
     db_plugin->rollback (db_plugin->cls,
@@ -597,10 +697,11 @@ run_aggregation (void *cls)
     global_ret = GNUNET_SYSERR;
     return;
   }
+
   /* Round to the unit supported by the wire transfer method */
   GNUNET_assert (GNUNET_SYSERR !=
-                 wire_plugin->amount_round (wire_plugin->cls,
-                                            &au->total_amount));
+                 wp->wire_plugin->amount_round (wp->wire_plugin->cls,
+                                                &au->total_amount));
   /* Check if after rounding down, we still have an amount to transfer */
   if ( (0 == au->total_amount.value) &&
        (0 == au->total_amount.fraction) )
@@ -668,12 +769,13 @@ run_aggregation (void *cls)
                 amount_s,
                 TALER_B2S (&au->merchant_pub));
   }
-  au->ph = wire_plugin->prepare_wire_transfer (wire_plugin->cls,
-                                               au->wire,
-                                               &au->total_amount,
-                                               &au->wtid,
-                                               &prepare_cb,
-                                               au);
+  au->wp = wp;
+  au->ph = wp->wire_plugin->prepare_wire_transfer (wp->wire_plugin->cls,
+                                                   au->wire,
+                                                   &au->total_amount,
+                                                   &au->wtid,
+                                                   &prepare_cb,
+                                                   au);
   if (NULL == au->ph)
   {
     GNUNET_break (0); /* why? how to best recover? */
@@ -717,11 +819,9 @@ prepare_cb (void *cls,
 {
   struct TALER_EXCHANGEDB_Session *session = au->session;
 
-  GNUNET_free_non_null (au->additional_rows);
   if (NULL != au->wire)
     json_decref (au->wire);
-  GNUNET_free (au);
-  au = NULL;
+  GNUNET_free_non_null (au->additional_rows);
   if (NULL == buf)
   {
     GNUNET_break (0); /* why? how to best recover? */
@@ -730,6 +830,8 @@ prepare_cb (void *cls,
     /* start again */
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                      NULL);
+    GNUNET_free (au);
+    au = NULL;
     return;
   }
 
@@ -737,7 +839,7 @@ prepare_cb (void *cls,
   if (GNUNET_OK !=
       db_plugin->wire_prepare_data_insert (db_plugin->cls,
                                            session,
-                                           exchange_wireformat,
+                                           au->wp->type,
                                            buf,
                                            buf_size))
   {
@@ -747,8 +849,12 @@ prepare_cb (void *cls,
     /* start again */
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                      NULL);
+    GNUNET_free (au);
+    au = NULL;
     return;
   }
+  GNUNET_free (au);
+  au = NULL;
 
   /* Now we can finally commit the overall transaction, as we are
      again consistent if all of this passes. */
@@ -839,12 +945,14 @@ wire_confirm_cb (void *cls,
  *
  * @param cls NULL
  * @param rowid row identifier used to mark prepared transaction as done
+ * @param wire_method wire method the preparation was done for
  * @param buf transaction data that was persisted, NULL on error
  * @param buf_size number of bytes in @a buf, 0 on error
  */
 static void
 wire_prepare_cb (void *cls,
                  unsigned long long rowid,
+                 const char *wire_method,
                  const char *buf,
                  size_t buf_size)
 {
@@ -852,11 +960,12 @@ wire_prepare_cb (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Starting wire transfer %llu\n",
               rowid);
-  wpd->eh = wire_plugin->execute_wire_transfer (wire_plugin->cls,
-                                                buf,
-                                                buf_size,
-                                                &wire_confirm_cb,
-                                                NULL);
+  wpd->wp = find_plugin (wire_method);
+  wpd->eh = wpd->wp->wire_plugin->execute_wire_transfer (wpd->wp->wire_plugin->cls,
+                                                         buf,
+                                                         buf_size,
+                                                         &wire_confirm_cb,
+                                                         NULL);
   if (NULL == wpd->eh)
   {
     GNUNET_break (0); /* why? how to best recover? */
@@ -910,7 +1019,6 @@ run_transfers (void *cls)
   wpd->session = session;
   ret = db_plugin->wire_prepare_data_get (db_plugin->cls,
                                           session,
-                                          exchange_wireformat,
                                           &wire_prepare_cb,
                                           NULL);
   if (GNUNET_SYSERR == ret)
@@ -981,9 +1089,6 @@ main (int argc,
       char *const *argv)
 {
   static const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    {'f', "format", "WIREFORMAT",
-     "wireformat to use, overrides WIREFORMAT option in [exchange] section", 1,
-     &GNUNET_GETOPT_set_filename, &exchange_wireformat},
     {'t', "test", NULL,
      "run in test mode and exit when idle", 0,
      &GNUNET_GETOPT_set_one, &test_mode},

@@ -684,12 +684,14 @@ typedef void
  *
  * @param cls closure
  * @param rowid row identifier used to mark prepared transaction as done
+ * @param wire_method which wire method is this preparation data for
  * @param buf transaction data that was persisted, NULL on error
  * @param buf_size number of bytes in @a buf, 0 on error
  */
 typedef void
 (*TALER_EXCHANGEDB_WirePreparationCallback) (void *cls,
                                              unsigned long long rowid,
+                                             const char *wire_method,
                                              const char *buf,
                                              size_t buf_size);
 
@@ -1479,7 +1481,6 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls closure
    * @param session database connection
-   * @param type type fo the wire transfer (i.e. "sepa")
    * @param cb function to call for ONE unfinished item
    * @param cb_cls closure for @a cb
    * @return #GNUNET_OK on success,
@@ -1489,7 +1490,6 @@ struct TALER_EXCHANGEDB_Plugin
   int
   (*wire_prepare_data_get)(void *cls,
                            struct TALER_EXCHANGEDB_Session *session,
-                           const char *type,
                            TALER_EXCHANGEDB_WirePreparationCallback cb,
                            void *cb_cls);
 

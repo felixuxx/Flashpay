@@ -122,7 +122,12 @@ enum OpCode
   /**
    * Verify exchange's /deposit/wtid method.
    */
-  OC_DEPOSIT_WTID
+  OC_DEPOSIT_WTID,
+
+  /**
+   * Run the aggregator to execute deposits.
+   */
+  OC_RUN_AGGREGATOR
 
 };
 
@@ -535,6 +540,15 @@ struct Command
 
     } deposit_wtid;
 
+    struct {
+
+      /**
+       * Process for the aggregator.
+       */
+      struct GNUNET_OS_Process *aggregator_proc;
+
+    } run_aggregator;
+
   } details;
 
 };
@@ -624,6 +638,20 @@ interpreter_run (void *cls);
 
 
 /**
+ * Run the next command with the interpreter.
+ *
+ * @param is current interpeter state.
+ */
+static void
+next_command (struct InterpreterState *is)
+{
+  is->ip++;
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
+}
+
+
+/**
  * Function called upon completion of our /admin/add/incoming request.
  *
  * @param cls closure with the interpreter state
@@ -646,9 +674,7 @@ add_incoming_cb (void *cls,
     fail (is);
     return;
   }
-  is->ip++;
-  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                       is);
+  next_command (is);
 }
 
 
@@ -833,9 +859,7 @@ reserve_status_cb (void *cls,
     GNUNET_break (0);
     break;
   }
-  is->ip++;
-  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                       is);
+  next_command (is);
 }
 
 
@@ -889,9 +913,7 @@ reserve_withdraw_cb (void *cls,
     GNUNET_break (0);
     break;
   }
-  is->ip++;
-  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                       is);
+  next_command (is);
 }
 
 
@@ -923,9 +945,7 @@ deposit_cb (void *cls,
     fail (is);
     return;
   }
-  is->ip++;
-  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                       is);
+  next_command (is);
 }
 
 
@@ -960,9 +980,7 @@ melt_cb (void *cls,
     return;
   }
   cmd->details.refresh_melt.noreveal_index = noreveal_index;
-  is->ip++;
-  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                       is);
+  next_command (is);
 }
 
 
@@ -1024,10 +1042,7 @@ reveal_cb (void *cls,
   default:
     break;
   }
-
-  is->ip++;
-  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                       is);
+  next_command (is);
 }
 
 
@@ -1124,9 +1139,7 @@ link_cb (void *cls,
   default:
     break;
   }
-  is->ip++;
-  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                       is);
+  next_command (is);
 }
 
 
@@ -1236,9 +1249,7 @@ wire_cb (void *cls,
   default:
     break;
   }
-  is->ip++;
-  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                       is);
+  next_command (is);
 }
 
 
@@ -1325,11 +1336,7 @@ wire_deposits_cb (void *cls,
   default:
     break;
   }
-
-  /* move to next command */
-  is->ip++;
-  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                       is);
+  next_command (is);
 }
 
 
@@ -1377,11 +1384,7 @@ deposit_wtid_cb (void *cls,
   default:
     break;
   }
-
-  /* move to next command */
-  is->ip++;
-  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
-                                       is);
+  next_command (is);
 }
 
 
@@ -1932,15 +1935,38 @@ interpreter_run (void *cls)
       json_decref (contract);
       cmd->details.deposit_wtid.dwh
         = TALER_EXCHANGE_deposit_wtid (exchange,
-                                   &ref->details.deposit.merchant_priv,
-                                   &h_wire,
-                                   &h_contract,
-                                   &coin_pub,
-                                   ref->details.deposit.transaction_id,
-                                   &deposit_wtid_cb,
-                                   is);
+                                       &ref->details.deposit.merchant_priv,
+                                       &h_wire,
+                                       &h_contract,
+                                       &coin_pub,
+                                       ref->details.deposit.transaction_id,
+                                       &deposit_wtid_cb,
+                                       is);
     }
     return;
+  case OC_RUN_AGGREGATOR:
+    {
+      cmd->details.run_aggregator.aggregator_proc
+        = GNUNET_OS_start_process (GNUNET_NO,
+                                   GNUNET_OS_INHERIT_STD_ALL,
+                                   NULL, NULL, NULL,
+                                   "taler-exchange-aggregator",
+                                   "taler-exchange-aggregator",
+                                   "-c", "test_exchange_api.conf",
+                                   "-t", /* exit when done */
+                                   NULL);
+      if (NULL == cmd->details.run_aggregator.aggregator_proc)
+      {
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
+      GNUNET_OS_process_wait (cmd->details.run_aggregator.aggregator_proc);
+      GNUNET_OS_process_destroy (cmd->details.run_aggregator.aggregator_proc);
+      cmd->details.run_aggregator.aggregator_proc = NULL;
+      next_command (is);
+      return;
+    }
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unknown instruction %d at %u (%s)\n",
@@ -2120,6 +2146,17 @@ do_shutdown (void *cls)
                     cmd->label);
         TALER_EXCHANGE_deposit_wtid_cancel (cmd->details.deposit_wtid.dwh);
         cmd->details.deposit_wtid.dwh = NULL;
+      }
+      break;
+    case OC_RUN_AGGREGATOR:
+      if (NULL != cmd->details.run_aggregator.aggregator_proc)
+      {
+        GNUNET_break (0 ==
+                      GNUNET_OS_process_kill (cmd->details.run_aggregator.aggregator_proc,
+                                              SIGKILL));
+        GNUNET_OS_process_wait (cmd->details.run_aggregator.aggregator_proc);
+        GNUNET_OS_process_destroy (cmd->details.run_aggregator.aggregator_proc);
+        cmd->details.run_aggregator.aggregator_proc = NULL;
       }
       break;
     default:
@@ -2424,6 +2461,9 @@ run (void *cls)
     { .oc = OC_WIRE_DEPOSITS,
       .label = "wire-deposit-failing",
       .expected_response_code = MHD_HTTP_NOT_FOUND },
+
+    { .oc = OC_RUN_AGGREGATOR,
+      .label = "run-aggregator" },
 
     /* TODO: trigger aggregation logic and then check the
        cases where tracking succeeds! */

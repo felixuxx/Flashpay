@@ -1156,14 +1156,14 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("wire_prepare_data_get",
            "SELECT"
            " serial_id"
+           ",type"
            ",buf"
            " FROM prewire"
            " WHERE"
-           " type=$1 AND"
            " finished=false"
            " ORDER BY serial_id ASC"
            " LIMIT 1",
-           1, NULL);
+           0, NULL);
 
   return GNUNET_OK;
 #undef PREPARE
@@ -4115,7 +4115,6 @@ postgres_wire_prepare_data_mark_finished (void *cls,
  *
  * @param cls closure
  * @param session database connection
- * @param type type fo the wire transfer (i.e. "sepa")
  * @param cb function to call for ONE unfinished item
  * @param cb_cls closure for @a cb
  * @return #GNUNET_OK on success,
@@ -4125,13 +4124,11 @@ postgres_wire_prepare_data_mark_finished (void *cls,
 static int
 postgres_wire_prepare_data_get (void *cls,
                                 struct TALER_EXCHANGEDB_Session *session,
-                                const char *type,
                                 TALER_EXCHANGEDB_WirePreparationCallback cb,
                                 void *cb_cls)
 {
   PGresult *result;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_string (type),
     GNUNET_PQ_query_param_end
   };
 
@@ -4158,14 +4155,17 @@ postgres_wire_prepare_data_get (void *cls,
 
   {
     uint64_t serial_id;
+    char *type;
     void *buf = NULL;
     size_t buf_size;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial_id",
-                                   &serial_id),
+                                    &serial_id),
+      GNUNET_PQ_result_spec_string ("type",
+                                    &type),
       GNUNET_PQ_result_spec_variable_size ("buf",
-                                          &buf,
-                                          &buf_size),
+                                           &buf,
+                                           &buf_size),
       GNUNET_PQ_result_spec_end
     };
 
@@ -4180,6 +4180,7 @@ postgres_wire_prepare_data_get (void *cls,
     }
     cb (cb_cls,
         serial_id,
+        type,
         buf,
         buf_size);
     GNUNET_PQ_cleanup_result (rs);
