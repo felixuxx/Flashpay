@@ -42,7 +42,7 @@ run (void *cls)
     /* Add EUR:5.01 to account 42 */
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
       .label = "deposit-1",
-      .expected_response_code = MHD_HTTP_OK,
+      .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 1,
       .details.admin_add_incoming.debit_account_no = 2,
       .details.admin_add_incoming.amount = "PUDOS:5.01" },

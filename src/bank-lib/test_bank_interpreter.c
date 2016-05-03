@@ -96,7 +96,6 @@ fail (struct InterpreterState *is)
 }
 
 
-#if 0
 /**
  * Find a command by label.
  *
@@ -127,7 +126,6 @@ find_command (const struct InterpreterState *is,
               label);
   return NULL;
 }
-#endif
 
 
 /**
@@ -156,7 +154,7 @@ add_incoming_cb (void *cls,
   struct TBI_Command *cmd = &is->commands[is->ip];
 
   cmd->details.admin_add_incoming.aih = NULL;
-  if (cmd->expected_response_code != http_status)
+  if (cmd->details.admin_add_incoming.expected_response_code != http_status)
   {
     GNUNET_break (0);
     fprintf (stderr,
@@ -186,6 +184,8 @@ interpreter_run (void *cls)
 {
   struct InterpreterState *is = cls;
   struct TBI_Command *cmd = &is->commands[is->ip];
+  const struct TBI_Command *ref;
+  struct TALER_WireTransferIdentifierRawP wtid;
   struct TALER_Amount amount;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
 
@@ -205,7 +205,6 @@ interpreter_run (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   case TBI_OC_ADMIN_ADD_INCOMING:
-
     if (GNUNET_OK !=
         TALER_string_to_amount (cmd->details.admin_add_incoming.amount,
                                 &amount))
@@ -235,6 +234,46 @@ interpreter_run (void *cls)
       fail (is);
       return;
     }
+    return;
+  case TBI_OC_EXPECT_TRANSACTION:
+    ref = find_command (is,
+                        cmd->details.expect_transaction.cmd_ref);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_string_to_amount (ref->details.admin_add_incoming.amount,
+                                           &amount));
+    if (GNUNET_OK !=
+        FAKEBANK_check (is->fakebank,
+                        &amount,
+                        ref->details.admin_add_incoming.debit_account_no,
+                        ref->details.admin_add_incoming.credit_account_no,
+                        &wtid))
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
+    if (0 != memcmp (&wtid,
+                     &ref->details.admin_add_incoming.wtid,
+                     sizeof (wtid)))
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
+    is->ip++;
+    is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                         is);
+   return;
+  case TBI_OC_EXPECT_TRANSACTIONS_EMPTY:
+    if (GNUNET_OK != FAKEBANK_check_empty (is->fakebank))
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
+    is->ip++;
+    is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                         is);
     return;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

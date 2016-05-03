@@ -39,14 +39,30 @@ run (void *cls)
   int *resultp = cls;
   static struct TBI_Command commands[] =
   {
-    /* Add EUR:5.01 to account 42 */
+    /* Add EUR:5.01 to account 1 */
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
       .label = "deposit-1",
-      .expected_response_code = MHD_HTTP_OK,
+      .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 1,
       .details.admin_add_incoming.debit_account_no = 2,
       .details.admin_add_incoming.amount = "PUDOS:5.01" },
-
+    /* Add EUR:3.21 to account 3 */
+    { .oc = TBI_OC_ADMIN_ADD_INCOMING,
+      .label = "deposit-2",
+      .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
+      .details.admin_add_incoming.credit_account_no = 3,
+      .details.admin_add_incoming.debit_account_no = 2,
+      .details.admin_add_incoming.amount = "PUDOS:3.21" },
+    /* check transactions arrived at fakebank */
+    { .oc = TBI_OC_EXPECT_TRANSACTION,
+      .label = "expect-2",
+      .details.expect_transaction.cmd_ref = "deposit-2" },
+    { .oc = TBI_OC_EXPECT_TRANSACTION,
+      .label = "expect-1",
+      .details.expect_transaction.cmd_ref = "deposit-1" },
+    /* check transaction list is now empty */
+    { .oc = TBI_OC_EXPECT_TRANSACTIONS_EMPTY,
+      .label = "expect-empty" },
     { .oc = TBI_OC_END }
   };
 

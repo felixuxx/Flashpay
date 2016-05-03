@@ -42,7 +42,17 @@ enum TBI_OpCode
   /**
    * Add funds to a reserve by (faking) incoming wire transfer.
    */
-  TBI_OC_ADMIN_ADD_INCOMING
+  TBI_OC_ADMIN_ADD_INCOMING,
+
+  /**
+   * Expect that we have received the specified transaction at fakebank.
+   */
+  TBI_OC_EXPECT_TRANSACTION,
+
+  /**
+   * Expect that we have exhaustively gone over all transactions at fakebank.
+   */
+  TBI_OC_EXPECT_TRANSACTIONS_EMPTY
 
 };
 
@@ -61,11 +71,6 @@ struct TBI_Command
    * Label for the command, can be NULL.
    */
   const char *label;
-
-  /**
-   * Which response code do we expect for this command?
-   */
-  unsigned int expected_response_code;
 
   /**
    * Details about the command.
@@ -101,11 +106,30 @@ struct TBI_Command
       struct TALER_WireTransferIdentifierRawP wtid;
 
       /**
+       * Which response code do we expect for this command?
+       */
+      unsigned int expected_response_code;
+
+      /**
        * Set to the API's handle during the operation.
        */
       struct TALER_BANK_AdminAddIncomingHandle *aih;
 
     } admin_add_incoming;
+
+    /**
+     * If @e opcode is #TBI_OC_EXPECT_TRANSACTION, this
+     * specifies which transaction we expected.
+     */
+    struct {
+
+      /**
+       * Label of the command of an /admin/add/incoming
+       * request that we should check was executed.
+       */
+      const char *cmd_ref;
+
+    } expect_transaction;
 
   } details;
 
