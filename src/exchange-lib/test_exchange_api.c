@@ -514,8 +514,13 @@ struct Command
       struct TALER_EXCHANGE_WireDepositsHandle *wdh;
 
       /**
-       * Reference to a /deposit/wtid command. If set, we use the
-       * WTID from that command.
+       * Reference to a command providing a WTID. If set, we use the
+       * WTID from that command.  The command can be either an
+       * #OC_DEPOSIT_WTID or an #OC_CHECK_BANK_TRANSFER.  In the
+       * case of the bank transfer, we check that the total amount
+       * claimed by the exchange matches the total amount transferred
+       * by the bank.  In the case of a /deposit/wtid, we check
+       * that the wire details match.
        */
       const char *wtid_ref;
 
@@ -523,6 +528,13 @@ struct Command
        * WTID to use (used if @e wtid_ref is NULL).
        */
       struct TALER_WireTransferIdentifierRawP wtid;
+
+      /**
+       * What is the expected total amount? Only used if
+       * @e expected_response_code was #MHD_HTTP_OK.
+       */
+      const char *total_amount_expected;
+
 
       /* TODO: may want to add list of deposits we expected
          to see aggregated here in the future. */
@@ -548,12 +560,6 @@ struct Command
        * Which #OC_CHECK_BANK_TRANSFER wtid should this match? NULL for none.
        */
       const char *bank_transfer_ref;
-
-      /**
-       * What is the expected total amount? Only used if
-       * @e expected_response_code was #MHD_HTTP_OK.
-       */
-      struct TALER_Amount total_amount_expected;
 
       /**
        * Wire transfer identifier, set if #MHD_HTTP_OK was the response code.
@@ -1362,6 +1368,7 @@ wire_deposits_cb (void *cls,
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
   const struct Command *ref;
+  struct TALER_Amount expected_amount;
 
   cmd->details.wire_deposits.wdh = NULL;
   if (cmd->expected_response_code != http_status)
@@ -1377,11 +1384,16 @@ wire_deposits_cb (void *cls,
   switch (http_status)
   {
   case MHD_HTTP_OK:
-    ref = find_command (is,
-                        cmd->details.wire_deposits.wtid_ref);
-    GNUNET_assert (NULL != ref);
+    if (GNUNET_OK !=
+        TALER_string_to_amount (cmd->details.wire_deposits.total_amount_expected,
+                                &expected_amount))
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
     if (0 != TALER_amount_cmp (total_amount,
-                               &ref->details.deposit_wtid.total_amount_expected))
+                               &expected_amount))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Total amount missmatch to command %s\n",
@@ -1391,28 +1403,65 @@ wire_deposits_cb (void *cls,
       fail (is);
       return;
     }
-    if (NULL != ref->details.deposit_wtid.deposit_ref)
+    ref = find_command (is,
+                        cmd->details.wire_deposits.wtid_ref);
+    GNUNET_assert (NULL != ref);
+    switch (ref->oc)
     {
-      const struct Command *dep;
-      struct GNUNET_HashCode hw;
+    case OC_DEPOSIT_WTID:
+      if (NULL != ref->details.deposit_wtid.deposit_ref)
+      {
+        const struct Command *dep;
+        struct GNUNET_HashCode hw;
+        json_t *wire;
 
-      dep = find_command (is,
-                          ref->details.deposit_wtid.deposit_ref);
-      GNUNET_assert (NULL != dep);
-      GNUNET_CRYPTO_hash (dep->details.deposit.wire_details,
-                          strlen (dep->details.deposit.wire_details),
-                          &hw);
-      if (0 != memcmp (&hw,
-                       h_wire,
-                       sizeof (struct GNUNET_HashCode)))
+        dep = find_command (is,
+                            ref->details.deposit_wtid.deposit_ref);
+        GNUNET_assert (NULL != dep);
+        wire = json_loads (dep->details.deposit.wire_details,
+                           JSON_REJECT_DUPLICATES,
+                           NULL);
+        TALER_JSON_hash (wire,
+                         &hw);
+        json_decref (wire);
+        if (0 != memcmp (&hw,
+                         h_wire,
+                         sizeof (struct GNUNET_HashCode)))
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Wire hash missmatch to command %s\n",
+                      cmd->label);
+          json_dumpf (json, stderr, 0);
+          fail (is);
+          return;
+        }
+      }
+      break;
+    case OC_CHECK_BANK_TRANSFER:
+      if (GNUNET_OK !=
+          TALER_string_to_amount (ref->details.check_bank_transfer.amount,
+                                  &expected_amount))
+      {
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
+      if (0 != TALER_amount_cmp (total_amount,
+                                 &expected_amount))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Wire hash missmatch to command %s\n",
+                    "Total amount missmatch to command %s\n",
+                    http_status,
                     cmd->label);
         json_dumpf (json, stderr, 0);
         fail (is);
         return;
       }
+      break;
+    default:
+      GNUNET_break (0);
+      fail (is);
+      return;
     }
     break;
   default:
@@ -2679,6 +2728,18 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit_wtid.deposit_ref = "deposit-simple",
       .details.deposit_wtid.bank_transfer_ref = "check_bank_transfer-499c" },
+
+    { .oc = OC_WIRE_DEPOSITS,
+      .label = "wire-deposits-sucess-bank",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.wire_deposits.wtid_ref = "check_bank_transfer-99c1",
+      .details.wire_deposits.total_amount_expected = "EUR:0.99" },
+
+    { .oc = OC_WIRE_DEPOSITS,
+      .label = "wire-deposits-sucess-wtid",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.wire_deposits.wtid_ref = "deposit-wtid-ok",
+      .details.wire_deposits.total_amount_expected = "EUR:4.99" },
 
 
     /* TODO: trigger aggregation logic and then check the
