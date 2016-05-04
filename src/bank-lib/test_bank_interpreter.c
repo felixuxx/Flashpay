@@ -235,9 +235,9 @@ interpreter_run (void *cls)
       return;
     }
     return;
-  case TBI_OC_EXPECT_TRANSACTION:
+  case TBI_OC_EXPECT_TRANSFER:
     ref = find_command (is,
-                        cmd->details.expect_transaction.cmd_ref);
+                        cmd->details.expect_transfer.cmd_ref);
     GNUNET_assert (GNUNET_OK ==
                    TALER_string_to_amount (ref->details.admin_add_incoming.amount,
                                            &amount));
@@ -264,7 +264,7 @@ interpreter_run (void *cls)
     is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
                                          is);
    return;
-  case TBI_OC_EXPECT_TRANSACTIONS_EMPTY:
+  case TBI_OC_EXPECT_TRANSFERS_EMPTY:
     if (GNUNET_OK != FAKEBANK_check_empty (is->fakebank))
     {
       GNUNET_break (0);

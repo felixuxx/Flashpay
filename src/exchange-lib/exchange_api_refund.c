@@ -17,7 +17,6 @@
 /**
  * @file exchange-lib/exchange_api_refund.c
  * @brief Implementation of the /refund request of the exchange's HTTP API
- * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -138,8 +137,8 @@ verify_refund_signature_ok (const struct TALER_EXCHANGE_RefundHandle *rh,
  */
 static void
 handle_refund_finished (void *cls,
-                         long response_code,
-                         const json_t *json)
+                        long response_code,
+                        const json_t *json)
 {
   struct TALER_EXCHANGE_RefundHandle *rh = cls;
 
@@ -178,7 +177,7 @@ handle_refund_finished (void *cls,
     /* unexpected response code */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u\n",
-                response_code);
+                (unsigned int) response_code);
     GNUNET_break (0);
     response_code = 0;
     break;
@@ -205,7 +204,7 @@ handle_refund_finished (void *cls,
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param amount the amount to be refunded; must be larger than the refund fee
- *        (as that fee is still being subtracted), and smaller than the amount 
+ *        (as that fee is still being subtracted), and smaller than the amount
  *        (with deposit fee) of the original deposit contribution of this coin
  * @param refund_fee fee applicable to this coin for the refund
  * @param h_contract hash of the contact of the merchant with the customer that is being refunded
@@ -226,6 +225,7 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 		       const struct TALER_Amount *amount,
 		       const struct TALER_Amount *refund_fee,
 		       const struct GNUNET_HashCode *h_contract,
+		       uint64_t transaction_id,
 		       const struct TALER_CoinSpendPublicKeyP *coin_pub,
 		       uint64_t rtransaction_id,
 		       const struct TALER_MerchantPrivateKeyP *merchant_priv,
@@ -234,8 +234,8 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 {
   struct TALER_EXCHANGE_RefundHandle *rh;
   struct GNUNET_CURL_Context *ctx;
+  struct TALER_RefundRequestPS rr;
   struct TALER_MerchantSignatureP merchant_sig;
-  struct TALER_MerchantPublicKeyP merchant_pub;
   json_t *refund_obj;
   CURL *eh;
 
@@ -245,8 +245,22 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_break (0);
     return NULL;
   }
-  /* FIXME: create signature! */
-
+  rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
+  rr.purpose.size = htonl (sizeof (struct TALER_RefundRequestPS));
+  rr.h_contract = *h_contract;
+  rr.transaction_id = GNUNET_htonll (transaction_id);
+  rr.coin_pub = *coin_pub;
+  GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv->eddsa_priv,
+                                      &rr.merchant.eddsa_pub);
+  rr.rtransaction_id = GNUNET_htonll (rtransaction_id);
+  TALER_amount_hton (&rr.refund_amount,
+                     amount);
+  TALER_amount_hton (&rr.refund_fee,
+                     refund_fee);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_sign (&merchant_priv->eddsa_priv,
+                                           &rr.purpose,
+                                           &merchant_sig.eddsa_sig));
   refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
 			  " s:o, s:o," /* H_contract, coin_pub */
 			  " s:I, s:I," /* transaction id, rtransaction id */
@@ -259,8 +273,8 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
                                                              sizeof (*coin_pub)),
 			  "transaction_id", (json_int_t) transaction_id,
 			  "rtransaction_id", (json_int_t) rtransaction_id,
-			  "merchant_pub", GNUNET_JSON_from_data (&merchant_pub,
-                                                                 sizeof (merchant_pub)),
+			  "merchant_pub", GNUNET_JSON_from_data (&rr.merchant,
+                                                                 sizeof (struct TALER_MerchantPublicKeyP)),
 			  "merchant_sig", GNUNET_JSON_from_data (&merchant_sig,
                                                                  sizeof (merchant_sig))
 			  );
@@ -274,13 +288,13 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
   rh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND);
   rh->depconf.h_contract = *h_contract;
   rh->depconf.transaction_id = GNUNET_htonll (transaction_id);
+  rh->depconf.coin_pub = *coin_pub;
+  rh->depconf.merchant = rr.merchant;
   rh->depconf.rtransaction_id = GNUNET_htonll (rtransaction_id);
   TALER_amount_hton (&rh->depconf.refund_amount,
                      amount);
   TALER_amount_hton (&rh->depconf.refund_fee,
                      refund_fee);
-  rh->depconf.coin_pub = *coin_pub;
-  rh->depconf.merchant = *merchant_pub;
 
   eh = curl_easy_init ();
   GNUNET_assert (NULL != (rh->json_enc =

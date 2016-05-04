@@ -1325,7 +1325,7 @@ handle_refresh_melt_finished (void *cls,
     /* unexpected response code */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u\n",
-                response_code);
+                (unsigned int) response_code);
     GNUNET_break (0);
     response_code = 0;
     break;
@@ -1860,7 +1860,7 @@ handle_refresh_reveal_finished (void *cls,
     /* unexpected response code */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u\n",
-                response_code);
+                (unsigned int) response_code);
     GNUNET_break (0);
     response_code = 0;
     break;

@@ -94,4 +94,5 @@ EXTRA_DIST = \
   test-taler-exchange-aggregator-postgres.conf \
   test_taler_exchange_httpd_home/.local/share/taler/exchange/offline-keys/master.priv \
   test_taler_exchange_httpd.conf \
-  exchange.conf
+  exchange.conf \
+  $(check_SCRIPTS)

@@ -96,12 +96,12 @@ handle_wire_deposits_finished (void *cls,
       struct TALER_ExchangePublicKeyP exchange_pub;
       struct TALER_ExchangeSignatureP exchange_sig;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("H_wire", &h_wire),
-        GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
-        GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
+        TALER_JSON_spec_amount ("total", &total_amount),
         GNUNET_JSON_spec_fixed_auto ("merchant_pub", &merchant_pub),
-        TALER_JSON_spec_amount ("total_amount", &total_amount),
-        GNUNET_JSON_spec_json ("details", &details_j),
+        GNUNET_JSON_spec_fixed_auto ("H_wire", &h_wire),
+        GNUNET_JSON_spec_json ("deposits", &details_j),
+        GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
+        GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
         GNUNET_JSON_spec_end()
       };
 
@@ -129,10 +129,10 @@ handle_wire_deposits_finished (void *cls,
           struct json_t *detail_j = json_array_get (details_j, i);
           struct GNUNET_JSON_Specification spec_detail[] = {
             GNUNET_JSON_spec_fixed_auto ("H_contract", &detail->h_contract),
-            TALER_JSON_spec_amount ("deposit_value", &detail->coin_value),
-            TALER_JSON_spec_amount ("deposit_fee", &detail->coin_fee),
             GNUNET_JSON_spec_uint64 ("transaction_id", &detail->transaction_id),
             GNUNET_JSON_spec_fixed_auto ("coin_pub", &detail->coin_pub),
+            TALER_JSON_spec_amount ("deposit_value", &detail->coin_value),
+            TALER_JSON_spec_amount ("deposit_fee", &detail->coin_fee),
             GNUNET_JSON_spec_end()
           };
 
@@ -217,7 +217,7 @@ handle_wire_deposits_finished (void *cls,
     /* unexpected response code */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u\n",
-                response_code);
+                (unsigned int) response_code);
     GNUNET_break (0);
     response_code = 0;
     break;

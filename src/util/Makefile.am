@@ -14,7 +14,9 @@ pkgcfg_DATA = \
   paths.conf
 
 EXTRA_DIST = \
-  paths.conf
+  paths.conf \
+  taler-config.in \
+  taler-arm.in
 
 templated_scripts = taler-config taler-arm
 dist_bin_SCRIPTS = $(templated_scripts)

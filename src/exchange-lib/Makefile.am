@@ -21,6 +21,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_deposit_wtid.c \
   exchange_api_refresh.c \
   exchange_api_refresh_link.c \
+  exchange_api_refund.c \
   exchange_api_reserve.c \
   exchange_api_wire.c \
   exchange_api_wire_deposits.c
@@ -63,7 +64,7 @@ test_exchange_api_LDADD = \
   -ljansson
 
 EXTRA_DIST = \
-  test_taler_exchange_api_home/.local/share/taler/exchange/offline-keys/master.priv \
-  test_taler_exchange_api_home/.config/taler/test.json \
-  test_taler_exchange_api_home/.config/taler/sepa.json \
-  test_taler_exchange_api.conf
+  test_exchange_api_home/.local/share/taler/exchange/offline-keys/master.priv \
+  test_exchange_api_home/.config/taler/test.json \
+  test_exchange_api_home/.config/taler/sepa.json \
+  test_exchange_api.conf

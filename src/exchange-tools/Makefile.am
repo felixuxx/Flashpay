@@ -8,7 +8,6 @@ pkgcfg_DATA = \
   exchange-signkeys.conf \
   coins.conf
 
-
 if USE_COVERAGE
   AM_CFLAGS = --coverage -O0
   XLIB = -lgcov
@@ -93,4 +92,5 @@ taler_exchange_dbinit_CPPFLAGS = \
 
 
 EXTRA_DIST = \
-  auditor.conf
+  auditor.conf \
+  $(pkgcfg_DATA)

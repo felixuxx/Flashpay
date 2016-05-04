@@ -19,6 +19,9 @@ pkgcfgdir = $(prefix)/share/taler/config.d/
 pkgcfg_DATA = \
   taler.conf
 
+EXTRA_DIST = \
+  taler.conf
+
 SUBDIRS = include util json $(PQ_DIR) $(BANK_LIB) wire exchangedb exchange exchange-tools
 if HAVE_LIBCURL
  SUBDIRS += exchange-lib
