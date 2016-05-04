@@ -1131,7 +1131,7 @@ TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
                &sig);
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
-                                       "{s:o, s:o, s:o, s:o, s:o, s:o}",
+                                       "{s:o, s:o, s:o, s:o, s:o}",
                                        "wtid", GNUNET_JSON_from_data (wtid,
                                                                       sizeof (*wtid)),
                                        "execution_time", GNUNET_JSON_from_time_abs (exec_time),
