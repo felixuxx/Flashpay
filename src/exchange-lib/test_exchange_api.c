@@ -545,6 +545,11 @@ struct Command
       const char *deposit_ref;
 
       /**
+       * Which #OC_CHECK_BANK_DEPOSIT wtid should this match? NULL for none.
+       */
+      const char *bank_transfer_ref;
+
+      /**
        * What is the expected total amount? Only used if
        * @e expected_response_code was #MHD_HTTP_OK.
        */
@@ -1457,6 +1462,22 @@ deposit_wtid_cb (void *cls,
   {
   case MHD_HTTP_OK:
     cmd->details.deposit_wtid.wtid = *wtid;
+    if (NULL != cmd->details.deposit_wtid.bank_transfer_ref)
+    {
+      const struct Command *ref;
+
+      ref = find_command (is,
+                          cmd->details.deposit_wtid.bank_transfer_ref);
+      GNUNET_assert (NULL != ref);
+      if (0 != memcmp (wtid,
+                       &ref->details.check_bank_deposit.wtid,
+                       sizeof (struct TALER_WireTransferIdentifierRawP)))
+      {
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
+    }
     break;
   default:
     break;
@@ -2656,7 +2677,8 @@ run (void *cls)
     { .oc = OC_DEPOSIT_WTID,
       .label = "deposit-wtid-ok",
       .expected_response_code = MHD_HTTP_OK,
-      .details.deposit_wtid.deposit_ref = "deposit-simple" },
+      .details.deposit_wtid.deposit_ref = "deposit-simple",
+      .details.deposit_wtid.bank_transfer_ref = "check_bank_deposit-499c" },
 
 
     /* TODO: trigger aggregation logic and then check the
