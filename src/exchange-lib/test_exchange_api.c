@@ -1270,9 +1270,9 @@ find_pk (const struct TALER_EXCHANGE_Keys *keys,
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Have denomination key for `%s', but with wrong expiration range %llu vs [%llu,%llu)\n",
                   str,
-                  now.abs_value_us,
-                  pk->valid_from.abs_value_us,
-                  pk->withdraw_valid_until.abs_value_us);
+                  (unsigned long long) now.abs_value_us,
+                  (unsigned long long) pk->valid_from.abs_value_us,
+                  (unsigned long long) pk->withdraw_valid_until.abs_value_us);
       GNUNET_free (str);
       return NULL;
     }
@@ -1397,7 +1397,6 @@ wire_deposits_cb (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Total amount missmatch to command %s\n",
-                  http_status,
                   cmd->label);
       json_dumpf (json, stderr, 0);
       fail (is);
@@ -1451,7 +1450,6 @@ wire_deposits_cb (void *cls,
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Total amount missmatch to command %s\n",
-                    http_status,
                     cmd->label);
         json_dumpf (json, stderr, 0);
         fail (is);

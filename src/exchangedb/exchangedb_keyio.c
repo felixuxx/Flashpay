@@ -70,7 +70,7 @@ signkeys_iterate_dir_iter (void *cls,
                 "Invalid signkey file `%s': wrong size (%d, expected %u)\n",
                 filename,
                 (int) nread,
-                sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP));
+                (unsigned int) sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP));
     return GNUNET_OK;
   }
   return skc->it (skc->it_cls,
