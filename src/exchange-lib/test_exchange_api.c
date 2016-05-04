@@ -2653,6 +2653,12 @@ run (void *cls)
     { .oc = OC_CHECK_BANK_DEPOSITS_EMPTY,
       .label = "check_bank_empty" },
 
+    { .oc = OC_DEPOSIT_WTID,
+      .label = "deposit-wtid-ok",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.deposit_wtid.deposit_ref = "deposit-simple" },
+
+
     /* TODO: trigger aggregation logic and then check the
        cases where tracking succeeds! */
 

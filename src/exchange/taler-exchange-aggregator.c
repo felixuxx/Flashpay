@@ -434,6 +434,7 @@ deposit_cb (void *cls,
   au->row_id = row_id;
   au->wire = (json_t *) wire;
   au->execution_time = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&au->execution_time);
   TALER_JSON_hash (au->wire,
                    &au->h_wire);
   json_incref (au->wire);
