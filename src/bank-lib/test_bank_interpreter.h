@@ -45,14 +45,14 @@ enum TBI_OpCode
   TBI_OC_ADMIN_ADD_INCOMING,
 
   /**
-   * Expect that we have received the specified transaction at fakebank.
+   * Expect that we have received the specified transfer at fakebank.
    */
-  TBI_OC_EXPECT_TRANSACTION,
+  TBI_OC_EXPECT_TRANSFER,
 
   /**
-   * Expect that we have exhaustively gone over all transactions at fakebank.
+   * Expect that we have exhaustively gone over all transfers at fakebank.
    */
-  TBI_OC_EXPECT_TRANSACTIONS_EMPTY
+  TBI_OC_EXPECT_TRANSFERS_EMPTY
 
 };
 
@@ -118,8 +118,8 @@ struct TBI_Command
     } admin_add_incoming;
 
     /**
-     * If @e opcode is #TBI_OC_EXPECT_TRANSACTION, this
-     * specifies which transaction we expected.
+     * If @e opcode is #TBI_OC_EXPECT_TRANSFER, this
+     * specifies which transfer we expected.
      */
     struct {
 
@@ -129,7 +129,7 @@ struct TBI_Command
        */
       const char *cmd_ref;
 
-    } expect_transaction;
+    } expect_transfer;
 
   } details;
 

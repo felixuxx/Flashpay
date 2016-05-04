@@ -53,15 +53,15 @@ run (void *cls)
       .details.admin_add_incoming.credit_account_no = 3,
       .details.admin_add_incoming.debit_account_no = 2,
       .details.admin_add_incoming.amount = "PUDOS:3.21" },
-    /* check transactions arrived at fakebank */
-    { .oc = TBI_OC_EXPECT_TRANSACTION,
+    /* check transfers arrived at fakebank */
+    { .oc = TBI_OC_EXPECT_TRANSFER,
       .label = "expect-2",
-      .details.expect_transaction.cmd_ref = "deposit-2" },
-    { .oc = TBI_OC_EXPECT_TRANSACTION,
+      .details.expect_transfer.cmd_ref = "deposit-2" },
+    { .oc = TBI_OC_EXPECT_TRANSFER,
       .label = "expect-1",
-      .details.expect_transaction.cmd_ref = "deposit-1" },
-    /* check transaction list is now empty */
-    { .oc = TBI_OC_EXPECT_TRANSACTIONS_EMPTY,
+      .details.expect_transfer.cmd_ref = "deposit-1" },
+    /* check transfer list is now empty */
+    { .oc = TBI_OC_EXPECT_TRANSFERS_EMPTY,
       .label = "expect-empty" },
     { .oc = TBI_OC_END }
   };

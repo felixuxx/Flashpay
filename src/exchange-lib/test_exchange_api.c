@@ -139,12 +139,12 @@ enum OpCode
   /**
    * Check that the fakebank has received a certain transaction.
    */
-  OC_CHECK_BANK_DEPOSIT,
+  OC_CHECK_BANK_TRANSFER,
 
   /**
    * Check that the fakebank has not received any other transactions.
    */
-  OC_CHECK_BANK_DEPOSITS_EMPTY
+  OC_CHECK_BANK_TRANSFERS_EMPTY
 
 };
 
@@ -545,7 +545,7 @@ struct Command
       const char *deposit_ref;
 
       /**
-       * Which #OC_CHECK_BANK_DEPOSIT wtid should this match? NULL for none.
+       * Which #OC_CHECK_BANK_TRANSFER wtid should this match? NULL for none.
        */
       const char *bank_transfer_ref;
 
@@ -593,7 +593,7 @@ struct Command
        */
       struct TALER_WireTransferIdentifierRawP wtid;
 
-    } check_bank_deposit;
+    } check_bank_transfer;
 
   } details;
 
@@ -1470,7 +1470,7 @@ deposit_wtid_cb (void *cls,
                           cmd->details.deposit_wtid.bank_transfer_ref);
       GNUNET_assert (NULL != ref);
       if (0 != memcmp (wtid,
-                       &ref->details.check_bank_deposit.wtid,
+                       &ref->details.check_bank_transfer.wtid,
                        sizeof (struct TALER_WireTransferIdentifierRawP)))
       {
         GNUNET_break (0);
@@ -1976,8 +1976,8 @@ interpreter_run (void *cls)
       case OC_DEPOSIT_WTID:
         cmd->details.wire_deposits.wtid = ref->details.deposit_wtid.wtid;
         break;
-      case OC_CHECK_BANK_DEPOSIT:
-        cmd->details.wire_deposits.wtid = ref->details.check_bank_deposit.wtid;
+      case OC_CHECK_BANK_TRANSFER:
+        cmd->details.wire_deposits.wtid = ref->details.check_bank_transfer.wtid;
         break;
       default:
         GNUNET_break (0);
@@ -2079,10 +2079,10 @@ interpreter_run (void *cls)
                                                          &maint_child_death, is);
       return;
     }
-  case OC_CHECK_BANK_DEPOSIT:
+  case OC_CHECK_BANK_TRANSFER:
     {
       if (GNUNET_OK !=
-          TALER_string_to_amount (cmd->details.check_bank_deposit.amount,
+          TALER_string_to_amount (cmd->details.check_bank_transfer.amount,
                                   &amount))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -2095,9 +2095,9 @@ interpreter_run (void *cls)
       if (GNUNET_OK !=
           FAKEBANK_check (fakebank,
                           &amount,
-                          cmd->details.check_bank_deposit.account_debit,
-                          cmd->details.check_bank_deposit.account_credit,
-                          &cmd->details.check_bank_deposit.wtid))
+                          cmd->details.check_bank_transfer.account_debit,
+                          cmd->details.check_bank_transfer.account_credit,
+                          &cmd->details.check_bank_transfer.wtid))
       {
         GNUNET_break (0);
         fail (is);
@@ -2106,7 +2106,7 @@ interpreter_run (void *cls)
       next_command (is);
       return;
     }
-  case OC_CHECK_BANK_DEPOSITS_EMPTY:
+  case OC_CHECK_BANK_TRANSFERS_EMPTY:
     {
       if (GNUNET_OK !=
           FAKEBANK_check_empty (fakebank))
@@ -2328,9 +2328,9 @@ do_shutdown (void *cls)
         cmd->details.run_aggregator.aggregator_proc = NULL;
       }
       break;
-    case OC_CHECK_BANK_DEPOSIT:
+    case OC_CHECK_BANK_TRANSFER:
       break;
-    case OC_CHECK_BANK_DEPOSITS_EMPTY:
+    case OC_CHECK_BANK_TRANSFERS_EMPTY:
       break;
     default:
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -2646,39 +2646,39 @@ run (void *cls)
     { .oc = OC_RUN_AGGREGATOR,
       .label = "run-aggregator" },
 
-    { .oc = OC_CHECK_BANK_DEPOSIT,
-      .label = "check_bank_deposit-499c",
-      .details.check_bank_deposit.amount = "EUR:4.99",
-      .details.check_bank_deposit.account_debit = 2,
-      .details.check_bank_deposit.account_credit = 42
+    { .oc = OC_CHECK_BANK_TRANSFER,
+      .label = "check_bank_transfer-499c",
+      .details.check_bank_transfer.amount = "EUR:4.99",
+      .details.check_bank_transfer.account_debit = 2,
+      .details.check_bank_transfer.account_credit = 42
     },
-    { .oc = OC_CHECK_BANK_DEPOSIT,
-      .label = "check_bank_deposit-99c1",
-      .details.check_bank_deposit.amount = "EUR:0.99",
-      .details.check_bank_deposit.account_debit = 2,
-      .details.check_bank_deposit.account_credit = 42
+    { .oc = OC_CHECK_BANK_TRANSFER,
+      .label = "check_bank_transfer-99c1",
+      .details.check_bank_transfer.amount = "EUR:0.99",
+      .details.check_bank_transfer.account_debit = 2,
+      .details.check_bank_transfer.account_credit = 42
     },
-    { .oc = OC_CHECK_BANK_DEPOSIT,
-      .label = "check_bank_deposit-99c2",
-      .details.check_bank_deposit.amount = "EUR:0.99",
-      .details.check_bank_deposit.account_debit = 2,
-      .details.check_bank_deposit.account_credit = 42
+    { .oc = OC_CHECK_BANK_TRANSFER,
+      .label = "check_bank_transfer-99c2",
+      .details.check_bank_transfer.amount = "EUR:0.99",
+      .details.check_bank_transfer.account_debit = 2,
+      .details.check_bank_transfer.account_credit = 42
     },
-    { .oc = OC_CHECK_BANK_DEPOSIT,
-      .label = "check_bank_deposit-9c",
-      .details.check_bank_deposit.amount = "EUR:0.09",
-      .details.check_bank_deposit.account_debit = 2,
-      .details.check_bank_deposit.account_credit = 43
+    { .oc = OC_CHECK_BANK_TRANSFER,
+      .label = "check_bank_transfer-9c",
+      .details.check_bank_transfer.amount = "EUR:0.09",
+      .details.check_bank_transfer.account_debit = 2,
+      .details.check_bank_transfer.account_credit = 43
     },
 
-    { .oc = OC_CHECK_BANK_DEPOSITS_EMPTY,
+    { .oc = OC_CHECK_BANK_TRANSFERS_EMPTY,
       .label = "check_bank_empty" },
 
     { .oc = OC_DEPOSIT_WTID,
       .label = "deposit-wtid-ok",
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit_wtid.deposit_ref = "deposit-simple",
-      .details.deposit_wtid.bank_transfer_ref = "check_bank_deposit-499c" },
+      .details.deposit_wtid.bank_transfer_ref = "check_bank_transfer-499c" },
 
 
     /* TODO: trigger aggregation logic and then check the
