@@ -380,20 +380,20 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
  */
 struct TALER_EXCHANGE_DepositHandle *
 TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
-                    const struct TALER_Amount *amount,
-                    struct GNUNET_TIME_Absolute wire_deadline,
-                    json_t *wire_details,
-                    const struct GNUNET_HashCode *h_contract,
-                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                    const struct TALER_DenominationSignature *denom_sig,
-                    const struct TALER_DenominationPublicKey *denom_pub,
-                    struct GNUNET_TIME_Absolute timestamp,
-                    uint64_t transaction_id,
-                    const struct TALER_MerchantPublicKeyP *merchant_pub,
-                    struct GNUNET_TIME_Absolute refund_deadline,
-                    const struct TALER_CoinSpendSignatureP *coin_sig,
-                    TALER_EXCHANGE_DepositResultCallback cb,
-                    void *cb_cls)
+                        const struct TALER_Amount *amount,
+                        struct GNUNET_TIME_Absolute wire_deadline,
+                        json_t *wire_details,
+                        const struct GNUNET_HashCode *h_contract,
+                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                        const struct TALER_DenominationSignature *denom_sig,
+                        const struct TALER_DenominationPublicKey *denom_pub,
+                        struct GNUNET_TIME_Absolute timestamp,
+                        uint64_t transaction_id,
+                        const struct TALER_MerchantPublicKeyP *merchant_pub,
+                        struct GNUNET_TIME_Absolute refund_deadline,
+                        const struct TALER_CoinSpendSignatureP *coin_sig,
+                        TALER_EXCHANGE_DepositResultCallback cb,
+                        void *cb_cls)
 {
   const struct TALER_EXCHANGE_Keys *key_state;
   const struct TALER_EXCHANGE_DenomPublicKey *dki;

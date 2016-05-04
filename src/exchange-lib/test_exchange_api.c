@@ -625,6 +625,18 @@ struct InterpreterState
 
 
 /**
+ * Pipe used to communicate child death via signal.
+ */
+static struct GNUNET_DISK_PipeHandle *sigpipe;
+
+/**
+ * ID of task called whenever we get a SIGCHILD.
+ */
+static struct GNUNET_SCHEDULER_Task *child_death_task;
+
+
+
+/**
  * The testcase failed, return with an error code.
  *
  * @param is interpreter state to clean up
@@ -1185,6 +1197,30 @@ link_cb (void *cls,
 
 
 /**
+ * Task triggered whenever we receive a SIGCHLD (child
+ * process died).
+ *
+ * @param cls closure, NULL if we need to self-restart
+ */
+static void
+maint_child_death (void *cls)
+{
+  struct InterpreterState *is = cls;
+  struct Command *cmd = &is->commands[is->ip];
+  const struct GNUNET_DISK_FileHandle *pr;
+  char c[16];
+
+  child_death_task = NULL;
+  pr = GNUNET_DISK_pipe_handle (sigpipe, GNUNET_DISK_PIPE_END_READ);
+  GNUNET_break (0 < GNUNET_DISK_file_read (pr, &c, sizeof (c)));
+  GNUNET_OS_process_wait (cmd->details.run_aggregator.aggregator_proc);
+  GNUNET_OS_process_destroy (cmd->details.run_aggregator.aggregator_proc);
+  cmd->details.run_aggregator.aggregator_proc = NULL;
+  next_command (is);
+}
+
+
+/**
  * Find denomination key matching the given amount.
  *
  * @param keys array of keys to search
@@ -1698,7 +1734,7 @@ interpreter_run (void *cls)
       GNUNET_CRYPTO_eddsa_key_get_public (&cmd->details.deposit.merchant_priv.eddsa_priv,
                                           &merchant_pub.eddsa_pub);
 
-      wire_deadline = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_DAYS);
+      wire_deadline = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_ZERO);
       timestamp = GNUNET_TIME_absolute_get ();
       GNUNET_TIME_round_abs (&timestamp);
       {
@@ -1999,6 +2035,8 @@ interpreter_run (void *cls)
     return;
   case OC_RUN_AGGREGATOR:
     {
+      const struct GNUNET_DISK_FileHandle *pr;
+
       cmd->details.run_aggregator.aggregator_proc
         = GNUNET_OS_start_process (GNUNET_NO,
                                    GNUNET_OS_INHERIT_STD_ALL,
@@ -2014,10 +2052,10 @@ interpreter_run (void *cls)
         fail (is);
         return;
       }
-      GNUNET_OS_process_wait (cmd->details.run_aggregator.aggregator_proc);
-      GNUNET_OS_process_destroy (cmd->details.run_aggregator.aggregator_proc);
-      cmd->details.run_aggregator.aggregator_proc = NULL;
-      next_command (is);
+      pr = GNUNET_DISK_pipe_handle (sigpipe, GNUNET_DISK_PIPE_END_READ);
+      child_death_task = GNUNET_SCHEDULER_add_read_file (GNUNET_TIME_UNIT_FOREVER_REL,
+                                                         pr,
+                                                         &maint_child_death, is);
       return;
     }
   case OC_CHECK_BANK_DEPOSIT:
@@ -2068,6 +2106,24 @@ interpreter_run (void *cls)
     fail (is);
     return;
   }
+}
+
+
+/**
+ * Signal handler called for SIGCHLD.  Triggers the
+ * respective handler by writing to the trigger pipe.
+ */
+static void
+sighandler_child_death ()
+{
+  static char c;
+  int old_errno = errno;	/* back-up errno */
+
+  GNUNET_break (1 ==
+		GNUNET_DISK_file_write (GNUNET_DISK_pipe_handle
+					(sigpipe, GNUNET_DISK_PIPE_END_WRITE),
+					&c, sizeof (c)));
+  errno = old_errno;		/* restore errno */
 }
 
 
@@ -2526,7 +2582,7 @@ run (void *cls)
       .details.deposit.amount = "EUR:0.1",
       .details.deposit.coin_ref = "refresh-reveal-1",
       .details.deposit.coin_idx = 4,
-      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":43  }",
       .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }",
       .details.deposit.transaction_id = 2 },
 
@@ -2563,8 +2619,36 @@ run (void *cls)
       .label = "wire-deposit-failing",
       .expected_response_code = MHD_HTTP_NOT_FOUND },
 
+    /* Run transfers. Note that _actual_ aggregation will NOT
+       happen here, as each deposit operation is run with a
+       fresh merchant public key! */
     { .oc = OC_RUN_AGGREGATOR,
       .label = "run-aggregator" },
+
+    { .oc = OC_CHECK_BANK_DEPOSIT,
+      .label = "check_bank_deposit-499c",
+      .details.check_bank_deposit.amount = "EUR:4.99",
+      .details.check_bank_deposit.account_debit = 2,
+      .details.check_bank_deposit.account_credit = 42
+    },
+    { .oc = OC_CHECK_BANK_DEPOSIT,
+      .label = "check_bank_deposit-99c1",
+      .details.check_bank_deposit.amount = "EUR:0.99",
+      .details.check_bank_deposit.account_debit = 2,
+      .details.check_bank_deposit.account_credit = 42
+    },
+    { .oc = OC_CHECK_BANK_DEPOSIT,
+      .label = "check_bank_deposit-99c2",
+      .details.check_bank_deposit.amount = "EUR:0.99",
+      .details.check_bank_deposit.account_debit = 2,
+      .details.check_bank_deposit.account_credit = 42
+    },
+    { .oc = OC_CHECK_BANK_DEPOSIT,
+      .label = "check_bank_deposit-9c",
+      .details.check_bank_deposit.amount = "EUR:0.09",
+      .details.check_bank_deposit.account_debit = 2,
+      .details.check_bank_deposit.account_credit = 43
+    },
 
     { .oc = OC_CHECK_BANK_DEPOSITS_EMPTY,
       .label = "check_bank_empty" },
@@ -2613,6 +2697,7 @@ main (int argc,
 {
   struct GNUNET_OS_Process *proc;
   struct GNUNET_OS_Process *exchanged;
+  struct GNUNET_SIGNAL_Context *shc_chld;
 
   GNUNET_log_setup ("test-exchange-api",
                     "WARNING",
@@ -2646,7 +2731,14 @@ main (int argc,
   while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/keys -o /dev/null -O /dev/null"));
   fprintf (stderr, "\n");
   result = GNUNET_SYSERR;
+  sigpipe = GNUNET_DISK_pipe (GNUNET_NO, GNUNET_NO, GNUNET_NO, GNUNET_NO);
+  GNUNET_assert (NULL != sigpipe);
+  shc_chld = GNUNET_SIGNAL_handler_install (GNUNET_SIGCHLD,
+                                            &sighandler_child_death);
   GNUNET_SCHEDULER_run (&run, NULL);
+  GNUNET_SIGNAL_handler_uninstall (shc_chld);
+  shc_chld = NULL;
+  GNUNET_DISK_pipe_close (sigpipe);
   GNUNET_OS_process_kill (exchanged,
                           SIGTERM);
   GNUNET_OS_process_wait (exchanged);
