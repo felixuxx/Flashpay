@@ -117,6 +117,11 @@
  */
 #define TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT 1037
 
+/**
+ * Signature where the Exchange confirms a refund request.
+ */
+#define TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND 1038
+
 
 /*********************/
 /* Wallet signatures */
@@ -403,6 +408,64 @@ struct TALER_RefundRequestPS
 {
   /**
    * Purpose must be #TALER_SIGNATURE_MERCHANT_REFUND.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash over the contract which is being refunded.
+   */
+  struct GNUNET_HashCode h_contract GNUNET_PACKED;
+
+  /**
+   * Merchant-generated transaction ID of the orginal transaction.
+   */
+  uint64_t transaction_id GNUNET_PACKED;
+
+  /**
+   * The coin's public key.  This is the value that must have been
+   * signed (blindly) by the Exchange.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * The Merchant's public key.  Allows the merchant to later refund
+   * the transaction or to inquire about the wire transfer identifier.
+   */
+  struct TALER_MerchantPublicKeyP merchant;
+
+  /**
+   * Merchant-generated transaction ID for the refund.
+   */
+  uint64_t rtransaction_id GNUNET_PACKED;
+
+  /**
+   * Amount to be refunded, including refund fee charged by the
+   * exchange to the customer.
+   */
+  struct TALER_AmountNBO refund_amount;
+
+  /**
+   * Refund fee charged by the exchange.  This must match the
+   * Exchange's denomination key's refund fee.  If the client puts in
+   * an invalid refund fee (too high or too low) that does not match
+   * the Exchange's denomination key, the refund operation is invalid
+   * and will be rejected by the exchange.  The @e amount_with_fee
+   * minus the @e refund_fee is the amount that will be credited to
+   * the original coin.
+   */
+  struct TALER_AmountNBO refund_fee;
+
+};
+
+
+/**
+ * @brief Format used to generate the signature on a request to refund
+ * a coin into the account of the customer.
+ */
+struct TALER_RefundConfirmationPS
+{
+  /**
+   * Purpose must be #TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 

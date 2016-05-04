@@ -21,6 +21,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_deposit_wtid.c \
   exchange_api_refresh.c \
   exchange_api_refresh_link.c \
+  exchange_api_refund.c \
   exchange_api_reserve.c \
   exchange_api_wire.c \
   exchange_api_wire_deposits.c

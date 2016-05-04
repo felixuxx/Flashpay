@@ -504,7 +504,7 @@ typedef void
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param amount the amount to be refunded; must be larger than the refund fee
- *        (as that fee is still being subtracted), and smaller than the amount 
+ *        (as that fee is still being subtracted), and smaller than the amount
  *        (with deposit fee) of the original deposit contribution of this coin
  * @param refund_fee fee applicable to this coin for the refund
  * @param h_contract hash of the contact of the merchant with the customer that is being refunded
@@ -525,6 +525,7 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 		       const struct TALER_Amount *amount,
 		       const struct TALER_Amount *refund_fee,
 		       const struct GNUNET_HashCode *h_contract,
+		       uint64_t transaction_id,
 		       const struct TALER_CoinSpendPublicKeyP *coin_pub,
 		       uint64_t rtransaction_id,
 		       const struct TALER_MerchantPrivateKeyP *merchant_priv,
@@ -534,7 +535,7 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 
 /**
  * Cancel a refund permission request.  This function cannot be used
- * on a request handle if a response is already served for it.  If 
+ * on a request handle if a response is already served for it.  If
  * this function is called, the refund may or may not have happened.
  * However, it is fine to try to refund the coin a second time.
  *
