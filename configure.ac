@@ -21,7 +21,7 @@ AC_INIT([taler-exchange], [0.0.0], [taler-bug@gnunet.org])
 AC_CONFIG_SRCDIR([src/util/util.c])
 AC_CONFIG_HEADERS([taler_config.h])
 # support for non-recursive builds
-AM_INIT_AUTOMAKE([subdir-objects])
+AM_INIT_AUTOMAKE([subdir-objects 1.9 tar-pax])
 
 # pretty build rules
 AM_SILENT_RULES([yes])

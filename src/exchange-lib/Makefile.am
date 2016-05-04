@@ -64,7 +64,7 @@ test_exchange_api_LDADD = \
   -ljansson
 
 EXTRA_DIST = \
-  test_taler_exchange_api_home/.local/share/taler/exchange/offline-keys/master.priv \
-  test_taler_exchange_api_home/.config/taler/test.json \
-  test_taler_exchange_api_home/.config/taler/sepa.json \
-  test_taler_exchange_api.conf
+  test_exchange_api_home/.local/share/taler/exchange/offline-keys/master.priv \
+  test_exchange_api_home/.config/taler/test.json \
+  test_exchange_api_home/.config/taler/sepa.json \
+  test_exchange_api.conf
