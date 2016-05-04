@@ -110,7 +110,7 @@ verify_deposit_wtid_signature_ok (const struct TALER_EXCHANGE_DepositWtidHandle 
   key_state = TALER_EXCHANGE_get_keys (dwh->exchange);
   if (GNUNET_OK !=
       TALER_EXCHANGE_test_signing_key (key_state,
-                                   &exchange_pub))
+                                       &exchange_pub))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -308,7 +308,7 @@ TALER_EXCHANGE_deposit_wtid (struct TALER_EXCHANGE_Handle *exchange,
   dwh->cb = cb;
   dwh->cb_cls = cb_cls;
   dwh->url = MAH_path_to_url (exchange, "/deposit/wtid");
-  dwh->depconf.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
+  dwh->depconf.purpose.size = htonl (sizeof (struct TALER_ConfirmWirePS));
   dwh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE);
   dwh->depconf.h_wire = *h_wire;
   dwh->depconf.h_contract = *h_contract;
