@@ -175,25 +175,6 @@ TMH_json_validate_wireformat (const json_t *wire,
 
 
 /**
- * Check if we support the given wire method.
- *
- * @param type type of wire method to check
- * @return #GNUNET_YES if the method is supported
- */
-int
-TMH_VALIDATION_test_method (const char *type)
-{
-  struct Plugin *p;
-
-  for (p=wire_head;NULL != p;p = p->next)
-    if (0 == strcasecmp (type,
-                         p->type))
-      return GNUNET_YES;
-  return GNUNET_NO;
-}
-
-
-/**
  * Obtain JSON of the supported wire methods for a given
  * account name prefix.
  *
