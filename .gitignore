@@ -51,6 +51,7 @@ src/util/test_amount
 src/util/test_crypto
 src/util/test_json
 src/util/test_wireformats
+src/util/taler-arm
 doc/paper/llncs.cls
 doc/paper/taler.bbl
 doc/paper/taler.blg

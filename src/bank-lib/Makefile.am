@@ -28,7 +28,7 @@ libtalerbank_la_LIBADD = \
   $(XLIB)
 
 libfakebank_la_SOURCES = \
-  fakebank.c
+  fakebank.c fakebank.h
 
 libfakebank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \

@@ -152,6 +152,35 @@ AS_IF([test $libgnunetcurl != 1],
 *** ]])])
 
 
+
+# Check for GNUnet's libgnunetpq.
+libgnunetpq=0
+AC_MSG_CHECKING([for libgnunetpq])
+AC_ARG_WITH(gnunet,
+            [AS_HELP_STRING([--with-gnunet=PFX], [base of GNUnet installation])],
+            [AC_MSG_RESULT([given as $with_gnunet])],
+            [AC_MSG_RESULT(not given)
+             with_gnunet=yes])
+AS_CASE([$with_gnunet],
+        [yes], [],
+        [no], [AC_MSG_ERROR([--with-gnunet is required])],
+        [LDFLAGS="-L$with_gnunet/lib $LDFLAGS"
+         CPPFLAGS="-I$with_gnunet/include $CPPFLAGS"])
+AC_CHECK_HEADERS([gnunet/platform.h gnunet/gnunet_pq_lib.h],
+ [AC_CHECK_LIB([gnunetpq], [GNUNET_PQ_result_spec_string], libgnunetpq=1)],
+  [], [#ifdef HAVE_GNUNET_PLATFORM_H
+        #include <gnunet/platform.h>
+       #endif])
+AS_IF([test $libgnunetpq != 1],
+  [AC_MSG_ERROR([[
+***
+*** You need libgnunetpq to build this program.
+*** Make sure you have Postgres installed while
+*** building GNUnet (and that your GNUnet version
+*** is recent!)
+*** ]])])
+
+
 # check for libmicrohttpd
 microhttpd=0
 AC_MSG_CHECKING([for microhttpd])
