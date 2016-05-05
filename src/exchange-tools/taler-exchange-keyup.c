@@ -950,6 +950,10 @@ run (void *cls,
     global_ret = 1;
     return;
   }
+  if (GNUNET_YES != GNUNET_DISK_file_test (masterkeyfile))
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Exchange master private key `%s' does not exist yet, creating it!\n",
+                masterkeyfile);
   eddsa_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (masterkeyfile);
   if (NULL == eddsa_priv)
   {

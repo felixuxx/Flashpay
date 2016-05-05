@@ -216,6 +216,10 @@ main (int argc,
              "Auditor URL not given\n");
     return 1;
   }
+  if (GNUNET_YES != GNUNET_DISK_file_test (auditor_key_file))
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Auditor private key `%s' does not exist yet, creating it!\n",
+                auditor_key_file);
   eddsa_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (auditor_key_file);
   if (NULL == eddsa_priv)
   {
