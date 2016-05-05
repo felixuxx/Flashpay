@@ -63,6 +63,21 @@ verify_and_execute_refund (struct MHD_Connection *connection,
                      &refund->refund_fee);
   dr.merchant = refund->merchant_pub;
   dr.coin_pub = refund->coin.coin_pub;
+  if (GNUNET_YES !=
+      TALER_amount_cmp_currency (&refund->refund_amount,
+                                 &refund->refund_fee) )
+  {
+    GNUNET_break_op (0);
+    return TMH_RESPONSE_reply_arg_invalid (connection,
+                                           "refund_fee");
+  }
+  if (-1 == TALER_amount_cmp (&refund->refund_amount,
+                              &refund->refund_fee) )
+  {
+    GNUNET_break_op (0);
+    return TMH_RESPONSE_reply_signature_invalid (connection,
+                                                 "refund_amount");
+  }
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
                                   &dr.purpose,
@@ -73,13 +88,8 @@ verify_and_execute_refund (struct MHD_Connection *connection,
     return TMH_RESPONSE_reply_signature_invalid (connection,
                                                  "merchant_sig");
   }
-#if 1
-  GNUNET_break (0); // FIXME: not implemented
-  return MHD_NO;
-#else
   return TMH_DB_execute_refund (connection,
 				refund);
-#endif
 }
 
 

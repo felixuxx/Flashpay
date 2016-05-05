@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015 GNUnet e.V.
+  Copyright (C) 2015, 2016 Inria & GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -106,6 +106,9 @@ common_free_coin_transaction_list (void *cls,
       break;
     case TALER_EXCHANGEDB_TT_REFRESH_MELT:
       GNUNET_free (list->details.melt);
+      break;
+    case TALER_EXCHANGEDB_TT_REFUND:
+      GNUNET_free (list->details.refund);
       break;
     }
     GNUNET_free (list);

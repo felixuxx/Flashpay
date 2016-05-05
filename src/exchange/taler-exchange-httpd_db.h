@@ -41,6 +41,20 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
 
 
 /**
+ * Execute a "/refund".  Returns a confirmation that the refund
+ * was successful, or a failure if we are not aware of a matching
+ * /deposit or if it is too late to do the refund.
+ *
+ * @param connection the MHD connection to handle
+ * @param refund refund details
+ * @return MHD result code
+ */
+int
+TMH_DB_execute_refund (struct MHD_Connection *connection,
+                       const struct TALER_EXCHANGEDB_Refund *refund);
+
+
+/**
  * Execute a "/reserve/status".  Given the public key of a reserve,
  * return the associated transaction history.
  *

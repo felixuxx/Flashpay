@@ -643,6 +643,86 @@ compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
 
 
 /**
+ * Generate refund conflict failure message. Returns the
+ * transaction list @a tl with the details about the conflict.
+ *
+ * @param connection connection to the client
+ * @param tl transaction list showing the conflict
+ * @return MHD result code
+ */
+int
+TMH_RESPONSE_reply_refund_conflict (struct MHD_Connection *connection,
+                                    const struct TALER_EXCHANGEDB_TransactionList *tl)
+{
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_CONFLICT,
+                                       "{s:s, s:o}",
+                                       "status", "conflicting refund",
+                                       "history", compile_transaction_history (tl));
+}
+
+
+/**
+ * Generate generic refund failure message. All the details
+ * are in the @a response_code.  The body can be empty.
+ *
+ * @param connection connection to the client
+ * @param response_code response code to generate
+ * @return MHD result code
+ */
+int
+TMH_RESPONSE_reply_refund_failure (struct MHD_Connection *connection,
+                                   unsigned int response_code)
+{
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       response_code,
+                                       "{s:s}",
+                                       "error",
+                                       "no details");
+}
+
+
+/**
+ * Generate successful refund confirmation message.
+ *
+ * @param connection connection to the client
+ * @param refund details about the successful refund
+ * @return MHD result code
+ */
+int
+TMH_RESPONSE_reply_refund_success (struct MHD_Connection *connection,
+                                   const struct TALER_EXCHANGEDB_Refund *refund)
+{
+  struct TALER_RefundConfirmationPS rc;
+  struct TALER_ExchangePublicKeyP pub;
+  struct TALER_ExchangeSignatureP sig;
+
+  rc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND);
+  rc.purpose.size = htonl (sizeof (struct TALER_RefundConfirmationPS));
+  rc.h_contract = refund->h_contract;
+  rc.transaction_id = GNUNET_htonll (refund->transaction_id);
+  rc.coin_pub = refund->coin.coin_pub;
+  rc.merchant = refund->merchant_pub;
+  rc.rtransaction_id = GNUNET_htonll (refund->rtransaction_id);
+  TALER_amount_hton (&rc.refund_amount,
+                     &refund->refund_amount);
+  TALER_amount_hton (&rc.refund_fee,
+                     &refund->refund_fee);
+  TMH_KS_sign (&rc.purpose,
+               &pub,
+               &sig);
+  return TMH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:s, s:o, s:o}",
+                                       "status", "REFUND_OK",
+                                       "sig", GNUNET_JSON_from_data (&sig,
+                                                                     sizeof (sig)),
+                                       "pub", GNUNET_JSON_from_data (&pub,
+                                                                     sizeof (pub)));
+}
+
+
+/**
  * Send reserve status information to client.
  *
  * @param connection connection to the client

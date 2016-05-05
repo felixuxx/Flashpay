@@ -2177,6 +2177,26 @@ postgres_mark_deposit_tiny (void *cls,
 
 
 /**
+ * Test if a deposit was marked as done, thereby declaring that it cannot be
+ * refunded anymore.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to the database
+ * @param deposit the deposit to check
+ * @return #GNUNET_YES if is is marked done done, #GNUNET_NO if not,
+ *         #GNUNET_SYSERR on error (deposit unknown)
+ */
+static int
+postgres_test_deposit_done (void *cls,
+                            struct TALER_EXCHANGEDB_Session *session,
+                            const struct TALER_EXCHANGEDB_Deposit *deposit)
+{
+  GNUNET_break (0); // not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Mark a deposit as done, thereby declaring that it cannot be
  * executed at all anymore, and should no longer be returned by
  * @e iterate_ready_deposits() or @e iterate_matching_deposits().
@@ -2463,6 +2483,24 @@ postgres_insert_deposit (void *cls,
   }
   PQclear (result);
   return ret;
+}
+
+
+/**
+ * Insert information about refunded coin into the database.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to the database
+ * @param refund refund information to store
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+static int
+postgres_insert_refund (void *cls,
+                        struct TALER_EXCHANGEDB_Session *session,
+                        const struct TALER_EXCHANGEDB_Refund *refund)
+{
+  GNUNET_break (0); // not implemented
+  return GNUNET_SYSERR;
 }
 
 
@@ -4242,10 +4280,12 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->free_reserve_history = &common_free_reserve_history;
   plugin->have_deposit = &postgres_have_deposit;
   plugin->mark_deposit_tiny = &postgres_mark_deposit_tiny;
+  plugin->test_deposit_done = &postgres_test_deposit_done;
   plugin->mark_deposit_done = &postgres_mark_deposit_done;
   plugin->get_ready_deposit = &postgres_get_ready_deposit;
   plugin->iterate_matching_deposits = &postgres_iterate_matching_deposits;
   plugin->insert_deposit = &postgres_insert_deposit;
+  plugin->insert_refund = &postgres_insert_refund;
   plugin->get_refresh_session = &postgres_get_refresh_session;
   plugin->create_refresh_session = &postgres_create_refresh_session;
   plugin->insert_refresh_melt = &postgres_insert_refresh_melt;

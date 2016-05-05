@@ -499,7 +499,12 @@ enum TALER_EXCHANGEDB_TransactionType
   /**
    * /refresh/melt operation.
    */
-  TALER_EXCHANGEDB_TT_REFRESH_MELT = 1
+  TALER_EXCHANGEDB_TT_REFRESH_MELT = 1,
+
+  /**
+   * /refund operation.
+   */
+  TALER_EXCHANGEDB_TT_REFUND = 2
 
 };
 
@@ -535,6 +540,11 @@ struct TALER_EXCHANGEDB_TransactionList
      * Details if transaction was a /refresh/melt operation.
      */
     struct TALER_EXCHANGEDB_RefreshMelt *melt;
+
+    /**
+     * Details if transaction was a /refund operation.
+     */
+    struct TALER_EXCHANGEDB_Refund *refund;
 
   } details;
 
@@ -954,6 +964,20 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Insert information about refunded coin into the database.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param refund refund information to store
+   * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+   */
+  int
+  (*insert_refund) (void *cls,
+                    struct TALER_EXCHANGEDB_Session *session,
+                    const struct TALER_EXCHANGEDB_Refund *refund);
+
+
+  /**
    * Mark a deposit as tiny, thereby declaring that it cannot be
    * executed by itself and should no longer be returned by
    * @e iterate_ready_deposits()
@@ -967,6 +991,22 @@ struct TALER_EXCHANGEDB_Plugin
   (*mark_deposit_tiny) (void *cls,
                         struct TALER_EXCHANGEDB_Session *session,
                         unsigned long long rowid);
+
+
+  /**
+   * Test if a deposit was marked as done, thereby declaring that it cannot be
+   * refunded anymore.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to the database
+   * @param deposit the deposit to check
+   * @return #GNUNET_YES if is is marked done done, #GNUNET_NO if not,
+   *         #GNUNET_SYSERR on error (deposit unknown)
+   */
+  int
+  (*test_deposit_done) (void *cls,
+                        struct TALER_EXCHANGEDB_Session *session,
+                        const struct TALER_EXCHANGEDB_Deposit *deposit);
 
 
   /**
