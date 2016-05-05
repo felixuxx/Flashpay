@@ -1,0 +1,60 @@
+.TH TALER\-CONFIG\-GENERATE 1 "May 5, 2016" "GNU Taler"
+
+.SH NAME
+taler\-config\-generate \- tool to simplfy Taler configuration generation
+
+.SH SYNOPSIS
+.B taler\-config\-generate
+.RI [ options ]
+.br
+
+.SH DESCRIPTION
+\fBtaler\-config\-generate\fP can be used to generate configuration files for the Taler exchange or Taler merchants
+
+.SH OPTIONS
+.B
+.IP "\-c FILENAME, \-\-config=FILENAME"
+Location where to write the generated configuration.  Existing file will be updated, not overwritten.
+.B
+.IP "\-C CURRENCY, \-\-currency=CURRENCY"
+Which currency should we use in the configuration.
+.B
+.IP "\-e, \-\-exchange"
+Generate configuration for a Taler exchange.
+.B
+.IP "\-m, \-\-merchant"
+Generate configuration for a Taler merchant.
+.B
+.IP "\-t, \-\-trusted"
+Setup current exchange as trusted with current merchant. Generally only useful when configuring for testcases.
+.B
+.IP "\-w WIREFORMAT, \-\-wire WIREFORMAT"
+Specifies which wire format to use (i.e. "test" or "sepa")
+.B
+.IP "\-j JSON, \-\-wire-json-merchant=JSON"
+Wire configuration to use for the merchant.
+.B
+.IP "\-J JSON, \-\-wire-json-exchange=JSON"
+Wire configuration to use for the exchange.
+.B
+.IP "\-\-bank-uri"
+Alternative to specify wire configuration to use for the exchange and merchant for the "test" wire method. Only useful if WIREFORMAT was set to "test".  Specifies the URI of the bank.
+.B
+.IP "\-\-exchange-bank-account"
+Alternative to specify wire configuration to use for the exchange for the "test" wire method. Only useful if WIREFORMAT was set to "test".  Specifies the bank account number of the exchange.
+.B
+.IP "\-\-merchant-bank-account"
+Alternative to specify wire configuration to use for the merchant for the "test" wire method. Only useful if WIREFORMAT was set to "test". Specifies the bank account number of the merchant.
+.B
+.IP "\-h, \-\-help"
+Shows this man page.
+.B
+.IP "\-L LOGLEVEL, \-\-loglevel=LOGLEVEL"
+Use LOGLEVEL for logging.  Valid values are DEBUG, INFO, WARNING and ERROR.
+.B
+.IP "\-v, \-\-version"
+Print GNUnet version number.
+
+
+.SH BUGS
+Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <gnunet\-developers@gnu.org>

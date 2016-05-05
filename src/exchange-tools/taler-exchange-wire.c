@@ -177,9 +177,18 @@ run (void *cls,
 
   if (NULL != output_filename)
   {
-    fclose (stdout);
+    if (NULL != stdout)
+      fclose (stdout);
     stdout = fopen (output_filename,
 		    "w+");
+    if (NULL == stdout)
+    {
+      fprintf (stderr,
+               "Failed to open `%s': %s\n",
+               output_filename,
+               STRERROR (errno));
+      return;
+    }
   }
   fprintf (stdout,
 	   "%s",
