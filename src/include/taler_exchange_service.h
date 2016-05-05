@@ -1212,4 +1212,21 @@ void
 TALER_EXCHANGE_deposit_wtid_cancel (struct TALER_EXCHANGE_DepositWtidHandle *dwh);
 
 
+
+/**
+ * Convenience function.  Verifies a coin's transaction history as
+ * returned by the exchange.
+ *
+ * @param currency expected currency for the coin
+ * @param coin_pub public key of the coin
+ * @param history history of the coin in json encoding
+ * @param[out] total how much of the coin has been spent according to @a history
+ * @return #GNUNET_OK if @a history is valid, #GNUNET_SYSERR if not
+ */
+int
+TALER_EXCHANGE_verify_coin_history (const char *currency,
+                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                    json_t *history,
+                                    struct TALER_Amount *total);
+
 #endif  /* _TALER_EXCHANGE_SERVICE_H */

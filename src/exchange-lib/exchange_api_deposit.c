@@ -156,7 +156,7 @@ verify_deposit_signature_forbidden (const struct TALER_EXCHANGE_DepositHandle *d
   history = json_object_get (json,
                              "history");
   if (GNUNET_OK !=
-      TALER_EXCHANGE_verify_coin_history_ (dh->coin_value.currency,
+      TALER_EXCHANGE_verify_coin_history (dh->coin_value.currency,
                                            &dh->depconf.coin_pub,
                                            history,
                                            &total))

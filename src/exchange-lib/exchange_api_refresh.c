@@ -1220,7 +1220,7 @@ verify_refresh_melt_signature_forbidden (struct TALER_EXCHANGE_RefreshMeltHandle
   history = json_object_get (json,
                              "history");
   if (GNUNET_OK !=
-      TALER_EXCHANGE_verify_coin_history_ (original_value.currency,
+      TALER_EXCHANGE_verify_coin_history (original_value.currency,
                                        &coin_pub,
                                        history,
                                        &total))

@@ -37,7 +37,7 @@
  * @return #GNUNET_OK if @a history is valid, #GNUNET_SYSERR if not
  */
 int
-TALER_EXCHANGE_verify_coin_history_ (const char *currency,
+TALER_EXCHANGE_verify_coin_history (const char *currency,
                                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                      json_t *history,
                                      struct TALER_Amount *total)
