@@ -194,6 +194,11 @@ static struct GNUNET_DISK_PipeHandle *sigpipe;
 static struct GNUNET_SCHEDULER_Task *child_death_task;
 
 /**
+ * ID of task called whenever we time out.
+ */
+static struct GNUNET_SCHEDULER_Task *timeout_task;
+
+/**
  * Return value from main().
  */
 static int result;
@@ -260,8 +265,29 @@ interpreter (void *cls);
  * @param cls closure, NULL if we need to self-restart
  */
 static void
+timeout_action (void *cls)
+{
+  timeout_task = NULL;
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Test failed: timeout\n");
+  result = 2;
+  GNUNET_SCHEDULER_shutdown ();
+}
+
+
+/**
+ * Task triggered whenever we are to shutdown.
+ *
+ * @param cls closure, NULL if we need to self-restart
+ */
+static void
 shutdown_action (void *cls)
 {
+  if (NULL != timeout_task)
+  {
+    GNUNET_SCHEDULER_cancel (timeout_task);
+    timeout_task = NULL;
+  }
   if (NULL != int_task)
   {
     GNUNET_SCHEDULER_cancel (int_task);
@@ -1143,6 +1169,9 @@ run (void *cls)
 				    &maint_child_death, NULL);
   GNUNET_SCHEDULER_add_shutdown (&shutdown_action,
                                  NULL);
+  timeout_task = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_MINUTES,
+                                               &timeout_action,
+                                               NULL);
   result = 1; /* test failed for undefined reason */
   fb = FAKEBANK_start (8082);
   if (NULL == fb)
