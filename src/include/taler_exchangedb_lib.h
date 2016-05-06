@@ -239,7 +239,8 @@ typedef int
 
 
 /**
- * Call @a it with information for each auditor found in the @a exchange_base_dir.
+ * Call @a it with information for each auditor found in the
+ * directory with auditor information as specified in @a cfg.
  *
  * @param cfg configuration to use
  * @param it function to call with auditor information

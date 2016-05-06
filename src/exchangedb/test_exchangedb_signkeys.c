@@ -89,7 +89,7 @@ main (int argc,
  EXITIF_exit:
   if (NULL != tmpfile)
   {
-    (void) unlink (tmpfile);
+    (void) GNUNET_DISK_directory_remove (tmpfile);
     GNUNET_free (tmpfile);
   }
   return ret;

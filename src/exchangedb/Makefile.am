@@ -58,6 +58,7 @@ libtalerexchangedb_la_LDFLAGS = \
 
 
 check_PROGRAMS = \
+  test-exchangedb-auditors \
   test-exchangedb-denomkeys \
   test-exchangedb-signkeys \
   test-exchangedb-postgres \
@@ -66,17 +67,24 @@ check_PROGRAMS = \
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 TESTS = \
+  test-exchangedb-auditors \
   test-exchangedb-postgres \
   test-exchangedb-signkeys \
   test-perf-taler-exchangedb \
   test-exchangedb-denomkeys
+
+test_exchangedb_auditors_SOURCES = \
+  test_exchangedb_auditors.c
+test_exchangedb_auditors_LDADD = \
+  libtalerexchangedb.la \
+  $(top_srcdir)/src/util/libtalerutil.la \
+  -lgnunetutil
 
 test_exchangedb_denomkeys_SOURCES = \
   test_exchangedb_denomkeys.c
 test_exchangedb_denomkeys_LDADD = \
   libtalerexchangedb.la \
   $(top_srcdir)/src/util/libtalerutil.la \
-  $(top_srcdir)/src/pq/libtalerpq.la \
   -lgnunetutil
 
 test_exchangedb_signkeys_SOURCES = \
@@ -84,7 +92,6 @@ test_exchangedb_signkeys_SOURCES = \
 test_exchangedb_signkeys_LDADD = \
   libtalerexchangedb.la \
   $(top_srcdir)/src/util/libtalerutil.la \
-  $(top_srcdir)/src/pq/libtalerpq.la \
   -lgnunetutil
 
 test_exchangedb_postgres_SOURCES = \

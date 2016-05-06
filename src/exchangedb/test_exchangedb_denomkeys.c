@@ -136,7 +136,7 @@ main (int argc,
   GNUNET_free_non_null (enc);
   if (NULL != tmpfile)
   {
-    (void) unlink (tmpfile);
+    (void) GNUNET_DISK_directory_remove (tmpfile);
     GNUNET_free (tmpfile);
   }
   GNUNET_free_non_null (enc_read);
