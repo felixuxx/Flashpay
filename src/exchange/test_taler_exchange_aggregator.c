@@ -340,11 +340,11 @@ maint_child_death (void *cls)
   aggregator_state->ioff++;
   state = aggregator_state;
   aggregator_state = NULL;
-  interpreter (state);
   child_death_task = GNUNET_SCHEDULER_add_read_file (GNUNET_TIME_UNIT_FOREVER_REL,
                                                      pr,
                                                      &maint_child_death, NULL);
 
+  interpreter (state);
 }
 
 /**
@@ -1114,8 +1114,6 @@ run_test ()
   int_task = GNUNET_SCHEDULER_add_now (&interpreter,
                                        &state);
 }
-
-
 
 
 /**
