@@ -366,6 +366,25 @@ postgres_create_tables (void *cls)
           ",PRIMARY KEY (session_hash, oldcoin_index)" /* a coin can be used only
                                                  once in a refresh session */
           ") ");
+  /* Table with information about coins that have been refunded. (Technically
+     one of the deposit operations that a coin was involved with is refunded.)*/
+  SQLEXEC("CREATE TABLE IF NOT EXISTS refunds "
+          "(coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)"
+          ",merchant_pub BYTEA NOT NULL CHECK(LENGTH(merchant_pub)=32)"
+          ",merchant_sig BYTEA NOT NULL CHECK(LENGTH(merchant_pub)=64)"
+          ",h_contract BYTEA NOT NULL CHECK(LENGTH(merchant_pub)=64)"
+          ",transaction_id INT8 NOT NULL"
+          ",rtransaction_id INT8 NOT NULL"
+          ",amount_with_fee_val INT8 NOT NULL"
+          ",amount_with_fee_frac INT4 NOT NULL"
+          ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",refund_fee_val INT8 NOT NULL"
+          ",refund_fee_frac INT4 NOT NULL"
+          ",refund_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",PRIMARY KEY (coin_pub, merchant_pub, transaction_id, rtransaction_id)" /* this combo must be unique, and we usually select by coin_pub */
+          ") ");
+
+
   /* Table with information about the desired denominations to be created
      during a refresh operation; contains the denomination key for each
      of the coins (for a given refresh session) */
@@ -892,6 +911,26 @@ postgres_prepare (PGconn *db_conn)
            " $11, $12, $13, $14, $15, $16, $17, $18);",
            18, NULL);
 
+  /* Used in #postgres_insert_refund() to store refund information */
+  PREPARE ("insert_refund",
+           "INSERT INTO refunds "
+           "(coin_pub "
+           ",merchant_pub "
+           ",merchant_sig "
+           ",h_contract "
+           ",transaction_id "
+           ",rtransaction_id "
+           ",amount_with_fee_val "
+           ",amount_with_fee_frac "
+           ",amount_with_fee_curr "
+           ",refund_fee_val "
+           ",refund_fee_frac "
+           ",refund_fee_curr "
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
+           " $11, $12);",
+           12, NULL);
+
   /* Fetch an existing deposit request, used to ensure idempotency
      during /deposit processing. Used in #postgres_have_deposit(). */
   PREPARE ("get_deposit",
@@ -994,6 +1033,17 @@ postgres_prepare (PGconn *db_conn)
            " SET done=true"
            " WHERE serial_id=$1",
            1, NULL);
+
+  /* Used in #postgres_test_deposit_done() */
+  PREPARE ("test_deposit_done",
+           "SELECT done"
+           " FROM deposits"
+           " WHERE coin_pub=$1"
+           " AND transaction_id=$2"
+           " AND merchant_pub=$3"
+           " AND h_contract=$4"
+           " AND h_wire=$5",
+           5, NULL);
 
   /* Used in #postgres_get_coin_transactions() to obtain information
      about how a coin has been spend with /deposit requests. */
@@ -2191,8 +2241,50 @@ postgres_test_deposit_done (void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
                             const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
-  GNUNET_break (0); // not implemented
-  return GNUNET_SYSERR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
+    GNUNET_PQ_query_param_uint64 (&deposit->transaction_id),
+    GNUNET_PQ_query_param_auto_from_type (&deposit->merchant_pub),
+    GNUNET_PQ_query_param_auto_from_type (&deposit->h_contract),
+    GNUNET_PQ_query_param_auto_from_type (&deposit->h_wire),
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "test_deposit_done",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  if (0 == PQntuples (result))
+  {
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  {
+    /* NOTE: maybe wrong type for a 'boolean' */
+    uint32_t done;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint32 ("done",
+                                    &done),
+      GNUNET_PQ_result_spec_end
+    };
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    PQclear (result);
+    return (done ? GNUNET_YES : GNUNET_NO);
+  }
 }
 
 
@@ -2449,29 +2541,26 @@ postgres_insert_deposit (void *cls,
 {
   PGresult *result;
   int ret;
-
-  {
-    struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
-      GNUNET_PQ_query_param_rsa_public_key (deposit->coin.denom_pub.rsa_public_key),
-      GNUNET_PQ_query_param_rsa_signature (deposit->coin.denom_sig.rsa_signature),
-      GNUNET_PQ_query_param_uint64 (&deposit->transaction_id),
-      TALER_PQ_query_param_amount (&deposit->amount_with_fee),
-      TALER_PQ_query_param_amount (&deposit->deposit_fee),
-      GNUNET_PQ_query_param_absolute_time (&deposit->timestamp),
-      GNUNET_PQ_query_param_absolute_time (&deposit->refund_deadline),
-      GNUNET_PQ_query_param_absolute_time (&deposit->wire_deadline),
-      GNUNET_PQ_query_param_auto_from_type (&deposit->merchant_pub),
-      GNUNET_PQ_query_param_auto_from_type (&deposit->h_contract),
-      GNUNET_PQ_query_param_auto_from_type (&deposit->h_wire),
-      GNUNET_PQ_query_param_auto_from_type (&deposit->csig),
-      TALER_PQ_query_param_json (deposit->wire),
-      GNUNET_PQ_query_param_end
-    };
-    result = GNUNET_PQ_exec_prepared (session->conn,
-                                     "insert_deposit",
-                                     params);
-  }
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
+    GNUNET_PQ_query_param_rsa_public_key (deposit->coin.denom_pub.rsa_public_key),
+    GNUNET_PQ_query_param_rsa_signature (deposit->coin.denom_sig.rsa_signature),
+    GNUNET_PQ_query_param_uint64 (&deposit->transaction_id),
+    TALER_PQ_query_param_amount (&deposit->amount_with_fee),
+    TALER_PQ_query_param_amount (&deposit->deposit_fee),
+    GNUNET_PQ_query_param_absolute_time (&deposit->timestamp),
+    GNUNET_PQ_query_param_absolute_time (&deposit->refund_deadline),
+    GNUNET_PQ_query_param_absolute_time (&deposit->wire_deadline),
+    GNUNET_PQ_query_param_auto_from_type (&deposit->merchant_pub),
+    GNUNET_PQ_query_param_auto_from_type (&deposit->h_contract),
+    GNUNET_PQ_query_param_auto_from_type (&deposit->h_wire),
+    GNUNET_PQ_query_param_auto_from_type (&deposit->csig),
+    TALER_PQ_query_param_json (deposit->wire),
+    GNUNET_PQ_query_param_end
+  };
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "insert_deposit",
+                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
@@ -2499,8 +2588,36 @@ postgres_insert_refund (void *cls,
                         struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_EXCHANGEDB_Refund *refund)
 {
-  GNUNET_break (0); // not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&refund->coin.coin_pub),
+    GNUNET_PQ_query_param_auto_from_type (&refund->merchant_pub),
+    GNUNET_PQ_query_param_auto_from_type (&refund->merchant_sig),
+    GNUNET_PQ_query_param_auto_from_type (&refund->h_contract),
+    GNUNET_PQ_query_param_uint64 (&refund->transaction_id),
+    GNUNET_PQ_query_param_uint64 (&refund->rtransaction_id),
+    TALER_PQ_query_param_amount (&refund->refund_amount),
+    TALER_PQ_query_param_amount (&refund->refund_fee),
+    GNUNET_PQ_query_param_end
+  };
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (&refund->refund_amount,
+                                            &refund->refund_fee));
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "insert_refund",
+                                    params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
