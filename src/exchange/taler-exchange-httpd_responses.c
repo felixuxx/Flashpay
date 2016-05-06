@@ -408,7 +408,7 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
   const char *type;
   struct TALER_Amount value;
   json_t *history;
-  const struct TALER_CoinSpendSignatureP *sig;
+  const struct GNUNET_CRYPTO_EddsaSignature *sig;
   const struct TALER_EXCHANGEDB_TransactionList *pos;
 
   history = json_array ();
@@ -436,12 +436,12 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
                            &deposit->deposit_fee);
         dr.merchant = deposit->merchant_pub;
         dr.coin_pub = deposit->coin.coin_pub;
-        sig = &deposit->csig;
+        sig = &deposit->csig.eddsa_signature;
 	/* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
                                         &dr.purpose,
-                                        &sig->eddsa_signature,
+                                        sig,
                                         &deposit->coin.coin_pub.eddsa_pub))
 	{
 	  GNUNET_break (0);
@@ -468,12 +468,12 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
         TALER_amount_hton (&ms.melt_fee,
                            &melt->melt_fee);
         ms.coin_pub = melt->coin.coin_pub;
-        sig = &melt->coin_sig;
+        sig = &melt->coin_sig.eddsa_signature;
 	/* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
                                         &ms.purpose,
-                                        &sig->eddsa_signature,
+                                        sig,
                                         &melt->coin.coin_pub.eddsa_pub))
 	{
 	  GNUNET_break (0);
@@ -485,6 +485,48 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
                                         sizeof (struct TALER_RefreshMeltCoinAffirmationPS));
       }
       break;
+    case TALER_EXCHANGEDB_TT_REFUND:
+      {
+        struct TALER_RefundRequestPS rr;
+        const struct TALER_EXCHANGEDB_Refund *refund = pos->details.refund;
+
+        type = "REFUND";
+        if (GNUNET_OK !=
+            TALER_amount_subtract (&value,
+                                   &refund->refund_amount,
+                                   &refund->refund_fee))
+        {
+	  GNUNET_break (0);
+	  json_decref (history);
+	  return NULL;
+        }
+        rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
+        rr.purpose.size = htonl (sizeof (struct TALER_RefundRequestPS));
+        rr.h_contract = refund->h_contract;
+        rr.transaction_id = GNUNET_htonll (refund->transaction_id);
+        rr.coin_pub = refund->coin.coin_pub;
+        rr.merchant = refund->merchant_pub;
+        rr.rtransaction_id = GNUNET_htonll (refund->rtransaction_id);
+        TALER_amount_hton (&rr.refund_amount,
+                           &refund->refund_amount);
+        TALER_amount_hton (&rr.refund_fee,
+                           &refund->refund_fee);
+	/* internal sanity check before we hand out a bogus sig... */
+        if (GNUNET_OK !=
+            GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
+                                        &rr.purpose,
+                                        sig,
+                                        &refund->merchant_pub.eddsa_pub))
+	{
+	  GNUNET_break (0);
+	  json_decref (history);
+	  return NULL;
+	}
+        sig = &refund->merchant_sig.eddsa_sig;
+        details = GNUNET_JSON_from_data (&rr.purpose,
+                                         sizeof (struct TALER_RefundRequestPS));
+      }
+      break;
     default:
       GNUNET_assert (0);
     }
@@ -493,7 +535,7 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
                                       "type", type,
                                       "amount", TALER_JSON_from_amount (&value),
                                       "signature", GNUNET_JSON_from_data (sig,
-                                                                         sizeof (struct TALER_CoinSpendSignatureP)),
+                                                                          sizeof (struct GNUNET_CRYPTO_EddsaSignature)),
                                       "details", details));
   }
   return history;

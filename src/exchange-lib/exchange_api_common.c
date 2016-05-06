@@ -40,10 +40,12 @@ int
 TALER_EXCHANGE_verify_coin_history (const char *currency,
                                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                      json_t *history,
-                                     struct TALER_Amount *total)
+                                    struct TALER_Amount *total)
 {
   size_t len;
   size_t off;
+  int add;
+  struct TALER_Amount rtotal;
 
   if (NULL == history)
   {
@@ -58,6 +60,8 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
   }
   TALER_amount_get_zero (currency,
                          total);
+  TALER_amount_get_zero (currency,
+                         &rtotal);
   for (off=0;off<len;off++)
   {
     json_t *transaction;
@@ -89,6 +93,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
+    add = GNUNET_SYSERR;
     if (0 == strcasecmp (type,
                          "DEPOSIT"))
     {
@@ -123,11 +128,12 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
                          &dr->amount_with_fee);
       if (0 != TALER_amount_cmp (&dr_amount,
                                  &amount))
-        {
-          GNUNET_break (0);
-          GNUNET_JSON_parse_free (spec);
-          return GNUNET_SYSERR;
-        }
+      {
+        GNUNET_break (0);
+        GNUNET_JSON_parse_free (spec);
+        return GNUNET_SYSERR;
+      }
+      add = GNUNET_YES;
     }
     else if (0 == strcasecmp (type,
                               "MELT"))
@@ -167,6 +173,67 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
         GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
+      add = GNUNET_YES;
+    }
+    else if (0 == strcasecmp (type,
+                              "REFUND"))
+    {
+      const struct TALER_RefundRequestPS *rr;
+      struct TALER_Amount rr_amount;
+      struct TALER_Amount rr_fee;
+      struct TALER_Amount rr_delta;
+
+      if (details_size != sizeof (struct TALER_RefundRequestPS))
+      {
+        GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
+        return GNUNET_SYSERR;
+      }
+      rr = (const struct TALER_RefundRequestPS *) details;
+      if (details_size != ntohl (rr->purpose.size))
+      {
+        GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
+        return GNUNET_SYSERR;
+      }
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
+                                      &rr->purpose,
+                                      &sig.eddsa_signature,
+                                      &rr->merchant.eddsa_pub))
+      {
+        GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
+        return GNUNET_SYSERR;
+      }
+      TALER_amount_ntoh (&rr_amount,
+                         &rr->refund_amount);
+      TALER_amount_ntoh (&rr_fee,
+                         &rr->refund_fee);
+      if (GNUNET_OK !=
+          TALER_amount_subtract (&rr_delta,
+                                 &rr_amount,
+                                 &rr_fee))
+      {
+        GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
+        return GNUNET_SYSERR;
+      }
+      if (0 != TALER_amount_cmp (&rr_delta,
+                                 &amount))
+      {
+        GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
+        return GNUNET_SYSERR;
+      }
+      /* NOTE/FIXME: theoretically, we could also check that the given
+         transaction_id and merchant_pub and h_contract appear in the
+         history under deposits.  However, there is really no benefit
+         for the exchange to lie here, so not checking is probably OK
+         (an auditor ought to check, though). Then again, we similarly
+         had no reason to check the merchant's signature (other than a
+         well-formendess check). */
+      add = GNUNET_NO;
     }
     else
     {
@@ -175,18 +242,54 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
       GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
-    if (GNUNET_OK !=
-        TALER_amount_add (total,
-                          total,
-                          &amount))
+    if (GNUNET_YES == add)
     {
-      /* overflow in history already!? inconceivable! Bad exchange! */
-      GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
-      return GNUNET_SYSERR;
+      /* This amount should be added to the total */
+      if (GNUNET_OK !=
+          TALER_amount_add (total,
+                            total,
+                            &amount))
+      {
+        /* overflow in history already!? inconceivable! Bad exchange! */
+        GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
+        return GNUNET_SYSERR;
+      }
+    }
+    else
+    {
+      /* This amount should be subtracted from the total.
+
+         However, for the implementation, we first *add* up all of
+         these negative amounts, as we might get refunds before
+         deposits from a semi-evil exchange.  Then, at the end, we do
+         the subtraction by calculating "total = total - rtotal" */
+      GNUNET_assert (GNUNET_NO == add);
+      if (GNUNET_OK !=
+          TALER_amount_add (&rtotal,
+                            &rtotal,
+                            &amount))
+      {
+        /* overflow in refund history? inconceivable! Bad exchange! */
+        GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
+        return GNUNET_SYSERR;
+      }
     }
     GNUNET_JSON_parse_free (spec);
   }
+
+  /* Finally, subtract 'rtotal' from total to handle the subtractions */
+  if (GNUNET_OK !=
+      TALER_amount_subtract (total,
+                             total,
+                             &rtotal))
+  {
+    /* underflow in history? inconceivable! Bad exchange! */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
   return GNUNET_OK;
 }
 
