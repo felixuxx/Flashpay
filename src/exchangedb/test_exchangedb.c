@@ -120,6 +120,8 @@ create_denom_key_pair (unsigned int size,
 {
   struct DenomKeyPair *dkp;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation dki;
+  struct TALER_EXCHANGEDB_DenominationKeyInformationP issue2;
+  struct GNUNET_TIME_Absolute now;
 
   dkp = GNUNET_new (struct DenomKeyPair);
   dkp->priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (size);
@@ -133,17 +135,19 @@ create_denom_key_pair (unsigned int size,
           0,
           sizeof (struct TALER_EXCHANGEDB_DenominationKeyIssueInformation));
   dki.denom_pub = dkp->pub;
-  dki.issue.properties.start = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_get ());
+  now = GNUNET_TIME_absolute_get ();
+  GNUNET_TIME_round_abs (&now);
+  dki.issue.properties.start = GNUNET_TIME_absolute_hton (now);
   dki.issue.properties.expire_withdraw = GNUNET_TIME_absolute_hton
-      (GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
-                                 GNUNET_TIME_UNIT_HOURS));
+    (GNUNET_TIME_absolute_add (now,
+                               GNUNET_TIME_UNIT_HOURS));
   dki.issue.properties.expire_deposit = GNUNET_TIME_absolute_hton
       (GNUNET_TIME_absolute_add
-       (GNUNET_TIME_absolute_get (),
+       (now,
         GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 2)));
   dki.issue.properties.expire_legal = GNUNET_TIME_absolute_hton
       (GNUNET_TIME_absolute_add
-       (GNUNET_TIME_absolute_get (),
+       (now,
         GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS, 3)));
   TALER_amount_hton (&dki.issue.properties.value, value);
   TALER_amount_hton (&dki.issue.properties.fee_withdraw, fee_withdraw);
@@ -152,11 +156,32 @@ create_denom_key_pair (unsigned int size,
   TALER_amount_hton (&dki.issue.properties.fee_refund, fee_refund);
   GNUNET_CRYPTO_rsa_public_key_hash (dkp->pub.rsa_public_key,
                                      &dki.issue.properties.denom_hash);
+
+  dki.issue.properties.purpose.size = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
+  dki.issue.properties.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
   if (GNUNET_OK !=
       plugin->insert_denomination_info (plugin->cls,
                                         session,
                                         &dki.denom_pub,
                                         &dki.issue))
+  {
+    GNUNET_break(0);
+    destroy_denom_key_pair (dkp);
+    return NULL;
+  }
+  if (GNUNET_OK !=
+      plugin->get_denomination_info (plugin->cls,
+                                     session,
+                                     &dki.denom_pub,
+                                     &issue2))
+  {
+    GNUNET_break(0);
+    destroy_denom_key_pair (dkp);
+    return NULL;
+  }
+  if (0 != memcmp (&dki.issue,
+                   &issue2,
+                   sizeof (issue2)))
   {
     GNUNET_break(0);
     destroy_denom_key_pair (dkp);
@@ -554,6 +579,9 @@ cb_wtid_check (void *cls,
 }
 
 
+static unsigned long long deposit_rowid;
+
+
 /**
  * Function called with details about deposits that
  * have been made.  Called in the test on the
@@ -589,6 +617,7 @@ deposit_cb (void *cls,
   struct TALER_EXCHANGEDB_Deposit *deposit = cls;
   struct GNUNET_HashCode h_wire;
 
+  deposit_rowid = rowid;
   if (NULL != wire)
     TALER_JSON_hash (wire, &h_wire);
   if ( (0 != memcmp (merchant_pub,
@@ -616,6 +645,9 @@ deposit_cb (void *cls,
 
   return GNUNET_OK;
 }
+
+
+static struct TALER_EXCHANGEDB_Refund refund;
 
 
 /**
@@ -662,6 +694,12 @@ run (void *cls)
   {
     result = 77;
     return;
+  }
+  if (GNUNET_OK !=
+      plugin->create_tables (plugin->cls))
+  {
+    result = 77;
+    goto drop;
   }
   if (NULL !=
       (session = plugin->get_session (plugin->cls)))
@@ -847,6 +885,51 @@ run (void *cls)
                                              &deposit.merchant_pub,
                                              &deposit_cb, &deposit,
                                              2));
+
+  FAILIF (1 !=
+          plugin->get_ready_deposit (plugin->cls,
+                                     session,
+                                     &deposit_cb,
+                                     &deposit));
+  FAILIF (GNUNET_OK !=
+          plugin->start (plugin->cls,
+                         session));
+  FAILIF (GNUNET_OK !=
+          plugin->mark_deposit_tiny (plugin->cls,
+                                     session,
+                                     deposit_rowid));
+  FAILIF (0 !=
+          plugin->get_ready_deposit (plugin->cls,
+                                     session,
+                                     &deposit_cb,
+                                     &deposit));
+  plugin->rollback (plugin->cls,
+                    session);
+  FAILIF (1 !=
+          plugin->get_ready_deposit (plugin->cls,
+                                     session,
+                                     &deposit_cb,
+                                     &deposit));
+  FAILIF (GNUNET_OK !=
+          plugin->start (plugin->cls,
+                         session));
+  FAILIF (GNUNET_NO !=
+          plugin->test_deposit_done (plugin->cls,
+                                     session,
+                                     &deposit));
+  FAILIF (GNUNET_OK !=
+          plugin->mark_deposit_done (plugin->cls,
+                                     session,
+                                     deposit_rowid));
+  FAILIF (GNUNET_OK !=
+          plugin->commit (plugin->cls,
+                          session));
+  FAILIF (GNUNET_YES !=
+          plugin->test_deposit_done (plugin->cls,
+                                     session,
+                                     &deposit));
+
+
   result = 10;
   deposit2 = deposit;
   deposit2.transaction_id++;     /* should fail if transaction id is different */
@@ -886,6 +969,29 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY "KUDOS:1.000000",
                                          &transfer_value_wt));
+#if 0
+  /* FIXME: test insert_refund! */
+  refund.FOO = bar;
+  FAILIF (GNUNET_OK !=
+          plugin->insert_refund (plugin->cls,
+                                 session,
+                                 &refund));
+#endif
+  /* FIXME: test: insert_refresh_commit_links
+     FIXME: test: get_refresh_commit_links
+     FIXME: test: get_melt_commitment
+     FIXME: test: free_melt_commitment
+     FIXME: test: insert_refresh_out
+     FIXME: test: get_link_data_list
+     FIXME: test: free_link_data_list
+     FIXME: test: get_transfer
+     FIXME: test: get_coin_transactions
+     FIXME: test: free_coin_transaction_list
+     FIXME: test: wire_prepare_data_insert
+     FIXME: test: wire_prepare_data_mark_finished
+     FIXME: test: wire_prepare_data_get
+
+*/
 
   FAILIF (GNUNET_NO !=
           plugin->lookup_wire_transfer (plugin->cls,

@@ -1360,7 +1360,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @e get_link_data_list() enable the owner of an old coin to determine
    * the private keys of the new coins after the melt.
    *
-   *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection
    * @param coin_pub public key of the coin

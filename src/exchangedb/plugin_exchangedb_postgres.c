@@ -1555,6 +1555,10 @@ postgres_get_denomination_info (void *cls,
                                       0));
   }
   PQclear (result);
+  issue->properties.purpose.size = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
+  issue->properties.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
+  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
+                                     &issue->properties.denom_hash);
   return GNUNET_OK;
 
  EXITIF_exit:
