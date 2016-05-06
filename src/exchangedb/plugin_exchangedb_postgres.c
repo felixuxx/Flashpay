@@ -837,6 +837,25 @@ postgres_prepare (PGconn *db_conn)
            " WHERE coin_pub=$1",
            1, NULL);
 
+  /* Query the 'refunds' by coin public key */
+  PREPARE ("get_refunds_by_coin",
+           "SELECT"
+           " merchant_pub"
+           ",merchant_sig"
+           ",h_contract"
+           ",transaction_id"
+           ",rtransaction_id"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           ",refund_fee_val "
+           ",refund_fee_frac "
+           ",refund_fee_curr "
+           " FROM refunds"
+           " WHERE coin_pub=$1",
+           1, NULL);
+
+
   /* Used in #postgres_insert_refresh_commit_links() to
      store commitments */
   PREPARE ("insert_refresh_commit_link",
@@ -3735,7 +3754,7 @@ postgres_get_transfer (void *cls,
 
 /**
  * Compile a list of all (historic) transactions performed
- * with the given coin (/refresh/melt and /deposit operations).
+ * with the given coin (/refresh/melt, /deposit and /refund operations).
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
@@ -3778,6 +3797,11 @@ postgres_get_coin_transactions (void *cls,
       deposit = GNUNET_new (struct TALER_EXCHANGEDB_Deposit);
       {
         struct GNUNET_PQ_ResultSpec rs[] = {
+          /* FIXME: do we care about the denom_*s? We do not keep
+             them for refresh/refund, and it's unclear why we'd
+             bother with them here. (Kept for now, once we have
+             the auditor done we should decide if we want to always
+             take these along, or always drop them.) */
           GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
                                                &deposit->coin.denom_pub.rsa_public_key),
           GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
@@ -3835,7 +3859,7 @@ postgres_get_coin_transactions (void *cls,
     PGresult *result;
     struct TALER_EXCHANGEDB_TransactionList *tl;
 
-    /* check if the melt record exists and get it */
+    /* check if the melt records exist and get them */
     result = GNUNET_PQ_exec_prepared (session->conn,
                                      "get_refresh_melt_by_coin",
                                      params);
@@ -3878,6 +3902,70 @@ postgres_get_coin_transactions (void *cls,
       tl->next = head;
       tl->type = TALER_EXCHANGEDB_TT_REFRESH_MELT;
       tl->details.melt = melt;
+      head = tl;
+      continue;
+    }
+    PQclear (result);
+  }
+  /* handle refunds */
+  {
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (&coin_pub->eddsa_pub),
+      GNUNET_PQ_query_param_end
+    };
+    int nrows;
+    int i;
+    PGresult *result;
+    struct TALER_EXCHANGEDB_TransactionList *tl;
+
+    /* check if a refund records exist and get them */
+    result = GNUNET_PQ_exec_prepared (session->conn,
+                                      "get_refunds_by_coin",
+                                      params);
+    if (PGRES_TUPLES_OK != PQresultStatus (result))
+    {
+      BREAK_DB_ERR (result);
+      PQclear (result);
+      goto cleanup;
+    }
+    nrows = PQntuples (result);
+    for (i=0;i<nrows;i++)
+    {
+      struct TALER_EXCHANGEDB_Refund *refund;
+
+      refund = GNUNET_new (struct TALER_EXCHANGEDB_Refund);
+      {
+        struct GNUNET_PQ_ResultSpec rs[] = {
+          GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
+                                                &refund->merchant_pub),
+          GNUNET_PQ_result_spec_auto_from_type ("merchant_sig",
+                                                &refund->merchant_sig),
+          GNUNET_PQ_result_spec_auto_from_type ("h_contract",
+                                                &refund->h_contract),
+          GNUNET_PQ_result_spec_uint64 ("transaction_id",
+                                        &refund->transaction_id),
+          GNUNET_PQ_result_spec_uint64 ("rtransaction_id",
+                                        &refund->rtransaction_id),
+          TALER_PQ_result_spec_amount ("amount_with_fee",
+                                       &refund->refund_amount),
+          TALER_PQ_result_spec_amount ("refund_fee",
+                                       &refund->refund_fee),
+          GNUNET_PQ_result_spec_end
+        };
+        if (GNUNET_OK !=
+            GNUNET_PQ_extract_result (result, rs, 0))
+        {
+          GNUNET_break (0);
+          GNUNET_free (refund);
+          PQclear (result);
+          goto cleanup;
+        }
+	refund->coin.coin_pub = *coin_pub;
+      }
+      tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
+      tl->next = head;
+      tl->type = TALER_EXCHANGEDB_TT_REFUND;
+      tl->details.refund = refund;
       head = tl;
       continue;
     }
