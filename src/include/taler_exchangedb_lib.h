@@ -141,6 +141,19 @@ TALER_EXCHANGEDB_signing_keys_iterate (const char *exchange_base_dir,
                                        void *it_cls);
 
 
+/**
+ * Exports a signing key to the given file.
+ *
+ * @param exchange_base_dir base directory for the keys
+ * @param start start time of the validity for the key
+ * @param ski the signing key
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
+ */
+int
+TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
+                                    struct GNUNET_TIME_Absolute start,
+                                    const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *ski);
+
 
 /**
  * @brief Iterator over denomination keys.

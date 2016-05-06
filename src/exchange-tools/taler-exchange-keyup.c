@@ -220,29 +220,6 @@ static struct GNUNET_TIME_Absolute lookahead_sign_stamp;
 static int global_ret;
 
 
-
-/**
- * Obtain the name of the directory we use to store signing
- * keys created at time @a start.
- *
- * @param start time at which we create the signing key
- * @return name of the directory we should use, basically "$EXCHANGEDIR/$TIME/";
- *         (valid until next call to this function)
- */
-static const char *
-get_signkey_file (struct GNUNET_TIME_Absolute start)
-{
-  static char dir[4096];
-
-  GNUNET_snprintf (dir,
-                   sizeof (dir),
-                   "%s" DIR_SEPARATOR_STR TALER_EXCHANGEDB_DIR_SIGNING_KEYS DIR_SEPARATOR_STR "%llu",
-                   exchange_directory,
-                   (unsigned long long) start.abs_value_us);
-  return dir;
-}
-
-
 /**
  * Hash the data defining the coin type.  Exclude information that may
  * not be the same for all instances of the coin type (i.e. the
@@ -556,16 +533,11 @@ exchange_keys_update_signkeys ()
 
   while (anchor.abs_value_us < lookahead_sign_stamp.abs_value_us)
   {
-    const char *skf;
     struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP signkey_issue;
-    ssize_t nwrite;
     struct GNUNET_TIME_Absolute end;
 
-    skf = get_signkey_file (anchor);
     end = GNUNET_TIME_absolute_add (anchor,
                                     legal_duration);
-    GNUNET_break (GNUNET_YES !=
-                  GNUNET_DISK_file_test (skf));
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Generating signing key for %s.\n",
                 GNUNET_STRINGS_absolute_time_to_string (anchor));
@@ -573,18 +545,11 @@ exchange_keys_update_signkeys ()
                                signkey_duration,
                                end,
                                &signkey_issue);
-    nwrite = GNUNET_DISK_fn_write (skf,
-                                   &signkey_issue,
-                                   sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP),
-                                   GNUNET_DISK_PERM_USER_WRITE | GNUNET_DISK_PERM_USER_READ);
-    if (sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP) != nwrite)
-    {
-      fprintf (stderr,
-               "Failed to write to file `%s': %s\n",
-               skf,
-               STRERROR (errno));
+    if (GNUNET_OK !=
+        TALER_EXCHANGEDB_signing_key_write (exchange_directory,
+                                            anchor,
+                                            &signkey_issue))
       return GNUNET_SYSERR;
-    }
     anchor = GNUNET_TIME_absolute_add (anchor,
                                        signkey_duration);
   }

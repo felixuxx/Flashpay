@@ -114,6 +114,63 @@ TALER_EXCHANGEDB_signing_keys_iterate (const char *exchange_base_dir,
 
 
 /**
+ * Obtain the name of the directory we use to store signing
+ * keys created at time @a start.
+ *
+ * @param start time at which we create the signing key
+ * @return name of the directory we should use, basically "$EXCHANGEDIR/$TIME/";
+ *         (valid until next call to this function)
+ */
+static char *
+get_signkey_file (const char *exchange_directory,
+                  struct GNUNET_TIME_Absolute start)
+{
+  char *dir;
+
+  GNUNET_asprintf (&dir,
+                   "%s" DIR_SEPARATOR_STR TALER_EXCHANGEDB_DIR_SIGNING_KEYS DIR_SEPARATOR_STR "%llu",
+                   exchange_directory,
+                   (unsigned long long) start.abs_value_us);
+  return dir;
+}
+
+
+/**
+ * Exports a signing key to the given file.
+ *
+ * @param exchange_base_dir base directory for the keys
+ * @param start start time of the validity for the key
+ * @param ski the signing key
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
+ */
+int
+TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
+                                    struct GNUNET_TIME_Absolute start,
+                                    const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *ski)
+{
+  char *skf;
+  ssize_t nwrite;
+
+  skf = get_signkey_file (exchange_base_dir,
+                          start);
+  nwrite = GNUNET_DISK_fn_write (skf,
+                                 ski,
+                                 sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP),
+                                 GNUNET_DISK_PERM_USER_WRITE | GNUNET_DISK_PERM_USER_READ);
+  if (sizeof (struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP) != nwrite)
+  {
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                              "write",
+                              skf);
+    GNUNET_free (skf);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_free (skf);
+  return GNUNET_OK;
+}
+
+
+/**
  * Import a denomination key from the given file.
  *
  * @param filename the file to import the key from

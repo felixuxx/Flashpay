@@ -14,8 +14,8 @@
   TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange/test_exchange_common.c
- * @brief test cases for some functions in exchange/exchange_common.c
+ * @file exchangedb/test_exchangedb_keyio.c
+ * @brief test cases for some functions in exchangedb/exchangedb_keyio.c
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
 #include "platform.h"
@@ -30,6 +30,47 @@
   do {                                                            \
     if (cond) { GNUNET_break (0); goto EXITIF_exit; }             \
   } while (0)
+
+/**
+ * @brief Iterator called on denomination key.
+ *
+ * @param cls closure with expected DKI
+ * @param dki the denomination key
+ * @param alias coin alias
+ * @return #GNUNET_OK to continue to iterate,
+ *  #GNUNET_NO to stop iteration with no error,
+ *  #GNUNET_SYSERR to abort iteration with error!
+ */
+static int
+dki_iter (void *cls,
+          const char *alias,
+          const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+{
+  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *exp = cls;
+
+  if (0 != memcmp (&exp->issue,
+                   &dki->issue,
+                   sizeof (struct TALER_EXCHANGEDB_DenominationKeyInformationP)))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 !=
+      GNUNET_CRYPTO_rsa_private_key_cmp (exp->denom_priv.rsa_private_key,
+                                         dki->denom_priv.rsa_private_key))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 !=
+      GNUNET_CRYPTO_rsa_public_key_cmp (exp->denom_pub.rsa_public_key,
+                                        dki->denom_pub.rsa_public_key))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
 
 
 int
@@ -59,8 +100,18 @@ main (int argc,
   enc_size = GNUNET_CRYPTO_rsa_private_key_encode (dki.denom_priv.rsa_private_key,
                                                    &enc);
   EXITIF (NULL == (tmpfile = GNUNET_DISK_mktemp ("test_exchange_common")));
-  EXITIF (GNUNET_OK != TALER_EXCHANGEDB_denomination_key_write (tmpfile, &dki));
-  EXITIF (GNUNET_OK != TALER_EXCHANGEDB_denomination_key_read (tmpfile, &dki_read));
+  EXITIF (GNUNET_OK !=
+          TALER_EXCHANGEDB_denomination_key_write (tmpfile,
+                                                   &dki));
+  EXITIF (GNUNET_OK !=
+          TALER_EXCHANGEDB_denomination_key_read (tmpfile,
+                                                  &dki_read));
+  EXITIF (1 !=
+          TALER_EXCHANGEDB_denomination_keys_iterate (tmpfile,
+                                                      &dki_iter,
+                                                      &dki));
+
+
   enc_read_size = GNUNET_CRYPTO_rsa_private_key_encode (dki_read.denom_priv.rsa_private_key,
                                                         &enc_read);
   EXITIF (enc_size != enc_read_size);
