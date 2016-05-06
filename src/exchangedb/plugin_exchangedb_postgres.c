@@ -156,6 +156,8 @@ postgres_drop_tables (void *cls,
   SQLEXEC_ (session->conn,
             "DROP TABLE IF EXISTS refresh_commit_link;");
   SQLEXEC_ (session->conn,
+            "DROP TABLE IF EXISTS refunds;");
+  SQLEXEC_ (session->conn,
             "DROP TABLE IF EXISTS refresh_order;");
   SQLEXEC_ (session->conn,
             "DROP TABLE IF EXISTS refresh_melts;");
