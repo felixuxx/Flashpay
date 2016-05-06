@@ -522,6 +522,12 @@ interpreter (void *cls)
                                    "-c", "test_taler_exchange_httpd.conf",
                                    "-t", /* enable temporary tables */
                                    NULL);
+      if (NULL == aggregator_proc)
+      {
+        aggregator_state = NULL;
+        fail (cmd);
+        return;
+      }
     return;
     case OPCODE_EXPECT_TRANSACTIONS_EMPTY:
       if (GNUNET_OK != FAKEBANK_check_empty (fb))
