@@ -65,6 +65,46 @@ static struct TALER_EXCHANGEDB_Plugin *plugin;
 
 
 /**
+ * Callback that should never be called.
+ */
+static void
+dead_prepare_cb (void *cls,
+                 unsigned long long rowid,
+                 const char *wire_method,
+                 const char *buf,
+                 size_t buf_size)
+{
+  GNUNET_assert (0);
+}
+
+
+/**
+ * Callback that is called with wire prepare data
+ * and then marks it as finished.
+ */
+static void
+mark_prepare_cb (void *cls,
+                 unsigned long long rowid,
+                 const char *wire_method,
+                 const char *buf,
+                 size_t buf_size)
+{
+  struct TALER_EXCHANGEDB_Session *session = cls;
+
+  GNUNET_assert (11 == buf_size);
+  GNUNET_assert (0 == strcasecmp (wire_method,
+                                  "testcase"));
+  GNUNET_assert (0 == memcmp (buf,
+                              "hello world",
+                              buf_size));
+  GNUNET_break (GNUNET_OK ==
+                plugin->wire_prepare_data_mark_finished (plugin->cls,
+                                                         session,
+                                                         rowid));
+}
+
+
+/**
  * Test API relating to persisting the wire plugins preparation data.
  *
  * @param session database session to use for the test
@@ -73,12 +113,30 @@ static struct TALER_EXCHANGEDB_Plugin *plugin;
 static int
 test_wire_prepare (struct TALER_EXCHANGEDB_Session *session)
 {
-  /*
-    FIXME #4401: test: wire_prepare_data_insert
-     FIXME #4401: test: wire_prepare_data_mark_finished
-     FIXME #4401: test: wire_prepare_data_get
-  */
+  FAILIF (GNUNET_NO !=
+          plugin->wire_prepare_data_get (plugin->cls,
+                                         session,
+                                         &dead_prepare_cb,
+                                         NULL));
+  FAILIF (GNUNET_OK !=
+          plugin->wire_prepare_data_insert (plugin->cls,
+                                            session,
+                                            "testcase",
+                                            "hello world",
+                                            11));
+  FAILIF (GNUNET_OK !=
+          plugin->wire_prepare_data_get (plugin->cls,
+                                         session,
+                                         &mark_prepare_cb,
+                                         session));
+  FAILIF (GNUNET_NO !=
+          plugin->wire_prepare_data_get (plugin->cls,
+                                         session,
+                                         &dead_prepare_cb,
+                                         NULL));
   return GNUNET_OK;
+ drop:
+  return GNUNET_SYSERR;
 }
 
 
