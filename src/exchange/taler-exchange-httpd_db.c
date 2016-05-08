@@ -1369,12 +1369,12 @@ check_commitment (struct MHD_Connection *connection,
  */
 static struct TALER_DenominationSignature
 refresh_exchange_coin (struct MHD_Connection *connection,
-                   struct TALER_EXCHANGEDB_Session *session,
-                   const struct GNUNET_HashCode *session_hash,
-                   struct TMH_KS_StateHandle *key_state,
-                   const struct TALER_DenominationPublicKey *denom_pub,
-                   const struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coin,
-                   unsigned int coin_off)
+                       struct TALER_EXCHANGEDB_Session *session,
+                       const struct GNUNET_HashCode *session_hash,
+                       struct TMH_KS_StateHandle *key_state,
+                       const struct TALER_DenominationPublicKey *denom_pub,
+                       const struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coin,
+                       unsigned int coin_off)
 {
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   struct TALER_DenominationSignature ev_sig;

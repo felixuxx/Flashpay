@@ -324,10 +324,12 @@ free_refresh_commit_coins_array (struct TALER_EXCHANGEDB_RefreshCommitCoin *comm
 #define MELT_NEW_COINS 5
 
 /**
+ * Test APIs related to the "insert_refresh_commit_coins" function.
  *
  * @param session database sesison to use
  * @param refresh_session details about the refresh session to use
  * @param session_hash refresh melt session hash to use
+ * @return #GNUNET_OK on success
  */
 static int
 test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
@@ -421,6 +423,32 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
 
 
 /**
+ * Test APIs related to the "insert_refresh_commit_coins" function.
+ *
+ * @param session database sesison to use
+ * @param refresh_session details about the refresh session to use
+ * @param session_hash refresh melt session hash to use
+ * @return #GNUNET_OK on success
+ */
+static int
+test_refresh_commit_links (struct TALER_EXCHANGEDB_Session *session,
+                           const struct TALER_EXCHANGEDB_RefreshSession *refresh_session,
+                           const struct GNUNET_HashCode *session_hash)
+{
+  /*
+     FIXME #4401: test: insert_refresh_commit_links
+     FIXME #4401: test: get_refresh_commit_links
+
+     FIXME #4401: test: get_link_data_list
+     FIXME #4401: test: free_link_data_list
+     FIXME #4401: test: get_transfer
+
+   */
+  return GNUNET_OK;
+}
+
+
+/**
  * Function to test melting of coins as part of a refresh session
  *
  * @param session the database session
@@ -440,6 +468,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   struct TALER_EXCHANGEDB_RefreshMelt *melts;
   struct TALER_DenominationPublicKey *new_denom_pubs;
   struct TALER_DenominationPublicKey *ret_denom_pubs;
+  struct TALER_EXCHANGEDB_MeltCommitment *mc;
   unsigned int cnt;
   int ret;
 
@@ -565,6 +594,25 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
           test_refresh_commit_coins (session,
                                      &refresh_session,
                                      &session_hash));
+  FAILIF (GNUNET_OK !=
+          test_refresh_commit_links (session,
+                                     &refresh_session,
+                                     &session_hash));
+
+  /* checking 'get_melt_commitment' API */
+  mc = plugin->get_melt_commitment (plugin->cls,
+                                    session,
+                                    &session_hash);
+  FAILIF (NULL != mc); /* NOTE: this will change once
+                          'test_refresh_commit_links' is implemented properly */
+#if 0
+  /* FIXME #4401: test: get_melt_commitment:
+     check detailed information contained in 'mc' */
+  plugin->free_melt_commitment (plugin->cls,
+                                mc);
+#endif
+
+  /* FIXME #4401: test: insert_refresh_out */
 
   ret = GNUNET_OK;
 
@@ -1178,16 +1226,6 @@ run (void *cls)
                                       tl);
 
   FAILIF (GNUNET_OK != test_wire_prepare (session));
-
-  /* FIXME #4401: test: insert_refresh_commit_links
-     FIXME #4401: test: get_refresh_commit_links
-     FIXME #4401: test: get_melt_commitment
-     FIXME #4401: test: free_melt_commitment
-     FIXME #4401: test: insert_refresh_out
-     FIXME #4401: test: get_link_data_list
-     FIXME #4401: test: free_link_data_list
-     FIXME #4401: test: get_transfer
-  */
 
   /* setup values for wire transfer aggregation data */
   memset (&wtid, 42, sizeof (wtid));

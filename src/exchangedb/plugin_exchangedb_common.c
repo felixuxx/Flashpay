@@ -154,8 +154,10 @@ common_free_melt_commitment (void *cls,
     {
       for (i=0;i<mc->num_newcoins;i++)
       {
-        GNUNET_free (mc->commit_coins[k][i].refresh_link);
-        GNUNET_free (mc->commit_coins[k][i].coin_ev);
+        /* NOTE: 'non_null' because this API is used also
+           internally to clean up the struct on failures! */
+        GNUNET_free_non_null (mc->commit_coins[k][i].refresh_link);
+        GNUNET_free_non_null (mc->commit_coins[k][i].coin_ev);
       }
       GNUNET_free (mc->commit_coins[k]);
     }
