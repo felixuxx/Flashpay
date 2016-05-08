@@ -1,0 +1,228 @@
+\documentclass{llncs}
+%\usepackage[margin=1in,a4paper]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{palatino}
+\usepackage{xspace}
+\usepackage{microtype}
+\usepackage{tikz,eurosym}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usetikzlibrary{shapes,arrows}
+\usetikzlibrary{positioning}
+\usetikzlibrary{calc}
+
+% Relate to:
+% http://fc14.ifca.ai/papers/fc14_submission_124.pdf
+
+% Terminology:
+% - SEPA-transfer -- avoid 'SEPA transaction' as we use
+%       'transaction' already when we talk about taxable
+%        transfers of Taler coins and database 'transactions'.
+% - wallet = coins at customer
+% - reserve = currency entrusted to exchange waiting for withdrawal
+% - deposit = SEPA to exchange
+% - withdrawal = exchange to customer
+% - spending = customer to merchant
+% - redeeming = merchant to exchange (and then exchange SEPA to merchant)
+% - refreshing = customer-exchange-customer
+% - dirty coin = coin with exposed public key
+% - fresh coin = coin that was refreshed or is new
+% - coin signing key = exchange's online key used to (blindly) sign coin
+% - message signing key = exchange's online key to sign exchange messages
+% - exchange master key = exchange's key used to sign other exchange keys
+% - owner = entity that knows coin private key
+% - transaction = coin ownership transfer that should be taxed
+% - sharing = coin copying that should not be taxed
+
+\def\mathcomma{,}
+\def\mathperiod{.}
+
+
+\title{Offline Taler}
+
+\begin{document}
+\mainmatter
+
+\author{Jeffrey Burdges}
+\institute{Intria / GNUnet / Taler}
+
+
+\maketitle
+
+% \begin{abstract}
+% \end{abstract}
+
+
+% \section{Introduction}
+
+
+
+% \section{Taler's refresh protocol}
+
+\def\Nu{N}
+\def\newmathrm#1{\expandafter\newcommand\csname #1\endcsname{\mathrm{#1}}}
+\newmathrm{FDH}
+
+
+We shall describe Taler's refresh protocol in this section.
+All notation defined here persists throughout the remainder of
+ the article.
+
+We let $\kappa$ denote the exchange's taxation security parameter,
+meaning the highest marginal tax rate is $1/\kappa$.  Also, let 
+$n_\mu$ denote the maximum number of coins returned by a refresh.
+
+\smallskip
+
+Let $\iota$ denote a coin idetity paramater that
+ links together the different commitments but must reemain secret
+ from the exchange. 
+
+Let $n_\nu$ denote the identity security paramater.
+An online coin's identity commitment $\Nu$ is the empty string.
+In the offline coin case, we begin with a reserve public key $R$
+and a private identity commitment seed $\nu$.  
+For $k \le n_\nu$,  we define 
+\[ \begin{aligned}
+\nu_{k,0} &= H(\nu || i) \mathcomma \\
+\nu_{k,1} &= H(\nu || i) \oplus R \mathcomma \\
+\Nu_k &= H(\nu_{k,0} || \nu_{k,1} || H(\iota || k) ) \mathperiod \\
+\end{aligned} \]
+% We define  $\Nu = H( \Nu_i \quad\textrm{for $k \le n_\nu$})$  finally.
+
+\smallskip
+
+A coin $(C,\Nu,S)$ consists of 
+  a Ed25519 public key $C = c G$, 
+  an optional set of offline identity commitments $\Nu = \{\Nu_k | k \in \Gamma \}$
+  an RSA-FDH signature $S = S_d(\FDH(C) * \Pi_{k \in \Gamma} \FDH(\Nu_k))$ by a denomination key $d$.
+A coin is spent by signing a contract with $C$.  The contract must
+specify the recipiant merchant and what portion of the value denoted
+by the denomination $d$ they recieve.
+
+There was of course a blinding factor $b$ used in the creation of
+the coin's signature $S$.  In addition, there was a private seed $s$
+used to generate $c$ and $b$ but we need not retain $s$
+outside the refresh protocol.
+$$ c = H(\textrm{"Ed25519"} || s)
+\qquad b = H(\textrm{"Blind"} || s) $$
+We generate $\nu = H("Offline" || s)$ from $s$ as well,
+ but only for offline coins.
+
+\smallskip
+
+We begin refresh with a possibly tainted coin $(C,S)$ whose value
+we wish to save by refreshing it into untainted coins.  
+
+In the change sitaution, our coin $(C,\Nu,S)$ was partially spent and 
+retains only a part of the value determined by the denominaton $d$.
+
+For $x$ amongst the symbols $c$, $C$, $b$, and $s$,
+we let $x_{j,i}$ denote the value normally denoted $x$ of
+ the $j$th cut of the $i$th new coin being created. 
+% So $C_{j,i} = c_{j,i} G$, $\Nu_{j,i}$, $m_{j,i}$, and $b^{j,i}$
+%  must be derived from $s^{j,i}$ as above.
+We need only consider one such new coin at a time usually, 
+so let $x'$ denote $x_{j,i}$ when $i$ and $j$ are clear from context.
+In other words, $c'$, and $b_j$ are derived from $s_j$,
+ and both $C' = c' G$.
+
+
+\paragraph{Wallet phase 1.}
+\begin{itemize}
+\item  For $i = 1 \cdots n$, create random coin ids $\iota_i$.
+\item  For $j = 1 \cdots \kappa$:
+   \begin{itemize}
+   \item  Create random $\zeta_j$ and $l_j$.
+   \item  Also compute $L_j = l_j G$.
+   \item  Set $k_j = H(l_j C || \eta_j)$.
+   \end{itemize} 
+\smallskip
+\item  For $i = 1 \cdots n$:
+   \begin{itemize}
+   \item Create random pre-coin id $\iota'_i$.
+   \item Set $\iota_i = H("Id" || \iota'_i)$.
+   \item $j = 1 \cdots \kappa$:
+      \begin{itemize}
+      \item  Set $s' = H(\zeta_j || i)$.
+      \item  Derive $c'$ and $b'$from $s'$ as above. 
+      \item  Compute $C' = c' G$ too. 
+      \item  Compute $B_{j,i} = B_{b'}(C' || H(\iota_i || H(s')))$. 
+      \item  Encrypt $\Gamma'_{j,i} = E_{k_j}(s')$. 
+      \item  Set the coin commitments $\Gamma_{j,i} = (\Gamma'_{j,i},B_{j,i})$.
+      \end{itemize}
+   \item  For $k = 1 \cdots 2 n_\nu$:
+      \begin{itemize}
+      \item  Set $\nu_k = H(\iota'_i || k)$.
+      \item  Generate $\Nu_k$ from $\nu_k$ and $H(\iota_i || k)$.
+      \item  Set the coin commitment $\Gamma_{\kappa+k,i} = B_{b'}(\Nu_{i,k})$.
+      \end{itemize}
+   \end{itemize} 
+\smallskip
+\item  Save $\zeta_*$ and $\iota'_*$.
+\item  Send $(C,S)$ and the signed commitments
+   $\Gamma_* = S_C( \Gamma_{j,i} \quad\textrm{for $j=1\cdots\kappa+2n_\nu, i=0 \cdots n$} )$.
+\end{itemize}
+
+\paragraph{Exchange phase 1.}
+\begin{itemize}
+\item  Verify the signature $S$ by $d$ on $C$.
+\item  Verify the signatures by $C$ on the $\Gamma_{j,i}$ in $\Gamma_*$.
+\item  Pick random $\gamma \in \{1 \cdots \kappa\}$.
+\item  Pick random $\Gamma \subset \{1,\ldots,2 n_\nu\}$ with $|\Gamma| = n_\nu$.
+\item  Mark $C$ as spent by saving $(C,\gamma,\Gamma,\Gamma_*)$.
+\item  Send $(\gamma,\Gamma)$ as $S(C,\gamma)$.
+\end{itemize}
+
+\paragraph{Wallet phase 2.}
+\begin{itemize}
+\item  Save $S(C,\gamma,\Gamma)$.
+\item  For $j = 1 \cdots \kappa$ except $\gamma$:
+   \begin{itemize}
+   \item  Send $S_C(l_j)$.
+   \item  Send $S_C(H(\iota_i || H(s_{j,i})) \quad\textrm{for $i = 1 \cdots n$})$.   
+   \end{itemize}
+\item  For $i = 1 \cdots n$ and $k \not\in \Gamma$:
+   \begin{itemize}
+   \item  Send $S_C( \nu_{k,i}, H(\iota_i || k) )$.
+   \end{itemize}
+\end{itemize}
+
+\paragraph{Exchange phase 2.}
+\begin{itemize}
+\item  Verify the signature by $C$.
+\item  For $j = 1 \cdots \kappa$ except $\gamma$:
+   \begin{itemize}
+   \item  Set $k_j = H(l_j C)$.
+   \item  For $i=1 \cdots n$:
+      \begin{itemize}
+      \item  Decrypt $s' = D_{k_j}(\Gamma'_{j,i})$.
+      \item  Compute $c'$, $m'$, and $b'$ from $s_j$.
+      \item  Compute $C' = c' G$ too.
+      \item  Verify $B' = B_{b'}(C' || H(\iota_i || H(s_{j,i})))$.
+      \end{itemize}
+   \end{itemize}
+\item  For $i=1 \cdots n$ and $k \not\in \Gamma$:
+   \begin{itemize}
+   \item  Generate $\Nu_k$ from $\nu_k$ and $H(\iota_i || k)$.
+   \item  Verify the coin commitment $\Gamma_{\kappa+k,i} = B_{b'}(\Nu_{i,k})$.
+   \end{itemize}
+\item  If verifications all pass then send $S_{d_i}(B_\gamma * \Pi_{k \in \Gamma} B_k)$.
+\end{itemize}
+
+
+
+
+
+\bibliographystyle{alpha}
+\bibliography{taler,rfc}
+
+% \newpage
+% \appendix
+
+% \section{}
+
+
+
+\end{document}
+
