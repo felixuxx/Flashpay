@@ -266,7 +266,6 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
   }
   TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
                                           tl);
-
   if (GNUNET_OK !=
       TMH_plugin->insert_deposit (TMH_plugin->cls,
                                   session,

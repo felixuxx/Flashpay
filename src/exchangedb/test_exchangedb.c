@@ -24,8 +24,14 @@
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 
+/**
+ * Global result from the testcase.
+ */
 static int result;
 
+/**
+ * Report line of error if @a cond is true, and jump to label "drop".
+ */
 #define FAILIF(cond)                              \
   do {                                          \
     if (!(cond)){ break;}                      \
@@ -34,16 +40,47 @@ static int result;
   } while (0)
 
 
+/**
+ * Initializes @a ptr with random data.
+ */
 #define RND_BLK(ptr)                                                    \
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK, ptr, sizeof (*ptr))
 
+/**
+ * Initializes @a ptr with zeros.
+ */
 #define ZR_BLK(ptr) \
   memset (ptr, 0, sizeof (*ptr))
 
 
+/**
+ * Currency we use.
+ */
 #define CURRENCY "EUR"
 
+/**
+ * Database plugin under test.
+ */
 static struct TALER_EXCHANGEDB_Plugin *plugin;
+
+
+/**
+ * Test API relating to persisting the wire plugins preparation data.
+ *
+ * @param session database session to use for the test
+ * @return #GNUNET_OK on success
+ */
+static int
+test_wire_prepare (struct TALER_EXCHANGEDB_Session *session)
+{
+  /*
+    FIXME #4401: test: wire_prepare_data_insert
+     FIXME #4401: test: wire_prepare_data_mark_finished
+     FIXME #4401: test: wire_prepare_data_get
+  */
+  return GNUNET_OK;
+}
+
 
 /**
  * Checks if the given reserve has the given amount of balance and expiry
@@ -198,6 +235,12 @@ static struct TALER_Amount fee_refund;
 static struct TALER_Amount amount_with_fee;
 
 
+/**
+ * Free memory associated with @a commit_coins.
+ *
+ * @param commit_coins memory to release
+ * @param size size of the @a commit_coins array
+ */
 static void
 free_refresh_commit_coins_array (struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins,
                                  unsigned int size)
@@ -216,11 +259,21 @@ free_refresh_commit_coins_array (struct TALER_EXCHANGEDB_RefreshCommitCoin *comm
   GNUNET_free (commit_coins);
 }
 
+
+/**
+ * Number of newly minted coins to use in the test.
+ */
 #define MELT_NEW_COINS 5
 
+/**
+ *
+ * @param session database sesison to use
+ * @param refresh_session details about the refresh session to use
+ * @param session_hash refresh melt session hash to use
+ */
 static int
 test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
-                           struct TALER_EXCHANGEDB_RefreshSession *refresh_session,
+                           const struct TALER_EXCHANGEDB_RefreshSession *refresh_session,
                            const struct GNUNET_HashCode *session_hash)
 {
   struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins;
@@ -364,7 +417,8 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
                                &fee_refresh,
 			       &fee_refund);
   /* create MELT_OLD_COINS number of refresh melts */
-  melts = GNUNET_new_array (MELT_OLD_COINS, struct TALER_EXCHANGEDB_RefreshMelt);
+  melts = GNUNET_new_array (MELT_OLD_COINS,
+                            struct TALER_EXCHANGEDB_RefreshMelt);
   for (cnt=0; cnt < MELT_OLD_COINS; cnt++)
   {
     struct GNUNET_HashCode hc;
@@ -381,19 +435,21 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
     melts[cnt].session_hash = session_hash;
     melts[cnt].amount_with_fee = amount_with_fee;
     melts[cnt].melt_fee = fee_refresh;
-    FAILIF (GNUNET_OK != plugin->insert_refresh_melt (plugin->cls,
-                                                      session,
-                                                      cnt,
-                                                      &melts[cnt]));
+    FAILIF (GNUNET_OK !=
+            plugin->insert_refresh_melt (plugin->cls,
+                                         session,
+                                         cnt,
+                                         &melts[cnt]));
   }
   for (cnt = 0; cnt < MELT_OLD_COINS; cnt++)
   {
     struct TALER_EXCHANGEDB_RefreshMelt ret_melt;
-    FAILIF (GNUNET_OK != plugin->get_refresh_melt (plugin->cls,
-                                                   session,
-                                                   &session_hash,
-                                                   cnt,
-                                                   &ret_melt));
+    FAILIF (GNUNET_OK !=
+            plugin->get_refresh_melt (plugin->cls,
+                                      session,
+                                      &session_hash,
+                                      cnt,
+                                      &ret_melt));
     FAILIF (0 != GNUNET_CRYPTO_rsa_signature_cmp
             (ret_melt.coin.denom_sig.rsa_signature,
              melts[cnt].coin.denom_sig.rsa_signature));
@@ -579,6 +635,9 @@ cb_wtid_check (void *cls,
 }
 
 
+/**
+ * Here #deposit_cb() will store the row ID of the deposit.
+ */
 static unsigned long long deposit_rowid;
 
 
@@ -647,7 +706,7 @@ deposit_cb (void *cls,
 }
 
 
-static struct TALER_EXCHANGEDB_Refund refund;
+
 
 
 /**
@@ -670,9 +729,13 @@ run (void *cls)
   struct TALER_EXCHANGEDB_CollectableBlindcoin *withdraw;
   struct TALER_EXCHANGEDB_Deposit deposit;
   struct TALER_EXCHANGEDB_Deposit deposit2;
+  struct TALER_EXCHANGEDB_Refund refund;
+  struct TALER_EXCHANGEDB_TransactionList *tl;
+  struct TALER_EXCHANGEDB_TransactionList *tlp;
   struct TALER_WireTransferIdentifierRawP wtid;
   json_t *wire;
   json_t *just;
+  unsigned int matched;
   const char * const json_wire_str =
       "{ \"type\":\"SEPA\", \
 \"IBAN\":\"DE67830654080004822650\",                    \
@@ -929,7 +992,6 @@ run (void *cls)
                                      session,
                                      &deposit));
 
-
   result = 10;
   deposit2 = deposit;
   deposit2.transaction_id++;     /* should fail if transaction id is different */
@@ -951,6 +1013,124 @@ run (void *cls)
                                 &deposit2));
   FAILIF (GNUNET_OK != test_melting (session));
 
+
+  /* test insert_refund! */
+  refund.coin = deposit.coin;
+  refund.merchant_pub = deposit.merchant_pub;
+  RND_BLK (&refund.merchant_sig);
+  refund.h_contract = deposit.h_contract;
+  refund.transaction_id = deposit.transaction_id;
+  refund.rtransaction_id = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
+  refund.refund_amount = deposit.amount_with_fee;
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (CURRENCY, &refund.refund_fee));
+  FAILIF (GNUNET_OK !=
+          plugin->insert_refund (plugin->cls,
+                                 session,
+                                 &refund));
+
+  tl = plugin->get_coin_transactions (plugin->cls,
+                                      session,
+                                      &refund.coin.coin_pub);
+  GNUNET_assert (NULL != tl);
+  matched = 0;
+  for (tlp = tl; NULL != tlp; tlp = tlp->next)
+  {
+    switch (tlp->type)
+    {
+    case TALER_EXCHANGEDB_TT_DEPOSIT:
+      {
+        struct TALER_EXCHANGEDB_Deposit *have = tlp->details.deposit;
+
+        FAILIF (0 != memcmp (&have->coin.coin_pub,
+                             &deposit.coin.coin_pub,
+                             sizeof (struct TALER_CoinSpendPublicKeyP)));
+        /* Note: we're not comparing the denomination keys, as there is
+           still the question of whether we should even bother exporting
+           them here. */
+        FAILIF (0 != memcmp (&have->csig,
+                             &deposit.csig,
+                             sizeof (struct TALER_CoinSpendSignatureP)));
+        FAILIF (0 != memcmp (&have->merchant_pub,
+                             &deposit.merchant_pub,
+                             sizeof (struct TALER_MerchantPublicKeyP)));
+        FAILIF (0 != memcmp (&have->h_contract,
+                             &deposit.h_contract,
+                             sizeof (struct GNUNET_HashCode)));
+        FAILIF (0 != memcmp (&have->h_wire,
+                             &deposit.h_wire,
+                             sizeof (struct GNUNET_HashCode)));
+        /* Note: not comparing 'wire', seems truly redundant and would be tricky */
+        FAILIF (have->transaction_id != deposit.transaction_id);
+        FAILIF (have->timestamp.abs_value_us != deposit.timestamp.abs_value_us);
+        FAILIF (have->refund_deadline.abs_value_us != deposit.refund_deadline.abs_value_us);
+        FAILIF (have->wire_deadline.abs_value_us != deposit.wire_deadline.abs_value_us);
+        FAILIF (0 != TALER_amount_cmp (&have->amount_with_fee,
+                                       &deposit.amount_with_fee));
+        FAILIF (0 != TALER_amount_cmp (&have->deposit_fee,
+                                       &deposit.deposit_fee));
+        matched |= 1;
+        break;
+      }
+#if 0
+      /* this coin pub was actually never melted... */
+    case TALER_EXCHANGEDB_TT_REFRESH_MELT:
+      FAILIF (0 != memcmp (&melt,
+                           &tlp->details.melt,
+                           sizeof (struct TALER_EXCHANGEDB_RefreshMelt)));
+      matched |= 2;
+      break;
+#endif
+    case TALER_EXCHANGEDB_TT_REFUND:
+      {
+        struct TALER_EXCHANGEDB_Refund *have = tlp->details.refund;
+
+        FAILIF (0 != memcmp (&have->coin.coin_pub,
+                             &refund.coin.coin_pub,
+                             sizeof (struct TALER_CoinSpendPublicKeyP)));
+        /* Note: we're not comparing the denomination keys, as there is
+           still the question of whether we should even bother exporting
+           them here. */
+        FAILIF (0 != memcmp (&have->merchant_pub,
+                             &refund.merchant_pub,
+                             sizeof (struct TALER_MerchantPublicKeyP)));
+        FAILIF (0 != memcmp (&have->merchant_sig,
+                             &refund.merchant_sig,
+                             sizeof (struct TALER_MerchantSignatureP)));
+        FAILIF (0 != memcmp (&have->h_contract,
+                             &refund.h_contract,
+                             sizeof (struct GNUNET_HashCode)));
+        FAILIF (have->transaction_id != refund.transaction_id);
+        FAILIF (have->rtransaction_id != refund.rtransaction_id);
+        FAILIF (0 != TALER_amount_cmp (&have->refund_amount,
+                                       &refund.refund_amount));
+        FAILIF (0 != TALER_amount_cmp (&have->refund_fee,
+                                       &refund.refund_fee));
+        matched |= 4;
+        break;
+      }
+    default:
+      FAILIF (1);
+      break;
+    }
+  }
+  FAILIF (5 != matched);
+
+  plugin->free_coin_transaction_list (plugin->cls,
+                                      tl);
+
+  FAILIF (GNUNET_OK != test_wire_prepare (session));
+
+  /* FIXME #4401: test: insert_refresh_commit_links
+     FIXME #4401: test: get_refresh_commit_links
+     FIXME #4401: test: get_melt_commitment
+     FIXME #4401: test: free_melt_commitment
+     FIXME #4401: test: insert_refresh_out
+     FIXME #4401: test: get_link_data_list
+     FIXME #4401: test: free_link_data_list
+     FIXME #4401: test: get_transfer
+  */
+
   /* setup values for wire transfer aggregation data */
   memset (&wtid, 42, sizeof (wtid));
   memset (&merchant_pub_wt, 43, sizeof (merchant_pub_wt));
@@ -969,29 +1149,7 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY "KUDOS:1.000000",
                                          &transfer_value_wt));
-#if 0
-  /* FIXME #4401: test insert_refund! */
-  refund.FOO = bar;
-  FAILIF (GNUNET_OK !=
-          plugin->insert_refund (plugin->cls,
-                                 session,
-                                 &refund));
-#endif
-  /* FIXME #4401: test: insert_refresh_commit_links
-     FIXME #4401: test: get_refresh_commit_links
-     FIXME #4401: test: get_melt_commitment
-     FIXME #4401: test: free_melt_commitment
-     FIXME #4401: test: insert_refresh_out
-     FIXME #4401: test: get_link_data_list
-     FIXME #4401: test: free_link_data_list
-     FIXME #4401: test: get_transfer
-     FIXME #4401: test: get_coin_transactions
-     FIXME #4401: test: free_coin_transaction_list
-     FIXME #4401: test: wire_prepare_data_insert
-     FIXME #4401: test: wire_prepare_data_mark_finished
-     FIXME #4401: test: wire_prepare_data_get
 
-*/
 
   FAILIF (GNUNET_NO !=
           plugin->lookup_wire_transfer (plugin->cls,

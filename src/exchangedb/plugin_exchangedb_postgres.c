@@ -373,8 +373,8 @@ postgres_create_tables (void *cls)
   SQLEXEC("CREATE TABLE IF NOT EXISTS refunds "
           "(coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)"
           ",merchant_pub BYTEA NOT NULL CHECK(LENGTH(merchant_pub)=32)"
-          ",merchant_sig BYTEA NOT NULL CHECK(LENGTH(merchant_pub)=64)"
-          ",h_contract BYTEA NOT NULL CHECK(LENGTH(merchant_pub)=64)"
+          ",merchant_sig BYTEA NOT NULL CHECK(LENGTH(merchant_sig)=64)"
+          ",h_contract BYTEA NOT NULL CHECK(LENGTH(h_contract)=64)"
           ",transaction_id INT8 NOT NULL"
           ",rtransaction_id INT8 NOT NULL"
           ",amount_with_fee_val INT8 NOT NULL"
@@ -442,9 +442,7 @@ postgres_create_tables (void *cls)
      execute to transmit funds to the merchants (and manage refunds). */
   SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
           "(serial_id BIGSERIAL PRIMARY KEY"
-          ",coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)"
-          ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
-          ",denom_sig BYTEA NOT NULL"
+          ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)"
           ",transaction_id INT8 NOT NULL"
           ",amount_with_fee_val INT8 NOT NULL"
           ",amount_with_fee_frac INT4 NOT NULL"
@@ -910,8 +908,6 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("insert_deposit",
            "INSERT INTO deposits "
            "(coin_pub"
-           ",denom_pub"
-           ",denom_sig"
            ",transaction_id"
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
@@ -929,8 +925,8 @@ postgres_prepare (PGconn *db_conn)
            ",wire"
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-           " $11, $12, $13, $14, $15, $16, $17, $18);",
-           18, NULL);
+           " $11, $12, $13, $14, $15, $16);",
+           16, NULL);
 
   /* Used in #postgres_insert_refund() to store refund information */
   PREPARE ("insert_refund",
@@ -1070,9 +1066,7 @@ postgres_prepare (PGconn *db_conn)
      about how a coin has been spend with /deposit requests. */
   PREPARE ("get_deposit_with_coin_pub",
            "SELECT"
-           " denom_pub"
-           ",denom_sig"
-           ",transaction_id"
+           " transaction_id"
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
@@ -2552,6 +2546,106 @@ postgres_iterate_matching_deposits (void *cls,
 
 
 /**
+ * Retrieve the record for a known coin.
+ *
+ * @param cls the plugin closure
+ * @param session the database session handle
+ * @param coin_pub the public key of the coin to search for
+ * @param coin_info place holder for the returned coin information object
+ * @return #GNUNET_SYSERR upon error; #GNUNET_NO if no coin is found; #GNUNET_OK
+ *           if upon succesfullying retrieving the record data info @a
+ *           coin_info
+ */
+static int
+get_known_coin (void *cls,
+                struct TALER_EXCHANGEDB_Session *session,
+                const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                struct TALER_CoinPublicInfo *coin_info)
+{
+  PGresult *result;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_end
+  };
+  int nrows;
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "get_known_coin",
+                                   params);
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  GNUNET_assert (1 == nrows);   /* due to primary key */
+  if (NULL == coin_info)
+    return GNUNET_YES;
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+                                           &coin_info->denom_pub.rsa_public_key),
+      GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
+                                          &coin_info->denom_sig.rsa_signature),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result, rs, 0))
+    {
+      PQclear (result);
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+  }
+  PQclear (result);
+  coin_info->coin_pub = *coin_pub;
+  return GNUNET_OK;
+}
+
+
+/**
+ * Insert a coin we know of into the DB.  The coin can then be referenced by
+ * tables for deposits, refresh and refund functionality.
+ *
+ * @param cls plugin closure
+ * @param session the shared database session
+ * @param coin_info the public coin info
+ * @return #GNUNET_SYSERR upon error; #GNUNET_OK upon success
+ */
+static int
+insert_known_coin (void *cls,
+                   struct TALER_EXCHANGEDB_Session *session,
+                   const struct TALER_CoinPublicInfo *coin_info)
+{
+  PGresult *result;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&coin_info->coin_pub),
+    GNUNET_PQ_query_param_rsa_public_key (coin_info->denom_pub.rsa_public_key),
+    GNUNET_PQ_query_param_rsa_signature (coin_info->denom_sig.rsa_signature),
+    GNUNET_PQ_query_param_end
+  };
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "insert_known_coin",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
  * Insert information about deposited coin into the database.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -2568,8 +2662,6 @@ postgres_insert_deposit (void *cls,
   int ret;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
-    GNUNET_PQ_query_param_rsa_public_key (deposit->coin.denom_pub.rsa_public_key),
-    GNUNET_PQ_query_param_rsa_signature (deposit->coin.denom_sig.rsa_signature),
     GNUNET_PQ_query_param_uint64 (&deposit->transaction_id),
     TALER_PQ_query_param_amount (&deposit->amount_with_fee),
     TALER_PQ_query_param_amount (&deposit->deposit_fee),
@@ -2583,6 +2675,29 @@ postgres_insert_deposit (void *cls,
     TALER_PQ_query_param_json (deposit->wire),
     GNUNET_PQ_query_param_end
   };
+
+  /* check if the coin is already known */
+  ret = get_known_coin (cls,
+                        session,
+                        &deposit->coin.coin_pub,
+                        NULL);
+  if (GNUNET_SYSERR == ret)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_NO == ret)         /* if not, insert it */
+  {
+    if (GNUNET_SYSERR ==
+        insert_known_coin (cls,
+                           session,
+                           &deposit->coin))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+  }
+
   result = GNUNET_PQ_exec_prepared (session->conn,
                                     "insert_deposit",
                                     params);
@@ -2758,106 +2873,6 @@ postgres_create_refresh_session (void *cls,
 
 
 /**
- * Insert a coin we know of into the DB.  The coin can then be referenced by
- * tables for deposits, lock and refresh functionality.
- *
- * @param cls plugin closure
- * @param session the shared database session
- * @param coin_info the public coin info
- * @return #GNUNET_SYSERR upon error; #GNUNET_OK upon success
- */
-static int
-insert_known_coin (void *cls,
-                   struct TALER_EXCHANGEDB_Session *session,
-                   const struct TALER_CoinPublicInfo *coin_info)
-{
-  PGresult *result;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&coin_info->coin_pub),
-    GNUNET_PQ_query_param_rsa_public_key (coin_info->denom_pub.rsa_public_key),
-    GNUNET_PQ_query_param_rsa_signature (coin_info->denom_sig.rsa_signature),
-    GNUNET_PQ_query_param_end
-  };
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "insert_known_coin",
-                                   params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
-}
-
-
-/**
- * Retrieve the record for a known coin.
- *
- * @param cls the plugin closure
- * @param session the database session handle
- * @param coin_pub the public key of the coin to search for
- * @param coin_info place holder for the returned coin information object
- * @return #GNUNET_SYSERR upon error; #GNUNET_NO if no coin is found; #GNUNET_OK
- *           if upon succesfullying retrieving the record data info @a
- *           coin_info
- */
-static int
-get_known_coin (void *cls,
-                struct TALER_EXCHANGEDB_Session *session,
-                const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                struct TALER_CoinPublicInfo *coin_info)
-{
-  PGresult *result;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (coin_pub),
-    GNUNET_PQ_query_param_end
-  };
-  int nrows;
-
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "get_known_coin",
-                                   params);
-  if (PGRES_TUPLES_OK != PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  nrows = PQntuples (result);
-  if (0 == nrows)
-  {
-    PQclear (result);
-    return GNUNET_NO;
-  }
-  GNUNET_assert (1 == nrows);   /* due to primary key */
-  if (NULL == coin_info)
-    return GNUNET_YES;
-  {
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                           &coin_info->denom_pub.rsa_public_key),
-      GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                          &coin_info->denom_sig.rsa_signature),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, 0))
-    {
-      PQclear (result);
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-  }
-  PQclear (result);
-  coin_info->coin_pub = *coin_pub;
-  return GNUNET_OK;
-}
-
-
-/**
  * Store the given /refresh/melt request in the database.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -2898,10 +2913,10 @@ postgres_insert_refresh_melt (void *cls,
   }
   if (GNUNET_NO == ret)         /* if not, insert it */
   {
-    ret = insert_known_coin (cls,
-                             session,
-                             &melt->coin);
-    if (ret == GNUNET_SYSERR)
+    if (GNUNET_SYSERR ==
+        insert_known_coin (cls,
+                           session,
+                           &melt->coin))
     {
       GNUNET_break (0);
       return GNUNET_SYSERR;
@@ -2988,10 +3003,11 @@ postgres_get_refresh_melt (void *cls,
     PQclear (result);
   }
   /* fetch the coin info and denomination info */
-  if (GNUNET_OK != get_known_coin (cls,
-                                   session,
-                                   &coin.coin_pub,
-                                   &coin))
+  if (GNUNET_OK !=
+      get_known_coin (cls,
+                      session,
+                      &coin.coin_pub,
+                      &coin))
     return GNUNET_SYSERR;
   if (NULL == melt)
   {
@@ -3803,15 +3819,6 @@ postgres_get_coin_transactions (void *cls,
       deposit = GNUNET_new (struct TALER_EXCHANGEDB_Deposit);
       {
         struct GNUNET_PQ_ResultSpec rs[] = {
-          /* FIXME: do we care about the denom_*s? We do not keep
-             them for refresh/refund, and it's unclear why we'd
-             bother with them here. (Kept for now, once we have
-             the auditor done we should decide if we want to always
-             take these along, or always drop them.) */
-          GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                               &deposit->coin.denom_pub.rsa_public_key),
-          GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                              &deposit->coin.denom_sig.rsa_signature),
           GNUNET_PQ_result_spec_uint64 ("transaction_id",
                                        &deposit->transaction_id),
           TALER_PQ_result_spec_amount ("amount_with_fee",
