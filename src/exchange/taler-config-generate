@@ -217,7 +217,7 @@ do
   $CS -s $SECTION -o duration_overlap -V "1 day" || exit 1
   $CS -s $SECTION -o duration_withdraw -V "7 days" || exit 1
   $CS -s $SECTION -o duration_spend -V "2 years" || exit 1
-  $CS -s $SECTION -o duration_legal -V "3 tears" || exit 1
+  $CS -s $SECTION -o duration_legal -V "3 years" || exit 1
   $CS -s $SECTION -o fee_withdraw -V "${ARG_CURRENCY}:0.01" || exit 1
   $CS -s $SECTION -o fee_deposit -V "${ARG_CURRENCY}:0.01" || exit 1
   $CS -s $SECTION -o fee_refresh -V "${ARG_CURRENCY}:0.01" || exit 1
@@ -232,7 +232,7 @@ do
   $CS -s $SECTION -o duration_overlap -V "1 day" || exit 1
   $CS -s $SECTION -o duration_withdraw -V "7 days" || exit 1
   $CS -s $SECTION -o duration_spend -V "2 years" || exit 1
-  $CS -s $SECTION -o duration_legal -V "3 tears" || exit 1
+  $CS -s $SECTION -o duration_legal -V "3 years" || exit 1
   $CS -s $SECTION -o fee_withdraw -V "${ARG_CURRENCY}:0.01" || exit 1
   $CS -s $SECTION -o fee_deposit -V "${ARG_CURRENCY}:0.01" || exit 1
   $CS -s $SECTION -o fee_refresh -V "${ARG_CURRENCY}:0.01" || exit 1
