@@ -135,7 +135,7 @@ then
   then
     JSONF=`$CS -s merchant-wireformat -o ${ARG_W}_RESPONSE_FILE -f`
     mkdir -p `dirname "$JSONF"`
-    echo "$ARG_J" > "$JSONF" || exit 1
+    echo "$ARG_JM" > "$JSONF" || exit 1
   else
     echo "Skipped generating wire details for merchant"
   fi
