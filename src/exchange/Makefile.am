@@ -15,6 +15,9 @@ bin_PROGRAMS = \
   taler-exchange-aggregator \
   taler-exchange-httpd
 
+dis_bin_SCRIPTS = \
+  taler-config-generate
+
 taler_exchange_aggregator_SOURCES = \
   taler-exchange-aggregator.c
 taler_exchange_aggregator_LDADD = \
