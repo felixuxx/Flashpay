@@ -129,6 +129,15 @@ fi
 # Generate merchant-specific configuration
 if (test 1 = "$ARG_M")
 then
+  MASTER_KEY=`$CS -f -s merchant -o KEYFILE`
+
+# Generate master key (if missing)
+  if (test ! -e "$MASTER_KEY")
+  then
+    mkdir -p `dirname "$MASTER_KEY"`
+    gnunet-ecc -g 1 "$MASTER_KEY" || exit 1
+  fi
+
   $CS -s merchant -o WIREFORMAT -V "$ARG_W" || exit 1
   $CS -s merchant -o EDATE -V "3 week" || exit 1
 
