@@ -130,6 +130,7 @@ fi
 if (test 1 = "$ARG_M")
 then
   $CS -s merchant -o WIREFORMAT -V "$ARG_W" || exit 1
+  $CS -s merchant -o EDATE -V "3 week" || exit 1
 
   if (test ! -z "$ARG_JM")
   then
