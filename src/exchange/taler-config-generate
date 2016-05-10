@@ -211,7 +211,7 @@ then
   then
     EPORT=`$CS -s exchange -o PORT`
     $CS -s merchant-exchange-test -o URI -V "http://localhost:$EPORT/" || exit
-    $CS -s merchant-exchange-test -o MASTER_KEY -V "$MASTER_KEY"
+    $CS -s merchant-exchange-test -o MASTER_KEY -V `$CS -s exchange -o MASTER_PUBLIC_KEY`
   else
     echo "Need to be configuring exchange as well for -t to be useful."
   fi
