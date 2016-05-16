@@ -1222,8 +1222,8 @@ check_commitment (struct MHD_Connection *connection,
   }
 
   /* Check that the commitments for all new coins were correct */
-  commit_coins = GNUNET_malloc (num_newcoins *
-                                sizeof (struct TALER_EXCHANGEDB_RefreshCommitCoin));
+  commit_coins = GNUNET_new_array (num_newcoins,
+                                   struct TALER_EXCHANGEDB_RefreshCommitCoin);
 
   if (GNUNET_OK !=
       TMH_plugin->get_refresh_commit_coins (TMH_plugin->cls,
@@ -1471,8 +1471,8 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
                                            "session_hash");
   if (GNUNET_SYSERR == res)
     return TMH_RESPONSE_reply_internal_db_error (connection);
-  denom_pubs = GNUNET_malloc (refresh_session.num_newcoins *
-                              sizeof (struct TALER_DenominationPublicKey));
+  denom_pubs = GNUNET_new_array (refresh_session.num_newcoins,
+                                 struct TALER_DenominationPublicKey);
   if (GNUNET_OK !=
       TMH_plugin->get_refresh_order (TMH_plugin->cls,
                                      session,
@@ -1514,10 +1514,10 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
   }
 
   /* Client request OK, start transaction */
-  commit_coins = GNUNET_malloc (refresh_session.num_newcoins *
-                                sizeof (struct TALER_EXCHANGEDB_RefreshCommitCoin));
-  ev_sigs = GNUNET_malloc (refresh_session.num_newcoins *
-                           sizeof (struct TALER_DenominationSignature));
+  commit_coins = GNUNET_new_array (refresh_session.num_newcoins,
+                                   struct TALER_EXCHANGEDB_RefreshCommitCoin);
+  ev_sigs = GNUNET_new_array (refresh_session.num_newcoins,
+                              struct TALER_DenominationSignature);
   res = execute_refresh_reveal_transaction (connection,
                                             session,
                                             session_hash,
