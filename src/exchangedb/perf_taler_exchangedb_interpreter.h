@@ -479,38 +479,6 @@
   .exposed.type = PERF_TALER_EXCHANGEDB_NONE \
 }
 
-/**
- * Insert a melt operation in the database
- *
- * @param _label the label of the command
- * @param _label_hash the label of the hash of the session
- * @param _label_coin the label of the coin to melt
- */
-#define PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_REFRESH_MELT(_label, \
-                                                       _label_hash, \
-                                                       _label_coin) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_MELT, \
-  .label = _label, \
-  .details.insert_refresh_melt.label_hash = _label_hash, \
-  .details.insert_refresh_melt.label_coin = _label_coin, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE \
-}
-
-/**
- * Get informations about a melt operation
- *
- * @param _label the label of the command
- * @param _label_hash the label of the hash of the refresh session
- */
-#define PERF_TALER_EXCHANGEDB_INIT_CMD_GET_REFRESH_MELT(_label, \
-                                                    _label_hash) \
-{ \
-  .command = PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_MELT, \
-  .label = _label, \
-  .detail.get_refresh_melt.label_hash = _label_hash, \
-  .exposed.type = PERF_TALER_EXCHANGEDB_NONE \
-}
 
 /**
  * The type of data stored in #PERF_TALER_EXCHANGEDB_Memory
@@ -523,8 +491,7 @@ enum PERF_TALER_EXCHANGEDB_Type
   PERF_TALER_EXCHANGEDB_RESERVE,
   PERF_TALER_EXCHANGEDB_COIN,
   PERF_TALER_EXCHANGEDB_DEPOSIT,
-  PERF_TALER_EXCHANGEDB_REFRESH_HASH,
-  PERF_TALER_EXCHANGEDB_REFRESH_MELT
+  PERF_TALER_EXCHANGEDB_REFRESH_HASH
 };
 
 
@@ -553,8 +520,6 @@ struct PERF_TALER_EXCHANGEDB_Data
     struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
     /** #PERF_TALER_EXCHANGEDB_REFRESH_HASH */
     struct GNUNET_HashCode *session_hash;
-    /** #PERF_TALER_EXCHANGEDB_REFRESH_MELT */
-    struct TALER_EXCHANGEDB_RefreshMelt *refresh_melt;
   } data;
 };
 
@@ -712,16 +677,6 @@ enum PERF_TALER_EXCHANGEDB_CMD_Name
    * Get a refresh session informations
    */
   PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_SESSION,
-
-  /**
-   * Insert a refresh melt
-   */
-  PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_MELT,
-
-  /**
-   * Get informations about a refresh melt operation
-   */
-  PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_MELT,
 
   /**
    * Insert a melt refresh order
@@ -1084,36 +1039,6 @@ union PERF_TALER_EXCHANGEDB_CMD_Details
     const char *label_hash;
     unsigned int index_hash;
   } get_refresh_session;
-
-  /**
-   * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_MELT command
-   */
-  struct PERF_TALER_EXCHANGEDB_CMD_insertRefreshMeltDetails
-  {
-    /**
-     * The label of the hash of the refresh session
-     */
-    const char *label_hash;
-    unsigned int index_hash;
-
-    /**
-     * The label of the coin to melt
-     */
-    const char *label_coin;
-    unsigned int index_coin;
-  } insert_refresh_melt;
-
-  /**
-   * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_GET_REFRESH_MELT command
-   */
-  struct PERF_TALER_EXCHANGEDB_CMD_getRefreshMeltDetails
-  {
-    /**
-     * The label of the hash of the session
-     */
-    const char *label_hash;
-    unsigned int index_hash;
-  } get_refresh_melt;
 
   /**
    * Data requiered for the #PERF_TALER_EXCHANGEDB_CMD_INSERT_REFRESH_ORDER command

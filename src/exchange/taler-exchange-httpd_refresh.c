@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 Inria & GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -39,25 +39,23 @@
  * @param connection the MHD connection to handle
  * @param num_new_denoms number of coins to be created, size of y-dimension of @a commit_link array
  * @param denom_pubs array of @a num_new_denoms keys
- * @param coin_count number of coins to be melted, size of y-dimension of @a commit_coin array
- * @param coin_melt_details array with @a coin_count entries with melting details
+ * @param coin_melt_details melting details
  * @param session_hash hash over the data that the client commits to
  * @param commit_coin 2d array of coin commitments (what the exchange is to sign
  *                    once the "/refres/reveal" of cut and choose is done)
- * @param commit_link 2d array of coin link commitments (what the exchange is
+ * @param commit_link array of coin link commitments (what the exchange is
  *                    to return via "/refresh/link" to enable linkage in the
- *                    future)
+ *                    future) of length #TALER_CNC_KAPPA
  * @return MHD result code
  */
 static int
 handle_refresh_melt_binary (struct MHD_Connection *connection,
                             unsigned int num_new_denoms,
                             const struct TALER_DenominationPublicKey *denom_pubs,
-                            unsigned int coin_count,
                             const struct TMH_DB_MeltDetails *coin_melt_details,
                             const struct GNUNET_HashCode *session_hash,
                             struct TALER_EXCHANGEDB_RefreshCommitCoin *const* commit_coin,
-                            struct TALER_RefreshCommitLinkP *const* commit_link)
+                            const struct TALER_RefreshCommitLinkP * commit_link)
 {
   unsigned int i;
   struct TMH_KS_StateHandle *key_state;
@@ -65,7 +63,6 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
   struct TALER_Amount cost;
   struct TALER_Amount total_cost;
-  struct TALER_Amount melt;
   struct TALER_Amount value;
   struct TALER_Amount fee_withdraw;
   struct TALER_Amount fee_melt;
@@ -108,45 +105,27 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
     }
   }
 
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TMH_exchange_currency_string,
-                                        &total_melt));
-  for (i=0;i<coin_count;i++)
+  dk = TMH_KS_denomination_key_lookup (key_state,
+                                       &coin_melt_details->coin_info.denom_pub,
+                                       TMH_KS_DKU_DEPOSIT);
+  if (NULL == dk)
   {
-    /* calculate contribution of the i-th melt by subtracting
-       the fee; add the rest to the total_melt value */
-    dk = TMH_KS_denomination_key_lookup (key_state,
-                                         &coin_melt_details[i].coin_info.denom_pub,
-                                         TMH_KS_DKU_DEPOSIT);
-    if (NULL == dk)
-    {
-      GNUNET_break (0);
-      return TMH_RESPONSE_reply_arg_invalid (connection,
-                                             "denom_pub");
-    }
-    dki = &dk->issue;
-    TALER_amount_ntoh (&fee_melt,
-                       &dki->properties.fee_refresh);
-    if (GNUNET_OK !=
-        TALER_amount_subtract (&melt,
-                               &coin_melt_details->melt_amount_with_fee,
-                               &fee_melt))
-    {
-      GNUNET_break_op (0);
-      TMH_KS_release (key_state);
-      return TMH_RESPONSE_reply_external_error (connection,
-                                                "Melt contribution below melting fee");
-    }
-    if (GNUNET_OK !=
-        TALER_amount_add (&total_melt,
-                          &melt,
-                          &total_melt))
-    {
-      GNUNET_break_op (0);
-      TMH_KS_release (key_state);
-      return TMH_RESPONSE_reply_internal_error (connection,
-                                                "balance calculation failure");
-    }
+    GNUNET_break (0);
+    return TMH_RESPONSE_reply_arg_invalid (connection,
+                                           "denom_pub");
+  }
+  dki = &dk->issue;
+  TALER_amount_ntoh (&fee_melt,
+                     &dki->properties.fee_refresh);
+  if (GNUNET_OK !=
+      TALER_amount_subtract (&total_melt,
+                             &coin_melt_details->melt_amount_with_fee,
+                             &fee_melt))
+  {
+    GNUNET_break_op (0);
+    TMH_KS_release (key_state);
+    return TMH_RESPONSE_reply_external_error (connection,
+                                              "Melt contribution below melting fee");
   }
   TMH_KS_release (key_state);
   if (0 !=
@@ -165,7 +144,6 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
                                       session_hash,
                                       num_new_denoms,
                                       denom_pubs,
-                                      coin_count,
                                       coin_melt_details,
                                       commit_coin,
                                       commit_link);
@@ -184,7 +162,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
  */
 static int
 get_coin_public_info (struct MHD_Connection *connection,
-                      json_t *coin_info,
+                      const json_t *coin_info,
                       struct TMH_DB_MeltDetails *r_melt_detail)
 {
   int ret;
@@ -336,29 +314,6 @@ free_commit_coins (struct TALER_EXCHANGEDB_RefreshCommitCoin **commit_coin,
 
 
 /**
- * Release memory from the @a commit_link array.
- *
- * @param commit_link array to release
- * @param kappa size of 1st dimension
- * @param num_old_coins size of 2nd dimension
- */
-static void
-free_commit_links (struct TALER_RefreshCommitLinkP **commit_link,
-                   unsigned int kappa,
-                   unsigned int num_old_coins)
-{
-  unsigned int i;
-
-  for (i=0;i<kappa;i++)
-  {
-    if (NULL == commit_link[i])
-      break;
-    GNUNET_free (commit_link[i]);
-  }
-}
-
-
-/**
  * Handle a "/refresh/melt" request after the first parsing has happened.
  * We now need to validate the coins being melted and the session signature
  * and then hand things of to execute the melt operation.  This function
@@ -367,23 +322,19 @@ free_commit_links (struct TALER_RefreshCommitLinkP **commit_link,
  *
  * @param connection the MHD connection to handle
  * @param new_denoms array of denomination keys
- * @param melt_coins array of coins to melt
- * @param num_oldcoins number of coins that are being melted
- * @param transfer_pubs #TALER_CNC_KAPPA-dimensional array of @a num_oldcoins transfer keys
- * @param secret_encs #TALER_CNC_KAPPA-dimensional array of @a num_oldcoins secrets
- * @param num_newcoins number of coins that the refresh will generate
- * @param coin_evs #TALER_CNC_KAPPA-dimensional array of @a num_newcoins envelopes to sign
- * @param link_encs #TALER_CNC_KAPPA-dimensional array of @a num_newcoins encrypted links
+ * @param melt_coin coin to melt
+ * @param transfer_pubs #TALER_CNC_KAPPA-dimensional array of transfer keys
+ * @param secret_encs #TALER_CNC_KAPPA-dimensional array of old coin secrets
+ * @param coin_evs #TALER_CNC_KAPPA-dimensional array of envelopes to sign
+ * @param link_encs #TALER_CNC_KAPPA-dimensional array of `length(@a new_denoms)`  encrypted links (2D array)
  * @return MHD result code
  */
 static int
 handle_refresh_melt_json (struct MHD_Connection *connection,
                           const json_t *new_denoms,
-                          const json_t *melt_coins,
-                          unsigned int num_oldcoins,
+                          const json_t *melt_coin,
                           const json_t *transfer_pubs,
                           const json_t *secret_encs,
-                          unsigned int num_newcoins,
                           const json_t *coin_evs,
                           const json_t *link_encs)
 {
@@ -391,27 +342,26 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   unsigned int i;
   unsigned int j;
   struct TALER_DenominationPublicKey *denom_pubs;
-  unsigned int num_new_denoms;
-  struct TMH_DB_MeltDetails *coin_melt_details;
-  unsigned int coin_count;
+  unsigned int num_newcoins;
+  struct TMH_DB_MeltDetails coin_melt_details;
   struct GNUNET_HashCode session_hash;
   struct GNUNET_HashContext *hash_context;
   struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coin[TALER_CNC_KAPPA];
-  struct TALER_RefreshCommitLinkP *commit_link[TALER_CNC_KAPPA];
+  struct TALER_RefreshCommitLinkP commit_link[TALER_CNC_KAPPA];
 
   /* For the signature check, we hash most of the inputs together
      (except for the signatures on the coins). */
   hash_context = GNUNET_CRYPTO_hash_context_start ();
-  num_new_denoms = json_array_size (new_denoms);
-  denom_pubs = GNUNET_malloc (num_new_denoms *
-                              sizeof (struct TALER_DenominationPublicKey));
-  for (i=0;i<num_new_denoms;i++)
+  num_newcoins = json_array_size (new_denoms);
+  denom_pubs = GNUNET_new_array (num_newcoins,
+                                 struct TALER_DenominationPublicKey);
+  for (i=0;i<num_newcoins;i++)
   {
     char *buf;
     size_t buf_size;
     struct GNUNET_JSON_Specification spec[] = {
       TALER_JSON_spec_denomination_public_key (NULL,
-                                                &denom_pubs[i]),
+                                               &denom_pubs[i]),
       GNUNET_JSON_spec_end ()
     };
 
@@ -432,42 +382,23 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
     GNUNET_free (buf);
   }
 
-  coin_count = json_array_size (melt_coins);
-  coin_melt_details = GNUNET_new_array (coin_count,
-                                        struct TMH_DB_MeltDetails);
-  for (i=0;i<coin_count;i++)
   {
     /* decode JSON data on coin to melt */
     struct TALER_AmountNBO melt_amount;
 
-    // FIXME: check json_array_get() return value for NULL!
     res = get_coin_public_info (connection,
-                                json_array_get (melt_coins, i),
-                                &coin_melt_details[i]);
+                                melt_coin,
+                                &coin_melt_details);
     if (GNUNET_OK != res)
     {
       GNUNET_break_op (0);
       res = (GNUNET_NO == res) ? MHD_YES : MHD_NO;
       goto cleanup_melt_details;
     }
-    /* Check that the client does not try to melt the same coin twice
-       into the same session! */
-    for (j=0;j<i;j++)
-    {
-      if (0 == memcmp (&coin_melt_details[i].coin_info.coin_pub,
-                       &coin_melt_details[j].coin_info.coin_pub,
-                       sizeof (struct TALER_CoinSpendPublicKeyP)))
-      {
-        GNUNET_break_op (0);
-        res = TMH_RESPONSE_reply_external_error (connection,
-                                                 "melting same coin twice in same session is not allowed");
-        goto cleanup_melt_details;
-      }
-    }
     TALER_amount_hton (&melt_amount,
-                       &coin_melt_details[i].melt_amount_with_fee);
+                       &coin_melt_details.melt_amount_with_fee);
     GNUNET_CRYPTO_hash_context_read (hash_context,
-                                     &coin_melt_details[i].coin_info.coin_pub,
+                                     &coin_melt_details.coin_info.coin_pub,
                                      sizeof (struct TALER_CoinSpendPublicKeyP));
     GNUNET_CRYPTO_hash_context_read (hash_context,
                                      &melt_amount,
@@ -480,8 +411,8 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   memset (commit_link, 0, sizeof (commit_link));
   for (i = 0; i < TALER_CNC_KAPPA; i++)
   {
-    commit_coin[i] = GNUNET_malloc (num_newcoins *
-                                    sizeof (struct TALER_EXCHANGEDB_RefreshCommitCoin));
+    commit_coin[i] = GNUNET_new_array (num_newcoins,
+                                       struct TALER_EXCHANGEDB_RefreshCommitCoin);
     for (j = 0; j < num_newcoins; j++)
     {
       char *link_enc;
@@ -536,68 +467,59 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
 
   for (i = 0; i < TALER_CNC_KAPPA; i++)
   {
-    commit_link[i] = GNUNET_malloc (num_oldcoins *
-                                    sizeof (struct TALER_RefreshCommitLinkP));
-    for (j = 0; j < num_oldcoins; j++)
-    {
-      struct TALER_RefreshCommitLinkP *rcl = &commit_link[i][j];
-      struct GNUNET_JSON_Specification trans_spec[] = {
-        GNUNET_JSON_spec_fixed_auto (NULL, &rcl->transfer_pub),
-        GNUNET_JSON_spec_end ()
-      };
-      struct GNUNET_JSON_Specification sec_spec[] = {
-        GNUNET_JSON_spec_fixed_auto (NULL, &rcl->shared_secret_enc),
-        GNUNET_JSON_spec_end ()
-      };
+    struct TALER_RefreshCommitLinkP *rcl = &commit_link[i];
+    struct GNUNET_JSON_Specification trans_spec[] = {
+      GNUNET_JSON_spec_fixed_auto (NULL, &rcl->transfer_pub),
+      GNUNET_JSON_spec_end ()
+    };
+    struct GNUNET_JSON_Specification sec_spec[] = {
+      GNUNET_JSON_spec_fixed_auto (NULL, &rcl->shared_secret_enc),
+      GNUNET_JSON_spec_end ()
+    };
 
-      res = TMH_PARSE_json_array (connection,
-                                  transfer_pubs,
-                                  trans_spec,
-                                  i, j, -1);
-      if (GNUNET_OK != res)
-      {
-        GNUNET_break_op (0);
-        res = (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-        goto cleanup;
-      }
-      res = TMH_PARSE_json_array (connection,
-                                  secret_encs,
-                                  sec_spec,
-                                  i, j, -1);
-      if (GNUNET_OK != res)
-      {
-        GNUNET_break_op (0);
-        res = (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-        goto cleanup;
-      }
-      GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       rcl,
-                                       sizeof (struct TALER_RefreshCommitLinkP));
+    res = TMH_PARSE_json_array (connection,
+                                transfer_pubs,
+                                trans_spec,
+                                i, -1);
+    if (GNUNET_OK != res)
+    {
+      GNUNET_break_op (0);
+      res = (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
+      goto cleanup;
     }
+    res = TMH_PARSE_json_array (connection,
+                                secret_encs,
+                                sec_spec,
+                                i, -1);
+    if (GNUNET_OK != res)
+    {
+      GNUNET_break_op (0);
+      res = (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
+      goto cleanup;
+    }
+    GNUNET_CRYPTO_hash_context_read (hash_context,
+                                     rcl,
+                                     sizeof (struct TALER_RefreshCommitLinkP));
   }
   GNUNET_CRYPTO_hash_context_finish (hash_context,
                                      &session_hash);
   hash_context = NULL;
-  for (i=0;i<coin_count;i++)
+  /* verify signature on coins to melt */
+  res = verify_coin_public_info (connection,
+                                 &session_hash,
+                                 &coin_melt_details);
+  if (GNUNET_OK != res)
   {
-    /* verify signatures on coins to melt */
-    res = verify_coin_public_info (connection,
-                                   &session_hash,
-                                   &coin_melt_details[i]);
-    if (GNUNET_OK != res)
-    {
-      GNUNET_break_op (0);
-      res = (GNUNET_NO == res) ? MHD_YES : MHD_NO;
-      goto cleanup;
-    }
+    GNUNET_break_op (0);
+    res = (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+    goto cleanup;
   }
 
   /* execute commit */
   res = handle_refresh_melt_binary (connection,
-                                    num_new_denoms,
+                                    num_newcoins,
                                     denom_pubs,
-                                    coin_count,
-                                    coin_melt_details,
+                                    &coin_melt_details,
                                     &session_hash,
                                     commit_coin,
                                     commit_link);
@@ -605,20 +527,13 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   free_commit_coins (commit_coin,
                      TALER_CNC_KAPPA,
                      num_newcoins);
-  free_commit_links (commit_link,
-                     TALER_CNC_KAPPA,
-                     num_oldcoins);
  cleanup_melt_details:
-  for (j=0;j<coin_count;j++)
-  {
-    if (NULL != coin_melt_details[j].coin_info.denom_pub.rsa_public_key)
-      GNUNET_CRYPTO_rsa_public_key_free (coin_melt_details[j].coin_info.denom_pub.rsa_public_key);
-    if (NULL != coin_melt_details[j].coin_info.denom_sig.rsa_signature)
-      GNUNET_CRYPTO_rsa_signature_free (coin_melt_details[j].coin_info.denom_sig.rsa_signature);
-  }
-  GNUNET_free (coin_melt_details);
+  if (NULL != coin_melt_details.coin_info.denom_pub.rsa_public_key)
+    GNUNET_CRYPTO_rsa_public_key_free (coin_melt_details.coin_info.denom_pub.rsa_public_key);
+  if (NULL != coin_melt_details.coin_info.denom_sig.rsa_signature)
+    GNUNET_CRYPTO_rsa_signature_free (coin_melt_details.coin_info.denom_sig.rsa_signature);
  cleanup_denoms:
-  for (j=0;j<num_new_denoms;j++)
+  for (j=0;j<num_newcoins;j++)
     if (NULL != denom_pubs[j].rsa_public_key)
       GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
   GNUNET_free (denom_pubs);
@@ -650,19 +565,16 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
 {
   json_t *root;
   json_t *new_denoms;
-  json_t *melt_coins;
+  json_t *melt_coin;
   json_t *coin_evs;
   json_t *link_encs;
   json_t *transfer_pubs;
   json_t *secret_encs;
-  unsigned int num_oldcoins;
-  unsigned int num_newcoins;
   json_t *coin_detail;
-  json_t *trans_detail;
   int res;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("new_denoms", &new_denoms),
-    GNUNET_JSON_spec_json ("melt_coins", &melt_coins),
+    GNUNET_JSON_spec_json ("melt_coin", &melt_coin),
     GNUNET_JSON_spec_json ("coin_evs", &coin_evs),
     GNUNET_JSON_spec_json ("link_encs", &link_encs),
     GNUNET_JSON_spec_json ("transfer_pubs", &transfer_pubs),
@@ -710,24 +622,11 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
     GNUNET_JSON_parse_free (spec);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
-  num_newcoins = json_array_size (coin_detail);
-
-  trans_detail = json_array_get (transfer_pubs, 0);
-  if (NULL == trans_detail)
-  {
-    // FIXME: generate proper HTTP response!
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-  }
-  num_oldcoins = json_array_size (trans_detail);
   res = handle_refresh_melt_json (connection,
                                   new_denoms,
-                                  melt_coins,
-                                  num_oldcoins,
+                                  melt_coin,
                                   transfer_pubs,
                                   secret_encs,
-                                  num_newcoins,
                                   coin_evs,
                                   link_encs);
   GNUNET_JSON_parse_free (spec);
@@ -744,53 +643,41 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
  *
  * @param connection the MHD connection to handle
  * @param session_hash hash identifying the melting session
- * @param num_oldcoins length of the 2nd dimension of @a transfer_privs array
  * @param tp_json private transfer keys in JSON format
  * @return MHD result code
   */
 static int
 handle_refresh_reveal_json (struct MHD_Connection *connection,
                             const struct GNUNET_HashCode *session_hash,
-                            unsigned int num_oldcoins,
                             const json_t *tp_json)
 {
-  struct TALER_TransferPrivateKeyP *transfer_privs[TALER_CNC_KAPPA - 1];
+  struct TALER_TransferPrivateKeyP transfer_privs[TALER_CNC_KAPPA - 1];
   unsigned int i;
-  unsigned int j;
   int res;
 
-  for (i = 0; i < TALER_CNC_KAPPA - 1; i++)
-    transfer_privs[i] = GNUNET_malloc (num_oldcoins *
-                                       sizeof (struct TALER_TransferPrivateKeyP));
   res = GNUNET_OK;
   for (i = 0; i < TALER_CNC_KAPPA - 1; i++)
   {
     if (GNUNET_OK != res)
       break;
-    for (j = 0; j < num_oldcoins; j++)
-    {
-      struct GNUNET_JSON_Specification tp_spec[] = {
-        GNUNET_JSON_spec_fixed_auto (NULL, &transfer_privs[i][j]),
-        GNUNET_JSON_spec_end ()
-      };
-      if (GNUNET_OK != res)
-        break;
-      res = TMH_PARSE_json_array (connection,
-                                  tp_json,
-                                  tp_spec,
-                                  i, j, -1);
-      GNUNET_break_op (GNUNET_OK == res);
-    }
+    struct GNUNET_JSON_Specification tp_spec[] = {
+      GNUNET_JSON_spec_fixed_auto (NULL, &transfer_privs[i]),
+      GNUNET_JSON_spec_end ()
+    };
+    if (GNUNET_OK != res)
+      break;
+    res = TMH_PARSE_json_array (connection,
+                                tp_json,
+                                tp_spec,
+                                i, -1);
+    GNUNET_break_op (GNUNET_OK == res);
   }
   if (GNUNET_OK != res)
     res = (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   else
     res = TMH_DB_execute_refresh_reveal (connection,
 					 session_hash,
-					 num_oldcoins,
 					 transfer_privs);
-  for (i = 0; i < TALER_CNC_KAPPA - 1; i++)
-    GNUNET_free (transfer_privs[i]);
   return res;
 }
 
@@ -820,7 +707,6 @@ TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
 {
   struct GNUNET_HashCode session_hash;
   int res;
-  unsigned int num_oldcoins;
   json_t *reveal_detail;
   json_t *root;
   json_t *transfer_privs;
@@ -866,10 +752,8 @@ TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
     GNUNET_break_op (0);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
-  num_oldcoins = json_array_size (reveal_detail);
   res = handle_refresh_reveal_json (connection,
                                     &session_hash,
-                                    num_oldcoins,
                                     transfer_privs);
   GNUNET_JSON_parse_free (spec);
   return res;

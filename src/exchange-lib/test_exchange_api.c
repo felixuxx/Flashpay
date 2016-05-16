@@ -398,7 +398,7 @@ struct Command
       /**
        * Information about coins to be melted.
        */
-      struct MeltDetails *melted_coins;
+      struct MeltDetails melted_coin;
 
       /**
        * Denominations of the fresh coins to withdraw.
@@ -1856,13 +1856,9 @@ interpreter_run (void *cls)
     }
   case OC_REFRESH_MELT:
     {
-      unsigned int num_melted_coins;
       unsigned int num_fresh_coins;
 
       cmd->details.refresh_melt.noreveal_index = UINT16_MAX;
-      for (num_melted_coins=0;
-           NULL != cmd->details.refresh_melt.melted_coins[num_melted_coins].amount;
-           num_melted_coins++) ;
       for (num_fresh_coins=0;
            NULL != cmd->details.refresh_melt.fresh_amounts[num_fresh_coins];
            num_fresh_coins++) ;
@@ -1871,36 +1867,33 @@ interpreter_run (void *cls)
         = GNUNET_new_array (num_fresh_coins,
                             const struct TALER_EXCHANGE_DenomPublicKey *);
       {
-        struct TALER_CoinSpendPrivateKeyP melt_privs[num_melted_coins];
-        struct TALER_Amount melt_amounts[num_melted_coins];
-        struct TALER_DenominationSignature melt_sigs[num_melted_coins];
-        struct TALER_EXCHANGE_DenomPublicKey melt_pks[num_melted_coins];
+        struct TALER_CoinSpendPrivateKeyP melt_priv;
+        struct TALER_Amount melt_amount;
+        struct TALER_DenominationSignature melt_sig;
+        struct TALER_EXCHANGE_DenomPublicKey melt_pk;
         struct TALER_EXCHANGE_DenomPublicKey fresh_pks[num_fresh_coins];
         unsigned int i;
 
-        for (i=0;i<num_melted_coins;i++)
-        {
-          const struct MeltDetails *md = &cmd->details.refresh_melt.melted_coins[i];
-          ref = find_command (is,
-                              md->coin_ref);
-          GNUNET_assert (NULL != ref);
-          GNUNET_assert (OC_WITHDRAW_SIGN == ref->oc);
+        const struct MeltDetails *md = &cmd->details.refresh_melt.melted_coin;
+        ref = find_command (is,
+                            md->coin_ref);
+        GNUNET_assert (NULL != ref);
+        GNUNET_assert (OC_WITHDRAW_SIGN == ref->oc);
 
-          melt_privs[i] = ref->details.reserve_withdraw.coin_priv;
-          if (GNUNET_OK !=
-              TALER_string_to_amount (md->amount,
-                                      &melt_amounts[i]))
-          {
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "Failed to parse amount `%s' at %u\n",
-                        md->amount,
-                        is->ip);
-            fail (is);
-            return;
-          }
-          melt_sigs[i] = ref->details.reserve_withdraw.sig;
-          melt_pks[i] = *ref->details.reserve_withdraw.pk;
+        melt_priv = ref->details.reserve_withdraw.coin_priv;
+        if (GNUNET_OK !=
+            TALER_string_to_amount (md->amount,
+                                    &melt_amount))
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Failed to parse amount `%s' at %u\n",
+                      md->amount,
+                      is->ip);
+          fail (is);
+          return;
         }
+        melt_sig = ref->details.reserve_withdraw.sig;
+        melt_pk = *ref->details.reserve_withdraw.pk;
         for (i=0;i<num_fresh_coins;i++)
         {
           if (GNUNET_OK !=
@@ -1920,15 +1913,14 @@ interpreter_run (void *cls)
           fresh_pks[i] = *cmd->details.refresh_melt.fresh_pks[i];
         }
         cmd->details.refresh_melt.refresh_data
-          = TALER_EXCHANGE_refresh_prepare (num_melted_coins,
-                                        melt_privs,
-                                        melt_amounts,
-                                        melt_sigs,
-                                        melt_pks,
-                                        GNUNET_YES,
-                                        num_fresh_coins,
-                                        fresh_pks,
-                                        &cmd->details.refresh_melt.refresh_data_length);
+          = TALER_EXCHANGE_refresh_prepare (&melt_priv,
+                                            &melt_amount,
+                                            &melt_sig,
+                                            &melt_pk,
+                                            GNUNET_YES,
+                                            num_fresh_coins,
+                                            fresh_pks,
+                                            &cmd->details.refresh_melt.refresh_data_length);
         if (NULL == cmd->details.refresh_melt.refresh_data)
         {
           GNUNET_break (0);
@@ -1979,16 +1971,9 @@ interpreter_run (void *cls)
     GNUNET_assert (NULL != ref);
     /* find reserve_withdraw command */
     {
-      unsigned int idx;
       const struct MeltDetails *md;
-      unsigned int num_melted_coins;
 
-      for (num_melted_coins=0;
-           NULL != ref->details.refresh_melt.melted_coins[num_melted_coins].amount;
-           num_melted_coins++) ;
-      idx = cmd->details.refresh_link.coin_idx;
-      GNUNET_assert (idx < num_melted_coins);
-      md = &ref->details.refresh_melt.melted_coins[idx];
+      md = &ref->details.refresh_melt.melted_coin;
       ref = find_command (is,
                           md->coin_ref);
       GNUNET_assert (NULL != ref);
@@ -2465,11 +2450,6 @@ static void
 run (void *cls)
 {
   struct InterpreterState *is;
-  static struct MeltDetails melt_coins_1[] = {
-    { .amount = "EUR:4",
-      .coin_ref = "refresh-withdraw-coin-1" },
-    { NULL, NULL }
-  };
   static const char *melt_fresh_amounts_1[] = {
     "EUR:1",
     "EUR:1",
@@ -2613,7 +2593,9 @@ run (void *cls)
     { .oc = OC_REFRESH_MELT,
       .label = "refresh-melt-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.refresh_melt.melted_coins = melt_coins_1,
+      .details.refresh_melt.melted_coin = {
+        .amount = "EUR:4",
+        .coin_ref = "refresh-withdraw-coin-1" },
       .details.refresh_melt.fresh_amounts = melt_fresh_amounts_1 },
 
 
@@ -2658,7 +2640,9 @@ run (void *cls)
     { .oc = OC_REFRESH_MELT,
       .label = "refresh-melt-failing",
       .expected_response_code = MHD_HTTP_FORBIDDEN,
-      .details.refresh_melt.melted_coins = melt_coins_1,
+      .details.refresh_melt.melted_coin = {
+        .amount = "EUR:4",
+        .coin_ref = "refresh-withdraw-coin-1" },
       .details.refresh_melt.fresh_amounts = melt_fresh_amounts_1 },
 
     // FIXME: also test with coin that was already melted

@@ -447,7 +447,6 @@ PERF_TALER_EXCHANGEDB_refresh_session_init ()
   GNUNET_assert (NULL !=
                  (refresh_session = GNUNET_new (struct TALER_EXCHANGEDB_RefreshSession)));
   refresh_session->noreveal_index = 1;
-  refresh_session->num_oldcoins = 1;
   refresh_session->num_newcoins = 1;
 
   return refresh_session;
@@ -459,7 +458,7 @@ PERF_TALER_EXCHANGEDB_refresh_session_init ()
  */
 int
 PERF_TALER_EXCHANGEDB_refresh_session_copy (struct TALER_EXCHANGEDB_RefreshSession *session,
-                                        struct TALER_EXCHANGEDB_RefreshSession *copy)
+                                            struct TALER_EXCHANGEDB_RefreshSession *copy)
 {
   *copy = *session;
   return GNUNET_OK;

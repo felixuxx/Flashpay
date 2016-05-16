@@ -133,13 +133,12 @@ struct TMH_DB_MeltDetails
  * @param session_hash hash code of the session the coins are melted into
  * @param num_new_denoms number of entries in @a denom_pubs, size of y-dimension of @a commit_coin array
  * @param denom_pubs array of public denomination keys for the refresh (?)
- * @param coin_count number of entries in @ a coin_melt_details, size of y-dimension of @a commit_link array
  * @param coin_melt_details signatures and (residual) value of and information about the respective coin to be melted
  * @param commit_coin 2d array of coin commitments (what the exchange is to sign
  *                    once the "/refres/reveal" of cut and choose is done)
- * @param commit_link 2d array of coin link commitments (what the exchange is
+ * @param commit_link array of coin link commitments (what the exchange is
  *                    to return via "/refresh/link" to enable linkage in the
- *                    future)
+ *                    future) of length #TALER_CNC_KAPPA
  * @return MHD result code
  */
 int
@@ -147,10 +146,9 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                              const struct GNUNET_HashCode *session_hash,
                              unsigned int num_new_denoms,
                              const struct TALER_DenominationPublicKey *denom_pubs,
-                             unsigned int coin_count,
                              const struct TMH_DB_MeltDetails *coin_melt_details,
                              struct TALER_EXCHANGEDB_RefreshCommitCoin *const* commit_coin,
-                             struct TALER_RefreshCommitLinkP *const* commit_link);
+                             const struct TALER_RefreshCommitLinkP *commit_link);
 
 
 /**
@@ -162,15 +160,13 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection to handle
  * @param session_hash hash over the refresh session
- * @param num_oldcoins size of y-dimension of @a transfer_privs array
- * @param transfer_privs array with the revealed transfer keys, #TALER_CNC_KAPPA is 1st-dimension
+ * @param transfer_privs array of length #TALER_CNC_KAPPA-1 with the revealed transfer keys
  * @return MHD result code
  */
 int
 TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
                                const struct GNUNET_HashCode *session_hash,
-                               unsigned int num_oldcoins,
-                               struct TALER_TransferPrivateKeyP **transfer_privs);
+                               struct TALER_TransferPrivateKeyP *transfer_privs);
 
 
 /**

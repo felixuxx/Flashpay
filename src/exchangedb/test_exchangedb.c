@@ -458,14 +458,13 @@ test_refresh_commit_links (struct TALER_EXCHANGEDB_Session *session,
 static int
 test_melting (struct TALER_EXCHANGEDB_Session *session)
 {
-#define MELT_OLD_COINS 10
   struct TALER_EXCHANGEDB_RefreshSession refresh_session;
   struct TALER_EXCHANGEDB_RefreshSession ret_refresh_session;
   struct GNUNET_HashCode session_hash;
   struct DenomKeyPair *dkp;
   struct DenomKeyPair **new_dkp;
   /* struct TALER_CoinPublicInfo *coins; */
-  struct TALER_EXCHANGEDB_RefreshMelt *melts;
+  struct TALER_EXCHANGEDB_RefreshMelt *meltp;
   struct TALER_DenominationPublicKey *new_denom_pubs;
   struct TALER_DenominationPublicKey *ret_denom_pubs;
   struct TALER_EXCHANGEDB_MeltCommitment *mc;
@@ -475,15 +474,40 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   ret = GNUNET_SYSERR;
   RND_BLK (&refresh_session);
   RND_BLK (&session_hash);
-  melts = NULL;
   dkp = NULL;
   new_dkp = NULL;
   new_denom_pubs = NULL;
   ret_denom_pubs = NULL;
   /* create and test a refresh session */
-  refresh_session.num_oldcoins = MELT_OLD_COINS;
   refresh_session.num_newcoins = 1;
   refresh_session.noreveal_index = 1;
+  /* create a denomination (value: 1; fraction: 100) */
+  dkp = create_denom_key_pair (512,
+                               session,
+                               &value,
+                               &fee_withdraw,
+                               &fee_deposit,
+                               &fee_refresh,
+			       &fee_refund);
+  /* initialize refresh session melt data */
+  {
+    struct GNUNET_HashCode hc;
+
+    meltp = &refresh_session.melt;
+    RND_BLK (&meltp->coin.coin_pub);
+    GNUNET_CRYPTO_hash (&meltp->coin.coin_pub,
+                        sizeof (meltp->coin.coin_pub),
+                        &hc);
+    meltp->coin.denom_sig.rsa_signature =
+        GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.rsa_private_key,
+                                    &hc);
+    meltp->coin.denom_pub = dkp->pub;
+    RND_BLK (&meltp->coin_sig);
+    meltp->session_hash = session_hash;
+    meltp->amount_with_fee = amount_with_fee;
+    meltp->melt_fee = fee_refresh;
+  }
+
   FAILIF (GNUNET_OK != plugin->create_refresh_session (plugin->cls,
                                                        session,
                                                        &session_hash,
@@ -492,72 +516,35 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
                                                     session,
                                                     &session_hash,
                                                     &ret_refresh_session));
-  FAILIF (0 != memcmp (&ret_refresh_session,
-                       &refresh_session,
-                       sizeof (refresh_session)));
+  FAILIF (ret_refresh_session.num_newcoins != refresh_session.num_newcoins);
+  FAILIF (ret_refresh_session.noreveal_index != refresh_session.noreveal_index);
 
-  /* create a denomination (value: 1; fraction: 100) */
-  dkp = create_denom_key_pair (512, session,
-                               &value,
-                               &fee_withdraw,
-                               &fee_deposit,
-                               &fee_refresh,
-			       &fee_refund);
-  /* create MELT_OLD_COINS number of refresh melts */
-  melts = GNUNET_new_array (MELT_OLD_COINS,
-                            struct TALER_EXCHANGEDB_RefreshMelt);
-  for (cnt=0; cnt < MELT_OLD_COINS; cnt++)
+  /* check refresh sesison melt data */
   {
-    struct GNUNET_HashCode hc;
+    struct TALER_EXCHANGEDB_RefreshMelt *ret_melt;
 
-    RND_BLK (&melts[cnt].coin.coin_pub);
-    GNUNET_CRYPTO_hash (&melts[cnt].coin.coin_pub,
-                        sizeof (melts[cnt].coin.coin_pub),
-                        &hc);
-    melts[cnt].coin.denom_sig.rsa_signature =
-        GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.rsa_private_key,
-                                    &hc);
-    melts[cnt].coin.denom_pub = dkp->pub;
-    RND_BLK (&melts[cnt].coin_sig);
-    melts[cnt].session_hash = session_hash;
-    melts[cnt].amount_with_fee = amount_with_fee;
-    melts[cnt].melt_fee = fee_refresh;
-    FAILIF (GNUNET_OK !=
-            plugin->insert_refresh_melt (plugin->cls,
-                                         session,
-                                         cnt,
-                                         &melts[cnt]));
-  }
-  for (cnt = 0; cnt < MELT_OLD_COINS; cnt++)
-  {
-    struct TALER_EXCHANGEDB_RefreshMelt ret_melt;
-    FAILIF (GNUNET_OK !=
-            plugin->get_refresh_melt (plugin->cls,
-                                      session,
-                                      &session_hash,
-                                      cnt,
-                                      &ret_melt));
+    ret_melt = &ret_refresh_session.melt;
     FAILIF (0 != GNUNET_CRYPTO_rsa_signature_cmp
-            (ret_melt.coin.denom_sig.rsa_signature,
-             melts[cnt].coin.denom_sig.rsa_signature));
-    FAILIF (0 != memcmp (&ret_melt.coin.coin_pub,
-                         &melts[cnt].coin.coin_pub,
-                         sizeof (ret_melt.coin.coin_pub)));
+            (ret_melt->coin.denom_sig.rsa_signature,
+             meltp->coin.denom_sig.rsa_signature));
+    FAILIF (0 != memcmp (&ret_melt->coin.coin_pub,
+                         &meltp->coin.coin_pub,
+                         sizeof (ret_melt->coin.coin_pub)));
     FAILIF (0 != GNUNET_CRYPTO_rsa_public_key_cmp
-            (ret_melt.coin.denom_pub.rsa_public_key,
-             melts[cnt].coin.denom_pub.rsa_public_key));
-    FAILIF (0 != memcmp (&ret_melt.coin_sig,
-                         &melts[cnt].coin_sig,
-                         sizeof (ret_melt.coin_sig)));
-    FAILIF (0 != memcmp (&ret_melt.session_hash,
-                         &melts[cnt].session_hash,
-                         sizeof (ret_melt.session_hash)));
-    FAILIF (0 != TALER_amount_cmp (&ret_melt.amount_with_fee,
-                                   &melts[cnt].amount_with_fee));
-    FAILIF (0 != TALER_amount_cmp (&ret_melt.melt_fee,
-                                   &melts[cnt].melt_fee));
-    GNUNET_CRYPTO_rsa_signature_free (ret_melt.coin.denom_sig.rsa_signature);
-    GNUNET_CRYPTO_rsa_public_key_free (ret_melt.coin.denom_pub.rsa_public_key);
+            (ret_melt->coin.denom_pub.rsa_public_key,
+             meltp->coin.denom_pub.rsa_public_key));
+    FAILIF (0 != memcmp (&ret_melt->coin_sig,
+                         &meltp->coin_sig,
+                         sizeof (ret_melt->coin_sig)));
+    FAILIF (0 != memcmp (&ret_melt->session_hash,
+                         &meltp->session_hash,
+                         sizeof (ret_melt->session_hash)));
+    FAILIF (0 != TALER_amount_cmp (&ret_melt->amount_with_fee,
+                                   &meltp->amount_with_fee));
+    FAILIF (0 != TALER_amount_cmp (&ret_melt->melt_fee,
+                                   &meltp->melt_fee));
+    GNUNET_CRYPTO_rsa_signature_free (ret_melt->coin.denom_sig.rsa_signature);
+    GNUNET_CRYPTO_rsa_public_key_free (ret_melt->coin.denom_pub.rsa_public_key);
   }
   new_dkp = GNUNET_new_array (MELT_NEW_COINS, struct DenomKeyPair *);
   new_denom_pubs = GNUNET_new_array (MELT_NEW_COINS,
@@ -619,15 +606,10 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
  drop:
   if (NULL != dkp)
     destroy_denom_key_pair (dkp);
-  if (NULL != melts)
-  {
-    for (cnt = 0; cnt < MELT_OLD_COINS; cnt++)
-      GNUNET_CRYPTO_rsa_signature_free (melts[cnt].coin.denom_sig.rsa_signature);
-    GNUNET_free (melts);
-  }
+  GNUNET_CRYPTO_rsa_signature_free (meltp->coin.denom_sig.rsa_signature);
   for (cnt = 0;
        (NULL != ret_denom_pubs) && (cnt < MELT_NEW_COINS)
-           && (NULL != ret_denom_pubs[cnt].rsa_public_key);
+         && (NULL != ret_denom_pubs[cnt].rsa_public_key);
        cnt++)
     GNUNET_CRYPTO_rsa_public_key_free (ret_denom_pubs[cnt].rsa_public_key);
   GNUNET_free_non_null (ret_denom_pubs);

@@ -132,15 +132,6 @@ common_free_melt_commitment (void *cls,
   unsigned int i;
   unsigned int k;
 
-  if (NULL != mc->melts)
-  {
-    for (i=0;i<mc->num_oldcoins;i++)
-    {
-      GNUNET_CRYPTO_rsa_signature_free (mc->melts[i].coin.denom_sig.rsa_signature);
-      GNUNET_CRYPTO_rsa_public_key_free (mc->melts[i].coin.denom_pub.rsa_public_key);
-    }
-    GNUNET_free (mc->melts);
-  }
   if (NULL != mc->denom_pubs)
   {
     for (i=0;i<mc->num_newcoins;i++)
@@ -161,7 +152,6 @@ common_free_melt_commitment (void *cls,
       }
       GNUNET_free (mc->commit_coins[k]);
     }
-    GNUNET_free_non_null (mc->commit_links[k]);
   }
   GNUNET_free (mc);
 }

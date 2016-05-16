@@ -241,20 +241,14 @@ struct MeltData
   struct TALER_LinkSecretP link_secrets[TALER_CNC_KAPPA];
 
   /**
-   * Number of coins we are melting
-   */
-  uint16_t num_melted_coins;
-
-  /**
    * Number of coins we are creating
    */
   uint16_t num_fresh_coins;
 
   /**
-   * Information about the melted coins in an array of length @e
-   * num_melted_coins.
+   * Information about the melted coin.
    */
-  struct MeltedCoin *melted_coins;
+  struct MeltedCoin melted_coin;
 
   /**
    * Array of @e num_fresh_coins denomination keys for the coins to be
@@ -279,8 +273,6 @@ struct MeltData
 static void
 free_melted_coin (struct MeltedCoin *mc)
 {
-  if (NULL == mc)
-    return;
   if (NULL != mc->pub_key.rsa_public_key)
     GNUNET_CRYPTO_rsa_public_key_free (mc->pub_key.rsa_public_key);
   if (NULL != mc->sig.rsa_signature)
@@ -319,12 +311,7 @@ free_melt_data (struct MeltData *md)
   unsigned int i;
   unsigned int j;
 
-  if (NULL != md->melted_coins)
-  {
-    for (i=0;i<md->num_melted_coins;i++)
-      free_melted_coin (&md->melted_coins[i]);
-    GNUNET_free (md->melted_coins);
-  }
+  free_melted_coin (&md->melted_coin);
   if (NULL != md->fresh_pks)
   {
     for (i=0;i<md->num_fresh_coins;i++)
@@ -694,13 +681,11 @@ serialize_melt_data (const struct MeltData *md,
       mdp->melt_session_hash = md->melt_session_hash;
       for (i=0;i<TALER_CNC_KAPPA;i++)
         mdp->link_secrets[i] = md->link_secrets[i];
-      mdp->num_melted_coins = htons (md->num_melted_coins);
       mdp->num_fresh_coins = htons (md->num_fresh_coins);
     }
-    for (i=0;i<md->num_melted_coins;i++)
-      size += serialize_melted_coin (&md->melted_coins[i],
-                                     buf,
-                                     size);
+    size += serialize_melted_coin (&md->melted_coin,
+                                   buf,
+                                   size);
     for (i=0;i<md->num_fresh_coins;i++)
       size += serialize_denomination_key (&md->fresh_pks[i],
                                           buf,
@@ -744,10 +729,7 @@ deserialize_melt_data (const char *buf,
   md->melt_session_hash = mdp.melt_session_hash;
   for (i=0;i<TALER_CNC_KAPPA;i++)
     md->link_secrets[i] = mdp.link_secrets[i];
-  md->num_melted_coins = ntohs (mdp.num_melted_coins);
   md->num_fresh_coins = ntohs (mdp.num_fresh_coins);
-  md->melted_coins = GNUNET_new_array (md->num_melted_coins,
-                                       struct MeltedCoin);
   md->fresh_pks = GNUNET_new_array (md->num_fresh_coins,
                                     struct TALER_DenominationPublicKey);
   for (i=0;i<TALER_CNC_KAPPA;i++)
@@ -755,11 +737,10 @@ deserialize_melt_data (const char *buf,
                                            struct FreshCoin);
   off = sizeof (struct MeltDataP);
   ok = GNUNET_YES;
-  for (i=0;(i<md->num_melted_coins)&&(GNUNET_YES == ok);i++)
-    off += deserialize_melted_coin (&md->melted_coins[i],
-                                    &buf[off],
-                                    buf_size - off,
-                                    &ok);
+  off += deserialize_melted_coin (&md->melted_coin,
+                                  &buf[off],
+                                  buf_size - off,
+                                  &ok);
   for (i=0;(i<md->num_fresh_coins)&&(GNUNET_YES == ok);i++)
     off += deserialize_denomination_key (&md->fresh_pks[i],
                                          &buf[off],
@@ -831,17 +812,16 @@ setup_fresh_coin (struct FreshCoin *fc,
  * its result immediately and does not start any asynchronous
  * processing.  This function is also thread-safe.
  *
- * @param num_melts number of coins that are being melted (typically 1)
- * @param melt_privs array of @a num_melts private keys of the coins to melt
- * @param melt_amounts array of @a num_melts amounts specifying how much
- *                     each coin will contribute to the melt (including fee)
- * @param melt_sigs array of @a num_melts signatures affirming the
+ * @param melt_priv private key of the coin to melt
+ * @param melt_amount amount specifying how much
+ *                     the coin will contribute to the melt (including fee)
+ * @param melt_sig signature affirming the
  *                   validity of the public keys corresponding to the
- *                   @a melt_privs private keys
- * @param melt_pks array of @a num_melts denomination key information
- *                   records corresponding to the @a melt_sigs
+ *                   @a melt_priv private key
+ * @param melt_pk denomination key information
+ *                   record corresponding to the @a melt_sig
  *                   validity of the keys
- * @param check_sigs verify the validity of the signatures of @a melt_sigs
+ * @param check_sig verify the validity of the @a melt_sig signature
  * @param fresh_pks_len length of the @a pks array
  * @param fresh_pks array of @a pks_len denominations of fresh coins to create
  * @param[out] res_size set to the size of the return value, or 0 on error
@@ -852,15 +832,14 @@ setup_fresh_coin (struct FreshCoin *fc,
  *         Non-null results should be freed using #GNUNET_free().
  */
 char *
-TALER_EXCHANGE_refresh_prepare (unsigned int num_melts,
-                            const struct TALER_CoinSpendPrivateKeyP *melt_privs,
-                            const struct TALER_Amount *melt_amounts,
-                            const struct TALER_DenominationSignature *melt_sigs,
-                            const struct TALER_EXCHANGE_DenomPublicKey *melt_pks,
-                            int check_sigs,
-                            unsigned int fresh_pks_len,
-                            const struct TALER_EXCHANGE_DenomPublicKey *fresh_pks,
-                            size_t *res_size)
+TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_priv,
+                                const struct TALER_Amount *melt_amount,
+                                const struct TALER_DenominationSignature *melt_sig,
+                                const struct TALER_EXCHANGE_DenomPublicKey *melt_pk,
+                                int check_sig,
+                                unsigned int fresh_pks_len,
+                                const struct TALER_EXCHANGE_DenomPublicKey *fresh_pks,
+                                size_t *res_size)
 {
   struct MeltData md;
   char *buf;
@@ -873,31 +852,25 @@ TALER_EXCHANGE_refresh_prepare (unsigned int num_melts,
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
                                 &md.link_secrets[i],
                                 sizeof (struct TALER_LinkSecretP));
-  md.num_melted_coins = num_melts;
   md.num_fresh_coins = fresh_pks_len;
-  md.melted_coins = GNUNET_new_array (num_melts,
-                                      struct MeltedCoin);
-  for (i=0;i<num_melts;i++)
+  md.melted_coin.coin_priv = *melt_priv;
+  md.melted_coin.melt_amount_with_fee = *melt_amount;
+  md.melted_coin.fee_melt = melt_pk->fee_refresh;
+  md.melted_coin.original_value = melt_pk->value;
+  for (j=0;j<TALER_CNC_KAPPA;j++)
   {
-    md.melted_coins[i].coin_priv = melt_privs[i];
-    md.melted_coins[i].melt_amount_with_fee = melt_amounts[i];
-    md.melted_coins[i].fee_melt = melt_pks[i].fee_refresh;
-    md.melted_coins[i].original_value = melt_pks[i].value;
-    for (j=0;j<TALER_CNC_KAPPA;j++)
-    {
-      struct GNUNET_CRYPTO_EcdhePrivateKey *tpk;
+    struct GNUNET_CRYPTO_EcdhePrivateKey *tpk;
 
-      tpk = GNUNET_CRYPTO_ecdhe_key_create ();
-      md.melted_coins[i].transfer_priv[j].ecdhe_priv = *tpk;
-      GNUNET_free (tpk);
-    }
-    md.melted_coins[i].expire_deposit
-      = melt_pks[i].expire_deposit;
-    md.melted_coins[i].pub_key.rsa_public_key
-      = GNUNET_CRYPTO_rsa_public_key_dup (melt_pks[i].key.rsa_public_key);
-    md.melted_coins[i].sig.rsa_signature
-      = GNUNET_CRYPTO_rsa_signature_dup (melt_sigs[i].rsa_signature);
+    tpk = GNUNET_CRYPTO_ecdhe_key_create ();
+    md.melted_coin.transfer_priv[j].ecdhe_priv = *tpk;
+    GNUNET_free (tpk);
   }
+  md.melted_coin.expire_deposit
+    = melt_pk->expire_deposit;
+  md.melted_coin.pub_key.rsa_public_key
+    = GNUNET_CRYPTO_rsa_public_key_dup (melt_pk->key.rsa_public_key);
+  md.melted_coin.sig.rsa_signature
+    = GNUNET_CRYPTO_rsa_signature_dup (melt_sig->rsa_signature);
   md.fresh_pks = GNUNET_new_array (fresh_pks_len,
                                    struct TALER_DenominationPublicKey);
   for (i=0;i<fresh_pks_len;i++)
@@ -926,20 +899,19 @@ TALER_EXCHANGE_refresh_prepare (unsigned int num_melts,
                                      buf_size);
     GNUNET_free (buf);
   }
-  for (i=0;i<num_melts;i++)
   {
     struct TALER_CoinSpendPublicKeyP coin_pub;
-    struct TALER_AmountNBO melt_amount;
+    struct TALER_AmountNBO melt_amountn;
 
-    GNUNET_CRYPTO_eddsa_key_get_public (&melt_privs[i].eddsa_priv,
+    GNUNET_CRYPTO_eddsa_key_get_public (&melt_priv->eddsa_priv,
                                         &coin_pub.eddsa_pub);
     GNUNET_CRYPTO_hash_context_read (hash_context,
                                      &coin_pub,
                                      sizeof (struct TALER_CoinSpendPublicKeyP));
-    TALER_amount_hton (&melt_amount,
-                       &melt_amounts[i]);
+    TALER_amount_hton (&melt_amountn,
+                       melt_amount);
     GNUNET_CRYPTO_hash_context_read (hash_context,
-                                     &melt_amount,
+                                     &melt_amountn,
                                      sizeof (struct TALER_AmountNBO));
 
   }
@@ -987,23 +959,20 @@ TALER_EXCHANGE_refresh_prepare (unsigned int num_melts,
   }
   for (i = 0; i < TALER_CNC_KAPPA; i++)
   {
-    for (j = 0; j < num_melts; j++)
-    {
-      struct TALER_RefreshCommitLinkP rcl;
-      struct TALER_TransferSecretP trans_sec;
+    struct TALER_RefreshCommitLinkP rcl;
+    struct TALER_TransferSecretP trans_sec;
 
-      GNUNET_CRYPTO_ecdhe_key_get_public (&md.melted_coins[j].transfer_priv[i].ecdhe_priv,
-                                          &rcl.transfer_pub.ecdhe_pub);
-      TALER_link_derive_transfer_secret  (&melt_privs[j],
-                                          &md.melted_coins[j].transfer_priv[i],
-                                          &trans_sec);
-      TALER_transfer_encrypt (&md.link_secrets[i],
-                              &trans_sec,
-                              &rcl.shared_secret_enc);
-      GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       &rcl,
-                                       sizeof (struct TALER_RefreshCommitLinkP));
-    }
+    GNUNET_CRYPTO_ecdhe_key_get_public (&md.melted_coin.transfer_priv[i].ecdhe_priv,
+                                        &rcl.transfer_pub.ecdhe_pub);
+    TALER_link_derive_transfer_secret  (melt_priv,
+                                        &md.melted_coin.transfer_priv[i],
+                                        &trans_sec);
+    TALER_transfer_encrypt (&md.link_secrets[i],
+                            &trans_sec,
+                            &rcl.shared_secret_enc);
+    GNUNET_CRYPTO_hash_context_read (hash_context,
+                                     &rcl,
+                                     sizeof (struct TALER_RefreshCommitLinkP));
   }
 
   GNUNET_CRYPTO_hash_context_finish (hash_context,
@@ -1150,7 +1119,6 @@ verify_refresh_melt_signature_forbidden (struct TALER_EXCHANGE_RefreshMeltHandle
   struct TALER_Amount melt_value_with_fee;
   struct TALER_Amount total;
   struct TALER_CoinSpendPublicKeyP coin_pub;
-  unsigned int i;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("history", &history),
     GNUNET_JSON_spec_fixed_auto ("coin_pub", &coin_pub),
@@ -1171,32 +1139,7 @@ verify_refresh_melt_signature_forbidden (struct TALER_EXCHANGE_RefreshMeltHandle
   }
 
   /* Find out which coin was deemed problematic by the exchange */
-  mc = NULL;
-  for (i=0;i<rmh->md->num_melted_coins;i++)
-  {
-    if (0 == TALER_amount_cmp (&melt_value_with_fee,
-                               &rmh->md->melted_coins[i].melt_amount_with_fee))
-    {
-      struct TALER_CoinSpendPublicKeyP mc_pub;
-
-      GNUNET_CRYPTO_eddsa_key_get_public (&rmh->md->melted_coins[i].coin_priv.eddsa_priv,
-                                          &mc_pub.eddsa_pub);
-      if (0 == memcmp (&mc_pub,
-                       &coin_pub,
-                       sizeof (struct TALER_CoinSpendPublicKeyP)))
-      {
-        mc = &rmh->md->melted_coins[i];
-        break;
-      }
-    }
-  }
-  if (NULL == mc)
-  {
-    /* coin not found in our original request */
-    GNUNET_break_op (0);
-    json_decref (history);
-    return GNUNET_SYSERR;
-  }
+  mc = &rmh->md->melted_coin;
 
   /* check basic coin properties */
   if (0 != TALER_amount_cmp (&original_value,
@@ -1410,7 +1353,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
 {
   json_t *melt_obj;
   json_t *new_denoms;
-  json_t *melt_coins;
+  json_t *melt_coin;
   json_t *coin_evs;
   json_t *transfer_pubs;
   json_t *secret_encs;
@@ -1439,63 +1382,43 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
 
   /* build JSON request, each of the 6 arrays first */
   new_denoms = json_array ();
-  melt_coins = json_array ();
+  melt_coin = melted_coin_to_json (&md->melt_session_hash,
+                                   &md->melted_coin);
   coin_evs = json_array ();
   transfer_pubs = json_array ();
   secret_encs = json_array ();
   link_encs = json_array ();
-  for (i=0;i<md->num_melted_coins;i++)
-  {
-    const struct MeltedCoin *mc = &md->melted_coins[i];
-
-    /* now melt_coins */
-    json_array_append (melt_coins,
-                       melted_coin_to_json (&md->melt_session_hash,
-                                            mc));
-  }
 
   /* now transfer_pubs */
   for (j=0;j<TALER_CNC_KAPPA;j++)
   {
-    tmp = json_array ();
-    for (i=0;i<md->num_melted_coins;i++)
-    {
-      const struct MeltedCoin *mc = &md->melted_coins[i];
-      struct TALER_TransferPublicKeyP transfer_pub;
+    const struct MeltedCoin *mc = &md->melted_coin;
+    struct TALER_TransferPublicKeyP transfer_pub;
 
-      GNUNET_CRYPTO_ecdhe_key_get_public (&mc->transfer_priv[j].ecdhe_priv,
-                                          &transfer_pub.ecdhe_pub);
-      json_array_append (tmp,
-                         GNUNET_JSON_from_data (&transfer_pub,
-                                               sizeof (transfer_pub)));
-    }
+    GNUNET_CRYPTO_ecdhe_key_get_public (&mc->transfer_priv[j].ecdhe_priv,
+                                        &transfer_pub.ecdhe_pub);
     json_array_append (transfer_pubs,
-                       tmp);
+                       GNUNET_JSON_from_data (&transfer_pub,
+                                              sizeof (transfer_pub)));
   }
 
   /* now secret_encs */
   for (j=0;j<TALER_CNC_KAPPA;j++)
   {
-    tmp = json_array ();
-    for (i=0;i<md->num_melted_coins;i++)
-    {
-      const struct MeltedCoin *mc = &md->melted_coins[i];
-      struct TALER_EncryptedLinkSecretP els;
-      struct TALER_TransferSecretP trans_sec;
+    const struct MeltedCoin *mc = &md->melted_coin;
+    struct TALER_EncryptedLinkSecretP els;
+    struct TALER_TransferSecretP trans_sec;
 
-      TALER_link_derive_transfer_secret (&mc->coin_priv,
-                                         &mc->transfer_priv[j],
-                                         &trans_sec);
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_transfer_encrypt (&md->link_secrets[j],
-                                             &trans_sec,
-                                             &els));
-      json_array_append (tmp,
-                         GNUNET_JSON_from_data (&els,
-                                               sizeof (els)));
-    }
+    TALER_link_derive_transfer_secret (&mc->coin_priv,
+                                       &mc->transfer_priv[j],
+                                       &trans_sec);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_transfer_encrypt (&md->link_secrets[j],
+                                           &trans_sec,
+                                           &els));
     json_array_append (secret_encs,
-                       tmp);
+                       GNUNET_JSON_from_data (&els,
+                                              sizeof (els)));
   }
 
   /* now new_denoms */
@@ -1569,7 +1492,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   /* finally, assemble main JSON request from constitutent arrays */
   melt_obj = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
                         "new_denoms", new_denoms,
-                        "melt_coins", melt_coins,
+                        "melt_coin", melt_coin,
                         "coin_evs", coin_evs,
                         "transfer_pubs", transfer_pubs,
                         "secret_encs", secret_encs,
@@ -1907,11 +1830,9 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   struct TALER_EXCHANGE_RefreshRevealHandle *rrh;
   json_t *transfer_privs;
   json_t *reveal_obj;
-  json_t *tmp;
   CURL *eh;
   struct GNUNET_CURL_Context *ctx;
   struct MeltData *md;
-  unsigned int i;
   unsigned int j;
 
   if (GNUNET_YES !=
@@ -1947,17 +1868,9 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
 	 noreval index! */
       continue;
     }
-    tmp = json_array ();
-    for (i=0;i<md->num_melted_coins;i++)
-    {
-      const struct MeltedCoin *mc = &md->melted_coins[i];
-
-      json_array_append (tmp,
-                         GNUNET_JSON_from_data (&mc->transfer_priv[j],
-                                               sizeof (struct TALER_TransferPrivateKeyP)));
-    }
     json_array_append (transfer_privs,
-                       tmp);
+                       GNUNET_JSON_from_data (&md->melted_coin.transfer_priv[j],
+                                              sizeof (struct TALER_TransferPrivateKeyP)));
   }
 
   /* build main JSON request */

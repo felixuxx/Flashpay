@@ -144,7 +144,7 @@ main (int argc, char ** argv)
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOOP ("06 - refresh melt init loop",
                                      NB_MELT_INIT),
     PERF_TALER_EXCHANGEDB_INIT_CMD_START_TRANSACTION (""),
-    /* TODO: initialize using coins & sessions created localy 
+    /* TODO: initialize using coins & sessions created localy
      * in order to make sure the same coin are not melted twice*/
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOAD_ARRAY ("06 - session hash",
                                            "06 - refresh melt init loop",
@@ -152,9 +152,6 @@ main (int argc, char ** argv)
     PERF_TALER_EXCHANGEDB_INIT_CMD_LOAD_ARRAY ("06 - coin",
                                            "06 - refresh melt init loop",
                                            "03 - save coin"),
-    PERF_TALER_EXCHANGEDB_INIT_CMD_INSERT_REFRESH_MELT ("06 - refresh melt",
-                                                    "06 - session hash",
-                                                    "06 - coin"),
     PERF_TALER_EXCHANGEDB_INIT_CMD_COMMIT_TRANSACTION (""),
     PERF_TALER_EXCHANGEDB_INIT_CMD_END_LOOP ("06 - end",
                                          "06 - refresh melt init loop"),

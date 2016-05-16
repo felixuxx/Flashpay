@@ -492,6 +492,7 @@ TMH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
  * revealed value(s) do not match the original commitment.
  *
  * @param connection the connection to send the response to
+ * @param rm details about the original melt
  * @param mc all information about the original commitment
  * @param off offset in the array of kappa-commitments where
  *            the missmatch was detected
@@ -503,6 +504,7 @@ TMH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
  */
 int
 TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
+                                             const struct TALER_EXCHANGEDB_RefreshMelt *rm,
                                              const struct TALER_EXCHANGEDB_MeltCommitment *mc,
                                              unsigned int off,
                                              unsigned int j,

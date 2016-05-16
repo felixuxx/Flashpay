@@ -359,33 +359,6 @@ struct TALER_EXCHANGEDB_Refund
 
 
 /**
- * @brief Global information for a refreshing session.  Includes
- * dimensions of the operation, security parameters and
- * client signatures from "/refresh/melt" and "/refresh/commit".
- */
-struct TALER_EXCHANGEDB_RefreshSession
-{
-
-  /**
-   * Number of coins we are melting.
-   */
-  uint16_t num_oldcoins;
-
-  /**
-   * Number of new coins we are creating.
-   */
-  uint16_t num_newcoins;
-
-  /**
-   * Index (smaller #TALER_CNC_KAPPA) which the exchange has chosen to not
-   * have revealed during cut and choose.
-   */
-  uint16_t noreveal_index;
-
-};
-
-
-/**
  * @brief Specification for coin in a /refresh/melt operation.
  */
 struct TALER_EXCHANGEDB_RefreshMelt
@@ -425,6 +398,33 @@ struct TALER_EXCHANGEDB_RefreshMelt
    * session.
    */
   struct TALER_Amount melt_fee;
+
+};
+
+
+/**
+ * @brief Global information for a refreshing session.  Includes
+ * dimensions of the operation, security parameters and
+ * client signatures from "/refresh/melt" and "/refresh/commit".
+ */
+struct TALER_EXCHANGEDB_RefreshSession
+{
+
+  /**
+   * Melt operation details.
+   */
+  struct TALER_EXCHANGEDB_RefreshMelt melt;
+
+  /**
+   * Number of new coins we are creating.
+   */
+  uint16_t num_newcoins;
+
+  /**
+   * Index (smaller #TALER_CNC_KAPPA) which the exchange has chosen to not
+   * have revealed during cut and choose.
+   */
+  uint16_t noreveal_index;
 
 };
 
@@ -558,19 +558,9 @@ struct TALER_EXCHANGEDB_MeltCommitment
 {
 
   /**
-   * Number of coins we are melting.
-   */
-  uint16_t num_oldcoins;
-
-  /**
    * Number of new coins we are creating.
    */
   uint16_t num_newcoins;
-
-  /**
-   * Array of @e num_oldcoins melt operation details.
-   */
-  struct TALER_EXCHANGEDB_RefreshMelt *melts;
 
   /**
    * Array of @e num_newcoins denomination keys
@@ -583,9 +573,9 @@ struct TALER_EXCHANGEDB_MeltCommitment
   struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins[TALER_CNC_KAPPA];
 
   /**
-   * 2D-Array of #TALER_CNC_KAPPA and @e new_oldcoins links.
+   * Array of #TALER_CNC_KAPPA links.
    */
-  struct TALER_RefreshCommitLinkP *commit_links[TALER_CNC_KAPPA];
+  struct TALER_RefreshCommitLinkP commit_links[TALER_CNC_KAPPA];
 };
 
 
@@ -1117,43 +1107,6 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Store the given /refresh/melt request in the database.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session database connection
-   * @param oldcoin_index index of the coin to store
-   * @param melt coin melt operation details to store; includes
-   *             the session hash of the melt
-   * @return #GNUNET_OK on success
-   *         #GNUNET_SYSERR on internal error
-   */
-  int
-  (*insert_refresh_melt) (void *cls,
-                          struct TALER_EXCHANGEDB_Session *session,
-                          uint16_t oldcoin_index,
-                          const struct TALER_EXCHANGEDB_RefreshMelt *melt);
-
-
-  /**
-   * Get information about melted coin details from the database.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session database connection
-   * @param session_hash hash to identify refresh session
-   * @param oldcoin_index index of the coin to retrieve
-   * @param melt melt data to fill in, can be NULL
-   * @return #GNUNET_OK on success
-   *         #GNUNET_SYSERR on internal error
-   */
-  int
-  (*get_refresh_melt) (void *cls,
-                       struct TALER_EXCHANGEDB_Session *session,
-                       const struct GNUNET_HashCode *session_hash,
-                       uint16_t oldcoin_index,
-                       struct TALER_EXCHANGEDB_RefreshMelt *melt);
-
-
-  /**
    * Store in the database which coin(s) we want to create
    * in a given refresh operation.
    *
@@ -1245,18 +1198,16 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection to use
    * @param session_hash hash to identify refresh session
-   * @param cnc_index cut and choose index (1st dimension), relating to #TALER_CNC_KAPPA
-   * @param num_links size of the @a commit_link array
-   * @param commit_links array of link information to store
+   * @param cnc_index cut and choose index, relating to #TALER_CNC_KAPPA
+   * @param link link information to store
    * @return #GNUNET_SYSERR on internal error, #GNUNET_OK on success
    */
   int
-  (*insert_refresh_commit_links) (void *cls,
-                                  struct TALER_EXCHANGEDB_Session *session,
-                                  const struct GNUNET_HashCode *session_hash,
-                                  uint16_t cnc_index,
-                                  uint16_t num_links,
-                                  const struct TALER_RefreshCommitLinkP *commit_links);
+  (*insert_refresh_commit_link) (void *cls,
+                                 struct TALER_EXCHANGEDB_Session *session,
+                                 const struct GNUNET_HashCode *session_hash,
+                                 uint16_t cnc_index,
+                                 const struct TALER_RefreshCommitLinkP *link);
 
   /**
    * Obtain the commited (encrypted) refresh link data
@@ -1266,19 +1217,17 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database connection to use
    * @param session_hash hash to identify refresh session
    * @param cnc_index cut and choose index (1st dimension)
-   * @param num_links size of the @a links array to return
-   * @param[out] links array link information to return
+   * @param[out] link information to return
    * @return #GNUNET_SYSERR on internal error,
    *         #GNUNET_NO if commitment was not found
    *         #GNUNET_OK on success
    */
   int
-  (*get_refresh_commit_links) (void *cls,
-                               struct TALER_EXCHANGEDB_Session *session,
-                               const struct GNUNET_HashCode *session_hash,
-                               uint16_t cnc_index,
-                               uint16_t num_links,
-                               struct TALER_RefreshCommitLinkP *links);
+  (*get_refresh_commit_link) (void *cls,
+                              struct TALER_EXCHANGEDB_Session *session,
+                              const struct GNUNET_HashCode *session_hash,
+                              uint16_t cnc_index,
+                              struct TALER_RefreshCommitLinkP *link);
 
 
   /**

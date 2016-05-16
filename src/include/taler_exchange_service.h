@@ -711,12 +711,12 @@ typedef void
  */
 struct TALER_EXCHANGE_ReserveWithdrawHandle *
 TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
-                             const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                             const struct TALER_ReservePrivateKeyP *reserve_priv,
-                             const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                             const struct TALER_DenominationBlindingKey *blinding_key,
-                             TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
-                             void *res_cb_cls);
+                                 const struct TALER_EXCHANGE_DenomPublicKey *pk,
+                                 const struct TALER_ReservePrivateKeyP *reserve_priv,
+                                 const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                                 const struct TALER_DenominationBlindingKey *blinding_key,
+                                 TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
+                                 void *res_cb_cls);
 
 
 /**
@@ -745,8 +745,8 @@ TALER_EXCHANGE_reserve_withdraw_cancel (struct TALER_EXCHANGE_ReserveWithdrawHan
  * to #TALER_EXCHANGE_refresh_melt() that will generate the request.
  *
  * This function does verify that the given request data is internally
- * consistent.  However, the @a melts_sigs are only verified if @a
- * check_sigs is set to #GNUNET_YES, as this may be relatively
+ * consistent.  However, the @a melts_sig is only verified if @a
+ * check_sig is set to #GNUNET_YES, as this may be relatively
  * expensive and should be redundant.
  *
  * Aside from some non-trivial cryptographic operations that might
@@ -754,17 +754,16 @@ TALER_EXCHANGE_reserve_withdraw_cancel (struct TALER_EXCHANGE_ReserveWithdrawHan
  * its result immediately and does not start any asynchronous
  * processing.  This function is also thread-safe.
  *
- * @param num_melts number of coins that are being melted (typically 1)
- * @param melt_privs array of @a num_melts private keys of the coins to melt
- * @param melt_amounts array of @a num_melts amounts specifying how much
- *                     each coin will contribute to the melt (including fee)
- * @param melt_sigs array of @a num_melts signatures affirming the
+ * @param melt_priv private keys of the coin to melt
+ * @param melt_amount amount specifying how much
+ *                     the coin will contribute to the melt (including fee)
+ * @param melt_sig signatures affirming the
  *                   validity of the public keys corresponding to the
- *                   @a melt_privs private keys
- * @param melt_pks array of @a num_melts denomination key information
- *                   records corresponding to the @a melt_sigs
+ *                   @a melt_priv private key
+ * @param melt_pk denomination key information
+ *                   record corresponding to the @a melt_sig
  *                   validity of the keys
- * @param check_sigs verify the validity of the signatures of @a melt_sigs
+ * @param check_sig verify the validity of the signatures of @a melt_sig
  * @param fresh_pks_len length of the @a pks array
  * @param fresh_pks array of @a pks_len denominations of fresh coins to create
  * @param[out] res_size set to the size of the return value, or 0 on error
@@ -775,12 +774,11 @@ TALER_EXCHANGE_reserve_withdraw_cancel (struct TALER_EXCHANGE_ReserveWithdrawHan
  *         Non-null results should be freed using #GNUNET_free().
  */
 char *
-TALER_EXCHANGE_refresh_prepare (unsigned int num_melts,
-                                const struct TALER_CoinSpendPrivateKeyP *melt_privs,
-                                const struct TALER_Amount *melt_amounts,
-                                const struct TALER_DenominationSignature *melt_sigs,
-                                const struct TALER_EXCHANGE_DenomPublicKey *melt_pks,
-                                int check_sigs,
+TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_priv,
+                                const struct TALER_Amount *melt_amount,
+                                const struct TALER_DenominationSignature *melt_sig,
+                                const struct TALER_EXCHANGE_DenomPublicKey *melt_pk,
+                                int check_sig,
                                 unsigned int fresh_pks_len,
                                 const struct TALER_EXCHANGE_DenomPublicKey *fresh_pks,
                                 size_t *res_size);

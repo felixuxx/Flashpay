@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 Inria & GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -978,6 +978,7 @@ TMH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
  * revealed value(s) do not match the original commitment.
  *
  * @param connection the connection to send the response to
+ * @param rm details about the original melt
  * @param mc all information about the original commitment
  * @param off offset in the array of kappa-commitments where
  *            the missmatch was detected
@@ -989,43 +990,35 @@ TMH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
  */
 int
 TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
+                                             const struct TALER_EXCHANGEDB_RefreshMelt *rm,
                                              const struct TALER_EXCHANGEDB_MeltCommitment *mc,
                                              unsigned int off,
                                              unsigned int j,
                                              const char *missmatch_object)
 {
-  json_t *info_old;
   json_t *info_new;
   json_t *info_commit;
   json_t *info_links;
   unsigned int i;
   unsigned int k;
+  json_t *rm_json;
 
-  info_old = json_array ();
-  for (i=0;i<mc->num_oldcoins;i++)
-  {
-    const struct TALER_EXCHANGEDB_RefreshMelt *rm;
-    json_t *rm_json;
+  rm_json = json_object ();
+  json_object_set_new (rm_json,
+                       "coin_sig",
+                       GNUNET_JSON_from_data (&rm->coin_sig,
+                                              sizeof (struct TALER_CoinSpendSignatureP)));
+  json_object_set_new (rm_json,
+                       "coin_pub",
+                       GNUNET_JSON_from_data (&rm->coin.coin_pub,
+                                              sizeof (struct TALER_CoinSpendPublicKeyP)));
+  json_object_set_new (rm_json,
+                       "melt_amount_with_fee",
+                       TALER_JSON_from_amount (&rm->amount_with_fee));
+  json_object_set_new (rm_json,
+                       "melt_fee",
+                       TALER_JSON_from_amount (&rm->melt_fee));
 
-    rm = &mc->melts[i];
-    rm_json = json_object ();
-    json_object_set_new (rm_json,
-                         "coin_sig",
-                         GNUNET_JSON_from_data (&rm->coin_sig,
-                                               sizeof (struct TALER_CoinSpendSignatureP)));
-    json_object_set_new (rm_json,
-                         "coin_pub",
-                         GNUNET_JSON_from_data (&rm->coin.coin_pub,
-                                               sizeof (struct TALER_CoinSpendPublicKeyP)));
-    json_object_set_new (rm_json,
-                         "melt_amount_with_fee",
-                         TALER_JSON_from_amount (&rm->amount_with_fee));
-    json_object_set_new (rm_json,
-                         "melt_fee",
-                         TALER_JSON_from_amount (&rm->melt_fee));
-    json_array_append_new (info_old,
-                           rm_json);
-  }
   info_new = json_array ();
   for (i=0;i<mc->num_newcoins;i++)
   {
@@ -1042,6 +1035,7 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
   {
     json_t *info_commit_k;
     json_t *info_link_k;
+    const struct TALER_RefreshCommitLinkP *cl;
 
     info_commit_k = json_array ();
     for (i=0;i<mc->num_newcoins;i++)
@@ -1069,25 +1063,17 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
     }
     json_array_append_new (info_commit,
                            info_commit_k);
-    info_link_k = json_array ();
-    for (i=0;i<mc->num_oldcoins;i++)
-    {
-      const struct TALER_RefreshCommitLinkP *cl;
-      json_t *cl_json;
 
-      cl = &mc->commit_links[k][i];
-      cl_json = json_object ();
-      json_object_set_new (cl_json,
-                           "transfer_pub",
-                           GNUNET_JSON_from_data (&cl->transfer_pub,
-                                                 sizeof (struct TALER_TransferPublicKeyP)));
-      json_object_set_new (cl_json,
-                           "shared_secret_enc",
-                           GNUNET_JSON_from_data (&cl->shared_secret_enc,
-                                                 sizeof (struct TALER_EncryptedLinkSecretP)));
-      json_array_append_new (info_link_k,
-                             cl_json);
-    }
+    info_link_k = json_object ();
+    cl = &mc->commit_links[k];
+    json_object_set_new (info_link_k,
+                         "transfer_pub",
+                         GNUNET_JSON_from_data (&cl->transfer_pub,
+                                                sizeof (struct TALER_TransferPublicKeyP)));
+    json_object_set_new (info_link_k,
+                         "shared_secret_enc",
+                         GNUNET_JSON_from_data (&cl->shared_secret_enc,
+                                                sizeof (struct TALER_EncryptedLinkSecretP)));
     json_array_append_new (info_links,
                            info_link_k);
   }
@@ -1097,7 +1083,7 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
                                        "error", "commitment violation",
                                        "offset", (int) off,
                                        "index", (int) j,
-                                       "oldcoin_infos", info_old,
+                                       "refresh_melt_info", rm_json,
                                        "newcoin_infos", info_new,
                                        "commit_infos", info_commit,
                                        "link_infos", info_links,
