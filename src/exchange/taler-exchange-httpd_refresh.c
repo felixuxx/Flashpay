@@ -405,7 +405,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                                      sizeof (struct TALER_AmountNBO));
   }
 
-  /* parse JSON arrays into 2d binary arrays and hash everything
+  /* parse JSON arrays into binary arrays and hash everything
      together for the signature check */
   memset (commit_coin, 0, sizeof (commit_coin));
   memset (commit_link, 0, sizeof (commit_link));
