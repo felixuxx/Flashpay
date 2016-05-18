@@ -523,6 +523,9 @@ interpreter (void *cls)
                                    NULL);
       if (NULL == aggregator_proc)
       {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failed to start taler-exchange-aggregator. Check $PATH.\n");
+        GNUNET_break (0);
         aggregator_state = NULL;
         fail (cmd);
         return;
