@@ -732,8 +732,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
    */
   int
-  (*drop_tables) (void *cls,
-                  struct TALER_EXCHANGEDB_Session *db);
+  (*drop_tables) (void *cls);
 
 
   /**

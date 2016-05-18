@@ -311,8 +311,7 @@ shutdown_action (void *cls)
     GNUNET_OS_process_destroy (aggregator_proc);
     aggregator_proc = NULL;
   }
-  plugin->drop_tables (plugin->cls,
-                       session);
+  plugin->drop_tables (plugin->cls);
   TALER_EXCHANGEDB_plugin_unload (plugin);
   plugin = NULL;
 }

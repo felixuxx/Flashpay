@@ -128,55 +128,6 @@ struct PostgresClosure
 };
 
 
-
-
-/**
- * Drop all Taler tables.  This should only be used by testcases.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session database session to use
- * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
- */
-static int
-postgres_drop_tables (void *cls,
-                      struct TALER_EXCHANGEDB_Session *session)
-{
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Dropping ALL tables\n");
-  SQLEXEC_ (session->conn,
-            "DROP TABLE IF EXISTS prewire;");
-  SQLEXEC_ (session->conn,
-            "DROP TABLE IF EXISTS aggregation_tracking;");
-  SQLEXEC_ (session->conn,
-            "DROP TABLE IF EXISTS deposits;");
-  SQLEXEC_ (session->conn,
-            "DROP TABLE IF EXISTS refresh_out;");
-  SQLEXEC_ (session->conn,
-            "DROP TABLE IF EXISTS refresh_commit_coin;");
-  SQLEXEC_ (session->conn,
-            "DROP TABLE IF EXISTS refresh_commit_link;");
-  SQLEXEC_ (session->conn,
-            "DROP TABLE IF EXISTS refunds;");
-  SQLEXEC_ (session->conn,
-            "DROP TABLE IF EXISTS refresh_order;");
-  SQLEXEC_ (session->conn,
-            "DROP TABLE IF EXISTS refresh_sessions;");
-  SQLEXEC_ (session->conn,
-            "DROP TABLE IF EXISTS known_coins;");
-  SQLEXEC_ (session->conn,
-            "DROP TABLE IF EXISTS reserves_out;");
-  SQLEXEC_ (session->conn,
-            "DROP TABLE IF EXISTS reserves_in;");
-  SQLEXEC_ (session->conn,
-            "DROP TABLE IF EXISTS reserves;");
-  SQLEXEC_ (session->conn,
-            "DROP TABLE IF EXISTS denominations;");
-  return GNUNET_OK;
- SQLEXEC_fail:
-  return GNUNET_SYSERR;
-}
-
-
 /**
  * Function called by libpq whenever it wants to log something.
  * We already log whenever we care, so this function does nothing
@@ -208,6 +159,69 @@ pq_notice_processor_cb (void *arg,
                    "pq",
                    "%s",
                    message);
+}
+
+
+/**
+ * Drop all Taler tables.  This should only be used by testcases.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
+ */
+static int
+postgres_drop_tables (void *cls)
+{
+  struct PostgresClosure *pc = cls;
+  PGconn *conn;
+
+  conn = PQconnectdb (pc->connection_cfg_str);
+  if (CONNECTION_OK !=
+      PQstatus (conn))
+  {
+    TALER_LOG_ERROR ("Database connection failed: %s\n",
+                     PQerrorMessage (conn));
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  PQsetNoticeReceiver (conn,
+                       &pq_notice_receiver_cb,
+                       NULL);
+  PQsetNoticeProcessor (conn,
+                        &pq_notice_processor_cb,
+                        NULL);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Dropping ALL tables\n");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS prewire;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS aggregation_tracking;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS deposits;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS refresh_out;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS refresh_commit_coin;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS refresh_commit_link;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS refunds;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS refresh_order;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS refresh_sessions CASCADE;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS known_coins CASCADE;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS reserves_out;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS reserves_in;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS reserves;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS denominations CASCADE;");
+  return GNUNET_OK;
+ SQLEXEC_fail:
+  return GNUNET_SYSERR;
 }
 
 

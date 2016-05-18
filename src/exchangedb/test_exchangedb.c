@@ -846,23 +846,7 @@ run (void *cls)
     result = 77;
     return;
   }
-  if (GNUNET_OK !=
-      plugin->create_tables (plugin->cls))
-  {
-    result = 77;
-    goto drop;
-  }
-  if (NULL !=
-      (session = plugin->get_session (plugin->cls)))
-  {
-    if (GNUNET_OK !=
-        plugin->drop_tables (plugin->cls,
-                             session))
-    {
-      result = 77;
-      goto drop;
-    }
-  }
+  (void) plugin->drop_tables (plugin->cls);
   if (GNUNET_OK !=
       plugin->create_tables (plugin->cls))
   {
@@ -1283,10 +1267,8 @@ run (void *cls)
     plugin->free_reserve_history (plugin->cls,
                                   rh);
   rh = NULL;
-  if (NULL != session)
-    GNUNET_break (GNUNET_OK ==
-                  plugin->drop_tables (plugin->cls,
-                                       session));
+  GNUNET_break (GNUNET_OK ==
+                plugin->drop_tables (plugin->cls));
   if (NULL != dkp)
     destroy_denom_key_pair (dkp);
   if (NULL != cbc.sig.rsa_signature)

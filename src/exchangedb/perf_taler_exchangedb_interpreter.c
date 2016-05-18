@@ -1856,11 +1856,7 @@ PERF_TALER_EXCHANGEDB_run_benchmark (const char *benchmark_name,
   }
   /* Drop tables */
   {
-    struct TALER_EXCHANGEDB_Session *session;
-
-    session = plugin->get_session (plugin->cls);
-    ret = plugin->drop_tables (plugin->cls,
-                               session);
+    ret = plugin->drop_tables (plugin->cls);
     if (GNUNET_OK != ret)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
