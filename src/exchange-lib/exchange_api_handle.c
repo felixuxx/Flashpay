@@ -183,15 +183,15 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
   struct GNUNET_TIME_Absolute valid_legal;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("master_sig",
-                         &sig),
+                                 &sig),
     GNUNET_JSON_spec_fixed_auto ("key",
-                         &sign_key_issue.signkey_pub),
+                                 &sign_key_issue.signkey_pub),
     GNUNET_JSON_spec_absolute_time ("stamp_start",
-                            &valid_from),
+                                    &valid_from),
     GNUNET_JSON_spec_absolute_time ("stamp_expire",
-                            &valid_until),
+                                    &valid_until),
     GNUNET_JSON_spec_absolute_time ("stamp_end",
-                            &valid_legal),
+                                    &valid_legal),
     GNUNET_JSON_spec_end()
   };
 
@@ -487,13 +487,13 @@ decode_keys_json (const json_t *resp_obj,
   {
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_fixed_auto ("master_public_key",
-                           &key_data->master_pub),
+                                   &key_data->master_pub),
       GNUNET_JSON_spec_fixed_auto ("eddsa_sig",
-                           &sig),
+                                   &sig),
       GNUNET_JSON_spec_fixed_auto ("eddsa_pub",
-                           &pub),
+                                   &pub),
       GNUNET_JSON_spec_absolute_time ("list_issue_date",
-                              &list_issue_date),
+                                      &list_issue_date),
       GNUNET_JSON_spec_end()
     };
 

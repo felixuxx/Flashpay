@@ -250,6 +250,18 @@ reload_keys_denom_iter (void *cls,
   GNUNET_CRYPTO_hash_context_read (ctx->hash_context,
                                    &denom_key_hash,
                                    sizeof (struct GNUNET_HashCode));
+
+  if (0 != memcmp (&dki->issue.properties.master,
+                   &TMH_master_public_key,
+                   sizeof (struct TALER_MasterPublicKeyP)))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Master key in denomination key file `%s' does not match! Skipping it.\n",
+                alias);
+    return GNUNET_OK;
+  }
+
+
   session = TMH_plugin->get_session (TMH_plugin->cls);
   if (NULL == session)
     return GNUNET_SYSERR;
@@ -345,22 +357,19 @@ static json_t *
 sign_key_issue_to_json (const struct TALER_ExchangeSigningKeyValidityPS *ski)
 {
   return
-    json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
+    json_pack ("{s:o, s:o, s:o, s:o, s:o}",
                "stamp_start",
                GNUNET_JSON_from_time_abs (GNUNET_TIME_absolute_ntoh (ski->start)),
                "stamp_expire",
                GNUNET_JSON_from_time_abs (GNUNET_TIME_absolute_ntoh (ski->expire)),
                "stamp_end",
                GNUNET_JSON_from_time_abs (GNUNET_TIME_absolute_ntoh (ski->end)),
-               "master_pub",
-               GNUNET_JSON_from_data (&ski->master_public_key,
-                                     sizeof (struct TALER_MasterPublicKeyP)),
                "master_sig",
                GNUNET_JSON_from_data (&ski->signature,
-                                     sizeof (struct TALER_MasterSignatureP)),
+                                      sizeof (struct TALER_MasterSignatureP)),
                "key",
                GNUNET_JSON_from_data (&ski->signkey_pub,
-                                     sizeof (struct TALER_ExchangePublicKeyP)));
+                                      sizeof (struct TALER_ExchangePublicKeyP)));
 }
 
 
@@ -398,6 +407,16 @@ reload_keys_sign_iter (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Skipping expired signing key `%s'\n",
+                filename);
+    return GNUNET_OK;
+  }
+
+  if (0 != memcmp (&ski->issue.master_public_key,
+                   &TMH_master_public_key,
+                   sizeof (struct TALER_MasterPublicKeyP)))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Master key in signing key file `%s' does not match! Skipping it.\n",
                 filename);
     return GNUNET_OK;
   }
@@ -649,14 +668,25 @@ TMH_KS_acquire_ (const char *location)
                 "Loading keys from `%s'\n",
                 TMH_exchange_directory);
     TALER_EXCHANGEDB_denomination_keys_iterate (TMH_exchange_directory,
-                                            &reload_keys_denom_iter,
-                                            key_state);
+                                                &reload_keys_denom_iter,
+                                                key_state);
     TALER_EXCHANGEDB_signing_keys_iterate (TMH_exchange_directory,
-                                       &reload_keys_sign_iter,
-                                       key_state);
+                                           &reload_keys_sign_iter,
+                                           key_state);
     TALER_EXCHANGEDB_auditor_iterate (cfg,
                                       &reload_auditor_iter,
                                       key_state);
+
+    if (0 != memcmp (&key_state->current_sign_key_issue.issue.master_public_key,
+                     &TMH_master_public_key,
+                     sizeof (struct TALER_MasterPublicKeyP)))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Have no signing key. Bad configuration.\n");
+      return NULL;
+    }
+
+
     ks.purpose.size = htonl (sizeof (ks));
     ks.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET);
     ks.list_issue_date = GNUNET_TIME_absolute_hton (key_state->reload_time);
@@ -897,8 +927,11 @@ TMH_KS_loop (void)
     }
     /* This will re-initialize 'internal_key_state' with
        an initial refcnt of 1 */
-    (void) TMH_KS_acquire ();
-
+    if (NULL == TMH_KS_acquire ())
+    {
+      ret = GNUNET_SYSERR;
+      break;
+    }
 read_again:
     errno = 0;
     res = read (reload_pipe[0],
