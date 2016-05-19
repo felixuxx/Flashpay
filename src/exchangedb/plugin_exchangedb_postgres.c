@@ -3352,20 +3352,23 @@ postgres_get_melt_commitment (void *cls,
     return NULL;
   mc = GNUNET_new (struct TALER_EXCHANGEDB_MeltCommitment);
   mc->num_newcoins = rs.num_newcoins;
-  mc->denom_pubs = GNUNET_malloc (mc->num_newcoins *
-                                  sizeof (struct TALER_DenominationPublicKey));
+  mc->denom_pubs = GNUNET_new_array (mc->num_newcoins,
+                                     struct TALER_DenominationPublicKey);
   if (GNUNET_OK !=
       postgres_get_refresh_order (cls,
                                   session,
                                   session_hash,
                                   mc->num_newcoins,
                                   mc->denom_pubs))
+  {
+    GNUNET_break (0);
     goto cleanup;
+  }
   for (cnc_index=0;cnc_index<TALER_CNC_KAPPA;cnc_index++)
   {
     mc->commit_coins[cnc_index]
-      = GNUNET_malloc (mc->num_newcoins *
-                       sizeof (struct TALER_EXCHANGEDB_RefreshCommitCoin));
+      = GNUNET_new_array (mc->num_newcoins,
+                          struct TALER_EXCHANGEDB_RefreshCommitCoin);
     if (GNUNET_OK !=
         postgres_get_refresh_commit_coins (cls,
                                            session,
@@ -3373,19 +3376,26 @@ postgres_get_melt_commitment (void *cls,
                                            cnc_index,
                                            mc->num_newcoins,
                                            mc->commit_coins[cnc_index]))
+    {
+      GNUNET_break (0);
       goto cleanup;
+    }
     if (GNUNET_OK !=
         postgres_get_refresh_commit_link (cls,
                                           session,
                                           session_hash,
                                           cnc_index,
                                           &mc->commit_links[cnc_index]))
+    {
+      GNUNET_break (0);
       goto cleanup;
+    }
   }
   return mc;
 
  cleanup:
   common_free_melt_commitment (cls, mc);
+  GNUNET_break (0);
   return NULL;
 }
 

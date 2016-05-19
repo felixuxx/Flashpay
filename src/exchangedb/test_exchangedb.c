@@ -352,64 +352,65 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
   ret_commit_coins = NULL;
   commit_coins = GNUNET_new_array (MELT_NEW_COINS,
                                    struct TALER_EXCHANGEDB_RefreshCommitCoin);
-  cnc_index = (uint16_t) GNUNET_CRYPTO_random_u32
-      (GNUNET_CRYPTO_QUALITY_WEAK, GNUNET_MIN (MELT_NEW_COINS, UINT16_MAX));
-  for (cnt=0; cnt < MELT_NEW_COINS; cnt++)
+  for (cnc_index=0;cnc_index < TALER_CNC_KAPPA; cnc_index++)
   {
-    struct TALER_EXCHANGEDB_RefreshCommitCoin *ccoin;
-    struct TALER_RefreshLinkEncrypted *rlink;
-    ccoin = &commit_coins[cnt];
-    size = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                  COIN_ENC_MAX_SIZE);
-    rlink = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) + size);
-    ccoin->refresh_link = rlink;
-    ccoin->coin_ev_size = GNUNET_CRYPTO_random_u64
+    for (cnt=0; cnt < MELT_NEW_COINS; cnt++)
+    {
+      struct TALER_EXCHANGEDB_RefreshCommitCoin *ccoin;
+      struct TALER_RefreshLinkEncrypted *rlink;
+      ccoin = &commit_coins[cnt];
+      size = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                       COIN_ENC_MAX_SIZE);
+      rlink = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) + size);
+      ccoin->refresh_link = rlink;
+      ccoin->coin_ev_size = GNUNET_CRYPTO_random_u64
         (GNUNET_CRYPTO_QUALITY_WEAK, COIN_ENC_MAX_SIZE);
-    ccoin->coin_ev = GNUNET_malloc (ccoin->coin_ev_size);
-    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                ccoin->coin_ev,
-                                ccoin->coin_ev_size);
-    rlink->blinding_key_enc_size = size;
-    RND_BLK (&rlink->coin_priv_enc);
-    rlink->blinding_key_enc = (const char *) &rlink[1];
-    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                (void *)rlink->blinding_key_enc,
-                                rlink->blinding_key_enc_size);
-  }
-  FAILIF (GNUNET_OK !=
-          plugin->insert_refresh_commit_coins (plugin->cls,
-                                               session,
-                                               session_hash,
-                                               cnc_index,
-                                               MELT_NEW_COINS,
-                                               commit_coins));
-  ret_commit_coins = GNUNET_new_array (MELT_NEW_COINS,
-                                       struct TALER_EXCHANGEDB_RefreshCommitCoin);
-  FAILIF (GNUNET_OK !=
-          plugin->get_refresh_commit_coins (plugin->cls,
-                                            session,
-                                            session_hash,
-                                            cnc_index,
-                                            MELT_NEW_COINS,
-                                            ret_commit_coins));
-  /* compare the refresh commit coin arrays */
-  for (cnt = 0; cnt < MELT_NEW_COINS; cnt++)
-  {
-    a_ccoin = &commit_coins[cnt];
-    b_ccoin = &ret_commit_coins[cnt];
-    FAILIF (a_ccoin->coin_ev_size != b_ccoin->coin_ev_size);
-    FAILIF (0 != memcmp (a_ccoin->coin_ev,
-                         a_ccoin->coin_ev,
-                         a_ccoin->coin_ev_size));
-    a_rlink = a_ccoin->refresh_link;
-    b_rlink = b_ccoin->refresh_link;
-    FAILIF (a_rlink->blinding_key_enc_size != b_rlink->blinding_key_enc_size);
-    FAILIF (0 != memcmp (a_rlink->blinding_key_enc,
-                         b_rlink->blinding_key_enc,
-                         a_rlink->blinding_key_enc_size));
-    FAILIF (0 != memcmp (a_rlink->coin_priv_enc,
-                         b_rlink->coin_priv_enc,
-                         sizeof (a_rlink->coin_priv_enc)));
+      ccoin->coin_ev = GNUNET_malloc (ccoin->coin_ev_size);
+      GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                  ccoin->coin_ev,
+                                  ccoin->coin_ev_size);
+      rlink->blinding_key_enc_size = size;
+      RND_BLK (&rlink->coin_priv_enc);
+      rlink->blinding_key_enc = (const char *) &rlink[1];
+      GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                  (void *)rlink->blinding_key_enc,
+                                  rlink->blinding_key_enc_size);
+    }
+    FAILIF (GNUNET_OK !=
+            plugin->insert_refresh_commit_coins (plugin->cls,
+                                                 session,
+                                                 session_hash,
+                                                 cnc_index,
+                                                 MELT_NEW_COINS,
+                                                 commit_coins));
+    ret_commit_coins = GNUNET_new_array (MELT_NEW_COINS,
+                                         struct TALER_EXCHANGEDB_RefreshCommitCoin);
+    FAILIF (GNUNET_OK !=
+            plugin->get_refresh_commit_coins (plugin->cls,
+                                              session,
+                                              session_hash,
+                                              cnc_index,
+                                              MELT_NEW_COINS,
+                                              ret_commit_coins));
+    /* compare the refresh commit coin arrays */
+    for (cnt = 0; cnt < MELT_NEW_COINS; cnt++)
+    {
+      a_ccoin = &commit_coins[cnt];
+      b_ccoin = &ret_commit_coins[cnt];
+      FAILIF (a_ccoin->coin_ev_size != b_ccoin->coin_ev_size);
+      FAILIF (0 != memcmp (a_ccoin->coin_ev,
+                           a_ccoin->coin_ev,
+                           a_ccoin->coin_ev_size));
+      a_rlink = a_ccoin->refresh_link;
+      b_rlink = b_ccoin->refresh_link;
+      FAILIF (a_rlink->blinding_key_enc_size != b_rlink->blinding_key_enc_size);
+      FAILIF (0 != memcmp (a_rlink->blinding_key_enc,
+                           b_rlink->blinding_key_enc,
+                           a_rlink->blinding_key_enc_size));
+      FAILIF (0 != memcmp (a_rlink->coin_priv_enc,
+                           b_rlink->coin_priv_enc,
+                           sizeof (a_rlink->coin_priv_enc)));
+    }
   }
   ret = GNUNET_OK;
 
@@ -435,93 +436,41 @@ test_refresh_commit_links (struct TALER_EXCHANGEDB_Session *session,
                            const struct TALER_EXCHANGEDB_RefreshSession *refresh_session,
                            const struct GNUNET_HashCode *session_hash)
 {
-  struct TALER_EXCHANGEDB_RefreshCommitCoin cc[2];
-  struct TALER_EXCHANGEDB_RefreshCommitCoin cx[2];
-  struct TALER_RefreshLinkEncrypted *rle;
-  struct TALER_RefreshLinkEncrypted *rle2;
-  struct TALER_LinkSecretP secret;
-  struct TALER_LinkSecretP secret2;
-  struct TALER_RefreshLinkDecrypted rld;
-  struct TALER_RefreshLinkDecrypted *rld2;
-  struct TALER_EXCHANGEDB_LinkDataList *ldl;
+  struct TALER_RefreshCommitLinkP cl;
+  struct TALER_RefreshCommitLinkP cl2;
   int ret;
+  unsigned int i;
 
-  if (1)
-    return GNUNET_OK;
   ret = GNUNET_SYSERR;
-  RND_BLK (&secret);
-  RND_BLK (&rld.coin_priv);
-  rld.blinding_key.rsa_blinding_key = GNUNET_CRYPTO_rsa_blinding_key_create (1024);
-  rle = TALER_refresh_encrypt (&rld,
-                               &secret);
-  cc[0].refresh_link = rle;
-  cc[0].coin_ev = "envelope";
-  cc[0].coin_ev_size = strlen ("envelope");
-  RND_BLK (&secret2);
-  rle2 = TALER_refresh_encrypt (&rld,
-                                &secret2);
-  cc[1].refresh_link = rle2;
-  cc[1].coin_ev = "another envelope";
-  cc[1].coin_ev_size = strlen ("another envelope");
-
   FAILIF (GNUNET_NO !=
-          plugin->get_refresh_commit_coins (plugin->cls,
-                                            session,
-                                            session_hash,
-                                            1,
-                                            2,
-                                            cx));
-  FAILIF (GNUNET_OK !=
-          plugin->insert_refresh_commit_coins (plugin->cls,
-                                               session,
-                                               session_hash,
-                                               1,
-                                               2,
-                                               cc));
+          plugin->get_refresh_commit_link (plugin->cls,
+                                           session,
+                                           session_hash,
+                                           1,
+                                           &cl));
+  for (i=0;i<TALER_CNC_KAPPA;i++)
+  {
+    RND_BLK (&cl);
+    FAILIF (GNUNET_OK !=
+            plugin->insert_refresh_commit_link (plugin->cls,
+                                                session,
+                                                session_hash,
+                                                i,
+                                                &cl));
 
-  FAILIF (GNUNET_OK !=
-          plugin->get_refresh_commit_coins (plugin->cls,
-                                            session,
-                                            session_hash,
-                                            1,
-                                            2,
-                                            cx));
-  rld2 = TALER_refresh_decrypt (cx[1].refresh_link,
-                                &secret2);
-  FAILIF (0 !=
-          GNUNET_CRYPTO_rsa_blinding_key_cmp (rld.blinding_key.rsa_blinding_key,
-                                              rld2->blinding_key.rsa_blinding_key));
-  FAILIF (0 !=
-          memcmp (&rld.coin_priv,
-                  &rld2->coin_priv,
-                  sizeof (struct TALER_CoinSpendPrivateKeyP)));
-  GNUNET_free (rld2);
-  rld2 = TALER_refresh_decrypt (cx[0].refresh_link,
-                                &secret);
-  FAILIF (0 !=
-          GNUNET_CRYPTO_rsa_blinding_key_cmp (rld.blinding_key.rsa_blinding_key,
-                                              rld2->blinding_key.rsa_blinding_key));
-  FAILIF (0 !=
-          memcmp (&rld.coin_priv,
-                  &rld2->coin_priv,
-                  sizeof (struct TALER_CoinSpendPrivateKeyP)));
-  GNUNET_free (rld2);
-
-  ldl = plugin->get_link_data_list (plugin->cls,
-                                    session,
-                                    session_hash);
-  FAILIF (NULL != ldl);
-  /* FIXME: #4401 check more about ldl */
-  plugin->free_link_data_list (plugin->cls,
-                               ldl);
-  /*
-     FIXME #4401: test: get_transfer
-  */
+    FAILIF (GNUNET_OK !=
+            plugin->get_refresh_commit_link (plugin->cls,
+                                             session,
+                                             session_hash,
+                                             i,
+                                             &cl2));
+    FAILIF (0 !=
+            memcmp (&cl,
+                    &cl2,
+                    sizeof (struct TALER_RefreshCommitLinkP)));
+  }
   ret = GNUNET_OK;
  drop:
-  GNUNET_free (rle);
-  GNUNET_free (rle2);
-  GNUNET_CRYPTO_rsa_blinding_key_free (rld.blinding_key.rsa_blinding_key);
   return ret;
 }
 
@@ -546,6 +495,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   struct TALER_DenominationPublicKey *new_denom_pubs;
   struct TALER_DenominationPublicKey *ret_denom_pubs;
   struct TALER_EXCHANGEDB_MeltCommitment *mc;
+  struct TALER_EXCHANGEDB_LinkDataList *ldl;
   unsigned int cnt;
   int ret;
 
@@ -668,19 +618,24 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   mc = plugin->get_melt_commitment (plugin->cls,
                                     session,
                                     &session_hash);
-  FAILIF (NULL != mc); /* NOTE: this will change once
-                          'test_refresh_commit_links' is implemented properly */
-#if 0
+  FAILIF (NULL == mc);
   /* FIXME #4401 test: get_melt_commitment:
      check detailed information contained in 'mc' */
   plugin->free_melt_commitment (plugin->cls,
                                 mc);
-#endif
 
+  ldl = plugin->get_link_data_list (plugin->cls,
+                                    session,
+                                    &session_hash);
+  FAILIF (NULL != ldl);
+  /* FIXME: #4401 check more about ldl */
+  plugin->free_link_data_list (plugin->cls,
+                               ldl);
+
+  /* FIXME #4401: test: get_transfer */
   /* FIXME #4401: test: insert_refresh_out */
 
   ret = GNUNET_OK;
-
  drop:
   if (NULL != dkp)
     destroy_denom_key_pair (dkp);
