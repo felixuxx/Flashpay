@@ -435,16 +435,94 @@ test_refresh_commit_links (struct TALER_EXCHANGEDB_Session *session,
                            const struct TALER_EXCHANGEDB_RefreshSession *refresh_session,
                            const struct GNUNET_HashCode *session_hash)
 {
+  struct TALER_EXCHANGEDB_RefreshCommitCoin cc[2];
+  struct TALER_EXCHANGEDB_RefreshCommitCoin cx[2];
+  struct TALER_RefreshLinkEncrypted *rle;
+  struct TALER_RefreshLinkEncrypted *rle2;
+  struct TALER_LinkSecretP secret;
+  struct TALER_LinkSecretP secret2;
+  struct TALER_RefreshLinkDecrypted rld;
+  struct TALER_RefreshLinkDecrypted *rld2;
+  struct TALER_EXCHANGEDB_LinkDataList *ldl;
+  int ret;
+
+  if (1)
+    return GNUNET_OK;
+  ret = GNUNET_SYSERR;
+  RND_BLK (&secret);
+  RND_BLK (&rld.coin_priv);
+  rld.blinding_key.rsa_blinding_key = GNUNET_CRYPTO_rsa_blinding_key_create (1024);
+  rle = TALER_refresh_encrypt (&rld,
+                               &secret);
+  cc[0].refresh_link = rle;
+  cc[0].coin_ev = "envelope";
+  cc[0].coin_ev_size = strlen ("envelope");
+  RND_BLK (&secret2);
+  rle2 = TALER_refresh_encrypt (&rld,
+                                &secret2);
+  cc[1].refresh_link = rle2;
+  cc[1].coin_ev = "another envelope";
+  cc[1].coin_ev_size = strlen ("another envelope");
+
+  FAILIF (GNUNET_NO !=
+          plugin->get_refresh_commit_coins (plugin->cls,
+                                            session,
+                                            session_hash,
+                                            1,
+                                            2,
+                                            cx));
+  FAILIF (GNUNET_OK !=
+          plugin->insert_refresh_commit_coins (plugin->cls,
+                                               session,
+                                               session_hash,
+                                               1,
+                                               2,
+                                               cc));
+
+  FAILIF (GNUNET_OK !=
+          plugin->get_refresh_commit_coins (plugin->cls,
+                                            session,
+                                            session_hash,
+                                            1,
+                                            2,
+                                            cx));
+  rld2 = TALER_refresh_decrypt (cx[1].refresh_link,
+                                &secret2);
+  FAILIF (0 !=
+          GNUNET_CRYPTO_rsa_blinding_key_cmp (rld.blinding_key.rsa_blinding_key,
+                                              rld2->blinding_key.rsa_blinding_key));
+  FAILIF (0 !=
+          memcmp (&rld.coin_priv,
+                  &rld2->coin_priv,
+                  sizeof (struct TALER_CoinSpendPrivateKeyP)));
+  GNUNET_free (rld2);
+  rld2 = TALER_refresh_decrypt (cx[0].refresh_link,
+                                &secret);
+  FAILIF (0 !=
+          GNUNET_CRYPTO_rsa_blinding_key_cmp (rld.blinding_key.rsa_blinding_key,
+                                              rld2->blinding_key.rsa_blinding_key));
+  FAILIF (0 !=
+          memcmp (&rld.coin_priv,
+                  &rld2->coin_priv,
+                  sizeof (struct TALER_CoinSpendPrivateKeyP)));
+  GNUNET_free (rld2);
+
+  ldl = plugin->get_link_data_list (plugin->cls,
+                                    session,
+                                    session_hash);
+  FAILIF (NULL != ldl);
+  /* FIXME: #4401 check more about ldl */
+  plugin->free_link_data_list (plugin->cls,
+                               ldl);
   /*
-     FIXME #4401: test: insert_refresh_commit_links
-     FIXME #4401: test: get_refresh_commit_links
-
-     FIXME #4401: test: get_link_data_list
-     FIXME #4401: test: free_link_data_list
      FIXME #4401: test: get_transfer
-
-   */
-  return GNUNET_OK;
+  */
+  ret = GNUNET_OK;
+ drop:
+  GNUNET_free (rle);
+  GNUNET_free (rle2);
+  GNUNET_CRYPTO_rsa_blinding_key_free (rld.blinding_key.rsa_blinding_key);
+  return ret;
 }
 
 
@@ -593,7 +671,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   FAILIF (NULL != mc); /* NOTE: this will change once
                           'test_refresh_commit_links' is implemented properly */
 #if 0
-  /* FIXME #4401: test: get_melt_commitment:
+  /* FIXME #4401 test: get_melt_commitment:
      check detailed information contained in 'mc' */
   plugin->free_melt_commitment (plugin->cls,
                                 mc);
