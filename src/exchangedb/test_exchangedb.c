@@ -549,7 +549,8 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   struct TALER_EXCHANGEDB_MeltCommitment *mc;
   struct TALER_EXCHANGEDB_LinkDataList *ldl;
   struct TALER_EXCHANGEDB_LinkDataList *ldlp;
-  unsigned int cnt;
+  struct TALER_DenominationSignature ev_sigs[MELT_NEW_COINS];
+    unsigned int cnt;
   unsigned int i;
   int ret;
 
@@ -583,6 +584,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
     meltp->coin.denom_sig.rsa_signature =
         GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.rsa_private_key,
                                     &hc);
+    GNUNET_assert (NULL != meltp->coin.denom_sig.rsa_signature);
     meltp->coin.denom_pub = dkp->pub;
     RND_BLK (&meltp->coin_sig);
     meltp->session_hash = session_hash;
@@ -633,7 +635,8 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
                                      struct TALER_DenominationPublicKey);
   for (cnt=0; cnt < MELT_NEW_COINS; cnt++)
   {
-    new_dkp[cnt] = create_denom_key_pair (128, session,
+    new_dkp[cnt] = create_denom_key_pair (1024,
+                                          session,
                                           &value,
                                           &fee_withdraw,
                                           &fee_deposit,
@@ -698,36 +701,53 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   plugin->free_melt_commitment (plugin->cls,
                                 mc);
 
-  /* FIXME #4401: test: insert_refresh_out */
+  for (cnt=0; cnt < MELT_NEW_COINS; cnt++)
+  {
+    struct GNUNET_HashCode hc;
+
+    RND_BLK (&hc);
+    ev_sigs[cnt].rsa_signature
+      = GNUNET_CRYPTO_rsa_sign_fdh (new_dkp[cnt]->priv.rsa_private_key,
+                                    &hc);
+    GNUNET_assert (NULL != ev_sigs[cnt].rsa_signature);
+    FAILIF (GNUNET_OK !=
+            plugin->insert_refresh_out (plugin->cls,
+                                        session,
+                                        &session_hash,
+                                        cnt,
+                                        &ev_sigs[cnt]));
+  }
 
   ldl = plugin->get_link_data_list (plugin->cls,
                                     session,
                                     &session_hash);
-  FAILIF (NULL != ldl); /* this will change once we 'insert_refresh_out()' */
+  FAILIF (NULL == ldl);
   for (ldlp = ldl; NULL != ldlp; ldlp = ldlp->next)
   {
     struct TALER_RefreshLinkEncrypted *r1;
     struct TALER_RefreshLinkEncrypted *r2;
     int found;
 
+    found = GNUNET_NO;
     for (cnt=0;cnt < MELT_NEW_COINS;cnt++)
     {
       r1 = commit_coins[1][cnt].refresh_link;
       r2 = ldlp->link_data_enc;
-      found = GNUNET_NO;
       FAILIF (NULL == ldlp->ev_sig.rsa_signature);
-      /* FIXME #4401: check ldlp->ev_sig */
       if ( (0 ==
             GNUNET_CRYPTO_rsa_public_key_cmp (ldlp->denom_pub.rsa_public_key,
                                               new_dkp[cnt]->pub.rsa_public_key)) &&
+           (0 ==
+            GNUNET_CRYPTO_rsa_signature_cmp (ldlp->ev_sig.rsa_signature,
+                                             ev_sigs[cnt].rsa_signature)) &&
            (0 ==
             refresh_link_encrypted_cmp (r1, r2)) )
       {
         found = GNUNET_YES;
         break;
       }
-      FAILIF (GNUNET_NO == found);
     }
+    FAILIF (GNUNET_NO == found);
   }
   plugin->free_link_data_list (plugin->cls,
                                ldl);
