@@ -4297,6 +4297,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct PostgresClosure *pg;
   struct TALER_EXCHANGEDB_Plugin *plugin;
+  const char *ec;
 
   pg = GNUNET_new (struct PostgresClosure);
 
@@ -4307,17 +4308,25 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     GNUNET_free (pg);
     return NULL;
   }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "exchangedb-postgres",
-                                             "db_conn_str",
-                                             &pg->connection_cfg_str))
+  ec = getenv ("TALER_EXCHANGEDB_POSTGRES_CONFIG");
+  if (NULL != ec)
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchangedb-postgres",
-                               "db_conn_str");
-    GNUNET_free (pg);
-    return NULL;
+    pg->connection_cfg_str = GNUNET_strdup (ec);
+  }
+  else
+  {
+    if (GNUNET_OK ==
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "exchangedb-postgres",
+                                               "db_conn_str",
+                                               &pg->connection_cfg_str))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchangedb-postgres",
+                                 "db_conn_str");
+      GNUNET_free (pg);
+      return NULL;
+    }
   }
   plugin = GNUNET_new (struct TALER_EXCHANGEDB_Plugin);
   plugin->cls = pg;
