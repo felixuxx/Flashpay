@@ -372,6 +372,12 @@ commit_coin_cmp (struct TALER_EXCHANGEDB_RefreshCommitCoin *rc1,
  */
 #define MELT_NEW_COINS 5
 
+/**
+ * Which index was 'randomly' chosen for the reveal for the test?
+ */
+#define MELT_NOREVEAL_INDEX 1
+
+
 static struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins[TALER_CNC_KAPPA];
 
 /**
@@ -498,7 +504,7 @@ test_refresh_commit_links (struct TALER_EXCHANGEDB_Session *session,
           plugin->get_refresh_commit_link (plugin->cls,
                                            session,
                                            session_hash,
-                                           1,
+                                           MELT_NOREVEAL_INDEX,
                                            &cl2));
   for (i=0;i<TALER_CNC_KAPPA;i++)
   {
@@ -527,6 +533,42 @@ test_refresh_commit_links (struct TALER_EXCHANGEDB_Session *session,
 }
 
 
+static struct GNUNET_HashCode session_hash;
+
+
+/**
+ * Function called with the session hashes and transfer secret
+ * information for a given coin.  Checks if they are as expected.
+ *
+ * @param cls closure
+ * @param sh a session the coin was melted in
+ * @param transfer_pub public transfer key for the session
+ * @param shared_secret_enc set to shared secret for the session
+ */
+static void
+check_transfer_data (void *cls,
+                     const struct GNUNET_HashCode *sh,
+                     const struct TALER_TransferPublicKeyP *transfer_pub,
+                     const struct TALER_EncryptedLinkSecretP *shared_secret_enc)
+{
+  int *ok = cls;
+
+  FAILIF (0 != memcmp (&rclp[MELT_NOREVEAL_INDEX].transfer_pub,
+                       transfer_pub,
+                       sizeof (struct TALER_TransferPublicKeyP)));
+  FAILIF (0 != memcmp (&rclp[MELT_NOREVEAL_INDEX].shared_secret_enc,
+                       shared_secret_enc,
+                       sizeof (struct TALER_EncryptedLinkSecretP)));
+  FAILIF (0 != memcmp (&session_hash,
+                       sh,
+                       sizeof (struct GNUNET_HashCode)));
+  *ok = GNUNET_OK;
+  return;
+ drop:
+  *ok = GNUNET_SYSERR;
+}
+
+
 /**
  * Function to test melting of coins as part of a refresh session
  *
@@ -539,7 +581,6 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
 {
   struct TALER_EXCHANGEDB_RefreshSession refresh_session;
   struct TALER_EXCHANGEDB_RefreshSession ret_refresh_session;
-  struct GNUNET_HashCode session_hash;
   struct DenomKeyPair *dkp;
   struct DenomKeyPair **new_dkp;
   /* struct TALER_CoinPublicInfo *coins; */
@@ -563,7 +604,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   ret_denom_pubs = NULL;
   /* create and test a refresh session */
   refresh_session.num_newcoins = MELT_NEW_COINS;
-  refresh_session.noreveal_index = 1;
+  refresh_session.noreveal_index = MELT_NOREVEAL_INDEX;
   /* create a denomination (value: 1; fraction: 100) */
   dkp = create_denom_key_pair (512,
                                session,
@@ -603,7 +644,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   FAILIF (ret_refresh_session.num_newcoins != refresh_session.num_newcoins);
   FAILIF (ret_refresh_session.noreveal_index != refresh_session.noreveal_index);
 
-  /* check refresh sesison melt data */
+  /* check refresh session melt data */
   {
     struct TALER_EXCHANGEDB_RefreshMelt *ret_melt;
 
@@ -731,7 +772,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
     found = GNUNET_NO;
     for (cnt=0;cnt < MELT_NEW_COINS;cnt++)
     {
-      r1 = commit_coins[1][cnt].refresh_link;
+      r1 = commit_coins[MELT_NOREVEAL_INDEX][cnt].refresh_link;
       r2 = ldlp->link_data_enc;
       FAILIF (NULL == ldlp->ev_sig.rsa_signature);
       if ( (0 ==
@@ -752,7 +793,18 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   plugin->free_link_data_list (plugin->cls,
                                ldl);
 
-  /* FIXME #4401: test: get_transfer */
+  {
+    int ok;
+
+    ok = GNUNET_NO;
+    FAILIF (GNUNET_OK !=
+            plugin->get_transfer (plugin->cls,
+                                  session,
+                                  &meltp->coin.coin_pub,
+                                  &check_transfer_data,
+                                  &ok));
+    FAILIF (GNUNET_OK != ok);
+  }
 
   ret = GNUNET_OK;
  drop:
