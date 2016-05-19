@@ -287,7 +287,7 @@ struct TALER_DenominationBlindingKey
   /**
    * Taler uses RSA for blinding.
    */
-  struct GNUNET_CRYPTO_rsa_BlindingKey *rsa_blinding_key;
+  struct GNUNET_CRYPTO_RsaBlindingKey *rsa_blinding_key;
 };
 
 
