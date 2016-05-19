@@ -2755,8 +2755,8 @@ postgres_get_refresh_session (void *cls,
   };
 
   result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "get_refresh_session",
-                                   params);
+                                    "get_refresh_session",
+                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
@@ -2782,15 +2782,20 @@ postgres_get_refresh_session (void *cls,
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint16 ("num_newcoins",
-                                   &refresh_session->num_newcoins),
+                                    &refresh_session->num_newcoins),
       GNUNET_PQ_result_spec_uint16 ("noreveal_index",
-                                   &refresh_session->noreveal_index),
-      GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub", &refresh_session->melt.coin.coin_pub),
-      GNUNET_PQ_result_spec_auto_from_type ("old_coin_sig", &refresh_session->melt.coin_sig),
-      TALER_PQ_result_spec_amount ("amount_with_fee", &refresh_session->melt.amount_with_fee),
-      TALER_PQ_result_spec_amount ("melt_fee", &refresh_session->melt.melt_fee),
+                                    &refresh_session->noreveal_index),
+      GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
+                                            &refresh_session->melt.coin.coin_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("old_coin_sig",
+                                            &refresh_session->melt.coin_sig),
+      TALER_PQ_result_spec_amount ("amount_with_fee",
+                                   &refresh_session->melt.amount_with_fee),
+      TALER_PQ_result_spec_amount ("melt_fee",
+                                   &refresh_session->melt.melt_fee),
       GNUNET_PQ_result_spec_end
     };
+
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result, rs, 0))
     {
@@ -3429,8 +3434,8 @@ postgres_insert_refresh_out (void *cls,
   };
 
   result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "insert_refresh_out",
-                                   params);
+                                    "insert_refresh_out",
+                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
@@ -3469,7 +3474,6 @@ postgres_get_link_data_list (void *cls,
   result = GNUNET_PQ_exec_prepared (session->conn,
                                    "get_link",
                                    params);
-
   ldl = NULL;
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
@@ -3493,12 +3497,12 @@ postgres_get_link_data_list (void *cls,
     size_t ld_buf_size;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_variable_size ("link_vector_enc",
-                                          &ld_buf,
-                                          &ld_buf_size),
+                                           &ld_buf,
+                                           &ld_buf_size),
       GNUNET_PQ_result_spec_rsa_signature ("ev_sig",
-                                          &sig),
+                                           &sig),
       GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                           &denom_pub),
+                                            &denom_pub),
       GNUNET_PQ_result_spec_end
     };
 

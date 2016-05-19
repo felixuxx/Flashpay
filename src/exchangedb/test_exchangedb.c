@@ -319,9 +319,60 @@ free_refresh_commit_coins_array (struct TALER_EXCHANGEDB_RefreshCommitCoin *comm
 
 
 /**
+ * Compare two coin encrypted refresh links.
+ *
+ * @param rc1 first commitment
+ * @param rc2 second commitment
+ * @return 0 if they are equal
+ */
+static int
+refresh_link_encrypted_cmp (struct TALER_RefreshLinkEncrypted *rl1,
+                            struct TALER_RefreshLinkEncrypted *rl2)
+{
+  if ( (rl1->blinding_key_enc_size == rl2->blinding_key_enc_size) &&
+       (0 ==
+        memcmp (rl1->coin_priv_enc,
+                rl2->coin_priv_enc,
+                sizeof (struct TALER_CoinSpendPrivateKeyP))) &&
+       (0 ==
+        memcmp (rl1->blinding_key_enc,
+                rl2->blinding_key_enc,
+                rl1->blinding_key_enc_size)) )
+    return 0;
+  return 1;
+}
+
+
+/**
+ * Compare two coin commitments.
+ *
+ * @param rc1 first commitment
+ * @param rc2 second commitment
+ * @return 0 if they are equal
+ */
+static int
+commit_coin_cmp (struct TALER_EXCHANGEDB_RefreshCommitCoin *rc1,
+                 struct TALER_EXCHANGEDB_RefreshCommitCoin *rc2)
+{
+  FAILIF (rc1->coin_ev_size != rc2->coin_ev_size);
+  FAILIF (0 != memcmp (rc1->coin_ev,
+                       rc2->coin_ev,
+                       rc2->coin_ev_size));
+  FAILIF (0 !=
+          refresh_link_encrypted_cmp (rc1->refresh_link,
+                                      rc2->refresh_link));
+  return 0;
+ drop:
+  return 1;
+}
+
+
+/**
  * Number of newly minted coins to use in the test.
  */
 #define MELT_NEW_COINS 5
+
+static struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins[TALER_CNC_KAPPA];
 
 /**
  * Test APIs related to the "insert_refresh_commit_coins" function.
@@ -336,7 +387,6 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
                            const struct TALER_EXCHANGEDB_RefreshSession *refresh_session,
                            const struct GNUNET_HashCode *session_hash)
 {
-  struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins;
   struct TALER_EXCHANGEDB_RefreshCommitCoin *ret_commit_coins;
   struct TALER_EXCHANGEDB_RefreshCommitCoin *a_ccoin;
   struct TALER_RefreshLinkEncrypted *a_rlink;
@@ -350,15 +400,17 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
 #define COIN_ENC_MAX_SIZE 512
   ret = GNUNET_SYSERR;
   ret_commit_coins = NULL;
-  commit_coins = GNUNET_new_array (MELT_NEW_COINS,
-                                   struct TALER_EXCHANGEDB_RefreshCommitCoin);
   for (cnc_index=0;cnc_index < TALER_CNC_KAPPA; cnc_index++)
   {
+    commit_coins[cnc_index]
+      = GNUNET_new_array (MELT_NEW_COINS,
+                          struct TALER_EXCHANGEDB_RefreshCommitCoin);
     for (cnt=0; cnt < MELT_NEW_COINS; cnt++)
     {
       struct TALER_EXCHANGEDB_RefreshCommitCoin *ccoin;
       struct TALER_RefreshLinkEncrypted *rlink;
-      ccoin = &commit_coins[cnt];
+
+      ccoin = &commit_coins[cnc_index][cnt];
       size = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
                                        COIN_ENC_MAX_SIZE);
       rlink = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) + size);
@@ -382,7 +434,7 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
                                                  session_hash,
                                                  cnc_index,
                                                  MELT_NEW_COINS,
-                                                 commit_coins));
+                                                 commit_coins[cnc_index]));
     ret_commit_coins = GNUNET_new_array (MELT_NEW_COINS,
                                          struct TALER_EXCHANGEDB_RefreshCommitCoin);
     FAILIF (GNUNET_OK !=
@@ -395,7 +447,7 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
     /* compare the refresh commit coin arrays */
     for (cnt = 0; cnt < MELT_NEW_COINS; cnt++)
     {
-      a_ccoin = &commit_coins[cnt];
+      a_ccoin = &commit_coins[cnc_index][cnt];
       b_ccoin = &ret_commit_coins[cnt];
       FAILIF (a_ccoin->coin_ev_size != b_ccoin->coin_ev_size);
       FAILIF (0 != memcmp (a_ccoin->coin_ev,
@@ -417,10 +469,11 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
  drop:
   if (NULL != ret_commit_coins)
     free_refresh_commit_coins_array (ret_commit_coins, MELT_NEW_COINS);
-  if (NULL != commit_coins)
-    free_refresh_commit_coins_array (commit_coins, MELT_NEW_COINS);
   return ret;
 }
+
+
+static struct TALER_RefreshCommitLinkP rclp[TALER_CNC_KAPPA];
 
 
 /**
@@ -436,7 +489,6 @@ test_refresh_commit_links (struct TALER_EXCHANGEDB_Session *session,
                            const struct TALER_EXCHANGEDB_RefreshSession *refresh_session,
                            const struct GNUNET_HashCode *session_hash)
 {
-  struct TALER_RefreshCommitLinkP cl;
   struct TALER_RefreshCommitLinkP cl2;
   int ret;
   unsigned int i;
@@ -447,16 +499,16 @@ test_refresh_commit_links (struct TALER_EXCHANGEDB_Session *session,
                                            session,
                                            session_hash,
                                            1,
-                                           &cl));
+                                           &cl2));
   for (i=0;i<TALER_CNC_KAPPA;i++)
   {
-    RND_BLK (&cl);
+    RND_BLK (&rclp[i]);
     FAILIF (GNUNET_OK !=
             plugin->insert_refresh_commit_link (plugin->cls,
                                                 session,
                                                 session_hash,
                                                 i,
-                                                &cl));
+                                                &rclp[i]));
 
     FAILIF (GNUNET_OK !=
             plugin->get_refresh_commit_link (plugin->cls,
@@ -465,7 +517,7 @@ test_refresh_commit_links (struct TALER_EXCHANGEDB_Session *session,
                                              i,
                                              &cl2));
     FAILIF (0 !=
-            memcmp (&cl,
+            memcmp (&rclp[i],
                     &cl2,
                     sizeof (struct TALER_RefreshCommitLinkP)));
   }
@@ -496,7 +548,9 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   struct TALER_DenominationPublicKey *ret_denom_pubs;
   struct TALER_EXCHANGEDB_MeltCommitment *mc;
   struct TALER_EXCHANGEDB_LinkDataList *ldl;
+  struct TALER_EXCHANGEDB_LinkDataList *ldlp;
   unsigned int cnt;
+  unsigned int i;
   int ret;
 
   ret = GNUNET_SYSERR;
@@ -507,7 +561,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   new_denom_pubs = NULL;
   ret_denom_pubs = NULL;
   /* create and test a refresh session */
-  refresh_session.num_newcoins = 1;
+  refresh_session.num_newcoins = MELT_NEW_COINS;
   refresh_session.noreveal_index = 1;
   /* create a denomination (value: 1; fraction: 100) */
   dkp = create_denom_key_pair (512,
@@ -585,20 +639,22 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
                                           &fee_deposit,
                                           &fee_refresh,
 					  &fee_refund);
-    new_denom_pubs[cnt]=new_dkp[cnt]->pub;
+    new_denom_pubs[cnt] = new_dkp[cnt]->pub;
   }
-  FAILIF (GNUNET_OK != plugin->insert_refresh_order (plugin->cls,
-                                                       session,
-                                                       &session_hash,
-                                                       MELT_NEW_COINS,
-                                                       new_denom_pubs));
+  FAILIF (GNUNET_OK !=
+          plugin->insert_refresh_order (plugin->cls,
+                                        session,
+                                        &session_hash,
+                                        MELT_NEW_COINS,
+                                        new_denom_pubs));
   ret_denom_pubs = GNUNET_new_array (MELT_NEW_COINS,
                                      struct TALER_DenominationPublicKey);
-  FAILIF (GNUNET_OK != plugin->get_refresh_order (plugin->cls,
-                                                  session,
-                                                  &session_hash,
-                                                  MELT_NEW_COINS,
-                                                  ret_denom_pubs));
+  FAILIF (GNUNET_OK !=
+          plugin->get_refresh_order (plugin->cls,
+                                     session,
+                                     &session_hash,
+                                     MELT_NEW_COINS,
+                                     ret_denom_pubs));
   for (cnt=0; cnt < MELT_NEW_COINS; cnt++)
   {
     FAILIF (0 != GNUNET_CRYPTO_rsa_public_key_cmp
@@ -619,24 +675,74 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
                                     session,
                                     &session_hash);
   FAILIF (NULL == mc);
-  /* FIXME #4401 test: get_melt_commitment:
-     check detailed information contained in 'mc' */
+  FAILIF (MELT_NEW_COINS != mc->num_newcoins);
+  for (cnt=0; cnt < MELT_NEW_COINS; cnt++)
+  {
+    FAILIF (0 !=
+            GNUNET_CRYPTO_rsa_public_key_cmp (new_dkp[cnt]->pub.rsa_public_key,
+                                              mc->denom_pubs[cnt].rsa_public_key));
+    for (i=0;i<TALER_CNC_KAPPA;i++)
+    {
+      FAILIF (0 !=
+              commit_coin_cmp (&mc->commit_coins[i][cnt],
+                               &commit_coins[i][cnt]));
+    }
+  }
+  for (i=0;i<TALER_CNC_KAPPA;i++)
+  {
+    FAILIF (0 !=
+            memcmp (&rclp[i],
+                    &mc->commit_links[i],
+                    sizeof (struct TALER_RefreshCommitLinkP)));
+  }
   plugin->free_melt_commitment (plugin->cls,
                                 mc);
+
+  /* FIXME #4401: test: insert_refresh_out */
 
   ldl = plugin->get_link_data_list (plugin->cls,
                                     session,
                                     &session_hash);
-  FAILIF (NULL != ldl);
-  /* FIXME: #4401 check more about ldl */
+  FAILIF (NULL != ldl); /* this will change once we 'insert_refresh_out()' */
+  for (ldlp = ldl; NULL != ldlp; ldlp = ldlp->next)
+  {
+    struct TALER_RefreshLinkEncrypted *r1;
+    struct TALER_RefreshLinkEncrypted *r2;
+    int found;
+
+    for (cnt=0;cnt < MELT_NEW_COINS;cnt++)
+    {
+      r1 = commit_coins[1][cnt].refresh_link;
+      r2 = ldlp->link_data_enc;
+      found = GNUNET_NO;
+      FAILIF (NULL == ldlp->ev_sig.rsa_signature);
+      /* FIXME #4401: check ldlp->ev_sig */
+      if ( (0 ==
+            GNUNET_CRYPTO_rsa_public_key_cmp (ldlp->denom_pub.rsa_public_key,
+                                              new_dkp[cnt]->pub.rsa_public_key)) &&
+           (0 ==
+            refresh_link_encrypted_cmp (r1, r2)) )
+      {
+        found = GNUNET_YES;
+        break;
+      }
+      FAILIF (GNUNET_NO == found);
+    }
+  }
   plugin->free_link_data_list (plugin->cls,
                                ldl);
 
   /* FIXME #4401: test: get_transfer */
-  /* FIXME #4401: test: insert_refresh_out */
 
   ret = GNUNET_OK;
  drop:
+  for (cnt=0;cnt<TALER_CNC_KAPPA;cnt++)
+    if (NULL != commit_coins[cnt])
+    {
+      free_refresh_commit_coins_array (commit_coins[cnt],
+                                       MELT_NEW_COINS);
+      commit_coins[cnt] = NULL;
+    }
   if (NULL != dkp)
     destroy_denom_key_pair (dkp);
   GNUNET_CRYPTO_rsa_signature_free (meltp->coin.denom_sig.rsa_signature);
