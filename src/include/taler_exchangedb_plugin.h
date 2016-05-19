@@ -1189,6 +1189,18 @@ struct TALER_EXCHANGEDB_Plugin
                                uint16_t num_coins,
                                struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins);
 
+  /**
+   * Free refresh @a commit_coins data obtained via @e get_refresh_commit_coins.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param num_coins size of the @a commit_coins array
+   * @param commit_coins array of coin commitments to free
+   */
+  void
+  (*free_refresh_commit_coins) (void *cls,
+                                unsigned int num_coins,
+                                struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins);
+
 
   /**
    * Store the commitment to the given (encrypted) refresh link data

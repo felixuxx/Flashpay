@@ -294,31 +294,6 @@ static struct TALER_Amount amount_with_fee;
 
 
 /**
- * Free memory associated with @a commit_coins.
- *
- * @param commit_coins memory to release
- * @param size size of the @a commit_coins array
- */
-static void
-free_refresh_commit_coins_array (struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins,
-                                 unsigned int size)
-{
-  unsigned int cnt;
-  struct TALER_EXCHANGEDB_RefreshCommitCoin *ccoin;
-  struct TALER_RefreshLinkEncrypted *rlink;
-
-  for (cnt = 0; cnt < size; cnt++)
-  {
-    ccoin = &commit_coins[cnt];
-    GNUNET_free_non_null (ccoin->coin_ev);
-    rlink = (struct TALER_RefreshLinkEncrypted *) ccoin->refresh_link;
-    GNUNET_free_non_null (rlink);
-  }
-  GNUNET_free (commit_coins);
-}
-
-
-/**
  * Compare two coin encrypted refresh links.
  *
  * @param rc1 first commitment
@@ -474,7 +449,12 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
 
  drop:
   if (NULL != ret_commit_coins)
-    free_refresh_commit_coins_array (ret_commit_coins, MELT_NEW_COINS);
+  {
+    plugin->free_refresh_commit_coins (plugin->cls,
+                                       MELT_NEW_COINS,
+                                       ret_commit_coins);
+    GNUNET_free (ret_commit_coins);
+  }
   return ret;
 }
 
@@ -811,8 +791,10 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   for (cnt=0;cnt<TALER_CNC_KAPPA;cnt++)
     if (NULL != commit_coins[cnt])
     {
-      free_refresh_commit_coins_array (commit_coins[cnt],
-                                       MELT_NEW_COINS);
+      plugin->free_refresh_commit_coins (plugin->cls,
+                                         MELT_NEW_COINS,
+                                         commit_coins[cnt]);
+      GNUNET_free (commit_coins[cnt]);
       commit_coins[cnt] = NULL;
     }
   if (NULL != dkp)

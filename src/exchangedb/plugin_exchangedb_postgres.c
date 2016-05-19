@@ -3107,12 +3107,14 @@ postgres_insert_refresh_commit_coins (void *cls,
  * We allocated some @a commit_coin information, but now need
  * to abort. Free allocated memory.
  *
- * @param commit_coins data to free (but not the array itself)
+ * @param cls unused
  * @param commit_coins_len length of @a commit_coins array
+ * @param commit_coins data to free (but not the array itself)
  */
 static void
-free_cc_result (struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins,
-                unsigned int commit_coins_len)
+postgres_free_refresh_commit_coins (void *cls,
+                                    unsigned int commit_coins_len,
+                                    struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins)
 {
   unsigned int i;
 
@@ -3174,13 +3176,13 @@ postgres_get_refresh_commit_coins (void *cls,
     {
       BREAK_DB_ERR (result);
       PQclear (result);
-      free_cc_result (commit_coins, i);
+      postgres_free_refresh_commit_coins (cls, i, commit_coins);
       return GNUNET_SYSERR;
     }
     if (0 == PQntuples (result))
     {
       PQclear (result);
-      free_cc_result (commit_coins, i);
+      postgres_free_refresh_commit_coins (cls, i, commit_coins);
       return GNUNET_NO;
     }
     {
@@ -3198,7 +3200,7 @@ postgres_get_refresh_commit_coins (void *cls,
           GNUNET_PQ_extract_result (result, rs, 0))
       {
         PQclear (result);
-        free_cc_result (commit_coins, i);
+        postgres_free_refresh_commit_coins (cls, i, commit_coins);
         return GNUNET_SYSERR;
       }
     }
@@ -3207,7 +3209,7 @@ postgres_get_refresh_commit_coins (void *cls,
     {
       GNUNET_free (c_buf);
       GNUNET_free (rl_buf);
-      free_cc_result (commit_coins, i);
+      postgres_free_refresh_commit_coins (cls, i, commit_coins);
       return GNUNET_SYSERR;
     }
     rl = TALER_refresh_link_encrypted_decode (rl_buf,
@@ -4315,7 +4317,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   }
   else
   {
-    if (GNUNET_OK ==
+    if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_string (cfg,
                                                "exchangedb-postgres",
                                                "db_conn_str",
@@ -4358,6 +4360,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->get_refresh_order = &postgres_get_refresh_order;
   plugin->insert_refresh_commit_coins = &postgres_insert_refresh_commit_coins;
   plugin->get_refresh_commit_coins = &postgres_get_refresh_commit_coins;
+  plugin->free_refresh_commit_coins = &postgres_free_refresh_commit_coins;
   plugin->insert_refresh_commit_link = &postgres_insert_refresh_commit_link;
   plugin->get_refresh_commit_link = &postgres_get_refresh_commit_link;
   plugin->get_melt_commitment = &postgres_get_melt_commitment;
