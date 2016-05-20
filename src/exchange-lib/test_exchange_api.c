@@ -144,7 +144,12 @@ enum OpCode
   /**
    * Check that the fakebank has not received any other transactions.
    */
-  OC_CHECK_BANK_TRANSFERS_EMPTY
+  OC_CHECK_BANK_TRANSFERS_EMPTY,
+
+  /**
+   * Refund some deposit.
+   */
+  OC_REFUND
 
 };
 
@@ -600,6 +605,37 @@ struct Command
       struct TALER_WireTransferIdentifierRawP wtid;
 
     } check_bank_transfer;
+
+    struct {
+
+      /**
+       * Amount that should be refunded.
+       */
+      const char *amount;
+
+      /**
+       * Expected refund fee.
+       */
+      const char *fee;
+
+      /**
+       * Reference to the corresponding deposit operation.
+       * Used to obtain contract details, merchant keys,
+       * fee structure, etc.
+       */
+      const char *deposit_ref;
+
+      /**
+       * Refund transaction identifier.
+       */
+      uint64_t rtransaction_id;
+
+      /**
+       * Handle to the refund operation (while it is ongoing).
+       */
+      struct TALER_EXCHANGE_RefundHandle *rh;
+
+    } refund;
 
   } details;
 
@@ -1534,6 +1570,82 @@ deposit_wtid_cb (void *cls,
 
 
 /**
+ * Check the result for the refund request.
+ *
+ * @param cls closure
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful deposit;
+ *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param obj the received JSON reply, should be kept as proof (and, in particular,
+ *            be forwarded to the customer)
+ */
+static void
+refund_cb (void *cls,
+           unsigned int http_status,
+           const json_t *obj)
+{
+  struct InterpreterState *is = cls;
+  struct Command *cmd = &is->commands[is->ip];
+
+  cmd->details.refund.rh = NULL;
+  if (cmd->expected_response_code != http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u to command %s\n",
+                http_status,
+                cmd->label);
+    json_dumpf (obj, stderr, 0);
+    fail (is);
+    return;
+  }
+  switch (http_status)
+  {
+  case MHD_HTTP_OK:
+    break;
+  default:
+    break;
+  }
+  next_command (is);
+}
+
+
+
+/**
+ * Given a command that is used to withdraw coins,
+ * extract the corresponding public key of the coin.
+ *
+ * @param coin command relating to coin withdrawal or refresh
+ * @param idx index to use if we got multiple coins from the @a coin command
+ * @param[out] coin_pub where to store the public key of the coin
+ */
+static void
+get_public_key_from_coin_command (const struct Command *coin,
+                                  unsigned int idx,
+                                  struct TALER_CoinSpendPublicKeyP *coin_pub)
+{
+  switch (coin->oc)
+  {
+  case OC_WITHDRAW_SIGN:
+    GNUNET_CRYPTO_eddsa_key_get_public (&coin->details.reserve_withdraw.coin_priv.eddsa_priv,
+                                        &coin_pub->eddsa_pub);
+    break;
+  case OC_REFRESH_REVEAL:
+    {
+      const struct FreshCoin *fc;
+
+      GNUNET_assert (idx < coin->details.refresh_reveal.num_fresh_coins);
+      fc = &coin->details.refresh_reveal.fresh_coins[idx];
+
+      GNUNET_CRYPTO_eddsa_key_get_public (&fc->coin_priv.eddsa_priv,
+                                          &coin_pub->eddsa_pub);
+    }
+    break;
+  default:
+    GNUNET_assert (0);
+  }
+}
+
+
+/**
  * Run the main interpreter loop that performs exchange operations.
  *
  * @param cls contains the `struct InterpreterState`
@@ -1614,12 +1726,12 @@ interpreter_run (void *cls)
     GNUNET_TIME_round_abs (&execution_date);
     cmd->details.admin_add_incoming.aih
       = TALER_EXCHANGE_admin_add_incoming (exchange,
-                                       &reserve_pub,
-                                       &amount,
-                                       execution_date,
-                                       wire,
-                                       &add_incoming_cb,
-                                       is);
+                                           &reserve_pub,
+                                           &amount,
+                                           execution_date,
+                                           wire,
+                                           &add_incoming_cb,
+                                           is);
     if (NULL == cmd->details.admin_add_incoming.aih)
     {
       GNUNET_break (0);
@@ -2038,29 +2150,9 @@ interpreter_run (void *cls)
       coin = find_command (is,
                            ref->details.deposit.coin_ref);
       GNUNET_assert (NULL != coin);
-      switch (coin->oc)
-      {
-      case OC_WITHDRAW_SIGN:
-        GNUNET_CRYPTO_eddsa_key_get_public (&coin->details.reserve_withdraw.coin_priv.eddsa_priv,
-                                            &coin_pub.eddsa_pub);
-        break;
-      case OC_REFRESH_REVEAL:
-        {
-          const struct FreshCoin *fc;
-          unsigned int idx;
-
-          idx = ref->details.deposit.coin_idx;
-          GNUNET_assert (idx < coin->details.refresh_reveal.num_fresh_coins);
-          fc = &coin->details.refresh_reveal.fresh_coins[idx];
-
-          GNUNET_CRYPTO_eddsa_key_get_public (&fc->coin_priv.eddsa_priv,
-                                              &coin_pub.eddsa_pub);
-        }
-        break;
-      default:
-        GNUNET_assert (0);
-      }
-
+      get_public_key_from_coin_command (coin,
+                                        ref->details.deposit.coin_idx,
+                                        &coin_pub);
       wire = json_loads (ref->details.deposit.wire_details,
                          JSON_REJECT_DUPLICATES,
                          NULL);
@@ -2148,6 +2240,72 @@ interpreter_run (void *cls)
         return;
       }
       next_command (is);
+      return;
+    }
+  case OC_REFUND:
+    {
+      const struct Command *coin;
+      struct GNUNET_HashCode h_contract;
+      json_t *contract;
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+      struct TALER_Amount refund_fee;
+
+      if (GNUNET_OK !=
+          TALER_string_to_amount (cmd->details.refund.amount,
+                                  &amount))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failed to parse amount `%s' at %u\n",
+                    cmd->details.refund.amount,
+                    is->ip);
+        fail (is);
+        return;
+      }
+      if (GNUNET_OK !=
+          TALER_string_to_amount (cmd->details.refund.fee,
+                                  &refund_fee))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failed to parse amount `%s' at %u\n",
+                    cmd->details.refund.fee,
+                    is->ip);
+        fail (is);
+        return;
+      }
+      ref = find_command (is,
+                          cmd->details.refund.deposit_ref);
+      GNUNET_assert (NULL != ref);
+      contract = json_loads (cmd->details.deposit.contract,
+                             JSON_REJECT_DUPLICATES,
+                             NULL);
+      GNUNET_assert (NULL != contract);
+      TALER_JSON_hash (contract,
+                       &h_contract);
+      json_decref (contract);
+
+      coin = find_command (is,
+                           ref->details.deposit.coin_ref);
+      GNUNET_assert (NULL != coin);
+      get_public_key_from_coin_command (coin,
+                                        ref->details.deposit.coin_idx,
+                                        &coin_pub);
+      cmd->details.refund.rh
+        = TALER_EXCHANGE_refund (exchange,
+                                 &amount,
+                                 &refund_fee,
+                                 &h_contract,
+                                 ref->details.deposit.transaction_id,
+                                 &coin_pub,
+                                 cmd->details.refund.rtransaction_id,
+                                 &ref->details.deposit.merchant_priv,
+                                 &refund_cb,
+                                 is);
+      if (NULL == cmd->details.refund.rh)
+      {
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
       return;
     }
   default:
@@ -2363,6 +2521,17 @@ do_shutdown (void *cls)
     case OC_CHECK_BANK_TRANSFER:
       break;
     case OC_CHECK_BANK_TRANSFERS_EMPTY:
+      break;
+    case OC_REFUND:
+      if (NULL != cmd->details.refund.rh)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
+        TALER_EXCHANGE_refund_cancel (cmd->details.refund.rh);
+        cmd->details.refund.rh = NULL;
+      }
       break;
     default:
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

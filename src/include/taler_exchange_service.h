@@ -475,7 +475,7 @@ struct TALER_EXCHANGE_RefundHandle;
 
 /**
  * Callbacks of this type are used to serve the result of submitting a
- * deposit permission request to a exchange.
+ * refund request to an exchange.
  *
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful deposit;
