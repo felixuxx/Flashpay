@@ -512,6 +512,7 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
         TALER_amount_hton (&rr.refund_fee,
                            &refund->refund_fee);
 	/* internal sanity check before we hand out a bogus sig... */
+        sig = &refund->merchant_sig.eddsa_sig;
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
                                         &rr.purpose,
@@ -522,7 +523,6 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
 	  json_decref (history);
 	  return NULL;
 	}
-        sig = &refund->merchant_sig.eddsa_sig;
         details = GNUNET_JSON_from_data (&rr.purpose,
                                          sizeof (struct TALER_RefundRequestPS));
       }

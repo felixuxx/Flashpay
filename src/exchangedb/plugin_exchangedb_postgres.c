@@ -983,7 +983,8 @@ postgres_prepare (PGconn *db_conn)
            " WHERE"
            " tiny=false AND"
            " done=false AND"
-           " wire_deadline<$1"
+           " wire_deadline<=$1 AND"
+           " refund_deadline<$1"
            " ORDER BY wire_deadline ASC"
            " LIMIT 1",
            1, NULL);

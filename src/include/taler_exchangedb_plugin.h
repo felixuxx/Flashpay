@@ -1017,7 +1017,7 @@ struct TALER_EXCHANGEDB_Plugin
   /**
    * Obtain information about deposits that are ready to be executed.
    * Such deposits must not be marked as "tiny" or "done", and the
-   * execution time must be in the past.
+   * execution time and refund deadlines must both be in the past.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to the database
