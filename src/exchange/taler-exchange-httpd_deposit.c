@@ -180,6 +180,14 @@ TMH_DEPOSIT_handler_deposit (struct TMH_RequestHandler *rh,
   if (GNUNET_NO == res)
     return MHD_YES; /* failure */
 
+  if (deposit.refund_deadline.abs_value_us > deposit.wire_deadline.abs_value_us)
+  {
+    GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
+    return TMH_RESPONSE_reply_arg_invalid (connection,
+                                           "refund_deadline");
+  }
+
   if (GNUNET_YES !=
       TMH_json_validate_wireformat (wire,
                                     GNUNET_NO))
