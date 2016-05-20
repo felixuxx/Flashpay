@@ -371,7 +371,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
  * @param timestamp timestamp when the contract was finalized, must match approximately the current time of the exchange
  * @param transaction_id transaction id for the transaction between merchant and customer
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
- * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed)
+ * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
  * @param coin_sig the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT made by the customer with the coin’s private key.
  * @param cb the callback to call when a reply for this request is available
  * @param cb_cls closure for the above callback
@@ -405,6 +405,12 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   struct TALER_Amount amount_without_fee;
 
   (void) GNUNET_TIME_round_abs (&wire_deadline);
+  (void) GNUNET_TIME_round_abs (&refund_deadline);
+  if (refund_deadline.abs_value_us > wire_deadline.abs_value_us)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   if (GNUNET_YES !=
       MAH_handle_is_ready (exchange))
   {
@@ -421,7 +427,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   }
   key_state = TALER_EXCHANGE_get_keys (exchange);
   dki = TALER_EXCHANGE_get_denomination_key (key_state,
-                                         denom_pub);
+                                             denom_pub);
   if (NULL == dki)
   {
     TALER_LOG_WARNING ("Denomination key unknown to exchange\n");
