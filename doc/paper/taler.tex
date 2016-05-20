@@ -103,6 +103,9 @@ state to shape the society.  As bribery is virtually impossible to
 detect, corruption is widespread and not limited to social elites.
 ZeroCoin~\cite{miers2013zerocoin} is an example for translating such
 an economy into the digital realm.
+% FIXME: Unclear referee comment : 
+% I didn’t understand why ZeroCoin is particularly suited for
+% developing nations?
 
 This paper describes Taler, a simple and practical payment system for
 a modern social-liberal society, which is not being served well by
@@ -155,8 +158,8 @@ believe needs a payment system with the following properties:
     %, even when taking aborted transactions into account.
   \item[Taxability]
     In many current legal systems, it is the responsibility of the merchant
-    to deduct (sales) taxes from purchases made by customers, or to
-    pay (income) taxes for payments received for work.
+    to deduct (sales) taxes from purchases made by customers, or for workers
+    to pay (income) taxes for payments received for work.
     %Taxation is necessary for the state to
     %provide legitimate social functions, such as education.  Thus, a payment
     %system must facilitate sales, income and transaction taxes.
@@ -268,8 +271,8 @@ Yet, there are several major irredeemable problems inherent in their designs:
     of securing the block chain consume a considerable amount of computational
     resources and energy.  So Bitcoin does not an environmentally responsible
     design.
-  \item Bitcoin transactions are not easily taxable, leading to legal hurdles.
-    % The legality and legitimacy of this aspect is questionable.
+  \item Bitcoin transactions have pseduononymous recipients, making taxation
+    problematic, and leading to legal hurdles.
     The Zerocoin extension would only make this worse.
   \item Bitcoins can not easily be bound to any fiat currency, leading to
     significant fluctuations in value.  These fluctuations may be desirable in
@@ -394,11 +397,12 @@ assures customers and merchants that the exchange operates correctly.
 Taler's security model assumes that cryptographic primitives are
 secure and that each participant is under full control of his system.
 The contact information of the exchange is known to both customer and
-merchant from the start.  Furthermore, the merchant communication's
-authenticity is assured to the customer, such as by using X.509
-certificates~\cite{rfc5280}, and we assume that an anonymous, reliable
-bi-directional communication channel can be established by the
-customer to both the exchange and the merchant, such as by using Tor.
+merchant from the start.  
+We further assume that the customer can authenticate the merchant,
+such as by using X.509 certificates~\cite{rfc5280}. % or Tor hidden services.
+Finally, we assume that customer has an anonymous, reliable bi-directional
+communication channel to both the exchange and the merchant, such as Tor.
+% even without hidden services.
 
 The exchange is trusted to hold funds of its customers and to forward them
 when receiving the respective deposit instructions from the merchants.
