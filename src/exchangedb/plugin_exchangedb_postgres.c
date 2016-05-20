@@ -1657,8 +1657,9 @@ postgres_reserves_in_insert (void *cls,
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct GNUNET_TIME_Absolute expiry;
 
-  if (GNUNET_OK != postgres_start (cls,
-                                   session))
+  if (GNUNET_OK !=
+      postgres_start (cls,
+                      session))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -1731,6 +1732,8 @@ postgres_reserves_in_insert (void *cls,
     {
       /* This means we had the same reserve/justification/details
 	 before */
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Uniqueness violation, deposit details already known\n");
       PQclear (result);
       postgres_rollback (cls,
 			 session);
@@ -1775,6 +1778,8 @@ postgres_reserves_in_insert (void *cls,
   return GNUNET_OK;
 
  rollback:
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Transaction failed, doing rollback\n");
   postgres_rollback (cls,
                      session);
   return GNUNET_SYSERR;
