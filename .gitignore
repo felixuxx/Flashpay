@@ -55,3 +55,5 @@ src/util/taler-arm
 doc/paper/llncs.cls
 doc/paper/taler.bbl
 doc/paper/taler.blg
+doc/paper/postquantum.bbl
+doc/paper/postquantum.blg
