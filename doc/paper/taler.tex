@@ -88,19 +88,24 @@ citizen's needs for private economic activity.
 
 \section{Introduction}
 
-The design of payment systems shapes economies and societies.  Strong,
-developed nation states are evolving towards fully transparent payment
-systems, such as the MasterCard and VisaCard credit card schemes and
-computerized bank transactions such as SWIFT.  Such systems enable
-mass surveillance and thus extensive government control over the
-economy, from taxation to intrusion into private lives.  Bribery and
-corruption are limited to elites that can afford to escape the
-dragnet.  The other extreme are economies of developing, weak nation
-states where economic activity is based largely on coins, paper money
-or even barter.  Here, the state is often unable to effectively
-monitor or tax economic activity, and this limits the ability of the
-state to shape the society.  As bribery is virtually impossible to
-detect, corruption is widespread and not limited to social elites.
+The design of payment systems shapes economies and societies. 
+Strong, developed nation states are evolving towards transparent
+payment systems, such as the MasterCard and VisaCard credit card
+schemes and computerized bank transactions such as SWIFT.  
+
+These systems enable mass surveillance by both governments and
+private companies, chilling customer activity \cite{???}.
+Aspects of this government control benifit the economy, by enabling
+taxation.  Also, bribery and corruption are limited to elites who
+can afford to escape the dragnet.  
+
+At the other extreme, weaker developing nation states have economic
+activity based largely on coins, paper money or even barter.  
+Here, the state is often unable to effectively monitor or tax economic
+activity, and this limits the ability of the state to shape the society.  
+As bribery is virtually impossible to detect, corruption is widespread
+and not limited to social elites.
+%
 ZeroCoin~\cite{miers2013zerocoin} is an example for translating such
 an economy into the digital realm.
 % FIXME: Unclear referee comment : 
@@ -115,13 +120,14 @@ anarchistic economies.
 
 The Taler protocol is heavily based on ideas from
 Chaum~\cite{chaum1983blind} and also follows Chaum's basic architecture of
-customer, merchant and exchange (Figure~\ref{fig:cmm}). The two designs
-share the key first step where the {\em customer} withdraws digital
-{\em coins} from the {\em exchange} with unlinkability provided via blind
-signatures.  The coins can then be spent at a {\em merchant} who {\em
-  deposits} them at the exchange.  Taler uses online detection of
-double-spending, thus assuring the merchant instantly that a
-transaction is valid.
+customer, merchant and exchange (Figure~\ref{fig:cmm}),
+ which Chaum termed the mint.
+The two designs share the key first step where the {\em customer}
+withdraws digital {\em coins} from the {\em exchange} with unlinkability
+provided via blind signatures.  The coins can then be spent at a
+{\em merchant} who {\em deposits} them at the exchange.  
+Taler uses online detection of double-spending, thus assuring the merchant
+instantly that a transaction is valid.
 
 \begin{figure}[h]
 \centering
@@ -158,8 +164,8 @@ believe needs a payment system with the following properties:
     %, even when taking aborted transactions into account.
   \item[Taxability]
     In many current legal systems, it is the responsibility of the merchant
-    to deduct (sales) taxes from purchases made by customers, or for workers
-    to pay (income) taxes for payments received for work.
+    to deduct sales taxes from purchases made by customers, or for workers
+    to pay income taxes for payments received for work.
     %Taxation is necessary for the state to
     %provide legitimate social functions, such as education.  Thus, a payment
     %system must facilitate sales, income and transaction taxes.
@@ -173,23 +179,24 @@ believe needs a payment system with the following properties:
     Nevertheless, customers must never be able to defraud anyone, and
     merchants must at best be able to defraud their customers by not
     delivering on the agreed contract.  Neither merchants nor customers
-    should ever be able to commit fraud against the exchange.  Additionally,
-    both customers and merchants must receive cryptographic proofs of
-    bad behavior in case of protocol violations by the exchange.
-    In this way, only the exchange will need to be tightly audited and regulated.
+    should ever be able to commit fraud against the exchange.  
+    In addition, both customers and merchants should receive cryptographic
+    proofs of bad behavior in case of protocol violations by the exchange.
+    In this way, only the exchange needs be tightly audited and regulated.
     The design must make it easy to audit the finances of the exchange.
-  \item[Ease of Deployment] %The system should be easy to deploy for
+ % \item[Ease of Deployment] %The system should be easy to deploy for
  %   real-world applications.  In order to lower the entry barrier and
  %   acceptance of the system, a gateway to the existing financial
  %   system should be provided, i.e. by integrating internet-banking
  %   protocols such as HBCI/FinTAN.
+ %   The protocol should
+ %   be able to run easily over HTTP(S).
+  \item[No speculation] % It's actually "Specualtion not required"
     The digital coins should be denominated in existing currencies,
     such as EUR or USD, to avoid exposing citizens to unnecessary risks
     from currency fluctuations.
     Moreover, the system must have an open protocol specification and
     a free software reference implementation.
-%    The protocol should
-%    be able to run easily over HTTP(S).
   \item[Low resource consumption]
     In order to minimize the operating costs and environmental impact of
     the payment system, it should avoid the reliance on expensive or
@@ -208,11 +215,9 @@ the system must thus support giving change in the form of spendable coins,
 say a \EUR{0,01} coin and a \EUR{50,00} coin.
 A merchant cannot simply give the customer their coins in another transaction;
 however, as this reverses the role of merchant and customer, and
-our taxability requirement would deanonymize the customer.  The customer
-also cannot withdraw exact change from his account from the exchange, as this
-would allow the exchange to link the identity of the customer that is revealed
-during withdrawal to the subsequent deposit operation that follows shortly
-afterwards.
+our taxability requirement would deanonymize the customer.  
+Also, the customer cannot withdraw exact change from his account with
+the exchange, as doing so deanonymizes her through a corrolation attack.
 Instead, the customer should obtain new freshly anonymized coins that cannot be
 linked with this transaction, the original \EUR{100,00} coin, or each other.
 
@@ -243,7 +248,7 @@ As with support for fractional payments, Taler addresses these problems by
 allowing customers to refresh tainted coins, thereby destroying the link
 between the refunded or aborted transaction and the new coin.
 
-Taler ensures that the {\em entity} of the user owning the new coin is
+Taler ensures that the {\em entity} owning the new coin is
 the same as the entity of the user owning the old coin, thus making
 sure that the refreshing protocol cannot be abused for money
 laundering or other illicit transactions.
@@ -269,16 +274,16 @@ Yet, there are several major irredeemable problems inherent in their designs:
 \begin{itemize}
   \item The computational puzzles solved by Bitcoin nodes with the purpose
     of securing the block chain consume a considerable amount of computational
-    resources and energy.  So Bitcoin does not an environmentally responsible
+    resources and energy.  So Bitcoin is not an environmentally responsible
     design.
   \item Bitcoin transactions have pseduononymous recipients, making taxation
     problematic, and leading to legal hurdles.
     The Zerocoin extension would only make this worse.
-  \item Bitcoins can not easily be bound to any fiat currency, leading to
-    significant fluctuations in value.  These fluctuations may be desirable in
-    a high-risk investment instrument, but they make Bitcoin unsuitable as
-    a medium of exchange.
-  \item Worse, anyone can start an alternative Bitcoin transaction chain,
+  \item Bitcoin seemingly requires speculation to offset the mining cost,
+    creating fluctuations in value, and making it hard to bind to national
+    currencies.  These fluctuations may be desirable in a high-risk investment
+    instrument, but they make Bitcoin unsuitable as a medium of exchange.
+  \item Anyone can start an alternative Bitcoin transaction chain,
     called an AltCoin, and, if successful, reap the benefits of the low
     cost to initially create coins via computation.  As participants are
     de facto investors, these become a form of ponzi scheme.
@@ -310,13 +315,15 @@ Taler avoids include:
 \begin{itemize}
  \item The use of patents to protect the technology; a payment system
    should be free software (libre) to have a chance for widespread adoption.
- \item The use of off-line payments and thus deferred detection of
-   double-spending, which could require the exchange to attempt to recover
-   funds from customers via the legal system.  This creates a
-   significant business risk for the exchange, as the system is not
-   self-enforcing from the perspective of the exchange.  In 1983 off-line
-   payments might have been a necessary feature.  However, today
-   requiring network connectivity is feasible and avoids the business
+ \item Support for payments to off-line merchants, and thus deferred
+   detection of double-spending, requires the exchange to attempt to
+   recover funds from delinquent customers via the legal system.  
+   Any system like this that fails to be self-enforcing creates a major
+   business risk for the exchange.  In 1983, there were merchants without
+   network connectivity
+ need to have
+   been a necessary feature.
+   However, today requiring network connectivity is feasible and avoids the business
    risks associated with deferred fraud detection.
  \item % In addition to the risk of legal disputes with fraudulent
    % merchants and customers,
