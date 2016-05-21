@@ -2926,7 +2926,10 @@ run (void *cls)
     },
     /* Run transfers. Should do nothing as refund deadline blocks it */
     { .oc = OC_RUN_AGGREGATOR,
-      .label = "run-aggregator" },
+      .label = "run-aggregator-refund" },
+    /* check that aggregator didn't do anything, as expected */
+    { .oc = OC_CHECK_BANK_TRANSFERS_EMPTY,
+      .label = "check-refund-not-run" },
     /* Trigger refund */
     { .oc = OC_REFUND,
       .label = "refund-ok",
@@ -2949,11 +2952,18 @@ run (void *cls)
     },
     /* Run transfers. This will do the transfer as refund deadline was 0 */
     { .oc = OC_RUN_AGGREGATOR,
-      .label = "run-aggregator" },
+      .label = "run-aggregator-3" },
+    /* Check that deposit did run */
+    { .oc = OC_CHECK_BANK_TRANSFER,
+      .label = "check_bank_transfer-pre-refund",
+      .details.check_bank_transfer.amount = "EUR:4.98",
+      .details.check_bank_transfer.account_debit = 2,
+      .details.check_bank_transfer.account_credit = 42
+    },
     /* Run failing refund, as past deadline & aggregation */
     { .oc = OC_REFUND,
       .label = "refund-fail",
-      .expected_response_code = MHD_HTTP_OK,
+      .expected_response_code = MHD_HTTP_GONE,
       .details.refund.amount = "EUR:4.99",
       .details.refund.fee = "EUR:0.01",
       .details.refund.deposit_ref = "deposit-refund-2",
@@ -3012,6 +3022,16 @@ main (int argc,
                                   "taler-exchange-keyup",
                                   "taler-exchange-keyup",
                                   "-c", "test_exchange_api.conf",
+                                  NULL);
+  GNUNET_OS_process_wait (proc);
+  GNUNET_OS_process_destroy (proc);
+  proc = GNUNET_OS_start_process (GNUNET_NO,
+                                  GNUNET_OS_INHERIT_STD_ALL,
+                                  NULL, NULL, NULL,
+                                  "taler-exchange-dbinit",
+                                  "taler-exchange-dbinit",
+                                  "-c", "test_exchange_api.conf",
+                                  "-r",
                                   NULL);
   GNUNET_OS_process_wait (proc);
   GNUNET_OS_process_destroy (proc);

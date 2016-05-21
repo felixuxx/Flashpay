@@ -340,11 +340,13 @@ TMH_DB_execute_refund (struct MHD_Connection *connection,
                                               MHD_HTTP_NOT_FOUND);
   }
   deposit_found = GNUNET_NO;
+  refund_found = GNUNET_NO;
   for (tlp = tl; NULL != tlp; tlp = tlp->next)
   {
     switch (tlp->type)
     {
     case TALER_EXCHANGEDB_TT_DEPOSIT:
+      if (GNUNET_NO == deposit_found)
       {
         dep = tlp->details.deposit;
         if ( (0 == memcmp (&dep->merchant_pub,
@@ -364,6 +366,7 @@ TMH_DB_execute_refund (struct MHD_Connection *connection,
       /* Melts cannot be refunded, ignore here */
       break;
     case TALER_EXCHANGEDB_TT_REFUND:
+      if (GNUNET_NO == refund_found)
       {
         ref = tlp->details.refund;
         /* First, check if existing refund request is identical */
@@ -476,15 +479,13 @@ TMH_DB_execute_refund (struct MHD_Connection *connection,
                                               MHD_HTTP_GONE);
   }
 
-  /* We no longer need 'tl' or 'dep' or 'ref' */
-  TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
-                                          tl);
-
   /* check refund amount is sufficiently low */
   if (1 == TALER_amount_cmp (&refund->refund_amount,
                              &dep->amount_with_fee) )
   {
     GNUNET_break_op (0); /* cannot refund more than original value */
+    TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
+                                            tl);
     return TMH_RESPONSE_reply_refund_failure (connection,
                                               MHD_HTTP_PRECONDITION_FAILED);
   }
@@ -500,6 +501,8 @@ TMH_DB_execute_refund (struct MHD_Connection *connection,
        not good... */
     GNUNET_break (0);
     TMH_KS_release (mks);
+    TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
+                                            tl);
     return TMH_RESPONSE_reply_internal_error (connection,
                                               "denomination key not found");
   }
@@ -513,6 +516,8 @@ TMH_DB_execute_refund (struct MHD_Connection *connection,
   {
     TMH_plugin->rollback (TMH_plugin->cls,
                           session);
+    TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
+                                            tl);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "refund_fee");
   }
@@ -521,6 +526,8 @@ TMH_DB_execute_refund (struct MHD_Connection *connection,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Refund fee proposed by merchant is higher than necessary.\n");
   }
+  TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
+                                          tl);
 
   /* Finally, store new refund data */
   if (GNUNET_OK !=

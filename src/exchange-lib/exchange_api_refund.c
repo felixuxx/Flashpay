@@ -169,6 +169,10 @@ handle_refund_finished (void *cls,
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
     break;
+  case MHD_HTTP_GONE:
+    /* Kind of normal: the money was already sent to the merchant
+       (it was too late for the refund). */
+    break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
@@ -266,7 +270,7 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 			  " s:I, s:I," /* transaction id, rtransaction id */
 			  " s:o, s:o}", /* merchant_pub, merchant_sig */
 			  "refund_amount", TALER_JSON_from_amount (amount),
-			  "refund_fee", TALER_JSON_from_amount (amount),
+			  "refund_fee", TALER_JSON_from_amount (refund_fee),
 			  "H_contract", GNUNET_JSON_from_data_auto (h_contract),
 			  "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
 			  "transaction_id", (json_int_t) transaction_id,

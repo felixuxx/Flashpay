@@ -2260,13 +2260,18 @@ postgres_test_deposit_done (void *cls,
     PQclear (result);
     return GNUNET_SYSERR;
   }
+  if (1 != PQntuples (result))
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
 
   {
-    /* NOTE: maybe wrong type for a 'boolean' */
-    uint32_t done = 0;
+    uint8_t done = 0;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint32 ("done",
-                                    &done),
+      GNUNET_PQ_result_spec_auto_from_type ("done",
+                                            &done),
       GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
@@ -3703,6 +3708,16 @@ postgres_get_coin_transactions (void *cls,
       tl->next = head;
       tl->type = TALER_EXCHANGEDB_TT_DEPOSIT;
       tl->details.deposit = deposit;
+      if (GNUNET_SYSERR == get_known_coin (cls,
+                                           session,
+                                           &deposit->coin.coin_pub,
+                                           &deposit->coin))
+      {
+        GNUNET_break (0);
+        GNUNET_free (deposit);
+        PQclear (result);
+        goto cleanup;
+      }
       head = tl;
       continue;
     }
@@ -3762,6 +3777,16 @@ postgres_get_coin_transactions (void *cls,
       tl->next = head;
       tl->type = TALER_EXCHANGEDB_TT_REFRESH_MELT;
       tl->details.melt = melt;
+      if (GNUNET_SYSERR == get_known_coin (cls,
+                                           session,
+                                           coin_pub,
+                                           &melt->coin))
+      {
+        GNUNET_break (0);
+        GNUNET_free (melt);
+        PQclear (result);
+        goto cleanup;
+      }
       head = tl;
       continue;
     }
@@ -3826,6 +3851,16 @@ postgres_get_coin_transactions (void *cls,
       tl->next = head;
       tl->type = TALER_EXCHANGEDB_TT_REFUND;
       tl->details.refund = refund;
+      if (GNUNET_SYSERR == get_known_coin (cls,
+                                           session,
+                                           coin_pub,
+                                           &refund->coin))
+      {
+        GNUNET_break (0);
+        GNUNET_free (refund);
+        PQclear (result);
+        goto cleanup;
+      }
       head = tl;
       continue;
     }

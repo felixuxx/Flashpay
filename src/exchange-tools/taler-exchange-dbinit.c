@@ -23,11 +23,15 @@
 #include "taler_exchangedb_plugin.h"
 
 
-
 /**
  * Return value from main().
  */
 static int global_ret;
+
+/**
+ * -r option: do full DB reset
+ */
+static int reset_db;
 
 /**
  * Main function that will be run.
@@ -53,6 +57,8 @@ run (void *cls,
     global_ret = 1;
     return;
   }
+  if (reset_db)
+    (void) plugin->drop_tables (plugin->cls);
   if (GNUNET_OK !=
       plugin->create_tables (plugin->cls))
   {
@@ -79,6 +85,9 @@ main (int argc,
       char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    {'r', "reset", NULL,
+     "reset database (DANGEROUS: all existing data is lost!)", 0,
+     &GNUNET_GETOPT_set_one, &reset_db},
     GNUNET_GETOPT_OPTION_END
   };
 

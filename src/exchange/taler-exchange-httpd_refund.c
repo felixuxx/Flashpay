@@ -50,18 +50,18 @@ static int
 verify_and_execute_refund (struct MHD_Connection *connection,
 			   const struct TALER_EXCHANGEDB_Refund *refund)
 {
-  struct TALER_RefundRequestPS dr;
+  struct TALER_RefundRequestPS rr;
 
-  dr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
-  dr.purpose.size = htonl (sizeof (struct TALER_RefundRequestPS));
-  dr.h_contract = refund->h_contract;
-  dr.transaction_id = GNUNET_htonll (refund->transaction_id);
-  dr.coin_pub = refund->coin.coin_pub;
-  dr.merchant = refund->merchant_pub;
-  dr.rtransaction_id = GNUNET_htonll (refund->rtransaction_id);
-  TALER_amount_hton (&dr.refund_amount,
+  rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
+  rr.purpose.size = htonl (sizeof (struct TALER_RefundRequestPS));
+  rr.h_contract = refund->h_contract;
+  rr.transaction_id = GNUNET_htonll (refund->transaction_id);
+  rr.coin_pub = refund->coin.coin_pub;
+  rr.merchant = refund->merchant_pub;
+  rr.rtransaction_id = GNUNET_htonll (refund->rtransaction_id);
+  TALER_amount_hton (&rr.refund_amount,
                      &refund->refund_amount);
-  TALER_amount_hton (&dr.refund_fee,
+  TALER_amount_hton (&rr.refund_fee,
                      &refund->refund_fee);
   if (GNUNET_YES !=
       TALER_amount_cmp_currency (&refund->refund_amount,
@@ -80,7 +80,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
   }
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
-                                  &dr.purpose,
+                                  &rr.purpose,
                                   &refund->merchant_sig.eddsa_sig,
                                   &refund->merchant_pub.eddsa_pub))
   {
