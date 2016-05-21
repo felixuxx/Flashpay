@@ -56,13 +56,13 @@ verify_and_execute_refund (struct MHD_Connection *connection,
   dr.purpose.size = htonl (sizeof (struct TALER_RefundRequestPS));
   dr.h_contract = refund->h_contract;
   dr.transaction_id = GNUNET_htonll (refund->transaction_id);
+  dr.coin_pub = refund->coin.coin_pub;
+  dr.merchant = refund->merchant_pub;
   dr.rtransaction_id = GNUNET_htonll (refund->rtransaction_id);
   TALER_amount_hton (&dr.refund_amount,
                      &refund->refund_amount);
   TALER_amount_hton (&dr.refund_fee,
                      &refund->refund_fee);
-  dr.merchant = refund->merchant_pub;
-  dr.coin_pub = refund->coin.coin_pub;
   if (GNUNET_YES !=
       TALER_amount_cmp_currency (&refund->refund_amount,
                                  &refund->refund_fee) )

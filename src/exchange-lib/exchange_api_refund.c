@@ -265,18 +265,14 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 			  " s:o, s:o," /* H_contract, coin_pub */
 			  " s:I, s:I," /* transaction id, rtransaction id */
 			  " s:o, s:o}", /* merchant_pub, merchant_sig */
-			  "amount", TALER_JSON_from_amount (amount),
-			  "fee", TALER_JSON_from_amount (amount),
-			  "H_contract", GNUNET_JSON_from_data (h_contract,
-                                                               sizeof (struct GNUNET_HashCode)),
-			  "coin_pub", GNUNET_JSON_from_data (coin_pub,
-                                                             sizeof (*coin_pub)),
+			  "refund_amount", TALER_JSON_from_amount (amount),
+			  "refund_fee", TALER_JSON_from_amount (amount),
+			  "H_contract", GNUNET_JSON_from_data_auto (h_contract),
+			  "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
 			  "transaction_id", (json_int_t) transaction_id,
 			  "rtransaction_id", (json_int_t) rtransaction_id,
-			  "merchant_pub", GNUNET_JSON_from_data (&rr.merchant,
-                                                                 sizeof (struct TALER_MerchantPublicKeyP)),
-			  "merchant_sig", GNUNET_JSON_from_data (&merchant_sig,
-                                                                 sizeof (merchant_sig))
+			  "merchant_pub", GNUNET_JSON_from_data_auto (&rr.merchant),
+			  "merchant_sig", GNUNET_JSON_from_data_auto (&merchant_sig)
 			  );
 
   rh = GNUNET_new (struct TALER_EXCHANGE_RefundHandle);

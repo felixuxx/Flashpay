@@ -175,8 +175,7 @@ TALER_EXCHANGE_admin_add_incoming (struct TALER_EXCHANGE_Handle *exchange,
   }
   admin_obj = json_pack ("{s:o, s:o," /* reserve_pub/amount */
                          " s:o, s:O}", /* execution_Date/wire */
-                         "reserve_pub", GNUNET_JSON_from_data (reserve_pub,
-                                                               sizeof (*reserve_pub)),
+                         "reserve_pub", GNUNET_JSON_from_data_auto (reserve_pub),
                          "amount", TALER_JSON_from_amount (amount),
                          "execution_date", GNUNET_JSON_from_time_abs (execution_date),
                          "wire", wire);

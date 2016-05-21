@@ -840,11 +840,9 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                             " s:o, s:o}",/* reserve_pub and reserve_sig */
                             "denom_pub", GNUNET_JSON_from_rsa_public_key (pk->key.rsa_public_key),
                             "coin_ev", GNUNET_JSON_from_data (coin_ev,
-                                                             coin_ev_size),
-                            "reserve_pub", GNUNET_JSON_from_data (&wsh->reserve_pub,
-                                                                 sizeof (struct TALER_ReservePublicKeyP)),
-                            "reserve_sig", GNUNET_JSON_from_data (&reserve_sig,
-                                                                 sizeof (reserve_sig)));
+                                                              coin_ev_size),
+                            "reserve_pub", GNUNET_JSON_from_data_auto (&wsh->reserve_pub),
+                            "reserve_sig", GNUNET_JSON_from_data_auto (&reserve_sig));
   GNUNET_free (coin_ev);
 
   wsh->blinding_key = blinding_key;

@@ -190,8 +190,7 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
 
   admin_obj = json_pack ("{s:o, s:o,"
                          " s:I, s:I}",
-                         "wtid", GNUNET_JSON_from_data (wtid,
-                                                       sizeof (*wtid)), /* #4340 */
+                         "wtid", GNUNET_JSON_from_data_auto (wtid), /* #4340 */
                          "amount", TALER_JSON_from_amount (amount),
                          "debit_account", (json_int_t) debit_account_no,
                          "credit_account", (json_int_t) credit_account_no);

@@ -1906,17 +1906,20 @@ interpreter_run (void *cls)
       if (0 != cmd->details.deposit.refund_deadline.rel_value_us)
       {
         refund_deadline = GNUNET_TIME_relative_to_absolute (cmd->details.deposit.refund_deadline);
+        wire_deadline = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_relative_multiply (cmd->details.deposit.refund_deadline, 2));
       }
       else
       {
         refund_deadline = GNUNET_TIME_UNIT_ZERO_ABS;
+        wire_deadline = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_ZERO);
       }
       GNUNET_CRYPTO_eddsa_key_get_public (&cmd->details.deposit.merchant_priv.eddsa_priv,
                                           &merchant_pub.eddsa_pub);
 
-      wire_deadline = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_ZERO);
       timestamp = GNUNET_TIME_absolute_get ();
       GNUNET_TIME_round_abs (&timestamp);
+      GNUNET_TIME_round_abs (&refund_deadline);
+      GNUNET_TIME_round_abs (&wire_deadline);
       {
         struct TALER_DepositRequestPS dr;
 
@@ -2275,7 +2278,7 @@ interpreter_run (void *cls)
       ref = find_command (is,
                           cmd->details.refund.deposit_ref);
       GNUNET_assert (NULL != ref);
-      contract = json_loads (cmd->details.deposit.contract,
+      contract = json_loads (ref->details.deposit.contract,
                              JSON_REJECT_DUPLICATES,
                              NULL);
       GNUNET_assert (NULL != contract);
@@ -2670,7 +2673,7 @@ run (void *cls)
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "create-reserve-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.wire = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42 }",
+      .details.admin_add_incoming.wire = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42, \"uuid\":1  }",
       .details.admin_add_incoming.amount = "EUR:5.01" },
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     { .oc = OC_WITHDRAW_SIGN,
@@ -2892,12 +2895,70 @@ run (void *cls)
       .details.wire_deposits.wtid_ref = "deposit-wtid-ok",
       .details.wire_deposits.total_amount_expected = "EUR:4.99" },
 
-
-    /* TODO: trigger aggregation logic and then check the
-       cases where tracking succeeds! */
-
     /* ************** End of tracking API testing************* */
 
+    /* ************** Test /refund API  ************* */
+
+
+    /* Fill reserve with EUR:5.01, as withdraw fee is 1 ct per config */
+    { .oc = OC_ADMIN_ADD_INCOMING,
+      .label = "create-reserve-r1",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.admin_add_incoming.wire = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42, \"uuid\":2 }",
+      .details.admin_add_incoming.amount = "EUR:5.01" },
+    /* Withdraw a 5 EUR coin, at fee of 1 ct */
+    { .oc = OC_WITHDRAW_SIGN,
+      .label = "withdraw-coin-r1",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.reserve_withdraw.reserve_reference = "create-reserve-r1",
+      .details.reserve_withdraw.amount = "EUR:5" },
+    /* Spend 5 EUR of the 5 EUR coin (in full)
+       (merchant would receive EUR:4.99 due to 1 ct deposit fee) */
+    { .oc = OC_DEPOSIT,
+      .label = "deposit-refund-1",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.deposit.amount = "EUR:5",
+      .details.deposit.coin_ref = "withdraw-coin-r1",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.contract = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:5\" } ] }",
+      .details.deposit.transaction_id = 424210,
+      .details.deposit.refund_deadline = { 60LL * 1000 * 1000 } /* 60 s */,
+    },
+    /* Run transfers. Should do nothing as refund deadline blocks it */
+    { .oc = OC_RUN_AGGREGATOR,
+      .label = "run-aggregator" },
+    /* Trigger refund */
+    { .oc = OC_REFUND,
+      .label = "refund-ok",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.refund.amount = "EUR:5",
+      .details.refund.fee = "EUR:0.01",
+      .details.refund.deposit_ref = "deposit-refund-1",
+      .details.refund.rtransaction_id = 1
+    },
+    /* Spend 4.99 EUR of the refunded 4.99 EUR coin (1ct gone due to refund)
+       (merchant would receive EUR:4.98 due to 1 ct deposit fee) */
+    { .oc = OC_DEPOSIT,
+      .label = "deposit-refund-2",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.deposit.amount = "EUR:4.99",
+      .details.deposit.coin_ref = "withdraw-coin-r1",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.contract = "{ \"items\" : [ { \"name\":\"more ice cream\", \"value\":\"EUR:5\" } ] }",
+      .details.deposit.transaction_id = 424211,
+    },
+    /* Run transfers. This will do the transfer as refund deadline was 0 */
+    { .oc = OC_RUN_AGGREGATOR,
+      .label = "run-aggregator" },
+    /* Run failing refund, as past deadline & aggregation */
+    { .oc = OC_REFUND,
+      .label = "refund-fail",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.refund.amount = "EUR:4.99",
+      .details.refund.fee = "EUR:0.01",
+      .details.refund.deposit_ref = "deposit-refund-2",
+      .details.refund.rtransaction_id = 2
+    },
 
 #endif
 

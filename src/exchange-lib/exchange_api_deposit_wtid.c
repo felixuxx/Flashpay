@@ -291,17 +291,12 @@ TALER_EXCHANGE_deposit_wtid (struct TALER_EXCHANGE_Handle *exchange,
   deposit_wtid_obj = json_pack ("{s:o, s:o," /* H_wire, H_contract */
                                 " s:o, s:I," /* coin_pub, transaction_id */
                                 " s:o, s:o}", /* merchant_pub, merchant_sig */
-                                "H_wire", GNUNET_JSON_from_data (h_wire,
-                                                                sizeof (struct GNUNET_HashCode)),
-                                "H_contract", GNUNET_JSON_from_data (h_contract,
-                                                                    sizeof (struct GNUNET_HashCode)),
-                                "coin_pub", GNUNET_JSON_from_data (coin_pub,
-                                                                  sizeof (*coin_pub)),
+                                "H_wire", GNUNET_JSON_from_data_auto (h_wire),
+                                "H_contract", GNUNET_JSON_from_data_auto (h_contract),
+                                "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
                                 "transaction_id", (json_int_t) transaction_id,
-                                "merchant_pub", GNUNET_JSON_from_data (&dtp.merchant,
-                                                                      sizeof (struct TALER_MerchantPublicKeyP)),
-                                "merchant_sig", GNUNET_JSON_from_data (&merchant_sig,
-                                                                      sizeof (merchant_sig)));
+                                "merchant_pub", GNUNET_JSON_from_data_auto (&dtp.merchant),
+                                "merchant_sig", GNUNET_JSON_from_data_auto (&merchant_sig));
 
   dwh = GNUNET_new (struct TALER_EXCHANGE_DepositWtidHandle);
   dwh->exchange = exchange;

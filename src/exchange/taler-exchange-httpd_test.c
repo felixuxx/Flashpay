@@ -91,7 +91,7 @@ TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
 				       MHD_HTTP_OK,
 				       "{s:o}",
 				       "output",
-				       GNUNET_JSON_from_data (&hc, sizeof (struct GNUNET_HashCode)));
+				       GNUNET_JSON_from_data_auto (&hc));
 }
 
 
@@ -166,7 +166,7 @@ TMH_TEST_handler_test_encrypt (struct TMH_RequestHandler *rh,
 						 &iv,
 						 out));
   json = GNUNET_JSON_from_data (out,
-			       in_ptr_size);
+                                in_ptr_size);
   GNUNET_free (out);
   GNUNET_JSON_parse_free (spec);
   return TMH_RESPONSE_reply_json_pack (connection,
@@ -232,8 +232,7 @@ TMH_TEST_handler_test_hkdf (struct TMH_RequestHandler *rh,
 		     in_ptr_size,
 		     NULL, 0);
   GNUNET_JSON_parse_free (spec);
-  json = GNUNET_JSON_from_data (&hc,
-			       sizeof (struct GNUNET_HashCode));
+  json = GNUNET_JSON_from_data_auto (&hc);
   return TMH_RESPONSE_reply_json_pack (connection,
 				       MHD_HTTP_OK,
 				       "{s:o}",
@@ -303,8 +302,7 @@ TMH_TEST_handler_test_ecdhe (struct TMH_RequestHandler *rh,
 				       MHD_HTTP_OK,
 				       "{s:o}",
 				       "ecdh_hash",
-				       GNUNET_JSON_from_data (&hc,
-							     sizeof (hc)));
+				       GNUNET_JSON_from_data_auto (&hc));
 }
 
 
@@ -388,11 +386,9 @@ TMH_TEST_handler_test_eddsa (struct TMH_RequestHandler *rh,
 				       MHD_HTTP_OK,
 				       "{s:o, s:o}",
 				       "eddsa_pub",
-				       GNUNET_JSON_from_data (&pub,
-							     sizeof (pub)),
+				       GNUNET_JSON_from_data_auto (&pub),
 				       "eddsa_sig",
-				       GNUNET_JSON_from_data (&sig,
-							     sizeof (sig)));
+				       GNUNET_JSON_from_data_auto (&sig));
 }
 
 
@@ -579,8 +575,7 @@ TMH_TEST_handler_test_transfer (struct TMH_RequestHandler *rh,
 				       MHD_HTTP_OK,
 				       "{s:o}",
 				       "secret",
-				       GNUNET_JSON_from_data (&secret,
-							     sizeof (secret)));
+				       GNUNET_JSON_from_data_auto (&secret));
 }
 
 

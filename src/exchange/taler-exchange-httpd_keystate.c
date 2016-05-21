@@ -148,8 +148,7 @@ denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
   return
     json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                "master_sig",
-               GNUNET_JSON_from_data (&dki->signature,
-                                     sizeof (struct GNUNET_CRYPTO_EddsaSignature)),
+               GNUNET_JSON_from_data_auto (&dki->signature),
                "stamp_start",
                GNUNET_JSON_from_time_abs (GNUNET_TIME_absolute_ntoh (dki->properties.start)),
                "stamp_expire_withdraw",
@@ -365,11 +364,9 @@ sign_key_issue_to_json (const struct TALER_ExchangeSigningKeyValidityPS *ski)
                "stamp_end",
                GNUNET_JSON_from_time_abs (GNUNET_TIME_absolute_ntoh (ski->end)),
                "master_sig",
-               GNUNET_JSON_from_data (&ski->signature,
-                                      sizeof (struct TALER_MasterSignatureP)),
+               GNUNET_JSON_from_data_auto (&ski->signature),
                "key",
-               GNUNET_JSON_from_data (&ski->signkey_pub,
-                                      sizeof (struct TALER_ExchangePublicKeyP)));
+               GNUNET_JSON_from_data_auto (&ski->signkey_pub));
 }
 
 
@@ -463,18 +460,15 @@ auditor_to_json (const struct TALER_AuditorPublicKeyP *apub,
     json_array_append_new (ja,
                            json_pack ("{s:o, s:o}",
                                       "denom_pub_h",
-                                      GNUNET_JSON_from_data (&dki[i]->denom_hash,
-                                                            sizeof (struct GNUNET_HashCode)),
+                                      GNUNET_JSON_from_data_auto (&dki[i]->denom_hash),
                                       "auditor_sig",
-                                      GNUNET_JSON_from_data (asigs[i],
-                                                             sizeof (struct TALER_AuditorSignatureP))));
+                                      GNUNET_JSON_from_data_auto (asigs[i])));
   return
     json_pack ("{s:o, s:s, s:o}",
                "denomination_keys", ja,
                "auditor_url", auditor_url,
                "auditor_pub",
-               GNUNET_JSON_from_data (apub,
-                                     sizeof (struct TALER_AuditorPublicKeyP)));
+               GNUNET_JSON_from_data_auto (apub));
 }
 
 
@@ -704,16 +698,13 @@ TMH_KS_acquire_ (const char *location)
 
     keys = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                       "master_public_key",
-                      GNUNET_JSON_from_data (&TMH_master_public_key,
-                                            sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)),
+                      GNUNET_JSON_from_data_auto (&TMH_master_public_key),
                       "signkeys", key_state->sign_keys_array,
                       "denoms", key_state->denom_keys_array,
                       "auditors", key_state->auditors_array,
                       "list_issue_date", GNUNET_JSON_from_time_abs (key_state->reload_time),
-                      "eddsa_pub", GNUNET_JSON_from_data (&key_state->current_sign_key_issue.issue.signkey_pub,
-                                                         sizeof (struct TALER_ExchangePublicKeyP)),
-                      "eddsa_sig", GNUNET_JSON_from_data (&sig,
-                                                         sizeof (struct TALER_ExchangeSignatureP)));
+                      "eddsa_pub", GNUNET_JSON_from_data_auto (&key_state->current_sign_key_issue.issue.signkey_pub),
+                      "eddsa_sig", GNUNET_JSON_from_data_auto (&sig));
     GNUNET_assert (NULL != keys);
     key_state->auditors_array = NULL;
     key_state->sign_keys_array = NULL;

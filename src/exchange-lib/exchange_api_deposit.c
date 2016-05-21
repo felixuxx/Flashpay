@@ -469,22 +469,17 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                            " s:o}",     /* coin_sig */
                            "f", TALER_JSON_from_amount (amount),
                            "wire", wire_details,
-                           "H_wire", GNUNET_JSON_from_data (&h_wire,
-                                                           sizeof (h_wire)),
-                           "H_contract", GNUNET_JSON_from_data (h_contract,
-                                                               sizeof (struct GNUNET_HashCode)),
-                           "coin_pub", GNUNET_JSON_from_data (coin_pub,
-                                                             sizeof (*coin_pub)),
+                           "H_wire", GNUNET_JSON_from_data_auto (&h_wire),
+                           "H_contract", GNUNET_JSON_from_data_auto (h_contract),
+                           "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
                            "denom_pub", GNUNET_JSON_from_rsa_public_key (denom_pub->rsa_public_key),
                            "ub_sig", GNUNET_JSON_from_rsa_signature (denom_sig->rsa_signature),
                            "timestamp", GNUNET_JSON_from_time_abs (timestamp),
                            "transaction_id", (json_int_t) transaction_id,
-                           "merchant_pub", GNUNET_JSON_from_data (merchant_pub,
-                                                                 sizeof (*merchant_pub)),
+                           "merchant_pub", GNUNET_JSON_from_data_auto (merchant_pub),
                            "refund_deadline", GNUNET_JSON_from_time_abs (refund_deadline),
                            "edate", GNUNET_JSON_from_time_abs (wire_deadline),
-                           "coin_sig", GNUNET_JSON_from_data (coin_sig,
-                                                             sizeof (*coin_sig))
+                           "coin_sig", GNUNET_JSON_from_data_auto (coin_sig)
                            );
 
   dh = GNUNET_new (struct TALER_EXCHANGE_DepositHandle);
