@@ -693,9 +693,10 @@ resumed at any step.  Commitments to disk are cumulative, that is an
 additional commitment does not erase the previously committed
 information.  Keys and thus coins always have a well-known expiration
 date; information committed to disk can be discarded after the
-expiration date of the respective public key.  Customers can also
-discard information once the respective coins have been fully spent,
-and merchants may discard information once payments from the exchange have
+expiration date of the respective public key.  
+Customers may discard information once the respective coins have been
+fully spent, so long as refunds are not required.  
+Merchants may discard information once payments from the exchange have
 been received, assuming the records are also no longer needed for tax
 purposes.  The exchange's bank transfers dealing in traditional currency
 are expected to be recorded for tax authorities to ensure taxability.
@@ -705,6 +706,14 @@ are expected to be recorded for tax authorities to ensure taxability.
 Let $G$ be the generator of an elliptic curve.  To withdraw anonymous
 digital coins, the customer performs the following interaction with
 the exchange:
+
+% FIXME: We say withdrawal key in this document, but say reserve key in
+% others, so probably withdrawal key should be renamed to reserve key.
+
+% FIXME: These steps occur at very different points in time, so probably
+% they should be restructured into more of a protocol discription. 
+% It does create some confusion, like is a withdrawal key semi-ephemeral
+% like a linking key?
 
 \begin{enumerate}
   \item The customer identifies a exchange with an auditor-approved
@@ -752,6 +761,9 @@ for a transaction in which the customer spends a coin $C := (c_s, C_p)$
 with signature $\widetilde{C} := S_K(C_p)$
  where $K$ is the exchange's demonination key.
 
+% FIXME: Again, these steps occur at different points in time, maybe
+% that's okay, but refresh is slightly different.
+
 \begin{enumerate}
 \item\label{contract}
   Let $\vec{D} := D_1, \ldots, D_n$ be the list of exchanges accepted by
@@ -790,7 +802,7 @@ in practice a customer can use multiple coins from the same exchange where
 the total value adds up to $f$ by running the following steps for
 each of the coins.  There is a risk of metadata leakage if a customer
 acquires a coin in responce to the merchant, or if a customer uses
-coings issued by multiple exchanges together.
+coins issued by multiple exchanges together.
 
 If a transaction is aborted after Step~\ref{deposit},
 subsequent transactions with the same coin could be linked to the coin,
@@ -841,6 +853,8 @@ extension where multiple fresh coins are generated a the same time to
 enable giving precise change matching any amount.
 In the protocol, $\kappa \ge 3$ is a security parameter and $G$ is the
 generator of the elliptic curve.
+
+% FIXME: I'm explicit about the rounds in postquantum.tex
 
 \begin{enumerate}
   \item For each $i = 1,\ldots,\kappa$, the customer randomly generates
@@ -904,6 +918,8 @@ generator of the elliptic curve.
 %TODO: Explain, especially subtleties regarding session key / the spoofing attack that requires signature.
 
 \subsection{Linking}
+
+% FIXME: What is \mathtt{link} ?
 
 For a coin that was successfully refreshed, the exchange responds to a
 request $S_{C'}(\mathtt{link})$ with $(T^{(\gamma)}_p$, $E^{(\gamma)},
@@ -1026,8 +1042,8 @@ withdrawals, which we believe is a better trade-off than the
 problematic escrow systems where the necessary intransparency
 actually facilitates voluntary cooperation between the exchange and
 criminals~\cite{sander1999escrow} and where state can selectively
-deanonymize activists to support the deep state's quest for absolute
-security.
+deanonymize activists to support the deep state's quixotic pursute of
+absolute security.
 
 \subsection{Offline Payments}
 
