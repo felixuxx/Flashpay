@@ -231,7 +231,7 @@ A customer transfers currency from a coin to a merchant by cryptographically
 signing a deposit message with this private key.  This deposit message
 specifies the fraction of the coin's value to be paid to the merchant.
 A key contribution of Taler is the {\em refresh} protocol, which enables
-a customer to exchange the residual value of the exchanged coin for
+a customer to exchange the residual value of a partially spent coin for
 unlinkable freshly anonymized change.
 
 Taler exchanges ensure that all transactions involving the same coin
@@ -594,7 +594,7 @@ to the exchange are orthogonal to the rest of the system, and
 %acknowledges that primitive accumulation~\cite{engels1844} predates
 %the system and that a secure method to authenticate owners exists.
 
-After a coin is exchanged, the customer is the only entity that knows the
+After a coin is issued, the customer is the only entity that knows the
 private key of the coin, making him the \emph{owner} of the coin.
 The coin can be identified by the exchange by its public key; however, due
 to the use of blind signatures, the exchange does not learn the public key
@@ -743,7 +743,7 @@ withdraw funds, those can also be used with Taler.
 \subsection{Exact and partial spending}
 
 A customer can spend coins at a merchant, under the condition that the
-merchant trusts the specific exchange that exchanged the coin.  Merchants are
+merchant trusts the specific exchange that issued the coin.  Merchants are
 identified by their key $M := (m_s, M_p)$ where the public key $M_p$
 must be known to the customer a priori.
 
@@ -765,7 +765,7 @@ with signature $\widetilde{C} := S_K(C_p)$
   $r$ is a random nonce.  The merchant commits $\langle \mathcal{A} \rangle$
   to disk and sends $\mathcal{A}$ to the customer.
 \item\label{deposit}
-  The customer should already possess a coin exchanged by a exchange that is
+  The customer should already possess a coin issued by a exchange that is
   accepted by the merchant, meaning $K$ should be publicly signed by
   some $D_j \in \{D_1, D_2, \ldots, D_n\}$, and has a value $\geq f$.
 \item  The customer generates a \emph{deposit-permission} $\mathcal{D} :=
@@ -913,7 +913,7 @@ This allows the owner of the melted coin to also obtain the private
 key of the new coin, even if the refreshing protocol was illicitly
 executed with the help of another party who generated $\vec{c_s}$ and only
 provided $\vec{C_p}$ and other required information to the old owner.
-As a result, linking ensures that access to the new coins exchanged by
+As a result, linking ensures that access to the new coins issued in
 the refresh protocol is always {\em shared} with the owner of the
 melted coins.  This makes it impossible to abuse the refresh protocol
 for {\em transactions}.
