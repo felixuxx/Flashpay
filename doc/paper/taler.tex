@@ -384,21 +384,21 @@ reduce the computational burden on the exchange.
 
 \section{Design}
 
-The payment system we propose is built on the blind signature
-primitive proposed by Chaum, but extended with additional
-constructions to provide unlinkability, online fraud detection and
-taxability.
+We have built a payment system based on the blind signature primitive
+discovered by Chaum, but extended with additional constructions to
+provide unlinkabile chain, online fraud detection and taxability.
 
 As with Chaum, the Taler system comprises three principal types of
 actors (Figure~\ref{fig:cmm}): The \emph{customer} is interested in
 receiving goods or services from the \emph{merchant} in exchange for
 payment.  When making a transaction, both the customer and the
-merchant must agree on the same \emph{exchange}, which serves as an
-intermediary for the financial transaction between the two.  The exchange
-is responsible for allowing the customer to obtain the anonymous
-digital currency and for enabling the merchant to convert the
-digital coins back to some traditional currency.  The \emph{auditor}
-assures customers and merchants that the exchange operates correctly.
+merchant use the same \emph{exchange}, known as the mint in Chaum's
+work, which serves as an intermediary for the financial transaction
+between the two.  The exchange is responsible for allowing the customer
+to obtain the anonymous digital currency and for enabling the merchant
+to convert the digital coins back to some traditional currency.
+In addition, we describe an \emph{auditor} who assures customers and
+merchants that the exchange operates correctly.
 
 \subsection{Security model}
 
@@ -414,77 +414,78 @@ communication channel to both the exchange and the merchant, such as Tor.
 
 The exchange is trusted to hold funds of its customers and to forward them
 when receiving the respective deposit instructions from the merchants.
-Customer and merchant can have some assurances about the exchange's
-liquidity and operation, as the exchange has proven reserves, is subject
-to the law, and can have its business regularly audited
- by a government or third party.
-Regular audits of the exchange's accounts should reveal any possible fraud
-before the exchange is allowed to destroy the corresponding accumulated
-cryptographic proofs and book its fees as profits.
-%
+Customer and merchant can have assurances about the exchange's liquidity
+and operation though published audits by government or third parties.
+If sufficently regular, audits of the exchange's accounts should reveal any
+possible fraud before the exchange is allowed to destroy the corresponding
+accumulated cryptographic proofs and book its fees as profits.
+
 The merchant is trusted to deliver the service or goods to the
 customer upon receiving payment.  The customer can seek legal relief
 to achieve this, as he must get cryptographic proofs of the contract
 and that he paid his obligations.
+
+Neither the merchant nor the customer have any ability to {\em effectively}
+defraud the exchange or the state collecting taxes.  Here, ``effectively''
+means that the expected return for fraud is negative.
 %
-Neither the merchant nor the customer may have any ability to {\em
-  effectively} defraud the exchange or the state collecting taxes.  Here,
-``effectively'' means that the expected return for fraud is negative.
-In particular, Taler employs a full domain hash (FDH) with RSA signatures
-so that ``one-more forgery'' is hard assuming the RSA known-target
-inversion problem is hard.\cite[Theorem12]{RSA-HDF-KTIvCTI}
-% \cite[Theorem 6.2]{OneMoreInversion}
 Note that customers do not need to be trusted in any way, and that in
 particular it is never necessary for anyone to try to recover funds
 from customers using legal means.
 
-
-
-
-
 \subsection{Taxability and Entities}
 
-As electronic coins are trivially copied between machines, we should
-clarify what kinds of operations can even be expected to be taxed.
-After all, without intrusive measures to take away control of the
-computing platform from its users, copying an electronic wallet from
-one computer to another can hardly be prevented by a payment system.
-Furthermore, it would also hardly be appropriate to tax the moving of
-funds between two computers owned by the same entity.  We thus
+Taler is supposed to ensure that the state can tax appropriate
+{\em transactions}.  We must therefore clarify what constitutes a
+transactions that can be expected to be taxed.
+
+We necessarily assume both that coins can freely be copied between 
+machines, and that coin deletion cannot be verified.
+Avoiding these assumptions would require extreme measures, like custom
+hardware supplied by the exchange, and tends to be incompatable with
+our annonymity.  Furthermore, it would inappropriate to tax the moving
+of funds between two computers owned by the same entity.  We thus
 need to clarify which kinds of transfers we expect to tax.
 
-Taler is supposed to ensure that the state can tax {\em transactions}.
-A {\em transaction} is a transfer where it is assured that one entity
-gains control over funds while at the same time another entity looses
-control over those funds.  We further restrict transactions to apply
-only to the transfer of funds between {\em mutually distrustful}
-entities.  Two entities are assumed to be mutually distrustful if they
-are unwilling to share control over coins.  If a private key is shared
-between two entities, then both entities have equal access to the
-credentials represented by the private key.  In a payment system this
-means that either entity could spent the associated funds.  Assuming
-the payment system has effective double-spending detection, this means
-that either entity has to constantly fear that the funds might no
-longer be available to it.  It follows that sharing coins by copying
-a private key implies mutual trust between the two parties, in which
-case Taler will treat them as the same entity.
+We view ownership of a coin's private key as a ``capability'' to spend
+the funds.  A transaction occurs when a merchant entity gains control
+over the funds while at the same time a customer entity looses control
+over the funds in a manor verifiable to the merchant.  In other words, 
+we restrict transactions to those transfer of funds where the recipient
+merchant is distrustful of the spending customer, and requires
+verification that they lost the capability to spend the funds.
+
+Conversely, if a coin's private key is shared between two entities,
+then both entities have equal access to the credentials represented by
+the private key.  In a payment system, this means that either entity
+could spent the associated funds.  
+Assuming the payment system has effective double-spending detection,
+this means that either entity has to constantly fear that the funds
+might no longer be available to it.  
+It follows that sharing coins by copying a private key implies mutual
+trust between the two parties, in which case Taler will treat them
+as the same entity.
+
 In Taler, making funds available by copying a private key and thus
 sharing control is {\bf not} considered a {\em transaction} and
 thus {\bf not} recorded for taxation.
-
-Taler ensures taxability only when some entity acquires exclusive
-control over the value of digital coins, which requires an interaction
-with the exchange.  For such transactions, the state can obtain information
-from the exchange, or a bank, that identifies the entity that received the
+Taler does however ensure taxability only when a merchant entity
+acquires exclusive control over the value represented by a digital
+coins, which requires an interaction with the exchange.  
+In these taxable transactions, 
+For such transactions, the state can obtain information from the
+exchange, or a bank, that identifies the entity that received the
 digital coins as well as the exact value of those coins.
-Taler also allows the exchange, and hence the state, to learn the value of
-digital coins withdrawn by a customer---but not how, where, or when
+Taler also allows the exchange, and hence the state, to learn the value
+of digital coins withdrawn by a customer---but not how, where, or when
 they were spent.
 
 \subsection{Anonymity}
 
 An anonymous communication channel such as Tor~\cite{tor-design} is
-used for all communication between the customer and the merchant.
+used for all communication between the customer and the merchant,
+as well as for refreshing tainted coins with the exchange and for
+retrieving the exchange's denomination key.
 Ideally, the customer's anonymity is limited only by this channel;
 however, the payment system does additionally reveal that the customer
 is one of the patrons of the exchange.
@@ -495,15 +496,15 @@ possibly even when dealing with physical goods \cite{apod}.
 We consider information leakage specific to the business logic to be
 outside of the scope of the design of Taler.
 
-Ideally, customer should use an anonymous communication channel with
-the exchange to avoid leaking IP address information; however, the exchange
-would typically learn the customer's identity from the wire transfer
-that funds the customer's withdraw anonymous digital coins.
-In fact, this is desirable as there might be rules and regulations
-designed to limit the amount of anonymous digital cash that an
-individual customer can withdraw in a given time period, similar to
-how states today sometimes impose limits on cash
-withdrawals~\cite{france2015cash,greece2015cash}.
+Aside from refreshing and obtaining denomination key, the customer
+should ideally use an anonymous communication channel with the exchange
+to obscure their IP address for location privacy, but naturally 
+the exchange would typically learn the customer's identity from the wire
+transfer that funds the customer's withdrawal of anonymous digital coins.
+We believe this is desirable as there might be laws, or bank policies,
+that limit the amount of anonymous digital cash that an individual
+customer can withdraw in a given time period, similar to how states today
+sometimes impose limits on cash withdrawals~\cite{france2015cash,greece2015cash}.
 Taler is only anonymous with respect to {\em payments}, as the exchange
 will be unable to link the known identity of the customer that withdrew
 anonymous digital currency to the {\em purchase} performed later at the
@@ -550,6 +551,7 @@ records that the exchange must retain and search to detect double-spending
 attempts.  Furthermore, the exchange is expected to use each coin signing
 key only for a limited number of coins.
 % for example by limiting its use to sign coins to a week or a month.
+
 In this way, if a private coin signing key were to be compromised,
 the exchange would detect this once more coins were redeemed than the total
 that was signed into existence using that coin signing key.
@@ -558,11 +560,19 @@ unspent coins that were signed with the compromised private key,
 while refusing further anonymous transactions involving those coins.
 As a result, the financial damage of losing a private signing key can be
 limited to at most twice the amount originally signed with that key.
-To ensure that the exchange does not enable deanonymization of users by
-signing each coin with a fresh coin signing key, the exchange must publicly
-announce the coin signing keys in advance.  Those announcements are
-expected to be signed with an off-line long-term private {\em master
-signing key} of the exchange and the auditor.
+
+As a technical matter, Taler employs a full domain hash (FDH) with
+RSA signatures so that ``one-more forgery'' is provably hard assuming the
+RSA known-target inversion problem is hard \cite[Theorem 12]{RSA-HDF-KTIvCTI}.
+% \cite[Theorem 6.2]{OneMoreInversion}
+
+We must also ensure that the exchange cannot deanonymize users by 
+signing each coin with a fresh denomination key.  For this, we require
+that exchanges publicly announce their denomination keys in advance.  
+These announcements are expected to be signed with an off-line
+long-term private {\em master signing key} of the exchange and the
+auditor.  We additionally presume that customers should obtain these
+announcements using Tor. 
 
 Before a customer can withdraw a coin from the exchange,
 he has to pay the exchange the value of the coin, as well as processing fees.
@@ -591,6 +601,7 @@ to the use of blind signatures, the exchange does not learn the public key
 during the exchange process.  Knowledge of the private key of the coin
 enables the owner to spent the coin.  If the private key is shared
 with others, they also become owners of the coin.
+
 
 \subsection{Coin spending}
 
