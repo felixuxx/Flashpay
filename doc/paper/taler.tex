@@ -49,7 +49,7 @@
 % - refreshing = customer-exchange-customer
 % - dirty coin = coin with exposed public key
 % - fresh coin = coin that was refreshed or is new
-% - coin signing key = exchange's online key used to (blindly) sign coin
+% - denomination key = exchange's online key used to (blindly) sign coin
 % - message signing key = exchange's online key to sign exchange messages
 % - exchange master key = exchange's key used to sign other exchange keys
 % - owner = entity that knows coin private key
@@ -540,21 +540,21 @@ to the state.
 
 A \emph{coin} in Taler is a public-private key pair which derives its
 financial value from a signature over the coin's public key by a exchange.
-The exchange is expected to have multiple {\em coin signing key} pairs
+The exchange is expected to have multiple {\em denomination key} pairs
 available for signing, each representing a different coin
 denomination.
 
-These coin signing keys have an expiration date, before which any coins
+These denomination keys have an expiration date, before which any coins
 signed with it must be spent or refreshed.  This allows the exchange to
 eventually discard records of old transactions, thus limiting the
 records that the exchange must retain and search to detect double-spending
-attempts.  Furthermore, the exchange is expected to use each coin signing
+attempts.  Furthermore, the exchange is expected to use each denomination
 key only for a limited number of coins.
 % for example by limiting its use to sign coins to a week or a month.
 
-In this way, if a private coin signing key were to be compromised,
+In this way, if a private denomination key were to be compromised,
 the exchange would detect this once more coins were redeemed than the total
-that was signed into existence using that coin signing key.
+that was signed into existence using that denomination key.
 In this case, the exchange could allow authentic customers to exchange their
 unspent coins that were signed with the compromised private key,
 while refusing further anonymous transactions involving those coins.
@@ -638,7 +638,7 @@ The owner of such a {\em dirty} coin might therefore want to exchange it
 for a {\em fresh} coin to ensure unlinkability with future transactions.
 % with the previous operation.
 Even if a coin is not dirty, the owner of a coin may want to exchange it
-if the respective coin signing key is about to expire.  All of these
+if the respective denomination key is about to expire.  All of these
 operations are supported with the {\em coin refreshing protocol}, which
 allows the owner of a coin to {\em melt} it for fresh coins of the same
 value with a new public-private key pairs.  Refreshing does not use the
@@ -682,7 +682,7 @@ in a different context.
 
 The exchange has an {\em online message signing key} used for signing
 messages, as opposed to coins.  The exchange's long-term offline key is used
-to certify both the coin signing keys and the online message signing key
+to certify both the denomination keys and the online message signing key
 of the exchange.  The exchange's long-term offline key is assumed to be known to
 both customers and merchants and is certified by the auditors.
 
@@ -708,7 +708,7 @@ the exchange:
 
 \begin{enumerate}
   \item The customer identifies a exchange with an auditor-approved
-        coin signing public-private key pair $K := (K_s, K_p)$
+        denomination public-private key pair $K := (K_s, K_p)$
         and randomly generates:
         \begin{itemize}
            \item withdrawal key $W := (w_s,W_p)$ with private key $w_s$ and public key $W_p$,
@@ -1396,9 +1396,9 @@ indicate the application of a function $f$ to one or more arguments. Records of
 data being committed to disk are represented in between $\langle\rangle$.
 
 \begin{description}
-  \item[$K_s$]{Private (RSA) key of the exchange used for coin signing}
-  \item[$K_p$]{Public (RSA) key corresponding to $K_s$}
-  \item[$K$]{Public-priate (RSA) coin signing key pair $K := (K_s, K_p)$}
+  \item[$K_s$]{Denomination private (RSA) key of the exchange used for coin signing}
+  \item[$K_p$]{Denomination public (RSA) key corresponding to $K_s$}
+  \item[$K$]{Public-priate (RSA) denomination key pair $K := (K_s, K_p)$}
   \item[$b$]{RSA blinding factor for RSA-style blind signatures}
   \item[$B_b()$]{RSA blinding over the argument using blinding factor $b$}
   \item[$U_b()$]{RSA unblinding of the argument using blinding factor $b$}
