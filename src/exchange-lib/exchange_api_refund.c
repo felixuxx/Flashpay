@@ -243,12 +243,8 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
   json_t *refund_obj;
   CURL *eh;
 
-  if (GNUNET_YES !=
-      MAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
+  GNUNET_assert (GNUNET_YES ==
+		 MAH_handle_is_ready (exchange));
   rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
   rr.purpose.size = htonl (sizeof (struct TALER_RefundRequestPS));
   rr.h_contract = *h_contract;

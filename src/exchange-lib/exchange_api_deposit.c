@@ -406,42 +406,21 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
 
   (void) GNUNET_TIME_round_abs (&wire_deadline);
   (void) GNUNET_TIME_round_abs (&refund_deadline);
-  if (refund_deadline.abs_value_us > wire_deadline.abs_value_us)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-  if (GNUNET_YES !=
-      MAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
+  GNUNET_assert (refund_deadline.abs_value_us <= wire_deadline.abs_value_us);
+  GNUNET_assert (GNUNET_YES ==
+		 MAH_handle_is_ready (exchange));
   /* initialize h_wire */
-  if (GNUNET_OK !=
-      TALER_JSON_hash (wire_details,
-                       &h_wire))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
+  GNUNET_assert (GNUNET_OK ==
+		 TALER_JSON_hash (wire_details,
+				  &h_wire));
   key_state = TALER_EXCHANGE_get_keys (exchange);
   dki = TALER_EXCHANGE_get_denomination_key (key_state,
                                              denom_pub);
-  if (NULL == dki)
-  {
-    TALER_LOG_WARNING ("Denomination key unknown to exchange\n");
-    return NULL;
-  }
-  if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&amount_without_fee,
-                             amount,
-                             &dki->fee_deposit))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-
+  GNUNET_assert (NULL != dki);
+  GNUNET_assert (GNUNET_SYSERR !=
+		 TALER_amount_subtract (&amount_without_fee,
+					amount,
+					&dki->fee_deposit));
   if (GNUNET_OK !=
       verify_signatures (dki,
                          amount,
@@ -523,10 +502,10 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                                    strlen (dh->json_enc)));
   ctx = MAH_handle_to_context (exchange);
   dh->job = GNUNET_CURL_job_add (ctx,
-                         eh,
-                         GNUNET_YES,
-                         &handle_deposit_finished,
-                         dh);
+				 eh,
+				 GNUNET_YES,
+				 &handle_deposit_finished,
+				 dh);
   return dh;
 }
 
