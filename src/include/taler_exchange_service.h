@@ -725,7 +725,7 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                                  const struct TALER_EXCHANGE_DenomPublicKey *pk,
                                  const struct TALER_ReservePrivateKeyP *reserve_priv,
                                  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                                 const struct TALER_DenominationBlindingKey *blinding_key,
+                                 const struct TALER_DenominationBlindingKeyP *blinding_key,
                                  TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
                                  void *res_cb_cls);
 

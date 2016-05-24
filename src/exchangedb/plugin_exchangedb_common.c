@@ -73,7 +73,6 @@ common_free_link_data_list (void *cls,
   while (NULL != ldl)
   {
     next = ldl->next;
-    GNUNET_free (ldl->link_data_enc);
     GNUNET_free (ldl);
     ldl = next;
   }
@@ -147,7 +146,6 @@ common_free_melt_commitment (void *cls,
       {
         /* NOTE: 'non_null' because this API is used also
            internally to clean up the struct on failures! */
-        GNUNET_free_non_null (mc->commit_coins[k][i].refresh_link);
         GNUNET_free_non_null (mc->commit_coins[k][i].coin_ev);
       }
       GNUNET_free (mc->commit_coins[k]);

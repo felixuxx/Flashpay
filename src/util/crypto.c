@@ -227,41 +227,25 @@ TALER_transfer_encrypt (const struct TALER_LinkSecretP *secret,
  *
  * @param input encrypted refresh link data
  * @param secret shared secret to use for decryption
- * @return NULL on error
+ * @param[out] output where to write decrypted data
  */
-struct TALER_RefreshLinkDecrypted *
-TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
-                       const struct TALER_LinkSecretP *secret)
+void
+TALER_refresh_decrypt (const struct TALER_RefreshLinkEncryptedP *input,
+                       const struct TALER_LinkSecretP *secret,
+		       struct TALER_RefreshLinkDecryptedP *output)
 {
-  struct TALER_RefreshLinkDecrypted *ret;
   struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
   struct GNUNET_CRYPTO_SymmetricSessionKey skey;
-  size_t buf_size = input->blinding_key_enc_size
-    + sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey);
-  char buf[buf_size];
 
-  GNUNET_assert (input->blinding_key_enc == (const char *) &input[1]);
   derive_refresh_key (secret, &iv, &skey);
-  if (buf_size !=
-      GNUNET_CRYPTO_symmetric_decrypt (input->coin_priv_enc,
-                                       buf_size,
-                                       &skey,
-                                       &iv,
-                                       buf))
-    return NULL;
-  ret = GNUNET_new (struct TALER_RefreshLinkDecrypted);
-  memcpy (&ret->coin_priv,
-          buf,
-          sizeof (struct TALER_CoinSpendPrivateKeyP));
-  ret->blinding_key.rsa_blinding_key
-    = GNUNET_CRYPTO_rsa_blinding_key_decode (&buf[sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey)],
-                                             input->blinding_key_enc_size);
-  if (NULL == ret->blinding_key.rsa_blinding_key)
-  {
-    GNUNET_free (ret);
-    return NULL;
-  }
-  return ret;
+  GNUNET_assert (sizeof (struct TALER_RefreshLinkEncryptedP) ==
+		 sizeof (struct TALER_RefreshLinkDecryptedP));
+  GNUNET_assert (sizeof (struct TALER_RefreshLinkEncryptedP) ==
+		 GNUNET_CRYPTO_symmetric_decrypt (input,
+						  sizeof (struct TALER_RefreshLinkEncryptedP),
+						  &skey,
+						  &iv,
+						  output));
 }
 
 
@@ -270,106 +254,25 @@ TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
  *
  * @param input plaintext refresh link data
  * @param secret shared secret to use for encryption
- * @return NULL on error (should never happen)
+ * @param[out] output where to write encrypted link data
  */
-struct TALER_RefreshLinkEncrypted *
-TALER_refresh_encrypt (const struct TALER_RefreshLinkDecrypted *input,
-                       const struct TALER_LinkSecretP *secret)
+void
+TALER_refresh_encrypt (const struct TALER_RefreshLinkDecryptedP *input,
+                       const struct TALER_LinkSecretP *secret,
+		       struct TALER_RefreshLinkEncryptedP *output)
 {
-  char *b_buf;
-  size_t b_buf_size;
   struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
   struct GNUNET_CRYPTO_SymmetricSessionKey skey;
-  struct TALER_RefreshLinkEncrypted *ret;
 
   derive_refresh_key (secret, &iv, &skey);
-  b_buf_size = GNUNET_CRYPTO_rsa_blinding_key_encode (input->blinding_key.rsa_blinding_key,
-                                                      &b_buf);
-  ret = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) +
-                       b_buf_size);
-  ret->blinding_key_enc = (const char *) &ret[1];
-  ret->blinding_key_enc_size = b_buf_size;
-  {
-    size_t buf_size = b_buf_size + sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey);
-    char buf[buf_size];
-
-    memcpy (buf,
-            &input->coin_priv,
-            sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey));
-    memcpy (&buf[sizeof (struct GNUNET_CRYPTO_EcdsaPrivateKey)],
-            b_buf,
-            b_buf_size);
-
-    if (buf_size !=
-        GNUNET_CRYPTO_symmetric_encrypt (buf,
-                                         buf_size,
-                                         &skey,
-                                         &iv,
-                                         ret->coin_priv_enc))
-    {
-      GNUNET_free (ret);
-      return NULL;
-    }
-  }
-  return ret;
-}
-
-
-/**
- * Decode encrypted refresh link information from buffer.
- *
- * @param buf buffer with refresh link data
- * @param buf_len number of bytes in @a buf
- * @return NULL on error (@a buf_len too small)
- */
-struct TALER_RefreshLinkEncrypted *
-TALER_refresh_link_encrypted_decode (const char *buf,
-                                     size_t buf_len)
-{
-  struct TALER_RefreshLinkEncrypted *rle;
-
-  if (buf_len < sizeof (struct TALER_CoinSpendPrivateKeyP))
-    return NULL;
-  if (buf_len >= GNUNET_MAX_MALLOC_CHECKED)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-  rle = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) +
-                       buf_len - sizeof (struct TALER_CoinSpendPrivateKeyP));
-  rle->blinding_key_enc = (const char *) &rle[1];
-  rle->blinding_key_enc_size = buf_len - sizeof (struct TALER_CoinSpendPrivateKeyP);
-  memcpy (rle->coin_priv_enc,
-          buf,
-          buf_len);
-  return rle;
-}
-
-
-/**
- * Encode encrypted refresh link information to buffer.
- *
- * @param rle refresh link to encode
- * @param[out] buf_len set number of bytes returned
- * @return NULL on error, otherwise buffer with encoded @a rle
- */
-char *
-TALER_refresh_link_encrypted_encode (const struct TALER_RefreshLinkEncrypted *rle,
-                                     size_t *buf_len)
-{
-  char *buf;
-
-  if (rle->blinding_key_enc_size >= GNUNET_MAX_MALLOC_CHECKED - sizeof (struct TALER_CoinSpendPrivateKeyP))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-  *buf_len = sizeof (struct TALER_CoinSpendPrivateKeyP) + rle->blinding_key_enc_size;
-  buf = GNUNET_malloc (*buf_len);
-  memcpy (buf,
-	  rle->coin_priv_enc,
-          *buf_len);
-  return buf;
+  GNUNET_assert (sizeof (struct TALER_RefreshLinkEncryptedP) ==
+		 sizeof (struct TALER_RefreshLinkDecryptedP));
+  GNUNET_assert (sizeof (struct TALER_RefreshLinkEncryptedP) ==
+		 GNUNET_CRYPTO_symmetric_encrypt (input,
+						  sizeof (struct TALER_RefreshLinkDecryptedP),
+						  &skey,
+						  &iv,
+						  output));
 }
 
 

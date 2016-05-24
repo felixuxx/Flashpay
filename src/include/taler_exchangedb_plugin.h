@@ -442,7 +442,7 @@ struct TALER_EXCHANGEDB_RefreshCommitCoin
    * Encrypted data allowing those able to decrypt it to derive
    * the private keys of the new coins created by the refresh.
    */
-  struct TALER_RefreshLinkEncrypted *refresh_link;
+  struct TALER_RefreshLinkEncryptedP refresh_link;
 
   /**
    * Blinded message to be signed (in envelope), with @e coin_env_size bytes.
@@ -471,7 +471,7 @@ struct TALER_EXCHANGEDB_LinkDataList
    * Link data, used to recover the private key of the coin
    * by the owner of the old coin.
    */
-  struct TALER_RefreshLinkEncrypted *link_data_enc;
+  struct TALER_RefreshLinkEncryptedP link_data_enc;
 
   /**
    * Denomination public key, determines the value of the coin.

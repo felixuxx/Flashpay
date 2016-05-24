@@ -1036,11 +1036,10 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
                                                   cc->coin_ev_size));
       json_object_set_new (cc_json,
                            "coin_priv_enc",
-                           GNUNET_JSON_from_data_auto (cc->refresh_link->coin_priv_enc));
+                           GNUNET_JSON_from_data_auto (cc->refresh_link.coin_priv_enc));
       json_object_set_new (cc_json,
                            "blinding_key_enc",
-                           GNUNET_JSON_from_data (cc->refresh_link->blinding_key_enc,
-                                                  cc->refresh_link->blinding_key_enc_size));
+                           GNUNET_JSON_from_data_auto (&cc->refresh_link.blinding_key_enc));
 
       json_array_append_new (info_commit_k,
                              cc_json);
@@ -1105,9 +1104,7 @@ TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
       obj = json_object ();
       json_object_set_new (obj,
                            "link_enc",
-                           GNUNET_JSON_from_data (pos->link_data_enc->coin_priv_enc,
-                                                 sizeof (struct TALER_CoinSpendPrivateKeyP) +
-                                                 pos->link_data_enc->blinding_key_enc_size));
+                           GNUNET_JSON_from_data_auto (&pos->link_data_enc));
       json_object_set_new (obj,
                            "denom_pub",
                            GNUNET_JSON_from_rsa_public_key (pos->denom_pub.rsa_public_key));

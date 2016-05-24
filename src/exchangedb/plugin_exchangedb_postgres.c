@@ -3064,29 +3064,19 @@ postgres_insert_refresh_commit_coins (void *cls,
                                       uint16_t num_newcoins,
                                       const struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins)
 {
-  char *rle;
-  size_t rle_size;
   PGresult *result;
   unsigned int i;
   uint16_t coin_off;
 
   for (i=0;i<(unsigned int) num_newcoins;i++)
   {
-    rle = TALER_refresh_link_encrypted_encode (commit_coins[i].refresh_link,
-                                               &rle_size);
-    if (NULL == rle)
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
     coin_off = (uint16_t) i;
     {
       struct GNUNET_PQ_QueryParam params[] = {
         GNUNET_PQ_query_param_auto_from_type (session_hash),
         GNUNET_PQ_query_param_uint16 (&cnc_index),
         GNUNET_PQ_query_param_uint16 (&coin_off),
-        GNUNET_PQ_query_param_fixed_size (rle,
-                                         rle_size),
+        GNUNET_PQ_query_param_auto_from_type (&commit_coins[i].refresh_link),
         GNUNET_PQ_query_param_fixed_size (commit_coins[i].coin_ev,
                                          commit_coins[i].coin_ev_size),
         GNUNET_PQ_query_param_end
@@ -3095,7 +3085,6 @@ postgres_insert_refresh_commit_coins (void *cls,
                                        "insert_refresh_commit_coin",
                                        params);
     }
-    GNUNET_free (rle);
     if (PGRES_COMMAND_OK != PQresultStatus (result))
     {
       BREAK_DB_ERR (result);
@@ -3131,8 +3120,6 @@ postgres_free_refresh_commit_coins (void *cls,
 
   for (i=0;i<commit_coins_len;i++)
   {
-    GNUNET_free (commit_coins[i].refresh_link);
-    commit_coins[i].refresh_link = NULL;
     GNUNET_free (commit_coins[i].coin_ev);
     commit_coins[i].coin_ev = NULL;
     commit_coins[i].coin_ev_size = 0;
@@ -3175,9 +3162,6 @@ postgres_get_refresh_commit_coins (void *cls,
     };
     void *c_buf;
     size_t c_buf_size;
-    void *rl_buf;
-    size_t rl_buf_size;
-    struct TALER_RefreshLinkEncrypted *rl;
     PGresult *result;
 
     result = GNUNET_PQ_exec_prepared (session->conn,
@@ -3198,12 +3182,11 @@ postgres_get_refresh_commit_coins (void *cls,
     }
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
-        GNUNET_PQ_result_spec_variable_size ("link_vector_enc",
-                                            &rl_buf,
-                                            &rl_buf_size),
+        GNUNET_PQ_result_spec_auto_from_type ("link_vector_enc",
+					      &commit_coins[i].refresh_link),
         GNUNET_PQ_result_spec_variable_size ("coin_ev",
-                                            &c_buf,
-                                            &c_buf_size),
+					     &c_buf,
+					     &c_buf_size),
         GNUNET_PQ_result_spec_end
       };
 
@@ -3216,17 +3199,6 @@ postgres_get_refresh_commit_coins (void *cls,
       }
     }
     PQclear (result);
-    if (rl_buf_size < sizeof (struct TALER_CoinSpendPrivateKeyP))
-    {
-      GNUNET_free (c_buf);
-      GNUNET_free (rl_buf);
-      postgres_free_refresh_commit_coins (cls, i, commit_coins);
-      return GNUNET_SYSERR;
-    }
-    rl = TALER_refresh_link_encrypted_decode (rl_buf,
-                                              rl_buf_size);
-    GNUNET_free (rl_buf);
-    commit_coins[i].refresh_link = rl;
     commit_coins[i].coin_ev = c_buf;
     commit_coins[i].coin_ev_size = c_buf_size;
   }
@@ -3475,7 +3447,6 @@ postgres_get_link_data_list (void *cls,
                              const struct GNUNET_HashCode *session_hash)
 {
   struct TALER_EXCHANGEDB_LinkDataList *ldl;
-  struct TALER_EXCHANGEDB_LinkDataList *pos;
   int i;
   int nrows;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -3503,45 +3474,34 @@ postgres_get_link_data_list (void *cls,
 
   for (i = 0; i < nrows; i++)
   {
-    struct TALER_RefreshLinkEncrypted *link_enc;
     struct GNUNET_CRYPTO_RsaPublicKey *denom_pub;
     struct GNUNET_CRYPTO_RsaSignature *sig;
-    void *ld_buf;
-    size_t ld_buf_size;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_variable_size ("link_vector_enc",
-                                           &ld_buf,
-                                           &ld_buf_size),
-      GNUNET_PQ_result_spec_rsa_signature ("ev_sig",
-                                           &sig),
-      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                            &denom_pub),
-      GNUNET_PQ_result_spec_end
-    };
+    struct TALER_EXCHANGEDB_LinkDataList *pos;
 
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, i))
-    {
-      PQclear (result);
-      GNUNET_break (0);
-      common_free_link_data_list (cls,
-                                  ldl);
-      return NULL;
-    }
-    if (ld_buf_size < sizeof (struct GNUNET_CRYPTO_EddsaPrivateKey))
-    {
-      PQclear (result);
-      GNUNET_free (ld_buf);
-      common_free_link_data_list (cls,
-                                  ldl);
-      return NULL;
-    }
-    link_enc = TALER_refresh_link_encrypted_decode (ld_buf,
-                                                    ld_buf_size);
-    GNUNET_free (ld_buf);
     pos = GNUNET_new (struct TALER_EXCHANGEDB_LinkDataList);
+    {
+      struct GNUNET_PQ_ResultSpec rs[] = {
+	GNUNET_PQ_result_spec_auto_from_type ("link_vector_enc",
+					      &pos->link_data_enc),
+	GNUNET_PQ_result_spec_rsa_signature ("ev_sig",
+					     &sig),
+	GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+					      &denom_pub),
+	GNUNET_PQ_result_spec_end
+      };
+      
+      if (GNUNET_OK !=
+	  GNUNET_PQ_extract_result (result, rs, i))
+      {
+	PQclear (result);
+	GNUNET_break (0);
+	common_free_link_data_list (cls,
+				    ldl);
+	GNUNET_free (pos);
+	return NULL;
+      }
+    }
     pos->next = ldl;
-    pos->link_data_enc = link_enc;
     pos->denom_pub.rsa_public_key = denom_pub;
     pos->ev_sig.rsa_signature = sig;
     ldl = pos;

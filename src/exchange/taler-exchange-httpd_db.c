@@ -1248,31 +1248,23 @@ check_commitment (struct MHD_Connection *connection,
 
   for (j = 0; j < num_newcoins; j++)
   {
-    struct TALER_RefreshLinkDecrypted *link_data;
+    struct TALER_RefreshLinkDecryptedP link_data;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct GNUNET_HashCode h_msg;
     char *buf;
     size_t buf_len;
-
-    link_data = TALER_refresh_decrypt (commit_coins[j].refresh_link,
-                                       &shared_secret);
-    if (NULL == link_data)
-    {
-      GNUNET_break (0);
-      GNUNET_free (commit_coins);
-      return (MHD_YES == TMH_RESPONSE_reply_internal_error (connection,
-                                                            "Decryption error"))
-          ? GNUNET_NO : GNUNET_SYSERR;
-    }
-
-    GNUNET_CRYPTO_eddsa_key_get_public (&link_data->coin_priv.eddsa_priv,
+    
+    TALER_refresh_decrypt (&commit_coins[j].refresh_link,
+			   &shared_secret,
+			   &link_data);
+    GNUNET_CRYPTO_eddsa_key_get_public (&link_data.coin_priv.eddsa_priv,
                                         &coin_pub.eddsa_pub);
     GNUNET_CRYPTO_hash (&coin_pub,
                         sizeof (struct TALER_CoinSpendPublicKeyP),
                         &h_msg);
     if (0 == (buf_len =
               GNUNET_CRYPTO_rsa_blind (&h_msg,
-                                       link_data->blinding_key.rsa_blinding_key,
+                                       &link_data.blinding_key.bks,
                                        denom_pubs[j].rsa_public_key,
                                        &buf)))
     {
@@ -1283,7 +1275,7 @@ check_commitment (struct MHD_Connection *connection,
                                                             "Blinding error"))
           ? GNUNET_NO : GNUNET_SYSERR;
     }
-
+      
     if ( (buf_len != commit_coins[j].coin_ev_size) ||
          (0 != memcmp (buf,
                        commit_coins[j].coin_ev,

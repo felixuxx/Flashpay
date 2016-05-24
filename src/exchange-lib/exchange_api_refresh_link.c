@@ -91,20 +91,18 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
                          struct TALER_DenominationSignature *sig,
                          struct TALER_DenominationPublicKey *pub)
 {
-  void *link_enc;
-  size_t link_enc_size;
   struct GNUNET_CRYPTO_RsaSignature *bsig;
   struct GNUNET_CRYPTO_RsaPublicKey *rpub;
+  struct TALER_RefreshLinkEncryptedP rle;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_varsize ("link_enc", &link_enc, &link_enc_size),
+    GNUNET_JSON_spec_fixed_auto ("link_enc", &rle),
     GNUNET_JSON_spec_rsa_public_key ("denom_pub", &rpub),
     GNUNET_JSON_spec_rsa_signature ("ev_sig", &bsig),
     GNUNET_JSON_spec_end()
   };
-  struct TALER_RefreshLinkEncrypted *rle;
-  struct TALER_RefreshLinkDecrypted *rld;
+  struct TALER_RefreshLinkDecryptedP rld;
   struct TALER_LinkSecretP secret;
-
+      
   /* parse reply */
   if (GNUNET_OK !=
       GNUNET_JSON_parse (json,
@@ -115,15 +113,6 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
     return GNUNET_SYSERR;
   }
 
-  /* decode and decrypt link data */
-  rle = TALER_refresh_link_encrypted_decode (link_enc,
-                                             link_enc_size);
-  if (NULL == rle)
-  {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    return GNUNET_SYSERR;
-  }
   if (GNUNET_OK !=
       TALER_link_decrypt_secret2 (secret_enc,
                                   trans_pub,
@@ -134,24 +123,17 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
     GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
   }
-  rld = TALER_refresh_decrypt (rle,
-                               &secret);
-  if (NULL == rld)
-  {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    return GNUNET_SYSERR;
-  }
+  TALER_refresh_decrypt (&rle,
+			 &secret,
+			 &rld);
 
   /* extract coin and signature */
-  *coin_priv = rld->coin_priv;
+  *coin_priv = rld.coin_priv;
   sig->rsa_signature
     = GNUNET_CRYPTO_rsa_unblind (bsig,
-                                 rld->blinding_key.rsa_blinding_key,
+                                 &rld.blinding_key.bks,
                                  rpub);
-
   /* clean up */
-  GNUNET_free (rld);
   pub->rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (rpub);
   GNUNET_JSON_parse_free (spec);
   return GNUNET_OK;

@@ -328,7 +328,7 @@ struct Command
       /**
        * Blinding key used for the operation.
        */
-      struct TALER_DenominationBlindingKey blinding_key;
+      struct TALER_DenominationBlindingKeyP blinding_key;
 
       /**
        * Withdraw handle (while operation is running).
@@ -1796,8 +1796,9 @@ interpreter_run (void *cls)
     }
     GNUNET_CRYPTO_eddsa_key_get_public (&cmd->details.reserve_withdraw.coin_priv.eddsa_priv,
                                         &coin_pub.eddsa_pub);
-    cmd->details.reserve_withdraw.blinding_key.rsa_blinding_key
-      = GNUNET_CRYPTO_rsa_blinding_key_create (GNUNET_CRYPTO_rsa_public_key_len (cmd->details.reserve_withdraw.pk->key.rsa_public_key));
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+				&cmd->details.reserve_withdraw.blinding_key,
+				sizeof (cmd->details.reserve_withdraw.blinding_key));
     cmd->details.reserve_withdraw.wsh
       = TALER_EXCHANGE_reserve_withdraw (exchange,
                                      cmd->details.reserve_withdraw.pk,
@@ -2410,11 +2411,6 @@ do_shutdown (void *cls)
       {
         GNUNET_CRYPTO_rsa_signature_free (cmd->details.reserve_withdraw.sig.rsa_signature);
         cmd->details.reserve_withdraw.sig.rsa_signature = NULL;
-      }
-      if (NULL != cmd->details.reserve_withdraw.blinding_key.rsa_blinding_key)
-      {
-        GNUNET_CRYPTO_rsa_blinding_key_free (cmd->details.reserve_withdraw.blinding_key.rsa_blinding_key);
-        cmd->details.reserve_withdraw.blinding_key.rsa_blinding_key = NULL;
       }
       break;
     case OC_DEPOSIT:

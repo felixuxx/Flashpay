@@ -573,24 +573,13 @@ struct TALER_EXCHANGEDB_RefreshCommitCoin *
 PERF_TALER_EXCHANGEDB_refresh_commit_coin_init ()
 {
   struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coin;
-  struct TALER_RefreshLinkEncrypted refresh_link;
 
   commit_coin = GNUNET_new (struct TALER_EXCHANGEDB_RefreshCommitCoin);
-  GNUNET_assert (NULL != commit_coin);
-  {/* refresh_link */
-    refresh_link = (struct TALER_RefreshLinkEncrypted)
-    {
-      .blinding_key_enc = "blinding_key",
-      .blinding_key_enc_size = 13
-    };
-    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                &refresh_link.coin_priv_enc,
-                                sizeof(struct TALER_CoinSpendPrivateKeyP));
-  }
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+			      &commit_coin->refresh_link,
+			      sizeof(struct TALER_RefreshLinkEncryptedP));
   commit_coin->coin_ev = "coin_ev";
   commit_coin->coin_ev_size = 8;
-  commit_coin->refresh_link = GNUNET_new (struct TALER_RefreshLinkEncrypted);
-  *commit_coin->refresh_link = refresh_link;
   return commit_coin;
 }
 
@@ -607,8 +596,7 @@ PERF_TALER_EXCHANGEDB_refresh_commit_coin_copy (struct TALER_EXCHANGEDB_RefreshC
   struct TALER_EXCHANGEDB_RefreshCommitCoin *copy;
 
   copy = GNUNET_new (struct TALER_EXCHANGEDB_RefreshCommitCoin);
-  copy->refresh_link = GNUNET_new (struct TALER_RefreshLinkEncrypted);
-  *copy->refresh_link = *commit_coin->refresh_link;
+  *copy = *commit_coin;
   return copy;
 }
 
@@ -621,6 +609,5 @@ PERF_TALER_EXCHANGEDB_refresh_commit_coin_copy (struct TALER_EXCHANGEDB_RefreshC
 void
 PERF_TALER_EXCHANGEDB_refresh_commit_coin_free (struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coin)
 {
-  GNUNET_free (commit_coin->refresh_link);
   GNUNET_free (commit_coin);
 }

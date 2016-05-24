@@ -304,10 +304,7 @@ free_commit_coins (struct TALER_EXCHANGEDB_RefreshCommitCoin **commit_coin,
     if (NULL == commit_coin[i])
       break;
     for (j=0;j<num_new_coins;j++)
-    {
       GNUNET_free_non_null (commit_coin[i][j].coin_ev);
-      GNUNET_free_non_null (commit_coin[i][j].refresh_link);
-    }
     GNUNET_free (commit_coin[i]);
   }
 }
@@ -415,8 +412,6 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
                                        struct TALER_EXCHANGEDB_RefreshCommitCoin);
     for (j = 0; j < num_newcoins; j++)
     {
-      char *link_enc;
-      size_t link_enc_size;
       struct TALER_EXCHANGEDB_RefreshCommitCoin *rcc = &commit_coin[i][j];
       struct GNUNET_JSON_Specification coin_spec[] = {
         GNUNET_JSON_spec_varsize (NULL,
@@ -425,9 +420,8 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
         GNUNET_JSON_spec_end ()
       };
       struct GNUNET_JSON_Specification link_spec[] = {
-        GNUNET_JSON_spec_varsize (NULL,
-                                  (void **) &link_enc,
-                                  &link_enc_size),
+        GNUNET_JSON_spec_fixed_auto (NULL,
+				     &rcc->refresh_link),
         GNUNET_JSON_spec_end ()
       };
 
@@ -455,12 +449,9 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
         res = (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
         goto cleanup;
       }
-      rcc->refresh_link
-        = TALER_refresh_link_encrypted_decode (link_enc,
-                                               link_enc_size);
       GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       link_enc,
-                                       link_enc_size);
+                                       &rcc->refresh_link,
+                                       sizeof (rcc->refresh_link));
       GNUNET_JSON_parse_free (link_spec);
     }
   }

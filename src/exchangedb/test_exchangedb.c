@@ -301,18 +301,13 @@ static struct TALER_Amount amount_with_fee;
  * @return 0 if they are equal
  */
 static int
-refresh_link_encrypted_cmp (struct TALER_RefreshLinkEncrypted *rl1,
-                            struct TALER_RefreshLinkEncrypted *rl2)
+refresh_link_encrypted_cmp (struct TALER_RefreshLinkEncryptedP *rl1,
+                            struct TALER_RefreshLinkEncryptedP *rl2)
 {
-  if ( (rl1->blinding_key_enc_size == rl2->blinding_key_enc_size) &&
-       (0 ==
-        memcmp (rl1->coin_priv_enc,
-                rl2->coin_priv_enc,
-                sizeof (struct TALER_CoinSpendPrivateKeyP))) &&
-       (0 ==
-        memcmp (rl1->blinding_key_enc,
-                rl2->blinding_key_enc,
-                rl1->blinding_key_enc_size)) )
+  if (0 ==
+      memcmp (rl1,
+	      rl2,
+	      sizeof (struct TALER_RefreshLinkEncryptedP)))
     return 0;
   return 1;
 }
@@ -334,8 +329,8 @@ commit_coin_cmp (struct TALER_EXCHANGEDB_RefreshCommitCoin *rc1,
                        rc2->coin_ev,
                        rc2->coin_ev_size));
   FAILIF (0 !=
-          refresh_link_encrypted_cmp (rc1->refresh_link,
-                                      rc2->refresh_link));
+          refresh_link_encrypted_cmp (&rc1->refresh_link,
+                                      &rc2->refresh_link));
   return 0;
  drop:
   return 1;
@@ -370,10 +365,9 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
 {
   struct TALER_EXCHANGEDB_RefreshCommitCoin *ret_commit_coins;
   struct TALER_EXCHANGEDB_RefreshCommitCoin *a_ccoin;
-  struct TALER_RefreshLinkEncrypted *a_rlink;
+  struct TALER_RefreshLinkEncryptedP a_rlink;
   struct TALER_EXCHANGEDB_RefreshCommitCoin *b_ccoin;
-  struct TALER_RefreshLinkEncrypted *b_rlink;
-  size_t size;
+  struct TALER_RefreshLinkEncryptedP b_rlink;
   unsigned int cnt;
   uint16_t cnc_index;
   int ret;
@@ -389,12 +383,12 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
     for (cnt=0; cnt < MELT_NEW_COINS; cnt++)
     {
       struct TALER_EXCHANGEDB_RefreshCommitCoin *ccoin;
-      struct TALER_RefreshLinkEncrypted *rlink;
+      struct TALER_RefreshLinkEncryptedP rlink;
 
       ccoin = &commit_coins[cnc_index][cnt];
-      size = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                       COIN_ENC_MAX_SIZE);
-      rlink = GNUNET_malloc (sizeof (struct TALER_RefreshLinkEncrypted) + size);
+      GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                  &rlink,
+                                  sizeof (rlink));
       ccoin->refresh_link = rlink;
       ccoin->coin_ev_size = GNUNET_CRYPTO_random_u64
         (GNUNET_CRYPTO_QUALITY_WEAK, COIN_ENC_MAX_SIZE);
@@ -402,12 +396,6 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
       GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                   ccoin->coin_ev,
                                   ccoin->coin_ev_size);
-      rlink->blinding_key_enc_size = size;
-      RND_BLK (&rlink->coin_priv_enc);
-      rlink->blinding_key_enc = (const char *) &rlink[1];
-      GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                  (void *)rlink->blinding_key_enc,
-                                  rlink->blinding_key_enc_size);
     }
     FAILIF (GNUNET_OK !=
             plugin->insert_refresh_commit_coins (plugin->cls,
@@ -436,13 +424,12 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
                            a_ccoin->coin_ev_size));
       a_rlink = a_ccoin->refresh_link;
       b_rlink = b_ccoin->refresh_link;
-      FAILIF (a_rlink->blinding_key_enc_size != b_rlink->blinding_key_enc_size);
-      FAILIF (0 != memcmp (a_rlink->blinding_key_enc,
-                           b_rlink->blinding_key_enc,
-                           a_rlink->blinding_key_enc_size));
-      FAILIF (0 != memcmp (a_rlink->coin_priv_enc,
-                           b_rlink->coin_priv_enc,
-                           sizeof (a_rlink->coin_priv_enc)));
+      FAILIF (0 != memcmp (a_rlink.blinding_key_enc,
+                           b_rlink.blinding_key_enc,
+                           sizeof (a_rlink.blinding_key_enc)));
+      FAILIF (0 != memcmp (a_rlink.coin_priv_enc,
+                           b_rlink.coin_priv_enc,
+                           sizeof (a_rlink.coin_priv_enc)));
     }
   }
   ret = GNUNET_OK;
@@ -745,8 +732,8 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   FAILIF (NULL == ldl);
   for (ldlp = ldl; NULL != ldlp; ldlp = ldlp->next)
   {
-    struct TALER_RefreshLinkEncrypted *r1;
-    struct TALER_RefreshLinkEncrypted *r2;
+    struct TALER_RefreshLinkEncryptedP r1;
+    struct TALER_RefreshLinkEncryptedP r2;
     int found;
 
     found = GNUNET_NO;
@@ -762,7 +749,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
             GNUNET_CRYPTO_rsa_signature_cmp (ldlp->ev_sig.rsa_signature,
                                              ev_sigs[cnt].rsa_signature)) &&
            (0 ==
-            refresh_link_encrypted_cmp (r1, r2)) )
+            refresh_link_encrypted_cmp (&r1, &r2)) )
       {
         found = GNUNET_YES;
         break;

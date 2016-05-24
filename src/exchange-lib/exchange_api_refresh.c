@@ -105,13 +105,9 @@ struct FreshCoinP
   struct TALER_CoinSpendPrivateKeyP coin_priv;
 
   /**
-   * Size of the encoded blinding key that follows.
+   * The blinding key.
    */
-  uint32_t bbuf_size;
-
-  /* Followed by serialization of:
-     - struct TALER_DenominationBlindingKey blinding_key;
-  */
+  struct TALER_DenominationBlindingKeyP blinding_key;
 
 };
 
@@ -205,26 +201,6 @@ struct MeltedCoin
 
 
 /**
- * Coin-specific information about the fresh coins we generate during
- * a melt.
- */
-struct FreshCoin
-{
-
-  /**
-   * Private key of the coin.
-   */
-  struct TALER_CoinSpendPrivateKeyP coin_priv;
-
-  /**
-   * Blinding key used for blinding during blind signing.
-   */
-  struct TALER_DenominationBlindingKey blinding_key;
-
-};
-
-
-/**
  * Melt data in non-serialized format for convenient processing.
  */
 struct MeltData
@@ -260,7 +236,7 @@ struct MeltData
    * Arrays of @e num_fresh_coins with information about the fresh
    * coins to be created, for each cut-and-choose dimension.
    */
-  struct FreshCoin *fresh_coins[TALER_CNC_KAPPA];
+  struct FreshCoinP *fresh_coins[TALER_CNC_KAPPA];
 };
 
 
@@ -281,22 +257,6 @@ free_melted_coin (struct MeltedCoin *mc)
 
 
 /**
- * Free all information associated with a fresh coin.
- *
- * @param fc fresh coin to release, the pointer itself is NOT
- *           freed (as it is typically not allocated by itself)
- */
-static void
-free_fresh_coin (struct FreshCoin *fc)
-{
-  if (NULL == fc)
-    return;
-  if (NULL != fc->blinding_key.rsa_blinding_key)
-    GNUNET_CRYPTO_rsa_blinding_key_free (fc->blinding_key.rsa_blinding_key);
-}
-
-
-/**
  * Free all information associated with a melting session.  Note
  * that we allow the melting session to be only partially initialized,
  * as we use this function also when freeing melt data that was not
@@ -309,7 +269,6 @@ static void
 free_melt_data (struct MeltData *md)
 {
   unsigned int i;
-  unsigned int j;
 
   free_melted_coin (&md->melted_coin);
   if (NULL != md->fresh_pks)
@@ -321,11 +280,7 @@ free_melt_data (struct MeltData *md)
   }
 
   for (i=0;i<TALER_CNC_KAPPA;i++)
-  {
-    for (j=0;j<md->num_fresh_coins;j++)
-      free_fresh_coin (&md->fresh_coins[i][j]);
     GNUNET_free (md->fresh_coins[i]);
-  }
   /* Finally, clean up a bit...
      (NOTE: compilers might optimize this away, so this is
      not providing any strong assurances that the key material
@@ -567,31 +522,15 @@ deserialize_denomination_key (struct TALER_DenominationPublicKey *dk,
  *        @a buf is NULL, number of bytes required
  */
 static size_t
-serialize_fresh_coin (const struct FreshCoin *fc,
+serialize_fresh_coin (const struct FreshCoinP *fc,
                       char *buf,
                       size_t off)
 {
-  struct FreshCoinP fcp;
-  char *bbuf;
-  size_t bbuf_size;
-
-  bbuf_size = GNUNET_CRYPTO_rsa_blinding_key_encode (fc->blinding_key.rsa_blinding_key,
-                                                     &bbuf);
-  if (NULL == buf)
-  {
-    GNUNET_free (bbuf);
-    return sizeof (struct FreshCoinP) + bbuf_size;
-  }
-  fcp.coin_priv = fc->coin_priv;
-  fcp.bbuf_size = htonl ((uint32_t) bbuf_size);
-  memcpy (&buf[off],
-          &fcp,
-          sizeof (struct FreshCoinP));
-  memcpy (&buf[off + sizeof (struct FreshCoinP)],
-          bbuf,
-          bbuf_size);
-  GNUNET_free (bbuf);
-  return sizeof (struct FreshCoinP) + bbuf_size;
+  if (NULL != buf)
+    memcpy (&buf[off],
+	    fc,
+	    sizeof (struct FreshCoinP));
+  return sizeof (struct FreshCoinP);
 }
 
 
@@ -605,41 +544,21 @@ serialize_fresh_coin (const struct FreshCoin *fc,
  * @return number of bytes read from @a buf, 0 on error
  */
 static size_t
-deserialize_fresh_coin (struct FreshCoin *fc,
+deserialize_fresh_coin (struct FreshCoinP *fc,
                         const char *buf,
                         size_t size,
                         int *ok)
 {
-  struct FreshCoinP fcp;
-  size_t bbuf_size;
-
   if (size < sizeof (struct FreshCoinP))
   {
     GNUNET_break (0);
     *ok = GNUNET_NO;
     return 0;
   }
-  memcpy (&fcp,
+  memcpy (fc,
           buf,
           sizeof (struct FreshCoinP));
-  bbuf_size = ntohl (fcp.bbuf_size);
-  if (size < sizeof (struct FreshCoinP) + bbuf_size)
-  {
-    GNUNET_break (0);
-    *ok = GNUNET_NO;
-    return 0;
-  }
-  fc->blinding_key.rsa_blinding_key
-    = GNUNET_CRYPTO_rsa_blinding_key_decode (&buf[sizeof (struct FreshCoinP)],
-                                             bbuf_size);
-  if (NULL == fc->blinding_key.rsa_blinding_key)
-  {
-    GNUNET_break (0);
-    *ok = GNUNET_NO;
-    return 0;
-  }
-  fc->coin_priv = fcp.coin_priv;
-  return sizeof (struct FreshCoinP) + bbuf_size;
+  return sizeof (struct FreshCoinP);
 }
 
 
@@ -734,7 +653,7 @@ deserialize_melt_data (const char *buf,
                                     struct TALER_DenominationPublicKey);
   for (i=0;i<TALER_CNC_KAPPA;i++)
     md->fresh_coins[i] = GNUNET_new_array (md->num_fresh_coins,
-                                           struct FreshCoin);
+                                           struct FreshCoinP);
   off = sizeof (struct MeltDataP);
   ok = GNUNET_YES;
   off += deserialize_melted_coin (&md->melted_coin,
@@ -775,18 +694,17 @@ deserialize_melt_data (const char *buf,
  * @param pk denomination information for the fresh coin
  */
 static void
-setup_fresh_coin (struct FreshCoin *fc,
+setup_fresh_coin (struct FreshCoinP *fc,
                   const struct TALER_EXCHANGE_DenomPublicKey *pk)
 {
   struct GNUNET_CRYPTO_EddsaPrivateKey *epk;
-  unsigned int len;
 
   epk = GNUNET_CRYPTO_eddsa_key_create ();
   fc->coin_priv.eddsa_priv = *epk;
   GNUNET_free (epk);
-  len = GNUNET_CRYPTO_rsa_public_key_len (pk->key.rsa_public_key);
-  fc->blinding_key.rsa_blinding_key
-    = GNUNET_CRYPTO_rsa_blinding_key_create (len);
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
+			      &fc->blinding_key,
+			      sizeof (fc->blinding_key));
 }
 
 
@@ -879,7 +797,7 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
   for (i=0;i<TALER_CNC_KAPPA;i++)
   {
     md.fresh_coins[i] = GNUNET_new_array (fresh_pks_len,
-                                          struct FreshCoin);
+                                          struct FreshCoinP);
     for (j=0;j<fresh_pks_len;j++)
       setup_fresh_coin (&md.fresh_coins[i][j],
                         &fresh_pks[j]);
@@ -919,15 +837,13 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
   {
     for (j = 0; j < fresh_pks_len; j++)
     {
-      const struct FreshCoin *fc; /* coin this is about */
+      const struct FreshCoinP *fc; /* coin this is about */
       struct TALER_CoinSpendPublicKeyP coin_pub;
       struct GNUNET_HashCode coin_hash;
       char *coin_ev; /* blinded message to be signed (in envelope) for each coin */
       size_t coin_ev_size;
-      struct TALER_RefreshLinkDecrypted rld;
-      struct TALER_RefreshLinkEncrypted *rle;
-      char *link_enc; /* encrypted link data */
-      size_t link_enc_size;
+      struct TALER_RefreshLinkDecryptedP rld;
+      struct TALER_RefreshLinkEncryptedP rle;
 
       fc = &md.fresh_coins[i][j];
       GNUNET_CRYPTO_eddsa_key_get_public (&fc->coin_priv.eddsa_priv,
@@ -936,7 +852,7 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
                           sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
                           &coin_hash);
       coin_ev_size = GNUNET_CRYPTO_rsa_blind (&coin_hash,
-                                              fc->blinding_key.rsa_blinding_key,
+                                              &fc->blinding_key.bks,
                                               md.fresh_pks[j].rsa_public_key,
                                               &coin_ev);
       GNUNET_CRYPTO_hash_context_read (hash_context,
@@ -946,15 +862,12 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
 
       rld.coin_priv = fc->coin_priv;
       rld.blinding_key = fc->blinding_key;
-      rle = TALER_refresh_encrypt (&rld,
-                                   &md.link_secrets[i]);
-      link_enc = TALER_refresh_link_encrypted_encode (rle,
-                                                      &link_enc_size);
-
+      TALER_refresh_encrypt (&rld,
+			     &md.link_secrets[i],
+			     &rle);
       GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       link_enc,
-                                       link_enc_size);
-      GNUNET_free (link_enc);
+                                       &rle,
+				       sizeof (rle));
     }
   }
   for (i = 0; i < TALER_CNC_KAPPA; i++)
@@ -1431,25 +1344,17 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
     tmp = json_array ();
     for (i=0;i<md->num_fresh_coins;i++)
     {
-      const struct FreshCoin *fc = &md->fresh_coins[j][i];
-      struct TALER_RefreshLinkDecrypted rld;
-      struct TALER_RefreshLinkEncrypted *rle;
-      char *buf;
-      size_t buf_len;
+      const struct FreshCoinP *fc = &md->fresh_coins[j][i];
+      struct TALER_RefreshLinkDecryptedP rld;
+      struct TALER_RefreshLinkEncryptedP rle;
 
       rld.coin_priv = fc->coin_priv;
       rld.blinding_key = fc->blinding_key;
-      rle = TALER_refresh_encrypt (&rld,
-                                   &md->link_secrets[j]);
-      GNUNET_assert (NULL != rle);
-      buf = TALER_refresh_link_encrypted_encode (rle,
-                                                 &buf_len);
-      GNUNET_assert (NULL != buf);
+      TALER_refresh_encrypt (&rld,
+			     &md->link_secrets[j],
+			     &rle);
       json_array_append (tmp,
-                         GNUNET_JSON_from_data (buf,
-                                                buf_len));
-      GNUNET_free (buf);
-      GNUNET_free (rle);
+                         GNUNET_JSON_from_data_auto (&rle));
     }
     json_array_append (link_encs,
                        tmp);
@@ -1461,7 +1366,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
     tmp = json_array ();
     for (i=0;i<md->num_fresh_coins;i++)
     {
-      const struct FreshCoin *fc = &md->fresh_coins[j][i];
+      const struct FreshCoinP *fc = &md->fresh_coins[j][i];
       struct TALER_CoinSpendPublicKeyP coin_pub;
       struct GNUNET_HashCode coin_hash;
       char *coin_ev; /* blinded message to be signed (in envelope) for each coin */
@@ -1473,7 +1378,7 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
                           sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
                           &coin_hash);
       coin_ev_size = GNUNET_CRYPTO_rsa_blind (&coin_hash,
-                                              fc->blinding_key.rsa_blinding_key,
+                                              &fc->blinding_key.bks,
                                               md->fresh_pks[i].rsa_public_key,
                                               &coin_ev);
       json_array_append (tmp,
@@ -1655,7 +1560,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshRevealHandle *rrh,
   }
   for (i=0;i<rrh->md->num_fresh_coins;i++)
   {
-    const struct FreshCoin *fc;
+    const struct FreshCoinP *fc;
     struct TALER_DenominationPublicKey *pk;
     json_t *jsonai;
     struct GNUNET_CRYPTO_RsaSignature *blind_sig;
@@ -1684,7 +1589,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshRevealHandle *rrh,
 
     /* unblind the signature */
     sig = GNUNET_CRYPTO_rsa_unblind (blind_sig,
-                                     fc->blinding_key.rsa_blinding_key,
+				     &fc->blinding_key.bks,
                                      pk->rsa_public_key);
     GNUNET_CRYPTO_rsa_signature_free (blind_sig);
 

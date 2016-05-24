@@ -277,18 +277,19 @@ struct TALER_CoinSpendSignatureP
 };
 
 
-GNUNET_NETWORK_STRUCT_END
-
 /**
  * @brief Type of blinding keys for Taler.
  */
-struct TALER_DenominationBlindingKey
+struct TALER_DenominationBlindingKeyP
 {
   /**
-   * Taler uses RSA for blinding.
+   * Taler uses RSA for blind signatures.
    */
-  struct GNUNET_CRYPTO_RsaBlindingKey *rsa_blinding_key;
+  struct GNUNET_CRYPTO_RsaBlindingKeySecret bks;
 };
+
+
+GNUNET_NETWORK_STRUCT_END
 
 
 /**
@@ -412,7 +413,7 @@ struct TALER_EncryptedLinkSecretP
 /**
  * @brief Representation of an refresh link in cleartext.
  */
-struct TALER_RefreshLinkDecrypted
+struct TALER_RefreshLinkDecryptedP
 {
 
   /**
@@ -423,7 +424,7 @@ struct TALER_RefreshLinkDecrypted
   /**
    * Blinding key.
    */
-  struct TALER_DenominationBlindingKey blinding_key;
+  struct TALER_DenominationBlindingKeyP blinding_key;
 
 };
 
@@ -483,25 +484,17 @@ struct TALER_WireTransferIdentifierP
 };
 
 
-GNUNET_NETWORK_STRUCT_END
-
-
 /**
  * @brief Representation of an encrypted refresh link.
  */
-struct TALER_RefreshLinkEncrypted
+struct TALER_RefreshLinkEncryptedP
 {
 
   /**
    * Encrypted blinding key with @e blinding_key_enc_size bytes,
    * must be allocated at the end of this struct.
    */
-  const char *blinding_key_enc;
-
-  /**
-   * Number of bytes in @e blinding_key_enc.
-   */
-  size_t blinding_key_enc_size;
+  char blinding_key_enc[sizeof (struct TALER_DenominationBlindingKeyP)];
 
   /**
    * Encrypted private key of the coin.
@@ -509,6 +502,10 @@ struct TALER_RefreshLinkEncrypted
   char coin_priv_enc[sizeof (struct TALER_CoinSpendPrivateKeyP)];
 
 };
+
+
+GNUNET_NETWORK_STRUCT_END
+
 
 
 /**
@@ -618,11 +615,12 @@ TALER_transfer_encrypt (const struct TALER_LinkSecretP *secret,
  *
  * @param input encrypted refresh link data
  * @param secret shared secret to use for decryption
- * @return NULL on error
+ * @param[out] output where to write decrypted refresh link
  */
-struct TALER_RefreshLinkDecrypted *
-TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
-                       const struct TALER_LinkSecretP *secret);
+void
+TALER_refresh_decrypt (const struct TALER_RefreshLinkEncryptedP *input,
+                       const struct TALER_LinkSecretP *secret,
+		       struct TALER_RefreshLinkDecryptedP *output);
 
 
 /**
@@ -630,36 +628,12 @@ TALER_refresh_decrypt (const struct TALER_RefreshLinkEncrypted *input,
  *
  * @param input plaintext refresh link data
  * @param secret shared secret to use for encryption
- * @return NULL on error (should never happen)
+ * @param[out] output where to write encrypted refresh link
  */
-struct TALER_RefreshLinkEncrypted *
-TALER_refresh_encrypt (const struct TALER_RefreshLinkDecrypted *input,
-                       const struct TALER_LinkSecretP *secret);
-
-
-/**
- * Decode encrypted refresh link information from buffer.
- *
- * @param buf buffer with refresh link data
- * @param buf_len number of bytes in @a buf
- * @return NULL on error (@a buf_len too small)
- */
-struct TALER_RefreshLinkEncrypted *
-TALER_refresh_link_encrypted_decode (const char *buf,
-                                     size_t buf_len);
-
-
-/**
- * Encode encrypted refresh link information to buffer.
- *
- * @param rle refresh link to encode
- * @param[out] buf_len set number of bytes returned
- * @return NULL on error, otherwise buffer with encoded @a rle
- */
-char *
-TALER_refresh_link_encrypted_encode (const struct TALER_RefreshLinkEncrypted *rle,
-                                     size_t *buf_len);
-
+void
+TALER_refresh_encrypt (const struct TALER_RefreshLinkDecryptedP *input,
+                       const struct TALER_LinkSecretP *secret,
+		       struct TALER_RefreshLinkEncryptedP *output);
 
 
 #endif

@@ -36,9 +36,9 @@ test_basics ()
   struct TALER_TransferSecretP trans_sec;
   struct TALER_LinkSecretP secret;
   struct TALER_LinkSecretP secret2;
-  struct TALER_RefreshLinkEncrypted *rl_enc;
-  struct TALER_RefreshLinkDecrypted rl;
-  struct TALER_RefreshLinkDecrypted *rld;
+  struct TALER_RefreshLinkEncryptedP rl_enc;
+  struct TALER_RefreshLinkDecryptedP rl;
+  struct TALER_RefreshLinkDecryptedP rld;
                        
   GNUNET_log_setup ("test-crypto",
 		    "WARNING",
@@ -47,11 +47,11 @@ test_basics ()
 			      &secret,
 			      sizeof (secret));
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-			      &rl.coin_priv,
-			      sizeof (rl.coin_priv));
-  rl.blinding_key.rsa_blinding_key = GNUNET_CRYPTO_rsa_blinding_key_create (1024);
-  rl_enc = TALER_refresh_encrypt (&rl,
-				  &secret);
+			      &rl,
+			      sizeof (rl));
+  TALER_refresh_encrypt (&rl,
+			 &secret,
+			 &rl_enc);
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
 			      &trans_sec,
 			      sizeof (trans_sec));
@@ -66,49 +66,12 @@ test_basics ()
   GNUNET_assert (0 == memcmp (&secret,
 			      &secret2,
 			      sizeof (secret)));
-  rld = TALER_refresh_decrypt (rl_enc,
-			       &secret2);
-  GNUNET_assert (NULL != rld);
-  GNUNET_assert (0 == memcmp (&rld->coin_priv,
-			      &rl.coin_priv,
-			      sizeof (struct TALER_CoinSpendPrivateKeyP)));
-  GNUNET_assert (0 ==
-		 GNUNET_CRYPTO_rsa_blinding_key_cmp (rl.blinding_key.rsa_blinding_key,
-						     rld->blinding_key.rsa_blinding_key));
-  GNUNET_CRYPTO_rsa_blinding_key_free (rld->blinding_key.rsa_blinding_key);
-  GNUNET_free (rld);
-  GNUNET_CRYPTO_rsa_blinding_key_free (rl.blinding_key.rsa_blinding_key);
-  return 0;
-}
-
-
-/**
- * Test #TALER_refresh_link_encrypted_decode().
- *
- * @return 0 on success
- */
-static int
-test_rled ()
-{
-  struct TALER_RefreshLinkEncrypted *rle;
-  char buf[512];
-  char *buf2;
-  size_t buf_len = sizeof (buf);
-
-  memset (buf, 42, sizeof (buf));
-  rle = TALER_refresh_link_encrypted_decode (buf,
-					     buf_len);
-  GNUNET_assert (NULL != rle);
-  buf_len = 42;
-  buf2 = TALER_refresh_link_encrypted_encode (rle,
-					      &buf_len);
-  GNUNET_assert (NULL != buf2);
-  GNUNET_assert (buf_len == sizeof (buf));
-  GNUNET_assert (0 == memcmp (buf,
-			      buf2,
-			      buf_len));
-  GNUNET_free (rle);
-  GNUNET_free (buf2);
+  TALER_refresh_decrypt (&rl_enc,
+			 &secret2,
+			 &rld);
+  GNUNET_assert (0 == memcmp (&rld,
+			      &rl,
+			      sizeof (struct TALER_RefreshLinkDecryptedP)));
   return 0;
 }
 
@@ -171,8 +134,6 @@ main(int argc,
      const char *const argv[])
 {
   if (0 != test_basics ())
-    return 1;
-  if (0 != test_rled ())
     return 1;
   if (0 != test_high_level ())
     return 1;

@@ -497,7 +497,7 @@ struct TALER_EXCHANGE_ReserveWithdrawHandle
   /**
    * Key used to blind the value.
    */
-  const struct TALER_DenominationBlindingKey *blinding_key;
+  struct TALER_DenominationBlindingKeyP blinding_key;
 
   /**
    * Denomination key we are withdrawing.
@@ -557,7 +557,7 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
     return GNUNET_SYSERR;
   }
   sig = GNUNET_CRYPTO_rsa_unblind (blind_sig,
-                                   wsh->blinding_key->rsa_blinding_key,
+                                   &wsh->blinding_key.bks,
                                    wsh->pk->key.rsa_public_key);
   GNUNET_CRYPTO_rsa_signature_free (blind_sig);
   if (GNUNET_OK !=
@@ -777,7 +777,7 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                                  const struct TALER_EXCHANGE_DenomPublicKey *pk,
                                  const struct TALER_ReservePrivateKeyP *reserve_priv,
                                  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                                 const struct TALER_DenominationBlindingKey *blinding_key,
+                                 const struct TALER_DenominationBlindingKeyP *blinding_key,
                                  TALER_EXCHANGE_ReserveWithdrawResultCallback res_cb,
                                  void *res_cb_cls)
 {
@@ -804,7 +804,7 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                       sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
                       &wsh->c_hash);
   coin_ev_size = GNUNET_CRYPTO_rsa_blind (&wsh->c_hash,
-                                          blinding_key->rsa_blinding_key,
+                                          &blinding_key->bks,
                                           pk->key.rsa_public_key,
                                           &coin_ev);
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
@@ -845,7 +845,7 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                             "reserve_sig", GNUNET_JSON_from_data_auto (&reserve_sig));
   GNUNET_free (coin_ev);
 
-  wsh->blinding_key = blinding_key;
+  wsh->blinding_key = *blinding_key;
   wsh->url = MAH_path_to_url (exchange, "/reserve/withdraw");
 
   eh = curl_easy_init ();
