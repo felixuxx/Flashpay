@@ -277,6 +277,17 @@ TALER_EXCHANGE_get_keys (const struct TALER_EXCHANGE_Handle *exchange);
 
 
 /**
+ * Obtain the keys from the exchange in the
+ * raw JSON format
+ *
+ * @param exchange the exchange handle
+ * @return the exchange's keys in raw JSON
+ */
+json_t *
+TALER_EXCHANGE_get_keys_raw (const struct TALER_EXCHANGE_Handle *exchange);
+
+
+/**
  * Test if the given @a pub is a the current signing key from the exchange
  * according to @a keys.
  *

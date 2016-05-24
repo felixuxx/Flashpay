@@ -109,6 +109,12 @@ struct TALER_EXCHANGE_Handle
   struct TALER_EXCHANGE_Keys key_data;
 
   /**
+   * Raw key data of the exchange, only valid if
+   * @e handshake_complete is past stage #MHS_CERT.
+   */
+  json_t *key_data_raw;
+
+  /**
    * Stage of the exchange's initialization routines.
    */
   enum ExchangeHandleState state;
@@ -623,11 +629,18 @@ keys_completed_cb (void *cls,
   case 0:
     break;
   case MHD_HTTP_OK:
-    if ( (NULL == resp_obj) ||
-         (GNUNET_OK !=
-          decode_keys_json (resp_obj,
-                            &kr->exchange->key_data)) )
+    if (NULL == resp_obj)
+    {
       response_code = 0;
+      break;
+    }
+    if (GNUNET_OK !=
+        decode_keys_json (resp_obj, &kr->exchange->key_data))
+    {
+      response_code = 0;
+      break;
+    }
+    exchange->key_data_raw = json_deep_copy (resp_obj);
     break;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -806,6 +819,7 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
   GNUNET_array_grow (exchange->key_data.auditors,
                      exchange->key_data.num_auditors,
                      0);
+  json_decref (exchange->key_data_raw);
   GNUNET_free (exchange->url);
   GNUNET_free (exchange);
 }
@@ -894,6 +908,21 @@ TALER_EXCHANGE_get_keys (const struct TALER_EXCHANGE_Handle *exchange)
 {
   return &exchange->key_data;
 }
+
+
+/**
+ * Obtain the keys from the exchange in the
+ * raw JSON format
+ *
+ * @param exchange the exchange handle
+ * @return the exchange's keys in raw JSON
+ */
+json_t *
+TALER_EXCHANGE_get_keys_raw (const struct TALER_EXCHANGE_Handle *exchange)
+{
+  return json_deep_copy (exchange->key_data_raw);
+}
+
 
 
 /* end of exchange_api_handle.c */
