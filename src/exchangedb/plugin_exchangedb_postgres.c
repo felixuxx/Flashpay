@@ -288,7 +288,7 @@ postgres_create_tables (void *cls)
      for a very long time (either by refunding the owner or by greedily
      grabbing the money, depending on the Exchange's terms of service) */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS reserves"
-           "(reserve_pub BYTEA PRIMARY KEY"
+           "(reserve_pub BYTEA PRIMARY KEY CHECK(LENGTH(reserve_pub)=32)"
            ",current_balance_val INT8 NOT NULL"
            ",current_balance_frac INT4 NOT NULL"
            ",current_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -343,7 +343,7 @@ postgres_create_tables (void *cls)
   /* Table with coins that have been (partially) spent, used to track
      coin information only once. */
   SQLEXEC("CREATE TABLE IF NOT EXISTS known_coins "
-          "(coin_pub BYTEA NOT NULL PRIMARY KEY"
+          "(coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
           ",denom_sig BYTEA NOT NULL"
           ")");
@@ -405,7 +405,7 @@ postgres_create_tables (void *cls)
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_link "
           "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
           ",transfer_pub BYTEA NOT NULL CHECK(LENGTH(transfer_pub)=32)"
-          ",link_secret_enc BYTEA NOT NULL"
+          ",link_secret_enc BYTEA NOT NULL CHECK(LENGTH(link_secret_enc)=64)"
           ",cnc_index INT2 NOT NULL"
           ")");
   /* Table with the commitments for the new coins that are to be created
@@ -413,17 +413,12 @@ postgres_create_tables (void *cls)
      index and the index of the new coin, and the envelope of the new
      coin to be signed, as well as the encrypted information about the
      private key and the blinding factor for the coin (for verification
-     in case this cnc_index is chosen to be revealed)
-
-     NOTE: We might want to simplify this and not have the
-     newcoin_index and instead store all coin_evs and
-     link_vector_encs, one after the other, in two big BYTEAs.
-     (#3815) */
+     in case this cnc_index is chosen to be revealed) */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_coin "
           "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) "
           ",cnc_index INT2 NOT NULL"
           ",newcoin_index INT2 NOT NULL"
-          ",link_vector_enc BYTEA NOT NULL"
+          ",link_vector_enc BYTEA NOT NULL CHECK(LENGTH(link_vector_enc)=64)"
           ",coin_ev BYTEA NOT NULL"
           ")");
   /* Table with the signatures over coins generated during a refresh
@@ -3078,7 +3073,7 @@ postgres_insert_refresh_commit_coins (void *cls,
         GNUNET_PQ_query_param_uint16 (&coin_off),
         GNUNET_PQ_query_param_auto_from_type (&commit_coins[i].refresh_link),
         GNUNET_PQ_query_param_fixed_size (commit_coins[i].coin_ev,
-                                         commit_coins[i].coin_ev_size),
+					  commit_coins[i].coin_ev_size),
         GNUNET_PQ_query_param_end
       };
       result = GNUNET_PQ_exec_prepared (session->conn,

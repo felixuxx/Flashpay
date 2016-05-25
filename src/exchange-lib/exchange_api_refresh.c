@@ -1277,12 +1277,8 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
   unsigned int i;
   unsigned int j;
 
-  if (GNUNET_YES !=
-      MAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
+  GNUNET_assert (GNUNET_YES ==
+		 MAH_handle_is_ready (exchange));
   md = deserialize_melt_data (refresh_data,
                               refresh_data_length);
   if (NULL == md)
@@ -1722,11 +1718,11 @@ handle_refresh_reveal_finished (void *cls,
  */
 struct TALER_EXCHANGE_RefreshRevealHandle *
 TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
-                           size_t refresh_data_length,
-                           const char *refresh_data,
-                           uint16_t noreveal_index,
-                           TALER_EXCHANGE_RefreshRevealCallback reveal_cb,
-                           void *reveal_cb_cls)
+			       size_t refresh_data_length,
+			       const char *refresh_data,
+			       uint16_t noreveal_index,
+			       TALER_EXCHANGE_RefreshRevealCallback reveal_cb,
+			       void *reveal_cb_cls)
 {
   struct TALER_EXCHANGE_RefreshRevealHandle *rrh;
   json_t *transfer_privs;
@@ -1735,13 +1731,9 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_CURL_Context *ctx;
   struct MeltData *md;
   unsigned int j;
-
-  if (GNUNET_YES !=
-      MAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
+  
+  GNUNET_assert (GNUNET_YES ==
+		 MAH_handle_is_ready (exchange));
   md = deserialize_melt_data (refresh_data,
                               refresh_data_length);
   if (NULL == md)
