@@ -29,8 +29,6 @@ extern "C"
 #endif
 #endif
 
-#include <gnunet/gnunet_util_lib.h>
-
 
 /**
  * @brief Number of characters (plus 1 for 0-termination) we use to
