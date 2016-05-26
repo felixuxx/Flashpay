@@ -1373,23 +1373,31 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           unsigned int reserve_index;
           int ret;
           struct PERF_TALER_EXCHANGEDB_Reserve *reserve;
-          json_t *details = NULL;
+          json_t *sndr;
+          json_t *just;
 
           reserve_index = state->cmd[state->i].details.insert_reserve.index_reserve;
           reserve = state->cmd[reserve_index].exposed.data.reserve;
-          details = json_pack ("{s:i}","justification",
-                               GNUNET_CRYPTO_random_u32 (
-                                 GNUNET_CRYPTO_QUALITY_WEAK,
-                                 UINT32_MAX));
-          GNUNET_assert (NULL != details);
+          sndr = json_pack ("{s:i}",
+                            "account",
+                            (int) GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                                            UINT32_MAX));
+          just = json_pack ("{s:i}",
+                            "justification",
+                            (int) GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                                            UINT32_MAX));
+          GNUNET_assert (NULL != just);
+          GNUNET_assert (NULL != sndr);
           ret = state->plugin->reserves_in_insert (state->plugin->cls,
                                                    state->session,
                                                    &reserve->reserve.pub,
                                                    &reserve->reserve.balance,
                                                    GNUNET_TIME_absolute_get (),
-                                                   details);
+                                                   sndr,
+                                                   just);
           GNUNET_assert (GNUNET_SYSERR != ret);
-          json_decref (details);
+          json_decref (sndr);
+          json_decref (just);
         }
         break;
 

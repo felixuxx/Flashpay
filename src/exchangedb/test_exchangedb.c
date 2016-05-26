@@ -974,9 +974,6 @@ deposit_cb (void *cls,
 }
 
 
-
-
-
 /**
  * Main function that will be run by the scheduler.
  *
@@ -1003,6 +1000,7 @@ run (void *cls)
   struct TALER_WireTransferIdentifierRawP wtid;
   json_t *wire;
   json_t *just;
+  json_t *sndr;
   unsigned int matched;
   const char * const json_wire_str =
       "{ \"type\":\"SEPA\", \
@@ -1060,6 +1058,7 @@ run (void *cls)
                                          &amount_with_fee));
 
   result = 4;
+  sndr = json_loads ("{ \"account\":\"1\" }", 0, NULL);
   just = json_loads ("{ \"justification\":\"1\" }", 0, NULL);
   FAILIF (GNUNET_OK !=
           plugin->reserves_in_insert (plugin->cls,
@@ -1067,6 +1066,7 @@ run (void *cls)
                                       &reserve_pub,
                                       &value,
                                       GNUNET_TIME_absolute_get (),
+                                      sndr,
 				      just));
   json_decref (just);
   FAILIF (GNUNET_OK !=
@@ -1082,8 +1082,10 @@ run (void *cls)
                                       &reserve_pub,
                                       &value,
                                       GNUNET_TIME_absolute_get (),
-				      just));
+				      sndr,
+                                      just));
   json_decref (just);
+  json_decref (sndr);
   FAILIF (GNUNET_OK !=
           check_reserve (session,
                          &reserve_pub,
@@ -1153,7 +1155,8 @@ run (void *cls)
       FAILIF (1 != bt->amount.value);
       FAILIF (10 != bt->amount.fraction);
       FAILIF (0 != strcmp (CURRENCY, bt->amount.currency));
-      FAILIF (NULL == bt->wire);
+      FAILIF (NULL == bt->sender_account_details);
+      FAILIF (NULL == bt->transfer_details);
       break;
     case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:
       withdraw = rh_head->details.withdraw;
@@ -1178,7 +1181,7 @@ run (void *cls)
   wire = json_loads (json_wire_str, 0, NULL);
   TALER_JSON_hash (wire,
                    &deposit.h_wire);
-  deposit.wire = wire;
+  deposit.receiver_wire_account = wire;
   deposit.transaction_id =
       GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
   deposit.amount_with_fee = value;

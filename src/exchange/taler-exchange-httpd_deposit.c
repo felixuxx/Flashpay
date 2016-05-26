@@ -228,7 +228,7 @@ TMH_DEPOSIT_handler_deposit (struct TMH_RequestHandler *rh,
   TALER_amount_ntoh (&deposit.deposit_fee,
                      &dki->issue.properties.fee_deposit);
   TMH_KS_release (ks);
-  deposit.wire = wire;
+  deposit.receiver_wire_account = wire;
   deposit.amount_with_fee = amount;
   if (-1 == TALER_amount_cmp (&deposit.amount_with_fee,
                               &deposit.deposit_fee))

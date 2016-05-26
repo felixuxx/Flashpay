@@ -135,7 +135,8 @@ parse_reserve_history (const json_t *history,
     if (0 == strcasecmp (type,
                          "DEPOSIT"))
     {
-      json_t *wire;
+      json_t *wire_account;
+      json_t *transfer;
 
       rhistory[off].type = TALER_EXCHANGE_RTT_DEPOSIT;
       if (GNUNET_OK !=
@@ -147,18 +148,33 @@ parse_reserve_history (const json_t *history,
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      wire = json_object_get (transaction,
-                              "wire");
-      /* check 'wire' is a JSON object (no need to check wireformat,
+      wire_account = json_object_get (transaction,
+                                      "sender_account_details");
+      /* check 'wire_account' is a JSON object (no need to check wireformat,
          but we do at least expect "some" JSON object here) */
-      if ( (NULL == wire) ||
-           (! json_is_object (wire)) )
+      if ( (NULL == wire_account) ||
+           (! json_is_object (wire_account)) )
       {
         /* not even a JSON 'wire' specification, not acceptable */
         GNUNET_break_op (0);
+        if (NULL != wire_account)
+          json_decref (wire_account);
         return GNUNET_SYSERR;
       }
-      rhistory[off].details.wire_in_details = wire;
+      transfer = json_object_get (transaction,
+                                  "transfer_details");
+      /* check 'transfer' is a JSON object */
+      if ( (NULL == transfer) ||
+           (! json_is_object (transfer)) )
+      {
+        GNUNET_break_op (0);
+        json_decref (wire_account);
+        if (NULL != transfer)
+          json_decref (transfer);
+        return GNUNET_SYSERR;
+      }
+      rhistory[off].details.in_details.sender_account_details = wire_account;
+      rhistory[off].details.in_details.transfer_details = transfer;
       /* end type==DEPOSIT */
     }
     else if (0 == strcasecmp (type,

@@ -602,9 +602,10 @@ compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
         }
       ret = 1;
       json_array_append_new (json_history,
-                             json_pack ("{s:s, s:O, s:o}",
+                             json_pack ("{s:s, s:O, s:O, s:o}",
                                         "type", "DEPOSIT",
-                                        "wire", pos->details.bank->wire,
+                                        "sender_account_details", pos->details.bank->sender_account_details,
+                                        "transfer_details", pos->details.bank->transfer_details,
                                         "amount", TALER_JSON_from_amount (&pos->details.bank->amount)));
       break;
     case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:

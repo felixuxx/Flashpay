@@ -51,9 +51,15 @@ struct TALER_EXCHANGEDB_BankTransfer
   struct GNUNET_TIME_Absolute execution_date;
 
   /**
-   * Detailed wire information about the transaction.
+   * Detailed wire information about the sending account.
    */
-  json_t *wire;
+  json_t *sender_account_details;
+
+  /**
+   * Detailed wire transfer information that uniquely identifies the
+   * wire transfer.
+   */
+  json_t *transfer_details;
 
 };
 
@@ -243,9 +249,9 @@ struct TALER_EXCHANGEDB_Deposit
   struct GNUNET_HashCode h_wire;
 
   /**
-   * Detailed wire information for executing the transaction.
+   * Detailed information about the receiver for executing the transaction.
    */
-  json_t *wire;
+  json_t *receiver_wire_account;
 
   /**
    * Merchant-generated transaction ID to detect duplicate
@@ -601,7 +607,7 @@ struct TALER_EXCHANGEDB_Session;
  * @param h_contract hash of the contract between merchant and customer
  * @param wire_deadline by which the merchant adviced that he would like the
  *        wire transfer to be executed
- * @param wire wire details for the merchant, NULL from iterate_matching_deposits()
+ * @param receiver_wire_account wire details for the merchant, NULL from iterate_matching_deposits()
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
@@ -614,7 +620,7 @@ typedef int
                                     uint64_t transaction_id,
                                     const struct GNUNET_HashCode *h_contract,
                                     struct GNUNET_TIME_Absolute wire_deadline,
-                                    const json_t *wire);
+                                    const json_t *receiver_wire_account);
 
 
 /**
@@ -842,8 +848,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param reserve_pub public key of the reserve
    * @param balance the amount that has to be added to the reserve
    * @param execution_time when was the amount added
-   * @param details bank transaction details justifying the increment,
-   *        must be unique for each incoming transaction
+   * @param sender_account_details information about the sender
+   * @param transfer_details information that uniquely identifies the wire transfer
    * @return #GNUNET_OK upon success; #GNUNET_NO if the given
    *         @a details are already known for this @a reserve_pub,
    *         #GNUNET_SYSERR upon failures (DB error, incompatible currency)
@@ -854,7 +860,8 @@ struct TALER_EXCHANGEDB_Plugin
                          const struct TALER_ReservePublicKeyP *reserve_pub,
                          const struct TALER_Amount *balance,
                          struct GNUNET_TIME_Absolute execution_time,
-                         const json_t *details);
+                         const json_t *sender_account_details,
+                         const json_t *transfer_details);
 
 
   /**

@@ -276,7 +276,7 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
   deposit->csig = csig;
   deposit->h_contract = h_contract;
   deposit->h_wire = h_wire;
-  deposit->wire = json_loads (wire, 0, NULL);
+  deposit->receiver_wire_account = json_loads (wire, 0, NULL);
   deposit->transaction_id = transaction_id++;
   deposit->timestamp = timestamp;
   deposit->refund_deadline = refund_deadline;
@@ -298,7 +298,7 @@ PERF_TALER_EXCHANGEDB_deposit_copy (const struct TALER_EXCHANGEDB_Deposit *depos
 
   copy = GNUNET_new (struct TALER_EXCHANGEDB_Deposit);
   *copy = *deposit;
-  json_incref (copy->wire);
+  json_incref (copy->receiver_wire_account);
   copy->coin.denom_pub.rsa_public_key =
     GNUNET_CRYPTO_rsa_public_key_dup (deposit->coin.denom_pub.rsa_public_key);
   copy->coin.denom_sig.rsa_signature =
@@ -318,7 +318,7 @@ PERF_TALER_EXCHANGEDB_deposit_free (struct TALER_EXCHANGEDB_Deposit *deposit)
     return GNUNET_OK;
   GNUNET_CRYPTO_rsa_public_key_free (deposit->coin.denom_pub.rsa_public_key);
   GNUNET_CRYPTO_rsa_signature_free (deposit->coin.denom_sig.rsa_signature);
-  json_decref (deposit->wire);
+  json_decref (deposit->receiver_wire_account);
   GNUNET_free (deposit);
   return GNUNET_OK;
 }

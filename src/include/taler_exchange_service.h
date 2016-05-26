@@ -604,10 +604,19 @@ struct TALER_EXCHANGE_ReserveHistory
    */
   union {
 
-    /**
-     * Transaction details for the incoming transaction.
-     */
-    json_t *wire_in_details;
+    struct {
+      /**
+       * Sender account information for the incoming transfer.
+       */
+      json_t *sender_account_details;
+
+      /**
+       * Wire transfer details for the incoming transfer.
+       */
+      json_t *transfer_details;
+
+
+    } in_details;
 
     /**
      * Signature authorizing the withdrawal for outgoing transaction.
@@ -1036,7 +1045,10 @@ typedef void
  * @param reserve_pub public key of the reserve
  * @param amount amount that was deposited
  * @param execution_date when did we receive the amount
- * @param wire wire details
+ * @param sender_account_details account information of the sender of the money;
+ *        the receiver is always the exchange.
+ * @param transfer_details details that uniquely identify the transfer;
+ *        used to check for duplicate operations by the exchange
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
  * @return NULL
@@ -1048,7 +1060,8 @@ TALER_EXCHANGE_admin_add_incoming (struct TALER_EXCHANGE_Handle *exchange,
                                    const struct TALER_ReservePublicKeyP *reserve_pub,
                                    const struct TALER_Amount *amount,
                                    struct GNUNET_TIME_Absolute execution_date,
-                                   const json_t *wire,
+                                   const json_t *sender_account_details,
+                                   const json_t *transfer_details,
                                    TALER_EXCHANGE_AdminAddIncomingResultCallback res_cb,
                                    void *res_cb_cls);
 

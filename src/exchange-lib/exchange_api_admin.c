@@ -144,7 +144,10 @@ handle_admin_add_incoming_finished (void *cls,
  * @param reserve_pub public key of the reserve
  * @param amount amount that was deposited
  * @param execution_date when did we receive the amount
- * @param wire wire details
+ * @param sender_account_details account information of the sender of the money;
+ *        the receiver is always the exchange.
+ * @param transfer_details details that uniquely identify the transfer;
+ *        used to check for duplicate operations by the exchange
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
  * @return NULL
@@ -153,12 +156,13 @@ handle_admin_add_incoming_finished (void *cls,
  */
 struct TALER_EXCHANGE_AdminAddIncomingHandle *
 TALER_EXCHANGE_admin_add_incoming (struct TALER_EXCHANGE_Handle *exchange,
-                               const struct TALER_ReservePublicKeyP *reserve_pub,
-                               const struct TALER_Amount *amount,
-                               struct GNUNET_TIME_Absolute execution_date,
-                               const json_t *wire,
-                               TALER_EXCHANGE_AdminAddIncomingResultCallback res_cb,
-                               void *res_cb_cls)
+                                   const struct TALER_ReservePublicKeyP *reserve_pub,
+                                   const struct TALER_Amount *amount,
+                                   struct GNUNET_TIME_Absolute execution_date,
+                                   const json_t *sender_account_details,
+                                   const json_t *transfer_details,
+                                   TALER_EXCHANGE_AdminAddIncomingResultCallback res_cb,
+                                   void *res_cb_cls)
 {
   struct TALER_EXCHANGE_AdminAddIncomingHandle *aai;
   struct GNUNET_CURL_Context *ctx;
@@ -174,11 +178,12 @@ TALER_EXCHANGE_admin_add_incoming (struct TALER_EXCHANGE_Handle *exchange,
     return NULL;
   }
   admin_obj = json_pack ("{s:o, s:o," /* reserve_pub/amount */
-                         " s:o, s:O}", /* execution_Date/wire */
+                         " s:o, s:O, s:O}", /* execution_Date/sender/transfer */
                          "reserve_pub", GNUNET_JSON_from_data_auto (reserve_pub),
                          "amount", TALER_JSON_from_amount (amount),
                          "execution_date", GNUNET_JSON_from_time_abs (execution_date),
-                         "wire", wire);
+                         "sender_account_details", sender_account_details,
+                         "transfer_details", transfer_details);
   aai = GNUNET_new (struct TALER_EXCHANGE_AdminAddIncomingHandle);
   aai->exchange = exchange;
   aai->cb = res_cb;

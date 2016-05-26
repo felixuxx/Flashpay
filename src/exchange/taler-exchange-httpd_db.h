@@ -191,7 +191,8 @@ TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
  * @param reserve_pub public key of the reserve
  * @param amount amount to add to the reserve
  * @param execution_time when did we receive the wire transfer
- * @param wire details about the wire transfer
+ * @param sender_account_details which account send the funds
+ * @param transfer_details information that uniquely identifies the transfer
  * @return MHD result code
  */
 int
@@ -199,7 +200,8 @@ TMH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
                                    const struct TALER_ReservePublicKeyP *reserve_pub,
                                    const struct TALER_Amount *amount,
                                    struct GNUNET_TIME_Absolute execution_time,
-                                   json_t *wire);
+                                   const json_t *sender_account_details,
+                                   const json_t *transfer_details);
 
 
 /**

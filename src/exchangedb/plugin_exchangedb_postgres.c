@@ -305,9 +305,10 @@ postgres_create_tables (void *cls)
           ",balance_val INT8 NOT NULL"
           ",balance_frac INT4 NOT NULL"
           ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ",details TEXT NOT NULL "
+          ",sender_account_details TEXT NOT NULL "
+          ",transfer_details TEXT NOT NULL "
           ",execution_date INT8 NOT NULL"
-          ",PRIMARY KEY (reserve_pub,details)"
+          ",PRIMARY KEY (reserve_pub,transfer_details)"
           ");");
   /* Create indices on reserves_in */
   SQLEXEC_INDEX ("CREATE INDEX reserves_in_reserve_pub_index"
@@ -627,11 +628,12 @@ postgres_prepare (PGconn *db_conn)
            ",balance_val"
            ",balance_frac"
            ",balance_curr"
-           ",details"
+           ",sender_account_details"
+           ",transfer_details"
            ",execution_date"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6);",
-           6, NULL);
+           "($1, $2, $3, $4, $5, $6, $7);",
+           7, NULL);
 
   /* Used in #postgres_get_reserve_history() to obtain inbound transactions
      for a reserve */
@@ -641,7 +643,8 @@ postgres_prepare (PGconn *db_conn)
            ",balance_frac"
            ",balance_curr"
            ",execution_date"
-           ",details"
+           ",sender_account_details"
+           ",transfer_details"
            " FROM reserves_in"
            " WHERE reserve_pub=$1",
            1, NULL);
@@ -1634,8 +1637,8 @@ reserves_update (void *cls,
  * @param reserve_pub public key of the reserve
  * @param balance the amount that has to be added to the reserve
  * @param execution_time when was the amount added
- * @param details bank transaction details justifying the increment,
- *        must be unique for each incoming transaction
+ * @param sender_account_details account information for the sender
+ * @param transfer_details information that uniquely identifies the transfer
  * @return #GNUNET_OK upon success; #GNUNET_NO if the given
  *         @a details are already known for this @a reserve_pub,
  *         #GNUNET_SYSERR upon failures (DB error, incompatible currency)
@@ -1646,7 +1649,8 @@ postgres_reserves_in_insert (void *cls,
                              const struct TALER_ReservePublicKeyP *reserve_pub,
                              const struct TALER_Amount *balance,
                              struct GNUNET_TIME_Absolute execution_time,
-                             const json_t *details)
+                             const json_t *sender_account_details,
+                             const json_t *transfer_details)
 {
   PGresult *result;
   int reserve_exists;
@@ -1688,8 +1692,8 @@ postgres_reserves_in_insert (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Reserve does not exist; creating a new one\n");
     result = GNUNET_PQ_exec_prepared (session->conn,
-                                     "reserve_create",
-                                     params);
+                                      "reserve_create",
+                                      params);
     if (PGRES_COMMAND_OK != PQresultStatus(result))
     {
       QUERY_ERR (result);
@@ -1707,14 +1711,15 @@ postgres_reserves_in_insert (void *cls,
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (&reserve.pub),
       TALER_PQ_query_param_amount (balance),
-      TALER_PQ_query_param_json (details),
+      TALER_PQ_query_param_json (sender_account_details),
+      TALER_PQ_query_param_json (transfer_details),
       GNUNET_PQ_query_param_absolute_time (&execution_time),
       GNUNET_PQ_query_param_end
     };
 
     result = GNUNET_PQ_exec_prepared (session->conn,
-                                     "reserves_in_add_transaction",
-                                     params);
+                                      "reserves_in_add_transaction",
+                                      params);
   }
   if (PGRES_COMMAND_OK != PQresultStatus(result))
   {
@@ -1989,8 +1994,10 @@ postgres_get_reserve_history (void *cls,
                                        &bt->amount),
           GNUNET_PQ_result_spec_absolute_time ("execution_date",
                                               &bt->execution_date),
-          TALER_PQ_result_spec_json ("details",
-                                     &bt->wire),
+          TALER_PQ_result_spec_json ("sender_account_details",
+                                     &bt->sender_account_details),
+          TALER_PQ_result_spec_json ("transfer_details",
+                                     &bt->transfer_details),
           GNUNET_PQ_result_spec_end
         };
         if (GNUNET_OK !=
@@ -2647,7 +2654,7 @@ postgres_insert_deposit (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&deposit->h_contract),
     GNUNET_PQ_query_param_auto_from_type (&deposit->h_wire),
     GNUNET_PQ_query_param_auto_from_type (&deposit->csig),
-    TALER_PQ_query_param_json (deposit->wire),
+    TALER_PQ_query_param_json (deposit->receiver_wire_account),
     GNUNET_PQ_query_param_end
   };
 
@@ -3484,7 +3491,7 @@ postgres_get_link_data_list (void *cls,
 					      &denom_pub),
 	GNUNET_PQ_result_spec_end
       };
-      
+
       if (GNUNET_OK !=
 	  GNUNET_PQ_extract_result (result, rs, i))
       {
@@ -3643,7 +3650,7 @@ postgres_get_coin_transactions (void *cls,
           GNUNET_PQ_result_spec_auto_from_type ("h_wire",
                                                 &deposit->h_wire),
           TALER_PQ_result_spec_json ("wire",
-                                     &deposit->wire),
+                                     &deposit->receiver_wire_account),
           GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                                &deposit->csig),
           GNUNET_PQ_result_spec_end

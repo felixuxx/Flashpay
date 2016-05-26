@@ -1253,7 +1253,7 @@ check_commitment (struct MHD_Connection *connection,
     struct GNUNET_HashCode h_msg;
     char *buf;
     size_t buf_len;
-    
+
     TALER_refresh_decrypt (&commit_coins[j].refresh_link,
 			   &shared_secret,
 			   &link_data);
@@ -1275,7 +1275,7 @@ check_commitment (struct MHD_Connection *connection,
                                                             "Blinding error"))
           ? GNUNET_NO : GNUNET_SYSERR;
     }
-      
+
     if ( (buf_len != commit_coins[j].coin_ev_size) ||
          (0 != memcmp (buf,
                        commit_coins[j].coin_ev,
@@ -1690,7 +1690,8 @@ TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
  * @param reserve_pub public key of the reserve
  * @param amount amount to add to the reserve
  * @param execution_time when did we receive the wire transfer
- * @param wire details about the wire transfer
+ * @param sender_account_details which account send the funds
+ * @param transfer_details information that uniquely identifies the transfer
  * @return MHD result code
  */
 int
@@ -1698,7 +1699,8 @@ TMH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
                                    const struct TALER_ReservePublicKeyP *reserve_pub,
                                    const struct TALER_Amount *amount,
                                    struct GNUNET_TIME_Absolute execution_time,
-                                   json_t *wire)
+                                   const json_t *sender_account_details,
+                                   const json_t *transfer_details)
 {
   struct TALER_EXCHANGEDB_Session *session;
   int ret;
@@ -1713,7 +1715,8 @@ TMH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
                                         reserve_pub,
                                         amount,
                                         execution_time,
-                                        wire);
+                                        sender_account_details,
+                                        transfer_details);
   if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);

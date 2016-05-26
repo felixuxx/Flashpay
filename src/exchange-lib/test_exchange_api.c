@@ -248,9 +248,14 @@ struct Command
       const char *amount;
 
       /**
-       * Wire details (JSON).
+       * Sender account details (JSON).
        */
-      const char *wire;
+      const char *sender_details;
+
+      /**
+       * Transfer information identifier (JSON).
+       */
+      const char *transfer_details;
 
       /**
        * Set (by the interpreter) to the reserve's private key
@@ -1660,7 +1665,8 @@ interpreter_run (void *cls)
   struct TALER_CoinSpendPublicKeyP coin_pub;
   struct TALER_Amount amount;
   struct GNUNET_TIME_Absolute execution_date;
-  json_t *wire;
+  json_t *sender_details;
+  json_t *transfer_details;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
 
   is->task = NULL;
@@ -1710,14 +1716,26 @@ interpreter_run (void *cls)
       fail (is);
       return;
     }
-    wire = json_loads (cmd->details.admin_add_incoming.wire,
-                       JSON_REJECT_DUPLICATES,
-                       NULL);
-    if (NULL == wire)
+    sender_details = json_loads (cmd->details.admin_add_incoming.sender_details,
+                                 JSON_REJECT_DUPLICATES,
+                                 NULL);
+    if (NULL == sender_details)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to parse wire details `%s' at %u\n",
-                  cmd->details.admin_add_incoming.wire,
+                  "Failed to parse sender details `%s' at %u\n",
+                  cmd->details.admin_add_incoming.sender_details,
+                  is->ip);
+      fail (is);
+      return;
+    }
+    transfer_details = json_loads (cmd->details.admin_add_incoming.transfer_details,
+                                   JSON_REJECT_DUPLICATES,
+                                   NULL);
+    if (NULL == transfer_details)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to parse transfer details `%s' at %u\n",
+                  cmd->details.admin_add_incoming.transfer_details,
                   is->ip);
       fail (is);
       return;
@@ -1729,9 +1747,12 @@ interpreter_run (void *cls)
                                            &reserve_pub,
                                            &amount,
                                            execution_date,
-                                           wire,
+                                           sender_details,
+                                           transfer_details,
                                            &add_incoming_cb,
                                            is);
+    json_decref (sender_details);
+    json_decref (transfer_details);
     if (NULL == cmd->details.admin_add_incoming.aih)
     {
       GNUNET_break (0);
@@ -2669,7 +2690,8 @@ run (void *cls)
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "create-reserve-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.wire = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42, \"uuid\":1  }",
+      .details.admin_add_incoming.sender_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42}",
+      .details.admin_add_incoming.transfer_details = "{ \"uuid\":1  }",
       .details.admin_add_incoming.amount = "EUR:5.01" },
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     { .oc = OC_WITHDRAW_SIGN,
@@ -2737,7 +2759,8 @@ run (void *cls)
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "refresh-create-reserve-1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.wire = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":424  }",
+      .details.admin_add_incoming.sender_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":424  }",
+      .details.admin_add_incoming.transfer_details = "{ \"uuid\":2  }",
       .details.admin_add_incoming.amount = "EUR:5.01" },
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     { .oc = OC_WITHDRAW_SIGN,
@@ -2900,7 +2923,8 @@ run (void *cls)
     { .oc = OC_ADMIN_ADD_INCOMING,
       .label = "create-reserve-r1",
       .expected_response_code = MHD_HTTP_OK,
-      .details.admin_add_incoming.wire = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42, \"uuid\":2 }",
+      .details.admin_add_incoming.sender_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42 }",
+      .details.admin_add_incoming.transfer_details = "{ \"uuid\":3  }",
       .details.admin_add_incoming.amount = "EUR:5.01" },
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     { .oc = OC_WITHDRAW_SIGN,

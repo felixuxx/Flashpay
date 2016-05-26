@@ -46,9 +46,14 @@ static char *reserve_pub_str;
 static char *add_str;
 
 /**
+ * Details about the sender account in JSON format.
+ */
+static char *sender_details;
+
+/**
  * Details about the wire transfer in JSON format.
  */
-static char *details;
+static char *transfer_details;
 
 /**
  * Return value from main().
@@ -61,14 +66,16 @@ static int global_ret;
  *
  * @param reserve_pub public key of the reserve to use
  * @param add_value value to add
- * @param jdetails JSON details
+ * @param jdetails JSON details about sender
+ * @param tdetails JSON details about transfer
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on hard error,
  *         #GNUNET_NO if record exists
  */
 static int
 run_transaction (const struct TALER_ReservePublicKeyP *reserve_pub,
                  const struct TALER_Amount *add_value,
-                 json_t *jdetails)
+                 json_t *jdetails,
+                 json_t *tdetails)
 {
   int ret;
   struct TALER_EXCHANGEDB_Session *session;
@@ -86,7 +93,8 @@ run_transaction (const struct TALER_ReservePublicKeyP *reserve_pub,
                                     reserve_pub,
                                     add_value,
                                     GNUNET_TIME_absolute_get (),
-                                    jdetails);
+                                    jdetails,
+                                    tdetails);
   if (GNUNET_SYSERR == ret)
   {
     fprintf (stderr,
@@ -117,6 +125,7 @@ run (void *cls,
 {
   struct TALER_Amount add_value;
   json_t *jdetails;
+  json_t *tdetails;
   json_error_t error;
   struct TALER_ReservePublicKeyP reserve_pub;
 
@@ -155,24 +164,46 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  if (NULL == details)
+  if (NULL == sender_details)
   {
     fprintf (stderr,
-             "No wiring details given (justification required)\n");
+             "No sender details given (sender required)\n");
     global_ret = 1;
     return;
   }
-  jdetails = json_loads (details,
+  jdetails = json_loads (sender_details,
                          JSON_REJECT_DUPLICATES,
                          &error);
   if (NULL == jdetails)
   {
     fprintf (stderr,
              "Failed to parse JSON transaction details `%s': %s (%s)\n",
-             details,
+             sender_details,
              error.text,
              error.source);
     global_ret = 1;
+    return;
+  }
+  if (NULL == transfer_details)
+  {
+    fprintf (stderr,
+             "No transfer details given (justification required)\n");
+    global_ret = 1;
+    json_decref (jdetails);
+    return;
+  }
+  tdetails = json_loads (transfer_details,
+                         JSON_REJECT_DUPLICATES,
+                         &error);
+  if (NULL == tdetails)
+  {
+    fprintf (stderr,
+             "Failed to parse JSON transaction details `%s': %s (%s)\n",
+             transfer_details,
+             error.text,
+             error.source);
+    global_ret = 1;
+    json_decref (jdetails);
     return;
   }
 
@@ -187,10 +218,12 @@ run (void *cls,
   if (GNUNET_SYSERR ==
       run_transaction (&reserve_pub,
                        &add_value,
-                       jdetails))
+                       jdetails,
+                       tdetails))
     global_ret = 1;
   TALER_EXCHANGEDB_plugin_unload (plugin);
   json_decref (jdetails);
+  json_decref (tdetails);
 }
 
 
@@ -208,9 +241,12 @@ main (int argc, char *const *argv)
     {'a', "add", "DENOM",
      "value to add", 1,
      &GNUNET_GETOPT_set_string, &add_str},
-    {'d', "details", "JSON",
-     "details about the bank transaction which justify why we add this amount", 1,
-     &GNUNET_GETOPT_set_string, &details},
+    {'s', "sender", "JSON",
+     "details about the sender's bank account", 1,
+     &GNUNET_GETOPT_set_string, &sender_details},
+    {'t', "transfer", "JSON",
+     "details that uniquely identify the bank transfer", 1,
+     &GNUNET_GETOPT_set_string, &transfer_details},
     GNUNET_GETOPT_OPTION_HELP ("Deposit funds into a Taler reserve"),
     {'R', "reserve", "KEY",
      "reserve (public key) to modify", 1,

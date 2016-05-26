@@ -114,13 +114,15 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_Amount amount;
   struct GNUNET_TIME_Absolute at;
-  json_t *wire;
+  json_t *sender_account_details;
+  json_t *transfer_details;
   json_t *root;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("reserve_pub", &reserve_pub),
     TALER_JSON_spec_amount ("amount", &amount),
     GNUNET_JSON_spec_absolute_time ("execution_date", &at),
-    GNUNET_JSON_spec_json ("wire", &wire),
+    GNUNET_JSON_spec_json ("sender_account_details", &sender_account_details),
+    GNUNET_JSON_spec_json ("transfer_details", &transfer_details),
     GNUNET_JSON_spec_end ()
   };
   int res;
@@ -148,19 +150,20 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   if (GNUNET_YES !=
-      TMH_json_validate_wireformat (wire,
+      TMH_json_validate_wireformat (sender_account_details,
                                     GNUNET_NO))
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_arg_unknown (connection,
-                                           "wire");
+                                           "sender_account_details");
   }
   res = TMH_DB_execute_admin_add_incoming (connection,
                                            &reserve_pub,
                                            &amount,
                                            at,
-                                           wire);
+                                           sender_account_details,
+                                           transfer_details);
   GNUNET_JSON_parse_free (spec);
   return res;
 }

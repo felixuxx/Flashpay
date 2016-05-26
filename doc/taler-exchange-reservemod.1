@@ -9,7 +9,7 @@ taler\-exchange\-reservemod \- Modify reserve balance in the Taler exchange data
 .br
 
 .SH DESCRIPTION
-\fBtaler\-exchange\-reservemod\fP is a command line tool to modify reserves in the Taler exchange database.  Basically, it can be used to import deposits, either for testing or as part of the import from the list of incoming transactions. 
+\fBtaler\-exchange\-reservemod\fP is a command line tool to modify reserves in the Taler exchange database.  Basically, it can be used to import deposits, either for testing or as part of the import from the list of incoming transactions.
 
 .SH OPTIONS
 .B
@@ -21,6 +21,12 @@ Use the configuration and other resources for the exchange to operate from DIRNA
 .B
 .IP "\-h, \-\-help"
 Print short help on options.
+.B
+.IP "\-s JSON,  \-\-sender=JSON"
+JSON-formatted acount details of the sender of the wire transfer.
+.B
+.IP "\-t JSON,  \-\-transfer=JSON"
+JSON-formatted details that uniquely identify the wire transfer.
 .B
 .IP "\-R KEY,  \-\-reserve=KEY"
 Public EdDSA key of the reserve to modify.
