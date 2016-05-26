@@ -157,7 +157,7 @@ TMH_DEPOSIT_handler_deposit (struct TMH_RequestHandler *rh,
     GNUNET_JSON_spec_uint64 ("transaction_id", &deposit.transaction_id),
     GNUNET_JSON_spec_absolute_time ("timestamp", &deposit.timestamp),
     GNUNET_JSON_spec_absolute_time ("refund_deadline", &deposit.refund_deadline),
-    GNUNET_JSON_spec_absolute_time ("edate", &deposit.wire_deadline),
+    GNUNET_JSON_spec_absolute_time ("wire_transfer_deadline", &deposit.wire_deadline),
     GNUNET_JSON_spec_end ()
   };
 

@@ -1009,7 +1009,7 @@ run (void *cls)
 \"IBAN\":\"DE67830654080004822650\",                    \
 \"name\":\"GNUnet e.V.\",                               \
 \"bic\":\"GENODEF1SLR\",                                 \
-\"edate\":\"1449930207000\",                                \
+\"wire_transfer_deadline\":\"1449930207000\",                                \
 \"r\":123456789,                                     \
 \"address\": \"foobar\"}";
   unsigned int cnt;

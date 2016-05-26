@@ -457,7 +457,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                            "transaction_id", (json_int_t) transaction_id,
                            "merchant_pub", GNUNET_JSON_from_data_auto (merchant_pub),
                            "refund_deadline", GNUNET_JSON_from_time_abs (refund_deadline),
-                           "edate", GNUNET_JSON_from_time_abs (wire_deadline),
+                           "wire_transfer_deadline", GNUNET_JSON_from_time_abs (wire_deadline),
                            "coin_sig", GNUNET_JSON_from_data_auto (coin_sig)
                            );
 
