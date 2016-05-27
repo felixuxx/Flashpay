@@ -330,9 +330,6 @@ postgres_create_tables (void *cls)
            ",amount_with_fee_val INT8 NOT NULL"
            ",amount_with_fee_frac INT4 NOT NULL"
            ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-           ",withdraw_fee_val INT8 NOT NULL"
-           ",withdraw_fee_frac INT4 NOT NULL"
-           ",withdraw_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
            ");");
   /* Index blindcoins(reserve_pub) for get_reserves_out statement */
   SQLEXEC_INDEX ("CREATE INDEX reserves_out_reserve_pub_index ON"
@@ -656,12 +653,9 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
-           ",withdraw_fee_val"
-           ",withdraw_fee_frac"
-           ",withdraw_fee_curr"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);",
-           12, NULL);
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
+           9, NULL);
 
   /* Used in #postgres_get_withdraw_info() to
      locate the response for a /reserve/withdraw request
@@ -677,10 +671,11 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
-           ",withdraw_fee_val"
-           ",withdraw_fee_frac"
-           ",withdraw_fee_curr"
+           ",denom.fee_withdraw_val"
+           ",denom.fee_withdraw_frac"
+           ",denom.fee_withdraw_curr"
            " FROM reserves_out"
+           "    JOIN denominations denom USING (denom_pub)"
            " WHERE h_blind_ev=$1",
            1, NULL);
 
@@ -698,10 +693,11 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
-           ",withdraw_fee_val"
-           ",withdraw_fee_frac"
-           ",withdraw_fee_curr"
+           ",denom.fee_withdraw_val"
+           ",denom.fee_withdraw_frac"
+           ",denom.fee_withdraw_curr"
            " FROM reserves_out"
+           "    JOIN denominations denom USING (denom_pub)"
            " WHERE reserve_pub=$1;",
            1, NULL);
 
@@ -937,7 +933,7 @@ postgres_prepare (PGconn *db_conn)
            ",denom.fee_deposit_curr"
            ",wire_deadline"
            " FROM deposits"
-           "    JOIN known_coins kc USING (coin_pub)"
+           "    JOIN known_coins USING (coin_pub)"
            "    JOIN denominations denom USING (denom_pub)"
            " WHERE ("
            "  (coin_pub=$1) AND"
@@ -965,7 +961,7 @@ postgres_prepare (PGconn *db_conn)
            ",merchant_pub"
            ",coin_pub"
            " FROM deposits"
-           "    JOIN known_coins kc USING (coin_pub)"
+           "    JOIN known_coins USING (coin_pub)"
            "    JOIN denominations denom USING (denom_pub)"
            " WHERE"
            " tiny=false AND"
@@ -991,7 +987,7 @@ postgres_prepare (PGconn *db_conn)
            ",h_contract"
            ",coin_pub"
            " FROM deposits"
-           "    JOIN known_coins kc USING (coin_pub)"
+           "    JOIN known_coins USING (coin_pub)"
            "    JOIN denominations denom USING (denom_pub)"
            " WHERE"
            " merchant_pub=$1 AND"
@@ -1045,7 +1041,7 @@ postgres_prepare (PGconn *db_conn)
            ",wire"
            ",coin_sig"
            " FROM deposits"
-           "    JOIN known_coins kc USING (coin_pub)"
+           "    JOIN known_coins USING (coin_pub)"
            "    JOIN denominations denom USING (denom_pub)"
            " WHERE coin_pub=$1",
            1, NULL);
@@ -1834,7 +1830,7 @@ postgres_get_withdraw_info (void *cls,
                                            &collectable->reserve_pub),
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &collectable->amount_with_fee),
-      TALER_PQ_result_spec_amount ("withdraw_fee",
+      TALER_PQ_result_spec_amount ("fee_withdraw",
                                    &collectable->withdraw_fee),
       GNUNET_PQ_result_spec_end
     };
@@ -1885,7 +1881,6 @@ postgres_insert_withdraw_info (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_sig),
     GNUNET_PQ_query_param_absolute_time (&now),
     TALER_PQ_query_param_amount (&collectable->amount_with_fee),
-    TALER_PQ_query_param_amount (&collectable->withdraw_fee),
     GNUNET_PQ_query_param_end
   };
 
@@ -2054,7 +2049,7 @@ postgres_get_reserve_history (void *cls,
                                                &cbc->reserve_sig),
           TALER_PQ_result_spec_amount ("amount_with_fee",
                                        &cbc->amount_with_fee),
-          TALER_PQ_result_spec_amount ("withdraw_fee",
+          TALER_PQ_result_spec_amount ("fee_withdraw",
                                        &cbc->withdraw_fee),
           GNUNET_PQ_result_spec_end
         };
