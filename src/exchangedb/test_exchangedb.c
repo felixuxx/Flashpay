@@ -1376,24 +1376,18 @@ run (void *cls)
 
   /* setup values for wire transfer aggregation data */
   memset (&wtid, 42, sizeof (wtid));
-  memset (&merchant_pub_wt, 43, sizeof (merchant_pub_wt));
-  memset (&h_wire_wt, 44, sizeof (h_wire_wt));
-  memset (&h_contract_wt, 45, sizeof (h_contract_wt));
+  merchant_pub_wt = deposit.merchant_pub;
+  h_wire_wt = deposit.h_wire;
+  h_contract_wt = deposit.h_contract;
   coin_pub_wt = deposit.coin.coin_pub;
-  transaction_id_wt = 47;
+  transaction_id_wt = deposit.transaction_id;
   execution_time_wt = GNUNET_TIME_absolute_get ();
-  memset (&merchant_pub_wt, 48, sizeof (merchant_pub_wt));
+  coin_value_wt = deposit.amount_with_fee;
+  coin_fee_wt = fee_deposit;
   GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY "KUDOS:1.000010",
-                                         &coin_value_wt));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY "KUDOS:0.000010",
-                                         &coin_fee_wt));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY "KUDOS:1.000000",
-                                         &transfer_value_wt));
-
-
+                 TALER_amount_subtract (&transfer_value_wt,
+                                        &coin_value_wt,
+                                        &coin_fee_wt));
   FAILIF (GNUNET_NO !=
           plugin->lookup_wire_transfer (plugin->cls,
                                         session,
@@ -1407,7 +1401,7 @@ run (void *cls)
                                             &h_wire_wt,
                                             &coin_pub_wt,
                                             &merchant_pub_wt,
-                                            transaction_id_wt,
+                                            transaction_id_wt + 1 /* want UNKNOWN transaction here, hence + 1 */,
                                             &cb_wtid_never,
                                             NULL));
   /* insert WT data */
@@ -1415,14 +1409,8 @@ run (void *cls)
           plugin->insert_aggregation_tracking (plugin->cls,
                                                session,
                                                &wtid_wt,
-                                               &merchant_pub_wt,
-                                               &h_wire_wt,
-                                               &h_contract_wt,
-                                               transaction_id_wt,
-                                               execution_time_wt,
-                                               &coin_pub_wt,
-                                               &coin_value_wt,
-                                               &coin_fee_wt));
+                                               deposit_rowid,
+                                               execution_time_wt));
   FAILIF (GNUNET_OK !=
           plugin->lookup_wire_transfer (plugin->cls,
                                         session,

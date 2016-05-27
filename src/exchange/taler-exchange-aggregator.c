@@ -448,14 +448,8 @@ deposit_cb (void *cls,
       db_plugin->insert_aggregation_tracking (db_plugin->cls,
                                               au->session,
                                               &au->wtid,
-                                              merchant_pub,
-                                              &au->h_wire,
-                                              h_contract,
-                                              transaction_id,
-                                              au->execution_time,
-                                              coin_pub,
-                                              amount_with_fee,
-                                              deposit_fee))
+                                              row_id,
+                                              au->execution_time))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -548,14 +542,8 @@ aggregate_cb (void *cls,
       db_plugin->insert_aggregation_tracking (db_plugin->cls,
                                               au->session,
                                               &au->wtid,
-                                              merchant_pub,
-                                              &au->h_wire,
-                                              h_contract,
-                                              transaction_id,
-                                              au->execution_time,
-                                              coin_pub,
-                                              amount_with_fee,
-                                              deposit_fee))
+                                              row_id,
+                                              au->execution_time))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;

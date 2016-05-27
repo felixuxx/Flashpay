@@ -1425,28 +1425,16 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls closure
    * @param session database connection
    * @param wtid the raw wire transfer identifier we used
-   * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
-   * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
-   * @param h_contract which contract was this payment about
-   * @param transaction_id merchant's transaction ID for the payment
+   * @param deposit_serial_id row in the deposits table for which this is aggregation data
    * @param execution_time when did we execute the transaction
-   * @param coin_pub which public key was this payment about
-   * @param coin_value amount contributed by this coin in total
-   * @param coin_fee deposit fee charged by exchange for this coin
    * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
    */
   int
   (*insert_aggregation_tracking)(void *cls,
                                  struct TALER_EXCHANGEDB_Session *session,
                                  const struct TALER_WireTransferIdentifierRawP *wtid,
-                                 const struct TALER_MerchantPublicKeyP *merchant_pub,
-                                 const struct GNUNET_HashCode *h_wire,
-                                 const struct GNUNET_HashCode *h_contract,
-                                 uint64_t transaction_id,
-                                 struct GNUNET_TIME_Absolute execution_time,
-                                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                 const struct TALER_Amount *coin_value,
-                                 const struct TALER_Amount *coin_fee);
+                                 unsigned long long deposit_serial_id,
+                                 struct GNUNET_TIME_Absolute execution_time);
 
 
   /**

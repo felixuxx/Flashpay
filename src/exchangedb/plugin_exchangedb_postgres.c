@@ -300,9 +300,9 @@ postgres_create_tables (void *cls)
      incoming transaction. */
   SQLEXEC("CREATE TABLE IF NOT EXISTS reserves_in"
           "(reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
-          ",balance_val INT8 NOT NULL"
-          ",balance_frac INT4 NOT NULL"
-          ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",credit_val INT8 NOT NULL"
+          ",credit_frac INT4 NOT NULL"
+          ",credit_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",sender_account_details TEXT NOT NULL "
           ",transfer_details TEXT NOT NULL "
           ",execution_date INT8 NOT NULL"
@@ -361,21 +361,6 @@ postgres_create_tables (void *cls)
           ",num_newcoins INT2 NOT NULL"
           ",noreveal_index INT2 NOT NULL"
           ")");
-  /* Table with information about coins that have been refunded. (Technically
-     one of the deposit operations that a coin was involved with is refunded.)*/
-  SQLEXEC("CREATE TABLE IF NOT EXISTS refunds "
-          "(coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
-          ",merchant_pub BYTEA NOT NULL CHECK(LENGTH(merchant_pub)=32)"
-          ",merchant_sig BYTEA NOT NULL CHECK(LENGTH(merchant_sig)=64)"
-          ",h_contract BYTEA NOT NULL CHECK(LENGTH(h_contract)=64)"
-          ",transaction_id INT8 NOT NULL"
-          ",rtransaction_id INT8 NOT NULL"
-          ",amount_with_fee_val INT8 NOT NULL"
-          ",amount_with_fee_frac INT4 NOT NULL"
-          ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ",PRIMARY KEY (coin_pub, merchant_pub, transaction_id, rtransaction_id)" /* this combo must be unique, and we usually select by coin_pub */
-          ") ");
-
 
   /* Table with information about the desired denominations to be created
      during a refresh operation; contains the denomination key for each
@@ -398,6 +383,9 @@ postgres_create_tables (void *cls)
           ",link_secret_enc BYTEA NOT NULL CHECK(LENGTH(link_secret_enc)=64)"
           ",cnc_index INT2 NOT NULL"
           ")");
+  SQLEXEC_INDEX("CREATE INDEX refresh_commit_link_session_hash_index "
+                "ON refresh_commit_link(session_hash,cnc_index)");
+
   /* Table with the commitments for the new coins that are to be created
      during a melting session.  Includes the session, the cut-and-choose
      index and the index of the new coin, and the envelope of the new
@@ -411,6 +399,10 @@ postgres_create_tables (void *cls)
           ",link_vector_enc BYTEA NOT NULL CHECK(LENGTH(link_vector_enc)=64)"
           ",coin_ev BYTEA NOT NULL"
           ")");
+  SQLEXEC_INDEX("CREATE INDEX refresh_commit_coin_session_hash_index "
+                "ON refresh_commit_coin(session_hash,cnc_index,newcoin_index)");
+
+
   /* Table with the signatures over coins generated during a refresh
      operation. Needed to answer /refresh/link queries later.  Stores
      the coin signatures under the respective session hash and index. */
@@ -419,10 +411,13 @@ postgres_create_tables (void *cls)
           ",newcoin_index INT2 NOT NULL"
           ",ev_sig BYTEA NOT NULL"
           ")");
+  SQLEXEC_INDEX("CREATE INDEX refresh_out_session_hash_index "
+                "ON refresh_out(session_hash,newcoin_index)");
+
   /* This table contains the wire transfers the exchange is supposed to
      execute to transmit funds to the merchants (and manage refunds). */
   SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
-          "(serial_id BIGSERIAL PRIMARY KEY"
+          "(deposit_serial_id BIGSERIAL PRIMARY KEY"
           ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
           ",transaction_id INT8 NOT NULL"
           ",amount_with_fee_val INT8 NOT NULL"
@@ -442,29 +437,32 @@ postgres_create_tables (void *cls)
   /* Index for get_deposit statement on coin_pub, transaction_id and merchant_pub */
   SQLEXEC_INDEX("CREATE INDEX deposits_coin_pub_index "
                 "ON deposits(coin_pub, transaction_id, merchant_pub)");
+
+  /* Table with information about coins that have been refunded. (Technically
+     one of the deposit operations that a coin was involved with is refunded.)*/
+  SQLEXEC("CREATE TABLE IF NOT EXISTS refunds "
+          "(coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
+          ",merchant_pub BYTEA NOT NULL CHECK(LENGTH(merchant_pub)=32)"
+          ",merchant_sig BYTEA NOT NULL CHECK(LENGTH(merchant_sig)=64)"
+          ",h_contract BYTEA NOT NULL CHECK(LENGTH(h_contract)=64)"
+          ",transaction_id INT8 NOT NULL"
+          ",rtransaction_id INT8 NOT NULL"
+          ",amount_with_fee_val INT8 NOT NULL"
+          ",amount_with_fee_frac INT4 NOT NULL"
+          ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",PRIMARY KEY (coin_pub, merchant_pub, transaction_id, rtransaction_id)" /* this combo must be unique, and we usually select by coin_pub */
+          ") ");
+
   /* Table for the tracking API, mapping from wire transfer identifiers
      to transactions and back */
   SQLEXEC("CREATE TABLE IF NOT EXISTS aggregation_tracking "
-          "(h_contract BYTEA CHECK (LENGTH(h_contract)=64) NOT NULL"
-          ",h_wire BYTEA CHECK (LENGTH(h_wire)=64) NOT NULL"
-          ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
-          ",merchant_pub BYTEA NOT NULL CHECK (LENGTH(merchant_pub)=32)"
-          ",transaction_id INT8 NOT NULL"
-          ",wtid_raw BYTEA NOT NULL CHECK (LENGTH(merchant_pub)=" TALER_WIRE_TRANSFER_IDENTIFIER_LEN_STR ")"
+          "(deposit_serial_id INT8 NOT NULL REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE"
+          ",wtid_raw BYTEA NOT NULL CHECK (LENGTH(wtid_raw)=" TALER_WIRE_TRANSFER_IDENTIFIER_LEN_STR ")"
           ",execution_time INT8 NOT NULL"
-          ",coin_amount_val INT8 NOT NULL"
-          ",coin_amount_frac INT4 NOT NULL"
-          ",coin_amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ",coin_fee_val INT8 NOT NULL"
-          ",coin_fee_frac INT4 NOT NULL"
-          ",coin_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ")");
   /* Index for lookup_transactions statement on wtid */
   SQLEXEC_INDEX("CREATE INDEX aggregation_tracking_wtid_index "
                 "ON aggregation_tracking(wtid_raw)");
-  /* Index for lookup_deposit_wtid statement */
-  SQLEXEC_INDEX("CREATE INDEX aggregation_tracking_deposit_index "
-                "ON aggregation_tracking(coin_pub,h_contract,h_wire,transaction_id,merchant_pub)");
 
   /* This table contains the pre-commit data for
      wire transfers the exchange is about to execute. */
@@ -611,9 +609,9 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("reserves_in_add_transaction",
            "INSERT INTO reserves_in "
            "(reserve_pub"
-           ",balance_val"
-           ",balance_frac"
-           ",balance_curr"
+           ",credit_val"
+           ",credit_frac"
+           ",credit_curr"
            ",sender_account_details"
            ",transfer_details"
            ",execution_date"
@@ -625,9 +623,9 @@ postgres_prepare (PGconn *db_conn)
      for a reserve */
   PREPARE ("reserves_in_get_transactions",
            "SELECT"
-           " balance_val"
-           ",balance_frac"
-           ",balance_curr"
+           " credit_val"
+           ",credit_frac"
+           ",credit_curr"
            ",execution_date"
            ",sender_account_details"
            ",transfer_details"
@@ -947,7 +945,7 @@ postgres_prepare (PGconn *db_conn)
   /* Used in #postgres_get_ready_deposit() */
   PREPARE ("deposits_get_ready",
            "SELECT"
-           " serial_id"
+           " deposit_serial_id"
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
@@ -975,7 +973,7 @@ postgres_prepare (PGconn *db_conn)
   /* Used in #postgres_iterate_matching_deposits() */
   PREPARE ("deposits_iterate_matching",
            "SELECT"
-           " serial_id"
+           " deposit_serial_id"
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
@@ -1001,14 +999,14 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("mark_deposit_tiny",
            "UPDATE deposits"
            " SET tiny=true"
-           " WHERE serial_id=$1",
+           " WHERE deposit_serial_id=$1",
            1, NULL);
 
   /* Used in #postgres_mark_deposit_done() */
   PREPARE ("mark_deposit_done",
            "UPDATE deposits"
            " SET done=true"
-           " WHERE serial_id=$1",
+           " WHERE deposit_serial_id=$1",
            1, NULL);
 
   /* Used in #postgres_test_deposit_done() */
@@ -1100,61 +1098,56 @@ postgres_prepare (PGconn *db_conn)
   /* Used in #postgres_lookup_wire_transfer */
   PREPARE ("lookup_transactions",
            "SELECT"
-           " h_contract"
-           ",h_wire"
-           ",coin_pub"
-           ",merchant_pub"
-           ",transaction_id"
+           " deposits.h_contract"
+           ",deposits.h_wire"
+           ",deposits.coin_pub"
+           ",deposits.merchant_pub"
+           ",deposits.transaction_id"
            ",execution_time"
-           ",coin_amount_val"
-           ",coin_amount_frac"
-           ",coin_amount_curr"
-           ",coin_fee_val"
-           ",coin_fee_frac"
-           ",coin_fee_curr"
+           ",deposits.amount_with_fee_val"
+           ",deposits.amount_with_fee_frac"
+           ",deposits.amount_with_fee_curr"
+           ",denom.fee_deposit_val"
+           ",denom.fee_deposit_frac"
+           ",denom.fee_deposit_curr"
            " FROM aggregation_tracking"
+           "    JOIN deposits USING (deposit_serial_id)"
+           "    JOIN known_coins USING (coin_pub)"
+           "    JOIN denominations denom USING (denom_pub)"
            " WHERE wtid_raw=$1",
            1, NULL);
 
   /* Used in #postgres_wire_lookup_deposit_wtid */
   PREPARE ("lookup_deposit_wtid",
            "SELECT"
-           " wtid_raw"
-           ",execution_time"
-           ",coin_amount_val"
-           ",coin_amount_frac"
-           ",coin_amount_curr"
-           ",coin_fee_val"
-           ",coin_fee_frac"
-           ",coin_fee_curr"
-           " FROM aggregation_tracking"
-           " WHERE"
-           " coin_pub=$1 AND"
-           " h_contract=$2 AND"
-           " h_wire=$3 AND"
-           " transaction_id=$4 AND"
-           " merchant_pub=$5",
+           " aggregation_tracking.wtid_raw"
+           ",aggregation_tracking.execution_time"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           ",denom.fee_deposit_val"
+           ",denom.fee_deposit_frac"
+           ",denom.fee_deposit_curr"
+           " FROM deposits"
+           "    JOIN aggregation_tracking USING (deposit_serial_id)"
+           "    JOIN known_coins USING (coin_pub)"
+           "    JOIN denominations denom USING (denom_pub)"
+           " WHERE coin_pub=$1"
+           "  AND h_contract=$2"
+           "  AND h_wire=$3"
+           "  AND transaction_id=$4"
+           "  AND merchant_pub=$5",
            5, NULL);
 
   /* Used in #postgres_insert_aggregation_tracking */
   PREPARE ("insert_aggregation_tracking",
            "INSERT INTO aggregation_tracking "
-           "(h_contract"
-           ",h_wire"
-           ",coin_pub"
-           ",merchant_pub"
-           ",transaction_id"
+           "(deposit_serial_id"
            ",wtid_raw"
            ",execution_time"
-           ",coin_amount_val"
-           ",coin_amount_frac"
-           ",coin_amount_curr"
-           ",coin_fee_val"
-           ",coin_fee_frac"
-           ",coin_fee_curr"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
-           13, NULL);
+           "($1, $2, $3)",
+           3, NULL);
 
 
   /* Used in #postgres_wire_prepare_data_insert() to store
@@ -1978,7 +1971,7 @@ postgres_get_reserve_history (void *cls,
       bt = GNUNET_new (struct TALER_EXCHANGEDB_BankTransfer);
       {
         struct GNUNET_PQ_ResultSpec rs[] = {
-          TALER_PQ_result_spec_amount ("balance",
+          TALER_PQ_result_spec_amount ("credit",
                                        &bt->amount),
           GNUNET_PQ_result_spec_absolute_time ("execution_date",
                                               &bt->execution_date),
@@ -2180,7 +2173,7 @@ postgres_have_deposit (void *cls,
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to the database
- * @param deposit_rowid identifies the deposit row to modify
+ * @param deposit_serial_id identifies the deposit row to modify
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
@@ -2284,7 +2277,7 @@ postgres_test_deposit_done (void *cls,
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to the database
- * @param deposit_rowid identifies the deposit row to modify
+ * @param deposit_serial_id identifies the deposit row to modify
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
@@ -2368,7 +2361,7 @@ postgres_get_ready_deposit (void *cls,
     uint64_t serial_id;
     json_t *wire;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial_id",
+      GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
                                    &serial_id),
       GNUNET_PQ_result_spec_uint64 ("transaction_id",
                                    &transaction_id),
@@ -2473,7 +2466,7 @@ postgres_iterate_matching_deposits (void *cls,
     uint64_t serial_id;
     int ret;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial_id",
+      GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
                                     &serial_id),
       GNUNET_PQ_result_spec_uint64 ("transaction_id",
                                     &transaction_id),
@@ -3875,8 +3868,8 @@ postgres_lookup_wire_transfer (void *cls,
     struct TALER_MerchantPublicKeyP merchant_pub;
     uint64_t transaction_id;
     struct GNUNET_TIME_Absolute exec_time;
-    struct TALER_Amount coin_amount;
-    struct TALER_Amount coin_fee;
+    struct TALER_Amount amount_with_fee;
+    struct TALER_Amount deposit_fee;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("h_contract", &h_contract),
       GNUNET_PQ_result_spec_auto_from_type ("h_wire", &h_wire),
@@ -3884,8 +3877,8 @@ postgres_lookup_wire_transfer (void *cls,
       GNUNET_PQ_result_spec_auto_from_type ("merchant_pub", &merchant_pub),
       GNUNET_PQ_result_spec_uint64 ("transaction_id", &transaction_id),
       GNUNET_PQ_result_spec_absolute_time ("execution_time", &exec_time),
-      TALER_PQ_result_spec_amount ("coin_amount", &coin_amount),
-      TALER_PQ_result_spec_amount ("coin_fee", &coin_fee),
+      TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
+      TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
        GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK != GNUNET_PQ_extract_result (result, rs, i))
@@ -3900,8 +3893,8 @@ postgres_lookup_wire_transfer (void *cls,
         &h_contract,
         transaction_id,
         &coin_pub,
-        &coin_amount,
-        &coin_fee);
+        &amount_with_fee,
+        &deposit_fee);
   }
   PQclear (result);
   return GNUNET_OK;
@@ -3949,8 +3942,8 @@ postgres_wire_lookup_deposit_wtid (void *cls,
 
   /* check if the melt record exists and get it */
   result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "lookup_deposit_wtid",
-                                   params);
+                                    "lookup_deposit_wtid",
+                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
@@ -3978,8 +3971,8 @@ postgres_wire_lookup_deposit_wtid (void *cls,
       };
 
       result = GNUNET_PQ_exec_prepared (session->conn,
-                                       "get_deposit_for_wtid",
-                                       params2);
+                                        "get_deposit_for_wtid",
+                                        params2);
       if (PGRES_TUPLES_OK != PQresultStatus (result))
       {
         BREAK_DB_ERR (result);
@@ -4000,11 +3993,11 @@ postgres_wire_lookup_deposit_wtid (void *cls,
        executed */
     {
       struct GNUNET_TIME_Absolute exec_time;
-      struct TALER_Amount coin_amount;
-      struct TALER_Amount coin_fee;
+      struct TALER_Amount amount_with_fee;
+      struct TALER_Amount deposit_fee;
       struct GNUNET_PQ_ResultSpec rs[] = {
-        TALER_PQ_result_spec_amount ("amount_with_fee", &coin_amount),
-        TALER_PQ_result_spec_amount ("fee_deposit", &coin_fee),
+        TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
+        TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
         GNUNET_PQ_result_spec_absolute_time ("wire_deadline", &exec_time),
         GNUNET_PQ_result_spec_end
       };
@@ -4017,8 +4010,8 @@ postgres_wire_lookup_deposit_wtid (void *cls,
       }
       cb (cb_cls,
           NULL,
-          &coin_amount,
-          &coin_fee,
+          &amount_with_fee,
+          &deposit_fee,
           exec_time);
       PQclear (result);
       return GNUNET_YES;
@@ -4033,13 +4026,13 @@ postgres_wire_lookup_deposit_wtid (void *cls,
   {
     struct TALER_WireTransferIdentifierRawP wtid;
     struct GNUNET_TIME_Absolute exec_time;
-    struct TALER_Amount coin_amount;
-    struct TALER_Amount coin_fee;
+    struct TALER_Amount amount_with_fee;
+    struct TALER_Amount deposit_fee;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("wtid_raw", &wtid),
       GNUNET_PQ_result_spec_absolute_time ("execution_time", &exec_time),
-      TALER_PQ_result_spec_amount ("coin_amount", &coin_amount),
-      TALER_PQ_result_spec_amount ("coin_fee", &coin_fee),
+      TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
+      TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
       GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK != GNUNET_PQ_extract_result (result, rs, 0))
@@ -4050,8 +4043,8 @@ postgres_wire_lookup_deposit_wtid (void *cls,
     }
     cb (cb_cls,
         &wtid,
-        &coin_amount,
-        &coin_fee,
+        &amount_with_fee,
+        &deposit_fee,
         exec_time);
   }
   PQclear (result);
@@ -4065,38 +4058,22 @@ postgres_wire_lookup_deposit_wtid (void *cls,
  * @param cls closure
  * @param session database connection
  * @param wtid the raw wire transfer identifier we used
- * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
- * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
- * @param h_contract which contract was this payment about
- * @param transaction_id merchant's transaction ID for the payment
- * @param coin_pub which public key was this payment about
- * @param coin_value amount contributed by this coin in total
- * @param coin_fee deposit fee charged by exchange for this coin
+ * @param deposit_serial_id row in the deposits table for which this is aggregation data
+ * @param execution_time when did we execute the transaction
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
  */
 static int
 postgres_insert_aggregation_tracking (void *cls,
                                       struct TALER_EXCHANGEDB_Session *session,
                                       const struct TALER_WireTransferIdentifierRawP *wtid,
-                                      const struct TALER_MerchantPublicKeyP *merchant_pub,
-                                      const struct GNUNET_HashCode *h_wire,
-                                      const struct GNUNET_HashCode *h_contract,
-                                      uint64_t transaction_id,
-                                      struct GNUNET_TIME_Absolute execution_time,
-                                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                      const struct TALER_Amount *coin_value,
-                                      const struct TALER_Amount *coin_fee)
+                                      unsigned long long deposit_serial_id,
+                                      struct GNUNET_TIME_Absolute execution_time)
 {
+  uint64_t rid = deposit_serial_id;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_contract),
-    GNUNET_PQ_query_param_auto_from_type (h_wire),
-    GNUNET_PQ_query_param_auto_from_type (coin_pub),
-    GNUNET_PQ_query_param_auto_from_type (merchant_pub),
-    GNUNET_PQ_query_param_uint64 (&transaction_id),
+    GNUNET_PQ_query_param_uint64 (&rid),
     GNUNET_PQ_query_param_auto_from_type (wtid),
     GNUNET_PQ_query_param_absolute_time (&execution_time),
-    TALER_PQ_query_param_amount (coin_value),
-    TALER_PQ_query_param_amount (coin_fee),
     GNUNET_PQ_query_param_end
   };
   PGresult *result;
