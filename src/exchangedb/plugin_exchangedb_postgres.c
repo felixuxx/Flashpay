@@ -254,10 +254,8 @@ postgres_create_tables (void *cls)
 #define SQLEXEC(sql) SQLEXEC_(conn, sql);
 #define SQLEXEC_INDEX(sql) SQLEXEC_IGNORE_ERROR_(conn, sql);
   /* Denomination table for holding the publicly available information of
-     denominations keys.  The denominations are to be referred to by using
-     foreign keys.  The denominations are deleted by a housekeeping tool;
-     hence, do not use `ON DELETE CASCADE' on these rows in the tables
-     referencing these rows */
+     denominations keys.  The denominations are to be referred to using
+     foreign keys. */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS denominations"
            "(pub BYTEA PRIMARY KEY"
            ",master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
@@ -301,7 +299,7 @@ postgres_create_tables (void *cls)
      into the reserve.  The rows of this table correspond to each
      incoming transaction. */
   SQLEXEC("CREATE TABLE IF NOT EXISTS reserves_in"
-          "(reserve_pub BYTEA REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
+          "(reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
           ",balance_val INT8 NOT NULL"
           ",balance_frac INT4 NOT NULL"
           ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -324,9 +322,9 @@ postgres_create_tables (void *cls)
      (as they really must be unique). */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS reserves_out"
            "(h_blind_ev BYTEA PRIMARY KEY"
-           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
+           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub) ON DELETE CASCADE"
            ",denom_sig BYTEA NOT NULL"
-           ",reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32) REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
+           ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
            ",reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)"
            ",execution_date INT8 NOT NULL"
            ",amount_with_fee_val INT8 NOT NULL"
@@ -345,7 +343,7 @@ postgres_create_tables (void *cls)
      coin information only once. */
   SQLEXEC("CREATE TABLE IF NOT EXISTS known_coins "
           "(coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
-          ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
+          ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub) ON DELETE CASCADE"
           ",denom_sig BYTEA NOT NULL"
           ")");
   /**
@@ -358,7 +356,7 @@ postgres_create_tables (void *cls)
    */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_sessions "
           "(session_hash BYTEA PRIMARY KEY CHECK (LENGTH(session_hash)=64)"
-          ",old_coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)"
+          ",old_coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
           ",old_coin_sig BYTEA NOT NULL CHECK(LENGTH(old_coin_sig)=64)"
           ",amount_with_fee_val INT8 NOT NULL"
           ",amount_with_fee_frac INT4 NOT NULL"
@@ -372,7 +370,7 @@ postgres_create_tables (void *cls)
   /* Table with information about coins that have been refunded. (Technically
      one of the deposit operations that a coin was involved with is refunded.)*/
   SQLEXEC("CREATE TABLE IF NOT EXISTS refunds "
-          "(coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)"
+          "(coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
           ",merchant_pub BYTEA NOT NULL CHECK(LENGTH(merchant_pub)=32)"
           ",merchant_sig BYTEA NOT NULL CHECK(LENGTH(merchant_sig)=64)"
           ",h_contract BYTEA NOT NULL CHECK(LENGTH(h_contract)=64)"
@@ -392,9 +390,9 @@ postgres_create_tables (void *cls)
      during a refresh operation; contains the denomination key for each
      of the coins (for a given refresh session) */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_order "
-          "(session_hash BYTEA NOT NULL CHECK (LENGTH(session_hash)=64) REFERENCES refresh_sessions (session_hash)"
+          "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) ON DELETE CASCADE"
           ",newcoin_index INT2 NOT NULL "
-          ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub)"
+          ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub) ON DELETE CASCADE"
           ",PRIMARY KEY (session_hash, newcoin_index)"
           ")");
 
@@ -404,7 +402,7 @@ postgres_create_tables (void *cls)
      as well as the actual link data (the transfer public key and the encrypted
      link secret) */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_link "
-          "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash)"
+          "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) ON DELETE CASCADE"
           ",transfer_pub BYTEA NOT NULL CHECK(LENGTH(transfer_pub)=32)"
           ",link_secret_enc BYTEA NOT NULL CHECK(LENGTH(link_secret_enc)=64)"
           ",cnc_index INT2 NOT NULL"
@@ -416,7 +414,7 @@ postgres_create_tables (void *cls)
      private key and the blinding factor for the coin (for verification
      in case this cnc_index is chosen to be revealed) */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_coin "
-          "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) "
+          "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) ON DELETE CASCADE"
           ",cnc_index INT2 NOT NULL"
           ",newcoin_index INT2 NOT NULL"
           ",link_vector_enc BYTEA NOT NULL CHECK(LENGTH(link_vector_enc)=64)"
@@ -426,7 +424,7 @@ postgres_create_tables (void *cls)
      operation. Needed to answer /refresh/link queries later.  Stores
      the coin signatures under the respective session hash and index. */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_out "
-          "(session_hash BYTEA NOT NULL CHECK(LENGTH(session_hash)=64) REFERENCES refresh_sessions (session_hash) "
+          "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) ON DELETE CASCADE"
           ",newcoin_index INT2 NOT NULL"
           ",ev_sig BYTEA NOT NULL"
           ")");
@@ -434,7 +432,7 @@ postgres_create_tables (void *cls)
      execute to transmit funds to the merchants (and manage refunds). */
   SQLEXEC("CREATE TABLE IF NOT EXISTS deposits "
           "(serial_id BIGSERIAL PRIMARY KEY"
-          ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub)"
+          ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
           ",transaction_id INT8 NOT NULL"
           ",amount_with_fee_val INT8 NOT NULL"
           ",amount_with_fee_frac INT4 NOT NULL"
@@ -459,9 +457,9 @@ postgres_create_tables (void *cls)
   /* Table for the tracking API, mapping from wire transfer identifiers
      to transactions and back */
   SQLEXEC("CREATE TABLE IF NOT EXISTS aggregation_tracking "
-          "(h_contract BYTEA CHECK (LENGTH(h_contract)=64)"
-          ",h_wire BYTEA CHECK (LENGTH(h_wire)=64)"
-          ",coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)"
+          "(h_contract BYTEA CHECK (LENGTH(h_contract)=64) NOT NULL"
+          ",h_wire BYTEA CHECK (LENGTH(h_wire)=64) NOT NULL"
+          ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
           ",merchant_pub BYTEA NOT NULL CHECK (LENGTH(merchant_pub)=32)"
           ",transaction_id INT8 NOT NULL"
           ",wtid_raw BYTEA NOT NULL CHECK (LENGTH(merchant_pub)=" TALER_WIRE_TRANSFER_IDENTIFIER_LEN_STR ")"
