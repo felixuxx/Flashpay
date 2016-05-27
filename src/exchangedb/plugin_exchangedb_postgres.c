@@ -361,9 +361,6 @@ postgres_create_tables (void *cls)
           ",amount_with_fee_val INT8 NOT NULL"
           ",amount_with_fee_frac INT4 NOT NULL"
           ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ",melt_fee_val INT8 NOT NULL"
-          ",melt_fee_frac INT4 NOT NULL"
-          ",melt_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",num_newcoins INT2 NOT NULL"
           ",noreveal_index INT2 NOT NULL"
           ")");
@@ -720,12 +717,14 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
-           ",melt_fee_val "
-           ",melt_fee_frac "
-           ",melt_fee_curr "
+           ",denom.fee_refresh_val "
+           ",denom.fee_refresh_frac "
+           ",denom.fee_refresh_curr "
            ",num_newcoins"
            ",noreveal_index"
            " FROM refresh_sessions "
+           "    JOIN known_coins ON (refresh_sessions.old_coin_pub = known_coins.coin_pub)"
+           "    JOIN denominations denom USING (denom_pub)"
            " WHERE session_hash=$1 ",
            1, NULL);
 
@@ -739,14 +738,11 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val "
            ",amount_with_fee_frac "
            ",amount_with_fee_curr "
-           ",melt_fee_val "
-           ",melt_fee_frac "
-           ",melt_fee_curr "
            ",num_newcoins "
            ",noreveal_index "
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);",
-           11, NULL);
+           "($1, $2, $3, $4, $5, $6, $7, $8);",
+           8, NULL);
 
   /* Used in #postgres_get_known_coin() to fetch
      the denomination public key and signature for
@@ -798,10 +794,12 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
-           ",melt_fee_val "
-           ",melt_fee_frac "
-           ",melt_fee_curr "
+           ",denom.fee_refresh_val "
+           ",denom.fee_refresh_frac "
+           ",denom.fee_refresh_curr "
            " FROM refresh_sessions"
+           "    JOIN known_coins ON (refresh_sessions.old_coin_pub = known_coins.coin_pub)"
+           "    JOIN denominations denom USING (denom_pub)"
            " WHERE old_coin_pub=$1",
            1, NULL);
 
@@ -2803,7 +2801,7 @@ postgres_get_refresh_session (void *cls,
                                             &refresh_session->melt.coin_sig),
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &refresh_session->melt.amount_with_fee),
-      TALER_PQ_result_spec_amount ("melt_fee",
+      TALER_PQ_result_spec_amount ("fee_refresh",
                                    &refresh_session->melt.melt_fee),
       GNUNET_PQ_result_spec_end
     };
@@ -2853,7 +2851,6 @@ postgres_create_refresh_session (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&refresh_session->melt.coin.coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&refresh_session->melt.coin_sig),
     TALER_PQ_query_param_amount (&refresh_session->melt.amount_with_fee),
-    TALER_PQ_query_param_amount (&refresh_session->melt.melt_fee),
     GNUNET_PQ_query_param_uint16 (&refresh_session->num_newcoins),
     GNUNET_PQ_query_param_uint16 (&refresh_session->noreveal_index),
     GNUNET_PQ_query_param_end
@@ -3720,7 +3717,7 @@ postgres_get_coin_transactions (void *cls,
                                                 &melt->coin_sig),
           TALER_PQ_result_spec_amount ("amount_with_fee",
                                        &melt->amount_with_fee),
-          TALER_PQ_result_spec_amount ("melt_fee",
+          TALER_PQ_result_spec_amount ("fee_refresh",
                                        &melt->melt_fee),
           GNUNET_PQ_result_spec_end
         };
