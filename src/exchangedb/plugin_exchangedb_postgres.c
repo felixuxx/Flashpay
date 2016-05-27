@@ -481,7 +481,7 @@ postgres_create_tables (void *cls)
   /* This table contains the pre-commit data for
      wire transfers the exchange is about to execute. */
   SQLEXEC("CREATE TABLE IF NOT EXISTS prewire "
-          "(serial_id BIGSERIAL PRIMARY KEY"
+          "(prewire_uuid BIGSERIAL PRIMARY KEY"
           ",type TEXT NOT NULL"
           ",finished BOOLEAN NOT NULL DEFAULT false"
           ",buf BYTEA NOT NULL"
@@ -1180,19 +1180,19 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("wire_prepare_data_mark_done",
            "UPDATE prewire"
            " SET finished=true"
-           " WHERE serial_id=$1",
+           " WHERE prewire_uuid=$1",
            1, NULL);
 
   /* Used in #postgres_wire_prepare_data_get() */
   PREPARE ("wire_prepare_data_get",
            "SELECT"
-           " serial_id"
+           " prewire_uuid"
            ",type"
            ",buf"
            " FROM prewire"
            " WHERE"
            " finished=false"
-           " ORDER BY serial_id ASC"
+           " ORDER BY prewire_uuid ASC"
            " LIMIT 1",
            0, NULL);
 
@@ -4185,9 +4185,9 @@ postgres_wire_prepare_data_mark_finished (void *cls,
                                           struct TALER_EXCHANGEDB_Session *session,
                                           unsigned long long rowid)
 {
-  uint64_t serial_id = rowid;
+  uint64_t prewire_uuid = rowid;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_uint64 (&prewire_uuid),
     GNUNET_PQ_query_param_end
   };
   PGresult *result;
@@ -4252,13 +4252,13 @@ postgres_wire_prepare_data_get (void *cls,
   }
 
   {
-    uint64_t serial_id;
+    uint64_t prewire_uuid;
     char *type;
     void *buf = NULL;
     size_t buf_size;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial_id",
-                                    &serial_id),
+      GNUNET_PQ_result_spec_uint64 ("prewire_uuid",
+                                    &prewire_uuid),
       GNUNET_PQ_result_spec_string ("type",
                                     &type),
       GNUNET_PQ_result_spec_variable_size ("buf",
@@ -4277,7 +4277,7 @@ postgres_wire_prepare_data_get (void *cls,
       return GNUNET_SYSERR;
     }
     cb (cb_cls,
-        serial_id,
+        prewire_uuid,
         type,
         buf,
         buf_size);
