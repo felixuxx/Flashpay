@@ -1276,8 +1276,7 @@ run (void *cls)
   refund.transaction_id = deposit.transaction_id;
   refund.rtransaction_id = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
   refund.refund_amount = deposit.amount_with_fee;
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (CURRENCY, &refund.refund_fee));
+  refund.refund_fee = fee_refund;
   FAILIF (GNUNET_OK !=
           plugin->insert_refund (plugin->cls,
                                  session,

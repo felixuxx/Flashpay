@@ -376,9 +376,6 @@ postgres_create_tables (void *cls)
           ",amount_with_fee_val INT8 NOT NULL"
           ",amount_with_fee_frac INT4 NOT NULL"
           ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ",refund_fee_val INT8 NOT NULL"
-          ",refund_fee_frac INT4 NOT NULL"
-          ",refund_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",PRIMARY KEY (coin_pub, merchant_pub, transaction_id, rtransaction_id)" /* this combo must be unique, and we usually select by coin_pub */
           ") ");
 
@@ -814,10 +811,12 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
-           ",refund_fee_val "
-           ",refund_fee_frac "
-           ",refund_fee_curr "
+           ",denom.fee_refund_val "
+           ",denom.fee_refund_frac "
+           ",denom.fee_refund_curr "
            " FROM refunds"
+           "    JOIN known_coins USING (coin_pub)"
+           "    JOIN denominations denom USING (denom_pub)"
            " WHERE coin_pub=$1",
            1, NULL);
 
@@ -902,13 +901,9 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val "
            ",amount_with_fee_frac "
            ",amount_with_fee_curr "
-           ",refund_fee_val "
-           ",refund_fee_frac "
-           ",refund_fee_curr "
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-           " $11, $12);",
-           12, NULL);
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
+           9, NULL);
 
   /* Fetch an existing deposit request, used to ensure idempotency
      during /deposit processing. Used in #postgres_have_deposit(). */
@@ -2717,7 +2712,6 @@ postgres_insert_refund (void *cls,
     GNUNET_PQ_query_param_uint64 (&refund->transaction_id),
     GNUNET_PQ_query_param_uint64 (&refund->rtransaction_id),
     TALER_PQ_query_param_amount (&refund->refund_amount),
-    TALER_PQ_query_param_amount (&refund->refund_fee),
     GNUNET_PQ_query_param_end
   };
   GNUNET_assert (GNUNET_YES ==
@@ -3791,7 +3785,7 @@ postgres_get_coin_transactions (void *cls,
                                         &refund->rtransaction_id),
           TALER_PQ_result_spec_amount ("amount_with_fee",
                                        &refund->refund_amount),
-          TALER_PQ_result_spec_amount ("refund_fee",
+          TALER_PQ_result_spec_amount ("fee_refund",
                                        &refund->refund_fee),
           GNUNET_PQ_result_spec_end
         };
