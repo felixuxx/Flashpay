@@ -257,7 +257,7 @@ postgres_create_tables (void *cls)
      denominations keys.  The denominations are to be referred to using
      foreign keys. */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS denominations"
-           "(pub BYTEA PRIMARY KEY"
+           "(denom_pub BYTEA PRIMARY KEY"
            ",master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
            ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
            ",valid_from INT8 NOT NULL"
@@ -322,7 +322,7 @@ postgres_create_tables (void *cls)
      (as they really must be unique). */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS reserves_out"
            "(h_blind_ev BYTEA PRIMARY KEY"
-           ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub) ON DELETE CASCADE"
+           ",denom_pub BYTEA NOT NULL REFERENCES denominations (denom_pub) ON DELETE CASCADE"
            ",denom_sig BYTEA NOT NULL"
            ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
            ",reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)"
@@ -343,7 +343,7 @@ postgres_create_tables (void *cls)
      coin information only once. */
   SQLEXEC("CREATE TABLE IF NOT EXISTS known_coins "
           "(coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
-          ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub) ON DELETE CASCADE"
+          ",denom_pub BYTEA NOT NULL REFERENCES denominations (denom_pub) ON DELETE CASCADE"
           ",denom_sig BYTEA NOT NULL"
           ")");
   /**
@@ -392,7 +392,7 @@ postgres_create_tables (void *cls)
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_order "
           "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) ON DELETE CASCADE"
           ",newcoin_index INT2 NOT NULL "
-          ",denom_pub BYTEA NOT NULL REFERENCES denominations (pub) ON DELETE CASCADE"
+          ",denom_pub BYTEA NOT NULL REFERENCES denominations (denom_pub) ON DELETE CASCADE"
           ",PRIMARY KEY (session_hash, newcoin_index)"
           ")");
 
@@ -437,9 +437,6 @@ postgres_create_tables (void *cls)
           ",amount_with_fee_val INT8 NOT NULL"
           ",amount_with_fee_frac INT4 NOT NULL"
           ",amount_with_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ",deposit_fee_val INT8 NOT NULL"
-          ",deposit_fee_frac INT4 NOT NULL"
-          ",deposit_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",timestamp INT8 NOT NULL"
           ",refund_deadline INT8 NOT NULL"
           ",wire_deadline INT8 NOT NULL"
@@ -529,7 +526,7 @@ postgres_prepare (PGconn *db_conn)
   /* Used in #postgres_insert_denomination_info() */
   PREPARE ("denomination_insert",
            "INSERT INTO denominations "
-           "(pub"
+           "(denom_pub"
            ",master_pub"
            ",master_sig"
            ",valid_from"
@@ -582,7 +579,7 @@ postgres_prepare (PGconn *db_conn)
            ",fee_refund_frac"
            ",fee_refund_curr" /* must match coin_curr */
            " FROM denominations"
-           " WHERE pub=$1;",
+           " WHERE denom_pub=$1;",
            1, NULL);
 
   /* Used in #postgres_reserve_get() */
@@ -882,9 +879,6 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
-           ",deposit_fee_val"
-           ",deposit_fee_frac"
-           ",deposit_fee_curr"
            ",timestamp"
            ",refund_deadline"
            ",wire_deadline"
@@ -895,8 +889,8 @@ postgres_prepare (PGconn *db_conn)
            ",wire"
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-           " $11, $12, $13, $14, $15, $16);",
-           16, NULL);
+           " $11, $12, $13);",
+           13, NULL);
 
   /* Used in #postgres_insert_refund() to store refund information */
   PREPARE ("insert_refund",
@@ -945,11 +939,13 @@ postgres_prepare (PGconn *db_conn)
            " amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
-           ",deposit_fee_val"
-           ",deposit_fee_frac"
-           ",deposit_fee_curr"
+           ",denom.fee_deposit_val"
+           ",denom.fee_deposit_frac"
+           ",denom.fee_deposit_curr"
            ",wire_deadline"
            " FROM deposits"
+           "    JOIN known_coins kc USING (coin_pub)"
+           "    JOIN denominations denom USING (denom_pub)"
            " WHERE ("
            "  (coin_pub=$1) AND"
            "  (transaction_id=$2) AND"
@@ -966,9 +962,9 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
-           ",deposit_fee_val"
-           ",deposit_fee_frac"
-           ",deposit_fee_curr"
+           ",denom.fee_deposit_val"
+           ",denom.fee_deposit_frac"
+           ",denom.fee_deposit_curr"
            ",wire_deadline"
            ",transaction_id"
            ",h_contract"
@@ -976,6 +972,8 @@ postgres_prepare (PGconn *db_conn)
            ",merchant_pub"
            ",coin_pub"
            " FROM deposits"
+           "    JOIN known_coins kc USING (coin_pub)"
+           "    JOIN denominations denom USING (denom_pub)"
            " WHERE"
            " tiny=false AND"
            " done=false AND"
@@ -992,14 +990,16 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
-           ",deposit_fee_val"
-           ",deposit_fee_frac"
-           ",deposit_fee_curr"
+           ",denom.fee_deposit_val"
+           ",denom.fee_deposit_frac"
+           ",denom.fee_deposit_curr"
            ",wire_deadline"
            ",transaction_id"
            ",h_contract"
            ",coin_pub"
            " FROM deposits"
+           "    JOIN known_coins kc USING (coin_pub)"
+           "    JOIN denominations denom USING (denom_pub)"
            " WHERE"
            " merchant_pub=$1 AND"
            " h_wire=$2 AND"
@@ -1041,9 +1041,9 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
-           ",deposit_fee_val"
-           ",deposit_fee_frac"
-           ",deposit_fee_curr"
+           ",denom.fee_deposit_val"
+           ",denom.fee_deposit_frac"
+           ",denom.fee_deposit_curr"
            ",timestamp"
            ",refund_deadline"
            ",merchant_pub"
@@ -1052,6 +1052,8 @@ postgres_prepare (PGconn *db_conn)
            ",wire"
            ",coin_sig"
            " FROM deposits"
+           "    JOIN known_coins kc USING (coin_pub)"
+           "    JOIN denominations denom USING (denom_pub)"
            " WHERE coin_pub=$1",
            1, NULL);
 
@@ -2384,7 +2386,7 @@ postgres_get_ready_deposit (void *cls,
                                    &transaction_id),
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &amount_with_fee),
-      TALER_PQ_result_spec_amount ("deposit_fee",
+      TALER_PQ_result_spec_amount ("fee_deposit",
                                    &deposit_fee),
       GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
                                           &wire_deadline),
@@ -2489,7 +2491,7 @@ postgres_iterate_matching_deposits (void *cls,
                                     &transaction_id),
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &amount_with_fee),
-      TALER_PQ_result_spec_amount ("deposit_fee",
+      TALER_PQ_result_spec_amount ("fee_deposit",
                                    &deposit_fee),
       GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
                                            &wire_deadline),
@@ -2644,7 +2646,6 @@ postgres_insert_deposit (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
     GNUNET_PQ_query_param_uint64 (&deposit->transaction_id),
     TALER_PQ_query_param_amount (&deposit->amount_with_fee),
-    TALER_PQ_query_param_amount (&deposit->deposit_fee),
     GNUNET_PQ_query_param_absolute_time (&deposit->timestamp),
     GNUNET_PQ_query_param_absolute_time (&deposit->refund_deadline),
     GNUNET_PQ_query_param_absolute_time (&deposit->wire_deadline),
@@ -3635,7 +3636,7 @@ postgres_get_coin_transactions (void *cls,
                                         &deposit->transaction_id),
           TALER_PQ_result_spec_amount ("amount_with_fee",
                                        &deposit->amount_with_fee),
-          TALER_PQ_result_spec_amount ("deposit_fee",
+          TALER_PQ_result_spec_amount ("fee_deposit",
                                        &deposit->deposit_fee),
           GNUNET_PQ_result_spec_absolute_time ("timestamp",
                                                &deposit->timestamp),
@@ -4017,7 +4018,7 @@ postgres_wire_lookup_deposit_wtid (void *cls,
       struct TALER_Amount coin_fee;
       struct GNUNET_PQ_ResultSpec rs[] = {
         TALER_PQ_result_spec_amount ("amount_with_fee", &coin_amount),
-        TALER_PQ_result_spec_amount ("deposit_fee", &coin_fee),
+        TALER_PQ_result_spec_amount ("fee_deposit", &coin_fee),
         GNUNET_PQ_result_spec_absolute_time ("wire_deadline", &exec_time),
         GNUNET_PQ_result_spec_end
       };

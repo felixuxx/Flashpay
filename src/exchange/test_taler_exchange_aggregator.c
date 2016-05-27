@@ -609,7 +609,7 @@ run_test ()
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:1",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -621,7 +621,7 @@ run_test ()
       .label = "expect-deposit-1",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.amount = "EUR:1"
+      .details.expect_transaction.amount = "EUR:0.9"
     },
 
     {
@@ -648,7 +648,7 @@ run_test ()
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:1",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_DATABASE_DEPOSIT,
@@ -658,7 +658,7 @@ run_test ()
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:1",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -669,7 +669,7 @@ run_test ()
       .label = "expect-deposit-2",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.amount = "EUR:2"
+      .details.expect_transaction.amount = "EUR:1.8"
     },
 
     {
@@ -686,7 +686,7 @@ run_test ()
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:1",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_DATABASE_DEPOSIT,
@@ -696,7 +696,7 @@ run_test ()
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:1",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_DATABASE_DEPOSIT,
@@ -706,7 +706,7 @@ run_test ()
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:1",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -717,21 +717,21 @@ run_test ()
       .label = "expect-deposit-3a",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.amount = "EUR:1"
+      .details.expect_transaction.amount = "EUR:0.9"
     },
     {
       .opcode = OPCODE_EXPECT_TRANSACTION,
       .label = "expect-deposit-3b",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.amount = "EUR:1"
+      .details.expect_transaction.amount = "EUR:0.9"
     },
     {
       .opcode = OPCODE_EXPECT_TRANSACTION,
       .label = "expect-deposit-3c",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 5,
-      .details.expect_transaction.amount = "EUR:1"
+      .details.expect_transaction.amount = "EUR:0.9"
     },
     {
       .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
@@ -746,8 +746,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
-      .details.deposit.amount_with_fee = "EUR:0.01",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.amount_with_fee = "EUR:0.2",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_DATABASE_DEPOSIT,
@@ -756,8 +756,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
-      .details.deposit.amount_with_fee = "EUR:0.01",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.amount_with_fee = "EUR:0.2",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -781,7 +781,7 @@ run_test ()
       .label = "expect-deposit-4",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.amount = "EUR:0.02"
+      .details.expect_transaction.amount = "EUR:0.2"
     },
 
     /* test picking all deposits at earliest deadline */
@@ -792,8 +792,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 10 }, /* 10s */
-      .details.deposit.amount_with_fee = "EUR:0.01",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.amount_with_fee = "EUR:0.2",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_DATABASE_DEPOSIT,
@@ -802,8 +802,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
-      .details.deposit.amount_with_fee = "EUR:0.01",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.amount_with_fee = "EUR:0.2",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -827,7 +827,7 @@ run_test ()
       .label = "expect-deposit-5",
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
-      .details.expect_transaction.amount = "EUR:0.02"
+      .details.expect_transaction.amount = "EUR:0.2"
     },
 
     /* Test NEVER running 'tiny' unless they make up minimum unit */
@@ -838,8 +838,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
-      .details.deposit.amount_with_fee = "EUR:0.002",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.amount_with_fee = "EUR:0.102",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -856,8 +856,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
-      .details.deposit.amount_with_fee = "EUR:0.002",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.amount_with_fee = "EUR:0.102",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_DATABASE_DEPOSIT,
@@ -866,8 +866,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
-      .details.deposit.amount_with_fee = "EUR:0.002",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.amount_with_fee = "EUR:0.102",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -884,8 +884,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
-      .details.deposit.amount_with_fee = "EUR:0.002",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.amount_with_fee = "EUR:0.102",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -902,8 +902,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
-      .details.deposit.amount_with_fee = "EUR:0.002",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.amount_with_fee = "EUR:0.102",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -925,8 +925,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
-      .details.deposit.amount_with_fee = "EUR:0.009",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.amount_with_fee = "EUR:0.109",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -943,8 +943,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
-      .details.deposit.amount_with_fee = "EUR:0.009",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.amount_with_fee = "EUR:0.109",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -965,8 +965,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
-      .details.deposit.amount_with_fee = "EUR:0.022",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.amount_with_fee = "EUR:0.122",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -988,8 +988,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
-      .details.deposit.amount_with_fee = "EUR:0.009",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.amount_with_fee = "EUR:0.109",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -1006,8 +1006,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
-      .details.deposit.amount_with_fee = "EUR:0.009",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.amount_with_fee = "EUR:0.109",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -1025,8 +1025,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
-      .details.deposit.amount_with_fee = "EUR:0.022",
-      .details.deposit.deposit_fee = "EUR:0"
+      .details.deposit.amount_with_fee = "EUR:0.122",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -1049,8 +1049,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
-      .details.deposit.amount_with_fee = "EUR:0.009",
-      .details.deposit.deposit_fee = "EUR:0.001"
+      .details.deposit.amount_with_fee = "EUR:0.104",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -1067,8 +1067,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
-      .details.deposit.amount_with_fee = "EUR:0.009",
-      .details.deposit.deposit_fee = "EUR:0.002"
+      .details.deposit.amount_with_fee = "EUR:0.105",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,
@@ -1086,8 +1086,8 @@ run_test ()
       .details.deposit.merchant_account = 4,
       .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
-      .details.deposit.amount_with_fee = "EUR:0.022",
-      .details.deposit.deposit_fee = "EUR:0.008"
+      .details.deposit.amount_with_fee = "EUR:0.112",
+      .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
       .opcode = OPCODE_RUN_AGGREGATOR,

@@ -1185,8 +1185,7 @@ run (void *cls)
   deposit.transaction_id =
       GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
   deposit.amount_with_fee = value;
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (CURRENCY, &deposit.deposit_fee));
+  deposit.deposit_fee = fee_deposit;
   result = 8;
   FAILIF (GNUNET_OK !=
           plugin->insert_deposit (plugin->cls,
@@ -1381,7 +1380,7 @@ run (void *cls)
   memset (&merchant_pub_wt, 43, sizeof (merchant_pub_wt));
   memset (&h_wire_wt, 44, sizeof (h_wire_wt));
   memset (&h_contract_wt, 45, sizeof (h_contract_wt));
-  memset (&coin_pub_wt, 46, sizeof (coin_pub_wt));
+  coin_pub_wt = deposit.coin.coin_pub;
   transaction_id_wt = 47;
   execution_time_wt = GNUNET_TIME_absolute_get ();
   memset (&merchant_pub_wt, 48, sizeof (merchant_pub_wt));
