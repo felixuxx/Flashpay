@@ -83,30 +83,30 @@ payments while maintaining unlinkability of transactions.  We argue
 that Taler provides a secure digital currency for modern liberal
 societies as it is a flexible, libre and efficient protocol and
 adequately balances the state's need for monetary control with the
-citizen's needs for private economic activity.  
+citizen's needs for private economic activity.
 \end{abstract}
 
 \section{Introduction}
 
-The design of payment systems shapes economies and societies. 
+The design of payment systems shapes economies and societies.
 Strong, developed nation states are evolving towards transparent
 payment systems, such as the MasterCard and VisaCard credit card
-schemes and computerized bank transactions such as SWIFT.  
+schemes and computerized bank transactions such as SWIFT.
 These systems enable mass surveillance by both governments and
 private companies, chilling customer activity~\cite{???}.
 Aspects of this government control benifit the economy, by enabling
 taxation.  Also, bribery and corruption are limited to elites who
-can afford to escape the dragnet.  
+can afford to escape the dragnet.
 At the other extreme, weaker developing nation states have economic
-activity based largely on coins, paper money or even barter.  
+activity based largely on coins, paper money or even barter.
 Here, the state is often unable to effectively monitor or tax economic
-activity, and this limits the ability of the state to shape the society.  
+activity, and this limits the ability of the state to shape the society.
 As bribery is virtually impossible to detect, corruption is widespread
 and not limited to social elites.
 %
 ZeroCoin~\cite{miers2013zerocoin} is an example for translating an
 anarchistic economy into the digital realm.
-% FIXME: Unclear referee comment : 
+% FIXME: Unclear referee comment :
 % I didn’t understand why ZeroCoin is particularly suited for
 % developing nations?
 % => clarified: suited to model anarchistic economy.
@@ -123,7 +123,7 @@ customer, merchant and exchange (Figure~\ref{fig:cmm}).
 The two designs share the key first step where the {\em customer}
 withdraws digital {\em coins} from the {\em exchange} with unlinkability
 provided via blind signatures.  The coins can then be spent at a
-{\em merchant} who {\em deposits} them at the exchange.  
+{\em merchant} who {\em deposits} them at the exchange.
 Taler uses online detection of double-spending, thus assuring the merchant
 instantly that a transaction is valid.
 
@@ -158,7 +158,7 @@ be too inefficient, even for modern systems.  The customer should not
 withdraw exact change from her account, as doing so reduces anonymity
 due to the obvious corrolation.  A practical payment system must thus
 support giving change in the form of spendable coins, say a \EUR{0,01}
-coin and a \EUR{50,00} coin.  
+coin and a \EUR{50,00} coin.
 
 Taler solves the problem of giving change by introducing a new {\em
   refresh} protocol.  Using this protocol, a customer can obtain
@@ -233,9 +233,9 @@ include:
    should be free software (libre) to have a chance for widespread adoption.
  \item Support for payments to off-line merchants, and thus deferred
    detection of double-spending, requires the exchange to attempt to
-   recover funds from delinquent customers via the legal system.  
+   recover funds from delinquent customers via the legal system.
    Any system that fails to be self-enforcing creates a major
-   business risk for the exchange and merchants.  
+   business risk for the exchange and merchants.
    In 1983, there were merchants without network connectivity, making that
    feature relevant, but today network connectivity is feasible for most
    merchants, and saves both the exchange and merchants the business risks
@@ -416,13 +416,13 @@ Ideally, the customer's anonymity is limited only by this channel;
 however, the payment system does additionally reveal that the customer
 is one of the patrons of the exchange.
 There are naturally risks that the customer-merchant business operation
-may leak identifying information about the customer.  
+may leak identifying information about the customer.
 We consider information leakage specific to the business logic to be
 outside of the scope of the design of Taler.
 
 Aside from refreshing and obtaining denomination key, the customer
 should ideally use an anonymous communication channel with the exchange
-to obscure their IP address for location privacy, but naturally 
+to obscure their IP address for location privacy, but naturally
 the exchange would typically learn the customer's identity from the wire
 transfer that funds the customer's withdrawal of anonymous digital coins.
 We believe this may even be desirable as there are laws, or bank policies,
@@ -432,7 +432,7 @@ Taler is thus only anonymous with respect to {\em payments}.
 In particular, the exchange
 is unable to link the known identity of the customer that withdrew
 anonymous digital coins to the {\em purchase} performed later at the
-merchant.  
+merchant.
 
 While the customer thus has anonymity for purchases, the exchange will
 always learn the merchant's identity in order to credit the merchant's
@@ -590,9 +590,9 @@ resumed at any step.  Commitments to disk are cumulative, that is an
 additional commitment does not erase the previously committed
 information.  Keys and thus coins always have a well-known expiration
 date; information committed to disk can be discarded after the
-expiration date of the respective public key.  
+expiration date of the respective public key.
 Customers may discard information once the respective coins have been
-fully spent, so long as refunds are not required.  
+fully spent, so long as refunds are not required.
 Merchants may discard information once payments from the exchange have
 been received, assuming the records are also no longer needed for tax
 purposes.  The exchange's bank transfers dealing in traditional currency
@@ -610,7 +610,7 @@ performs the following interaction with the exchange:
 % others, so probably withdrawal key should be renamed to reserve key.
 
 % FIXME: These steps occur at very different points in time, so probably
-% they should be restructured into more of a protocol discription. 
+% they should be restructured into more of a protocol discription.
 % It does create some confusion, like is a withdrawal key semi-ephemeral
 % like a linking key?
 
@@ -946,7 +946,7 @@ provides a payment system with the following key properties:
     Additionally, customers cannot defraud anyone, and
     merchants can only defraud their customers by not
     delivering on the agreed contract.  Neither merchants nor customers
-    are able to commit fraud against the exchange.  
+    are able to commit fraud against the exchange.
     Only the exchange needs be tightly audited and regulated.
   \item[No speculation] % It's actually "Specualtion not required"
     The digital coins are denominated in existing currencies,
@@ -984,7 +984,7 @@ principle.  However, as mentioned Taler does facilitate limits on
 withdrawals, which we believe is a better trade-off than the
 problematic escrow systems where the necessary intransparency
 actually facilitates voluntary cooperation between the exchange and
-criminals~\cite{sander1999escrow} and where the state could 
+criminals~\cite{sander1999escrow} and where the state could
 deanonymize citizens.
 
 \subsection{Offline Payments}
