@@ -27,20 +27,40 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include <microhttpd.h>
 
+
+static unsigned int pool_size = 100000;
+
 /**
  * URI under which the exchange is reachable during the benchmark.
  */
 #define EXCHANGE_URI "http://localhost:8081/"
-/**
 
- * Main function for the exchange's benchmark.
+/**
+ * Main function that will be run by the scheduler.
  *
- * @param argc expected to be 1
- * @param argv expected to only contain the program name
+ * @param cls closure
  */
+static void
+run (void *cls)
+{
+}
+
 int
 main (int argc,
       char * const *argv)
 {
-  return GNUNET_OK;
+  /**
+   * 1 Pool's size as an option
+   * 2 Connection to the exchange
+   * 3 Allocation of large enough memory
+   * 4 Withdraw
+   */
+
+  const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    {'s', "pool-size", NULL,
+     "How many coins this benchmark should instantiate", GNUNET_YES,
+     &GNUNET_GETOPT_set_uint, &pool_size}
+    };
+
+  GNUNET_SCHEDULER_run (&run, NULL);
 }

@@ -719,9 +719,9 @@ typedef void
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param pk kind of coin to create
  * @param reserve_priv private key of the reserve to withdraw from
- * @param coin_priv where to store the coin's private key,
+ * @param coin_priv where to fetch the coin's private key,
  *        caller must have committed this value to disk before the call (with @a pk)
- * @param blinding_key where to store the coin's blinding key
+ * @param blinding_key where to fetch the coin's blinding key
  *        caller must have committed this value to disk before the call (with @a pk)
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for @a res_cb
