@@ -452,6 +452,7 @@ AC_CONFIG_FILES([Makefile
                  src/exchange/Makefile
                  src/exchange-tools/Makefile
                  src/exchange-lib/Makefile
+                 src/benchmark/Makefile
                  src/include/Makefile
                  src/json/Makefile
                  src/pq/Makefile
