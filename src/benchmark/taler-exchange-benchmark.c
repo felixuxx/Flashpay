@@ -60,12 +60,20 @@ static struct TALER_EXCHANGE_Handle *exchange;
 /**
  * Run the main interpreter loop that performs exchange operations.
  *
- * @param cls contains the `struct InterpreterState`
+ * @param cls closure for benchmark_run()
  */
 static void
 benchmark_run (void *cls)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "benchmark_run() invoked\n");
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "gotten pool_size of %d\n", pool_size);
+
+  /**
+   * 1 Pool's size as an option: DONE, TESTED
+   * 2 Connection to the exchange: DONE, TESTED
+   * 3 Allocation of large enough memory
+   * 4 Withdraw
+   */
 }
 
 /**
@@ -152,12 +160,7 @@ int
 main (int argc,
       char * const *argv)
 {
-  /**
-   * 1 Pool's size as an option: DONE
-   * 2 Connection to the exchange: DONE, NOT TESTED
-   * 3 Allocation of large enough memory
-   * 4 Withdraw
-   */
+
   GNUNET_log_setup ("taler-exchange-benchmark",
                     "WARNING",
                     NULL);
