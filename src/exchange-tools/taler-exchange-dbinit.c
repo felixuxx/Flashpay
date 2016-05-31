@@ -34,6 +34,11 @@ static int global_ret;
 static int reset_db;
 
 /**
+ * -g option: garbage collect DB reset
+ */
+static int gc_db;
+
+/**
  * Main function that will be run.
  *
  * @param cls closure
@@ -68,6 +73,12 @@ run (void *cls,
     global_ret = 1;
     return;
   }
+  if (gc_db)
+    {
+      if (GNUNET_SYSERR == plugin->gc (plugin->cls))
+        fprintf (stderr,
+                 "Garbage collection failed!\n");
+    }
   TALER_EXCHANGEDB_plugin_unload (plugin);
 }
 
@@ -88,6 +99,9 @@ main (int argc,
     {'r', "reset", NULL,
      "reset database (DANGEROUS: all existing data is lost!)", 0,
      &GNUNET_GETOPT_set_one, &reset_db},
+    {'g', "gc", NULL,
+     "garbage collect database", 0,
+     &GNUNET_GETOPT_set_one, &gc_db},
     GNUNET_GETOPT_OPTION_END
   };
 

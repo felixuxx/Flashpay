@@ -1,4 +1,4 @@
-.TH TALER\-EXCHANGE\-DBINIT 1 "Apr 22, 2015" "GNU Taler"
+.TH TALER\-EXCHANGE\-DBINIT 1 "May 31, 2016" "GNU Taler"
 
 .SH NAME
 taler\-exchange\-dbinit \- Initialize Taler exchange database.
@@ -18,6 +18,9 @@ Use the configuration and other resources for the exchange to operate from DIRNA
 .B
 .IP "\-h, \-\-help"
 Print short help on options.
+.B
+.IP "\-g, \-\-gc"
+Garbage collect database.  Deletes all unnecessary data in the database.
 .B
 .IP "\-r, \-\-reset"
 Drop tables. Dangerous, will delete all existing data in the database before creating the tables.
