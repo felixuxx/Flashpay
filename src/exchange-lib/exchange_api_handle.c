@@ -109,6 +109,11 @@ struct TALER_EXCHANGE_Handle
   struct TALER_EXCHANGE_Keys key_data;
 
   /**
+   * When does @e key_data expire?
+   */
+  struct GNUNET_TIME_Absolute key_data_expiration;
+
+  /**
    * Raw key data of the exchange, only valid if
    * @e handshake_complete is past stage #MHS_CERT.
    */
@@ -143,6 +148,12 @@ struct KeysRequest
    * Entry for this request with the `struct GNUNET_CURL_Context`.
    */
   struct GNUNET_CURL_Job *job;
+
+  /**
+   * Expiration time according to "Expire:" header.
+   * 0 if not provided by the server.
+   */
+  struct GNUNET_TIME_Absolute expire;
 
 };
 
@@ -485,6 +496,7 @@ decode_keys_json (const json_t *resp_obj,
   struct GNUNET_HashContext *hash_context;
   struct TALER_ExchangePublicKeyP pub;
 
+  memset (key_data, 0, sizeof (struct TALER_EXCHANGE_Keys));
   if (JSON_OBJECT != json_typeof (resp_obj))
     return GNUNET_SYSERR;
 
@@ -605,6 +617,58 @@ decode_keys_json (const json_t *resp_obj,
 
 
 /**
+ * Free key data object.
+ *
+ * @param key_data data to free (pointer itself excluded)
+ */
+static void
+free_key_data (struct TALER_EXCHANGE_Keys *key_data)
+{
+  unsigned int i;
+
+  GNUNET_array_grow (key_data->sign_keys,
+                     key_data->num_sign_keys,
+                     0);
+  for (i=0;i<key_data->num_denom_keys;i++)
+    GNUNET_CRYPTO_rsa_public_key_free (key_data->denom_keys[i].key.rsa_public_key);
+  GNUNET_array_grow (key_data->denom_keys,
+                     key_data->num_denom_keys,
+                     0);
+  GNUNET_array_grow (key_data->auditors,
+                     key_data->num_auditors,
+                     0);
+}
+
+
+/**
+ * Initiate download of /keys from the exchange.
+ *
+ * @param exchange where to download /keys from
+ */
+static void
+request_keys (struct TALER_EXCHANGE_Handle *exchange);
+
+
+/**
+ * Check if our current response for /keys is valid, and if
+ * not trigger download.
+ *
+ * @param exchange exchange to check keys for
+ * @return until when the response is current, 0 if we are re-downloading
+ */
+struct GNUNET_TIME_Absolute
+TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange)
+{
+  if (NULL != exchange->kr)
+    return GNUNET_TIME_UNIT_ZERO_ABS;
+  if (0 < GNUNET_TIME_absolute_get_remaining (exchange->key_data_expiration).rel_value_us)
+    return exchange->key_data_expiration;
+  request_keys (exchange);
+  return GNUNET_TIME_UNIT_ZERO_ABS;
+}
+
+
+/**
  * Callback used when downloading the reply to a /keys request
  * is complete.
  *
@@ -619,13 +683,16 @@ keys_completed_cb (void *cls,
 {
   struct KeysRequest *kr = cls;
   struct TALER_EXCHANGE_Handle *exchange = kr->exchange;
-  TALER_EXCHANGE_CertificationCallback cb;
+  struct TALER_EXCHANGE_Keys kd;
+  struct TALER_EXCHANGE_Keys kd_old;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Received keys from URL `%s' with status %ld.\n",
               kr->url,
               response_code);
-  switch (response_code) {
+  kd_old = exchange->key_data;
+  switch (response_code)
+  {
   case 0:
     break;
   case MHD_HTTP_OK:
@@ -635,11 +702,14 @@ keys_completed_cb (void *cls,
       break;
     }
     if (GNUNET_OK !=
-        decode_keys_json (resp_obj, &kr->exchange->key_data))
+        decode_keys_json (resp_obj,
+                          &kd))
     {
       response_code = 0;
       break;
     }
+    exchange->key_data = kd;
+    json_decref (exchange->key_data_raw);
     exchange->key_data_raw = json_deep_copy (resp_obj);
     break;
   default:
@@ -655,24 +725,25 @@ keys_completed_cb (void *cls,
     free_keys_request (kr);
     exchange->state = MHS_FAILED;
     /* notify application that we failed */
-    if (NULL != (cb = exchange->cert_cb))
-    {
-      exchange->cert_cb = NULL;
-      cb (exchange->cert_cb_cls,
-	  NULL);
-    }
+    exchange->cert_cb (exchange->cert_cb_cls,
+                       NULL);
+    if (NULL != exchange->key_data_raw)
+      {
+        json_decref (exchange->key_data_raw);
+        exchange->key_data_raw = NULL;
+      }
+    free_key_data (&kd_old);
     return;
   }
+
   exchange->kr = NULL;
+  exchange->key_data_expiration = kr->expire;
   free_keys_request (kr);
   exchange->state = MHS_CERT;
   /* notify application about the key information */
-  if (NULL != (cb = exchange->cert_cb))
-  {
-    exchange->cert_cb = NULL;
-    cb (exchange->cert_cb_cls,
-	&exchange->key_data);
-  }
+  exchange->cert_cb (exchange->cert_cb_cls,
+                     &exchange->key_data);
+  free_key_data (&kd_old);
 }
 
 
@@ -730,6 +801,108 @@ MAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
 }
 
 
+/**
+ * Parse HTTP timestamp.
+ *
+ * @param date header to parse header
+ * @param at where to write the result
+ * @return #GNUNET_OK on success
+ */
+static int
+parse_date_string (const char *date,
+                   struct GNUNET_TIME_Absolute *at)
+{
+  static const char *const days[] =
+    { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+  static const char *const mons[] =
+    { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"  };
+  struct tm now;
+  time_t t;
+  char day[3];
+  char mon[3];
+  unsigned int i;
+  unsigned int mday;
+  unsigned int year;
+  unsigned int h;
+  unsigned int m;
+  unsigned int s;
+
+  if (7 != sscanf (date,
+                   "%3s, %02u %3s %04u %02u:%02u:%02u GMT",
+                   day,
+                   &mday,
+                   mon,
+                   &year,
+                   &h,
+                   &m,
+                   &s))
+    return GNUNET_SYSERR;
+  memset (&now, 0, sizeof (now));
+  now.tm_year = year - 1900;
+  now.tm_mday = mday;
+  now.tm_hour = h;
+  now.tm_min = m;
+  now.tm_sec = s;
+  now.tm_wday = 7;
+  for (i=0;i<7;i++)
+    if (0 == strcasecmp (days[i], day))
+      now.tm_wday = i;
+  now.tm_mon = 12;
+  for (i=0;i<12;i++)
+    if (0 == strcasecmp (mons[i], mon))
+      now.tm_mon = i;
+  if ( (7 == now.tm_mday) ||
+       (12 == now.tm_mon) )
+    return GNUNET_SYSERR;
+  t = mktime (&now);
+  at->abs_value_us = 1000LL * 1000LL * t;
+  return GNUNET_OK;
+}
+
+
+/**
+ * Function called for each header in the HTTP /keys response.
+ * Finds the "Expire:" header and parses it, storing the result
+ * in the "expire" field fo the keys request.
+ *
+ * @param buffer header data received
+ * @param size size of an item in @a buffer
+ * @param nitems number of items in @a buffer
+ * @param userdata the `struct KeysRequest`
+ * @return `size * nitems` on success (everything else aborts)
+ */
+static size_t
+header_cb (char *buffer,
+           size_t size,
+           size_t nitems,
+           void *userdata)
+{
+  struct KeysRequest *kr = userdata;
+  size_t total = size * nitems;
+  char *val;
+
+  if (total < strlen (MHD_HTTP_HEADER_EXPIRES ": "))
+    return total;
+  if (0 != strncasecmp (MHD_HTTP_HEADER_EXPIRES ": ",
+                        buffer,
+                        strlen (MHD_HTTP_HEADER_EXPIRES ": ")))
+    return total;
+  val = GNUNET_strndup (&buffer[strlen (MHD_HTTP_HEADER_EXPIRES ": ")],
+                        total - strlen (MHD_HTTP_HEADER_EXPIRES ": "));
+  if (GNUNET_OK !=
+      parse_date_string (val,
+                         &kr->expire))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to parse %s-header `%s'\n",
+                MHD_HTTP_HEADER_EXPIRES,
+                val);
+  }
+  GNUNET_free (val);
+  return total;
+}
+
 /* ********************* public API ******************* */
 
 /**
@@ -755,40 +928,62 @@ TALER_EXCHANGE_connect (struct GNUNET_CURL_Context *ctx,
                         ...)
 {
   struct TALER_EXCHANGE_Handle *exchange;
-  struct KeysRequest *kr;
-  CURL *c;
 
   exchange = GNUNET_new (struct TALER_EXCHANGE_Handle);
   exchange->ctx = ctx;
   exchange->url = GNUNET_strdup (url);
   exchange->cert_cb = cert_cb;
   exchange->cert_cb_cls = cert_cb_cls;
+  request_keys (exchange);
+  return exchange;
+}
+
+
+/**
+ * Initiate download of /keys from the exchange.
+ *
+ * @param exchange where to download /keys from
+ */
+static void
+request_keys (struct TALER_EXCHANGE_Handle *exchange)
+{
+  struct KeysRequest *kr;
+  CURL *eh;
+
+  GNUNET_assert (NULL == exchange->kr);
   kr = GNUNET_new (struct KeysRequest);
   kr->exchange = exchange;
   kr->url = MAH_path_to_url (exchange, "/keys");
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting keys with URL `%s'.\n",
               kr->url);
-  c = curl_easy_init ();
+  eh = curl_easy_init ();
   GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (c,
+                 curl_easy_setopt (eh,
                                    CURLOPT_VERBOSE,
                                    0));
   GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (c,
-                                   CURLOPT_STDERR,
-                                   stdout));
+                 curl_easy_setopt (eh,
+                                   CURLOPT_TIMEOUT,
+                                   (long) 300));
   GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (c,
+                 curl_easy_setopt (eh,
+                                   CURLOPT_HEADERFUNCTION,
+                                   &header_cb));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_HEADERDATA,
+                                   kr));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
                                    CURLOPT_URL,
                                    kr->url));
   kr->job = GNUNET_CURL_job_add (exchange->ctx,
-                                 c,
+                                 eh,
                                  GNUNET_NO,
                                  &keys_completed_cb,
                                  kr);
   exchange->kr = kr;
-  return exchange;
 }
 
 
@@ -800,26 +995,18 @@ TALER_EXCHANGE_connect (struct GNUNET_CURL_Context *ctx,
 void
 TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
 {
-  unsigned int i;
-
   if (NULL != exchange->kr)
   {
     GNUNET_CURL_job_cancel (exchange->kr->job);
     free_keys_request (exchange->kr);
     exchange->kr = NULL;
   }
-  GNUNET_array_grow (exchange->key_data.sign_keys,
-                     exchange->key_data.num_sign_keys,
-                     0);
-  for (i=0;i<exchange->key_data.num_denom_keys;i++)
-    GNUNET_CRYPTO_rsa_public_key_free (exchange->key_data.denom_keys[i].key.rsa_public_key);
-  GNUNET_array_grow (exchange->key_data.denom_keys,
-                     exchange->key_data.num_denom_keys,
-                     0);
-  GNUNET_array_grow (exchange->key_data.auditors,
-                     exchange->key_data.num_auditors,
-                     0);
-  json_decref (exchange->key_data_raw);
+  free_key_data (&exchange->key_data);
+  if (NULL != exchange->key_data_raw)
+  {
+    json_decref (exchange->key_data_raw);
+    exchange->key_data_raw = NULL;
+  }
   GNUNET_free (exchange->url);
   GNUNET_free (exchange);
 }
@@ -863,7 +1050,7 @@ TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
  */
 const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_EXCHANGE_get_denomination_key (const struct TALER_EXCHANGE_Keys *keys,
-                                 const struct TALER_DenominationPublicKey *pk)
+                                     const struct TALER_DenominationPublicKey *pk)
 {
   unsigned int i;
 
@@ -884,7 +1071,7 @@ TALER_EXCHANGE_get_denomination_key (const struct TALER_EXCHANGE_Keys *keys,
  */
 const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_EXCHANGE_get_denomination_key_by_hash (const struct TALER_EXCHANGE_Keys *keys,
-                                         const struct GNUNET_HashCode *hc)
+                                             const struct GNUNET_HashCode *hc)
 {
   unsigned int i;
 
@@ -904,8 +1091,9 @@ TALER_EXCHANGE_get_denomination_key_by_hash (const struct TALER_EXCHANGE_Keys *k
  * @return the exchange's key set
  */
 const struct TALER_EXCHANGE_Keys *
-TALER_EXCHANGE_get_keys (const struct TALER_EXCHANGE_Handle *exchange)
+TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange)
 {
+  (void) TALER_EXCHANGE_check_keys_current (exchange);
   return &exchange->key_data;
 }
 
@@ -918,8 +1106,9 @@ TALER_EXCHANGE_get_keys (const struct TALER_EXCHANGE_Handle *exchange)
  * @return the exchange's keys in raw JSON
  */
 json_t *
-TALER_EXCHANGE_get_keys_raw (const struct TALER_EXCHANGE_Handle *exchange)
+TALER_EXCHANGE_get_keys_raw (struct TALER_EXCHANGE_Handle *exchange)
 {
+  (void) TALER_EXCHANGE_check_keys_current (exchange);
   return json_deep_copy (exchange->key_data_raw);
 }
 
