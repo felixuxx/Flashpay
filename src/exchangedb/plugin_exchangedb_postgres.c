@@ -163,6 +163,37 @@ pq_notice_processor_cb (void *arg,
 
 
 /**
+ * Establish connection to the Postgres database
+ * and initialize callbacks for logging.
+ *
+ * @param pc configuration to use
+ * @return NULL on error
+ */
+static PGconn *
+connect_to_postgres (struct PostgresClosure *pc)
+{
+  PGconn *conn;
+
+  conn = PQconnectdb (pc->connection_cfg_str);
+  if (CONNECTION_OK !=
+      PQstatus (conn))
+  {
+    TALER_LOG_ERROR ("Database connection failed: %s\n",
+                     PQerrorMessage (conn));
+    GNUNET_break (0);
+    return NULL;
+  }
+  PQsetNoticeReceiver (conn,
+                       &pq_notice_receiver_cb,
+                       NULL);
+  PQsetNoticeProcessor (conn,
+                        &pq_notice_processor_cb,
+                        NULL);
+  return conn;
+}
+
+
+/**
  * Drop all Taler tables.  This should only be used by testcases.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -174,21 +205,9 @@ postgres_drop_tables (void *cls)
   struct PostgresClosure *pc = cls;
   PGconn *conn;
 
-  conn = PQconnectdb (pc->connection_cfg_str);
-  if (CONNECTION_OK !=
-      PQstatus (conn))
-  {
-    TALER_LOG_ERROR ("Database connection failed: %s\n",
-                     PQerrorMessage (conn));
-    GNUNET_break (0);
+  conn = connect_to_postgres (pc);
+  if (NULL == conn)
     return GNUNET_SYSERR;
-  }
-  PQsetNoticeReceiver (conn,
-                       &pq_notice_receiver_cb,
-                       NULL);
-  PQsetNoticeProcessor (conn,
-                        &pq_notice_processor_cb,
-                        NULL);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Dropping ALL tables\n");
   SQLEXEC_ (conn,
@@ -219,8 +238,10 @@ postgres_drop_tables (void *cls)
             "DROP TABLE IF EXISTS reserves;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS denominations CASCADE;");
+  PQfinish (conn);
   return GNUNET_OK;
  SQLEXEC_fail:
+  PQfinish (conn);
   return GNUNET_SYSERR;
 }
 
@@ -237,20 +258,9 @@ postgres_create_tables (void *cls)
   struct PostgresClosure *pc = cls;
   PGconn *conn;
 
-  conn = PQconnectdb (pc->connection_cfg_str);
-  if (CONNECTION_OK != PQstatus (conn))
-  {
-    TALER_LOG_ERROR ("Database connection failed: %s\n",
-                     PQerrorMessage (conn));
-    PQfinish (conn);
+  conn = connect_to_postgres (pc);
+  if (NULL == conn)
     return GNUNET_SYSERR;
-  }
-  PQsetNoticeReceiver (conn,
-                       &pq_notice_receiver_cb,
-                       NULL);
-  PQsetNoticeProcessor (conn,
-                        &pq_notice_processor_cb,
-                        NULL);
 #define SQLEXEC(sql) SQLEXEC_(conn, sql);
 #define SQLEXEC_INDEX(sql) SQLEXEC_IGNORE_ERROR_(conn, sql);
   /* Denomination table for holding the publicly available information of
@@ -1176,11 +1186,29 @@ postgres_prepare (PGconn *db_conn)
            ",type"
            ",buf"
            " FROM prewire"
-           " WHERE"
-           " finished=false"
+           " WHERE finished=false"
            " ORDER BY prewire_uuid ASC"
            " LIMIT 1",
            0, NULL);
+
+  /* Used in #postgres_gc() */
+  PREPARE ("gc_prewire",
+           "DELETE"
+           " FROM prewire"
+           " WHERE finished=true",
+           0, NULL);
+  PREPARE ("gc_denominations",
+           "DELETE"
+           " FROM denominations"
+           " WHERE expire_legal < $1",
+           1, NULL);
+  PREPARE ("gc_reserves",
+           "DELETE"
+           " FROM reserves"
+           " WHERE expiration_date < $1"
+           "   AND current_balance_val = 0"
+           "   AND current_balance_frac = 0",
+           1, NULL);
 
   return GNUNET_OK;
 #undef PREPARE
@@ -1220,25 +1248,14 @@ postgres_get_session (void *cls)
 
   if (NULL != (session = pthread_getspecific (pc->db_conn_threadlocal)))
     return session;
-  db_conn = PQconnectdb (pc->connection_cfg_str);
-  if (CONNECTION_OK !=
-      PQstatus (db_conn))
-  {
-    TALER_LOG_ERROR ("Database connection failed: %s\n",
-                     PQerrorMessage (db_conn));
-    GNUNET_break (0);
+  db_conn = connect_to_postgres (pc);
+  if (NULL == db_conn)
     return NULL;
-  }
-  PQsetNoticeReceiver (db_conn,
-                       &pq_notice_receiver_cb,
-                       NULL);
-  PQsetNoticeProcessor (db_conn,
-                        &pq_notice_processor_cb,
-                        NULL);
   if (GNUNET_OK !=
       postgres_prepare (db_conn))
   {
     GNUNET_break (0);
+    PQfinish (db_conn);
     return NULL;
   }
   session = GNUNET_new (struct TALER_EXCHANGEDB_Session);
@@ -4260,13 +4277,55 @@ postgres_wire_prepare_data_get (void *cls,
  *
  * @param cls closure
  * @return #GNUNET_OK on success,
- *         #GNUNET_NO if there was nothing to GC
  *         #GNUNET_SYSERR on DB errors
  */
 static int
 postgres_gc (void *cls)
 {
-  GNUNET_break (0); // #3485
+  struct PostgresClosure *pc = cls;
+  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_PQ_QueryParam params_none[] = {
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_QueryParam params_time[] = {
+    GNUNET_PQ_query_param_absolute_time (&now),
+    GNUNET_PQ_query_param_end
+  };
+  PGconn *conn;
+  PGresult *result;
+
+  now = GNUNET_TIME_absolute_get ();
+  conn = connect_to_postgres (pc);
+  if (NULL == conn)
+    return GNUNET_SYSERR;
+  result = GNUNET_PQ_exec_prepared (conn,
+                                    "gc_prewire",
+                                    params_none);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQfinish (conn);
+    return GNUNET_SYSERR;
+  }
+  result = GNUNET_PQ_exec_prepared (conn,
+                                    "gc_denominations",
+                                    params_time);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQfinish (conn);
+    return GNUNET_SYSERR;
+  }
+  result = GNUNET_PQ_exec_prepared (conn,
+                                    "gc_reserves",
+                                    params_time);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQfinish (conn);
+    return GNUNET_SYSERR;
+  }
+  PQfinish (conn);
   return GNUNET_OK;
 }
 
