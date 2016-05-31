@@ -4298,6 +4298,12 @@ postgres_gc (void *cls)
   conn = connect_to_postgres (pc);
   if (NULL == conn)
     return GNUNET_SYSERR;
+  if (GNUNET_OK !=
+      postgres_prepare (conn))
+  {
+    PQfinish (conn);
+    return GNUNET_SYSERR;
+  }
   result = GNUNET_PQ_exec_prepared (conn,
                                     "gc_prewire",
                                     params_none);

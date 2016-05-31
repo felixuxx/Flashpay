@@ -40,9 +40,10 @@ void
 TMH_RESPONSE_add_global_headers (struct MHD_Response *response)
 {
   if (TMH_exchange_connection_close)
-    (void) MHD_add_response_header (response,
-                                    MHD_HTTP_HEADER_CONNECTION,
-                                    "close");
+    GNUNET_break (MHD_YES ==
+                  MHD_add_response_header (response,
+                                           MHD_HTTP_HEADER_CONNECTION,
+                                           "close"));
 }
 
 

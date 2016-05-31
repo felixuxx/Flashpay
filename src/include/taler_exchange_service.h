@@ -220,7 +220,7 @@ struct TALER_EXCHANGE_Keys
  *
  * @param cls closure
  * @param keys information about the various keys used
- *        by the exchange
+ *        by the exchange, NULL if /keys failed
  */
 typedef void
 (*TALER_EXCHANGE_CertificationCallback) (void *cls,
@@ -244,7 +244,8 @@ struct TALER_EXCHANGE_Handle;
  *
  * @param ctx the context
  * @param url HTTP base URL for the exchange
- * @param cert_cb function to call with the exchange's certification information
+ * @param cert_cb function to call with the exchange's certification information,
+ *                possibly called repeatedly if the information changes
  * @param cert_cb_cls closure for @a cert_cb
  * @param ... list of additional arguments, terminated by #TALER_EXCHANGE_OPTION_END.
  * @return the exchange handle; NULL upon error
@@ -273,18 +274,28 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange);
  * @return the exchange's key set
  */
 const struct TALER_EXCHANGE_Keys *
-TALER_EXCHANGE_get_keys (const struct TALER_EXCHANGE_Handle *exchange);
+TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange);
 
 
 /**
- * Obtain the keys from the exchange in the
- * raw JSON format
+ * Check if our current response for /keys is valid, and if
+ * not, trigger /keys download.
+ *
+ * @param exchange exchange to check keys for
+ * @return until when the response is current, 0 if we are re-downloading
+ */
+struct GNUNET_TIME_Absolute
+TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange);
+
+
+/**
+ * Obtain the keys from the exchange in the raw JSON format.
  *
  * @param exchange the exchange handle
  * @return the exchange's keys in raw JSON
  */
 json_t *
-TALER_EXCHANGE_get_keys_raw (const struct TALER_EXCHANGE_Handle *exchange);
+TALER_EXCHANGE_get_keys_raw (struct TALER_EXCHANGE_Handle *exchange);
 
 
 /**

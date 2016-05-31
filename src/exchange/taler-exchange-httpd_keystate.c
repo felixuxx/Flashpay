@@ -89,6 +89,11 @@ struct TMH_KS_StateHandle
   struct GNUNET_TIME_Absolute next_reload;
 
   /**
+   * When does the first active denomination key expire (for deposit)?
+   */
+  struct GNUNET_TIME_Absolute min_dk_expire;
+
+  /**
    * Exchange signing key that should be used currently.
    */
   struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP current_sign_key_issue;
@@ -217,6 +222,7 @@ reload_keys_denom_iter (void *cls,
   struct TMH_KS_StateHandle *ctx = cls;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute horizon;
+  struct GNUNET_TIME_Absolute expire_deposit;
   struct GNUNET_HashCode denom_key_hash;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *d2;
   struct TALER_EXCHANGEDB_Session *session;
@@ -235,8 +241,8 @@ reload_keys_denom_iter (void *cls,
     return GNUNET_OK;
   }
   now = GNUNET_TIME_absolute_get ();
-  if (GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_deposit).abs_value_us <
-      now.abs_value_us)
+  expire_deposit = GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_deposit);
+  if (expire_deposit.abs_value_us < now.abs_value_us)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Skipping expired denomination key `%s'\n",
@@ -339,6 +345,8 @@ reload_keys_denom_iter (void *cls,
     GNUNET_free (d2);
     return GNUNET_OK;
   }
+  ctx->min_dk_expire = GNUNET_TIME_absolute_min (ctx->min_dk_expire,
+                                                 expire_deposit);
   json_array_append_new (ctx->denom_keys_array,
                          denom_key_issue_to_json (&dki->denom_pub,
                                                   &dki->issue));
@@ -643,7 +651,7 @@ TMH_KS_acquire_ (const char *location)
   {
     key_state = GNUNET_new (struct TMH_KS_StateHandle);
     key_state->hash_context = GNUNET_CRYPTO_hash_context_start ();
-
+    key_state->min_dk_expire = GNUNET_TIME_UNIT_FOREVER_ABS;
 
     key_state->denom_keys_array = json_array ();
     GNUNET_assert (NULL != key_state->denom_keys_array);
@@ -680,7 +688,6 @@ TMH_KS_acquire_ (const char *location)
       return NULL;
     }
 
-
     ks.purpose.size = htonl (sizeof (ks));
     ks.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET);
     ks.list_issue_date = GNUNET_TIME_absolute_hton (key_state->reload_time);
@@ -691,7 +698,9 @@ TMH_KS_acquire_ (const char *location)
                    GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
                                              &ks.purpose,
                                              &sig.eddsa_signature));
-    key_state->next_reload = GNUNET_TIME_absolute_ntoh (key_state->current_sign_key_issue.issue.expire);
+    key_state->next_reload =
+      GNUNET_TIME_absolute_min (GNUNET_TIME_absolute_ntoh (key_state->current_sign_key_issue.issue.expire),
+                                key_state->min_dk_expire);
     if (0 == key_state->next_reload.abs_value_us)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "No valid signing key found!\n");
@@ -1002,6 +1011,58 @@ TMH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
 
 
 /**
+ * Produce HTTP "Date:" header.
+ *
+ * @param at time to write to @a date
+ * @param[out] date where to write the header, with
+ *        at least 128 bytes available space.
+ */
+static void
+get_date_string (struct GNUNET_TIME_Absolute at,
+                 char *date)
+{
+  static const char *const days[] =
+    { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+  static const char *const mons[] =
+    { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
+    "Nov", "Dec"
+  };
+  struct tm now;
+  time_t t;
+#if !defined(HAVE_C11_GMTIME_S) && !defined(HAVE_W32_GMTIME_S) && !defined(HAVE_GMTIME_R)
+  struct tm* pNow;
+#endif
+
+  date[0] = 0;
+  t = (time_t) (at.abs_value_us / 1000LL / 1000LL);
+#if defined(HAVE_C11_GMTIME_S)
+  if (NULL == gmtime_s (&t, &now))
+    return;
+#elif defined(HAVE_W32_GMTIME_S)
+  if (0 != gmtime_s (&now, &t))
+    return;
+#elif defined(HAVE_GMTIME_R)
+  if (NULL == gmtime_r(&t, &now))
+    return;
+#else
+  pNow = gmtime(&t);
+  if (NULL == pNow)
+    return;
+  now = *pNow;
+#endif
+  sprintf (date,
+           "%3s, %02u %3s %04u %02u:%02u:%02u GMT",
+           days[now.tm_wday % 7],
+           (unsigned int) now.tm_mday,
+           mons[now.tm_mon % 12],
+           (unsigned int) (1900 + now.tm_year),
+           (unsigned int) now.tm_hour,
+           (unsigned int) now.tm_min,
+           (unsigned int) now.tm_sec);
+}
+
+
+/**
  * Function to call to handle the request by sending
  * back static data from the @a rh.
  *
@@ -1022,6 +1083,7 @@ TMH_KS_handler_keys (struct TMH_RequestHandler *rh,
   struct TMH_KS_StateHandle *key_state;
   struct MHD_Response *response;
   int ret;
+  char dat[128];
 
   key_state = TMH_KS_acquire ();
   response = MHD_create_response_from_buffer (strlen (key_state->keys_json),
@@ -1034,9 +1096,22 @@ TMH_KS_handler_keys (struct TMH_RequestHandler *rh,
     return MHD_NO;
   }
   TMH_RESPONSE_add_global_headers (response);
-  (void) MHD_add_response_header (response,
-                                  "Content-Type",
-                                  rh->mime_type);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         MHD_HTTP_HEADER_CONTENT_TYPE,
+                                         rh->mime_type));
+  get_date_string (key_state->reload_time,
+                   dat);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         MHD_HTTP_HEADER_LAST_MODIFIED,
+                                         dat));
+  get_date_string (key_state->next_reload,
+                   dat);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         MHD_HTTP_HEADER_EXPIRES,
+                                         dat));
   ret = MHD_queue_response (connection,
                             rh->response_code,
                             response);
