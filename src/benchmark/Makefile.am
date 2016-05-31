@@ -13,9 +13,9 @@ taler_exchange_benchmark_SOURCES = \
   taler-exchange-benchmark.c
 taler_exchange_benchmark_LDADD = \
   $(LIBGCRYPT_LIBS) \
-  -ltalerexchange \
-  -ltalerjson \
-  -ltalerutil \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/exchange-lib/libtalerexchange.la \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
