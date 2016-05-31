@@ -742,6 +742,9 @@ main (int argc,
     GNUNET_GETOPT_OPTION_END
   };
   int ret;
+  const char *listen_pid;
+  const char *listen_fds;
+  int fh = -1;
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-exchange-httpd",
@@ -755,7 +758,8 @@ main (int argc,
   if (NULL == cfgfile)
     cfgfile = GNUNET_strdup (GNUNET_OS_project_data_get ()->user_config_file);
   cfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_load (cfg, cfgfile))
+  if (GNUNET_SYSERR ==
+      GNUNET_CONFIGURATION_load (cfg, cfgfile))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 _("Malformed configuration file `%s', exit ...\n"),
@@ -768,11 +772,34 @@ main (int argc,
       exchange_serve_process_config ())
     return 1;
 
-  if (NULL != serve_unixpath)
+  /* check for systemd-style FD passing */
+  listen_pid = getenv ("LISTEN_PID");
+  listen_fds = getenv ("LISTEN_FDS");
+  if ( (NULL != listen_pid) &&
+       (NULL != listen_fds) &&
+       (getpid() == strtol (listen_pid, NULL, 10)) &&
+       (1 == strtoul (listen_fds, NULL, 10)) /* we support only 1 socket */)
+  {
+    int flags;
+
+    fh = 3;
+    flags = fcntl (fh, F_GETFD);
+    if ( (-1 == flags) && (EBADF == errno) )
+    {
+      fprintf (stderr,
+               "Bad listen socket passed, ignored\n");
+      fh = -1;
+    }
+    flags |= FD_CLOEXEC;
+    fcntl (fh, F_SETFD, flags);
+  }
+
+  /* consider unix path */
+  if ( (-1 == fh) &&
+       (NULL != serve_unixpath) )
   {
     struct GNUNET_NETWORK_Handle *nh;
     struct sockaddr_un *un;
-    int fh;
 
     if (sizeof (un->sun_path) <= strlen (serve_unixpath))
     {
@@ -782,9 +809,11 @@ main (int argc,
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Creating listen socket '%s' with mode %o\n",
-                serve_unixpath, unixpath_mode);
+                serve_unixpath,
+                unixpath_mode);
 
-    if (GNUNET_OK != GNUNET_DISK_directory_create_for_file (serve_unixpath))
+    if (GNUNET_OK !=
+        GNUNET_DISK_directory_create_for_file (serve_unixpath))
     {
       GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
                                 "mkdir",
@@ -793,23 +822,28 @@ main (int argc,
 
     un = GNUNET_new (struct sockaddr_un);
     un->sun_family = AF_UNIX;
-    strncpy (un->sun_path, serve_unixpath, sizeof (un->sun_path) - 1);
+    strncpy (un->sun_path,
+             serve_unixpath,
+             sizeof (un->sun_path) - 1);
 
     GNUNET_NETWORK_unix_precheck (un);
 
     if (NULL == (nh = GNUNET_NETWORK_socket_create (AF_UNIX, SOCK_STREAM, 0)))
     {
-      fprintf (stderr, "create failed for AF_UNIX\n");
+      fprintf (stderr,
+               "create failed for AF_UNIX\n");
       return 1;
     }
     if (GNUNET_OK != GNUNET_NETWORK_socket_bind (nh, (void *) un, sizeof (struct sockaddr_un)))
     {
-      fprintf (stderr, "bind failed for AF_UNIX\n");
+      fprintf (stderr,
+               "bind failed for AF_UNIX\n");
       return 1;
     }
     if (GNUNET_OK != GNUNET_NETWORK_socket_listen (nh, UNIX_BACKLOG))
     {
-      fprintf (stderr, "listen failed for AF_UNIX\n");
+      fprintf (stderr,
+               "listen failed for AF_UNIX\n");
       return 1;
     }
 
@@ -817,41 +851,31 @@ main (int argc,
 
     if (0 != chmod (serve_unixpath, unixpath_mode))
     {
-      fprintf (stderr, "chmod failed: %s\n", strerror (errno));
+      fprintf (stderr,
+               "chmod failed: %s\n",
+               strerror (errno));
       return 1;
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "set socket '%s' to mode %o\n", serve_unixpath, unixpath_mode);
-
-    mydaemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
-                                 0,
-                                 NULL, NULL,
-                                 &handle_mhd_request, NULL,
-                                 MHD_OPTION_LISTEN_SOCKET, fh,
-                                 MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
-                                 MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
-                                 MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
-#if HAVE_DEVELOPER
-                                 MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
-#endif
-                                 MHD_OPTION_END);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "set socket '%s' to mode %o\n",
+                serve_unixpath,
+                unixpath_mode);
     GNUNET_NETWORK_socket_free_memory_only_ (nh);
   }
-  else
-  {
-    // FIXME: refactor two calls to MHD_start_daemon
-    // into one, using an options array instead of varags
-    mydaemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
-                                 serve_port,
-                                 NULL, NULL,
-                                 &handle_mhd_request, NULL,
-                                 MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
-                                 MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
-                                 MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
+
+
+  mydaemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN | MHD_USE_DEBUG,
+                               (-1 == fh) ? serve_port : 0,
+                               NULL, NULL,
+                               &handle_mhd_request, NULL,
+                               MHD_OPTION_LISTEN_SOCKET, fh,
+                               MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
+                               MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
+                               MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
 #if HAVE_DEVELOPER
-                                 MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
+                               MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
 #endif
-                                 MHD_OPTION_END);
-  }
+                               MHD_OPTION_END);
 
   if (NULL == mydaemon)
   {
@@ -884,14 +908,56 @@ main (int argc,
   case GNUNET_NO:
     {
       MHD_socket sock = MHD_quiesce_daemon (mydaemon);
+      pid_t chld;
+      int flags;
 
-      /* FIXME #3474: fork another MHD, passing on the listen socket! */
+      /* Set flags to make 'sock' inherited by child */
+      flags = fcntl (sock, F_GETFD);
+      GNUNET_assert (-1 != flags);
+      flags &= ~FD_CLOEXEC;
+      GNUNET_assert (-1 != fcntl (sock, F_SETFD, flags));
+      chld = fork ();
+      if (-1 == chld)
+      {
+        /* fork() failed, continue clean up, unhappily */
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                             "fork");
+      }
+      if (0 == chld)
+      {
+        char pids[12];
+
+        /* exec another taler-exchange-httpd, passing on the listen socket;
+           as in systemd it is expected to be on FD #3 */
+        if (3 != dup2 (sock, 3))
+        {
+          GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                               "dup2");
+          _exit (1);
+        }
+        /* Tell the child that it is the desired recipient for FD #3 */
+        GNUNET_snprintf (pids,
+                         sizeof (pids),
+                         "%u",
+                         getpid ());
+        setenv ("LISTEN_PID", pids, 1);
+        setenv ("LISTEN_FDS", "1", 1);
+        /* Finally, exec the (presumably) more recent exchange binary */
+        execvp ("taler-exchange-httpd",
+                argv);
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                             "execvp");
+        _exit (1);
+      }
+      /* we're the original process, handle remaining contextions
+         before exiting; as the listen socket is no longer used,
+         close it here */
+      GNUNET_break (0 == close (sock));
       while (0 != MHD_get_daemon_info (mydaemon,
                                        MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->num_connections)
         sleep (1);
+      /* Now we're really done, practice clean shutdown */
       MHD_stop_daemon (mydaemon);
-
-      close (sock); /* FIXME: done like this because #3474 is open */
     }
     break;
   default:

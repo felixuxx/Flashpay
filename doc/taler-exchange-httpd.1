@@ -32,6 +32,17 @@ This option is only available if the exchange was compiled with the configure op
 .IP \"-t SECONDS, \-\-timeout=SECONDS"
 Specifies the number of SECONDS after which the HTTPD should close (idle) HTTP connections.
 
+.SH SIGNALS
+.B
+.IP SIGUSR1
+Sending a SIGUSR1 to the process will cause it to reload denomination and signing keys.
+.B
+.IP SIGTERM
+Sending a SIGTERM to the process will cause it to shutdown cleanly.
+.B
+.IP SIGHUP
+Sending a SIGHUP to the process will cause it to re-execute the taler\-exchange\-httpd binary in the PATH, passing it the existing listen socket. Then the old server process will automatically exit after it is done handling existing client connections; the new server process will accept and handle new client connections.
+
 .SH BUGS
 Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
 

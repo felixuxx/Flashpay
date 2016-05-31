@@ -903,8 +903,8 @@ TMH_KS_loop (void)
   sigchld = GNUNET_SIGNAL_handler_install (SIGCHLD,
                                            &handle_sigchld);
 
-  ret = 0;
-  while (0 == ret)
+  ret = GNUNET_OK;
+  while (GNUNET_OK == ret)
   {
     char c;
     ssize_t res;
