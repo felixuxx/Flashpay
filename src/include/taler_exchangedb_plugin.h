@@ -1488,6 +1488,18 @@ struct TALER_EXCHANGEDB_Plugin
                            void *cb_cls);
 
 
+  /**
+   * Function called to perform "garbage collection" on the
+   * database, expiring records we no longer require.
+   *
+   * @param cls closure
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_NO if there was nothing to GC
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*gc) (void *cls);
+
 };
 
 

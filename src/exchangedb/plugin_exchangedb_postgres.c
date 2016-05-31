@@ -295,6 +295,8 @@ postgres_create_tables (void *cls)
   /* index on reserves table */
   SQLEXEC_INDEX ("CREATE INDEX reserves_reserve_pub_index ON "
                  "reserves (reserve_pub)");
+  SQLEXEC_INDEX ("CREATE INDEX reserves_expiration_index"
+		 " ON reserves (expiration_date);");
   /* reserves_in table collects the transactions which transfer funds
      into the reserve.  The rows of this table correspond to each
      incoming transaction. */
@@ -306,14 +308,10 @@ postgres_create_tables (void *cls)
           ",sender_account_details TEXT NOT NULL "
           ",transfer_details TEXT NOT NULL "
           ",execution_date INT8 NOT NULL"
-          ",PRIMARY KEY (reserve_pub,transfer_details)"
+          ",PRIMARY KEY (reserve_pub, transfer_details)"
           ");");
   /* Create indices on reserves_in */
-  SQLEXEC_INDEX ("CREATE INDEX reserves_in_reserve_pub_index"
-		 " ON reserves_in (reserve_pub);");
-  SQLEXEC_INDEX ("CREATE INDEX reserves_in_reserve_pub_details_index"
-		 " ON reserves_in (reserve_pub,details);");
-  SQLEXEC_INDEX ("CREATE INDEX execution_index"
+  SQLEXEC_INDEX ("CREATE INDEX reserves_in_execution_index"
 		 " ON reserves_in (execution_date);");
   /* Table with the withdraw operations that have been performed on a reserve.
      The 'h_blind_ev' is the hash of the blinded coin. It serves as a primary
@@ -334,8 +332,8 @@ postgres_create_tables (void *cls)
   /* Index blindcoins(reserve_pub) for get_reserves_out statement */
   SQLEXEC_INDEX ("CREATE INDEX reserves_out_reserve_pub_index ON"
                  " reserves_out (reserve_pub)");
-  SQLEXEC_INDEX ("CREATE INDEX reserves_out_h_blind_ev_index ON "
-                 "reserves_out (h_blind_ev)");
+  SQLEXEC_INDEX ("CREATE INDEX reserves_out_execution_date ON "
+                 "reserves_out (execution_date)");
   /* Table with coins that have been (partially) spent, used to track
      coin information only once. */
   SQLEXEC("CREATE TABLE IF NOT EXISTS known_coins "
@@ -382,9 +380,10 @@ postgres_create_tables (void *cls)
           ",transfer_pub BYTEA NOT NULL CHECK(LENGTH(transfer_pub)=32)"
           ",link_secret_enc BYTEA NOT NULL CHECK(LENGTH(link_secret_enc)=64)"
           ",cnc_index INT2 NOT NULL"
+          ",UNIQUE (session_hash, cnc_index)"
           ")");
   SQLEXEC_INDEX("CREATE INDEX refresh_commit_link_session_hash_index "
-                "ON refresh_commit_link(session_hash,cnc_index)");
+                "ON refresh_commit_link(session_hash, cnc_index)");
 
   /* Table with the commitments for the new coins that are to be created
      during a melting session.  Includes the session, the cut-and-choose
@@ -398,9 +397,10 @@ postgres_create_tables (void *cls)
           ",newcoin_index INT2 NOT NULL"
           ",link_vector_enc BYTEA NOT NULL CHECK(LENGTH(link_vector_enc)=64)"
           ",coin_ev BYTEA NOT NULL"
+          ",UNIQUE (session_hash, cnc_index, newcoin_index)"
           ")");
   SQLEXEC_INDEX("CREATE INDEX refresh_commit_coin_session_hash_index "
-                "ON refresh_commit_coin(session_hash,cnc_index,newcoin_index)");
+                "ON refresh_commit_coin(session_hash, cnc_index, newcoin_index)");
 
 
   /* Table with the signatures over coins generated during a refresh
@@ -410,9 +410,10 @@ postgres_create_tables (void *cls)
           "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) ON DELETE CASCADE"
           ",newcoin_index INT2 NOT NULL"
           ",ev_sig BYTEA NOT NULL"
+          ",UNIQUE (session_hash, newcoin_index)"
           ")");
   SQLEXEC_INDEX("CREATE INDEX refresh_out_session_hash_index "
-                "ON refresh_out(session_hash,newcoin_index)");
+                "ON refresh_out(session_hash, newcoin_index)");
 
   /* This table contains the wire transfers the exchange is supposed to
      execute to transmit funds to the merchants (and manage refunds). */
@@ -433,6 +434,7 @@ postgres_create_tables (void *cls)
           ",wire TEXT NOT NULL"
           ",tiny BOOLEAN NOT NULL DEFAULT false"
           ",done BOOLEAN NOT NULL DEFAULT false"
+          ",UNIQUE (coin_pub, transaction_id, merchant_pub)"
           ")");
   /* Index for get_deposit statement on coin_pub, transaction_id and merchant_pub */
   SQLEXEC_INDEX("CREATE INDEX deposits_coin_pub_index "
@@ -456,7 +458,7 @@ postgres_create_tables (void *cls)
   /* Table for the tracking API, mapping from wire transfer identifiers
      to transactions and back */
   SQLEXEC("CREATE TABLE IF NOT EXISTS aggregation_tracking "
-          "(deposit_serial_id INT8 NOT NULL REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE"
+          "(deposit_serial_id INT8 PRIMARY KEY REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE"
           ",wtid_raw BYTEA NOT NULL CHECK (LENGTH(wtid_raw)=" TALER_WIRE_TRANSFER_IDENTIFIER_LEN_STR ")"
           ",execution_time INT8 NOT NULL"
           ")");
@@ -4253,6 +4255,23 @@ postgres_wire_prepare_data_get (void *cls,
 
 
 /**
+ * Function called to perform "garbage collection" on the
+ * database, expiring records we no longer require.
+ *
+ * @param cls closure
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if there was nothing to GC
+ *         #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_gc (void *cls)
+{
+  GNUNET_break (0); // #3485
+  return GNUNET_OK;
+}
+
+
+/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -4342,6 +4361,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->wire_prepare_data_insert = &postgres_wire_prepare_data_insert;
   plugin->wire_prepare_data_mark_finished = &postgres_wire_prepare_data_mark_finished;
   plugin->wire_prepare_data_get = &postgres_wire_prepare_data_get;
+  plugin->gc = &postgres_gc;
   return plugin;
 }
 
