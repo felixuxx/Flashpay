@@ -202,11 +202,17 @@ destroy_denom_key_pair (struct DenomKeyPair *dkp)
  *
  * @param size the size of the denomination key
  * @param session the DB session
+ * @param now time to use for key generation, legal expiration will be 3h later.
+ * @param fee_withdraw withdraw fee to use
+ * @param fee_deposit deposit fee to use
+ * @param fee_refresh refresh fee to use
+ * @param fee_refund refund fee to use
  * @return the denominaiton key pair; NULL upon error
  */
 static struct DenomKeyPair *
 create_denom_key_pair (unsigned int size,
                        struct TALER_EXCHANGEDB_Session *session,
+                       struct GNUNET_TIME_Absolute now,
                        const struct TALER_Amount *value,
                        const struct TALER_Amount *fee_withdraw,
                        const struct TALER_Amount *fee_deposit,
@@ -216,7 +222,6 @@ create_denom_key_pair (unsigned int size,
   struct DenomKeyPair *dkp;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation dki;
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue2;
-  struct GNUNET_TIME_Absolute now;
 
   dkp = GNUNET_new (struct DenomKeyPair);
   dkp->priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (size);
@@ -230,7 +235,6 @@ create_denom_key_pair (unsigned int size,
           0,
           sizeof (struct TALER_EXCHANGEDB_DenominationKeyIssueInformation));
   dki.denom_pub = dkp->pub;
-  now = GNUNET_TIME_absolute_get ();
   GNUNET_TIME_round_abs (&now);
   dki.issue.properties.start = GNUNET_TIME_absolute_hton (now);
   dki.issue.properties.expire_withdraw = GNUNET_TIME_absolute_hton
@@ -558,7 +562,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   struct TALER_EXCHANGEDB_LinkDataList *ldl;
   struct TALER_EXCHANGEDB_LinkDataList *ldlp;
   struct TALER_DenominationSignature ev_sigs[MELT_NEW_COINS];
-    unsigned int cnt;
+  unsigned int cnt;
   unsigned int i;
   int ret;
 
@@ -575,6 +579,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   /* create a denomination (value: 1; fraction: 100) */
   dkp = create_denom_key_pair (512,
                                session,
+                               GNUNET_TIME_absolute_get (),
                                &value,
                                &fee_withdraw,
                                &fee_deposit,
@@ -645,6 +650,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   {
     new_dkp[cnt] = create_denom_key_pair (1024,
                                           session,
+                                          GNUNET_TIME_absolute_get (),
                                           &value,
                                           &fee_withdraw,
                                           &fee_deposit,
@@ -975,6 +981,54 @@ deposit_cb (void *cls,
 
 
 /**
+ * Test garbage collection.
+ *
+ * @param session DB session to use
+ * @return #GNUNET_OK on success
+ */
+static int
+test_gc (struct TALER_EXCHANGEDB_Session *session)
+{
+  struct DenomKeyPair *dkp;
+  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Absolute past;
+  struct TALER_EXCHANGEDB_DenominationKeyInformationP issue2;
+
+  now = GNUNET_TIME_absolute_get ();
+  past = GNUNET_TIME_absolute_subtract (now,
+                                        GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_HOURS,
+                                                                       4));
+  dkp = create_denom_key_pair (1024,
+                               session,
+                               past,
+                               &value,
+                               &fee_withdraw,
+                               &fee_deposit,
+                               &fee_refresh,
+                               &fee_refund);
+  if (GNUNET_OK !=
+      plugin->gc (plugin->cls))
+  {
+    GNUNET_break(0);
+    destroy_denom_key_pair (dkp);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK ==
+      plugin->get_denomination_info (plugin->cls,
+                                     session,
+                                     &dkp->pub,
+                                     &issue2))
+  {
+    GNUNET_break(0);
+    destroy_denom_key_pair (dkp);
+    return GNUNET_SYSERR;
+  }
+  destroy_denom_key_pair (dkp);
+  return GNUNET_OK;
+}
+
+
+/**
  * Main function that will be run by the scheduler.
  *
  * @param cls closure with config
@@ -1093,7 +1147,9 @@ run (void *cls)
                          value.fraction * 2,
                          value.currency));
   result = 5;
-  dkp = create_denom_key_pair (1024, session,
+  dkp = create_denom_key_pair (1024,
+                               session,
+                               GNUNET_TIME_absolute_get (),
                                &value,
                                &fee_withdraw,
                                &fee_deposit,
@@ -1427,6 +1483,9 @@ run (void *cls)
                                             transaction_id_wt,
                                             &cb_wtid_check,
                                             &cb_wtid_never));
+  FAILIF (GNUNET_OK !=
+          test_gc (session));
+
   result = 0;
 
  drop:
