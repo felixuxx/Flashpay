@@ -790,8 +790,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
       GNUNET_free (commit_coins[cnt]);
       commit_coins[cnt] = NULL;
     }
-  if (NULL != dkp)
-    destroy_denom_key_pair (dkp);
+  destroy_denom_key_pair (dkp);
   GNUNET_CRYPTO_rsa_signature_free (meltp->coin.denom_sig.rsa_signature);
   for (cnt = 0;
        (NULL != ret_denom_pubs) && (cnt < MELT_NEW_COINS)
