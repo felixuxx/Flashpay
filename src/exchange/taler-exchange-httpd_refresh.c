@@ -561,7 +561,6 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
   json_t *link_encs;
   json_t *transfer_pubs;
   json_t *secret_encs;
-  json_t *coin_detail;
   int res;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("new_denoms", &new_denoms),
@@ -604,14 +603,6 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
     GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "transfer_pubs");
-  }
-  coin_detail = json_array_get (coin_evs, 0);
-  if (NULL == coin_detail)
-  {
-    // FIXME: generate proper HTTP response!
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   res = handle_refresh_melt_json (connection,
                                   new_denoms,
