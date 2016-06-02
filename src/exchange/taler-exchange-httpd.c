@@ -791,7 +791,9 @@ main (int argc,
       fh = -1;
     }
     flags |= FD_CLOEXEC;
-    fcntl (fh, F_SETFD, flags);
+    if (0 != fcntl (fh, F_SETFD, flags))
+      GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                           "fcntl");
   }
 
   /* consider unix path */
