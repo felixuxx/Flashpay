@@ -697,7 +697,6 @@ TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
 {
   struct GNUNET_HashCode session_hash;
   int res;
-  json_t *reveal_detail;
   json_t *root;
   json_t *transfer_privs;
   struct GNUNET_JSON_Specification spec[] = {
@@ -733,14 +732,6 @@ TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
     GNUNET_break_op (0);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "transfer_privs");
-  }
-  reveal_detail = json_array_get (transfer_privs, 0);
-  if (NULL == reveal_detail)
-  {
-    // FIXME: generate proper HTTP response!
-    GNUNET_JSON_parse_free (spec);
-    GNUNET_break_op (0);
-    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   res = handle_refresh_reveal_json (connection,
                                     &session_hash,
