@@ -685,6 +685,7 @@ TMH_KS_acquire_ (const char *location)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Have no signing key. Bad configuration.\n");
+      GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
       return NULL;
     }
 
