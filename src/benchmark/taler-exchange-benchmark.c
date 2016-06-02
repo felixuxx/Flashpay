@@ -30,7 +30,70 @@
 /**
  * How many coins the benchmark should operate on
  */
-static unsigned int pool_size = 100000;
+static unsigned int pool_size = 100;
+
+/**
+ * How many reservers ought to be created given the pool size
+ */
+static unsigned int nreserves;
+
+/**
+ * Needed information for a reserve. Other values are the same for all reserves, therefore defined in global variables
+ */
+struct Reserve {
+   /**
+   * Set (by the interpreter) to the reserve's private key
+   * we used to fill the reserve.
+   */
+  struct TALER_ReservePrivateKeyP reserve_priv;
+
+  /**
+   * Set to the API's handle during the operation.
+   */
+  struct TALER_EXCHANGE_AdminAddIncomingHandle *aih;
+
+};
+
+/**
+ * Information regarding a coin; for simplicity, every
+ * withdrawn coin is EUR 1
+ */
+struct Coin {
+  /**
+   * Index in the reserve's global array indicating which
+   * reserve this coin is to be retrieved
+   */
+  unsigned int reserve_index;
+
+  /**
+   * If @e amount is NULL, this specifies the denomination key to
+   * use.  Otherwise, this will be set (by the interpreter) to the
+   * denomination PK matching @e amount.
+   */
+  const struct TALER_EXCHANGE_DenomPublicKey *pk;
+
+  /**
+   * Set (by the interpreter) to the exchange's signature over the
+   * coin's public key.
+   */
+  struct TALER_DenominationSignature sig;
+
+  /**
+   * Set (by the interpreter) to the coin's private key.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * Blinding key used for the operation.
+   */
+  struct TALER_DenominationBlindingKeyP blinding_key;
+
+  /**
+   * Withdraw handle (while operation is running).
+   */
+  struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh;
+
+};
 
 /**
  * Context for running the #ctx's event loop.
@@ -53,9 +116,45 @@ static struct GNUNET_CURL_Context *ctx;
 static struct TALER_EXCHANGE_Handle *exchange;
 
 /**
+ * The array of all reserves
+ */
+static struct Reserve *reserves;
+
+/**
+ * The array of all coins
+ */
+static struct Coin *coins;
+
+
+/**
  * URI under which the exchange is reachable during the benchmark.
  */
 #define EXCHANGE_URI "http://localhost:8081"
+
+/**
+ * How many coins (AKA withdraw operations) per reserve should be withdrawn
+ */
+#define COINS_PER_RESERVE 12
+
+static void
+do_shutdown(void *cls);
+
+/**
+ * Function called upon completion of our /admin/add/incoming request.
+ *
+ * @param cls closure with the interpreter state
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param full_response full response from the exchange (for logging, in case of errors)
+ */
+static void
+add_incoming_cb (void *cls,
+                 unsigned int http_status,
+                 const json_t *full_response)
+{
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "/admin/add/incoming callback called\n");
+  return;
+}
 
 /**
  * Run the main interpreter loop that performs exchange operations.
@@ -65,15 +164,60 @@ static struct TALER_EXCHANGE_Handle *exchange;
 static void
 benchmark_run (void *cls)
 {
+  unsigned int i;
+  struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
+  json_t *transfer_details;
+  json_t *sender_details;
+  char *uuid;
+  struct TALER_ReservePublicKeyP reserve_pub;
+  struct GNUNET_TIME_Absolute execution_date;
+  struct TALER_Amount reserve_amount;
+  
+  TALER_string_to_amount ("EUR:24", &reserve_amount);
+  /* FIXME bank_uri to be tuned to exchange's tastes */
+  sender_details = json_loads ("{ \"type\":\"test\", \"bank_uri\":\"http://localhost/\", \"account_number\":62}",
+                               JSON_REJECT_DUPLICATES,
+                               NULL);
+  execution_date = GNUNET_TIME_absolute_get ();
+  GNUNET_TIME_round_abs (&execution_date);
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "benchmark_run() invoked\n");
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "gotten pool_size of %d\n", pool_size);
+  nreserves = pool_size / COINS_PER_RESERVE;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "creating %d reserves\n", nreserves);
+
+  reserves = GNUNET_malloc (nreserves * sizeof (struct Reserve));
+  coins = GNUNET_malloc (COINS_PER_RESERVE * nreserves * sizeof (struct Coin));
 
   /**
-   * 1 Pool's size as an option: DONE, TESTED
-   * 2 Connection to the exchange: DONE, TESTED
-   * 3 Allocation of large enough memory
-   * 4 Withdraw
+   * 1 Fill reserve's data (and call _admin_add_incoming(..))
    */
+  for (i=0;i < nreserves && 0 < nreserves;i++)
+  {
+    priv = GNUNET_CRYPTO_eddsa_key_create ();
+    reserves[i].reserve_priv.eddsa_priv = *priv;
+    GNUNET_free (priv);
+    GNUNET_asprintf (&uuid, "{ \"uuid\":%d}", i);
+    transfer_details = json_loads (uuid, JSON_REJECT_DUPLICATES, NULL);
+    GNUNET_free (uuid);
+    GNUNET_CRYPTO_eddsa_key_get_public (&reserves[i].reserve_priv.eddsa_priv,
+                                        &reserve_pub.eddsa_pub);
+
+    reserves[i].aih = TALER_EXCHANGE_admin_add_incoming (exchange,
+                                                         &reserve_pub,
+                                                         &reserve_amount,
+                                                         execution_date,
+                                                         sender_details,
+                                                         transfer_details,
+                                                         add_incoming_cb,
+                                                         NULL);
+    GNUNET_assert (NULL != reserves[i].aih);                                                         
+    printf (".\n");
+    json_decref (transfer_details);
+  }
+  json_decref (sender_details);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "benchmark_run() returns\n");
+  return;
 }
 
 /**
@@ -132,6 +276,8 @@ do_shutdown (void *cls)
     GNUNET_CURL_gnunet_rc_destroy (rc);
     rc = NULL;
   }
+  GNUNET_free_non_null (reserves);
+  GNUNET_free_non_null (coins);
 }
 
 /**
@@ -143,6 +289,8 @@ static void
 run (void *cls)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "running run()\n");
+  reserves = NULL;
+  coins = NULL;
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
                           &rc);
   GNUNET_assert (NULL != ctx);
@@ -174,4 +322,5 @@ main (int argc,
                    GNUNET_GETOPT_run ("taler-exchange-benchmark",
                                       options, argc, argv));
   GNUNET_SCHEDULER_run (&run, NULL);
+  return GNUNET_OK;
 }
