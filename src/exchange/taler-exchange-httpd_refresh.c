@@ -649,12 +649,11 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
   res = GNUNET_OK;
   for (i = 0; i < TALER_CNC_KAPPA - 1; i++)
   {
-    if (GNUNET_OK != res)
-      break;
     struct GNUNET_JSON_Specification tp_spec[] = {
       GNUNET_JSON_spec_fixed_auto (NULL, &transfer_privs[i]),
       GNUNET_JSON_spec_end ()
     };
+
     if (GNUNET_OK != res)
       break;
     res = TMH_PARSE_json_array (connection,
