@@ -239,6 +239,7 @@ TMH_PARSE_json_array (struct MHD_Connection *connection,
     dim++;
     root = json_array_get (root, ret);
   }
+  va_end (ap);
   if (NULL == root)
   {
     ret = (MHD_YES ==
