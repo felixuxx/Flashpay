@@ -61,8 +61,7 @@ struct Reserve {
 struct TALER_DenominationBlindingKeyP blinding_key;
 
 /**
- * Information regarding a coin; for simplicity, every
- * withdrawn coin is EUR 1
+ * Information regarding a coin
  */
 struct Coin {
   /**
@@ -76,7 +75,7 @@ struct Coin {
    * use.  Otherwise, this will be set (by the interpreter) to the
    * denomination PK matching @e amount.
    */
-  const struct TALER_EXCHANGE_DenomPublicKey *pk;
+  struct TALER_EXCHANGE_DenomPublicKey *pk;
 
   /**
    * Set (by the interpreter) to the exchange's signature over the
@@ -106,6 +105,12 @@ struct Coin {
  */
 static struct GNUNET_CURL_RescheduleContext *rc;
 
+
+/**
+ * Exchange's keys
+ */
+static const struct TALER_EXCHANGE_Keys *keys;
+
 /**
  * Benchmark's task
  */
@@ -131,6 +136,17 @@ static struct Reserve *reserves;
  */
 static struct Coin *coins;
 
+/**
+ * Indices of spent coins (the first element always indicates
+ * the total number of elements, including itself)
+ */
+static unsigned int *spent_coins;
+
+/**
+ * Current number of spent coins
+ */
+static unsigned int spent_coins_size = 0;
+
 
 /**
  * URI under which the exchange is reachable during the benchmark.
@@ -142,9 +158,77 @@ static struct Coin *coins;
  */
 #define COINS_PER_RESERVE 12
 
-static void
-do_shutdown(void *cls);
+/**
+ * Large enough value to allow having 12 coins per reserve without parsing
+ * /keys in the first place
+ */
+#define RESERVE_AMOUNT "PUDOS:1000"
 
+/**
+ * Probability a coin can be spent
+ */
+#define SPEND_PROBABILITY 0.1
+
+static unsigned int
+eval_probability (float probability)
+{
+  unsigned int random;
+  float random_01;
+  random = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, UINT32_MAX);
+  random_01 = (float) random / UINT32_MAX;
+  return random_01 <= probability ? GNUNET_OK : GNUNET_NO;
+}
+
+static void
+do_shutdown (void *cls);
+
+/**
+ * Shutdown benchmark in case of errors
+ *
+ * @param msg error message to print in logs
+ */
+static void
+fail (char *msg)
+{
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "%s\n", msg);
+  GNUNET_SCHEDULER_shutdown ();
+}
+
+/**
+ * Function called upon completion of our /reserve/withdraw request.
+ *
+ * @param cls closure with the interpreter state
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param sig signature over the coin, NULL on error
+ * @param full_response full response from the exchange (for logging, in case of errors)
+ */
+static void
+reserve_withdraw_cb (void *cls,
+                     unsigned int http_status,
+                     const struct TALER_DenominationSignature *sig,
+                     const json_t *full_response)
+{
+
+  unsigned int coin_index = (unsigned int) cls;
+
+  if (MHD_HTTP_OK != http_status)
+    fail ("At least one coin has not correctly been withdrawn\n");
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "%d-th coin withdrawn\n", coin_index);
+  coins[coin_index].sig.rsa_signature =
+    GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
+  if (GNUNET_OK == eval_probability (SPEND_PROBABILITY))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Spending %d-th coin\n", coin_index);
+    /* FIXME: the following operation must be done once the coins has *actually*
+     * been spent
+     */
+    GNUNET_array_append (spent_coins, spent_coins_size, coin_index);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "picked! = %d\n", spent_coins[spent_coins_size-1]);
+    spent_coins_size++;
+  }
+
+}
 /**
  * Function called upon completion of our /admin/add/incoming request.
  *
@@ -158,27 +242,38 @@ add_incoming_cb (void *cls,
                  unsigned int http_status,
                  const json_t *full_response)
 {
-  /**
-   * FIXME pick a way to get the "current" reserve index. It's also possible to
-   * NOT use a traditional 'for' loop in the reserve creation function, but rather
-   * an iterator which makes use of a global "state" of the operations, as happens
-   * in test_merchant_api with 'struct InterpreterState' (look at how its 'ip' field
-   * is used).
-   * For now, just operate on the first reserve in order to get the coins' scaffold
-   * defined and compiled
-   */
 
-  /**
-   * 0. set NULL the reserve handler for this call (otherwise do_shutdown() segfaults
-   * when attempting to cancel this operation, which cannot since has been served)
-   * 1. Check if reserve got correctly created
-   * 2. Define per-coin stuff
-   */
-  unsigned int reserve_index = 0; // TEMPORARY
+  struct GNUNET_CRYPTO_EddsaPrivateKey *coin_priv;
+  unsigned int i;
+  unsigned int coin_index;
+
+  unsigned int reserve_index = (unsigned int) cls;
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "/admin/add/incoming callback called on %d-th reserve\n",
+              reserve_index);
   reserves[reserve_index].aih = NULL;
+  if (MHD_HTTP_OK != http_status)
+    fail ("At least one reserve failed in being created\n");
+  
+  for (i=0; i < COINS_PER_RESERVE; i++)
+  {
+    coin_priv = GNUNET_CRYPTO_eddsa_key_create ();
+    coin_index = reserve_index * COINS_PER_RESERVE + i;
+    coins[coin_index].coin_priv.eddsa_priv = *coin_priv;
+    coins[coin_index].reserve_index = reserve_index;
+    /* Just pick the first denom key (the reserve is rich enough) */
+    coins[coin_index].pk = &keys->denom_keys[0];
+    GNUNET_free (coin_priv);
+    coins[coin_index].wsh =
+      TALER_EXCHANGE_reserve_withdraw (exchange,
+                                       coins[coin_index].pk,
+                                       &reserves[reserve_index].reserve_priv,
+                                       &coins[coin_index].coin_priv,
+                                       &blinding_key,
+                                       reserve_withdraw_cb,
+                                       (void *) coin_index);
+  }
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "/admin/add/incoming callback called\n");
-  return;
 }
 
 /**
@@ -201,9 +296,9 @@ benchmark_run (void *cls)
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &blinding_key,
                               sizeof (blinding_key));
-  TALER_string_to_amount ("EUR:24", &reserve_amount);
+  TALER_string_to_amount (RESERVE_AMOUNT, &reserve_amount);
   /* FIXME bank_uri to be tuned to exchange's tastes */
-  sender_details = json_loads ("{ \"type\":\"test\", \"bank_uri\":\"http://localhost/\", \"account_number\":62}",
+  sender_details = json_loads ("{ \"type\":\"test\", \"bank_uri\":\"https://bank.test.taler.net/\", \"account_number\":62}",
                                JSON_REJECT_DUPLICATES,
                                NULL);
   execution_date = GNUNET_TIME_absolute_get ();
@@ -235,18 +330,13 @@ benchmark_run (void *cls)
                                                          execution_date,
                                                          sender_details,
                                                          transfer_details,
-                                                         add_incoming_cb,
-                                                         NULL);
+                                                         &add_incoming_cb,
+                                                         (void *) i);
     GNUNET_assert (NULL != reserves[i].aih);                                                         
-    printf (".\n");
     json_decref (transfer_details);
   }
   json_decref (sender_details);
-
-  /* coins */
-
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "benchmark_run() returns\n");
-  GNUNET_SCHEDULER_shutdown ();
   return;
 }
 
@@ -256,28 +346,30 @@ benchmark_run (void *cls)
  * in this callback.
  *
  * @param cls closure
- * @param keys information about keys of the exchange
+ * @param _keys information about keys of the exchange. The _ is there because
+ * there is a global 'keys' variable, and this function has to set it.
  */
 static void
 cert_cb (void *cls,
-         const struct TALER_EXCHANGE_Keys *keys)
+         const struct TALER_EXCHANGE_Keys *_keys)
 {
   /* check that keys is OK */
 #define ERR(cond) do { if(!(cond)) break; GNUNET_break (0); GNUNET_SCHEDULER_shutdown(); return; } while (0)
-  ERR (NULL == keys);
-  ERR (0 == keys->num_sign_keys);
+  ERR (NULL == _keys);
+  ERR (0 == _keys->num_sign_keys);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Read %u signing keys\n",
-              keys->num_sign_keys);
-  ERR (0 == keys->num_denom_keys);
+              _keys->num_sign_keys);
+  ERR (0 == _keys->num_denom_keys);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Read %u denomination keys\n",
-              keys->num_denom_keys);
+              _keys->num_denom_keys);
 #undef ERR
 
   /* run actual tests via interpreter-loop */
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 	      "Certificate callback invoked, invoking benchmark_run()\n");
+  keys = _keys;
   benchmark_task = GNUNET_SCHEDULER_add_now (&benchmark_run,
                                              NULL);
 }
@@ -347,6 +439,9 @@ static void
 run (void *cls)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "running run()\n");
+  GNUNET_array_append (spent_coins, spent_coins_size, 1);
+  spent_coins_size++;
+
   reserves = NULL;
   coins = NULL;
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
