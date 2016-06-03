@@ -54,6 +54,12 @@ struct Reserve {
 
 };
 
+
+/**
+ * Same blinding key for all coins
+ */
+struct TALER_DenominationBlindingKeyP blinding_key;
+
 /**
  * Information regarding a coin; for simplicity, every
  * withdrawn coin is EUR 1
@@ -163,11 +169,13 @@ add_incoming_cb (void *cls,
    */
 
   /**
-   * 0 set NULL the reserve handler for this call (otherwise do_shutdown() segfaults
+   * 0. set NULL the reserve handler for this call (otherwise do_shutdown() segfaults
    * when attempting to cancel this operation, which cannot since has been served)
-   * 1 Check if reserve got correctly created
-   * 2 Define per-coin stuff
+   * 1. Check if reserve got correctly created
+   * 2. Define per-coin stuff
    */
+  unsigned int reserve_index = 0; // TEMPORARY
+  reserves[reserve_index].aih = NULL;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "/admin/add/incoming callback called\n");
   return;
@@ -190,6 +198,9 @@ benchmark_run (void *cls)
   struct GNUNET_TIME_Absolute execution_date;
   struct TALER_Amount reserve_amount;
   
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                              &blinding_key,
+                              sizeof (blinding_key));
   TALER_string_to_amount ("EUR:24", &reserve_amount);
   /* FIXME bank_uri to be tuned to exchange's tastes */
   sender_details = json_loads ("{ \"type\":\"test\", \"bank_uri\":\"http://localhost/\", \"account_number\":62}",
@@ -234,13 +245,8 @@ benchmark_run (void *cls)
 
   /* coins */
 
-
-
-
-
-
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "benchmark_run() returns\n");
-//  GNUNET_SCHEDULER_shutdown ();
+  GNUNET_SCHEDULER_shutdown ();
   return;
 }
 
