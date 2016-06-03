@@ -19,10 +19,10 @@
  * @author Marcello Stanisci
  */
 #include "platform.h"
-#include <taler/taler_util.h>
-#include <taler/taler_signatures.h>
-#include <taler/taler_exchange_service.h>
-#include <taler/taler_json_lib.h>
+#include "taler_util.h"
+#include "taler_signatures.h"
+#include "taler_exchange_service.h"
+#include "taler_json_lib.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_curl_lib.h>
 #include <microhttpd.h>
