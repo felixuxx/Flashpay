@@ -152,6 +152,23 @@ add_incoming_cb (void *cls,
                  unsigned int http_status,
                  const json_t *full_response)
 {
+  /**
+   * FIXME pick a way to get the "current" reserve index. It's also possible to
+   * NOT use a traditional 'for' loop in the reserve creation function, but rather
+   * an iterator which makes use of a global "state" of the operations, as happens
+   * in test_merchant_api with 'struct InterpreterState' (look at how its 'ip' field
+   * is used).
+   * For now, just operate on the first reserve in order to get the coins' scaffold
+   * defined and compiled
+   */
+
+  /**
+   * 0 set NULL the reserve handler for this call (otherwise do_shutdown() segfaults
+   * when attempting to cancel this operation, which cannot since has been served)
+   * 1 Check if reserve got correctly created
+   * 2 Define per-coin stuff
+   */
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "/admin/add/incoming callback called\n");
   return;
 }
@@ -189,9 +206,7 @@ benchmark_run (void *cls)
   reserves = GNUNET_malloc (nreserves * sizeof (struct Reserve));
   coins = GNUNET_malloc (COINS_PER_RESERVE * nreserves * sizeof (struct Coin));
 
-  /**
-   * 1 Fill reserve's data (and call _admin_add_incoming(..))
-   */
+  /* reserves */
   for (i=0;i < nreserves && 0 < nreserves;i++)
   {
     priv = GNUNET_CRYPTO_eddsa_key_create ();
@@ -216,7 +231,16 @@ benchmark_run (void *cls)
     json_decref (transfer_details);
   }
   json_decref (sender_details);
+
+  /* coins */
+
+
+
+
+
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "benchmark_run() returns\n");
+//  GNUNET_SCHEDULER_shutdown ();
   return;
 }
 
@@ -261,6 +285,8 @@ cert_cb (void *cls,
 static void
 do_shutdown (void *cls)
 {
+  unsigned int i;
+
   if (NULL != exchange)
   {
     TALER_EXCHANGE_disconnect (exchange);
@@ -276,6 +302,32 @@ do_shutdown (void *cls)
     GNUNET_CURL_gnunet_rc_destroy (rc);
     rc = NULL;
   }
+
+  /**
+   * WARNING: all the non NULL handles must correspond to non completed
+   * calls (AKA calls for which the callback function has not been called).
+   * If not, it segfaults
+   */
+  for (i=0; i<nreserves && 0<nreserves; i++)
+  {
+    if (NULL != reserves[i].aih)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Cancelling %d-th reserve\n", i);
+      TALER_EXCHANGE_admin_add_incoming_cancel(reserves[i].aih);
+      reserves[i].aih = NULL;
+    }
+  }
+
+  for (i=0; i<COINS_PER_RESERVE * nreserves && 0<nreserves; i++)
+  {
+    if (NULL != coins[i].wsh)
+    {
+      TALER_EXCHANGE_reserve_withdraw_cancel(coins[i].wsh);
+      coins[i].wsh = NULL;
+    
+    } 
+  }
+
   GNUNET_free_non_null (reserves);
   GNUNET_free_non_null (coins);
 }
