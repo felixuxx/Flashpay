@@ -35,7 +35,7 @@
  * @param result PQ result object of the query that failed
  */
 #define QUERY_ERR(result)                          \
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Query failed at %s:%u: %s\n", __FILE__, __LINE__, PQresultErrorMessage (result))
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Query failed at %s:%u: %s (%s)\n", __FILE__, __LINE__, PQresultErrorMessage (result), PQresStatus (PQresultStatus (result)))
 
 
 /**
@@ -45,7 +45,7 @@
  */
 #define BREAK_DB_ERR(result) do { \
     GNUNET_break (0); \
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Database failure: %s\n", PQresultErrorMessage (result)); \
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Database failure: %s (%s)\n", PQresultErrorMessage (result), PQresStatus (PQresultStatus (result))); \
   } while (0)
 
 
@@ -1972,8 +1972,8 @@ postgres_get_reserve_history (void *cls,
     };
 
     result = GNUNET_PQ_exec_prepared (session->conn,
-                                     "reserves_in_get_transactions",
-                                     params);
+                                      "reserves_in_get_transactions",
+                                      params);
     if (PGRES_TUPLES_OK != PQresultStatus (result))
     {
       QUERY_ERR (result);
