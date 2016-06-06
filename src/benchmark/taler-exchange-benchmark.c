@@ -98,6 +98,11 @@ struct Coin {
    */
   struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh;
 
+  /**
+   * Deposit handle (while operation is running).
+   */
+  struct TALER_EXCHANGE_DepositHandle *dh;
+
 };
 
 /**
@@ -147,6 +152,16 @@ static unsigned int *spent_coins;
  */
 static unsigned int spent_coins_size = 0;
 
+/**
+ * Transaction id counter
+ */
+static unsigned int transaction_id = 0;
+
+/**
+ * This key (usually provided by merchants) is needed when depositing coins,
+ * even though there is no merchant acting in the benchmark
+ */
+static struct TALER_MerchantPrivateKeyP merchant_priv;
 
 /**
  * URI under which the exchange is reachable during the benchmark.
@@ -202,7 +217,35 @@ fail (const char *msg)
 
 
 /**
+ * Function called with the result of a /deposit operation.
+ *
+ * @param cls closure with the interpreter state
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful deposit;
+ *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param obj the received JSON reply, should be kept as proof (and, in case of errors,
+ *            be forwarded to the customer)
+ */
+static void
+deposit_cb (void *cls,
+            unsigned int http_status,
+            const json_t *obj)
+{
+  unsigned int coin_index = (unsigned int) (long) cls;
+
+  coins[coin_index].dh = NULL;
+  if (MHD_HTTP_OK != http_status)
+  {
+    fail ("At least one coin has not been deposited, status: %d\n");
+    return;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Coin #%d correctly spent!\n", coin_index);
+  GNUNET_array_append (spent_coins, spent_coins_size, coin_index);
+  spent_coins_size++;
+}
+
+/**
  * Function called upon completion of our /reserve/withdraw request.
+ * This is merely the function which spends withdrawn coins
  *
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
@@ -219,6 +262,7 @@ reserve_withdraw_cb (void *cls,
 
   unsigned int coin_index = (unsigned int) (long) cls;
 
+  coins[coin_index].wsh = NULL;
   if (MHD_HTTP_OK != http_status)
     fail ("At least one coin has not correctly been withdrawn\n");
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -228,19 +272,83 @@ reserve_withdraw_cb (void *cls,
     GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
   if (GNUNET_OK == eval_probability (SPEND_PROBABILITY))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Spending %d-th coin\n",
-                coin_index);
-    /* FIXME: the following operation must be done once the coins has *actually*
-     * been spent
-     */
-    GNUNET_array_append (spent_coins,
-                         spent_coins_size,
-                         coin_index);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "picked! = %d\n",
-                spent_coins[spent_coins_size-1]);
-    spent_coins_size++;
+    struct TALER_Amount amount;
+    struct GNUNET_TIME_Absolute wire_deadline;
+    struct GNUNET_TIME_Absolute timestamp;
+    struct GNUNET_TIME_Absolute refund_deadline;
+    struct GNUNET_HashCode h_contract;
+    json_t *merchant_details;
+    struct TALER_CoinSpendPublicKeyP coin_pub;
+    struct TALER_DepositRequestPS dr;
+    struct TALER_MerchantPublicKeyP merchant_pub;
+    struct TALER_CoinSpendSignatureP coin_sig;
+
+    GNUNET_CRYPTO_eddsa_key_get_public (&coins[coin_index].coin_priv.eddsa_priv,
+                                        &coin_pub.eddsa_pub);
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                &h_contract,
+                                sizeof (h_contract));
+    timestamp = GNUNET_TIME_absolute_get ();
+    wire_deadline = GNUNET_TIME_absolute_add (timestamp, GNUNET_TIME_UNIT_WEEKS);
+    refund_deadline = GNUNET_TIME_absolute_add (timestamp, GNUNET_TIME_UNIT_DAYS);
+    GNUNET_TIME_round_abs (&timestamp);
+    GNUNET_TIME_round_abs (&wire_deadline);
+    GNUNET_TIME_round_abs (&refund_deadline);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Spending %d-th coin\n", coin_index);
+    TALER_amount_subtract (&amount,
+                           &coins[coin_index].pk->value,
+                           &coins[coin_index].pk->fee_deposit);
+    merchant_details = json_loads ("{ \"type\":\"test\", \"bank_uri\":\"https://bank.test.taler.net/\", \"account_number\":63}",
+                               JSON_REJECT_DUPLICATES,
+                               NULL);
+
+    memset (&dr, 0, sizeof (dr));
+    dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
+    dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
+    dr.h_contract = h_contract;
+    TALER_JSON_hash (merchant_details,
+                     &dr.h_wire);
+
+    dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
+    dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
+    dr.transaction_id = GNUNET_htonll (transaction_id);
+
+    TALER_amount_hton (&dr.amount_with_fee,
+                       &amount);
+    TALER_amount_hton (&dr.deposit_fee,
+                       &coins[coin_index].pk->fee_deposit);
+
+    GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv.eddsa_priv,
+                                        &merchant_pub.eddsa_pub);
+    dr.merchant = merchant_pub;
+    dr.coin_pub = coin_pub;
+    GNUNET_assert (GNUNET_OK ==
+                   GNUNET_CRYPTO_eddsa_sign (&coins[coin_index].coin_priv.eddsa_priv,
+                                             &dr.purpose,
+                                             &coin_sig.eddsa_signature));
+
+    coins[coin_index].dh = TALER_EXCHANGE_deposit (exchange,
+                                                   &amount,
+                                                   wire_deadline,
+                                                   merchant_details,
+                                                   &h_contract,
+                                                   &coin_pub,
+                                                   &coins[coin_index].sig,
+                                                   &coins[coin_index].pk->key,
+                                                   timestamp,
+                                                   transaction_id,
+                                                   &merchant_pub,
+                                                   refund_deadline,
+                                                   &coin_sig,
+                                                   &deposit_cb,
+                                                   (void *) (long) coin_index);
+    if (NULL == coins[coin_index].dh)
+    {
+      json_decref (merchant_details);
+      fail ("An error occurred while calling deposit API\n");
+    }
+    json_decref (merchant_details);
+    transaction_id++;
   }
 }
 
@@ -308,11 +416,14 @@ benchmark_run (void *cls)
   struct GNUNET_TIME_Absolute execution_date;
   struct TALER_Amount reserve_amount;
 
+  priv = GNUNET_CRYPTO_eddsa_key_create ();
+  merchant_priv.eddsa_priv = *priv;
+  GNUNET_free (priv);
+
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &blinding_key,
                               sizeof (blinding_key));
   TALER_string_to_amount (RESERVE_AMOUNT, &reserve_amount);
-  /* FIXME bank_uri to be tuned to exchange's tastes */
   sender_details = json_loads ("{ \"type\":\"test\", \"bank_uri\":\"https://bank.test.taler.net/\", \"account_number\":62}",
                                JSON_REJECT_DUPLICATES,
                                NULL);
@@ -409,21 +520,7 @@ do_shutdown (void *cls)
 {
   unsigned int i;
 
-  if (NULL != exchange)
-  {
-    TALER_EXCHANGE_disconnect (exchange);
-    exchange = NULL;
-  }
-  if (NULL != ctx)
-  {
-    GNUNET_CURL_fini (ctx);
-    ctx = NULL;
-  }
-  if (NULL != rc)
-  {
-    GNUNET_CURL_gnunet_rc_destroy (rc);
-    rc = NULL;
-  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "shutting down..\n");
 
   /**
    * WARNING: all the non NULL handles must correspond to non completed
@@ -446,13 +543,35 @@ do_shutdown (void *cls)
     {
       TALER_EXCHANGE_reserve_withdraw_cancel(coins[i].wsh);
       coins[i].wsh = NULL;
-
+    }
+    if (NULL != coins[i].dh)
+    {
+      TALER_EXCHANGE_deposit_cancel(coins[i].dh);
+      coins[i].dh = NULL;
     }
   }
 
   GNUNET_free_non_null (reserves);
   GNUNET_free_non_null (coins);
   GNUNET_free_non_null (spent_coins);
+
+  if (NULL != exchange)
+  {
+    TALER_EXCHANGE_disconnect (exchange);
+    exchange = NULL;
+  }
+  if (NULL != ctx)
+  {
+    GNUNET_CURL_fini (ctx);
+    ctx = NULL;
+  }
+  if (NULL != rc)
+  {
+    GNUNET_CURL_gnunet_rc_destroy (rc);
+    rc = NULL;
+  }
+
+
 }
 
 
