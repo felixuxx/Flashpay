@@ -43,6 +43,7 @@ src/exchange-tools/taler-exchange-keyup
 src/exchange-tools/taler-exchange-reservemod
 src/exchange-tools/taler-exchange-wire
 src/exchangedb/perf-exchangedb
+src/benchmark/taler-exchange-benchmark
 src/json/test_json
 src/wire/test_sepa_wireformat
 src/wire/test_wire_plugin
