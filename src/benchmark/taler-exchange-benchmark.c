@@ -169,18 +169,22 @@ static unsigned int spent_coins_size = 0;
  */
 #define SPEND_PROBABILITY 0.1
 
+
 static unsigned int
 eval_probability (float probability)
 {
   unsigned int random;
   float random_01;
+
   random = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, UINT32_MAX);
   random_01 = (float) random / UINT32_MAX;
   return random_01 <= probability ? GNUNET_OK : GNUNET_NO;
 }
 
+
 static void
 do_shutdown (void *cls);
+
 
 /**
  * Shutdown benchmark in case of errors
@@ -188,11 +192,14 @@ do_shutdown (void *cls);
  * @param msg error message to print in logs
  */
 static void
-fail (char *msg)
+fail (const char *msg)
 {
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "%s\n", msg);
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "%s\n",
+              msg);
   GNUNET_SCHEDULER_shutdown ();
 }
+
 
 /**
  * Function called upon completion of our /reserve/withdraw request.
@@ -210,25 +217,34 @@ reserve_withdraw_cb (void *cls,
                      const json_t *full_response)
 {
 
-  unsigned int coin_index = (unsigned int) cls;
+  unsigned int coin_index = (unsigned int) (long) cls;
 
   if (MHD_HTTP_OK != http_status)
     fail ("At least one coin has not correctly been withdrawn\n");
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "%d-th coin withdrawn\n", coin_index);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "%d-th coin withdrawn\n",
+              coin_index);
   coins[coin_index].sig.rsa_signature =
     GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
   if (GNUNET_OK == eval_probability (SPEND_PROBABILITY))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Spending %d-th coin\n", coin_index);
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Spending %d-th coin\n",
+                coin_index);
     /* FIXME: the following operation must be done once the coins has *actually*
      * been spent
      */
-    GNUNET_array_append (spent_coins, spent_coins_size, coin_index);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO, "picked! = %d\n", spent_coins[spent_coins_size-1]);
+    GNUNET_array_append (spent_coins,
+                         spent_coins_size,
+                         coin_index);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "picked! = %d\n",
+                spent_coins[spent_coins_size-1]);
     spent_coins_size++;
   }
-
 }
+
+
 /**
  * Function called upon completion of our /admin/add/incoming request.
  *
@@ -242,19 +258,18 @@ add_incoming_cb (void *cls,
                  unsigned int http_status,
                  const json_t *full_response)
 {
-
+  unsigned int reserve_index = (unsigned int) (long) cls;
   struct GNUNET_CRYPTO_EddsaPrivateKey *coin_priv;
   unsigned int i;
   unsigned int coin_index;
 
-  unsigned int reserve_index = (unsigned int) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "/admin/add/incoming callback called on %d-th reserve\n",
               reserve_index);
   reserves[reserve_index].aih = NULL;
   if (MHD_HTTP_OK != http_status)
     fail ("At least one reserve failed in being created\n");
-  
+
   for (i=0; i < COINS_PER_RESERVE; i++)
   {
     coin_priv = GNUNET_CRYPTO_eddsa_key_create ();
@@ -271,10 +286,10 @@ add_incoming_cb (void *cls,
                                        &coins[coin_index].coin_priv,
                                        &blinding_key,
                                        reserve_withdraw_cb,
-                                       (void *) coin_index);
+                                       (void *) (long) coin_index);
   }
-
 }
+
 
 /**
  * Run the main interpreter loop that performs exchange operations.
@@ -292,7 +307,7 @@ benchmark_run (void *cls)
   struct TALER_ReservePublicKeyP reserve_pub;
   struct GNUNET_TIME_Absolute execution_date;
   struct TALER_Amount reserve_amount;
-  
+
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &blinding_key,
                               sizeof (blinding_key));
@@ -304,13 +319,20 @@ benchmark_run (void *cls)
   execution_date = GNUNET_TIME_absolute_get ();
   GNUNET_TIME_round_abs (&execution_date);
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "benchmark_run() invoked\n");
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "gotten pool_size of %d\n", pool_size);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "benchmark_run() invoked\n");
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "gotten pool_size of %d\n",
+              pool_size);
   nreserves = pool_size / COINS_PER_RESERVE;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "creating %d reserves\n", nreserves);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "creating %d reserves\n",
+              nreserves);
 
-  reserves = GNUNET_malloc (nreserves * sizeof (struct Reserve));
-  coins = GNUNET_malloc (COINS_PER_RESERVE * nreserves * sizeof (struct Coin));
+  reserves = GNUNET_new_array (nreserves,
+                               struct Reserve);
+  coins = GNUNET_new_array (COINS_PER_RESERVE * nreserves,
+                            struct Coin);
 
   /* reserves */
   for (i=0;i < nreserves && 0 < nreserves;i++)
@@ -331,14 +353,15 @@ benchmark_run (void *cls)
                                                          sender_details,
                                                          transfer_details,
                                                          &add_incoming_cb,
-                                                         (void *) i);
-    GNUNET_assert (NULL != reserves[i].aih);                                                         
+                                                         (void *) (long) i);
+    GNUNET_assert (NULL != reserves[i].aih);
     json_decref (transfer_details);
   }
   json_decref (sender_details);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "benchmark_run() returns\n");
-  return;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "benchmark_run() returns\n");
 }
+
 
 /**
  * Functions of this type are called to provide the retrieved signing and
@@ -373,6 +396,7 @@ cert_cb (void *cls,
   benchmark_task = GNUNET_SCHEDULER_add_now (&benchmark_run,
                                              NULL);
 }
+
 
 /**
  * Function run when the test terminates (good or bad).
@@ -422,14 +446,15 @@ do_shutdown (void *cls)
     {
       TALER_EXCHANGE_reserve_withdraw_cancel(coins[i].wsh);
       coins[i].wsh = NULL;
-    
-    } 
+
+    }
   }
 
   GNUNET_free_non_null (reserves);
   GNUNET_free_non_null (coins);
   GNUNET_free_non_null (spent_coins);
 }
+
 
 /**
  * Main function that will be run by the scheduler.
@@ -439,8 +464,11 @@ do_shutdown (void *cls)
 static void
 run (void *cls)
 {
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "running run()\n");
-  GNUNET_array_append (spent_coins, spent_coins_size, 1);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "running run()\n");
+  GNUNET_array_append (spent_coins,
+                       spent_coins_size,
+                       1);
   spent_coins_size++;
 
   reserves = NULL;
@@ -457,6 +485,7 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "connected to exchange\n");
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown, NULL);
 }
+
 
 int
 main (int argc,
