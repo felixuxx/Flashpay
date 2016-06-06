@@ -177,7 +177,7 @@ static struct TALER_MerchantPrivateKeyP merchant_priv;
  * Large enough value to allow having 12 coins per reserve without parsing
  * /keys in the first place
  */
-#define RESERVE_AMOUNT "KUDOS:1000"
+#define RESERVE_AMOUNT "PUDOS:1000"
 
 /**
  * Probability a coin can be spent
@@ -226,6 +226,7 @@ deposit_cb (void *cls,
   unsigned int coin_index = (unsigned int) cls; 
 
 
+  coins[coin_index].dh = NULL;
   if (MHD_HTTP_OK != http_status)
   {
     fail ("At least one coin has not been deposited, status: %d\n");
@@ -238,6 +239,7 @@ deposit_cb (void *cls,
 
 /**
  * Function called upon completion of our /reserve/withdraw request.
+ * This is merely the function which spends withdrawn coins
  *
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
@@ -254,6 +256,7 @@ reserve_withdraw_cb (void *cls,
 
   unsigned int coin_index = (unsigned int) cls;
 
+  coins[coin_index].wsh = NULL;
   if (MHD_HTTP_OK != http_status)
     fail ("At least one coin has not correctly been withdrawn\n");
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "%d-th coin withdrawn\n", coin_index);
@@ -501,21 +504,7 @@ do_shutdown (void *cls)
 {
   unsigned int i;
 
-  if (NULL != exchange)
-  {
-    TALER_EXCHANGE_disconnect (exchange);
-    exchange = NULL;
-  }
-  if (NULL != ctx)
-  {
-    GNUNET_CURL_fini (ctx);
-    ctx = NULL;
-  }
-  if (NULL != rc)
-  {
-    GNUNET_CURL_gnunet_rc_destroy (rc);
-    rc = NULL;
-  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "shutting down..\n");
 
   /**
    * WARNING: all the non NULL handles must correspond to non completed
@@ -551,6 +540,24 @@ do_shutdown (void *cls)
   GNUNET_free_non_null (reserves);
   GNUNET_free_non_null (coins);
   GNUNET_free_non_null (spent_coins);
+
+  if (NULL != exchange)
+  {
+    TALER_EXCHANGE_disconnect (exchange);
+    exchange = NULL;
+  }
+  if (NULL != ctx)
+  {
+    GNUNET_CURL_fini (ctx);
+    ctx = NULL;
+  }
+  if (NULL != rc)
+  {
+    GNUNET_CURL_gnunet_rc_destroy (rc);
+    rc = NULL;
+  }
+
+
 }
 
 /**
