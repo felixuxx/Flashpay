@@ -222,12 +222,14 @@ fail (const char *msg)
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful deposit;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param exchange_pub public key used by the exchange for signing
  * @param obj the received JSON reply, should be kept as proof (and, in case of errors,
  *            be forwarded to the customer)
  */
 static void
 deposit_cb (void *cls,
             unsigned int http_status,
+            const struct TALER_ExchangePublicKeyP *exchange_pub,
             const json_t *obj)
 {
   unsigned int coin_index = (unsigned int) (long) cls;

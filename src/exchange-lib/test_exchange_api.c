@@ -1028,12 +1028,14 @@ reserve_withdraw_cb (void *cls,
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful deposit;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param exchange_pub public key the exchange used for signing
  * @param obj the received JSON reply, should be kept as proof (and, in case of errors,
  *            be forwarded to the customer)
  */
 static void
 deposit_cb (void *cls,
             unsigned int http_status,
+            const struct TALER_ExchangePublicKeyP *exchange_pub,
             const json_t *obj)
 {
   struct InterpreterState *is = cls;
@@ -1062,12 +1064,14 @@ deposit_cb (void *cls,
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
  * @param noreveal_index choice by the exchange in the cut-and-choose protocol,
  *                    UINT16_MAX on error
+ * @param exchange_pub public key the exchange used for signing
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 static void
 melt_cb (void *cls,
          unsigned int http_status,
          uint16_t noreveal_index,
+         const struct TALER_ExchangePublicKeyP *exchange_pub,
          const json_t *full_response)
 {
   struct InterpreterState *is = cls;
@@ -1388,6 +1392,7 @@ wire_cb (void *cls,
  *
  * @param cls closure
  * @param http_status HTTP status code we got, 0 on exchange protocol violation
+ * @param exchange_pub public key the exchange used for signing
  * @param json original json reply (may include signatures, those have then been
  *        validated already)
  * @param wtid extracted wire transfer identifier, or NULL if the exchange could
@@ -1400,6 +1405,7 @@ wire_cb (void *cls,
 static void
 wire_deposits_cb (void *cls,
                   unsigned int http_status,
+                  const struct TALER_ExchangePublicKeyP *exchange_pub,
                   const json_t *json,
                   const struct GNUNET_HashCode *h_wire,
                   const struct TALER_Amount *total_amount,
@@ -1515,6 +1521,7 @@ wire_deposits_cb (void *cls,
  *
  * @param cls closure
  * @param http_status HTTP status code we got, 0 on exchange protocol violation
+ * @param exchange_pub public key the exchange used for signing
  * @param json original json reply (may include signatures, those have then been
  *        validated already)
  * @param wtid wire transfer identifier used by the exchange, NULL if exchange did not
@@ -1527,6 +1534,7 @@ wire_deposits_cb (void *cls,
 static void
 deposit_wtid_cb (void *cls,
                  unsigned int http_status,
+                 const struct TALER_ExchangePublicKeyP *exchange_pub,
                  const json_t *json,
                  const struct TALER_WireTransferIdentifierRawP *wtid,
                  struct GNUNET_TIME_Absolute execution_time,
@@ -1580,12 +1588,14 @@ deposit_wtid_cb (void *cls,
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful deposit;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param exchange_pub public key the exchange used for signing @a obj
  * @param obj the received JSON reply, should be kept as proof (and, in particular,
  *            be forwarded to the customer)
  */
 static void
 refund_cb (void *cls,
            unsigned int http_status,
+           const struct TALER_ExchangePublicKeyP *exchange_pub,
            const json_t *obj)
 {
   struct InterpreterState *is = cls;
