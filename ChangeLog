@@ -1,2 +1,7 @@
+Tue Jun  7 15:13:46 CEST 2016
+	Adding public key of the exchange that was used to sign replies
+	to applicable callbacks of libtalerexchange. (This will eventually
+	be needed by the merchant's backend.) -CG
+
 Wed Jun  1 17:27:36 CEST 2016
 	Releasing taler-exchange 0.0.0. -CG

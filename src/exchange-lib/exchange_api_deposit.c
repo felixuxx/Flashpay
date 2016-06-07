@@ -94,18 +94,20 @@ struct TALER_EXCHANGE_DepositHandle
  *
  * @param dh deposit handle
  * @param json json reply with the signature
+ * @param exchange_pub set to the exchange's public key
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
 static int
 verify_deposit_signature_ok (const struct TALER_EXCHANGE_DepositHandle *dh,
-                             const json_t *json)
+                             const json_t *json,
+                             struct TALER_ExchangePublicKeyP *exchange_pub)
 {
   struct TALER_ExchangeSignatureP exchange_sig;
-  struct TALER_ExchangePublicKeyP exchange_pub;
+
   const struct TALER_EXCHANGE_Keys *key_state;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("sig", &exchange_sig),
-    GNUNET_JSON_spec_fixed_auto ("pub", &exchange_pub),
+    GNUNET_JSON_spec_fixed_auto ("pub", exchange_pub),
     GNUNET_JSON_spec_end()
   };
 
@@ -120,7 +122,7 @@ verify_deposit_signature_ok (const struct TALER_EXCHANGE_DepositHandle *dh,
   key_state = TALER_EXCHANGE_get_keys (dh->exchange);
   if (GNUNET_OK !=
       TALER_EXCHANGE_test_signing_key (key_state,
-                                   &exchange_pub))
+                                       exchange_pub))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -129,7 +131,7 @@ verify_deposit_signature_ok (const struct TALER_EXCHANGE_DepositHandle *dh,
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT,
                                   &dh->depconf.purpose,
                                   &exchange_sig.eddsa_signature,
-                                  &exchange_pub.eddsa_pub))
+                                  &exchange_pub->eddsa_pub))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -200,6 +202,8 @@ handle_deposit_finished (void *cls,
                          const json_t *json)
 {
   struct TALER_EXCHANGE_DepositHandle *dh = cls;
+  struct TALER_ExchangePublicKeyP exchange_pub;
+  struct TALER_ExchangePublicKeyP *ep = NULL;
 
   dh->job = NULL;
   switch (response_code)
@@ -209,10 +213,15 @@ handle_deposit_finished (void *cls,
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         verify_deposit_signature_ok (dh,
-                                     json))
+                                     json,
+                                     &exchange_pub))
     {
       GNUNET_break_op (0);
       response_code = 0;
+    }
+    else
+    {
+      ep = &exchange_pub;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
@@ -253,6 +262,7 @@ handle_deposit_finished (void *cls,
   }
   dh->cb (dh->cb_cls,
           response_code,
+          ep,
           json);
   TALER_EXCHANGE_deposit_cancel (dh);
 }

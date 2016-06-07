@@ -186,6 +186,7 @@ handle_wire_deposits_finished (void *cls,
           break;
         wdh->cb (wdh->cb_cls,
                  response_code,
+                 &exchange_pub,
                  json,
                  &h_wire,
                  &total_amount,
@@ -224,6 +225,7 @@ handle_wire_deposits_finished (void *cls,
   }
   wdh->cb (wdh->cb_cls,
            response_code,
+           NULL,
            json,
            NULL, NULL, 0, NULL);
   TALER_EXCHANGE_wire_deposits_cancel (wdh);
