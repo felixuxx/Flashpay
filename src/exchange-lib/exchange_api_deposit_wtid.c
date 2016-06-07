@@ -84,18 +84,19 @@ struct TALER_EXCHANGE_DepositWtidHandle
  *
  * @param dwh deposit wtid handle
  * @param json json reply with the signature
+ * @param[out] exchange_pub set to the exchange's public key
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
 static int
 verify_deposit_wtid_signature_ok (const struct TALER_EXCHANGE_DepositWtidHandle *dwh,
-                                  const json_t *json)
+                                  const json_t *json,
+                                  struct TALER_ExchangePublicKeyP *exchange_pub)
 {
   struct TALER_ExchangeSignatureP exchange_sig;
-  struct TALER_ExchangePublicKeyP exchange_pub;
   const struct TALER_EXCHANGE_Keys *key_state;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
-    GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub", exchange_pub),
     GNUNET_JSON_spec_end()
   };
 
@@ -110,7 +111,7 @@ verify_deposit_wtid_signature_ok (const struct TALER_EXCHANGE_DepositWtidHandle 
   key_state = TALER_EXCHANGE_get_keys (dwh->exchange);
   if (GNUNET_OK !=
       TALER_EXCHANGE_test_signing_key (key_state,
-                                       &exchange_pub))
+                                       exchange_pub))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -119,7 +120,7 @@ verify_deposit_wtid_signature_ok (const struct TALER_EXCHANGE_DepositWtidHandle 
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE,
                                   &dwh->depconf.purpose,
                                   &exchange_sig.eddsa_signature,
-                                  &exchange_pub.eddsa_pub))
+                                  &exchange_pub->eddsa_pub))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -146,6 +147,8 @@ handle_deposit_wtid_finished (void *cls,
   struct GNUNET_TIME_Absolute execution_time = GNUNET_TIME_UNIT_FOREVER_ABS;
   const struct TALER_Amount *coin_contribution = NULL;
   struct TALER_Amount coin_contribution_s;
+  struct TALER_ExchangePublicKeyP exchange_pub;
+  struct TALER_ExchangePublicKeyP *ep = NULL;
 
   dwh->job = NULL;
   switch (response_code)
@@ -177,10 +180,15 @@ handle_deposit_wtid_finished (void *cls,
       coin_contribution = &coin_contribution_s;
       if (GNUNET_OK !=
           verify_deposit_wtid_signature_ok (dwh,
-                                            json))
+                                            json,
+                                            &exchange_pub))
       {
         GNUNET_break_op (0);
         response_code = 0;
+      }
+      else
+      {
+        ep = &exchange_pub;
       }
     }
     break;
@@ -231,6 +239,7 @@ handle_deposit_wtid_finished (void *cls,
   }
   dwh->cb (dwh->cb_cls,
            response_code,
+           ep,
            json,
            wtid,
            execution_time,

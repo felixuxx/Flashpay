@@ -951,20 +951,21 @@ struct TALER_EXCHANGE_RefreshMeltHandle
  *
  * @param rmh melt handle
  * @param json json reply with the signature
+ * @param[out] exchange_pub public key of the exchange used for the signature
  * @param[out] noreveal_index set to the noreveal index selected by the exchange
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
 static int
 verify_refresh_melt_signature_ok (struct TALER_EXCHANGE_RefreshMeltHandle *rmh,
                                   const json_t *json,
+                                  struct TALER_ExchangePublicKeyP *exchange_pub,
                                   uint16_t *noreveal_index)
 {
   struct TALER_ExchangeSignatureP exchange_sig;
-  struct TALER_ExchangePublicKeyP exchange_pub;
   const struct TALER_EXCHANGE_Keys *key_state;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
-    GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub", exchange_pub),
     GNUNET_JSON_spec_uint16 ("noreveal_index", noreveal_index),
     GNUNET_JSON_spec_end()
   };
@@ -983,7 +984,7 @@ verify_refresh_melt_signature_ok (struct TALER_EXCHANGE_RefreshMeltHandle *rmh,
   key_state = TALER_EXCHANGE_get_keys (rmh->exchange);
   if (GNUNET_OK !=
       TALER_EXCHANGE_test_signing_key (key_state,
-                                   &exchange_pub))
+                                       exchange_pub))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -1006,7 +1007,7 @@ verify_refresh_melt_signature_ok (struct TALER_EXCHANGE_RefreshMeltHandle *rmh,
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT,
                                   &confirm.purpose,
                                   &exchange_sig.eddsa_signature,
-                                  &exchange_pub.eddsa_pub))
+                                  &exchange_pub->eddsa_pub))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -1126,6 +1127,7 @@ handle_refresh_melt_finished (void *cls,
 {
   struct TALER_EXCHANGE_RefreshMeltHandle *rmh = cls;
   uint16_t noreveal_index = TALER_CNC_KAPPA; /* invalid value */
+  struct TALER_ExchangePublicKeyP exchange_pub;
 
   rmh->job = NULL;
   switch (response_code)
@@ -1136,6 +1138,7 @@ handle_refresh_melt_finished (void *cls,
     if (GNUNET_OK !=
         verify_refresh_melt_signature_ok (rmh,
                                           json,
+                                          &exchange_pub,
                                           &noreveal_index))
     {
       GNUNET_break_op (0);
@@ -1146,6 +1149,7 @@ handle_refresh_melt_finished (void *cls,
       rmh->melt_cb (rmh->melt_cb_cls,
                     response_code,
                     noreveal_index,
+                    (0 == response_code) ? NULL : &exchange_pub,
                     json);
       rmh->melt_cb = NULL;
     }
@@ -1190,6 +1194,7 @@ handle_refresh_melt_finished (void *cls,
     rmh->melt_cb (rmh->melt_cb_cls,
                   response_code,
                   UINT16_MAX,
+                  NULL,
                   json);
   TALER_EXCHANGE_refresh_melt_cancel (rmh);
 }
@@ -1731,7 +1736,7 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_CURL_Context *ctx;
   struct MeltData *md;
   unsigned int j;
-  
+
   GNUNET_assert (GNUNET_YES ==
 		 MAH_handle_is_ready (exchange));
   md = deserialize_melt_data (refresh_data,

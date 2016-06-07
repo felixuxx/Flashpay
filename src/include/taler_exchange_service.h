@@ -416,12 +416,14 @@ struct TALER_EXCHANGE_DepositHandle;
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful deposit;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param sign_key exchange key used to sign @a obj, or NULL
  * @param obj the received JSON reply, should be kept as proof (and, in case of errors,
  *            be forwarded to the customer)
  */
 typedef void
 (*TALER_EXCHANGE_DepositResultCallback) (void *cls,
                                          unsigned int http_status,
+                                         const struct TALER_ExchangePublicKeyP *sign_key,
                                          const json_t *obj);
 
 
@@ -502,12 +504,14 @@ struct TALER_EXCHANGE_RefundHandle;
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful deposit;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param sign_key exchange key used to sign @a obj, or NULL
  * @param obj the received JSON reply, should be kept as proof (and, in particular,
  *            be forwarded to the customer)
  */
 typedef void
 (*TALER_EXCHANGE_RefundResultCallback) (void *cls,
 					unsigned int http_status,
+                                        const struct TALER_ExchangePublicKeyP *sign_key,
 					const json_t *obj);
 
 
@@ -833,12 +837,14 @@ struct TALER_EXCHANGE_RefreshMeltHandle;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
  * @param noreveal_index choice by the exchange in the cut-and-choose protocol,
  *                    UINT16_MAX on error
+ * @param sign_key exchange key used to sign @a full_response, or NULL
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 typedef void
 (*TALER_EXCHANGE_RefreshMeltCallback) (void *cls,
                                        unsigned int http_status,
                                        uint16_t noreveal_index,
+                                       const struct TALER_ExchangePublicKeyP *sign_key,
                                        const json_t *full_response);
 
 
@@ -1135,6 +1141,7 @@ struct TALER_WireDepositDetails
  *
  * @param cls closure
  * @param http_status HTTP status code we got, 0 on exchange protocol violation
+ * @param sign_key exchange key used to sign @a json, or NULL
  * @param json original json reply (may include signatures, those have then been
  *        validated already)
  * @param wtid extracted wire transfer identifier, or NULL if the exchange could
@@ -1147,6 +1154,7 @@ struct TALER_WireDepositDetails
 typedef void
 (*TALER_EXCHANGE_WireDepositsCallback)(void *cls,
                                        unsigned int http_status,
+                                       const struct TALER_ExchangePublicKeyP *sign_key,
                                        const json_t *json,
                                        const struct GNUNET_HashCode *h_wire,
                                        const struct TALER_Amount *total_amount,
@@ -1195,6 +1203,7 @@ struct TALER_EXCHANGE_DepositWtidHandle;
  *
  * @param cls closure
  * @param http_status HTTP status code we got, 0 on exchange protocol violation
+ * @param sign_key exchange key used to sign @a json, or NULL
  * @param json original json reply (may include signatures, those have then been
  *        validated already)
  * @param wtid wire transfer identifier used by the exchange, NULL if exchange did not
@@ -1205,6 +1214,7 @@ struct TALER_EXCHANGE_DepositWtidHandle;
 typedef void
 (*TALER_EXCHANGE_DepositWtidCallback)(void *cls,
                                       unsigned int http_status,
+                                      const struct TALER_ExchangePublicKeyP *sign_key,
                                       const json_t *json,
                                       const struct TALER_WireTransferIdentifierRawP *wtid,
                                       struct GNUNET_TIME_Absolute execution_time,

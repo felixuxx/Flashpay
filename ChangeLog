@@ -1,3 +1,8 @@
+Tue Jun  7 15:13:46 CEST 2016
+        Adding public key of the exchange that was used to sign replies
+        to applicable callbacks of libtalerexchange. (This will eventually
+        be needed by the merchant's backend.) -CG
+
 Mon Jun  6 23:59:05 CEST 2016
 	Minor code cleanup, fixing FTBFS when run with just 'make'
 	or when header installed to a location not included.

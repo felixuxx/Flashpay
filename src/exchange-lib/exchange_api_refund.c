@@ -83,18 +83,19 @@ struct TALER_EXCHANGE_RefundHandle
  *
  * @param rh refund handle
  * @param json json reply with the signature
+ * @param[out] exchange_pub set to the exchange's public key
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
 static int
 verify_refund_signature_ok (const struct TALER_EXCHANGE_RefundHandle *rh,
-                             const json_t *json)
+                            const json_t *json,
+                            struct TALER_ExchangePublicKeyP *exchange_pub)
 {
   struct TALER_ExchangeSignatureP exchange_sig;
-  struct TALER_ExchangePublicKeyP exchange_pub;
   const struct TALER_EXCHANGE_Keys *key_state;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("sig", &exchange_sig),
-    GNUNET_JSON_spec_fixed_auto ("pub", &exchange_pub),
+    GNUNET_JSON_spec_fixed_auto ("pub", exchange_pub),
     GNUNET_JSON_spec_end()
   };
 
@@ -109,7 +110,7 @@ verify_refund_signature_ok (const struct TALER_EXCHANGE_RefundHandle *rh,
   key_state = TALER_EXCHANGE_get_keys (rh->exchange);
   if (GNUNET_OK !=
       TALER_EXCHANGE_test_signing_key (key_state,
-				       &exchange_pub))
+				       exchange_pub))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -118,7 +119,7 @@ verify_refund_signature_ok (const struct TALER_EXCHANGE_RefundHandle *rh,
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND,
                                   &rh->depconf.purpose,
                                   &exchange_sig.eddsa_signature,
-                                  &exchange_pub.eddsa_pub))
+                                  &exchange_pub->eddsa_pub))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -141,6 +142,8 @@ handle_refund_finished (void *cls,
                         const json_t *json)
 {
   struct TALER_EXCHANGE_RefundHandle *rh = cls;
+  struct TALER_ExchangePublicKeyP exchange_pub;
+  struct TALER_ExchangePublicKeyP *ep = NULL;
 
   rh->job = NULL;
   switch (response_code)
@@ -150,10 +153,15 @@ handle_refund_finished (void *cls,
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         verify_refund_signature_ok (rh,
-				    json))
+				    json,
+                                    &exchange_pub))
     {
       GNUNET_break_op (0);
       response_code = 0;
+    }
+    else
+    {
+      ep = &exchange_pub;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
@@ -188,6 +196,7 @@ handle_refund_finished (void *cls,
   }
   rh->cb (rh->cb_cls,
           response_code,
+          ep,
           json);
   TALER_EXCHANGE_refund_cancel (rh);
 }
