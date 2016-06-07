@@ -78,6 +78,12 @@ struct Coin {
   const struct TALER_EXCHANGE_DenomPublicKey *pk;
 
   /**
+   * Array of denomination keys needed in case this coin is to be
+   * refreshed
+   */
+  const struct TALER_EXCHANGE_DenomPublicKey **refresh_pk;
+
+  /**
    * Set (by the interpreter) to the exchange's signature over the
    * coin's public key.
    */
@@ -187,7 +193,7 @@ static struct TALER_MerchantPrivateKeyP merchant_priv;
  * Used currency (to be preferably gotten via config file, together
  * exchange URI and other needed values)
  */
-#define CURRENCY "KUDOS"
+#define CURRENCY "PUDOS"
 
 
 /**
@@ -648,6 +654,10 @@ do_shutdown (void *cls)
     {
       TALER_EXCHANGE_refresh_reveal_cancel(coins[i].rrh);
       coins[i].rmh = NULL;    
+    }
+    if (NULL != coins[i].refresh_pk)
+    {
+      GNUNET_free (coins[i].refresh_pk);
     }
 
   }
