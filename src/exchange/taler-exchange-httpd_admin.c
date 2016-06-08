@@ -158,6 +158,14 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
     return TMH_RESPONSE_reply_arg_unknown (connection,
                                            "sender_account_details");
   }
+  if (0 != strcasecmp (amount.currency,
+                       TMH_exchange_currency_string))
+  {
+    GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
+    return TMH_RESPONSE_reply_arg_invalid (connection,
+                                           "amount:currency");
+  }
   res = TMH_DB_execute_admin_add_incoming (connection,
                                            &reserve_pub,
                                            &amount,
