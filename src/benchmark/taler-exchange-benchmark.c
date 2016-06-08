@@ -26,6 +26,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_curl_lib.h>
 #include <microhttpd.h>
+#include <jansson.h>
 
 /**
  * How many coins the benchmark should operate on
@@ -46,6 +47,16 @@ struct GNUNET_CONFIGURATION_Handle *cfg;
  * How many reservers ought to be created given the pool size
  */
 static unsigned int nreserves;
+
+/**
+ * Bank details of who creates reserves
+ */
+json_t *sender_details;
+
+/**
+ * Bank details of who deposits coins
+ */
+json_t *merchant_details;
 
 /**
  * Needed information for a reserve. Other values are the same for all reserves, therefore defined in global variables
@@ -387,7 +398,6 @@ reserve_withdraw_cb (void *cls,
     struct GNUNET_TIME_Absolute timestamp;
     struct GNUNET_TIME_Absolute refund_deadline;
     struct GNUNET_HashCode h_contract;
-    json_t *merchant_details;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct TALER_DepositRequestPS dr;
     struct TALER_MerchantPublicKeyP merchant_pub;
@@ -408,10 +418,6 @@ reserve_withdraw_cb (void *cls,
     TALER_amount_subtract (&amount,
                            &coins[coin_index].pk->value,
                            &coins[coin_index].pk->fee_deposit);
-    merchant_details = json_loads ("{ \"type\":\"test\", \"bank_uri\":\"https://bank.test.taler.net/\", \"account_number\":63}",
-                               JSON_REJECT_DUPLICATES,
-                               NULL);
-
     memset (&dr, 0, sizeof (dr));
     dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
     dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
@@ -523,7 +529,6 @@ benchmark_run (void *cls)
   unsigned int i;
   struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
   json_t *transfer_details;
-  json_t *sender_details;
   char *uuid;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct GNUNET_TIME_Absolute execution_date;
@@ -538,9 +543,6 @@ benchmark_run (void *cls)
                               sizeof (blinding_key));
   TALER_amount_get_zero (currency, &reserve_amount);
   reserve_amount.value = RESERVE_VALUE;
-  sender_details = json_loads ("{ \"type\":\"test\", \"bank_uri\":\"https://bank.test.taler.net/\", \"account_number\":62}",
-                               JSON_REJECT_DUPLICATES,
-                               NULL);
   execution_date = GNUNET_TIME_absolute_get ();
   GNUNET_TIME_round_abs (&execution_date);
 
@@ -708,7 +710,8 @@ do_shutdown (void *cls)
 static void
 run (void *cls)
 {
-
+  char *sender_details_filename;
+  char *merchant_details_filename;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "running run()\n");
@@ -722,17 +725,36 @@ run (void *cls)
     fail ("-c option is mandatory\n");
 
   /**
-   * Read BANK_URI in here
+   * Read sender_details.json here
    */
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_SYSERR == GNUNET_CONFIGURATION_parse (cfg, config_file))
     fail ("failed to parse configuration file\n");
+  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                                                "benchmark",
+                                                                "sender_details",
+                                                                &sender_details_filename))
+    fail ("failed to get SENDER_DETAILS value\n");
 
+  sender_details = json_load_file (sender_details_filename,
+                                   JSON_REJECT_DUPLICATES,
+                                   NULL);
+
+  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                                                "benchmark",
+                                                                "merchant_details",
+                                                                &merchant_details_filename))
+    fail ("failed to get MERCHANT_DETAILS value\n");
+
+  merchant_details = json_load_file (merchant_details_filename,
+                                     JSON_REJECT_DUPLICATES,
+                                     NULL);
+
+  GNUNET_CONFIGURATION_destroy (cfg);
   GNUNET_array_append (spent_coins,
                        spent_coins_size,
                        1);
   spent_coins_size++;
-
   reserves = NULL;
   coins = NULL;
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
