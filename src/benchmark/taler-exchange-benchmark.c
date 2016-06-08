@@ -680,6 +680,11 @@ do_shutdown (void *cls)
 
   }
 
+  if (NULL != sender_details)
+    json_decref (sender_details);
+  if (NULL != merchant_details)
+    json_decref (sender_details);
+
   GNUNET_free_non_null (reserves);
   GNUNET_free_non_null (coins);
   GNUNET_free_non_null (spent_coins);
