@@ -26,7 +26,7 @@
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
-#include "fakebank.h"
+#include "taler_fakebank_lib.h"
 
 
 /**
@@ -62,7 +62,7 @@ static struct GNUNET_SCHEDULER_Task *timeout_task;
 /**
  * Handle to our fakebank.
  */
-static struct FAKEBANK_Handle *fakebank;
+static struct TALER_FAKEBANK_Handle *fakebank;
 
 /**
  * Result of the testcases, #GNUNET_OK on success
@@ -2252,7 +2252,7 @@ interpreter_run (void *cls)
         return;
       }
       if (GNUNET_OK !=
-          FAKEBANK_check (fakebank,
+          TALER_FAKEBANK_check (fakebank,
                           &amount,
                           cmd->details.check_bank_transfer.account_debit,
                           cmd->details.check_bank_transfer.account_credit,
@@ -2268,7 +2268,7 @@ interpreter_run (void *cls)
   case OC_CHECK_BANK_TRANSFERS_EMPTY:
     {
       if (GNUNET_OK !=
-          FAKEBANK_check_empty (fakebank))
+          TALER_FAKEBANK_check_empty (fakebank))
       {
         GNUNET_break (0);
         fail (is);
@@ -2580,7 +2580,7 @@ do_shutdown (void *cls)
   GNUNET_free (is);
   if (NULL != fakebank)
   {
-    FAKEBANK_stop (fakebank);
+    TALER_FAKEBANK_stop (fakebank);
     fakebank = NULL;
   }
   if (NULL != exchange)
@@ -3012,7 +3012,7 @@ run (void *cls)
                           &rc);
   GNUNET_assert (NULL != ctx);
   rc = GNUNET_CURL_gnunet_rc_create (ctx);
-  fakebank = FAKEBANK_start (8082);
+  fakebank = TALER_FAKEBANK_start (8082);
   exchange = TALER_EXCHANGE_connect (ctx,
                                      "http://localhost:8081",
                                      &cert_cb, is,

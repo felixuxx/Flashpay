@@ -56,7 +56,7 @@ test_exchange_api_SOURCES = \
 test_exchange_api_LDADD = \
   libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/bank-lib/libfakebank.la \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \

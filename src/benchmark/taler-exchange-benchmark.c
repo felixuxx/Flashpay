@@ -26,6 +26,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_curl_lib.h>
 #include <microhttpd.h>
+#include <jansson.h>
 
 /**
  * How many coins the benchmark should operate on
@@ -33,9 +34,29 @@
 static unsigned int pool_size = 100;
 
 /**
+ * Configuration file path
+ */
+static char *config_file;
+
+/**
+ * Configuation object (used to get BANK_URI)
+ */
+struct GNUNET_CONFIGURATION_Handle *cfg;
+
+/**
  * How many reservers ought to be created given the pool size
  */
 static unsigned int nreserves;
+
+/**
+ * Bank details of who creates reserves
+ */
+json_t *sender_details;
+
+/**
+ * Bank details of who deposits coins
+ */
+json_t *merchant_details;
 
 /**
  * Needed information for a reserve. Other values are the same for all reserves, therefore defined in global variables
@@ -182,7 +203,7 @@ static struct TALER_MerchantPrivateKeyP merchant_priv;
 /**
  * URI under which the exchange is reachable during the benchmark.
  */
-#define EXCHANGE_URI "http://localhost:8081"
+#define EXCHANGE_URI "http://localhost:8081/"
 
 /**
  * How many coins (AKA withdraw operations) per reserve should be withdrawn
@@ -190,17 +211,21 @@ static struct TALER_MerchantPrivateKeyP merchant_priv;
 #define COINS_PER_RESERVE 12
 
 /**
- * Used currency (to be preferably gotten via config file, together
- * exchange URI and other needed values)
+ * Used currency (read from /keys' output)
  */
-#define CURRENCY "PUDOS"
-
+static char *currency;
 
 /**
  * Large enough value to allow having 12 coins per reserve without parsing
  * /keys in the first place
  */
-#define RESERVE_AMOUNT CURRENCY":1000"
+#define RESERVE_VALUE 1000
+
+/**
+ * The benchmark withdraws always the same denomination, since the calculation
+ * for refreshing is statically done (at least in its very first version).
+ */
+#define COIN_VALUE 5
 
 /**
  * Probability a coin can be spent
@@ -246,6 +271,7 @@ fail (const char *msg)
               "%s\n",
               msg);
   GNUNET_SCHEDULER_shutdown ();
+  return;
 }
 
 
@@ -335,7 +361,6 @@ deposit_cb (void *cls,
   {
     /* TODO: all the refresh logic here */
     refreshed_once = GNUNET_YES;
-  
   }
 }
 
@@ -373,7 +398,6 @@ reserve_withdraw_cb (void *cls,
     struct GNUNET_TIME_Absolute timestamp;
     struct GNUNET_TIME_Absolute refund_deadline;
     struct GNUNET_HashCode h_contract;
-    json_t *merchant_details;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct TALER_DepositRequestPS dr;
     struct TALER_MerchantPublicKeyP merchant_pub;
@@ -394,10 +418,6 @@ reserve_withdraw_cb (void *cls,
     TALER_amount_subtract (&amount,
                            &coins[coin_index].pk->value,
                            &coins[coin_index].pk->fee_deposit);
-    merchant_details = json_loads ("{ \"type\":\"test\", \"bank_uri\":\"https://bank.test.taler.net/\", \"account_number\":63}",
-                               JSON_REJECT_DUPLICATES,
-                               NULL);
-
     memset (&dr, 0, sizeof (dr));
     dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
     dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
@@ -482,7 +502,8 @@ add_incoming_cb (void *cls,
     coin_index = reserve_index * COINS_PER_RESERVE + i;
     coins[coin_index].coin_priv.eddsa_priv = *coin_priv;
     coins[coin_index].reserve_index = reserve_index;
-    TALER_string_to_amount (CURRENCY":5", &amount);
+    TALER_amount_get_zero (currency, &amount);
+    amount.value = COIN_VALUE;
     GNUNET_assert (NULL != (coins[coin_index].pk = find_pk (keys, &amount)));
     GNUNET_free (coin_priv);
     coins[coin_index].wsh =
@@ -508,7 +529,6 @@ benchmark_run (void *cls)
   unsigned int i;
   struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
   json_t *transfer_details;
-  json_t *sender_details;
   char *uuid;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct GNUNET_TIME_Absolute execution_date;
@@ -521,18 +541,13 @@ benchmark_run (void *cls)
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &blinding_key,
                               sizeof (blinding_key));
-  TALER_string_to_amount (RESERVE_AMOUNT, &reserve_amount);
-  sender_details = json_loads ("{ \"type\":\"test\", \"bank_uri\":\"https://bank.test.taler.net/\", \"account_number\":62}",
-                               JSON_REJECT_DUPLICATES,
-                               NULL);
+  TALER_amount_get_zero (currency, &reserve_amount);
+  reserve_amount.value = RESERVE_VALUE;
   execution_date = GNUNET_TIME_absolute_get ();
   GNUNET_TIME_round_abs (&execution_date);
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "benchmark_run() invoked\n");
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "gotten pool_size of %d\n",
-              pool_size);
   nreserves = pool_size / COINS_PER_RESERVE;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "creating %d reserves\n",
@@ -600,6 +615,9 @@ cert_cb (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 	      "Certificate callback invoked, invoking benchmark_run()\n");
   keys = _keys;
+  currency = _keys->denom_keys[0].value.currency;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+	      "Using currency: %s\n", currency);
   benchmark_task = GNUNET_SCHEDULER_add_now (&benchmark_run,
                                              NULL);
 }
@@ -662,6 +680,11 @@ do_shutdown (void *cls)
 
   }
 
+  if (NULL != sender_details)
+    json_decref (sender_details);
+  if (NULL != merchant_details)
+    json_decref (sender_details);
+
   GNUNET_free_non_null (reserves);
   GNUNET_free_non_null (coins);
   GNUNET_free_non_null (spent_coins);
@@ -692,13 +715,51 @@ do_shutdown (void *cls)
 static void
 run (void *cls)
 {
+  char *sender_details_filename;
+  char *merchant_details_filename;
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "running run()\n");
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "gotten pool_size of %d\n",
+              pool_size);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "config file: %s\n",
+              config_file);
+  if (NULL == config_file)
+    fail ("-c option is mandatory\n");
+
+  /**
+   * Read sender_details.json here
+   */
+  cfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_parse (cfg, config_file))
+    fail ("failed to parse configuration file\n");
+  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                                                "benchmark",
+                                                                "sender_details",
+                                                                &sender_details_filename))
+    fail ("failed to get SENDER_DETAILS value\n");
+
+  sender_details = json_load_file (sender_details_filename,
+                                   JSON_REJECT_DUPLICATES,
+                                   NULL);
+
+  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                                                "benchmark",
+                                                                "merchant_details",
+                                                                &merchant_details_filename))
+    fail ("failed to get MERCHANT_DETAILS value\n");
+
+  merchant_details = json_load_file (merchant_details_filename,
+                                     JSON_REJECT_DUPLICATES,
+                                     NULL);
+
+  GNUNET_CONFIGURATION_destroy (cfg);
   GNUNET_array_append (spent_coins,
                        spent_coins_size,
                        1);
   spent_coins_size++;
-
   reserves = NULL;
   coins = NULL;
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
@@ -720,18 +781,96 @@ main (int argc,
       char * const *argv)
 {
 
+  struct GNUNET_OS_Process *proc;
+  struct GNUNET_OS_Process *exchanged;
+  unsigned int cnt;
+
   GNUNET_log_setup ("taler-exchange-benchmark",
                     "WARNING",
                     NULL);
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     {'s', "pool-size", NULL,
      "How many coins this benchmark should instantiate", GNUNET_YES,
-     &GNUNET_GETOPT_set_uint, &pool_size}
+     &GNUNET_GETOPT_set_uint, &pool_size},
+    {'c', "config", NULL,
+     "Configuration file", GNUNET_YES,
+     &GNUNET_GETOPT_set_string, &config_file}
     };
 
   GNUNET_assert (GNUNET_SYSERR !=
                    GNUNET_GETOPT_run ("taler-exchange-benchmark",
                                       options, argc, argv));
+
+  proc = GNUNET_OS_start_process (GNUNET_NO,
+                                  GNUNET_OS_INHERIT_STD_ALL,
+                                  NULL, NULL, NULL,
+                                  "taler-exchange-keyup",
+                                  "taler-exchange-keyup",
+                                  NULL);
+  if (NULL == proc)
+  {
+    fprintf (stderr,
+             "Failed to run taler-exchange-keyup. Check your PATH.\n");
+    return 77;
+  }
+
+  GNUNET_OS_process_wait (proc);
+  GNUNET_OS_process_destroy (proc);
+
+  proc = GNUNET_OS_start_process (GNUNET_NO,
+                                  GNUNET_OS_INHERIT_STD_ALL,
+                                  NULL, NULL, NULL,
+                                  "taler-exchange-dbinit",
+                                  "taler-exchange-dbinit",
+                                  "-r",
+                                  NULL);
+
+
+  if (NULL == proc)
+  {
+    fprintf (stderr,
+             "Failed to run taler-exchange-dbinit. Check your PATH.\n");
+    return 77;
+  }
+  GNUNET_OS_process_wait (proc);
+  GNUNET_OS_process_destroy (proc);
+
+  exchanged = GNUNET_OS_start_process (GNUNET_NO,
+                                       GNUNET_OS_INHERIT_STD_ALL,
+                                       NULL, NULL, NULL,
+                                       "taler-exchange-httpd",
+                                       "taler-exchange-httpd",
+                                       NULL);
+  if (NULL == exchanged)
+  {
+    fprintf (stderr,
+             "Failed to run taler-exchange-httpd. Check your PATH.\n");
+    return 77;
+  }
+
+  cnt = 0;
+  do
+    {
+      fprintf (stderr, ".");
+      sleep (1);
+      cnt++;
+      if (cnt > 60)
+      {
+        fprintf (stderr,
+                 "\nFailed to start taler-exchange-httpd\n");
+        GNUNET_OS_process_kill (exchanged,
+                                SIGKILL);
+        GNUNET_OS_process_wait (exchanged);
+        GNUNET_OS_process_destroy (exchanged);
+        return 77;
+      }
+    }
+  while (0 != system ("wget -q -t 1 -T 1 " EXCHANGE_URI "keys -o /dev/null -O /dev/null"));
+  fprintf (stderr, "\n");
+
   GNUNET_SCHEDULER_run (&run, NULL);
+  GNUNET_OS_process_wait (exchanged);
+  GNUNET_OS_process_destroy (exchanged);
+
   return GNUNET_OK;
 }

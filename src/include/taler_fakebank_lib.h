@@ -19,8 +19,8 @@
  * @brief API for a library that fakes being a Taler bank
  * @author Christian Grothoff <christian@grothoff.org>
  */
-#ifndef FAKEBANK_H
-#define FAKEBANK_H
+#ifndef TALER_FAKEBANK_H
+#define TALER_FAKEBANK_H
 
 #include "taler_util.h"
 #include <gnunet/gnunet_json_lib.h>
@@ -30,14 +30,14 @@
 /**
  * Handle for the fake bank.
  */
-struct FAKEBANK_Handle;
+struct TALER_FAKEBANK_Handle;
 
 
 /**
  * Start the fake bank.  The fake bank will, like the normal bank,
  * listen for requests for /admin/add/incoming. However, instead of
  * executing or storing those requests, it will simply allow querying
- * whether such a request has been made via #FAKEBANK_check().
+ * whether such a request has been made via #TALER_FAKEBANK_check().
  *
  * This is useful for writing testcases to check whether the exchange
  * would have issued the correct wire transfer orders.
@@ -45,20 +45,20 @@ struct FAKEBANK_Handle;
  * @param port port to listen to
  * @return NULL on error
  */
-struct FAKEBANK_Handle *
-FAKEBANK_start (uint16_t port);
+struct TALER_FAKEBANK_Handle *
+TALER_FAKEBANK_start (uint16_t port);
 
 
 /**
  * Check that no wire transfers were ordered (or at least none
- * that have not been taken care of via #FAKEBANK_check()).
+ * that have not been taken care of via #TALER_FAKEBANK_check()).
  * If any transactions are onrecord, return #GNUNET_SYSERR.
  *
  * @param h bank instance
  * @return #GNUNET_OK on success
  */
 int
-FAKEBANK_check_empty (struct FAKEBANK_Handle *h);
+TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h);
 
 
 /**
@@ -75,7 +75,7 @@ FAKEBANK_check_empty (struct FAKEBANK_Handle *h);
  * @return #GNUNET_OK on success
  */
 int
-FAKEBANK_check (struct FAKEBANK_Handle *h,
+TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
                 const struct TALER_Amount *want_amount,
                 uint64_t want_debit,
                 uint64_t want_credit,
@@ -88,7 +88,7 @@ FAKEBANK_check (struct FAKEBANK_Handle *h,
  * @param h bank to stop
  */
 void
-FAKEBANK_stop (struct FAKEBANK_Handle *h);
+TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h);
 
 
 #endif
