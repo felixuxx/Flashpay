@@ -1,3 +1,7 @@
+Wed Jun  8 11:32:41 CEST 2016
+	Export libtalerfakebank API so we can use it in testcases for the
+	merchant as well. -CG
+
 Tue Jun  7 15:13:46 CEST 2016
         Adding public key of the exchange that was used to sign replies
         to applicable callbacks of libtalerexchange. (This will eventually

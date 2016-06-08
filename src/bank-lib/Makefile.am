@@ -7,10 +7,8 @@ if USE_COVERAGE
 endif
 
 lib_LTLIBRARIES = \
-  libtalerbank.la
-
-noinst_LTLIBRARIES = \
-  libfakebank.la
+  libtalerbank.la \
+  libtalerfakebank.la
 
 libtalerbank_la_LDFLAGS = \
   -version-info 0:0:0 \
@@ -27,10 +25,15 @@ libtalerbank_la_LIBADD = \
   -ljansson \
   $(XLIB)
 
-libfakebank_la_SOURCES = \
-  fakebank.c fakebank.h
 
-libfakebank_la_LIBADD = \
+libtalerfakebank_la_LDFLAGS = \
+  -version-info 0:0:0 \
+  -no-undefined
+
+libtalerfakebank_la_SOURCES = \
+  fakebank.c
+
+libtalerfakebank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   -lgnunetjson \
   -lgnunetutil \
@@ -58,7 +61,7 @@ test_bank_api_SOURCES = \
   test_bank_api.c
 test_bank_api_LDADD = \
   libtalerbank.la \
-  libfakebank.la \
+  libtalerfakebank.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
   -lgnunetutil \
@@ -70,7 +73,7 @@ test_bank_api_with_fakebank_SOURCES = \
   test_bank_api_with_fakebank.c
 test_bank_api_with_fakebank_LDADD = \
   libtalerbank.la \
-  libfakebank.la \
+  libtalerfakebank.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
   -lgnunetutil \

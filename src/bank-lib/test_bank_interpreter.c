@@ -26,7 +26,7 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include <microhttpd.h>
 #include "test_bank_interpreter.h"
-#include "fakebank.h"
+#include "taler_fakebank_lib.h"
 
 
 /**
@@ -72,7 +72,7 @@ struct InterpreterState
   /**
    * Fakebank, or NULL if we are not using the fakebank.
    */
-  struct FAKEBANK_Handle *fakebank;
+  struct TALER_FAKEBANK_Handle *fakebank;
 
   /**
    * Instruction pointer.  Tells #interpreter_run() which
@@ -242,7 +242,7 @@ interpreter_run (void *cls)
                    TALER_string_to_amount (ref->details.admin_add_incoming.amount,
                                            &amount));
     if (GNUNET_OK !=
-        FAKEBANK_check (is->fakebank,
+        TALER_FAKEBANK_check (is->fakebank,
                         &amount,
                         ref->details.admin_add_incoming.debit_account_no,
                         ref->details.admin_add_incoming.credit_account_no,
@@ -265,7 +265,7 @@ interpreter_run (void *cls)
                                          is);
    return;
   case TBI_OC_EXPECT_TRANSFERS_EMPTY:
-    if (GNUNET_OK != FAKEBANK_check_empty (is->fakebank))
+    if (GNUNET_OK != TALER_FAKEBANK_check_empty (is->fakebank))
     {
       GNUNET_break (0);
       fail (is);
@@ -355,7 +355,7 @@ do_shutdown (void *cls)
   }
   if (NULL != is->fakebank)
   {
-    FAKEBANK_stop (is->fakebank);
+    TALER_FAKEBANK_stop (is->fakebank);
     is->fakebank = NULL;
   }
   GNUNET_CURL_fini (is->ctx);
@@ -381,7 +381,7 @@ TBI_run_interpreter (int *resultp,
 
   is = GNUNET_new (struct InterpreterState);
   if (GNUNET_YES == run_bank)
-    is->fakebank = FAKEBANK_start (8081);
+    is->fakebank = TALER_FAKEBANK_start (8081);
   is->resultp = resultp;
   is->commands = commands;
   is->ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,

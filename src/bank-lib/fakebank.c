@@ -21,7 +21,7 @@
  */
 
 #include "platform.h"
-#include "fakebank.h"
+#include "taler_fakebank_lib.h"
 
 /**
  * Maximum POST request size (for /admin/add/incoming)
@@ -71,7 +71,7 @@ struct Transaction
 /**
  * Handle for the fake bank.
  */
-struct FAKEBANK_Handle
+struct TALER_FAKEBANK_Handle
 {
   /**
    * We store transactions in a DLL.
@@ -109,11 +109,11 @@ struct FAKEBANK_Handle
  * @return #GNUNET_OK on success
  */
 int
-FAKEBANK_check (struct FAKEBANK_Handle *h,
-                const struct TALER_Amount *want_amount,
-                uint64_t want_debit,
-                uint64_t want_credit,
-                struct TALER_WireTransferIdentifierRawP *wtid)
+TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
+                      const struct TALER_Amount *want_amount,
+                      uint64_t want_debit,
+                      uint64_t want_credit,
+                      struct TALER_WireTransferIdentifierRawP *wtid)
 {
   struct Transaction *t;
 
@@ -152,14 +152,14 @@ FAKEBANK_check (struct FAKEBANK_Handle *h,
 
 /**
  * Check that no wire transfers were ordered (or at least none
- * that have not been taken care of via #FAKEBANK_check()).
+ * that have not been taken care of via #TALER_FAKEBANK_check()).
  * If any transactions are onrecord, return #GNUNET_SYSERR.
  *
  * @param h bank instance
  * @return #GNUNET_OK on success
  */
 int
-FAKEBANK_check_empty (struct FAKEBANK_Handle *h)
+TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h)
 {
   struct Transaction *t;
 
@@ -190,7 +190,7 @@ FAKEBANK_check_empty (struct FAKEBANK_Handle *h)
  * @param h bank to stop
  */
 void
-FAKEBANK_stop (struct FAKEBANK_Handle *h)
+TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
 {
   if (NULL != h->mhd_task)
   {
@@ -226,7 +226,7 @@ handle_mhd_completion_callback (void *cls,
                                 void **con_cls,
                                 enum MHD_RequestTerminationCode toe)
 {
-  /*  struct FAKEBANK_Handle *h = cls; */
+  /*  struct TALER_FAKEBANK_Handle *h = cls; */
 
   GNUNET_JSON_post_parser_cleanup (*con_cls);
   *con_cls = NULL;
@@ -256,7 +256,7 @@ handle_mhd_request (void *cls,
                     size_t *upload_data_size,
                     void **con_cls)
 {
-  struct FAKEBANK_Handle *h = cls;
+  struct TALER_FAKEBANK_Handle *h = cls;
   enum GNUNET_JSON_PostResult pr;
   json_t *json;
   struct Transaction *t;
@@ -331,7 +331,7 @@ handle_mhd_request (void *cls,
 /**
  * Task run whenever HTTP server operations are pending.
  *
- * @param cls the `struct FAKEBANK_Handle`
+ * @param cls the `struct TALER_FAKEBANK_Handle`
  */
 static void
 run_mhd (void *cls);
@@ -343,7 +343,7 @@ run_mhd (void *cls);
  * always be called later whenever there is work to be done.
  */
 static void
-schedule_httpd (struct FAKEBANK_Handle *h)
+schedule_httpd (struct TALER_FAKEBANK_Handle *h)
 {
   fd_set rs;
   fd_set ws;
@@ -399,12 +399,12 @@ schedule_httpd (struct FAKEBANK_Handle *h)
 /**
  * Task run whenever HTTP server operations are pending.
  *
- * @param cls the `struct FAKEBANK_Handle`
+ * @param cls the `struct TALER_FAKEBANK_Handle`
  */
 static void
 run_mhd (void *cls)
 {
-  struct FAKEBANK_Handle *h = cls;
+  struct TALER_FAKEBANK_Handle *h = cls;
 
   h->mhd_task = NULL;
   MHD_run (h->mhd_bank);
@@ -418,12 +418,12 @@ run_mhd (void *cls)
  * @param port port to listen to
  * @return NULL on error
  */
-struct FAKEBANK_Handle *
-FAKEBANK_start (uint16_t port)
+struct TALER_FAKEBANK_Handle *
+TALER_FAKEBANK_start (uint16_t port)
 {
-  struct FAKEBANK_Handle *h;
+  struct TALER_FAKEBANK_Handle *h;
 
-  h = GNUNET_new (struct FAKEBANK_Handle);
+  h = GNUNET_new (struct TALER_FAKEBANK_Handle);
   h->mhd_bank = MHD_start_daemon (MHD_USE_DEBUG,
                                   port,
                                   NULL, NULL,

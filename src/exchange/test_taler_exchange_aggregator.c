@@ -25,7 +25,7 @@
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 #include <microhttpd.h>
-#include "fakebank.h"
+#include "taler_fakebank_lib.h"
 
 
 
@@ -247,7 +247,7 @@ static struct GNUNET_CRYPTO_RsaPublicKey *coin_pub;
 /**
  * Handle for our fake bank.
  */
-static struct FAKEBANK_Handle *fb;
+static struct TALER_FAKEBANK_Handle *fb;
 
 
 /**
@@ -295,7 +295,7 @@ shutdown_action (void *cls)
   }
   if (NULL != fb)
   {
-    FAKEBANK_stop (fb);
+    TALER_FAKEBANK_stop (fb);
     fb = NULL;
   }
   if (NULL != child_death_task)
@@ -532,7 +532,7 @@ interpreter (void *cls)
       }
     return;
     case OPCODE_EXPECT_TRANSACTIONS_EMPTY:
-      if (GNUNET_OK != FAKEBANK_check_empty (fb))
+      if (GNUNET_OK != TALER_FAKEBANK_check_empty (fb))
       {
         fail (cmd);
         return;
@@ -561,7 +561,7 @@ interpreter (void *cls)
           return;
         }
         if (GNUNET_OK !=
-            FAKEBANK_check (fb,
+            TALER_FAKEBANK_check (fb,
                             &want_amount,
                             cmd->details.expect_transaction.debit_account,
                             cmd->details.expect_transaction.credit_account,
@@ -1179,7 +1179,7 @@ run (void *cls)
                                                &timeout_action,
                                                NULL);
   result = 1; /* test failed for undefined reason */
-  fb = FAKEBANK_start (8082);
+  fb = TALER_FAKEBANK_start (8082);
   if (NULL == fb)
   {
     GNUNET_SCHEDULER_shutdown ();
