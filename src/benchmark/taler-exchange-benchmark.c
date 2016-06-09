@@ -81,7 +81,7 @@ struct Reserve {
  * Array of denomination keys needed to perform the 4 KUDOS
  * refresh operation
  */
-const struct TALER_EXCHANGE_DenomPublicKey **refresh_pk;
+struct TALER_EXCHANGE_DenomPublicKey *refresh_pk;
 
 /**
  * Size of `refresh_pk`
@@ -361,9 +361,9 @@ deposit_cb (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Coin #%d correctly spent!\n", coin_index);
   GNUNET_array_append (spent_coins, spent_coins_size, coin_index);
   spent_coins_size++;
-  if (GNUNET_YES == coins[coin_index].refresh)
+  #if 1
+  if (GNUNET_YES == coins[coin_index].refresh || 1)
   {
-    /* TODO: all the refresh logic here */
     struct TALER_Amount melt_amount;
 
     /**
@@ -372,18 +372,28 @@ deposit_cb (void *cls,
      */
     TALER_amount_get_zero (currency, &melt_amount);
     melt_amount.value = 4;
-    #if 0
-    TALER_EXCHANGE_refresh_prepare (&coins[coin_index].priv,
-                                    &melt_amount,
-                                    &coins[coin_index].sig,
-                                    &coins[coin_index].pk,
-    );
-    #endif 
-    
-    
-    
+    char *blob;
+    size_t blob_size;
+
+    blob = TALER_EXCHANGE_refresh_prepare (&coins[coin_index].coin_priv,
+                                           &melt_amount,
+                                           &coins[coin_index].sig,
+                                           coins[coin_index].pk,
+                                           GNUNET_YES,
+                                           refresh_pk_len,
+                                           refresh_pk,
+                                           &blob_size);
+    if (NULL == blob)
+    {
+      fail ("Failed to prepare refresh");
+      return;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "prepared blob %d\n",
+                blob_size);
     refreshed_once = GNUNET_YES;
   }
+  #endif 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "size of refry; %d\n",
               refresh_pk_len);
@@ -661,7 +671,7 @@ build_refresh (char **list)
     TALER_string_to_amount (amount_str, &amount);
     picked_denom = find_pk (keys, &amount);
     size = (size_t) i;
-    GNUNET_array_append (refresh_pk, size, picked_denom);
+    GNUNET_array_append (refresh_pk, size, *picked_denom);
     GNUNET_free (amount_str);
   }
   refresh_pk_len = i;
@@ -695,7 +705,7 @@ cert_cb (void *cls,
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 	      "Certificate callback invoked, invoking benchmark_run()\n");
-  currency = _keys->denom_keys[0].value.currency;
+  currency = GNUNET_strdup (_keys->denom_keys[0].value.currency);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 	      "Using currency: %s\n", currency);
 
@@ -713,9 +723,6 @@ cert_cb (void *cls,
   };
 
   build_refresh (refresh_denoms);
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "lenght: %d\n", refresh_pk_len);
-
   benchmark_task = GNUNET_SCHEDULER_add_now (&benchmark_run,
                                              NULL);
 }
@@ -781,6 +788,7 @@ do_shutdown (void *cls)
   GNUNET_free_non_null (reserves);
   GNUNET_free_non_null (coins);
   GNUNET_free_non_null (spent_coins);
+  GNUNET_free_non_null (currency);
 
   if (NULL != exchange)
   {
