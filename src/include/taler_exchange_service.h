@@ -1093,46 +1093,12 @@ void
 TALER_EXCHANGE_admin_add_incoming_cancel (struct TALER_EXCHANGE_AdminAddIncomingHandle *aai);
 
 
-/* ********************* /wire/deposits *********************** */
+/* ********************* /track/transfer *********************** */
 
 /**
- * @brief A /wire/deposits Handle
+ * @brief A /track/transfer Handle
  */
-struct TALER_EXCHANGE_WireDepositsHandle;
-
-
-/**
- * Details for one of the /deposit operations that the
- * exchange combined into a single wire transfer.
- */
-struct TALER_WireDepositDetails
-{
-  /**
-   * Hash of the contract.
-   */
-  struct GNUNET_HashCode h_contract;
-
-  /**
-   * Which coin was deposited?
-   */
-  struct TALER_CoinSpendPublicKeyP coin_pub;
-
-  /**
-   * Value of the deposit (including fee).
-   */
-  struct TALER_Amount coin_value;
-
-  /**
-   * Fee charged by the exchange for the deposit.
-   */
-  struct TALER_Amount coin_fee;
-
-  /**
-   * Merchant's transaction identifier.
-   */
-  uint64_t transaction_id;
-
-};
+struct TALER_EXCHANGE_TrackTransferHandle;
 
 
 /**
@@ -1144,22 +1110,21 @@ struct TALER_WireDepositDetails
  * @param sign_key exchange key used to sign @a json, or NULL
  * @param json original json reply (may include signatures, those have then been
  *        validated already)
- * @param wtid extracted wire transfer identifier, or NULL if the exchange could
- *             not provide any (set only if @a http_status is #MHD_HTTP_OK)
+ * @param h_wire hash of the wire transfer address the transfer went to, or NULL on error
  * @param total_amount total amount of the wire transfer, or NULL if the exchange could
  *             not provide any @a wtid (set only if @a http_status is #MHD_HTTP_OK)
  * @param details_length length of the @a details array
  * @param details array with details about the combined transactions
  */
 typedef void
-(*TALER_EXCHANGE_WireDepositsCallback)(void *cls,
-                                       unsigned int http_status,
-                                       const struct TALER_ExchangePublicKeyP *sign_key,
-                                       const json_t *json,
-                                       const struct GNUNET_HashCode *h_wire,
-                                       const struct TALER_Amount *total_amount,
-                                       unsigned int details_length,
-                                       const struct TALER_WireDepositDetails *details);
+(*TALER_EXCHANGE_TrackTransferCallback)(void *cls,
+                                        unsigned int http_status,
+                                        const struct TALER_ExchangePublicKeyP *sign_key,
+                                        const json_t *json,
+                                        const struct GNUNET_HashCode *h_wire,
+                                        const struct TALER_Amount *total_amount,
+                                        unsigned int details_length,
+                                        const struct TALER_TrackTransferDetails *details);
 
 
 /**
@@ -1172,11 +1137,11 @@ typedef void
  * @param cb_cls closure for @a cb
  * @return handle to cancel operation
  */
-struct TALER_EXCHANGE_WireDepositsHandle *
-TALER_EXCHANGE_wire_deposits (struct TALER_EXCHANGE_Handle *exchange,
-                              const struct TALER_WireTransferIdentifierRawP *wtid,
-                              TALER_EXCHANGE_WireDepositsCallback cb,
-                              void *cb_cls);
+struct TALER_EXCHANGE_TrackTransferHandle *
+TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
+                               const struct TALER_WireTransferIdentifierRawP *wtid,
+                               TALER_EXCHANGE_TrackTransferCallback cb,
+                               void *cb_cls);
 
 
 /**
@@ -1186,16 +1151,16 @@ TALER_EXCHANGE_wire_deposits (struct TALER_EXCHANGE_Handle *exchange,
  * @param wdh the wire deposits request handle
  */
 void
-TALER_EXCHANGE_wire_deposits_cancel (struct TALER_EXCHANGE_WireDepositsHandle *wdh);
+TALER_EXCHANGE_track_transfer_cancel (struct TALER_EXCHANGE_TrackTransferHandle *wdh);
 
 
-/* ********************* /deposit/wtid *********************** */
+/* ********************* /track/transaction *********************** */
 
 
 /**
- * @brief A /deposit/wtid Handle
+ * @brief A /track/transaction Handle
  */
-struct TALER_EXCHANGE_DepositWtidHandle;
+struct TALER_EXCHANGE_TrackTransactionHandle;
 
 
 /**
@@ -1212,17 +1177,17 @@ struct TALER_EXCHANGE_DepositWtidHandle;
  * @param coin_contribution contribution to the @a total_amount of the deposited coin (may be NULL)
  */
 typedef void
-(*TALER_EXCHANGE_DepositWtidCallback)(void *cls,
-                                      unsigned int http_status,
-                                      const struct TALER_ExchangePublicKeyP *sign_key,
-                                      const json_t *json,
-                                      const struct TALER_WireTransferIdentifierRawP *wtid,
-                                      struct GNUNET_TIME_Absolute execution_time,
-                                      const struct TALER_Amount *coin_contribution);
+(*TALER_EXCHANGE_TrackTransactionCallback)(void *cls,
+                                           unsigned int http_status,
+                                           const struct TALER_ExchangePublicKeyP *sign_key,
+                                           const json_t *json,
+                                           const struct TALER_WireTransferIdentifierRawP *wtid,
+                                           struct GNUNET_TIME_Absolute execution_time,
+                                           const struct TALER_Amount *coin_contribution);
 
 
 /**
- * Obtain the wire transfer details for a given deposit.
+ * Obtain the wire transfer details for a given transaction.
  *
  * @param exchange the exchange to query
  * @param merchant_priv the merchant's private key
@@ -1234,15 +1199,15 @@ typedef void
  * @param cb_cls closure for @a cb
  * @return handle to abort request
  */
-struct TALER_EXCHANGE_DepositWtidHandle *
-TALER_EXCHANGE_deposit_wtid (struct TALER_EXCHANGE_Handle *exchange,
-                             const struct TALER_MerchantPrivateKeyP *merchant_priv,
-                             const struct GNUNET_HashCode *h_wire,
-                             const struct GNUNET_HashCode *h_contract,
-                             const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                             uint64_t transaction_id,
-                             TALER_EXCHANGE_DepositWtidCallback cb,
-                             void *cb_cls);
+struct TALER_EXCHANGE_TrackTransactionHandle *
+TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
+                                  const struct TALER_MerchantPrivateKeyP *merchant_priv,
+                                  const struct GNUNET_HashCode *h_wire,
+                                  const struct GNUNET_HashCode *h_contract,
+                                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                  uint64_t transaction_id,
+                                  TALER_EXCHANGE_TrackTransactionCallback cb,
+                                  void *cb_cls);
 
 
 /**
@@ -1252,7 +1217,7 @@ TALER_EXCHANGE_deposit_wtid (struct TALER_EXCHANGE_Handle *exchange,
  * @param dwh the wire deposits request handle
  */
 void
-TALER_EXCHANGE_deposit_wtid_cancel (struct TALER_EXCHANGE_DepositWtidHandle *dwh);
+TALER_EXCHANGE_track_transaction_cancel (struct TALER_EXCHANGE_TrackTransactionHandle *dwh);
 
 
 

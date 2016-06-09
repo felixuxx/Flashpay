@@ -205,7 +205,7 @@ TMH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
 
 
 /**
- * Execute a "/wire/deposits".  Returns the transaction information
+ * Execute a "/track/transfer".  Returns the transaction information
  * associated with the given wire transfer identifier.
  *
  * @param connection the MHD connection to handle
@@ -213,12 +213,12 @@ TMH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
+TMH_DB_execute_track_transfer (struct MHD_Connection *connection,
                               const struct TALER_WireTransferIdentifierRawP *wtid);
 
 
 /**
- * Execute a "/deposit/wtid".  Returns the transfer information
+ * Execute a "/track/transaction".  Returns the transfer information
  * associated with the given deposit.
  *
  * @param connection the MHD connection to handle
@@ -230,7 +230,7 @@ TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
+TMH_DB_execute_track_transaction (struct MHD_Connection *connection,
                              const struct GNUNET_HashCode *h_contract,
 			     const struct GNUNET_HashCode *h_wire,
 			     const struct TALER_CoinSpendPublicKeyP *coin_pub,

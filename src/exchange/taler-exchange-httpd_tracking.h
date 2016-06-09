@@ -27,7 +27,7 @@
 
 
 /**
- * Handle a "/wire/deposits" request.
+ * Handle a "/track/transfer" request.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
@@ -37,15 +37,15 @@
  * @return MHD result code
  */
 int
-TMH_TRACKING_handler_wire_deposits (struct TMH_RequestHandler *rh,
-                                    struct MHD_Connection *connection,
-                                    void **connection_cls,
-                                    const char *upload_data,
-                                    size_t *upload_data_size);
+TMH_TRACKING_handler_track_transfer (struct TMH_RequestHandler *rh,
+                                     struct MHD_Connection *connection,
+                                     void **connection_cls,
+                                     const char *upload_data,
+                                     size_t *upload_data_size);
 
 
 /**
- * Handle a "/deposit/wtid" request.
+ * Handle a "/track/transaction" request.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
@@ -55,11 +55,11 @@ TMH_TRACKING_handler_wire_deposits (struct TMH_RequestHandler *rh,
  * @return MHD result code
   */
 int
-TMH_TRACKING_handler_deposit_wtid (struct TMH_RequestHandler *rh,
-                                   struct MHD_Connection *connection,
-                                   void **connection_cls,
-                                   const char *upload_data,
-                                   size_t *upload_data_size);
+TMH_TRACKING_handler_track_transaction (struct TMH_RequestHandler *rh,
+                                        struct MHD_Connection *connection,
+                                        void **connection_cls,
+                                        const char *upload_data,
+                                        size_t *upload_data_size);
 
 
 #endif

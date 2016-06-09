@@ -15,8 +15,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/exchange_api_deposit_wtid.c
- * @brief Implementation of the /deposit/wtid request of the exchange's HTTP API
+ * @file exchange-lib/exchange_api_track_transaction.c
+ * @brief Implementation of the /track/transaction request of the exchange's HTTP API
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -36,7 +36,7 @@
 /**
  * @brief A Deposit Wtid Handle
  */
-struct TALER_EXCHANGE_DepositWtidHandle
+struct TALER_EXCHANGE_TrackTransactionHandle
 {
 
   /**
@@ -62,7 +62,7 @@ struct TALER_EXCHANGE_DepositWtidHandle
   /**
    * Function to call with the result.
    */
-  TALER_EXCHANGE_DepositWtidCallback cb;
+  TALER_EXCHANGE_TrackTransactionCallback cb;
 
   /**
    * Closure for @a cb.
@@ -88,7 +88,7 @@ struct TALER_EXCHANGE_DepositWtidHandle
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
 static int
-verify_deposit_wtid_signature_ok (const struct TALER_EXCHANGE_DepositWtidHandle *dwh,
+verify_deposit_wtid_signature_ok (const struct TALER_EXCHANGE_TrackTransactionHandle *dwh,
                                   const json_t *json,
                                   struct TALER_ExchangePublicKeyP *exchange_pub)
 {
@@ -131,9 +131,9 @@ verify_deposit_wtid_signature_ok (const struct TALER_EXCHANGE_DepositWtidHandle 
 
 /**
  * Function called when we're done processing the
- * HTTP /deposit/wtid request.
+ * HTTP /track/transaction request.
  *
- * @param cls the `struct TALER_EXCHANGE_DepositWtidHandle`
+ * @param cls the `struct TALER_EXCHANGE_TrackTransactionHandle`
  * @param response_code HTTP response code, 0 on error
  * @param json parsed JSON result, NULL on error
  */
@@ -142,7 +142,7 @@ handle_deposit_wtid_finished (void *cls,
                               long response_code,
                               const json_t *json)
 {
-  struct TALER_EXCHANGE_DepositWtidHandle *dwh = cls;
+  struct TALER_EXCHANGE_TrackTransactionHandle *dwh = cls;
   const struct TALER_WireTransferIdentifierRawP *wtid = NULL;
   struct GNUNET_TIME_Absolute execution_time = GNUNET_TIME_UNIT_FOREVER_ABS;
   const struct TALER_Amount *coin_contribution = NULL;
@@ -244,7 +244,7 @@ handle_deposit_wtid_finished (void *cls,
            wtid,
            execution_time,
            coin_contribution);
-  TALER_EXCHANGE_deposit_wtid_cancel (dwh);
+  TALER_EXCHANGE_track_transaction_cancel (dwh);
 }
 
 
@@ -261,19 +261,19 @@ handle_deposit_wtid_finished (void *cls,
  * @param cb_cls closure for @a cb
  * @return handle to abort request
  */
-struct TALER_EXCHANGE_DepositWtidHandle *
-TALER_EXCHANGE_deposit_wtid (struct TALER_EXCHANGE_Handle *exchange,
+struct TALER_EXCHANGE_TrackTransactionHandle *
+TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
                              const struct TALER_MerchantPrivateKeyP *merchant_priv,
                              const struct GNUNET_HashCode *h_wire,
                              const struct GNUNET_HashCode *h_contract,
                              const struct TALER_CoinSpendPublicKeyP *coin_pub,
                              uint64_t transaction_id,
-                             TALER_EXCHANGE_DepositWtidCallback cb,
+                             TALER_EXCHANGE_TrackTransactionCallback cb,
                              void *cb_cls)
 {
   struct TALER_DepositTrackPS dtp;
   struct TALER_MerchantSignatureP merchant_sig;
-  struct TALER_EXCHANGE_DepositWtidHandle *dwh;
+  struct TALER_EXCHANGE_TrackTransactionHandle *dwh;
   struct GNUNET_CURL_Context *ctx;
   json_t *deposit_wtid_obj;
   CURL *eh;
@@ -284,7 +284,7 @@ TALER_EXCHANGE_deposit_wtid (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_break (0);
     return NULL;
   }
-  dtp.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_DEPOSIT_WTID);
+  dtp.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION);
   dtp.purpose.size = htonl (sizeof (dtp));
   dtp.h_contract = *h_contract;
   dtp.h_wire = *h_wire;
@@ -307,11 +307,11 @@ TALER_EXCHANGE_deposit_wtid (struct TALER_EXCHANGE_Handle *exchange,
                                 "merchant_pub", GNUNET_JSON_from_data_auto (&dtp.merchant),
                                 "merchant_sig", GNUNET_JSON_from_data_auto (&merchant_sig));
 
-  dwh = GNUNET_new (struct TALER_EXCHANGE_DepositWtidHandle);
+  dwh = GNUNET_new (struct TALER_EXCHANGE_TrackTransactionHandle);
   dwh->exchange = exchange;
   dwh->cb = cb;
   dwh->cb_cls = cb_cls;
-  dwh->url = MAH_path_to_url (exchange, "/deposit/wtid");
+  dwh->url = MAH_path_to_url (exchange, "/track/transaction");
   dwh->depconf.purpose.size = htonl (sizeof (struct TALER_ConfirmWirePS));
   dwh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE);
   dwh->depconf.h_wire = *h_wire;
@@ -353,7 +353,7 @@ TALER_EXCHANGE_deposit_wtid (struct TALER_EXCHANGE_Handle *exchange,
  * @param dwh the wire deposits request handle
  */
 void
-TALER_EXCHANGE_deposit_wtid_cancel (struct TALER_EXCHANGE_DepositWtidHandle *dwh)
+TALER_EXCHANGE_track_transaction_cancel (struct TALER_EXCHANGE_TrackTransactionHandle *dwh)
 {
   if (NULL != dwh->job)
   {

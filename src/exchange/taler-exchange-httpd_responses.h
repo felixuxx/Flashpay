@@ -294,7 +294,7 @@ TMH_RESPONSE_reply_refund_success (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_deposit_unknown (struct MHD_Connection *connection);
+TMH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection);
 
 
 /**
@@ -306,7 +306,7 @@ TMH_RESPONSE_reply_deposit_unknown (struct MHD_Connection *connection);
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_deposit_pending (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
 				    struct GNUNET_TIME_Absolute planned_exec_time);
 
 
@@ -325,7 +325,7 @@ TMH_RESPONSE_reply_deposit_pending (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
                                  const struct GNUNET_HashCode *h_contract,
                                  const struct GNUNET_HashCode *h_wire,
                                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -338,18 +338,18 @@ TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
 /**
  * Detail for /wire/deposit response.
  */
-struct TMH_WireDepositDetail
+struct TMH_TrackTransferDetail
 {
 
   /**
    * We keep deposit details in a DLL.
    */
-  struct TMH_WireDepositDetail *next;
+  struct TMH_TrackTransferDetail *next;
 
   /**
    * We keep deposit details in a DLL.
    */
-  struct TMH_WireDepositDetail *prev;
+  struct TMH_TrackTransferDetail *prev;
 
   /**
    * Hash of the contract
@@ -390,11 +390,11 @@ struct TMH_WireDepositDetail
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_wire_deposit_details (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
                                          const struct TALER_Amount *total,
                                          const struct TALER_MerchantPublicKeyP *merchant_pub,
                                          const struct GNUNET_HashCode *h_wire,
-                                         const struct TMH_WireDepositDetail *wdd_head);
+                                         const struct TMH_TrackTransferDetail *wdd_head);
 
 
 /**

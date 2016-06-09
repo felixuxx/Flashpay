@@ -654,7 +654,7 @@ typedef void
  *         when we expect it to be done (if @a wtid was NULL)
  */
 typedef void
-(*TALER_EXCHANGEDB_DepositWtidCallback)(void *cls,
+(*TALER_EXCHANGEDB_TrackTransactionCallback)(void *cls,
                                         const struct TALER_WireTransferIdentifierRawP *wtid,
                                         const struct TALER_Amount *coin_contribution,
                                         const struct TALER_Amount *coin_fee,
@@ -1415,7 +1415,7 @@ struct TALER_EXCHANGEDB_Plugin
 			      const struct TALER_CoinSpendPublicKeyP *coin_pub,
 			      const struct TALER_MerchantPublicKeyP *merchant_pub,
 			      uint64_t transaction_id,
-			      TALER_EXCHANGEDB_DepositWtidCallback cb,
+			      TALER_EXCHANGEDB_TrackTransactionCallback cb,
 			      void *cb_cls);
 
 
