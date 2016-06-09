@@ -161,7 +161,10 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
   if (0 != strcasecmp (amount.currency,
                        TMH_exchange_currency_string))
   {
-    GNUNET_break_op (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Exchange uses currency `%s', but /admin/add/incoming tried to use currency `%s'\n",
+                TMH_exchange_currency_string,
+                amount.currency);
     GNUNET_JSON_parse_free (spec);
     return TMH_RESPONSE_reply_arg_invalid (connection,
                                            "amount:currency");
