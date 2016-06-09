@@ -993,6 +993,7 @@ run_transfers (void *cls)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain database session!\n");
     global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   if (GNUNET_OK !=
