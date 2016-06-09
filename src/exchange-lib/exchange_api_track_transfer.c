@@ -67,6 +67,125 @@ struct TALER_EXCHANGE_TrackTransferHandle
 
 
 /**
+ * We got a #MHD_HTTP_OK response for the /track/transfer request.
+ * Check that the response is well-formed and if it is, call the
+ * callback.  If not, return an error code.
+ *
+ * @param wdh handle to the operation
+ * @param json response we got
+ * @return #GNUNET_OK if we are done and all is well,
+ *         #GNUNET_SYSERR if the response was bogus
+ */
+static int
+check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh,
+                                  const json_t *json)
+{
+  json_t *details_j;
+  struct GNUNET_HashCode h_wire;
+  struct TALER_Amount total_amount;
+  struct TALER_MerchantPublicKeyP merchant_pub;
+  unsigned int num_details;
+  struct TALER_ExchangePublicKeyP exchange_pub;
+  struct TALER_ExchangeSignatureP exchange_sig;
+  struct GNUNET_JSON_Specification spec[] = {
+    TALER_JSON_spec_amount ("total", &total_amount),
+    GNUNET_JSON_spec_fixed_auto ("merchant_pub", &merchant_pub),
+    GNUNET_JSON_spec_fixed_auto ("H_wire", &h_wire),
+    GNUNET_JSON_spec_json ("deposits", &details_j),
+    GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
+    GNUNET_JSON_spec_end()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (json,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  num_details = json_array_size (details_j);
+  {
+    struct TALER_TrackTransferDetails details[num_details];
+    unsigned int i;
+    struct GNUNET_HashContext *hash_context;
+    struct TALER_WireDepositDetailP dd;
+    struct TALER_WireDepositDataPS wdp;
+
+    hash_context = GNUNET_CRYPTO_hash_context_start ();
+    for (i=0;i<num_details;i++)
+    {
+      struct TALER_TrackTransferDetails *detail = &details[i];
+      struct json_t *detail_j = json_array_get (details_j, i);
+      struct GNUNET_JSON_Specification spec_detail[] = {
+        GNUNET_JSON_spec_fixed_auto ("H_contract", &detail->h_contract),
+        GNUNET_JSON_spec_uint64 ("transaction_id", &detail->transaction_id),
+        GNUNET_JSON_spec_fixed_auto ("coin_pub", &detail->coin_pub),
+        TALER_JSON_spec_amount ("deposit_value", &detail->coin_value),
+        TALER_JSON_spec_amount ("deposit_fee", &detail->coin_fee),
+        GNUNET_JSON_spec_end()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (detail_j,
+                             spec_detail,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        GNUNET_CRYPTO_hash_context_abort (hash_context);
+        return GNUNET_SYSERR;
+      }
+      /* build up big hash for signature checking later */
+      dd.h_contract = detail->h_contract;
+      dd.transaction_id = GNUNET_htonll (detail->transaction_id);
+      dd.coin_pub = detail->coin_pub;
+      TALER_amount_hton (&dd.deposit_value,
+                         &detail->coin_value);
+      TALER_amount_hton (&dd.deposit_fee,
+                         &detail->coin_fee);
+      GNUNET_CRYPTO_hash_context_read (hash_context,
+                                       &dd,
+                                       sizeof (struct TALER_WireDepositDetailP));
+    }
+    /* Check signature */
+    wdp.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT);
+    wdp.purpose.size = htonl (sizeof (struct TALER_WireDepositDataPS));
+    TALER_amount_hton (&wdp.total,
+                       &total_amount);
+    wdp.merchant_pub = merchant_pub;
+    wdp.h_wire = h_wire;
+    GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                       &wdp.h_details);
+    if (GNUNET_OK !=
+        TALER_EXCHANGE_test_signing_key (TALER_EXCHANGE_get_keys (wdh->exchange),
+                                         &exchange_pub))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_OK !=
+        TALER_EXCHANGE_test_signing_key (TALER_EXCHANGE_get_keys (wdh->exchange),
+                                         &exchange_pub))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    wdh->cb (wdh->cb_cls,
+             MHD_HTTP_OK,
+             &exchange_pub,
+             json,
+             &h_wire,
+             &total_amount,
+             num_details,
+             details);
+  }
+  TALER_EXCHANGE_track_transfer_cancel (wdh);
+  return GNUNET_OK;
+}
+
+
+/**
  * Function called when we're done processing the
  * HTTP /track/transfer request.
  *
@@ -75,9 +194,9 @@ struct TALER_EXCHANGE_TrackTransferHandle
  * @param json parsed JSON result, NULL on error
  */
 static void
-handle_wire_deposits_finished (void *cls,
-                               long response_code,
-                               const json_t *json)
+handle_track_transfer_finished (void *cls,
+                                long response_code,
+                                const json_t *json)
 {
   struct TALER_EXCHANGE_TrackTransferHandle *wdh = cls;
 
@@ -87,115 +206,12 @@ handle_wire_deposits_finished (void *cls,
   case 0:
     break;
   case MHD_HTTP_OK:
-    {
-      json_t *details_j;
-      struct GNUNET_HashCode h_wire;
-      struct TALER_Amount total_amount;
-      struct TALER_MerchantPublicKeyP merchant_pub;
-      unsigned int num_details;
-      struct TALER_ExchangePublicKeyP exchange_pub;
-      struct TALER_ExchangeSignatureP exchange_sig;
-      struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_amount ("total", &total_amount),
-        GNUNET_JSON_spec_fixed_auto ("merchant_pub", &merchant_pub),
-        GNUNET_JSON_spec_fixed_auto ("H_wire", &h_wire),
-        GNUNET_JSON_spec_json ("deposits", &details_j),
-        GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
-        GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
-        GNUNET_JSON_spec_end()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (json,
-                             spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        response_code = 0;
-        break;
-      }
-      num_details = json_array_size (details_j);
-      {
-        struct TALER_TrackTransferDetails details[num_details];
-        unsigned int i;
-        struct GNUNET_HashContext *hash_context;
-        struct TALER_WireDepositDetailP dd;
-        struct TALER_WireDepositDataPS wdp;
-
-        hash_context = GNUNET_CRYPTO_hash_context_start ();
-        for (i=0;i<num_details;i++)
-        {
-          struct TALER_TrackTransferDetails *detail = &details[i];
-          struct json_t *detail_j = json_array_get (details_j, i);
-          struct GNUNET_JSON_Specification spec_detail[] = {
-            GNUNET_JSON_spec_fixed_auto ("H_contract", &detail->h_contract),
-            GNUNET_JSON_spec_uint64 ("transaction_id", &detail->transaction_id),
-            GNUNET_JSON_spec_fixed_auto ("coin_pub", &detail->coin_pub),
-            TALER_JSON_spec_amount ("deposit_value", &detail->coin_value),
-            TALER_JSON_spec_amount ("deposit_fee", &detail->coin_fee),
-            GNUNET_JSON_spec_end()
-          };
-
-          if (GNUNET_OK !=
-              GNUNET_JSON_parse (detail_j,
-                                 spec_detail,
-                                 NULL, NULL))
-          {
-            GNUNET_break_op (0);
-            response_code = 0;
-            break;
-          }
-          /* build up big hash for signature checking later */
-          dd.h_contract = detail->h_contract;
-          dd.transaction_id = GNUNET_htonll (detail->transaction_id);
-          dd.coin_pub = detail->coin_pub;
-          TALER_amount_hton (&dd.deposit_value,
-                             &detail->coin_value);
-          TALER_amount_hton (&dd.deposit_fee,
-                             &detail->coin_fee);
-          GNUNET_CRYPTO_hash_context_read (hash_context,
-                                           &dd,
-                                           sizeof (struct TALER_WireDepositDetailP));
-        }
-        /* Check signature */
-        wdp.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT);
-        wdp.purpose.size = htonl (sizeof (struct TALER_WireDepositDataPS));
-        TALER_amount_hton (&wdp.total,
-                           &total_amount);
-        wdp.merchant_pub = merchant_pub;
-        wdp.h_wire = h_wire;
-        GNUNET_CRYPTO_hash_context_finish (hash_context,
-                                           &wdp.h_details);
-        if ( (0 == response_code /* avoid crypto if things are already wrong */) &&
-             (GNUNET_OK !=
-              TALER_EXCHANGE_test_signing_key (TALER_EXCHANGE_get_keys (wdh->exchange),
-                                               &exchange_pub)) )
-        {
-          GNUNET_break_op (0);
-          response_code = 0;
-        }
-        if ( (0 == response_code /* avoid crypto if things are already wrong */) &&
-             (GNUNET_OK !=
-              TALER_EXCHANGE_test_signing_key (TALER_EXCHANGE_get_keys (wdh->exchange),
-                                               &exchange_pub)) )
-        {
-          GNUNET_break_op (0);
-          response_code = 0;
-        }
-        if (0 == response_code)
-          break;
-        wdh->cb (wdh->cb_cls,
-                 response_code,
-                 &exchange_pub,
-                 json,
-                 &h_wire,
-                 &total_amount,
-                 num_details,
-                 details);
-        TALER_EXCHANGE_track_transfer_cancel (wdh);
-        return;
-      }
-    }
+    if (GNUNET_OK ==
+        check_track_transfer_response_ok (wdh,
+                                          json))
+      return;
+    GNUNET_break_op (0);
+    response_code = 0;
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
@@ -244,9 +260,9 @@ handle_wire_deposits_finished (void *cls,
  */
 struct TALER_EXCHANGE_TrackTransferHandle *
 TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
-                              const struct TALER_WireTransferIdentifierRawP *wtid,
-                              TALER_EXCHANGE_TrackTransferCallback cb,
-                              void *cb_cls)
+                               const struct TALER_WireTransferIdentifierRawP *wtid,
+                               TALER_EXCHANGE_TrackTransferCallback cb,
+                               void *cb_cls)
 {
   struct TALER_EXCHANGE_TrackTransferHandle *wdh;
   struct GNUNET_CURL_Context *ctx;
@@ -285,7 +301,7 @@ TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
   wdh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_YES,
-                          &handle_wire_deposits_finished,
+                          &handle_track_transfer_finished,
                           wdh);
   return wdh;
 }
