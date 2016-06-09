@@ -77,6 +77,16 @@ struct Reserve {
 
 };
 
+/**
+ * Array of denomination keys needed to perform the 4 KUDOS
+ * refresh operation
+ */
+const struct TALER_EXCHANGE_DenomPublicKey **refresh_pk;
+
+/**
+ * Size of `refresh_pk`
+ */
+unsigned int refresh_pk_len;
 
 /**
  * Same blinding key for all coins
@@ -99,12 +109,6 @@ struct Coin {
    * denomination PK matching @e amount.
    */
   const struct TALER_EXCHANGE_DenomPublicKey *pk;
-
-  /**
-   * Array of denomination keys needed in case this coin is to be
-   * refreshed
-   */
-  const struct TALER_EXCHANGE_DenomPublicKey **refresh_pk;
 
   /**
    * Set (by the interpreter) to the exchange's signature over the
@@ -133,6 +137,11 @@ struct Coin {
   struct TALER_EXCHANGE_DepositHandle *dh;
 
   /**
+   * Flag indicating if the coin is going to be refreshed
+   */
+  unsigned int refresh;
+
+  /**
    * Refresh melt handle
    */
   struct TALER_EXCHANGE_RefreshMeltHandle *rmh;
@@ -148,12 +157,6 @@ struct Coin {
  * Context for running the #ctx's event loop.
  */
 static struct GNUNET_CURL_RescheduleContext *rc;
-
-
-/**
- * Exchange's keys
- */
-static const struct TALER_EXCHANGE_Keys *keys;
 
 /**
  * Benchmark's task
@@ -358,12 +361,32 @@ deposit_cb (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Coin #%d correctly spent!\n", coin_index);
   GNUNET_array_append (spent_coins, spent_coins_size, coin_index);
   spent_coins_size++;
-  if (GNUNET_YES == eval_probability (REFRESH_PROBABILITY)
-      && GNUNET_NO == refreshed_once)
+  if (GNUNET_YES == coins[coin_index].refresh)
   {
     /* TODO: all the refresh logic here */
+    struct TALER_Amount melt_amount;
+
+    /**
+     * This version of benchmark knows only 5 KUDOS coins, and refreshes
+     * 4 KUDOS out of 5.
+     */
+    TALER_amount_get_zero (currency, &melt_amount);
+    melt_amount.value = 4;
+    #if 0
+    TALER_EXCHANGE_refresh_prepare (&coins[coin_index].priv,
+                                    &melt_amount,
+                                    &coins[coin_index].sig,
+                                    &coins[coin_index].pk,
+    );
+    #endif 
+    
+    
+    
     refreshed_once = GNUNET_YES;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "size of refry; %d\n",
+              refresh_pk_len);
 }
 
 /**
@@ -420,9 +443,31 @@ reserve_withdraw_cb (void *cls,
     GNUNET_TIME_round_abs (&wire_deadline);
     GNUNET_TIME_round_abs (&refund_deadline);
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Spending %d-th coin\n", coin_index);
-    TALER_amount_subtract (&amount,
-                           &coins[coin_index].pk->value,
-                           &coins[coin_index].pk->fee_deposit);
+
+    if (GNUNET_YES == eval_probability (REFRESH_PROBABILITY)
+        && GNUNET_NO == refreshed_once)
+    {
+      struct TALER_Amount one;
+      TALER_amount_get_zero (currency, &one);
+      one.value = 1;
+
+      /**
+       * If the coin is going to be refreshed, only 1 unit
+       * of currency will be spent, since 4 units are going
+       * to be refreshed
+       */
+      TALER_amount_subtract (&amount,
+                             &one,
+                             &coins[coin_index].pk->fee_deposit);
+      coins[coin_index].refresh = GNUNET_YES;
+      refreshed_once = GNUNET_YES;
+    }
+    else
+    {
+      TALER_amount_subtract (&amount,
+                             &coins[coin_index].pk->value,
+                             &coins[coin_index].pk->fee_deposit);
+    }
     memset (&dr, 0, sizeof (dr));
     dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
     dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
@@ -493,7 +538,9 @@ add_incoming_cb (void *cls,
   unsigned int i;
   unsigned int coin_index;
   struct TALER_Amount amount;
+  const struct TALER_EXCHANGE_Keys *keys;
 
+  keys = TALER_EXCHANGE_get_keys (exchange);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "/admin/add/incoming callback called on %d-th reserve\n",
               reserve_index);
@@ -590,6 +637,36 @@ benchmark_run (void *cls)
               "benchmark_run() returns\n");
 }
 
+/**
+ * Populates the global array of denominations which will 
+ * be withdrawn in a refresh operation. It sums up 4 KUDOS,
+ * since that is the only amount refreshed so far by the benchmark
+ *
+ * @param NULL-terminated array of value.fraction pairs
+ */
+static void
+build_refresh (char **list)
+{
+  char *amount_str;
+  struct TALER_Amount amount;
+  unsigned int i;
+  const struct TALER_EXCHANGE_DenomPublicKey *picked_denom;
+  const struct TALER_EXCHANGE_Keys *keys;
+
+  keys = TALER_EXCHANGE_get_keys (exchange);
+  for (i=0; list[i] != NULL; i++)
+  {
+    size_t size;
+    GNUNET_asprintf (&amount_str, "%s:%s", currency, list[i]); 
+    TALER_string_to_amount (amount_str, &amount);
+    picked_denom = find_pk (keys, &amount);
+    size = (size_t) i;
+    GNUNET_array_append (refresh_pk, size, picked_denom);
+    GNUNET_free (amount_str);
+  }
+  refresh_pk_len = i;
+}
+
 
 /**
  * Functions of this type are called to provide the retrieved signing and
@@ -597,8 +674,7 @@ benchmark_run (void *cls)
  * in this callback.
  *
  * @param cls closure
- * @param _keys information about keys of the exchange. The _ is there because
- * there is a global 'keys' variable, and this function has to set it.
+ * @param _keys information about keys of the exchange
  */
 static void
 cert_cb (void *cls,
@@ -619,10 +695,27 @@ cert_cb (void *cls,
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 	      "Certificate callback invoked, invoking benchmark_run()\n");
-  keys = _keys;
   currency = _keys->denom_keys[0].value.currency;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 	      "Using currency: %s\n", currency);
+
+  char *refresh_denoms[] = {
+    "2",
+    "1",
+    "0.01",
+    "0.01",
+    "0.01",
+    "0.01",
+    "0.01",
+    "0.01",
+    "0.01",
+    NULL  
+  };
+
+  build_refresh (refresh_denoms);
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "lenght: %d\n", refresh_pk_len);
+
   benchmark_task = GNUNET_SCHEDULER_add_now (&benchmark_run,
                                              NULL);
 }
@@ -678,17 +771,12 @@ do_shutdown (void *cls)
       TALER_EXCHANGE_refresh_reveal_cancel(coins[i].rrh);
       coins[i].rmh = NULL;    
     }
-    if (NULL != coins[i].refresh_pk)
-    {
-      GNUNET_free (coins[i].refresh_pk);
-    }
-
   }
 
   if (NULL != sender_details)
     json_decref (sender_details);
   if (NULL != merchant_details)
-    json_decref (sender_details);
+    json_decref (merchant_details);
 
   GNUNET_free_non_null (reserves);
   GNUNET_free_non_null (coins);
@@ -731,6 +819,7 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "config file: %s\n",
               config_file);
+
   if (NULL == config_file)
   {
     fail ("-c option is mandatory\n");
