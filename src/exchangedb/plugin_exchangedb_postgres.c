@@ -3945,7 +3945,7 @@ postgres_wire_lookup_deposit_wtid (void *cls,
 				   const struct TALER_CoinSpendPublicKeyP *coin_pub,
 				   const struct TALER_MerchantPublicKeyP *merchant_pub,
 				   uint64_t transaction_id,
-				   TALER_EXCHANGEDB_DepositWtidCallback cb,
+				   TALER_EXCHANGEDB_TrackTransactionCallback cb,
 				   void *cb_cls)
 {
   PGresult *result;

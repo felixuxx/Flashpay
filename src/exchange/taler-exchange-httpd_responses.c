@@ -1146,7 +1146,7 @@ TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_deposit_unknown (struct MHD_Connection *connection)
+TMH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection)
 {
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
@@ -1164,7 +1164,7 @@ TMH_RESPONSE_reply_deposit_unknown (struct MHD_Connection *connection)
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_deposit_pending (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
 				    struct GNUNET_TIME_Absolute planned_exec_time)
 {
   return TMH_RESPONSE_reply_json_pack (connection,
@@ -1190,7 +1190,7 @@ TMH_RESPONSE_reply_deposit_pending (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
                                  const struct GNUNET_HashCode *h_contract,
                                  const struct GNUNET_HashCode *h_wire,
                                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -1239,13 +1239,13 @@ TMH_RESPONSE_reply_deposit_wtid (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_wire_deposit_details (struct MHD_Connection *connection,
+TMH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
                                          const struct TALER_Amount *total,
                                          const struct TALER_MerchantPublicKeyP *merchant_pub,
                                          const struct GNUNET_HashCode *h_wire,
-                                         const struct TMH_WireDepositDetail *wdd_head)
+                                         const struct TMH_TrackTransferDetail *wdd_head)
 {
-  const struct TMH_WireDepositDetail *wdd_pos;
+  const struct TMH_TrackTransferDetail *wdd_pos;
   json_t *deposits;
   struct TALER_WireDepositDetailP dd;
   struct GNUNET_HashContext *hash_context;

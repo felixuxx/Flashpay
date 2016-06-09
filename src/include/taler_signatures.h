@@ -108,7 +108,7 @@
 #define TALER_SIGNATURE_EXCHANGE_KEY_SET 1035
 
 /**
- * Signature where the Exchange confirms the /deposit/wtid response.
+ * Signature where the Exchange confirms the /track/transaction response.
  */
 #define TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE 1036
 
@@ -152,7 +152,7 @@
  * Signature where the merchant confirms that he needs the wire
  * transfer identifier for a deposit operation.
  */
-#define TALER_SIGNATURE_MERCHANT_DEPOSIT_WTID 1103
+#define TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION 1103
 
 
 /*********************/
@@ -932,7 +932,7 @@ struct TALER_MasterWireDetailsPS
 struct TALER_DepositTrackPS
 {
   /**
-   * Purpose must be #TALER_SIGNATURE_MERCHANT_DEPOSIT_WTID.
+   * Purpose must be #TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -975,7 +975,7 @@ struct TALER_DepositTrackPS
 
 /**
  * @brief Format internally used for packing the detailed information
- * to generate the signature for /wire/deposits signatures.
+ * to generate the signature for /track/transfer signatures.
  */
 struct TALER_WireDepositDetailP
 {

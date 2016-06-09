@@ -411,7 +411,7 @@ TMH_DB_execute_refund (struct MHD_Connection *connection,
                           session);
     TMH_plugin->free_coin_transaction_list (TMH_plugin->cls,
                                             tl);
-    return TMH_RESPONSE_reply_deposit_unknown (connection);
+    return TMH_RESPONSE_reply_transaction_unknown (connection);
   }
   /* handle if conflicting refund found */
   if (GNUNET_SYSERR == refund_found)
@@ -1762,12 +1762,12 @@ struct WtidTransactionContext
   /**
    * Head of DLL with details for /wire/deposit response.
    */
-  struct TMH_WireDepositDetail *wdd_head;
+  struct TMH_TrackTransferDetail *wdd_head;
 
   /**
    * Head of DLL with details for /wire/deposit response.
    */
-  struct TMH_WireDepositDetail *wdd_tail;
+  struct TMH_TrackTransferDetail *wdd_tail;
 
   /**
    * JSON array with details about the individual deposits.
@@ -1811,7 +1811,7 @@ handle_transaction_data (void *cls,
 {
   struct WtidTransactionContext *ctx = cls;
   struct TALER_Amount delta;
-  struct TMH_WireDepositDetail *wdd;
+  struct TMH_TrackTransferDetail *wdd;
 
   if (GNUNET_SYSERR == ctx->is_valid)
     return;
@@ -1862,7 +1862,7 @@ handle_transaction_data (void *cls,
       return;
     }
   }
-  wdd = GNUNET_new (struct TMH_WireDepositDetail);
+  wdd = GNUNET_new (struct TMH_TrackTransferDetail);
   wdd->deposit_value = *deposit_value;
   wdd->deposit_fee = *deposit_fee;
   wdd->h_contract = *h_contract;
@@ -1875,7 +1875,7 @@ handle_transaction_data (void *cls,
 
 
 /**
- * Execute a "/wire/deposits".  Returns the transaction information
+ * Execute a "/track/transfer".  Returns the transaction information
  * associated with the given wire transfer identifier.
  *
  * @param connection the MHD connection to handle
@@ -1883,13 +1883,13 @@ handle_transaction_data (void *cls,
  * @return MHD result code
  */
 int
-TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
+TMH_DB_execute_track_transfer (struct MHD_Connection *connection,
                              const struct TALER_WireTransferIdentifierRawP *wtid)
 {
   int ret;
   struct WtidTransactionContext ctx;
   struct TALER_EXCHANGEDB_Session *session;
-  struct TMH_WireDepositDetail *wdd;
+  struct TMH_TrackTransferDetail *wdd;
 
   if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls)))
   {
@@ -1922,7 +1922,7 @@ TMH_DB_execute_wire_deposits (struct MHD_Connection *connection,
                                           "wtid");
     goto cleanup;
   }
-  ret = TMH_RESPONSE_reply_wire_deposit_details (connection,
+  ret = TMH_RESPONSE_reply_track_transfer_details (connection,
                                                  &ctx.total,
                                                  &ctx.merchant_pub,
                                                  &ctx.h_wire,
@@ -2004,7 +2004,7 @@ handle_wtid_data (void *cls,
 
   if (NULL == wtid)
   {
-    ctx->res = TMH_RESPONSE_reply_deposit_pending (ctx->connection,
+    ctx->res = TMH_RESPONSE_reply_transfer_pending (ctx->connection,
                                                    execution_time);
   }
   else
@@ -2019,7 +2019,7 @@ handle_wtid_data (void *cls,
     }
     else
     {
-      ctx->res = TMH_RESPONSE_reply_deposit_wtid (ctx->connection,
+      ctx->res = TMH_RESPONSE_reply_track_transaction (ctx->connection,
                                                   &ctx->h_contract,
                                                   &ctx->h_wire,
                                                   &ctx->coin_pub,
@@ -2033,7 +2033,7 @@ handle_wtid_data (void *cls,
 
 
 /**
- * Execute a "/deposit/wtid".  Returns the transfer information
+ * Execute a "/track/transaction".  Returns the transfer information
  * associated with the given deposit.
  *
  * @param connection the MHD connection to handle
@@ -2045,7 +2045,7 @@ handle_wtid_data (void *cls,
  * @return MHD result code
  */
 int
-TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
+TMH_DB_execute_track_transaction (struct MHD_Connection *connection,
                              const struct GNUNET_HashCode *h_contract,
 			     const struct GNUNET_HashCode *h_wire,
 			     const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -2085,7 +2085,7 @@ TMH_DB_execute_deposit_wtid (struct MHD_Connection *connection,
   if (GNUNET_NO == ret)
   {
     GNUNET_break (GNUNET_SYSERR == ctx.res);
-    return TMH_RESPONSE_reply_deposit_unknown (connection);
+    return TMH_RESPONSE_reply_transaction_unknown (connection);
   }
   if (GNUNET_SYSERR == ctx.res)
   {

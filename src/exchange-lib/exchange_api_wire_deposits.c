@@ -16,7 +16,7 @@
 */
 /**
  * @file exchange-lib/exchange_api_wire_deposits.c
- * @brief Implementation of the /wire/deposits request of the exchange's HTTP API
+ * @brief Implementation of the /track/transfer request of the exchange's HTTP API
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -33,9 +33,9 @@
 
 
 /**
- * @brief A /wire/deposits Handle
+ * @brief A /track/transfer Handle
  */
-struct TALER_EXCHANGE_WireDepositsHandle
+struct TALER_EXCHANGE_TrackTransferHandle
 {
 
   /**
@@ -68,9 +68,9 @@ struct TALER_EXCHANGE_WireDepositsHandle
 
 /**
  * Function called when we're done processing the
- * HTTP /wire/deposits request.
+ * HTTP /track/transfer request.
  *
- * @param cls the `struct TALER_EXCHANGE_WireDepositsHandle`
+ * @param cls the `struct TALER_EXCHANGE_TrackTransferHandle`
  * @param response_code HTTP response code, 0 on error
  * @param json parsed JSON result, NULL on error
  */
@@ -79,7 +79,7 @@ handle_wire_deposits_finished (void *cls,
                                long response_code,
                                const json_t *json)
 {
-  struct TALER_EXCHANGE_WireDepositsHandle *wdh = cls;
+  struct TALER_EXCHANGE_TrackTransferHandle *wdh = cls;
 
   wdh->job = NULL;
   switch (response_code)
@@ -116,7 +116,7 @@ handle_wire_deposits_finished (void *cls,
       }
       num_details = json_array_size (details_j);
       {
-        struct TALER_WireDepositDetails details[num_details];
+        struct TALER_TrackTransferDetails details[num_details];
         unsigned int i;
         struct GNUNET_HashContext *hash_context;
         struct TALER_WireDepositDetailP dd;
@@ -125,7 +125,7 @@ handle_wire_deposits_finished (void *cls,
         hash_context = GNUNET_CRYPTO_hash_context_start ();
         for (i=0;i<num_details;i++)
         {
-          struct TALER_WireDepositDetails *detail = &details[i];
+          struct TALER_TrackTransferDetails *detail = &details[i];
           struct json_t *detail_j = json_array_get (details_j, i);
           struct GNUNET_JSON_Specification spec_detail[] = {
             GNUNET_JSON_spec_fixed_auto ("H_contract", &detail->h_contract),
@@ -192,7 +192,7 @@ handle_wire_deposits_finished (void *cls,
                  &total_amount,
                  num_details,
                  details);
-        TALER_EXCHANGE_wire_deposits_cancel (wdh);
+        TALER_EXCHANGE_track_transfer_cancel (wdh);
         return;
       }
     }
@@ -228,7 +228,7 @@ handle_wire_deposits_finished (void *cls,
            NULL,
            json,
            NULL, NULL, 0, NULL);
-  TALER_EXCHANGE_wire_deposits_cancel (wdh);
+  TALER_EXCHANGE_track_transfer_cancel (wdh);
 }
 
 
@@ -242,13 +242,13 @@ handle_wire_deposits_finished (void *cls,
  * @param cb_cls closure for @a cb
  * @return handle to cancel operation
  */
-struct TALER_EXCHANGE_WireDepositsHandle *
-TALER_EXCHANGE_wire_deposits (struct TALER_EXCHANGE_Handle *exchange,
+struct TALER_EXCHANGE_TrackTransferHandle *
+TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
                               const struct TALER_WireTransferIdentifierRawP *wtid,
                               TALER_EXCHANGE_WireDepositsCallback cb,
                               void *cb_cls)
 {
-  struct TALER_EXCHANGE_WireDepositsHandle *wdh;
+  struct TALER_EXCHANGE_TrackTransferHandle *wdh;
   struct GNUNET_CURL_Context *ctx;
   char *buf;
   char *path;
@@ -261,7 +261,7 @@ TALER_EXCHANGE_wire_deposits (struct TALER_EXCHANGE_Handle *exchange,
     return NULL;
   }
 
-  wdh = GNUNET_new (struct TALER_EXCHANGE_WireDepositsHandle);
+  wdh = GNUNET_new (struct TALER_EXCHANGE_TrackTransferHandle);
   wdh->exchange = exchange;
   wdh->cb = cb;
   wdh->cb_cls = cb_cls;
@@ -269,7 +269,7 @@ TALER_EXCHANGE_wire_deposits (struct TALER_EXCHANGE_Handle *exchange,
   buf = GNUNET_STRINGS_data_to_string_alloc (wtid,
                                              sizeof (struct TALER_WireTransferIdentifierRawP));
   GNUNET_asprintf (&path,
-                   "/wire/deposits?wtid=%s",
+                   "/track/transfer?wtid=%s",
                    buf);
   wdh->url = MAH_path_to_url (wdh->exchange,
                               path);
@@ -298,7 +298,7 @@ TALER_EXCHANGE_wire_deposits (struct TALER_EXCHANGE_Handle *exchange,
  * @param wdh the wire deposits request handle
  */
 void
-TALER_EXCHANGE_wire_deposits_cancel (struct TALER_EXCHANGE_WireDepositsHandle *wdh)
+TALER_EXCHANGE_track_transfer_cancel (struct TALER_EXCHANGE_TrackTransferHandle *wdh)
 {
   if (NULL != wdh->job)
   {

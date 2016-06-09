@@ -30,7 +30,7 @@
 
 
 /**
- * Handle a "/wire/deposits" request.
+ * Handle a "/track/transfer" request.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
@@ -40,11 +40,11 @@
  * @return MHD result code
  */
 int
-TMH_TRACKING_handler_wire_deposits (struct TMH_RequestHandler *rh,
-                                    struct MHD_Connection *connection,
-                                    void **connection_cls,
-                                    const char *upload_data,
-                                    size_t *upload_data_size)
+TMH_TRACKING_handler_track_transfer (struct TMH_RequestHandler *rh,
+                                     struct MHD_Connection *connection,
+                                     void **connection_cls,
+                                     const char *upload_data,
+                                     size_t *upload_data_size)
 {
   struct TALER_WireTransferIdentifierRawP wtid;
   int res;
@@ -57,7 +57,7 @@ TMH_TRACKING_handler_wire_deposits (struct TMH_RequestHandler *rh,
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
     return MHD_YES; /* parse error */
-  return TMH_DB_execute_wire_deposits (connection,
+  return TMH_DB_execute_track_transfer (connection,
                                        &wtid);
 }
 
@@ -74,14 +74,14 @@ TMH_TRACKING_handler_wire_deposits (struct TMH_RequestHandler *rh,
  * @return MHD result code
  */
 static int
-check_and_handle_deposit_wtid_request (struct MHD_Connection *connection,
-				       const struct TALER_DepositTrackPS *tps,
-				       struct TALER_MerchantPublicKeyP *merchant_pub,
-				       struct TALER_MerchantSignatureP *merchant_sig,
-				       uint64_t transaction_id)
+check_and_handle_track_transaction_request (struct MHD_Connection *connection,
+                                            const struct TALER_DepositTrackPS *tps,
+                                            struct TALER_MerchantPublicKeyP *merchant_pub,
+                                            struct TALER_MerchantSignatureP *merchant_sig,
+                                            uint64_t transaction_id)
 {
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_DEPOSIT_WTID,
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION,
 				  &tps->purpose,
 				  &merchant_sig->eddsa_sig,
 				  &merchant_pub->eddsa_pub))
@@ -90,7 +90,7 @@ check_and_handle_deposit_wtid_request (struct MHD_Connection *connection,
     return TMH_RESPONSE_reply_signature_invalid (connection,
 						 "merchant_sig");
   }
-  return TMH_DB_execute_deposit_wtid (connection,
+  return TMH_DB_execute_track_transaction (connection,
 				      &tps->h_contract,
 				      &tps->h_wire,
 				      &tps->coin_pub,
@@ -100,7 +100,7 @@ check_and_handle_deposit_wtid_request (struct MHD_Connection *connection,
 
 
 /**
- * Handle a "/deposit/wtid" request.
+ * Handle a "/track/transaction" request.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
@@ -110,11 +110,11 @@ check_and_handle_deposit_wtid_request (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_TRACKING_handler_deposit_wtid (struct TMH_RequestHandler *rh,
-                                   struct MHD_Connection *connection,
-                                   void **connection_cls,
-                                   const char *upload_data,
-                                   size_t *upload_data_size)
+TMH_TRACKING_handler_track_transaction (struct TMH_RequestHandler *rh,
+                                        struct MHD_Connection *connection,
+                                        void **connection_cls,
+                                        const char *upload_data,
+                                        size_t *upload_data_size)
 {
   int res;
   json_t *json;
@@ -149,13 +149,13 @@ TMH_TRACKING_handler_deposit_wtid (struct TMH_RequestHandler *rh,
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   }
   tps.purpose.size = htonl (sizeof (struct TALER_DepositTrackPS));
-  tps.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_DEPOSIT_WTID);
+  tps.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION);
   tps.transaction_id = GNUNET_htonll (transaction_id);
-  res = check_and_handle_deposit_wtid_request (connection,
-					       &tps,
-					       &tps.merchant,
-					       &merchant_sig,
-					       transaction_id);
+  res = check_and_handle_track_transaction_request (connection,
+                                                    &tps,
+                                                    &tps.merchant,
+                                                    &merchant_sig,
+                                                    transaction_id);
   GNUNET_JSON_parse_free (spec);
   json_decref (json);
   return res;

@@ -122,12 +122,12 @@ enum OpCode
   OC_WIRE,
 
   /**
-   * Verify exchange's /wire/deposits method.
+   * Verify exchange's /track/transfer method.
    */
   OC_WIRE_DEPOSITS,
 
   /**
-   * Verify exchange's /deposit/wtid method.
+   * Verify exchange's /track/transaction method.
    */
   OC_DEPOSIT_WTID,
 
@@ -514,14 +514,14 @@ struct Command
     } wire;
 
     /**
-     * Information for the /wire/deposits's command.
+     * Information for the /track/transfer's command.
      */
     struct {
 
       /**
        * Handle to the wire deposits request.
        */
-      struct TALER_EXCHANGE_WireDepositsHandle *wdh;
+      struct TALER_EXCHANGE_TrackTransferHandle *wdh;
 
       /**
        * Reference to a command providing a WTID. If set, we use the
@@ -529,7 +529,7 @@ struct Command
        * #OC_DEPOSIT_WTID or an #OC_CHECK_BANK_TRANSFER.  In the
        * case of the bank transfer, we check that the total amount
        * claimed by the exchange matches the total amount transferred
-       * by the bank.  In the case of a /deposit/wtid, we check
+       * by the bank.  In the case of a /track/transaction, we check
        * that the wire details match.
        */
       const char *wtid_ref;
@@ -552,14 +552,14 @@ struct Command
     } wire_deposits;
 
     /**
-     * Information for the /deposit/wtid command.
+     * Information for the /track/transaction command.
      */
     struct {
 
       /**
        * Handle to the deposit wtid request.
        */
-      struct TALER_EXCHANGE_DepositWtidHandle *dwh;
+      struct TALER_EXCHANGE_TrackTransactionHandle *dwh;
 
       /**
        * Which /deposit operation should we obtain WTID data for?
@@ -1409,7 +1409,7 @@ wire_deposits_cb (void *cls,
                   const struct GNUNET_HashCode *h_wire,
                   const struct TALER_Amount *total_amount,
                   unsigned int details_length,
-                  const struct TALER_WireDepositDetails *details)
+                  const struct TALER_TrackTransferDetails *details)
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
@@ -2164,7 +2164,7 @@ interpreter_run (void *cls)
       }
     }
     cmd->details.wire_deposits.wdh
-      = TALER_EXCHANGE_wire_deposits (exchange,
+      = TALER_EXCHANGE_track_transfer (exchange,
                                       &cmd->details.wire_deposits.wtid,
                                       &wire_deposits_cb,
                                       is);
@@ -2202,7 +2202,7 @@ interpreter_run (void *cls)
                        &h_contract);
       json_decref (contract);
       cmd->details.deposit_wtid.dwh
-        = TALER_EXCHANGE_deposit_wtid (exchange,
+        = TALER_EXCHANGE_track_transaction (exchange,
                                        &ref->details.deposit.merchant_priv,
                                        &h_wire,
                                        &h_contract,
@@ -2522,7 +2522,7 @@ do_shutdown (void *cls)
                     "Command %u (%s) did not complete\n",
                     i,
                     cmd->label);
-        TALER_EXCHANGE_wire_deposits_cancel (cmd->details.wire_deposits.wdh);
+        TALER_EXCHANGE_track_transfer_cancel (cmd->details.wire_deposits.wdh);
         cmd->details.wire_deposits.wdh = NULL;
       }
       break;
@@ -2533,7 +2533,7 @@ do_shutdown (void *cls)
                     "Command %u (%s) did not complete\n",
                     i,
                     cmd->label);
-        TALER_EXCHANGE_deposit_wtid_cancel (cmd->details.deposit_wtid.dwh);
+        TALER_EXCHANGE_track_transaction_cancel (cmd->details.deposit_wtid.dwh);
         cmd->details.deposit_wtid.dwh = NULL;
       }
       break;
