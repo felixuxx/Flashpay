@@ -1102,40 +1102,6 @@ struct TALER_EXCHANGE_TrackTransferHandle;
 
 
 /**
- * Details for one of the /deposit operations that the
- * exchange combined into a single wire transfer.
- */
-struct TALER_TrackTransferDetails
-{
-  /**
-   * Hash of the contract.
-   */
-  struct GNUNET_HashCode h_contract;
-
-  /**
-   * Which coin was deposited?
-   */
-  struct TALER_CoinSpendPublicKeyP coin_pub;
-
-  /**
-   * Value of the deposit (including fee).
-   */
-  struct TALER_Amount coin_value;
-
-  /**
-   * Fee charged by the exchange for the deposit.
-   */
-  struct TALER_Amount coin_fee;
-
-  /**
-   * Merchant's transaction identifier.
-   */
-  uint64_t transaction_id;
-
-};
-
-
-/**
  * Function called with detailed wire transfer data, including all
  * of the coin transactions that were combined into the wire transfer.
  *
@@ -1152,14 +1118,14 @@ struct TALER_TrackTransferDetails
  * @param details array with details about the combined transactions
  */
 typedef void
-(*TALER_EXCHANGE_WireDepositsCallback)(void *cls,
-                                       unsigned int http_status,
-                                       const struct TALER_ExchangePublicKeyP *sign_key,
-                                       const json_t *json,
-                                       const struct GNUNET_HashCode *h_wire,
-                                       const struct TALER_Amount *total_amount,
-                                       unsigned int details_length,
-                                       const struct TALER_TrackTransferDetails *details);
+(*TALER_EXCHANGE_TrackTransferCallback)(void *cls,
+                                        unsigned int http_status,
+                                        const struct TALER_ExchangePublicKeyP *sign_key,
+                                        const json_t *json,
+                                        const struct GNUNET_HashCode *h_wire,
+                                        const struct TALER_Amount *total_amount,
+                                        unsigned int details_length,
+                                        const struct TALER_TrackTransferDetails *details);
 
 
 /**
@@ -1175,7 +1141,7 @@ typedef void
 struct TALER_EXCHANGE_TrackTransferHandle *
 TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
                                const struct TALER_WireTransferIdentifierRawP *wtid,
-                               TALER_EXCHANGE_WireDepositsCallback cb,
+                               TALER_EXCHANGE_TrackTransferCallback cb,
                                void *cb_cls);
 
 

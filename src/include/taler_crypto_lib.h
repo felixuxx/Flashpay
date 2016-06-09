@@ -355,6 +355,40 @@ struct TALER_CoinPublicInfo
 
 
 /**
+ * Details for one of the /deposit operations that the
+ * exchange combined into a single wire transfer.
+ */
+struct TALER_TrackTransferDetails
+{
+  /**
+   * Hash of the contract.
+   */
+  struct GNUNET_HashCode h_contract;
+
+  /**
+   * Which coin was deposited?
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Value of the deposit (including fee).
+   */
+  struct TALER_Amount coin_value;
+
+  /**
+   * Fee charged by the exchange for the deposit.
+   */
+  struct TALER_Amount coin_fee;
+
+  /**
+   * Merchant's transaction identifier.
+   */
+  uint64_t transaction_id;
+
+};
+
+
+/**
  * Check if a coin is valid; that is, whether the denomination key exists,
  * is not expired, and the signature is correct.
  *

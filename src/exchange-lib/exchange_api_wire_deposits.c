@@ -56,7 +56,7 @@ struct TALER_EXCHANGE_TrackTransferHandle
   /**
    * Function to call with the result.
    */
-  TALER_EXCHANGE_WireDepositsCallback cb;
+  TALER_EXCHANGE_TrackTransferCallback cb;
 
   /**
    * Closure for @a cb.
@@ -245,7 +245,7 @@ handle_wire_deposits_finished (void *cls,
 struct TALER_EXCHANGE_TrackTransferHandle *
 TALER_EXCHANGE_track_transfer (struct TALER_EXCHANGE_Handle *exchange,
                               const struct TALER_WireTransferIdentifierRawP *wtid,
-                              TALER_EXCHANGE_WireDepositsCallback cb,
+                              TALER_EXCHANGE_TrackTransferCallback cb,
                               void *cb_cls)
 {
   struct TALER_EXCHANGE_TrackTransferHandle *wdh;
