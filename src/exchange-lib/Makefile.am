@@ -22,8 +22,8 @@ libtalerexchange_la_SOURCES = \
   exchange_api_refresh_link.c \
   exchange_api_refund.c \
   exchange_api_reserve.c \
-  exchange_api_track_transaction.c
-  exchange_api_track_trasnfer.c
+  exchange_api_track_transaction.c \
+  exchange_api_track_trasnfer.c \
   exchange_api_wire.c
 
 libtalerexchange_la_LIBADD = \
