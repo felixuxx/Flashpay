@@ -71,6 +71,10 @@ struct TALER_EXCHANGE_TrackTransferHandle
  * Check that the response is well-formed and if it is, call the
  * callback.  If not, return an error code.
  *
+ * This code is very similar to
+ * merchant_api_track_transfer.c::check_track_transfer_response_ok.
+ * Any changes should likely be reflected there as well.
+ *
  * @param wdh handle to the operation
  * @param json response we got
  * @return #GNUNET_OK if we are done and all is well,
