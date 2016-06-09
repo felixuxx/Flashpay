@@ -28,6 +28,8 @@
 #include <microhttpd.h>
 #include <jansson.h>
 
+#define RUNXCG
+
 /**
  * How many coins the benchmark should operate on
  */
@@ -44,7 +46,7 @@ static char *config_file;
 struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
- * How many reservers ought to be created given the pool size
+ * How many reserves ought to be created given the pool size
  */
 static unsigned int nreserves;
 
@@ -385,7 +387,10 @@ reserve_withdraw_cb (void *cls,
 
   coins[coin_index].wsh = NULL;
   if (MHD_HTTP_OK != http_status)
+  {
     fail ("At least one coin has not correctly been withdrawn\n");
+    return;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "%d-th coin withdrawn\n",
               coin_index);
@@ -462,8 +467,8 @@ reserve_withdraw_cb (void *cls,
     {
       json_decref (merchant_details);
       fail ("An error occurred while calling deposit API\n");
+      return;
     }
-    json_decref (merchant_details);
     transaction_id++;
   }
 }
@@ -549,7 +554,7 @@ benchmark_run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "benchmark_run() invoked\n");
   nreserves = pool_size / COINS_PER_RESERVE;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "creating %d reserves\n",
               nreserves);
 
@@ -727,19 +732,28 @@ run (void *cls)
               "config file: %s\n",
               config_file);
   if (NULL == config_file)
+  {
     fail ("-c option is mandatory\n");
+    return;
+  }
 
   /**
    * Read sender_details.json here
    */
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_SYSERR == GNUNET_CONFIGURATION_parse (cfg, config_file))
+  {
     fail ("failed to parse configuration file\n");
+    return;
+  }
   if (GNUNET_SYSERR == GNUNET_CONFIGURATION_get_value_filename (cfg,
                                                                 "benchmark",
                                                                 "sender_details",
                                                                 &sender_details_filename))
+  {
     fail ("failed to get SENDER_DETAILS value\n");
+    return;
+  }
 
   sender_details = json_load_file (sender_details_filename,
                                    JSON_REJECT_DUPLICATES,
@@ -749,8 +763,10 @@ run (void *cls)
                                                                 "benchmark",
                                                                 "merchant_details",
                                                                 &merchant_details_filename))
+  {
     fail ("failed to get MERCHANT_DETAILS value\n");
-
+    return;
+  }
   merchant_details = json_load_file (merchant_details_filename,
                                      JSON_REJECT_DUPLICATES,
                                      NULL);
@@ -781,9 +797,11 @@ main (int argc,
       char * const *argv)
 {
 
+  #ifdef RUNXCG
   struct GNUNET_OS_Process *proc;
   struct GNUNET_OS_Process *exchanged;
   unsigned int cnt;
+  #endif
 
   GNUNET_log_setup ("taler-exchange-benchmark",
                     "WARNING",
@@ -800,7 +818,7 @@ main (int argc,
   GNUNET_assert (GNUNET_SYSERR !=
                    GNUNET_GETOPT_run ("taler-exchange-benchmark",
                                       options, argc, argv));
-
+  #ifdef RUNXCG
   proc = GNUNET_OS_start_process (GNUNET_NO,
                                   GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,
@@ -867,10 +885,13 @@ main (int argc,
     }
   while (0 != system ("wget -q -t 1 -T 1 " EXCHANGE_URI "keys -o /dev/null -O /dev/null"));
   fprintf (stderr, "\n");
+  #endif
 
   GNUNET_SCHEDULER_run (&run, NULL);
+  #ifdef RUNXCG
   GNUNET_OS_process_wait (exchanged);
   GNUNET_OS_process_destroy (exchanged);
+  #endif
 
   return GNUNET_OK;
 }
