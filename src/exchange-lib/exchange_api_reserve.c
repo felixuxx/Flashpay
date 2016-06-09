@@ -784,7 +784,7 @@ handle_reserve_withdraw_finished (void *cls,
  *        caller must have committed this value to disk before the call (with @a pk)
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
- * @return #GNUNET_OK on success, #GNUNET_SYSERR
+ * @return handle for the operation on success, NULL on error, i.e.
  *         if the inputs are invalid (i.e. denomination key not with this exchange).
  *         In this case, the callback is not called.
  */
@@ -819,10 +819,17 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_CRYPTO_hash (&coin_pub.eddsa_pub,
                       sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
                       &wsh->c_hash);
-  coin_ev_size = GNUNET_CRYPTO_rsa_blind (&wsh->c_hash,
-                                          &blinding_key->bks,
-                                          pk->key.rsa_public_key,
-                                          &coin_ev);
+  if (GNUNET_YES !=
+      GNUNET_CRYPTO_rsa_blind (&wsh->c_hash,
+                               &blinding_key->bks,
+                               pk->key.rsa_public_key,
+                               &coin_ev,
+                               &coin_ev_size))
+  {
+    GNUNET_break_op (0);
+    GNUNET_free (wsh);
+    return NULL;
+  }
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                       &wsh->reserve_pub.eddsa_pub);
   req.purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS));

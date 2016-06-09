@@ -1262,14 +1262,15 @@ check_commitment (struct MHD_Connection *connection,
     GNUNET_CRYPTO_hash (&coin_pub,
                         sizeof (struct TALER_CoinSpendPublicKeyP),
                         &h_msg);
-    if (0 == (buf_len =
-              GNUNET_CRYPTO_rsa_blind (&h_msg,
-                                       &link_data.blinding_key.bks,
-                                       denom_pubs[j].rsa_public_key,
-                                       &buf)))
+    if (GNUNET_YES !=
+        GNUNET_CRYPTO_rsa_blind (&h_msg,
+                                 &link_data.blinding_key.bks,
+                                 denom_pubs[j].rsa_public_key,
+                                 &buf,
+                                 &buf_len))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "blind failed\n");
+                  "Blind failed (bad denomination key!?)\n");
       GNUNET_free (commit_coins);
       return (MHD_YES == TMH_RESPONSE_reply_internal_error (connection,
                                                             "Blinding error"))

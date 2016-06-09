@@ -851,10 +851,18 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
       GNUNET_CRYPTO_hash (&coin_pub.eddsa_pub,
                           sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
                           &coin_hash);
-      coin_ev_size = GNUNET_CRYPTO_rsa_blind (&coin_hash,
-                                              &fc->blinding_key.bks,
-                                              md.fresh_pks[j].rsa_public_key,
-                                              &coin_ev);
+      if (GNUNET_YES !=
+          GNUNET_CRYPTO_rsa_blind (&coin_hash,
+                                   &fc->blinding_key.bks,
+                                   md.fresh_pks[j].rsa_public_key,
+                                   &coin_ev,
+                                   &coin_ev_size))
+      {
+        GNUNET_break_op (0);
+        GNUNET_CRYPTO_hash_context_abort (hash_context);
+        free_melt_data (&md);
+        return NULL;
+      }
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        coin_ev,
                                        coin_ev_size);
@@ -1378,10 +1386,24 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
       GNUNET_CRYPTO_hash (&coin_pub.eddsa_pub,
                           sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
                           &coin_hash);
-      coin_ev_size = GNUNET_CRYPTO_rsa_blind (&coin_hash,
-                                              &fc->blinding_key.bks,
-                                              md->fresh_pks[i].rsa_public_key,
-                                              &coin_ev);
+      if (GNUNET_YES !=
+          GNUNET_CRYPTO_rsa_blind (&coin_hash,
+                                   &fc->blinding_key.bks,
+                                   md->fresh_pks[i].rsa_public_key,
+                                   &coin_ev,
+                                   &coin_ev_size))
+      {
+        /* This should have been noticed during the preparation stage. */
+        GNUNET_break (0);
+        json_decref (new_denoms);
+        json_decref (tmp);
+        json_decref (coin_evs);
+        json_decref (melt_coin);
+        json_decref (transfer_pubs);
+        json_decref (secret_encs);
+        json_decref (link_encs);
+        return NULL;
+      }
       json_array_append (tmp,
                          GNUNET_JSON_from_data (coin_ev,
                                                 coin_ev_size));
