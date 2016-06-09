@@ -15,7 +15,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchange-lib/exchange_api_deposit_wtid.c
+ * @file exchange-lib/exchange_api_track_transaction.c
  * @brief Implementation of the /track/transaction request of the exchange's HTTP API
  * @author Christian Grothoff
  */

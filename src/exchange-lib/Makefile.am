@@ -18,13 +18,13 @@ libtalerexchange_la_SOURCES = \
   exchange_api_handle.c exchange_api_handle.h \
   exchange_api_admin.c \
   exchange_api_deposit.c \
-  exchange_api_deposit_wtid.c \
   exchange_api_refresh.c \
   exchange_api_refresh_link.c \
   exchange_api_refund.c \
   exchange_api_reserve.c \
-  exchange_api_wire.c \
-  exchange_api_wire_deposits.c
+  exchange_api_track_transaction.c
+  exchange_api_track_trasnfer.c
+  exchange_api_wire.c
 
 libtalerexchange_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
