@@ -74,7 +74,7 @@ struct RefreshRevealCls {
    * Size of `blob`
    */
   size_t blob_size;
-  
+
   /**
    * Which coin in the list are we melting
    */
@@ -394,21 +394,23 @@ melt_cb (void *cls,
          const struct TALER_ExchangePublicKeyP *exchange_pub,
          const json_t *full_response)
 {
+  struct RefreshRevealCls *rrcls = cls;
   /* FIXME to be freed */
-  struct RefreshRevealCls *rrcls = (struct RefreshRevealCls *) cls;
 
   if (MHD_HTTP_OK != http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Coin not correctly melted\n");
-    /*fail ("Coin not correctly melted\n");
-    return;*/
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Coin not correctly melted\n");
+    /*fail ("Coin not correctly melted\n"); */
+    return;
   }
-  coins[rrcls->coin_index].rrh = TALER_EXCHANGE_refresh_reveal (exchange,
-                                                                rrcls->blob_size,
-                                                                rrcls->blob,
-                                                                noreveal_index,
-                                                                reveal_cb,
-                                                                NULL);
+  coins[rrcls->coin_index].rrh
+    = TALER_EXCHANGE_refresh_reveal (exchange,
+                                     rrcls->blob_size,
+                                     rrcls->blob,
+                                     noreveal_index,
+                                     reveal_cb,
+                                     NULL);
 }
 
 /**
@@ -485,9 +487,9 @@ deposit_cb (void *cls,
       fail ("Impossible to issue a melt request to the exchange\n");
       return;
     }
-  } 
-  #endif 
-  
+  }
+  #endif
+
 
 }
 
@@ -740,7 +742,7 @@ benchmark_run (void *cls)
 }
 
 /**
- * Populates the global array of denominations which will 
+ * Populates the global array of denominations which will
  * be withdrawn in a refresh operation. It sums up 4 KUDOS,
  * since that is the only amount refreshed so far by the benchmark
  *
@@ -759,7 +761,7 @@ build_refresh (char **list)
   for (i=0; list[i] != NULL; i++)
   {
     unsigned int size;
-    GNUNET_asprintf (&amount_str, "%s:%s", currency, list[i]); 
+    GNUNET_asprintf (&amount_str, "%s:%s", currency, list[i]);
     TALER_string_to_amount (amount_str, &amount);
     picked_denom = find_pk (keys, &amount);
     size = i;
@@ -805,7 +807,7 @@ cert_cb (void *cls,
     "4",
     "2",
     "1",
-    NULL  
+    NULL
   };
 
   build_refresh (refresh_denoms);
@@ -857,12 +859,12 @@ do_shutdown (void *cls)
     if (NULL != coins[i].rmh)
     {
       TALER_EXCHANGE_refresh_melt_cancel(coins[i].rmh);
-      coins[i].rmh = NULL;    
+      coins[i].rmh = NULL;
     }
     if (NULL != coins[i].rrh)
     {
       TALER_EXCHANGE_refresh_reveal_cancel(coins[i].rrh);
-      coins[i].rmh = NULL;    
+      coins[i].rmh = NULL;
     }
   }
 
