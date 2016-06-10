@@ -1191,13 +1191,13 @@ TMH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
  */
 int
 TMH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
-                                 const struct GNUNET_HashCode *h_contract,
-                                 const struct GNUNET_HashCode *h_wire,
-                                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                 const struct TALER_Amount *coin_contribution,
-                                 uint64_t transaction_id,
-				 const struct TALER_WireTransferIdentifierRawP *wtid,
-                                 struct GNUNET_TIME_Absolute exec_time)
+                                      const struct GNUNET_HashCode *h_contract,
+                                      const struct GNUNET_HashCode *h_wire,
+                                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                      const struct TALER_Amount *coin_contribution,
+                                      uint64_t transaction_id,
+                                      const struct TALER_WireTransferIdentifierRawP *wtid,
+                                      struct GNUNET_TIME_Absolute exec_time)
 {
   struct TALER_ConfirmWirePS cw;
   struct TALER_ExchangePublicKeyP pub;
