@@ -293,9 +293,10 @@ do_shutdown (void *cls);
 static void
 fail (const char *msg)
 {
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "%s\n",
-              msg);
+  if (NULL != msg)
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "%s\n",
+                msg);
   GNUNET_SCHEDULER_shutdown ();
   return;
 }
@@ -748,8 +749,10 @@ benchmark_run (void *cls)
  * since that is the only amount refreshed so far by the benchmark
  *
  * @param NULL-terminated array of value.fraction pairs
+ * @return GNUNET_OK if the array is correctly built, GNUNET_SYSERR
+ * otherwise
  */
-static void
+static unsigned int
 build_refresh (char **list)
 {
   char *amount_str;
@@ -765,11 +768,16 @@ build_refresh (char **list)
     GNUNET_asprintf (&amount_str, "%s:%s", currency, list[i]);
     TALER_string_to_amount (amount_str, &amount);
     picked_denom = find_pk (keys, &amount);
+    if (NULL == picked_denom)
+    {
+      return GNUNET_SYSERR;
+    }
     size = i;
     GNUNET_array_append (refresh_pk, size, *picked_denom);
     GNUNET_free (amount_str);
   }
   refresh_pk_len = i;
+  return GNUNET_OK;
 }
 
 
@@ -811,7 +819,12 @@ cert_cb (void *cls,
     NULL
   };
 
-  build_refresh (refresh_denoms);
+  if (GNUNET_SYSERR == build_refresh (refresh_denoms))
+  {
+    fail(NULL);
+    return;
+  }
+
   benchmark_task = GNUNET_SCHEDULER_add_now (&benchmark_run,
                                              NULL);
 }
