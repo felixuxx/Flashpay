@@ -666,11 +666,11 @@ build_refresh (char **list)
   keys = TALER_EXCHANGE_get_keys (exchange);
   for (i=0; list[i] != NULL; i++)
   {
-    size_t size;
+    unsigned int size;
     GNUNET_asprintf (&amount_str, "%s:%s", currency, list[i]); 
     TALER_string_to_amount (amount_str, &amount);
     picked_denom = find_pk (keys, &amount);
-    size = (size_t) i;
+    size = i;
     GNUNET_array_append (refresh_pk, size, *picked_denom);
     GNUNET_free (amount_str);
   }
