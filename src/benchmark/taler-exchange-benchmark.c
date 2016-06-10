@@ -61,6 +61,27 @@ json_t *sender_details;
 json_t *merchant_details;
 
 /**
+ * Information needed by the /refresh/melt's callback
+ */
+struct RefreshRevealCls {
+
+  /**
+   * The result of a `TALER_EXCHANGE_refresh_prepare()` call
+   */
+  const char *blob;
+
+  /**
+   * Size of `blob`
+   */
+  size_t blob_size;
+  
+  /**
+   * Which coin in the list are we melting
+   */
+  unsigned int coin_index;
+};
+
+/**
  * Needed information for a reserve. Other values are the same for all reserves, therefore defined in global variables
  */
 struct Reserve {
@@ -334,6 +355,28 @@ find_pk (const struct TALER_EXCHANGE_Keys *keys,
 }
 
 /**
+ * Function called with the result of the /refresh/reveal operation.
+ *
+ * @param cls closure with the interpreter state
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
+ * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
+ * @param sigs array of signature over @a num_coins coins, NULL on error
+ * @param full_response full response from the exchange (for logging, in case of errors)
+ */
+static void
+reveal_cb (void *cls,
+           unsigned int http_status,
+           unsigned int num_coins,
+           const struct TALER_CoinSpendPrivateKeyP *coin_privs,
+           const struct TALER_DenominationSignature *sigs,
+           const json_t *full_response)
+{
+  /* TODO */
+}
+
+/**
  * Function called with the result of the /refresh/melt operation.
  *
  * @param cls closure with the interpreter state
@@ -351,6 +394,21 @@ melt_cb (void *cls,
          const struct TALER_ExchangePublicKeyP *exchange_pub,
          const json_t *full_response)
 {
+  /* FIXME to be freed */
+  struct RefreshRevealCls *rrcls = (struct RefreshRevealCls *) cls;
+
+  if (MHD_HTTP_OK != http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Coin not correctly melted\n");
+    /*fail ("Coin not correctly melted\n");
+    return;*/
+  }
+  coins[rrcls->coin_index].rrh = TALER_EXCHANGE_refresh_reveal (exchange,
+                                                                rrcls->blob_size,
+                                                                rrcls->blob,
+                                                                noreveal_index,
+                                                                reveal_cb,
+                                                                NULL);
 }
 
 /**
@@ -384,6 +442,7 @@ deposit_cb (void *cls,
   if (GNUNET_YES == coins[coin_index].refresh || 1) // FIXME remove '|| 1'
   {
     struct TALER_Amount melt_amount;
+    struct RefreshRevealCls *rrcls;
 
     TALER_amount_get_zero (currency, &melt_amount);
     melt_amount.value = 7;
@@ -411,17 +470,21 @@ deposit_cb (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "# of coins to get in melt: %d\n",
                 refresh_pk_len);
+    rrcls = GNUNET_new (struct RefreshRevealCls);
+    rrcls->blob = blob;
+    rrcls->blob_size = blob_size;
+    rrcls->coin_index = coin_index;
+
     coins[coin_index].rmh = TALER_EXCHANGE_refresh_melt (exchange,
                                                          blob_size,
                                                          blob,
                                                          &melt_cb,
-                                                         NULL);
+                                                         rrcls);
     if (NULL == coins[coin_index].rmh)
     {
       fail ("Impossible to issue a melt request to the exchange\n");
       return;
     }
-
   } 
   #endif 
   
