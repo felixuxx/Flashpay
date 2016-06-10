@@ -400,8 +400,9 @@ melt_cb (void *cls,
   if (MHD_HTTP_OK != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Coin not correctly melted\n");
-    /*fail ("Coin not correctly melted\n"); */
+                "Coin not correctly melted!\n");
+    json_dumpf (full_response, stderr, 0);
+    /* FIXME: properly shut down benchmark */
     return;
   }
   coins[rrcls->coin_index].rrh
