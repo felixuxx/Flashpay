@@ -230,7 +230,7 @@ static char *currency;
  * The benchmark withdraws always the same denomination, since the calculation
  * for refreshing is statically done (at least in its very first version).
  */
-#define COIN_VALUE 5
+#define COIN_VALUE 8
 
 /**
  * Probability a coin can be spent
@@ -333,6 +333,25 @@ find_pk (const struct TALER_EXCHANGE_Keys *keys,
   return NULL;
 }
 
+/**
+ * Function called with the result of the /refresh/melt operation.
+ *
+ * @param cls closure with the interpreter state
+ * @param http_status HTTP response code, never #MHD_HTTP_OK (200) as for successful intermediate response this callback is skipped.
+ *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param noreveal_index choice by the exchange in the cut-and-choose protocol,
+ *                    UINT16_MAX on error
+ * @param exchange_pub public key the exchange used for signing
+ * @param full_response full response from the exchange (for logging, in case of errors)
+ */
+static void
+melt_cb (void *cls,
+         unsigned int http_status,
+         uint16_t noreveal_index,
+         const struct TALER_ExchangePublicKeyP *exchange_pub,
+         const json_t *full_response)
+{
+}
 
 /**
  * Function called with the result of a /deposit operation.
@@ -362,16 +381,12 @@ deposit_cb (void *cls,
   GNUNET_array_append (spent_coins, spent_coins_size, coin_index);
   spent_coins_size++;
   #if 1
-  if (GNUNET_YES == coins[coin_index].refresh || 1)
+  if (GNUNET_YES == coins[coin_index].refresh || 1) // FIXME remove '|| 1'
   {
     struct TALER_Amount melt_amount;
 
-    /**
-     * This version of benchmark knows only 5 KUDOS coins, and refreshes
-     * 4 KUDOS out of 5.
-     */
     TALER_amount_get_zero (currency, &melt_amount);
-    melt_amount.value = 4;
+    melt_amount.value = 7;
     char *blob;
     size_t blob_size;
 
@@ -392,11 +407,25 @@ deposit_cb (void *cls,
                 "prepared blob %d\n",
                 blob_size);
     refreshed_once = GNUNET_YES;
-  }
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "# of coins to get in melt: %d\n",
+                refresh_pk_len);
+    coins[coin_index].rmh = TALER_EXCHANGE_refresh_melt (exchange,
+                                                         blob_size,
+                                                         blob,
+                                                         &melt_cb,
+                                                         NULL);
+    if (NULL == coins[coin_index].rmh)
+    {
+      fail ("Impossible to issue a melt request to the exchange\n");
+      return;
+    }
+
+  } 
   #endif 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "size of refry; %d\n",
-              refresh_pk_len);
+  
+
 }
 
 /**
@@ -710,15 +739,9 @@ cert_cb (void *cls,
 	      "Using currency: %s\n", currency);
 
   char *refresh_denoms[] = {
+    "4",
     "2",
     "1",
-    "0.01",
-    "0.01",
-    "0.01",
-    "0.01",
-    "0.01",
-    "0.01",
-    "0.01",
     NULL  
   };
 
