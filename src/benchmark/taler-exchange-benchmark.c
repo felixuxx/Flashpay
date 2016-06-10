@@ -549,8 +549,8 @@ reserve_withdraw_cb (void *cls,
     GNUNET_TIME_round_abs (&refund_deadline);
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Spending %d-th coin\n", coin_index);
 
-    if (GNUNET_YES == eval_probability (REFRESH_PROBABILITY)
-        && GNUNET_NO == refreshed_once)
+    if ((GNUNET_YES == eval_probability (REFRESH_PROBABILITY)
+        && GNUNET_NO == refreshed_once) || 1)
     {
       struct TALER_Amount one;
       TALER_amount_get_zero (currency, &one);
