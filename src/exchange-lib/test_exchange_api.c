@@ -1915,6 +1915,7 @@ interpreter_run (void *cls)
       }
       TALER_JSON_hash (contract,
                        &h_contract);
+      json_decref (contract);
       wire = json_loads (cmd->details.deposit.wire_details,
                          JSON_REJECT_DUPLICATES,
                          NULL);

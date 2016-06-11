@@ -115,7 +115,7 @@ parse_reserve_history (const json_t *history,
     struct GNUNET_JSON_Specification hist_spec[] = {
       GNUNET_JSON_spec_string ("type", &type),
       TALER_JSON_spec_amount ("amount",
-                       &amount),
+                              &amount),
       /* 'wire' and 'signature' are optional depending on 'type'! */
       GNUNET_JSON_spec_end()
     };
@@ -185,9 +185,9 @@ parse_reserve_history (const json_t *history,
       struct TALER_Amount amount_from_purpose;
       struct GNUNET_JSON_Specification withdraw_spec[] = {
         GNUNET_JSON_spec_fixed_auto ("signature",
-                             &sig),
+                                     &sig),
         GNUNET_JSON_spec_fixed_auto ("details",
-                             &withdraw_purpose),
+                                     &withdraw_purpose),
         GNUNET_JSON_spec_end()
       };
       unsigned int i;

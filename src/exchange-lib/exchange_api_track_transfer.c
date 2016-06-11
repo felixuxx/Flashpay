@@ -138,6 +138,7 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
       {
         GNUNET_break_op (0);
         GNUNET_CRYPTO_hash_context_abort (hash_context);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       /* build up big hash for signature checking later */
@@ -166,6 +167,7 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
                                          &exchange_pub))
     {
       GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
     if (GNUNET_OK !=
@@ -173,6 +175,7 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
                                          &exchange_pub))
     {
       GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
     wdh->cb (wdh->cb_cls,
@@ -184,6 +187,7 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
              num_details,
              details);
   }
+  GNUNET_JSON_parse_free (spec);
   TALER_EXCHANGE_track_transfer_cancel (wdh);
   return GNUNET_OK;
 }
