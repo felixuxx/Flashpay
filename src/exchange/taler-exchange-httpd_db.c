@@ -2017,7 +2017,7 @@ handle_wtid_data (void *cls,
   if (NULL == wtid)
   {
     ctx->res = TMH_RESPONSE_reply_transfer_pending (ctx->connection,
-                                                   execution_time);
+                                                    execution_time);
   }
   else
   {
@@ -2058,11 +2058,11 @@ handle_wtid_data (void *cls,
  */
 int
 TMH_DB_execute_track_transaction (struct MHD_Connection *connection,
-                             const struct GNUNET_HashCode *h_contract,
-			     const struct GNUNET_HashCode *h_wire,
-			     const struct TALER_CoinSpendPublicKeyP *coin_pub,
-			     const struct TALER_MerchantPublicKeyP *merchant_pub,
-			     uint64_t transaction_id)
+                                  const struct GNUNET_HashCode *h_contract,
+                                  const struct GNUNET_HashCode *h_wire,
+                                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                  const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                  uint64_t transaction_id)
 {
   int ret;
   struct DepositWtidContext ctx;

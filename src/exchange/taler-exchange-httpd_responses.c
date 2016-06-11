@@ -1176,7 +1176,7 @@ TMH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection)
  */
 int
 TMH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
-				    struct GNUNET_TIME_Absolute planned_exec_time)
+                                     struct GNUNET_TIME_Absolute planned_exec_time)
 {
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_ACCEPTED,

@@ -3986,7 +3986,7 @@ postgres_wire_lookup_deposit_wtid (void *cls,
 
     /* Check if transaction exists in deposits, so that we just
        do not have a WTID yet, if so, do call the CB with a NULL wtid
-       and return GNUNET_YES! */
+       and return #GNUNET_YES! */
     {
       struct GNUNET_PQ_QueryParam params2[] = {
         GNUNET_PQ_query_param_auto_from_type (coin_pub),
