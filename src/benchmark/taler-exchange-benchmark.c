@@ -174,6 +174,12 @@ struct Coin {
 
 };
 
+
+/**
+ * Handle to the exchange's process
+ */
+static struct GNUNET_OS_Process *exchanged;
+
 /**
  * Context for running the #ctx's event loop.
  */
@@ -929,6 +935,7 @@ do_shutdown (void *cls)
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "All (?) tasks shut down\n");
+  GNUNET_OS_process_kill (exchanged, SIGTERM);
 }
 
 
@@ -1020,7 +1027,6 @@ main (int argc,
 
   #ifdef RUNXCG
   struct GNUNET_OS_Process *proc;
-  struct GNUNET_OS_Process *exchanged;
   unsigned int cnt;
   #endif
 
