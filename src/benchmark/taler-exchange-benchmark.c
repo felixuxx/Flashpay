@@ -51,6 +51,14 @@ struct GNUNET_CONFIGURATION_Handle *cfg;
 static unsigned int nreserves;
 
 /**
+ * How many coins are in `coins` array. This is needed
+ * as the number of coins is not always nreserves * COINS_PER_RESERVE 
+ * due to refresh operations
+ */
+unsigned int ncoins;
+
+
+/**
  * Bank details of who creates reserves
  */
 json_t *sender_details;
@@ -425,10 +433,12 @@ reveal_cb (void *cls,
     GNUNET_free (refresh_denom);
     fresh_coin.pk = find_pk (keys, &amount);
     fresh_coin.sig = sigs[i];
+    GNUNET_array_append (coins, ncoins, fresh_coin);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "# of coins after refresh: %d\n",
+                ncoins);
   }
-
-
-
+  GNUNET_free (rrcls);
 }
 
 /**
@@ -768,7 +778,8 @@ benchmark_run (void *cls)
 
   reserves = GNUNET_new_array (nreserves,
                                struct Reserve);
-  coins = GNUNET_new_array (COINS_PER_RESERVE * nreserves,
+  ncoins = COINS_PER_RESERVE * nreserves;
+  coins = GNUNET_new_array (ncoins,
                             struct Coin);
 
   for (i=0;i < nreserves && 0 < nreserves;i++)
