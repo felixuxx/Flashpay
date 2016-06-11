@@ -347,9 +347,10 @@ reload_keys_denom_iter (void *cls,
   }
   ctx->min_dk_expire = GNUNET_TIME_absolute_min (ctx->min_dk_expire,
                                                  expire_deposit);
-  json_array_append_new (ctx->denom_keys_array,
-                         denom_key_issue_to_json (&dki->denom_pub,
-                                                  &dki->issue));
+  GNUNET_assert (0 ==
+                 json_array_append_new (ctx->denom_keys_array,
+                                        denom_key_issue_to_json (&dki->denom_pub,
+                                                                 &dki->issue)));
   return GNUNET_OK;
 }
 
@@ -436,8 +437,9 @@ reload_keys_sign_iter (void *cls,
     /* We use the most recent one, if it is valid now (not just in the near future) */
     ctx->current_sign_key_issue = *ski;
   }
-  json_array_append_new (ctx->sign_keys_array,
-                         sign_key_issue_to_json (&ski->issue));
+  GNUNET_assert (0 ==
+                 json_array_append_new (ctx->sign_keys_array,
+                                        sign_key_issue_to_json (&ski->issue)));
 
   return GNUNET_OK;
 }
@@ -465,12 +467,13 @@ auditor_to_json (const struct TALER_AuditorPublicKeyP *apub,
 
   ja = json_array ();
   for (i=0;i<dki_len;i++)
-    json_array_append_new (ja,
-                           json_pack ("{s:o, s:o}",
-                                      "denom_pub_h",
-                                      GNUNET_JSON_from_data_auto (&dki[i]->denom_hash),
-                                      "auditor_sig",
-                                      GNUNET_JSON_from_data_auto (asigs[i])));
+    GNUNET_assert (0 ==
+                   json_array_append_new (ja,
+                                          json_pack ("{s:o, s:o}",
+                                                     "denom_pub_h",
+                                                     GNUNET_JSON_from_data_auto (&dki[i]->denom_hash),
+                                                     "auditor_sig",
+                                                     GNUNET_JSON_from_data_auto (asigs[i]))));
   return
     json_pack ("{s:o, s:s, s:o}",
                "denomination_keys", ja,
@@ -536,12 +539,13 @@ reload_auditor_iter (void *cls,
     }
   }
   /* add auditor information to our /keys response */
-  json_array_append_new (ctx->auditors_array,
-                         auditor_to_json (apub,
-                                          auditor_url,
-                                          keep,
-                                          kept_asigs,
-                                          kept_dkis));
+  GNUNET_assert (0 ==
+                 json_array_append_new (ctx->auditors_array,
+                                        auditor_to_json (apub,
+                                                         auditor_url,
+                                                         keep,
+                                                         kept_asigs,
+                                                         kept_dkis)));
   return GNUNET_OK;
 }
 
