@@ -526,12 +526,13 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
     default:
       GNUNET_assert (0);
     }
-    json_array_append_new (history,
-                           json_pack ("{s:s, s:o, s:o, s:o}",
-                                      "type", type,
-                                      "amount", TALER_JSON_from_amount (&value),
-                                      "signature", GNUNET_JSON_from_data_auto (sig),
-                                      "details", details));
+    GNUNET_assert (0 ==
+                   json_array_append_new (history,
+                                          json_pack ("{s:s, s:o, s:o, s:o}",
+                                                     "type", type,
+                                                     "amount", TALER_JSON_from_amount (&value),
+                                                     "signature", GNUNET_JSON_from_data_auto (sig),
+                                                     "details", details)));
   }
   return history;
 }
@@ -602,12 +603,13 @@ compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
           return NULL;
         }
       ret = 1;
-      json_array_append_new (json_history,
-                             json_pack ("{s:s, s:O, s:O, s:o}",
-                                        "type", "DEPOSIT",
-                                        "sender_account_details", pos->details.bank->sender_account_details,
-                                        "transfer_details", pos->details.bank->transfer_details,
-                                        "amount", TALER_JSON_from_amount (&pos->details.bank->amount)));
+      GNUNET_assert (0 ==
+                     json_array_append_new (json_history,
+                                            json_pack ("{s:s, s:O, s:O, s:o}",
+                                                       "type", "DEPOSIT",
+                                                       "sender_account_details", pos->details.bank->sender_account_details,
+                                                       "transfer_details", pos->details.bank->transfer_details,
+                                                       "amount", TALER_JSON_from_amount (&pos->details.bank->amount))));
       break;
     case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:
       break;
@@ -649,12 +651,13 @@ compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
       GNUNET_CRYPTO_rsa_public_key_hash (pos->details.withdraw->denom_pub.rsa_public_key,
                                          &wr.h_denomination_pub);
       wr.h_coin_envelope = pos->details.withdraw->h_coin_envelope;
-      json_array_append_new (json_history,
-                             json_pack ("{s:s, s:o, s:o, s:o}",
-                                        "type", "WITHDRAW",
-                                        "signature", GNUNET_JSON_from_data_auto (&pos->details.withdraw->reserve_sig),
-                                        "details", GNUNET_JSON_from_data_auto (&wr),
-                                        "amount", TALER_JSON_from_amount (&value)));
+      GNUNET_assert (0 ==
+                     json_array_append_new (json_history,
+                                            json_pack ("{s:s, s:o, s:o, s:o}",
+                                                       "type", "WITHDRAW",
+                                                       "signature", GNUNET_JSON_from_data_auto (&pos->details.withdraw->reserve_sig),
+                                                       "details", GNUNET_JSON_from_data_auto (&wr),
+                                                       "amount", TALER_JSON_from_amount (&value))));
       break;
     }
   }
@@ -947,8 +950,9 @@ TMH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
     json_object_set_new (obj,
 			 "ev_sig",
 			 GNUNET_JSON_from_rsa_signature (sigs[newcoin_index].rsa_signature));
-    json_array_append_new (list,
-                           obj);
+    GNUNET_assert (0 ==
+                   json_array_append_new (list,
+                                          obj));
   }
   root = json_object ();
   json_object_set_new (root,
@@ -1012,8 +1016,9 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
     const struct TALER_DenominationPublicKey *pk;
 
     pk = &mc->denom_pubs[i];
-    json_array_append_new (info_new,
-                           GNUNET_JSON_from_rsa_public_key (pk->rsa_public_key));
+    GNUNET_assert (0 ==
+                   json_array_append_new (info_new,
+                                          GNUNET_JSON_from_rsa_public_key (pk->rsa_public_key)));
 
   }
   info_commit = json_array ();
@@ -1043,11 +1048,13 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
                            "blinding_key_enc",
                            GNUNET_JSON_from_data_auto (&cc->refresh_link.blinding_key_enc));
 
-      json_array_append_new (info_commit_k,
-                             cc_json);
+      GNUNET_assert (0 ==
+                     json_array_append_new (info_commit_k,
+                                            cc_json));
     }
-    json_array_append_new (info_commit,
-                           info_commit_k);
+    GNUNET_assert (0 ==
+                   json_array_append_new (info_commit,
+                                          info_commit_k));
 
     info_link_k = json_object ();
     cl = &mc->commit_links[k];
@@ -1057,8 +1064,9 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
     json_object_set_new (info_link_k,
                          "shared_secret_enc",
                          GNUNET_JSON_from_data_auto (&cl->shared_secret_enc));
-    json_array_append_new (info_links,
-                           info_link_k);
+    GNUNET_assert (0 ==
+                   json_array_append_new (info_links,
+                                          info_link_k));
   }
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_CONFLICT,
@@ -1113,8 +1121,9 @@ TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
       json_object_set_new (obj,
                            "ev_sig",
                            GNUNET_JSON_from_rsa_signature (pos->ev_sig.rsa_signature));
-      json_array_append_new (list,
-                             obj);
+      GNUNET_assert (0 ==
+                     json_array_append_new (list,
+                                            obj));
     }
     root = json_object ();
     json_object_set_new (root,
@@ -1126,8 +1135,9 @@ TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
     json_object_set_new (root,
                          "secret_enc",
                          GNUNET_JSON_from_data_auto (&sessions[i].shared_secret_enc));
-    json_array_append_new (mlist,
-                           root);
+    GNUNET_assert (0 ==
+                   json_array_append_new (mlist,
+                                          root));
   }
   res = TMH_RESPONSE_reply_json (connection,
                                  mlist,
@@ -1267,13 +1277,14 @@ TMH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
     GNUNET_CRYPTO_hash_context_read (hash_context,
                                      &dd,
                                      sizeof (struct TALER_WireDepositDetailP));
-    json_array_append (deposits,
-                       json_pack ("{s:o, s:I, s:o, s:o, s:o}",
-                                  "H_contract", GNUNET_JSON_from_data_auto (&wdd_pos->h_contract),
-                                  "transaction_id", (json_int_t) wdd_pos->transaction_id,
-                                  "coin_pub", GNUNET_JSON_from_data_auto (&wdd_pos->coin_pub),
-                                  "deposit_value", TALER_JSON_from_amount (&wdd_pos->deposit_value),
-                                  "deposit_fee", TALER_JSON_from_amount (&wdd_pos->deposit_fee)));
+    GNUNET_assert (0 ==
+                   json_array_append (deposits,
+                                      json_pack ("{s:o, s:I, s:o, s:o, s:o}",
+                                                 "H_contract", GNUNET_JSON_from_data_auto (&wdd_pos->h_contract),
+                                                 "transaction_id", (json_int_t) wdd_pos->transaction_id,
+                                                 "coin_pub", GNUNET_JSON_from_data_auto (&wdd_pos->coin_pub),
+                                                 "deposit_value", TALER_JSON_from_amount (&wdd_pos->deposit_value),
+                                                 "deposit_fee", TALER_JSON_from_amount (&wdd_pos->deposit_fee))));
   }
   wdp.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT);
   wdp.purpose.size = htonl (sizeof (struct TALER_WireDepositDataPS));
