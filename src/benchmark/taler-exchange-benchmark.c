@@ -293,9 +293,10 @@ do_shutdown (void *cls);
 static void
 fail (const char *msg)
 {
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "%s\n",
-              msg);
+  if (NULL != msg)
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "%s\n",
+                msg);
   GNUNET_SCHEDULER_shutdown ();
   return;
 }
@@ -467,7 +468,7 @@ deposit_cb (void *cls,
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "prepared blob %d\n",
-                blob_size);
+                (unsigned int) blob_size);
     refreshed_once = GNUNET_YES;
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -748,8 +749,10 @@ benchmark_run (void *cls)
  * since that is the only amount refreshed so far by the benchmark
  *
  * @param NULL-terminated array of value.fraction pairs
+ * @return GNUNET_OK if the array is correctly built, GNUNET_SYSERR
+ * otherwise
  */
-static void
+static unsigned int
 build_refresh (char **list)
 {
   char *amount_str;
@@ -765,11 +768,16 @@ build_refresh (char **list)
     GNUNET_asprintf (&amount_str, "%s:%s", currency, list[i]);
     TALER_string_to_amount (amount_str, &amount);
     picked_denom = find_pk (keys, &amount);
+    if (NULL == picked_denom)
+    {
+      return GNUNET_SYSERR;
+    }
     size = i;
     GNUNET_array_append (refresh_pk, size, *picked_denom);
     GNUNET_free (amount_str);
   }
   refresh_pk_len = i;
+  return GNUNET_OK;
 }
 
 
@@ -811,7 +819,12 @@ cert_cb (void *cls,
     NULL
   };
 
-  build_refresh (refresh_denoms);
+  if (GNUNET_SYSERR == build_refresh (refresh_denoms))
+  {
+    fail(NULL);
+    return;
+  }
+
   benchmark_task = GNUNET_SCHEDULER_add_now (&benchmark_run,
                                              NULL);
 }
@@ -839,7 +852,9 @@ do_shutdown (void *cls)
   {
     if (NULL != reserves[i].aih)
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Cancelling %d-th reserve\n", i);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Cancelling %d-th reserve\n",
+                  i);
       TALER_EXCHANGE_admin_add_incoming_cancel(reserves[i].aih);
       reserves[i].aih = NULL;
     }
@@ -849,21 +864,33 @@ do_shutdown (void *cls)
   {
     if (NULL != coins[i].wsh)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Cancelling %d-th coin withdraw handle\n",
+                  i);
       TALER_EXCHANGE_reserve_withdraw_cancel(coins[i].wsh);
       coins[i].wsh = NULL;
     }
     if (NULL != coins[i].dh)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Cancelling %d-th coin deposit handle\n",
+                  i);
       TALER_EXCHANGE_deposit_cancel(coins[i].dh);
       coins[i].dh = NULL;
     }
     if (NULL != coins[i].rmh)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Cancelling %d-th coin melt handle\n",
+                  i);
       TALER_EXCHANGE_refresh_melt_cancel(coins[i].rmh);
       coins[i].rmh = NULL;
     }
     if (NULL != coins[i].rrh)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Cancelling %d-th coin reveal handle\n",
+                  i);
       TALER_EXCHANGE_refresh_reveal_cancel(coins[i].rrh);
       coins[i].rmh = NULL;
     }
@@ -881,19 +908,27 @@ do_shutdown (void *cls)
 
   if (NULL != exchange)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Disconnecting from exchange\n");
     TALER_EXCHANGE_disconnect (exchange);
     exchange = NULL;
   }
   if (NULL != ctx)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Invoking GNUNET_CURL_fini()\n");
     GNUNET_CURL_fini (ctx);
     ctx = NULL;
   }
   if (NULL != rc)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Invoking GNUNET_CURL_gnunet_rc_destroy()\n");
     GNUNET_CURL_gnunet_rc_destroy (rc);
     rc = NULL;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "All (?) tasks shut down\n");
 }
 
 
