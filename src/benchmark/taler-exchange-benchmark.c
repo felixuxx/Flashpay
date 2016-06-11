@@ -924,7 +924,7 @@ do_shutdown (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Invoking GNUNET_CURL_gnunet_rc_destroy()\n");
-    GNUNET_CURL_fini (ctx); // FIXME this guy segfaults at curl.c:556
+    GNUNET_CURL_fini (ctx); // FIXME segfaults at curl.c:556
     GNUNET_CURL_gnunet_rc_destroy (rc);
     rc = NULL;
   }
