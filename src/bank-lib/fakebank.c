@@ -192,6 +192,15 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h)
 void
 TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
 {
+  struct Transaction *t;
+
+  while (NULL != (t = h->transactions_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (h->transactions_head,
+                                 h->transactions_tail,
+                                 t);
+    GNUNET_free (t);
+  }
   if (NULL != h->mhd_task)
   {
     GNUNET_SCHEDULER_cancel (h->mhd_task);
