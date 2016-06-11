@@ -51,6 +51,14 @@ struct GNUNET_CONFIGURATION_Handle *cfg;
 static unsigned int nreserves;
 
 /**
+ * How many coins are in `coins` array. This is needed
+ * as the number of coins is not always nreserves * COINS_PER_RESERVE 
+ * due to refresh operations
+ */
+unsigned int ncoins;
+
+
+/**
  * Bank details of who creates reserves
  */
 json_t *sender_details;
@@ -120,7 +128,9 @@ struct TALER_DenominationBlindingKeyP blinding_key;
 struct Coin {
   /**
    * Index in the reserve's global array indicating which
-   * reserve this coin is to be retrieved
+   * reserve this coin is to be retrieved. If the coin comes
+   * from a refresh, then this value is set to the melted coin's
+   * reserve index
    */
   unsigned int reserve_index;
 
@@ -141,11 +151,6 @@ struct Coin {
    * Set (by the interpreter) to the coin's private key.
    */
   struct TALER_CoinSpendPrivateKeyP coin_priv;
-
-  /**
-   * Blinding key used for the operation.
-   */
-  struct TALER_DenominationBlindingKeyP blinding_key;
 
   /**
    * Withdraw handle (while operation is running).
@@ -211,8 +216,7 @@ static struct Reserve *reserves;
 static struct Coin *coins;
 
 /**
- * Indices of spent coins (the first element always indicates
- * the total number of elements, including itself)
+ * Indices of spent coins
  */
 static unsigned int *spent_coins;
 
@@ -274,6 +278,21 @@ static char *currency;
  * coin will be refreshed, according to #REFRESH_PROBABILITY
  */
 static unsigned int refreshed_once = GNUNET_NO;
+
+/**
+ * List of coins to get in return to a melt operation. Just a
+ * static list for now as every melt operation is carried out
+ * on a 8 KUDOS coin whose only 1 KUDOS has been spent, thus
+ * 7 KUDOS melted. This structure must be changed with one holding
+ * TALER_Amount structs, as every time it's needed it requires
+ * too many operations before getting the desired TALER_Amount.
+ */
+static char *refresh_denoms[] = {
+  "4",
+  "2",
+  "1",
+  NULL
+};
 
 static unsigned int
 eval_probability (float probability)
@@ -380,7 +399,46 @@ reveal_cb (void *cls,
            const struct TALER_DenominationSignature *sigs,
            const json_t *full_response)
 {
-  /* TODO */
+  /* FIXME to be freed */
+  struct RefreshRevealCls *rrcls = cls;
+  unsigned int i;
+  const struct TALER_EXCHANGE_Keys *keys;
+
+  coins[rrcls->coin_index].rrh = NULL;
+  if (MHD_HTTP_OK != http_status)
+  {
+    fail ("Not all coins correctly revealed\n");
+    return;
+  }
+  else
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Coin revealed!\n");
+  /**
+   * 1 Stuff a Coin structure
+   * 2 Place it in global array
+   */
+  keys = TALER_EXCHANGE_get_keys (exchange);
+  for (i=0; i<num_coins; i++)
+  {
+    struct Coin fresh_coin;
+    struct TALER_Amount amount;
+    char *refresh_denom;
+    
+    GNUNET_asprintf (&refresh_denom,
+                     "%s:%s",
+                     currency,
+                     refresh_denoms[i]);
+    fresh_coin.reserve_index = coins[rrcls->coin_index].reserve_index;
+    TALER_string_to_amount (refresh_denom, &amount);
+    GNUNET_free (refresh_denom);
+    fresh_coin.pk = find_pk (keys, &amount);
+    fresh_coin.sig = sigs[i];
+    GNUNET_array_append (coins, ncoins, fresh_coin);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "# of coins after refresh: %d\n",
+                ncoins);
+  }
+  GNUNET_free (rrcls);
 }
 
 /**
@@ -404,6 +462,7 @@ melt_cb (void *cls,
   struct RefreshRevealCls *rrcls = cls;
   /* FIXME to be freed */
 
+  coins[rrcls->coin_index].rmh = NULL;
   if (MHD_HTTP_OK != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -418,7 +477,7 @@ melt_cb (void *cls,
                                      rrcls->blob,
                                      noreveal_index,
                                      reveal_cb,
-                                     NULL);
+                                     rrcls);
 }
 
 /**
@@ -719,7 +778,8 @@ benchmark_run (void *cls)
 
   reserves = GNUNET_new_array (nreserves,
                                struct Reserve);
-  coins = GNUNET_new_array (COINS_PER_RESERVE * nreserves,
+  ncoins = COINS_PER_RESERVE * nreserves;
+  coins = GNUNET_new_array (ncoins,
                             struct Coin);
 
   for (i=0;i < nreserves && 0 < nreserves;i++)
@@ -817,13 +877,6 @@ cert_cb (void *cls,
   currency = GNUNET_strdup (_keys->denom_keys[0].value.currency);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 	      "Using currency: %s\n", currency);
-
-  char *refresh_denoms[] = {
-    "4",
-    "2",
-    "1",
-    NULL
-  };
 
   if (GNUNET_SYSERR == build_refresh (refresh_denoms))
   {
