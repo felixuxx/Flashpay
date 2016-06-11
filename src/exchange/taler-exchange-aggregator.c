@@ -757,6 +757,7 @@ run_aggregation (void *cls)
                 "Preparing wire transfer of %s to %s\n",
                 amount_s,
                 TALER_B2S (&au->merchant_pub));
+    GNUNET_free (amount_s);
   }
   au->wp = wp;
   au->ph = wp->wire_plugin->prepare_wire_transfer (wp->wire_plugin->cls,
@@ -1095,7 +1096,11 @@ main (int argc,
                           gettext_noop ("background process that aggregates and executes wire transfers to merchants"),
                           options,
                           &run, NULL))
+  {
+    GNUNET_free ((void*) argv);
     return 1;
+  }
+  GNUNET_free ((void*) argv);
   return global_ret;
 }
 

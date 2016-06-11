@@ -523,6 +523,7 @@ exchange_keys_update_signkeys ()
   {
     fprintf (stderr,
              "Failed to create signing key directory\n");
+    GNUNET_free (signkey_dir);
     return GNUNET_SYSERR;
   }
 
@@ -530,6 +531,7 @@ exchange_keys_update_signkeys ()
               signkey_duration,
               GNUNET_TIME_UNIT_ZERO /* no overlap for signing keys */,
               &anchor);
+  GNUNET_free (signkey_dir);
 
   while (anchor.abs_value_us < lookahead_sign_stamp.abs_value_us)
   {
