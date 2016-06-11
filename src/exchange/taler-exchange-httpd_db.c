@@ -1896,7 +1896,7 @@ handle_transaction_data (void *cls,
  */
 int
 TMH_DB_execute_track_transfer (struct MHD_Connection *connection,
-                             const struct TALER_WireTransferIdentifierRawP *wtid)
+                               const struct TALER_WireTransferIdentifierRawP *wtid)
 {
   int ret;
   struct WtidTransactionContext ctx;
@@ -1935,10 +1935,10 @@ TMH_DB_execute_track_transfer (struct MHD_Connection *connection,
     goto cleanup;
   }
   ret = TMH_RESPONSE_reply_track_transfer_details (connection,
-                                                 &ctx.total,
-                                                 &ctx.merchant_pub,
-                                                 &ctx.h_wire,
-                                                 ctx.wdd_head);
+                                                   &ctx.total,
+                                                   &ctx.merchant_pub,
+                                                   &ctx.h_wire,
+                                                   ctx.wdd_head);
  cleanup:
   while (NULL != (wdd = ctx.wdd_head))
   {
@@ -2032,13 +2032,13 @@ handle_wtid_data (void *cls,
     else
     {
       ctx->res = TMH_RESPONSE_reply_track_transaction (ctx->connection,
-                                                  &ctx->h_contract,
-                                                  &ctx->h_wire,
-                                                  &ctx->coin_pub,
-                                                  &coin_delta,
-                                                  ctx->transaction_id,
-                                                  wtid,
-                                                  execution_time);
+                                                       &ctx->h_contract,
+                                                       &ctx->h_wire,
+                                                       &ctx->coin_pub,
+                                                       &coin_delta,
+                                                       ctx->transaction_id,
+                                                       wtid,
+                                                       execution_time);
     }
   }
 }

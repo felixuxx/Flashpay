@@ -58,7 +58,7 @@ TMH_TRACKING_handler_track_transfer (struct TMH_RequestHandler *rh,
   if (GNUNET_NO == res)
     return MHD_YES; /* parse error */
   return TMH_DB_execute_track_transfer (connection,
-                                       &wtid);
+                                        &wtid);
 }
 
 
