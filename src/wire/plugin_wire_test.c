@@ -382,6 +382,24 @@ GNUNET_NETWORK_STRUCT_END
 
 
 /**
+ * Abort preparation of a wire transfer. For example,
+ * because we are shutting down.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param pth preparation to cancel
+ */
+static void
+test_prepare_wire_transfer_cancel (void *cls,
+                                   struct TALER_WIRE_PrepareHandle *pth)
+{
+  if (NULL != pth->task)
+    GNUNET_SCHEDULER_cancel (pth->task);
+  json_decref (pth->wire);
+  GNUNET_free (pth);
+}
+
+
+/**
  * Prepare for exeuction of a wire transfer.  Calls the
  * callback with the serialized state.
  *
@@ -405,7 +423,8 @@ do_prepare (void *cls)
     pth->ptc (pth->ptc_cls,
               NULL,
               0);
-    GNUNET_free (pth);
+    test_prepare_wire_transfer_cancel (NULL,
+                                       pth);
     return;
   }
   len = strlen (wire_enc) + 1;
@@ -429,7 +448,8 @@ do_prepare (void *cls)
   }
   free (wire_enc); /* not using GNUNET_free(),
                       as this one is allocated by libjansson */
-  GNUNET_free (pth);
+  test_prepare_wire_transfer_cancel (NULL,
+                                     pth);
 }
 
 
@@ -469,8 +489,7 @@ test_prepare_wire_transfer (void *cls,
   }
   pth = GNUNET_new (struct TALER_WIRE_PrepareHandle);
   pth->tc = tc;
-  pth->wire = (json_t *) wire;
-  json_incref (pth->wire);
+  pth->wire = json_incref ((json_t *) wire);
   pth->wtid = *wtid;
   pth->ptc = ptc;
   pth->ptc_cls = ptc_cls;
@@ -478,23 +497,6 @@ test_prepare_wire_transfer (void *cls,
   pth->task = GNUNET_SCHEDULER_add_now (&do_prepare,
                                         pth);
   return pth;
-}
-
-
-/**
- * Abort preparation of a wire transfer. For example,
- * because we are shutting down.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param pth preparation to cancel
- */
-static void
-test_prepare_wire_transfer_cancel (void *cls,
-                                   struct TALER_WIRE_PrepareHandle *pth)
-{
-  GNUNET_SCHEDULER_cancel (pth->task);
-  json_decref (pth->wire);
-  GNUNET_free (pth);
 }
 
 

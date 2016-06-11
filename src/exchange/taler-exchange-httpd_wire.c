@@ -27,6 +27,12 @@
 #include <jansson.h>
 
 /**
+ * Cached JSON for /wire response.
+ */
+static json_t *wire_methods;
+
+
+/**
  * Handle a "/wire" request.
  *
  * @param rh context of the handler
@@ -43,8 +49,6 @@ TMH_WIRE_handler_wire (struct TMH_RequestHandler *rh,
                        const char *upload_data,
                        size_t *upload_data_size)
 {
-  static json_t *wire_methods;
-
   if (NULL == wire_methods)
     wire_methods = TMH_VALIDATION_get_wire_methods ("exchange-wire-incoming");
 
@@ -52,6 +56,21 @@ TMH_WIRE_handler_wire (struct TMH_RequestHandler *rh,
                                   wire_methods,
                                   MHD_HTTP_OK);
 }
+
+
+/**
+ * Initialize libgcrypt.
+ */
+void  __attribute__ ((destructor))
+TEH_wire_cleanup ()
+{
+  if (NULL != wire_methods)
+  {
+    json_decref (wire_methods);
+    wire_methods = NULL;
+  }
+}
+
 
 
 /* end of taler-exchange-httpd_wire.c */

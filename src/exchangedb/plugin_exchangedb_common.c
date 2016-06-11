@@ -75,6 +75,10 @@ common_free_link_data_list (void *cls,
   while (NULL != ldl)
   {
     next = ldl->next;
+    if (NULL != ldl->denom_pub.rsa_public_key)
+        GNUNET_CRYPTO_rsa_public_key_free (ldl->denom_pub.rsa_public_key);
+      if (NULL != ldl->ev_sig.rsa_signature)
+        GNUNET_CRYPTO_rsa_signature_free (ldl->ev_sig.rsa_signature);
     GNUNET_free (ldl);
     ldl = next;
   }
@@ -108,9 +112,17 @@ common_free_coin_transaction_list (void *cls,
       GNUNET_free (list->details.deposit);
       break;
     case TALER_EXCHANGEDB_TT_REFRESH_MELT:
+      if (NULL != list->details.melt->coin.denom_pub.rsa_public_key)
+        GNUNET_CRYPTO_rsa_public_key_free (list->details.melt->coin.denom_pub.rsa_public_key);
+      if (NULL != list->details.melt->coin.denom_sig.rsa_signature)
+        GNUNET_CRYPTO_rsa_signature_free (list->details.melt->coin.denom_sig.rsa_signature);
       GNUNET_free (list->details.melt);
       break;
     case TALER_EXCHANGEDB_TT_REFUND:
+      if (NULL != list->details.refund->coin.denom_pub.rsa_public_key)
+        GNUNET_CRYPTO_rsa_public_key_free (list->details.refund->coin.denom_pub.rsa_public_key);
+      if (NULL != list->details.refund->coin.denom_sig.rsa_signature)
+        GNUNET_CRYPTO_rsa_signature_free (list->details.refund->coin.denom_sig.rsa_signature);
       GNUNET_free (list->details.refund);
       break;
     }

@@ -101,7 +101,7 @@ run_queries (PGconn *conn)
                  TALER_string_to_amount ("EUR:4.4",
                                          &hamount));
   json = json_object ();
-  json_object_set (json, "foo", json_integer (42));
+  json_object_set_new (json, "foo", json_integer (42));
   GNUNET_assert (NULL != json);
   /* FIXME: test GNUNET_PQ_result_spec_variable_size */
   {
@@ -159,10 +159,10 @@ run_queries (PGconn *conn)
 		  TALER_amount_cmp (&hamount,
 				    &hamount2));
     GNUNET_break (42 == json_integer_value (json_object_get (json2, "foo")));
-    json_decref (json2);
     GNUNET_PQ_cleanup_result (results_select);
     PQclear (result);
   }
+  json_decref (json);
   if (GNUNET_OK != ret)
     return 1;
 

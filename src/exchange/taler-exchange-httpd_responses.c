@@ -66,7 +66,8 @@ TMH_RESPONSE_reply_json (struct MHD_Connection *connection,
 
   json_str = json_dumps (json, JSON_INDENT(2));
   GNUNET_assert (NULL != json_str);
-  resp = MHD_create_response_from_buffer (strlen (json_str), json_str,
+  resp = MHD_create_response_from_buffer (strlen (json_str),
+                                          json_str,
                                           MHD_RESPMEM_MUST_FREE);
   if (NULL == resp)
   {

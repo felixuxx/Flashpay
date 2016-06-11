@@ -434,7 +434,10 @@ test_refresh_commit_coins (struct TALER_EXCHANGEDB_Session *session,
       FAILIF (0 != memcmp (a_rlink.coin_priv_enc,
                            b_rlink.coin_priv_enc,
                            sizeof (a_rlink.coin_priv_enc)));
+      GNUNET_free (ret_commit_coins[cnt].coin_ev);
     }
+    GNUNET_free (ret_commit_coins);
+    ret_commit_coins = NULL;
   }
   ret = GNUNET_OK;
 
@@ -781,6 +784,8 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
 
   ret = GNUNET_OK;
  drop:
+  for (cnt=0; cnt < MELT_NEW_COINS; cnt++)
+    GNUNET_CRYPTO_rsa_signature_free (ev_sigs[cnt].rsa_signature);
   for (cnt=0;cnt<TALER_CNC_KAPPA;cnt++)
     if (NULL != commit_coins[cnt])
     {

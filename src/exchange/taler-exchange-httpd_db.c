@@ -1185,6 +1185,7 @@ check_commitment (struct MHD_Connection *connection,
   struct TALER_TransferPublicKeyP transfer_pub_check;
   struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins;
   unsigned int j;
+  int ret;
 
   if (GNUNET_OK !=
       TMH_plugin->get_refresh_commit_link (TMH_plugin->cls,
@@ -1271,10 +1272,10 @@ check_commitment (struct MHD_Connection *connection,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Blind failed (bad denomination key!?)\n");
-      GNUNET_free (commit_coins);
-      return (MHD_YES == TMH_RESPONSE_reply_internal_error (connection,
+      ret = (MHD_YES == TMH_RESPONSE_reply_internal_error (connection,
                                                             "Blinding error"))
           ? GNUNET_NO : GNUNET_SYSERR;
+      goto cleanup;
     }
 
     if ( (buf_len != commit_coins[j].coin_ev_size) ||
@@ -1286,20 +1287,25 @@ check_commitment (struct MHD_Connection *connection,
                   "blind envelope does not match for k=%u, old=%d\n",
                   off,
                   (int) j);
-      GNUNET_free (commit_coins);
-      return send_melt_commitment_error (connection,
-                                         session,
-                                         session_hash,
-                                         melt,
-                                         off,
-                                         j,
-                                         "envelope");
+      GNUNET_free (buf);
+      ret = send_melt_commitment_error (connection,
+                                        session,
+                                        session_hash,
+                                        melt,
+                                        off,
+                                        j,
+                                        "envelope");
+      goto cleanup;
     }
     GNUNET_free (buf);
   }
-  GNUNET_free (commit_coins);
+  ret = GNUNET_OK;
 
-  return GNUNET_OK;
+ cleanup:
+  for (j = 0; j < num_newcoins; j++)
+    GNUNET_free (commit_coins[j].coin_ev);
+  GNUNET_free (commit_coins);
+  return ret;
 }
 
 
@@ -1390,6 +1396,7 @@ execute_refresh_reveal_transaction (struct MHD_Connection *connection,
 {
   unsigned int j;
   struct TMH_KS_StateHandle *key_state;
+  int ret;
 
   START_TRANSACTION (session, connection);
   if (GNUNET_OK !=
@@ -1416,15 +1423,17 @@ execute_refresh_reveal_transaction (struct MHD_Connection *connection,
                                           j);
     if (NULL == ev_sigs[j].rsa_signature)
     {
-      TMH_KS_release (key_state);
-      return TMH_RESPONSE_reply_internal_db_error (connection);
+      ret = TMH_RESPONSE_reply_internal_db_error (connection);
+      goto cleanup;
     }
   }
-  TMH_KS_release (key_state);
   COMMIT_TRANSACTION (session, connection);
-  return TMH_RESPONSE_reply_refresh_reveal_success (connection,
-                                                    refresh_session->num_newcoins,
-                                                    ev_sigs);
+  ret = TMH_RESPONSE_reply_refresh_reveal_success (connection,
+                                                   refresh_session->num_newcoins,
+                                                   ev_sigs);
+ cleanup:
+  TMH_KS_release (key_state);
+  return ret;
 }
 
 
@@ -1526,8 +1535,11 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
                                             ev_sigs,
                                             commit_coins);
   for (i=0;i<refresh_session.num_newcoins;i++)
+  {
     if (NULL != ev_sigs[i].rsa_signature)
-    GNUNET_CRYPTO_rsa_signature_free (ev_sigs[i].rsa_signature);
+      GNUNET_CRYPTO_rsa_signature_free (ev_sigs[i].rsa_signature);
+    GNUNET_free (commit_coins[i].coin_ev);
+  }
   for (j=0;j<refresh_session.num_newcoins;j++)
     if (NULL != denom_pubs[j].rsa_public_key)
       GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);

@@ -2568,13 +2568,16 @@ get_known_coin (void *cls,
   }
   GNUNET_assert (1 == nrows);   /* due to primary key */
   if (NULL == coin_info)
+  {
+    PQclear (result);
     return GNUNET_YES;
+  }
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                           &coin_info->denom_pub.rsa_public_key),
+                                            &coin_info->denom_pub.rsa_public_key),
       GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                          &coin_info->denom_sig.rsa_signature),
+                                           &coin_info->denom_sig.rsa_signature),
       GNUNET_PQ_result_spec_end
     };
 
@@ -3339,6 +3342,9 @@ postgres_get_melt_commitment (void *cls,
                                     session_hash,
                                     &rs))
     return NULL;
+  /* we don't care about most of 'rs' */
+  GNUNET_CRYPTO_rsa_public_key_free (rs.melt.coin.denom_pub.rsa_public_key);
+  GNUNET_CRYPTO_rsa_signature_free (rs.melt.coin.denom_sig.rsa_signature);
   mc = GNUNET_new (struct TALER_EXCHANGEDB_MeltCommitment);
   mc->num_newcoins = rs.num_newcoins;
   mc->denom_pubs = GNUNET_new_array (mc->num_newcoins,
@@ -3505,6 +3511,7 @@ postgres_get_link_data_list (void *cls,
     pos->ev_sig.rsa_signature = sig;
     ldl = pos;
   }
+  PQclear (result);
   return ldl;
 }
 
@@ -3810,10 +3817,11 @@ postgres_get_coin_transactions (void *cls,
       tl->next = head;
       tl->type = TALER_EXCHANGEDB_TT_REFUND;
       tl->details.refund = refund;
-      if (GNUNET_SYSERR == get_known_coin (cls,
-                                           session,
-                                           coin_pub,
-                                           &refund->coin))
+      if (GNUNET_SYSERR ==
+          get_known_coin (cls,
+                          session,
+                          coin_pub,
+                          &refund->coin))
       {
         GNUNET_break (0);
         GNUNET_free (refund);
@@ -4310,27 +4318,33 @@ postgres_gc (void *cls)
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
+    PQclear (result);
     PQfinish (conn);
     return GNUNET_SYSERR;
   }
+  PQclear (result);
   result = GNUNET_PQ_exec_prepared (conn,
                                     "gc_denominations",
                                     params_time);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
+    PQclear (result);
     PQfinish (conn);
     return GNUNET_SYSERR;
   }
+  PQclear (result);
   result = GNUNET_PQ_exec_prepared (conn,
                                     "gc_reserves",
                                     params_time);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
+    PQclear (result);
     PQfinish (conn);
     return GNUNET_SYSERR;
   }
+  PQclear (result);
   PQfinish (conn);
   return GNUNET_OK;
 }

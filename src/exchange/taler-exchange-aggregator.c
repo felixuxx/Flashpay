@@ -432,12 +432,11 @@ deposit_cb (void *cls,
     return GNUNET_SYSERR;
   }
   au->row_id = row_id;
-  au->wire = (json_t *) wire;
+  au->wire = json_incref ((json_t *) wire);
   au->execution_time = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&au->execution_time);
   TALER_JSON_hash (au->wire,
                    &au->h_wire);
-  json_incref (au->wire);
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &au->wtid,
                               sizeof (au->wtid));
@@ -774,8 +773,8 @@ run_aggregation (void *cls)
     GNUNET_free_non_null (au->additional_rows);
     if (NULL != au->wire)
       json_decref (au->wire);
-    au = NULL;
     GNUNET_free (au);
+    au = NULL;
     /* start again */
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                      NULL);
@@ -810,7 +809,10 @@ prepare_cb (void *cls,
   struct TALER_EXCHANGEDB_Session *session = au->session;
 
   if (NULL != au->wire)
+  {
     json_decref (au->wire);
+    au->wire = NULL;
+  }
   GNUNET_free_non_null (au->additional_rows);
   if (NULL == buf)
   {
