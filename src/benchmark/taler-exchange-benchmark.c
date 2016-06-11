@@ -468,7 +468,7 @@ deposit_cb (void *cls,
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "prepared blob %d\n",
-                blob_size);
+                (unsigned int) blob_size);
     refreshed_once = GNUNET_YES;
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -852,7 +852,9 @@ do_shutdown (void *cls)
   {
     if (NULL != reserves[i].aih)
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Cancelling %d-th reserve\n", i);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Cancelling %d-th reserve\n",
+                  i);
       TALER_EXCHANGE_admin_add_incoming_cancel(reserves[i].aih);
       reserves[i].aih = NULL;
     }
@@ -862,21 +864,33 @@ do_shutdown (void *cls)
   {
     if (NULL != coins[i].wsh)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Cancelling %d-th coin withdraw handle\n",
+                  i);
       TALER_EXCHANGE_reserve_withdraw_cancel(coins[i].wsh);
       coins[i].wsh = NULL;
     }
     if (NULL != coins[i].dh)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Cancelling %d-th coin deposit handle\n",
+                  i);
       TALER_EXCHANGE_deposit_cancel(coins[i].dh);
       coins[i].dh = NULL;
     }
     if (NULL != coins[i].rmh)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Cancelling %d-th coin melt handle\n",
+                  i);
       TALER_EXCHANGE_refresh_melt_cancel(coins[i].rmh);
       coins[i].rmh = NULL;
     }
     if (NULL != coins[i].rrh)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Cancelling %d-th coin reveal handle\n",
+                  i);
       TALER_EXCHANGE_refresh_reveal_cancel(coins[i].rrh);
       coins[i].rmh = NULL;
     }
@@ -894,19 +908,28 @@ do_shutdown (void *cls)
 
   if (NULL != exchange)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Disconnecting from exchange\n");
     TALER_EXCHANGE_disconnect (exchange);
     exchange = NULL;
   }
   if (NULL != ctx)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Invoking GNUNET_CURL_fini()\n");
     GNUNET_CURL_fini (ctx);
     ctx = NULL;
   }
   if (NULL != rc)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Invoking GNUNET_CURL_gnunet_rc_destroy()\n");
+    GNUNET_CURL_fini (ctx); // FIXME this guy segfaults at curl.c:556
     GNUNET_CURL_gnunet_rc_destroy (rc);
     rc = NULL;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "All (?) tasks shut down\n");
 }
 
 
