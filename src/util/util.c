@@ -84,7 +84,11 @@ TALER_config_get_denom (const struct GNUNET_CONFIGURATION_Handle *cfg,
     return GNUNET_NO;
   if (GNUNET_OK != TALER_string_to_amount (str,
                                            denom))
+  {
+    GNUNET_free (str);
     return GNUNET_SYSERR;
+  }
+  GNUNET_free (str);
   return GNUNET_OK;
 }
 
