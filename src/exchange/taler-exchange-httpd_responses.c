@@ -1278,13 +1278,13 @@ TMH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
                                      &dd,
                                      sizeof (struct TALER_WireDepositDetailP));
     GNUNET_assert (0 ==
-                   json_array_append (deposits,
-                                      json_pack ("{s:o, s:I, s:o, s:o, s:o}",
-                                                 "H_contract", GNUNET_JSON_from_data_auto (&wdd_pos->h_contract),
-                                                 "transaction_id", (json_int_t) wdd_pos->transaction_id,
-                                                 "coin_pub", GNUNET_JSON_from_data_auto (&wdd_pos->coin_pub),
-                                                 "deposit_value", TALER_JSON_from_amount (&wdd_pos->deposit_value),
-                                                 "deposit_fee", TALER_JSON_from_amount (&wdd_pos->deposit_fee))));
+                   json_array_append_new (deposits,
+                                          json_pack ("{s:o, s:I, s:o, s:o, s:o}",
+                                                     "H_contract", GNUNET_JSON_from_data_auto (&wdd_pos->h_contract),
+                                                     "transaction_id", (json_int_t) wdd_pos->transaction_id,
+                                                     "coin_pub", GNUNET_JSON_from_data_auto (&wdd_pos->coin_pub),
+                                                     "deposit_value", TALER_JSON_from_amount (&wdd_pos->deposit_value),
+                                                     "deposit_fee", TALER_JSON_from_amount (&wdd_pos->deposit_fee))));
   }
   wdp.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT);
   wdp.purpose.size = htonl (sizeof (struct TALER_WireDepositDataPS));

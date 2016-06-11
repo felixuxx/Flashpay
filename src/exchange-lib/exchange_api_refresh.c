@@ -1318,8 +1318,8 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_CRYPTO_ecdhe_key_get_public (&mc->transfer_priv[j].ecdhe_priv,
                                         &transfer_pub.ecdhe_pub);
     GNUNET_assert (0 ==
-                   json_array_append (transfer_pubs,
-                                      GNUNET_JSON_from_data_auto (&transfer_pub)));
+                   json_array_append_new (transfer_pubs,
+                                          GNUNET_JSON_from_data_auto (&transfer_pub)));
   }
 
   /* now secret_encs */
@@ -1337,17 +1337,17 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
                                            &trans_sec,
                                            &els));
     GNUNET_assert (0 ==
-                   json_array_append (secret_encs,
-                                      GNUNET_JSON_from_data_auto (&els)));
+                   json_array_append_new (secret_encs,
+                                          GNUNET_JSON_from_data_auto (&els)));
   }
 
   /* now new_denoms */
   for (i=0;i<md->num_fresh_coins;i++)
   {
     GNUNET_assert (0 ==
-                   json_array_append (new_denoms,
-                                      GNUNET_JSON_from_rsa_public_key
-                                      (md->fresh_pks[i].rsa_public_key)));
+                   json_array_append_new (new_denoms,
+                                          GNUNET_JSON_from_rsa_public_key
+                                          (md->fresh_pks[i].rsa_public_key)));
   }
 
   /* now link_encs */
@@ -1366,12 +1366,12 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
 			     &md->link_secrets[j],
 			     &rle);
       GNUNET_assert (0 ==
-                     json_array_append (tmp,
-                                        GNUNET_JSON_from_data_auto (&rle)));
+                     json_array_append_new (tmp,
+                                            GNUNET_JSON_from_data_auto (&rle)));
     }
     GNUNET_assert (0 ==
-                   json_array_append (link_encs,
-                                      tmp));
+                   json_array_append_new (link_encs,
+                                          tmp));
   }
 
   /* now coin_evs */
@@ -1410,14 +1410,14 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
         return NULL;
       }
       GNUNET_assert (0 ==
-                     json_array_append (tmp,
-                                        GNUNET_JSON_from_data (coin_ev,
-                                                               coin_ev_size)));
+                     json_array_append_new (tmp,
+                                            GNUNET_JSON_from_data (coin_ev,
+                                                                   coin_ev_size)));
       GNUNET_free (coin_ev);
     }
     GNUNET_assert (0 ==
-                   json_array_append (coin_evs,
-                                      tmp));
+                   json_array_append_new (coin_evs,
+                                          tmp));
   }
 
   /* finally, assemble main JSON request from constitutent arrays */
@@ -1796,8 +1796,8 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
       continue;
     }
     GNUNET_assert (0 ==
-                   json_array_append (transfer_privs,
-                                      GNUNET_JSON_from_data_auto (&md->melted_coin.transfer_priv[j])));
+                   json_array_append_new (transfer_privs,
+                                          GNUNET_JSON_from_data_auto (&md->melted_coin.transfer_priv[j])));
   }
 
   /* build main JSON request */
