@@ -168,6 +168,12 @@ struct Coin {
   unsigned int refresh;
 
   /**
+   * If the coin has to be refreshed, this value indicates
+   * how much is left on this coin
+   */
+  struct TALER_Amount left;
+
+  /**
    * Refresh melt handle
    */
   struct TALER_EXCHANGE_RefreshMeltHandle *rmh;
@@ -838,6 +844,9 @@ benchmark_run (void *cls)
     json_decref (transfer_details);
   }
   json_decref (sender_details);
+  sender_details = NULL;
+  transfer_details = NULL;
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "benchmark_run() returns\n");
 }
