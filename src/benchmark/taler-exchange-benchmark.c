@@ -226,7 +226,7 @@ static unsigned int *spent_coins;
 static unsigned int spent_coins_size = 0;
 
 /**
- * Transaction id counter
+ * Transaction id counter, used in /deposit's
  */
 static unsigned int transaction_id = 0;
 
@@ -271,7 +271,7 @@ static char *currency;
 /**
  * Probability a coin can be refreshed
  */
-#define REFRESH_PROBABILITY 0.1
+#define REFRESH_PROBABILITY 0.4
 
 /**
  * Refreshed once. For each batch of deposits, only one
@@ -399,7 +399,6 @@ reveal_cb (void *cls,
            const struct TALER_DenominationSignature *sigs,
            const json_t *full_response)
 {
-  /* FIXME to be freed */
   struct RefreshRevealCls *rrcls = cls;
   unsigned int i;
   const struct TALER_EXCHANGE_Keys *keys;
@@ -407,16 +406,15 @@ reveal_cb (void *cls,
   coins[rrcls->coin_index].rrh = NULL;
   if (MHD_HTTP_OK != http_status)
   {
+    GNUNET_free (rrcls);
+    json_dumpf (full_response, stderr, 0);
     fail ("Not all coins correctly revealed\n");
     return;
   }
   else
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Coin revealed!\n");
-  /**
-   * 1 Stuff a Coin structure
-   * 2 Place it in global array
-   */
+                "Coin #%d revealed!\n",
+                rrcls->coin_index);
   keys = TALER_EXCHANGE_get_keys (exchange);
   for (i=0; i<num_coins; i++)
   {
@@ -434,7 +432,7 @@ reveal_cb (void *cls,
     fresh_coin.pk = find_pk (keys, &amount);
     fresh_coin.sig = sigs[i];
     GNUNET_array_append (coins, ncoins, fresh_coin);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "# of coins after refresh: %d\n",
                 ncoins);
   }
@@ -465,10 +463,8 @@ melt_cb (void *cls,
   coins[rrcls->coin_index].rmh = NULL;
   if (MHD_HTTP_OK != http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Coin not correctly melted!\n");
     json_dumpf (full_response, stderr, 0);
-    /* FIXME: properly shut down benchmark */
+    fail ("Coin not correctly melted!\n");
     return;
   }
   coins[rrcls->coin_index].rrh
@@ -479,6 +475,24 @@ melt_cb (void *cls,
                                      reveal_cb,
                                      rrcls);
 }
+
+
+/**
+ * Function called upon completion of our /reserve/withdraw request.
+ * This is merely the function which spends withdrawn coins
+ *
+ * @param cls closure with the interpreter state
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param sig signature over the coin, NULL on error
+ * @param full_response full response from the exchange (for logging, in case of errors)
+ */
+static void
+reserve_withdraw_cb (void *cls,
+                     unsigned int http_status,
+                     const struct TALER_DenominationSignature *sig,
+                     const json_t *full_response);
+
 
 /**
  * Function called with the result of a /deposit operation.
@@ -501,14 +515,14 @@ deposit_cb (void *cls,
   coins[coin_index].dh = NULL;
   if (MHD_HTTP_OK != http_status)
   {
+    json_dumpf (obj, stderr, 0);
     fail ("At least one coin has not been deposited, status: %d\n");
     return;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Coin #%d correctly spent!\n", coin_index);
   GNUNET_array_append (spent_coins, spent_coins_size, coin_index);
   spent_coins_size++;
-  #if 1
-  if (GNUNET_YES == coins[coin_index].refresh || 1) // FIXME remove '|| 1'
+  if (GNUNET_YES == coins[coin_index].refresh)
   {
     struct TALER_Amount melt_amount;
     struct RefreshRevealCls *rrcls;
@@ -531,12 +545,12 @@ deposit_cb (void *cls,
       fail ("Failed to prepare refresh");
       return;
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "prepared blob %d\n",
                 (unsigned int) blob_size);
     refreshed_once = GNUNET_YES;
 
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "# of coins to get in melt: %d\n",
                 refresh_pk_len);
     rrcls = GNUNET_new (struct RefreshRevealCls);
@@ -555,10 +569,23 @@ deposit_cb (void *cls,
       return;
     }
   }
-  #endif
-
-
+  else
+  { /* re-withdraw */
+    struct GNUNET_CRYPTO_EddsaPrivateKey *coin_priv;
+    coin_priv = GNUNET_CRYPTO_eddsa_key_create ();
+    coins[coin_index].coin_priv.eddsa_priv = *coin_priv;
+    GNUNET_free (coin_priv);
+    coins[coin_index].wsh =
+      TALER_EXCHANGE_reserve_withdraw (exchange,
+                                       coins[coin_index].pk,
+                                       &reserves[coins[coin_index].reserve_index].reserve_priv,
+                                       &coins[coin_index].coin_priv,
+                                       &blinding_key,
+                                       reserve_withdraw_cb,
+                                       (void *) (long) coin_index);
+  }
 }
+
 
 /**
  * Function called upon completion of our /reserve/withdraw request.
@@ -582,10 +609,11 @@ reserve_withdraw_cb (void *cls,
   coins[coin_index].wsh = NULL;
   if (MHD_HTTP_OK != http_status)
   {
+    json_dumpf (full_response, stderr, 0);
     fail ("At least one coin has not correctly been withdrawn\n");
     return;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "%d-th coin withdrawn\n",
               coin_index);
   coins[coin_index].sig.rsa_signature =
@@ -615,8 +643,8 @@ reserve_withdraw_cb (void *cls,
     GNUNET_TIME_round_abs (&refund_deadline);
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "Spending %d-th coin\n", coin_index);
 
-    if ((GNUNET_YES == eval_probability (REFRESH_PROBABILITY)
-        && GNUNET_NO == refreshed_once) || 1)
+    if (GNUNET_YES == eval_probability (REFRESH_PROBABILITY)
+        && GNUNET_NO == refreshed_once)
     {
       struct TALER_Amount one;
       TALER_amount_get_zero (currency, &one);
@@ -690,6 +718,7 @@ reserve_withdraw_cb (void *cls,
 }
 
 
+
 /**
  * Function called upon completion of our /admin/add/incoming request.
  * Its duty is withdrawing coins on the freshly created reserve.
@@ -717,7 +746,10 @@ add_incoming_cb (void *cls,
               reserve_index);
   reserves[reserve_index].aih = NULL;
   if (MHD_HTTP_OK != http_status)
+  {
+    json_dumpf (full_response, stderr, 0);
     fail ("At least one reserve failed in being created\n");
+  }
 
   for (i=0; i < COINS_PER_RESERVE; i++)
   {
