@@ -52,7 +52,7 @@ static unsigned int nreserves;
 
 /**
  * How many coins are in `coins` array. This is needed
- * as the number of coins is not always nreserves * COINS_PER_RESERVE 
+ * as the number of coins is not always nreserves * COINS_PER_RESERVE
  * due to refresh operations
  */
 unsigned int ncoins;
@@ -423,7 +423,7 @@ reveal_cb (void *cls,
     struct Coin fresh_coin;
     struct TALER_Amount amount;
     char *refresh_denom;
-    
+
     GNUNET_asprintf (&refresh_denom,
                      "%s:%s",
                      currency,
@@ -794,6 +794,7 @@ benchmark_run (void *cls)
                                         &reserve_pub.eddsa_pub);
 
     reserves[i].aih = TALER_EXCHANGE_admin_add_incoming (exchange,
+                                                         "http://localhost:18080/",
                                                          &reserve_pub,
                                                          &reserve_amount,
                                                          execution_date,
@@ -815,7 +816,7 @@ benchmark_run (void *cls)
  * since that is the only amount refreshed so far by the benchmark
  *
  * @param NULL-terminated array of value.fraction pairs
- * @return GNUNET_OK if the array is correctly built, GNUNET_SYSERR
+ * @return #GNUNET_OK if the array is correctly built, #GNUNET_SYSERR
  * otherwise
  */
 static unsigned int

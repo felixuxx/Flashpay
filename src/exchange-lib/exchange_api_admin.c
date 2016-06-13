@@ -141,6 +141,7 @@ handle_admin_add_incoming_finished (void *cls,
  * to the operators of the exchange.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param admin_url URL of the administrative interface of the exchange
  * @param reserve_pub public key of the reserve
  * @param amount amount that was deposited
  * @param execution_date when did we receive the amount
@@ -156,6 +157,7 @@ handle_admin_add_incoming_finished (void *cls,
  */
 struct TALER_EXCHANGE_AdminAddIncomingHandle *
 TALER_EXCHANGE_admin_add_incoming (struct TALER_EXCHANGE_Handle *exchange,
+                                   const char *admin_url,
                                    const struct TALER_ReservePublicKeyP *reserve_pub,
                                    const struct TALER_Amount *amount,
                                    struct GNUNET_TIME_Absolute execution_date,
@@ -188,7 +190,8 @@ TALER_EXCHANGE_admin_add_incoming (struct TALER_EXCHANGE_Handle *exchange,
   aai->exchange = exchange;
   aai->cb = res_cb;
   aai->cb_cls = res_cb_cls;
-  aai->url = MAH_path_to_url (exchange, "/admin/add/incoming");
+  aai->url = MAH_path_to_url2 (admin_url,
+                               "/admin/add/incoming");
 
   eh = curl_easy_init ();
   GNUNET_assert (NULL != (aai->json_enc =
