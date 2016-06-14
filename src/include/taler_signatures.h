@@ -24,7 +24,6 @@
  * to know to implement Taler clients (wallets or merchants or
  * auditor) that need to produce or verify Taler signatures.
  */
-
 #ifndef TALER_SIGNATURES_H
 #define TALER_SIGNATURES_H
 
