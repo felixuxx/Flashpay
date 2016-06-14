@@ -608,7 +608,8 @@ deposit_cb (void *cls,
 
 /**
  * Function called upon completion of our /reserve/withdraw request.
- * This is merely the function which spends withdrawn coins
+ * This is merely the function which spends withdrawn coins. For each
+ * spent coin, ti either refresh it or re-withdraw it.
  *
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
