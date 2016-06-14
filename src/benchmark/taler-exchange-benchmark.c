@@ -57,7 +57,6 @@ static unsigned int nreserves;
  */
 unsigned int ncoins;
 
-
 /**
  * Bank details of who creates reserves
  */
@@ -189,7 +188,6 @@ struct Coin {
   struct TALER_EXCHANGE_RefreshRevealHandle *rrh;
 
 };
-
 
 /**
  * Handle to the exchange's process
@@ -413,9 +411,13 @@ reveal_cb (void *cls,
     return;
   }
   else
+  {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Coin #%d revealed!\n",
                 rrcls->coin_index);
+    coins[rrcls->coin_index].left.value = 0;
+  }
+
   keys = TALER_EXCHANGE_get_keys (exchange);
   for (i=0; i<num_coins; i++)
   {
