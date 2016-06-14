@@ -87,6 +87,11 @@ struct RefreshRevealCls {
    * Which coin in the list are we melting
    */
   unsigned int coin_index;
+
+  /**
+   * Array of denominations expected to get from melt
+   */
+  struct TALER_Amount *denoms;
 };
 
 /**
@@ -220,16 +225,6 @@ static struct Reserve *reserves;
  * The array of all coins
  */
 static struct Coin *coins;
-
-/**
- * Indices of spent coins
- */
-static unsigned int *spent_coins;
-
-/**
- * Current number of spent coins
- */
-static unsigned int spent_coins_size = 0;
 
 /**
  * Transaction id counter, used in /deposit's
@@ -425,22 +420,20 @@ reveal_cb (void *cls,
   for (i=0; i<num_coins; i++)
   {
     struct Coin fresh_coin;
-    struct TALER_Amount amount;
-    char *refresh_denom;
+    char *revealed_str;
 
-    GNUNET_asprintf (&refresh_denom,
-                     "%s:%s",
-                     currency,
-                     refresh_denoms[i]);
+    revealed_str = TALER_amount_to_string (&rrcls->denoms[i]);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "revealing %s "
+                "# of coins after refresh: %d\n",
+                revealed_str,
+                ncoins);
+
+    GNUNET_free (revealed_str);
     fresh_coin.reserve_index = coins[rrcls->coin_index].reserve_index;
-    TALER_string_to_amount (refresh_denom, &amount);
-    GNUNET_free (refresh_denom);
-    fresh_coin.pk = find_pk (keys, &amount);
+    fresh_coin.pk = find_pk (keys, &rrcls->denoms[i]);
     fresh_coin.sig = sigs[i];
     GNUNET_array_append (coins, ncoins, fresh_coin);
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "# of coins after refresh: %d\n",
-                ncoins);
   }
   GNUNET_free (rrcls);
 }
@@ -463,8 +456,8 @@ melt_cb (void *cls,
          const struct TALER_ExchangePublicKeyP *exchange_pub,
          const json_t *full_response)
 {
+  /* free'd in `reveal_cb` */
   struct RefreshRevealCls *rrcls = cls;
-  /* FIXME to be freed */
 
   coins[rrcls->coin_index].rmh = NULL;
   if (MHD_HTTP_OK != http_status)
@@ -473,12 +466,13 @@ melt_cb (void *cls,
     fail ("Coin not correctly melted!\n");
     return;
   }
+
   coins[rrcls->coin_index].rrh
     = TALER_EXCHANGE_refresh_reveal (exchange,
                                      rrcls->blob_size,
                                      rrcls->blob,
                                      noreveal_index,
-                                     reveal_cb,
+                                     &reveal_cb,
                                      rrcls);
 }
 
@@ -525,30 +519,52 @@ deposit_cb (void *cls,
     fail ("At least one coin has not been deposited, status: %d\n");
     return;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "Coin #%d correctly spent!\n", coin_index);
-  GNUNET_array_append (spent_coins, spent_coins_size, coin_index);
-  spent_coins_size++;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Coin #%d correctly spent!\n",
+              coin_index);
   if (GNUNET_YES == coins[coin_index].refresh)
   {
-    struct TALER_Amount melt_amount;
     struct RefreshRevealCls *rrcls;
-
-    TALER_amount_get_zero (currency, &melt_amount);
-    melt_amount.value = 7;
     char *blob;
     size_t blob_size;
+    const struct TALER_EXCHANGE_Keys *keys;
+    struct TALER_Amount *denoms = NULL;
+    struct TALER_EXCHANGE_DenomPublicKey *dpks = NULL;
+    const struct TALER_EXCHANGE_DenomPublicKey *curr_dpk;
+    struct TALER_Amount curr;
+    unsigned int ndenoms = 0;
+    unsigned int ndenoms2 = 0;
+    unsigned long long acc_value;
 
+    TALER_amount_get_zero (currency, &curr);
+    curr.value = COIN_VALUE >> 1;
+    acc_value = 0;
+
+    keys = TALER_EXCHANGE_get_keys (exchange);
+    for (; curr.value > 0; curr.value = curr.value >> 1)
+    {
+      if (acc_value + curr.value <= coins[coin_index].left.value)
+      {
+        GNUNET_array_append (denoms, ndenoms, curr);
+        GNUNET_assert (NULL != (curr_dpk = find_pk (keys, &curr)));
+        GNUNET_array_append (dpks, ndenoms2, *curr_dpk);
+        acc_value += curr.value; 
+      }
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "# of coins to get in melt: %d\n",
+                ndenoms2);
     blob = TALER_EXCHANGE_refresh_prepare (&coins[coin_index].coin_priv,
-                                           &melt_amount,
+                                           &coins[coin_index].left,
                                            &coins[coin_index].sig,
                                            coins[coin_index].pk,
                                            GNUNET_YES,
-                                           refresh_pk_len,
-                                           refresh_pk,
+                                           ndenoms2,
+                                           dpks,
                                            &blob_size);
     if (NULL == blob)
     {
-      fail ("Failed to prepare refresh");
+      fail ("Failed to prepare refresh\n");
       return;
     }
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -556,14 +572,11 @@ deposit_cb (void *cls,
                 (unsigned int) blob_size);
     refreshed_once = GNUNET_YES;
 
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "# of coins to get in melt: %d\n",
-                refresh_pk_len);
     rrcls = GNUNET_new (struct RefreshRevealCls);
     rrcls->blob = blob;
     rrcls->blob_size = blob_size;
     rrcls->coin_index = coin_index;
-
+    rrcls->denoms = denoms;
     coins[coin_index].rmh = TALER_EXCHANGE_refresh_melt (exchange,
                                                          blob_size,
                                                          blob,
@@ -619,7 +632,7 @@ reserve_withdraw_cb (void *cls,
     fail ("At least one coin has not correctly been withdrawn\n");
     return;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "%d-th coin withdrawn\n",
               coin_index);
   coins[coin_index].sig.rsa_signature =
@@ -652,18 +665,20 @@ reserve_withdraw_cb (void *cls,
     if (GNUNET_YES == eval_probability (REFRESH_PROBABILITY)
         && GNUNET_NO == refreshed_once)
     {
+      /**
+       * Always spending 1 out of 8 KUDOS. To be improved by randomly
+       * picking the spent amount 
+       */
       struct TALER_Amount one;
       TALER_amount_get_zero (currency, &one);
       one.value = 1;
 
-      /**
-       * If the coin is going to be refreshed, only 1 unit
-       * of currency will be spent, since 4 units are going
-       * to be refreshed
-       */
       TALER_amount_subtract (&amount,
                              &one,
                              &coins[coin_index].pk->fee_deposit);
+      TALER_amount_subtract (&coins[coin_index].left,
+                             &coins[coin_index].pk->value,
+                             &one);
       coins[coin_index].refresh = GNUNET_YES;
       refreshed_once = GNUNET_YES;
     }
@@ -1004,7 +1019,6 @@ do_shutdown (void *cls)
 
   GNUNET_free_non_null (reserves);
   GNUNET_free_non_null (coins);
-  GNUNET_free_non_null (spent_coins);
   GNUNET_free_non_null (currency);
 
   if (NULL != exchange)
@@ -1095,10 +1109,6 @@ run (void *cls)
                                      NULL);
 
   GNUNET_CONFIGURATION_destroy (cfg);
-  GNUNET_array_append (spent_coins,
-                       spent_coins_size,
-                       1);
-  spent_coins_size++;
   reserves = NULL;
   coins = NULL;
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
