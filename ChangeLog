@@ -1,3 +1,8 @@
+Mon Jun 13 16:35:09 CEST 2016
+	Splitting HTTP service to run on different listen
+	sockets for /admin and /test-APIs and the normal public
+	APIs (#4569). -CG
+
 Thu Jun  9 19:17:02 CEST 2016
 	Rename /deposit/wtid to /track/transaction and
 	/wire/deposits to /track/transfer. -CG

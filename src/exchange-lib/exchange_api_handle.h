@@ -55,5 +55,16 @@ char *
 MAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
                  const char *path);
 
+/**
+ * Obtain the URL to use for an API request.
+ *
+ * @param base_url base URL of the exchange (i.e. "http://exchange/")
+ * @param path Taler API path (i.e. "/reserve/withdraw")
+ * @return the full URI to use with cURL
+ */
+char *
+MAH_path_to_url2 (const char *base_url,
+                  const char *path);
+
 
 /* end of exchange_api_handle.h */

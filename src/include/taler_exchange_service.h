@@ -1059,6 +1059,7 @@ typedef void
  * to the operators of the exchange.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param admin_url URL of the administrative interface of the exchange
  * @param reserve_pub public key of the reserve
  * @param amount amount that was deposited
  * @param execution_date when did we receive the amount
@@ -1074,6 +1075,7 @@ typedef void
  */
 struct TALER_EXCHANGE_AdminAddIncomingHandle *
 TALER_EXCHANGE_admin_add_incoming (struct TALER_EXCHANGE_Handle *exchange,
+                                   const char *admin_url,
                                    const struct TALER_ReservePublicKeyP *reserve_pub,
                                    const struct TALER_Amount *amount,
                                    struct GNUNET_TIME_Absolute execution_date,

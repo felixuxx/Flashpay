@@ -779,23 +779,39 @@ MAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h)
 /**
  * Obtain the URL to use for an API request.
  *
- * @param h the exchange handle to query
+ * @param base_url base URL of the exchange (i.e. "http://exchange/")
  * @param path Taler API path (i.e. "/reserve/withdraw")
  * @return the full URI to use with cURL
  */
 char *
-MAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
+MAH_path_to_url (struct TALER_EXCHANGE_Handle *exchange,
                  const char *path)
+{
+  return MAH_path_to_url2 (exchange->url,
+                           path);
+}
+
+
+/**
+ * Obtain the URL to use for an API request.
+ *
+ * @param base_url base URL of the exchange (i.e. "http://exchange/")
+ * @param path Taler API path (i.e. "/reserve/withdraw")
+ * @return the full URI to use with cURL
+ */
+char *
+MAH_path_to_url2 (const char *base_url,
+                  const char *path)
 {
   char *url;
 
   if ( ('/' == path[0]) &&
-       (0 < strlen (h->url)) &&
-       ('/' == h->url[strlen (h->url) - 1]) )
+       (0 < strlen (base_url)) &&
+       ('/' == base_url[strlen (base_url) - 1]) )
     path++; /* avoid generating URL with "//" from concat */
   GNUNET_asprintf (&url,
                    "%s%s",
-                   h->url,
+                   base_url,
                    path);
   return url;
 }

@@ -88,12 +88,27 @@ static unsigned int connection_timeout = 30;
 /**
  * The HTTP Daemon.
  */
-static struct MHD_Daemon *mydaemon;
+static struct MHD_Daemon *mhd;
+
+/**
+ * The HTTP Daemon for /admin-requests.
+ */
+static struct MHD_Daemon *mhd_admin;
+
+/**
+ * Do not offer /admin API.
+ */
+static int no_admin;
 
 /**
  * Port to run the daemon on.
  */
 static uint16_t serve_port;
+
+/**
+ * Port to run the admin daemon on.
+ */
+static uint16_t serve_admin_port;
 
 /**
  * Path for the unix domain-socket
@@ -102,9 +117,20 @@ static uint16_t serve_port;
 static char *serve_unixpath;
 
 /**
+ * Path for the unix domain-socket
+ * to run the admin daemon on.
+ */
+static char *serve_admin_unixpath;
+
+/**
  * File mode for unix-domain socket.
  */
 static mode_t unixpath_mode;
+
+/**
+ * File mode for unix-domain socket.
+ */
+static mode_t unixpath_admin_mode;
 
 
 /**
@@ -251,14 +277,6 @@ handle_mhd_request (void *cls,
         "Only GET is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
-      /* FIXME: maybe conditionally compile these? */
-      { "/admin/add/incoming", MHD_HTTP_METHOD_POST, "application/json",
-        NULL, 0,
-        &TMH_ADMIN_handler_admin_add_incoming, MHD_HTTP_OK },
-      { "/admin/add/incoming", NULL, "text/plain",
-        "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
-
       { "/track/transfer", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
         &TMH_TRACKING_handler_track_transfer, MHD_HTTP_OK },
@@ -269,6 +287,74 @@ handle_mhd_request (void *cls,
         NULL, 0,
         &TMH_TRACKING_handler_track_transaction, MHD_HTTP_OK },
       { "/track/transaction", NULL, "text/plain",
+        "Only POST is allowed", 0,
+        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+
+      { NULL, NULL, NULL, NULL, 0, 0 }
+    };
+  static struct TMH_RequestHandler h404 =
+    {
+      "", NULL, "text/html",
+      "<html><title>404: not found</title></html>", 0,
+      &TMH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
+    };
+  struct TMH_RequestHandler *rh;
+  unsigned int i;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Handling request for URL '%s'\n",
+              url);
+  for (i=0;NULL != handlers[i].url;i++)
+  {
+    rh = &handlers[i];
+    if ( (0 == strcasecmp (url,
+                           rh->url)) &&
+         ( (NULL == rh->method) ||
+           (0 == strcasecmp (method,
+                             rh->method)) ) )
+      return rh->handler (rh,
+                          connection,
+                          con_cls,
+                          upload_data,
+                          upload_data_size);
+  }
+  return TMH_MHD_handler_static_response (&h404,
+                                          connection,
+                                          con_cls,
+                                          upload_data,
+                                          upload_data_size);
+}
+
+
+/**
+ * Handle incoming administrative HTTP request.
+ *
+ * @param cls closure for MHD daemon (unused)
+ * @param connection the connection
+ * @param url the requested url
+ * @param method the method (POST, GET, ...)
+ * @param version HTTP version (ignored)
+ * @param upload_data request data
+ * @param upload_data_size size of @a upload_data in bytes
+ * @param con_cls closure for request (a `struct Buffer *`)
+ * @return MHD result code
+ */
+static int
+handle_mhd_admin_request (void *cls,
+                          struct MHD_Connection *connection,
+                          const char *url,
+                          const char *method,
+                          const char *version,
+                          const char *upload_data,
+                          size_t *upload_data_size,
+                          void **con_cls)
+{
+  static struct TMH_RequestHandler handlers[] =
+    {
+      { "/admin/add/incoming", MHD_HTTP_METHOD_POST, "application/json",
+        NULL, 0,
+        &TMH_ADMIN_handler_admin_add_incoming, MHD_HTTP_OK },
+      { "/admin/add/incoming", NULL, "text/plain",
         "Only POST is allowed", 0,
         &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
@@ -375,6 +461,123 @@ handle_mhd_request (void *cls,
 
 
 /**
+ * Parse the configuration to determine on which port
+ * or UNIX domain path we should run an HTTP service.
+ *
+ * @param type section of the configuration to parse ("exchange" or "exchange-admin")
+ * @param[out] port set to the port number, or 0 for none
+ * @param[out] unix_path set to the UNIX path, or NULL for none
+ * @param[out] unix_mode set to the mode to be used for @a unix_path
+ * @return #GNUNET_OK on success
+ */
+static int
+parse_port_config (const char *section,
+                   uint16_t *rport,
+                   char **unix_path,
+                   mode_t *unix_mode)
+{
+  const char *choices[] = {"tcp", "unix"};
+  const char *serve_type;
+  unsigned long long port;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_choice (cfg,
+                                             section,
+                                             "serve",
+                                             choices,
+                                             &serve_type))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "serve",
+                               "serve type required");
+    return GNUNET_SYSERR;
+  }
+
+  if (0 == strcmp (serve_type, "tcp"))
+  {
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_number (cfg,
+                                               section,
+                                               "port",
+                                               &port))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 section,
+                                 "port",
+                                 "port number required");
+      return GNUNET_SYSERR;
+    }
+
+    if ( (0 == port) ||
+         (port > UINT16_MAX) )
+    {
+      fprintf (stderr,
+               "Invalid configuration (value out of range): %llu is not a valid port\n",
+               port);
+      return GNUNET_SYSERR;
+    }
+    *rport = (uint16_t) port;
+    *unix_path = NULL;
+    return GNUNET_OK;
+  }
+  if (0 == strcmp (serve_type, "unix"))
+  {
+    struct sockaddr_un s_un;
+    char *modestring;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                                 section,
+                                                 "unixpath",
+                                                 unix_path))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 section,
+                                 "unixpath",
+                                 "unixpath required");
+      return GNUNET_SYSERR;
+    }
+    if (strlen (*unix_path) >= sizeof (s_un.sun_path))
+    {
+      fprintf (stderr,
+               "Invalid configuration: unix path too long\n");
+      return GNUNET_SYSERR;
+    }
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               section,
+                                               "unixpath_mode",
+                                               &modestring))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 section,
+                                 "unixpath_mode",
+                                 "unixpath_mode required");
+      return GNUNET_SYSERR;
+    }
+    errno = 0;
+    *unix_mode = (mode_t) strtoul (modestring, NULL, 8);
+    if (0 != errno)
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 section,
+                                 "unixpath_mode",
+                                 "unixpath_mode required");
+      GNUNET_free (modestring);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_free (modestring);
+    return GNUNET_OK;
+  }
+  /* not reached */
+  GNUNET_assert (0);
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Load configuration parameters for the exchange
  * server into the corresponding global variables.
  *
@@ -384,7 +587,6 @@ handle_mhd_request (void *cls,
 static int
 exchange_serve_process_config ()
 {
-  unsigned long long port;
   char *TMH_master_public_key_str;
 
   if (GNUNET_OK !=
@@ -464,115 +666,24 @@ exchange_serve_process_config ()
     TMH_plugin->create_tables (TMH_plugin->cls);
   }
 
+  if (GNUNET_OK !=
+      parse_port_config ("exchange",
+                         &serve_port,
+                         &serve_unixpath,
+                         &unixpath_mode))
   {
-    const char *choices[] = {"tcp", "unix"};
-    const char *serve_type;
-
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_choice (cfg,
-                                               "exchange",
-                                               "serve",
-                                               choices,
-                                               &serve_type))
-    {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchange",
-                                 "serve",
-                                 "serve type required");
-      TMH_VALIDATION_done ();
-      return GNUNET_SYSERR;
-    }
-
-    if (0 == strcmp (serve_type, "tcp"))
-    {
-      if (GNUNET_OK !=
-          GNUNET_CONFIGURATION_get_value_number (cfg,
-                                                 "exchange",
-                                                 "port",
-                                                 &port))
-      {
-        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                   "exchange",
-                                   "port",
-                                   "port number required");
-        TMH_VALIDATION_done ();
-        return GNUNET_SYSERR;
-      }
-
-      if ( (0 == port) ||
-           (port > UINT16_MAX) )
-      {
-        fprintf (stderr,
-                 "Invalid configuration (value out of range): %llu is not a valid port\n",
-                 port);
-        TMH_VALIDATION_done ();
-        return GNUNET_SYSERR;
-      }
-      serve_port = (uint16_t) port;
-    }
-    else if (0 == strcmp (serve_type, "unix"))
-    {
-      struct sockaddr_un s_un;
-      char *modestring;
-
-      if (GNUNET_OK !=
-          GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                                   "exchange",
-                                                   "unixpath",
-                                                   &serve_unixpath))
-      {
-        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                   "exchange",
-                                   "unixpath",
-                                   "unixpath required");
-        TMH_VALIDATION_done ();
-        return GNUNET_SYSERR;
-      }
-
-      if (strlen (serve_unixpath) >= sizeof (s_un.sun_path))
-      {
-        fprintf (stderr,
-                 "Invalid configuration: unix path too long\n");
-        TMH_VALIDATION_done ();
-        return GNUNET_SYSERR;
-      }
-
-      if (GNUNET_OK !=
-          GNUNET_CONFIGURATION_get_value_string (cfg,
-                                                 "exchange",
-                                                 "unixpath_mode",
-                                                 &modestring))
-      {
-        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                   "exchange",
-                                   "unixpath_mode",
-                                   "unixpath_mode required");
-        TMH_VALIDATION_done ();
-        return GNUNET_SYSERR;
-      }
-      errno = 0;
-      unixpath_mode = (mode_t) strtoul (modestring, NULL, 8);
-      if (0 != errno)
-      {
-        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                   "exchange",
-                                   "unixpath_mode",
-                                   "unixpath_mode required");
-        TMH_VALIDATION_done ();
-        GNUNET_free (modestring);
-        return GNUNET_SYSERR;
-      }
-      GNUNET_free (modestring);
-
-    }
-    else
-    {
-      // not reached
-      GNUNET_assert (0);
-    }
+    TMH_VALIDATION_done ();
+    return GNUNET_SYSERR;
   }
-
-
+  if (GNUNET_OK !=
+      parse_port_config ("exchange-admin",
+                         &serve_admin_port,
+                         &serve_admin_unixpath,
+                         &unixpath_admin_mode))
+  {
+    TMH_VALIDATION_done ();
+    return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 
@@ -713,6 +824,99 @@ handle_mhd_logs (void *cls,
 
 
 /**
+ * Open UNIX domain socket for listining at @a unix_path with
+ * permissions @a unix_mode.
+ *
+ * @param unix_path where to listen
+ * @param unix_mode access permissions to set
+ * @return -1 on error, otherwise the listen socket
+ */
+static int
+open_unix_path (const char *unix_path,
+                mode_t unix_mode)
+{
+  struct GNUNET_NETWORK_Handle *nh;
+  struct sockaddr_un *un;
+  int fd;
+
+  if (sizeof (un->sun_path) <= strlen (unix_path))
+  {
+    fprintf (stderr,
+             "unixpath `%s' too long\n",
+             unix_path);
+    return -1;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Creating listen socket '%s' with mode %o\n",
+              unix_path,
+              unix_mode);
+
+  if (GNUNET_OK !=
+      GNUNET_DISK_directory_create_for_file (unix_path))
+  {
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                              "mkdir",
+                              unix_path);
+  }
+
+  un = GNUNET_new (struct sockaddr_un);
+  un->sun_family = AF_UNIX;
+  strncpy (un->sun_path,
+           unix_path,
+           sizeof (un->sun_path) - 1);
+  GNUNET_NETWORK_unix_precheck (un);
+
+  if (NULL == (nh = GNUNET_NETWORK_socket_create (AF_UNIX,
+                                                  SOCK_STREAM,
+                                                  0)))
+  {
+    fprintf (stderr,
+             "create failed for AF_UNIX\n");
+    GNUNET_free (un);
+    return -1;
+  }
+  if (GNUNET_OK !=
+      GNUNET_NETWORK_socket_bind (nh,
+                                  (void *) un,
+                                  sizeof (struct sockaddr_un)))
+  {
+    fprintf (stderr,
+             "bind failed for AF_UNIX\n");
+    GNUNET_free (un);
+    GNUNET_NETWORK_socket_close (nh);
+    return -1;
+  }
+  GNUNET_free (un);
+  if (GNUNET_OK !=
+      GNUNET_NETWORK_socket_listen (nh,
+                                    UNIX_BACKLOG))
+  {
+    fprintf (stderr,
+             "listen failed for AF_UNIX\n");
+    GNUNET_NETWORK_socket_close (nh);
+    return -1;
+  }
+
+  if (0 != chmod (serve_unixpath,
+                  unix_mode))
+  {
+    fprintf (stderr,
+             "chmod failed: %s\n",
+             strerror (errno));
+    GNUNET_NETWORK_socket_close (nh);
+    return -1;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "set socket '%s' to mode %o\n",
+              unix_path,
+              unix_mode);
+  fd = GNUNET_NETWORK_get_fd (nh);
+  GNUNET_NETWORK_socket_free_memory_only_ (nh);
+  return fd;
+}
+
+
+/**
  * The main function of the taler-exchange-httpd server ("the exchange").
  *
  * @param argc number of arguments from the command line
@@ -729,6 +933,9 @@ main (int argc,
      "force HTTP connections to be closed after each request", 0,
      &GNUNET_GETOPT_set_one, &TMH_exchange_connection_close},
     GNUNET_GETOPT_OPTION_CFG_FILE (&cfgfile),
+    {'D', "disable-admin", NULL,
+     "do not run the /admin-HTTP server", 0,
+     &GNUNET_GETOPT_set_one, &no_admin},
     {'t', "timeout", "SECONDS",
      "after how long do connections timeout by default (in seconds)", 1,
      &GNUNET_GETOPT_set_uint, &connection_timeout},
@@ -745,6 +952,7 @@ main (int argc,
   const char *listen_pid;
   const char *listen_fds;
   int fh = -1;
+  int fh_admin = -1;
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-exchange-httpd",
@@ -778,7 +986,8 @@ main (int argc,
   if ( (NULL != listen_pid) &&
        (NULL != listen_fds) &&
        (getpid() == strtol (listen_pid, NULL, 10)) &&
-       (1 == strtoul (listen_fds, NULL, 10)) /* we support only 1 socket */)
+       ( (1 == strtoul (listen_fds, NULL, 10)) ||
+         (2 == strtoul (listen_fds, NULL, 10)) ) )
   {
     int flags;
 
@@ -794,97 +1003,90 @@ main (int argc,
     if (0 != fcntl (fh, F_SETFD, flags))
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
                            "fcntl");
+
+    if (2 == strtoul (listen_fds, NULL, 10))
+    {
+      fh_admin = 4;
+      flags = fcntl (fh_admin, F_GETFD);
+      if ( (-1 == flags) && (EBADF == errno) )
+      {
+        fprintf (stderr,
+                 "Bad listen socket passed, ignored\n");
+        fh_admin = -1;
+      }
+      flags |= FD_CLOEXEC;
+      if (0 != fcntl (fh_admin, F_SETFD, flags))
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                             "fcntl");
+    }
   }
 
   /* consider unix path */
   if ( (-1 == fh) &&
        (NULL != serve_unixpath) )
   {
-    struct GNUNET_NETWORK_Handle *nh;
-    struct sockaddr_un *un;
-
-    if (sizeof (un->sun_path) <= strlen (serve_unixpath))
+    fh = open_unix_path (serve_unixpath,
+                         unixpath_mode);
+    if (-1 == fh)
+      return 1;
+  }
+  if ( (-1 == fh_admin) &&
+       (0 == no_admin) &&
+       (NULL != serve_admin_unixpath) )
+  {
+    fh_admin = open_unix_path (serve_admin_unixpath,
+                               unixpath_admin_mode);
+    if (-1 == fh_admin)
     {
-      fprintf (stderr, "unixpath too long\n");
+      GNUNET_break (0 == close (fh));
       return 1;
     }
-
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Creating listen socket '%s' with mode %o\n",
-                serve_unixpath,
-                unixpath_mode);
-
-    if (GNUNET_OK !=
-        GNUNET_DISK_directory_create_for_file (serve_unixpath))
-    {
-      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
-                                "mkdir",
-                                serve_unixpath);
-    }
-
-    un = GNUNET_new (struct sockaddr_un);
-    un->sun_family = AF_UNIX;
-    strncpy (un->sun_path,
-             serve_unixpath,
-             sizeof (un->sun_path) - 1);
-
-    GNUNET_NETWORK_unix_precheck (un);
-
-    if (NULL == (nh = GNUNET_NETWORK_socket_create (AF_UNIX, SOCK_STREAM, 0)))
-    {
-      fprintf (stderr,
-               "create failed for AF_UNIX\n");
-      return 1;
-    }
-    if (GNUNET_OK != GNUNET_NETWORK_socket_bind (nh, (void *) un, sizeof (struct sockaddr_un)))
-    {
-      fprintf (stderr,
-               "bind failed for AF_UNIX\n");
-      return 1;
-    }
-    if (GNUNET_OK != GNUNET_NETWORK_socket_listen (nh, UNIX_BACKLOG))
-    {
-      fprintf (stderr,
-               "listen failed for AF_UNIX\n");
-      return 1;
-    }
-
-    fh = GNUNET_NETWORK_get_fd (nh);
-
-    if (0 != chmod (serve_unixpath, unixpath_mode))
-    {
-      fprintf (stderr,
-               "chmod failed: %s\n",
-               strerror (errno));
-      return 1;
-    }
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "set socket '%s' to mode %o\n",
-                serve_unixpath,
-                unixpath_mode);
-    GNUNET_NETWORK_socket_free_memory_only_ (nh);
   }
 
-
-  mydaemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN | MHD_USE_DEBUG,
-                               (-1 == fh) ? serve_port : 0,
-                               NULL, NULL,
-                               &handle_mhd_request, NULL,
-                               MHD_OPTION_LISTEN_SOCKET, fh,
-                               MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
-                               MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
-                               MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
+  mhd
+    = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN | MHD_USE_DEBUG,
+                        (-1 == fh) ? serve_port : 0,
+                        NULL, NULL,
+                        &handle_mhd_request, NULL,
+                        MHD_OPTION_LISTEN_SOCKET, fh,
+                        MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
+                        MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
+                        MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
 #if HAVE_DEVELOPER
-                               MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
+                        MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
 #endif
-                               MHD_OPTION_END);
-
-  if (NULL == mydaemon)
+                        MHD_OPTION_END);
+  if (NULL == mhd)
   {
     fprintf (stderr,
              "Failed to start HTTP server.\n");
     return 1;
   }
+
+  if (0 == no_admin)
+  {
+    mhd_admin
+      = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN | MHD_USE_DEBUG,
+                          (-1 == fh) ? serve_admin_port : 0,
+                          NULL, NULL,
+                          &handle_mhd_admin_request, NULL,
+                          MHD_OPTION_LISTEN_SOCKET, fh_admin,
+                          MHD_OPTION_EXTERNAL_LOGGER, &handle_mhd_logs, NULL,
+                          MHD_OPTION_NOTIFY_COMPLETED, &handle_mhd_completion_callback, NULL,
+                          MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
+#if HAVE_DEVELOPER
+                          MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
+#endif
+                          MHD_OPTION_END);
+    if (NULL == mhd_admin)
+    {
+      fprintf (stderr,
+               "Failed to start administrative HTTP server.\n");
+      MHD_stop_daemon (mhd);
+      return 1;
+    }
+  }
+
 #if HAVE_DEVELOPER
   if (NULL != input_filename)
   {
@@ -905,15 +1107,20 @@ main (int argc,
   {
   case GNUNET_OK:
   case GNUNET_SYSERR:
-    MHD_stop_daemon (mydaemon);
+    MHD_stop_daemon (mhd);
+    if (NULL != mhd_admin)
+      MHD_stop_daemon (mhd_admin);
     break;
   case GNUNET_NO:
     {
-      MHD_socket sock = MHD_quiesce_daemon (mydaemon);
+      MHD_socket sock = MHD_quiesce_daemon (mhd);
+      MHD_socket admin_sock;
       pid_t chld;
       int flags;
 
       /* Set flags to make 'sock' inherited by child */
+      if (NULL != mhd_admin)
+        admin_sock = MHD_quiesce_daemon (mhd_admin);
       flags = fcntl (sock, F_GETFD);
       GNUNET_assert (-1 != flags);
       flags &= ~FD_CLOEXEC;
@@ -937,13 +1144,20 @@ main (int argc,
                                "dup2");
           _exit (1);
         }
+        if ( (NULL != mhd_admin) &&
+             (4 != dup2 (admin_sock, 4)) )
+        {
+          GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                               "dup2");
+          _exit (1);
+        }
         /* Tell the child that it is the desired recipient for FD #3 */
         GNUNET_snprintf (pids,
                          sizeof (pids),
                          "%u",
                          getpid ());
         setenv ("LISTEN_PID", pids, 1);
-        setenv ("LISTEN_FDS", "1", 1);
+        setenv ("LISTEN_FDS", (NULL != mhd_admin) ? "2" : "1", 1);
         /* Finally, exec the (presumably) more recent exchange binary */
         execvp ("taler-exchange-httpd",
                 argv);
@@ -955,16 +1169,25 @@ main (int argc,
          before exiting; as the listen socket is no longer used,
          close it here */
       GNUNET_break (0 == close (sock));
-      while (0 != MHD_get_daemon_info (mydaemon,
-                                       MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->num_connections)
+      if (NULL != mhd_admin)
+        GNUNET_break (0 == close (admin_sock));
+      while ( (0 != MHD_get_daemon_info (mhd,
+                                         MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->num_connections) ||
+              ( (NULL != mhd_admin) &&
+                (0 != MHD_get_daemon_info (mhd_admin,
+                                           MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->num_connections) ) )
         sleep (1);
       /* Now we're really done, practice clean shutdown */
-      MHD_stop_daemon (mydaemon);
+      MHD_stop_daemon (mhd);
+      if (NULL != mhd_admin)
+        MHD_stop_daemon (mhd_admin);
     }
     break;
   default:
     GNUNET_break (0);
-    MHD_stop_daemon (mydaemon);
+    MHD_stop_daemon (mhd);
+    if (NULL != mhd_admin)
+      MHD_stop_daemon (mhd_admin);
     break;
   }
   TALER_EXCHANGEDB_plugin_unload (TMH_plugin);

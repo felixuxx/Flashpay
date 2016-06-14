@@ -1753,6 +1753,7 @@ interpreter_run (void *cls)
     GNUNET_TIME_round_abs (&execution_date);
     cmd->details.admin_add_incoming.aih
       = TALER_EXCHANGE_admin_add_incoming (exchange,
+                                           "http://localhost:18080/",
                                            &reserve_pub,
                                            &amount,
                                            execution_date,
