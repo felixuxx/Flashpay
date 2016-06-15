@@ -18,11 +18,6 @@
  * @brief exchange's benchmark
  * @author Marcello Stanisci
  * @author Christian Grothoff
- *
- * TODO:
- * - test
- * - add instrumentation
- * - add support for automatic termination
  */
 #include "platform.h"
 #include "taler_util.h"
@@ -66,6 +61,26 @@
  */
 #define COINS_PER_RESERVE 12
 
+/**
+ * How many times must #benchmark_run() execute before we
+ * consider ourselves warm?
+ */
+#define WARM_THRESHOLD 1000LL
+
+/**
+ * List of coins to get in return to a melt operation. Just a
+ * static list for now as every melt operation is carried out
+ * on a 8 KUDOS coin whose only 1 KUDOS has been spent, thus
+ * 7 KUDOS melted. This structure must be changed with one holding
+ * TALER_Amount structs, as every time it's needed it requires
+ * too many operations before getting the desired TALER_Amount.
+ */
+static const char *refresh_denoms[] = {
+  "4",
+  "2",
+  "1",
+  NULL
+};
 
 
 /**
@@ -238,6 +253,11 @@ static unsigned int num_invalid_coins;
 static int run_exchange;
 
 /**
+ * Enables printing of "-" and "." to indicate progress.
+ */
+static int be_verbose;
+
+/**
  * How many coins the benchmark should operate on
  */
 static unsigned int pool_size = 100;
@@ -357,19 +377,41 @@ static char *exchange_admin_uri;
 static char *currency;
 
 /**
- * List of coins to get in return to a melt operation. Just a
- * static list for now as every melt operation is carried out
- * on a 8 KUDOS coin whose only 1 KUDOS has been spent, thus
- * 7 KUDOS melted. This structure must be changed with one holding
- * TALER_Amount structs, as every time it's needed it requires
- * too many operations before getting the desired TALER_Amount.
+ * What time did we start to really measure performance?
  */
-static const char *refresh_denoms[] = {
-  "4",
-  "2",
-  "1",
-  NULL
-};
+static struct GNUNET_TIME_Absolute start_time;
+
+/**
+ * Number of times #bennchmark_run has executed. Used
+ * to indicate when we consider us warm.
+ */ 
+static unsigned long long warm;
+
+/**
+ * Number of times #bennchmark_run should execute
+ * before we shut down.
+ */ 
+static unsigned int num_iterations;
+
+/**
+ * Number of /deposit operations we have executed since #start_time.
+ */
+static unsigned long long num_deposit;
+
+/**
+ * Number of /withdraw operations we have executed since #start_time.
+ */
+static unsigned long long num_withdraw;
+
+/**
+ * Number of /refresh operations we have executed since #start_time.
+ */
+static unsigned long long num_refresh;
+
+/**
+ * Number of /admin operations we have executed since #start_time.
+ */
+static unsigned long long num_admin;
 
 
 /**
@@ -683,6 +725,8 @@ refresh_coin (struct Coin *coin)
   coin->blob = blob;
   coin->blob_size = blob_size;
   coin->denoms = denoms;
+  if (warm >= WARM_THRESHOLD)
+    num_refresh++;
   coin->rmh = TALER_EXCHANGE_refresh_melt (exchange,
 					   blob_size,
 					   blob,
@@ -824,7 +868,8 @@ spend_coin (struct Coin *coin,
 		 GNUNET_CRYPTO_eddsa_sign (&coin->coin_priv.eddsa_priv,
 					   &dr.purpose,
 					   &coin_sig.eddsa_signature));
-  
+  if (warm >= WARM_THRESHOLD)
+    num_deposit++;
   coin->dh = TALER_EXCHANGE_deposit (exchange,
 				     &amount,
 				     wire_deadline,
@@ -913,6 +958,8 @@ withdraw_coin (struct Coin *coin)
   GNUNET_assert (-1 != TALER_amount_cmp (&r->left,
 					 &amount));
   GNUNET_assert (NULL != (coin->pk = find_pk (keys, &amount)));
+  if (warm >= WARM_THRESHOLD)
+    num_withdraw++;
   coin->wsh =
     TALER_EXCHANGE_reserve_withdraw (exchange,
 				     coin->pk,
@@ -1000,6 +1047,8 @@ fill_reserve (struct Reserve *r)
   GNUNET_CRYPTO_eddsa_key_get_public (&r->reserve_priv.eddsa_priv,
 				      &reserve_pub.eddsa_pub);
   r->left = reserve_amount;
+  if (warm >= WARM_THRESHOLD)
+    num_admin++;
   r->aih = TALER_EXCHANGE_admin_add_incoming (exchange,
 					      exchange_admin_uri,
 					      &reserve_pub,
@@ -1025,7 +1074,7 @@ benchmark_run (void *cls)
   unsigned int i;
   int refresh;
   struct Coin *coin;
-
+ 
   benchmark_task = NULL;
   /* First, always make sure all reserves are full */
   if (NULL != empty_reserve_head)
@@ -1038,6 +1087,24 @@ benchmark_run (void *cls)
   if (num_invalid_coins > INVALID_COIN_SLACK)
   {
     withdraw_coin (invalid_coins_head);
+    return;
+  }
+  warm++;
+  if ( be_verbose &&
+       (0 == (warm % 10)) )
+    fprintf (stderr,
+	     "%s",
+	     WARM_THRESHOLD < warm ? "." : "-");
+  if (WARM_THRESHOLD == warm)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+		"Benchmark warm.\n");
+    start_time = GNUNET_TIME_absolute_get ();
+  }
+  if ( (warm > num_iterations) &&
+       (0 != num_iterations) )
+  {
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
 
@@ -1160,7 +1227,10 @@ static void
 do_shutdown (void *cls)
 {
   unsigned int i;
+  struct GNUNET_TIME_Relative duration;
 
+  if (warm >= WARM_THRESHOLD)
+    duration = GNUNET_TIME_absolute_get_duration (start_time);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 	      "Shutting down...\n");
   if (NULL != benchmark_task)
@@ -1266,6 +1336,22 @@ do_shutdown (void *cls)
   }
   GNUNET_CONFIGURATION_destroy (cfg);
   cfg = NULL;
+  if (warm >= WARM_THRESHOLD)
+  {
+    fprintf (stderr,
+	     "Executed A=%llu/W=%llu/D=%llu/R=%llu operations in %s\n",
+	     num_admin,
+	     num_withdraw,
+	     num_deposit,
+	     num_refresh,
+	     GNUNET_STRINGS_relative_time_to_string (duration,
+						     GNUNET_NO));
+  }
+  else
+  {
+    fprintf (stdout,
+	     "Sorry, no results, benchmark did not get warm!\n");
+  }
 }
 
 
@@ -1409,25 +1495,32 @@ main (int argc,
      "Initialize and start the bank and exchange", GNUNET_NO,
      &GNUNET_GETOPT_set_one, &run_exchange},
     GNUNET_GETOPT_OPTION_CFG_FILE (&config_file),
-    GNUNET_GETOPT_OPTION_HELP ("tool to benchmark the Taler exchange"),
-    {'s', "pool-size", "SIZE",
-     "How many coins this benchmark should instantiate", GNUNET_YES,
-     &GNUNET_GETOPT_set_uint, &pool_size},
     {'e', "exchange-uri", "URI",
      "URI of the exchange", GNUNET_YES,
      &GNUNET_GETOPT_set_string, &exchange_uri},
     {'E', "exchange-admin-uri", "URI",
      "URI of the administrative interface of the exchange", GNUNET_YES,
      &GNUNET_GETOPT_set_string, &exchange_admin_uri},
+    GNUNET_GETOPT_OPTION_HELP ("tool to benchmark the Taler exchange"),
+    {'s', "pool-size", "SIZE",
+     "How many coins this benchmark should instantiate", GNUNET_YES,
+     &GNUNET_GETOPT_set_uint, &pool_size},
+    {'l', "limit", "LIMIT",
+     "Terminatet the benchmark after LIMIT operations", GNUNET_YES,
+     &GNUNET_GETOPT_set_uint, &num_iterations},
+    GNUNET_GETOPT_OPTION_VERBOSE (&be_verbose),
     GNUNET_GETOPT_OPTION_END
   };
+  int ret;
 
   GNUNET_log_setup ("taler-exchange-benchmark",
                     "WARNING",
                     NULL);
-  GNUNET_assert (GNUNET_SYSERR !=
-		 GNUNET_GETOPT_run ("taler-exchange-benchmark",
-				    options, argc, argv));
+  ret = GNUNET_GETOPT_run ("taler-exchange-benchmark",
+			   options, argc, argv);
+  GNUNET_assert (GNUNET_SYSERR != ret);
+  if (GNUNET_NO == ret)
+    return 0;
   if ( (NULL == exchange_uri) ||
        (0 == strlen (exchange_uri) ))
   {
