@@ -41,6 +41,34 @@
 #define INVALID_COIN_SLACK 10
 
 /**
+ * The benchmark withdraws always the same denomination, since the calculation
+ * for refreshing is statically done (at least in its very first version).
+ */
+#define COIN_VALUE 8
+
+/**
+ * Probability a coin can be refreshed.
+ * This probability multiplied by the number of coins
+ * generated during the average refresh must be smaller
+ * than one.  The variance must be covered by the
+ * #INVALID_COIN_SLACK.
+ */
+#define REFRESH_PROBABILITY 0.1
+
+/**
+ * Large enough value to allow having 12 coins per reserve without parsing
+ * /keys in the first place
+ */
+#define RESERVE_VALUE 1000
+
+/**
+ * How many coins (AKA withdraw operations) per reserve should be withdrawn at the same time.
+ */
+#define COINS_PER_RESERVE 12
+
+
+
+/**
  * Needed information for a reserve. Other values are the same for all reserves, therefore defined in global variables
  */
 struct Reserve
@@ -324,37 +352,9 @@ static char *exchange_uri;
 static char *exchange_admin_uri;
 
 /**
- * How many coins (AKA withdraw operations) per reserve should be withdrawn
- */
-#define COINS_PER_RESERVE 12
-
-/**
  * Used currency (read from /keys' output)
  */
 static char *currency;
-
-/**
- * Large enough value to allow having 12 coins per reserve without parsing
- * /keys in the first place
- */
-#define RESERVE_VALUE 1000
-
-/**
- * The benchmark withdraws always the same denomination, since the calculation
- * for refreshing is statically done (at least in its very first version).
- */
-#define COIN_VALUE 8
-
-/**
- * Probability a coin can be spent
- */
-#define SPEND_PROBABILITY 0.1
-
-/**
- * Probability a coin can be refreshed
- */
-#define REFRESH_PROBABILITY 0.4
-
 
 /**
  * List of coins to get in return to a melt operation. Just a
@@ -544,7 +544,9 @@ reveal_cb (void *cls,
     num_invalid_coins--;
     fresh_coin->invalid = GNUNET_NO;
     fresh_coin->pk = find_pk (keys, &coin->denoms[i]);
-    fresh_coin->sig = sigs[i];
+    GNUNET_assert (NULL == fresh_coin->sig.rsa_signature);
+    fresh_coin->sig.rsa_signature =
+      GNUNET_CRYPTO_rsa_signature_dup (sigs[i].rsa_signature);
     fresh_coin->coin_priv = coin_privs[i];
     fresh_coin->left = coin->denoms[i];
   }
@@ -598,20 +600,24 @@ melt_cb (void *cls,
 
 
 /**
- * Function called upon completion of our /reserve/withdraw request.
- * This is merely the function which spends withdrawn coins
+ * Mark coin as invalid.
  *
- * @param cls closure with the `struct Coin` we are withdrawing
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
- *                    0 if the exchange's reply is bogus (fails to follow the protocol)
- * @param sig signature over the coin, NULL on error
- * @param full_response full response from the exchange (for logging, in case of errors)
+ * @param coin coin to mark invalid
  */
 static void
-reserve_withdraw_cb (void *cls,
-                     unsigned int http_status,
-                     const struct TALER_DenominationSignature *sig,
-                     const json_t *full_response);
+invalidate_coin (struct Coin *coin)
+{
+  GNUNET_CONTAINER_DLL_insert (invalid_coins_head,
+			       invalid_coins_tail,
+			       coin);
+  num_invalid_coins++;
+  coin->invalid = GNUNET_YES;
+  if (NULL != coin->sig.rsa_signature)
+  {
+    GNUNET_CRYPTO_rsa_signature_free (coin->sig.rsa_signature);
+    coin->sig.rsa_signature = NULL;
+  }
+}
 
 
 /**
@@ -661,6 +667,10 @@ refresh_coin (struct Coin *coin)
 					 ndenoms2,
 					 dpks,
 					 &blob_size);
+  invalidate_coin (coin);
+  GNUNET_array_grow (dpks,
+		     ndenoms2,
+		     0);
   if (NULL == blob)
   {
     fail ("Failed to prepare refresh");
@@ -715,9 +725,14 @@ deposit_cb (void *cls,
               "Coin #%d correctly spent!\n",
               coin->coin_index);
   if (GNUNET_YES == coin->refresh)
+  {
     refresh_coin (coin);
+  }
   else
+  {
+    invalidate_coin (coin);
     continue_master_task ();
+  }
 }
 
 
@@ -830,11 +845,6 @@ spend_coin (struct Coin *coin,
     fail ("An error occurred while calling deposit API");
     return;
   }
-  GNUNET_CONTAINER_DLL_insert (invalid_coins_head,
-			       invalid_coins_tail,
-			       coin);
-  num_invalid_coins++;
-  coin->invalid = GNUNET_YES;
 }
 
 
@@ -894,14 +904,14 @@ withdraw_coin (struct Coin *coin)
 
   keys = TALER_EXCHANGE_get_keys (exchange);
   r = &reserves[coin->reserve_index];
-  GNUNET_assert (-1 != TALER_amount_cmp (&r->left,
-					 &amount));
   coin_priv = GNUNET_CRYPTO_eddsa_key_create ();
   coin->coin_priv.eddsa_priv = *coin_priv;
   GNUNET_free (coin_priv);
   TALER_amount_get_zero (currency,
 			 &amount);
   amount.value = COIN_VALUE;
+  GNUNET_assert (-1 != TALER_amount_cmp (&r->left,
+					 &amount));
   GNUNET_assert (NULL != (coin->pk = find_pk (keys, &amount)));
   coin->wsh =
     TALER_EXCHANGE_reserve_withdraw (exchange,
@@ -1034,8 +1044,8 @@ benchmark_run (void *cls)
   /* By default, pick a random valid coin to spend */
   for (i=0;i<1000;i++)
   {
-    coin = &coins[GNUNET_CRYPTO_random_u32 (ncoins,
-					    GNUNET_CRYPTO_QUALITY_WEAK)];
+    coin = &coins[GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
+					    ncoins)];
     if (GNUNET_YES == coin->invalid)
       continue; /* unlucky draw, try again */
     if (1 == coin->left.value)
@@ -1210,6 +1220,11 @@ do_shutdown (void *cls)
       GNUNET_free (coin->blob);
       coin->blob = NULL;
     }
+    if (NULL != coin->sig.rsa_signature)
+    {
+      GNUNET_CRYPTO_rsa_signature_free (coin->sig.rsa_signature);
+      coin->sig.rsa_signature = NULL;
+    }
   }
   if (NULL != bank_details)
   {
@@ -1362,11 +1377,7 @@ run (void *cls)
       coin = &coins[coin_index];
       coin->coin_index = coin_index;
       coin->reserve_index = i;
-      coin->invalid = GNUNET_YES;
-      GNUNET_CONTAINER_DLL_insert (invalid_coins_head,
-				   invalid_coins_tail,
-				   coin);
-      num_invalid_coins++;
+      invalidate_coin (coin);
     }
   }
   
