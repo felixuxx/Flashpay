@@ -186,7 +186,7 @@ struct Coin
   struct TALER_EXCHANGE_DepositHandle *dh;
 
   /**
-   * Array of denominations expected to get from melt
+   * Array of denominations we expect to get from melt.
    */
   struct TALER_Amount *denoms;
   
@@ -691,14 +691,17 @@ refresh_coin (struct Coin *coin)
   struct TALER_EXCHANGE_DenomPublicKey *dpks = NULL;
   const struct TALER_EXCHANGE_DenomPublicKey *curr_dpk;
   struct TALER_Amount curr;
+  struct TALER_Amount left;
   unsigned int ndenoms = 0;
   unsigned int ndenoms2 = 0;
   unsigned int off;
-  
+
+  GNUNET_break (NULL == coin->denoms);
   TALER_amount_get_zero (currency, &curr);
+  left = coin->left;
   off = 0;
   while (0 != TALER_amount_cmp (&curr,
-				&coin->left))
+				&left))
   {
     if (off >= refresh_pk_len)
     {
@@ -707,7 +710,7 @@ refresh_coin (struct Coin *coin)
       break;
     }
     curr_dpk = &refresh_pk[off];
-    while (-1 != TALER_amount_cmp (&coin->left,
+    while (-1 != TALER_amount_cmp (&left,
 				   &curr_dpk->value))
     {
       GNUNET_array_append (denoms,
@@ -716,9 +719,10 @@ refresh_coin (struct Coin *coin)
       GNUNET_array_append (dpks,
 			   ndenoms2,
 			   *curr_dpk);
-      TALER_amount_subtract (&coin->left,
-			     &coin->left,
-			     &curr_dpk->value);
+      GNUNET_assert (GNUNET_SYSERR !=
+		     TALER_amount_subtract (&left,
+					    &left,
+					    &curr_dpk->value));
     }
     off++;
   }
@@ -1585,6 +1589,11 @@ main (int argc,
   GNUNET_assert (GNUNET_SYSERR != ret);
   if (GNUNET_NO == ret)
     return 0;
+  if ( (0 != num_iterations) &&
+       (WARM_THRESHOLD >= num_iterations) )
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+		"Number of iterations below WARM_THRESHOLD of %llu\n",
+		WARM_THRESHOLD);
   if ( (NULL == exchange_uri) ||
        (0 == strlen (exchange_uri) ))
   {

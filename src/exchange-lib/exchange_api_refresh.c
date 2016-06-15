@@ -764,6 +764,7 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
   unsigned int i;
   unsigned int j;
   struct GNUNET_HashContext *hash_context;
+  struct TALER_Amount total;
 
   /* build up melt data structure */
   for (i=0;i<TALER_CNC_KAPPA;i++)
@@ -799,9 +800,43 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
     md.fresh_coins[i] = GNUNET_new_array (fresh_pks_len,
                                           struct FreshCoinP);
     for (j=0;j<fresh_pks_len;j++)
+    {
       setup_fresh_coin (&md.fresh_coins[i][j],
                         &fresh_pks[j]);
+    }
   }
+
+  /* verify that melt_amount is above total cost */
+  GNUNET_assert (GNUNET_OK ==
+		 TALER_amount_get_zero (melt_amount->currency,
+					&total));
+  for (j=0;j<fresh_pks_len;j++)
+  {
+    if ( (GNUNET_OK !=
+	  TALER_amount_add (&total,
+			    &total,
+			    &fresh_pks[j].value)) ||
+	 (GNUNET_OK !=
+	  TALER_amount_add (&total,
+			    &total,
+			    &fresh_pks[j].fee_withdraw)) )
+    {
+      GNUNET_break (0);
+      free_melt_data (&md);
+      return NULL;
+    }
+  }
+  if (1 ==
+      TALER_amount_cmp (&total,
+			melt_amount) )
+  {
+    /* Eh, this operation is more expensive than the 
+       @a melt_amount. This is not OK. */
+    GNUNET_break (0);
+    free_melt_data (&md);
+    return NULL;
+  }
+
 
   /* now compute melt session hash */
   hash_context = GNUNET_CRYPTO_hash_context_start ();
