@@ -925,7 +925,7 @@ spend_coin (struct Coin *coin,
 /**
  * Function called upon completion of our /reserve/withdraw request.
  * This is merely the function which spends withdrawn coins. For each
- * spent coin, ti either refresh it or re-withdraw it.
+ * spent coin, it either refresh it or re-withdraw it.
  *
  * @param cls closure with our `struct Coin`
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
