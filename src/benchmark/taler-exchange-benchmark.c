@@ -18,6 +18,12 @@
  * @brief exchange's benchmark
  * @author Marcello Stanisci
  * @author Christian Grothoff
+ *
+ * TODO:
+ * - track state of reserve/coin with its struct
+ * - have global work-lists with available slots for
+ *   admin, deposit and withdraw operations (and stats!)
+ * - implement the main loop of the benchmark
  */
 #include "platform.h"
 #include "taler_util.h"
@@ -28,34 +34,6 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include <microhttpd.h>
 #include <jansson.h>
-
-
-/**
- * Information needed by the /refresh/melt's callback
- */
-struct RefreshRevealCls
-{
-
-  /**
-   * The result of a #TALER_EXCHANGE_refresh_prepare() call
-   */
-  const char *blob;
-
-  /**
-   * Size of @e blob
-   */
-  size_t blob_size;
-
-  /**
-   * Which coin in the list are we melting
-   */
-  unsigned int coin_index;
-
-  /**
-   * Array of denominations expected to get from melt
-   */
-  struct TALER_Amount *denoms;
-};
 
 
 /**
@@ -123,6 +101,21 @@ struct Coin
    * Deposit handle (while operation is running).
    */
   struct TALER_EXCHANGE_DepositHandle *dh;
+  
+  /**
+   * The result of a #TALER_EXCHANGE_refresh_prepare() call
+   */
+  const char *blob;
+
+  /**
+   * Size of @e blob
+   */
+  size_t blob_size;
+
+  /**
+   * Array of denominations expected to get from melt
+   */
+  struct TALER_Amount *denoms;
 
   /**
    * Flag indicating if the coin is going to be refreshed
@@ -431,7 +424,7 @@ find_pk (const struct TALER_EXCHANGE_Keys *keys,
 /**
  * Function called with the result of the /refresh/reveal operation.
  *
- * @param cls closure with the `struct RefreshRevealCls *`
+ * @param cls closure with the `struct Coin *`
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
  * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
@@ -447,16 +440,13 @@ reveal_cb (void *cls,
            const struct TALER_DenominationSignature *sigs,
            const json_t *full_response)
 {
-  struct RefreshRevealCls *rrcls = cls;
-  struct Coin *coin;
+  struct Coin *coin = cls;
   unsigned int i;
   const struct TALER_EXCHANGE_Keys *keys;
 
-  coin = &coins[rrcls->coin_index];
   coin->rrh = NULL;
   if (MHD_HTTP_OK != http_status)
   {
-    GNUNET_free (rrcls);
     json_dumpf (full_response, stderr, 0);
     fail ("Not all coins correctly revealed");
     return;
@@ -465,7 +455,7 @@ reveal_cb (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Coin #%d revealed!\n",
-                rrcls->coin_index);
+                coin->coin_index);
     coin->left.value = 0;
   }
 
@@ -475,7 +465,7 @@ reveal_cb (void *cls,
     struct Coin fresh_coin;
     char *revealed_str;
 
-    revealed_str = TALER_amount_to_string (&rrcls->denoms[i]);
+    revealed_str = TALER_amount_to_string (&coin->denoms[i]);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "revealing %s # of coins after refresh: %d\n",
                 revealed_str,
@@ -483,13 +473,13 @@ reveal_cb (void *cls,
     GNUNET_free (revealed_str);
 
     fresh_coin.reserve_index = coin->reserve_index;
-    fresh_coin.pk = find_pk (keys, &rrcls->denoms[i]);
+    fresh_coin.pk = find_pk (keys, &coin->denoms[i]);
     fresh_coin.sig = sigs[i];
+    // FIXME: yuck!
     GNUNET_array_append (coins,
 			 ncoins,
 			 fresh_coin);
   }
-  GNUNET_free (rrcls);
   continue_master_task ();
 }
 
@@ -497,7 +487,7 @@ reveal_cb (void *cls,
 /**
  * Function called with the result of the /refresh/melt operation.
  *
- * @param cls closure with the `struct RefreshRevealCls *`
+ * @param cls closure with the `struct Coin *`
  * @param http_status HTTP response code, never #MHD_HTTP_OK (200) as for successful intermediate response this callback is skipped.
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
  * @param noreveal_index choice by the exchange in the cut-and-choose protocol,
@@ -512,11 +502,8 @@ melt_cb (void *cls,
          const struct TALER_ExchangePublicKeyP *exchange_pub,
          const json_t *full_response)
 {
-  /* free'd in `reveal_cb` */
-  struct RefreshRevealCls *rrcls = cls;
-  struct Coin *coin;
+  struct Coin *coin = cls;
 
-  coin = &coins[rrcls->coin_index];
   coin->rmh = NULL;
   if (MHD_HTTP_OK != http_status)
   {
@@ -527,11 +514,11 @@ melt_cb (void *cls,
 
   coin->rrh
     = TALER_EXCHANGE_refresh_reveal (exchange,
-                                     rrcls->blob_size,
-                                     rrcls->blob,
+                                     coin->blob_size,
+                                     coin->blob,
                                      noreveal_index,
                                      &reveal_cb,
-                                     rrcls);
+                                     coin);
 }
 
 
@@ -560,7 +547,6 @@ reserve_withdraw_cb (void *cls,
 static void
 refresh_coin (struct Coin *coin)
 {
-  struct RefreshRevealCls *rrcls;
   char *blob;
   size_t blob_size;
   const struct TALER_EXCHANGE_Keys *keys;
@@ -609,16 +595,14 @@ refresh_coin (struct Coin *coin)
 	      "Prepared blob of size %d for refresh\n",
 	      (unsigned int) blob_size);
   
-  rrcls = GNUNET_new (struct RefreshRevealCls);
-  rrcls->blob = blob;
-  rrcls->blob_size = blob_size;
-  rrcls->coin_index = coin->coin_index;
-  rrcls->denoms = denoms;
+  coin->blob = blob;
+  coin->blob_size = blob_size;
+  coin->denoms = denoms;
   coin->rmh = TALER_EXCHANGE_refresh_melt (exchange,
 					   blob_size,
 					   blob,
 					   &melt_cb,
-					   rrcls);
+					   coin);
   if (NULL == coin->rmh)
   {
     fail ("Impossible to issue a melt request to the exchange");
