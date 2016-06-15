@@ -20,3 +20,8 @@ taler_exchange_benchmark_LDADD = \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson
+
+EXTRA_DIST = \
+  taler-exchange-benchmark.conf \
+  bank-details.json \
+  merchant-details.json
