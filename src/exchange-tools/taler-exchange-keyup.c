@@ -807,13 +807,14 @@ exchange_keys_update_cointype (void *cls,
                            &denomkey_issue);
     if (GNUNET_OK !=
         TALER_EXCHANGEDB_denomination_key_write (dkf,
-                                             &denomkey_issue))
+						 &denomkey_issue))
     {
       fprintf (stderr,
                "Failed to write denomination key information to file `%s'.\n",
                dkf);
       *ret = GNUNET_SYSERR;
       GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv.rsa_private_key);
+      GNUNET_CRYPTO_rsa_public_key_free (denomkey_issue.denom_pub.rsa_public_key);
       return;
     }
     if ( (NULL != auditor_output_file) &&
@@ -828,9 +829,12 @@ exchange_keys_update_cointype (void *cls,
                auditorrequestfile,
                STRERROR (errno));
       *ret = GNUNET_SYSERR;
+      GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv.rsa_private_key);
+      GNUNET_CRYPTO_rsa_public_key_free (denomkey_issue.denom_pub.rsa_public_key);
       return;
     }
     GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv.rsa_private_key);
+    GNUNET_CRYPTO_rsa_public_key_free (denomkey_issue.denom_pub.rsa_public_key);
     p.anchor = GNUNET_TIME_absolute_add (p.anchor,
                                          p.duration_spend);
     p.anchor = GNUNET_TIME_absolute_subtract (p.anchor,

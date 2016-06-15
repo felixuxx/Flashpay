@@ -253,7 +253,9 @@ static unsigned int num_invalid_coins;
 static int run_exchange;
 
 /**
- * Enables printing of "-" and "." to indicate progress.
+ * Enables printing of "C" and "W" to indicate progress (warm/cold)
+ * every 50 iterations. Also includes how long the iteration took,
+ * so we can see if it is stable.
  */
 static int be_verbose;
 
@@ -686,7 +688,7 @@ refresh_coin (struct Coin *coin)
   keys = TALER_EXCHANGE_get_keys (exchange);
   for (curr.value = COIN_VALUE >> 1; curr.value > 0; curr.value = curr.value >> 1)
   {
-    if (acc_value + curr.value <= coin->left.value)
+    while (acc_value + curr.value <= coin->left.value)
     {
       GNUNET_array_append (denoms,
 			   ndenoms,
@@ -710,6 +712,9 @@ refresh_coin (struct Coin *coin)
 					 dpks,
 					 &blob_size);
   invalidate_coin (coin);
+  GNUNET_array_grow (denoms,
+		     ndenoms,
+		     0);
   GNUNET_array_grow (dpks,
 		     ndenoms2,
 		     0);
@@ -1091,10 +1096,22 @@ benchmark_run (void *cls)
   }
   warm++;
   if ( be_verbose &&
-       (0 == (warm % 10)) )
+       (0 == (warm % 50)) )
+  {
+    static struct GNUNET_TIME_Absolute last;
+    struct GNUNET_TIME_Relative duration;
+
+    if (0 != last.abs_value_us)
+      duration = GNUNET_TIME_absolute_get_duration (last);
+    else
+      duration = GNUNET_TIME_UNIT_FOREVER_REL;
+    last = GNUNET_TIME_absolute_get ();
     fprintf (stderr,
-	     "%s",
-	     WARM_THRESHOLD < warm ? "." : "-");
+	     "%s - %s\n",
+	     WARM_THRESHOLD < warm ? "WARM" : "COLD",
+	     GNUNET_STRINGS_relative_time_to_string (duration,
+						     GNUNET_YES));
+  }
   if (WARM_THRESHOLD == warm)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -1345,7 +1362,7 @@ do_shutdown (void *cls)
 	     num_deposit,
 	     num_refresh,
 	     GNUNET_STRINGS_relative_time_to_string (duration,
-						     GNUNET_NO));
+						     GNUNET_YES));
   }
   else
   {
@@ -1406,6 +1423,7 @@ run (void *cls)
   bank_details = json_load_file (bank_details_filename,
 				 JSON_REJECT_DUPLICATES,
 				 NULL);
+  GNUNET_free (bank_details_filename);
   if (NULL == bank_details)
   {
     fail ("Failed to parse file with BANK_DETAILS");
@@ -1426,6 +1444,7 @@ run (void *cls)
   merchant_details = json_load_file (merchant_details_filename,
                                      JSON_REJECT_DUPLICATES,
                                      NULL);
+  GNUNET_free (merchant_details_filename);
   if (NULL == merchant_details)
   {
     fail ("Failed to parse file with MERCHANT_DETAILS");
