@@ -120,8 +120,7 @@ struct Reserve
 
 
 /**
- * Array of denomination keys needed to perform the 4 KUDOS
- * refresh operation
+ * Array of denomination keys needed to perform the refresh operation
  */
 static struct TALER_EXCHANGE_DenomPublicKey *refresh_pk;
 
@@ -140,20 +139,6 @@ static struct TALER_DenominationBlindingKeyP blinding_key;
  */
 struct Coin
 {
-  /**
-   * Index in the reserve's global array indicating which
-   * reserve this coin is to be retrieved. If the coin comes
-   * from a refresh, then this value is set to the melted coin's
-   * reserve index
-   */
-  unsigned int reserve_index;
-
-  /**
-   * If @e amount is NULL, this specifies the denomination key to
-   * use.  Otherwise, this will be set (by the interpreter) to the
-   * denomination PK matching @e amount.
-   */
-  const struct TALER_EXCHANGE_DenomPublicKey *pk;
 
   /**
    * Set (by the interpreter) to the exchange's signature over the
@@ -162,14 +147,29 @@ struct Coin
   struct TALER_DenominationSignature sig;
 
   /**
-   * Set (by the interpreter) to the coin's private key.
+   * Set to the coin's private key.
    */
   struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * This specifies the denomination key to use.
+   */
+  const struct TALER_EXCHANGE_DenomPublicKey *pk;
 
   /**
    * Withdraw handle (while operation is running).
    */
   struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh;
+
+  /**
+   * Refresh melt handle
+   */
+  struct TALER_EXCHANGE_RefreshMeltHandle *rmh;
+
+  /**
+   * Refresh reveal handle
+   */
+  struct TALER_EXCHANGE_RefreshRevealHandle *rrh;
 
   /**
    * Deposit handle (while operation is running).
@@ -182,20 +182,18 @@ struct Coin
   unsigned int refresh;
 
   /**
+   * Index in the reserve's global array indicating which
+   * reserve this coin is to be retrieved. If the coin comes
+   * from a refresh, then this value is set to the melted coin's
+   * reserve index
+   */
+  unsigned int reserve_index;
+
+  /**
    * If the coin has to be refreshed, this value indicates
    * how much is left on this coin
    */
   struct TALER_Amount left;
-
-  /**
-   * Refresh melt handle
-   */
-  struct TALER_EXCHANGE_RefreshMeltHandle *rmh;
-
-  /**
-   * Refresh reveal handle
-   */
-  struct TALER_EXCHANGE_RefreshRevealHandle *rrh;
 
 };
 
@@ -225,12 +223,12 @@ static struct GNUNET_CURL_Context *ctx;
 static struct TALER_EXCHANGE_Handle *exchange;
 
 /**
- * The array of all reserves
+ * The array of all reserves, of length #nreserves.
  */
 static struct Reserve *reserves;
 
 /**
- * The array of all coins
+ * The array of all coins, of length #ncoins.
  */
 static struct Coin *coins;
 
@@ -248,7 +246,7 @@ static struct TALER_MerchantPrivateKeyP merchant_priv;
 /**
  * URI under which the exchange is reachable during the benchmark.
  */
-#define EXCHANGE_URI "http://localhost:8081/"
+static char *exchange_uri;
 
 /**
  * How many coins (AKA withdraw operations) per reserve should be withdrawn
@@ -951,7 +949,7 @@ cert_cb (void *cls,
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Read %u signing keys and %u denomination keys\n",
-              _keys->num_sign_keys);
+              _keys->num_sign_keys,
               _keys->num_denom_keys);
   if (NULL != currency)
     return; /* we've been here before... */
@@ -1161,7 +1159,7 @@ run (void *cls)
   rc = GNUNET_CURL_gnunet_rc_create (ctx);
   GNUNET_assert (NULL != rc);
   exchange = TALER_EXCHANGE_connect (ctx,
-                                     EXCHANGE_URI,
+                                     exchange_uri,
                                      &cert_cb, NULL,
                                      TALER_EXCHANGE_OPTION_END);
   if (NULL == exchange)
@@ -1178,27 +1176,32 @@ main (int argc,
 {
   struct GNUNET_OS_Process *proc;
   unsigned int cnt;
+  const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    {'a', "automate", NULL,
+     "Initialize and start the bank and exchange", GNUNET_NO,
+     &GNUNET_GETOPT_set_one, &run_exchange},
+    GNUNET_GETOPT_OPTION_CFG_FILE (&config_file),
+    GNUNET_GETOPT_OPTION_HELP ("tool to benchmark the Taler exchange"),
+    {'s', "pool-size", "SIZE",
+     "How many coins this benchmark should instantiate", GNUNET_YES,
+     &GNUNET_GETOPT_set_uint, &pool_size},
+    {'e', "exchange-uri", "URI",
+     "URI of the exchange", GNUNET_YES,
+     &GNUNET_GETOPT_set_string, &exchange_uri}
+  };
 
   GNUNET_log_setup ("taler-exchange-benchmark",
                     "WARNING",
                     NULL);
-  const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    {'s', "pool-size", NULL,
-     "How many coins this benchmark should instantiate", GNUNET_YES,
-     &GNUNET_GETOPT_set_uint, &pool_size},
-    {'e', "exchange", NULL,
-     "Initialize and start the exchange", GNUNET_NO,
-     &GNUNET_GETOPT_set_one, &run_exchange},
-    {'c', "config", NULL,
-     "Configuration file", GNUNET_YES,
-     &GNUNET_GETOPT_set_string, &config_file}
-  };
-
   GNUNET_assert (GNUNET_SYSERR !=
-                   GNUNET_GETOPT_run ("taler-exchange-benchmark",
-                                      options, argc, argv));
+		 GNUNET_GETOPT_run ("taler-exchange-benchmark",
+				    options, argc, argv));
+  if (NULL == exchange_uri)
+    exchange_uri = GNUNET_strdup ("http://localhost:8081/");
   if (run_exchange)
   {
+    char *wget;
+    
     proc = GNUNET_OS_start_process (GNUNET_NO,
 				    GNUNET_OS_INHERIT_STD_ALL,
 				    NULL, NULL, NULL,
@@ -1242,7 +1245,10 @@ main (int argc,
 	       "Failed to run taler-exchange-httpd. Check your PATH.\n");
       return 77;
     }
-  
+
+    GNUNET_asprintf (&wget,
+		     "wget -q -t 1 -T 1 %s keys -o /dev/null -O /dev/null",
+		     exchange_uri);
     cnt = 0;
     do {
       fprintf (stderr, ".");
@@ -1259,10 +1265,10 @@ main (int argc,
         return 77;
       }
     }
-    while (0 != system ("wget -q -t 1 -T 1 " EXCHANGE_URI "keys -o /dev/null -O /dev/null"));
+    while (0 != system (wget));
+    GNUNET_free (wget);
     fprintf (stderr, "\n");
   }
-
   GNUNET_SCHEDULER_run (&run, NULL);
   if (run_exchange)
   {
@@ -1271,6 +1277,7 @@ main (int argc,
     GNUNET_OS_process_wait (exchanged);
     GNUNET_OS_process_destroy (exchanged);
   }
-
   return 0;
 }
+
+/* end of taler-exchange-benchmark.c */
