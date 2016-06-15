@@ -20,10 +20,9 @@
  * @author Christian Grothoff
  *
  * TODO:
- * - track state of reserve/coin with its struct
- * - have global work-lists with available slots for
- *   admin, deposit and withdraw operations (and stats!)
- * - implement the main loop of the benchmark
+ * - test
+ * - add instrumentation
+ * - add support for automatic termination
  */
 #include "platform.h"
 #include "taler_util.h"
@@ -35,13 +34,28 @@
 #include <microhttpd.h>
 #include <jansson.h>
 
+/**
+ * How much slack do we leave in terms of coins that are invalid (and
+ * thus available for refresh)?
+ */
+#define INVALID_COIN_SLACK 10
 
 /**
  * Needed information for a reserve. Other values are the same for all reserves, therefore defined in global variables
  */
 struct Reserve
 {
-   /**
+  /**
+   * DLL of reserves to fill.
+   */
+  struct Reserve *next;
+
+  /**
+   * DLL of reserves to fill.
+   */
+  struct Reserve *prev;
+
+  /**
    * Set (by the interpreter) to the reserve's private key
    * we used to fill the reserve.
    */
@@ -51,6 +65,11 @@ struct Reserve
    * Set to the API's handle during the operation.
    */
   struct TALER_EXCHANGE_AdminAddIncomingHandle *aih;
+  
+  /**
+   * How much is left in this reserve.
+   */
+  struct TALER_Amount left;
 
   /**
    * Index of this reserve in the #reserves array.
@@ -66,6 +85,16 @@ struct Reserve
 struct Coin
 {
 
+  /**
+   * DLL of coins to withdraw.
+   */
+  struct Coin *next;
+
+  /**
+   * DLL of coins to withdraw.
+   */
+  struct Coin *prev;
+  
   /**
    * Set (by the interpreter) to the exchange's signature over the
    * coin's public key.
@@ -101,27 +130,32 @@ struct Coin
    * Deposit handle (while operation is running).
    */
   struct TALER_EXCHANGE_DepositHandle *dh;
+
+  /**
+   * Array of denominations expected to get from melt
+   */
+  struct TALER_Amount *denoms;
   
   /**
    * The result of a #TALER_EXCHANGE_refresh_prepare() call
    */
-  const char *blob;
-
+  char *blob;
+  
   /**
    * Size of @e blob
    */
   size_t blob_size;
 
   /**
-   * Array of denominations expected to get from melt
-   */
-  struct TALER_Amount *denoms;
-
-  /**
    * Flag indicating if the coin is going to be refreshed
    */
   unsigned int refresh;
 
+  /**
+   * #GNUNET_YES if this coin is in the #invalid_coins_head DLL.
+   */
+  int invalid;
+  
   /**
    * Index in the reserve's global array indicating which
    * reserve this coin is to be retrieved. If the coin comes
@@ -143,6 +177,31 @@ struct Coin
 
 };
 
+
+/**
+ * DLL of reserves to fill.
+ */
+static struct Reserve *empty_reserve_head;
+
+/**
+ * DLL of reserves to fill.
+ */
+static struct Reserve *empty_reserve_tail;
+
+/**
+ * DLL of coins to withdraw.
+ */
+static struct Coin *invalid_coins_head;
+
+/**
+ * DLL of coins to withdraw.
+ */
+static struct Coin *invalid_coins_tail;
+
+/**
+ * How many coins are in the #invalid_coins_head DLL?
+ */
+static unsigned int num_invalid_coins;
 
 /**
  * Should we initialize and start the exchange, if #GNUNET_NO,
@@ -462,7 +521,7 @@ reveal_cb (void *cls,
   keys = TALER_EXCHANGE_get_keys (exchange);
   for (i=0; i<num_coins; i++)
   {
-    struct Coin fresh_coin;
+    struct Coin *fresh_coin;
     char *revealed_str;
 
     revealed_str = TALER_amount_to_string (&coin->denoms[i]);
@@ -472,13 +531,22 @@ reveal_cb (void *cls,
                 ncoins);
     GNUNET_free (revealed_str);
 
-    fresh_coin.reserve_index = coin->reserve_index;
-    fresh_coin.pk = find_pk (keys, &coin->denoms[i]);
-    fresh_coin.sig = sigs[i];
-    // FIXME: yuck!
-    GNUNET_array_append (coins,
-			 ncoins,
-			 fresh_coin);
+    fresh_coin = invalid_coins_head;
+    if (NULL == fresh_coin)
+    {
+      /* #INVALID_COIN_SLACK too low? */
+      GNUNET_break (0);
+      continue;
+    }
+    GNUNET_CONTAINER_DLL_remove (invalid_coins_head,
+				 invalid_coins_tail,
+				 fresh_coin);
+    num_invalid_coins--;
+    fresh_coin->invalid = GNUNET_NO;
+    fresh_coin->pk = find_pk (keys, &coin->denoms[i]);
+    fresh_coin->sig = sigs[i];
+    fresh_coin->coin_priv = coin_privs[i];
+    fresh_coin->left = coin->denoms[i];
   }
   continue_master_task ();
 }
@@ -519,6 +587,13 @@ melt_cb (void *cls,
                                      noreveal_index,
                                      &reveal_cb,
                                      coin);
+  GNUNET_free (coin->blob);
+  coin->blob = NULL;
+  if (NULL == coin->rrh)
+  {
+    fail ("Failed on reveal during refresh!");
+    return;
+  }
 }
 
 
@@ -708,6 +783,7 @@ spend_coin (struct Coin *coin,
     TALER_amount_subtract (&amount,
 			   &coin->pk->value,
 			   &coin->pk->fee_deposit);
+    coin->refresh = GNUNET_NO;
   }
   memset (&dr, 0, sizeof (dr));
   dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
@@ -754,6 +830,11 @@ spend_coin (struct Coin *coin,
     fail ("An error occurred while calling deposit API");
     return;
   }
+  GNUNET_CONTAINER_DLL_insert (invalid_coins_head,
+			       invalid_coins_tail,
+			       coin);
+  num_invalid_coins++;
+  coin->invalid = GNUNET_YES;
 }
 
 
@@ -788,6 +869,11 @@ reserve_withdraw_cb (void *cls,
               coin->coin_index);
   coin->sig.rsa_signature =
     GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
+  GNUNET_CONTAINER_DLL_remove (invalid_coins_head,
+			       invalid_coins_tail,
+			       coin);
+  num_invalid_coins--;
+  coin->invalid = GNUNET_NO;
   continue_master_task ();
 }
 
@@ -802,11 +888,14 @@ withdraw_coin (struct Coin *coin)
 {
   struct GNUNET_CRYPTO_EddsaPrivateKey *coin_priv;
   struct TALER_Amount amount;
+  struct TALER_Amount left;
   const struct TALER_EXCHANGE_Keys *keys;
   struct Reserve *r;
 
   keys = TALER_EXCHANGE_get_keys (exchange);
   r = &reserves[coin->reserve_index];
+  GNUNET_assert (-1 != TALER_amount_cmp (&r->left,
+					 &amount));
   coin_priv = GNUNET_CRYPTO_eddsa_key_create ();
   coin->coin_priv.eddsa_priv = *coin_priv;
   GNUNET_free (coin_priv);
@@ -822,6 +911,20 @@ withdraw_coin (struct Coin *coin)
 				     &blinding_key,
 				     &reserve_withdraw_cb,
 				     coin);
+  GNUNET_assert (GNUNET_SYSERR !=
+		 TALER_amount_subtract (&left,
+					&r->left,
+					&amount));
+  r->left = left;
+  if (-1 == TALER_amount_cmp (&left,
+			      &amount))
+  {
+    /* not enough left in the reserve for future withdrawals,
+       create a new reserve! */
+    GNUNET_CONTAINER_DLL_insert (empty_reserve_head,
+				 empty_reserve_tail,
+				 r);
+  }
 }
 
 
@@ -851,6 +954,9 @@ add_incoming_cb (void *cls,
     fail ("At least one reserve failed in being created");
     return;
   }
+  GNUNET_CONTAINER_DLL_remove (empty_reserve_head,
+			       empty_reserve_tail,
+			       r);
   continue_master_task ();
 }
 
@@ -883,6 +989,7 @@ fill_reserve (struct Reserve *r)
   GNUNET_assert (NULL != transfer_details);
   GNUNET_CRYPTO_eddsa_key_get_public (&r->reserve_priv.eddsa_priv,
 				      &reserve_pub.eddsa_pub);
+  r->left = reserve_amount;
   r->aih = TALER_EXCHANGE_admin_add_incoming (exchange,
 					      exchange_admin_uri,
 					      &reserve_pub,
@@ -906,39 +1013,40 @@ static void
 benchmark_run (void *cls)
 {
   unsigned int i;
+  int refresh;
+  struct Coin *coin;
 
   benchmark_task = NULL;
-  /* FIXME: Note that this function cannot work as-is, it's 
-     just a placeholder for the final logic we want here. */
-  for (i=0;i < nreserves;i++)
+  /* First, always make sure all reserves are full */
+  if (NULL != empty_reserve_head)
   {
-    struct Reserve *r = &reserves[i];
-
-    r->reserve_index = i;
-    fill_reserve (r);
-  
-
-    for (i=0; i < COINS_PER_RESERVE; i++)
-    {
-      struct Coin *coin;
-      unsigned int coin_index;
-      
-      coin_index = r->reserve_index * COINS_PER_RESERVE + i;
-      coin = &coins[coin_index];
-      coin->coin_index = coin_index;
-      coin->reserve_index = r->reserve_index;
-      withdraw_coin (coin);
-    }
+    fill_reserve (empty_reserve_head);
+    return;
+  }
+  /* Second, withdraw until #num_invalid_coins is less than
+     #INVALID_COIN_SLACK */
+  if (num_invalid_coins > INVALID_COIN_SLACK)
+  {
+    withdraw_coin (invalid_coins_head);
+    return;
   }
 
-  if (GNUNET_OK == eval_probability (SPEND_PROBABILITY))
+  /* By default, pick a random valid coin to spend */
+  for (i=0;i<1000;i++)
   {
-    struct Coin *coin;
-
-    i = 0; // FIXME...
-    coin = &coins[i];
+    coin = &coins[GNUNET_CRYPTO_random_u32 (ncoins,
+					    GNUNET_CRYPTO_QUALITY_WEAK)];
+    if (GNUNET_YES == coin->invalid)
+      continue; /* unlucky draw, try again */
+    if (1 == coin->left.value)
+      refresh = GNUNET_NO; /* cannot refresh, coin is already at unit */
+    else
+      refresh = eval_probability (REFRESH_PROBABILITY);
     spend_coin (coin,
-		(GNUNET_YES == eval_probability (REFRESH_PROBABILITY)));  }
+		refresh);
+    return;
+  }
+  fail ("Too many invalid coins, is your INVALID_COIN_SLACK too high?");
 }
 
 
@@ -1097,6 +1205,11 @@ do_shutdown (void *cls)
       TALER_EXCHANGE_refresh_reveal_cancel (coin->rrh);
       coin->rmh = NULL;
     }
+    if (NULL != coin->blob)
+    {
+      GNUNET_free (coin->blob);
+      coin->blob = NULL;
+    }
   }
   if (NULL != bank_details)
   {
@@ -1153,6 +1266,8 @@ run (void *cls)
   char *bank_details_filename;
   char *merchant_details_filename;
   struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
+  unsigned int i;
+  unsigned int j;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "running run()\n");
@@ -1230,7 +1345,31 @@ run (void *cls)
   ncoins = COINS_PER_RESERVE * nreserves;
   coins = GNUNET_new_array (ncoins,
                             struct Coin);
+  for (i=0;i < nreserves;i++)
+  {
+    struct Reserve *r = &reserves[i];
 
+    r->reserve_index = i;
+    GNUNET_CONTAINER_DLL_insert (empty_reserve_head,
+				 empty_reserve_tail,
+				 r);
+    for (j=0; j < COINS_PER_RESERVE; j++)
+    {
+      struct Coin *coin;
+      unsigned int coin_index;
+      
+      coin_index = i * COINS_PER_RESERVE + j;
+      coin = &coins[coin_index];
+      coin->coin_index = coin_index;
+      coin->reserve_index = i;
+      coin->invalid = GNUNET_YES;
+      GNUNET_CONTAINER_DLL_insert (invalid_coins_head,
+				   invalid_coins_tail,
+				   coin);
+      num_invalid_coins++;
+    }
+  }
+  
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
                           &rc);
   GNUNET_assert (NULL != ctx);
@@ -1278,8 +1417,12 @@ main (int argc,
   GNUNET_assert (GNUNET_SYSERR !=
 		 GNUNET_GETOPT_run ("taler-exchange-benchmark",
 				    options, argc, argv));
-  if (NULL == exchange_uri)
+  if ( (NULL == exchange_uri) ||
+       (0 == strlen (exchange_uri) ))
+  {
+    GNUNET_free_non_null (exchange_uri);
     exchange_uri = GNUNET_strdup ("http://localhost:8081/");
+  }
   if (NULL == exchange_admin_uri)
     exchange_admin_uri = GNUNET_strdup ("http://localhost:18080/");
   if (run_exchange)
@@ -1291,6 +1434,7 @@ main (int argc,
 				    NULL, NULL, NULL,
 				    "taler-exchange-keyup",
 				    "taler-exchange-keyup",
+				    "-c", config_file,
 				    NULL);
     if (NULL == proc)
     {
@@ -1307,6 +1451,7 @@ main (int argc,
 				    "taler-exchange-dbinit",
 				    "taler-exchange-dbinit",
 				    "-r",
+				    "-c", config_file,
 				    NULL);
     if (NULL == proc)
     {
@@ -1322,6 +1467,7 @@ main (int argc,
 					 NULL, NULL, NULL,
 					 "taler-exchange-httpd",
 					 "taler-exchange-httpd",
+					 "-c", config_file,
 					 NULL);
     if (NULL == exchanged)
     {
@@ -1331,8 +1477,9 @@ main (int argc,
     }
 
     GNUNET_asprintf (&wget,
-		     "wget -q -t 1 -T 1 %s keys -o /dev/null -O /dev/null",
-		     exchange_uri);
+		     "wget -q -t 1 -T 1 %s%skeys -o /dev/null -O /dev/null",
+		     exchange_uri,
+		     (exchange_uri[strlen (exchange_uri)-1] == '/') ? "" : "/");
     cnt = 0;
     do {
       fprintf (stderr, ".");
