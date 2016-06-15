@@ -29,49 +29,6 @@
 #include <microhttpd.h>
 #include <jansson.h>
 
-/**
- * Should we initialize and start the exchange, if #GNUNET_NO,
- * we expect one to be already up and running.
- */
-static int run_exchange;
-
-/**
- * How many coins the benchmark should operate on
- */
-static unsigned int pool_size = 100;
-
-/**
- * Configuration file path
- */
-static char *config_file;
-
-/**
- * Configuation object (used to get BANK_URI)
- */
-static struct GNUNET_CONFIGURATION_Handle *cfg;
-
-/**
- * How many reserves ought to be created given the pool size
- */
-static unsigned int nreserves;
-
-/**
- * How many coins are in the #coins array. This is needed
- * as the number of coins is not always #nreserves * #COINS_PER_RESERVE
- * due to refresh operations
- */
-static unsigned int ncoins;
-
-/**
- * Bank details of who creates reserves
- */
-static json_t *bank_details;
-
-/**
- * Bank details of who deposits coins
- */
-static json_t *merchant_details;
-
 
 /**
  * Information needed by the /refresh/melt's callback
@@ -124,21 +81,6 @@ struct Reserve
   
 };
 
-
-/**
- * Array of denomination keys needed to perform the refresh operation
- */
-static struct TALER_EXCHANGE_DenomPublicKey *refresh_pk;
-
-/**
- * Size of #refresh_pk
- */
-static unsigned int refresh_pk_len;
-
-/**
- * Same blinding key for all coins
- */
-static struct TALER_DenominationBlindingKeyP blinding_key;
 
 /**
  * Information regarding a coin
@@ -207,6 +149,65 @@ struct Coin
   struct TALER_Amount left;
 
 };
+
+
+/**
+ * Should we initialize and start the exchange, if #GNUNET_NO,
+ * we expect one to be already up and running.
+ */
+static int run_exchange;
+
+/**
+ * How many coins the benchmark should operate on
+ */
+static unsigned int pool_size = 100;
+
+/**
+ * Configuration file path
+ */
+static char *config_file;
+
+/**
+ * Configuation object (used to get BANK_URI)
+ */
+static struct GNUNET_CONFIGURATION_Handle *cfg;
+
+/**
+ * How many reserves ought to be created given the pool size
+ */
+static unsigned int nreserves;
+
+/**
+ * How many coins are in the #coins array. This is needed
+ * as the number of coins is not always #nreserves * #COINS_PER_RESERVE
+ * due to refresh operations
+ */
+static unsigned int ncoins;
+
+/**
+ * Bank details of who creates reserves
+ */
+static json_t *bank_details;
+
+/**
+ * Bank details of who deposits coins
+ */
+static json_t *merchant_details;
+
+/**
+ * Array of denomination keys needed to perform the refresh operation
+ */
+static struct TALER_EXCHANGE_DenomPublicKey *refresh_pk;
+
+/**
+ * Size of #refresh_pk
+ */
+static unsigned int refresh_pk_len;
+
+/**
+ * Same blinding key for all coins
+ */
+static struct TALER_DenominationBlindingKeyP blinding_key;
 
 /**
  * Handle to the exchange's process
@@ -302,11 +303,6 @@ static char *currency;
  */
 #define REFRESH_PROBABILITY 0.4
 
-/**
- * Refreshed once. For each batch of deposits, only one
- * coin will be refreshed, according to #REFRESH_PROBABILITY
- */
-static unsigned int refreshed_once;
 
 /**
  * List of coins to get in return to a melt operation. Just a
@@ -355,6 +351,26 @@ fail (const char *msg)
                 "%s\n",
                 msg);
   GNUNET_SCHEDULER_shutdown ();
+}
+
+
+/**
+ * Main task for the benchmark.
+ *
+ * @param cls NULL
+ */
+static void
+benchmark_run (void *cls);
+
+
+/**
+ * Run the main task for the benchmark.
+ */
+static void
+continue_master_task ()
+{
+  benchmark_task = GNUNET_SCHEDULER_add_now (&benchmark_run,
+                                             NULL);
 }
 
 
@@ -461,8 +477,7 @@ reveal_cb (void *cls,
 
     revealed_str = TALER_amount_to_string (&rrcls->denoms[i]);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "revealing %s "
-                "# of coins after refresh: %d\n",
+                "revealing %s # of coins after refresh: %d\n",
                 revealed_str,
                 ncoins);
     GNUNET_free (revealed_str);
@@ -475,6 +490,7 @@ reveal_cb (void *cls,
 			 fresh_coin);
   }
   GNUNET_free (rrcls);
+  continue_master_task ();
 }
 
 
@@ -537,6 +553,81 @@ reserve_withdraw_cb (void *cls,
 
 
 /**
+ * Refresh the given @a coin
+ *
+ * @param coin coin to refresh
+ */
+static void
+refresh_coin (struct Coin *coin)
+{
+  struct RefreshRevealCls *rrcls;
+  char *blob;
+  size_t blob_size;
+  const struct TALER_EXCHANGE_Keys *keys;
+  struct TALER_Amount *denoms = NULL;
+  struct TALER_EXCHANGE_DenomPublicKey *dpks = NULL;
+  const struct TALER_EXCHANGE_DenomPublicKey *curr_dpk;
+  struct TALER_Amount curr;
+  unsigned int ndenoms = 0;
+  unsigned int ndenoms2 = 0;
+  unsigned long long acc_value;
+  
+  TALER_amount_get_zero (currency, &curr);
+  acc_value = 0;
+  keys = TALER_EXCHANGE_get_keys (exchange);
+  for (curr.value = COIN_VALUE >> 1; curr.value > 0; curr.value = curr.value >> 1)
+  {
+    if (acc_value + curr.value <= coin->left.value)
+    {
+      GNUNET_array_append (denoms,
+			   ndenoms,
+			   curr);
+      GNUNET_assert (NULL != (curr_dpk = find_pk (keys, &curr)));
+      GNUNET_array_append (dpks,
+			   ndenoms2,
+			   *curr_dpk);
+      acc_value += curr.value; 
+    }
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+	      "# of coins to get in melt: %d\n",
+	      ndenoms2);
+  blob = TALER_EXCHANGE_refresh_prepare (&coin->coin_priv,
+					 &coin->left,
+					 &coin->sig,
+					 coin->pk,
+					 GNUNET_YES,
+					 ndenoms2,
+					 dpks,
+					 &blob_size);
+  if (NULL == blob)
+  {
+    fail ("Failed to prepare refresh");
+    return;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+	      "Prepared blob of size %d for refresh\n",
+	      (unsigned int) blob_size);
+  
+  rrcls = GNUNET_new (struct RefreshRevealCls);
+  rrcls->blob = blob;
+  rrcls->blob_size = blob_size;
+  rrcls->coin_index = coin->coin_index;
+  rrcls->denoms = denoms;
+  coin->rmh = TALER_EXCHANGE_refresh_melt (exchange,
+					   blob_size,
+					   blob,
+					   &melt_cb,
+					   rrcls);
+  if (NULL == coin->rmh)
+  {
+    fail ("Impossible to issue a melt request to the exchange");
+    return;
+  }
+}
+
+
+/**
  * Function called with the result of a /deposit operation.
  *
  * @param cls closure with the `struct Coin` that we are processing
@@ -565,86 +656,119 @@ deposit_cb (void *cls,
               "Coin #%d correctly spent!\n",
               coin->coin_index);
   if (GNUNET_YES == coin->refresh)
+    refresh_coin (coin);
+  else
+    continue_master_task ();
+}
+
+
+/**
+ * Spend the given coin.  Also triggers refresh
+ * with a certain probability.
+ *
+ * @param coin coin to spend
+ * @param do_refresh should we also do the refresh?
+ */
+static void
+spend_coin (struct Coin *coin,
+	    int do_refresh)
+{
+  struct TALER_Amount amount;
+  struct GNUNET_TIME_Absolute wire_deadline;
+  struct GNUNET_TIME_Absolute timestamp;
+  struct GNUNET_TIME_Absolute refund_deadline;
+  struct GNUNET_HashCode h_contract;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+  struct TALER_DepositRequestPS dr;
+  struct TALER_MerchantPublicKeyP merchant_pub;
+  struct TALER_CoinSpendSignatureP coin_sig;
+
+  GNUNET_CRYPTO_eddsa_key_get_public (&coin->coin_priv.eddsa_priv,
+				      &coin_pub.eddsa_pub);
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+			      &h_contract,
+			      sizeof (h_contract));
+  timestamp = GNUNET_TIME_absolute_get ();
+  wire_deadline = GNUNET_TIME_absolute_add (timestamp,
+					    GNUNET_TIME_UNIT_WEEKS);
+  refund_deadline = GNUNET_TIME_absolute_add (timestamp,
+					      GNUNET_TIME_UNIT_DAYS);
+  GNUNET_TIME_round_abs (&timestamp);
+  GNUNET_TIME_round_abs (&wire_deadline);
+  GNUNET_TIME_round_abs (&refund_deadline);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+	      "Spending %d-th coin\n",
+	      coin->coin_index);
+  
+  if (do_refresh)
   {
-    struct RefreshRevealCls *rrcls;
-    char *blob;
-    size_t blob_size;
-    const struct TALER_EXCHANGE_Keys *keys;
-    struct TALER_Amount *denoms = NULL;
-    struct TALER_EXCHANGE_DenomPublicKey *dpks = NULL;
-    const struct TALER_EXCHANGE_DenomPublicKey *curr_dpk;
-    struct TALER_Amount curr;
-    unsigned int ndenoms = 0;
-    unsigned int ndenoms2 = 0;
-    unsigned long long acc_value;
-
-    TALER_amount_get_zero (currency, &curr);
-    acc_value = 0;
-    keys = TALER_EXCHANGE_get_keys (exchange);
-    for (curr.value = COIN_VALUE >> 1; curr.value > 0; curr.value = curr.value >> 1)
-    {
-      if (acc_value + curr.value <= coin->left.value)
-      {
-        GNUNET_array_append (denoms,
-			     ndenoms,
-			     curr);
-        GNUNET_assert (NULL != (curr_dpk = find_pk (keys, &curr)));
-        GNUNET_array_append (dpks, ndenoms2, *curr_dpk);
-        acc_value += curr.value; 
-      }
-    }
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "# of coins to get in melt: %d\n",
-                ndenoms2);
-    blob = TALER_EXCHANGE_refresh_prepare (&coin->coin_priv,
-                                           &coin->left,
-                                           &coin->sig,
-                                           coin->pk,
-                                           GNUNET_YES,
-                                           ndenoms2,
-                                           dpks,
-                                           &blob_size);
-    if (NULL == blob)
-    {
-      fail ("Failed to prepare refresh");
-      return;
-    }
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "prepared blob %d\n",
-                (unsigned int) blob_size);
-    refreshed_once = GNUNET_YES;
-
-    rrcls = GNUNET_new (struct RefreshRevealCls);
-    rrcls->blob = blob;
-    rrcls->blob_size = blob_size;
-    rrcls->coin_index = coin->coin_index;
-    rrcls->denoms = denoms;
-    coin->rmh = TALER_EXCHANGE_refresh_melt (exchange,
-					     blob_size,
-					     blob,
-					     &melt_cb,
-					     rrcls);
-    if (NULL == coin->rmh)
-    {
-      fail ("Impossible to issue a melt request to the exchange");
-      return;
-    }
+    /**
+     * Always spending 1 out of 8 KUDOS. To be improved by randomly
+     * picking the spent amount 
+     */
+    struct TALER_Amount one;
+    
+    TALER_amount_get_zero (currency, &one);
+    one.value = 1;
+    
+    TALER_amount_subtract (&amount,
+			   &one,
+			   &coin->pk->fee_deposit);
+    TALER_amount_subtract (&coin->left,
+			   &coin->pk->value,
+			   &one);
+    coin->refresh = GNUNET_YES;
   }
   else
-  { /* re-withdraw */
-    struct GNUNET_CRYPTO_EddsaPrivateKey *coin_priv;
-    
-    coin_priv = GNUNET_CRYPTO_eddsa_key_create ();
-    coin->coin_priv.eddsa_priv = *coin_priv;
-    GNUNET_free (coin_priv);
-    coin->wsh =
-      TALER_EXCHANGE_reserve_withdraw (exchange,
-                                       coin->pk,
-                                       &reserves[coin->reserve_index].reserve_priv,
-                                       &coin->coin_priv,
-                                       &blinding_key,
-                                       &reserve_withdraw_cb,
-                                       coin);
+  {
+    TALER_amount_subtract (&amount,
+			   &coin->pk->value,
+			   &coin->pk->fee_deposit);
+  }
+  memset (&dr, 0, sizeof (dr));
+  dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
+  dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
+  dr.h_contract = h_contract;
+  TALER_JSON_hash (merchant_details,
+		   &dr.h_wire);
+  
+  dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
+  dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
+  dr.transaction_id = GNUNET_htonll (transaction_id);
+  
+  TALER_amount_hton (&dr.amount_with_fee,
+		     &amount);
+  TALER_amount_hton (&dr.deposit_fee,
+		     &coin->pk->fee_deposit);
+  
+  GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv.eddsa_priv,
+				      &merchant_pub.eddsa_pub);
+  dr.merchant = merchant_pub;
+  dr.coin_pub = coin_pub;
+  GNUNET_assert (GNUNET_OK ==
+		 GNUNET_CRYPTO_eddsa_sign (&coin->coin_priv.eddsa_priv,
+					   &dr.purpose,
+					   &coin_sig.eddsa_signature));
+  
+  coin->dh = TALER_EXCHANGE_deposit (exchange,
+				     &amount,
+				     wire_deadline,
+				     merchant_details,
+				     &h_contract,
+				     &coin_pub,
+				     &coin->sig,
+				     &coin->pk->key,
+				     timestamp,
+				     transaction_id++,
+				     &merchant_pub,
+				     refund_deadline,
+				     &coin_sig,
+				     &deposit_cb,
+				     coin);
+  if (NULL == coin->dh)
+  {
+    fail ("An error occurred while calling deposit API");
+    return;
   }
 }
 
@@ -680,110 +804,40 @@ reserve_withdraw_cb (void *cls,
               coin->coin_index);
   coin->sig.rsa_signature =
     GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
-  if (GNUNET_OK == eval_probability (SPEND_PROBABILITY))
-  {
-    struct TALER_Amount amount;
-    struct GNUNET_TIME_Absolute wire_deadline;
-    struct GNUNET_TIME_Absolute timestamp;
-    struct GNUNET_TIME_Absolute refund_deadline;
-    struct GNUNET_HashCode h_contract;
-    struct TALER_CoinSpendPublicKeyP coin_pub;
-    struct TALER_DepositRequestPS dr;
-    struct TALER_MerchantPublicKeyP merchant_pub;
-    struct TALER_CoinSpendSignatureP coin_sig;
+  continue_master_task ();
+}
 
-    GNUNET_CRYPTO_eddsa_key_get_public (&coin->coin_priv.eddsa_priv,
-                                        &coin_pub.eddsa_pub);
-    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                &h_contract,
-                                sizeof (h_contract));
-    timestamp = GNUNET_TIME_absolute_get ();
-    wire_deadline = GNUNET_TIME_absolute_add (timestamp,
-					      GNUNET_TIME_UNIT_WEEKS);
-    refund_deadline = GNUNET_TIME_absolute_add (timestamp,
-						GNUNET_TIME_UNIT_DAYS);
-    GNUNET_TIME_round_abs (&timestamp);
-    GNUNET_TIME_round_abs (&wire_deadline);
-    GNUNET_TIME_round_abs (&refund_deadline);
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-		"Spending %d-th coin\n",
-		coin->coin_index);
 
-    if ( (GNUNET_YES == eval_probability (REFRESH_PROBABILITY)) &&
-	 (GNUNET_NO == refreshed_once) )
-    {
-      /**
-       * Always spending 1 out of 8 KUDOS. To be improved by randomly
-       * picking the spent amount 
-       */
-      struct TALER_Amount one;
-      
-      TALER_amount_get_zero (currency, &one);
-      one.value = 1;
+/**
+ * Withdraw the given coin from the respective reserve.
+ *
+ * @param coin coin to withdraw
+ */
+static void
+withdraw_coin (struct Coin *coin)
+{
+  struct GNUNET_CRYPTO_EddsaPrivateKey *coin_priv;
+  struct TALER_Amount amount;
+  const struct TALER_EXCHANGE_Keys *keys;
+  struct Reserve *r;
 
-      TALER_amount_subtract (&amount,
-                             &one,
-                             &coin->pk->fee_deposit);
-      TALER_amount_subtract (&coin->left,
-                             &coin->pk->value,
-                             &one);
-      coin->refresh = GNUNET_YES;
-      refreshed_once = GNUNET_YES;
-    }
-    else
-    {
-      TALER_amount_subtract (&amount,
-                             &coin->pk->value,
-                             &coin->pk->fee_deposit);
-    }
-    memset (&dr, 0, sizeof (dr));
-    dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
-    dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
-    dr.h_contract = h_contract;
-    TALER_JSON_hash (merchant_details,
-                     &dr.h_wire);
-
-    dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
-    dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
-    dr.transaction_id = GNUNET_htonll (transaction_id);
-
-    TALER_amount_hton (&dr.amount_with_fee,
-                       &amount);
-    TALER_amount_hton (&dr.deposit_fee,
-                       &coin->pk->fee_deposit);
-
-    GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv.eddsa_priv,
-                                        &merchant_pub.eddsa_pub);
-    dr.merchant = merchant_pub;
-    dr.coin_pub = coin_pub;
-    GNUNET_assert (GNUNET_OK ==
-                   GNUNET_CRYPTO_eddsa_sign (&coin->coin_priv.eddsa_priv,
-                                             &dr.purpose,
-                                             &coin_sig.eddsa_signature));
-
-    coin->dh = TALER_EXCHANGE_deposit (exchange,
-				       &amount,
-				       wire_deadline,
-				       merchant_details,
-				       &h_contract,
-				       &coin_pub,
-				       &coin->sig,
-				       &coin->pk->key,
-				       timestamp,
-				       transaction_id,
-				       &merchant_pub,
-				       refund_deadline,
-				       &coin_sig,
-				       &deposit_cb,
-				       coin);
-    if (NULL == coin->dh)
-    {
-      json_decref (merchant_details);
-      fail ("An error occurred while calling deposit API");
-      return;
-    }
-    transaction_id++;
-  }
+  keys = TALER_EXCHANGE_get_keys (exchange);
+  r = &reserves[coin->reserve_index];
+  coin_priv = GNUNET_CRYPTO_eddsa_key_create ();
+  coin->coin_priv.eddsa_priv = *coin_priv;
+  GNUNET_free (coin_priv);
+  TALER_amount_get_zero (currency,
+			 &amount);
+  amount.value = COIN_VALUE;
+  GNUNET_assert (NULL != (coin->pk = find_pk (keys, &amount)));
+  coin->wsh =
+    TALER_EXCHANGE_reserve_withdraw (exchange,
+				     coin->pk,
+				     &r->reserve_priv,
+				     &coin->coin_priv,
+				     &blinding_key,
+				     &reserve_withdraw_cb,
+				     coin);
 }
 
 
@@ -802,11 +856,6 @@ add_incoming_cb (void *cls,
                  const json_t *full_response)
 {
   struct Reserve *r = cls;
-  struct GNUNET_CRYPTO_EddsaPrivateKey *coin_priv;
-  unsigned int i;
-  unsigned int coin_index;
-  struct TALER_Amount amount;
-  const struct TALER_EXCHANGE_Keys *keys;
 
   r->aih = NULL;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -818,32 +867,49 @@ add_incoming_cb (void *cls,
     fail ("At least one reserve failed in being created");
     return;
   }
+  continue_master_task ();
+}
 
-  keys = TALER_EXCHANGE_get_keys (exchange);
-  for (i=0; i < COINS_PER_RESERVE; i++)
-  {
-    struct Coin *coin;
 
-    coin_index = r->reserve_index * COINS_PER_RESERVE + i;
-    coin = &coins[coin_index];
-    coin->coin_index = coin_index;
-    coin_priv = GNUNET_CRYPTO_eddsa_key_create ();
-    coin->coin_priv.eddsa_priv = *coin_priv;
-    GNUNET_free (coin_priv);
-    coin->reserve_index = r->reserve_index;
-    TALER_amount_get_zero (currency,
-			   &amount);
-    amount.value = COIN_VALUE;
-    GNUNET_assert (NULL != (coin->pk = find_pk (keys, &amount)));
-    coin->wsh =
-      TALER_EXCHANGE_reserve_withdraw (exchange,
-                                       coin->pk,
-                                       &r->reserve_priv,
-                                       &coin->coin_priv,
-                                       &blinding_key,
-                                       &reserve_withdraw_cb,
-                                       coin);
-  }
+/**
+ * Fill a reserve using /admin/add/incoming
+ *
+ * @param r reserve to fill
+ */
+static void
+fill_reserve (struct Reserve *r)
+{
+  struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
+  struct TALER_ReservePublicKeyP reserve_pub;
+  struct GNUNET_TIME_Absolute execution_date;
+  struct TALER_Amount reserve_amount;
+  json_t *transfer_details;
+
+  TALER_amount_get_zero (currency,
+			 &reserve_amount);
+  reserve_amount.value = RESERVE_VALUE;
+  execution_date = GNUNET_TIME_absolute_get ();
+  GNUNET_TIME_round_abs (&execution_date);
+  
+  priv = GNUNET_CRYPTO_eddsa_key_create ();
+  r->reserve_priv.eddsa_priv = *priv;
+  GNUNET_free (priv);
+  transfer_details = json_pack ("{s:I}",
+				"uuid", (json_int_t) transfer_uuid++);
+  GNUNET_assert (NULL != transfer_details);
+  GNUNET_CRYPTO_eddsa_key_get_public (&r->reserve_priv.eddsa_priv,
+				      &reserve_pub.eddsa_pub);
+  r->aih = TALER_EXCHANGE_admin_add_incoming (exchange,
+					      exchange_admin_uri,
+					      &reserve_pub,
+					      &reserve_amount,
+					      execution_date,
+					      bank_details,
+					      transfer_details,
+					      &add_incoming_cb,
+					      r);
+  GNUNET_assert (NULL != r->aih);
+  json_decref (transfer_details);
 }
 
 
@@ -856,63 +922,39 @@ static void
 benchmark_run (void *cls)
 {
   unsigned int i;
-  struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
-  json_t *transfer_details;
-  struct TALER_ReservePublicKeyP reserve_pub;
-  struct GNUNET_TIME_Absolute execution_date;
-  struct TALER_Amount reserve_amount;
 
   benchmark_task = NULL;
-  priv = GNUNET_CRYPTO_eddsa_key_create ();
-  merchant_priv.eddsa_priv = *priv;
-  GNUNET_free (priv);
-
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                              &blinding_key,
-                              sizeof (blinding_key));
-  TALER_amount_get_zero (currency, &reserve_amount);
-  reserve_amount.value = RESERVE_VALUE;
-  execution_date = GNUNET_TIME_absolute_get ();
-  GNUNET_TIME_round_abs (&execution_date);
-  nreserves = pool_size / COINS_PER_RESERVE;
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Creating %d reserves\n",
-              nreserves);
-
-  reserves = GNUNET_new_array (nreserves,
-                               struct Reserve);
-  ncoins = COINS_PER_RESERVE * nreserves;
-  coins = GNUNET_new_array (ncoins,
-                            struct Coin);
-
+  /* FIXME: Note that this function cannot work as-is, it's 
+     just a placeholder for the final logic we want here. */
   for (i=0;i < nreserves;i++)
   {
     struct Reserve *r = &reserves[i];
 
-    priv = GNUNET_CRYPTO_eddsa_key_create ();
-    r->reserve_priv.eddsa_priv = *priv;
-    GNUNET_free (priv);
     r->reserve_index = i;
-    transfer_details = json_pack ("{s:I}",
-				  "uuid", (json_int_t) transfer_uuid++);
-    GNUNET_assert (NULL != transfer_details);
-    GNUNET_CRYPTO_eddsa_key_get_public (&r->reserve_priv.eddsa_priv,
-                                        &reserve_pub.eddsa_pub);
-    r->aih = TALER_EXCHANGE_admin_add_incoming (exchange,
-						exchange_admin_uri,
-						&reserve_pub,
-						&reserve_amount,
-						execution_date,
-						bank_details,
-						transfer_details,
-						&add_incoming_cb,
-						r);
-    GNUNET_assert (NULL != r->aih);
-    json_decref (transfer_details);
+    fill_reserve (r);
+  
+
+    for (i=0; i < COINS_PER_RESERVE; i++)
+    {
+      struct Coin *coin;
+      unsigned int coin_index;
+      
+      coin_index = r->reserve_index * COINS_PER_RESERVE + i;
+      coin = &coins[coin_index];
+      coin->coin_index = coin_index;
+      coin->reserve_index = r->reserve_index;
+      withdraw_coin (coin);
+    }
   }
-  json_decref (bank_details);
-  bank_details = NULL;
-  transfer_details = NULL;
+
+  if (GNUNET_OK == eval_probability (SPEND_PROBABILITY))
+  {
+    struct Coin *coin;
+
+    i = 0; // FIXME...
+    coin = &coins[i];
+    spend_coin (coin,
+		(GNUNET_YES == eval_probability (REFRESH_PROBABILITY)));  }
 }
 
 
@@ -993,7 +1035,7 @@ cert_cb (void *cls,
   if (NULL != currency)
     return; /* we've been here before... */
   currency = GNUNET_strdup (_keys->denom_keys[0].value.currency);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
 	      "Using currency: %s\n",
 	      currency);
   if (GNUNET_SYSERR ==
@@ -1002,8 +1044,7 @@ cert_cb (void *cls,
     fail ("Initializing denominations failed");
     return;
   }
-  benchmark_task = GNUNET_SCHEDULER_add_now (&benchmark_run,
-                                             NULL);
+  continue_master_task ();
 }
 
 
@@ -1020,18 +1061,11 @@ do_shutdown (void *cls)
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 	      "Shutting down...\n");
-
   if (NULL != benchmark_task)
   {
     GNUNET_SCHEDULER_cancel (benchmark_task);
     benchmark_task = NULL;
   }
-  
-  /**
-   * WARNING: all the non NULL handles must correspond to non completed
-   * calls (AKA calls for which the callback function has not been called).
-   * If not, it segfaults
-   */
   for (i=0; i<nreserves; i++)
   {
     if (NULL != reserves[i].aih)
@@ -1045,37 +1079,39 @@ do_shutdown (void *cls)
   }
   for (i=0; i<COINS_PER_RESERVE * nreserves; i++)
   {
-    if (NULL != coins[i].wsh)
+    struct Coin *coin = &coins[i];
+    
+    if (NULL != coin->wsh)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Cancelling %d-th coin withdraw handle\n",
                   i);
-      TALER_EXCHANGE_reserve_withdraw_cancel(coins[i].wsh);
-      coins[i].wsh = NULL;
+      TALER_EXCHANGE_reserve_withdraw_cancel (coin->wsh);
+      coin->wsh = NULL;
     }
-    if (NULL != coins[i].dh)
+    if (NULL != coin->dh)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Cancelling %d-th coin deposit handle\n",
                   i);
-      TALER_EXCHANGE_deposit_cancel(coins[i].dh);
-      coins[i].dh = NULL;
+      TALER_EXCHANGE_deposit_cancel(coin->dh);
+      coin->dh = NULL;
     }
-    if (NULL != coins[i].rmh)
+    if (NULL != coin->rmh)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Cancelling %d-th coin melt handle\n",
                   i);
-      TALER_EXCHANGE_refresh_melt_cancel(coins[i].rmh);
-      coins[i].rmh = NULL;
+      TALER_EXCHANGE_refresh_melt_cancel (coin->rmh);
+      coin->rmh = NULL;
     }
-    if (NULL != coins[i].rrh)
+    if (NULL != coin->rrh)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Cancelling %d-th coin reveal handle\n",
                   i);
-      TALER_EXCHANGE_refresh_reveal_cancel(coins[i].rrh);
-      coins[i].rmh = NULL;
+      TALER_EXCHANGE_refresh_reveal_cancel (coin->rrh);
+      coin->rmh = NULL;
     }
   }
   if (NULL != bank_details)
@@ -1089,8 +1125,11 @@ do_shutdown (void *cls)
     merchant_details = NULL;
   }
   GNUNET_free_non_null (reserves);
+  reserves = NULL;
   GNUNET_free_non_null (coins);
+  coins = NULL;
   GNUNET_free_non_null (currency);
+  currency = NULL;
 
   if (NULL != exchange)
   {
@@ -1120,6 +1159,7 @@ do_shutdown (void *cls)
 
 /**
  * Main function that will be run by the scheduler.
+ * Prepares everything for the benchmark.
  *
  * @param cls closure
  */
@@ -1128,6 +1168,7 @@ run (void *cls)
 {
   char *bank_details_filename;
   char *merchant_details_filename;
+  struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "running run()\n");
@@ -1190,8 +1231,22 @@ run (void *cls)
     fail ("Failed to parse file with MERCHANT_DETAILS");
     return;
   }
-  reserves = NULL;
-  coins = NULL;
+
+  priv = GNUNET_CRYPTO_eddsa_key_create ();
+  merchant_priv.eddsa_priv = *priv;
+  GNUNET_free (priv);
+
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                              &blinding_key,
+                              sizeof (blinding_key));
+
+  nreserves = pool_size / COINS_PER_RESERVE;
+  reserves = GNUNET_new_array (nreserves,
+                               struct Reserve);
+  ncoins = COINS_PER_RESERVE * nreserves;
+  coins = GNUNET_new_array (ncoins,
+                            struct Coin);
+
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
                           &rc);
   GNUNET_assert (NULL != ctx);
