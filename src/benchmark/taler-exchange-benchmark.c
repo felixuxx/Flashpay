@@ -31,13 +31,24 @@
 
 /**
  * How much slack do we leave in terms of coins that are invalid (and
- * thus available for refresh)?
+ * thus available for refresh)?  Should be significantly larger
+ * than #REFRESH_SLOTS_NEEDED, and must be below #pool_size.
  */
-#define INVALID_COIN_SLACK 10
+#define INVALID_COIN_SLACK 20
 
 /**
- * The benchmark withdraws always the same denomination, since the calculation
- * for refreshing is statically done (at least in its very first version).
+ * How much slack must we have to do a refresh? Should be the
+ * maximum number of coins a refresh can generate, and thus
+ * larger than log(base 2) of #COIN_VALUE.  Must also be
+ * smaller than #INVALID_COIN_SLACK and smaller than 64.
+ */
+#define REFRESH_SLOTS_NEEDED 5
+
+/**
+ * The benchmark withdraws always the same denomination, since the
+ * calculation for refreshing is statically done (at least in this
+ * first version).  In the future, this will be the largest value
+ * we ever withdraw.
  */
 #define COIN_VALUE 8
 
@@ -51,13 +62,15 @@
 #define REFRESH_PROBABILITY 0.1
 
 /**
- * Large enough value to allow having 12 coins per reserve without parsing
- * /keys in the first place
+ * What is the amount we deposit into a reserve each time.
+ * We keep it simple and always deposit the same amount for now.
  */
 #define RESERVE_VALUE 1000
 
 /**
- * How many coins (AKA withdraw operations) per reserve should be withdrawn at the same time.
+ * What should be the ratio of coins withdrawn per reserve?
+ * We roughly match #RESERVE_VALUE / #COIN_VALUE, as that
+ * matches draining the reserve.
  */
 #define COINS_PER_RESERVE 12
 
@@ -68,17 +81,15 @@
 #define WARM_THRESHOLD 1000LL
 
 /**
- * List of coins to get in return to a melt operation. Just a
- * static list for now as every melt operation is carried out
- * on a 8 KUDOS coin whose only 1 KUDOS has been spent, thus
- * 7 KUDOS melted. This structure must be changed with one holding
- * TALER_Amount structs, as every time it's needed it requires
- * too many operations before getting the desired TALER_Amount.
+ * List of coins to get in return to a melt operation, in order
+ * of preference. The values from this structure are converted
+ * to the #refresh_pk array.  Must be NULL-terminated.  The
+ * currency is omitted as we get that from /keys.
  */
 static const char *refresh_denoms[] = {
-  "4",
-  "2",
-  "1",
+  "4.00",
+  "2.00",
+  "1.00",
   NULL
 };
 
@@ -578,7 +589,7 @@ reveal_cb (void *cls,
     fresh_coin = invalid_coins_head;
     if (NULL == fresh_coin)
     {
-      /* #INVALID_COIN_SLACK too low? */
+      /* #REFRESH_SLOTS_NEEDED too low? */
       GNUNET_break (0);
       continue;
     }
@@ -594,6 +605,8 @@ reveal_cb (void *cls,
     fresh_coin->coin_priv = coin_privs[i];
     fresh_coin->left = coin->denoms[i];
   }
+  GNUNET_free (coin->denoms);
+  coin->denoms = NULL;
   continue_master_task ();
 }
 
@@ -674,35 +687,45 @@ refresh_coin (struct Coin *coin)
 {
   char *blob;
   size_t blob_size;
-  const struct TALER_EXCHANGE_Keys *keys;
   struct TALER_Amount *denoms = NULL;
   struct TALER_EXCHANGE_DenomPublicKey *dpks = NULL;
   const struct TALER_EXCHANGE_DenomPublicKey *curr_dpk;
   struct TALER_Amount curr;
   unsigned int ndenoms = 0;
   unsigned int ndenoms2 = 0;
-  unsigned long long acc_value;
+  unsigned int off;
   
   TALER_amount_get_zero (currency, &curr);
-  acc_value = 0;
-  keys = TALER_EXCHANGE_get_keys (exchange);
-  for (curr.value = COIN_VALUE >> 1; curr.value > 0; curr.value = curr.value >> 1)
+  off = 0;
+  while (0 != TALER_amount_cmp (&curr,
+				&coin->left))
   {
-    while (acc_value + curr.value <= coin->left.value)
+    if (off >= refresh_pk_len)
+    {
+      /* refresh currency choices do not add up! */
+      GNUNET_break (0);
+      break;
+    }
+    curr_dpk = &refresh_pk[off];
+    while (-1 != TALER_amount_cmp (&coin->left,
+				   &curr_dpk->value))
     {
       GNUNET_array_append (denoms,
 			   ndenoms,
-			   curr);
-      GNUNET_assert (NULL != (curr_dpk = find_pk (keys, &curr)));
+			   curr_dpk->value);
       GNUNET_array_append (dpks,
 			   ndenoms2,
 			   *curr_dpk);
-      acc_value += curr.value; 
+      TALER_amount_subtract (&coin->left,
+			     &coin->left,
+			     &curr_dpk->value);
     }
+    off++;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
 	      "# of coins to get in melt: %d\n",
 	      ndenoms2);
+  GNUNET_break (ndenoms2 <= REFRESH_SLOTS_NEEDED);
   blob = TALER_EXCHANGE_refresh_prepare (&coin->coin_priv,
 					 &coin->left,
 					 &coin->sig,
@@ -712,9 +735,6 @@ refresh_coin (struct Coin *coin)
 					 dpks,
 					 &blob_size);
   invalidate_coin (coin);
-  GNUNET_array_grow (denoms,
-		     ndenoms,
-		     0);
   GNUNET_array_grow (dpks,
 		     ndenoms2,
 		     0);
@@ -1136,6 +1156,8 @@ benchmark_run (void *cls)
       refresh = GNUNET_NO; /* cannot refresh, coin is already at unit */
     else
       refresh = eval_probability (REFRESH_PROBABILITY);
+    if (num_invalid_coins < REFRESH_SLOTS_NEEDED)
+      refresh = GNUNET_NO;
     spend_coin (coin,
 		refresh);
     return;
@@ -1149,12 +1171,11 @@ benchmark_run (void *cls)
  * be withdrawn in a refresh operation. It sums up 4 #currency units,
  * since that is the only amount refreshed so far by the benchmark
  *
- * @param NULL-terminated array of value.fraction pairs
  * @return #GNUNET_OK if the array is correctly built, #GNUNET_SYSERR
  * otherwise
  */
 static unsigned int
-build_refresh (const char *const*list)
+build_refresh ()
 {
   char *amount_str;
   struct TALER_Amount amount;
@@ -1162,13 +1183,16 @@ build_refresh (const char *const*list)
   const struct TALER_EXCHANGE_DenomPublicKey *picked_denom;
   const struct TALER_EXCHANGE_Keys *keys;
 
+  GNUNET_array_grow (refresh_pk,
+		     refresh_pk_len,
+		     0);
   keys = TALER_EXCHANGE_get_keys (exchange);
-  for (i=0; NULL != list[i]; i++)
+  for (i=0; NULL != refresh_denoms[i]; i++)
   {
     GNUNET_asprintf (&amount_str,
 		     "%s:%s",
 		     currency,
-		     list[i]);
+		     refresh_denoms[i]);
     GNUNET_assert (GNUNET_OK ==
 		   TALER_string_to_amount (amount_str,
 					   &amount));
@@ -1219,17 +1243,26 @@ cert_cb (void *cls,
               _keys->num_sign_keys,
               _keys->num_denom_keys);
   if (NULL != currency)
-    return; /* we've been here before... */
+  {
+    /* we've been here before, still need to update refresh_denoms */
+    if (GNUNET_SYSERR ==
+	build_refresh ())
+    {
+      fail ("Initializing denominations failed");
+      return;
+    }
+    return; 
+  }
   currency = GNUNET_strdup (_keys->denom_keys[0].value.currency);
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-	      "Using currency: %s\n",
-	      currency);
   if (GNUNET_SYSERR ==
-      build_refresh (refresh_denoms))
+      build_refresh ())
   {
     fail ("Initializing denominations failed");
     return;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+	      "Using currency: %s\n",
+	      currency);
   continue_master_task ();
 }
 
@@ -1312,6 +1345,11 @@ do_shutdown (void *cls)
       GNUNET_CRYPTO_rsa_signature_free (coin->sig.rsa_signature);
       coin->sig.rsa_signature = NULL;
     }
+    if (NULL != coin->denoms)
+    {
+      GNUNET_free (coin->denoms);
+      coin->denoms = NULL;
+    }
   }
   if (NULL != bank_details)
   {
@@ -1387,8 +1425,6 @@ run (void *cls)
   unsigned int i;
   unsigned int j;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "running run()\n");
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "gotten pool_size of %d\n",
               pool_size);
@@ -1405,6 +1441,11 @@ run (void *cls)
 						   config_file))
   {
     fail ("Failed to parse configuration file");
+    return;
+  }
+  if (pool_size < INVALID_COIN_SLACK)
+  {
+    fail ("Pool size given too small.");
     return;
   }
   if (GNUNET_SYSERR ==
@@ -1460,6 +1501,8 @@ run (void *cls)
                               sizeof (blinding_key));
 
   nreserves = pool_size / COINS_PER_RESERVE;
+  if (COINS_PER_RESERVE * nreserves < pool_size)
+    nreserves++;
   reserves = GNUNET_new_array (nreserves,
                                struct Reserve);
   ncoins = COINS_PER_RESERVE * nreserves;
@@ -1535,6 +1578,8 @@ main (int argc,
   GNUNET_log_setup ("taler-exchange-benchmark",
                     "WARNING",
                     NULL);
+  GNUNET_assert (INVALID_COIN_SLACK >= REFRESH_SLOTS_NEEDED);
+  GNUNET_assert (COIN_VALUE <= (1LL << REFRESH_SLOTS_NEEDED));
   ret = GNUNET_GETOPT_run ("taler-exchange-benchmark",
 			   options, argc, argv);
   GNUNET_assert (GNUNET_SYSERR != ret);
