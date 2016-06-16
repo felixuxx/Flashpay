@@ -1572,7 +1572,7 @@ main (int argc,
      "How many coins this benchmark should instantiate", GNUNET_YES,
      &GNUNET_GETOPT_set_uint, &pool_size},
     {'l', "limit", "LIMIT",
-     "Terminatet the benchmark after LIMIT operations", GNUNET_YES,
+     "Terminate the benchmark after LIMIT operations", GNUNET_YES,
      &GNUNET_GETOPT_set_uint, &num_iterations},
     GNUNET_GETOPT_OPTION_VERBOSE (&be_verbose),
     GNUNET_GETOPT_OPTION_END
