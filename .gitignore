@@ -44,6 +44,7 @@ src/exchange-tools/taler-exchange-reservemod
 src/exchange-tools/taler-exchange-wire
 src/exchangedb/perf-exchangedb
 src/benchmark/taler-exchange-benchmark
+src/benchmark/test_benchmark_home/.local/share/taler/exchange/live-keys/
 src/json/test_json
 src/wire/test_sepa_wireformat
 src/wire/test_wire_plugin

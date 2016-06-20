@@ -38,6 +38,7 @@ libtalerfakebank_la_LIBADD = \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson \
+  -lmicrohttpd \
   $(XLIB)
 
 

@@ -583,6 +583,11 @@ protocol messages; denomination keys are used for blind-signing coins.
 The exchange's long-term offline key is assumed to be known to both
 customers and merchants and is certified by the auditors.
 
+We avoid asking either customers or merchants to make trust desissions
+about individual exchanges.  Instead, they need only select the auditors.
+Auditors must sign all the exchange's keys including, the individual
+denomination keys.
+
 As we are dealing with financial transactions, we explicitly describe
 whenever entities need to safely commit data to persistent storage.
 As long as those commitments persist, the protocol can be safely
@@ -597,14 +602,20 @@ Merchants may discard information once payments from the exchange have
 been received, assuming the records are also no longer needed for tax
 purposes.  The exchange's bank transfers dealing in traditional currency
 are expected to be recorded for tax authorities to ensure taxability.
+% FIXME: Auditor?
+
+We use RSA for denomination keys and EdDSA over some eliptic curve
+$\mathbb{E}$ for all other keys.  Let $G$ denote the generator of
+our elliptic curve $\mathbb{E}$.
+
 
 \subsection{Withdrawal}
 
-Let $G$ be the generator of an elliptic curve.  To withdraw anonymous
-digital coins, the customer first identifies a exchange with a
-denomination public-private key pair $K := (K_s, K_p)$ corresponding
-to a denomination the customer would like to withdraw, and then
-performs the following interaction with the exchange:
+To withdraw anonymous digital coins, the customer first selects an
+exchange and one of its public denomination public keys $K_p$ whose
+value $K_v$ corresponds to an amount the customer wishes to withdraw.
+We let $K_s$ denote the exchange's private key corresponding to $K_p$.
+Now the customer carries out the following interaction with the exchange:
 
 % FIXME: We say withdrawal key in this document, but say reserve key in
 % others, so probably withdrawal key should be renamed to reserve key.
@@ -621,7 +632,7 @@ performs the following interaction with the exchange:
            \item coin key $C := (c_s,C_p)$ with private key $c_s$ and public key $C_p := c_s G$,
            \item blinding factor $b$, and commits $\langle W, C, b \rangle$ to disk.
         \end{itemize}
-  \item The customer transfers an amount of money corresponding to at least $K_p$ to the exchange, with $W_p$ in the subject line of the transaction.
+  \item The customer transfers an amount of money corresponding to at least $K_v$ to the exchange, with $W_p$ in the subject line of the transaction.
   \item The exchange receives the transaction and credits the $W_p$ reserve with the respective amount in its database.
   \item The customer sends $S_W(B_b(C_p))$ to the exchange to request withdrawal of $C$; here, $B_b$ denotes Chaum-style blinding with blinding factor $b$.
   \item The exchange checks if the same withdrawal request was issued before; in this case, it sends $S_{K}(B_b(C_p))$ to the customer.\footnote{$S_K$
@@ -636,6 +647,7 @@ performs the following interaction with the exchange:
         If the guards for the transaction fail, the exchange sends a descriptive error back to the customer,
         with proof that it operated correctly.
         Assuming the signature was valid, this would involve showing the transaction history for the reserve.
+        % FIXME: Is it really the whole history?
   \item The customer computes and verifies the unblinded signature $S_K(C_p) = U_b(S_K(B_b(C_p)))$.
         The customer saves the coin $\langle S_K(C_p), c_s \rangle$ to local wallet on disk.
 \end{enumerate}
@@ -644,9 +656,12 @@ performs the following interaction with the exchange:
 \subsection{Exact and partial spending}
 
 A customer can spend coins at a merchant, under the condition that the
-merchant trusts the specific exchange that issued the coin.  Merchants are
-identified by their key $M := (m_s, M_p)$ where the public key $M_p$
-must be known to the customer a priori.
+merchant trusts the exchange that issued the coin.
+% FIXME: Auditor here?
+Merchants are identified by their public key $M_p = m_s G$ which the
+customer's wallet learns through the merchant's webpage, which itself
+must be authenticated with X.509c.
+% FIXME: Is this correct? 
 
 We now describe the protocol between the customer, merchant, and exchange
 for a transaction in which the customer spends a coin $C := (c_s, C_p)$
@@ -676,8 +691,8 @@ with signature $\widetilde{C} := S_K(C_p)$
   S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$
   and sends $\langle \mathcal{D}, D_j\rangle$ to the merchant,
   where $D_j$ is the exchange which signed $K$.
-\item The merchant gives $(\mathcal{D}, p, r)$ to the exchange, revealing $p$
-  only to the exchange.
+\item The merchant gives $(\mathcal{D}, p, r)$ to the exchange, thereby
+  revealing $p$ only to the exchange.
 \item The exchange validates $\mathcal{D}$ and checks for double spending.
   If the coin has been involved in previous transactions and the new
   one would exceed its remaining value, it sends an error

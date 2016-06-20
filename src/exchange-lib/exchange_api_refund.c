@@ -283,7 +283,8 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 			  "merchant_pub", GNUNET_JSON_from_data_auto (&rr.merchant),
 			  "merchant_sig", GNUNET_JSON_from_data_auto (&merchant_sig)
 			  );
-
+  GNUNET_assert (NULL != refund_obj);
+  
   rh = GNUNET_new (struct TALER_EXCHANGE_RefundHandle);
   rh->exchange = exchange;
   rh->cb = cb;
