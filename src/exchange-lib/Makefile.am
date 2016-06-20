@@ -10,7 +10,7 @@ lib_LTLIBRARIES = \
   libtalerexchange.la
 
 libtalerexchange_la_LDFLAGS = \
-  -version-info 0:0:0 \
+  -version-info 1:0:0 \
   -no-undefined
 
 libtalerexchange_la_SOURCES = \
