@@ -23,8 +23,8 @@ taler_exchange_benchmark_LDADD = \
 
 EXTRA_DIST = \
   taler-exchange-benchmark.conf \
-  bank-details.json \
-  merchant-details.json \
+  bank_details.json \
+  merchant_details.json \
   test_benchmark_home/.local/share/taler/exchange/offline-keys/master.priv \
   test_benchmark_home/.config/taler/test.json \
   test_benchmark_home/.config/taler/sepa.json
