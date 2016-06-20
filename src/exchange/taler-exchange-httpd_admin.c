@@ -27,70 +27,6 @@
 #include "taler-exchange-httpd_validation.h"
 
 
-/**
- * Check permissions (we only allow access to /admin/ from loopback).
- *
- * @param connection connection to perform access check for
- * @return #GNUNET_OK if permitted,
- *         #GNUNET_NO if denied and error was queued,
- *         #GNUNET_SYSERR if denied and we failed to report
- */
-static int
-check_permissions (struct MHD_Connection *connection)
-{
-  const union MHD_ConnectionInfo *ci;
-  const struct sockaddr *addr;
-  int res;
-
-  ci = MHD_get_connection_info (connection,
-                                MHD_CONNECTION_INFO_CLIENT_ADDRESS);
-  if (NULL == ci)
-  {
-    GNUNET_break (0);
-    res = TMH_RESPONSE_reply_internal_error (connection,
-                                             "Failed to verify client address");
-    return (MHD_YES == res) ? GNUNET_NO : GNUNET_SYSERR;
-  }
-  addr = ci->client_addr;
-  switch (addr->sa_family)
-  {
-  case AF_UNIX:
-    /* We rely on file system permissions here */
-    return GNUNET_YES;
-  case AF_INET:
-    {
-      const struct sockaddr_in *sin = (const struct sockaddr_in *) addr;
-
-      if (INADDR_LOOPBACK != ntohl (sin->sin_addr.s_addr))
-      {
-        res = TMH_RESPONSE_reply_permission_denied (connection,
-                                                    "/admin/ only allowed via loopback");
-        return (MHD_YES == res) ? GNUNET_NO : GNUNET_SYSERR;
-      }
-      break;
-    }
-  case AF_INET6:
-    {
-      const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *) addr;
-
-      if (! IN6_IS_ADDR_LOOPBACK (&sin6->sin6_addr))
-      {
-        res = TMH_RESPONSE_reply_permission_denied (connection,
-                                                    "/admin/ only allowed via loopback");
-        return (MHD_YES == res) ? GNUNET_NO : GNUNET_SYSERR;
-      }
-      break;
-    }
-  default:
-    GNUNET_break (0);
-    res = TMH_RESPONSE_reply_internal_error (connection,
-                                             "Unsupported AF");
-    return (MHD_YES == res) ? GNUNET_NO : GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
-
-
 
 /**
  * Handle a "/admin/add/incoming" request.  Parses the
@@ -127,9 +63,6 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
   };
   int res;
 
-  res = check_permissions (connection);
-  if (GNUNET_OK != res)
-    return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   res = TMH_PARSE_post_json (connection,
                              connection_cls,
                              upload_data,
