@@ -32,6 +32,9 @@
 \usetikzlibrary{shapes,arrows}
 \usetikzlibrary{positioning}
 \usetikzlibrary{calc}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{subfig}
 
 % Relate to:
 % http://fc14.ifca.ai/papers/fc14_submission_124.pdf
@@ -661,7 +664,7 @@ merchant trusts the exchange that issued the coin.
 Merchants are identified by their public key $M_p = m_s G$ which the
 customer's wallet learns through the merchant's webpage, which itself
 must be authenticated with X.509c.
-% FIXME: Is this correct? 
+% FIXME: Is this correct?
 
 We now describe the protocol between the customer, merchant, and exchange
 for a transaction in which the customer spends a coin $C := (c_s, C_p)$
@@ -927,6 +930,83 @@ those funds to be spent again by the original customer.  This customer
 can then use the refresh protocol to anonymously melt the refunded
 coin and create a fresh coin that is unlinkable to the refunded
 transaction.
+
+\section{Experimental results}
+
+\begin{figure}[b!]
+  \begin{subfigure}{0.45\columnwidth}
+    \includegraphics[width=\columnwidth]{bw_in.png}
+    \caption{Incoming traffic at the exchange, in bytes per 5 minutes.}
+    \label{fig:in}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.45\columnwidth}
+    \includegraphics[width=\columnwidth]{bw_out.png}
+    \caption{Outgoing traffic from the exchange, in bytes per 5 minutes.}
+    \label{fig:out}
+  \end{subfigure}
+  \begin{subfigure}{0.45\columnwidth}
+    \includegraphics[width=\columnwidth]{db_read.png}
+    \caption{DB read operations per second.}
+    \label{fig:read}
+  \end{subfigure}
+  \begin{subfigure}{0.45\columnwidth}
+    \includegraphics[width=\columnwidth]{db_write.png}
+    \caption{DB write operations per second.}
+    \label{fig:write}
+   \end{subfigure}
+  \begin{subfigure}{0.45\columnwidth}
+    \includegraphics[width=\columnwidth]{cpu_balance.png}
+    \caption{CPU credit balance. Hitting a balance of 0 shows the CPU is
+       the limiting factor.}
+    \label{fig:cpu}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.45\columnwidth}
+    \includegraphics[width=\columnwidth]{cpu_usage.png}
+    \caption{CPU utilization. The t2.micro instance is allowed to use 10\% of
+       one CPU.}
+    \label{fig:usage}
+  \end{subfigure}
+  \caption{Selected EC2 performance monitors for the experiment in the EC2
+           (after several hours, once the system was ``warm'').}
+  \label{fig:ec2}
+\end{figure}
+
+We ran the Taler exchange v0.0.2 on an Amazon EC2 t2.micro instance
+(10\% of a Xeon E5-2676 at 2.4 GHz) based on Ubuntu 14.04.4 LTS, using
+a db.t2.micro instance with Postgres 9.5 for the database.  Using 16
+concurrent clients performing withdraw, deposit and refresh operations
+we then pushed the t2.micro instance to the resource limit
+(Figure~\ref{fig:cpu}) from a network with $\approx$ 160 ms latency to
+the EC2 instance.  At that point, the instance managed about 8 HTTP
+requests per second, which roughly corresponds to one full business
+transaction (as a full business transaction is expected to involve
+withdrawing and depositing several coins).  The network traffic was
+modest at approximately 50 kbit/sec from the exchange
+(Figure~\ref{fig:out}) and 160 kbit/sec to the exchange
+(Figure~\ref{fig:in}).  At network latencies above 10 ms, the delay
+for executing a transaction is dominated by the network latency, as
+local processing virtually always takes less than 10 ms.
+
+Database transactions are dominated by writes (Figure~\ref{fig:read}
+vs.  Figure~\ref{fig:write}), as Taler mostly needs to log
+transactions and occasionally needs to read to guard against
+double-spending.  Given a database capacity of 2 TB---which should
+suffice for more than one year of full transaction logs---the
+described setup has a hosting cost within EC2 of approximately USD 252
+per month, or roughly 0.0001 USD per full business transaction.  This
+compares favorably to the $\approx$ USD 10 per business transaction
+for Bitcoin and the \EUR{0.35} plus 1.9\% charged by Paypal for
+domestic transfers within Germany.
+
+In the Amazon EC2 billing, the cost for the database (using SSD
+storage) dominates the cost with more than USD 243 per month.  We note
+that these numbers are approximate, as the frontend and backend in our
+configuration uses systems from the AWS Free Usage Tier and is not
+perfectly balanced in between frontend and backend.  Nevertheless,
+these experimental results show that computing-related business costs
+will only marginally contribute to the operational costs of the Taler
+payment system.
+
 
 
 \section{Discussion}
