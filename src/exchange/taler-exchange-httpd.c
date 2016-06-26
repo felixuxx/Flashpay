@@ -897,7 +897,7 @@ open_unix_path (const char *unix_path,
     return -1;
   }
 
-  if (0 != chmod (serve_unixpath,
+  if (0 != chmod (unix_path,
                   unix_mode))
   {
     fprintf (stderr,
