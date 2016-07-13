@@ -1286,7 +1286,7 @@ postgres_start (void *cls,
   PGresult *result;
 
   result = PQexec (session->conn,
-                   "BEGIN");
+                   "START TRANSACTION ISOLATION LEVEL SERIALIZABLE");
   if (PGRES_COMMAND_OK !=
       PQresultStatus (result))
   {
