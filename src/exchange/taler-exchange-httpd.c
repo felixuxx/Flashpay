@@ -11,7 +11,7 @@
   A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
 
   You should have received a copy of the GNU Affero General Public License along with
-  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/licenses/>
+  TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 
 /**
@@ -897,7 +897,7 @@ open_unix_path (const char *unix_path,
     return -1;
   }
 
-  if (0 != chmod (serve_unixpath,
+  if (0 != chmod (unix_path,
                   unix_mode))
   {
     fprintf (stderr,

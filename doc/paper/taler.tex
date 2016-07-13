@@ -65,7 +65,7 @@
 \begin{document}
 \mainmatter
 
-%\author{Florian Dold \and Sree Harsha Totakura \and Benedikt M\"uller \and Christian Grothoff}
+%\author{Florian Dold \and Sree Harsha Totakura \and Benedikt M\"uller \and Jeff Burdges \and Christian Grothoff}
 %\institute{The GNUnet Project}
 
 
@@ -91,21 +91,20 @@ citizen's needs for private economic activity.
 
 \section{Introduction}
 
-The design of payment systems shapes economies and societies.
-Strong, developed nation states are evolving towards transparent
-payment systems, such as the MasterCard and VisaCard credit card
-schemes and computerized bank transactions such as SWIFT.
-These systems enable mass surveillance by both governments and
-private companies, chilling customer activity~\cite{???}.
-Aspects of this government control benifit the economy, by enabling
-taxation.  Also, bribery and corruption are limited to elites who
-can afford to escape the dragnet.
+The design of payment systems shapes economies and societies.  Strong,
+developed nation states are evolving towards transparent payment
+systems, such as the MasterCard and VisaCard credit card schemes and
+computerized bank transactions such as SWIFT.  These systems enable
+mass surveillance by both governments and private companies.  Aspects
+of this government control benefit the economy, by enabling taxation
+(also called anti-money laundering).  As a result, bribery and
+corruption are limited to elites who can afford to escape the dragnet.
 At the other extreme, weaker developing nation states have economic
-activity based largely on coins, paper money or even barter.
-Here, the state is often unable to effectively monitor or tax economic
-activity, and this limits the ability of the state to shape the society.
-As bribery is virtually impossible to detect, corruption is widespread
-and not limited to social elites.
+activity based largely on coins, paper money or even barter.  Here,
+the state is often unable to effectively monitor or tax economic
+activity, and this limits the ability of the state to shape the
+society.  As bribery is virtually impossible to detect, corruption is
+widespread and not limited to social elites.
 %
 ZeroCoin~\cite{miers2013zerocoin} is an example for translating an
 anarchistic economy into the digital realm.
@@ -133,7 +132,7 @@ instantly that a transaction is valid.
 \begin{figure}[h]
 \centering
 \begin{tikzpicture}
- \tikzstyle{def} = [node distance= 5em and 7em, inner sep=1em, outer sep=.3em];
+ \tikzstyle{def} = [node distance= 1em and 11em, inner sep=1em, outer sep=.3em];
  \node (origin) at (0,0) {};
  \node (exchange) [def,above=of origin,draw]{Exchange};
  \node (customer) [def, draw, below left=of origin] {Customer};
@@ -195,11 +194,8 @@ Yet, there are several major irredeemable problems inherent in their designs:
   \item Bitcoin transactions have pseduononymous recipients, making taxation
     hard to systematically enforce.
     The Zerocoin extension makes this worse.
-% FIXME: need refs for following claim:
-  \item Bitcoin seemingly requires speculation to offset the mining cost,
-    creating fluctuations in value, and making it hard to bind to national
-    currencies.  These fluctuations may be desirable in a high-risk investment
-    instrument, but they make Bitcoin unsuitable as a medium of exchange.
+  \item Bitcoin introduces a new currency, creating additional
+    financial risks from currency fluctuation.
   \item Anyone can start an alternative Bitcoin transaction chain,
     called an AltCoin, and, if successful, reap the benefits of the low
     cost to initially create coins cheaply as the proof-of-work
@@ -212,15 +208,13 @@ Yet, there are several major irredeemable problems inherent in their designs:
     % currency exchange and exacerbates the problems with currency fluctuations.
 \end{itemize}
 
-GreenCoinX\footnote{\url{https://www.greencoinx.com/}} is a more
-recent AltCoin where the company promises to identify the owner of
-each coin via e-mail addresses and phone numbers.  While it is unclear
-from their technical description how this identification would be
-enforced against a determined adversary, the resulting payment system
-would also merely impose a totalitarian financial panopticon on a
-BitCoin-style money supply and transaction model, thus largely
-combining what we would consider to be the drawbacks of existing
-credit card systems.
+%GreenCoinX\footnote{\url{https://www.greencoinx.com/}} is a more
+%recent AltCoin where the company promises to identify the owner of
+%each coin via e-mail addresses and phone numbers.  While it is unclear
+%from their technical description how this identification would be
+%enforced against a determined adversary, the resulting payment system
+%would also merely impose a financial panopticon on a BitCoin-style
+%money supply and transaction model.
 
 \subsection{Chaum-style electronic cash}
 
@@ -239,10 +233,10 @@ include:
    recover funds from delinquent customers via the legal system.
    Any system that fails to be self-enforcing creates a major
    business risk for the exchange and merchants.
-   In 1983, there were merchants without network connectivity, making that
-   feature relevant, but today network connectivity is feasible for most
-   merchants, and saves both the exchange and merchants the business risks
-   associated with deferred fraud detection.
+%   In 1983, there were merchants without network connectivity, making that
+%   feature relevant, but today network connectivity is feasible for most
+%   merchants, and saves both the exchange and merchants the business risks
+%   associated with deferred fraud detection.
  \item % In addition to the risk of legal disputes with fraudulent
    % merchants and customers,
    Chaum's published design does not clearly
@@ -294,21 +288,21 @@ to what degree the implementation is even complete.  Only a partial
 description of the Opencoin protocol is available to date.
 
 
-\subsection{Peppercoin}
+%\subsection{Peppercoin}
 
-Peppercoin~\cite{rivest2004peppercoin} is a microdonation protocol.
-The main idea of the protocol is to reduce transaction costs by
-minimizing the number of transactions that are processed directly by
-the exchange.  Instead of always paying, the customer ``gambles'' with the
-merchant for each microdonation.  Only if the merchant wins, the
-microdonation is upgraded to a macropayment to be deposited at the
-exchange.  Peppercoin does not provide customer-anonymity.  The proposed
-statistical method by which exchanges detect fraudulent cooperation between
-customers and merchants at the expense of the exchange not only creates
-legal risks for the exchange, but would also require that the exchange learns
-about microdonations where the merchant did not get upgraded to a
-macropayment.  It is therefore unclear how Peppercoin would actually
-reduce the computational burden on the exchange.
+%Peppercoin~\cite{rivest2004peppercoin} is a microdonation protocol.
+%The main idea of the protocol is to reduce transaction costs by
+%minimizing the number of transactions that are processed directly by
+%the exchange.  Instead of always paying, the customer ``gambles'' with the
+%merchant for each microdonation.  Only if the merchant wins, the
+%microdonation is upgraded to a macropayment to be deposited at the
+%exchange.  Peppercoin does not provide customer-anonymity.  The proposed
+%statistical method by which exchanges detect fraudulent cooperation between
+%customers and merchants at the expense of the exchange not only creates
+%legal risks for the exchange, but would also require that the exchange learns
+%about microdonations where the merchant did not get upgraded to a
+%macropayment.  It is therefore unclear how Peppercoin would actually
+%reduce the computational burden on the exchange.
 
 
 \section{Design}
@@ -519,7 +513,7 @@ shared with others, they become co-owners of the coin.  Knowledge of
 the private key of the coin enables the owner to spent the coin.
 
 
-\subsection{Coin spending}
+% \subsection{Coin spending}
 
 A customer spends a coin at a merchant by cryptographically signing a
 {\em deposit authorization} with the coin's private key.  A deposit
@@ -1156,6 +1150,12 @@ the participants have to disclose their core secrets.
 
 \bibliographystyle{alpha}
 \bibliography{taler,rfc}
+
+\vfill
+\begin{center}
+ \Large  Demonstration available at \url{https://demo.taler.net/}
+\end{center}
+\vfill
 
 \newpage
 \appendix
