@@ -221,7 +221,7 @@ postgres_drop_tables (void *cls)
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS refresh_commit_coin;");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS refresh_commit_link;");
+            "DROP TABLE IF EXISTS refresh_transfer_public_key;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS refunds;");
   SQLEXEC_ (conn,
@@ -385,15 +385,14 @@ postgres_create_tables (void *cls)
      oldcoin index and the cut-and-choose index (from 0 to #TALER_CNC_KAPPA-1),
      as well as the actual link data (the transfer public key and the encrypted
      link secret) */
-  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_commit_link "
+  SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_transfer_public_key "
           "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) ON DELETE CASCADE"
           ",transfer_pub BYTEA NOT NULL CHECK(LENGTH(transfer_pub)=32)"
-          ",link_secret_enc BYTEA NOT NULL CHECK(LENGTH(link_secret_enc)=64)"
           ",cnc_index INT2 NOT NULL"
           ",UNIQUE (session_hash, cnc_index)"
           ")");
-  SQLEXEC_INDEX("CREATE INDEX refresh_commit_link_session_hash_index "
-                "ON refresh_commit_link(session_hash, cnc_index)");
+  SQLEXEC_INDEX("CREATE INDEX refresh_transfer_public_key_index "
+                "ON refresh_transfer_public_key(session_hash, cnc_index)");
 
   /* Table with the commitments for the new coins that are to be created
      during a melting session.  Includes the session, the cut-and-choose
@@ -405,7 +404,6 @@ postgres_create_tables (void *cls)
           "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) ON DELETE CASCADE"
           ",cnc_index INT2 NOT NULL"
           ",newcoin_index INT2 NOT NULL"
-          ",link_vector_enc BYTEA NOT NULL CHECK(LENGTH(link_vector_enc)=64)"
           ",coin_ev BYTEA NOT NULL"
           ",UNIQUE (session_hash, cnc_index, newcoin_index)"
           ")");
@@ -827,25 +825,23 @@ postgres_prepare (PGconn *db_conn)
            1, NULL);
 
 
-  /* Used in #postgres_insert_refresh_commit_link() to
+  /* Used in #postgres_insert_transfer_public_key() to
      store commitments */
-  PREPARE ("insert_refresh_commit_link",
-           "INSERT INTO refresh_commit_link "
+  PREPARE ("insert_transfer_public_key",
+           "INSERT INTO refresh_transfer_public_key "
            "(session_hash"
            ",transfer_pub"
            ",cnc_index"
-           ",link_secret_enc"
            ") VALUES "
-           "($1, $2, $3, $4);",
-           4, NULL);
+           "($1, $2, $3);",
+           3, NULL);
 
-  /* Used in #postgres_get_refresh_commit_link() to
+  /* Used in #postgres_get_refresh_transfer_public_key() to
      retrieve original commitments during /refresh/reveal */
-  PREPARE ("get_refresh_commit_link",
+  PREPARE ("get_refresh_transfer_public_key",
            "SELECT"
            " transfer_pub"
-           ",link_secret_enc"
-           " FROM refresh_commit_link"
+           " FROM refresh_transfer_public_key"
            " WHERE session_hash=$1 AND cnc_index=$2",
            2, NULL);
 
@@ -856,19 +852,17 @@ postgres_prepare (PGconn *db_conn)
            "(session_hash"
            ",cnc_index"
            ",newcoin_index"
-           ",link_vector_enc"
            ",coin_ev"
            ") VALUES "
-           "($1, $2, $3, $4, $5);",
-           5, NULL);
+           "($1, $2, $3, $4);",
+           4, NULL);
 
   /* Used in #postgres_get_refresh_commit_coins() to
      retrieve the original coin envelopes, to either be
      verified or signed. */
   PREPARE ("get_refresh_commit_coin",
            "SELECT"
-           " link_vector_enc"
-           ",coin_ev"
+           " coin_ev"
            " FROM refresh_commit_coin"
            " WHERE session_hash=$1 AND cnc_index=$2 AND newcoin_index=$3",
            3, NULL);
@@ -1068,8 +1062,7 @@ postgres_prepare (PGconn *db_conn)
            3, NULL);
 
   /* Used in #postgres_get_link_data_list().  We use the session_hash
-     to obtain the "noreveal_index" for that session, and then select
-     the encrypted link vectors (link_vector_enc) and the
+     to obtain the "noreveal_index" for that session, and then select the
      corresponding signatures (ev_sig) and the denomination keys from
      the respective tables (namely refresh_melts and refresh_order)
      using the session_hash as the primary filter (on join) and the
@@ -1081,7 +1074,7 @@ postgres_prepare (PGconn *db_conn)
      being exchangeed in the refresh ops.  NOTE: There may be more
      efficient ways to express the same query.  */
   PREPARE ("get_link",
-           "SELECT link_vector_enc,ev_sig,ro.denom_pub"
+           "SELECT ev_sig,ro.denom_pub"
            " FROM refresh_sessions rs "
            "     JOIN refresh_order ro USING (session_hash)"
            "     JOIN refresh_commit_coin rcc USING (session_hash)"
@@ -1100,9 +1093,9 @@ postgres_prepare (PGconn *db_conn)
      NOTE: This may (in theory) return multiple results, one per session
      that the old coin was melted into. */
   PREPARE ("get_transfer",
-           "SELECT transfer_pub,link_secret_enc,session_hash"
+           "SELECT transfer_pub,session_hash"
            " FROM refresh_sessions rs"
-           "     JOIN refresh_commit_link rcl USING (session_hash)"
+           "     JOIN refresh_transfer_public_key rcl USING (session_hash)"
            " WHERE rs.old_coin_pub=$1"
            "  AND rcl.cnc_index=rs.noreveal_index",
            1, NULL);
@@ -3078,7 +3071,6 @@ postgres_insert_refresh_commit_coins (void *cls,
         GNUNET_PQ_query_param_auto_from_type (session_hash),
         GNUNET_PQ_query_param_uint16 (&cnc_index),
         GNUNET_PQ_query_param_uint16 (&coin_off),
-        GNUNET_PQ_query_param_auto_from_type (&commit_coins[i].refresh_link),
         GNUNET_PQ_query_param_fixed_size (commit_coins[i].coin_ev,
 					  commit_coins[i].coin_ev_size),
         GNUNET_PQ_query_param_end
@@ -3184,8 +3176,6 @@ postgres_get_refresh_commit_coins (void *cls,
     }
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
-        GNUNET_PQ_result_spec_auto_from_type ("link_vector_enc",
-					      &commit_coins[i].refresh_link),
         GNUNET_PQ_result_spec_variable_size ("coin_ev",
 					     &c_buf,
 					     &c_buf_size),
@@ -3216,28 +3206,27 @@ postgres_get_refresh_commit_coins (void *cls,
  * @param session database connection to use
  * @param session_hash hash to identify refresh session
  * @param cnc_index cut and choose index (1st dimension)
- * @param[out] link link information to store return
+ * @param tp transfer public key to store
  * @return #GNUNET_SYSERR on internal error, #GNUNET_OK on success
  */
 static int
-postgres_insert_refresh_commit_link (void *cls,
-                                     struct TALER_EXCHANGEDB_Session *session,
-                                     const struct GNUNET_HashCode *session_hash,
-                                     uint16_t cnc_index,
-                                     const struct TALER_RefreshCommitLinkP *link)
+postgres_insert_refresh_transfer_public_key (void *cls,
+                                             struct TALER_EXCHANGEDB_Session *session,
+                                             const struct GNUNET_HashCode *session_hash,
+                                             uint16_t cnc_index,
+                                             const struct TALER_TransferPublicKeyP *tp)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (session_hash),
-    GNUNET_PQ_query_param_auto_from_type (&link->transfer_pub),
+    GNUNET_PQ_query_param_auto_from_type (tp),
     GNUNET_PQ_query_param_uint16 (&cnc_index),
-    GNUNET_PQ_query_param_auto_from_type (&link->shared_secret_enc),
     GNUNET_PQ_query_param_end
   };
 
   PGresult *result;
 
   result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "insert_refresh_commit_link",
+                                    "insert_transfer_public_key",
                                     params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
@@ -3264,17 +3253,17 @@ postgres_insert_refresh_commit_link (void *cls,
  * @param session database connection to use
  * @param session_hash hash to identify refresh session
  * @param cnc_index cut and choose index (1st dimension)
- * @param[out] link information to return
+ * @param[out] tp information to return
  * @return #GNUNET_SYSERR on internal error,
  *         #GNUNET_NO if commitment was not found
  *         #GNUNET_OK on success
  */
 static int
-postgres_get_refresh_commit_link (void *cls,
-                                  struct TALER_EXCHANGEDB_Session *session,
-                                  const struct GNUNET_HashCode *session_hash,
-                                  uint16_t cnc_index,
-                                  struct TALER_RefreshCommitLinkP *link)
+postgres_get_refresh_transfer_public_key (void *cls,
+                                          struct TALER_EXCHANGEDB_Session *session,
+                                          const struct GNUNET_HashCode *session_hash,
+                                          uint16_t cnc_index,
+                                          struct TALER_TransferPublicKeyP *tp)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (session_hash),
@@ -3284,7 +3273,7 @@ postgres_get_refresh_commit_link (void *cls,
   PGresult *result;
 
   result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "get_refresh_commit_link",
+                                    "get_refresh_transfer_public_key",
                                     params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
@@ -3300,9 +3289,7 @@ postgres_get_refresh_commit_link (void *cls,
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("transfer_pub",
-                                            &link->transfer_pub),
-      GNUNET_PQ_result_spec_auto_from_type ("link_secret_enc",
-                                            &link->shared_secret_enc),
+                                            tp),
       GNUNET_PQ_result_spec_end
     };
 
@@ -3376,11 +3363,11 @@ postgres_get_melt_commitment (void *cls,
       goto cleanup;
     }
     if (GNUNET_OK !=
-        postgres_get_refresh_commit_link (cls,
-                                          session,
-                                          session_hash,
-                                          cnc_index,
-                                          &mc->commit_links[cnc_index]))
+        postgres_get_refresh_transfer_public_key (cls,
+                                                  session,
+                                                  session_hash,
+                                                  cnc_index,
+                                                  &mc->transfer_pubs[cnc_index]))
     {
       GNUNET_break (0);
       goto cleanup;
@@ -3486,8 +3473,6 @@ postgres_get_link_data_list (void *cls,
     pos = GNUNET_new (struct TALER_EXCHANGEDB_LinkDataList);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
-	GNUNET_PQ_result_spec_auto_from_type ("link_vector_enc",
-					      &pos->link_data_enc),
 	GNUNET_PQ_result_spec_rsa_signature ("ev_sig",
 					     &sig),
 	GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
@@ -3567,10 +3552,8 @@ postgres_get_transfer (void *cls,
   {
     struct GNUNET_HashCode session_hash;
     struct TALER_TransferPublicKeyP transfer_pub;
-    struct TALER_EncryptedLinkSecretP shared_secret_enc;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("transfer_pub", &transfer_pub),
-      GNUNET_PQ_result_spec_auto_from_type ("link_secret_enc", &shared_secret_enc),
       GNUNET_PQ_result_spec_auto_from_type ("session_hash", &session_hash),
       GNUNET_PQ_result_spec_end
     };
@@ -3584,8 +3567,7 @@ postgres_get_transfer (void *cls,
     }
     tdc (tdc_cls,
          &session_hash,
-         &transfer_pub,
-         &shared_secret_enc);
+         &transfer_pub);
   }
   PQclear (result);
   return GNUNET_OK;
@@ -4424,8 +4406,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->insert_refresh_commit_coins = &postgres_insert_refresh_commit_coins;
   plugin->get_refresh_commit_coins = &postgres_get_refresh_commit_coins;
   plugin->free_refresh_commit_coins = &postgres_free_refresh_commit_coins;
-  plugin->insert_refresh_commit_link = &postgres_insert_refresh_commit_link;
-  plugin->get_refresh_commit_link = &postgres_get_refresh_commit_link;
+  plugin->insert_refresh_transfer_public_key = &postgres_insert_refresh_transfer_public_key;
+  plugin->get_refresh_transfer_public_key = &postgres_get_refresh_transfer_public_key;
   plugin->get_melt_commitment = &postgres_get_melt_commitment;
   plugin->free_melt_commitment = &common_free_melt_commitment;
   plugin->insert_refresh_out = &postgres_insert_refresh_out;

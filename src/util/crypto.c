@@ -73,92 +73,32 @@ TALER_gcrypt_init ()
 
 
 /**
- * Derive symmetric key material for refresh operations from
- * a given shared secret for link decryption.
+ * Check if a coin is valid; that is, whether the denomination key exists,
+ * is not expired, and the signature is correct.
  *
- * @param secret the shared secret
- * @param[out] iv set to initialization vector
- * @param[out] skey set to session key
- */
-static void
-derive_refresh_key (const struct TALER_LinkSecretP *secret,
-                    struct GNUNET_CRYPTO_SymmetricInitializationVector *iv,
-                    struct GNUNET_CRYPTO_SymmetricSessionKey *skey)
-{
-  static const char ctx_key[] = "taler-link-skey";
-  static const char ctx_iv[] = "taler-link-iv";
-
-  GNUNET_assert (GNUNET_YES ==
-                 GNUNET_CRYPTO_kdf (skey, sizeof (struct GNUNET_CRYPTO_SymmetricSessionKey),
-                                    ctx_key, strlen (ctx_key),
-                                    secret, sizeof (struct TALER_LinkSecretP),
-                                    NULL, 0));
-  GNUNET_assert (GNUNET_YES ==
-                 GNUNET_CRYPTO_kdf (iv, sizeof (struct GNUNET_CRYPTO_SymmetricInitializationVector),
-                                    ctx_iv, strlen (ctx_iv),
-                                    secret, sizeof (struct TALER_LinkSecretP),
-                                    NULL, 0));
-}
-
-
-/**
- * Derive symmetric key material for refresh operations from
- * a given shared secret for key decryption.
- *
- * @param secret the shared secret
- * @param[out] iv set to initialization vector
- * @param[out] skey set to session key
- */
-static void
-derive_transfer_key (const struct TALER_TransferSecretP *secret,
-                     struct GNUNET_CRYPTO_SymmetricInitializationVector *iv,
-                     struct GNUNET_CRYPTO_SymmetricSessionKey *skey)
-{
-  static const char ctx_key[] = "taler-transfer-skey";
-  static const char ctx_iv[] = "taler-transfer-iv";
-
-  GNUNET_assert (GNUNET_YES ==
-                 GNUNET_CRYPTO_kdf (skey, sizeof (struct GNUNET_CRYPTO_SymmetricSessionKey),
-                                    ctx_key, strlen (ctx_key),
-                                    secret, sizeof (struct TALER_TransferSecretP),
-                                    NULL, 0));
-  GNUNET_assert (GNUNET_YES ==
-                 GNUNET_CRYPTO_kdf (iv, sizeof (struct GNUNET_CRYPTO_SymmetricInitializationVector),
-                                    ctx_iv, strlen (ctx_iv),
-                                    secret, sizeof (struct TALER_TransferSecretP),
-                                    NULL, 0));
-}
-
-
-/**
- * Use the @a trans_sec (from ECDHE) to decrypt the @a secret_enc
- * to obtain the @a secret to decrypt the linkage data.
- *
- * @param secret_enc encrypted secret
- * @param trans_sec transfer secret
- * @param secret shared secret for refresh link decryption
- * @return #GNUNET_OK on success
+ * @param coin_public_info the coin public info to check for validity
+ * @return #GNUNET_YES if the coin is valid,
+ *         #GNUNET_NO if it is invalid
+ *         #GNUNET_SYSERROR if an internal error occured
  */
 int
-TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecretP *secret_enc,
-                        const struct TALER_TransferSecretP *trans_sec,
-                        struct TALER_LinkSecretP *secret)
+TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info)
 {
-  struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
-  struct GNUNET_CRYPTO_SymmetricSessionKey skey;
-  ssize_t s;
+  struct GNUNET_HashCode c_hash;
 
-  GNUNET_assert (sizeof (struct TALER_EncryptedLinkSecretP) ==
-                 sizeof (struct TALER_LinkSecretP));
-  derive_transfer_key (trans_sec, &iv, &skey);
-  s = GNUNET_CRYPTO_symmetric_decrypt (secret_enc,
-				       sizeof (struct TALER_LinkSecretP),
-				       &skey,
-				       &iv,
-				       secret);
-  if (sizeof (struct TALER_LinkSecretP) != s)
-    return GNUNET_SYSERR;
-  return GNUNET_OK;
+  GNUNET_CRYPTO_hash (&coin_public_info->coin_pub,
+                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
+                      &c_hash);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_rsa_verify (&c_hash,
+                                coin_public_info->denom_sig.rsa_signature,
+                                coin_public_info->denom_pub.rsa_public_key))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "coin signature is invalid\n");
+    return GNUNET_NO;
+  }
+  return GNUNET_YES;
 }
 
 
@@ -191,244 +131,73 @@ TALER_link_derive_transfer_secret (const struct TALER_CoinSpendPrivateKeyP *coin
 
 
 /**
- * Use the @a trans_sec (from ECDHE) to encrypt the @a secret
- * to obtain the @a secret_enc.
- *
- * @param secret shared secret for refresh link decryption
- * @param trans_sec transfer secret
- * @param[out] secret_enc encrypted secret
- * @return #GNUNET_OK on success
- */
-int
-TALER_transfer_encrypt (const struct TALER_LinkSecretP *secret,
-                        const struct TALER_TransferSecretP *trans_sec,
-                        struct TALER_EncryptedLinkSecretP *secret_enc)
-{
-  struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
-  struct GNUNET_CRYPTO_SymmetricSessionKey skey;
-  ssize_t s;
-
-  GNUNET_assert (sizeof (struct TALER_EncryptedLinkSecretP) ==
-                 sizeof (struct TALER_LinkSecretP));
-  derive_transfer_key (trans_sec, &iv, &skey);
-  s = GNUNET_CRYPTO_symmetric_encrypt (secret,
-				       sizeof (struct TALER_LinkSecretP),
-				       &skey,
-				       &iv,
-				       secret_enc);
-  if (sizeof (struct TALER_LinkSecretP) != s)
-    return GNUNET_SYSERR;
-  return GNUNET_OK;
-}
-
-
-/**
- * Decrypt refresh link information.
- *
- * @param input encrypted refresh link data
- * @param secret shared secret to use for decryption
- * @param[out] output where to write decrypted data
- */
-void
-TALER_refresh_decrypt (const struct TALER_RefreshLinkEncryptedP *input,
-                       const struct TALER_LinkSecretP *secret,
-		       struct TALER_RefreshLinkDecryptedP *output)
-{
-  struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
-  struct GNUNET_CRYPTO_SymmetricSessionKey skey;
-
-  derive_refresh_key (secret, &iv, &skey);
-  GNUNET_assert (sizeof (struct TALER_RefreshLinkEncryptedP) ==
-		 sizeof (struct TALER_RefreshLinkDecryptedP));
-  GNUNET_assert (sizeof (struct TALER_RefreshLinkEncryptedP) ==
-		 GNUNET_CRYPTO_symmetric_decrypt (input,
-						  sizeof (struct TALER_RefreshLinkEncryptedP),
-						  &skey,
-						  &iv,
-						  output));
-}
-
-
-/**
- * Encrypt refresh link information.
- *
- * @param input plaintext refresh link data
- * @param secret shared secret to use for encryption
- * @param[out] output where to write encrypted link data
- */
-void
-TALER_refresh_encrypt (const struct TALER_RefreshLinkDecryptedP *input,
-                       const struct TALER_LinkSecretP *secret,
-		       struct TALER_RefreshLinkEncryptedP *output)
-{
-  struct GNUNET_CRYPTO_SymmetricInitializationVector iv;
-  struct GNUNET_CRYPTO_SymmetricSessionKey skey;
-
-  derive_refresh_key (secret, &iv, &skey);
-  GNUNET_assert (sizeof (struct TALER_RefreshLinkEncryptedP) ==
-		 sizeof (struct TALER_RefreshLinkDecryptedP));
-  GNUNET_assert (sizeof (struct TALER_RefreshLinkEncryptedP) ==
-		 GNUNET_CRYPTO_symmetric_encrypt (input,
-						  sizeof (struct TALER_RefreshLinkDecryptedP),
-						  &skey,
-						  &iv,
-						  output));
-}
-
-
-/**
- * Check if a coin is valid; that is, whether the denomination key exists,
- * is not expired, and the signature is correct.
- *
- * @param coin_public_info the coin public info to check for validity
- * @return #GNUNET_YES if the coin is valid,
- *         #GNUNET_NO if it is invalid
- *         #GNUNET_SYSERROR if an internal error occured
- */
-int
-TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info)
-{
-  struct GNUNET_HashCode c_hash;
-
-  GNUNET_CRYPTO_hash (&coin_public_info->coin_pub,
-                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                      &c_hash);
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_rsa_verify (&c_hash,
-                                coin_public_info->denom_sig.rsa_signature,
-                                coin_public_info->denom_pub.rsa_public_key))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "coin signature is invalid\n");
-    return GNUNET_NO;
-  }
-  return GNUNET_YES;
-}
-
-
-/**
  * Decrypt the shared @a secret from the information in the
- * encrypted link secret @e secret_enc using the transfer
- * private key and the coin's public key.
+ * @a trans_priv and @a coin_pub.
  *
- * @param secret_enc encrypted link secret
  * @param trans_priv transfer private key
  * @param coin_pub coin public key
  * @param[out] secret set to the shared secret
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
-int
-TALER_link_decrypt_secret (const struct TALER_EncryptedLinkSecretP *secret_enc,
-			   const struct TALER_TransferPrivateKeyP *trans_priv,
-			   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-			   struct TALER_LinkSecretP *secret)
+void
+TALER_link_reveal_transfer_secret (const struct TALER_TransferPrivateKeyP *trans_priv,
+                                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                   struct TALER_TransferSecretP *transfer_secret)
 {
-  struct TALER_TransferSecretP transfer_secret;
-
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_ecdh_eddsa (&trans_priv->ecdhe_priv,
-				&coin_pub->eddsa_pub,
-				&transfer_secret.key))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_transfer_decrypt (secret_enc,
-			      &transfer_secret,
-			      secret))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_ecdh_eddsa (&trans_priv->ecdhe_priv,
+                                           &coin_pub->eddsa_pub,
+                                           &transfer_secret->key));
 }
 
 
 /**
  * Decrypt the shared @a secret from the information in the
- * encrypted link secret @e secret_enc using the transfer
- * public key and the coin's private key.
+ * @a trans_priv and @a coin_pub.
  *
- * @param secret_enc encrypted link secret
- * @param trans_pub transfer public key
- * @param coin_priv coin private key
+ * @param trans_pub transfer private key
+ * @param coin_priv coin public key
  * @param[out] secret set to the shared secret
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
-int
-TALER_link_decrypt_secret2 (const struct TALER_EncryptedLinkSecretP *secret_enc,
-			    const struct TALER_TransferPublicKeyP *trans_pub,
-			    const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-			    struct TALER_LinkSecretP *secret)
+void
+TALER_link_recover_transfer_secret (const struct TALER_TransferPublicKeyP *trans_pub,
+                                    const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                                    struct TALER_TransferSecretP *transfer_secret)
 {
-  struct TALER_TransferSecretP transfer_secret;
-
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_ecdh (&coin_priv->eddsa_priv,
-				&trans_pub->ecdhe_pub,
-				&transfer_secret.key))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_transfer_decrypt (secret_enc,
-			      &transfer_secret,
-			      secret))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_ecdh (&coin_priv->eddsa_priv,
+                                           &trans_pub->ecdhe_pub,
+                                           &transfer_secret->key));
 }
 
 
 /**
- * Encrypt the shared @a secret to generate the encrypted link secret.
- * Also creates the transfer key.
+ * Setup information for a fresh coin.
  *
- * @param secret link secret to encrypt
- * @param coin_pub coin public key
- * @param[out] trans_priv set to transfer private key
- * @param[out] trans_pub set to transfer public key
- * @param[out] secret_enc set to the encryptd @a secret
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ * @param secret_seed seed to use for KDF to derive coin keys
+ * @param coin_num_salt number of the coin to include in KDF
+ * @param[out] fc value to initialize
  */
-int
-TALER_link_encrypt_secret (const struct TALER_LinkSecretP *secret,
-			   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-			   struct TALER_TransferPrivateKeyP *trans_priv,
-			   struct TALER_TransferPublicKeyP *trans_pub,
-			   struct TALER_EncryptedLinkSecretP *secret_enc)
+void
+TALER_setup_fresh_coin (const struct TALER_TransferSecretP *secret_seed,
+                        unsigned int coin_num_salt,
+                        struct TALER_FreshCoinP *fc)
 {
-  struct TALER_TransferSecretP transfer_secret;
-  struct GNUNET_CRYPTO_EcdhePrivateKey *pk;
+  uint32_t be_salt = htonl (coin_num_salt);
 
-  pk = GNUNET_CRYPTO_ecdhe_key_create ();
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_ecdh_eddsa (pk,
-				&coin_pub->eddsa_pub,
-				&transfer_secret.key))
-  {
-    GNUNET_break (0);
-    GNUNET_free (pk);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_transfer_encrypt (secret,
-			      &transfer_secret,
-			      secret_enc))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  trans_priv->ecdhe_priv = *pk;
-  GNUNET_CRYPTO_ecdhe_key_get_public (pk,
-				      &trans_pub->ecdhe_pub);
-  GNUNET_free (pk);
-  return GNUNET_OK;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_kdf (fc,
+                                    sizeof (*fc),
+                                    secret_seed,
+                                    sizeof (*secret_seed),
+                                    &be_salt,
+                                    sizeof (be_salt),
+                                    "taler-coin-derivation",
+                                    strlen ("taler-coin-derivation"),
+                                    NULL, 0));
+  /* FIXME: twiddle the bits of the private key */
 }
+
+
 
 
 /* end of crypto.c */

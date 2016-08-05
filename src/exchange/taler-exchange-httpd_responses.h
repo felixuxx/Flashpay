@@ -522,11 +522,6 @@ struct TMH_RESPONSE_LinkSessionInfo
   struct TALER_TransferPublicKeyP transfer_pub;
 
   /**
-   * Encrypted shared secret for decrypting the transfer secrets.
-   */
-  struct TALER_EncryptedLinkSecretP shared_secret_enc;
-
-  /**
    * Linked data of coins being created in the session.
    */
   struct TALER_EXCHANGEDB_LinkDataList *ldl;

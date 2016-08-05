@@ -75,8 +75,8 @@ struct TALER_EXCHANGE_RefreshLinkHandle
  *
  * @param rlh refresh link handle
  * @param json json reply with the data for one coin
+ * @param coin_num number of the coin to decode
  * @param trans_pub our transfer public key
- * @param secret_enc encrypted key to decrypt link data
  * @param[out] coin_priv where to return private coin key
  * @param[out] sig where to return private coin signature
  * @param[out] pub where to return the public key for the coin
@@ -85,24 +85,22 @@ struct TALER_EXCHANGE_RefreshLinkHandle
 static int
 parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
                          const json_t *json,
+                         unsigned int coin_num,
                          const struct TALER_TransferPublicKeyP *trans_pub,
-                         const struct TALER_EncryptedLinkSecretP *secret_enc,
                          struct TALER_CoinSpendPrivateKeyP *coin_priv,
                          struct TALER_DenominationSignature *sig,
                          struct TALER_DenominationPublicKey *pub)
 {
   struct GNUNET_CRYPTO_RsaSignature *bsig;
   struct GNUNET_CRYPTO_RsaPublicKey *rpub;
-  struct TALER_RefreshLinkEncryptedP rle;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("link_enc", &rle),
     GNUNET_JSON_spec_rsa_public_key ("denom_pub", &rpub),
     GNUNET_JSON_spec_rsa_signature ("ev_sig", &bsig),
     GNUNET_JSON_spec_end()
   };
-  struct TALER_RefreshLinkDecryptedP rld;
-  struct TALER_LinkSecretP secret;
-      
+  struct TALER_TransferSecretP secret;
+  struct TALER_FreshCoinP fc;
+
   /* parse reply */
   if (GNUNET_OK !=
       GNUNET_JSON_parse (json,
@@ -113,25 +111,18 @@ parse_refresh_link_coin (const struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
     return GNUNET_SYSERR;
   }
 
-  if (GNUNET_OK !=
-      TALER_link_decrypt_secret2 (secret_enc,
-                                  trans_pub,
-                                  &rlh->coin_priv,
-                                  &secret))
-  {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    return GNUNET_SYSERR;
-  }
-  TALER_refresh_decrypt (&rle,
-			 &secret,
-			 &rld);
+  TALER_link_recover_transfer_secret (trans_pub,
+                                      &rlh->coin_priv,
+                                      &secret);
+  TALER_setup_fresh_coin (&secret,
+                          coin_num,
+                          &fc);
 
   /* extract coin and signature */
-  *coin_priv = rld.coin_priv;
+  *coin_priv = fc.coin_priv;
   sig->rsa_signature
     = GNUNET_CRYPTO_rsa_unblind (bsig,
-                                 &rld.blinding_key.bks,
+                                 &fc.blinding_key.bks,
                                  rpub);
   /* clean up */
   pub->rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (rpub);
@@ -217,11 +208,9 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
     {
       json_t *jsona;
       struct TALER_TransferPublicKeyP trans_pub;
-      struct TALER_EncryptedLinkSecretP secret_enc;
       struct GNUNET_JSON_Specification spec[] = {
 	GNUNET_JSON_spec_json ("new_coins", &jsona),
 	GNUNET_JSON_spec_fixed_auto ("transfer_pub", &trans_pub),
-	GNUNET_JSON_spec_fixed_auto ("secret_enc", &secret_enc),
 	GNUNET_JSON_spec_end()
       };
 
@@ -248,8 +237,8 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
 	    parse_refresh_link_coin (rlh,
 				     json_array_get (jsona,
 						     i),
+                                     i,
 				     &trans_pub,
-				     &secret_enc,
 				     &coin_privs[i+off_coin],
 				     &sigs[i+off_coin],
 				     &pubs[i+off_coin]))

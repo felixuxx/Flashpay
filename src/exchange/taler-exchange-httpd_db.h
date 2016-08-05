@@ -136,7 +136,7 @@ struct TMH_DB_MeltDetails
  * @param coin_melt_details signatures and (residual) value of and information about the respective coin to be melted
  * @param commit_coin 2d array of coin commitments (what the exchange is to sign
  *                    once the "/refres/reveal" of cut and choose is done)
- * @param commit_link array of coin link commitments (what the exchange is
+ * @param transfer_pubs array of transfer public keys (what the exchange is
  *                    to return via "/refresh/link" to enable linkage in the
  *                    future) of length #TALER_CNC_KAPPA
  * @return MHD result code
@@ -148,7 +148,7 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                              const struct TALER_DenominationPublicKey *denom_pubs,
                              const struct TMH_DB_MeltDetails *coin_melt_details,
                              struct TALER_EXCHANGEDB_RefreshCommitCoin *const* commit_coin,
-                             const struct TALER_RefreshCommitLinkP *commit_link);
+                             const struct TALER_TransferPublicKeyP *transfer_pubs);
 
 
 /**

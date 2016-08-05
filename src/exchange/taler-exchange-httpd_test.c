@@ -535,16 +535,14 @@ TMH_TEST_handler_test_transfer (struct TMH_RequestHandler *rh,
 {
   json_t *json;
   int res;
-  struct TALER_EncryptedLinkSecretP secret_enc;
   struct TALER_TransferPrivateKeyP trans_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("secret_enc", &secret_enc),
     GNUNET_JSON_spec_fixed_auto ("trans_priv", &trans_priv),
     GNUNET_JSON_spec_fixed_auto ("coin_pub", &coin_pub),
     GNUNET_JSON_spec_end ()
   };
-  struct TALER_LinkSecretP secret;
+  struct TALER_TransferSecretP secret;
 
   res = TMH_PARSE_post_json (connection,
                              connection_cls,
@@ -561,16 +559,9 @@ TMH_TEST_handler_test_transfer (struct TMH_RequestHandler *rh,
   json_decref (json);
   if (GNUNET_YES != res)
     return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
-  if (GNUNET_OK !=
-      TALER_link_decrypt_secret (&secret_enc,
-				 &trans_priv,
-				 &coin_pub,
-				 &secret))
-  {
-    GNUNET_JSON_parse_free (spec);
-    return TMH_RESPONSE_reply_internal_error (connection,
-					      "Failed to decrypt secret");
-  }
+  TALER_link_reveal_transfer_secret (&trans_priv,
+                                     &coin_pub,
+                                     &secret);
   return TMH_RESPONSE_reply_json_pack (connection,
 				       MHD_HTTP_OK,
 				       "{s:o}",

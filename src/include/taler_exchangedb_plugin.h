@@ -445,12 +445,6 @@ struct TALER_EXCHANGEDB_RefreshCommitCoin
 {
 
   /**
-   * Encrypted data allowing those able to decrypt it to derive
-   * the private keys of the new coins created by the refresh.
-   */
-  struct TALER_RefreshLinkEncryptedP refresh_link;
-
-  /**
    * Blinded message to be signed (in envelope), with @e coin_env_size bytes.
    */
   char *coin_ev;
@@ -472,12 +466,6 @@ struct TALER_EXCHANGEDB_LinkDataList
    * Information is stored in a NULL-terminated linked list.
    */
   struct TALER_EXCHANGEDB_LinkDataList *next;
-
-  /**
-   * Link data, used to recover the private key of the coin
-   * by the owner of the old coin.
-   */
-  struct TALER_RefreshLinkEncryptedP link_data_enc;
 
   /**
    * Denomination public key, determines the value of the coin.
@@ -579,9 +567,9 @@ struct TALER_EXCHANGEDB_MeltCommitment
   struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins[TALER_CNC_KAPPA];
 
   /**
-   * Array of #TALER_CNC_KAPPA links.
+   * Array of #TALER_CNC_KAPPA transfer public keys.
    */
-  struct TALER_RefreshCommitLinkP commit_links[TALER_CNC_KAPPA];
+  struct TALER_TransferPublicKeyP transfer_pubs[TALER_CNC_KAPPA];
 };
 
 
@@ -635,8 +623,7 @@ typedef int
 typedef void
 (*TALER_EXCHANGEDB_TransferDataCallback)(void *cls,
                                          const struct GNUNET_HashCode *session_hash,
-                                         const struct TALER_TransferPublicKeyP *transfer_pub,
-                                         const struct TALER_EncryptedLinkSecretP *shared_secret_enc);
+                                         const struct TALER_TransferPublicKeyP *transfer_pub);
 
 
 /**
@@ -1217,15 +1204,15 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database connection to use
    * @param session_hash hash to identify refresh session
    * @param cnc_index cut and choose index, relating to #TALER_CNC_KAPPA
-   * @param link link information to store
+   * @param tp public key to store
    * @return #GNUNET_SYSERR on internal error, #GNUNET_OK on success
    */
   int
-  (*insert_refresh_commit_link) (void *cls,
-                                 struct TALER_EXCHANGEDB_Session *session,
-                                 const struct GNUNET_HashCode *session_hash,
-                                 uint16_t cnc_index,
-                                 const struct TALER_RefreshCommitLinkP *link);
+  (*insert_refresh_transfer_public_key) (void *cls,
+                                         struct TALER_EXCHANGEDB_Session *session,
+                                         const struct GNUNET_HashCode *session_hash,
+                                         uint16_t cnc_index,
+                                         const struct TALER_TransferPublicKeyP *tp);
 
   /**
    * Obtain the commited (encrypted) refresh link data
@@ -1235,17 +1222,17 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database connection to use
    * @param session_hash hash to identify refresh session
    * @param cnc_index cut and choose index (1st dimension)
-   * @param[out] link information to return
+   * @param[out] tp information to return
    * @return #GNUNET_SYSERR on internal error,
    *         #GNUNET_NO if commitment was not found
    *         #GNUNET_OK on success
    */
   int
-  (*get_refresh_commit_link) (void *cls,
-                              struct TALER_EXCHANGEDB_Session *session,
-                              const struct GNUNET_HashCode *session_hash,
-                              uint16_t cnc_index,
-                              struct TALER_RefreshCommitLinkP *link);
+  (*get_refresh_transfer_public_key) (void *cls,
+                                      struct TALER_EXCHANGEDB_Session *session,
+                                      const struct GNUNET_HashCode *session_hash,
+                                      uint16_t cnc_index,
+                                      struct TALER_TransferPublicKeyP *tp);
 
 
   /**

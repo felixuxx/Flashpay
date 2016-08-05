@@ -973,7 +973,7 @@ refresh_check_melt (struct MHD_Connection *connection,
  * @param commit_coin 2d array of coin commitments (what the exchange is to sign
  *                    once the "/refres/reveal" of cut and choose is done),
  *                    x-dimension must be #TALER_CNC_KAPPA
- * @param commit_link array of coin link commitments (what the exchange is
+ * @param transfer_pubs array of transfer public keys (what the exchange is
  *                    to return via "/refresh/link" to enable linkage in the
  *                    future) of length #TALER_CNC_KAPPA
  * @return MHD result code
@@ -985,7 +985,7 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                              const struct TALER_DenominationPublicKey *denom_pubs,
                              const struct TMH_DB_MeltDetails *coin_melt_detail,
                              struct TALER_EXCHANGEDB_RefreshCommitCoin *const* commit_coin,
-                             const struct TALER_RefreshCommitLinkP *commit_link)
+                             const struct TALER_TransferPublicKeyP *transfer_pubs)
 {
   struct TMH_KS_StateHandle *key_state;
   struct TALER_EXCHANGEDB_RefreshSession refresh_session;
@@ -1082,11 +1082,11 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
   for (i = 0; i < TALER_CNC_KAPPA; i++)
   {
     if (GNUNET_OK !=
-        TMH_plugin->insert_refresh_commit_link (TMH_plugin->cls,
-                                                session,
-                                                session_hash,
-                                                i,
-                                                &commit_link[i]))
+        TMH_plugin->insert_refresh_transfer_public_key (TMH_plugin->cls,
+                                                        session,
+                                                        session_hash,
+                                                        i,
+                                                        &transfer_pubs[i]))
     {
       TMH_plugin->rollback (TMH_plugin->cls,
                             session);
@@ -1180,19 +1180,19 @@ check_commitment (struct MHD_Connection *connection,
                   unsigned int num_newcoins,
                   const struct TALER_DenominationPublicKey *denom_pubs)
 {
-  struct TALER_RefreshCommitLinkP commit_link;
-  struct TALER_LinkSecretP shared_secret;
+  struct TALER_TransferPublicKeyP transfer_pub;
+  struct TALER_TransferSecretP transfer_secret;
   struct TALER_TransferPublicKeyP transfer_pub_check;
   struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins;
   unsigned int j;
   int ret;
 
   if (GNUNET_OK !=
-      TMH_plugin->get_refresh_commit_link (TMH_plugin->cls,
-                                           session,
-                                           session_hash,
-                                           off,
-                                           &commit_link))
+      TMH_plugin->get_refresh_transfer_public_key (TMH_plugin->cls,
+                                                   session,
+                                                   session_hash,
+                                                   off,
+                                                   &transfer_pub))
   {
     GNUNET_break (0);
     return (MHD_YES == TMH_RESPONSE_reply_internal_db_error (connection))
@@ -1203,7 +1203,7 @@ check_commitment (struct MHD_Connection *connection,
                                       &transfer_pub_check.ecdhe_pub);
   if (0 !=
       memcmp (&transfer_pub_check,
-              &commit_link.transfer_pub,
+              &transfer_pub,
               sizeof (struct TALER_TransferPublicKeyP)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -1217,17 +1217,9 @@ check_commitment (struct MHD_Connection *connection,
                                        "transfer key");
   }
 
-  if (GNUNET_OK !=
-      TALER_link_decrypt_secret (&commit_link.shared_secret_enc,
-                                 transfer_priv,
-                                 &melt->coin.coin_pub,
-                                 &shared_secret))
-  {
-    return (MHD_YES ==
-            TMH_RESPONSE_reply_internal_error (connection,
-                                               "Transfer secret decryption error"))
-      ? GNUNET_NO : GNUNET_SYSERR;
-  }
+  TALER_link_reveal_transfer_secret (transfer_priv,
+                                     &melt->coin.coin_pub,
+                                     &transfer_secret);
 
   /* Check that the commitments for all new coins were correct */
   commit_coins = GNUNET_new_array (num_newcoins,
@@ -1249,23 +1241,23 @@ check_commitment (struct MHD_Connection *connection,
 
   for (j = 0; j < num_newcoins; j++)
   {
-    struct TALER_RefreshLinkDecryptedP link_data;
+    struct TALER_FreshCoinP fc;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct GNUNET_HashCode h_msg;
     char *buf;
     size_t buf_len;
 
-    TALER_refresh_decrypt (&commit_coins[j].refresh_link,
-			   &shared_secret,
-			   &link_data);
-    GNUNET_CRYPTO_eddsa_key_get_public (&link_data.coin_priv.eddsa_priv,
+    TALER_setup_fresh_coin (&transfer_secret,
+                            j,
+                            &fc);
+    GNUNET_CRYPTO_eddsa_key_get_public (&fc.coin_priv.eddsa_priv,
                                         &coin_pub.eddsa_pub);
     GNUNET_CRYPTO_hash (&coin_pub,
                         sizeof (struct TALER_CoinSpendPublicKeyP),
                         &h_msg);
     if (GNUNET_YES !=
         GNUNET_CRYPTO_rsa_blind (&h_msg,
-                                 &link_data.blinding_key.bks,
+                                 &fc.blinding_key.bks,
                                  denom_pubs[j].rsa_public_key,
                                  &buf,
                                  &buf_len))
@@ -1598,13 +1590,11 @@ struct HTD_Context
  * @param cls closure, a `struct HTD_Context`
  * @param session_hash a session the coin was melted in
  * @param transfer_pub public transfer key for the session
- * @param shared_secret_enc set to shared secret for the session
  */
 static void
 handle_transfer_data (void *cls,
                       const struct GNUNET_HashCode *session_hash,
-                      const struct TALER_TransferPublicKeyP *transfer_pub,
-                      const struct TALER_EncryptedLinkSecretP *shared_secret_enc)
+                      const struct TALER_TransferPublicKeyP *transfer_pub)
 {
   struct HTD_Context *ctx = cls;
   struct TALER_EXCHANGEDB_LinkDataList *ldl;
@@ -1632,7 +1622,6 @@ handle_transfer_data (void *cls,
                      ctx->num_sessions + 1);
   lsi = &ctx->sessions[ctx->num_sessions - 1];
   lsi->transfer_pub = *transfer_pub;
-  lsi->shared_secret_enc = *shared_secret_enc;
   lsi->ldl = ldl;
 }
 

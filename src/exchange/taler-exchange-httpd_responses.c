@@ -1028,7 +1028,7 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
   {
     json_t *info_commit_k;
     json_t *info_link_k;
-    const struct TALER_RefreshCommitLinkP *cl;
+    const struct TALER_TransferPublicKeyP *transfer_pub;
 
     info_commit_k = json_array ();
     for (i=0;i<mc->num_newcoins;i++)
@@ -1042,13 +1042,6 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
                            "coin_ev",
                            GNUNET_JSON_from_data (cc->coin_ev,
                                                   cc->coin_ev_size));
-      json_object_set_new (cc_json,
-                           "coin_priv_enc",
-                           GNUNET_JSON_from_data_auto (cc->refresh_link.coin_priv_enc));
-      json_object_set_new (cc_json,
-                           "blinding_key_enc",
-                           GNUNET_JSON_from_data_auto (&cc->refresh_link.blinding_key_enc));
-
       GNUNET_assert (0 ==
                      json_array_append_new (info_commit_k,
                                             cc_json));
@@ -1058,13 +1051,10 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
                                           info_commit_k));
 
     info_link_k = json_object ();
-    cl = &mc->commit_links[k];
+    transfer_pub = &mc->transfer_pubs[k];
     json_object_set_new (info_link_k,
                          "transfer_pub",
-                         GNUNET_JSON_from_data_auto (&cl->transfer_pub));
-    json_object_set_new (info_link_k,
-                         "shared_secret_enc",
-                         GNUNET_JSON_from_data_auto (&cl->shared_secret_enc));
+                         GNUNET_JSON_from_data_auto (transfer_pub));
     GNUNET_assert (0 ==
                    json_array_append_new (info_links,
                                           info_link_k));
@@ -1114,9 +1104,6 @@ TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
 
       obj = json_object ();
       json_object_set_new (obj,
-                           "link_enc",
-                           GNUNET_JSON_from_data_auto (&pos->link_data_enc));
-      json_object_set_new (obj,
                            "denom_pub",
                            GNUNET_JSON_from_rsa_public_key (pos->denom_pub.rsa_public_key));
       json_object_set_new (obj,
@@ -1133,9 +1120,6 @@ TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
     json_object_set_new (root,
                          "transfer_pub",
                          GNUNET_JSON_from_data_auto (&sessions[i].transfer_pub));
-    json_object_set_new (root,
-                         "secret_enc",
-                         GNUNET_JSON_from_data_auto (&sessions[i].shared_secret_enc));
     GNUNET_assert (0 ==
                    json_array_append_new (mlist,
                                           root));

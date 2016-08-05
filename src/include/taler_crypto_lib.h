@@ -412,54 +412,11 @@ GNUNET_NETWORK_STRUCT_BEGIN
 struct TALER_TransferSecretP
 {
   /**
-   * Secret used to encrypt/decrypt the `struct TALER_LinkSecretP`.
+   * Secret used to derive private inputs for refreshed coins.
    * Must be (currently) a hash as this is what
    * #GNUNET_CRYPTO_ecc_ecdh() returns to us.
    */
   struct GNUNET_HashCode key;
-};
-
-
-/**
- * @brief Secret used to decrypt refresh links.
- */
-struct TALER_LinkSecretP
-{
-  /**
-   * Secret used to decrypt the refresh link data.
-   */
-  char key[sizeof (struct GNUNET_HashCode)];
-};
-
-
-/**
- * @brief Encrypted secret used to decrypt refresh links.
- */
-struct TALER_EncryptedLinkSecretP
-{
-  /**
-   * Encrypted secret, must be the given size!
-   */
-  char enc[sizeof (struct TALER_LinkSecretP)];
-};
-
-
-/**
- * @brief Representation of an refresh link in cleartext.
- */
-struct TALER_RefreshLinkDecryptedP
-{
-
-  /**
-   * Private key of the coin.
-   */
-  struct TALER_CoinSpendPrivateKeyP coin_priv;
-
-  /**
-   * Blinding key.
-   */
-  struct TALER_DenominationBlindingKeyP blinding_key;
-
 };
 
 
@@ -540,44 +497,6 @@ struct TALER_RefreshLinkEncryptedP
 
 GNUNET_NETWORK_STRUCT_END
 
-
-
-/**
- * Decrypt the shared @a secret from the information in the
- * encrypted link secret @e secret_enc using the transfer
- * private key and the coin's public key.
- *
- * @param secret_enc encrypted link secret
- * @param trans_priv transfer private key
- * @param coin_pub coin public key
- * @param[out] secret set to the shared secret
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
- */
-int
-TALER_link_decrypt_secret (const struct TALER_EncryptedLinkSecretP *secret_enc,
-			   const struct TALER_TransferPrivateKeyP *trans_priv,
-			   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-			   struct TALER_LinkSecretP *secret);
-
-
-/**
- * Decrypt the shared @a secret from the information in the
- * encrypted link secret @e secret_enc using the transfer
- * public key and the coin's private key.
- *
- * @param secret_enc encrypted link secret
- * @param trans_pub transfer public key
- * @param coin_priv coin private key
- * @param[out] secret set to the shared secret
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
- */
-int
-TALER_link_decrypt_secret2 (const struct TALER_EncryptedLinkSecretP *secret_enc,
-			    const struct TALER_TransferPublicKeyP *trans_pub,
-			    const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-			    struct TALER_LinkSecretP *secret);
-
-
 /**
  * Given the coin and the transfer private keys, compute the
  * transfer secret.  (Technically, we only need one of the two
@@ -596,78 +515,68 @@ TALER_link_derive_transfer_secret (const struct TALER_CoinSpendPrivateKeyP *coin
 
 
 /**
- * Encrypt the shared @a secret to generate the encrypted link secret.
- * Also creates the transfer key.
+ * Decrypt the shared @a secret from the information in the
+ * @a trans_priv and @a coin_pub.
  *
- * @param secret link secret to encrypt
+ * @param trans_priv transfer private key
  * @param coin_pub coin public key
- * @param[out] trans_priv set to transfer private key
- * @param[out] trans_pub set to transfer public key
- * @param[out] secret_enc set to the encryptd @a secret
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
- */
-int
-TALER_link_encrypt_secret (const struct TALER_LinkSecretP *secret,
-			   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-			   struct TALER_TransferPrivateKeyP *trans_priv,
-			   struct TALER_TransferPublicKeyP *trans_pub,
-			   struct TALER_EncryptedLinkSecretP *secret_enc);
-
-
-/**
- * Use the @a trans_sec (from ECDHE) to decrypt the @a secret_enc
- * to obtain the @a secret to decrypt the linkage data.
- *
- * @param secret_enc encrypted secret
- * @param trans_sec transfer secret
- * @param secret shared secret for refresh link decryption
- * @return #GNUNET_OK on success
- */
-int
-TALER_transfer_decrypt (const struct TALER_EncryptedLinkSecretP *secret_enc,
-                        const struct TALER_TransferSecretP *trans_sec,
-                        struct TALER_LinkSecretP *secret);
-
-
-/**
- * Use the @a trans_sec (from ECDHE) to encrypt the @a secret
- * to obtain the @a secret_enc.
- *
- * @param secret shared secret for refresh link decryption
- * @param trans_sec transfer secret
- * @param[out] secret_enc encrypted secret
- * @return #GNUNET_OK on success
- */
-int
-TALER_transfer_encrypt (const struct TALER_LinkSecretP *secret,
-                        const struct TALER_TransferSecretP *trans_sec,
-                        struct TALER_EncryptedLinkSecretP *secret_enc);
-
-
-/**
- * Decrypt refresh link information.
- *
- * @param input encrypted refresh link data
- * @param secret shared secret to use for decryption
- * @param[out] output where to write decrypted refresh link
+ * @param[out] secret set to the shared secret
  */
 void
-TALER_refresh_decrypt (const struct TALER_RefreshLinkEncryptedP *input,
-                       const struct TALER_LinkSecretP *secret,
-		       struct TALER_RefreshLinkDecryptedP *output);
+TALER_link_reveal_transfer_secret (const struct TALER_TransferPrivateKeyP *trans_priv,
+                                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                   struct TALER_TransferSecretP *transfer_secret);
+
 
 
 /**
- * Encrypt refresh link information.
+ * Decrypt the shared @a secret from the information in the
+ * @a trans_priv and @a coin_pub.
  *
- * @param input plaintext refresh link data
- * @param secret shared secret to use for encryption
- * @param[out] output where to write encrypted refresh link
+ * @param trans_pub transfer private key
+ * @param coin_priv coin public key
+ * @param[out] secret set to the shared secret
  */
 void
-TALER_refresh_encrypt (const struct TALER_RefreshLinkDecryptedP *input,
-                       const struct TALER_LinkSecretP *secret,
-		       struct TALER_RefreshLinkEncryptedP *output);
+TALER_link_recover_transfer_secret (const struct TALER_TransferPublicKeyP *trans_pub,
+                                    const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                                    struct TALER_TransferSecretP *transfer_secret);
+
+
+/**
+ * Header for serializations of coin-specific information about the
+ * fresh coins we generate during a melt.
+ */
+struct TALER_FreshCoinP
+{
+
+  /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * The blinding key.
+   */
+  struct TALER_DenominationBlindingKeyP blinding_key;
+
+};
+
+
+/**
+ * Setup information for a fresh coin, deriving the coin private key
+ * and the blinding factor from the @a secret_seed with a KDF salted
+ * by the @a coin_num_salt.
+ *
+ * @param secret_seed seed to use for KDF to derive coin keys
+ * @param coin_num_salt number of the coin to include in KDF
+ * @param[out] fc value to initialize
+ */
+void
+TALER_setup_fresh_coin (const struct TALER_TransferSecretP *secret_seed,
+                        unsigned int coin_num_salt,
+                        struct TALER_FreshCoinP *fc);
+
 
 
 #endif
