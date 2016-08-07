@@ -475,26 +475,6 @@ struct TALER_WireTransferIdentifierP
 };
 
 
-/**
- * @brief Representation of an encrypted refresh link.
- */
-struct TALER_RefreshLinkEncryptedP
-{
-
-  /**
-   * Encrypted blinding key with @e blinding_key_enc_size bytes,
-   * must be allocated at the end of this struct.
-   */
-  char blinding_key_enc[sizeof (struct TALER_DenominationBlindingKeyP)];
-
-  /**
-   * Encrypted private key of the coin.
-   */
-  char coin_priv_enc[sizeof (struct TALER_CoinSpendPrivateKeyP)];
-
-};
-
-
 GNUNET_NETWORK_STRUCT_END
 
 /**

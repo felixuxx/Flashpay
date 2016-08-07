@@ -209,8 +209,10 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
       json_t *jsona;
       struct TALER_TransferPublicKeyP trans_pub;
       struct GNUNET_JSON_Specification spec[] = {
-	GNUNET_JSON_spec_json ("new_coins", &jsona),
-	GNUNET_JSON_spec_fixed_auto ("transfer_pub", &trans_pub),
+	GNUNET_JSON_spec_json ("new_coins",
+                               &jsona),
+	GNUNET_JSON_spec_fixed_auto ("transfer_pub",
+                                     &trans_pub),
 	GNUNET_JSON_spec_end()
       };
 

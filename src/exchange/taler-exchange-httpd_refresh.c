@@ -425,7 +425,9 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
 
   /* parse JSON arrays into binary arrays and hash everything
      together for the signature check */
-  memset (commit_coin, 0, sizeof (commit_coin));
+  memset (commit_coin,
+          0,
+          sizeof (commit_coin));
   for (i = 0; i < TALER_CNC_KAPPA; i++)
   {
     commit_coin[i] = GNUNET_new_array (num_newcoins,
@@ -454,7 +456,6 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        rcc->coin_ev,
                                        rcc->coin_ev_size);
-      GNUNET_JSON_parse_free (coin_spec);
     }
   }
 

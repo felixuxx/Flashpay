@@ -3464,7 +3464,7 @@ postgres_get_link_data_list (void *cls,
     return NULL;
   }
 
-  for (i = 0; i < nrows; i++)
+  for (i = nrows-1; i >= 0; i--)
   {
     struct GNUNET_CRYPTO_RsaPublicKey *denom_pub;
     struct GNUNET_CRYPTO_RsaSignature *sig;
@@ -3481,7 +3481,9 @@ postgres_get_link_data_list (void *cls,
       };
 
       if (GNUNET_OK !=
-	  GNUNET_PQ_extract_result (result, rs, i))
+	  GNUNET_PQ_extract_result (result,
+                                    rs,
+                                    i))
       {
 	PQclear (result);
 	GNUNET_break (0);

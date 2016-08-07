@@ -575,9 +575,6 @@ PERF_TALER_EXCHANGEDB_refresh_commit_coin_init ()
   struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coin;
 
   commit_coin = GNUNET_new (struct TALER_EXCHANGEDB_RefreshCommitCoin);
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-			      &commit_coin->refresh_link,
-			      sizeof(struct TALER_RefreshLinkEncryptedP));
   commit_coin->coin_ev = "coin_ev";
   commit_coin->coin_ev_size = 8;
   return commit_coin;
