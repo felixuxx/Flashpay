@@ -187,10 +187,10 @@ TALER_setup_fresh_coin (const struct TALER_TransferSecretP *secret_seed,
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_kdf (fc,
                                     sizeof (*fc),
-                                    secret_seed,
-                                    sizeof (*secret_seed),
                                     &be_salt,
                                     sizeof (be_salt),
+                                    secret_seed,
+                                    sizeof (*secret_seed),
                                     "taler-coin-derivation",
                                     strlen ("taler-coin-derivation"),
                                     NULL, 0));
