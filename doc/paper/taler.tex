@@ -777,16 +777,16 @@ generator of the elliptic curve.
      a transfer private key $t^{(i)}_s$ and computes
     \begin{itemize}
     \item the transfer public key $T^{(i)}_p := t^{(i)}_s G$ and
-    \item the new coin secret seed $K_i := H(c'_s T_p^{(i)})$.
+    \item the new coin secret seed $L_i := H(c'_s T_p^{(i)})$.
     \end{itemize}
-    We have computed $K_i$ as a Diffie-Hellman shared secret between
+    We have computed $L_i$ as a Diffie-Hellman shared secret between
     the transfer key pair $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$
     and old coin key pair $C' := \left(c_s', C_p'\right)$,
-     so that $K_i = H(t^{(i)}_s C'_p)$ too.
-    Now the customer applies key derivtion functions $\KDF_?$ to $K_i$ to generate
+     so that $L_i = H(t^{(i)}_s C'_p)$ too.
+    Now the customer applies key derivtion functions $\KDF_?$ to $L_i$ to generate
     \begin{itemize}
-      \item a blinding factor $b^{(i)} = \FDH_K(\KDF_{\textrm{blinding}}(K_i))$.
-      \item $c_s^{(i)} = \KDF_{\textrm{Ed25519}}(K_i)$
+      \item a blinding factor $b^{(i)} = \FDH_K(\KDF_{\textrm{blinding}}(L_i))$.
+      \item $c_s^{(i)} = \KDF_{\textrm{Ed25519}}(L_i)$
     \end{itemize}
     Now the customer can compute her new coin key pair
      $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$
@@ -1252,13 +1252,13 @@ data being committed to disk are represented in between $\langle\rangle$.
   \item[$\vec{b}$]{Vector of $b^{(i)}$}
   \item[$B^{(i)}$]{Blinding of $C_p^{(i)}$}
   \item[$\vec{B}$]{Vector of $B^{(i)}$}
-  \item[$K_i$]{Symmetric encryption key derived from ECDH operation via hashing}
-%  \item[$E_{K_i}()$]{Symmetric encryption using key $K_i$}
+  \item[$L_i$]{Link secret derived from ECDH operation via hashing}
+%  \item[$E_{L_i}()$]{Symmetric encryption using key $L_i$}
 %  \item[$E^{(i)}$]{$i$-th encryption of the private information $(c_s^{(i)}, b_i)$}
 %  \item[$\vec{E}$]{Vector of $E^{(i)}$}
   \item[$\cal{R}$]{Tuple of revealed vectors in cut-and-choose protocol,
     where the vectors exclude the selected index $\gamma$}
-  \item[$\overline{K_i}$]{Link secrets derived by the verifier from DH}
+  \item[$\overline{L_i}$]{Link secrets derived by the verifier from DH}
   \item[$\overline{B^{(i)}}$]{Blinded values derived by the verifier}
   \item[$\overline{T_p^{(i)}}$]{Public transfer keys derived by the verifier from revealed private keys}
   \item[$\overline{c_s^{(i)}}$]{Private keys obtained from decryption by the verifier}
