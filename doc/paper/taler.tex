@@ -684,10 +684,10 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
 
 \begin{enumerate}
 \item\label{contract}
-  Let $\vec{D} := D_1, \ldots, D_n$ be the list of exchanges accepted by
-  the merchant where each $D_j$ is a exchange's public key.
-  The merchant creates a digitally signed contract
-    $\mathcal{A} := S_M(m, f, a, H(p, r), \vec{D})$
+  Let $\vec{X} := \langle X_1, \ldots, X_n \rangle$ denote the list of
+  exchanges accepted by the merchant where each $X_j$ is a exchange's
+  public key.  The merchant creates a digitally signed contract
+    $\mathcal{A} := S_M(m, f, a, H(p, r), \vec{X})$
   where $m$ is an identifier for this transaction, $a$ is data relevant
   to the contract indicating which services or goods the merchant will
   deliver to the customer, $f$ is the price of the offer, and
@@ -697,11 +697,11 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
 \item\label{deposit}
   The customer should already possess a coin issued by a exchange that is
   accepted by the merchant, meaning $K$ should be publicly signed by
-  some $D_j \in \{D_1, D_2, \ldots, D_n\}$, and has a value $\geq f$.
+  some $X_j$ from $\vec{X}$, and has a value $\geq f$.
 \item  The customer generates a \emph{deposit-permission} $\mathcal{D} :=
   S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$
-  and sends $\langle \mathcal{D}, D_j\rangle$ to the merchant,
-  where $D_j$ is the exchange which signed $K$.
+  and sends $\langle \mathcal{D}, X_j\rangle$ to the merchant,
+  where $X_j$ is the exchange which signed $K$.
 \item The merchant gives $(\mathcal{D}, p, r)$ to the exchange, thereby
   revealing $p$ only to the exchange.
 \item The exchange validates $\mathcal{D}$ and checks for double spending.
@@ -1227,8 +1227,8 @@ data being committed to disk are represented in between $\langle\rangle$.
   \item[$\widetilde{C}$]{Exchange signature $S_K(C_p)$ indicating validity of a fresh coin (with key $C$)}
   \item[$n$]{Number of exchanges accepted by a merchant}
   \item[$j$]{Index into a set of accepted exchanges, $i \in \{1,\ldots,n\}$}
-  \item[$D_j$]{Public key of a exchange (not used to sign coins)}
-  \item[$\vec{D}$]{Vector of $D_j$ signifying exchanges accepted by a merchant}
+  \item[$X_j$]{Public key of a exchange (not used to sign coins)}
+  \item[$\vec{X}$]{Vector of $X_j$ signifying exchanges accepted by a merchant}
   \item[$a$]{Complete text of a contract between customer and merchant}
   \item[$f$]{Amount a customer agrees to pay to a merchant for a contract}
   \item[$m$]{Unique transaction identifier chosen by the merchant}
@@ -1328,19 +1328,20 @@ lock permission expires to ensure that no other merchant redeems the
 coin first.
 
 \begin{enumerate}
-\item\label{offer2} The merchant sends an \emph{offer:} $\langle S_M(m, f),
-  \vec{D} \rangle$ containing the price of the offer $f$, a transaction
-  ID $m$ and the list of exchanges $D_1, \ldots, D_n$ accepted by the merchant
-  where each $D_j$ is a exchange's public key.
+\item\label{offer2} The merchant sends an \emph{offer:}
+  $\langle S_M(m, f), \vec{X} \rangle$ containing the price of the offer $f$,
+  a transaction ID $m$ and the list of exchanges
+   $\vec{X} = \langle X_1, \ldots, X_n \rangle$ accepted by the merchant,
+   where each $X_j$ is a exchange's public key.
 \item\label{lock2} The customer must possess or acquire a coin $\widetilde{C}$
-  signed by a exchange that is
-  accepted by the merchant, i.e. $K$ should be signed by some $D_j
-  \in \{D_1, D_2, \ldots, D_n\}$, and has a value $\geq f$.
+  signed by a exchange that is accepted by the merchant,
+   i.e.\ $K$ should be signed by some $X_j$ and has a value $\geq f$.
 
-  Customer then generates a \emph{lock-permission} $\mathcal{L} :=
-  S_c(\widetilde{C}, t, m, f, M_p)$ where $t$ specifies the time until which the
-  lock is valid and sends $\langle \mathcal{L}, D_j\rangle$ to the merchant,
-  where $D_j$ is the exchange which signed $K$.
+  Customer then generates a \emph{lock-permission}
+  $\mathcal{L} := S_c(\widetilde{C}, t, m, f, M_p)$ where
+  $t$ specifies the time until which the lock is valid and sends
+  $\langle \mathcal{L}, X_j\rangle$ to the merchant,
+  where $X_j$ is the exchange which signed $K$.
 \item The merchant asks the exchange to apply the lock by sending $\langle
   \mathcal{L} \rangle$ to the exchange.
 \item The exchange validates $\widetilde{C}$ and detects double spending
