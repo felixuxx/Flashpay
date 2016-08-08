@@ -563,6 +563,9 @@ the refresh protocol from being used to transfer ownership.
 
 \section{Taler's Cryptographic Protocols}
 
+\def\KDF{\textrm{KDF}}
+\def\FDH{\textrm{FDH}}
+
 % In this section, we describe the protocols for Taler in detail.
 
 For the sake of brevity we omit explicitly saying each time that a
@@ -624,29 +627,40 @@ Now the customer carries out the following interaction with the exchange:
 
 \begin{enumerate}
   \item The customer randomly generates:
-        \begin{itemize}
-           \item withdrawal key $W := (w_s,W_p)$ with private key $w_s$ and public key $W_p$,
-           \item coin key $C := (c_s,C_p)$ with private key $c_s$ and public key $C_p := c_s G$,
-           \item blinding factor $b$, and commits $\langle W, C, b \rangle$ to disk.
-        \end{itemize}
-  \item The customer transfers an amount of money corresponding to at least $K_v$ to the exchange, with $W_p$ in the subject line of the transaction.
-  \item The exchange receives the transaction and credits the $W_p$ reserve with the respective amount in its database.
-  \item The customer sends $S_W(B_b(C_p))$ to the exchange to request withdrawal of $C$; here, $B_b$ denotes Chaum-style blinding with blinding factor $b$.
-  \item The exchange checks if the same withdrawal request was issued before; in this case, it sends $S_{K}(B_b(C_p))$ to the customer.\footnote{$S_K$
-        denotes a Chaum-style blind signature with private key $K_s$.}
-        If this is a fresh withdrawal request, the exchange performs the following transaction:
-        \begin{enumerate}
-           \item checks if the reserve $W_p$ has sufficient funds for a coin of value corresponding to $K$
-           \item stores the withdrawal request and response $\langle S_W(B_b(C_p)), S_K(B_b(C_p)) \rangle$ in its database for future reference,
-           \item deducts the amount corresponding to $K$ from the reserve,
-        \end{enumerate}
-        and then sends $S_{K}(B_b(C_p))$ to the customer.
-        If the guards for the transaction fail, the exchange sends a descriptive error back to the customer,
-        with proof that it operated correctly.
-        Assuming the signature was valid, this would involve showing the transaction history for the reserve.
+    \begin{itemize}
+      \item withdrawal key $W := (w_s,W_p)$ with private key $w_s$ and public key $W_p$,
+      \item coin key $C := (c_s,C_p)$ with private key $c_s$ and public key $C_p := c_s G$,
+      \item blinding factor $b$, and commits $\langle W, C, b \rangle$ to disk.
+    \end{itemize}
+  \item The customer transfers an amount of money corresponding to at least $K_v$
+    to the exchange, with $W_p$ in the subject line of the transaction.
+  \item The exchange receives the transaction and credits the $W_p$ reserve with
+    the respective amount in its database.
+  \item The customer sends $S_W(B)$ where $B := B_b(\FDH_K(C_p))$ to the exchange
+    to request withdrawal of $C$; here, $B_b$ denotes Chaum-style blinding with
+    blinding factor $b$.
+  \item The exchange checks if the same withdrawal request was issued before;
+    in this case, it sends $S_{K}(B)$ to the customer.%
+\footnote{$S_K$ denotes a Chaum-style blind signature with private key $K_s$.}
+    If this is a fresh withdrawal request, the exchange performs the following transaction:
+    \begin{enumerate}
+      \item checks if the reserve $W_p$ has sufficient funds
+            for a coin of value corresponding to $K$
+      \item stores the withdrawal request and response
+            $\langle S_W(B), S_K(B) \rangle$ in its database
+            for future reference,
+      \item deducts the amount corresponding to $K$ from the reserve,
+    \end{enumerate}
+    and then sends $S_K(B)$ to the customer.
+    If the guards for the transaction fail, the exchange sends a descriptive
+    error back to the customer, with proof that it operated correctly.
+    Assuming the signature was valid, this would involve showing the transaction
+    history for the reserve.
         % FIXME: Is it really the whole history?
-  \item The customer computes and verifies the unblinded signature $S_K(C_p) = U_b(S_K(B_b(C_p)))$.
-        The customer saves the coin $\langle S_K(C_p), c_s \rangle$ to local wallet on disk.
+  \item The customer computes and verifies the unblinded signature
+    $S_K(\FDH_K{C_p}) = U_b(S_K(B))$.
+    Finally the customer saves the coin $\langle S_K(\FDH_K(C_p)), c_s \rangle$
+    to their local wallet on disk.
 \end{enumerate}
 
 
@@ -662,7 +676,7 @@ must be authenticated with X.509c.
 
 We now describe the protocol between the customer, merchant, and exchange
 for a transaction in which the customer spends a coin $C := (c_s, C_p)$
-with signature $\widetilde{C} := S_K(C_p)$
+with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
  where $K$ is the exchange's demonination key.
 
 % FIXME: Again, these steps occur at different points in time, maybe
@@ -760,59 +774,73 @@ generator of the elliptic curve.
 
 \begin{enumerate}
   \item For each $i = 1,\ldots,\kappa$, the customer randomly generates
+     a transfer private key $t^{(i)}_s$ and computes
     \begin{itemize}
-      \item transfer key $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$
-            where $T^{(i)}_p := t^{(i)}_s G$,
-      \item coin key pair $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$
-            where $C^{(i)}_p := c^{(i)}_s G$, and
-      \item blinding factors $b^{(i)}$.
+    \item the transfer public key $T^{(i)}_p := t^{(i)}_s G$ and
+    \item the new coin secret seed $K_i := H(c'_s T_p^{(i)})$.
     \end{itemize}
-    The customer then computes
-      $E^{(i)} := E_{K_i}\left(c_s^{(i)}, b^{(i)}\right)$
-    where $K_i := H(c'_s T_p^{(i)})$, and
-    commits $\langle C', \vec{T}, \vec{C}, \vec{b} \rangle$ to disk.
+    We have computed $K_i$ as a Diffie-Hellman shared secret between
+    the transfer key pair $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$
+    and old coin key pair $C' := \left(c_s', C_p'\right)$,
+     so that $K_i = H(t^{(i)}_s C'_p)$ too.
+    Now the customer applies key derivtion functions to $K_i$ to generate
+    \begin{itemize}
+      \item a blinding factor $b^{(i)} = \FDH_K(\KDF_{\textrm{blinding}}(K_i))$.
+      \item $c_s^{(i)} = \KDF_{\textrm{Ed25519}}(K_i)$
+    \end{itemize}
+    Now the customer can compute her new coin key pair
+     $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$
+     where $C^{(i)}_p := c^{(i)}_s G$.
 
-    Our computation of $K_i$ is effectively a Diffie-Hellman operation
-    between the private key $c'_s$ of the original coin with
-    the public transfer key $T_p^{(i)}$.
-  \item The customer computes $B^{(i)} := B_{b^{(i)}}(C^{(i)}_p)$  for $i \in \{1,\ldots,\kappa\}$ and sends a commitment
-    $S_{C'}(\vec{E}, \vec{B}, \vec{T_p})$ to the exchange.
+    The customer saves to disk $\langle C', \vec{t}\rangle$ where
+    $\vec{t} = \langle t^{(1)}_s, \ldots, t^{(\kappa)}_s \rangle$.
+    We observe that $t^{(i)}_s$ suffices to regenerate $C^{(i)}$ and $b^{(i)}$
+    using the same key derivtion functions.
+
+  % \item
+    The customer computes $B^{(i)} := B_{b^{(i)}}(\FDH_K(C^{(i)}_p))$ 
+    for $i \in \{1,\ldots,\kappa\}$ and sends a commitment
+     $S_{C'}(\vec{B}, \vec{T_p})$ to the exchange.
   \item The exchange generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
     marks $C'_p$ as spent by committing
-    $\langle C', \gamma, S_{C'}(\vec{E}, \vec{B}, \vec{T_p}) \rangle$ to disk.
+    $\langle C', \gamma, S_{C'}(\vec{B}, \vec{T_p}) \rangle$ to disk.
     Auditing processes should assure that $\gamma$ is unpredictable until
     this time to prevent the exchange from assisting tax evasion.
   \item The exchange sends $S_{K'}(C'_p, \gamma)$ to the customer where
     $K'$ is the exchange's message signing key.
   \item The customer commits $\langle C', S_K(C'_p, \gamma) \rangle$ to disk.
-  \item The customer computes $\mathfrak{R} := \left(t_s^{(i)}\right)_{i \ne \gamma}$
-        and sends $S_{C'}(\mathfrak{R})$ to the exchange.
-  \item \label{step:refresh-ccheck} The exchange checks whether $\mathfrak{R}$ is consistent with the commitments;
-    specifically, it computes for $i \not= \gamma$:
+
+  % \item
+    Also, the customer computes $\mathfrak{R} := \left(t_s^{(i)}\right)_{i \ne \gamma}$
+      and sends $S_{C'}(\mathfrak{R})$ to the exchange.
+  \item \label{step:refresh-ccheck} 
+    The exchange checks whether $\mathfrak{R}$ is consistent with
+    the commitments; specifically, it computes for $i \not= \gamma$:
 
     \vspace{-2ex}
     \begin{minipage}{5cm}
     \begin{align*}
-      \overline{K}_i :&= H(t_s^{(i)} C_p'), \\
-      (\overline{c}_s^{(i)}, \overline{b_i}) :&= D_{\overline{K}_i}(E^{(i)}), \\
-     \overline{C^{(i)}_p} :&= \overline{c}_s^{(i)} G,
+      \overline{K}_i :&= H(t_s^{(i)} C_p') \\
+      \overline{c}_s^{(i)} :&= \KDF_{\textrm{Ed25519}}(\overline{K}_i) \\
+      \overline{C^{(i)}_p} :&= \overline{c}_s^{(i)} G
      \end{align*}
-     \end{minipage}
+    \end{minipage}
     \begin{minipage}{5cm}
-      \begin{align*}
-       \overline{T_p^{(i)}} :&= t_s^{(i)} G, \\ \\
-      \overline{B^{(i)}} :&= B_{\overline{b_i}}(\overline{C_p^{(i)}}),
-      \end{align*}
+     \begin{align*}
+       \overline{T_p^{(i)}} :&= t_s^{(i)} G \\ 
+       \overline{b}^{(i)} :&= \FDH_K(\KDF_{\textrm{blinding}}(\overline{K}_i)) \\
+       \overline{B^{(i)}} :&= B_{\overline{b_i}}(\overline{C_p^{(i)}}) 
+     \end{align*}
     \end{minipage}
 
     and checks if $\overline{B^{(i)}} = B^{(i)}$
     and $\overline{T^{(i)}_p} = T^{(i)}_p$.
 
-
-  \item \label{step:refresh-done} If the commitments were consistent,
-    the exchange sends the blind signature $\widetilde{C} :=
-    S_{K}(B^{(\gamma)})$ to the customer.  Otherwise, the exchange responds
-    with an error indicating the location of the failure.
+  \item \label{step:refresh-done} 
+    If the commitments were consistent, the exchange sends the
+    blind signature $\widetilde{C} := S_{K}(B^{(\gamma)})$ to the customer.
+    Otherwise, the exchange responds with an error indicating
+     the location of the failure.
 \end{enumerate}
 
 %\subsection{N-to-M Refreshing}
@@ -824,12 +852,11 @@ generator of the elliptic curve.
 % FIXME: What is \mathtt{link} ?
 
 For a coin that was successfully refreshed, the exchange responds to a
-request $S_{C'}(\mathtt{link})$ with $(T^{(\gamma)}_p$, $E^{(\gamma)},
-\widetilde{C})$.
+request $S_{C'}(\mathtt{link})$ with $(T^{(\gamma)}_p, \widetilde{C})$.
 %
-This allows the owner of the melted coin to also obtain the private
-key of the new coin, even if the refreshing protocol was illicitly
-executed with the help of another party who generated $\vec{c_s}$ and only
+This allows the owner of the melted coin to derive the private key of
+the new coin, even if the refreshing protocol was illicitly executed
+with the help of another party who generated $\vec{c_s}$ and only
 provided $\vec{C_p}$ and other required information to the old owner.
 As a result, linking ensures that access to the new coins issued in
 the refresh protocol is always {\em shared} with the owner of the
@@ -840,8 +867,8 @@ The linking request is not expected to be used at all during ordinary
 operation of Taler.  If the refresh protocol is used by Alice to
 obtain change as designed, she already knows all of the information
 and thus has little reason to request it via the linking protocol.
-The fundamental reason why the exchange must provide the link protocol is
-simply to provide a threat: if Bob were to use the refresh protocol
+The fundamental reason why the exchange must provide the link protocol 
+is simply to provide a threat: if Bob were to use the refresh protocol
 for a transaction of funds from Alice to him, Alice may use a link
 request to gain shared access to Bob's coins. Thus, this threat
 prevents Alice and Bob from abusing the refresh protocol to evade
