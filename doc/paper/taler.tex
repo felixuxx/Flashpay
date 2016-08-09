@@ -781,9 +781,9 @@ generator of the elliptic curve.
     \end{itemize}
     We have computed $L_i$ as a Diffie-Hellman shared secret between
     the transfer key pair $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$
-    and old coin key pair $C' := \left(c_s', C_p'\right)$,
-     so that $L_i = H(t^{(i)}_s C'_p)$ too.
-    Now the customer applies key derivtion functions $\KDF_?$ to $L_i$ to generate
+    and old coin key pair $C' := \left(c_s', C_p'\right)$;
+    as a result, $L_i = H(t^{(i)}_s C'_p)$ also holds.
+    Now the customer applies key derivation functions $\KDF_?$ to $L_i$ to generate
     \begin{itemize}
       \item a blinding factor $b^{(i)} = \FDH_K(\KDF_{\textrm{blinding}}(L_i))$.
       \item $c_s^{(i)} = \KDF_{\textrm{Ed25519}}(L_i)$
@@ -795,7 +795,7 @@ generator of the elliptic curve.
     The customer saves to disk $\langle C', \vec{t}\rangle$ where
     $\vec{t} = \langle t^{(1)}_s, \ldots, t^{(\kappa)}_s \rangle$.
     We observe that $t^{(i)}_s$ suffices to regenerate $C^{(i)}$ and $b^{(i)}$
-    using the same key derivtion functions.
+    using the same key derivation functions.
 
   % \item
     The customer computes $B^{(i)} := B_{b^{(i)}}(\FDH_K(C^{(i)}_p))$ 
@@ -811,7 +811,7 @@ generator of the elliptic curve.
   \item The customer commits $\langle C', S_K(C'_p, \gamma) \rangle$ to disk.
 
   % \item
-    Also, the customer computes $\mathfrak{R} := \left(t_s^{(i)}\right)_{i \ne \gamma}$
+    Also, the customer assembles $\mathfrak{R} := \left(t_s^{(i)}\right)_{i \ne \gamma}$
       and sends $S_{C'}(\mathfrak{R})$ to the exchange.
   \item \label{step:refresh-ccheck} 
     The exchange checks whether $\mathfrak{R}$ is consistent with
@@ -820,15 +820,15 @@ generator of the elliptic curve.
     \vspace{-2ex}
     \begin{minipage}{5cm}
     \begin{align*}
-      \overline{K}_i :&= H(t_s^{(i)} C_p') \\
-      \overline{c}_s^{(i)} :&= \KDF_{\textrm{Ed25519}}(\overline{K}_i) \\
+      \overline{L}_i :&= H(t_s^{(i)} C_p') \\
+      \overline{c}_s^{(i)} :&= \KDF_{\textrm{Ed25519}}(\overline{L}_i) \\
       \overline{C^{(i)}_p} :&= \overline{c}_s^{(i)} G
      \end{align*}
     \end{minipage}
     \begin{minipage}{5cm}
      \begin{align*}
        \overline{T_p^{(i)}} :&= t_s^{(i)} G \\ 
-       \overline{b}^{(i)} :&= \FDH_K(\KDF_{\textrm{blinding}}(\overline{K}_i)) \\
+       \overline{b}^{(i)} :&= \FDH_K(\KDF_{\textrm{blinding}}(\overline{L}_i)) \\
        \overline{B^{(i)}} :&= B_{\overline{b_i}}(\overline{C_p^{(i)}}) 
      \end{align*}
     \end{minipage}
