@@ -494,21 +494,12 @@ TMH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
  * @param connection the connection to send the response to
  * @param rm details about the original melt
  * @param mc all information about the original commitment
- * @param off offset in the array of kappa-commitments where
- *            the missmatch was detected
- * @param j index of the coin for which the missmatch was
- *            detected
- * @param missmatch_object name of the object that was
- *            bogus (i.e. "transfer key").
  * @return a MHD result code
  */
 int
 TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
                                              const struct TALER_EXCHANGEDB_RefreshMelt *rm,
-                                             const struct TALER_EXCHANGEDB_MeltCommitment *mc,
-                                             unsigned int off,
-                                             unsigned int j,
-                                             const char *missmatch_object);
+                                             const struct TALER_EXCHANGEDB_MeltCommitment *mc);
 
 
 /**
