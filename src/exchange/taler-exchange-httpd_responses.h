@@ -492,14 +492,18 @@ TMH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
  * revealed value(s) do not match the original commitment.
  *
  * @param connection the connection to send the response to
- * @param rm details about the original melt
- * @param mc all information about the original commitment
+ * @param session info about session
+ * @param commit_coins array of @a num_newcoins committed envelopes at offset @a gamma
+ * @param denom_pubs array of @a num_newcoins denomination keys for the new coins
+ * @param gamma_tp transfer public key at offset @a gamma
  * @return a MHD result code
  */
 int
 TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
-                                             const struct TALER_EXCHANGEDB_RefreshMelt *rm,
-                                             const struct TALER_EXCHANGEDB_MeltCommitment *mc);
+                                             const struct TALER_EXCHANGEDB_RefreshSession *session,
+                                             const struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins,
+                                             const struct TALER_DenominationPublicKey *denom_pubs,
+                                             const struct TALER_TransferPublicKeyP *gamma_tp);
 
 
 /**

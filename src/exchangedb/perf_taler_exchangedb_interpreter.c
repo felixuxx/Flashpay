@@ -1620,7 +1620,6 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
                                                             state->session,
                                                             state->cmd[hash_index].exposed.data.session_hash,
                                                             1,
-                                                            1,
                                                             refresh_commit);
           GNUNET_assert (GNUNET_OK == ret);
         }
@@ -1635,7 +1634,6 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           state->plugin->get_refresh_commit_coins (state->plugin->cls,
                                                    state->session,
                                                    state->cmd[hash_index].exposed.data.session_hash,
-                                                   1,
                                                    1,
                                                    &refresh_commit);
 
@@ -1656,11 +1654,11 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           unsigned int hash_index;
           struct TALER_EXCHANGEDB_RefreshCommitCoin commit_coin;
 
+          // FIXME: this should go after the public key!
           hash_index = state->cmd[state->i].details.get_refresh_commit_link.index_hash;
           ret = state->plugin->get_refresh_commit_coins(state->plugin->cls,
                                                         state->session,
                                                         state->cmd[hash_index].exposed.data.session_hash,
-                                                        1,
                                                         1,
                                                         &commit_coin);
           GNUNET_assert (GNUNET_SYSERR != ret);

@@ -132,40 +132,4 @@ common_free_coin_transaction_list (void *cls,
 }
 
 
-/**
- * Free melt commitment data.
- *
- * @param cls the @e cls of this struct with the plugin-specific state (unused)
- * @param mc data structure to free
- */
-static void
-common_free_melt_commitment (void *cls,
-                             struct TALER_EXCHANGEDB_MeltCommitment *mc)
-{
-  unsigned int i;
-  unsigned int k;
-
-  if (NULL != mc->denom_pubs)
-  {
-    for (i=0;i<mc->num_newcoins;i++)
-      if (NULL != mc->denom_pubs[i].rsa_public_key)
-        GNUNET_CRYPTO_rsa_public_key_free (mc->denom_pubs[i].rsa_public_key);
-    GNUNET_free (mc->denom_pubs);
-  }
-  for (k=0;k<TALER_CNC_KAPPA;k++)
-  {
-    if (NULL != mc->commit_coins[k])
-    {
-      for (i=0;i<mc->num_newcoins;i++)
-      {
-        /* NOTE: 'non_null' because this API is used also
-           internally to clean up the struct on failures! */
-        GNUNET_free_non_null (mc->commit_coins[k][i].coin_ev);
-      }
-      GNUNET_free (mc->commit_coins[k]);
-    }
-  }
-  GNUNET_free (mc);
-}
-
 /* end of plugin_exchangedb_common.c */

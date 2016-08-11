@@ -972,92 +972,55 @@ TMH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
  * revealed value(s) do not match the original commitment.
  *
  * @param connection the connection to send the response to
- * @param rm details about the original melt
- * @param mc all information about the original commitment
+ * @param session info about session
+ * @param commit_coins array of @a num_newcoins committed envelopes at offset @a gamma
+ * @param denom_pubs array of @a num_newcoins denomination keys for the new coins
+ * @param gamma_tp transfer public key at offset @a gamma
  * @return a MHD result code
  */
 int
 TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
-                                             const struct TALER_EXCHANGEDB_RefreshMelt *rm,
-                                             const struct TALER_EXCHANGEDB_MeltCommitment *mc)
+                                             const struct TALER_EXCHANGEDB_RefreshSession *session,
+                                             const struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins,
+                                             const struct TALER_DenominationPublicKey *denom_pubs,
+                                             const struct TALER_TransferPublicKeyP *gamma_tp)
 {
   json_t *info_new;
-  json_t *info_commit;
-  json_t *info_links;
+  json_t *info_commit_k;
   unsigned int i;
-  unsigned int k;
-  json_t *rm_json;
-
-  rm_json = json_object ();
-  json_object_set_new (rm_json,
-                       "coin_sig",
-                       GNUNET_JSON_from_data_auto (&rm->coin_sig));
-  json_object_set_new (rm_json,
-                       "coin_pub",
-                       GNUNET_JSON_from_data_auto (&rm->coin.coin_pub));
-  json_object_set_new (rm_json,
-                       "melt_amount_with_fee",
-                       TALER_JSON_from_amount (&rm->amount_with_fee));
-  json_object_set_new (rm_json,
-                       "melt_fee",
-                       TALER_JSON_from_amount (&rm->melt_fee));
 
   info_new = json_array ();
-  for (i=0;i<mc->num_newcoins;i++)
+  info_commit_k = json_array ();
+  for (i=0;i<session->num_newcoins;i++)
   {
-    const struct TALER_DenominationPublicKey *pk;
+    const struct TALER_EXCHANGEDB_RefreshCommitCoin *cc;
+    json_t *cc_json;
 
-    pk = &mc->denom_pubs[i];
     GNUNET_assert (0 ==
                    json_array_append_new (info_new,
-                                          GNUNET_JSON_from_rsa_public_key (pk->rsa_public_key)));
+                                          GNUNET_JSON_from_rsa_public_key (denom_pubs[i].rsa_public_key)));
 
-  }
-  info_commit = json_array ();
-  info_links = json_array ();
-  for (k=0;k<TALER_CNC_KAPPA;k++)
-  {
-    json_t *info_commit_k;
-    json_t *info_link_k;
-    const struct TALER_TransferPublicKeyP *transfer_pub;
-
-    info_commit_k = json_array ();
-    for (i=0;i<mc->num_newcoins;i++)
-    {
-      const struct TALER_EXCHANGEDB_RefreshCommitCoin *cc;
-      json_t *cc_json;
-
-      cc = &mc->commit_coins[k][i];
-      cc_json = json_object ();
-      json_object_set_new (cc_json,
-                           "coin_ev",
-                           GNUNET_JSON_from_data (cc->coin_ev,
-                                                  cc->coin_ev_size));
-      GNUNET_assert (0 ==
-                     json_array_append_new (info_commit_k,
-                                            cc_json));
-    }
+    cc = &commit_coins[i];
+    cc_json = json_pack ("{s:o}",
+                         "coin_ev",
+                         GNUNET_JSON_from_data (cc->coin_ev,
+                                                cc->coin_ev_size));
     GNUNET_assert (0 ==
-                   json_array_append_new (info_commit,
-                                          info_commit_k));
-
-    info_link_k = json_object ();
-    transfer_pub = &mc->transfer_pubs[k];
-    json_object_set_new (info_link_k,
-                         "transfer_pub",
-                         GNUNET_JSON_from_data_auto (transfer_pub));
-    GNUNET_assert (0 ==
-                   json_array_append_new (info_links,
-                                          info_link_k));
+                   json_array_append_new (info_commit_k,
+                                          cc_json));
   }
   return TMH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_CONFLICT,
-                                       "{s:s, s:o, s:o, s:o, s:o}",
+                                       "{s:s, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:i}",
                                        "error", "commitment violation",
-                                       "refresh_melt_info", rm_json,
+                                       "coin_sig", GNUNET_JSON_from_data_auto (&session->melt.coin_sig),
+                                       "coin_pub", GNUNET_JSON_from_data_auto (&session->melt.coin.coin_pub),
+                                       "melt_amount_with_fee", TALER_JSON_from_amount (&session->melt.amount_with_fee),
+                                       "melt_fee", TALER_JSON_from_amount (&session->melt.melt_fee),
                                        "newcoin_infos", info_new,
-                                       "commit_infos", info_commit,
-                                       "link_infos", info_links);
+                                       "commit_infos", info_commit_k,
+                                       "gamma_tp", GNUNET_JSON_from_data_auto (gamma_tp),
+                                       "gamma", (int) session->noreveal_index);
 }
 
 

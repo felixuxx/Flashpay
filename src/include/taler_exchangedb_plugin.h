@@ -546,34 +546,6 @@ struct TALER_EXCHANGEDB_TransactionList
 
 
 /**
- * @brief All of the information from a /refresh/melt commitment.
- */
-struct TALER_EXCHANGEDB_MeltCommitment
-{
-
-  /**
-   * Number of new coins we are creating.
-   */
-  uint16_t num_newcoins;
-
-  /**
-   * Array of @e num_newcoins denomination keys
-   */
-  struct TALER_DenominationPublicKey *denom_pubs;
-
-  /**
-   * 2D-Array of #TALER_CNC_KAPPA and @e num_newcoins commitments.
-   */
-  struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins[TALER_CNC_KAPPA];
-
-  /**
-   * Array of #TALER_CNC_KAPPA transfer public keys.
-   */
-  struct TALER_TransferPublicKeyP transfer_pubs[TALER_CNC_KAPPA];
-};
-
-
-/**
  * @brief Handle for a database session (per-thread, for transactions).
  */
 struct TALER_EXCHANGEDB_Session;
@@ -1146,7 +1118,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection to use
    * @param session_hash hash to identify refresh session
-   * @param cnc_index cut and choose index (1st dimension), relating to #TALER_CNC_KAPPA
    * @param num_newcoins coin index size of the @a commit_coins array
    * @param commit_coin array of coin commitments to store
    * @return #GNUNET_OK on success
@@ -1156,7 +1127,6 @@ struct TALER_EXCHANGEDB_Plugin
   (*insert_refresh_commit_coins) (void *cls,
                                   struct TALER_EXCHANGEDB_Session *session,
                                   const struct GNUNET_HashCode *session_hash,
-                                  uint16_t cnc_index,
                                   uint16_t num_newcoins,
                                   const struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins);
 
@@ -1168,7 +1138,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection to use
    * @param session_hash hash to identify refresh session
-   * @param cnc_index cut and choose set index (1st dimension)
    * @param num_coins size of the @a commit_coins array
    * @param[out] commit_coins array of coin commitments to return
    * @return #GNUNET_OK on success
@@ -1179,7 +1148,6 @@ struct TALER_EXCHANGEDB_Plugin
   (*get_refresh_commit_coins) (void *cls,
                                struct TALER_EXCHANGEDB_Session *session,
                                const struct GNUNET_HashCode *session_hash,
-                               uint16_t cnc_index,
                                uint16_t num_coins,
                                struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins);
 
@@ -1203,7 +1171,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection to use
    * @param session_hash hash to identify refresh session
-   * @param cnc_index cut and choose index, relating to #TALER_CNC_KAPPA
    * @param tp public key to store
    * @return #GNUNET_SYSERR on internal error, #GNUNET_OK on success
    */
@@ -1211,7 +1178,6 @@ struct TALER_EXCHANGEDB_Plugin
   (*insert_refresh_transfer_public_key) (void *cls,
                                          struct TALER_EXCHANGEDB_Session *session,
                                          const struct GNUNET_HashCode *session_hash,
-                                         uint16_t cnc_index,
                                          const struct TALER_TransferPublicKeyP *tp);
 
   /**
@@ -1221,7 +1187,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection to use
    * @param session_hash hash to identify refresh session
-   * @param cnc_index cut and choose index (1st dimension)
    * @param[out] tp information to return
    * @return #GNUNET_SYSERR on internal error,
    *         #GNUNET_NO if commitment was not found
@@ -1231,34 +1196,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*get_refresh_transfer_public_key) (void *cls,
                                       struct TALER_EXCHANGEDB_Session *session,
                                       const struct GNUNET_HashCode *session_hash,
-                                      uint16_t cnc_index,
                                       struct TALER_TransferPublicKeyP *tp);
-
-
-  /**
-   * Get all of the information from the given melt commit operation.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session database connection to use
-   * @param session_hash hash to identify refresh session
-   * @return NULL if the @a session_hash does not correspond to any known melt
-   *         operation
-   */
-  struct TALER_EXCHANGEDB_MeltCommitment *
-  (*get_melt_commitment) (void *cls,
-                          struct TALER_EXCHANGEDB_Session *session,
-                          const struct GNUNET_HashCode *session_hash);
-
-
-  /**
-   * Free information about a melt commitment.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param mc melt commitment data to free
-   */
-  void
-  (*free_melt_commitment) (void *cls,
-                           struct TALER_EXCHANGEDB_MeltCommitment *mc);
 
 
   /**
