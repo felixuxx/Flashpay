@@ -183,6 +183,7 @@ TALER_setup_fresh_coin (const struct TALER_TransferSecretP *secret_seed,
                         struct TALER_FreshCoinP *fc)
 {
   uint32_t be_salt = htonl (coin_num_salt);
+  unsigned char *p;
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_kdf (fc,
@@ -198,9 +199,10 @@ TALER_setup_fresh_coin (const struct TALER_TransferSecretP *secret_seed,
   /* Taken from like 170-172 of libgcrypt/cipher/ecc.c
    * We note that libgcrypt stores the private key in the reverse order
    * from many Ed25519 implementatons. */
-  fc->coin_priv[0] &= 0x7f;  /* Clear bit 255. */
-  fc->coin_priv[0] |= 0x40;  /* Set bit 254.   */
-  fc->coin_priv[31] &= 0xf8; /* Clear bits 2..0 so that d mod 8 == 0  */
+  p = (char *) fc->coin_priv;  /*->key->bits; */
+  p[0] &= 0x7f;  /* Clear bit 255. */
+  p[0] |= 0x40;  /* Set bit 254.   */
+  p[31] &= 0xf8; /* Clear bits 2..0 so that d mod 8 == 0  */
 
   /* FIXME: Run GNUNET_CRYPTO_ecdhe_key_create several times and inspect
    * the output to verify that the same bits are set and cleared.  
