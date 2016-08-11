@@ -794,8 +794,8 @@ TALER_EXCHANGE_refresh_prepare (const struct TALER_CoinSpendPrivateKeyP *melt_pr
     return NULL;
   }
 
-
-  /* now compute melt session hash */
+  /* next, add all of the hashes from the denomination keys to the
+     hash_context */
   for (i=0;i<fresh_pks_len;i++)
   {
     char *buf;

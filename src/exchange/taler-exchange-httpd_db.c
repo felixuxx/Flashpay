@@ -1166,6 +1166,8 @@ send_melt_commitment_error (struct MHD_Connection *connection,
  * @param melt information about the melted coin
  * @param num_newcoins number of newcoins being generated
  * @param denom_pubs array of @a num_newcoins keys for the new coins
+ * @param hash_context hash context to update by hashing in the data
+ *                     from this offset
  * @return #GNUNET_OK if the committment was honest,
  *         #GNUNET_NO if there was a problem and we generated an error message
  *         #GNUNET_SYSERR if we could not even generate an error message
@@ -1178,7 +1180,8 @@ check_commitment (struct MHD_Connection *connection,
                   const struct TALER_TransferPrivateKeyP *transfer_priv,
                   const struct TALER_EXCHANGEDB_RefreshMelt *melt,
                   unsigned int num_newcoins,
-                  const struct TALER_DenominationPublicKey *denom_pubs)
+                  const struct TALER_DenominationPublicKey *denom_pubs,
+                  struct GNUNET_HashContext *hash_context)
 {
   struct TALER_TransferPublicKeyP transfer_pub;
   struct TALER_TransferSecretP transfer_secret;
@@ -1187,6 +1190,8 @@ check_commitment (struct MHD_Connection *connection,
   unsigned int j;
   int ret;
 
+  /* FIXME: instead of consulting DB, reconstruct everything
+     from transfer_priv here! */
   if (GNUNET_OK !=
       TMH_plugin->get_refresh_transfer_public_key (TMH_plugin->cls,
                                                    session,
@@ -1206,8 +1211,7 @@ check_commitment (struct MHD_Connection *connection,
               &transfer_pub,
               sizeof (struct TALER_TransferPublicKeyP)))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "transfer keys do not match\n");
+    GNUNET_break_op (0);
     return send_melt_commitment_error (connection,
                                        session,
                                        session_hash,
@@ -1275,6 +1279,7 @@ check_commitment (struct MHD_Connection *connection,
                        commit_coins[j].coin_ev,
                        buf_len)) )
     {
+      GNUNET_break_op (0);
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "blind envelope does not match for k=%u, old=%d\n",
                   off,
@@ -1289,6 +1294,9 @@ check_commitment (struct MHD_Connection *connection,
                                         "envelope");
       goto cleanup;
     }
+    GNUNET_CRYPTO_hash_context_read (hash_context,
+                                     commit_coins[j].coin_ev,
+                                     commit_coins[j].coin_ev_size);
     GNUNET_free (buf);
   }
   ret = GNUNET_OK;
@@ -1391,17 +1399,6 @@ execute_refresh_reveal_transaction (struct MHD_Connection *connection,
   int ret;
 
   START_TRANSACTION (session, connection);
-  if (GNUNET_OK !=
-      TMH_plugin->get_refresh_commit_coins (TMH_plugin->cls,
-                                            session,
-                                            session_hash,
-                                            refresh_session->noreveal_index,
-                                            refresh_session->num_newcoins,
-                                            commit_coins))
-  {
-    GNUNET_break (0);
-    return TMH_RESPONSE_reply_internal_db_error (connection);
-  }
   key_state = TMH_KS_acquire ();
   for (j=0;j<refresh_session->num_newcoins;j++)
   {
@@ -1456,6 +1453,8 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
   unsigned int i;
   unsigned int j;
   unsigned int off;
+  struct GNUNET_HashContext *hash_context;
+  struct GNUNET_HashCode sh_check;
 
   if (NULL == (session = TMH_plugin->get_session (TMH_plugin->cls)))
   {
@@ -1489,34 +1488,167 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
         ? GNUNET_NO : GNUNET_SYSERR;
   }
 
-
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
+  /* first, iterate over transfer public keys for hash_context */
   off = 0;
-  for (i=0;i<TALER_CNC_KAPPA - 1;i++)
+  for (i=0;i<TALER_CNC_KAPPA;i++)
+  {
+    struct TALER_TransferPublicKeyP tp;
+
+    if (i == refresh_session.noreveal_index)
+    {
+      off = 1;
+      /* obtain tp from db */
+      if (GNUNET_OK !=
+          TMH_plugin->get_refresh_transfer_public_key (TMH_plugin->cls,
+                                                       session,
+                                                       session_hash,
+                                                       i,
+                                                       &tp))
+      {
+        GNUNET_break (0);
+        GNUNET_free (denom_pubs);
+        GNUNET_CRYPTO_rsa_signature_free (refresh_session.melt.coin.denom_sig.rsa_signature);
+        GNUNET_CRYPTO_rsa_public_key_free (refresh_session.melt.coin.denom_pub.rsa_public_key);
+        GNUNET_CRYPTO_hash_context_abort (hash_context);
+        return (MHD_YES == TMH_RESPONSE_reply_internal_db_error (connection))
+          ? GNUNET_NO : GNUNET_SYSERR;
+      }
+    }
+    else
+    {
+      /* compute tp from private key */
+      GNUNET_CRYPTO_ecdhe_key_get_public (&transfer_privs[i - off].ecdhe_priv,
+                                          &tp.ecdhe_pub);
+    }
+    GNUNET_CRYPTO_hash_context_read (hash_context,
+                                     &tp,
+                                     sizeof (struct TALER_TransferPublicKeyP));
+  }
+
+  /* next, add all of the hashes from the denomination keys to the
+     hash_context */
+  {
+    struct TALER_DenominationPublicKey denom_pubs[refresh_session.num_newcoins];
+
+    if (GNUNET_OK !=
+        TMH_plugin->get_refresh_order (TMH_plugin->cls,
+                                       session,
+                                       session_hash,
+                                       refresh_session.num_newcoins,
+                                       denom_pubs))
+    {
+      GNUNET_break (0);
+      GNUNET_free (denom_pubs);
+      GNUNET_CRYPTO_rsa_signature_free (refresh_session.melt.coin.denom_sig.rsa_signature);
+      GNUNET_CRYPTO_rsa_public_key_free (refresh_session.melt.coin.denom_pub.rsa_public_key);
+      GNUNET_CRYPTO_hash_context_abort (hash_context);
+      return (MHD_YES == TMH_RESPONSE_reply_internal_db_error (connection))
+        ? GNUNET_NO : GNUNET_SYSERR;
+    }
+    for (i=0;i<refresh_session.num_newcoins;i++)
+    {
+      char *buf;
+      size_t buf_size;
+
+      buf_size = GNUNET_CRYPTO_rsa_public_key_encode (denom_pubs[i].rsa_public_key,
+                                                      &buf);
+      GNUNET_CRYPTO_hash_context_read (hash_context,
+                                       buf,
+                                       buf_size);
+      GNUNET_free (buf);
+      GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[i].rsa_public_key);
+    }
+  }
+
+  /* next, add public key of coin and amount being refreshed */
+  {
+    struct TALER_AmountNBO melt_amountn;
+
+    GNUNET_CRYPTO_hash_context_read (hash_context,
+                                     &refresh_session.melt.coin.coin_pub,
+                                     sizeof (struct TALER_CoinSpendPublicKeyP));
+    TALER_amount_hton (&melt_amountn,
+                       &refresh_session.melt.amount_with_fee);
+    GNUNET_CRYPTO_hash_context_read (hash_context,
+                                     &melt_amountn,
+                                     sizeof (struct TALER_AmountNBO));
+  }
+
+  commit_coins = GNUNET_new_array (refresh_session.num_newcoins,
+                                   struct TALER_EXCHANGEDB_RefreshCommitCoin);
+  off = 0;
+  for (i=0;i<TALER_CNC_KAPPA;i++)
   {
     if (i == refresh_session.noreveal_index)
+    {
       off = 1;
+      /* obtain commit_coins for the selected gamma value from DB */
+      if (GNUNET_OK !=
+          TMH_plugin->get_refresh_commit_coins (TMH_plugin->cls,
+                                                session,
+                                                session_hash,
+                                                i,
+                                                refresh_session.num_newcoins,
+                                                commit_coins))
+      {
+        GNUNET_break (0);
+        GNUNET_free (denom_pubs);
+        GNUNET_CRYPTO_rsa_signature_free (refresh_session.melt.coin.denom_sig.rsa_signature);
+        GNUNET_CRYPTO_rsa_public_key_free (refresh_session.melt.coin.denom_pub.rsa_public_key);
+        GNUNET_CRYPTO_hash_context_abort (hash_context);
+        return TMH_RESPONSE_reply_internal_db_error (connection);
+      }
+      /* add envelopes to hash_context */
+      for (j=0;j<refresh_session.num_newcoins;j++)
+      {
+        GNUNET_CRYPTO_hash_context_read (hash_context,
+                                         commit_coins[j].coin_ev,
+                                         commit_coins[j].coin_ev_size);
+      }
+      continue;
+    }
     if (GNUNET_OK !=
         (res = check_commitment (connection,
                                  session,
                                  session_hash,
-                                 i + off,
-                                 &transfer_privs[i],
+                                 i,
+                                 &transfer_privs[i - off],
                                  &refresh_session.melt,
                                  refresh_session.num_newcoins,
-                                 denom_pubs)))
+                                 denom_pubs,
+                                 hash_context)))
     {
+      GNUNET_break_op (0);
       for (j=0;j<refresh_session.num_newcoins;j++)
         GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
       GNUNET_free (denom_pubs);
       GNUNET_CRYPTO_rsa_signature_free (refresh_session.melt.coin.denom_sig.rsa_signature);
       GNUNET_CRYPTO_rsa_public_key_free (refresh_session.melt.coin.denom_pub.rsa_public_key);
+      GNUNET_CRYPTO_hash_context_abort (hash_context);
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     }
   }
 
+  /* Check session hash matches */
+  GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                     &sh_check);
+  if (0 != memcmp (&sh_check,
+                   session_hash,
+                   sizeof (struct GNUNET_HashCode)))
+  {
+    GNUNET_break_op (0);
+    for (j=0;j<refresh_session.num_newcoins;j++)
+      GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
+    GNUNET_free (denom_pubs);
+    GNUNET_CRYPTO_rsa_signature_free (refresh_session.melt.coin.denom_sig.rsa_signature);
+    GNUNET_CRYPTO_rsa_public_key_free (refresh_session.melt.coin.denom_pub.rsa_public_key);
+    return (MHD_YES == TMH_RESPONSE_reply_external_error (connection,
+                                                          "session hash does not match"))
+      ? GNUNET_NO : GNUNET_SYSERR;
+  }
+
   /* Client request OK, start transaction */
-  commit_coins = GNUNET_new_array (refresh_session.num_newcoins,
-                                   struct TALER_EXCHANGEDB_RefreshCommitCoin);
   ev_sigs = GNUNET_new_array (refresh_session.num_newcoins,
                               struct TALER_DenominationSignature);
   res = execute_refresh_reveal_transaction (connection,
