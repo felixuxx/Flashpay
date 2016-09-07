@@ -836,7 +836,7 @@ exchange_keys_update_cointype (void *cls,
     GNUNET_CRYPTO_rsa_private_key_free (denomkey_issue.denom_priv.rsa_private_key);
     GNUNET_CRYPTO_rsa_public_key_free (denomkey_issue.denom_pub.rsa_public_key);
     p.anchor = GNUNET_TIME_absolute_add (p.anchor,
-                                         p.duration_spend);
+                                         p.duration_withdraw);
     p.anchor = GNUNET_TIME_absolute_subtract (p.anchor,
                                               p.duration_overlap);
   }
