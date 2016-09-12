@@ -26,15 +26,18 @@
 \usepackage{palatino}
 \usepackage{xspace}
 \usepackage{microtype}
-\usepackage{tikz,eurosym}
-\usepackage{amsmath,amssymb}
-\usepackage{enumitem}
+\usepackage{amsmath,amssymb,eurosym}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{tikz}
 \usetikzlibrary{shapes,arrows}
 \usetikzlibrary{positioning}
 \usetikzlibrary{calc}
+% \usepackage{enumitem}
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{subfig}
+% \usepackage{sidecap}
+% \usepackage{wrapfig}
 
 % Relate to:
 % http://fc14.ifca.ai/papers/fc14_submission_124.pdf
@@ -607,7 +610,6 @@ We use RSA for denomination keys and EdDSA over some eliptic curve
 $\mathbb{E}$ for all other keys.  Let $G$ denote the generator of
 our elliptic curve $\mathbb{E}$.
 
-
 \subsection{Withdrawal}
 
 To withdraw anonymous digital coins, the customer first selects an
@@ -624,23 +626,28 @@ Now the customer carries out the following interaction with the exchange:
 % It does create some confusion, like is a withdrawal key semi-ephemeral
 % like a linking key?
 
-\begin{enumerate}
-  \item The customer randomly generates:
+\begin{description}
+  \item[Setup] The customer randomly generates:
     \begin{itemize}
       \item withdrawal key $W := (w_s,W_p)$ with private key $w_s$ and public key $W_p$,
       \item coin key $C := (c_s,C_p)$ with private key $c_s$ and public key $C_p := c_s G$,
       \item blinding factor $b$, and commits $\langle W, C, b \rangle$ to disk.
     \end{itemize}
-  \item The customer transfers an amount of money corresponding to at least $K_v$
-    to the exchange, with $W_p$ in the subject line of the transaction.
-  \item The exchange receives the transaction and credits the $W_p$ reserve with
-    the respective amount in its database.
-  \item The customer sends $S_W(B)$ where $B := B_b(\FDH_K(C_p))$ to the exchange
-    to request withdrawal of $C$; here, $B_b$ denotes Chaum-style blinding with
-    blinding factor $b$.
-  \item The exchange checks if the same withdrawal request was issued before;
-    in this case, it sends $S_K(B)$ to the customer.%
-\footnote{$S_K$ denotes a Chaum-style blind signature with private key $K_s$.}
+  \item[SEPA Send] 
+    The customer transfers an amount of money corresponding to
+    at least $K_v$ to the exchange, with $W_p$ in the subject line
+    of the transaction.
+  \item[SEPA Recieve] 
+    The exchange receives the transaction and credits the reserve $W_p$
+    with the respective amount in its database.
+  \item[POST {\tt /withdraw/sign}] 
+    The customer sends $S_W(B)$ where $B := B_b(\FDH_K(C_p))$ to 
+    the exchange to request withdrawal of $C$; here, $B_b$ denotes 
+    Chaum-style blinding with blinding factor $b$.
+  \item[200 OK / 402 PAYMENT REQUIRED]
+    The exchange checks if the same withdrawal request was issued before;
+    in this case, it sends a Chaum-style blind signature $S_K(B)$ with
+    private key $K_s$ to the customer. \\
     If this is a fresh withdrawal request, the exchange performs the following transaction:
     \begin{enumerate}
       \item checks if the reserve $W_p$ has sufficient funds
@@ -656,11 +663,11 @@ Now the customer carries out the following interaction with the exchange:
     Assuming the signature was valid, this would involve showing the transaction
     history for the reserve.
         % FIXME: Is it really the whole history?
-  \item The customer computes and verifies the unblinded signature
+  \item[Done] The customer computes and verifies the unblinded signature
     $S_K(\FDH_K{C_p}) = U_b(S_K(B))$.
     Finally the customer saves the coin $\langle S_K(\FDH_K(C_p)), c_s \rangle$
     to their local wallet on disk.
-\end{enumerate}
+\end{description}
 
 
 \subsection{Exact and partial spending}
@@ -681,11 +688,13 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
 % FIXME: Again, these steps occur at different points in time, maybe
 % that's okay, but refresh is slightly different.
 
-\begin{enumerate}
-\item\label{contract}
+\begin{description}
+\item[Merchant Setup] % \label{contract}
   Let $\vec{X} := \langle X_1, \ldots, X_n \rangle$ denote the list of
   exchanges accepted by the merchant where each $X_j$ is a exchange's
-  public key.  The merchant creates a digitally signed contract
+  public key. 
+\item[Proposal] 
+  The merchant creates a digitally signed contract
     $\mathcal{A} := S_M(m, f, a, H(p, r), \vec{X})$
   where $m$ is an identifier for this transaction, $a$ is data relevant
   to the contract indicating which services or goods the merchant will
@@ -693,26 +702,30 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
   $p$ is the merchant's payment information (e.g. his IBAN number), and
   $r$ is a random nonce.  The merchant commits $\langle \mathcal{A} \rangle$
   to disk and sends $\mathcal{A}$ to the customer.
-\item\label{deposit}
+\item[Customer Setup] % \label{deposit}
   The customer should already possess a coin issued by a exchange that is
   accepted by the merchant, meaning $K$ should be publicly signed by
   some $X_j$ from $\vec{X}$, and has a value $\geq f$.
-\item  The customer generates a \emph{deposit-permission} $\mathcal{D} :=
-  S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$
+\item[POST {\tt /???}] 
+  The customer generates a \emph{deposit-permission}
+    $\mathcal{D} := S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$
   and sends $\langle \mathcal{D}, X_j\rangle$ to the merchant,
   where $X_j$ is the exchange which signed $K$.
-\item The merchant gives $(\mathcal{D}, p, r)$ to the exchange, thereby
+\item[POST {\tt/deposit}] 
+  The merchant gives $(\mathcal{D}, p, r)$ to the exchange, thereby
   revealing $p$ only to the exchange.
-\item The exchange validates $\mathcal{D}$ and checks for double spending.
+\item[200 OK / 409 CONFLICT] 
+  The exchange validates $\mathcal{D}$ and checks for double spending.
   If the coin has been involved in previous transactions and the new
   one would exceed its remaining value, it sends an error
-  with the records from the previous transactions back to the merchant.
-%
+  with the records from the previous transactions back to the merchant. \\
+  %
   If double spending is not found, the exchange commits $\langle \mathcal{D} \rangle$ to disk
   and notifies the merchant that the deposit operation was successful.
-\item The merchant commits and forwards the notification from the exchange to the
+\item[200 OK / ???]
+  The merchant commits and forwards the notification from the exchange to the
   customer, confirming the success or failure of the operation.
-\end{enumerate}
+\end{description}
 
 We have simplified the exposition by assuming that one coin suffices,
 but in practice a customer can use multiple coins from the same
@@ -771,9 +784,10 @@ generator of the elliptic curve.
 
 % FIXME: I'm explicit about the rounds in postquantum.tex
 
-\begin{enumerate}
-  \item For each $i = 1,\ldots,\kappa$, the customer randomly generates
-     a transfer private key $t^{(i)}_s$ and computes
+\begin{description}
+  \item[POST {\tt /refresh/melt}]
+    For each $i = 1,\ldots,\kappa$, the customer randomly generates
+    a transfer private key $t^{(i)}_s$ and computes
     \begin{itemize}
     \item the transfer public key $T^{(i)}_p := t^{(i)}_s G$ and
     \item the new coin secret seed $L_i := H(c'_s T_p^{(i)})$.
@@ -800,19 +814,21 @@ generator of the elliptic curve.
     The customer computes $B^{(i)} := B_{b^{(i)}}(\FDH_K(C^{(i)}_p))$ 
     for $i \in \{1,\ldots,\kappa\}$ and sends a commitment
      $S_{C'}(\vec{B}, \vec{T_p})$ to the exchange.
-  \item The exchange generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
+  \item[200 OK / 409 CONFLICT] 
+    The exchange generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
     marks $C'_p$ as spent by committing
     $\langle C', \gamma, S_{C'}(\vec{B}, \vec{T_p}) \rangle$ to disk.
     Auditing processes should assure that $\gamma$ is unpredictable until
-    this time to prevent the exchange from assisting tax evasion.
-  \item The exchange sends $S_{K'}(C'_p, \gamma)$ to the customer where
+    this time to prevent the exchange from assisting tax evasion. \\
+    %
+    The exchange sends $S_{K'}(C'_p, \gamma)$ to the customer where
     $K'$ is the exchange's message signing key.
-  \item The customer commits $\langle C', S_K(C'_p, \gamma) \rangle$ to disk.
-
-  % \item
-    Also, the customer assembles $\mathfrak{R} := \left(t_s^{(i)}\right)_{i \ne \gamma}$
-      and sends $S_{C'}(\mathfrak{R})$ to the exchange.
-  \item \label{step:refresh-ccheck} 
+  \item[POST {\tt /refresh/reveal}] 
+    The customer commits $\langle C', S_K(C'_p, \gamma) \rangle$ to disk.
+    Also, the customer assembles
+      $\mathfrak{R} := \left(t_s^{(i)}\right)_{i \ne \gamma}$
+    and sends $S_{C'}(\mathfrak{R})$ to the exchange.
+  \item[200 OK / 400 BAD REQUEST]  % \label{step:refresh-ccheck} 
     The exchange checks whether $\mathfrak{R}$ is consistent with
     the commitments; specifically, it computes for $i \not= \gamma$:
 
@@ -835,12 +851,12 @@ generator of the elliptic curve.
     and checks if $\overline{B^{(i)}} = B^{(i)}$
     and $\overline{T^{(i)}_p} = T^{(i)}_p$.
 
-  \item \label{step:refresh-done} 
+  % \item[200 OK / 409 CONFLICT]  % \label{step:refresh-done} 
     If the commitments were consistent, the exchange sends the
     blind signature $\widetilde{C} := S_{K}(B^{(\gamma)})$ to the customer.
     Otherwise, the exchange responds with an error indicating
      the location of the failure.
-\end{enumerate}
+\end{description}
 
 %\subsection{N-to-M Refreshing}
 %

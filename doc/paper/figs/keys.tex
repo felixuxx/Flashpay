@@ -1,0 +1,54 @@
+  \begin{figure}[th]
+    \begin{minipage}[b]{0.45\linewidth}
+      \begin{center}
+	\begin{tikzpicture}[scale = 0.4,
+            transform shape,
+            msglabel/.style    = { text = Black, yshift = .3cm,
+                                   sloped, midway },
+            okmsg/.style       = { ->, color = MidnightBlue, thick,
+                                   >=stealth },
+            rstmsg/.style      = { ->, color = BrickRed, thick,
+                                   >=stealth }
+	  ]
+	  \node[draw = MidnightBlue,
+	    fill = CornflowerBlue,
+	    minimum width = .3cm,
+	    minimum height = 10cm
+	  ] (h1) at (-4, 0) {};
+	  \node[draw = MidnightBlue,
+	    fill = CornflowerBlue,
+	    minimum width = .3cm,
+	    minimum height = 10cm
+	  ] (h2) at (4, 0) {};
+	  \node[above = 0cm of h1] {Wallet};
+	  \node[above = 0cm of h2] {Exchange};
+
+	  \path[->, color = MidnightBlue, very thick, >=stealth]
+	    (-5, 4.5) edge
+	    node[rotate=90, text = Black, yshift = .3cm] {Time}
+	    (-5, -4.5);
+	  \path[->, color = MidnightBlue, thick, >=stealth]
+	    ($(h1.east)+(0,3)$) edge
+	    node[text = Black, yshift = .3cm, sloped] {GET {\tt /keys}}
+	    ($(h2.west)+(0,2)$);
+	  \path[->, color = MidnightBlue, thick, >=stealth]
+	    ($(h2.west)+(0,0.5)$) edge
+	    node[text = Black, yshift = .3cm, sloped] {200 OK: $S_T(DK,A_{DK},M), S_M(SK)$}
+	    ($(h1.east)+(0,-0.5)$);
+	  \node at (5.3, 0) {};
+	\end{tikzpicture}
+      \end{center}
+    \end{minipage}
+    \hspace{0.4cm}
+    \begin{minipage}[b]{0.45\linewidth}
+      \tiny
+      \begin{description}
+      \item[$T$] financial regulator key Necessarily pinned
+      \item[$DK$] RSA public key (``denomination key'')
+      \item[$A_{DK}$] Value of coins signed by $DK$
+      \item[$M$] Offline master key of exchange
+      \item[$SK$] Online signing key of exchange
+      \end{description}
+    \end{minipage}
+  \end{figure}
+

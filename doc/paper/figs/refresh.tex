@@ -1,0 +1,200 @@
+\begin{frame}{Taler {\tt /refresh/melt}}
+  \begin{figure}[th]
+    \begin{minipage}[b]{0.45\linewidth}
+      \begin{center}
+	\begin{tikzpicture}[scale = 0.4,
+            transform shape,
+            msglabel/.style    = { text = Black, yshift = .3cm,
+                                   sloped, midway },
+            okmsg/.style       = { ->, color = MidnightBlue, thick,
+                                   >=stealth },
+            rstmsg/.style      = { ->, color = BrickRed, thick,
+                                   >=stealth }
+	  ]
+	  \node[draw = MidnightBlue,
+	    fill = CornflowerBlue,
+	    minimum width = .3cm,
+	    minimum height = 10cm
+	  ] (h1) at (-4, 0) {};
+	  \node[draw = MidnightBlue,
+	    fill = CornflowerBlue,
+	    minimum width = .3cm,
+	    minimum height = 10cm
+	  ] (h2) at (4, 0) {};
+	  \node[above = 0cm of h1] {Customer};
+	  \node[above = 0cm of h2] {Exchange};
+
+	  \path[->, color = MidnightBlue, very thick, >=stealth]
+	    (-5, 4.5) edge
+	    node[rotate=90, text = Black, yshift = .3cm] {Time}
+	    (-5, -4.5);
+	  \path[->, color = MidnightBlue, thick, >=stealth]
+	    ($(h1.east)+(0,3)$) edge
+	    node[text = Black, yshift = .3cm, sloped] {POST {\tt /refresh/melt} $S_{DK}(C), S_c({\cal DK}, {\cal T},{\cal B})$}
+	    ($(h2.west)+(0,2)$);
+	  \path[->, color = MidnightBlue, thick, >=stealth]
+	    ($(h2.west)+(0,0.5)$) edge
+	    node[text = Black, yshift = .3cm, sloped] {200 OK: $S_{SK}(H({\cal T}, {\cal B}),\gamma)$}
+	    ($(h1.east)+(0,-0.5)$);
+	  \path[rstmsg]
+	    ($(h2.west)+(0, -2.5)$) edge
+	    node[msglabel] {409 CONFLICT: $S_{C}(X), \ldots$}
+	    ($(h1.east)+(0, -3.5)$);
+	  \node at (5.3, 0) {};
+	\end{tikzpicture}
+      \end{center}
+    \end{minipage}
+    \hspace{0.5cm}
+    \begin{minipage}[b]{0.45\linewidth}
+      \tiny
+      \begin{description}
+      \item[$\kappa$] System-wide security parameter, usually 3. 
+      \\ \smallskip
+      \item[$\cal DK$] $:= [DK^{(i)}]_i$ \\ List of denomination keys \\
+      $D + \sum_i A_{DK^{(i)}} < A_{DK}$
+      \item[$t_j$] Random scalar for $j<\kappa$
+      \item[${\cal T}$] $:= [T_j]_\kappa$ where $T_j = t_j G$
+      \item[$k_j$] $:= c T_j = t_j C$ is an ECDHE
+      \item[$b_j^{(i)}$] $:= \texttt{KDFb}(k_j,i)$ % blinding factor
+      \item[$c_j^{(i)}$] $:= \texttt{KDFc}(k_j,i)$ % coin secret keys
+      \item[$C_j^{(i)}$] $: = c_j^{(i)} G$ % new coin publics % keys
+      \item[${\cal B}$] $:= [H( \beta_j )]_\kappa$ where \\
+         $\beta_j := \left[ B_{b_j^{(i)}}(C_j^{(i)}) \right]_i$ 
+      \\ \smallskip
+      \item[$\gamma$] Random value in $[0,\kappa)$ 
+%      \\ \smallskip
+%      \item[$X$] Deposit or refresh
+      \end{description}
+    \end{minipage}
+  \end{figure}
+\end{frame}
+
+
+\begin{frame}{Taler {\tt /refresh/reveal}}
+  \begin{figure}[th]
+    \begin{minipage}[b]{0.45\linewidth}
+      \begin{center}
+	\begin{tikzpicture}[scale = 0.4,
+            transform shape,
+            msglabel/.style    = { text = Black, yshift = .3cm,
+                                   sloped, midway },
+            okmsg/.style       = { ->, color = MidnightBlue, thick,
+                                   >=stealth },
+            rstmsg/.style      = { ->, color = BrickRed, thick,
+                                   >=stealth }
+	  ]
+	  \node[draw = MidnightBlue,
+	    fill = CornflowerBlue,
+	    minimum width = .3cm,
+	    minimum height = 10cm
+	  ] (h1) at (-4, 0) {};
+	  \node[draw = MidnightBlue,
+	    fill = CornflowerBlue,
+	    minimum width = .3cm,
+	    minimum height = 10cm
+	  ] (h2) at (4, 0) {};
+	  \node[above = 0cm of h1] {Customer};
+	  \node[above = 0cm of h2] {Exchange};
+
+	  \path[->, color = MidnightBlue, very thick, >=stealth]
+	    (-5, 4.5) edge
+	    node[rotate=90, text = Black, yshift = .3cm] {Time}
+	    (-5, -4.5);
+	  \path[->, color = MidnightBlue, thick, >=stealth]
+	    ($(h1.east)+(0,3)$) edge
+	    node[text = Black, yshift = .3cm, sloped] {POST {\tt /refresh/reveal} $H({\cal T}, {\cal B}), {\tilde{\cal T}}, \beta_\gamma$}
+	    ($(h2.west)+(0,2)$);
+	  \path[->, color = MidnightBlue, thick, >=stealth]
+	    ($(h2.west)+(0,0.5)$) edge
+	    node[text = Black, yshift = .3cm, sloped] {200 OK: $\cal S$}
+	    ($(h1.east)+(0,-0.5)$);
+	  \path[rstmsg]
+	    ($(h2.west)+(0, -2.5)$) edge
+	    node[msglabel] {400 BAD REQUEST: $Z$}
+	    ($(h1.east)+(0, -3.5)$);
+	  \node at (5.3, 0) {};
+	\end{tikzpicture}
+      \end{center}
+    \end{minipage}
+    \hspace{0.5cm}
+    \begin{minipage}[b]{0.45\linewidth}
+      \tiny
+      \begin{description}
+      \item[$\cal DK$] $:= [DK^{(i)}]_i$
+      \item[$t_j$] .. \\ \smallskip
+
+      \item[$\tilde{\cal T}$] $:= [t_j | j \in \kappa, j \neq \gamma]$ \\ \smallskip
+
+      \item[$k_\gamma$] $:= c T_\gamma = t_\gamma C$ 
+      \item[$b_\gamma^{(i)}$] $:= \texttt{KDFb}(k_\gamma,i)$ 
+      \item[$c_\gamma^{(i)}$] $:= \texttt{KDFc}(k_\gamma,i)$ 
+      \item[$C_\gamma^{(i)}$] $: = c_\gamma^{(i)} G$ 
+
+      \item[$B_\gamma^{(i)}$] $:= B_{b_\gamma^{(i)}}(C_\gamma^{(i)})$
+      \item[$\beta_\gamma$] $:= \big[ B_\gamma^{(i)} \big]_i$
+      \item[$\cal S$] $:= \left[ S_{DK^{(i)}}( B_\gamma^{(i)} ) \right]_i$ \\ \smallskip
+
+      \item[$Z$] Cut-and-choose missmatch information
+      \end{description}
+    \end{minipage}
+  \end{figure}
+\end{frame}
+
+
+\begin{frame}{Taler {\tt /refresh/link}}
+  \begin{figure}[th]
+    \begin{minipage}[b]{0.45\linewidth}
+      \begin{center}
+	\begin{tikzpicture}[scale = 0.4,
+            transform shape,
+            msglabel/.style    = { text = Black, yshift = .3cm,
+                                   sloped, midway },
+            okmsg/.style       = { ->, color = MidnightBlue, thick,
+                                   >=stealth },
+            rstmsg/.style      = { ->, color = BrickRed, thick,
+                                   >=stealth }
+	  ]
+	  \node[draw = MidnightBlue,
+	    fill = CornflowerBlue,
+	    minimum width = .3cm,
+	    minimum height = 10cm
+	  ] (h1) at (-4, 0) {};
+	  \node[draw = MidnightBlue,
+	    fill = CornflowerBlue,
+	    minimum width = .3cm,
+	    minimum height = 10cm
+	  ] (h2) at (4, 0) {};
+	  \node[above = 0cm of h1] {Customer};
+	  \node[above = 0cm of h2] {Exchagne};
+
+	  \path[->, color = MidnightBlue, very thick, >=stealth]
+	    (-5, 4.5) edge
+	    node[rotate=90, text = Black, yshift = .3cm] {Time}
+	    (-5, -4.5);
+	  \path[->, color = MidnightBlue, thick, >=stealth]
+	    ($(h1.east)+(0,3)$) edge
+	    node[text = Black, yshift = .3cm, sloped] {POST {\tt /refresh/link} $C$}
+	    ($(h2.west)+(0,2)$);
+	  \path[->, color = MidnightBlue, thick, >=stealth]
+	    ($(h2.west)+(0,0.5)$) edge
+	    node[text = Black, yshift = .3cm, sloped] {200 OK: $T_\gamma$}
+	    ($(h1.east)+(0,-0.5)$);
+	  \path[rstmsg]
+	    ($(h2.west)+(0, -2.5)$) edge
+	    node[msglabel] {404 NOT FOUND}
+	    ($(h1.east)+(0, -3.5)$);
+	  \node at (5.3, 0) {};
+	\end{tikzpicture}
+      \end{center}
+    \end{minipage}
+    \hspace{0.5cm}
+    \begin{minipage}[b]{0.45\linewidth}
+      \tiny
+      \begin{description}
+      \item[$C$] Old coind public key \\ \smallskip
+      \item[$T_\gamma$] Linkage data $\cal L$ at $\gamma$
+      \end{description}
+    \end{minipage}
+  \end{figure}
+\end{frame}
+
