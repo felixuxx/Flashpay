@@ -93,13 +93,15 @@ the citizen's needs for private economic activity.
 \section{Introduction}
 
 The design of payment systems shapes economies and societies.  Strong,
-developed nation states are evolving towards transparent payment
-systems, such as the MasterCard and VisaCard credit card schemes and
-computerized bank transactions such as SWIFT.  These systems enable
-mass surveillance by both governments and private companies.  Aspects
-of this government control benefit the economy, by enabling taxation
-(also called anti-money laundering).  As a result, bribery and
-corruption are limited to elites who can afford to escape the dragnet.
+developed nation states have adopted highly transparent payment systems,
+such as the MasterCard and VisaCard credit card schemes and computerized
+bank transactions such as SWIFT.  These systems enable mass surveillance
+by both governments and private companies.  Aspects of this surveillance
+sometimes benifit society by providing information about tax evasion or
+crimes like extortion.  % TODO : anti-money laundering later?
+In particular, bribery and corruption are limited to elites who can
+afford to escape the dragnet.
+
 At the other extreme, weaker developing nation states have economic
 activity based largely on coins, paper money or even barter.  Here,
 the state is often unable to effectively monitor or tax economic
@@ -109,10 +111,6 @@ widespread and not limited to social elites.
 %
 ZeroCoin~\cite{miers2013zerocoin} is an example for translating an
 anarchistic economy into the digital realm.
-% FIXME: Unclear referee comment :
-% I didn’t understand why ZeroCoin is particularly suited for
-% developing nations?
-% => clarified: suited to model anarchistic economy.
 
 This paper describes Taler, a simple and practical payment system for
 a modern social-liberal society, which is not being served well by
@@ -163,10 +161,10 @@ due to the obvious corrolation.  A practical payment system must thus
 support giving change in the form of spendable coins, say a \EUR{0,01}
 coin and a \EUR{50,00} coin.
 
-Taler solves the problem of giving change by introducing a new {\em
-  refresh} protocol.  Using this protocol, a customer can obtain
-change in the form of fresh coins that other parties cannot link to
-the original transaction, the original coin, or each other.
+Taler solves the problem of giving change by introducing a new 
+{\em refresh protocol}.  Using this protocol, a customer can obtain
+change or refunds in the form of fresh coins that other parties cannot
+link to the original transaction, the original coin, or each other.
 Additionally, the refresh protocol ensures that the change is owned by
 the same entity which owned the original coin.
 
