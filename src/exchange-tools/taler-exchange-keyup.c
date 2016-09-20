@@ -354,9 +354,9 @@ get_anchor_iter (void *cls,
   char *end = NULL;
 
   base = GNUNET_STRINGS_get_short_name (filename);
-  stamp.abs_value_us = strtol (base,
-                               &end,
-                               10);
+  stamp.abs_value_us = strtoll (base,
+                                &end,
+                                10);
   if ((NULL == end) || (0 != *end))
   {
     fprintf(stderr,
