@@ -125,13 +125,13 @@ static char *
 get_signkey_file (const char *exchange_directory,
                   struct GNUNET_TIME_Absolute start)
 {
-  char *dir;
+  char *fn;
 
-  GNUNET_asprintf (&dir,
+  GNUNET_asprintf (&fn,
                    "%s" DIR_SEPARATOR_STR TALER_EXCHANGEDB_DIR_SIGNING_KEYS DIR_SEPARATOR_STR "%llu",
                    exchange_directory,
                    (unsigned long long) start.abs_value_us);
-  return dir;
+  return fn;
 }
 
 
