@@ -342,7 +342,6 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coin[TALER_CNC_KAPPA];
   struct TALER_TransferPublicKeyP transfer_pub[TALER_CNC_KAPPA];
 
-
   /* For the signature check, we hash most of the inputs together
      (except for the signatures on the coins). */
   hash_context = GNUNET_CRYPTO_hash_context_start ();
@@ -362,7 +361,7 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
     {
       GNUNET_break_op (0);
       res = (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-      goto cleanup;
+      goto cleanup_hc;
     }
     GNUNET_CRYPTO_hash_context_read (hash_context,
                                      &transfer_pub[i],
@@ -491,10 +490,14 @@ handle_refresh_melt_json (struct MHD_Connection *connection,
   if (NULL != coin_melt_details.coin_info.denom_sig.rsa_signature)
     GNUNET_CRYPTO_rsa_signature_free (coin_melt_details.coin_info.denom_sig.rsa_signature);
  cleanup_denoms:
-  for (j=0;j<num_newcoins;j++)
-    if (NULL != denom_pubs[j].rsa_public_key)
-      GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
-  GNUNET_free (denom_pubs);
+  if (NULL != denom_pubs)
+  {
+    for (j=0;j<num_newcoins;j++)
+      if (NULL != denom_pubs[j].rsa_public_key)
+        GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[j].rsa_public_key);
+    GNUNET_free (denom_pubs);
+  }
+ cleanup_hc:
   if (NULL != hash_context)
     GNUNET_CRYPTO_hash_context_abort (hash_context);
   return res;

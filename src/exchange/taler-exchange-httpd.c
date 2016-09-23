@@ -1042,7 +1042,8 @@ main (int argc,
                                unixpath_admin_mode);
     if (-1 == fh_admin)
     {
-      GNUNET_break (0 == close (fh));
+      if (-1 != fh)
+        GNUNET_break (0 == close (fh));
       return 1;
     }
   }

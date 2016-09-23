@@ -491,6 +491,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   int ret;
 
   ret = GNUNET_SYSERR;
+  memset (ev_sigs, 0, sizeof (ev_sigs));
   RND_BLK (&refresh_session);
   RND_BLK (&session_hash);
   dkp = NULL;
@@ -672,7 +673,8 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   ret = GNUNET_OK;
  drop:
   for (cnt=0; cnt < MELT_NEW_COINS; cnt++)
-    GNUNET_CRYPTO_rsa_signature_free (ev_sigs[cnt].rsa_signature);
+    if (NULL != ev_sigs[cnt].rsa_signature)
+      GNUNET_CRYPTO_rsa_signature_free (ev_sigs[cnt].rsa_signature);
   if (NULL != commit_coins)
   {
     plugin->free_refresh_commit_coins (plugin->cls,

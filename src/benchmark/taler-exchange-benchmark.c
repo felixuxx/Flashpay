@@ -119,7 +119,7 @@ struct Reserve
    * Set to the API's handle during the operation.
    */
   struct TALER_EXCHANGE_AdminAddIncomingHandle *aih;
-  
+
   /**
    * How much is left in this reserve.
    */
@@ -127,9 +127,9 @@ struct Reserve
 
   /**
    * Index of this reserve in the #reserves array.
-   */ 
+   */
   unsigned int reserve_index;
-  
+
 };
 
 
@@ -148,7 +148,7 @@ struct Coin
    * DLL of coins to withdraw.
    */
   struct Coin *prev;
-  
+
   /**
    * Set (by the interpreter) to the exchange's signature over the
    * coin's public key.
@@ -189,12 +189,12 @@ struct Coin
    * Array of denominations we expect to get from melt.
    */
   struct TALER_Amount *denoms;
-  
+
   /**
    * The result of a #TALER_EXCHANGE_refresh_prepare() call
    */
   char *blob;
-  
+
   /**
    * Size of @e blob
    */
@@ -209,7 +209,7 @@ struct Coin
    * #GNUNET_YES if this coin is in the #invalid_coins_head DLL.
    */
   int invalid;
-  
+
   /**
    * Index in the reserve's global array indicating which
    * reserve this coin is to be retrieved. If the coin comes
@@ -220,9 +220,9 @@ struct Coin
 
   /**
    * Index of this coin in the #coins array.
-   */ 
+   */
   unsigned int coin_index;
-  
+
   /**
    * If the coin has to be refreshed, this value indicates
    * how much is left on this coin
@@ -397,13 +397,13 @@ static struct GNUNET_TIME_Absolute start_time;
 /**
  * Number of times #bennchmark_run has executed. Used
  * to indicate when we consider us warm.
- */ 
+ */
 static unsigned long long warm;
 
 /**
  * Number of times #bennchmark_run should execute
  * before we shut down.
- */ 
+ */
 static unsigned int num_iterations;
 
 /**
@@ -428,8 +428,8 @@ static unsigned long long num_admin;
 
 
 /**
- * Throw a weighted coin with @a probability. 
- * 
+ * Throw a weighted coin with @a probability.
+ *
  * @reurn #GNUNET_OK with @a probability, #GNUNET_NO with 1 - @a probability
  */
 static unsigned int
@@ -697,7 +697,8 @@ refresh_coin (struct Coin *coin)
   unsigned int off;
 
   GNUNET_break (NULL == coin->denoms);
-  TALER_amount_get_zero (currency, &curr);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency, &curr));
   left = coin->left;
   off = 0;
   while (0 != TALER_amount_cmp (&curr,
@@ -750,7 +751,7 @@ refresh_coin (struct Coin *coin)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
 	      "Prepared blob of size %d for refresh\n",
 	      (unsigned int) blob_size);
-  
+
   coin->blob = blob;
   coin->blob_size = blob_size;
   coin->denoms = denoms;
@@ -846,31 +847,35 @@ spend_coin (struct Coin *coin,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
 	      "Spending %d-th coin\n",
 	      coin->coin_index);
-  
+
   if (do_refresh)
   {
     /**
      * Always spending 1 out of 8 KUDOS. To be improved by randomly
-     * picking the spent amount 
+     * picking the spent amount
      */
     struct TALER_Amount one;
-    
-    TALER_amount_get_zero (currency, &one);
+
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (currency, &one));
     one.value = 1;
-    
-    TALER_amount_subtract (&amount,
-			   &one,
-			   &coin->pk->fee_deposit);
-    TALER_amount_subtract (&coin->left,
-			   &coin->pk->value,
-			   &one);
+
+    GNUNET_assert (GNUNET_SYSERR !=
+                   TALER_amount_subtract (&amount,
+                                          &one,
+                                          &coin->pk->fee_deposit));
+    GNUNET_assert (GNUNET_SYSERR !=
+                   TALER_amount_subtract (&coin->left,
+                                          &coin->pk->value,
+                                          &one));
     coin->refresh = GNUNET_YES;
   }
   else
   {
-    TALER_amount_subtract (&amount,
-			   &coin->pk->value,
-			   &coin->pk->fee_deposit);
+    GNUNET_assert (GNUNET_SYSERR !=
+                   TALER_amount_subtract (&amount,
+                                          &coin->pk->value,
+                                          &coin->pk->fee_deposit));
     coin->refresh = GNUNET_NO;
   }
   memset (&dr, 0, sizeof (dr));
@@ -879,16 +884,16 @@ spend_coin (struct Coin *coin,
   dr.h_contract = h_contract;
   TALER_JSON_hash (merchant_details,
 		   &dr.h_wire);
-  
+
   dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
   dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
   dr.transaction_id = GNUNET_htonll (transaction_id);
-  
+
   TALER_amount_hton (&dr.amount_with_fee,
 		     &amount);
   TALER_amount_hton (&dr.deposit_fee,
 		     &coin->pk->fee_deposit);
-  
+
   GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv.eddsa_priv,
 				      &merchant_pub.eddsa_pub);
   dr.merchant = merchant_pub;
@@ -981,8 +986,9 @@ withdraw_coin (struct Coin *coin)
   coin_priv = GNUNET_CRYPTO_eddsa_key_create ();
   coin->coin_priv.eddsa_priv = *coin_priv;
   GNUNET_free (coin_priv);
-  TALER_amount_get_zero (currency,
-			 &amount);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &amount));
   amount.value = COIN_VALUE;
   GNUNET_assert (-1 != TALER_amount_cmp (&r->left,
 					 &amount));
@@ -1061,12 +1067,13 @@ fill_reserve (struct Reserve *r)
   struct TALER_Amount reserve_amount;
   json_t *transfer_details;
 
-  TALER_amount_get_zero (currency,
-			 &reserve_amount);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &reserve_amount));
   reserve_amount.value = RESERVE_VALUE;
   execution_date = GNUNET_TIME_absolute_get ();
   GNUNET_TIME_round_abs (&execution_date);
-  
+
   priv = GNUNET_CRYPTO_eddsa_key_create ();
   r->reserve_priv.eddsa_priv = *priv;
   GNUNET_free (priv);
@@ -1103,7 +1110,7 @@ benchmark_run (void *cls)
   unsigned int i;
   int refresh;
   struct Coin *coin;
- 
+
   benchmark_task = NULL;
   /* First, always make sure all reserves are full */
   if (NULL != empty_reserve_head)
@@ -1255,7 +1262,7 @@ cert_cb (void *cls,
       fail ("Initializing denominations failed");
       return;
     }
-    return; 
+    return;
   }
   currency = GNUNET_strdup (_keys->denom_keys[0].value.currency);
   if (GNUNET_SYSERR ==
@@ -1306,7 +1313,7 @@ do_shutdown (void *cls)
   for (i=0; i<COINS_PER_RESERVE * nreserves; i++)
   {
     struct Coin *coin = &coins[i];
-    
+
     if (NULL != coin->wsh)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -1524,7 +1531,7 @@ run (void *cls)
     {
       struct Coin *coin;
       unsigned int coin_index;
-      
+
       coin_index = i * COINS_PER_RESERVE + j;
       coin = &coins[coin_index];
       coin->coin_index = coin_index;
@@ -1532,7 +1539,7 @@ run (void *cls)
       invalidate_coin (coin);
     }
   }
-  
+
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
                           &rc);
   GNUNET_assert (NULL != ctx);
@@ -1545,7 +1552,7 @@ run (void *cls)
   if (NULL == exchange)
   {
     fail ("Failed to connect to the exchange!");
-    return;	  
+    return;
   }
 }
 
@@ -1605,7 +1612,7 @@ main (int argc,
   if (run_exchange)
   {
     char *wget;
-    
+
     proc = GNUNET_OS_start_process (GNUNET_NO,
 				    GNUNET_OS_INHERIT_STD_ALL,
 				    NULL, NULL, NULL,
