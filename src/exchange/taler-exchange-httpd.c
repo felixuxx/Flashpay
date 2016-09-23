@@ -928,6 +928,8 @@ main (int argc,
       char *const *argv)
 {
   char *cfgfile = NULL;
+  char *loglev = NULL;
+  char *logfile = NULL;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     {'C', "connection-close", NULL,
      "force HTTP connections to be closed after each request", 0,
@@ -945,6 +947,8 @@ main (int argc,
      &GNUNET_GETOPT_set_filename, &input_filename},
 #endif
     GNUNET_GETOPT_OPTION_HELP ("HTTP server providing a RESTful API to access a Taler exchange"),
+    GNUNET_GETOPT_OPTION_LOGLEVEL (&loglev),
+    GNUNET_GETOPT_OPTION_LOGFILE (&logfile),
     GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
@@ -954,15 +958,15 @@ main (int argc,
   int fh = -1;
   int fh_admin = -1;
 
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-exchange-httpd",
-                                   "INFO",
-                                   NULL));
   if (0 >=
       GNUNET_GETOPT_run ("taler-exchange-httpd",
                          options,
                          argc, argv))
     return 1;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_log_setup ("taler-exchange-httpd",
+                                   (NULL == loglev) ? "INFO" : loglev,
+                                   logfile));
   if (NULL == cfgfile)
     cfgfile = GNUNET_strdup (GNUNET_OS_project_data_get ()->user_config_file);
   cfg = GNUNET_CONFIGURATION_create ();
