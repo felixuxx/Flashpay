@@ -441,7 +441,7 @@ deposit_cb (void *cls,
                               &au->wtid,
                               sizeof (au->wtid));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Starting aggregation under WTID %s\n",
+              "Starting aggregation under H(WTID)=%s\n",
               TALER_B2S (&au->wtid));
   if (GNUNET_OK !=
       db_plugin->insert_aggregation_tracking (db_plugin->cls,
@@ -592,7 +592,7 @@ run_aggregation (void *cls)
   tc = GNUNET_SCHEDULER_get_task_context ();
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
     return;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking for ready deposits to aggregate\n");
   if (NULL == (session = db_plugin->get_session (db_plugin->cls)))
   {
@@ -631,7 +631,7 @@ run_aggregation (void *cls)
       global_ret = GNUNET_SYSERR;
       return;
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "No more ready deposits, going to sleep\n");
     if (GNUNET_YES == test_mode)
     {
@@ -986,7 +986,7 @@ run_transfers (void *cls)
   const struct GNUNET_SCHEDULER_TaskContext *tc;
 
   task = NULL;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking for pending wire transfers\n");
   tc = GNUNET_SCHEDULER_get_task_context ();
   if (0 != (tc->reason & GNUNET_SCHEDULER_REASON_SHUTDOWN))
