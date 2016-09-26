@@ -708,6 +708,7 @@ static void
 cb_wt_never (void *cls,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
              const struct GNUNET_HashCode *h_wire,
+             struct GNUNET_TIME_Absolute exec_time,
              const struct GNUNET_HashCode *h_contract,
              uint64_t transaction_id,
              const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -751,6 +752,7 @@ static void
 cb_wt_check (void *cls,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
              const struct GNUNET_HashCode *h_wire,
+             struct GNUNET_TIME_Absolute exec_time,
              const struct GNUNET_HashCode *h_contract,
              uint64_t transaction_id,
              const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -764,6 +766,7 @@ cb_wt_check (void *cls,
   GNUNET_assert (0 == memcmp (h_wire,
                               &h_wire_wt,
                               sizeof (struct GNUNET_HashCode)));
+  GNUNET_assert (exec_time.abs_value_us == execution_time_wt.abs_value_us);
   GNUNET_assert (0 == memcmp (h_contract,
                               &h_contract_wt,
                               sizeof (struct GNUNET_HashCode)));

@@ -1394,8 +1394,8 @@ wire_cb (void *cls,
  * @param exchange_pub public key the exchange used for signing
  * @param json original json reply (may include signatures, those have then been
  *        validated already)
- * @param wtid extracted wire transfer identifier, or NULL if the exchange could
- *             not provide any (set only if @a http_status is #MHD_HTTP_OK)
+ * @param h_wire hash of the wire transfer address the transfer went to, or NULL on error
+ * @param execution_time time when the exchange claims to have performed the wire transfer
  * @param total_amount total amount of the wire transfer, or NULL if the exchange could
  *             not provide any @a wtid (set only if @a http_status is #MHD_HTTP_OK)
  * @param details_length length of the @a details array
@@ -1407,6 +1407,7 @@ wire_deposits_cb (void *cls,
                   const struct TALER_ExchangePublicKeyP *exchange_pub,
                   const json_t *json,
                   const struct GNUNET_HashCode *h_wire,
+                  struct GNUNET_TIME_Absolute execution_time,
                   const struct TALER_Amount *total_amount,
                   unsigned int details_length,
                   const struct TALER_TrackTransferDetails *details)

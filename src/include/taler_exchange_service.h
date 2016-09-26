@@ -908,7 +908,6 @@ TALER_EXCHANGE_refresh_melt_cancel (struct TALER_EXCHANGE_RefreshMeltHandle *rmh
 typedef void
 (*TALER_EXCHANGE_RefreshRevealCallback) (void *cls,
                                          unsigned int http_status,
-
                                          unsigned int num_coins,
                                          const struct TALER_CoinSpendPrivateKeyP *coin_privs,
                                          const struct TALER_DenominationSignature *sigs,
@@ -1113,6 +1112,7 @@ struct TALER_EXCHANGE_TrackTransferHandle;
  * @param json original json reply (may include signatures, those have then been
  *        validated already)
  * @param h_wire hash of the wire transfer address the transfer went to, or NULL on error
+ * @param execution_time time when the exchange claims to have performed the wire transfer
  * @param total_amount total amount of the wire transfer, or NULL if the exchange could
  *             not provide any @a wtid (set only if @a http_status is #MHD_HTTP_OK)
  * @param details_length length of the @a details array
@@ -1124,6 +1124,7 @@ typedef void
                                         const struct TALER_ExchangePublicKeyP *sign_key,
                                         const json_t *json,
                                         const struct GNUNET_HashCode *h_wire,
+                                        struct GNUNET_TIME_Absolute execution_time,
                                         const struct TALER_Amount *total_amount,
                                         unsigned int details_length,
                                         const struct TALER_TrackTransferDetails *details);

@@ -86,6 +86,7 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
 {
   json_t *details_j;
   struct GNUNET_HashCode h_wire;
+  struct GNUNET_TIME_Absolute exec_time;
   struct TALER_Amount total_amount;
   struct TALER_MerchantPublicKeyP merchant_pub;
   unsigned int num_details;
@@ -95,6 +96,7 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
     TALER_JSON_spec_amount ("total", &total_amount),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &merchant_pub),
     GNUNET_JSON_spec_fixed_auto ("H_wire", &h_wire),
+    GNUNET_JSON_spec_absolute_time ("execution_time", &exec_time),
     GNUNET_JSON_spec_json ("deposits", &details_j),
     GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
@@ -183,6 +185,7 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
              &exchange_pub,
              json,
              &h_wire,
+             exec_time,
              &total_amount,
              num_details,
              details);
@@ -251,7 +254,10 @@ handle_track_transfer_finished (void *cls,
            response_code,
            NULL,
            json,
-           NULL, NULL, 0, NULL);
+           NULL,
+           GNUNET_TIME_UNIT_ZERO_ABS,
+           NULL,
+           0, NULL);
   TALER_EXCHANGE_track_transfer_cancel (wdh);
 }
 
