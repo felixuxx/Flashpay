@@ -326,13 +326,13 @@ TMH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
  */
 int
 TMH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
-                                 const struct GNUNET_HashCode *h_contract,
-                                 const struct GNUNET_HashCode *h_wire,
-                                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                 const struct TALER_Amount *coin_contribution,
-                                 uint64_t transaction_id,
-				 const struct TALER_WireTransferIdentifierRawP *wtid,
-                                 struct GNUNET_TIME_Absolute exec_time);
+                                      const struct GNUNET_HashCode *h_contract,
+                                      const struct GNUNET_HashCode *h_wire,
+                                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                      const struct TALER_Amount *coin_contribution,
+                                      uint64_t transaction_id,
+                                      const struct TALER_WireTransferIdentifierRawP *wtid,
+                                      struct GNUNET_TIME_Absolute exec_time);
 
 
 /**
@@ -386,15 +386,17 @@ struct TMH_TrackTransferDetail
  * @param total total amount that was transferred
  * @param merchant_pub public key of the merchant
  * @param h_wire destination account
+ * @param exec_time execution time of the wire transfer
  * @param wdd_head linked list with details about the combined deposits
  * @return MHD result code
  */
 int
 TMH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
-                                         const struct TALER_Amount *total,
-                                         const struct TALER_MerchantPublicKeyP *merchant_pub,
-                                         const struct GNUNET_HashCode *h_wire,
-                                         const struct TMH_TrackTransferDetail *wdd_head);
+                                           const struct TALER_Amount *total,
+                                           const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                           const struct GNUNET_HashCode *h_wire,
+                                           struct GNUNET_TIME_Absolute exec_time,
+                                           const struct TMH_TrackTransferDetail *wdd_head);
 
 
 /**

@@ -3757,8 +3757,8 @@ postgres_lookup_wire_transfer (void *cls,
 
   /* check if the melt record exists and get it */
   result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "lookup_transactions",
-                                   params);
+                                    "lookup_transactions",
+                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
@@ -3794,7 +3794,10 @@ postgres_lookup_wire_transfer (void *cls,
       TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
        GNUNET_PQ_result_spec_end
     };
-    if (GNUNET_OK != GNUNET_PQ_extract_result (result, rs, i))
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -3803,6 +3806,7 @@ postgres_lookup_wire_transfer (void *cls,
     cb (cb_cls,
         &merchant_pub,
         &h_wire,
+        exec_time,
         &h_contract,
         transaction_id,
         &coin_pub,

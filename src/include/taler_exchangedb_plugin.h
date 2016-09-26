@@ -614,10 +614,10 @@ typedef void
  */
 typedef void
 (*TALER_EXCHANGEDB_TrackTransactionCallback)(void *cls,
-                                        const struct TALER_WireTransferIdentifierRawP *wtid,
-                                        const struct TALER_Amount *coin_contribution,
-                                        const struct TALER_Amount *coin_fee,
-                                        struct GNUNET_TIME_Absolute execution_time);
+                                             const struct TALER_WireTransferIdentifierRawP *wtid,
+                                             const struct TALER_Amount *coin_contribution,
+                                             const struct TALER_Amount *coin_fee,
+                                             struct GNUNET_TIME_Absolute execution_time);
 
 
 /**
@@ -627,6 +627,7 @@ typedef void
  * @param cls closure
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
+ * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_contract which contract was this payment about
  * @param transaction_id merchant's transaction ID for the payment
  * @param coin_pub which public key was this payment about
@@ -637,6 +638,7 @@ typedef void
 (*TALER_EXCHANGEDB_WireTransferDataCallback)(void *cls,
                                              const struct TALER_MerchantPublicKeyP *merchant_pub,
                                              const struct GNUNET_HashCode *h_wire,
+                                             struct GNUNET_TIME_Absolute exec_time,
                                              const struct GNUNET_HashCode *h_contract,
                                              uint64_t transaction_id,
                                              const struct TALER_CoinSpendPublicKeyP *coin_pub,

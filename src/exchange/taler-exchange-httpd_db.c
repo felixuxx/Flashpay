@@ -1773,6 +1773,11 @@ struct WtidTransactionContext
   struct GNUNET_HashCode h_wire;
 
   /**
+   * Execution time of the wire transfer
+   */
+  struct GNUNET_TIME_Absolute exec_time;
+
+  /**
    * Head of DLL with details for /wire/deposit response.
    */
   struct TMH_TrackTransferDetail *wdd_head;
@@ -1806,6 +1811,7 @@ struct WtidTransactionContext
  * @param cls our context for transmission
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
+ * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_contract which contract was this payment about
  * @param transaction_id merchant's transaction ID for the payment
  * @param coin_pub which public key was this payment about
@@ -1816,6 +1822,7 @@ static void
 handle_transaction_data (void *cls,
                          const struct TALER_MerchantPublicKeyP *merchant_pub,
                          const struct GNUNET_HashCode *h_wire,
+                         struct GNUNET_TIME_Absolute exec_time,
                          const struct GNUNET_HashCode *h_contract,
                          uint64_t transaction_id,
                          const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -1832,6 +1839,7 @@ handle_transaction_data (void *cls,
   {
     ctx->merchant_pub = *merchant_pub;
     ctx->h_wire = *h_wire;
+    ctx->exec_time = exec_time;
     ctx->is_valid = GNUNET_YES;
     if (GNUNET_OK !=
         TALER_amount_subtract (&ctx->total,
@@ -1939,6 +1947,7 @@ TMH_DB_execute_track_transfer (struct MHD_Connection *connection,
                                                    &ctx.total,
                                                    &ctx.merchant_pub,
                                                    &ctx.h_wire,
+                                                   ctx.exec_time,
                                                    ctx.wdd_head);
  cleanup:
   while (NULL != (wdd = ctx.wdd_head))
