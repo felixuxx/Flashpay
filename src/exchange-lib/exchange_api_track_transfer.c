@@ -145,6 +145,7 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
       }
       /* build up big hash for signature checking later */
       dd.h_contract = detail->h_contract;
+      dd.execution_time = GNUNET_TIME_absolute_hton (exec_time);
       dd.transaction_id = GNUNET_htonll (detail->transaction_id);
       dd.coin_pub = detail->coin_pub;
       TALER_amount_hton (&dd.deposit_value,

@@ -960,6 +960,11 @@ struct TALER_WireDepositDetailP
   struct GNUNET_HashCode h_contract;
 
   /**
+   * Time when the wire transfer was performed by the exchange.
+   */
+  struct GNUNET_TIME_AbsoluteNBO execution_time;
+
+  /**
    * Merchant's transaction ID in NBO.
    */
   uint64_t transaction_id GNUNET_PACKED;

@@ -1201,11 +1201,13 @@ TMH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
 
+  GNUNET_TIME_round_abs (&exec_time);
   deposits = json_array ();
   hash_context = GNUNET_CRYPTO_hash_context_start ();
   for (wdd_pos = wdd_head; NULL != wdd_pos; wdd_pos = wdd_pos->next)
   {
     dd.h_contract = wdd_pos->h_contract;
+    dd.execution_time = GNUNET_TIME_absolute_hton (exec_time);
     dd.transaction_id = GNUNET_htonll (wdd_pos->transaction_id);
     dd.coin_pub = wdd_pos->coin_pub;
     TALER_amount_hton (&dd.deposit_value,
