@@ -1066,6 +1066,10 @@ struct TALER_ContractPS
    */
   struct GNUNET_HashCode h_contract;
 
+  /**
+   * Key of the merchant who is signing this contract
+   */
+  struct TALER_MerchantPublicKeyP merchant_pub;
 };
 
 
