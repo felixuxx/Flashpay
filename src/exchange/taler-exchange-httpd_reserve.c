@@ -69,7 +69,7 @@ TMH_RESERVE_handler_reserve_status (struct TMH_RequestHandler *rh,
  * Handle a "/reserve/withdraw" request.  Parses the "reserve_pub"
  * EdDSA key of the reserve and the requested "denom_pub" which
  * specifies the key/value of the coin to be withdrawn, and checks
- * that the signature "reserve_sig" makes this a valid withdrawl
+ * that the signature "reserve_sig" makes this a valid withdrawal
  * request from the specified reserve.  If so, the envelope
  * with the blinded coin "coin_ev" is passed down to execute the
  * withdrawl operation.
