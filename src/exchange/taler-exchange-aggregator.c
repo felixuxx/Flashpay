@@ -616,7 +616,7 @@ run_aggregation (void *cls)
                                       session,
                                       &deposit_cb,
                                       au);
-  if (GNUNET_OK != ret)
+  if (0 >= ret)
   {
     if (NULL != au->wire)
       json_decref (au->wire);
@@ -624,7 +624,7 @@ run_aggregation (void *cls)
     au = NULL;
     db_plugin->rollback (db_plugin->cls,
                          session);
-    if (0 != ret)
+    if (GNUNET_SYSERR == ret)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to execute deposit iteration!\n");
