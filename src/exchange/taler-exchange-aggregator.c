@@ -599,6 +599,7 @@ run_aggregation (void *cls)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain database session!\n");
     global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   if (GNUNET_OK !=
@@ -608,6 +609,7 @@ run_aggregation (void *cls)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start database transaction!\n");
     global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   au = GNUNET_new (struct AggregationUnit);
@@ -629,6 +631,7 @@ run_aggregation (void *cls)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to execute deposit iteration!\n");
       global_ret = GNUNET_SYSERR;
+      GNUNET_SCHEDULER_shutdown ();
       return;
     }
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -683,6 +686,7 @@ run_aggregation (void *cls)
     db_plugin->rollback (db_plugin->cls,
                          session);
     global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
 
@@ -709,6 +713,7 @@ run_aggregation (void *cls)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to start database transaction!\n");
       global_ret = GNUNET_SYSERR;
+      GNUNET_SCHEDULER_shutdown ();
       GNUNET_free_non_null (au->additional_rows);
       if (NULL != au->wire)
         json_decref (au->wire);
@@ -892,6 +897,7 @@ wire_confirm_cb (void *cls,
     db_plugin->rollback (db_plugin->cls,
                          session);
     global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
     GNUNET_free (wpd);
     wpd = NULL;
     return;
@@ -905,6 +911,7 @@ wire_confirm_cb (void *cls,
     db_plugin->rollback (db_plugin->cls,
                          session);
     global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
     GNUNET_free (wpd);
     wpd = NULL;
     return;
@@ -964,6 +971,7 @@ wire_prepare_cb (void *cls,
     db_plugin->rollback (db_plugin->cls,
                          wpd->session);
     global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
     GNUNET_free (wpd);
     wpd = NULL;
     return;
@@ -1006,6 +1014,7 @@ run_transfers (void *cls)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start database transaction!\n");
     global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
     return;
   }
   wpd = GNUNET_new (struct WirePrepareData);
@@ -1020,6 +1029,7 @@ run_transfers (void *cls)
     db_plugin->rollback (db_plugin->cls,
                          session);
     global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
     GNUNET_free (wpd);
     wpd = NULL;
     return;
