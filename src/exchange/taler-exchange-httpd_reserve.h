@@ -40,7 +40,7 @@
  * @return MHD result code
   */
 int
-TMH_RESERVE_handler_reserve_status (struct TMH_RequestHandler *rh,
+TEH_RESERVE_handler_reserve_status (struct TEH_RequestHandler *rh,
                                     struct MHD_Connection *connection,
                                     void **connection_cls,
                                     const char *upload_data,
@@ -64,7 +64,7 @@ TMH_RESERVE_handler_reserve_status (struct TMH_RequestHandler *rh,
  * @return MHD result code
   */
 int
-TMH_RESERVE_handler_reserve_withdraw (struct TMH_RequestHandler *rh,
+TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
                                       struct MHD_Connection *connection,
                                       void **connection_cls,
                                       const char *upload_data,

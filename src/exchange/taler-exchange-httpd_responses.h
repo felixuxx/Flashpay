@@ -17,7 +17,7 @@
 /**
  * @file taler-exchange-httpd_responses.h
  * @brief API for generating the various replies of the exchange; these
- *        functions are called TMH_RESPONSE_reply_ and they generate
+ *        functions are called TEH_RESPONSE_reply_ and they generate
  *        and queue MHD response objects for a given connection.
  * @author Florian Dold
  * @author Benedikt Mueller
@@ -40,7 +40,7 @@
  * @param response response to modify
  */
 void
-TMH_RESPONSE_add_global_headers (struct MHD_Response *response);
+TEH_RESPONSE_add_global_headers (struct MHD_Response *response);
 
 
 /**
@@ -52,7 +52,7 @@ TMH_RESPONSE_add_global_headers (struct MHD_Response *response);
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_json (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_json (struct MHD_Connection *connection,
                          const json_t *json,
                          unsigned int response_code);
 
@@ -68,7 +68,7 @@ TMH_RESPONSE_reply_json (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
                               unsigned int response_code,
                               const char *fmt,
                               ...);
@@ -82,7 +82,7 @@ TMH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
                                       const char *param_name);
 
 
@@ -94,7 +94,7 @@ TMH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
                                 const char *param_name);
 
 
@@ -108,7 +108,7 @@ TMH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
                                 const char *param_name);
 
 
@@ -120,7 +120,7 @@ TMH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
                                 const char *param_name);
 
 
@@ -132,7 +132,7 @@ TMH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
                                       const char *hint);
 
 
@@ -144,7 +144,7 @@ TMH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
                                    const char *hint);
 
 
@@ -156,7 +156,7 @@ TMH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
                                    const char *hint);
 
 
@@ -168,7 +168,7 @@ TMH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_commit_error (struct MHD_Connection *connection);
+TEH_RESPONSE_reply_commit_error (struct MHD_Connection *connection);
 
 
 /**
@@ -179,7 +179,7 @@ TMH_RESPONSE_reply_commit_error (struct MHD_Connection *connection);
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection);
+TEH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection);
 
 
 /**
@@ -189,7 +189,7 @@ TMH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection);
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_request_too_large (struct MHD_Connection *connection);
+TEH_RESPONSE_reply_request_too_large (struct MHD_Connection *connection);
 
 
 /**
@@ -199,7 +199,7 @@ TMH_RESPONSE_reply_request_too_large (struct MHD_Connection *connection);
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection);
+TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection);
 
 
 /**
@@ -222,7 +222,7 @@ TMH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection);
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     const struct GNUNET_HashCode *h_wire,
                                     const struct GNUNET_HashCode *h_contract,
@@ -243,7 +243,7 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection,
                                                const struct TALER_EXCHANGEDB_TransactionList *tl);
 
 
@@ -256,7 +256,7 @@ TMH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_refund_conflict (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refund_conflict (struct MHD_Connection *connection,
                                     const struct TALER_EXCHANGEDB_TransactionList *tl);
 
 
@@ -269,7 +269,7 @@ TMH_RESPONSE_reply_refund_conflict (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_refund_failure (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refund_failure (struct MHD_Connection *connection,
                                    unsigned int response_code);
 
 
@@ -281,7 +281,7 @@ TMH_RESPONSE_reply_refund_failure (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_refund_success (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refund_success (struct MHD_Connection *connection,
                                    const struct TALER_EXCHANGEDB_Refund *refund);
 
 
@@ -294,7 +294,7 @@ TMH_RESPONSE_reply_refund_success (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection);
+TEH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection);
 
 
 /**
@@ -306,7 +306,7 @@ TMH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection);
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
 				    struct GNUNET_TIME_Absolute planned_exec_time);
 
 
@@ -325,7 +325,7 @@ TMH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
                                       const struct GNUNET_HashCode *h_contract,
                                       const struct GNUNET_HashCode *h_wire,
                                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -338,18 +338,18 @@ TMH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
 /**
  * Detail for /wire/deposit response.
  */
-struct TMH_TrackTransferDetail
+struct TEH_TrackTransferDetail
 {
 
   /**
    * We keep deposit details in a DLL.
    */
-  struct TMH_TrackTransferDetail *next;
+  struct TEH_TrackTransferDetail *next;
 
   /**
    * We keep deposit details in a DLL.
    */
-  struct TMH_TrackTransferDetail *prev;
+  struct TEH_TrackTransferDetail *prev;
 
   /**
    * Hash of the contract
@@ -391,12 +391,12 @@ struct TMH_TrackTransferDetail
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
                                            const struct TALER_Amount *total,
                                            const struct TALER_MerchantPublicKeyP *merchant_pub,
                                            const struct GNUNET_HashCode *h_wire,
                                            struct GNUNET_TIME_Absolute exec_time,
-                                           const struct TMH_TrackTransferDetail *wdd_head);
+                                           const struct TEH_TrackTransferDetail *wdd_head);
 
 
 /**
@@ -407,7 +407,7 @@ TMH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_reserve_status_success (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_reserve_status_success (struct MHD_Connection *connection,
                                            const struct TALER_EXCHANGEDB_ReserveHistory *rh);
 
 
@@ -421,7 +421,7 @@ TMH_RESPONSE_reply_reserve_status_success (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
                                                         const struct TALER_EXCHANGEDB_ReserveHistory *rh);
 
 
@@ -433,7 +433,7 @@ TMH_RESPONSE_reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *c
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_reserve_withdraw_success (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_reserve_withdraw_success (struct MHD_Connection *connection,
                                              const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable);
 
 
@@ -446,7 +446,7 @@ TMH_RESPONSE_reply_reserve_withdraw_success (struct MHD_Connection *connection,
  * @return a MHD status code
  */
 int
-TMH_RESPONSE_reply_refresh_melt_success (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refresh_melt_success (struct MHD_Connection *connection,
                                          const struct GNUNET_HashCode *session_hash,
                                          uint16_t noreveal_index);
 
@@ -467,7 +467,7 @@ TMH_RESPONSE_reply_refresh_melt_success (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
                                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                                     struct TALER_Amount coin_value,
                                                     struct TALER_EXCHANGEDB_TransactionList *tl,
@@ -484,7 +484,7 @@ TMH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *conne
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
                                            unsigned int num_newcoins,
                                            const struct TALER_DenominationSignature *sigs);
 
@@ -501,7 +501,7 @@ TMH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
                                              const struct TALER_EXCHANGEDB_RefreshSession *session,
                                              const struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins,
                                              const struct TALER_DenominationPublicKey *denom_pubs,
@@ -511,7 +511,7 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
 /**
  * @brief Information for each session a coin was melted into.
  */
-struct TMH_RESPONSE_LinkSessionInfo
+struct TEH_RESPONSE_LinkSessionInfo
 {
   /**
    * Transfer public key of the coin.
@@ -536,9 +536,9 @@ struct TMH_RESPONSE_LinkSessionInfo
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
                                          unsigned int num_sessions,
-                                         const struct TMH_RESPONSE_LinkSessionInfo *sessions);
+                                         const struct TEH_RESPONSE_LinkSessionInfo *sessions);
 
 
 #endif

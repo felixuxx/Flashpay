@@ -41,7 +41,7 @@
  * @return MHD result code
   */
 int
-TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
+TEH_ADMIN_handler_admin_add_incoming (struct TEH_RequestHandler *rh,
                                       struct MHD_Connection *connection,
                                       void **connection_cls,
                                       const char *upload_data,
@@ -63,7 +63,7 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
   };
   int res;
 
-  res = TMH_PARSE_post_json (connection,
+  res = TEH_PARSE_post_json (connection,
                              connection_cls,
                              upload_data,
                              upload_data_size,
@@ -72,7 +72,7 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == root) )
     return MHD_YES;
-  res = TMH_PARSE_json_data (connection,
+  res = TEH_PARSE_json_data (connection,
                              root,
                              spec);
   json_decref (root);
@@ -83,26 +83,26 @@ TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   if (GNUNET_YES !=
-      TMH_json_validate_wireformat (sender_account_details,
+      TEH_json_validate_wireformat (sender_account_details,
                                     GNUNET_NO))
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
-    return TMH_RESPONSE_reply_arg_unknown (connection,
+    return TEH_RESPONSE_reply_arg_unknown (connection,
                                            "sender_account_details");
   }
   if (0 != strcasecmp (amount.currency,
-                       TMH_exchange_currency_string))
+                       TEH_exchange_currency_string))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Exchange uses currency `%s', but /admin/add/incoming tried to use currency `%s'\n",
-                TMH_exchange_currency_string,
+                TEH_exchange_currency_string,
                 amount.currency);
     GNUNET_JSON_parse_free (spec);
-    return TMH_RESPONSE_reply_arg_invalid (connection,
+    return TEH_RESPONSE_reply_arg_invalid (connection,
                                            "amount:currency");
   }
-  res = TMH_DB_execute_admin_add_incoming (connection,
+  res = TEH_DB_execute_admin_add_incoming (connection,
                                            &reserve_pub,
                                            &amount,
                                            at,

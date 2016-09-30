@@ -68,14 +68,14 @@ verify_and_execute_refund (struct MHD_Connection *connection,
                                  &refund->refund_fee) )
   {
     GNUNET_break_op (0);
-    return TMH_RESPONSE_reply_arg_invalid (connection,
+    return TEH_RESPONSE_reply_arg_invalid (connection,
                                            "refund_fee");
   }
   if (-1 == TALER_amount_cmp (&refund->refund_amount,
                               &refund->refund_fee) )
   {
     GNUNET_break_op (0);
-    return TMH_RESPONSE_reply_signature_invalid (connection,
+    return TEH_RESPONSE_reply_signature_invalid (connection,
                                                  "refund_amount");
   }
   if (GNUNET_OK !=
@@ -85,10 +85,10 @@ verify_and_execute_refund (struct MHD_Connection *connection,
                                   &refund->merchant_pub.eddsa_pub))
   {
     TALER_LOG_WARNING ("Invalid signature on /refund request\n");
-    return TMH_RESPONSE_reply_signature_invalid (connection,
+    return TEH_RESPONSE_reply_signature_invalid (connection,
                                                  "merchant_sig");
   }
-  return TMH_DB_execute_refund (connection,
+  return TEH_DB_execute_refund (connection,
 				refund);
 }
 
@@ -108,7 +108,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
  * @return MHD result code
   */
 int
-TMH_REFUND_handler_refund (struct TMH_RequestHandler *rh,
+TEH_REFUND_handler_refund (struct TEH_RequestHandler *rh,
 			   struct MHD_Connection *connection,
 			   void **connection_cls,
 			   const char *upload_data,
@@ -129,7 +129,7 @@ TMH_REFUND_handler_refund (struct TMH_RequestHandler *rh,
     GNUNET_JSON_spec_end ()
   };
 
-  res = TMH_PARSE_post_json (connection,
+  res = TEH_PARSE_post_json (connection,
                              connection_cls,
                              upload_data,
                              upload_data_size,
@@ -138,7 +138,7 @@ TMH_REFUND_handler_refund (struct TMH_RequestHandler *rh,
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
-  res = TMH_PARSE_json_data (connection,
+  res = TEH_PARSE_json_data (connection,
                              json,
                              spec);
   json_decref (json);

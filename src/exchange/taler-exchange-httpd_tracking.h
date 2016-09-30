@@ -37,7 +37,7 @@
  * @return MHD result code
  */
 int
-TMH_TRACKING_handler_track_transfer (struct TMH_RequestHandler *rh,
+TEH_TRACKING_handler_track_transfer (struct TEH_RequestHandler *rh,
                                      struct MHD_Connection *connection,
                                      void **connection_cls,
                                      const char *upload_data,
@@ -55,7 +55,7 @@ TMH_TRACKING_handler_track_transfer (struct TMH_RequestHandler *rh,
  * @return MHD result code
   */
 int
-TMH_TRACKING_handler_track_transaction (struct TMH_RequestHandler *rh,
+TEH_TRACKING_handler_track_transaction (struct TEH_RequestHandler *rh,
                                         struct MHD_Connection *connection,
                                         void **connection_cls,
                                         const char *upload_data,

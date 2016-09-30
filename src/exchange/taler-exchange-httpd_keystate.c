@@ -33,12 +33,12 @@
  * the exchange.  There can be multiple instances of this struct, as it is
  * reference counted and only destroyed once the last user is done
  * with it.  The current instance is acquired using
- * #TMH_KS_acquire().  Using this function increases the
+ * #TEH_KS_acquire().  Using this function increases the
  * reference count.  The contents of this structure (except for the
  * reference counter) should be considered READ-ONLY until it is
  * ultimately destroyed (as there can be many concurrent users).
  */
-struct TMH_KS_StateHandle
+struct TEH_KS_StateHandle
 {
   /**
    * JSON array with denomination keys.  (Currently not really used
@@ -60,7 +60,7 @@ struct TMH_KS_StateHandle
 
   /**
    * Cached JSON text that the exchange will send for a "/keys" request.
-   * Includes our @e TMH_master_public_key public key, the signing and
+   * Includes our @e TEH_master_public_key public key, the signing and
    * denomination keys as well as the @e reload_time.
    */
   char *keys_json;
@@ -107,9 +107,9 @@ struct TMH_KS_StateHandle
 
 /**
  * Exchange key state.  Never use directly, instead access via
- * #TMH_KS_acquire() and #TMH_KS_release().
+ * #TEH_KS_acquire() and #TEH_KS_release().
  */
-static struct TMH_KS_StateHandle *internal_key_state;
+static struct TEH_KS_StateHandle *internal_key_state;
 
 /**
  * Mutex protecting access to #internal_key_state.
@@ -219,7 +219,7 @@ reload_keys_denom_iter (void *cls,
                         const char *alias,
                         const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
 {
-  struct TMH_KS_StateHandle *ctx = cls;
+  struct TEH_KS_StateHandle *ctx = cls;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute horizon;
   struct GNUNET_TIME_Absolute expire_deposit;
@@ -257,7 +257,7 @@ reload_keys_denom_iter (void *cls,
                                    sizeof (struct GNUNET_HashCode));
 
   if (0 != memcmp (&dki->issue.properties.master,
-                   &TMH_master_public_key,
+                   &TEH_master_public_key,
                    sizeof (struct TALER_MasterPublicKeyP)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -267,7 +267,7 @@ reload_keys_denom_iter (void *cls,
   }
 
 
-  session = TMH_plugin->get_session (TMH_plugin->cls);
+  session = TEH_plugin->get_session (TEH_plugin->cls);
   if (NULL == session)
     return GNUNET_SYSERR;
   /* Try to insert DKI into DB until we succeed; note that if the DB
@@ -277,7 +277,7 @@ reload_keys_denom_iter (void *cls,
   res = GNUNET_SYSERR;
   while (GNUNET_OK != res)
   {
-    res = TMH_plugin->start (TMH_plugin->cls,
+    res = TEH_plugin->start (TEH_plugin->cls,
                              session);
     if (GNUNET_OK != res)
     {
@@ -285,7 +285,7 @@ reload_keys_denom_iter (void *cls,
       GNUNET_break (0);
       continue;
     }
-    res = TMH_plugin->get_denomination_info (TMH_plugin->cls,
+    res = TEH_plugin->get_denomination_info (TEH_plugin->cls,
                                              session,
                                              &dki->denom_pub,
                                              NULL);
@@ -293,18 +293,18 @@ reload_keys_denom_iter (void *cls,
     {
       /* Fetch failed!? Very bad error, log and retry */
       GNUNET_break (0);
-      TMH_plugin->rollback (TMH_plugin->cls,
+      TEH_plugin->rollback (TEH_plugin->cls,
                             session);
       continue;
     }
     if (GNUNET_OK == res)
     {
       /* Record exists, we're good, just exit */
-      TMH_plugin->rollback (TMH_plugin->cls,
+      TEH_plugin->rollback (TEH_plugin->cls,
                             session);
       break;
     }
-    res = TMH_plugin->insert_denomination_info (TMH_plugin->cls,
+    res = TEH_plugin->insert_denomination_info (TEH_plugin->cls,
                                                 session,
                                                 &dki->denom_pub,
                                                 &dki->issue);
@@ -312,11 +312,11 @@ reload_keys_denom_iter (void *cls,
     {
       /* Insert failed!? Very bad error, log and retry */
       GNUNET_break (0);
-      TMH_plugin->rollback (TMH_plugin->cls,
+      TEH_plugin->rollback (TEH_plugin->cls,
                             session);
       continue;
     }
-    res = TMH_plugin->commit (TMH_plugin->cls,
+    res = TEH_plugin->commit (TEH_plugin->cls,
                               session);
     /* If commit succeeded, we're done, otherwise we retry; this
        time without logging, as theroetically commits can fail
@@ -382,7 +382,7 @@ sign_key_issue_to_json (const struct TALER_ExchangeSigningKeyValidityPS *ski)
 /**
  * Iterator for sign keys.
  *
- * @param cls closure with the `struct TMH_KS_StateHandle *`
+ * @param cls closure with the `struct TEH_KS_StateHandle *`
  * @param filename name of the file the key came from
  * @param ski the sign key issue
  * @return #GNUNET_OK to continue to iterate,
@@ -394,7 +394,7 @@ reload_keys_sign_iter (void *cls,
                        const char *filename,
                        const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *ski)
 {
-  struct TMH_KS_StateHandle *ctx = cls;
+  struct TEH_KS_StateHandle *ctx = cls;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute horizon;
 
@@ -418,7 +418,7 @@ reload_keys_sign_iter (void *cls,
   }
 
   if (0 != memcmp (&ski->issue.master_public_key,
-                   &TMH_master_public_key,
+                   &TEH_master_public_key,
                    sizeof (struct TALER_MasterPublicKeyP)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -489,7 +489,7 @@ auditor_to_json (const struct TALER_AuditorPublicKeyP *apub,
  * add the auditor information to our /keys response (if it is
  * (still) applicable).
  *
- * @param cls closure with the `struct TMH_KS_StateHandle *`
+ * @param cls closure with the `struct TEH_KS_StateHandle *`
  * @param apub the auditor's public key
  * @param auditor_url URL of the auditor
  * @param mpub the exchange's public key (as expected by the auditor)
@@ -509,7 +509,7 @@ reload_auditor_iter (void *cls,
                      const struct TALER_AuditorSignatureP *asigs,
                      const struct TALER_DenominationKeyValidityPS *dki)
 {
-  struct TMH_KS_StateHandle *ctx = cls;
+  struct TEH_KS_StateHandle *ctx = cls;
   unsigned int i;
   unsigned int keep;
   const struct TALER_AuditorSignatureP *kept_asigs[dki_len];
@@ -517,7 +517,7 @@ reload_auditor_iter (void *cls,
 
   /* Check if the signature is at least for this exchange. */
   if (0 != memcmp (&mpub->eddsa_pub,
-                   &TMH_master_public_key,
+                   &TEH_master_public_key,
                    sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -553,7 +553,7 @@ reload_auditor_iter (void *cls,
 /**
  * Iterator for freeing denomination keys.
  *
- * @param cls closure with the `struct TMH_KS_StateHandle`
+ * @param cls closure with the `struct TEH_KS_StateHandle`
  * @param key key for the denomination key
  * @param value coin details
  * @return #GNUNET_OK to continue to iterate,
@@ -581,7 +581,7 @@ free_denom_key (void *cls,
  * @param key_state the key state to release
  */
 static void
-ks_release_ (struct TMH_KS_StateHandle *key_state)
+ks_release_ (struct TEH_KS_StateHandle *key_state)
 {
   GNUNET_assert (0 < key_state->refcnt);
   key_state->refcnt--;
@@ -618,8 +618,8 @@ ks_release_ (struct TMH_KS_StateHandle *key_state)
  * @param key_state the key state to release
  */
 void
-TMH_KS_release_ (const char *location,
-                 struct TMH_KS_StateHandle *key_state)
+TEH_KS_release_ (const char *location,
+                 struct TEH_KS_StateHandle *key_state)
 {
   GNUNET_assert (0 == pthread_mutex_lock (&internal_key_state_mutex));
   ks_release_ (key_state);
@@ -629,17 +629,17 @@ TMH_KS_release_ (const char *location,
 
 /**
  * Acquire the key state of the exchange.  Updates keys if necessary.
- * For every call to #TMH_KS_acquire(), a matching call
- * to #TMH_KS_release() must be made.
+ * For every call to #TEH_KS_acquire(), a matching call
+ * to #TEH_KS_release() must be made.
  *
  * @param location name of the function in which the lock is acquired
  * @return the key state
  */
-struct TMH_KS_StateHandle *
-TMH_KS_acquire_ (const char *location)
+struct TEH_KS_StateHandle *
+TEH_KS_acquire_ (const char *location)
 {
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
-  struct TMH_KS_StateHandle *key_state;
+  struct TEH_KS_StateHandle *key_state;
   json_t *keys;
   struct TALER_ExchangeKeySetPS ks;
   struct TALER_ExchangeSignatureP sig;
@@ -653,7 +653,7 @@ TMH_KS_acquire_ (const char *location)
   }
   if (NULL == internal_key_state)
   {
-    key_state = GNUNET_new (struct TMH_KS_StateHandle);
+    key_state = GNUNET_new (struct TEH_KS_StateHandle);
     key_state->hash_context = GNUNET_CRYPTO_hash_context_start ();
     key_state->min_dk_expire = GNUNET_TIME_UNIT_FOREVER_ABS;
 
@@ -672,11 +672,11 @@ TMH_KS_acquire_ (const char *location)
     GNUNET_TIME_round_abs (&key_state->reload_time);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Loading keys from `%s'\n",
-                TMH_exchange_directory);
-    TALER_EXCHANGEDB_denomination_keys_iterate (TMH_exchange_directory,
+                TEH_exchange_directory);
+    TALER_EXCHANGEDB_denomination_keys_iterate (TEH_exchange_directory,
                                                 &reload_keys_denom_iter,
                                                 key_state);
-    TALER_EXCHANGEDB_signing_keys_iterate (TMH_exchange_directory,
+    TALER_EXCHANGEDB_signing_keys_iterate (TEH_exchange_directory,
                                            &reload_keys_sign_iter,
                                            key_state);
     TALER_EXCHANGEDB_auditor_iterate (cfg,
@@ -684,7 +684,7 @@ TMH_KS_acquire_ (const char *location)
                                       key_state);
 
     if (0 != memcmp (&key_state->current_sign_key_issue.issue.master_public_key,
-                     &TMH_master_public_key,
+                     &TEH_master_public_key,
                      sizeof (struct TALER_MasterPublicKeyP)))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -712,7 +712,7 @@ TMH_KS_acquire_ (const char *location)
 
     keys = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                       "master_public_key",
-                      GNUNET_JSON_from_data_auto (&TMH_master_public_key),
+                      GNUNET_JSON_from_data_auto (&TEH_master_public_key),
                       "signkeys", key_state->sign_keys_array,
                       "denoms", key_state->denom_keys_array,
                       "auditors", key_state->auditors_array,
@@ -747,9 +747,9 @@ TMH_KS_acquire_ (const char *location)
  *         or NULL if denom_pub could not be found
  */
 struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *
-TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
+TEH_KS_denomination_key_lookup (const struct TEH_KS_StateHandle *key_state,
                                 const struct TALER_DenominationPublicKey *denom_pub,
-				enum TMH_KS_DenominationKeyUse use)
+				enum TEH_KS_DenominationKeyUse use)
 {
   struct GNUNET_HashCode hc;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
@@ -773,7 +773,7 @@ TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
   now = GNUNET_TIME_absolute_get ();
   switch (use)
   {
-  case TMH_KS_DKU_WITHDRAW:
+  case TEH_KS_DKU_WITHDRAW:
     if (now.abs_value_us >
 	GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_withdraw).abs_value_us)
     {
@@ -783,7 +783,7 @@ TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
       return NULL;
     }
     break;
-  case TMH_KS_DKU_DEPOSIT:
+  case TEH_KS_DKU_DEPOSIT:
     if (now.abs_value_us >
 	GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_deposit).abs_value_us)
     {
@@ -891,7 +891,7 @@ handle_sigchld ()
  *         #GNUNET_NO to restart an update version of the binary
  */
 int
-TMH_KS_loop (void)
+TEH_KS_loop (void)
 {
   struct GNUNET_SIGNAL_Context *sigusr1;
   struct GNUNET_SIGNAL_Context *sigterm;
@@ -927,12 +927,12 @@ TMH_KS_loop (void)
                 "(re-)loading keys\n");
     if (NULL != internal_key_state)
     {
-      TMH_KS_release (internal_key_state);
+      TEH_KS_release (internal_key_state);
       internal_key_state = NULL;
     }
     /* This will re-initialize 'internal_key_state' with
        an initial refcnt of 1 */
-    if (NULL == TMH_KS_acquire ())
+    if (NULL == TEH_KS_acquire ())
     {
       ret = GNUNET_SYSERR;
       break;
@@ -978,7 +978,7 @@ read_again:
   }
   if (NULL != internal_key_state)
   {
-    TMH_KS_release (internal_key_state);
+    TEH_KS_release (internal_key_state);
     internal_key_state = NULL;
   }
   GNUNET_SIGNAL_handler_uninstall (sigusr1);
@@ -998,20 +998,20 @@ read_again:
  * @param[out] sig signature over purpose using current signing key
  */
 void
-TMH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+TEH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
              struct TALER_ExchangePublicKeyP *pub,
              struct TALER_ExchangeSignatureP *sig)
 
 {
-  struct TMH_KS_StateHandle *key_state;
+  struct TEH_KS_StateHandle *key_state;
 
-  key_state = TMH_KS_acquire ();
+  key_state = TEH_KS_acquire ();
   *pub = key_state->current_sign_key_issue.issue.signkey_pub;
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign (&key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
                                            purpose,
                                            &sig->eddsa_signature));
-  TMH_KS_release (key_state);
+  TEH_KS_release (key_state);
 }
 
 
@@ -1079,28 +1079,28 @@ get_date_string (struct GNUNET_TIME_Absolute at,
  * @return MHD result code
  */
 int
-TMH_KS_handler_keys (struct TMH_RequestHandler *rh,
+TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
                      struct MHD_Connection *connection,
                      void **connection_cls,
                      const char *upload_data,
                      size_t *upload_data_size)
 {
-  struct TMH_KS_StateHandle *key_state;
+  struct TEH_KS_StateHandle *key_state;
   struct MHD_Response *response;
   int ret;
   char dat[128];
 
-  key_state = TMH_KS_acquire ();
+  key_state = TEH_KS_acquire ();
   response = MHD_create_response_from_buffer (strlen (key_state->keys_json),
                                               key_state->keys_json,
                                               MHD_RESPMEM_MUST_COPY);
-  TMH_KS_release (key_state);
+  TEH_KS_release (key_state);
   if (NULL == response)
   {
     GNUNET_break (0);
     return MHD_NO;
   }
-  TMH_RESPONSE_add_global_headers (response);
+  TEH_RESPONSE_add_global_headers (response);
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_CONTENT_TYPE,

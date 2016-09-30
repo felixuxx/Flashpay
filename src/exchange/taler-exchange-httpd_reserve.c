@@ -43,7 +43,7 @@
  * @return MHD result code
  */
 int
-TMH_RESERVE_handler_reserve_status (struct TMH_RequestHandler *rh,
+TEH_RESERVE_handler_reserve_status (struct TEH_RequestHandler *rh,
                                     struct MHD_Connection *connection,
                                     void **connection_cls,
                                     const char *upload_data,
@@ -52,7 +52,7 @@ TMH_RESERVE_handler_reserve_status (struct TMH_RequestHandler *rh,
   struct TALER_ReservePublicKeyP reserve_pub;
   int res;
 
-  res = TMH_PARSE_mhd_request_arg_data (connection,
+  res = TEH_PARSE_mhd_request_arg_data (connection,
                                         "reserve_pub",
                                         &reserve_pub,
                                         sizeof (struct TALER_ReservePublicKeyP));
@@ -60,7 +60,7 @@ TMH_RESERVE_handler_reserve_status (struct TMH_RequestHandler *rh,
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
     return MHD_YES; /* parse error */
-  return TMH_DB_execute_reserve_status (connection,
+  return TEH_DB_execute_reserve_status (connection,
                                         &reserve_pub);
 }
 
@@ -82,7 +82,7 @@ TMH_RESERVE_handler_reserve_status (struct TMH_RequestHandler *rh,
  * @return MHD result code
  */
 int
-TMH_RESERVE_handler_reserve_withdraw (struct TMH_RequestHandler *rh,
+TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
                                       struct MHD_Connection *connection,
                                       void **connection_cls,
                                       const char *upload_data,
@@ -99,7 +99,7 @@ TMH_RESERVE_handler_reserve_withdraw (struct TMH_RequestHandler *rh,
   struct TALER_Amount fee_withdraw;
   struct TALER_ReserveSignatureP signature;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
-  struct TMH_KS_StateHandle *ks;
+  struct TEH_KS_StateHandle *ks;
 
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_varsize ("coin_ev",
@@ -114,7 +114,7 @@ TMH_RESERVE_handler_reserve_withdraw (struct TMH_RequestHandler *rh,
     GNUNET_JSON_spec_end ()
   };
 
-  res = TMH_PARSE_post_json (connection,
+  res = TEH_PARSE_post_json (connection,
                              connection_cls,
                              upload_data,
                              upload_data_size,
@@ -123,21 +123,21 @@ TMH_RESERVE_handler_reserve_withdraw (struct TMH_RequestHandler *rh,
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == root) )
     return MHD_YES;
-  res = TMH_PARSE_json_data (connection,
+  res = TEH_PARSE_json_data (connection,
                              root,
                              spec);
   json_decref (root);
   if (GNUNET_OK != res)
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-  ks = TMH_KS_acquire ();
-  dki = TMH_KS_denomination_key_lookup (ks,
+  ks = TEH_KS_acquire ();
+  dki = TEH_KS_denomination_key_lookup (ks,
                                         &denomination_pub,
-					TMH_KS_DKU_WITHDRAW);
+					TEH_KS_DKU_WITHDRAW);
   if (NULL == dki)
   {
     GNUNET_JSON_parse_free (spec);
-    TMH_KS_release (ks);
-    return TMH_RESPONSE_reply_arg_unknown (connection,
+    TEH_KS_release (ks);
+    return TEH_RESPONSE_reply_arg_unknown (connection,
                                            "denom_pub");
   }
   TALER_amount_ntoh (&amount,
@@ -152,7 +152,7 @@ TMH_RESERVE_handler_reserve_withdraw (struct TMH_RequestHandler *rh,
                      &amount_with_fee);
   TALER_amount_hton (&wsrd.withdraw_fee,
                      &fee_withdraw);
-  TMH_KS_release (ks);
+  TEH_KS_release (ks);
   /* verify signature! */
   wsrd.purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS));
   wsrd.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
@@ -170,10 +170,10 @@ TMH_RESERVE_handler_reserve_withdraw (struct TMH_RequestHandler *rh,
   {
     TALER_LOG_WARNING ("Client supplied invalid signature for /reserve/withdraw request\n");
     GNUNET_JSON_parse_free (spec);
-    return TMH_RESPONSE_reply_signature_invalid (connection,
+    return TEH_RESPONSE_reply_signature_invalid (connection,
                                                  "reserve_sig");
   }
-  res = TMH_DB_execute_reserve_withdraw (connection,
+  res = TEH_DB_execute_reserve_withdraw (connection,
                                          &wsrd.reserve_pub,
                                          &denomination_pub,
                                          blinded_msg,

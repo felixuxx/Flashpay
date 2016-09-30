@@ -33,19 +33,19 @@
  * Snapshot of the (coin and signing)
  * keys (including private keys) of the exchange.
  */
-struct TMH_KS_StateHandle;
+struct TEH_KS_StateHandle;
 
 
 /**
  * Acquire the key state of the exchange.  Updates keys if necessary.
- * For every call to #TMH_KS_acquire(), a matching call
- * to #TMH_KS_release() must be made.
+ * For every call to #TEH_KS_acquire(), a matching call
+ * to #TEH_KS_release() must be made.
  *
  * @param location name of the function in which the lock is acquired
  * @return the key state
  */
-struct TMH_KS_StateHandle *
-TMH_KS_acquire_ (const char *location);
+struct TEH_KS_StateHandle *
+TEH_KS_acquire_ (const char *location);
 
 
 /**
@@ -55,18 +55,18 @@ TMH_KS_acquire_ (const char *location);
  * @param key_state the key state to release
  */
 void
-TMH_KS_release_ (const char *location,
-                 struct TMH_KS_StateHandle *key_state);
+TEH_KS_release_ (const char *location,
+                 struct TEH_KS_StateHandle *key_state);
 
 
 /**
  * Acquire the key state of the exchange.  Updates keys if necessary.
- * For every call to #TMH_KS_acquire(), a matching call
- * to #TMH_KS_release() must be made.
+ * For every call to #TEH_KS_acquire(), a matching call
+ * to #TEH_KS_release() must be made.
  *
  * @return the key state
  */
-#define TMH_KS_acquire(void) TMH_KS_acquire_(__FUNCTION__)
+#define TEH_KS_acquire(void) TEH_KS_acquire_(__FUNCTION__)
 
 
 /**
@@ -74,7 +74,7 @@ TMH_KS_release_ (const char *location,
  *
  * @param key_state the key state to release
  */
-#define TMH_KS_release(key_state) TMH_KS_release_ (__FUNCTION__, key_state)
+#define TEH_KS_release(key_state) TEH_KS_release_ (__FUNCTION__, key_state)
 
 
 /**
@@ -83,18 +83,18 @@ TMH_KS_release_ (const char *location,
  * periods for a key differ, the caller must specify which
  * use is relevant for the current operation.
  */
-enum TMH_KS_DenominationKeyUse {
+enum TEH_KS_DenominationKeyUse {
 
   /**
    * The key is to be used for a /reserve/withdraw or /refresh (exchange)
    * operation.
    */
-  TMH_KS_DKU_WITHDRAW,
+  TEH_KS_DKU_WITHDRAW,
 
   /**
    * The key is to be usd for a /deposit or /refresh (melt) operation.
    */
-  TMH_KS_DKU_DEPOSIT
+  TEH_KS_DKU_DEPOSIT
 
 };
 
@@ -110,9 +110,9 @@ enum TMH_KS_DenominationKeyUse {
  *         or NULL if denom_pub could not be found (or is not valid at this time for the given @a use)
  */
 struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *
-TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
+TEH_KS_denomination_key_lookup (const struct TEH_KS_StateHandle *key_state,
                                 const struct TALER_DenominationPublicKey *denom_pub,
-				enum TMH_KS_DenominationKeyUse use);
+				enum TEH_KS_DenominationKeyUse use);
 
 
 /**
@@ -125,7 +125,7 @@ TMH_KS_denomination_key_lookup (const struct TMH_KS_StateHandle *key_state,
  *         #GNUNET_NO to restart an update version of the binary
  */
 int
-TMH_KS_loop (void);
+TEH_KS_loop (void);
 
 
 /**
@@ -137,7 +137,7 @@ TMH_KS_loop (void);
  * @param[out] sig signature over purpose using current signing key
  */
 void
-TMH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+TEH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
              struct TALER_ExchangePublicKeyP *pub,
              struct TALER_ExchangeSignatureP *sig);
 
@@ -153,7 +153,7 @@ TMH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
  * @return MHD result code
   */
 int
-TMH_KS_handler_keys (struct TMH_RequestHandler *rh,
+TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
                      struct MHD_Connection *connection,
                      void **connection_cls,
                      const char *upload_data,

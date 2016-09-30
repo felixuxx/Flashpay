@@ -43,16 +43,16 @@ static json_t *wire_methods;
  * @return MHD result code
   */
 int
-TMH_WIRE_handler_wire (struct TMH_RequestHandler *rh,
+TEH_WIRE_handler_wire (struct TEH_RequestHandler *rh,
                        struct MHD_Connection *connection,
                        void **connection_cls,
                        const char *upload_data,
                        size_t *upload_data_size)
 {
   if (NULL == wire_methods)
-    wire_methods = TMH_VALIDATION_get_wire_methods ("exchange-wire-incoming");
+    wire_methods = TEH_VALIDATION_get_wire_methods ("exchange-wire-incoming");
 
-  return TMH_RESPONSE_reply_json (connection,
+  return TEH_RESPONSE_reply_json (connection,
                                   wire_methods,
                                   MHD_HTTP_OK);
 }

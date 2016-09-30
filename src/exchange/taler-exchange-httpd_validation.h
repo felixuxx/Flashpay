@@ -32,14 +32,14 @@
  * @return #GNUNET_OK on success
  */
 int
-TMH_VALIDATION_init (const struct GNUNET_CONFIGURATION_Handle *cfg);
+TEH_VALIDATION_init (const struct GNUNET_CONFIGURATION_Handle *cfg);
 
 
 /**
  * Shutdown validation subsystem.
  */
 void
-TMH_VALIDATION_done (void);
+TEH_VALIDATION_done (void);
 
 
 /**
@@ -51,7 +51,7 @@ TMH_VALIDATION_done (void);
  * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
 int
-TMH_json_validate_wireformat (const json_t *wire,
+TEH_json_validate_wireformat (const json_t *wire,
                               int ours);
 
 
@@ -64,7 +64,7 @@ TMH_json_validate_wireformat (const json_t *wire,
  * @return JSON array with the supported validation methods
  */
 json_t *
-TMH_VALIDATION_get_wire_methods (const char *prefix);
+TEH_VALIDATION_get_wire_methods (const char *prefix);
 
 
 #endif

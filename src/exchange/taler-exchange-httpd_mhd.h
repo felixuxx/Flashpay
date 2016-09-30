@@ -40,7 +40,7 @@
  * @return MHD result code
  */
 int
-TMH_MHD_handler_static_response (struct TMH_RequestHandler *rh,
+TEH_MHD_handler_static_response (struct TEH_RequestHandler *rh,
                                  struct MHD_Connection *connection,
                                  void **connection_cls,
                                  const char *upload_data,
@@ -59,7 +59,7 @@ TMH_MHD_handler_static_response (struct TMH_RequestHandler *rh,
  * @return MHD result code
  */
 int
-TMH_MHD_handler_agpl_redirect (struct TMH_RequestHandler *rh,
+TEH_MHD_handler_agpl_redirect (struct TEH_RequestHandler *rh,
                                struct MHD_Connection *connection,
                                void **connection_cls,
                                const char *upload_data,
@@ -80,7 +80,7 @@ TMH_MHD_handler_agpl_redirect (struct TMH_RequestHandler *rh,
  * @return MHD result code
  */
 int
-TMH_MHD_helper_send_json_pack (struct TMH_RequestHandler *rh,
+TEH_MHD_helper_send_json_pack (struct TEH_RequestHandler *rh,
                                struct MHD_Connection *connection,
                                void *connection_cls,
                                int response_code,
@@ -101,7 +101,7 @@ TMH_MHD_helper_send_json_pack (struct TMH_RequestHandler *rh,
  * @return MHD result code
  */
 int
-TMH_MHD_handler_send_json_pack_error (struct TMH_RequestHandler *rh,
+TEH_MHD_handler_send_json_pack_error (struct TEH_RequestHandler *rh,
                                       struct MHD_Connection *connection,
                                       void **connection_cls,
                                       const char *upload_data,

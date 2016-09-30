@@ -41,7 +41,7 @@
  * @return MHD result code
   */
 int
-TMH_DEPOSIT_handler_deposit (struct TMH_RequestHandler *rh,
+TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
                              struct MHD_Connection *connection,
                              void **connection_cls,
                              const char *upload_data,

@@ -72,7 +72,7 @@ static struct Plugin *wire_tail;
  * @return #GNUNET_OK on success
  */
 int
-TMH_VALIDATION_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
+TEH_VALIDATION_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   struct Plugin *p;
   char *wireformats;
@@ -106,7 +106,7 @@ TMH_VALIDATION_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to load plugin %s\n",
                   token);
-      TMH_VALIDATION_done ();
+      TEH_VALIDATION_done ();
       return GNUNET_SYSERR;
     }
     GNUNET_CONTAINER_DLL_insert (wire_head,
@@ -122,7 +122,7 @@ TMH_VALIDATION_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
  * Shutdown validation subsystem.
  */
 void
-TMH_VALIDATION_done ()
+TEH_VALIDATION_done ()
 {
   struct Plugin *p;
 
@@ -147,7 +147,7 @@ TMH_VALIDATION_done ()
  * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
 int
-TMH_json_validate_wireformat (const json_t *wire,
+TEH_json_validate_wireformat (const json_t *wire,
                               int ours)
 {
   const char *stype;
@@ -168,7 +168,7 @@ TMH_json_validate_wireformat (const json_t *wire,
       return p->plugin->wire_validate (p->plugin->cls,
                                        wire,
                                        (GNUNET_YES == ours)
-                                       ? &TMH_master_public_key
+                                       ? &TEH_master_public_key
                                        : NULL);
   return GNUNET_NO;
 }
@@ -183,7 +183,7 @@ TMH_json_validate_wireformat (const json_t *wire,
  * @return JSON array with the supported validation methods
  */
 json_t *
-TMH_VALIDATION_get_wire_methods (const char *prefix)
+TEH_VALIDATION_get_wire_methods (const char *prefix)
 {
   json_t *methods;
   json_t *method;
@@ -203,7 +203,7 @@ TMH_VALIDATION_get_wire_methods (const char *prefix)
                                        cfg,
                                        account_name);
     if (GNUNET_YES !=
-        TMH_json_validate_wireformat (method,
+        TEH_json_validate_wireformat (method,
                                       GNUNET_YES))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

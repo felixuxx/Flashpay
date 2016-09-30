@@ -32,7 +32,7 @@
  * Handle a "/refresh/melt" request.  Parses the request into the JSON
  * components and then hands things of to #handle_refresh_melt_json()
  * to validate the melted coins, the signature and execute the melt
- * using TMH_DB_execute_refresh_melt().
+ * using TEH_DB_execute_refresh_melt().
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
@@ -42,7 +42,7 @@
  * @return MHD result code
  */
 int
-TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
+TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
                                   struct MHD_Connection *connection,
                                   void **connection_cls,
                                   const char *upload_data,
@@ -54,7 +54,7 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
  * the private transfer keys except for the cut-and-choose value
  * returned from "/refresh/commit".  This function parses the revealed
  * keys and secrets and ultimately passes everything to
- * #TMH_DB_execute_refresh_reveal() which will verify that the
+ * #TEH_DB_execute_refresh_reveal() which will verify that the
  * revealed information is valid then returns the signed refreshed
  * coins.
  *
@@ -66,7 +66,7 @@ TMH_REFRESH_handler_refresh_melt (struct TMH_RequestHandler *rh,
  * @return MHD result code
   */
 int
-TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
+TEH_REFRESH_handler_refresh_reveal (struct TEH_RequestHandler *rh,
                                     struct MHD_Connection *connection,
                                     void **connection_cls,
                                     const char *upload_data,
@@ -84,7 +84,7 @@ TMH_REFRESH_handler_refresh_reveal (struct TMH_RequestHandler *rh,
  * @return MHD result code
   */
 int
-TMH_REFRESH_handler_refresh_link (struct TMH_RequestHandler *rh,
+TEH_REFRESH_handler_refresh_link (struct TEH_RequestHandler *rh,
                                   struct MHD_Connection *connection,
                                   void **connection_cls,
                                   const char *upload_data,

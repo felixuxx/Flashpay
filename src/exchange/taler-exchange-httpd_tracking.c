@@ -40,7 +40,7 @@
  * @return MHD result code
  */
 int
-TMH_TRACKING_handler_track_transfer (struct TMH_RequestHandler *rh,
+TEH_TRACKING_handler_track_transfer (struct TEH_RequestHandler *rh,
                                      struct MHD_Connection *connection,
                                      void **connection_cls,
                                      const char *upload_data,
@@ -49,7 +49,7 @@ TMH_TRACKING_handler_track_transfer (struct TMH_RequestHandler *rh,
   struct TALER_WireTransferIdentifierRawP wtid;
   int res;
 
-  res = TMH_PARSE_mhd_request_arg_data (connection,
+  res = TEH_PARSE_mhd_request_arg_data (connection,
                                         "wtid",
                                         &wtid,
                                         sizeof (struct TALER_WireTransferIdentifierRawP));
@@ -57,7 +57,7 @@ TMH_TRACKING_handler_track_transfer (struct TMH_RequestHandler *rh,
     return MHD_NO; /* internal error */
   if (GNUNET_NO == res)
     return MHD_YES; /* parse error */
-  return TMH_DB_execute_track_transfer (connection,
+  return TEH_DB_execute_track_transfer (connection,
                                         &wtid);
 }
 
@@ -87,10 +87,10 @@ check_and_handle_track_transaction_request (struct MHD_Connection *connection,
 				  &merchant_pub->eddsa_pub))
   {
     GNUNET_break_op (0);
-    return TMH_RESPONSE_reply_signature_invalid (connection,
+    return TEH_RESPONSE_reply_signature_invalid (connection,
 						 "merchant_sig");
   }
-  return TMH_DB_execute_track_transaction (connection,
+  return TEH_DB_execute_track_transaction (connection,
 				      &tps->h_contract,
 				      &tps->h_wire,
 				      &tps->coin_pub,
@@ -110,7 +110,7 @@ check_and_handle_track_transaction_request (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_TRACKING_handler_track_transaction (struct TMH_RequestHandler *rh,
+TEH_TRACKING_handler_track_transaction (struct TEH_RequestHandler *rh,
                                         struct MHD_Connection *connection,
                                         void **connection_cls,
                                         const char *upload_data,
@@ -131,7 +131,7 @@ TMH_TRACKING_handler_track_transaction (struct TMH_RequestHandler *rh,
     GNUNET_JSON_spec_end ()
   };
 
-  res = TMH_PARSE_post_json (connection,
+  res = TEH_PARSE_post_json (connection,
                              connection_cls,
                              upload_data,
                              upload_data_size,
@@ -140,7 +140,7 @@ TMH_TRACKING_handler_track_transaction (struct TMH_RequestHandler *rh,
     return MHD_NO;
   if ( (GNUNET_NO == res) || (NULL == json) )
     return MHD_YES;
-  res = TMH_PARSE_json_data (connection,
+  res = TEH_PARSE_json_data (connection,
                              json,
                              spec);
   if (GNUNET_OK != res)

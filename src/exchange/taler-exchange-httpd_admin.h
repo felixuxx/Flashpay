@@ -37,7 +37,7 @@
  * @return MHD result code
   */
 int
-TMH_ADMIN_handler_admin_add_incoming (struct TMH_RequestHandler *rh,
+TEH_ADMIN_handler_admin_add_incoming (struct TEH_RequestHandler *rh,
                                       struct MHD_Connection *connection,
                                       void **connection_cls,
                                       const char *upload_data,

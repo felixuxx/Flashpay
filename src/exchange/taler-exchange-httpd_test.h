@@ -42,7 +42,7 @@
  * @return MHD result code
   */
 int
-TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
+TEH_TEST_handler_test_base32 (struct TEH_RequestHandler *rh,
 			      struct MHD_Connection *connection,
 			      void **connection_cls,
 			      const char *upload_data,
@@ -67,7 +67,7 @@ TMH_TEST_handler_test_base32 (struct TMH_RequestHandler *rh,
  * @return MHD result code
  */
 int
-TMH_TEST_handler_test_encrypt (struct TMH_RequestHandler *rh,
+TEH_TEST_handler_test_encrypt (struct TEH_RequestHandler *rh,
 			       struct MHD_Connection *connection,
 			       void **connection_cls,
 			       const char *upload_data,
@@ -92,7 +92,7 @@ TMH_TEST_handler_test_encrypt (struct TMH_RequestHandler *rh,
  * @return MHD result code
  */
 int
-TMH_TEST_handler_test_hkdf (struct TMH_RequestHandler *rh,
+TEH_TEST_handler_test_hkdf (struct TEH_RequestHandler *rh,
 			    struct MHD_Connection *connection,
 			    void **connection_cls,
 			    const char *upload_data,
@@ -114,7 +114,7 @@ TMH_TEST_handler_test_hkdf (struct TMH_RequestHandler *rh,
  * @return MHD result code
   */
 int
-TMH_TEST_handler_test_ecdhe (struct TMH_RequestHandler *rh,
+TEH_TEST_handler_test_ecdhe (struct TEH_RequestHandler *rh,
 			     struct MHD_Connection *connection,
 			     void **connection_cls,
 			     const char *upload_data,
@@ -137,7 +137,7 @@ TMH_TEST_handler_test_ecdhe (struct TMH_RequestHandler *rh,
  * @return MHD result code
   */
 int
-TMH_TEST_handler_test_eddsa (struct TMH_RequestHandler *rh,
+TEH_TEST_handler_test_eddsa (struct TEH_RequestHandler *rh,
 			     struct MHD_Connection *connection,
 			     void **connection_cls,
 			     const char *upload_data,
@@ -156,7 +156,7 @@ TMH_TEST_handler_test_eddsa (struct TMH_RequestHandler *rh,
  * @return MHD result code
   */
 int
-TMH_TEST_handler_test_rsa_get (struct TMH_RequestHandler *rh,
+TEH_TEST_handler_test_rsa_get (struct TEH_RequestHandler *rh,
                                struct MHD_Connection *connection,
                                void **connection_cls,
                                const char *upload_data,
@@ -176,7 +176,7 @@ TMH_TEST_handler_test_rsa_get (struct TMH_RequestHandler *rh,
  * @return MHD result code
   */
 int
-TMH_TEST_handler_test_rsa_sign (struct TMH_RequestHandler *rh,
+TEH_TEST_handler_test_rsa_sign (struct TEH_RequestHandler *rh,
                                 struct MHD_Connection *connection,
                                 void **connection_cls,
                                 const char *upload_data,
@@ -198,7 +198,7 @@ TMH_TEST_handler_test_rsa_sign (struct TMH_RequestHandler *rh,
  * @return MHD result code
   */
 int
-TMH_TEST_handler_test_transfer (struct TMH_RequestHandler *rh,
+TEH_TEST_handler_test_transfer (struct TEH_RequestHandler *rh,
 				struct MHD_Connection *connection,
 				void **connection_cls,
 				const char *upload_data,
@@ -216,7 +216,7 @@ TMH_TEST_handler_test_transfer (struct TMH_RequestHandler *rh,
  * @return MHD result code
   */
 int
-TMH_TEST_handler_test (struct TMH_RequestHandler *rh,
+TEH_TEST_handler_test (struct TEH_RequestHandler *rh,
 		       struct MHD_Connection *connection,
 		       void **connection_cls,
 		       const char *upload_data,

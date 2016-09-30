@@ -52,17 +52,17 @@
 /**
  * Which currency is used by this exchange?
  */
-char *TMH_exchange_currency_string;
+char *TEH_exchange_currency_string;
 
 /**
  * Should we return "Connection: close" in each response?
  */
-int TMH_exchange_connection_close;
+int TEH_exchange_connection_close;
 
 /**
  * Base directory of the exchange (global)
  */
-char *TMH_exchange_directory;
+char *TEH_exchange_directory;
 
 /**
  * The exchange's configuration (global)
@@ -73,12 +73,12 @@ struct GNUNET_CONFIGURATION_Handle *cfg;
  * Master public key (according to the
  * configuration in the exchange directory).
  */
-struct TALER_MasterPublicKeyP TMH_master_public_key;
+struct TALER_MasterPublicKeyP TEH_master_public_key;
 
 /**
  * Our DB plugin.
  */
-struct TALER_EXCHANGEDB_Plugin *TMH_plugin;
+struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 
 /**
  * Default timeout in seconds for HTTP requests.
@@ -155,7 +155,7 @@ handle_mhd_completion_callback (void *cls,
 {
   if (NULL == *con_cls)
     return;
-  TMH_PARSE_post_cleanup_callback (*con_cls);
+  TEH_PARSE_post_cleanup_callback (*con_cls);
   *con_cls = NULL;
 }
 
@@ -183,122 +183,122 @@ handle_mhd_request (void *cls,
                     size_t *upload_data_size,
                     void **con_cls)
 {
-  static struct TMH_RequestHandler handlers[] =
+  static struct TEH_RequestHandler handlers[] =
     {
       /* Landing page, tell humans to go away. */
       { "/", MHD_HTTP_METHOD_GET, "text/plain",
         "Hello, I'm the Taler exchange. This HTTP server is not for humans.\n", 0,
-        &TMH_MHD_handler_static_response, MHD_HTTP_OK },
+        &TEH_MHD_handler_static_response, MHD_HTTP_OK },
       /* /robots.txt: disallow everything */
       { "/robots.txt", MHD_HTTP_METHOD_GET, "text/plain",
         "User-agent: *\nDisallow: /\n", 0,
-        &TMH_MHD_handler_static_response, MHD_HTTP_OK },
+        &TEH_MHD_handler_static_response, MHD_HTTP_OK },
       /* AGPL licensing page, redirect to source. As per the AGPL-license,
          every deployment is required to offer the user a download of the
          source. We make this easy by including a redirect to the source
          here. */
       { "/agpl", MHD_HTTP_METHOD_GET, "text/plain",
         NULL, 0,
-        &TMH_MHD_handler_agpl_redirect, MHD_HTTP_FOUND },
+        &TEH_MHD_handler_agpl_redirect, MHD_HTTP_FOUND },
 
       /* Return key material and fundamental properties for this exchange */
       { "/keys", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
-        &TMH_KS_handler_keys, MHD_HTTP_OK },
+        &TEH_KS_handler_keys, MHD_HTTP_OK },
       { "/keys", NULL, "text/plain",
         "Only GET is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       /* Requests for wiring information */
       { "/wire", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
-        &TMH_WIRE_handler_wire, MHD_HTTP_OK },
+        &TEH_WIRE_handler_wire, MHD_HTTP_OK },
       { "/wire", NULL, "text/plain",
         "Only GET is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       /* Withdrawing coins / interaction with reserves */
       { "/reserve/status", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
-        &TMH_RESERVE_handler_reserve_status, MHD_HTTP_OK },
+        &TEH_RESERVE_handler_reserve_status, MHD_HTTP_OK },
       { "/reserve/status", NULL, "text/plain",
         "Only GET is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/reserve/withdraw", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-        &TMH_RESERVE_handler_reserve_withdraw, MHD_HTTP_OK },
+        &TEH_RESERVE_handler_reserve_withdraw, MHD_HTTP_OK },
       { "/reserve/withdraw", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       /* Depositing coins */
       { "/deposit", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-        &TMH_DEPOSIT_handler_deposit, MHD_HTTP_OK },
+        &TEH_DEPOSIT_handler_deposit, MHD_HTTP_OK },
       { "/deposit", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       /* Refunding coins */
       { "/refund", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-        &TMH_REFUND_handler_refund, MHD_HTTP_OK },
+        &TEH_REFUND_handler_refund, MHD_HTTP_OK },
       { "/refund", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       /* Dealing with change */
       { "/refresh/melt", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-        &TMH_REFRESH_handler_refresh_melt, MHD_HTTP_OK },
+        &TEH_REFRESH_handler_refresh_melt, MHD_HTTP_OK },
       { "/refresh/melt", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/refresh/reveal", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-        &TMH_REFRESH_handler_refresh_reveal, MHD_HTTP_OK },
+        &TEH_REFRESH_handler_refresh_reveal, MHD_HTTP_OK },
       { "/refresh/reveal", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/refresh/reveal", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-        &TMH_REFRESH_handler_refresh_reveal, MHD_HTTP_OK },
+        &TEH_REFRESH_handler_refresh_reveal, MHD_HTTP_OK },
       { "/refresh/reveal", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/refresh/link", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
-        &TMH_REFRESH_handler_refresh_link, MHD_HTTP_OK },
+        &TEH_REFRESH_handler_refresh_link, MHD_HTTP_OK },
       { "/refresh/link", NULL, "text/plain",
         "Only GET is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/track/transfer", MHD_HTTP_METHOD_GET, "application/json",
         NULL, 0,
-        &TMH_TRACKING_handler_track_transfer, MHD_HTTP_OK },
+        &TEH_TRACKING_handler_track_transfer, MHD_HTTP_OK },
       { "/track/transfer", NULL, "text/plain",
         "Only GET is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
       { "/track/transaction", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-        &TMH_TRACKING_handler_track_transaction, MHD_HTTP_OK },
+        &TEH_TRACKING_handler_track_transaction, MHD_HTTP_OK },
       { "/track/transaction", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { NULL, NULL, NULL, NULL, 0, 0 }
     };
-  static struct TMH_RequestHandler h404 =
+  static struct TEH_RequestHandler h404 =
     {
       "", NULL, "text/html",
       "<html><title>404: not found</title></html>", 0,
-      &TMH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
+      &TEH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
     };
-  struct TMH_RequestHandler *rh;
+  struct TEH_RequestHandler *rh;
   unsigned int i;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -318,7 +318,7 @@ handle_mhd_request (void *cls,
                           upload_data,
                           upload_data_size);
   }
-  return TMH_MHD_handler_static_response (&h404,
+  return TEH_MHD_handler_static_response (&h404,
                                           connection,
                                           con_cls,
                                           upload_data,
@@ -349,90 +349,90 @@ handle_mhd_admin_request (void *cls,
                           size_t *upload_data_size,
                           void **con_cls)
 {
-  static struct TMH_RequestHandler handlers[] =
+  static struct TEH_RequestHandler handlers[] =
     {
       { "/admin/add/incoming", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-        &TMH_ADMIN_handler_admin_add_incoming, MHD_HTTP_OK },
+        &TEH_ADMIN_handler_admin_add_incoming, MHD_HTTP_OK },
       { "/admin/add/incoming", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
 #if HAVE_DEVELOPER
       /* Client crypto-interoperability test functions */
       { "/test", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-        &TMH_TEST_handler_test, MHD_HTTP_OK },
+        &TEH_TEST_handler_test, MHD_HTTP_OK },
       { "/test", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/base32", MHD_HTTP_METHOD_POST, "application/json",
 	NULL, 0,
-	&TMH_TEST_handler_test_base32, MHD_HTTP_OK },
+	&TEH_TEST_handler_test_base32, MHD_HTTP_OK },
       { "/test/base32", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/encrypt", MHD_HTTP_METHOD_POST, "application/json",
         NULL, 0,
-	&TMH_TEST_handler_test_encrypt, MHD_HTTP_OK },
+	&TEH_TEST_handler_test_encrypt, MHD_HTTP_OK },
       { "/test/encrypt", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/hkdf", MHD_HTTP_METHOD_POST, "application/json",
 	NULL, 0,
-	&TMH_TEST_handler_test_hkdf, MHD_HTTP_OK },
+	&TEH_TEST_handler_test_hkdf, MHD_HTTP_OK },
       { "/test/hkdf", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/ecdhe", MHD_HTTP_METHOD_POST, "application/json",
 	NULL, 0,
-	&TMH_TEST_handler_test_ecdhe, MHD_HTTP_OK },
+	&TEH_TEST_handler_test_ecdhe, MHD_HTTP_OK },
       { "/test/ecdhe", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/eddsa", MHD_HTTP_METHOD_POST, "application/json",
 	NULL, 0,
-	&TMH_TEST_handler_test_eddsa, MHD_HTTP_OK },
+	&TEH_TEST_handler_test_eddsa, MHD_HTTP_OK },
       { "/test/eddsa", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/rsa/get", MHD_HTTP_METHOD_GET, "application/json",
 	NULL, 0,
-	&TMH_TEST_handler_test_rsa_get, MHD_HTTP_OK },
+	&TEH_TEST_handler_test_rsa_get, MHD_HTTP_OK },
       { "/test/rsa/get", NULL, "text/plain",
         "Only GET is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/rsa/sign", MHD_HTTP_METHOD_POST, "application/json",
 	NULL, 0,
-	&TMH_TEST_handler_test_rsa_sign, MHD_HTTP_OK },
+	&TEH_TEST_handler_test_rsa_sign, MHD_HTTP_OK },
       { "/test/rsa/sign", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 
       { "/test/transfer", MHD_HTTP_METHOD_POST, "application/json",
 	NULL, 0,
-	&TMH_TEST_handler_test_transfer, MHD_HTTP_OK },
+	&TEH_TEST_handler_test_transfer, MHD_HTTP_OK },
       { "/test/transfer", NULL, "text/plain",
         "Only POST is allowed", 0,
-        &TMH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
+        &TEH_MHD_handler_send_json_pack_error, MHD_HTTP_METHOD_NOT_ALLOWED },
 #endif
 
       { NULL, NULL, NULL, NULL, 0, 0 }
     };
-  static struct TMH_RequestHandler h404 =
+  static struct TEH_RequestHandler h404 =
     {
       "", NULL, "text/html",
       "<html><title>404: not found</title></html>", 0,
-      &TMH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
+      &TEH_MHD_handler_static_response, MHD_HTTP_NOT_FOUND
     };
-  struct TMH_RequestHandler *rh;
+  struct TEH_RequestHandler *rh;
   unsigned int i;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -452,7 +452,7 @@ handle_mhd_admin_request (void *cls,
                           upload_data,
                           upload_data_size);
   }
-  return TMH_MHD_handler_static_response (&h404,
+  return TEH_MHD_handler_static_response (&h404,
                                           connection,
                                           con_cls,
                                           upload_data,
@@ -587,13 +587,13 @@ parse_port_config (const char *section,
 static int
 exchange_serve_process_config ()
 {
-  char *TMH_master_public_key_str;
+  char *TEH_master_public_key_str;
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
                                                "exchange",
                                                "KEYDIR",
-                                               &TMH_exchange_directory))
+                                               &TEH_exchange_directory))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
@@ -604,56 +604,56 @@ exchange_serve_process_config ()
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "taler",
                                              "currency",
-                                             &TMH_exchange_currency_string))
+                                             &TEH_exchange_currency_string))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "taler",
                                "currency");
     return GNUNET_SYSERR;
   }
-  if (strlen (TMH_exchange_currency_string) >= TALER_CURRENCY_LEN)
+  if (strlen (TEH_exchange_currency_string) >= TALER_CURRENCY_LEN)
   {
     fprintf (stderr,
              "Currency `%s' longer than the allowed limit of %u characters.",
-             TMH_exchange_currency_string,
+             TEH_exchange_currency_string,
              (unsigned int) TALER_CURRENCY_LEN);
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TMH_VALIDATION_init (cfg))
+      TEH_VALIDATION_init (cfg))
     return GNUNET_SYSERR;
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
                                              "master_public_key",
-                                             &TMH_master_public_key_str))
+                                             &TEH_master_public_key_str))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "master_public_key");
-    TMH_VALIDATION_done ();
+    TEH_VALIDATION_done ();
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_public_key_from_string (TMH_master_public_key_str,
-                                                  strlen (TMH_master_public_key_str),
-                                                  &TMH_master_public_key.eddsa_pub))
+      GNUNET_CRYPTO_eddsa_public_key_from_string (TEH_master_public_key_str,
+                                                  strlen (TEH_master_public_key_str),
+                                                  &TEH_master_public_key.eddsa_pub))
   {
     fprintf (stderr,
              "Invalid master public key given in exchange configuration.");
-    GNUNET_free (TMH_master_public_key_str);
-    TMH_VALIDATION_done ();
+    GNUNET_free (TEH_master_public_key_str);
+    TEH_VALIDATION_done ();
     return GNUNET_SYSERR;
   }
-  GNUNET_free (TMH_master_public_key_str);
+  GNUNET_free (TEH_master_public_key_str);
 
   if (NULL ==
-      (TMH_plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
+      (TEH_plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
   {
     fprintf (stderr,
              "Failed to initialize DB subsystem\n");
-    TMH_VALIDATION_done ();
+    TEH_VALIDATION_done ();
     return GNUNET_SYSERR;
   }
   if (GNUNET_YES ==
@@ -663,7 +663,7 @@ exchange_serve_process_config ()
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Running in TEST mode! Database contents will not persist!\n");
-    TMH_plugin->create_tables (TMH_plugin->cls);
+    TEH_plugin->create_tables (TEH_plugin->cls);
   }
 
   if (GNUNET_OK !=
@@ -672,7 +672,7 @@ exchange_serve_process_config ()
                          &serve_unixpath,
                          &unixpath_mode))
   {
-    TMH_VALIDATION_done ();
+    TEH_VALIDATION_done ();
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -681,7 +681,7 @@ exchange_serve_process_config ()
                          &serve_admin_unixpath,
                          &unixpath_admin_mode))
   {
-    TMH_VALIDATION_done ();
+    TEH_VALIDATION_done ();
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -700,7 +700,7 @@ static char *input_filename;
 /**
  * Run 'nc' or 'ncat' as a fake HTTP client using #input_filename
  * as the input for the request.  If launching the client worked,
- * run the #TMH_KS_loop() event loop as usual.
+ * run the #TEH_KS_loop() event loop as usual.
  *
  * @return #GNUNET_OK
  */
@@ -754,7 +754,7 @@ run_fake_client ()
   }
   /* parent process */
   GNUNET_break (0 == close (fd));
-  ret = TMH_KS_loop ();
+  ret = TEH_KS_loop ();
   if (cld != waitpid (cld, &status, 0))
     fprintf (stderr,
              "Waiting for `nc' child failed: %s\n",
@@ -933,7 +933,7 @@ main (int argc,
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     {'C', "connection-close", NULL,
      "force HTTP connections to be closed after each request", 0,
-     &GNUNET_GETOPT_set_one, &TMH_exchange_connection_close},
+     &GNUNET_GETOPT_set_one, &TEH_exchange_connection_close},
     GNUNET_GETOPT_OPTION_CFG_FILE (&cfgfile),
     {'D', "disable-admin", NULL,
      "do not run the /admin-HTTP server", 0,
@@ -1101,11 +1101,11 @@ main (int argc,
   else
   {
     /* normal behavior */
-    ret = TMH_KS_loop ();
+    ret = TEH_KS_loop ();
   }
 #else
   /* normal behavior */
-  ret = TMH_KS_loop ();
+  ret = TEH_KS_loop ();
 #endif
 
   switch (ret)
@@ -1195,8 +1195,8 @@ main (int argc,
       MHD_stop_daemon (mhd_admin);
     break;
   }
-  TALER_EXCHANGEDB_plugin_unload (TMH_plugin);
-  TMH_VALIDATION_done ();
+  TALER_EXCHANGEDB_plugin_unload (TEH_plugin);
+  TEH_VALIDATION_done ();
   return (GNUNET_SYSERR == ret) ? 1 : 0;
 }
 

@@ -16,7 +16,7 @@
 /**
  * @file taler-exchange-httpd_responses.c
  * @brief API for generating the various replies of the exchange; these
- *        functions are called TMH_RESPONSE_reply_ and they generate
+ *        functions are called TEH_RESPONSE_reply_ and they generate
  *        and queue MHD response objects for a given connection.
  * @author Florian Dold
  * @author Benedikt Mueller
@@ -37,9 +37,9 @@
  * @param response response to modify
  */
 void
-TMH_RESPONSE_add_global_headers (struct MHD_Response *response)
+TEH_RESPONSE_add_global_headers (struct MHD_Response *response)
 {
-  if (TMH_exchange_connection_close)
+  if (TEH_exchange_connection_close)
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (response,
                                            MHD_HTTP_HEADER_CONNECTION,
@@ -56,7 +56,7 @@ TMH_RESPONSE_add_global_headers (struct MHD_Response *response)
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_json (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_json (struct MHD_Connection *connection,
                          const json_t *json,
                          unsigned int response_code)
 {
@@ -75,7 +75,7 @@ TMH_RESPONSE_reply_json (struct MHD_Connection *connection,
     GNUNET_break (0);
     return MHD_NO;
   }
-  TMH_RESPONSE_add_global_headers (resp);
+  TEH_RESPONSE_add_global_headers (resp);
   (void) MHD_add_response_header (resp,
                                   MHD_HTTP_HEADER_CONTENT_TYPE,
                                   "application/json");
@@ -98,7 +98,7 @@ TMH_RESPONSE_reply_json (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
                               unsigned int response_code,
                               const char *fmt,
                               ...)
@@ -120,7 +120,7 @@ TMH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
     GNUNET_break (0);
     return MHD_NO;
   }
-  ret = TMH_RESPONSE_reply_json (connection,
+  ret = TEH_RESPONSE_reply_json (connection,
                                  json,
                                  response_code);
   json_decref (json);
@@ -136,10 +136,10 @@ TMH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
                                 const char *param_name)
 {
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        "{s:s, s:s}",
                                        "error", "invalid parameter",
@@ -157,10 +157,10 @@ TMH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
                                 const char *param_name)
 {
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s, s:s}",
                                        "error", "unknown entity referenced",
@@ -176,10 +176,10 @@ TMH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
                                       const char *param_name)
 {
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_UNAUTHORIZED,
                                        "{s:s, s:s}",
                                        "error", "invalid signature",
@@ -195,10 +195,10 @@ TMH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
                                 const char *param_name)
 {
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        "{ s:s, s:s}",
                                        "error", "missing parameter",
@@ -214,10 +214,10 @@ TMH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
                                       const char *hint)
 {
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:s}",
                                        "error", "permission denied",
@@ -233,10 +233,10 @@ TMH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
                                    const char *hint)
 {
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        "{s:s, s:s}",
                                        "error", "internal error",
@@ -252,10 +252,10 @@ TMH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
                                    const char *hint)
 {
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        "{s:s, s:s}",
                                        "error", "client error",
@@ -271,9 +271,9 @@ TMH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_commit_error (struct MHD_Connection *connection)
+TEH_RESPONSE_reply_commit_error (struct MHD_Connection *connection)
 {
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        "{s:s}",
                                        "error", "commit failure");
@@ -288,9 +288,9 @@ TMH_RESPONSE_reply_commit_error (struct MHD_Connection *connection)
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection)
+TEH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection)
 {
-  return TMH_RESPONSE_reply_internal_error (connection,
+  return TEH_RESPONSE_reply_internal_error (connection,
                                             "Failed to connect to database");
 }
 
@@ -302,7 +302,7 @@ TMH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection)
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_request_too_large (struct MHD_Connection *connection)
+TEH_RESPONSE_reply_request_too_large (struct MHD_Connection *connection)
 {
   struct MHD_Response *resp;
   int ret;
@@ -312,7 +312,7 @@ TMH_RESPONSE_reply_request_too_large (struct MHD_Connection *connection)
                                           MHD_RESPMEM_PERSISTENT);
   if (NULL == resp)
     return MHD_NO;
-  TMH_RESPONSE_add_global_headers (resp);
+  TEH_RESPONSE_add_global_headers (resp);
   ret = MHD_queue_response (connection,
                             MHD_HTTP_REQUEST_ENTITY_TOO_LARGE,
                             resp);
@@ -328,9 +328,9 @@ TMH_RESPONSE_reply_request_too_large (struct MHD_Connection *connection)
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection)
+TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection)
 {
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        "{s:s}",
                                        "error",
@@ -358,7 +358,7 @@ TMH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection)
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     const struct GNUNET_HashCode *h_wire,
                                     const struct GNUNET_HashCode *h_contract,
@@ -383,10 +383,10 @@ TMH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
                      amount_without_fee);
   dc.coin_pub = *coin_pub;
   dc.merchant = *merchant;
-  TMH_KS_sign (&dc.purpose,
+  TEH_KS_sign (&dc.purpose,
                &pub,
                &sig);
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:s, s:o, s:o}",
                                        "status", "DEPOSIT_OK",
@@ -549,15 +549,15 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection,
                                                const struct TALER_EXCHANGEDB_TransactionList *tl)
 {
   json_t *history;
 
   history = compile_transaction_history (tl);
   if (NULL == history)
-    return TMH_RESPONSE_reply_internal_db_error (connection);
-  return TMH_RESPONSE_reply_json_pack (connection,
+    return TEH_RESPONSE_reply_internal_db_error (connection);
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:o}",
                                        "error", "insufficient funds",
@@ -691,10 +691,10 @@ compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_refund_conflict (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refund_conflict (struct MHD_Connection *connection,
                                     const struct TALER_EXCHANGEDB_TransactionList *tl)
 {
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_CONFLICT,
                                        "{s:s, s:o}",
                                        "status", "conflicting refund",
@@ -711,10 +711,10 @@ TMH_RESPONSE_reply_refund_conflict (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_refund_failure (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refund_failure (struct MHD_Connection *connection,
                                    unsigned int response_code)
 {
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        response_code,
                                        "{s:s}",
                                        "error",
@@ -730,7 +730,7 @@ TMH_RESPONSE_reply_refund_failure (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_refund_success (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refund_success (struct MHD_Connection *connection,
                                    const struct TALER_EXCHANGEDB_Refund *refund)
 {
   struct TALER_RefundConfirmationPS rc;
@@ -748,10 +748,10 @@ TMH_RESPONSE_reply_refund_success (struct MHD_Connection *connection,
                      &refund->refund_amount);
   TALER_amount_hton (&rc.refund_fee,
                      &refund->refund_fee);
-  TMH_KS_sign (&rc.purpose,
+  TEH_KS_sign (&rc.purpose,
                &pub,
                &sig);
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:s, s:o, s:o}",
                                        "status", "REFUND_OK",
@@ -768,7 +768,7 @@ TMH_RESPONSE_reply_refund_success (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_reserve_status_success (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_reserve_status_success (struct MHD_Connection *connection,
                                            const struct TALER_EXCHANGEDB_ReserveHistory *rh)
 {
   json_t *json_balance;
@@ -778,10 +778,10 @@ TMH_RESPONSE_reply_reserve_status_success (struct MHD_Connection *connection,
   json_history = compile_reserve_history (rh,
                                           &balance);
   if (NULL == json_history)
-    return TMH_RESPONSE_reply_internal_error (connection,
+    return TEH_RESPONSE_reply_internal_error (connection,
                                               "balance calculation failure");
   json_balance = TALER_JSON_from_amount (&balance);
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:o, s:o}",
                                        "balance", json_balance,
@@ -799,7 +799,7 @@ TMH_RESPONSE_reply_reserve_status_success (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *connection,
                                                         const struct TALER_EXCHANGEDB_ReserveHistory *rh)
 {
   json_t *json_balance;
@@ -809,10 +809,10 @@ TMH_RESPONSE_reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *c
   json_history = compile_reserve_history (rh,
                                           &balance);
   if (NULL == json_history)
-    return TMH_RESPONSE_reply_internal_error (connection,
+    return TEH_RESPONSE_reply_internal_error (connection,
                                               "balance calculation failure");
   json_balance = TALER_JSON_from_amount (&balance);
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_PAYMENT_REQUIRED,
                                        "{s:s, s:o, s:o}",
                                        "error", "Insufficient funds",
@@ -829,13 +829,13 @@ TMH_RESPONSE_reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *c
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_reserve_withdraw_success (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_reserve_withdraw_success (struct MHD_Connection *connection,
                                           const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
 {
   json_t *sig_json;
 
   sig_json = GNUNET_JSON_from_rsa_signature (collectable->sig.rsa_signature);
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:o}",
                                        "ev_sig", sig_json);
@@ -858,7 +858,7 @@ TMH_RESPONSE_reply_reserve_withdraw_success (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *connection,
                                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                                     struct TALER_Amount coin_value,
                                                     struct TALER_EXCHANGEDB_TransactionList *tl,
@@ -869,8 +869,8 @@ TMH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *conne
 
   history = compile_transaction_history (tl);
   if (NULL == history)
-    return TMH_RESPONSE_reply_internal_db_error (connection);
-  return TMH_RESPONSE_reply_json_pack (connection,
+    return TEH_RESPONSE_reply_internal_db_error (connection);
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:o, s:o, s:o, s:o, s:o}",
                                        "error",
@@ -897,7 +897,7 @@ TMH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *conne
  * @return a MHD status code
  */
 int
-TMH_RESPONSE_reply_refresh_melt_success (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refresh_melt_success (struct MHD_Connection *connection,
                                          const struct GNUNET_HashCode *session_hash,
                                          uint16_t noreveal_index)
 {
@@ -911,12 +911,12 @@ TMH_RESPONSE_reply_refresh_melt_success (struct MHD_Connection *connection,
   body.session_hash = *session_hash;
   body.noreveal_index = htons (noreveal_index);
   body.reserved = htons (0);
-  TMH_KS_sign (&body.purpose,
+  TEH_KS_sign (&body.purpose,
                &pub,
                &sig);
   sig_json = GNUNET_JSON_from_data_auto (&sig);
   GNUNET_assert (NULL != sig_json);
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:i, s:o, s:o}",
                                        "noreveal_index", (int) noreveal_index,
@@ -934,7 +934,7 @@ TMH_RESPONSE_reply_refresh_melt_success (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
                                            unsigned int num_newcoins,
                                            const struct TALER_DenominationSignature *sigs)
 {
@@ -959,7 +959,7 @@ TMH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
   json_object_set_new (root,
                        "ev_sigs",
                        list);
-  ret = TMH_RESPONSE_reply_json (connection,
+  ret = TEH_RESPONSE_reply_json (connection,
                                  root,
                                  MHD_HTTP_OK);
   json_decref (root);
@@ -979,7 +979,7 @@ TMH_RESPONSE_reply_refresh_reveal_success (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
                                              const struct TALER_EXCHANGEDB_RefreshSession *session,
                                              const struct TALER_EXCHANGEDB_RefreshCommitCoin *commit_coins,
                                              const struct TALER_DenominationPublicKey *denom_pubs,
@@ -1009,7 +1009,7 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
                    json_array_append_new (info_commit_k,
                                           cc_json));
   }
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_CONFLICT,
                                        "{s:s, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:i}",
                                        "error", "commitment violation",
@@ -1034,9 +1034,9 @@ TMH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 int
-TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
                                          unsigned int num_sessions,
-                                         const struct TMH_RESPONSE_LinkSessionInfo *sessions)
+                                         const struct TEH_RESPONSE_LinkSessionInfo *sessions)
 {
   json_t *root;
   json_t *mlist;
@@ -1075,7 +1075,7 @@ TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
                    json_array_append_new (mlist,
                                           root));
   }
-  res = TMH_RESPONSE_reply_json (connection,
+  res = TEH_RESPONSE_reply_json (connection,
                                  mlist,
                                  MHD_HTTP_OK);
   json_decref (mlist);
@@ -1092,9 +1092,9 @@ TMH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection)
+TEH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection)
 {
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s}",
                                        "error", "Deposit unknown");
@@ -1110,10 +1110,10 @@ TMH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection)
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
                                      struct GNUNET_TIME_Absolute planned_exec_time)
 {
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_ACCEPTED,
                                        "{s:o}",
                                        "execution_time", GNUNET_JSON_from_time_abs (planned_exec_time));
@@ -1136,7 +1136,7 @@ TMH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
                                       const struct GNUNET_HashCode *h_contract,
                                       const struct GNUNET_HashCode *h_wire,
                                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -1159,10 +1159,10 @@ TMH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
   cw.execution_time = GNUNET_TIME_absolute_hton (exec_time);
   TALER_amount_hton (&cw.coin_contribution,
                      coin_contribution);
-  TMH_KS_sign (&cw.purpose,
+  TEH_KS_sign (&cw.purpose,
                &pub,
                &sig);
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:o, s:o, s:o, s:o, s:o}",
                                        "wtid", GNUNET_JSON_from_data_auto (wtid),
@@ -1186,14 +1186,14 @@ TMH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
+TEH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
                                            const struct TALER_Amount *total,
                                            const struct TALER_MerchantPublicKeyP *merchant_pub,
                                            const struct GNUNET_HashCode *h_wire,
                                            struct GNUNET_TIME_Absolute exec_time,
-                                           const struct TMH_TrackTransferDetail *wdd_head)
+                                           const struct TEH_TrackTransferDetail *wdd_head)
 {
-  const struct TMH_TrackTransferDetail *wdd_pos;
+  const struct TEH_TrackTransferDetail *wdd_pos;
   json_t *deposits;
   struct TALER_WireDepositDetailP dd;
   struct GNUNET_HashContext *hash_context;
@@ -1234,10 +1234,10 @@ TMH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
   wdp.h_wire = *h_wire;
   GNUNET_CRYPTO_hash_context_finish (hash_context,
                                      &wdp.h_details);
-  TMH_KS_sign (&wdp.purpose,
+  TEH_KS_sign (&wdp.purpose,
                &pub,
                &sig);
-  return TMH_RESPONSE_reply_json_pack (connection,
+  return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
                                        "{s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                                        "total", TALER_JSON_from_amount (total),

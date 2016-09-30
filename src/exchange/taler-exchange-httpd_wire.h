@@ -37,7 +37,7 @@
  * @return MHD result code
   */
 int
-TMH_WIRE_handler_wire (struct TMH_RequestHandler *rh,
+TEH_WIRE_handler_wire (struct TEH_RequestHandler *rh,
                        struct MHD_Connection *connection,
                        void **connection_cls,
                        const char *upload_data,

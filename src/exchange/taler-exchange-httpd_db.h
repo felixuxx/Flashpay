@@ -36,7 +36,7 @@
  * @return MHD result code
  */
 int
-TMH_DB_execute_deposit (struct MHD_Connection *connection,
+TEH_DB_execute_deposit (struct MHD_Connection *connection,
                         const struct TALER_EXCHANGEDB_Deposit *deposit);
 
 
@@ -50,7 +50,7 @@ TMH_DB_execute_deposit (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_DB_execute_refund (struct MHD_Connection *connection,
+TEH_DB_execute_refund (struct MHD_Connection *connection,
                        const struct TALER_EXCHANGEDB_Refund *refund);
 
 
@@ -63,7 +63,7 @@ TMH_DB_execute_refund (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_DB_execute_reserve_status (struct MHD_Connection *connection,
+TEH_DB_execute_reserve_status (struct MHD_Connection *connection,
                                const struct TALER_ReservePublicKeyP *reserve_pub);
 
 
@@ -82,7 +82,7 @@ TMH_DB_execute_reserve_status (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_DB_execute_reserve_withdraw (struct MHD_Connection *connection,
+TEH_DB_execute_reserve_withdraw (struct MHD_Connection *connection,
                                  const struct TALER_ReservePublicKeyP *reserve,
                                  const struct TALER_DenominationPublicKey *denomination_pub,
                                  const char *blinded_msg,
@@ -93,7 +93,7 @@ TMH_DB_execute_reserve_withdraw (struct MHD_Connection *connection,
 /**
  * @brief Details about a melt operation of an individual coin.
  */
-struct TMH_DB_MeltDetails
+struct TEH_DB_MeltDetails
 {
 
   /**
@@ -142,11 +142,11 @@ struct TMH_DB_MeltDetails
  * @return MHD result code
  */
 int
-TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
+TEH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                              const struct GNUNET_HashCode *session_hash,
                              unsigned int num_new_denoms,
                              const struct TALER_DenominationPublicKey *denom_pubs,
-                             const struct TMH_DB_MeltDetails *coin_melt_details,
+                             const struct TEH_DB_MeltDetails *coin_melt_details,
                              struct TALER_EXCHANGEDB_RefreshCommitCoin *const* commit_coin,
                              const struct TALER_TransferPublicKeyP *transfer_pubs);
 
@@ -164,7 +164,7 @@ TMH_DB_execute_refresh_melt (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
+TEH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
                                const struct GNUNET_HashCode *session_hash,
                                struct TALER_TransferPrivateKeyP *transfer_privs);
 
@@ -179,7 +179,7 @@ TMH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
+TEH_DB_execute_refresh_link (struct MHD_Connection *connection,
                              const struct TALER_CoinSpendPublicKeyP *coin_pub);
 
 
@@ -196,7 +196,7 @@ TMH_DB_execute_refresh_link (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
+TEH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
                                    const struct TALER_ReservePublicKeyP *reserve_pub,
                                    const struct TALER_Amount *amount,
                                    struct GNUNET_TIME_Absolute execution_time,
@@ -213,7 +213,7 @@ TMH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_DB_execute_track_transfer (struct MHD_Connection *connection,
+TEH_DB_execute_track_transfer (struct MHD_Connection *connection,
                               const struct TALER_WireTransferIdentifierRawP *wtid);
 
 
@@ -230,7 +230,7 @@ TMH_DB_execute_track_transfer (struct MHD_Connection *connection,
  * @return MHD result code
  */
 int
-TMH_DB_execute_track_transaction (struct MHD_Connection *connection,
+TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
                              const struct GNUNET_HashCode *h_contract,
 			     const struct GNUNET_HashCode *h_wire,
 			     const struct TALER_CoinSpendPublicKeyP *coin_pub,

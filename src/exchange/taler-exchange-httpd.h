@@ -31,12 +31,12 @@
 /**
  * Which currency is used by this exchange?
  */
-extern char *TMH_exchange_currency_string;
+extern char *TEH_exchange_currency_string;
 
 /**
  * Should we return "Connection: close" in each response?
  */
-extern int TMH_exchange_connection_close;
+extern int TEH_exchange_connection_close;
 
 /**
  * The exchange's configuration.
@@ -46,29 +46,29 @@ extern struct GNUNET_CONFIGURATION_Handle *cfg;
 /**
  * Main directory with exchange data.
  */
-extern char *TMH_exchange_directory;
+extern char *TEH_exchange_directory;
 
 /**
  * Master public key (according to the
  * configuration in the exchange directory).
  */
-extern struct TALER_MasterPublicKeyP TMH_master_public_key;
+extern struct TALER_MasterPublicKeyP TEH_master_public_key;
 
 /**
  * Private key of the exchange we use to sign messages.
  */
-extern struct GNUNET_CRYPTO_EddsaPrivateKey TMH_exchange_private_signing_key;
+extern struct GNUNET_CRYPTO_EddsaPrivateKey TEH_exchange_private_signing_key;
 
 /**
  * Our DB plugin.
  */
-extern struct TALER_EXCHANGEDB_Plugin *TMH_plugin;
+extern struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 
 
 /**
  * @brief Struct describing an URL and the handler for it.
  */
-struct TMH_RequestHandler
+struct TEH_RequestHandler
 {
 
   /**
@@ -107,7 +107,7 @@ struct TMH_RequestHandler
    * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
    * @return MHD result code
    */
-  int (*handler)(struct TMH_RequestHandler *rh,
+  int (*handler)(struct TEH_RequestHandler *rh,
                  struct MHD_Connection *connection,
                  void **connection_cls,
                  const char *upload_data,
