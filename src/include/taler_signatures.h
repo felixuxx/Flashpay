@@ -153,6 +153,12 @@
  */
 #define TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION 1103
 
+/**
+ * Signature where the merchant confirms that the payment was
+ * successful
+ */
+#define TALER_SIGNATURE_MERCHANT_PAYMENT_OK 1104
+
 
 /*********************/
 /* Wallet signatures */
