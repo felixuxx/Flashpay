@@ -1078,6 +1078,15 @@ struct TALER_ContractPS
   struct TALER_MerchantPublicKeyP merchant_pub;
 };
 
+/**
+ * Used by merchants to return signed responses to /pay requests.
+ * Currently only used to return 200 OK signed responses.
+ */
+struct PaymentResponsePS
+{
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+};
+
 
 /**
  * Details affirmed by the exchange about a wire transfer the exchange
