@@ -311,7 +311,7 @@ postgres_create_tables (void *cls)
      into the reserve.  The rows of this table correspond to each
      incoming transaction. */
   SQLEXEC("CREATE TABLE IF NOT EXISTS reserves_in"
-          "(reserve_in_serial_id BIGSERIAL PRIMARY KEY"
+          "(reserve_in_serial_id BIGSERIAL"
 	  ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
           ",credit_val INT8 NOT NULL"
           ",credit_frac INT4 NOT NULL"
@@ -330,7 +330,7 @@ postgres_create_tables (void *cls)
      should fail to even withdraw, as otherwise the coins will fail to deposit
      (as they really must be unique). */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS reserves_out"
-           "(reserve_out_serial_id BIGSERIAL PRIMARY KEY"
+           "(reserve_out_serial_id BIGSERIAL"
 	   ",h_blind_ev BYTEA PRIMARY KEY"
            ",denom_pub BYTEA NOT NULL REFERENCES denominations (denom_pub) ON DELETE CASCADE"
            ",denom_sig BYTEA NOT NULL"
@@ -362,7 +362,7 @@ postgres_create_tables (void *cls)
    * NOTE: maybe we should instead forbid values >= 2^15 categorically?
    */
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_sessions "
-          "(melt_serial_id BIGSERIAL PRIMARY KEY"
+          "(melt_serial_id BIGSERIAL"
 	  ",session_hash BYTEA PRIMARY KEY CHECK (LENGTH(session_hash)=64)"
           ",old_coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
           ",old_coin_sig BYTEA NOT NULL CHECK(LENGTH(old_coin_sig)=64)"
@@ -449,7 +449,7 @@ postgres_create_tables (void *cls)
   /* Table with information about coins that have been refunded. (Technically
      one of the deposit operations that a coin was involved with is refunded.)*/
   SQLEXEC("CREATE TABLE IF NOT EXISTS refunds "
-          "(refund_serial_id BIGSERIAL PRIMARY KEY"
+          "(refund_serial_id BIGSERIAL"
 	  ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
           ",merchant_pub BYTEA NOT NULL CHECK(LENGTH(merchant_pub)=32)"
           ",merchant_sig BYTEA NOT NULL CHECK(LENGTH(merchant_sig)=64)"
