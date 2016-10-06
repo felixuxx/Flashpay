@@ -235,9 +235,216 @@ postgres_create_tables (void *cls)
     return GNUNET_SYSERR;
 #define SQLEXEC(sql) SQLEXEC_(conn, sql);
 #define SQLEXEC_INDEX(sql) SQLEXEC_IGNORE_ERROR_(conn, sql);
-  SQLEXEC ("CREATE TABLE IF NOT EXISTS test"
-           "(test_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32"
+
+  /* Table with all of the denomination keys that the auditor
+     is aware of. */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS auditor_denominations"
+           "(denom_pub BYTEA PRIMARY KEY"
+           ",master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+           ",valid_from INT8 NOT NULL"
+           ",expire_withdraw INT8 NOT NULL"
+           ",expire_deposit INT8 NOT NULL"
+           ",expire_legal INT8 NOT NULL"
+           ",coin_val INT8 NOT NULL" /* value of this denom */
+           ",coin_frac INT4 NOT NULL" /* fractional value of this denom */
+           ",coin_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL" /* assuming same currency for fees */
+           ",fee_withdraw_val INT8 NOT NULL"
+           ",fee_withdraw_frac INT4 NOT NULL"
+           ",fee_withdraw_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",fee_deposit_val INT8 NOT NULL"
+           ",fee_deposit_frac INT4 NOT NULL"
+           ",fee_deposit_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",fee_refresh_val INT8 NOT NULL"
+           ",fee_refresh_frac INT4 NOT NULL"
+           ",fee_refresh_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",fee_refund_val INT8 NOT NULL"
+           ",fee_refund_frac INT4 NOT NULL"
+           ",fee_refund_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
            ")");
+
+  /* Table with all of the customer reserves and their respective
+     balances that the auditor is aware of.
+     "last_reserve_out_serial_id" marks the last withdrawal from
+     "reserves_out" about this reserve that the auditor is aware of,
+     and "last_reserve_in_serial_id" is the last "reserve_in"
+     operation about this reserve that the auditor is aware of. */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS auditor_reserves"
+	   "(reserve_pub BYTEA PRIMARY KEY CHECK(LENGTH(reserve_pub)=32)"
+           ",master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+           ",reserve_balance_val INT8 NOT NULL"
+           ",reserve_balance_frac INT4 NOT NULL"
+           ",reserve_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",withdraw_fee_balance_val INT8 NOT NULL"
+           ",withdraw_fee_balance_frac INT4 NOT NULL"
+           ",withdraw_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",expiration_date INT8 NOT NULL"
+	   ",last_reserve_in_serial_id INT8 NOT NULL"
+           ",last_reserve_out_serial_id INT8 NOT NULL"
+	   ")");
+
+  /* Table with the sum of the balances of all customer reserves
+     (by exchange's master public key) */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS auditor_reserve_balance"
+	   "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+	   ",reserve_balance_val INT8 NOT NULL"
+           ",reserve_balance_frac INT4 NOT NULL"
+           ",reserve_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",withdraw_fee_balance_val INT8 NOT NULL"
+           ",withdraw_fee_balance_frac INT4 NOT NULL"
+           ",withdraw_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+	   ")");
+
+  /* Table with all of the outstanding denomination coins that the
+     exchange is aware of.  "last_deposit_serial_id" marks the
+     deposit_serial_id from "deposits" about this denomination key
+     that the auditor is aware of; "last_melt_serial_id" marks the
+     last melt from "refresh_sessions" that the auditor is aware
+     of; "refund_serial_id" tells us the last entry in "refunds"
+     for this denom_pub that the auditor is aware of. */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS denomination_pending"
+	   "(denom_pub BYTEA NOT NULL REFERENCES denominations (denom_pub) ON DELETE CASCADE"
+           ",denom_balance_val INT8 NOT NULL"
+           ",denom_balance_frac INT4 NOT NULL"
+           ",denom_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",deposit_fee_balance_val INT8 NOT NULL"
+           ",deposit_fee_balance_frac INT4 NOT NULL"
+           ",deposit_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",melt_fee_balance_val INT8 NOT NULL"
+           ",melt_fee_balance_frac INT4 NOT NULL"
+           ",melt_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",refund_fee_balance_val INT8 NOT NULL"
+           ",refund_fee_balance_frac INT4 NOT NULL"
+           ",refund_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",last_deposit_serial_id INT8 NOT NULL"
+	   ",last_melt_serial_id INT8 NOT NULL"
+	   ",last_refund INT8 NOT NULL"
+	   ")");
+  
+  /* Table with the sum of the outstanding coins from
+     "denomination_pending" (denom_pubs must belong
+     to the respective's exchange's master public key);
+     it represents the total_liabilities of the exchange
+     at this point (modulo unexpected historic_loss-style
+     events where denomination keys are compromised) */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS total_liabilities"
+	   "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+	   ",denom_balance_val INT8 NOT NULL"
+           ",denom_balance_frac INT4 NOT NULL"
+           ",denom_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",deposit_fee_balance_val INT8 NOT NULL"
+           ",deposit_fee_balance_frac INT4 NOT NULL"
+           ",deposit_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",melt_fee_balance_val INT8 NOT NULL"
+           ",melt_fee_balance_frac INT4 NOT NULL"
+           ",melt_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+	   ")");
+
+  /* Table with the sum of the generated coins all
+     denomination keys.  This represents the maximum
+     additional total financial risk of the exchange
+     in case that all denomination keys are compromised
+     (and all of the deposits so far were done by
+     the successful attacker).  So this is strictly an
+     upper bound on the risk exposure of the exchange.
+     (Note that this risk is in addition to the known 
+     total_liabilities) */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS total_risk"
+	   "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+	   ",risk_val INT8 NOT NULL"
+           ",risk_frac INT4 NOT NULL"
+           ",risk_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+	   ")");
+
+  
+  /* Table with historic profits; basically, when a denom_pub
+     is expired and everything associated with it is garbage
+     collected, the final profits end up in here; note that
+     the "denom_pub" here is not a foreign key, we just keep
+     it as a reference point.   "revenue_balance" is the sum
+     of all of the profits we made on the coin except for
+     withdraw fees (which are in historic_reserve_revenue); 
+     the deposit and melt fees are given individually; the
+     delta to the revenue_balance is from coins that were withdrawn
+     but never deposited prior to expiration. */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS historic_denomination_revenue"
+	   "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+	   ",denom_pub BYTEA NOT NULL"
+	   ",revenue_timestamp INT8 NOT NULL"
+	   ",revenue_balance_val INT8 NOT NULL"
+           ",revenue_balance_frac INT4 NOT NULL"
+           ",revenue_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",deposit_fee_balance_val INT8 NOT NULL"
+           ",deposit_fee_balance_frac INT4 NOT NULL"
+           ",deposit_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",melt_fee_balance_val INT8 NOT NULL"
+           ",melt_fee_balance_frac INT4 NOT NULL"
+           ",melt_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"	   ")");
+
+  /* Table with historic losses; basically, when we need to
+     invalidate a denom_pub because the denom_priv was 
+     compromised, we incur a loss. These losses are totaled
+     up here. (NOTE: the 'bankrupcy' protocol is not yet
+     implemented, so right now this table is not used.)  */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS historic_losses"
+	   "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+	   ",denom_pub BYTEA NOT NULL"
+	   ",loss_timestamp INT8 NOT NULL"
+	   ",loss_balance_val INT8 NOT NULL"
+           ",loss_balance_frac INT4 NOT NULL"
+           ",loss_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+	   ")");
+  
+  /* Table with historic profits by reserve; basically, when a
+     reserve expires, we transmit the balance back to the user, but
+     rounding gains and withdraw fees are listed here. */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS historic_reserve_revenue"
+	   "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+	   ",reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32)"
+	   ",expiration_date INT8 NOT NULL"
+	   ",reserve_profit_val INT8 NOT NULL"
+           ",reserve_profit_frac INT4 NOT NULL"
+           ",reserve_profit_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+	   ")");
+
+  /* Table with historic profits from reserves; we eventually
+     GC "historic_reserve_revenue", and then store the totals
+     in here (by time intervals). */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS historic_reserve_summary"
+	   "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+	   ",start_date INT8 NOT NULL"
+	   ",end_date INT8 NOT NULL"
+	   ",reserve_profits_val INT8 NOT NULL"
+           ",reserve_profits_frac INT4 NOT NULL"
+           ",reserve_profits_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+	   ")");
+  
+  /* Table with historic business ledger; basically, when the exchange
+     operator decides to use operating costs for anything but wire
+     transfers to merchants, it goes in here.  This happens when the
+     operator users transaction fees for business expenses. "purpose"
+     is free-form but should be a human-readable wire transfer
+     identifier. */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS historic_ledger"
+	   "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+	   ",purpose VARCHAR NOT NULL"
+	   ",timestamp INT8 NOT NULL"
+	   ",balance_val INT8 NOT NULL"
+           ",balance_frac INT4 NOT NULL"
+           ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+	   ")");
+
+  /* Table with the sum of the ledger, historic_revenue,
+     historic_losses and the auditor_reserve_balance.
+     This is the final amount that the exchange should have
+     in its bank account right now. */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS predicted_result"
+	   "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
+	   ",balance_val INT8 NOT NULL"
+           ",balance_frac INT4 NOT NULL"
+           ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+	   ")");
+
+  
   SQLEXEC_INDEX("CREATE INDEX testx "
                 "ON test(test_pub)");
 #undef SQLEXEC
