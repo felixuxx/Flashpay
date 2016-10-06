@@ -13,6 +13,8 @@ else
 talerinclude_HEADERS = \
   platform.h \
   taler_amount_lib.h \
+  taler_auditordb_lib.h \
+  taler_auditordb_plugin.h \
   taler_bank_service.h \
   taler_crypto_lib.h \
   taler_error_codes.h \

@@ -448,9 +448,11 @@ AC_CONFIG_FILES([Makefile
                  doc/Makefile
                  doc/doxygen/Makefile
                  src/Makefile
+                 src/auditor/Makefile
+                 src/auditordb/Makefile
                  src/bank-lib/Makefile
-                 src/exchangedb/Makefile
                  src/exchange/Makefile
+                 src/exchangedb/Makefile
                  src/exchange-tools/Makefile
                  src/exchange-lib/Makefile
                  src/benchmark/Makefile
