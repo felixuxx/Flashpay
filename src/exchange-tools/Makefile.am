@@ -4,7 +4,6 @@ AM_CPPFLAGS = -I$(top_srcdir)/src/include
 pkgcfgdir = $(prefix)/share/taler/config.d/
 
 pkgcfg_DATA = \
-  auditor.conf \
   exchange-signkeys.conf \
   coins.conf
 
@@ -14,7 +13,6 @@ if USE_COVERAGE
 endif
 
 bin_PROGRAMS = \
-  taler-auditor-sign \
   taler-exchange-keyup \
   taler-exchange-keycheck \
   taler-exchange-reservemod \
@@ -30,14 +28,6 @@ taler_exchange_keyup_LDADD = \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   -lgnunetutil $(XLIB)
 taler_exchange_keyup_LDFLAGS = $(POSTGRESQL_LDFLAGS)
-
-taler_auditor_sign_SOURCES = \
-  taler-auditor-sign.c
-taler_auditor_sign_LDADD = \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
-  -lgnunetutil $(XLIB)
 
 
 taler_exchange_wire_SOURCES = \
