@@ -153,6 +153,12 @@
  */
 #define TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION 1103
 
+/**
+ * Signature where the merchant confirms that the payment was
+ * successful
+ */
+#define TALER_SIGNATURE_MERCHANT_PAYMENT_OK 1104
+
 
 /*********************/
 /* Wallet signatures */
@@ -1070,6 +1076,15 @@ struct TALER_ContractPS
    * Key of the merchant who is signing this contract
    */
   struct TALER_MerchantPublicKeyP merchant_pub;
+};
+
+/**
+ * Used by merchants to return signed responses to /pay requests.
+ * Currently only used to return 200 OK signed responses.
+ */
+struct PaymentResponsePS
+{
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 };
 
 
