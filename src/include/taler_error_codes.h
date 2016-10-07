@@ -17,7 +17,7 @@
  * @file taler_error_codes.h
  * @brief error codes returned by GNU Taler
  *
- * This file should defines constants for error codes returned
+ * This file should define constants for error codes returned
  * in Taler APIs.  We use codes above 1000 to avoid any
  * confusing with HTTP status codes.  All constants have the
  * shared prefix "TALER_EC_" to indicate that they are error
