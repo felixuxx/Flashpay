@@ -34,7 +34,7 @@
 \usetikzlibrary{calc}
 % \usepackage{enumitem}
 \usepackage{caption}
-\usepackage{subcaption}
+%\usepackage{subcaption}
 \usepackage{subfig}
 % \usepackage{sidecap}
 % \usepackage{wrapfig}
@@ -63,7 +63,7 @@
 % - sharing = coin copying that should not be taxed
 
 
-\title{Taler: Taxable Anonymous Libre Electronic Reserves}
+\title{Refreshing Coins for Giving Change and Refunds \\ in Chaum-style Anonymous Payments}
 
 \begin{document}
 \mainmatter
@@ -84,13 +84,19 @@ fully audited.  All parties receive cryptographic evidence for all
 transactions; still, each party only receives the minimum information
 required to execute transactions.  Enforcement of honest behavior is
 timely, and is at least as strict as with legacy credit card payment
-systems that do not provide for privacy.  Taler unique {\em refresh
-protocol} allows fractional payments and refunds while maintaining
-anonymity of the customer and unlinkability of transactions.  
+systems that do not provide for privacy.
+
+The key technical contribution underpinning Taler is a new {\em
+  refresh protocol} which allows fractional payments and refunds while
+maintaining anonymity of the customer and unlinkability of
+transactions.  The refresh protocol combines an efficient
+cut-and-choose mechanism with a {\em link} step to ensure that
+refreshing is not abused for transactional payments.
+
 We argue that Taler provides a secure digital currency for modern
 liberal societies as it is a flexible, libre and efficient protocol
-and adequately balances the state's need for monetary control with
-the citizen's needs for private economic activity.
+and adequately balances the state's need for monetary control with the
+citizen's needs for private economic activity.
 \end{abstract}
 
 \section{Introduction}
@@ -164,7 +170,7 @@ due to the obvious corrolation.  A practical payment system must thus
 support giving change in the form of spendable coins, say a \EUR{0,01}
 coin and a \EUR{50,00} coin.
 
-Taler solves the problem of giving change by introducing a new 
+Taler solves the problem of giving change by introducing a new
 {\em refresh protocol}.  Using this protocol, a customer can obtain
 change or refunds in the form of fresh coins that other parties cannot
 link to the original transaction, the original coin, or each other.
@@ -633,16 +639,16 @@ Now the customer carries out the following interaction with the exchange:
       \item coin key $C := (c_s,C_p)$ with private key $c_s$ and public key $C_p := c_s G$,
       \item blinding factor $b$, and commits $\langle W, C, b \rangle$ to disk.
     \end{itemize}
-  \item[SEPA Send] 
+  \item[SEPA Send]
     The customer transfers an amount of money corresponding to
     at least $K_v$ to the exchange, with $W_p$ in the subject line
     of the transaction.
-  \item[SEPA Recieve] 
+  \item[SEPA Recieve]
     The exchange receives the transaction and credits the reserve $W_p$
     with the respective amount in its database.
-  \item[POST {\tt /withdraw/sign}] 
-    The customer sends $S_W(B)$ where $B := B_b(\FDH_K(C_p))$ to 
-    the exchange to request withdrawal of $C$; here, $B_b$ denotes 
+  \item[POST {\tt /withdraw/sign}]
+    The customer sends $S_W(B)$ where $B := B_b(\FDH_K(C_p))$ to
+    the exchange to request withdrawal of $C$; here, $B_b$ denotes
     Chaum-style blinding with blinding factor $b$.
   \item[200 OK / 402 PAYMENT REQUIRED]
     The exchange checks if the same withdrawal request was issued before;
@@ -692,8 +698,8 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
 \item[Merchant Setup] % \label{contract}
   Let $\vec{X} := \langle X_1, \ldots, X_n \rangle$ denote the list of
   exchanges accepted by the merchant where each $X_j$ is a exchange's
-  public key. 
-\item[Proposal] 
+  public key.
+\item[Proposal]
   The merchant creates a digitally signed contract
     $\mathcal{A} := S_M(m, f, a, H(p, r), \vec{X})$
   where $m$ is an identifier for this transaction, $a$ is data relevant
@@ -702,19 +708,19 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
   $p$ is the merchant's payment information (e.g. his IBAN number), and
   $r$ is a random nonce.  The merchant commits $\langle \mathcal{A} \rangle$
   to disk and sends $\mathcal{A}$ to the customer.
-\item[Customer Setup] % \label{deposit}
+\item[Customer Setup]
   The customer should already possess a coin issued by a exchange that is
   accepted by the merchant, meaning $K$ should be publicly signed by
   some $X_j$ from $\vec{X}$, and has a value $\geq f$.
-\item[POST {\tt /???}] 
+\item[POST {\tt /???}] \label{deposit}
   The customer generates a \emph{deposit-permission}
     $\mathcal{D} := S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$
   and sends $\langle \mathcal{D}, X_j\rangle$ to the merchant,
   where $X_j$ is the exchange which signed $K$.
-\item[POST {\tt/deposit}] 
+\item[POST {\tt/deposit}]
   The merchant gives $(\mathcal{D}, p, r)$ to the exchange, thereby
   revealing $p$ only to the exchange.
-\item[200 OK / 409 CONFLICT] 
+\item[200 OK / 409 CONFLICT]
   The exchange validates $\mathcal{D}$ and checks for double spending.
   If the coin has been involved in previous transactions and the new
   one would exceed its remaining value, it sends an error
@@ -779,8 +785,17 @@ denomination $K$ is melted to obtain a fresh coin $\widetilde{C}$
 with the same denomination.  In practice, Taler uses a natural
 extension where multiple fresh coins are generated a the same time to
 enable giving precise change matching any amount.
-In the protocol, $\kappa \ge 3$ is a security parameter and $G$ is the
+In the protocol, $\kappa \ge 3$ is a security parameter for the
+cut-and-choose part of the protocol and $G$ is the
 generator of the elliptic curve.
+
+We note that $\kappa = 3$ is actually perfectly sufficient in most
+cases in practice, as the cut-and-choose protocol does not need to
+provide cryptographic security: If the maximum applicable tax is less
+than $\frac{2}{3}$, then detecting $\kappa = 3$ ensures that cheating
+results in a negative return on average as $\kappa - 1$ out of
+$\kappa$ attempts to cheat are detected.  This makes the use of
+cut-and-choose practical and efficient in this context.
 
 % FIXME: I'm explicit about the rounds in postquantum.tex
 
@@ -811,10 +826,10 @@ generator of the elliptic curve.
     using the same key derivation functions.
 
   % \item
-    The customer computes $B^{(i)} := B_{b^{(i)}}(\FDH_K(C^{(i)}_p))$ 
+    The customer computes $B^{(i)} := B_{b^{(i)}}(\FDH_K(C^{(i)}_p))$
     for $i \in \{1,\ldots,\kappa\}$ and sends a commitment
      $S_{C'}(\vec{B}, \vec{T_p})$ to the exchange.
-  \item[200 OK / 409 CONFLICT] 
+  \item[200 OK / 409 CONFLICT]
     The exchange generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
     marks $C'_p$ as spent by committing
     $\langle C', \gamma, S_{C'}(\vec{B}, \vec{T_p}) \rangle$ to disk.
@@ -823,12 +838,12 @@ generator of the elliptic curve.
     %
     The exchange sends $S_{K'}(C'_p, \gamma)$ to the customer where
     $K'$ is the exchange's message signing key.
-  \item[POST {\tt /refresh/reveal}] 
+  \item[POST {\tt /refresh/reveal}]
     The customer commits $\langle C', S_K(C'_p, \gamma) \rangle$ to disk.
     Also, the customer assembles
       $\mathfrak{R} := \left(t_s^{(i)}\right)_{i \ne \gamma}$
     and sends $S_{C'}(\mathfrak{R})$ to the exchange.
-  \item[200 OK / 400 BAD REQUEST]  % \label{step:refresh-ccheck} 
+  \item[200 OK / 400 BAD REQUEST]  % \label{step:refresh-ccheck}
     The exchange checks whether $\mathfrak{R}$ is consistent with
     the commitments; specifically, it computes for $i \not= \gamma$:
 
@@ -842,16 +857,16 @@ generator of the elliptic curve.
     \end{minipage}
     \begin{minipage}{5cm}
      \begin{align*}
-       \overline{T_p^{(i)}} :&= t_s^{(i)} G \\ 
+       \overline{T_p^{(i)}} :&= t_s^{(i)} G \\
        \overline{b}^{(i)} :&= \FDH_K(\KDF_{\textrm{blinding}}(\overline{L}_i)) \\
-       \overline{B^{(i)}} :&= B_{\overline{b_i}}(\overline{C_p^{(i)}}) 
+       \overline{B^{(i)}} :&= B_{\overline{b_i}}(\overline{C_p^{(i)}})
      \end{align*}
     \end{minipage}
 
     and checks if $\overline{B^{(i)}} = B^{(i)}$
     and $\overline{T^{(i)}_p} = T^{(i)}_p$.
 
-  % \item[200 OK / 409 CONFLICT]  % \label{step:refresh-done} 
+  % \item[200 OK / 409 CONFLICT]  % \label{step:refresh-done}
     If the commitments were consistent, the exchange sends the
     blind signature $\widetilde{C} := S_{K}(B^{(\gamma)})$ to the customer.
     Otherwise, the exchange responds with an error indicating
@@ -882,7 +897,7 @@ The linking request is not expected to be used at all during ordinary
 operation of Taler.  If the refresh protocol is used by Alice to
 obtain change as designed, she already knows all of the information
 and thus has little reason to request it via the linking protocol.
-The fundamental reason why the exchange must provide the link protocol 
+The fundamental reason why the exchange must provide the link protocol
 is simply to provide a threat: if Bob were to use the refresh protocol
 for a transaction of funds from Alice to him, Alice may use a link
 request to gain shared access to Bob's coins. Thus, this threat
@@ -969,62 +984,66 @@ transaction.
 
 \section{Experimental results}
 
-\begin{figure}[b!]
-  \begin{subfigure}{0.45\columnwidth}
-    \includegraphics[width=\columnwidth]{bw_in.png}
-    \caption{Incoming traffic at the exchange, in bytes per 5 minutes.}
-    \label{fig:in}
-  \end{subfigure}\hfill
-  \begin{subfigure}{0.45\columnwidth}
-    \includegraphics[width=\columnwidth]{bw_out.png}
-    \caption{Outgoing traffic from the exchange, in bytes per 5 minutes.}
-    \label{fig:out}
-  \end{subfigure}
-  \begin{subfigure}{0.45\columnwidth}
-    \includegraphics[width=\columnwidth]{db_read.png}
-    \caption{DB read operations per second.}
-    \label{fig:read}
-  \end{subfigure}
-  \begin{subfigure}{0.45\columnwidth}
-    \includegraphics[width=\columnwidth]{db_write.png}
-    \caption{DB write operations per second.}
-    \label{fig:write}
-   \end{subfigure}
-  \begin{subfigure}{0.45\columnwidth}
-    \includegraphics[width=\columnwidth]{cpu_balance.png}
-    \caption{CPU credit balance. Hitting a balance of 0 shows the CPU is
-       the limiting factor.}
-    \label{fig:cpu}
-  \end{subfigure}\hfill
-  \begin{subfigure}{0.45\columnwidth}
-    \includegraphics[width=\columnwidth]{cpu_usage.png}
-    \caption{CPU utilization. The t2.micro instance is allowed to use 10\% of
-       one CPU.}
-    \label{fig:usage}
-  \end{subfigure}
-  \caption{Selected EC2 performance monitors for the experiment in the EC2
-           (after several hours, once the system was ``warm'').}
-  \label{fig:ec2}
-\end{figure}
+%\begin{figure}[b!]
+%  \begin{subfigure}{0.45\columnwidth}
+%    \includegraphics[width=\columnwidth]{bw_in.png}
+%    \caption{Incoming traffic at the exchange, in bytes per 5 minutes.}
+%    \label{fig:in}
+%  \end{subfigure}\hfill
+%  \begin{subfigure}{0.45\columnwidth}
+%    \includegraphics[width=\columnwidth]{bw_out.png}
+%    \caption{Outgoing traffic from the exchange, in bytes per 5 minutes.}
+%    \label{fig:out}
+%  \end{subfigure}
+%  \begin{subfigure}{0.45\columnwidth}
+%    \includegraphics[width=\columnwidth]{db_read.png}
+%    \caption{DB read operations per second.}
+%    \label{fig:read}
+%  \end{subfigure}
+%  \begin{subfigure}{0.45\columnwidth}
+%    \includegraphics[width=\columnwidth]{db_write.png}
+%    \caption{DB write operations per second.}
+%    \label{fig:write}
+%   \end{subfigure}
+%  \begin{subfigure}{0.45\columnwidth}
+%    \includegraphics[width=\columnwidth]{cpu_balance.png}
+%    \caption{CPU credit balance. Hitting a balance of 0 shows the CPU is
+%       the limiting factor.}
+%    \label{fig:cpu}
+%  \end{subfigure}\hfill
+%  \begin{subfigure}{0.45\columnwidth}
+%    \includegraphics[width=\columnwidth]{cpu_usage.png}
+%    \caption{CPU utilization. The t2.micro instance is allowed to use 10\% of
+%       one CPU.}
+%    \label{fig:usage}
+%  \end{subfigure}
+%  \caption{Selected EC2 performance monitors for the experiment in the EC2
+%           (after several hours, once the system was ``warm'').}
+%  \label{fig:ec2}
+%\end{figure}
 
 We ran the Taler exchange v0.0.2 on an Amazon EC2 t2.micro instance
 (10\% of a Xeon E5-2676 at 2.4 GHz) based on Ubuntu 14.04.4 LTS, using
 a db.t2.micro instance with Postgres 9.5 for the database.  Using 16
 concurrent clients performing withdraw, deposit and refresh operations
 we then pushed the t2.micro instance to the resource limit
-(Figure~\ref{fig:cpu}) from a network with $\approx$ 160 ms latency to
+%(Figure~\ref{fig:cpu})
+from a network with $\approx$ 160 ms latency to
 the EC2 instance.  At that point, the instance managed about 8 HTTP
 requests per second, which roughly corresponds to one full business
 transaction (as a full business transaction is expected to involve
 withdrawing and depositing several coins).  The network traffic was
 modest at approximately 50 kbit/sec from the exchange
-(Figure~\ref{fig:out}) and 160 kbit/sec to the exchange
-(Figure~\ref{fig:in}).  At network latencies above 10 ms, the delay
+%(Figure~\ref{fig:out})
+and 160 kbit/sec to the exchange.
+%(Figure~\ref{fig:in}).
+At network latencies above 10 ms, the delay
 for executing a transaction is dominated by the network latency, as
 local processing virtually always takes less than 10 ms.
 
-Database transactions are dominated by writes (Figure~\ref{fig:read}
-vs.  Figure~\ref{fig:write}), as Taler mostly needs to log
+Database transactions are dominated by writes
+%(Figure~\ref{fig:read} vs.  Figure~\ref{fig:write})
+, as Taler mostly needs to log
 transactions and occasionally needs to read to guard against
 double-spending.  Given a database capacity of 2 TB---which should
 suffice for more than one year of full transaction logs---the
@@ -1047,52 +1066,7 @@ payment system.
 
 \section{Discussion}
 
-Taler was designed for use in a modern social-liberal society and
-provides a payment system with the following key properties:
-
-\begin{description}
-  \item[Customer Anonymity]
-    It is impossible for exchanges, merchants and even a global active
-    adversary, to trace the spending behavior of a customer.
-    As a strong form of customer anonymity, it is also infeasible to
-    link a set of transactions to the same (anonymous) customer.
-    %, even when taking aborted transactions into account.
-
-    There is, however, a risk of metadata leakage if a customer
-    acquires coins matching exactly the price quoted by a merchant, or
-    if a customer uses coins issued by multiple exchanges for the same
-    transaction.  Hence, our implementation does not allow this.
-
-  \item[Taxability]
-    In many current legal systems, it is the responsibility of the merchant
-    to deduct sales taxes from purchases made by customers, or for workers
-    to pay income taxes for payments received for work.
-    Taler ensures that merchants are easily identifiable and that
-    an audit trail is generated, so that the state can ensure that its
-    taxation regime is obeyed.
-  \item[Verifiability]
-    Taler minimizes the trust necessary between
-    participants.  In particular, digital signatures are retained
-    whenever they would play a role in resolving disputes.
-    Additionally, customers cannot defraud anyone, and
-    merchants can only defraud their customers by not
-    delivering on the agreed contract.  Neither merchants nor customers
-    are able to commit fraud against the exchange.
-    Only the exchange needs be tightly audited and regulated.
-  \item[No speculation] % It's actually "Specualtion not required"
-    The digital coins are denominated in existing currencies,
-    such as EUR or USD.  This avoids exposing citizens to unnecessary risks
-    from currency fluctuations.
-  \item[Low resource consumption]
-    The design minimizes the operating costs and environmental impact of
-    the payment system.  It uses few public key operations per
-    transaction and entirely avoids proof-of-work computations.
-    The payment system handles both small and large payments in
-    an efficient and reliable manner.
-\end{description}
-
-
-\subsection{Well-known attacks}
+% \subsection{Well-known attacks}
 
 Taler's security is largely equivalent to that of Chaum's original
 design without online checks or the cut-and-choose revelation of
@@ -1557,3 +1531,49 @@ microdonations, it can always choose to switch to the macropayment
 system with slightly higher transaction costs to remain in business.
 
 \newpage
+
+
+
+Taler was designed for use in a modern social-liberal society and
+provides a payment system with the following key properties:
+
+\begin{description}
+  \item[Customer Anonymity]
+    It is impossible for exchanges, merchants and even a global active
+    adversary, to trace the spending behavior of a customer.
+    As a strong form of customer anonymity, it is also infeasible to
+    link a set of transactions to the same (anonymous) customer.
+    %, even when taking aborted transactions into account.
+
+    There is, however, a risk of metadata leakage if a customer
+    acquires coins matching exactly the price quoted by a merchant, or
+    if a customer uses coins issued by multiple exchanges for the same
+    transaction.  Hence, our implementation does not allow this.
+
+  \item[Taxability]
+    In many current legal systems, it is the responsibility of the merchant
+    to deduct sales taxes from purchases made by customers, or for workers
+    to pay income taxes for payments received for work.
+    Taler ensures that merchants are easily identifiable and that
+    an audit trail is generated, so that the state can ensure that its
+    taxation regime is obeyed.
+  \item[Verifiability]
+    Taler minimizes the trust necessary between
+    participants.  In particular, digital signatures are retained
+    whenever they would play a role in resolving disputes.
+    Additionally, customers cannot defraud anyone, and
+    merchants can only defraud their customers by not
+    delivering on the agreed contract.  Neither merchants nor customers
+    are able to commit fraud against the exchange.
+    Only the exchange needs be tightly audited and regulated.
+  \item[No speculation] % It's actually "Specualtion not required"
+    The digital coins are denominated in existing currencies,
+    such as EUR or USD.  This avoids exposing citizens to unnecessary risks
+    from currency fluctuations.
+  \item[Low resource consumption]
+    The design minimizes the operating costs and environmental impact of
+    the payment system.  It uses few public key operations per
+    transaction and entirely avoids proof-of-work computations.
+    The payment system handles both small and large payments in
+    an efficient and reliable manner.
+\end{description}
