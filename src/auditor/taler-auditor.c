@@ -20,6 +20,7 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
+#include "taler_auditordb_plugin.h"
 #include "taler_exchangedb_plugin.h"
 
 
@@ -70,8 +71,8 @@ run (void *cls,
     TALER_EXCHANGEDB_plugin_unload (edb);
     return;
   }
-  
-  
+
+
   TALER_AUDITORDB_plugin_unload (adb);
   TALER_EXCHANGEDB_plugin_unload (edb);
 }
