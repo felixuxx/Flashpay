@@ -239,7 +239,7 @@ postgres_create_tables (void *cls)
   /* Table with all of the denomination keys that the auditor
      is aware of. */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS auditor_denominations"
-           "(denom_pub BYTEA PRIMARY KEY"
+           "(denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
            ",master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
            ",valid_from INT8 NOT NULL"
            ",expire_withdraw INT8 NOT NULL"
@@ -302,7 +302,7 @@ postgres_create_tables (void *cls)
      of; "refund_serial_id" tells us the last entry in "refunds"
      for this denom_pub that the auditor is aware of. */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS denomination_pending"
-	   "(denom_pub BYTEA NOT NULL REFERENCES denominations (denom_pub) ON DELETE CASCADE"
+	   "(denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE"
            ",denom_balance_val INT8 NOT NULL"
            ",denom_balance_frac INT4 NOT NULL"
            ",denom_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -319,7 +319,7 @@ postgres_create_tables (void *cls)
 	   ",last_melt_serial_id INT8 NOT NULL"
 	   ",last_refund INT8 NOT NULL"
 	   ")");
-  
+
   /* Table with the sum of the outstanding coins from
      "denomination_pending" (denom_pubs must belong
      to the respective's exchange's master public key);
@@ -346,7 +346,7 @@ postgres_create_tables (void *cls)
      (and all of the deposits so far were done by
      the successful attacker).  So this is strictly an
      upper bound on the risk exposure of the exchange.
-     (Note that this risk is in addition to the known 
+     (Note that this risk is in addition to the known
      total_liabilities) */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS total_risk"
 	   "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
@@ -355,20 +355,20 @@ postgres_create_tables (void *cls)
            ",risk_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 	   ")");
 
-  
+
   /* Table with historic profits; basically, when a denom_pub
      is expired and everything associated with it is garbage
      collected, the final profits end up in here; note that
      the "denom_pub" here is not a foreign key, we just keep
      it as a reference point.   "revenue_balance" is the sum
      of all of the profits we made on the coin except for
-     withdraw fees (which are in historic_reserve_revenue); 
+     withdraw fees (which are in historic_reserve_revenue);
      the deposit and melt fees are given individually; the
      delta to the revenue_balance is from coins that were withdrawn
      but never deposited prior to expiration. */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS historic_denomination_revenue"
 	   "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
-	   ",denom_pub BYTEA NOT NULL"
+	   ",denom_pub_hash BYTEA NOT NULL CHECK (LENGTH(denom_pub_hash)=64)"
 	   ",revenue_timestamp INT8 NOT NULL"
 	   ",revenue_balance_val INT8 NOT NULL"
            ",revenue_balance_frac INT4 NOT NULL"
@@ -381,19 +381,19 @@ postgres_create_tables (void *cls)
            ",melt_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"	   ")");
 
   /* Table with historic losses; basically, when we need to
-     invalidate a denom_pub because the denom_priv was 
+     invalidate a denom_pub because the denom_priv was
      compromised, we incur a loss. These losses are totaled
      up here. (NOTE: the 'bankrupcy' protocol is not yet
      implemented, so right now this table is not used.)  */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS historic_losses"
 	   "(master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
-	   ",denom_pub BYTEA NOT NULL"
+	   ",denom_pub_hash BYTEA NOT NULL CHECK (LENGTH(denom_pub_hash)=64)"
 	   ",loss_timestamp INT8 NOT NULL"
 	   ",loss_balance_val INT8 NOT NULL"
            ",loss_balance_frac INT4 NOT NULL"
            ",loss_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 	   ")");
-  
+
   /* Table with historic profits by reserve; basically, when a
      reserve expires, we transmit the balance back to the user, but
      rounding gains and withdraw fees are listed here. */
@@ -417,7 +417,7 @@ postgres_create_tables (void *cls)
            ",reserve_profits_frac INT4 NOT NULL"
            ",reserve_profits_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 	   ")");
-  
+
   /* Table with historic business ledger; basically, when the exchange
      operator decides to use operating costs for anything but wire
      transfers to merchants, it goes in here.  This happens when the
@@ -444,7 +444,7 @@ postgres_create_tables (void *cls)
            ",balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 	   ")");
 
-  
+
   SQLEXEC_INDEX("CREATE INDEX testx "
                 "ON test(test_pub)");
 #undef SQLEXEC
