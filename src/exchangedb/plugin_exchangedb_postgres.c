@@ -4245,6 +4245,151 @@ postgres_gc (void *cls)
 
 
 /**
+ * Select deposits above @a serial_id in monotonically increasing
+ * order.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param serial_id highest serial ID to exclude (select strictly larger)
+ * @param cb function to call on each result
+ * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_select_deposits_above_serial_id (void *cls,
+                                          struct TALER_EXCHANGEDB_Session *session,
+                                          uint64_t serial_id,
+                                          TALER_EXCHANGEDB_DepositCallback cb,
+                                          void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Select refresh sessions above @a serial_id in monotonically increasing
+ * order.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param serial_id highest serial ID to exclude (select strictly larger)
+ * @param cb function to call on each result
+ * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_select_refreshs_above_serial_id (void *cls,
+                                          struct TALER_EXCHANGEDB_Session *session,
+                                          uint64_t serial_id,
+                                          TALER_EXCHANGEDB_RefreshSessionCallback cb,
+                                          void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Select refunds above @a serial_id in monotonically increasing
+ * order.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param serial_id highest serial ID to exclude (select strictly larger)
+ * @param cb function to call on each result
+ * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_select_refunds_above_serial_id (void *cls,
+                                         struct TALER_EXCHANGEDB_Session *session,
+                                         uint64_t serial_id,
+                                         TALER_EXCHANGEDB_RefundCallback cb,
+                                         void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Select inbound wire transfers into reserves_in above @a serial_id
+ * in monotonically increasing order.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param serial_id highest serial ID to exclude (select strictly larger)
+ * @param cb function to call on each result
+ * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_select_reserves_in_above_serial_id (void *cls,
+                                             struct TALER_EXCHANGEDB_Session *session,
+                                             uint64_t serial_id,
+                                             TALER_EXCHANGEDB_ReserveInCallback cb,
+                                             void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Select withdraw operations from reserves_out above @a serial_id
+ * in monotonically increasing order.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param serial_id highest serial ID to exclude (select strictly larger)
+ * @param cb function to call on each result
+ * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_select_reserves_out_above_serial_id (void *cls,
+                                              struct TALER_EXCHANGEDB_Session *session,
+                                              uint64_t serial_id,
+                                              TALER_EXCHANGEDB_WithdrawCallback cb,
+                                              void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Function called to select all wire transfers the exchange
+ * executed or plans to execute.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param serial_id highest serial ID to exclude (select strictly larger)
+ * @param cb function to call for ONE unfinished item
+ * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if there are no entries,
+ *         #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_select_prepare_above_serial_id (void *cls,
+                                         struct TALER_EXCHANGEDB_Session *session,
+                                         uint64_t serial_id,
+                                         TALER_EXCHANGEDB_WirePreparationCallback cb,
+                                         void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -4333,6 +4478,12 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->wire_prepare_data_mark_finished = &postgres_wire_prepare_data_mark_finished;
   plugin->wire_prepare_data_get = &postgres_wire_prepare_data_get;
   plugin->gc = &postgres_gc;
+  plugin->select_deposits_above_serial_id = &postgres_select_deposits_above_serial_id;
+  plugin->select_refreshs_above_serial_id = &postgres_select_refreshs_above_serial_id;
+  plugin->select_refunds_above_serial_id = &postgres_select_refunds_above_serial_id;
+  plugin->select_reserves_in_above_serial_id = &postgres_select_reserves_in_above_serial_id;
+  plugin->select_reserves_out_above_serial_id = &postgres_select_reserves_out_above_serial_id;
+  plugin->select_prepare_above_serial_id = &postgres_select_prepare_above_serial_id;
   return plugin;
 }
 

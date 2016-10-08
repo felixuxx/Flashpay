@@ -583,11 +583,11 @@ struct TALER_AUDITORDB_Plugin
    * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
    */
   int
-  (*select_historic_denom_revnue)(void *cls,
-                                  struct TALER_AUDITORDB_Session *session,
-                                  const struct TALER_MasterPublicKeyP *master_pub,
-                                  void *cb, /* FIXME: fix type */
-                                  void *cb_cls);
+  (*select_historic_denom_revenue)(void *cls,
+                                   struct TALER_AUDITORDB_Session *session,
+                                   const struct TALER_MasterPublicKeyP *master_pub,
+                                   void *cb, /* FIXME: fix type */
+                                   void *cb_cls);
 
 
   /**

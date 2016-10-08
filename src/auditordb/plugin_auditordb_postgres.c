@@ -711,6 +711,7 @@ postgres_gc (void *cls)
     PQfinish (conn);
     return GNUNET_SYSERR;
   }
+  /* FIXME: this is obviously not going to be this easy... */
   result = GNUNET_PQ_exec_prepared (conn,
                                     "gc_auditor",
                                     params_time);
@@ -724,6 +725,698 @@ postgres_gc (void *cls)
   PQclear (result);
   PQfinish (conn);
   return GNUNET_OK;
+}
+
+
+/**
+ * Insert information about a denomination key and in particular
+ * the properties (value, fees, expiration times) the coins signed
+ * with this key have.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param issue issuing information with value, fees and other info about the denomination
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_insert_denomination_info (void *cls,
+                                   struct TALER_AUDITORDB_Session *session,
+                                   const struct TALER_DenominationKeyValidityPS *issue)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Get information about denomination keys of a particular exchange.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master public key of the exchange
+ * @param cb function to call with the results
+ * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_select_denomination_info (void *cls,
+                                   struct TALER_AUDITORDB_Session *session,
+                                   const struct TALER_MasterPublicKeyP *master_pub,
+                                   void *cb, /* FIXME: type! */
+                                   void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Insert information about a reserve.  There must not be an
+ * existing record for the reserve.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param reserve_pub public key of the reserve
+ * @param master_pub master public key of the exchange
+ * @param reserve_balance amount stored in the reserve
+ * @param withdraw_fee_balance amount the exchange gained in withdraw fees
+ *                             due to withdrawals from this reserve
+ * @param expiration_date expiration date of the reserve
+ * @param last_reserve_in_serial_id up to which point did we consider
+ *                 incoming transfers for the above information
+ * @param last_reserve_out_serial_id up to which point did we consider
+ *                 withdrawals for the above information
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_insert_reserve_info (void *cls,
+                              struct TALER_AUDITORDB_Session *session,
+                              const struct TALER_ReservePublicKeyP *reserve_pub,
+                              const struct TALER_MasterPublicKeyP *master_pub,
+                              const struct TALER_Amount *reserve_balance,
+                              const struct TALER_Amount *withdraw_fee_balance,
+                              struct GNUNET_TIME_Absolute expiration_date,
+                              uint64_t last_reserve_in_serial_id,
+                              uint64_t last_reserve_out_serial_id)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Update information about a reserve.  Destructively updates an
+ * existing record, which must already exist.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param reserve_pub public key of the reserve
+ * @param master_pub master public key of the exchange
+ * @param reserve_balance amount stored in the reserve
+ * @param withdraw_fee_balance amount the exchange gained in withdraw fees
+ *                             due to withdrawals from this reserve
+ * @param expiration_date expiration date of the reserve
+ * @param last_reserve_in_serial_id up to which point did we consider
+ *                 incoming transfers for the above information
+ * @param last_reserve_out_serial_id up to which point did we consider
+ *                 withdrawals for the above information
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_update_reserve_info (void *cls,
+                              struct TALER_AUDITORDB_Session *session,
+                              const struct TALER_ReservePublicKeyP *reserve_pub,
+                              const struct TALER_MasterPublicKeyP *master_pub,
+                              const struct TALER_Amount *reserve_balance,
+                              const struct TALER_Amount *withdraw_fee_balance,
+                              struct GNUNET_TIME_Absolute expiration_date,
+                              uint64_t last_reserve_in_serial_id,
+                              uint64_t last_reserve_out_serial_id)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Get information about a reserve.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param reserve_pub public key of the reserve
+ * @param master_pub master public key of the exchange
+ * @param[out] reserve_balance amount stored in the reserve
+ * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
+ *                             due to withdrawals from this reserve
+ * @param[out] expiration_date expiration date of the reserve
+ * @param[out] last_reserve_in_serial_id up to which point did we consider
+ *                 incoming transfers for the above information
+ * @param[out] last_reserve_out_serial_id up to which point did we consider
+ *                 withdrawals for the above information
+ * @return #GNUNET_OK on success; #GNUNET_NO if there is no known
+ *         record about this reserve; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_get_reserve_info (void *cls,
+                           struct TALER_AUDITORDB_Session *session,
+                           const struct TALER_ReservePublicKeyP *reserve_pub,
+                           const struct TALER_MasterPublicKeyP *master_pub,
+                           struct TALER_Amount *reserve_balance,
+                           struct TALER_Amount *withdraw_fee_balance,
+                           struct GNUNET_TIME_Absolute *expiration_date,
+                           uint64_t *last_reserve_in_serial_id,
+                           uint64_t *last_reserve_out_serial_id)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Insert information about all reserves.  There must not be an
+ * existing record for the @a master_pub.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master public key of the exchange
+ * @param reserve_balance amount stored in the reserve
+ * @param withdraw_fee_balance amount the exchange gained in withdraw fees
+ *                             due to withdrawals from this reserve
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_insert_reserve_summary (void *cls,
+                                 struct TALER_AUDITORDB_Session *session,
+                                 const struct TALER_MasterPublicKeyP *master_pub,
+                                 const struct TALER_Amount *reserve_balance,
+                                 const struct TALER_Amount *withdraw_fee_balance)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Update information about all reserves.  Destructively updates an
+ * existing record, which must already exist.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master public key of the exchange
+ * @param reserve_balance amount stored in the reserve
+ * @param withdraw_fee_balance amount the exchange gained in withdraw fees
+ *                             due to withdrawals from this reserve
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_update_reserve_summary (void *cls,
+                                 struct TALER_AUDITORDB_Session *session,
+                                 const struct TALER_MasterPublicKeyP *master_pub,
+                                 const struct TALER_Amount *reserve_balance,
+                                 const struct TALER_Amount *withdraw_fee_balance)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Get summary information about all reserves.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master public key of the exchange
+ * @param[out] reserve_balance amount stored in the reserve
+ * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
+ *                             due to withdrawals from this reserve
+ * @return #GNUNET_OK on success; #GNUNET_NO if there is no known
+ *         record about this exchange; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_get_reserve_summary (void *cls,
+                              struct TALER_AUDITORDB_Session *session,
+                              const struct TALER_MasterPublicKeyP *master_pub,
+                              struct TALER_Amount *reserve_balance,
+                              struct TALER_Amount *withdraw_fee_balance)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Insert information about a denomination key's balances.  There
+ * must not be an existing record for the denomination key.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param denom_pub_hash hash of the denomination public key
+ * @param denom_balance value of coins outstanding with this denomination key
+ * @param deposit_fee_balance total deposit fees collected for this DK
+ * @param melt_fee_balance total melt fees collected for this DK
+ * @param refund_fee_balance total refund fees collected for this DK
+ * @param last_reserve_out_serial_id up to which point did we consider
+ *                 withdrawals for the above information
+ * @param last_deposit_serial_id up to which point did we consider
+ *                 deposits for the above information
+ * @param last_melt_serial_id up to which point did we consider
+ *                 melts for the above information
+ * @param last_refund_serial_id up to which point did we consider
+ *                 refunds for the above information
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_insert_denomination_balance (void *cls,
+                                      struct TALER_AUDITORDB_Session *session,
+                                      const struct GNUNET_HashCode *denom_pub_hash,
+                                      const struct TALER_Amount *denom_balance,
+                                      const struct TALER_Amount *deposit_fee_balance,
+                                      const struct TALER_Amount *melt_fee_balance,
+                                      const struct TALER_Amount *refund_fee_balance,
+                                      uint64_t last_reserve_out_serial_id,
+                                      uint64_t last_deposit_serial_id,
+                                      uint64_t last_melt_serial_id,
+                                      uint64_t last_refund_serial_id)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Update information about a denomination key's balances.  There
+ * must be an existing record for the denomination key.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param denom_pub_hash hash of the denomination public key
+ * @param denom_balance value of coins outstanding with this denomination key
+ * @param deposit_fee_balance total deposit fees collected for this DK
+ * @param melt_fee_balance total melt fees collected for this DK
+ * @param refund_fee_balance total refund fees collected for this DK
+ * @param last_reserve_out_serial_id up to which point did we consider
+ *                 withdrawals for the above information
+ * @param last_deposit_serial_id up to which point did we consider
+ *                 deposits for the above information
+ * @param last_melt_serial_id up to which point did we consider
+ *                 melts for the above information
+ * @param last_refund_serial_id up to which point did we consider
+ *                 refunds for the above information
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_update_denomination_balance (void *cls,
+                                      struct TALER_AUDITORDB_Session *session,
+                                      const struct GNUNET_HashCode *denom_pub_hash,
+                                      const struct TALER_Amount *denom_balance,
+                                      const struct TALER_Amount *deposit_fee_balance,
+                                      const struct TALER_Amount *melt_fee_balance,
+                                      const struct TALER_Amount *refund_fee_balance,
+                                      uint64_t last_reserve_out_serial_id,
+                                      uint64_t last_deposit_serial_id,
+                                      uint64_t last_melt_serial_id,
+                                      uint64_t last_refund_serial_id)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Get information about a denomination key's balances.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param denom_pub_hash hash of the denomination public key
+ * @param[out] denom_balance value of coins outstanding with this denomination key
+ * @param[out] deposit_fee_balance total deposit fees collected for this DK
+ * @param[out] melt_fee_balance total melt fees collected for this DK
+ * @param[out] refund_fee_balance total refund fees collected for this DK
+ * @param[out] last_reserve_out_serial_id up to which point did we consider
+ *                 withdrawals for the above information
+ * @param[out] last_deposit_serial_id up to which point did we consider
+ *                 deposits for the above information
+ * @param[out] last_melt_serial_id up to which point did we consider
+ *                 melts for the above information
+ * @param[out] last_refund_serial_id up to which point did we consider
+ *                 refunds for the above information
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_get_denomination_balance (void *cls,
+                                   struct TALER_AUDITORDB_Session *session,
+                                   const struct GNUNET_HashCode *denom_pub_hash,
+                                   struct TALER_Amount *denom_balance,
+                                   struct TALER_Amount *deposit_fee_balance,
+                                   struct TALER_Amount *melt_fee_balance,
+                                   struct TALER_Amount *refund_fee_balance,
+                                   uint64_t *last_reserve_out_serial_id,
+                                   uint64_t *last_deposit_serial_id,
+                                   uint64_t *last_melt_serial_id,
+                                   uint64_t *last_refund_serial_id)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Insert information about an exchange's denomination balances.  There
+ * must not be an existing record for the exchange.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param denom_balance value of coins outstanding with this denomination key
+ * @param deposit_fee_balance total deposit fees collected for this DK
+ * @param melt_fee_balance total melt fees collected for this DK
+ * @param refund_fee_balance total refund fees collected for this DK
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_insert_denomination_summary (void *cls,
+                                      struct TALER_AUDITORDB_Session *session,
+                                      const struct TALER_MasterPublicKeyP *master_pub,
+                                      const struct TALER_Amount *denom_balance,
+                                      const struct TALER_Amount *deposit_fee_balance,
+                                      const struct TALER_Amount *melt_fee_balance,
+                                      const struct TALER_Amount *refund_fee_balance)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Update information about an exchange's denomination balances.  There
+ * must be an existing record for the exchange.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param denom_balance value of coins outstanding with this denomination key
+ * @param deposit_fee_balance total deposit fees collected for this DK
+ * @param melt_fee_balance total melt fees collected for this DK
+ * @param refund_fee_balance total refund fees collected for this DK
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_update_denomination_summary (void *cls,
+                                      struct TALER_AUDITORDB_Session *session,
+                                      const struct TALER_MasterPublicKeyP *master_pub,
+                                      const struct TALER_Amount *denom_balance,
+                                      const struct TALER_Amount *deposit_fee_balance,
+                                      const struct TALER_Amount *melt_fee_balance,
+                                      const struct TALER_Amount *refund_fee_balance)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Get information about an exchange's denomination balances.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param[out] denom_balance value of coins outstanding with this denomination key
+ * @param[out] deposit_fee_balance total deposit fees collected for this DK
+ * @param[out] melt_fee_balance total melt fees collected for this DK
+ * @param[out] refund_fee_balance total refund fees collected for this DK
+ * @return #GNUNET_OK on success; #GNUNET_NO if there is no entry
+ *           for this @a master_pub; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_get_denomination_summary (void *cls,
+                                   struct TALER_AUDITORDB_Session *session,
+                                   const struct TALER_MasterPublicKeyP *master_pub,
+                                   struct TALER_Amount *denom_balance,
+                                   struct TALER_Amount *deposit_fee_balance,
+                                   struct TALER_Amount *melt_fee_balance,
+                                   struct TALER_Amount *refund_fee_balance)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Insert information about an exchange's risk exposure.  There
+ * must not be an existing record for the exchange.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param risk maximum risk exposure of the exchange
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_insert_risk_summary (void *cls,
+                              struct TALER_AUDITORDB_Session *session,
+                              const struct TALER_MasterPublicKeyP *master_pub,
+                              const struct TALER_Amount *risk)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Update information about an exchange's risk exposure.  There
+ * must be an existing record for the exchange.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param risk maximum risk exposure of the exchange
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_update_risk_summary (void *cls,
+                              struct TALER_AUDITORDB_Session *session,
+                              const struct TALER_MasterPublicKeyP *master_pub,
+                              const struct TALER_Amount *risk)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Get information about an exchange's risk exposure.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param[out] risk maximum risk exposure of the exchange
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure;
+ *         #GNUNET_NO if we have no records for the @a master_pub
+ */
+static int
+postgres_get_risk_summary (void *cls,
+                           struct TALER_AUDITORDB_Session *session,
+                           const struct TALER_MasterPublicKeyP *master_pub,
+                           struct TALER_Amount *risk)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Insert information about an exchange's historic
+ * revenue about a denomination key.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param denom_pub_hash hash of the denomination key
+ * @param revenue_timestamp when did this profit get realized
+ * @param revenue_balance what was the total profit made from
+ *                        deposit fees, melting fees, refresh fees
+ *                        and coins that were never returned?
+ * @param deposit_fee_balance total profits from deposit fees
+ * @param melt_fee_balance total profits from melting fees
+ * @param refund_fee_balance total profits from refund fees
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_insert_historic_denom_revenue (void *cls,
+                                        struct TALER_AUDITORDB_Session *session,
+                                        const struct TALER_MasterPublicKeyP *master_pub,
+                                        const struct GNUNET_HashCode *denom_pub_hash,
+                                        struct GNUNET_TIME_Absolute revenue_timestamp,
+                                        const struct TALER_Amount *revenue_balance,
+                                        const struct TALER_Amount *deposit_fee_balance,
+                                        const struct TALER_Amount *melt_fee_balance,
+                                        const struct TALER_Amount *refund_fee_balance)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Obtain all of the historic denomination key revenue
+ * of the given @a master_pub.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param cb function to call with the results
+ * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
+ */
+static int
+postgres_select_historic_denom_revenue (void *cls,
+                                        struct TALER_AUDITORDB_Session *session,
+                                        const struct TALER_MasterPublicKeyP *master_pub,
+                                        void *cb, /* FIXME: fix type */
+                                        void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Insert information about an exchange's historic
+ * losses (from compromised denomination keys).
+ *
+ * Note yet used, need to implement exchange's bankrupcy
+ * protocol (and tables!) first.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param denom_pub_hash hash of the denomination key
+ * @param loss_timestamp when did this profit get realized
+ * @param loss_balance what was the total loss
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_insert_historic_losses (void *cls,
+                                 struct TALER_AUDITORDB_Session *session,
+                                 const struct TALER_MasterPublicKeyP *master_pub,
+                                 const struct GNUNET_HashCode *denom_pub_hash,
+                                 struct GNUNET_TIME_Absolute loss_timestamp,
+                                 const struct TALER_Amount *loss_balance)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Obtain all of the historic denomination key losses
+ * of the given @a master_pub.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param cb function to call with the results
+ * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
+ */
+static int
+postgres_select_historic_losses (void *cls,
+                                 struct TALER_AUDITORDB_Session *session,
+                                 const struct TALER_MasterPublicKeyP *master_pub,
+                                 void *cb, /* FIXME: fix type */
+                                 void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Insert information about an exchange's historic revenue from reserves.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param start_time beginning of aggregated time interval
+ * @param end_time end of aggregated time interval
+ * @param reserve_profits total profits made
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_insert_historic_reserve_revenue (void *cls,
+                                          struct TALER_AUDITORDB_Session *session,
+                                          const struct TALER_MasterPublicKeyP *master_pub,
+                                          struct GNUNET_TIME_Absolute start_time,
+                                          struct GNUNET_TIME_Absolute end_time,
+                                          const struct TALER_Amount *reserve_profits)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Return information about an exchange's historic revenue from reserves.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param cb function to call with results
+ * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_select_historic_reserve_revenue (void *cls,
+                                          struct TALER_AUDITORDB_Session *session,
+                                          const struct TALER_MasterPublicKeyP *master_pub,
+                                          void *cb, /* FIXME: type */
+                                          void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Insert information about the predicted exchange's bank
+ * account balance.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param balance what the bank account balance of the exchange should show
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_insert_predicted_result (void *cls,
+                                  struct TALER_AUDITORDB_Session *session,
+                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  const struct TALER_Amount *balance)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Update information about an exchange's predicted balance.  There
+ * must be an existing record for the exchange.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param balance what the bank account balance of the exchange should show
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_update_predicted_result (void *cls,
+                                  struct TALER_AUDITORDB_Session *session,
+                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  const struct TALER_Amount *balance)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Get an exchange's predicted balance.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param[out] balance expected bank account balance of the exchange
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure;
+ *         #GNUNET_NO if we have no records for the @a master_pub
+ */
+static int
+postgres_get_predicted_balance (void *cls,
+                                struct TALER_AUDITORDB_Session *session,
+                                const struct TALER_MasterPublicKeyP *master_pub,
+                                struct TALER_Amount *balance)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_SYSERR;
 }
 
 
@@ -779,6 +1472,33 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->commit = &postgres_commit;
   plugin->rollback = &postgres_rollback;
   plugin->gc = &postgres_gc;
+  plugin->get_predicted_balance = &postgres_get_predicted_balance;
+  plugin->update_predicted_result = &postgres_update_predicted_result;
+  plugin->insert_predicted_result = &postgres_insert_predicted_result;
+  plugin->select_historic_reserve_revenue = &postgres_select_historic_reserve_revenue;
+  plugin->insert_historic_reserve_revenue = &postgres_insert_historic_reserve_revenue;
+  plugin->select_historic_losses = &postgres_select_historic_losses;
+  plugin->insert_historic_losses = &postgres_insert_historic_losses;
+  plugin->select_historic_denom_revenue = &postgres_select_historic_denom_revenue;
+  plugin->insert_historic_denom_revenue = &postgres_insert_historic_denom_revenue;
+  plugin->get_risk_summary = &postgres_get_risk_summary;
+  plugin->update_risk_summary = &postgres_update_risk_summary;
+  plugin->insert_risk_summary = &postgres_insert_risk_summary;
+  plugin->get_denomination_summary = &postgres_get_denomination_summary;
+  plugin->update_denomination_summary = &postgres_update_denomination_summary;
+  plugin->insert_denomination_summary = &postgres_insert_denomination_summary;
+  plugin->get_denomination_balance = &postgres_get_denomination_balance;
+  plugin->update_denomination_balance = &postgres_update_denomination_balance;
+  plugin->insert_denomination_balance = &postgres_insert_denomination_balance;
+  plugin->get_reserve_summary = &postgres_get_reserve_summary;
+  plugin->update_reserve_summary = &postgres_update_reserve_summary;
+  plugin->insert_reserve_summary = &postgres_insert_reserve_summary;
+  plugin->get_reserve_info = &postgres_get_reserve_info;
+  plugin->update_reserve_info = &postgres_update_reserve_info;
+  plugin->insert_reserve_info = &postgres_insert_reserve_info;
+  plugin->select_denomination_info = &postgres_select_denomination_info;
+  plugin->insert_denomination_info = &postgres_insert_denomination_info;
+
   return plugin;
 }
 
