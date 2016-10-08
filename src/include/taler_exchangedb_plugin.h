@@ -552,9 +552,8 @@ struct TALER_EXCHANGEDB_Session;
 
 
 /**
- * Function called with details about deposits that
- * have been made, with the goal of executing the
- * corresponding wire transaction.
+ * Function called with details about deposits that have been made,
+ * with the goal of executing the corresponding wire transaction.
  *
  * @param cls closure
  * @param rowid unique ID for the deposit in our DB, used for marking
@@ -581,6 +580,163 @@ typedef int
                                     const struct GNUNET_HashCode *h_contract,
                                     struct GNUNET_TIME_Absolute wire_deadline,
                                     const json_t *receiver_wire_account);
+
+
+/**
+ * Callback with data about a prepared wire transfer.
+ *
+ * @param cls closure
+ * @param rowid row identifier used to mark prepared transaction as done
+ * @param wire_method which wire method is this preparation data for
+ * @param buf transaction data that was persisted, NULL on error
+ * @param buf_size number of bytes in @a buf, 0 on error
+ */
+typedef void
+(*TALER_EXCHANGEDB_WirePreparationIterator) (void *cls,
+                                             unsigned long long rowid,
+                                             const char *wire_method,
+                                             const char *buf,
+                                             size_t buf_size);
+
+
+/**
+ * Function called with details about deposits that have been made,
+ * with the goal of auditing the deposit's execution.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the deposit in our DB
+ * @param merchant_pub public key of the merchant
+ * @param coin_pub public key of the coin
+ * @param coin_sig signature from the coin
+ * @param amount_with_fee amount that was deposited including fee
+ * @param transaction_id unique transaction ID chosen by the merchant
+ * @param h_contract hash of the contract between merchant and customer
+ * @param refund_deadline by which the merchant adviced that he might want
+ *        to get a refund
+ * @param wire_deadline by which the merchant adviced that he would like the
+ *        wire transfer to be executed
+ * @param receiver_wire_account wire details for the merchant, NULL from iterate_matching_deposits()
+ * @param done flag set if the deposit was already executed (or not)
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef int
+(*TALER_EXCHANGEDB_DepositCallback)(void *cls,
+                                    unsigned long long rowid,
+                                    const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                    const struct TALER_CoinSpendSignatureP *coin_sig,
+                                    const struct TALER_Amount *amount_with_fee,
+                                    uint64_t transaction_id,
+                                    const struct GNUNET_HashCode *h_contract,
+                                    struct GNUNET_TIME_Absolute refund_deadline,
+                                    struct GNUNET_TIME_Absolute wire_deadline,
+                                    const json_t *receiver_wire_account,
+                                    int done);
+
+
+/**
+ * Function called with details about coins that were melted,
+ * with the goal of auditing the refresh's execution.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the refresh session in our DB
+ * @param merchant_pub public key of the merchant
+ * @param coin_pub public key of the coin
+ * @param coin_sig signature from the coin
+ * @param amount_with_fee amount that was deposited including fee
+ * @param transaction_id unique transaction ID chosen by the merchant
+ * @param h_contract hash of the contract between merchant and customer
+ * @param refund_deadline by which the merchant adviced that he might want
+ *        to get a refund
+ * @param wire_deadline by which the merchant adviced that he would like the
+ *        wire transfer to be executed
+ * @param receiver_wire_account wire details for the merchant, NULL from iterate_matching_deposits()
+ * @param done flag set if the deposit was already executed (or not)
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef int
+(*TALER_EXCHANGEDB_RefreshSessionCallback)(void *cls,
+                                           unsigned long long rowid, /* FIXME: decide data type for serial_id! */
+                                           const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                           const struct TALER_CoinSpendSignatureP *coin_sig,
+                                           const struct TALER_Amount *amount_with_fee,
+                                           uint16_t num_newcoins,
+                                           uint16_t noreveal_index);
+
+
+/**
+ * Function called with details about coins that were refunding,
+ * with the goal of auditing the refund's execution.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the refund in our DB
+ * @param coin_pub public key of the coin
+ * @param merchant_pub public key of the merchant
+ * @param merchant_sig signature of the merchant
+ * @param h_contract hash of the contract between merchant and customer
+ * @param transaction_id original transaction ID chosen by the merchant
+ * @param rtransaction_id refund transaction ID chosen by the merchant
+ * @param amount_with_fee amount that was deposited including fee
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef int
+(*TALER_EXCHANGEDB_RefundCallback)(void *cls,
+                                   unsigned long long rowid, /* FIXME: decide data type for serial_id! */
+                                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                   const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                   const struct TALER_MerchantSignatureP *merchant_sig,
+                                   const struct GNUNET_HashCode *h_contract,
+                                   uint64_t transaction_id,
+                                   uint64_t rtransaction_id,
+                                   const struct TALER_Amount *amount_with_fee);
+
+
+/**
+ * Function called with details about incoming wire transfers.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the refresh session in our DB
+ * @param reserve_pub public key of the reserve (also the WTID)
+ * @param credit amount that was received
+ * @param sender_account_details information about the sender's bank account
+ * @param transfer_details information that uniquely identifies the wire transfer
+ * @param execution_date when did we receive the funds
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef int
+(*TALER_EXCHANGEDB_ReserveInCallback)(void *cls,
+                                      unsigned long long rowid, /* FIXME: decide data type for serial_id! */
+                                      const struct TALER_ReservePublicKeyP *reserve_pub,
+                                      const struct TALER_Amount *credit,
+                                      const json_t *sender_account_details,
+                                      const json_t *transfer_details,
+                                      struct GNUNET_TIME_Absolute execution_date);
+
+
+/**
+ * Function called with details about withdraw operations.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the refresh session in our DB
+ * @param h_blind_ev blinded hash of the coin's public key
+ * @param denom_pub public denomination key of the deposited coin
+ * @param denom_sig signature over the deposited coin
+ * @param reserve_pub public key of the reserve
+ * @param reserve_sig signature over the withdraw operation
+ * @param execution_date when did the wallet withdraw the coin
+ * @param amount_with_fee amount that was withdrawn
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef int
+(*TALER_EXCHANGEDB_WithdrawCallback)(void *cls,
+                                     unsigned long long rowid, /* FIXME: decide data type for serial_id! */
+                                     const struct GNUNET_HashCode *h_blind_ev,
+                                     const struct TALER_DenominationPublicKey *denom_pub,
+                                     const struct TALER_DenominationSignature *denom_sig,
+                                     const struct TALER_ReservePublicKeyP *reserve_pub,
+                                     const struct TALER_ReserveSignatureP *reserve_sig,
+                                     struct GNUNET_TIME_Absolute execution_date,
+                                     const struct TALER_Amount *amount_with_fee);
 
 
 /**
@@ -647,20 +803,22 @@ typedef void
 
 
 /**
- * Callback with data about a prepared transaction.
+ * Callback with data about a prepared wire transfer.
  *
  * @param cls closure
  * @param rowid row identifier used to mark prepared transaction as done
  * @param wire_method which wire method is this preparation data for
  * @param buf transaction data that was persisted, NULL on error
  * @param buf_size number of bytes in @a buf, 0 on error
+ * @param finished did we complete the transfer yet?
  */
 typedef void
 (*TALER_EXCHANGEDB_WirePreparationCallback) (void *cls,
                                              unsigned long long rowid,
                                              const char *wire_method,
                                              const char *buf,
-                                             size_t buf_size);
+                                             size_t buf_size,
+                                             int finished);
 
 
 /**
@@ -809,7 +967,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param reserve_pub public key of the reserve
    * @param balance the amount that has to be added to the reserve
    * @param execution_time when was the amount added
-   * @param sender_account_details information about the sender
+   * @param sender_account_details information about the sender's bank account
    * @param transfer_details information that uniquely identifies the wire transfer
    * @return #GNUNET_OK upon success; #GNUNET_NO if the given
    *         @a details are already known for this @a reserve_pub,
@@ -1411,7 +1569,7 @@ struct TALER_EXCHANGEDB_Plugin
   int
   (*wire_prepare_data_get)(void *cls,
                            struct TALER_EXCHANGEDB_Session *session,
-                           TALER_EXCHANGEDB_WirePreparationCallback cb,
+                           TALER_EXCHANGEDB_WirePreparationIterator cb,
                            void *cb_cls);
 
 
@@ -1419,12 +1577,139 @@ struct TALER_EXCHANGEDB_Plugin
    * Function called to perform "garbage collection" on the
    * database, expiring records we no longer require.
    *
+   * FIXME: we probably need to consider here which entries the
+   * auditor still needs to check, at least with respect to GC of the
+   * prewire table (for denominations, we can assume that the auditor
+   * runs long before the DK expire_legal time is hit).  Thus, this
+   * function probably should take the "last_prewire_serial_id"
+   * from the "auditor_progress" table as an extra argument (which
+   * the user would then have to manually specify).
+   *
    * @param cls closure
    * @return #GNUNET_OK on success,
    *         #GNUNET_SYSERR on DB errors
    */
   int
   (*gc) (void *cls);
+
+
+  /**
+   * Select deposits above @a serial_id in monotonically increasing
+   * order.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param serial_id highest serial ID to exclude (select strictly larger)
+   * @param cb function to call on each result
+   * @param cb_cls closure for @a cb
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*select_deposits_above_serial_id)(void *cls,
+                                     struct TALER_EXCHANGEDB_Session *session,
+                                     uint64_t serial_id,
+                                     TALER_EXCHANGEDB_DepositCallback cb,
+                                     void *cb_cls);
+
+  /**
+   * Select refresh sessions above @a serial_id in monotonically increasing
+   * order.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param serial_id highest serial ID to exclude (select strictly larger)
+   * @param cb function to call on each result
+   * @param cb_cls closure for @a cb
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*select_refreshs_above_serial_id)(void *cls,
+                                     struct TALER_EXCHANGEDB_Session *session,
+                                     uint64_t serial_id,
+                                     TALER_EXCHANGEDB_RefreshSessionCallback cb,
+                                     void *cb_cls);
+
+
+  /**
+   * Select refunds above @a serial_id in monotonically increasing
+   * order.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param serial_id highest serial ID to exclude (select strictly larger)
+   * @param cb function to call on each result
+   * @param cb_cls closure for @a cb
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*select_refunds_above_serial_id)(void *cls,
+                                    struct TALER_EXCHANGEDB_Session *session,
+                                    uint64_t serial_id,
+                                    TALER_EXCHANGEDB_RefundCallback cb,
+                                    void *cb_cls);
+
+
+  /**
+   * Select inbound wire transfers into reserves_in above @a serial_id
+   * in monotonically increasing order.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param serial_id highest serial ID to exclude (select strictly larger)
+   * @param cb function to call on each result
+   * @param cb_cls closure for @a cb
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*select_reserves_in_above_serial_id)(void *cls,
+                                        struct TALER_EXCHANGEDB_Session *session,
+                                        uint64_t serial_id,
+                                        TALER_EXCHANGEDB_ReserveInCallback cb,
+                                        void *cb_cls);
+
+  /**
+   * Select withdraw operations from reserves_out above @a serial_id
+   * in monotonically increasing order.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param serial_id highest serial ID to exclude (select strictly larger)
+   * @param cb function to call on each result
+   * @param cb_cls closure for @a cb
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*select_reserves_out_above_serial_id)(void *cls,
+                                         struct TALER_EXCHANGEDB_Session *session,
+                                         uint64_t serial_id,
+                                         TALER_EXCHANGEDB_WithdrawCallback cb,
+                                         void *cb_cls);
+
+
+  /**
+   * Function called to select all wire transfers the exchange
+   * executed or plans to execute.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param serial_id highest serial ID to exclude (select strictly larger)
+   * @param cb function to call for ONE unfinished item
+   * @param cb_cls closure for @a cb
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_NO if there are no entries,
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*select_prepare_above_serial_id)(void *cls,
+                                    struct TALER_EXCHANGEDB_Session *session,
+                                    uint64_t serial_id,
+                                    TALER_EXCHANGEDB_WirePreparationCallback cb,
+                                    void *cb_cls);
 
 };
 

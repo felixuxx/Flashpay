@@ -265,11 +265,11 @@ postgres_create_tables (void *cls)
   /* Table indicating up to which transactions the auditor has
      processed the exchange database.  Used for SELECTing the
      statements to process.  We basically trace the exchange's
-     operations by the 5 primary tables: reserves_in,
-     reserves_out, deposits, refresh_sessions and refunds. The
+     operations by the 6 primary tables: reserves_in,
+     reserves_out, deposits, refresh_sessions, refunds and prewire. The
      other tables of the exchange DB just provide supporting
      evidence which is checked alongside the audit of these
-     five tables.  The 5 indices below include the last serial
+     five tables.  The 6 indices below include the last serial
      ID from the respective tables that we have processed. Thus,
      we need to select those table entries that are strictly
      larger (and process in monotonically increasing order). */
@@ -280,6 +280,7 @@ postgres_create_tables (void *cls)
 	   ",last_deposit_serial_id INT8 NOT NULL"
            ",last_melt_serial_id INT8 NOT NULL"
 	   ",last_refund_serial_id INT8 NOT NULL"
+	   ",last_prewire_serial_id INT8 NOT NULL"
 	   ")");
 
   /* Table with all of the customer reserves and their respective

@@ -4107,7 +4107,7 @@ postgres_wire_prepare_data_mark_finished (void *cls,
 static int
 postgres_wire_prepare_data_get (void *cls,
                                 struct TALER_EXCHANGEDB_Session *session,
-                                TALER_EXCHANGEDB_WirePreparationCallback cb,
+                                TALER_EXCHANGEDB_WirePreparationIterator cb,
                                 void *cb_cls)
 {
   PGresult *result;
