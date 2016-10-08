@@ -756,7 +756,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param denom_pub the public key used for signing coins of this denomination
-   * @param issue issuing information with value, fees and other info about the coin
+   * @param issue issuing information with value, fees and other info about the denomination
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
