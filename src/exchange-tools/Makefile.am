@@ -82,5 +82,4 @@ taler_exchange_dbinit_CPPFLAGS = \
 
 
 EXTRA_DIST = \
-  auditor.conf \
   $(pkgcfg_DATA)
