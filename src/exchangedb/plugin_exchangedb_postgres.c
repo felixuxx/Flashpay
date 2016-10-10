@@ -180,7 +180,6 @@ connect_to_postgres (struct PostgresClosure *pc)
   {
     TALER_LOG_ERROR ("Database connection failed: %s\n",
                      PQerrorMessage (conn));
-    GNUNET_break (0);
     return NULL;
   }
   PQsetNoticeReceiver (conn,

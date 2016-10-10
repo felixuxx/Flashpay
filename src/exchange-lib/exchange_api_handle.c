@@ -554,7 +554,12 @@ decode_keys_json (const json_t *resp_obj,
     EXITIF (NULL == (denom_keys_array =
                      json_object_get (resp_obj, "denoms")));
     EXITIF (JSON_ARRAY != json_typeof (denom_keys_array));
-    EXITIF (0 == (key_data->num_denom_keys = json_array_size (denom_keys_array)));
+    if (0 == (key_data->num_denom_keys = json_array_size (denom_keys_array)))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Found no denomination keys at this exchange\n");
+      goto EXITIF_exit;
+    }
     key_data->denom_keys = GNUNET_new_array (key_data->num_denom_keys,
                                              struct TALER_EXCHANGE_DenomPublicKey);
     index = 0;

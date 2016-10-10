@@ -3047,6 +3047,8 @@ main (int argc,
   struct GNUNET_OS_Process *proc;
   struct GNUNET_OS_Process *exchanged;
   struct GNUNET_SIGNAL_Context *shc_chld;
+  enum GNUNET_OS_ProcessStatusType type;
+  unsigned long code;
 
   GNUNET_log_setup ("test-exchange-api",
                     "WARNING",
@@ -3071,8 +3073,30 @@ main (int argc,
                                   "-c", "test_exchange_api.conf",
                                   "-r",
                                   NULL);
-  GNUNET_OS_process_wait (proc);
+  if (GNUNET_SYSERR ==
+      GNUNET_OS_process_wait_status (proc,
+                                     &type,
+                                     &code))
+  {
+    GNUNET_break (0);
+    GNUNET_OS_process_destroy (proc);
+    return 1;
+  }
   GNUNET_OS_process_destroy (proc);
+  if ( (type == GNUNET_OS_PROCESS_EXITED) &&
+       (0 != code) )
+  {
+    fprintf (stderr,
+             "Failed to setup database\n");
+    return 77;
+  }
+  if ( (type != GNUNET_OS_PROCESS_EXITED) ||
+       (0 != code) )
+  {
+    fprintf (stderr,
+             "Unexpected error running taler-exchange-dbinit!\n");
+    return 1;
+  }
   exchanged = GNUNET_OS_start_process (GNUNET_NO,
                                        GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
@@ -3081,7 +3105,8 @@ main (int argc,
                                        "-c", "test_exchange_api.conf",
                                        NULL);
   /* give child time to start and bind against the socket */
-  fprintf (stderr, "Waiting for taler-exchange-httpd to be ready");
+  fprintf (stderr,
+           "Waiting for taler-exchange-httpd to be ready");
   do
     {
       fprintf (stderr, ".");
