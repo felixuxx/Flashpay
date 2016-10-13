@@ -68,6 +68,10 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   struct TALER_Amount fee_melt;
   struct TALER_Amount total_melt;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "melt request for session %s\n",
+              GNUNET_h2s (session_hash));
+
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (TEH_exchange_currency_string,
                                         &total_cost));
@@ -600,6 +604,10 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
   struct TALER_TransferPrivateKeyP transfer_privs[TALER_CNC_KAPPA - 1];
   unsigned int i;
   int res;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "reveal request for session %s\n",
+              GNUNET_h2s (session_hash));
 
   res = GNUNET_OK;
   for (i = 0; i < TALER_CNC_KAPPA - 1; i++)
