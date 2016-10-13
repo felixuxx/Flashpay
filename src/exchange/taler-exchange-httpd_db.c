@@ -1508,13 +1508,11 @@ TEH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
                    sizeof (struct GNUNET_HashCode)))
   {
     GNUNET_break_op (0);
-    ret = (MHD_YES ==
-           TEH_RESPONSE_reply_refresh_reveal_missmatch (connection,
-                                                        &refresh_session,
-                                                        commit_coins,
-                                                        denom_pubs,
-                                                        &gamma_tp))
-      ? GNUNET_NO : GNUNET_SYSERR;
+    ret = TEH_RESPONSE_reply_refresh_reveal_missmatch (connection,
+                                                       &refresh_session,
+                                                       commit_coins,
+                                                       denom_pubs,
+                                                       &gamma_tp);
     for (j=0;j<refresh_session.num_newcoins;j++)
     {
       GNUNET_free (commit_coins[j].coin_ev);
