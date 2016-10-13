@@ -930,7 +930,7 @@ refresh_check_melt (struct MHD_Connection *connection,
   if (TALER_amount_cmp (&coin_value,
                         &spent) < 0)
   {
-    GNUNET_assert (GNUNET_OK ==
+    GNUNET_assert (GNUNET_SYSERR !=
                    TALER_amount_subtract (&coin_residual,
                                           &spent,
                                           &coin_details->melt_amount_with_fee));
