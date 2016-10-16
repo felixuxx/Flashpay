@@ -921,6 +921,29 @@ postgres_prepare (PGconn *db_conn)
            " )",
            3, NULL);
 
+  /* Fetch an existing deposit request, used to ensure idempotency
+     during /deposit processing. Used in #postgres_have_deposit(). */
+  PREPARE ("audit_get_deposits_incr",
+           "SELECT"
+           " amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           ",timestamp"
+	   ",merchant_pub"
+	   ",coin_pub"
+	   ",coin_sig"
+	   ",transaction_id"
+           ",refund_deadline"
+           ",wire_deadline"
+           ",h_contract"
+           ",wire"
+           " FROM deposits"
+           " WHERE ("
+           "  (deposit_serial_id>=$1)"
+           " )"
+	   " ORDER BY deposit_serial_id",
+           1, NULL);
+
   /* Fetch an existing deposit request.
      Used in #postgres_wire_lookup_deposit_wtid(). */
   PREPARE ("get_deposit_for_wtid",
@@ -1407,7 +1430,7 @@ postgres_insert_denomination_info (void *cls,
                                                 &issue->properties.fee_refresh));
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency_nbo (&issue->properties.value,
-                                                &issue->properties.fee_refund));
+                                               &issue->properties.fee_refund));
 
   result = GNUNET_PQ_exec_prepared (session->conn,
                                    "denomination_insert",
@@ -4262,6 +4285,40 @@ postgres_select_deposits_above_serial_id (void *cls,
                                           TALER_EXCHANGEDB_DepositCallback cb,
                                           void *cb_cls)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "audit_get_deposits_incr",
+                                   params);
+  if (PGRES_COMMAND_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  int nrows;
+  int i;
+
+  nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "audit_get_deposit_incr() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  for (i=0;i<nrows;i++)
+  {
+
+  }
+
+  PQclear (result);
+  return GNUNET_OK;
+
   GNUNET_break (0); // FIXME: not implemented
   return GNUNET_SYSERR;
 }
