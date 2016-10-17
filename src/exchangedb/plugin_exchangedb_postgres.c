@@ -627,6 +627,23 @@ postgres_prepare (PGconn *db_conn)
            "($1, $2, $3, $4, $5, $6, $7);",
            7, NULL);
 
+
+  /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
+     transactions for reserves with serial id '\geq' the given parameter */
+  PREPARE ("audit_reserves_in_get_transactions_incr",
+           "SELECT"
+           " reserve_pub"
+           ",credit_val"
+           ",credit_frac"
+           ",credit_curr"
+           ",execution_date"
+           ",sender_account_details"
+           ",transfer_details"
+           " FROM reserves_in"
+           " WHERE reserve_in_serial_id>=$1"
+           " ORDER BY reserve_in_serial_id",
+           1, NULL);
+
   /* Used in #postgres_get_reserve_history() to obtain inbound transactions
      for a reserve */
   PREPARE ("reserves_in_get_transactions",
@@ -707,6 +724,23 @@ postgres_prepare (PGconn *db_conn)
            " WHERE reserve_pub=$1;",
            1, NULL);
 
+  /* Used in #postgres_select_reserves_out_above_serial_id() */
+  PREPARE ("audit_get_reserves_out_incr",
+           "SELECT"
+           " h_blind_ev"
+           ",denom_pub"
+           ",denom_sig"
+           ",reserve_sig"
+           ",reserve_pub"
+           ",execution_date"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           " FROM reserves_out"
+           " WHERE reserve_out_serial_id>=$1"
+           " ORDER BY reserve_out_serial_id ASC",
+           1, NULL);
+
   /* Used in #postgres_get_refresh_session() to fetch
      high-level information about a refresh session */
   PREPARE ("get_refresh_session",
@@ -725,6 +759,22 @@ postgres_prepare (PGconn *db_conn)
            "    JOIN known_coins ON (refresh_sessions.old_coin_pub = known_coins.coin_pub)"
            "    JOIN denominations denom USING (denom_pub)"
            " WHERE session_hash=$1 ",
+           1, NULL);
+
+  /* Used in #postgres_select_refreshs_above_serial_id() to fetch
+     refresh session with id '\geq' the given parameter */
+  PREPARE ("audit_get_refresh_sessions_incr",
+           "SELECT"
+           " old_coin_pub"
+           ",old_coin_sig"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           ",num_newcoins"
+           ",noreveal_index"
+           " FROM refresh_sessions"
+           " WHERE melt_serial_id>=$1"
+           " ORDER BY melt_serial_id ASC",
            1, NULL);
 
   /* Used in #postgres_create_refresh_session() to store
@@ -802,6 +852,23 @@ postgres_prepare (PGconn *db_conn)
            " WHERE old_coin_pub=$1",
            1, NULL);
 
+  /* Fetch refunds with rowid '\geq' the given parameter */
+  PREPARE ("audit_get_refunds_incr",
+           "SELECT"
+           " merchant_pub"
+           ",merchant_sig"
+           ",h_contract"
+           ",transaction_id"
+           ",rtransaction_id"
+           ",coin_pub"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",amount_with_fee_curr"
+           " FROM refunds"
+           " WHERE refund_serial_id>=$1"
+           " ORDER BY refund_serial_id ASC",
+           1, NULL);
+
   /* Query the 'refunds' by coin public key */
   PREPARE ("get_refunds_by_coin",
            "SELECT"
@@ -821,6 +888,7 @@ postgres_prepare (PGconn *db_conn)
            "    JOIN denominations denom USING (denom_pub)"
            " WHERE coin_pub=$1",
            1, NULL);
+
 
 
   /* Used in #postgres_insert_transfer_public_key() to
@@ -921,8 +989,7 @@ postgres_prepare (PGconn *db_conn)
            " )",
            3, NULL);
 
-  /* Fetch an existing deposit request, used to ensure idempotency
-     during /deposit processing. Used in #postgres_have_deposit(). */
+  /* Fetch deposits with rowid '\geq' the given parameter */
   PREPARE ("audit_get_deposits_incr",
            "SELECT"
            " amount_with_fee_val"
@@ -937,11 +1004,12 @@ postgres_prepare (PGconn *db_conn)
            ",wire_deadline"
            ",h_contract"
            ",wire"
+           ",done"
            " FROM deposits"
            " WHERE ("
            "  (deposit_serial_id>=$1)"
            " )"
-	   " ORDER BY deposit_serial_id",
+	   " ORDER BY deposit_serial_id ASC",
            1, NULL);
 
   /* Fetch an existing deposit request.
@@ -1207,6 +1275,17 @@ postgres_prepare (PGconn *db_conn)
            " FROM prewire"
            " WHERE finished=true",
            0, NULL);
+
+  /* Used in #postgres_select_prepare_above_serial_id() */
+  PREPARE ("audit_get_wire_incr",
+           "SELECT"
+           ",type"
+           ",buf"
+           " FROM prewire"
+           " WHERE prewire_uuid>=$1"
+           " ORDER BY prewire_uuid ASC",
+           1, NULL);
+
   PREPARE ("gc_denominations",
            "DELETE"
            " FROM denominations"
@@ -4307,20 +4386,62 @@ postgres_select_deposits_above_serial_id (void *cls,
   if (0 == nrows)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "audit_get_deposit_incr() returned 0 matching rows\n");
+                "select_deposits_above_serial_id() returned 0 matching rows\n");
     PQclear (result);
     return GNUNET_NO;
   }
   for (i=0;i<nrows;i++)
   {
+    struct TALER_EXCHANGEDB_Deposit deposit;
+    uint8_t done = 0;
 
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      TALER_PQ_result_spec_amount ("amount_with_fee",
+                                   &deposit.amount_with_fee),
+      GNUNET_PQ_result_spec_absolute_time ("timestamp",
+                                          &deposit.timestamp),
+      GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
+                                            &deposit.merchant_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
+                                           &deposit.coin.coin_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
+                                           &deposit.csig),
+      GNUNET_PQ_result_spec_uint64 ("transaction_id",
+                                    &deposit.transaction_id),
+      GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
+                                           &deposit.refund_deadline),
+      GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
+                                           &deposit.wire_deadline),
+      GNUNET_PQ_result_spec_auto_from_type ("h_contract",
+                                           &deposit.h_contract),
+      TALER_PQ_result_spec_json ("wire",
+                                 &deposit.receiver_wire_account),
+      GNUNET_PQ_result_spec_auto_from_type ("done",
+                                            &done),
+      GNUNET_PQ_result_spec_end
+    };
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    cb (cb_cls,
+        serial_id,
+        &deposit.merchant_pub,
+        &deposit.coin.coin_pub,
+        &deposit.csig,
+        &deposit.amount_with_fee,
+        deposit.transaction_id,
+        &deposit.h_contract,
+        deposit.refund_deadline,
+        deposit.wire_deadline,
+        deposit.receiver_wire_account,
+        done);
   }
-
   PQclear (result);
   return GNUNET_OK;
-
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
 }
 
 
@@ -4343,8 +4464,74 @@ postgres_select_refreshs_above_serial_id (void *cls,
                                           TALER_EXCHANGEDB_RefreshSessionCallback cb,
                                           void *cb_cls)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "audit_get_refresh_sessions_incr",
+                                    params);
+
+  if (PGRES_COMMAND_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  int nrows;
+  int i;
+
+  nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "select_refreshs_above_serial_id() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+
+  for (i=0;i<nrows;i++)
+  {
+    struct TALER_CoinSpendPublicKeyP coin_pub;
+    struct TALER_CoinSpendSignatureP coin_sig;
+    struct TALER_Amount amount_with_fee;
+    uint16_t num_newcoins;
+    uint16_t noreveal_index;
+
+
+
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
+                                           &coin_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
+                                            &coin_sig),
+      TALER_PQ_result_spec_amount ("amount_with_fee",
+                                   &amount_with_fee),
+      GNUNET_PQ_result_spec_uint16 ("num_newcoins",
+                                    &num_newcoins),
+      GNUNET_PQ_result_spec_uint16 ("noreveal_index",
+                                    &noreveal_index),
+      GNUNET_PQ_result_spec_end
+    };
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    cb (cb_cls,
+        serial_id,
+        &coin_pub,
+        &coin_sig,
+        &amount_with_fee,
+        num_newcoins,
+        noreveal_index);
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -4367,8 +4554,72 @@ postgres_select_refunds_above_serial_id (void *cls,
                                          TALER_EXCHANGEDB_RefundCallback cb,
                                          void *cb_cls)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "audit_get_refunds_incr",
+                                    params);
+  if (PGRES_COMMAND_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  int nrows;
+  int i;
+
+  nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "select_refunds_above_serial_id() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  for (i=0;i<nrows;i++)
+  {
+    struct TALER_EXCHANGEDB_Refund refund;
+
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
+                                            &refund.merchant_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("merchant_sig",
+                                           &refund.merchant_sig),
+      GNUNET_PQ_result_spec_auto_from_type ("h_contract",
+                                           &refund.h_contract),
+      GNUNET_PQ_result_spec_uint64 ("transaction_id",
+                                    &refund.transaction_id),
+      GNUNET_PQ_result_spec_uint64 ("rtransaction_id",
+                                    &refund.rtransaction_id),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
+                                           &refund.coin.coin_pub),
+      TALER_PQ_result_spec_amount ("amount_with_fee",
+                                   &refund.refund_amount),
+      GNUNET_PQ_result_spec_end
+    };
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    cb (cb_cls,
+        serial_id,
+        &refund.coin.coin_pub,
+        &refund.merchant_pub,
+        &refund.merchant_sig,
+        &refund.h_contract,
+        refund.transaction_id,
+        refund.rtransaction_id,
+        &refund.refund_amount);
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -4391,8 +4642,72 @@ postgres_select_reserves_in_above_serial_id (void *cls,
                                              TALER_EXCHANGEDB_ReserveInCallback cb,
                                              void *cb_cls)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "audit_reserves_in_get_transactions_incr",
+                                    params);
+  if (PGRES_COMMAND_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  int nrows;
+  int i;
+
+  nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "select_reserves_in_above_serial_id() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+
+  for (i=0;i<nrows;i++)
+  {
+    struct TALER_ReservePublicKeyP reserve_pub;
+    struct TALER_Amount credit;
+    json_t *sender_account_details;
+    json_t *transfer_details;
+    struct GNUNET_TIME_Absolute execution_date;
+
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
+                                            &reserve_pub),
+      TALER_PQ_result_spec_amount ("credit",
+                                   &credit),
+      GNUNET_PQ_result_spec_absolute_time("execution_date",
+                                          &execution_date),
+      TALER_PQ_result_spec_json ("sender_account_details",
+                                 &sender_account_details),                                          
+      TALER_PQ_result_spec_json ("transfer_details",
+                                 &transfer_details),
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    cb (cb_cls,
+        serial_id,
+        &reserve_pub,
+        &credit,
+        sender_account_details,
+        transfer_details,
+        execution_date);
+  }
+
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -4415,8 +4730,79 @@ postgres_select_reserves_out_above_serial_id (void *cls,
                                               TALER_EXCHANGEDB_WithdrawCallback cb,
                                               void *cb_cls)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "audit_get_reserves_out_incr",
+                                    params);
+  if (PGRES_COMMAND_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  int nrows;
+  int i;
+
+  nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "select_reserves_out_above_serial_id() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  for (i=0;i<nrows;i++)
+  {
+    struct GNUNET_HashCode h_blind_ev;
+    struct TALER_DenominationPublicKey denom_pub;
+    struct TALER_DenominationSignature denom_sig;
+    struct TALER_ReservePublicKeyP reserve_pub;
+    struct TALER_ReserveSignatureP reserve_sig;
+    struct GNUNET_TIME_Absolute execution_date;
+    struct TALER_Amount amount_with_fee;
+
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("h_blind_ev",
+                                            &h_blind_ev),
+      GNUNET_PQ_result_spec_auto_from_type ("denom_pub",
+                                            &denom_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("denom_sig",
+                                            &denom_sig),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                            &reserve_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
+                                            &reserve_sig),
+      GNUNET_PQ_result_spec_absolute_time ("execution_date",
+                                           &execution_date),
+      TALER_PQ_result_spec_amount ("amount_with_fee",
+                                   &amount_with_fee),
+      GNUNET_PQ_result_spec_end
+    };
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    cb (cb_cls,
+        serial_id,
+        &h_blind_ev,
+        &denom_pub,
+        &denom_sig,
+        &reserve_pub,
+        &reserve_sig,
+        execution_date,
+        &amount_with_fee);
+  }
+
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
