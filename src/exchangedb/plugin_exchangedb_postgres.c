@@ -1279,8 +1279,9 @@ postgres_prepare (PGconn *db_conn)
   /* Used in #postgres_select_prepare_above_serial_id() */
   PREPARE ("audit_get_wire_incr",
            "SELECT"
-           ",type"
+           " type"
            ",buf"
+           ",finished"
            " FROM prewire"
            " WHERE prewire_uuid>=$1"
            " ORDER BY prewire_uuid ASC",
@@ -4826,8 +4827,69 @@ postgres_select_prepare_above_serial_id (void *cls,
                                          TALER_EXCHANGEDB_WirePreparationCallback cb,
                                          void *cb_cls)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "audit_get_wire_incr",
+                                    params);
+  if (PGRES_COMMAND_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  int nrows;
+  int i;
+
+  nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "select_prepare_above_serial_id() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  for (i=0;i<nrows;i++)
+  {
+    char *wire_method;
+    void *buf;
+    size_t buf_size;
+    uint8_t finished;
+
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_string ("type",
+                                    &wire_method),
+      GNUNET_PQ_result_spec_variable_size ("buf",
+                                           &buf,
+                                           &buf_size),
+      GNUNET_PQ_result_spec_auto_from_type ("finished",
+                                            &finished),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+
+    cb (cb_cls,
+        serial_id,
+        wire_method,
+        buf,
+        buf_size,
+        finished);
+  }
+
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
