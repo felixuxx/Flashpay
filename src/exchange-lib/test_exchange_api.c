@@ -924,7 +924,7 @@ reserve_status_cb (void *cls,
         {
           if (GNUNET_OK !=
               compare_reserve_withdraw_history (&history[j],
-                                             rel))
+                                                rel))
           {
             GNUNET_break (0);
             fail (is);
@@ -1782,9 +1782,9 @@ interpreter_run (void *cls)
                                         &reserve_pub.eddsa_pub);
     cmd->details.reserve_status.wsh
       = TALER_EXCHANGE_reserve_status (exchange,
-                                   &reserve_pub,
-                                   &reserve_status_cb,
-                                   is);
+                                       &reserve_pub,
+                                       &reserve_status_cb,
+                                       is);
     return;
   case OC_WITHDRAW_SIGN:
     GNUNET_assert (NULL !=
