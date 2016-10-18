@@ -48,12 +48,9 @@
  */
 static int
 verify_and_execute_deposit (struct MHD_Connection *connection,
-                            const struct TALER_EXCHANGEDB_Deposit *deposit)
+			    const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
-  struct TEH_KS_StateHandle *key_state;
   struct TALER_DepositRequestPS dr;
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
-  struct TALER_Amount fee_deposit;
 
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
   dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
@@ -76,39 +73,9 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   {
     TALER_LOG_WARNING ("Invalid signature on /deposit request\n");
     return TEH_RESPONSE_reply_signature_invalid (connection,
+						 TALER_EC_DEPOSIT_COIN_SIGNATURE_INVALID,
                                                  "coin_sig");
   }
-  /* check denomination exists and is valid */
-  key_state = TEH_KS_acquire ();
-  dki = TEH_KS_denomination_key_lookup (key_state,
-                                        &deposit->coin.denom_pub,
-					TEH_KS_DKU_DEPOSIT);
-  if (NULL == dki)
-  {
-    TEH_KS_release (key_state);
-    TALER_LOG_WARNING ("Unknown denomination key in /deposit request\n");
-    return TEH_RESPONSE_reply_arg_unknown (connection,
-                                           "denom_pub");
-  }
-  /* check coin signature */
-  if (GNUNET_YES !=
-      TALER_test_coin_valid (&deposit->coin))
-  {
-    TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
-    TEH_KS_release (key_state);
-    return TEH_RESPONSE_reply_signature_invalid (connection,
-                                                 "ub_sig");
-  }
-  TALER_amount_ntoh (&fee_deposit,
-                     &dki->issue.properties.fee_deposit);
-  if (0 < TALER_amount_cmp (&fee_deposit,
-                            &deposit->amount_with_fee))
-  {
-    TEH_KS_release (key_state);
-    return TEH_RESPONSE_reply_external_error (connection,
-                                              "deposited amount smaller than depositing fee");
-  }
-  TEH_KS_release (key_state);
 
   return TEH_DB_execute_deposit (connection,
                                  deposit);
@@ -141,12 +108,11 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   json_t *wire;
   struct TALER_EXCHANGEDB_Deposit deposit;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
-  struct TEH_KS_StateHandle *ks;
+  struct TEH_KS_StateHandle *key_state;
   struct GNUNET_HashCode my_h_wire;
-  struct TALER_Amount amount;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("wire", &wire),
-    TALER_JSON_spec_amount ("f", &amount),
+    TALER_JSON_spec_amount ("f", &deposit.amount_with_fee),
     TALER_JSON_spec_denomination_public_key ("denom_pub", &deposit.coin.denom_pub),
     TALER_JSON_spec_denomination_signature ("ub_sig", &deposit.coin.denom_sig),
     GNUNET_JSON_spec_fixed_auto ("coin_pub", &deposit.coin.coin_pub),
@@ -180,11 +146,13 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   if (GNUNET_NO == res)
     return MHD_YES; /* failure */
 
+  deposit.receiver_wire_account = wire;
   if (deposit.refund_deadline.abs_value_us > deposit.wire_deadline.abs_value_us)
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_arg_invalid (connection,
+					   TALER_EC_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE,
                                            "refund_deadline");
   }
 
@@ -194,6 +162,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   {
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_arg_unknown (connection,
+					   TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT,
                                            "wire");
   }
   if (GNUNET_OK !=
@@ -203,6 +172,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     TALER_LOG_WARNING ("Failed to parse JSON wire format specification for /deposit request\n");
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_arg_invalid (connection,
+					   TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_JSON,
                                            "wire");
   }
   if (0 != memcmp (&deposit.h_wire,
@@ -212,32 +182,48 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     /* Client hashed contract differently than we did, reject */
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_arg_invalid (connection,
+					   TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_CONTRACT_HASH_CONFLICT,
                                            "H_wire");
   }
-  ks = TEH_KS_acquire ();
-  dki = TEH_KS_denomination_key_lookup (ks,
+
+  /* check denomination exists and is valid */
+  key_state = TEH_KS_acquire ();
+  dki = TEH_KS_denomination_key_lookup (key_state,
                                         &deposit.coin.denom_pub,
 					TEH_KS_DKU_DEPOSIT);
   if (NULL == dki)
   {
-    TEH_KS_release (ks);
-    GNUNET_JSON_parse_free (spec);
+    TEH_KS_release (key_state);
+    TALER_LOG_WARNING ("Unknown denomination key in /deposit request\n");
     return TEH_RESPONSE_reply_arg_unknown (connection,
+					   TALER_EC_DEPOSIT_DENOMINATION_KEY_UNKNOWN,
                                            "denom_pub");
   }
   TALER_amount_ntoh (&deposit.deposit_fee,
                      &dki->issue.properties.fee_deposit);
-  TEH_KS_release (ks);
-  deposit.receiver_wire_account = wire;
-  deposit.amount_with_fee = amount;
-  if (-1 == TALER_amount_cmp (&deposit.amount_with_fee,
-                              &deposit.deposit_fee))
+  /* check coin signature */
+  if (GNUNET_YES !=
+      TALER_test_coin_valid (&deposit.coin))
   {
-    /* Total amount smaller than fee, invalid */
-    GNUNET_JSON_parse_free (spec);
-    return TEH_RESPONSE_reply_arg_invalid (connection,
-                                           "f");
+    TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
+    TEH_KS_release (key_state);
+    return TEH_RESPONSE_reply_signature_invalid (connection,
+						 TALER_EC_DEPOSIT_DENOMINATION_SIGNATURE_INVALID,
+                                                 "ub_sig");
   }
+  TALER_amount_ntoh (&deposit.deposit_fee,
+                     &dki->issue.properties.fee_deposit);
+  TEH_KS_release (key_state);
+
+  if (0 < TALER_amount_cmp (&deposit.deposit_fee,
+                            &deposit.amount_with_fee))
+  {
+    return TEH_RESPONSE_reply_external_error (connection,
+					      TALER_EC_DEPOSIT_NEGATIVE_VALUE_AFTER_FEE,
+                                              "deposited amount smaller than depositing fee");
+  }
+  TEH_KS_release (key_state);
+  
   res = verify_and_execute_deposit (connection,
                                     &deposit);
   GNUNET_JSON_parse_free (spec);

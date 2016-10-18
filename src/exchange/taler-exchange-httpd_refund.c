@@ -69,14 +69,16 @@ verify_and_execute_refund (struct MHD_Connection *connection,
   {
     GNUNET_break_op (0);
     return TEH_RESPONSE_reply_arg_invalid (connection,
+					   TALER_EC_REFUND_FEE_CURRENCY_MISSMATCH,
                                            "refund_fee");
   }
   if (-1 == TALER_amount_cmp (&refund->refund_amount,
                               &refund->refund_fee) )
   {
     GNUNET_break_op (0);
-    return TEH_RESPONSE_reply_signature_invalid (connection,
-                                                 "refund_amount");
+    return TEH_RESPONSE_reply_arg_invalid (connection,
+					   TALER_EC_REFUND_FEE_ABOVE_AMOUNT,
+					   "refund_amount");
   }
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
@@ -86,6 +88,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
   {
     TALER_LOG_WARNING ("Invalid signature on /refund request\n");
     return TEH_RESPONSE_reply_signature_invalid (connection,
+						 TALER_EC_REFUND_MERCHANT_SIGNATURE_INVALID,
                                                  "merchant_sig");
   }
   return TEH_DB_execute_refund (connection,

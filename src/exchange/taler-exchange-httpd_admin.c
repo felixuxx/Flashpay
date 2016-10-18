@@ -89,6 +89,7 @@ TEH_ADMIN_handler_admin_add_incoming (struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_arg_unknown (connection,
+					   TALER_EC_ADMIN_ADD_INCOMING_WIREFORMAT_UNSUPPORTED,
                                            "sender_account_details");
   }
   if (0 != strcasecmp (amount.currency,
@@ -100,6 +101,7 @@ TEH_ADMIN_handler_admin_add_incoming (struct TEH_RequestHandler *rh,
                 amount.currency);
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_arg_invalid (connection,
+					   TALER_EC_ADMIN_ADD_INCOMING_CURRENCY_UNSUPPORTED,
                                            "amount:currency");
   }
   res = TEH_DB_execute_admin_add_incoming (connection,

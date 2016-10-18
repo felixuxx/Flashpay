@@ -1009,7 +1009,7 @@ reserve_withdraw_cb (void *cls,
     cmd->details.reserve_withdraw.sig.rsa_signature
       = GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
     break;
-  case MHD_HTTP_PAYMENT_REQUIRED:
+  case MHD_HTTP_FORBIDDEN:
     /* nothing to check */
     break;
   default:
@@ -2737,7 +2737,7 @@ run (void *cls)
     /* Try to overdraw funds ... */
     { .oc = OC_WITHDRAW_SIGN,
       .label = "withdraw-coin-2",
-      .expected_response_code = MHD_HTTP_PAYMENT_REQUIRED,
+      .expected_response_code = MHD_HTTP_FORBIDDEN,
       .details.reserve_withdraw.reserve_reference = "create-reserve-1",
       .details.reserve_withdraw.amount = "EUR:5" },
 

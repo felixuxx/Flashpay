@@ -132,17 +132,20 @@ TEH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
  * Send a response indicating an invalid argument.
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @param param_name the parameter that is invalid
  * @return a MHD result code
  */
 int
 TEH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
+				enum TALER_ErrorCode ec,
                                 const char *param_name)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       "{s:s, s:s}",
+                                       "{s:s, s:I, s:s}",
                                        "error", "invalid parameter",
+				       "code", (json_int_t) ec,
                                        "parameter", param_name);
 }
 
@@ -153,17 +156,20 @@ TEH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
  * denomination key).
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @param param_name the parameter that is invalid
  * @return a MHD result code
  */
 int
 TEH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
+				enum TALER_ErrorCode ec,
                                 const char *param_name)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
-                                       "{s:s, s:s}",
+                                       "{s:s, s:I, s:s}",
                                        "error", "unknown entity referenced",
+				       "code", (json_int_t) ec,
                                        "parameter", param_name);
 }
 
@@ -172,17 +178,20 @@ TEH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
  * Send a response indicating an invalid signature.
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @param param_name the parameter that is invalid
  * @return a MHD result code
  */
 int
 TEH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
+				      enum TALER_ErrorCode ec,
                                       const char *param_name)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_UNAUTHORIZED,
-                                       "{s:s, s:s}",
+                                       "{s:s, s:I, s:s}",
                                        "error", "invalid signature",
+				       "code", (json_int_t) ec,
                                        "parameter", param_name);
 }
 
@@ -191,17 +200,20 @@ TEH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
  * Send a response indicating a missing argument.
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @param param_name the parameter that is missing
  * @return a MHD result code
  */
 int
 TEH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
+				enum TALER_ErrorCode ec,
                                 const char *param_name)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       "{ s:s, s:s}",
+                                       "{ s:s, s:I, s:s}",
                                        "error", "missing parameter",
+				       "code", (json_int_t) ec,
                                        "parameter", param_name);
 }
 
@@ -210,17 +222,20 @@ TEH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
  * Send a response indicating permission denied.
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @param hint hint about why access was denied
  * @return a MHD result code
  */
 int
 TEH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
+				      enum TALER_ErrorCode ec,
                                       const char *hint)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_FORBIDDEN,
-                                       "{s:s, s:s}",
+                                       "{s:s, s:I, s:s}",
                                        "error", "permission denied",
+				       "code", (json_int_t) ec,
                                        "hint", hint);
 }
 
@@ -229,17 +244,20 @@ TEH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
  * Send a response indicating an internal error.
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @param hint hint about the internal error's nature
  * @return a MHD result code
  */
 int
 TEH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
+				   enum TALER_ErrorCode ec,
                                    const char *hint)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       "{s:s, s:s}",
+                                       "{s:s, s:I, s:s}",
                                        "error", "internal error",
+				       "code", (json_int_t) ec,
                                        "hint", hint);
 }
 
@@ -248,17 +266,20 @@ TEH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
  * Send a response indicating an external error.
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @param hint hint about the error's nature
  * @return a MHD result code
  */
 int
 TEH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
+				   enum TALER_ErrorCode ec,
                                    const char *hint)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       "{s:s, s:s}",
+                                       "{s:s, s:I, s:s}",
                                        "error", "client error",
+				       "code", (json_int_t) ec,
                                        "hint", hint);
 }
 
@@ -268,15 +289,18 @@ TEH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
  * transaction (concurrent interference).
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @return a MHD result code
  */
 int
-TEH_RESPONSE_reply_commit_error (struct MHD_Connection *connection)
+TEH_RESPONSE_reply_commit_error (struct MHD_Connection *connection,
+				 enum TALER_ErrorCode ec)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       "{s:s}",
-                                       "error", "commit failure");
+                                       "{s:s, s:I}",
+                                       "error", "commit failure",
+				       "code", (json_int_t) ec);
 }
 
 
@@ -285,12 +309,15 @@ TEH_RESPONSE_reply_commit_error (struct MHD_Connection *connection)
  * database.
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @return a MHD result code
  */
 int
-TEH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection)
+TEH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection,
+				      enum TALER_ErrorCode ec)
 {
   return TEH_RESPONSE_reply_internal_error (connection,
+					    ec,
                                             "Failed to connect to database");
 }
 
@@ -332,9 +359,9 @@ TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       "{s:s}",
-                                       "error",
-                                       "invalid json");
+                                       "{s:s, s:I}",
+                                       "error", "invalid json",
+				       "code", (json_int_t) TALER_EC_JSON_INVALID);
 }
 
 
@@ -556,11 +583,13 @@ TEH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection
 
   history = compile_transaction_history (tl);
   if (NULL == history)
-    return TEH_RESPONSE_reply_internal_db_error (connection);
+    return TEH_RESPONSE_reply_internal_db_error (connection,
+						 TALER_EC_DEPOSIT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS);
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:o}",
                                        "error", "insufficient funds",
+				       "code", TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS,
                                        "history", history);
 }
 
@@ -696,8 +725,9 @@ TEH_RESPONSE_reply_refund_conflict (struct MHD_Connection *connection,
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_CONFLICT,
-                                       "{s:s, s:o}",
+                                       "{s:s, s:I, s:o}",
                                        "status", "conflicting refund",
+				       "code", TALER_EC_REFUND_CONFLICT,
                                        "history", compile_transaction_history (tl));
 }
 
@@ -708,17 +738,19 @@ TEH_RESPONSE_reply_refund_conflict (struct MHD_Connection *connection,
  *
  * @param connection connection to the client
  * @param response_code response code to generate
+ * @param ec taler error code to include
  * @return MHD result code
  */
 int
 TEH_RESPONSE_reply_refund_failure (struct MHD_Connection *connection,
-                                   unsigned int response_code)
+                                   unsigned int response_code,
+				   enum TALER_ErrorCode ec)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        response_code,
-                                       "{s:s}",
-                                       "error",
-                                       "no details");
+                                       "{s:s, s:I}",
+                                       "status", "refund failure",
+				       "code", (json_int_t) ec);
 }
 
 
@@ -779,6 +811,7 @@ TEH_RESPONSE_reply_reserve_status_success (struct MHD_Connection *connection,
                                           &balance);
   if (NULL == json_history)
     return TEH_RESPONSE_reply_internal_error (connection,
+					      TALER_EC_RESERVE_STATUS_DB_ERROR,
                                               "balance calculation failure");
   json_balance = TALER_JSON_from_amount (&balance);
   return TEH_RESPONSE_reply_json_pack (connection,
@@ -810,12 +843,14 @@ TEH_RESPONSE_reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *c
                                           &balance);
   if (NULL == json_history)
     return TEH_RESPONSE_reply_internal_error (connection,
+					      TALER_EC_WITHDRAW_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
                                               "balance calculation failure");
   json_balance = TALER_JSON_from_amount (&balance);
   return TEH_RESPONSE_reply_json_pack (connection,
-                                       MHD_HTTP_PAYMENT_REQUIRED,
-                                       "{s:s, s:o, s:o}",
+                                       MHD_HTTP_FORBIDDEN,
+                                       "{s:s, s:I, s:o, s:o}",
                                        "error", "Insufficient funds",
+				       "code", TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS,
                                        "balance", json_balance,
                                        "history", json_history);
 }
@@ -830,7 +865,7 @@ TEH_RESPONSE_reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *c
  */
 int
 TEH_RESPONSE_reply_reserve_withdraw_success (struct MHD_Connection *connection,
-                                          const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
+					     const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
 {
   json_t *sig_json;
 
@@ -869,12 +904,15 @@ TEH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *conne
 
   history = compile_transaction_history (tl);
   if (NULL == history)
-    return TEH_RESPONSE_reply_internal_db_error (connection);
+    return TEH_RESPONSE_reply_internal_db_error (connection,
+						 TALER_EC_REFRESH_MELT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS);
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_FORBIDDEN,
-                                       "{s:s, s:o, s:o, s:o, s:o, s:o}",
+                                       "{s:s, s:I, s:o, s:o, s:o, s:o, s:o}",
                                        "error",
-                                       "insufficient funds",
+				       "insufficient funds",
+				       "code",
+				       TALER_EC_REFRESH_MELT_INSUFFICIENT_FUNDS,
                                        "coin_pub",
                                        GNUNET_JSON_from_data_auto (coin_pub),
                                        "original_value",
@@ -1011,8 +1049,9 @@ TEH_RESPONSE_reply_refresh_reveal_missmatch (struct MHD_Connection *connection,
   }
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_CONFLICT,
-                                       "{s:s, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:i}",
+                                       "{s:s, s:I, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:i}",
                                        "error", "commitment violation",
+				       "code", (json_int_t) TALER_EC_REFRESH_REVEAL_COMMITMENT_VIOLATION,
                                        "coin_sig", GNUNET_JSON_from_data_auto (&session->melt.coin_sig),
                                        "coin_pub", GNUNET_JSON_from_data_auto (&session->melt.coin.coin_pub),
                                        "melt_amount_with_fee", TALER_JSON_from_amount (&session->melt.amount_with_fee),
@@ -1089,15 +1128,18 @@ TEH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
  * 404 reply.
  *
  * @param connection connection to the client
+ * @param ec Taler error code
  * @return MHD result code
  */
 int
-TEH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection)
+TEH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection,
+					enum TALER_ErrorCode ec)
 {
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_NOT_FOUND,
-                                       "{s:s}",
-                                       "error", "Deposit unknown");
+                                       "{s:s, s:I}",
+                                       "error", "Deposit unknown",
+				       "code", ec);
 }
 
 
