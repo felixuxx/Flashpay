@@ -587,9 +587,9 @@ TEH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection
 						 TALER_EC_DEPOSIT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS);
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_FORBIDDEN,
-                                       "{s:s, s:o}",
+                                       "{s:s, s:I, s:o}",
                                        "error", "insufficient funds",
-				       "code", TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS,
+				       "code", (json_int_t) TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS,
                                        "history", history);
 }
 
@@ -727,7 +727,7 @@ TEH_RESPONSE_reply_refund_conflict (struct MHD_Connection *connection,
                                        MHD_HTTP_CONFLICT,
                                        "{s:s, s:I, s:o}",
                                        "status", "conflicting refund",
-				       "code", TALER_EC_REFUND_CONFLICT,
+				       "code", (json_int_t) TALER_EC_REFUND_CONFLICT,
                                        "history", compile_transaction_history (tl));
 }
 
@@ -850,7 +850,7 @@ TEH_RESPONSE_reply_reserve_withdraw_insufficient_funds (struct MHD_Connection *c
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:I, s:o, s:o}",
                                        "error", "Insufficient funds",
-				       "code", TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS,
+				       "code", (json_int_t) TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS,
                                        "balance", json_balance,
                                        "history", json_history);
 }
@@ -912,7 +912,7 @@ TEH_RESPONSE_reply_refresh_melt_insufficient_funds (struct MHD_Connection *conne
                                        "error",
 				       "insufficient funds",
 				       "code",
-				       TALER_EC_REFRESH_MELT_INSUFFICIENT_FUNDS,
+				       (json_int_t) TALER_EC_REFRESH_MELT_INSUFFICIENT_FUNDS,
                                        "coin_pub",
                                        GNUNET_JSON_from_data_auto (coin_pub),
                                        "original_value",
@@ -1139,7 +1139,7 @@ TEH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection,
                                        MHD_HTTP_NOT_FOUND,
                                        "{s:s, s:I}",
                                        "error", "Deposit unknown",
-				       "code", ec);
+				       "code", (json_int_t) ec);
 }
 
 
