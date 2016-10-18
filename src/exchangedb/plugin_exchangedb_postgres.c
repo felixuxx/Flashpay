@@ -20,6 +20,7 @@
  * @author Florian Dold
  * @author Christian Grothoff
  * @author Sree Harsha Totakura
+ * @author Marcello Stanisci
  */
 #include "platform.h"
 #include "taler_pq_lib.h"
