@@ -218,11 +218,11 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   if (0 < TALER_amount_cmp (&deposit.deposit_fee,
                             &deposit.amount_with_fee))
   {
+    GNUNET_break_op (0);
     return TEH_RESPONSE_reply_external_error (connection,
 					      TALER_EC_DEPOSIT_NEGATIVE_VALUE_AFTER_FEE,
                                               "deposited amount smaller than depositing fee");
   }
-  TEH_KS_release (key_state);
   
   res = verify_and_execute_deposit (connection,
                                     &deposit);
