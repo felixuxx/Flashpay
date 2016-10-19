@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014,2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -138,6 +138,7 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
     GNUNET_JSON_parse_free (spec);
     TEH_KS_release (ks);
     return TEH_RESPONSE_reply_arg_unknown (connection,
+					   TALER_EC_WITHDRAW_DENOMINATION_KEY_NOT_FOUND,
                                            "denom_pub");
   }
   TALER_amount_ntoh (&amount,
@@ -171,6 +172,7 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
     TALER_LOG_WARNING ("Client supplied invalid signature for /reserve/withdraw request\n");
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_signature_invalid (connection,
+						 TALER_EC_WITHDRAW_RESERVE_SIGNATURE_INVALID,
                                                  "reserve_sig");
   }
   res = TEH_DB_execute_reserve_withdraw (connection,
