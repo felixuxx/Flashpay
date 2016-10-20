@@ -4372,9 +4372,9 @@ postgres_select_deposits_above_serial_id (void *cls,
   };
   PGresult *result;
   result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "audit_get_deposits_incr",
-                                   params);
-  if (PGRES_COMMAND_OK !=
+                                    "audit_get_deposits_incr",
+                                    params);
+  if (PGRES_TUPLES_OK !=
       PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
@@ -4475,7 +4475,7 @@ postgres_select_refreshs_above_serial_id (void *cls,
                                     "audit_get_refresh_sessions_incr",
                                     params);
 
-  if (PGRES_COMMAND_OK !=
+  if (PGRES_TUPLES_OK !=
       PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
@@ -4502,12 +4502,10 @@ postgres_select_refreshs_above_serial_id (void *cls,
     uint16_t num_newcoins;
     uint16_t noreveal_index;
 
-
-
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
-                                           &coin_pub),
-      GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
+      GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
+                                            &coin_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("old_coin_sig",
                                             &coin_sig),
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &amount_with_fee),
@@ -4564,7 +4562,7 @@ postgres_select_refunds_above_serial_id (void *cls,
   result = GNUNET_PQ_exec_prepared (session->conn,
                                     "audit_get_refunds_incr",
                                     params);
-  if (PGRES_COMMAND_OK !=
+  if (PGRES_TUPLES_OK !=
       PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
@@ -4652,7 +4650,7 @@ postgres_select_reserves_in_above_serial_id (void *cls,
   result = GNUNET_PQ_exec_prepared (session->conn,
                                     "audit_reserves_in_get_transactions_incr",
                                     params);
-  if (PGRES_COMMAND_OK !=
+  if (PGRES_TUPLES_OK !=
       PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
@@ -4680,7 +4678,7 @@ postgres_select_reserves_in_above_serial_id (void *cls,
     struct GNUNET_TIME_Absolute execution_date;
 
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                             &reserve_pub),
       TALER_PQ_result_spec_amount ("credit",
                                    &credit),
@@ -4740,7 +4738,7 @@ postgres_select_reserves_out_above_serial_id (void *cls,
   result = GNUNET_PQ_exec_prepared (session->conn,
                                     "audit_get_reserves_out_incr",
                                     params);
-  if (PGRES_COMMAND_OK !=
+  if (PGRES_TUPLES_OK !=
       PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
@@ -4771,10 +4769,10 @@ postgres_select_reserves_out_above_serial_id (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("h_blind_ev",
                                             &h_blind_ev),
-      GNUNET_PQ_result_spec_auto_from_type ("denom_pub",
-                                            &denom_pub),
-      GNUNET_PQ_result_spec_auto_from_type ("denom_sig",
-                                            &denom_sig),
+      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+                                            &denom_pub.rsa_public_key),
+      GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
+                                           &denom_sig.rsa_signature),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                             &reserve_pub),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
@@ -4837,7 +4835,7 @@ postgres_select_prepare_above_serial_id (void *cls,
   result = GNUNET_PQ_exec_prepared (session->conn,
                                     "audit_get_wire_incr",
                                     params);
-  if (PGRES_COMMAND_OK !=
+  if (PGRES_TUPLES_OK !=
       PQresultStatus (result))
   {
     BREAK_DB_ERR (result);
