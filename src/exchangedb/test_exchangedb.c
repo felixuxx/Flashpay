@@ -78,6 +78,12 @@ dead_prepare_cb (void *cls,
   GNUNET_assert (0);
 }
 
+/**
+ * Counter used in auditor-related db functions. Used to count
+ * expected rows.
+ */
+unsigned int auditor_row_cnt;
+
 
 /**
  * Callback that is called with wire prepare data
@@ -122,6 +128,7 @@ audit_wire_cb (void *cls,
                size_t buf_size,
                int finished)
 {
+  auditor_row_cnt++;
   return;
 }
 
@@ -155,12 +162,14 @@ test_wire_prepare (struct TALER_EXCHANGEDB_Session *session)
                                          session,
                                          &dead_prepare_cb,
                                          NULL));
+  auditor_row_cnt = 0;
   FAILIF (GNUNET_OK !=
           plugin->select_prepare_above_serial_id (plugin->cls,
 	                                          session,
 						  0,
 						  &audit_wire_cb,
 						  NULL));
+  FAILIF (1 != auditor_row_cnt);
   return GNUNET_OK;
  drop:
   return GNUNET_SYSERR;
@@ -521,6 +530,7 @@ audit_refresh_session_cb (void *cls,
                           uint16_t num_newcoins,
                           uint16_t noreveal_index)
 {
+  auditor_row_cnt++;
   return GNUNET_OK;
 }
 
@@ -597,11 +607,13 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
                                                     &session_hash,
                                                     &ret_refresh_session));
 
+  auditor_row_cnt = 0;
   FAILIF (GNUNET_OK != plugin->select_refreshs_above_serial_id (plugin->cls,
-                                                               session,
-							       0,
-							       &audit_refresh_session_cb,
-							       NULL));
+                                                                session,
+						 	        0,
+						                &audit_refresh_session_cb,
+							        NULL));
+  FAILIF (1 != auditor_row_cnt);
   FAILIF (ret_refresh_session.num_newcoins != refresh_session.num_newcoins);
   FAILIF (ret_refresh_session.noreveal_index != refresh_session.noreveal_index);
 
@@ -971,6 +983,7 @@ audit_deposit_cb (void *cls,
                   const json_t *receiver_wire_account,
                   int done)
 {
+  auditor_row_cnt++;
   return GNUNET_OK;
 }
 
@@ -1001,6 +1014,7 @@ audit_refund_cb (void *cls,
                  uint64_t rtransaction_id,
                  const struct TALER_Amount *amount_with_fee)
 {
+  auditor_row_cnt++;
   return GNUNET_OK;
 }
 
@@ -1026,6 +1040,7 @@ audit_reserve_in_cb (void *cls,
                      const json_t *transfer_details,
                      struct GNUNET_TIME_Absolute execution_date)
 {
+  auditor_row_cnt++;
   return GNUNET_OK;
 }
 
@@ -1054,6 +1069,7 @@ audit_reserve_out_cb (void *cls,
                       struct GNUNET_TIME_Absolute execution_date,
                       const struct TALER_Amount *amount_with_fee)
 {
+  auditor_row_cnt++;
   return GNUNET_OK;
 }
 
@@ -1304,6 +1320,7 @@ run (void *cls)
   }
   FAILIF (3 != cnt);
 
+  auditor_row_cnt = 0;
   FAILIF (GNUNET_OK !=
           plugin->select_reserves_in_above_serial_id (plugin->cls,
 	                                              session,
@@ -1316,6 +1333,7 @@ run (void *cls)
 				                       0,
 						       &audit_reserve_out_cb,
 						       NULL));
+  FAILIF (3 != auditor_row_cnt);
   /* Tests for deposits */
   memset (&deposit, 0, sizeof (deposit));
   RND_BLK (&deposit.coin.coin_pub);
@@ -1340,12 +1358,14 @@ run (void *cls)
           plugin->have_deposit (plugin->cls,
                                 session,
                                 &deposit));
+  auditor_row_cnt = 0;
   FAILIF (GNUNET_OK !=
           plugin->select_deposits_above_serial_id (plugin->cls,
 	                                           session,
 						   0,
 						   &audit_deposit_cb,
 						   NULL));
+  FAILIF (1 != auditor_row_cnt);
   result = 9;
   FAILIF (1 !=
           plugin->iterate_matching_deposits (plugin->cls,
@@ -1433,6 +1453,7 @@ run (void *cls)
           plugin->insert_refund (plugin->cls,
                                  session,
                                  &refund));
+  auditor_row_cnt = 0;
   FAILIF (GNUNET_OK !=
           plugin->select_refunds_above_serial_id (plugin->cls,
 	                                          session,
@@ -1440,6 +1461,7 @@ run (void *cls)
 						  &audit_refund_cb,
 						  NULL));
 
+  FAILIF (1 != auditor_row_cnt);
   tl = plugin->get_coin_transactions (plugin->cls,
                                       session,
                                       &refund.coin.coin_pub);
