@@ -129,7 +129,7 @@ handle_admin_add_incoming_finished (void *cls,
   }
   aai->cb (aai->cb_cls,
            response_code,
-	   TALER_EXCHANGE_json_get_error_code (json),
+	   TALER_JSON_get_error_code (json),
            json);
   TALER_EXCHANGE_admin_add_incoming_cancel (aai);
 }

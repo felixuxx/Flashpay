@@ -253,7 +253,7 @@ handle_track_transfer_finished (void *cls,
   }
   wdh->cb (wdh->cb_cls,
            response_code,
-	   TALER_EXCHANGE_json_get_error_code (json),
+	   TALER_JSON_get_error_code (json),
            NULL,
            json,
            NULL,

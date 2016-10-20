@@ -346,7 +346,7 @@ handle_refresh_link_finished (void *cls,
   if (NULL != rlh->link_cb)
     rlh->link_cb (rlh->link_cb_cls,
                   response_code,
-		  TALER_EXCHANGE_json_get_error_code (json),
+		  TALER_JSON_get_error_code (json),
                   0,
 		  NULL,
 		  NULL,

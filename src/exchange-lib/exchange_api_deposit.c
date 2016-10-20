@@ -261,7 +261,7 @@ handle_deposit_finished (void *cls,
   }
   dh->cb (dh->cb_cls,
           response_code,
-	  TALER_EXCHANGE_json_get_error_code (json),
+	  TALER_JSON_get_error_code (json),
           ep,
           json);
   TALER_EXCHANGE_deposit_cancel (dh);

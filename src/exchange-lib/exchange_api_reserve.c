@@ -389,7 +389,7 @@ handle_reserve_status_finished (void *cls,
   if (NULL != wsh->cb)
     wsh->cb (wsh->cb_cls,
              response_code,
-	     TALER_EXCHANGE_json_get_error_code (json),
+	     TALER_JSON_get_error_code (json),
              json,
              NULL,
              0, NULL);
@@ -766,7 +766,7 @@ handle_reserve_withdraw_finished (void *cls,
   if (NULL != wsh->cb)
     wsh->cb (wsh->cb_cls,
              response_code,
-	     TALER_EXCHANGE_json_get_error_code (json),
+	     TALER_JSON_get_error_code (json),
              NULL,
              json);
   TALER_EXCHANGE_reserve_withdraw_cancel (wsh);

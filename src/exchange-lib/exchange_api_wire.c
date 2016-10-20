@@ -209,7 +209,7 @@ handle_wire_finished (void *cls,
   }
   wh->cb (wh->cb_cls,
           response_code,
-	  TALER_EXCHANGE_json_get_error_code (json),
+	  TALER_JSON_get_error_code (json),
           (NULL != keep) ? keep : json);
   if (NULL != keep)
     json_decref (keep);
