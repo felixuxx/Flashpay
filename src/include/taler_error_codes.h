@@ -753,6 +753,234 @@ enum TALER_ErrorCode
    */
   TALER_EC_TRACK_TRANSACTION_MERCHANT_SIGNATURE_INVALID = 1804,
 
+
+  /* *********** Merchant backend error codes ********* */
+
+  /**
+   * The backend could not find the merchant instance specified
+   * in the request.   This response is
+   * provided with HTTP status code MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_CONTRACT_INSTANCE_UNKNOWN = 2000,
+
+  /**
+   * The exchange failed to provide a meaningful response
+   * to a /deposit request.  This response is provided
+   * with HTTP status code MHD_HTTP_SERVICE_UNAVAILABLE.
+   */
+  TALER_EC_PAY_EXCHANGE_FAILED = 2101,
+
+  /**
+   * The merchant failed to commit the exchanges' response to
+   * a /deposit request to its database.  This response is provided
+   * with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PAY_DB_STORE_PAY_ERROR = 2102,
+
+  /**
+   * The specified exchange is not supported/trusted by
+   * this merchant.  This response is provided
+   * with HTTP status code MHD_HTTP_PRECONDITION_FAILED.
+   */
+  TALER_EC_PAY_EXCHANGE_REJECTED = 2103,
+
+  /**
+   * The denomination key used for payment is not listed among the
+   * denomination keys of the exchange.  This response is provided
+   * with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_PAY_DENOMINATION_KEY_NOT_FOUND = 2104,
+
+  /**
+   * The denomination key used for payment is not audited by an
+   * auditor approved by the merchant.  This response is provided
+   * with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_PAY_DENOMINATION_KEY_AUDITOR_FAILURE = 2105,
+
+  /**
+   * There was an integer overflow totaling up the amounts or
+   * deposit fees in the payment.  This response is provided
+   * with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_PAY_AMOUNT_OVERFLOW = 2106,
+
+  /**
+   * The deposit fees exceed the total value of the payment.
+   * This response is provided
+   * with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_PAY_FEES_EXCEED_PAYMENT = 2107,
+
+  /**
+   * After considering deposit fees, the payment is insufficient
+   * to satisfy the required amount for the contract.
+   * This response is provided
+   * with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_PAY_PAYMENT_INSUFFICIENT_DUE_TO_FEES = 2108,
+
+  /**
+   * While the merchant is happy to cover all applicable deposit fees,
+   * the payment is insufficient to satisfy the required amount for
+   * the contract.  This response is provided with HTTP status code
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_PAY_PAYMENT_INSUFFICIENT = 2109,
+
+  /**
+   * The signature over the contract of one of the coins
+   * was invalid. This response is provided with HTTP status code
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_PAY_COIN_SIGNATURE_INVALID = 2110,
+
+  /**
+   * We failed to contact the exchange for the /pay request.
+   * This response is provided
+   * with HTTP status code MHD_HTTP_SERVICE_UNAVAILABLE.
+   */
+  TALER_EC_PAY_EXCHANGE_TIMEOUT = 2111,
+
+  /**
+   * The backend could not find the merchant instance specified
+   * in the request.   This response is
+   * provided with HTTP status code MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_PAY_INSTANCE_UNKNOWN = 2112,
+
+  /**
+   * The signature over the contract of the merchant
+   * was invalid. This response is provided with HTTP status code
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_PAY_MERCHANT_SIGNATURE_INVALID = 2113,
+
+  /**
+   * The refund deadline was after the transfer deadline.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_PAY_REFUND_DEADLINE_PAST_WIRE_TRANSFER_DEADLINE = 2114,
+
+  /**
+   * The request fails to provide coins for the payment.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_PAY_COINS_ARRAY_EMPTY = 2115,
+
+  /**
+   * The merchant failed to fetch the merchant's previous state with
+   * respect to a /pay request from its database.  This response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PAY_DB_FETCH_PAY_ERROR = 2116,
+
+  /**
+   * The merchant failed to fetch the merchant's previous state with
+   * respect to transactions from its database.  This response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PAY_DB_FETCH_TRANSACTION_ERROR = 2117,
+
+  /**
+   * The transaction ID was used for a conflicing transaction before.
+   * This response is
+   * provided with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_PAY_DB_TRANSACTION_ID_CONFLICT = 2118,
+
+  /**
+   * The merchant failed to store the merchant's state with
+   * respect to the transaction in its database.  This response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PAY_DB_STORE_TRANSACTION_ERROR = 2119,
+
+  /**
+   * The exchange failed to provide a valid response to
+   * the merchant's /keys request.
+   * This response is provided
+   * with HTTP status code MHD_HTTP_SERVICE_UNAVAILABLE.
+   */
+  TALER_EC_PAY_EXCHANGE_KEYS_FAILURE = 2120,
+
+  /**
+   * Integer overflow with sepcified timestamp argument detected.
+   * This response is provided
+   * with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_HISTORY_TIMESTAMP_OVERFLOW = 2200,
+
+  /**
+   * Failed to retrieve history from merchant database.
+   * This response is provided
+   * with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_HISTORY_DB_FETCH_ERROR = 2201,
+
+
+  /**
+   * We failed to contact the exchange for the /track/transaction
+   * request.  This response is provided with HTTP status code
+   * MHD_HTTP_SERVICE_UNAVAILABLE.
+   */
+  TALER_EC_TRACK_TRANSACTION_EXCHANGE_TIMEOUT = 2300,
+  
+  /**
+   * The backend could not find the merchant instance specified
+   * in the request.   This response is
+   * provided with HTTP status code MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_TRACK_TRANSACTION_INSTANCE_UNKNOWN = 2301,
+
+  /**
+   * The backend could not find the transaction specified
+   * in the request.   This response is
+   * provided with HTTP status code MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_TRACK_TRANSACTION_TRANSACTION_UNKNOWN = 2302,
+
+  /**
+   * The backend had a database access error trying to 
+   * retrieve transaction data from its database.
+   * The response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TRACK_TRANSACTION_DB_FETCH_TRANSACTION_ERROR = 2303,
+
+  /**
+   * The backend had a database access error trying to 
+   * retrieve payment data from its database.
+   * The response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TRACK_TRANSACTION_DB_FETCH_PAYMENT_ERROR = 2304,
+
+  /**
+   * The backend found no applicable deposits in the database.
+   * This is odd, as we know about the transaction, but not
+   * about deposits we made for the transaction.  The response is
+   * provided with HTTP status code MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_TRACK_TRANSACTION_DB_NO_DEPOSITS_ERROR = 2305,
+
+  /**
+   * We failed to contact the exchange for the /track/transfer
+   * request.  This response is provided with HTTP status code
+   * MHD_HTTP_SERVICE_UNAVAILABLE.
+   */
+  TALER_EC_TRACK_TRANSFER_EXCHANGE_TIMEOUT = 2400,
+
+  /**
+   * The backend could not find the merchant instance specified
+   * in the request.   This response is
+   * provided with HTTP status code MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_TRACK_TRANSFER_INSTANCE_UNKNOWN = 2000,
+
+
   
   /* ********** /test API error codes ************* */
   

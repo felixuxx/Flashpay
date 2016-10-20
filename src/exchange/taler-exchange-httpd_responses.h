@@ -217,7 +217,7 @@ TEH_RESPONSE_reply_request_too_large (struct MHD_Connection *connection);
  * @return a MHD result code
  */
 int
-TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection);
+TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connectionx);
 
 
 /**
