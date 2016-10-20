@@ -296,11 +296,6 @@ struct TALER_DepositRequestPS
   struct GNUNET_TIME_AbsoluteNBO refund_deadline;
 
   /**
-   * Deadline for the customer to pay for h_contract
-   */
-  struct GNUNET_TIME_AbsoluteNBO pay_deadline;
-
-  /**
    * Merchant-generated transaction ID to detect duplicate
    * transactions.  The merchant must communicate a merchant-unique ID
    * to the customer for each transaction.  Note that different coins
