@@ -907,6 +907,14 @@ enum TALER_ErrorCode
   TALER_EC_PAY_EXCHANGE_KEYS_FAILURE = 2120,
 
   /**
+   * The payment is too late, the offer has expired.
+   * This response is
+   * provided with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_PAY_OFFER_EXPIRED = 2121,
+
+  
+  /**
    * Integer overflow with sepcified timestamp argument detected.
    * This response is provided
    * with HTTP status code MHD_HTTP_BAD_REQUEST.
