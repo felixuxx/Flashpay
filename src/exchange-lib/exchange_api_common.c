@@ -20,7 +20,6 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
-#include "exchange_api_common.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "exchange_api_handle.h"

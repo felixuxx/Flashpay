@@ -29,7 +29,6 @@
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "exchange_api_handle.h"
-#include "exchange_api_common.h"
 #include "taler_signatures.h"
 
 

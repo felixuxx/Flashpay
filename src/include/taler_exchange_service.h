@@ -1262,4 +1262,16 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
                                     json_t *history,
                                     struct TALER_Amount *total);
 
+
+/**
+ * Extract the Taler error code from the given @a json object.
+ * Note that #TALER_EC_NONE is returned if no "code" is present.
+ *
+ * @param json response to extract the error code from
+ * @return the "code" value from @a json
+ */
+enum TALER_ErrorCode
+TALER_EXCHANGE_json_get_error_code (const json_t *json);
+
+
 #endif  /* _TALER_EXCHANGE_SERVICE_H */

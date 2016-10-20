@@ -28,7 +28,6 @@
 #include "taler_exchange_service.h"
 #include "taler_json_lib.h"
 #include "taler_wire_plugin.h"
-#include "exchange_api_common.h"
 #include "exchange_api_handle.h"
 
 
