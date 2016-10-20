@@ -29,6 +29,7 @@
 #include "taler_exchange_service.h"
 #include "taler_json_lib.h"
 #include "exchange_api_handle.h"
+#include "exchange_api_common.h"
 #include "taler_signatures.h"
 
 
@@ -314,7 +315,8 @@ handle_reserve_status_finished (void *cls,
       if (GNUNET_OK !=
           GNUNET_JSON_parse (json,
                              spec,
-                             NULL, NULL))
+                             NULL,
+			     NULL))
       {
         GNUNET_break_op (0);
         response_code = 0;
@@ -355,6 +357,7 @@ handle_reserve_status_finished (void *cls,
         }
         wsh->cb (wsh->cb_cls,
                  response_code,
+		 TALER_EC_NONE,
                  json,
                  &balance,
                  len,
@@ -387,6 +390,7 @@ handle_reserve_status_finished (void *cls,
   if (NULL != wsh->cb)
     wsh->cb (wsh->cb_cls,
              response_code,
+	     TALER_EXCHANGE_json_get_error_code (json),
              json,
              NULL,
              0, NULL);
@@ -589,6 +593,7 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
   dsig.rsa_signature = sig;
   wsh->cb (wsh->cb_cls,
            MHD_HTTP_OK,
+	   TALER_EC_NONE,
            &dsig,
            json);
   /* make sure callback isn't called again after return */
@@ -762,6 +767,7 @@ handle_reserve_withdraw_finished (void *cls,
   if (NULL != wsh->cb)
     wsh->cb (wsh->cb_cls,
              response_code,
+	     TALER_EXCHANGE_json_get_error_code (json),
              NULL,
              json);
   TALER_EXCHANGE_reserve_withdraw_cancel (wsh);

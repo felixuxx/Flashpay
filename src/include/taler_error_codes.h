@@ -33,10 +33,22 @@ enum TALER_ErrorCode
 {
 
   /**
-   * Special code to indicate no error.
+   * Special code to indicate no error (or no "code" present).
    */
   TALER_EC_NONE = 0,
 
+  /**
+   * Special code to indicate that a non-integer error code was
+   * returned in the JSON response.
+   */
+  TALER_EC_INVALID = 1,
+
+  /**
+   * The response we got from the server was not even in JSON format.
+   */
+  TALER_EC_INVALID_RESPONSE = 2,
+
+  
   /* ********** generic error codes ************* */
   
   /**
@@ -975,6 +987,33 @@ enum TALER_ErrorCode
   TALER_EC_TRACK_TRANSACTION_DB_NO_DEPOSITS_ERROR = 2305,
 
   /**
+   * We failed to obtain a wire transfer identifier for one
+   * of the coins in the transaction.  The response is
+   * provided with HTTP status code MHD_HTTP_FAILED_DEPENDENCY if
+   * the exchange had a hard error, or MHD_HTTP_ACCEPTED if the
+   * exchange signaled that the transfer was in progress.
+   */
+  TALER_EC_TRACK_TRANSACTION_COIN_TRACE_ERROR = 2306,
+
+  /**
+   * We failed to obtain the full wire transfer identifier for the
+   * transfer one of the coins was aggregated into.
+   * The response is
+   * provided with HTTP status code MHD_HTTP_FAILED_DEPENDENCY.
+   */
+  TALER_EC_TRACK_TRANSACTION_WIRE_TRANSFER_TRACE_ERROR = 2307,
+  
+  /**
+   * We got conflicting reports from the exhange with 
+   * respect to which transfers are included in which
+   * aggregate.
+   * The response is
+   * provided with HTTP status code MHD_HTTP_FAILED_DEPENDENCY.
+   */
+  TALER_EC_TRACK_TRANSACTION_CONFLICTING_REPORTS = 2308,
+
+  
+  /**
    * We failed to contact the exchange for the /track/transfer
    * request.  This response is provided with HTTP status code
    * MHD_HTTP_SERVICE_UNAVAILABLE.
@@ -986,8 +1025,52 @@ enum TALER_ErrorCode
    * in the request.   This response is
    * provided with HTTP status code MHD_HTTP_NOT_FOUND.
    */
-  TALER_EC_TRACK_TRANSFER_INSTANCE_UNKNOWN = 2000,
+  TALER_EC_TRACK_TRANSFER_INSTANCE_UNKNOWN = 2401,
 
+  /**
+   * We failed to persist coin wire transfer information in
+   * our merchant database.
+   * The response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TRACK_TRANSFER_DB_STORE_COIN_ERROR = 2402,
+
+  /**
+   * We internally failed to execute the /track/transfer request.
+   * The response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TRACK_TRANSFER_REQUEST_ERROR = 2403,
+
+  /**
+   * We failed to persist wire transfer information in
+   * our merchant database.
+   * The response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TRACK_TRANSFER_DB_STORE_TRANSER_ERROR = 2404,
+  
+  /**
+   * The exchange returned an error from /track/transfer.
+   * The response is
+   * provided with HTTP status code MHD_HTTP_FAILED_DEPENDENCY.
+   */
+  TALER_EC_TRACK_TRANSFER_EXCHANGE_ERROR = 2405,
+
+  /**
+   * We failed to fetch deposit information from
+   * our merchant database.
+   * The response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TRACK_TRANSFER_DB_FETCH_DEPOSIT_ERROR = 2406,
+
+  /**
+   * We encountered an internal logic error.
+   * The response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TRACK_TRANSFER_DB_INTERNAL_LOGIC_ERROR = 2407,
 
   
   /* ********** /test API error codes ************* */

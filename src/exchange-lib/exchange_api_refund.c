@@ -196,6 +196,7 @@ handle_refund_finished (void *cls,
   }
   rh->cb (rh->cb_cls,
           response_code,
+	  TALER_EXCHANGE_json_get_error_code (json),
           ep,
           json);
   TALER_EXCHANGE_refund_cancel (rh);

@@ -23,6 +23,18 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_exchange_service.h"
 
+
+/**
+ * Extract the Taler error code from the given @a json object.
+ * Note that #TALER_EC_NONE is returned if no "code" is present.
+ *
+ * @param json response to extract the error code from
+ * @return the "code" value from @a json
+ */
+enum TALER_ErrorCode
+TALER_EXCHANGE_json_get_error_code (const json_t *json);
+
+
 /**
  * Verify a coins transaction history as returned by the exchange.
  *

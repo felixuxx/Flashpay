@@ -27,6 +27,7 @@
 #include "taler_exchange_service.h"
 #include "taler_json_lib.h"
 #include "exchange_api_handle.h"
+#include "exchange_api_common.h"
 #include "taler_signatures.h"
 
 
@@ -265,6 +266,7 @@ parse_refresh_link_ok (struct TALER_EXCHANGE_RefreshLinkHandle *rlh,
     {
       rlh->link_cb (rlh->link_cb_cls,
 		    MHD_HTTP_OK,
+		    TALER_EC_NONE,
 		    num_coins,
 		    coin_privs,
 		    sigs,
@@ -345,7 +347,11 @@ handle_refresh_link_finished (void *cls,
   if (NULL != rlh->link_cb)
     rlh->link_cb (rlh->link_cb_cls,
                   response_code,
-                  0, NULL, NULL, NULL,
+		  TALER_EXCHANGE_json_get_error_code (json),
+                  0,
+		  NULL,
+		  NULL,
+		  NULL,
                   json);
   TALER_EXCHANGE_refresh_link_cancel (rlh);
 }

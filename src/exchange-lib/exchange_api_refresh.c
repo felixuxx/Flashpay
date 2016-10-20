@@ -1115,6 +1115,7 @@ handle_refresh_melt_finished (void *cls,
     {
       rmh->melt_cb (rmh->melt_cb_cls,
                     response_code,
+		    TALER_EXCHANGE_json_get_error_code (json),
                     noreveal_index,
                     (0 == response_code) ? NULL : &exchange_pub,
                     json);
@@ -1160,6 +1161,7 @@ handle_refresh_melt_finished (void *cls,
   if (NULL != rmh->melt_cb)
     rmh->melt_cb (rmh->melt_cb_cls,
                   response_code,
+		  TALER_EXCHANGE_json_get_error_code (json),
                   UINT16_MAX,
                   NULL,
                   json);
@@ -1598,6 +1600,7 @@ handle_refresh_reveal_finished (void *cls,
       {
         rrh->reveal_cb (rrh->reveal_cb_cls,
                         MHD_HTTP_OK,
+			TALER_EC_NONE,
                         rrh->md->num_fresh_coins,
                         coin_privs,
                         sigs,
@@ -1634,7 +1637,10 @@ handle_refresh_reveal_finished (void *cls,
   if (NULL != rrh->reveal_cb)
     rrh->reveal_cb (rrh->reveal_cb_cls,
                     response_code,
-                    0, NULL, NULL,
+		    TALER_EXCHANGE_json_get_error_code (json),
+		    0,
+		    NULL,
+		    NULL,
                     json);
   TALER_EXCHANGE_refresh_reveal_cancel (rrh);
 }

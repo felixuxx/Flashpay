@@ -239,6 +239,7 @@ handle_deposit_wtid_finished (void *cls,
   }
   dwh->cb (dwh->cb_cls,
            response_code,
+	   TALER_EXCHANGE_json_get_error_code (json),
            ep,
            json,
            wtid,
