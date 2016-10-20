@@ -541,6 +541,7 @@ find_pk (const struct TALER_EXCHANGE_Keys *keys,
  * @param cls closure with the `struct Coin *`
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
  * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
  * @param sigs array of signature over @a num_coins coins, NULL on error
@@ -549,6 +550,7 @@ find_pk (const struct TALER_EXCHANGE_Keys *keys,
 static void
 reveal_cb (void *cls,
            unsigned int http_status,
+	   enum TALER_ErrorCode ec,
            unsigned int num_coins,
            const struct TALER_CoinSpendPrivateKeyP *coin_privs,
            const struct TALER_DenominationSignature *sigs,
@@ -617,6 +619,7 @@ reveal_cb (void *cls,
  * @param cls closure with the `struct Coin *`
  * @param http_status HTTP response code, never #MHD_HTTP_OK (200) as for successful intermediate response this callback is skipped.
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param noreveal_index choice by the exchange in the cut-and-choose protocol,
  *                    UINT16_MAX on error
  * @param exchange_pub public key the exchange used for signing
@@ -625,6 +628,7 @@ reveal_cb (void *cls,
 static void
 melt_cb (void *cls,
          unsigned int http_status,
+	 enum TALER_ErrorCode ec,
          uint16_t noreveal_index,
          const struct TALER_ExchangePublicKeyP *exchange_pub,
          const json_t *full_response)
@@ -776,6 +780,7 @@ refresh_coin (struct Coin *coin)
  * @param cls closure with the `struct Coin` that we are processing
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful deposit;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param exchange_pub public key used by the exchange for signing
  * @param obj the received JSON reply, should be kept as proof (and, in case of errors,
  *            be forwarded to the customer)
@@ -783,6 +788,7 @@ refresh_coin (struct Coin *coin)
 static void
 deposit_cb (void *cls,
             unsigned int http_status,
+	    enum TALER_ErrorCode ec,
             const struct TALER_ExchangePublicKeyP *exchange_pub,
             const json_t *obj)
 {
@@ -935,12 +941,14 @@ spend_coin (struct Coin *coin,
  * @param cls closure with our `struct Coin`
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param sig signature over the coin, NULL on error
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 static void
 reserve_withdraw_cb (void *cls,
                      unsigned int http_status,
+		     enum TALER_ErrorCode ec,
                      const struct TALER_DenominationSignature *sig,
                      const json_t *full_response)
 {
@@ -1027,11 +1035,13 @@ withdraw_coin (struct Coin *coin)
  * @param cls closure with the `struct Reserve *`
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 static void
 add_incoming_cb (void *cls,
                  unsigned int http_status,
+		 enum TALER_ErrorCode ec,
                  const json_t *full_response)
 {
   struct Reserve *r = cls;
