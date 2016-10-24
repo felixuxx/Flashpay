@@ -4688,6 +4688,7 @@ postgres_select_reserves_in_above_serial_id (void *cls,
                                  &sender_account_details),                                          
       TALER_PQ_result_spec_json ("transfer_details",
                                  &transfer_details),
+      GNUNET_PQ_result_spec_end
     };
 
     if (GNUNET_OK !=
