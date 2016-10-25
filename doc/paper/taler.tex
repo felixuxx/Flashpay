@@ -649,11 +649,11 @@ Now the customer carries out the following interaction with the exchange:
       \item coin key $C := (c_s,C_p)$ with private key $c_s$ and public key $C_p := c_s G$,
       \item blinding factor $b$, and commits $\langle W, C, b \rangle$ to disk.
     \end{itemize}
-  \item[SEPA Send]
+  \item[Wire transfer send]
     The customer transfers an amount of money corresponding to
     at least $K_v$ to the exchange, with $W_p$ in the subject line
     of the transaction.
-  \item[SEPA Recieve]
+  \item[Wire transfer recieve]
     The exchange receives the transaction and credits the reserve $W_p$
     with the respective amount in its database.
   \item[POST {\tt /withdraw/sign}]
