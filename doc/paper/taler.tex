@@ -919,7 +919,7 @@ taxation model as with such trust they are assumed to be the same
 entity.
 
 The auditor can anonymously check if the exchange correctly implements the
-link request, thus preventing the exchange operator from legally disabling
+link request, thus preventing the exchange operator from secretly disabling
 this protocol component.  Without the link operation, Taler would
 devolve into a payment system where both sides can be anonymous, and
 thus no longer provide taxability.
@@ -957,8 +957,7 @@ The appropriate behavior for the client is to automatically retry
 after 1s, and twice more at randomized times within 1 minute.
 If those three attempts fail, the user should be informed about the
 delay.  The client should then retry another three times within the
-next 24h, and after that time the auditor be informed about the outage.
-
+next 24h, and after that time the auditor should be informed about the outage.
 Using this process, short term failures should be effectively obscured
 from the user, while malicious behavior is reported to the auditor who
 can then presumably rectify the situation, using methods such as
@@ -1051,7 +1050,7 @@ At network latencies above 10 ms, the delay
 for executing a transaction is dominated by the network latency, as
 local processing virtually always takes less than 10 ms.
 
-Database transactions are dominated by writes
+Database transactions are dominated by writes%
 %(Figure~\ref{fig:read} vs.  Figure~\ref{fig:write})
 , as Taler mostly needs to log
 transactions and occasionally needs to read to guard against
