@@ -660,14 +660,14 @@ Now the customer carries out the following interaction with the exchange:
     The customer sends $S_W(B)$ where $B := B_b(\FDH_K(C_p))$ to
     the exchange to request withdrawal of $C$; here, $B_b$ denotes
     Chaum-style blinding with blinding factor $b$.
-  \item[200 OK / 402 PAYMENT REQUIRED]
+  \item[200 OK / 403 FORBIDDEN]
     The exchange checks if the same withdrawal request was issued before;
     in this case, it sends a Chaum-style blind signature $S_K(B)$ with
     private key $K_s$ to the customer. \\
     If this is a fresh withdrawal request, the exchange performs the following transaction:
     \begin{enumerate}
       \item checks if the reserve $W_p$ has sufficient funds
-            for a coin of value corresponding to $K$
+            for a coin of value corresponding to $K$,
       \item stores the withdrawal request and response
             $\langle S_W(B), S_K(B) \rangle$ in its database
             for future reference,
@@ -680,7 +680,7 @@ Now the customer carries out the following interaction with the exchange:
     history for the reserve.
         % FIXME: Is it really the whole history?
   \item[Done] The customer computes and verifies the unblinded signature
-    $S_K(\FDH_K{C_p}) = U_b(S_K(B))$.
+    $S_K(\FDH_K(C_p)) = U_b(S_K(B))$.
     Finally the customer saves the coin $\langle S_K(\FDH_K(C_p)), c_s \rangle$
     to their local wallet on disk.
 \end{description}
@@ -730,7 +730,7 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
 \item[POST {\tt/deposit}]
   The merchant gives $(\mathcal{D}, p, r)$ to the exchange, thereby
   revealing $p$ only to the exchange.
-\item[200 OK / 409 CONFLICT]
+\item[200 OK / 403 FORBIDDEN]
   The exchange validates $\mathcal{D}$ and checks for double spending.
   If the coin has been involved in previous transactions and the new
   one would exceed its remaining value, it sends an error
@@ -952,7 +952,7 @@ faulty exchange.
 The third case are transient failures, such as network failures or
 temporary hardware failures at the exchange service provider.  Here, the
 client may receive an explicit protocol indication, such as an HTTP
-response code 500 ``internal server error'' or simply no response.
+response code ``500 INTERNAL SERVER ERROR'' or simply no response.
 The appropriate behavior for the client is to automatically retry
 after 1s, and twice more at randomized times within 1 minute.
 If those three attempts fail, the user should be informed about the
