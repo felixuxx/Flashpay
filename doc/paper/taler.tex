@@ -77,7 +77,7 @@
 \begin{abstract}
 This paper introduces {\em Taler}, a Chaum-style digital currency that
 enables anonymous payments while ensuring that entities that receive
-payments are auditable and thus taxable.  In Taler, customers can
+payments are auditable.  In Taler, customers can
 never defraud anyone, merchants can only fail to deliver the
 merchandise to the customer, and payment service providers can be
 fully audited.  All parties receive cryptographic evidence for all
@@ -88,10 +88,10 @@ systems that do not provide for privacy.
 
 The key technical contribution underpinning Taler is a new {\em
   refresh protocol} which allows fractional payments and refunds while
-maintaining anonymity of the customer and unlinkability of
-transactions.  The refresh protocol combines an efficient
-cut-and-choose mechanism with a {\em link} step to ensure that
-refreshing is not abused for transactional payments.
+maintaining untraceability of the customer and unlinkability of
+transactions.  The refresh protocol combines an
+efficient cut-and-choose mechanism with a {\em link} step to ensure
+that refreshing is not abused for transactional payments.
 
 We argue that Taler provides a secure digital currency for modern
 liberal societies as it is a flexible, libre and efficient protocol
@@ -106,11 +106,11 @@ developed nation states have adopted highly transparent payment systems,
 such as the MasterCard and VisaCard credit card schemes and computerized
 bank transactions such as SWIFT.  These systems enable mass surveillance
 by both governments and private companies.  Aspects of this surveillance
-sometimes benifit society by providing information about tax evasion or
+sometimes benefit society by providing information about tax evasion or
 crimes like extortion.  % TODO : anti-money laundering later?
 In particular, bribery and corruption are limited to elites who can
 afford to escape the dragnet.
-
+%
 At the other extreme, weaker developing nation states have economic
 activity based largely on coins, paper money or even barter.  Here,
 the state is often unable to effectively monitor or tax economic
@@ -122,20 +122,19 @@ ZeroCoin~\cite{miers2013zerocoin} is an example for translating an
 anarchistic economy into the digital realm.
 
 This paper describes Taler, a simple and practical payment system for
-a modern social-liberal society, which is not being served well by
-current payment systems which enable either an authoritarian state in
-total control of the population, or create weak states with almost
-anarchistic economies.
+a social-liberal society, which is underserved by
+current payment systems.
 
 The Taler protocol is influenced by ideas from
-Chaum~\cite{chaum1983blind} and also follows Chaum's basic architecture of
-customer, merchant and exchange (Figure~\ref{fig:cmm}).
-The two designs share the key first step where the {\em customer}
-withdraws digital {\em coins} from the {\em exchange} with unlinkability
-provided via blind signatures.  The coins can then be spent at a
-{\em merchant} who {\em deposits} them at the exchange.
-Taler uses online detection of double-spending, thus assuring the merchant
-instantly that a transaction is valid.
+Chaum~\cite{chaum1983blind} and also follows Chaum's basic
+architecture of customer, merchant and exchange
+(Figure~\ref{fig:cmm}).  The two designs share the key first step
+where the {\em customer} withdraws digital {\em coins} from the {\em
+  exchange} with unlinkability provided via blind signatures.  The
+coins can then be spent at a {\em merchant} who {\em deposits} them at
+the exchange.  Taler uses online detection of double-spending and
+provides excuplability via cryptographic proofs.  Thus merchants are
+instantly assured that a transaction is valid.
 
 \begin{figure}[h]
 \centering
@@ -159,16 +158,14 @@ instantly that a transaction is valid.
 \label{fig:cmm}
 \end{figure}
 
-
 A key issue for an efficient Chaumian digital payment system is the
 need to provide change.  For example, a customer may want to pay
-\EUR{49,99}, but has withdrawn a \EUR{100,00} coin.  Withdrawng 10,000
-pieces with a denomination of \EUR{0,01} and transferring 4,999 would
-be too inefficient, even for modern systems.  The customer should not
+\EUR{49,99}, but has withdrawn a \EUR{100,00} coin.  Withdrawing 10,000
+coins with a denomination of \EUR{0,01} and transferring 4,999 coins would
+be too inefficient.  The customer should not
 withdraw exact change from her account, as doing so reduces anonymity
-due to the obvious corrolation.  A practical payment system must thus
-support giving change in the form of spendable coins, say a \EUR{0,01}
-coin and a \EUR{50,00} coin.
+due to the obvious correlation.  A practical payment system must thus
+support giving change.
 
 Taler solves the problem of giving change by introducing a new
 {\em refresh protocol}.  Using this protocol, a customer can obtain
@@ -215,6 +212,15 @@ Yet, there are several major irredeemable problems inherent in their designs:
     % technology.  A large number of AltCoins creates additional overheads for
     % currency exchange and exacerbates the problems with currency fluctuations.
 \end{itemize}
+
+Anonymity extensions for BitCoin such as ZeroCoin~\cite{miers2013zerocoin}
+and BOLT~\cite{BOLT} are also limited to transactions with coins
+of fixed discrete value, creating problems with giving change we
+outlined in the introduction.  Furthermore, these extensions have
+problems with aborted transactions, which can reduce the anonymity
+set.  Taler's refresh protocol also addresses the problem of aborted
+transactions, ensuring that aborts cannot be used to attack the
+privacy assurances of the system.
 
 %GreenCoinX\footnote{\url{https://www.greencoinx.com/}} is a more
 %recent AltCoin where the company promises to identify the owner of
@@ -318,19 +324,22 @@ description of the Opencoin protocol is available to date.
 The Taler system comprises three principal types of actors
 (Figure~\ref{fig:cmm}): The \emph{customer} is interested in receiving
 goods or services from the \emph{merchant} in exchange for payment.
-When making a transaction, both the customer and the merchant use the
-same \emph{exchange}, which serves as a payment service provider for
-the financial transaction between the two.  The exchange is
-responsible for allowing the customer to convert financial reserves to
-the anonymous digital coins, and for enabling the merchant to convert
-spent digital coins back to funds in a financial reserve.  In
-addition, we describe an \emph{auditor} who assures customers and
-merchants that the exchange operates correctly.
+To pay, the customer {\em spends} digital coins at the merchant.  When
+making a transaction, both the customer and the merchant use the same
+\emph{exchange}, which serves as a payment service provider for the
+financial transaction between the two.  The exchange is responsible
+for allowing the customer to withdraw anonymous digital coins from the
+customer's financial reserves, and for enabling the merchant to
+deposit digital coins in return for receiving credit at the merchant's
+financial reserve.  In addition, Taler includes an \emph{auditor} who
+assures customers and merchants that the exchange operates correctly.
 
 \subsection{Security model}
 
 Taler's security model assumes that cryptographic primitives are
 secure and that each participant is under full control of his system.
+% FIXME: Jeff, can you concisely state the precise assumpitons?
+% (i.e. hardness of EC-DLOG for refresh, RSA assumption, hash collision resistance (?))
 The contact information of the exchange is known to both customer and
 merchant from the start.  We further assume that the customer can
 authenticate the merchant, e.g. using X.509
@@ -342,10 +351,9 @@ The exchange is trusted to hold funds of its customers and to forward
 them when receiving the respective deposit instructions from the
 merchants.  Customer and merchant can have assurances about the
 exchange's liquidity and operation though published audits by
-financial regulators or other trusted third parties.  If sufficently
-regular, audits of the exchange's accounts should reveal any possible
-fraud.  Online signing keys expire regularly, allowing the exchange to
-destroy the corresponding accumulated cryptographic proofs.
+financial regulators or other trusted third parties.
+Online signing keys expire regularly, allowing the exchange to
+eventually destroy the corresponding accumulated cryptographic proofs.
 
 The merchant is trusted to deliver the service or goods to the
 customer upon receiving payment.  The customer can seek legal relief
@@ -356,9 +364,9 @@ Neither the merchant nor the customer have any ability to {\em effectively}
 defraud the exchange or the state collecting taxes.  Here, ``effectively''
 means that the expected return for fraud is negative.
 %
-Note that customers do not need to be trusted in any way, and that in
-particular it is never necessary for anyone to try to recover funds
-from customers using legal coersion.
+%Note that customers do not need to be trusted in any way, and that in
+%particular it is never necessary for anyone to try to recover funds
+%from customers using legal coersion.
 
 \subsection{Taxability and Entities}
 
@@ -439,7 +447,7 @@ is unable to link the known identity of the customer that withdrew
 anonymous digital coins to the {\em purchase} performed later at the
 merchant.
 
-While the customer thus has anonymity for purchases, the exchange will
+While the customer thus has untraceability for purchases, the exchange will
 always learn the merchant's identity in order to credit the merchant's
 account.  This is also necessary for taxation, as Taler deliberately
 exposes these events as anchors for tax audits on income.
@@ -1167,11 +1175,11 @@ the participants have to disclose their core secrets.
 \bibliographystyle{alpha}
 \bibliography{taler,rfc}
 
-\vfill
-\begin{center}
- \Large  Demonstration available at \url{https://demo.taler.net/}
-\end{center}
-\vfill
+%\vfill
+%\begin{center}
+% \Large  Demonstration available at \url{https://demo.taler.net/}
+%\end{center}
+%\vfill
 
 \newpage
 \appendix
