@@ -847,7 +847,7 @@ cut-and-choose practical and efficient in this context.
     this time to prevent the exchange from assisting tax evasion. \\
     %
     The exchange sends $S_{K'}(C'_p, \gamma)$ to the customer where
-    $K'$ is the exchange's message signing key.
+    $K'$ is the exchange's message signing key, thereby commmitting the exchange to $\gamma$.
   \item[POST {\tt /refresh/reveal}]
     The customer commits $\langle C', S_K(C'_p, \gamma) \rangle$ to disk.
     Also, the customer assembles
@@ -860,16 +860,16 @@ cut-and-choose practical and efficient in this context.
     \vspace{-2ex}
     \begin{minipage}{5cm}
     \begin{align*}
-      \overline{L}_i :&= H(t_s^{(i)} C_p') \\
-      \overline{c}_s^{(i)} :&= \KDF_{\textrm{Ed25519}}(\overline{L}_i) \\
-      \overline{C^{(i)}_p} :&= \overline{c}_s^{(i)} G
+      \overline{L^{(i)}} :&= H(t_s^{(i)} C_p') \\
+      \overline{c_s^{(i)}} :&= \KDF_{\textrm{Ed25519}}(\overline{L^{(i)}}) \\
+      \overline{C^{(i)}_p} :&= \overline{c_s^{(i)}} G
      \end{align*}
     \end{minipage}
     \begin{minipage}{5cm}
      \begin{align*}
        \overline{T_p^{(i)}} :&= t_s^{(i)} G \\
-       \overline{b}^{(i)} :&= \FDH_K(\KDF_{\textrm{blinding}}(\overline{L}_i)) \\
-       \overline{B^{(i)}} :&= B_{\overline{b_i}}(\overline{C_p^{(i)}})
+       \overline{b^{(i)}} :&= \FDH_K(\KDF_{\textrm{blinding}}(\overline{L^{(i)}})) \\
+       \overline{B^{(i)}} :&= B_{\overline{b^{(i)}}}(\overline{C_p^{(i)}})
      \end{align*}
     \end{minipage}
 
