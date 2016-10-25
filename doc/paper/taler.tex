@@ -485,20 +485,21 @@ Denomination keys have an expiration date, before which any coins
 signed with it must be spent or refreshed.  This allows the exchange
 to eventually discard records of old transactions, thus limiting the
 records that the exchange must retain and search to detect
-double-spending attempts.  Furthermore, the exchange uses each
-denomination key only for a limited number of coins.  In this way, if
-a private denomination key were to be compromised, the exchange would
-detect this once more coins were redeemed than the total that was
-signed into existence using that denomination key.  In this case, the
-exchange can allow authentic customers to exchange their unspent
-coins that were signed with the compromised private key, while
-refusing further anonymous transactions involving those coins.  As a
-result, the financial damage of losing a private signing key can be
-limited to at most twice the amount originally signed with that key.
+double-spending attempts.  If a private denomination key were to be
+compromised, the exchange can detect this once more coins are redeemed
+than the total that was signed into existence using that denomination
+key.  In this case, the exchange can allow authentic customers to
+redeem their unspent coins that were signed with the compromised
+private key, while refusing further deposits involving coins signed by
+the compromised denomination key.  As a result, the financial damage
+of losing a private signing key is limited to at most the amount
+originally signed with that key, and denomination key rotation can be
+used to bound that risk.
 
-We also ensure that the exchange cannot deanonymize users by signing
+We ensure that the exchange cannot deanonymize users by signing
 each coin with a fresh denomination key.  For this, exchanges are
-required to publicly announce their denomination keys in advance.
+required to publicly announce their denomination keys in advance
+with validity periods that imply sufficiently strong anonymity sets.
 These announcements are expected to be signed with an off-line
 long-term private {\em master signing key} of the exchange and the
 auditor.  Additionally, customers should obtain these announcements
