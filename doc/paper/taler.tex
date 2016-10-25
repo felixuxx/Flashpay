@@ -678,7 +678,6 @@ Now the customer carries out the following interaction with the exchange:
     error back to the customer, with proof that it operated correctly.
     Assuming the signature was valid, this would involve showing the transaction
     history for the reserve.
-        % FIXME: Is it really the whole history?
   \item[Done] The customer computes and verifies the unblinded signature
     $S_K(\FDH_K(C_p)) = U_b(S_K(B))$.
     Finally the customer saves the coin $\langle S_K(\FDH_K(C_p)), c_s \rangle$
@@ -691,9 +690,9 @@ Now the customer carries out the following interaction with the exchange:
 A customer can spend coins at a merchant, under the condition that the
 merchant trusts the exchange that issued the coin.
 % FIXME: Auditor here?
-Merchants are identified by their public key $M_p = m_s G$ which the
+Merchants are identified by their public key $M_p$ which the
 customer's wallet learns through the merchant's webpage, which itself
-must be authenticated with X.509c.
+should be authenticated with X.509c.
 % FIXME: Is this correct?
 
 We now describe the protocol between the customer, merchant, and exchange
@@ -712,35 +711,37 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
 \item[Proposal]
   The merchant creates a digitally signed contract
     $\mathcal{A} := S_M(m, f, a, H(p, r), \vec{X})$
-  where $m$ is an identifier for this transaction, $a$ is data relevant
+  where $m$ is an identifier for this transaction, $f$ is the price of the offer,
+  and $a$ is data relevant
   to the contract indicating which services or goods the merchant will
-  deliver to the customer, $f$ is the price of the offer, and
+  deliver to the customer, including the {\tt /merchant-specific} URI for the payment. 
   $p$ is the merchant's payment information (e.g. his IBAN number), and
   $r$ is a random nonce.  The merchant commits $\langle \mathcal{A} \rangle$
   to disk and sends $\mathcal{A}$ to the customer.
 \item[Customer Setup]
-  The customer should already possess a coin issued by a exchange that is
-  accepted by the merchant, meaning $K$ should be publicly signed by
+  The customer should already possess a coin $\widetilde{C}$ issued by a exchange that is
+  accepted by the merchant, meaning $K$ of $\widetilde{C}$ should be publicly signed by
   some $X_j$ from $\vec{X}$, and has a value $\geq f$.
-\item[POST {\tt /???}] \label{deposit}
+\item[POST {\tt /merchant-specific}]
+  Let $X_j$ be the exchange which signed $\widetilde{C}$ with $K$.
   The customer generates a \emph{deposit-permission}
     $\mathcal{D} := S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$
-  and sends $\langle \mathcal{D}, X_j\rangle$ to the merchant,
-  where $X_j$ is the exchange which signed $K$.
+  and sends $\langle \mathcal{D}, X_j\rangle$ to the merchant.  
 \item[POST {\tt/deposit}]
   The merchant gives $(\mathcal{D}, p, r)$ to the exchange, thereby
   revealing $p$ only to the exchange.
 \item[200 OK / 403 FORBIDDEN]
   The exchange validates $\mathcal{D}$ and checks for double spending.
   If the coin has been involved in previous transactions and the new
-  one would exceed its remaining value, it sends an error
+  one would exceed its remaining value, it sends a ``403 FORBIDDEN'' error
   with the records from the previous transactions back to the merchant. \\
   %
   If double spending is not found, the exchange commits $\langle \mathcal{D} \rangle$ to disk
-  and notifies the merchant that the deposit operation was successful.
-\item[200 OK / ???]
+  and signs a ``200 OK'' message affirming the deposit operation was successful.
+\item[200 OK / 424 FAILED DEPENDENCY]
   The merchant commits and forwards the notification from the exchange to the
-  customer, confirming the success or failure of the operation.
+  customer, confirming the success (``200 OK'') or failure (``424 FAILED DEPENDENCY'')
+  of the operation. 
 \end{description}
 
 We have simplified the exposition by assuming that one coin suffices,
@@ -748,12 +749,12 @@ but in practice a customer can use multiple coins from the same
 exchange where the total value adds up to $f$ by running the above
 steps for each of the coins.
 
-If a transaction is aborted after Step~\ref{deposit},
-subsequent transactions with the same coin could be linked to the coin,
-but not directly to the coin's owner.  The same applies to partially
-spent coins where $f$ is smaller than the actual value of the coin.
-To unlink subsequent transactions from a coin, the customer has to
-execute the coin refreshing protocol with the exchange.
+If a transaction is aborted after the first POST, subsequent
+transactions with the same coin could be linked to this operation.
+The same applies to partially spent coins where $f$ is smaller than
+the actual value of the coin.  To unlink subsequent transactions from
+a coin, the customer has to execute the following coin refreshing
+protocol with the exchange.
 
 %\begin{figure}[h]
 %\centering
