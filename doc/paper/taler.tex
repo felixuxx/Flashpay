@@ -801,11 +801,11 @@ In the protocol, $\kappa \ge 2$ is a security parameter for the
 cut-and-choose part of the protocol.  $\kappa = 3$ is actually
 perfectly sufficient in most cases in practice, as the cut-and-choose
 protocol does not need to provide cryptographic security: If the
-maximum applicable tax is less than $\frac{2}{3}$, then detecting
-$\kappa = 3$ ensures that cheating results in a negative return on
-average as $\kappa - 1$ out of $\kappa$ attempts to cheat are
-detected.  This makes the use of cut-and-choose practical and
-efficient in this context.
+maximum applicable tax is less than $\frac{2}{3}$, then $\kappa = 3$
+ensures that cheating results in a negative financial return on
+average as $\kappa - 1$ out of $\kappa$ attempts to hide from taxation
+are detected and penalized by a total loss.  This makes the use of
+cut-and-choose practical and efficient in this context.
 
 % FIXME: I'm explicit about the rounds in postquantum.tex
 
@@ -815,16 +815,16 @@ efficient in this context.
     a transfer private key $t^{(i)}_s$ and computes
     \begin{itemize}
     \item the transfer public key $T^{(i)}_p := t^{(i)}_s G$ and
-    \item the new coin secret seed $L_i := H(c'_s T_p^{(i)})$.
+    \item the new coin secret seed $L^{(i)} := H(c'_s T_p^{(i)})$.
     \end{itemize}
     We have computed $L_i$ as a Diffie-Hellman shared secret between
     the transfer key pair $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$
     and old coin key pair $C' := \left(c_s', C_p'\right)$;
-    as a result, $L_i = H(t^{(i)}_s C'_p)$ also holds.
-    Now the customer applies key derivation functions $\KDF_?$ to $L_i$ to generate
+    as a result, $L^{(i)} = H(t^{(i)}_s C'_p)$ also holds.
+    Now the customer applies key derivation functions $\KDF_{\textrm{blinding}}$ and $\KDF_{\textrm{Ed25519}}$ to $L^{(i)}$ to generate
     \begin{itemize}
-      \item a blinding factor $b^{(i)} = \FDH_K(\KDF_{\textrm{blinding}}(L_i))$.
-      \item $c_s^{(i)} = \KDF_{\textrm{Ed25519}}(L_i)$
+      \item a blinding factor $b^{(i)} = \FDH_K(\KDF_{\textrm{blinding}}(L^{(i)}))$.
+      \item $c_s^{(i)} = \KDF_{\textrm{Ed25519}}(L^{(i)})$
     \end{itemize}
     Now the customer can compute her new coin key pair
      $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$
@@ -1251,13 +1251,13 @@ data being committed to disk are represented in between $\langle\rangle$.
   \item[$\vec{b}$]{Vector of $b^{(i)}$}
   \item[$B^{(i)}$]{Blinding of $C_p^{(i)}$}
   \item[$\vec{B}$]{Vector of $B^{(i)}$}
-  \item[$L_i$]{Link secret derived from ECDH operation via hashing}
-%  \item[$E_{L_i}()$]{Symmetric encryption using key $L_i$}
+  \item[$L^{(i)}$]{Link secret derived from ECDH operation via hashing}
+%  \item[$E_{L^{(i)}}()$]{Symmetric encryption using key $L^{(i)}$}
 %  \item[$E^{(i)}$]{$i$-th encryption of the private information $(c_s^{(i)}, b_i)$}
 %  \item[$\vec{E}$]{Vector of $E^{(i)}$}
   \item[$\cal{R}$]{Tuple of revealed vectors in cut-and-choose protocol,
     where the vectors exclude the selected index $\gamma$}
-  \item[$\overline{L_i}$]{Link secrets derived by the verifier from DH}
+  \item[$\overline{L^{(i)}}$]{Link secrets derived by the verifier from DH}
   \item[$\overline{B^{(i)}}$]{Blinded values derived by the verifier}
   \item[$\overline{T_p^{(i)}}$]{Public transfer keys derived by the verifier from revealed private keys}
   \item[$\overline{c_s^{(i)}}$]{Private keys obtained from decryption by the verifier}
