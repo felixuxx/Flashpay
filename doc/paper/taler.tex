@@ -796,17 +796,16 @@ denomination $K$ is melted to obtain a fresh coin $\widetilde{C}$
 with the same denomination.  In practice, Taler uses a natural
 extension where multiple fresh coins are generated a the same time to
 enable giving precise change matching any amount.
-In the protocol, $\kappa \ge 3$ is a security parameter for the
-cut-and-choose part of the protocol and $G$ is the
-generator of the elliptic curve.
 
-We note that $\kappa = 3$ is actually perfectly sufficient in most
-cases in practice, as the cut-and-choose protocol does not need to
-provide cryptographic security: If the maximum applicable tax is less
-than $\frac{2}{3}$, then detecting $\kappa = 3$ ensures that cheating
-results in a negative return on average as $\kappa - 1$ out of
-$\kappa$ attempts to cheat are detected.  This makes the use of
-cut-and-choose practical and efficient in this context.
+In the protocol, $\kappa \ge 2$ is a security parameter for the
+cut-and-choose part of the protocol.  $\kappa = 3$ is actually
+perfectly sufficient in most cases in practice, as the cut-and-choose
+protocol does not need to provide cryptographic security: If the
+maximum applicable tax is less than $\frac{2}{3}$, then detecting
+$\kappa = 3$ ensures that cheating results in a negative return on
+average as $\kappa - 1$ out of $\kappa$ attempts to cheat are
+detected.  This makes the use of cut-and-choose practical and
+efficient in this context.
 
 % FIXME: I'm explicit about the rounds in postquantum.tex
 
