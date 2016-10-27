@@ -1048,7 +1048,7 @@ enum TALER_ErrorCode
    * The response is
    * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_TRACK_TRANSFER_DB_STORE_TRANSER_ERROR = 2404,
+  TALER_EC_TRACK_TRANSFER_DB_STORE_TRANSFER_ERROR = 2404,
   
   /**
    * The exchange returned an error from /track/transfer.
