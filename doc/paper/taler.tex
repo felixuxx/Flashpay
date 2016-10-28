@@ -337,37 +337,57 @@ assures customers and merchants that the exchange operates correctly.
 
 \subsection{Security model}
 
-Taler's security model assumes that cryptographic primitives are
-secure and that each participant is under full control of his system.
-% FIXME: Jeff, can you concisely state the precise assumpitons?
-% (i.e. hardness of EC-DLOG for refresh, RSA assumption, hash collision resistance (?))
-The contact information of the exchange is known to both customer and
-merchant from the start.  We further assume that the customer can
-authenticate the merchant, e.g. using X.509
-certificates~\cite{rfc6818}.  Finally, we assume that customer has an
-anonymous bi-directional channel, such as Tor, to communicate with
-both the exchange and the merchant.
+Taler assumes that each participant has full control over their system.
+In particular, cloud operator create an intractable insider threat.
 
-The exchange is trusted to hold funds of its customers and to forward
-them when receiving the respective deposit instructions from the
-merchants.  Customer and merchant can have assurances about the
+We assume the contact information of the exchange is known to
+both customer and merchant from the start.  We further assume that
+the customer can authenticate the merchant, such as by using X.509
+certificates~\cite{rfc6818}. 
+
+A Taler exchange is trusted to hold funds of its customers and to
+forward them when receiving the respective deposit instructions from
+the merchants.  Customer and merchant can have assurances about the
 exchange's liquidity and operation though published audits by
-financial regulators or other trusted third parties.
-Online signing keys expire regularly, allowing the exchange to
-eventually destroy the corresponding accumulated cryptographic proofs.
+financial regulators or other trusted third parties.  
 
-The merchant is trusted to deliver the service or goods to the
+We reiterate that an exchange must secure both its keys, especially
+its denomination key, and its databases of customer reserve accounts
+and of spent coins.  An exchange's denomination signing keys do
+expire regularly though, allowing the exchange to eventually destroy
+the corresponding accumulated cryptographic proofs, and limiting the
+exchange's financial liabiltiy in the case of insider attacks.
+On the cryptohgraphic side, a Taler exchange demands that coins use a
+full domain hash (FDH) to make so-called ``one-more forgery'' attacks
+provably hard, assuming the RSA known-target inversion problem is
+hard~\cite[Theorem 12]{RSA-HDF-KTIvCTI}.
+
+A Taler merchant is trusted to deliver the service or goods to the
 customer upon receiving payment.  The customer can seek legal relief
 to achieve this, as he receives cryptographic proofs of the contract
 and has proof that he paid his obligations.
 
-Neither the merchant nor the customer have any ability to {\em effectively}
-defraud the exchange or the state collecting taxes.  Here, ``effectively''
-means that the expected return for fraud is negative.
-%
-%Note that customers do not need to be trusted in any way, and that in
-%particular it is never necessary for anyone to try to recover funds
-%from customers using legal coersion.
+All combined, there are phesable methods for merchants and customers
+to defraud the exchange, without insider access.  There are no effective
+methods for merchants and customers to conceal a merchants income,
+thereby enabling extortion or defrauding tax collectors, assuming that
+ the maximum tax rate is below $1/\kappa$ and that
+ the customer is unwilling to pay $\kappa$ times the price.
+
+\smallskip
+
+We assume each Taler customer has an anonymous bi-directional channel,
+such as Tor, to communicate with both the exchange and the merchant.
+In particular, we note that customers should be anonymous when ther
+Taler wallet makes {\tt /keys} requests, which may impose requirements
+on the usage of teh anonymous channel.
+
+For a withdrawn coin, we believe violating the customers anonymity
+cryptographily requires recognizing a random blinding factor from a
+random element of the group of integers modulo the denomination key's
+RSA modulus, which appears impossible even with a quantum computers.
+For a refreshed coin, unlinkabiltiy requires the hardness of the
+discrete logarithm in curve25519. 
 
 \subsection{Taxability and Entities}
 
