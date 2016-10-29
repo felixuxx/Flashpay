@@ -175,9 +175,11 @@ Additionally, the refresh protocol ensures that the change is owned by
 the same entity which owned the original coin.
 
 
+\vspace{-0.3cm}
 \section{Related Work}
+\vspace{-0.3cm}
 
-\subsection{Blockchain-based currencies}
+%\subsection{Blockchain-based currencies}
 
 In recent years, a class of decentralized electronic payment systems,
 based on collectively recorded and verified append-only public
@@ -231,7 +233,7 @@ privacy assurances of the system.
 %would also merely impose a financial panopticon on a BitCoin-style
 %money supply and transaction model.
 
-\subsection{Chaum-style electronic cash}
+%\subsection{Chaum-style electronic cash}
 
 Chaum~\cite{chaum1983blind} proposed a digital payment system that
 would provide some customer anonymity while disclosing the identity of
@@ -319,8 +321,9 @@ description of the Opencoin protocol is available to date.
 %macropayment.  It is therefore unclear how Peppercoin would actually
 %reduce the computational burden on the exchange.
 
-
+%\vspace{-0.3cm}
 \section{Design}
+%\vspace{-0.3cm}
 
 The Taler system comprises three principal types of actors
 (Figure~\ref{fig:cmm}): The \emph{customer} is interested in receiving
@@ -335,59 +338,47 @@ deposit digital coins in return for receiving credit at the merchant's
 financial reserve.  In addition, Taler includes an \emph{auditor} who
 assures customers and merchants that the exchange operates correctly.
 
+%\vspace{-0.3cm}
 \subsection{Security model}
+%\vspace{-0.3cm}
 
-Taler assumes that each participant has full control over their system.
-In particular, cloud operator create an intractable insider threat.
-
-We assume the contact information of the exchange is known to
-both customer and merchant from the start.  We further assume that
-the customer can authenticate the merchant, such as by using X.509
-certificates~\cite{rfc6818}. 
+Taler assumes that each participant has full control over their
+system.  We assume the contact information of the exchange is known to
+both customer and merchant from the start, including that the customer
+can authenticate the merchant, for example by using X.509
+certificates~\cite{rfc6818}.  A Taler merchant is trusted to deliver
+the service or goods to the customer upon receiving payment.  The
+customer can seek legal relief to achieve this, as the customer
+receives cryptographic evidence of the contract and the associated
+payment.  We assume each Taler customer has an anonymous
+bi-directional channel, such as Tor, to communicate with both the
+exchange and the merchant.
 
 A Taler exchange is trusted to hold funds of its customers and to
 forward them when receiving the respective deposit instructions from
 the merchants.  Customer and merchant can have assurances about the
 exchange's liquidity and operation though published audits by
-financial regulators or other trusted third parties.  
+financial regulators or other trusted third parties.  An exchange's
+signing keys expire regularly, allowing the exchange to eventually
+destroy the corresponding accumulated cryptographic proofs, and
+limiting the exchange's financial liability.
 
-We reiterate that an exchange must secure both its keys, especially
-its denomination key, and its databases of customer reserve accounts
-and of spent coins.  An exchange's denomination signing keys do
-expire regularly though, allowing the exchange to eventually destroy
-the corresponding accumulated cryptographic proofs, and limiting the
-exchange's financial liabiltiy in the case of insider attacks.
-On the cryptohgraphic side, a Taler exchange demands that coins use a
+On the cryptographic side, a Taler exchange demands that coins use a
 full domain hash (FDH) to make so-called ``one-more forgery'' attacks
 provably hard, assuming the RSA known-target inversion problem is
-hard~\cite[Theorem 12]{RSA-HDF-KTIvCTI}.
+hard~\cite[Theorem 12]{RSA-HDF-KTIvCTI}.  For a withdrawn coin,
+violating the customers anonymity cryptographily requires recognizing
+a random blinding factor from a random element of the group of
+integers modulo the denomination key's RSA modulus, which appears
+impossible even with a quantum computers.  For a refreshed coin,
+unlinkabiltiy requires the hardness of the discrete logarithm for
+Curve25519.
 
-A Taler merchant is trusted to deliver the service or goods to the
-customer upon receiving payment.  The customer can seek legal relief
-to achieve this, as he receives cryptographic proofs of the contract
-and has proof that he paid his obligations.
+The cut-and-choose protocol prevents merchants and customers from
+conspiring to conceal a merchants income.  We assume that the maximum
+tax rate is below $1/\kappa$, and that expected transaction losses of
+a factor of $\kappa$ for tax evasion are thus unacceptable.
 
-All combined, there are phesable methods for merchants and customers
-to defraud the exchange, without insider access.  There are no effective
-methods for merchants and customers to conceal a merchants income,
-thereby enabling extortion or defrauding tax collectors, assuming that
- the maximum tax rate is below $1/\kappa$ and that
- the customer is unwilling to pay $\kappa$ times the price.
-
-\smallskip
-
-We assume each Taler customer has an anonymous bi-directional channel,
-such as Tor, to communicate with both the exchange and the merchant.
-In particular, we note that customers should be anonymous when ther
-Taler wallet makes {\tt /keys} requests, which may impose requirements
-on the usage of teh anonymous channel.
-
-For a withdrawn coin, we believe violating the customers anonymity
-cryptographily requires recognizing a random blinding factor from a
-random element of the group of integers modulo the denomination key's
-RSA modulus, which appears impossible even with a quantum computers.
-For a refreshed coin, unlinkabiltiy requires the hardness of the
-discrete logarithm in curve25519. 
 
 \subsection{Taxability and Entities}
 
@@ -495,12 +486,10 @@ exposes these events as anchors for tax audits on income.
 
 A \emph{coin} in Taler is a public-private key pair where the private
 key is only known to the owner of the coin.  A coin derives its
-financial value from an RSA signature over a the full domain hash
-(FDH) of the coin's public key.  An FDH is used so that ``one-more
-forgery'' is provably hard assuming the RSA known-target inversion
-problem is hard~\cite[Theorem 12]{RSA-HDF-KTIvCTI}.  The exchange has
-multiple RSA {\em denomination key} pairs available for blind-signing
-coins of different value.
+financial value from an RSA signature over the FDH
+of the coin's public key. The exchange has multiple RSA {\em
+  denomination key} pairs available for blind-signing coins of
+different value.
 
 Denomination keys have an expiration date, before which any coins
 signed with it must be spent or refreshed.  This allows the exchange
@@ -544,11 +533,11 @@ withdrawal message as proof that the reserve was debited correctly.
 
 After a coin is issued, the customer is the only entity that knows the
 private key of the coin, making him the \emph{owner} of the coin.  Due
-to the use of blind signatures, the exchange does not even learn the
+to the use of blind signatures, the exchange does not learn the
 public key during the withdrawal process.  If the private key is
 shared with others, they become co-owners of the coin.  Knowledge of
 the private key of the coin and the signature over the coin's public
-key by an exchange's denomination key enables the owner to spent the
+key by an exchange's denomination key enables spending the
 coin.
 
 
