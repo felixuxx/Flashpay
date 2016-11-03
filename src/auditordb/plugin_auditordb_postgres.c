@@ -510,13 +510,487 @@ postgres_prepare (PGconn *db_conn)
     PQclear (result); result = NULL;                            \
   } while (0);
 
-  /* Used in #postgres_XXX() */
-  PREPARE ("test_insert",
-           "INSERT INTO test "
-           "(test_pub"
-           ") VALUES "
-           "($1);",
+  /* Used in #postgres_insert_denomination_info() */
+  PREPARE ("auditor_denominations_insert",
+           "INSERT INTO auditor_denominations "
+           "(denom_pub_hash"
+           ",master_pub"
+           ",valid_from"
+           ",expire_withdraw"
+           ",expire_deposit"
+           ",expire_legal"
+           ",coin_val"
+           ",coin_frac"
+           ",coin_curr"
+           ",fee_withdraw_val"
+           ",fee_withdraw_frac"
+           ",fee_withdraw_curr"
+           ",fee_deposit_val"
+           ",fee_deposit_frac"
+           ",fee_deposit_curr"
+           ",fee_refresh_val"
+           ",fee_refresh_frac"
+           ",fee_refresh_curr"
+           ",fee_refund_val"
+           ",fee_refund_frac"
+           ",fee_refund_curr"
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21);",
+           21, NULL);
+
+  /* Used in #postgres_insert_denomination_info() */
+  PREPARE ("auditor_denominations_select",
+           "SELECT"
+           " denom_pub_hash"
+           ",valid_from"
+           ",expire_withdraw"
+           ",expire_deposit"
+           ",expire_legal"
+           ",coin_val"
+           ",coin_frac"
+           ",coin_curr"
+           ",fee_withdraw_val"
+           ",fee_withdraw_frac"
+           ",fee_withdraw_curr"
+           ",fee_deposit_val"
+           ",fee_deposit_frac"
+           ",fee_deposit_curr"
+           ",fee_refresh_val"
+           ",fee_refresh_frac"
+           ",fee_refresh_curr"
+           ",fee_refund_val"
+           ",fee_refund_frac"
+           ",fee_refund_curr"
+           " FROM auditor_denominations"
+           " WHERE master_pub=$1;",
            1, NULL);
+
+  /* Used in #postgres_insert_reserve_info() */
+  PREPARE ("auditor_reserves_insert",
+           "INSERT INTO auditor_reserves"
+	   "(reserve_pub"
+           ",master_pub"
+           ",reserve_balance_val"
+           ",reserve_balance_frac"
+           ",reserve_balance_curr"
+           ",withdraw_fee_balance_val"
+           ",withdraw_fee_balance_frac"
+           ",withdraw_fee_balance_curr"
+           ",expiration_date"
+	   ",last_reserve_in_serial_id"
+           ",last_reserve_out_serial_id)"
+           ") VALUES ($1,$2,$3,$4,$5,$7,$8,$9,$10,$11);",
+           11, NULL);
+
+  /* Used in #postgres_update_reserve_info() */
+  PREPARE ("auditor_reserves_update",
+           "UPDATE auditor_reserves SET"
+           " reserve_balance_val=$1"
+           ",reserve_balance_frac=$2"
+           ",reserve_balance_curr=$3"
+           ",withdraw_fee_balance_val=$4"
+           ",withdraw_fee_balance_frac=$5"
+           ",withdraw_fee_balance_curr=$6"
+           ",expiration_date=$7"
+	   ",last_reserve_in_serial_id=$8"
+           ",last_reserve_out_serial_id=$9"
+           " WHERE reserve_pub=$10 AND master_pub=$11;",
+           11, NULL);
+
+  /* Used in #postgres_get_reserve_info() */
+  PREPARE ("auditor_reserves_select",
+           "SELECT"
+           " reserve_balance_val"
+           ",reserve_balance_frac"
+           ",reserve_balance_curr"
+           ",withdraw_fee_balance_val"
+           ",withdraw_fee_balance_frac"
+           ",withdraw_fee_balance_curr"
+           ",expiration_date"
+	   ",last_reserve_in_serial_id"
+           ",last_reserve_out_serial_id"
+           " FROM auditor_reserves"
+           " WHERE reserve_pub=$1 AND master_pub=$2;",
+           2, NULL);
+
+  /* Used in #postgres_insert_reserve_summary() */
+  PREPARE ("auditor_reserve_balance_insert",
+           "INSERT INTO auditor_reserve_balance"
+	   "(master_pub"
+	   ",reserve_balance_val"
+           ",reserve_balance_frac"
+           ",reserve_balance_curr"
+           ",withdraw_fee_balance_val"
+           ",withdraw_fee_balance_frac"
+           ",withdraw_fee_balance_curr"
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7)",
+           7, NULL);
+
+  /* Used in #postgres_update_reserve_summary() */
+  PREPARE ("auditor_reserve_balance_update",
+           "UPDATE auditor_reserve_balance SET"
+	   " reserve_balance_val=$1"
+           ",reserve_balance_frac=$2"
+           ",reserve_balance_curr=$3"
+           ",withdraw_fee_balance_val=$4"
+           ",withdraw_fee_balance_frac=$5"
+           ",withdraw_fee_balance_curr=$6"
+           " WHERE master_pub=$7;",
+           7, NULL);
+
+  /* Used in #postgres_get_reserve_summary() */
+  PREPARE ("auditor_reserve_balance_select",
+           "SELECT"
+	   " reserve_balance_val"
+           ",reserve_balance_frac"
+           ",reserve_balance_curr"
+           ",withdraw_fee_balance_val"
+           ",withdraw_fee_balance_frac"
+           ",withdraw_fee_balance_curr"
+           " FROM auditor_reserve_balance"
+           " WHERE master_pub=$1;",
+           1, NULL);
+
+  /* Used in #postgres_insert_denomination_balance() */
+  PREPARE ("denomination_pending_insert",
+           "INSERT INTO denomination_pending"
+	   "(denom_pub_hash"
+           ",denom_balance_val"
+           ",denom_balance_frac"
+           ",denom_balance_curr"
+           ",deposit_fee_balance_val"
+           ",deposit_fee_balance_frac"
+           ",deposit_fee_balance_curr"
+           ",melt_fee_balance_val"
+           ",melt_fee_balance_frac"
+           ",melt_fee_balance_curr"
+           ",refund_fee_balance_val"
+           ",refund_fee_balance_frac"
+           ",refund_fee_balance_curr"
+           ",last_reserve_out_serial_id"
+           ",last_deposit_serial_id"
+	   ",last_melt_serial_id"
+	   ",last_refund_serial_id"
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,,$11,$12,$13,$14,$15,$16,$17);",
+           17, NULL);
+
+  /* Used in #postgres_update_denomination_balance() */
+  PREPARE ("denomination_pending_update",
+           "UPDATE denomination_pending SET"
+           " denom_balance_val=$1"
+           ",denom_balance_frac=$2"
+           ",denom_balance_curr=$3"
+           ",deposit_fee_balance_val=$4"
+           ",deposit_fee_balance_frac=$5"
+           ",deposit_fee_balance_curr=$6"
+           ",melt_fee_balance_val=$7"
+           ",melt_fee_balance_frac=$8"
+           ",melt_fee_balance_curr=$9"
+           ",refund_fee_balance_val=$10"
+           ",refund_fee_balance_frac=$11"
+           ",refund_fee_balance_curr=$12"
+           ",last_reserve_out_serial_id=$13"
+           ",last_deposit_serial_id=$14"
+	   ",last_melt_serial_id=$15"
+	   ",last_refund_serial_id=$16"
+           " WHERE donom_pub_hash=$17",
+           18, NULL);
+
+  /* Used in #postgres_get_denomination_balance() */
+  PREPARE ("denomination_pending_select",
+           "SELECT"
+           " denom_balance_val"
+           ",denom_balance_frac"
+           ",denom_balance_curr"
+           ",deposit_fee_balance_val"
+           ",deposit_fee_balance_frac"
+           ",deposit_fee_balance_curr"
+           ",melt_fee_balance_val"
+           ",melt_fee_balance_frac"
+           ",melt_fee_balance_curr"
+           ",refund_fee_balance_val"
+           ",refund_fee_balance_frac"
+           ",refund_fee_balance_curr"
+           ",last_reserve_out_serial_id"
+           ",last_deposit_serial_id"
+	   ",last_melt_serial_id"
+	   ",last_refund_serial_id"
+           " FROM denomination_pending"
+           " WHERE denom_pub_hash=$1",
+           1, NULL);
+
+  /* Used in #postgres_insert_denomination_balance() */
+  PREPARE ("denomination_pending_insert",
+           "INSERT INTO denomination_pending"
+	   "(denom_pub_hash"
+           ",denom_balance_val"
+           ",denom_balance_frac"
+           ",denom_balance_curr"
+           ",deposit_fee_balance_val"
+           ",deposit_fee_balance_frac"
+           ",deposit_fee_balance_curr"
+           ",melt_fee_balance_val"
+           ",melt_fee_balance_frac"
+           ",melt_fee_balance_curr"
+           ",refund_fee_balance_val"
+           ",refund_fee_balance_frac"
+           ",refund_fee_balance_curr"
+           ",last_reserve_out_serial_id"
+           ",last_deposit_serial_id"
+	   ",last_melt_serial_id"
+	   ",last_refund_serial_id"
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);",
+           17, NULL);
+
+  /* Used in #postgres_update_denomination_balance() */
+  PREPARE ("denomination_pending_update",
+           "UPDATE denomination_pending SET"
+           " denom_balance_val=$1"
+           ",denom_balance_frac=$2"
+           ",denom_balance_curr=$3"
+           ",deposit_fee_balance_val=$4"
+           ",deposit_fee_balance_frac=$5"
+           ",deposit_fee_balance_curr=$6"
+           ",melt_fee_balance_val=$7"
+           ",melt_fee_balance_frac=$8"
+           ",melt_fee_balance_curr=$9"
+           ",refund_fee_balance_val=$10"
+           ",refund_fee_balance_frac=$11"
+           ",refund_fee_balance_curr=$12"
+           ",last_reserve_out_serial_id=$13"
+           ",last_deposit_serial_id=$14"
+	   ",last_melt_serial_id=$15"
+	   ",last_refund_serial_id=$16"
+           " WHERE denom_pub_hash=$17;",
+           17, NULL);
+
+  /* Used in #postgres_insert_denomination_balance() */
+  PREPARE ("denomination_pending_select",
+           "SELECT"
+           " denom_balance_val"
+           ",denom_balance_frac"
+           ",denom_balance_curr"
+           ",deposit_fee_balance_val"
+           ",deposit_fee_balance_frac"
+           ",deposit_fee_balance_curr"
+           ",melt_fee_balance_val"
+           ",melt_fee_balance_frac"
+           ",melt_fee_balance_curr"
+           ",refund_fee_balance_val"
+           ",refund_fee_balance_frac"
+           ",refund_fee_balance_curr"
+           ",last_reserve_out_serial_id"
+           ",last_deposit_serial_id"
+	   ",last_melt_serial_id"
+	   ",last_refund_serial_id"
+           " FROM  denomination_pending"
+           " WHERE denom_pub_hash=$1",
+           1, NULL);
+
+  /* Used in #postgres_insert_denomination_summary() */
+  PREPARE ("total_liabilities_insert",
+           "INSERT INTO total_liabilities"
+	   "(master_pub"
+	   ",denom_balance_val"
+           ",denom_balance_frac"
+           ",denom_balance_curr"
+           ",deposit_fee_balance_val"
+           ",deposit_fee_balance_frac"
+           ",deposit_fee_balance_curr"
+           ",melt_fee_balance_val"
+           ",melt_fee_balance_frac"
+           ",melt_fee_balance_curr"
+           ",refund_fee_balance_val"
+           ",refund_fee_balance_frac"
+           ",refund_fee_balance_curr"
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);",
+           13, NULL);
+
+  /* Used in #postgres_update_denomination_summary() */
+  PREPARE ("total_liabilities_update",
+           "UPDATE total_liabilities SET"
+	   " denom_balance_val=$1"
+           ",denom_balance_frac=$2"
+           ",denom_balance_curr=$3"
+           ",deposit_fee_balance_val=$4"
+           ",deposit_fee_balance_frac=$5"
+           ",deposit_fee_balance_curr=$6"
+           ",melt_fee_balance_val=$7"
+           ",melt_fee_balance_frac=$8"
+           ",melt_fee_balance_curr=$9"
+           ",refund_fee_balance_val=$10"
+           ",refund_fee_balance_frac=$11"
+           ",refund_fee_balance_curr=$12"
+           " WHERE master_pub=$14;",
+           13, NULL);
+
+  /* Used in #postgres_get_denomination_summary() */
+  PREPARE ("total_liabilities_select",
+           "SELECT"
+	   " denom_balance_val"
+           ",denom_balance_frac"
+           ",denom_balance_curr"
+           ",deposit_fee_balance_val"
+           ",deposit_fee_balance_frac"
+           ",deposit_fee_balance_curr"
+           ",melt_fee_balance_val"
+           ",melt_fee_balance_frac"
+           ",melt_fee_balance_curr"
+           ",refund_fee_balance_val"
+           ",refund_fee_balance_frac"
+           ",refund_fee_balance_curr"
+           " FROM total_liabilities"
+           " WHERE master_pub=$1;",
+           1, NULL);
+
+  /* Used in #postgres_insert_risk_summary() */
+  PREPARE ("total_risk_insert",
+           "INSERT INTO total_risk"
+	   "(master_pub"
+	   ",risk_val"
+           ",risk_frac"
+           ",risk_curr"
+           ") VALUES ($1,$2,$3,$4);",
+           4, NULL);
+
+  /* Used in #postgres_update_risk_summary() */
+  PREPARE ("total_risk_select",
+           "UPDATE total_risk SET "
+	   " risk_val=$1"
+           ",risk_frac=$2"
+           ",risk_curr=$3"
+           " WHERE master_pub=$4;",
+           4, NULL);
+
+  /* Used in #postgres_get_risk_summary() */
+  PREPARE ("total_risk_select",
+           "SELECT"
+	   " risk_val"
+           ",risk_frac"
+           ",risk_curr"
+           " FROM  total_risk"
+           " WHERE master_pub=$1;",
+           1, NULL);
+
+
+  /* Used in #postgres_insert_historic_denom_revenue() */
+  PREPARE ("historic_denomination_revenue_insert",
+           "INSERT INTO historic_denomination_revenue"
+	   "(master_pub"
+	   ",denom_pub_hash"
+	   ",revenue_timestamp"
+	   ",revenue_balance_val"
+           ",revenue_balance_frac"
+           ",revenue_balance_curr"
+           ",deposit_fee_balance_val"
+           ",deposit_fee_balance_frac"
+           ",deposit_fee_balance_curr"
+           ",melt_fee_balance_val"
+           ",melt_fee_balance_frac"
+           ",melt_fee_balance_curr"
+           ",refund_fee_balance_val"
+           ",refund_fee_balance_frac"
+           ",refund_fee_balance_curr"
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,,$11,$12,$13,$14,$15);",
+           15, NULL);
+
+  /* Used in #postgres_select_historic_denom_revenue() */
+  PREPARE ("historic_denomination_revenue_select",
+           "SELECT"
+	   " denom_pub_hash"
+	   ",revenue_timestamp"
+	   ",revenue_balance_val"
+           ",revenue_balance_frac"
+           ",revenue_balance_curr"
+           ",deposit_fee_balance_val"
+           ",deposit_fee_balance_frac"
+           ",deposit_fee_balance_curr"
+           ",melt_fee_balance_val"
+           ",melt_fee_balance_frac"
+           ",melt_fee_balance_curr"
+           ",refund_fee_balance_val"
+           ",refund_fee_balance_frac"
+           ",refund_fee_balance_curr"
+           " FROM historic_denomination_revenue"
+           " WHERE master_pub=$1;",
+           1, NULL);
+
+  /* Used in #postgres_insert_historic_losses() */
+  PREPARE ("historic_losses_insert",
+           "INSERT INTO historic_losses"
+	   "(master_pub"
+	   ",denom_pub_hash"
+	   ",loss_timestamp"
+	   ",loss_balance_val"
+           ",loss_balance_frac"
+           ",loss_balance_curr"
+           ") VALUES ($1,$2,$3,$4,$5,$6);",
+           6, NULL);
+
+  /* Used in #postgres_select_historic_losses() */
+  PREPARE ("historic_losses_select",
+           "SELECT"
+	   " denom_pub_hash"
+	   ",loss_timestamp"
+	   ",loss_balance_val"
+           ",loss_balance_frac"
+           ",loss_balance_curr"
+           " FROM historic_losses"
+           " WHERE master_pub=$1;",
+           1, NULL);
+
+  /* Used in #postgres_insert_historic_reserve_revenue() */
+  PREPARE ("historic_reserve_summary_insert",
+           "INSERT INTO historic_reserve_summary"
+	   "(master_pub"
+	   ",start_date"
+	   ",end_date"
+	   ",reserve_profits_val"
+           ",reserve_profits_frac"
+           ",reserve_profits_curr"
+           ") VALUES ($1,$2,$3,$4,$5,$6);",
+           6, NULL);
+
+  /* Used in #postgres_select_historic_reserve_revenue() */
+  PREPARE ("historic_reserve_summary_select",
+           "SELECT"
+	   " start_date"
+	   ",end_date"
+	   ",reserve_profits_val"
+           ",reserve_profits_frac"
+           ",reserve_profits_curr"
+           " FROM historic_reserve_summary"
+           " WHERE master_pub=$1;",
+           1, NULL);
+
+  /* Used in #postgres_insert_predicted_result() */
+  PREPARE ("predicted_result_insert",
+           "INSERT INTO predicted_result"
+	   "(master_pub"
+	   ",balance_val"
+           ",balance_frac"
+           ",balance_curr"
+           ") VALUES ($1,$2,$3,$4);",
+           4, NULL);
+
+  /* Used in #postgres_update_predicted_result() */
+  PREPARE ("predicted_result_update",
+           "UPDATE predicted_result SET"
+	   ",balance_val=$1"
+           ",balance_frac=$2"
+           ",balance_curr=$3"
+           " WHERE master_pub=$4;",
+           4, NULL);
+
+  /* Used in #postgres_get_predicted_balance() */
+  PREPARE ("predicted_result_select",
+           "SELECT"
+	   " balance_val"
+           ",balance_frac"
+           ",balance_curr"
+           " FROM predicted_result"
+           " WHERE master_pub=$1;",
+           1, NULL);
+
   return GNUNET_OK;
 #undef PREPARE
 }
@@ -743,8 +1217,69 @@ postgres_insert_denomination_info (void *cls,
                                    struct TALER_AUDITORDB_Session *session,
                                    const struct TALER_DenominationKeyValidityPS *issue)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&issue->denom_hash),
+    GNUNET_PQ_query_param_auto_from_type (&issue->master),
+
+    GNUNET_PQ_query_param_auto_from_type (&issue->start),
+    GNUNET_PQ_query_param_auto_from_type (&issue->expire_withdraw),
+    GNUNET_PQ_query_param_auto_from_type (&issue->expire_deposit),
+    GNUNET_PQ_query_param_auto_from_type (&issue->expire_legal),
+
+    GNUNET_PQ_query_param_uint64 (&issue->value.value),
+    GNUNET_PQ_query_param_uint32 (&issue->value.fraction),
+    GNUNET_PQ_query_param_auto_from_type (&issue->value.currency),
+
+    GNUNET_PQ_query_param_uint64 (&issue->fee_withdraw.value),
+    GNUNET_PQ_query_param_uint32 (&issue->fee_withdraw.fraction),
+    GNUNET_PQ_query_param_auto_from_type (&issue->fee_withdraw.currency),
+
+    GNUNET_PQ_query_param_uint64 (&issue->fee_deposit.value),
+    GNUNET_PQ_query_param_uint32 (&issue->fee_deposit.fraction),
+    GNUNET_PQ_query_param_auto_from_type (&issue->fee_deposit.currency),
+
+    GNUNET_PQ_query_param_uint64 (&issue->fee_refresh.value),
+    GNUNET_PQ_query_param_uint32 (&issue->fee_refresh.fraction),
+    GNUNET_PQ_query_param_auto_from_type (&issue->fee_refresh.currency),
+
+    GNUNET_PQ_query_param_uint64 (&issue->fee_refund.value),
+    GNUNET_PQ_query_param_uint32 (&issue->fee_refund.fraction),
+    GNUNET_PQ_query_param_auto_from_type (&issue->fee_refund.currency),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  /* check fees match coin currency */
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency_nbo (&issue->value,
+                                                &issue->fee_withdraw));
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency_nbo (&issue->value,
+                                                &issue->fee_deposit));
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency_nbo (&issue->value,
+                                                &issue->fee_refresh));
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency_nbo (&issue->value,
+                                               &issue->fee_refund));
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "auditor_denominations_insert",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -762,11 +1297,80 @@ static int
 postgres_select_denomination_info (void *cls,
                                    struct TALER_AUDITORDB_Session *session,
                                    const struct TALER_MasterPublicKeyP *master_pub,
-                                   void *cb, /* FIXME: type! */
+                                   TALER_AUDITORDB_DenominationInfoDataCallback cb,
                                    void *cb_cls)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "auditor_denominations_select",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  int nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "postgres_select_denomination_info() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  for (int i = 0; i < nrows; i++)
+  {
+    struct TALER_DenominationKeyValidityPS issue;
+
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash", &issue.denom_hash),
+
+      GNUNET_PQ_result_spec_auto_from_type ("valid_from", &issue.start),
+      GNUNET_PQ_result_spec_auto_from_type ("expire_withdraw", &issue.expire_withdraw),
+      GNUNET_PQ_result_spec_auto_from_type ("expire_deposit", &issue.expire_deposit),
+      GNUNET_PQ_result_spec_auto_from_type ("expire_legal", &issue.expire_legal),
+
+      GNUNET_PQ_result_spec_uint64 ("coin_val", &issue.value.value),
+      GNUNET_PQ_result_spec_uint32 ("coin_frac", &issue.value.fraction),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_curr", &issue.value.currency),
+
+      GNUNET_PQ_result_spec_uint64 ("fee_withdraw_val", &issue.fee_withdraw.value),
+      GNUNET_PQ_result_spec_uint32 ("fee_withdraw_frac", &issue.fee_withdraw.fraction),
+      GNUNET_PQ_result_spec_auto_from_type ("fee_withdraw_curr", &issue.fee_withdraw.currency),
+
+      GNUNET_PQ_result_spec_uint64 ("fee_deposit_val", &issue.fee_deposit.value),
+      GNUNET_PQ_result_spec_uint32 ("fee_deposit_frac",&issue.fee_deposit.fraction),
+      GNUNET_PQ_result_spec_auto_from_type ("fee_deposit_curr", &issue.fee_deposit.currency),
+
+      GNUNET_PQ_result_spec_uint64 ("fee_refresh_val", &issue.fee_refresh.value),
+      GNUNET_PQ_result_spec_uint32 ("fee_refresh_frac", &issue.fee_refresh.fraction),
+      GNUNET_PQ_result_spec_auto_from_type ("fee_refresh_curr", &issue.fee_refresh.currency),
+
+      GNUNET_PQ_result_spec_uint64 ("fee_refund_val", &issue.fee_refund.value),
+      GNUNET_PQ_result_spec_uint32 ("fee_refund_frac", &issue.fee_refund.fraction),
+      GNUNET_PQ_result_spec_auto_from_type ("fee_refund_curr", &issue.fee_refund.currency),
+
+      GNUNET_PQ_result_spec_end
+    };
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    cb (cb_cls,
+        &issue);
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -799,8 +1403,47 @@ postgres_insert_reserve_info (void *cls,
                               uint64_t last_reserve_in_serial_id,
                               uint64_t last_reserve_out_serial_id)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_uint64 (&reserve_balance->value),
+    GNUNET_PQ_query_param_uint32 (&reserve_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&reserve_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&withdraw_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&withdraw_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&withdraw_fee_balance->currency),
+
+    GNUNET_PQ_query_param_auto_from_type (&expiration_date),
+
+    GNUNET_PQ_query_param_uint64 (&last_reserve_in_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_reserve_out_serial_id),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (reserve_balance,
+                                            withdraw_fee_balance));
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "auditor_reserves_insert",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -833,8 +1476,47 @@ postgres_update_reserve_info (void *cls,
                               uint64_t last_reserve_in_serial_id,
                               uint64_t last_reserve_out_serial_id)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&reserve_balance->value),
+    GNUNET_PQ_query_param_uint32 (&reserve_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&reserve_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&withdraw_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&withdraw_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&withdraw_fee_balance->currency),
+
+    GNUNET_PQ_query_param_auto_from_type (&expiration_date),
+
+    GNUNET_PQ_query_param_uint64 (&last_reserve_in_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_reserve_out_serial_id),
+
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (reserve_balance,
+                                            withdraw_fee_balance));
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "auditor_reserves_update",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -867,8 +1549,59 @@ postgres_get_reserve_info (void *cls,
                            uint64_t *last_reserve_in_serial_id,
                            uint64_t *last_reserve_out_serial_id)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "auditor_reserves_select",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  int nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "postgres_get_reserve_info() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  GNUNET_assert (1 == nrows);
+
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("reserve_balance_val", &reserve_balance->value),
+    GNUNET_PQ_result_spec_uint32 ("reserve_balance_frac", &reserve_balance->fraction),
+    GNUNET_PQ_result_spec_auto_from_type ("reserve_balance_curr", &reserve_balance->currency),
+
+    GNUNET_PQ_result_spec_uint64 ("withdraw_fee_balance_val", &withdraw_fee_balance->value),
+    GNUNET_PQ_result_spec_uint32 ("withdraw_fee_balance_frac", &withdraw_fee_balance->fraction),
+    GNUNET_PQ_result_spec_auto_from_type ("withdraw_fee_balance_curr", &withdraw_fee_balance->currency),
+
+    GNUNET_PQ_result_spec_auto_from_type ("expiration_date", expiration_date),
+
+    GNUNET_PQ_result_spec_uint64 ("last_reserve_in_serial_id", last_reserve_in_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_reserve_out_serial_id", last_reserve_out_serial_id),
+
+    GNUNET_PQ_result_spec_end
+  };
+  if (GNUNET_OK !=
+      GNUNET_PQ_extract_result (result, rs, 0))
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -891,8 +1624,41 @@ postgres_insert_reserve_summary (void *cls,
                                  const struct TALER_Amount *reserve_balance,
                                  const struct TALER_Amount *withdraw_fee_balance)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_uint64 (&reserve_balance->value),
+    GNUNET_PQ_query_param_uint32 (&reserve_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&reserve_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&withdraw_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&withdraw_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&withdraw_fee_balance->currency),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (reserve_balance,
+                                            withdraw_fee_balance));
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "auditor_reserve_balance_insert",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -915,8 +1681,37 @@ postgres_update_reserve_summary (void *cls,
                                  const struct TALER_Amount *reserve_balance,
                                  const struct TALER_Amount *withdraw_fee_balance)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&reserve_balance->value),
+    GNUNET_PQ_query_param_uint32 (&reserve_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&reserve_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&withdraw_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&withdraw_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&withdraw_fee_balance->currency),
+
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "auditor_reserve_balance_update",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -939,8 +1734,53 @@ postgres_get_reserve_summary (void *cls,
                               struct TALER_Amount *reserve_balance,
                               struct TALER_Amount *withdraw_fee_balance)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "auditor_reserve_balance_select",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  int nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "postgres_get_reserve_summary() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  GNUNET_assert (1 == nrows);
+
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("reserve_balance_val", &reserve_balance->value),
+    GNUNET_PQ_result_spec_uint32 ("reserve_balance_frac", &reserve_balance->fraction),
+    GNUNET_PQ_result_spec_auto_from_type ("reserve_balance_curr", &reserve_balance->currency),
+
+    GNUNET_PQ_result_spec_uint64 ("withdraw_fee_balance_val", &withdraw_fee_balance->value),
+    GNUNET_PQ_result_spec_uint32 ("withdraw_fee_balance_frac", &withdraw_fee_balance->fraction),
+    GNUNET_PQ_result_spec_auto_from_type ("withdraw_fee_balance_curr", &withdraw_fee_balance->currency),
+
+    GNUNET_PQ_result_spec_end
+  };
+  if (GNUNET_OK !=
+      GNUNET_PQ_extract_result (result, rs, 0))
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -978,8 +1818,62 @@ postgres_insert_denomination_balance (void *cls,
                                       uint64_t last_melt_serial_id,
                                       uint64_t last_refund_serial_id)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
+
+    GNUNET_PQ_query_param_uint64 (&denom_balance->value),
+    GNUNET_PQ_query_param_uint32 (&denom_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&denom_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&deposit_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&deposit_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&deposit_fee_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&melt_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&melt_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&melt_fee_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&refund_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&refund_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&refund_fee_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&last_reserve_out_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_deposit_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_melt_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_refund_serial_id),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (denom_balance,
+                                            deposit_fee_balance));
+
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (denom_balance,
+                                            melt_fee_balance));
+
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (denom_balance,
+                                            refund_fee_balance));
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "denomination_pending_insert",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -1017,8 +1911,50 @@ postgres_update_denomination_balance (void *cls,
                                       uint64_t last_melt_serial_id,
                                       uint64_t last_refund_serial_id)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&denom_balance->value),
+    GNUNET_PQ_query_param_uint32 (&denom_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&denom_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&deposit_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&deposit_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&deposit_fee_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&melt_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&melt_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&melt_fee_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&refund_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&refund_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&refund_fee_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&last_reserve_out_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_deposit_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_melt_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_refund_serial_id),
+
+    GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "denomination_pending_update",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -1055,8 +1991,66 @@ postgres_get_denomination_balance (void *cls,
                                    uint64_t *last_melt_serial_id,
                                    uint64_t *last_refund_serial_id)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
+
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "denomination_pending_select",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  int nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "postgres_get_denomination_balance() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  GNUNET_assert (1 == nrows);
+
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("denom_balance_val", &denom_balance->value),
+    GNUNET_PQ_result_spec_uint32 ("denom_balance_frac", &denom_balance->fraction),
+    GNUNET_PQ_result_spec_auto_from_type ("denom_balance_curr", &denom_balance->currency),
+
+    GNUNET_PQ_result_spec_uint64 ("deposit_fee_balance_val", &deposit_fee_balance->value),
+    GNUNET_PQ_result_spec_uint32 ("deposit_fee_balance_frac", &deposit_fee_balance->fraction),
+    GNUNET_PQ_result_spec_auto_from_type ("deposit_fee_balance_curr", &deposit_fee_balance->currency),
+
+    GNUNET_PQ_result_spec_uint64 ("melt_fee_balance_val", &melt_fee_balance->value),
+    GNUNET_PQ_result_spec_uint32 ("melt_fee_balance_frac", &melt_fee_balance->fraction),
+    GNUNET_PQ_result_spec_auto_from_type ("melt_fee_balance_curr", &melt_fee_balance->currency),
+
+    GNUNET_PQ_result_spec_uint64 ("refund_fee_balance_val", &refund_fee_balance->value),
+    GNUNET_PQ_result_spec_uint32 ("refund_fee_balance_frac", &refund_fee_balance->fraction),
+    GNUNET_PQ_result_spec_auto_from_type ("refund_fee_balance_curr", &refund_fee_balance->currency),
+
+    GNUNET_PQ_result_spec_uint64 ("last_reserve_out_serial_id", last_reserve_out_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_deposit_serial_id", last_deposit_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_melt_serial_id", last_melt_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_refund_serial_id", last_refund_serial_id),
+
+    GNUNET_PQ_result_spec_end
+  };
+  if (GNUNET_OK !=
+      GNUNET_PQ_extract_result (result, rs, 0))
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -1082,8 +2076,57 @@ postgres_insert_denomination_summary (void *cls,
                                       const struct TALER_Amount *melt_fee_balance,
                                       const struct TALER_Amount *refund_fee_balance)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_uint64 (&denom_balance->value),
+    GNUNET_PQ_query_param_uint32 (&denom_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&denom_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&deposit_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&deposit_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&deposit_fee_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&melt_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&melt_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&melt_fee_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&refund_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&refund_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&refund_fee_balance->currency),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (denom_balance,
+                                            deposit_fee_balance));
+
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (denom_balance,
+                                            melt_fee_balance));
+
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (denom_balance,
+                                            refund_fee_balance));
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "total_liabilities_insert",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -1109,8 +2152,45 @@ postgres_update_denomination_summary (void *cls,
                                       const struct TALER_Amount *melt_fee_balance,
                                       const struct TALER_Amount *refund_fee_balance)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&denom_balance->value),
+    GNUNET_PQ_query_param_uint32 (&denom_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&denom_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&deposit_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&deposit_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&deposit_fee_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&melt_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&melt_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&melt_fee_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&refund_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&refund_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&refund_fee_balance->currency),
+
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "total_liabilities_update",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -1136,8 +2216,61 @@ postgres_get_denomination_summary (void *cls,
                                    struct TALER_Amount *melt_fee_balance,
                                    struct TALER_Amount *refund_fee_balance)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "total_liabilities_select",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  int nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "postgres_get_denomination_summary() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  GNUNET_assert (1 == nrows);
+
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("denom_balance_val", &denom_balance->value),
+    GNUNET_PQ_result_spec_uint32 ("denom_balance_frac", &denom_balance->fraction),
+    GNUNET_PQ_result_spec_auto_from_type ("denom_balance_curr", &denom_balance->currency),
+
+    GNUNET_PQ_result_spec_uint64 ("deposit_fee_balance_val", &deposit_fee_balance->value),
+    GNUNET_PQ_result_spec_uint32 ("deposit_fee_balance_frac", &deposit_fee_balance->fraction),
+    GNUNET_PQ_result_spec_auto_from_type ("deposit_fee_balance_curr", &deposit_fee_balance->currency),
+
+    GNUNET_PQ_result_spec_uint64 ("melt_fee_balance_val", &melt_fee_balance->value),
+    GNUNET_PQ_result_spec_uint32 ("melt_fee_balance_frac", &melt_fee_balance->fraction),
+    GNUNET_PQ_result_spec_auto_from_type ("melt_fee_balance_curr", &melt_fee_balance->currency),
+
+    GNUNET_PQ_result_spec_uint64 ("refund_fee_balance_val", &refund_fee_balance->value),
+    GNUNET_PQ_result_spec_uint32 ("refund_fee_balance_frac", &refund_fee_balance->fraction),
+    GNUNET_PQ_result_spec_auto_from_type ("refund_fee_balance_curr", &refund_fee_balance->currency),
+
+    GNUNET_PQ_result_spec_end
+  };
+  if (GNUNET_OK !=
+      GNUNET_PQ_extract_result (result, rs, 0))
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -1157,8 +2290,33 @@ postgres_insert_risk_summary (void *cls,
                               const struct TALER_MasterPublicKeyP *master_pub,
                               const struct TALER_Amount *risk)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_uint64 (&risk->value),
+    GNUNET_PQ_query_param_uint32 (&risk->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&risk->currency),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "total_risk_insert",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -1178,8 +2336,33 @@ postgres_update_risk_summary (void *cls,
                               const struct TALER_MasterPublicKeyP *master_pub,
                               const struct TALER_Amount *risk)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&risk->value),
+    GNUNET_PQ_query_param_uint32 (&risk->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&risk->currency),
+
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "total_risk_update",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -1199,8 +2382,49 @@ postgres_get_risk_summary (void *cls,
                            const struct TALER_MasterPublicKeyP *master_pub,
                            struct TALER_Amount *risk)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "total_risk_select",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  int nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "postgres_get_risk_summary() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  GNUNET_assert (1 == nrows);
+
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("risk_val", &risk->value),
+    GNUNET_PQ_result_spec_uint32 ("risk_frac", &risk->fraction),
+    GNUNET_PQ_result_spec_auto_from_type ("risk_curr", &risk->currency),
+
+    GNUNET_PQ_result_spec_end
+  };
+  if (GNUNET_OK !=
+      GNUNET_PQ_extract_result (result, rs, 0))
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -1232,8 +2456,60 @@ postgres_insert_historic_denom_revenue (void *cls,
                                         const struct TALER_Amount *melt_fee_balance,
                                         const struct TALER_Amount *refund_fee_balance)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
+
+    GNUNET_PQ_query_param_auto_from_type (&revenue_timestamp),
+
+    GNUNET_PQ_query_param_uint64 (&revenue_balance->value),
+    GNUNET_PQ_query_param_uint32 (&revenue_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&revenue_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&deposit_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&deposit_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&deposit_fee_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&melt_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&melt_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&melt_fee_balance->currency),
+
+    GNUNET_PQ_query_param_uint64 (&refund_fee_balance->value),
+    GNUNET_PQ_query_param_uint32 (&refund_fee_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&refund_fee_balance->currency),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (revenue_balance,
+                                            deposit_fee_balance));
+
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (revenue_balance,
+                                            melt_fee_balance));
+
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (revenue_balance,
+                                            refund_fee_balance));
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "historic_denomination_revenue_insert",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -1252,11 +2528,83 @@ static int
 postgres_select_historic_denom_revenue (void *cls,
                                         struct TALER_AUDITORDB_Session *session,
                                         const struct TALER_MasterPublicKeyP *master_pub,
-                                        void *cb, /* FIXME: fix type */
+                                        TALER_AUDITORDB_HistoricDenominationRevenueDataCallback cb,
                                         void *cb_cls)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "historic_denomination_revenue_select",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  int nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "postgres_select_historic_denom_revenue() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  for (int i = 0; i < nrows; i++)
+  {
+    struct GNUNET_HashCode denom_pub_hash;
+    struct GNUNET_TIME_Absolute revenue_timestamp;
+    struct TALER_Amount revenue_balance;
+    struct TALER_Amount deposit_fee_balance;
+    struct TALER_Amount melt_fee_balance;
+    struct TALER_Amount refund_fee_balance;
+
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash", &denom_pub_hash),
+
+      GNUNET_PQ_result_spec_auto_from_type ("revenue_timestamp", &revenue_timestamp),
+
+      GNUNET_PQ_result_spec_uint64 ("revenue_balance_val", &revenue_balance.value),
+      GNUNET_PQ_result_spec_uint32 ("revenue_balance_frac", &revenue_balance.fraction),
+      GNUNET_PQ_result_spec_auto_from_type ("revenue_balance_curr", &revenue_balance.currency),
+
+      GNUNET_PQ_result_spec_uint64 ("deposit_fee_balance_val", &deposit_fee_balance.value),
+      GNUNET_PQ_result_spec_uint32 ("deposit_fee_balance_frac", &deposit_fee_balance.fraction),
+      GNUNET_PQ_result_spec_auto_from_type ("deposit_fee_balance_curr", &deposit_fee_balance.currency),
+
+      GNUNET_PQ_result_spec_uint64 ("melt_fee_balance_val", &melt_fee_balance.value),
+      GNUNET_PQ_result_spec_uint32 ("melt_fee_balance_frac", &melt_fee_balance.fraction),
+      GNUNET_PQ_result_spec_auto_from_type ("melt_fee_balance_curr", &melt_fee_balance.currency),
+
+      GNUNET_PQ_result_spec_uint64 ("refund_fee_balance_val", &refund_fee_balance.value),
+      GNUNET_PQ_result_spec_uint32 ("refund_fee_balance_frac", &refund_fee_balance.fraction),
+      GNUNET_PQ_result_spec_auto_from_type ("refund_fee_balance_curr", &refund_fee_balance.currency),
+
+      GNUNET_PQ_result_spec_end
+    };
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    cb (cb_cls,
+        &denom_pub_hash,
+        revenue_timestamp,
+        &revenue_balance,
+        &deposit_fee_balance,
+        &melt_fee_balance,
+        &refund_fee_balance);
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -1283,8 +2631,36 @@ postgres_insert_historic_losses (void *cls,
                                  struct GNUNET_TIME_Absolute loss_timestamp,
                                  const struct TALER_Amount *loss_balance)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
+
+    GNUNET_PQ_query_param_auto_from_type (&loss_timestamp),
+
+    GNUNET_PQ_query_param_uint64 (&loss_balance->value),
+    GNUNET_PQ_query_param_uint32 (&loss_balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&loss_balance->currency),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "historic_losses_insert",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -1303,11 +2679,65 @@ static int
 postgres_select_historic_losses (void *cls,
                                  struct TALER_AUDITORDB_Session *session,
                                  const struct TALER_MasterPublicKeyP *master_pub,
-                                 void *cb, /* FIXME: fix type */
+                                 TALER_AUDITORDB_HistoricLossesDataCallback cb,
                                  void *cb_cls)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "historic_losses_select",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  int nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "postgres_select_historic_losses() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  for (int i = 0; i < nrows; i++)
+  {
+    struct GNUNET_HashCode denom_pub_hash;
+    struct GNUNET_TIME_Absolute loss_timestamp;
+    struct TALER_Amount loss_balance;
+
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash", &denom_pub_hash),
+
+      GNUNET_PQ_result_spec_auto_from_type ("loss_timestamp", &loss_timestamp),
+
+      GNUNET_PQ_result_spec_uint64 ("loss_balance_val", &loss_balance.value),
+      GNUNET_PQ_result_spec_uint32 ("loss_balance_frac", &loss_balance.fraction),
+      GNUNET_PQ_result_spec_auto_from_type ("loss_balance_curr", &loss_balance.currency),
+
+      GNUNET_PQ_result_spec_end
+    };
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    cb (cb_cls,
+        &denom_pub_hash,
+        loss_timestamp,
+        &loss_balance);
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -1330,8 +2760,36 @@ postgres_insert_historic_reserve_revenue (void *cls,
                                           struct GNUNET_TIME_Absolute end_time,
                                           const struct TALER_Amount *reserve_profits)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_auto_from_type (&start_time),
+    GNUNET_PQ_query_param_auto_from_type (&end_time),
+
+    GNUNET_PQ_query_param_uint64 (&reserve_profits->value),
+    GNUNET_PQ_query_param_uint32 (&reserve_profits->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&reserve_profits->currency),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "historic_reserve_summary_insert",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -1349,11 +2807,64 @@ static int
 postgres_select_historic_reserve_revenue (void *cls,
                                           struct TALER_AUDITORDB_Session *session,
                                           const struct TALER_MasterPublicKeyP *master_pub,
-                                          void *cb, /* FIXME: type */
+                                          TALER_AUDITORDB_HistoricReserveRevenueDataCallback cb,
                                           void *cb_cls)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "historic_reserve_summary_select",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  int nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "postgres_select_historic_reserve_revenue() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  for (int i = 0; i < nrows; i++)
+  {
+    struct GNUNET_TIME_Absolute start_time;
+    struct GNUNET_TIME_Absolute end_time;
+    struct TALER_Amount reserve_profits;
+
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("start_time", &start_time),
+      GNUNET_PQ_result_spec_auto_from_type ("end_time", &end_time),
+
+      GNUNET_PQ_result_spec_uint64 ("reserve_profits_val", &reserve_profits.value),
+      GNUNET_PQ_result_spec_uint32 ("reserve_profits_frac", &reserve_profits.fraction),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_profits_curr", &reserve_profits.currency),
+
+      GNUNET_PQ_result_spec_end
+    };
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result, rs, 0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    cb (cb_cls,
+        start_time,
+        end_time,
+        &reserve_profits);
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -1373,8 +2884,33 @@ postgres_insert_predicted_result (void *cls,
                                   const struct TALER_MasterPublicKeyP *master_pub,
                                   const struct TALER_Amount *balance)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_uint64 (&balance->value),
+    GNUNET_PQ_query_param_uint32 (&balance->fraction),
+    GNUNET_PQ_query_param_auto_from_type (&balance->currency),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "predicted_result_insert",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -1394,8 +2930,27 @@ postgres_update_predicted_result (void *cls,
                                   const struct TALER_MasterPublicKeyP *master_pub,
                                   const struct TALER_Amount *balance)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "predicted_result_update",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
 }
 
 
@@ -1415,8 +2970,49 @@ postgres_get_predicted_balance (void *cls,
                                 const struct TALER_MasterPublicKeyP *master_pub,
                                 struct TALER_Amount *balance)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_SYSERR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "predicted_result_select",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  int nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "postgres_get_predicted_balance() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  GNUNET_assert (1 == nrows);
+
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("balance_val", &balance->value),
+    GNUNET_PQ_result_spec_uint32 ("balance_frac", &balance->fraction),
+    GNUNET_PQ_result_spec_auto_from_type ("balance_curr", &balance->currency),
+
+    GNUNET_PQ_result_spec_end
+  };
+  if (GNUNET_OK !=
+      GNUNET_PQ_extract_result (result, rs, 0))
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 

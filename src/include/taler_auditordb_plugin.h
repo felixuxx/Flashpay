@@ -29,6 +29,70 @@
 
 
 /**
+ * Function called with the results of select_denomination_info()
+ *
+ * @param cls closure
+ * @param issue issuing information with value, fees and other info about the denomination.
+ */
+typedef void
+(*TALER_AUDITORDB_DenominationInfoDataCallback)(void *cls,
+                                                const struct TALER_DenominationKeyValidityPS *issue);
+
+
+/**
+ * Function called with the results of select_historic_denom_revenue()
+ *
+ * @param cls closure
+ * @param denom_pub_hash hash of the denomination key
+ * @param revenue_timestamp when did this profit get realized
+ * @param revenue_balance what was the total profit made from
+ *                        deposit fees, melting fees, refresh fees
+ *                        and coins that were never returned?
+ * @param deposit_fee_balance total profits from deposit fees
+ * @param melt_fee_balance total profits from melting fees
+ * @param refund_fee_balance total profits from refund fees
+ */
+typedef void
+(*TALER_AUDITORDB_HistoricDenominationRevenueDataCallback)(void *cls,
+                                                           const struct GNUNET_HashCode *denom_pub_hash,
+                                                           struct GNUNET_TIME_Absolute revenue_timestamp,
+                                                           const struct TALER_Amount *revenue_balance,
+                                                           const struct TALER_Amount *deposit_fee_balance,
+                                                           const struct TALER_Amount *melt_fee_balance,
+                                                           const struct TALER_Amount *refund_fee_balance);
+
+
+/**
+ * Function called with the results of select_historic_losses()
+ *
+ * @param cls closure
+ * @param denom_pub_hash hash of the denomination key
+ * @param loss_timestamp when did this profit get realized
+ * @param loss_balance what was the total loss
+ */
+typedef void
+(*TALER_AUDITORDB_HistoricLossesDataCallback)(void *cls,
+                                              const struct GNUNET_HashCode *denom_pub_hash,
+                                              struct GNUNET_TIME_Absolute loss_timestamp,
+                                              const struct TALER_Amount *loss_balance);
+
+
+/**
+ * Function called with the results of select_historic_reserve_revenue()
+ *
+ * @param cls closure
+ * @param start_time beginning of aggregated time interval
+ * @param end_time end of aggregated time interval
+ * @param reserve_profits total profits made
+ */
+typedef void
+(*TALER_AUDITORDB_HistoricReserveRevenueDataCallback)(void *cls,
+                                                      struct GNUNET_TIME_Absolute start_time,
+                                                      struct GNUNET_TIME_Absolute end_time,
+                                                      const struct TALER_Amount *reserve_profits);
+
+
+/**
  * Handle for one session with the database.
  */
 struct TALER_AUDITORDB_Session;
@@ -164,7 +228,7 @@ struct TALER_AUDITORDB_Plugin
   (*select_denomination_info)(void *cls,
                               struct TALER_AUDITORDB_Session *session,
                               const struct TALER_MasterPublicKeyP *master_pub,
-                              void *cb, /* FIXME: type! */
+                              TALER_AUDITORDB_DenominationInfoDataCallback cb,
                               void *cb_cls);
 
 
@@ -586,7 +650,7 @@ struct TALER_AUDITORDB_Plugin
   (*select_historic_denom_revenue)(void *cls,
                                    struct TALER_AUDITORDB_Session *session,
                                    const struct TALER_MasterPublicKeyP *master_pub,
-                                   void *cb, /* FIXME: fix type */
+                                   TALER_AUDITORDB_HistoricDenominationRevenueDataCallback cb,
                                    void *cb_cls);
 
 
@@ -628,7 +692,7 @@ struct TALER_AUDITORDB_Plugin
   (*select_historic_losses)(void *cls,
                             struct TALER_AUDITORDB_Session *session,
                             const struct TALER_MasterPublicKeyP *master_pub,
-                            void *cb, /* FIXME: fix type */
+                            TALER_AUDITORDB_HistoricLossesDataCallback cb,
                             void *cb_cls);
 
 
@@ -666,7 +730,7 @@ struct TALER_AUDITORDB_Plugin
   (*select_historic_reserve_revenue)(void *cls,
                                      struct TALER_AUDITORDB_Session *session,
                                      const struct TALER_MasterPublicKeyP *master_pub,
-                                     void *cb, /* FIXME: type */
+                                     TALER_AUDITORDB_HistoricReserveRevenueDataCallback cb,
                                      void *cb_cls);
 
 
