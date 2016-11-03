@@ -1161,25 +1161,11 @@ postgres_insert_denomination_info (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&issue->expire_deposit),
     GNUNET_PQ_query_param_auto_from_type (&issue->expire_legal),
 
-    GNUNET_PQ_query_param_uint64 (&issue->value.value),
-    GNUNET_PQ_query_param_uint32 (&issue->value.fraction),
-    GNUNET_PQ_query_param_auto_from_type (&issue->value.currency),
-
-    GNUNET_PQ_query_param_uint64 (&issue->fee_withdraw.value),
-    GNUNET_PQ_query_param_uint32 (&issue->fee_withdraw.fraction),
-    GNUNET_PQ_query_param_auto_from_type (&issue->fee_withdraw.currency),
-
-    GNUNET_PQ_query_param_uint64 (&issue->fee_deposit.value),
-    GNUNET_PQ_query_param_uint32 (&issue->fee_deposit.fraction),
-    GNUNET_PQ_query_param_auto_from_type (&issue->fee_deposit.currency),
-
-    GNUNET_PQ_query_param_uint64 (&issue->fee_refresh.value),
-    GNUNET_PQ_query_param_uint32 (&issue->fee_refresh.fraction),
-    GNUNET_PQ_query_param_auto_from_type (&issue->fee_refresh.currency),
-
-    GNUNET_PQ_query_param_uint64 (&issue->fee_refund.value),
-    GNUNET_PQ_query_param_uint32 (&issue->fee_refund.fraction),
-    GNUNET_PQ_query_param_auto_from_type (&issue->fee_refund.currency),
+    TALER_PQ_query_param_amount_nbo (&issue->value),
+    TALER_PQ_query_param_amount_nbo (&issue->fee_withdraw),
+    TALER_PQ_query_param_amount_nbo (&issue->fee_deposit),
+    TALER_PQ_query_param_amount_nbo (&issue->fee_refresh),
+    TALER_PQ_query_param_amount_nbo (&issue->fee_refund),
 
     GNUNET_PQ_query_param_end
   };
@@ -1351,13 +1337,8 @@ postgres_insert_reserve_info (void *cls,
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
 
-    GNUNET_PQ_query_param_uint64 (&reserve_balance->value),
-    GNUNET_PQ_query_param_uint32 (&reserve_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&reserve_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&withdraw_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&withdraw_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&withdraw_fee_balance->currency),
+    TALER_PQ_query_param_amount (reserve_balance),
+    TALER_PQ_query_param_amount (withdraw_fee_balance),
 
     GNUNET_PQ_query_param_auto_from_type (&expiration_date),
 
@@ -1421,13 +1402,8 @@ postgres_update_reserve_info (void *cls,
   int ret;
 
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&reserve_balance->value),
-    GNUNET_PQ_query_param_uint32 (&reserve_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&reserve_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&withdraw_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&withdraw_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&withdraw_fee_balance->currency),
+    TALER_PQ_query_param_amount (reserve_balance),
+    TALER_PQ_query_param_amount (withdraw_fee_balance),
 
     GNUNET_PQ_query_param_auto_from_type (&expiration_date),
 
@@ -1571,13 +1547,8 @@ postgres_insert_reserve_summary (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
 
-    GNUNET_PQ_query_param_uint64 (&reserve_balance->value),
-    GNUNET_PQ_query_param_uint32 (&reserve_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&reserve_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&withdraw_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&withdraw_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&withdraw_fee_balance->currency),
+    TALER_PQ_query_param_amount (reserve_balance),
+    TALER_PQ_query_param_amount (withdraw_fee_balance),
 
     GNUNET_PQ_query_param_end
   };
@@ -1626,13 +1597,8 @@ postgres_update_reserve_summary (void *cls,
   int ret;
 
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&reserve_balance->value),
-    GNUNET_PQ_query_param_uint32 (&reserve_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&reserve_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&withdraw_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&withdraw_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&withdraw_fee_balance->currency),
+    TALER_PQ_query_param_amount (reserve_balance),
+    TALER_PQ_query_param_amount (withdraw_fee_balance),
 
     GNUNET_PQ_query_param_auto_from_type (master_pub),
 
@@ -1765,21 +1731,10 @@ postgres_insert_denomination_balance (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
 
-    GNUNET_PQ_query_param_uint64 (&denom_balance->value),
-    GNUNET_PQ_query_param_uint32 (&denom_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&denom_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&deposit_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&deposit_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&deposit_fee_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&melt_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&melt_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&melt_fee_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&refund_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&refund_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&refund_fee_balance->currency),
+    TALER_PQ_query_param_amount (denom_balance),
+    TALER_PQ_query_param_amount (deposit_fee_balance),
+    TALER_PQ_query_param_amount (melt_fee_balance),
+    TALER_PQ_query_param_amount (refund_fee_balance),
 
     GNUNET_PQ_query_param_uint64 (&last_reserve_out_serial_id),
     GNUNET_PQ_query_param_uint64 (&last_deposit_serial_id),
@@ -1856,21 +1811,10 @@ postgres_update_denomination_balance (void *cls,
   int ret;
 
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&denom_balance->value),
-    GNUNET_PQ_query_param_uint32 (&denom_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&denom_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&deposit_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&deposit_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&deposit_fee_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&melt_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&melt_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&melt_fee_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&refund_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&refund_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&refund_fee_balance->currency),
+    TALER_PQ_query_param_amount (denom_balance),
+    TALER_PQ_query_param_amount (deposit_fee_balance),
+    TALER_PQ_query_param_amount (melt_fee_balance),
+    TALER_PQ_query_param_amount (refund_fee_balance),
 
     GNUNET_PQ_query_param_uint64 (&last_reserve_out_serial_id),
     GNUNET_PQ_query_param_uint64 (&last_deposit_serial_id),
@@ -2023,21 +1967,10 @@ postgres_insert_denomination_summary (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
 
-    GNUNET_PQ_query_param_uint64 (&denom_balance->value),
-    GNUNET_PQ_query_param_uint32 (&denom_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&denom_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&deposit_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&deposit_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&deposit_fee_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&melt_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&melt_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&melt_fee_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&refund_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&refund_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&refund_fee_balance->currency),
+    TALER_PQ_query_param_amount (denom_balance),
+    TALER_PQ_query_param_amount (deposit_fee_balance),
+    TALER_PQ_query_param_amount (melt_fee_balance),
+    TALER_PQ_query_param_amount (refund_fee_balance),
 
     GNUNET_PQ_query_param_end
   };
@@ -2097,21 +2030,10 @@ postgres_update_denomination_summary (void *cls,
   int ret;
 
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&denom_balance->value),
-    GNUNET_PQ_query_param_uint32 (&denom_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&denom_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&deposit_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&deposit_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&deposit_fee_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&melt_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&melt_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&melt_fee_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&refund_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&refund_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&refund_fee_balance->currency),
+    TALER_PQ_query_param_amount (denom_balance),
+    TALER_PQ_query_param_amount (deposit_fee_balance),
+    TALER_PQ_query_param_amount (melt_fee_balance),
+    TALER_PQ_query_param_amount (refund_fee_balance),
 
     GNUNET_PQ_query_param_auto_from_type (master_pub),
 
@@ -2237,9 +2159,7 @@ postgres_insert_risk_summary (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
 
-    GNUNET_PQ_query_param_uint64 (&risk->value),
-    GNUNET_PQ_query_param_uint32 (&risk->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&risk->currency),
+    TALER_PQ_query_param_amount (risk),
 
     GNUNET_PQ_query_param_end
   };
@@ -2281,9 +2201,7 @@ postgres_update_risk_summary (void *cls,
   int ret;
 
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&risk->value),
-    GNUNET_PQ_query_param_uint32 (&risk->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&risk->currency),
+    TALER_PQ_query_param_amount (risk),
 
     GNUNET_PQ_query_param_auto_from_type (master_pub),
 
@@ -2406,21 +2324,10 @@ postgres_insert_historic_denom_revenue (void *cls,
 
     GNUNET_PQ_query_param_auto_from_type (&revenue_timestamp),
 
-    GNUNET_PQ_query_param_uint64 (&revenue_balance->value),
-    GNUNET_PQ_query_param_uint32 (&revenue_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&revenue_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&deposit_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&deposit_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&deposit_fee_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&melt_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&melt_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&melt_fee_balance->currency),
-
-    GNUNET_PQ_query_param_uint64 (&refund_fee_balance->value),
-    GNUNET_PQ_query_param_uint32 (&refund_fee_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&refund_fee_balance->currency),
+    TALER_PQ_query_param_amount (revenue_balance),
+    TALER_PQ_query_param_amount (deposit_fee_balance),
+    TALER_PQ_query_param_amount (melt_fee_balance),
+    TALER_PQ_query_param_amount (refund_fee_balance),
 
     GNUNET_PQ_query_param_end
   };
@@ -2591,9 +2498,7 @@ postgres_insert_historic_losses (void *cls,
 
     GNUNET_PQ_query_param_auto_from_type (&loss_timestamp),
 
-    GNUNET_PQ_query_param_uint64 (&loss_balance->value),
-    GNUNET_PQ_query_param_uint32 (&loss_balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&loss_balance->currency),
+    TALER_PQ_query_param_amount (loss_balance),
 
     GNUNET_PQ_query_param_end
   };
@@ -2729,9 +2634,7 @@ postgres_insert_historic_reserve_revenue (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&start_time),
     GNUNET_PQ_query_param_auto_from_type (&end_time),
 
-    GNUNET_PQ_query_param_uint64 (&reserve_profits->value),
-    GNUNET_PQ_query_param_uint32 (&reserve_profits->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&reserve_profits->currency),
+    TALER_PQ_query_param_amount (reserve_profits),
 
     GNUNET_PQ_query_param_end
   };
@@ -2859,9 +2762,7 @@ postgres_insert_predicted_result (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
 
-    GNUNET_PQ_query_param_uint64 (&balance->value),
-    GNUNET_PQ_query_param_uint32 (&balance->fraction),
-    GNUNET_PQ_query_param_auto_from_type (&balance->currency),
+    TALER_PQ_query_param_amount (balance),
 
     GNUNET_PQ_query_param_end
   };
