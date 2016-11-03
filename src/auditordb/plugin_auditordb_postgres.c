@@ -435,8 +435,8 @@ postgres_create_tables (void *cls)
            ",reserve_profits_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 	   ")");
 
-  SQLEXEC_INDEX("CREATE INDEX historic_reserve_summary_by_master_pub_start_date"
-                " ON historic_ledger(master_pub,start_date)");
+  SQLEXEC_INDEX("CREATE INDEX historic_reserve_summary_by_master_pub_start_date "
+                "ON historic_reserve_summary(master_pub,start_date)");
 
 
   /* Table with historic business ledger; basically, when the exchange
