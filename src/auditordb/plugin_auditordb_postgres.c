@@ -326,7 +326,7 @@ postgres_create_tables (void *cls)
      of; "refund_serial_id" tells us the last entry in "refunds"
      for this denom_pub that the auditor is aware of. */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS denomination_pending"
-	   "(denom_pub_hash BYTEA PRIMARY KEY REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE"
+	   "(denom_pub_hash BYTEA PRIMARY KEY REFERENCES auditor_denominations (denom_pub_hash) ON DELETE CASCADE"
            ",denom_balance_val INT8 NOT NULL"
            ",denom_balance_frac INT4 NOT NULL"
            ",denom_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -566,7 +566,7 @@ postgres_prepare (PGconn *db_conn)
 
   /* Used in #postgres_insert_reserve_info() */
   PREPARE ("auditor_reserves_insert",
-           "INSERT INTO auditor_reserves"
+           "INSERT INTO auditor_reserves "
 	   "(reserve_pub"
            ",master_pub"
            ",reserve_balance_val"
@@ -577,8 +577,8 @@ postgres_prepare (PGconn *db_conn)
            ",withdraw_fee_balance_curr"
            ",expiration_date"
 	   ",last_reserve_in_serial_id"
-           ",last_reserve_out_serial_id)"
-           ") VALUES ($1,$2,$3,$4,$5,$7,$8,$9,$10,$11);",
+           ",last_reserve_out_serial_id"
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);",
            11, NULL);
 
   /* Used in #postgres_update_reserve_info() */
@@ -652,75 +652,7 @@ postgres_prepare (PGconn *db_conn)
 
   /* Used in #postgres_insert_denomination_balance() */
   PREPARE ("denomination_pending_insert",
-           "INSERT INTO denomination_pending"
-	   "(denom_pub_hash"
-           ",denom_balance_val"
-           ",denom_balance_frac"
-           ",denom_balance_curr"
-           ",deposit_fee_balance_val"
-           ",deposit_fee_balance_frac"
-           ",deposit_fee_balance_curr"
-           ",melt_fee_balance_val"
-           ",melt_fee_balance_frac"
-           ",melt_fee_balance_curr"
-           ",refund_fee_balance_val"
-           ",refund_fee_balance_frac"
-           ",refund_fee_balance_curr"
-           ",last_reserve_out_serial_id"
-           ",last_deposit_serial_id"
-	   ",last_melt_serial_id"
-	   ",last_refund_serial_id"
-           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,,$11,$12,$13,$14,$15,$16,$17);",
-           17, NULL);
-
-  /* Used in #postgres_update_denomination_balance() */
-  PREPARE ("denomination_pending_update",
-           "UPDATE denomination_pending SET"
-           " denom_balance_val=$1"
-           ",denom_balance_frac=$2"
-           ",denom_balance_curr=$3"
-           ",deposit_fee_balance_val=$4"
-           ",deposit_fee_balance_frac=$5"
-           ",deposit_fee_balance_curr=$6"
-           ",melt_fee_balance_val=$7"
-           ",melt_fee_balance_frac=$8"
-           ",melt_fee_balance_curr=$9"
-           ",refund_fee_balance_val=$10"
-           ",refund_fee_balance_frac=$11"
-           ",refund_fee_balance_curr=$12"
-           ",last_reserve_out_serial_id=$13"
-           ",last_deposit_serial_id=$14"
-	   ",last_melt_serial_id=$15"
-	   ",last_refund_serial_id=$16"
-           " WHERE donom_pub_hash=$17",
-           18, NULL);
-
-  /* Used in #postgres_get_denomination_balance() */
-  PREPARE ("denomination_pending_select",
-           "SELECT"
-           " denom_balance_val"
-           ",denom_balance_frac"
-           ",denom_balance_curr"
-           ",deposit_fee_balance_val"
-           ",deposit_fee_balance_frac"
-           ",deposit_fee_balance_curr"
-           ",melt_fee_balance_val"
-           ",melt_fee_balance_frac"
-           ",melt_fee_balance_curr"
-           ",refund_fee_balance_val"
-           ",refund_fee_balance_frac"
-           ",refund_fee_balance_curr"
-           ",last_reserve_out_serial_id"
-           ",last_deposit_serial_id"
-	   ",last_melt_serial_id"
-	   ",last_refund_serial_id"
-           " FROM denomination_pending"
-           " WHERE denom_pub_hash=$1",
-           1, NULL);
-
-  /* Used in #postgres_insert_denomination_balance() */
-  PREPARE ("denomination_pending_insert",
-           "INSERT INTO denomination_pending"
+           "INSERT INTO denomination_pending "
 	   "(denom_pub_hash"
            ",denom_balance_val"
            ",denom_balance_frac"
@@ -760,10 +692,10 @@ postgres_prepare (PGconn *db_conn)
            ",last_deposit_serial_id=$14"
 	   ",last_melt_serial_id=$15"
 	   ",last_refund_serial_id=$16"
-           " WHERE denom_pub_hash=$17;",
-           17, NULL);
+           " WHERE denom_pub_hash=$17",
+           18, NULL);
 
-  /* Used in #postgres_insert_denomination_balance() */
+  /* Used in #postgres_get_denomination_balance() */
   PREPARE ("denomination_pending_select",
            "SELECT"
            " denom_balance_val"
@@ -782,13 +714,13 @@ postgres_prepare (PGconn *db_conn)
            ",last_deposit_serial_id"
 	   ",last_melt_serial_id"
 	   ",last_refund_serial_id"
-           " FROM  denomination_pending"
+           " FROM denomination_pending"
            " WHERE denom_pub_hash=$1",
            1, NULL);
 
   /* Used in #postgres_insert_denomination_summary() */
   PREPARE ("total_liabilities_insert",
-           "INSERT INTO total_liabilities"
+           "INSERT INTO total_liabilities "
 	   "(master_pub"
 	   ",denom_balance_val"
            ",denom_balance_frac"
@@ -820,7 +752,7 @@ postgres_prepare (PGconn *db_conn)
            ",refund_fee_balance_val=$10"
            ",refund_fee_balance_frac=$11"
            ",refund_fee_balance_curr=$12"
-           " WHERE master_pub=$14;",
+           " WHERE master_pub=$13;",
            13, NULL);
 
   /* Used in #postgres_get_denomination_summary() */
@@ -853,7 +785,7 @@ postgres_prepare (PGconn *db_conn)
            4, NULL);
 
   /* Used in #postgres_update_risk_summary() */
-  PREPARE ("total_risk_select",
+  PREPARE ("total_risk_update",
            "UPDATE total_risk SET "
 	   " risk_val=$1"
            ",risk_frac=$2"
@@ -890,7 +822,7 @@ postgres_prepare (PGconn *db_conn)
            ",refund_fee_balance_val"
            ",refund_fee_balance_frac"
            ",refund_fee_balance_curr"
-           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,,$11,$12,$13,$14,$15);",
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15);",
            15, NULL);
 
   /* Used in #postgres_select_historic_denom_revenue() */
@@ -975,7 +907,7 @@ postgres_prepare (PGconn *db_conn)
   /* Used in #postgres_update_predicted_result() */
   PREPARE ("predicted_result_update",
            "UPDATE predicted_result SET"
-	   ",balance_val=$1"
+	   " balance_val=$1"
            ",balance_frac=$2"
            ",balance_curr=$3"
            " WHERE master_pub=$4;",
@@ -1317,6 +1249,7 @@ postgres_select_denomination_info (void *cls,
     return GNUNET_SYSERR;
   }
 
+  int ret = GNUNET_OK;
   int nrows = PQntuples (result);
   if (0 == nrows)
   {
@@ -1327,7 +1260,7 @@ postgres_select_denomination_info (void *cls,
   }
   for (int i = 0; i < nrows; i++)
   {
-    struct TALER_DenominationKeyValidityPS issue;
+    struct TALER_DenominationKeyValidityPS issue = { 0 };
 
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash", &issue.denom_hash),
@@ -1366,11 +1299,19 @@ postgres_select_denomination_info (void *cls,
       PQclear (result);
       return GNUNET_SYSERR;
     }
-    cb (cb_cls,
-        &issue);
+    ret = cb (cb_cls,
+              &issue);
+    switch (ret)
+    {
+    case GNUNET_OK:
+      break;
+
+    default:
+      i = nrows;
+    }
   }
   PQclear (result);
-  return GNUNET_OK;
+  return ret;
 }
 
 
@@ -2548,6 +2489,7 @@ postgres_select_historic_denom_revenue (void *cls,
     return GNUNET_SYSERR;
   }
 
+  int ret = GNUNET_OK;
   int nrows = PQntuples (result);
   if (0 == nrows)
   {
@@ -2595,16 +2537,25 @@ postgres_select_historic_denom_revenue (void *cls,
       PQclear (result);
       return GNUNET_SYSERR;
     }
-    cb (cb_cls,
-        &denom_pub_hash,
-        revenue_timestamp,
-        &revenue_balance,
-        &deposit_fee_balance,
-        &melt_fee_balance,
-        &refund_fee_balance);
+
+    ret = cb (cb_cls,
+              &denom_pub_hash,
+              revenue_timestamp,
+              &revenue_balance,
+              &deposit_fee_balance,
+              &melt_fee_balance,
+              &refund_fee_balance);
+    switch (ret)
+    {
+    case GNUNET_OK:
+      break;
+
+    default:
+      i = nrows;
+    }
   }
   PQclear (result);
-  return GNUNET_OK;
+  return ret;
 }
 
 
@@ -2699,6 +2650,7 @@ postgres_select_historic_losses (void *cls,
     return GNUNET_SYSERR;
   }
 
+  int ret = GNUNET_OK;
   int nrows = PQntuples (result);
   if (0 == nrows)
   {
@@ -2731,13 +2683,21 @@ postgres_select_historic_losses (void *cls,
       PQclear (result);
       return GNUNET_SYSERR;
     }
-    cb (cb_cls,
-        &denom_pub_hash,
-        loss_timestamp,
-        &loss_balance);
+    ret = cb (cb_cls,
+              &denom_pub_hash,
+              loss_timestamp,
+              &loss_balance);
+    switch (ret)
+    {
+    case GNUNET_OK:
+      break;
+
+    default:
+      i = nrows;
+    }
   }
   PQclear (result);
-  return GNUNET_OK;
+  return ret;
 }
 
 
@@ -2827,6 +2787,7 @@ postgres_select_historic_reserve_revenue (void *cls,
     return GNUNET_SYSERR;
   }
 
+  int ret = GNUNET_OK;
   int nrows = PQntuples (result);
   if (0 == nrows)
   {
@@ -2858,13 +2819,21 @@ postgres_select_historic_reserve_revenue (void *cls,
       PQclear (result);
       return GNUNET_SYSERR;
     }
-    cb (cb_cls,
-        start_time,
-        end_time,
-        &reserve_profits);
+    ret = cb (cb_cls,
+              start_time,
+              end_time,
+              &reserve_profits);
+    switch (ret)
+    {
+    case GNUNET_OK:
+      break;
+
+    default:
+      i = nrows;
+    }
   }
   PQclear (result);
-  return GNUNET_OK;
+  return ret;
 }
 
 

@@ -33,8 +33,13 @@
  *
  * @param cls closure
  * @param issue issuing information with value, fees and other info about the denomination.
+ *
+ * @return sets the return value of select_denomination_info(),
+ *         #GNUNET_OK to continue,
+ *         #GNUNET_NO to stop processing further rows
+ *         #GNUNET_SYSERR or other values on error.
  */
-typedef void
+typedef int
 (*TALER_AUDITORDB_DenominationInfoDataCallback)(void *cls,
                                                 const struct TALER_DenominationKeyValidityPS *issue);
 
@@ -51,8 +56,13 @@ typedef void
  * @param deposit_fee_balance total profits from deposit fees
  * @param melt_fee_balance total profits from melting fees
  * @param refund_fee_balance total profits from refund fees
+ *
+ * @return sets the return value of select_denomination_info(),
+ *         #GNUNET_OK to continue,
+ *         #GNUNET_NO to stop processing further rows
+ *         #GNUNET_SYSERR or other values on error.
  */
-typedef void
+typedef int
 (*TALER_AUDITORDB_HistoricDenominationRevenueDataCallback)(void *cls,
                                                            const struct GNUNET_HashCode *denom_pub_hash,
                                                            struct GNUNET_TIME_Absolute revenue_timestamp,
@@ -69,8 +79,13 @@ typedef void
  * @param denom_pub_hash hash of the denomination key
  * @param loss_timestamp when did this profit get realized
  * @param loss_balance what was the total loss
+ *
+ * @return sets the return value of select_denomination_info(),
+ *         #GNUNET_OK to continue,
+ *         #GNUNET_NO to stop processing further rows
+ *         #GNUNET_SYSERR or other values on error.
  */
-typedef void
+typedef int
 (*TALER_AUDITORDB_HistoricLossesDataCallback)(void *cls,
                                               const struct GNUNET_HashCode *denom_pub_hash,
                                               struct GNUNET_TIME_Absolute loss_timestamp,
@@ -84,8 +99,13 @@ typedef void
  * @param start_time beginning of aggregated time interval
  * @param end_time end of aggregated time interval
  * @param reserve_profits total profits made
+ *
+ * @return sets the return value of select_denomination_info(),
+ *         #GNUNET_OK to continue,
+ *         #GNUNET_NO to stop processing further rows
+ *         #GNUNET_SYSERR or other values on error.
  */
-typedef void
+typedef int
 (*TALER_AUDITORDB_HistoricReserveRevenueDataCallback)(void *cls,
                                                       struct GNUNET_TIME_Absolute start_time,
                                                       struct GNUNET_TIME_Absolute end_time,
