@@ -1481,13 +1481,8 @@ postgres_get_reserve_info (void *cls,
   GNUNET_assert (1 == nrows);
 
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("reserve_balance_val", &reserve_balance->value),
-    GNUNET_PQ_result_spec_uint32 ("reserve_balance_frac", &reserve_balance->fraction),
-    GNUNET_PQ_result_spec_auto_from_type ("reserve_balance_curr", &reserve_balance->currency),
-
-    GNUNET_PQ_result_spec_uint64 ("withdraw_fee_balance_val", &withdraw_fee_balance->value),
-    GNUNET_PQ_result_spec_uint32 ("withdraw_fee_balance_frac", &withdraw_fee_balance->fraction),
-    GNUNET_PQ_result_spec_auto_from_type ("withdraw_fee_balance_curr", &withdraw_fee_balance->currency),
+    TALER_PQ_result_spec_amount ("reserve_balance", reserve_balance),
+    TALER_PQ_result_spec_amount ("withdraw_fee_balance", withdraw_fee_balance),
 
     GNUNET_PQ_result_spec_auto_from_type ("expiration_date", expiration_date),
 
@@ -1655,13 +1650,8 @@ postgres_get_reserve_summary (void *cls,
   GNUNET_assert (1 == nrows);
 
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("reserve_balance_val", &reserve_balance->value),
-    GNUNET_PQ_result_spec_uint32 ("reserve_balance_frac", &reserve_balance->fraction),
-    GNUNET_PQ_result_spec_auto_from_type ("reserve_balance_curr", &reserve_balance->currency),
-
-    GNUNET_PQ_result_spec_uint64 ("withdraw_fee_balance_val", &withdraw_fee_balance->value),
-    GNUNET_PQ_result_spec_uint32 ("withdraw_fee_balance_frac", &withdraw_fee_balance->fraction),
-    GNUNET_PQ_result_spec_auto_from_type ("withdraw_fee_balance_curr", &withdraw_fee_balance->currency),
+    TALER_PQ_result_spec_amount ("reserve_balance", reserve_balance),
+    TALER_PQ_result_spec_amount ("withdraw_fee_balance", withdraw_fee_balance),
 
     GNUNET_PQ_result_spec_end
   };
@@ -1890,21 +1880,10 @@ postgres_get_denomination_balance (void *cls,
   GNUNET_assert (1 == nrows);
 
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("denom_balance_val", &denom_balance->value),
-    GNUNET_PQ_result_spec_uint32 ("denom_balance_frac", &denom_balance->fraction),
-    GNUNET_PQ_result_spec_auto_from_type ("denom_balance_curr", &denom_balance->currency),
-
-    GNUNET_PQ_result_spec_uint64 ("deposit_fee_balance_val", &deposit_fee_balance->value),
-    GNUNET_PQ_result_spec_uint32 ("deposit_fee_balance_frac", &deposit_fee_balance->fraction),
-    GNUNET_PQ_result_spec_auto_from_type ("deposit_fee_balance_curr", &deposit_fee_balance->currency),
-
-    GNUNET_PQ_result_spec_uint64 ("melt_fee_balance_val", &melt_fee_balance->value),
-    GNUNET_PQ_result_spec_uint32 ("melt_fee_balance_frac", &melt_fee_balance->fraction),
-    GNUNET_PQ_result_spec_auto_from_type ("melt_fee_balance_curr", &melt_fee_balance->currency),
-
-    GNUNET_PQ_result_spec_uint64 ("refund_fee_balance_val", &refund_fee_balance->value),
-    GNUNET_PQ_result_spec_uint32 ("refund_fee_balance_frac", &refund_fee_balance->fraction),
-    GNUNET_PQ_result_spec_auto_from_type ("refund_fee_balance_curr", &refund_fee_balance->currency),
+    TALER_PQ_result_spec_amount ("denom_balance", denom_balance),
+    TALER_PQ_result_spec_amount ("deposit_fee_balance", deposit_fee_balance),
+    TALER_PQ_result_spec_amount ("melt_fee_balance", melt_fee_balance),
+    TALER_PQ_result_spec_amount ("refund_fee_balance", refund_fee_balance),
 
     GNUNET_PQ_result_spec_uint64 ("last_reserve_out_serial_id", last_reserve_out_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_deposit_serial_id", last_deposit_serial_id),
@@ -2093,21 +2072,10 @@ postgres_get_denomination_summary (void *cls,
   GNUNET_assert (1 == nrows);
 
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("denom_balance_val", &denom_balance->value),
-    GNUNET_PQ_result_spec_uint32 ("denom_balance_frac", &denom_balance->fraction),
-    GNUNET_PQ_result_spec_auto_from_type ("denom_balance_curr", &denom_balance->currency),
-
-    GNUNET_PQ_result_spec_uint64 ("deposit_fee_balance_val", &deposit_fee_balance->value),
-    GNUNET_PQ_result_spec_uint32 ("deposit_fee_balance_frac", &deposit_fee_balance->fraction),
-    GNUNET_PQ_result_spec_auto_from_type ("deposit_fee_balance_curr", &deposit_fee_balance->currency),
-
-    GNUNET_PQ_result_spec_uint64 ("melt_fee_balance_val", &melt_fee_balance->value),
-    GNUNET_PQ_result_spec_uint32 ("melt_fee_balance_frac", &melt_fee_balance->fraction),
-    GNUNET_PQ_result_spec_auto_from_type ("melt_fee_balance_curr", &melt_fee_balance->currency),
-
-    GNUNET_PQ_result_spec_uint64 ("refund_fee_balance_val", &refund_fee_balance->value),
-    GNUNET_PQ_result_spec_uint32 ("refund_fee_balance_frac", &refund_fee_balance->fraction),
-    GNUNET_PQ_result_spec_auto_from_type ("refund_fee_balance_curr", &refund_fee_balance->currency),
+    TALER_PQ_result_spec_amount ("denom_balance", denom_balance),
+    TALER_PQ_result_spec_amount ("deposit_fee_balance", deposit_fee_balance),
+    TALER_PQ_result_spec_amount ("melt_fee_balance", melt_fee_balance),
+    TALER_PQ_result_spec_amount ("refund_fee_balance", refund_fee_balance),
 
     GNUNET_PQ_result_spec_end
   };
@@ -2255,9 +2223,7 @@ postgres_get_risk_summary (void *cls,
   GNUNET_assert (1 == nrows);
 
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("risk_val", &risk->value),
-    GNUNET_PQ_result_spec_uint32 ("risk_frac", &risk->fraction),
-    GNUNET_PQ_result_spec_auto_from_type ("risk_curr", &risk->currency),
+    TALER_PQ_result_spec_amount ("risk", risk),
 
     GNUNET_PQ_result_spec_end
   };
@@ -2839,9 +2805,7 @@ postgres_get_predicted_balance (void *cls,
   GNUNET_assert (1 == nrows);
 
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("balance_val", &balance->value),
-    GNUNET_PQ_result_spec_uint32 ("balance_frac", &balance->fraction),
-    GNUNET_PQ_result_spec_auto_from_type ("balance_curr", &balance->currency),
+    TALER_PQ_result_spec_amount ("balance", balance),
 
     GNUNET_PQ_result_spec_end
   };
