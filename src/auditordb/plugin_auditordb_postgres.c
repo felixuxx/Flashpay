@@ -2640,13 +2640,13 @@ postgres_select_historic_reserve_revenue (void *cls,
   }
   for (int i = 0; i < nrows; i++)
   {
-    struct GNUNET_TIME_Absolute start_time;
-    struct GNUNET_TIME_Absolute end_time;
+    struct GNUNET_TIME_Absolute start_date;
+    struct GNUNET_TIME_Absolute end_date;
     struct TALER_Amount reserve_profits;
 
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("start_time", &start_time),
-      GNUNET_PQ_result_spec_auto_from_type ("end_time", &end_time),
+      GNUNET_PQ_result_spec_auto_from_type ("start_date", &start_date),
+      GNUNET_PQ_result_spec_auto_from_type ("end_date", &end_date),
 
       TALER_PQ_result_spec_amount ("reserve_profits", &reserve_profits),
 
@@ -2660,8 +2660,8 @@ postgres_select_historic_reserve_revenue (void *cls,
       return GNUNET_SYSERR;
     }
     ret = cb (cb_cls,
-              start_time,
-              end_time,
+              start_date,
+              end_date,
               &reserve_profits);
     switch (ret)
     {
