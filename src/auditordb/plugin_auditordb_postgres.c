@@ -1246,7 +1246,7 @@ postgres_select_denomination_info (void *cls,
   }
   for (int i = 0; i < nrows; i++)
   {
-    struct TALER_DenominationKeyValidityPS issue = { 0 };
+    struct TALER_DenominationKeyValidityPS issue = { .master = *master_pub };
 
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash", &issue.denom_hash),
