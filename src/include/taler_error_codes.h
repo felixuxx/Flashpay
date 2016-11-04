@@ -1072,6 +1072,13 @@ enum TALER_ErrorCode
    */
   TALER_EC_TRACK_TRANSFER_DB_INTERNAL_LOGIC_ERROR = 2407,
 
+  /**
+   * The exchange gave conflicting information about a coin which has
+   * been wire transferred.
+   * The response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TRACK_TRANSFER_CONFLICTING_REPORT = 2408,
   
   /* ********** /test API error codes ************* */
   
