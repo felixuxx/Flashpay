@@ -2698,7 +2698,6 @@ postgres_insert_predicted_result (void *cls,
 
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-
     TALER_PQ_query_param_amount (balance),
 
     GNUNET_PQ_query_param_end
@@ -2741,6 +2740,9 @@ postgres_update_predicted_result (void *cls,
   int ret;
 
   struct GNUNET_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_amount (balance),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
     GNUNET_PQ_query_param_end
   };
 
