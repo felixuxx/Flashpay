@@ -12,7 +12,8 @@ pkgcfg_DATA = \
   auditordb-postgres.conf
 
 EXTRA_DIST = \
-  auditordb-postgres.conf 
+  auditordb-postgres.conf \
+  test-auditor-db-postgres.conf
 
 plugindir = $(libdir)/taler
 
@@ -49,5 +50,21 @@ libtalerauditordb_la_LDFLAGS = \
   -no-undefined
 
 
-EXTRA_test_auditordb_postgres_DEPENDENCIES = \
-  libtaler_plugin_auditordb_postgres.la
+#EXTRA_test_auditordb_postgres_DEPENDENCIES = \
+#  libtaler_plugin_auditordb_postgres.la
+
+
+check_PROGRAMS = \
+  test-auditordb-postgres
+
+AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
+TESTS = \
+  test-auditordb-postgres
+
+test_auditordb_postgres_SOURCES = \
+  test_auditordb.c
+test_auditordb_postgres_LDADD = \
+  libtalerauditordb.la \
+  $(top_srcdir)/src/pq/libtalerpq.la \
+  $(top_srcdir)/src/util/libtalerutil.la \
+  -lgnunetutil
