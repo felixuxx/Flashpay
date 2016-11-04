@@ -1256,25 +1256,11 @@ postgres_select_denomination_info (void *cls,
       GNUNET_PQ_result_spec_auto_from_type ("expire_deposit", &issue.expire_deposit),
       GNUNET_PQ_result_spec_auto_from_type ("expire_legal", &issue.expire_legal),
 
-      GNUNET_PQ_result_spec_uint64 ("coin_val", &issue.value.value),
-      GNUNET_PQ_result_spec_uint32 ("coin_frac", &issue.value.fraction),
-      GNUNET_PQ_result_spec_auto_from_type ("coin_curr", &issue.value.currency),
-
-      GNUNET_PQ_result_spec_uint64 ("fee_withdraw_val", &issue.fee_withdraw.value),
-      GNUNET_PQ_result_spec_uint32 ("fee_withdraw_frac", &issue.fee_withdraw.fraction),
-      GNUNET_PQ_result_spec_auto_from_type ("fee_withdraw_curr", &issue.fee_withdraw.currency),
-
-      GNUNET_PQ_result_spec_uint64 ("fee_deposit_val", &issue.fee_deposit.value),
-      GNUNET_PQ_result_spec_uint32 ("fee_deposit_frac",&issue.fee_deposit.fraction),
-      GNUNET_PQ_result_spec_auto_from_type ("fee_deposit_curr", &issue.fee_deposit.currency),
-
-      GNUNET_PQ_result_spec_uint64 ("fee_refresh_val", &issue.fee_refresh.value),
-      GNUNET_PQ_result_spec_uint32 ("fee_refresh_frac", &issue.fee_refresh.fraction),
-      GNUNET_PQ_result_spec_auto_from_type ("fee_refresh_curr", &issue.fee_refresh.currency),
-
-      GNUNET_PQ_result_spec_uint64 ("fee_refund_val", &issue.fee_refund.value),
-      GNUNET_PQ_result_spec_uint32 ("fee_refund_frac", &issue.fee_refund.fraction),
-      GNUNET_PQ_result_spec_auto_from_type ("fee_refund_curr", &issue.fee_refund.currency),
+      TALER_PQ_result_spec_amount_nbo ("coin", &issue.value),
+      TALER_PQ_result_spec_amount_nbo ("fee_withdraw", &issue.fee_withdraw),
+      TALER_PQ_result_spec_amount_nbo ("fee_deposit", &issue.fee_deposit),
+      TALER_PQ_result_spec_amount_nbo ("fee_refresh", &issue.fee_refresh),
+      TALER_PQ_result_spec_amount_nbo ("fee_refund", &issue.fee_refund),
 
       GNUNET_PQ_result_spec_end
     };
@@ -2419,21 +2405,10 @@ postgres_select_historic_denom_revenue (void *cls,
 
       GNUNET_PQ_result_spec_auto_from_type ("revenue_timestamp", &revenue_timestamp),
 
-      GNUNET_PQ_result_spec_uint64 ("revenue_balance_val", &revenue_balance.value),
-      GNUNET_PQ_result_spec_uint32 ("revenue_balance_frac", &revenue_balance.fraction),
-      GNUNET_PQ_result_spec_auto_from_type ("revenue_balance_curr", &revenue_balance.currency),
-
-      GNUNET_PQ_result_spec_uint64 ("deposit_fee_balance_val", &deposit_fee_balance.value),
-      GNUNET_PQ_result_spec_uint32 ("deposit_fee_balance_frac", &deposit_fee_balance.fraction),
-      GNUNET_PQ_result_spec_auto_from_type ("deposit_fee_balance_curr", &deposit_fee_balance.currency),
-
-      GNUNET_PQ_result_spec_uint64 ("melt_fee_balance_val", &melt_fee_balance.value),
-      GNUNET_PQ_result_spec_uint32 ("melt_fee_balance_frac", &melt_fee_balance.fraction),
-      GNUNET_PQ_result_spec_auto_from_type ("melt_fee_balance_curr", &melt_fee_balance.currency),
-
-      GNUNET_PQ_result_spec_uint64 ("refund_fee_balance_val", &refund_fee_balance.value),
-      GNUNET_PQ_result_spec_uint32 ("refund_fee_balance_frac", &refund_fee_balance.fraction),
-      GNUNET_PQ_result_spec_auto_from_type ("refund_fee_balance_curr", &refund_fee_balance.currency),
+      TALER_PQ_result_spec_amount ("revenue_balance", &revenue_balance),
+      TALER_PQ_result_spec_amount ("deposit_fee_balance", &deposit_fee_balance),
+      TALER_PQ_result_spec_amount ("melt_fee_balance", &melt_fee_balance),
+      TALER_PQ_result_spec_amount ("refund_fee_balance", &refund_fee_balance),
 
       GNUNET_PQ_result_spec_end
     };
@@ -2575,9 +2550,7 @@ postgres_select_historic_losses (void *cls,
 
       GNUNET_PQ_result_spec_auto_from_type ("loss_timestamp", &loss_timestamp),
 
-      GNUNET_PQ_result_spec_uint64 ("loss_balance_val", &loss_balance.value),
-      GNUNET_PQ_result_spec_uint32 ("loss_balance_frac", &loss_balance.fraction),
-      GNUNET_PQ_result_spec_auto_from_type ("loss_balance_curr", &loss_balance.currency),
+      TALER_PQ_result_spec_amount ("loss_balance", &loss_balance),
 
       GNUNET_PQ_result_spec_end
     };
@@ -2709,9 +2682,7 @@ postgres_select_historic_reserve_revenue (void *cls,
       GNUNET_PQ_result_spec_auto_from_type ("start_time", &start_time),
       GNUNET_PQ_result_spec_auto_from_type ("end_time", &end_time),
 
-      GNUNET_PQ_result_spec_uint64 ("reserve_profits_val", &reserve_profits.value),
-      GNUNET_PQ_result_spec_uint32 ("reserve_profits_frac", &reserve_profits.fraction),
-      GNUNET_PQ_result_spec_auto_from_type ("reserve_profits_curr", &reserve_profits.currency),
+      TALER_PQ_result_spec_amount ("reserve_profits", &reserve_profits),
 
       GNUNET_PQ_result_spec_end
     };
