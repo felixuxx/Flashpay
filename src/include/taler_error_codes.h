@@ -1078,7 +1078,7 @@ enum TALER_ErrorCode
    * The response is
    * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_TRACK_TRANSFER_CONFLICTING_REPORT = 2408,
+  TALER_EC_TRACK_TRANSFER_CONFLICTING_REPORTS = 2408,
   
   /* ********** /test API error codes ************* */
   
