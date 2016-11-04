@@ -67,22 +67,35 @@ main (int argc,
       char * const *argv)
 {
   struct GNUNET_OS_Process *bankd;
+  struct GNUNET_OS_Process *bankd_admin;
   unsigned int cnt;
   int result;
 
   GNUNET_log_setup ("test-bank-api",
                     "WARNING",
                     NULL);
+  bankd_admin = GNUNET_OS_start_process (GNUNET_NO,
+                                         GNUNET_OS_INHERIT_STD_ALL,
+                                         NULL, NULL, NULL,
+                                         "taler-bank-manage",
+                                         "taler-bank-manage",
+                                         "--admin",
+                                         "serve-http",
+				         "--port", "8081",
+                                         NULL);
   bankd = GNUNET_OS_start_process (GNUNET_NO,
                                    GNUNET_OS_INHERIT_STD_ALL,
                                    NULL, NULL, NULL,
                                    "taler-bank-manage",
                                    "taler-bank-manage",
                                    "serve-http",
-				   "--port", "8081",
+                                   "--port", "8080",
                                    NULL);
-  if (NULL == bankd)
+
+
+  if ((NULL == bankd_admin) || (NULL == bankd))
   {
+    /*FIXME: More accurate error message?*/
     fprintf (stderr,
              "taler-bank-manage not found, skipping test\n");
     return 77; /* report 'skip' */
@@ -99,12 +112,15 @@ main (int argc,
       if (cnt > 30)
         break;
     }
-  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/ -o /dev/null -O /dev/null"));
+  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8080/ -o /dev/null -O /dev/null"));
+
   fprintf (stderr, "\n");
   result = GNUNET_SYSERR;
   if (cnt <= 30)
     GNUNET_SCHEDULER_run (&run, &result);
   GNUNET_OS_process_kill (bankd,
+                          SIGTERM);
+  GNUNET_OS_process_kill (bankd_admin,
                           SIGTERM);
   GNUNET_OS_process_wait (bankd);
   GNUNET_OS_process_destroy (bankd);
