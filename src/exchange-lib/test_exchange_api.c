@@ -3073,8 +3073,11 @@ main (int argc,
   unsigned long code;
 
   GNUNET_log_setup ("test-exchange-api",
-                    "WARNING",
-                    NULL);
+                    "DEBUG",
+                    "/tmp/logs");
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "test log\n");
+  return 0;
+
   /* These might get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");

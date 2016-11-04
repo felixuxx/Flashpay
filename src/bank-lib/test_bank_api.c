@@ -114,6 +114,16 @@ main (int argc,
     }
   while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8080/ -o /dev/null -O /dev/null"));
 
+  do
+    {
+      fprintf (stderr, ".");
+      sleep (1);
+      cnt++;
+      if (cnt > 30)
+        break;
+    }
+  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/admin/add/incoming -o /dev/null -O /dev/null"));
+
   fprintf (stderr, "\n");
   result = GNUNET_SYSERR;
   if (cnt <= 30)
