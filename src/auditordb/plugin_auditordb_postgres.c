@@ -17,9 +17,8 @@
 /**
  * @file plugin_auditordb_postgres.c
  * @brief Low-level (statement-level) Postgres database access for the auditor
- * @author Florian Dold
  * @author Christian Grothoff
- * @author Sree Harsha Totakura
+ * @author Gabor X Toth
  */
 #include "platform.h"
 #include "taler_pq_lib.h"
@@ -561,6 +560,44 @@ postgres_prepare (PGconn *db_conn)
            ",fee_refund_frac"
            ",fee_refund_curr"
            " FROM auditor_denominations"
+           " WHERE master_pub=$1;",
+           1, NULL);
+
+  /* Used in #postgres_insert_auditor_progress() */
+  PREPARE ("auditor_progress_insert",
+           "INSERT INTO auditor_progress "
+	   "(master_pub"
+	   ",last_reserve_in_serial_id"
+           ",last_reserve_out_serial_id"
+	   ",last_deposit_serial_id"
+           ",last_melt_serial_id"
+	   ",last_refund_serial_id"
+	   ",last_prewire_serial_id"
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
+           7, NULL);
+
+  /* Used in #postgres_update_auditor_progress() */
+  PREPARE ("auditor_progress_update",
+           "UPDATE auditor_progress SET "
+	   " last_reserve_in_serial_id=$1"
+           ",last_reserve_out_serial_id=$2"
+	   ",last_deposit_serial_id=$3"
+           ",last_melt_serial_id=$4"
+	   ",last_refund_serial_id=$5"
+	   ",last_prewire_serial_id=$6"
+           " WHERE master_pub=$7",
+           7, NULL);
+
+  /* Used in #postgres_get_auditor_progress() */
+  PREPARE ("auditor_progress_select",
+           "SELECT"
+	   " last_reserve_in_serial_id"
+           ",last_reserve_out_serial_id"
+	   ",last_deposit_serial_id"
+           ",last_melt_serial_id"
+	   ",last_refund_serial_id"
+	   ",last_prewire_serial_id"
+           " FROM auditor_progress"
            " WHERE master_pub=$1;",
            1, NULL);
 
@@ -1284,6 +1321,196 @@ postgres_select_denomination_info (void *cls,
   }
   PQclear (result);
   return ret;
+}
+
+
+/**
+ * Insert information about the auditor's progress with an exchange's
+ * data.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param last_reserve_in_serial_id serial ID of the last reserve_in transfer the auditor processed
+ * @param last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
+ * @param last_deposit_serial_id serial ID of the last deposit the auditor processed
+ * @param last_melt_serial_id serial ID of the last refresh the auditor processed
+ * @param last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+int
+postgres_insert_auditor_progress (void *cls,
+                                  struct TALER_AUDITORDB_Session *session,
+                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  uint64_t last_reserve_in_serial_id,
+                                  uint64_t last_reserve_out_serial_id,
+                                  uint64_t last_deposit_serial_id,
+                                  uint64_t last_melt_serial_id,
+                                  uint64_t last_refund_serial_id,
+                                  uint64_t last_prewire_serial_id)
+{
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_uint64 (&last_reserve_in_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_reserve_out_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_deposit_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_melt_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_refund_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_prewire_serial_id),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "auditor_progress_insert",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
+}
+
+
+/**
+ * Update information about the progress of the auditor.  There
+ * must be an existing record for the exchange.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param last_reserve_in_serial_id serial ID of the last reserve_in transfer the auditor processed
+ * @param last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
+ * @param last_deposit_serial_id serial ID of the last deposit the auditor processed
+ * @param last_melt_serial_id serial ID of the last refresh the auditor processed
+ * @param last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+int
+postgres_update_auditor_progress (void *cls,
+                                  struct TALER_AUDITORDB_Session *session,
+                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  uint64_t last_reserve_in_serial_id,
+                                  uint64_t last_reserve_out_serial_id,
+                                  uint64_t last_deposit_serial_id,
+                                  uint64_t last_melt_serial_id,
+                                  uint64_t last_refund_serial_id,
+                                  uint64_t last_prewire_serial_id)
+{
+  PGresult *result;
+  int ret;
+
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&last_reserve_in_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_reserve_out_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_deposit_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_melt_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_refund_serial_id),
+    GNUNET_PQ_query_param_uint64 (&last_prewire_serial_id),
+
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "auditor_progress_update",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
+}
+
+
+/**
+ * Get information about the progress of the auditor.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master key of the exchange
+ * @param[out] last_reserve_in_serial_id serial ID of the last reserve_in transfer the auditor processed
+ * @param[out] last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
+ * @param[out] last_deposit_serial_id serial ID of the last deposit the auditor processed
+ * @param[out] last_melt_serial_id serial ID of the last refresh the auditor processed
+ * @param[out] last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure;
+ *         #GNUNET_NO if we have no records for the @a master_pub
+ */
+int
+postgres_get_auditor_progress (void *cls,
+                               struct TALER_AUDITORDB_Session *session,
+                               const struct TALER_MasterPublicKeyP *master_pub,
+                               uint64_t *last_reserve_in_serial_id,
+                               uint64_t *last_reserve_out_serial_id,
+                               uint64_t *last_deposit_serial_id,
+                               uint64_t *last_melt_serial_id,
+                               uint64_t *last_refund_serial_id,
+                               uint64_t *last_prewire_serial_id)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "auditor_progress_select",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  int nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "postgres_get_auditor_progress() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  GNUNET_assert (1 == nrows);
+
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("last_reserve_in_serial_id", last_reserve_in_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_reserve_out_serial_id", last_reserve_out_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_deposit_serial_id", last_deposit_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_melt_serial_id", last_melt_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_refund_serial_id", last_refund_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_prewire_serial_id", last_prewire_serial_id),
+
+    GNUNET_PQ_result_spec_end
+  };
+  if (GNUNET_OK !=
+      GNUNET_PQ_extract_result (result, rs, 0))
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
 }
 
 
@@ -2875,32 +3102,46 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->commit = &postgres_commit;
   plugin->rollback = &postgres_rollback;
   plugin->gc = &postgres_gc;
-  plugin->get_predicted_balance = &postgres_get_predicted_balance;
-  plugin->update_predicted_result = &postgres_update_predicted_result;
-  plugin->insert_predicted_result = &postgres_insert_predicted_result;
-  plugin->select_historic_reserve_revenue = &postgres_select_historic_reserve_revenue;
-  plugin->insert_historic_reserve_revenue = &postgres_insert_historic_reserve_revenue;
-  plugin->select_historic_losses = &postgres_select_historic_losses;
-  plugin->insert_historic_losses = &postgres_insert_historic_losses;
-  plugin->select_historic_denom_revenue = &postgres_select_historic_denom_revenue;
-  plugin->insert_historic_denom_revenue = &postgres_insert_historic_denom_revenue;
-  plugin->get_risk_summary = &postgres_get_risk_summary;
-  plugin->update_risk_summary = &postgres_update_risk_summary;
-  plugin->insert_risk_summary = &postgres_insert_risk_summary;
-  plugin->get_denomination_summary = &postgres_get_denomination_summary;
-  plugin->update_denomination_summary = &postgres_update_denomination_summary;
-  plugin->insert_denomination_summary = &postgres_insert_denomination_summary;
-  plugin->get_denomination_balance = &postgres_get_denomination_balance;
-  plugin->update_denomination_balance = &postgres_update_denomination_balance;
-  plugin->insert_denomination_balance = &postgres_insert_denomination_balance;
-  plugin->get_reserve_summary = &postgres_get_reserve_summary;
-  plugin->update_reserve_summary = &postgres_update_reserve_summary;
-  plugin->insert_reserve_summary = &postgres_insert_reserve_summary;
+
+  plugin->select_denomination_info = &postgres_select_denomination_info;
+  plugin->insert_denomination_info = &postgres_insert_denomination_info;
+
+  plugin->get_auditor_progress = &postgres_get_auditor_progress;
+  plugin->update_auditor_progress = &postgres_update_auditor_progress;
+  plugin->insert_auditor_progress = &postgres_insert_auditor_progress;
+
   plugin->get_reserve_info = &postgres_get_reserve_info;
   plugin->update_reserve_info = &postgres_update_reserve_info;
   plugin->insert_reserve_info = &postgres_insert_reserve_info;
-  plugin->select_denomination_info = &postgres_select_denomination_info;
-  plugin->insert_denomination_info = &postgres_insert_denomination_info;
+
+  plugin->get_reserve_summary = &postgres_get_reserve_summary;
+  plugin->update_reserve_summary = &postgres_update_reserve_summary;
+  plugin->insert_reserve_summary = &postgres_insert_reserve_summary;
+
+  plugin->get_denomination_balance = &postgres_get_denomination_balance;
+  plugin->update_denomination_balance = &postgres_update_denomination_balance;
+  plugin->insert_denomination_balance = &postgres_insert_denomination_balance;
+
+  plugin->get_denomination_summary = &postgres_get_denomination_summary;
+  plugin->update_denomination_summary = &postgres_update_denomination_summary;
+  plugin->insert_denomination_summary = &postgres_insert_denomination_summary;
+
+  plugin->get_risk_summary = &postgres_get_risk_summary;
+  plugin->update_risk_summary = &postgres_update_risk_summary;
+  plugin->insert_risk_summary = &postgres_insert_risk_summary;
+
+  plugin->select_historic_denom_revenue = &postgres_select_historic_denom_revenue;
+  plugin->insert_historic_denom_revenue = &postgres_insert_historic_denom_revenue;
+
+  plugin->select_historic_losses = &postgres_select_historic_losses;
+  plugin->insert_historic_losses = &postgres_insert_historic_losses;
+
+  plugin->select_historic_reserve_revenue = &postgres_select_historic_reserve_revenue;
+  plugin->insert_historic_reserve_revenue = &postgres_insert_historic_reserve_revenue;
+
+  plugin->get_predicted_balance = &postgres_get_predicted_balance;
+  plugin->update_predicted_result = &postgres_update_predicted_result;
+  plugin->insert_predicted_result = &postgres_insert_predicted_result;
 
   return plugin;
 }

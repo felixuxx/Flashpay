@@ -16,7 +16,7 @@
 /**
  * @file auditordb/test_auditordb.c
  * @brief test cases for DB interaction functions
- * @author Gabor Toth
+ * @author Gabor X Toth
  */
 #include "platform.h"
 #include "taler_auditordb_lib.h"
@@ -32,10 +32,10 @@ static int result = -1;
  * Report line of error if @a cond is true, and jump to label "drop".
  */
 #define FAILIF(cond)                              \
-  do {                                          \
-    if (!(cond)){ break;}                      \
-    GNUNET_break (0);                           \
-    /*goto drop;*/                              \
+    do {                                          \
+        if (!(cond)){ break;}                     \
+        GNUNET_break (0);                         \
+        goto drop;                                \
   } while (0)
 
 
@@ -199,6 +199,77 @@ run (void *cls)
                                             &issue));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Test: insert_auditor_progress\n");
+
+  uint64_t
+      last_reserve_in_serial_id = 1234,
+      last_reserve_out_serial_id = 5678,
+      last_deposit_serial_id = 123,
+      last_melt_serial_id = 456,
+      last_refund_serial_id = 789,
+      last_prewire_serial_id = 555,
+
+      last_reserve_in_serial_id2 = 0,
+      last_reserve_out_serial_id2 = 0,
+      last_deposit_serial_id2 = 0,
+      last_melt_serial_id2 = 0,
+      last_refund_serial_id2 = 0,
+      last_prewire_serial_id2 = 0;
+
+  FAILIF (GNUNET_OK !=
+          plugin->insert_auditor_progress (plugin->cls,
+                                           session,
+                                           &master_pub,
+                                           last_reserve_in_serial_id,
+                                           last_reserve_out_serial_id,
+                                           last_deposit_serial_id,
+                                           last_melt_serial_id,
+                                           last_refund_serial_id,
+                                           last_prewire_serial_id));
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Test: update_auditor_progress\n");
+
+  last_reserve_in_serial_id++;
+  last_reserve_out_serial_id++;
+  last_deposit_serial_id2++;
+  last_melt_serial_id2++;
+  last_refund_serial_id2++;
+  last_prewire_serial_id2++;
+
+  FAILIF (GNUNET_OK !=
+          plugin->update_auditor_progress (plugin->cls,
+                                           session,
+                                           &master_pub,
+                                           last_reserve_in_serial_id,
+                                           last_reserve_out_serial_id,
+                                           last_deposit_serial_id,
+                                           last_melt_serial_id,
+                                           last_refund_serial_id,
+                                           last_prewire_serial_id));
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Test: get_auditor_progress\n");
+
+  FAILIF (GNUNET_OK !=
+          plugin->get_auditor_progress (plugin->cls,
+                                        session,
+                                        &master_pub,
+                                        &last_reserve_in_serial_id2,
+                                        &last_reserve_out_serial_id2,
+                                        &last_deposit_serial_id2,
+                                        &last_melt_serial_id2,
+                                        &last_refund_serial_id2,
+                                        &last_prewire_serial_id2));
+
+  FAILIF (last_reserve_in_serial_id2 != last_reserve_in_serial_id
+          || last_reserve_out_serial_id2 != last_reserve_out_serial_id
+          || last_deposit_serial_id2 != last_deposit_serial_id
+          || last_melt_serial_id2 != last_melt_serial_id
+          || last_refund_serial_id2 != last_refund_serial_id
+          || last_prewire_serial_id2 != last_prewire_serial_id);
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_reserve_info\n");
 
   struct TALER_Amount reserve_balance, withdraw_fee_balance;
@@ -210,12 +281,6 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":23.456789",
                                          &withdraw_fee_balance));
-
-  uint64_t
-      last_reserve_in_serial_id = 1234,
-      last_reserve_out_serial_id = 5678,
-      last_reserve_in_serial_id2 = 0,
-      last_reserve_out_serial_id2 =0;
 
   FAILIF (GNUNET_OK !=
           plugin->insert_reserve_info (plugin->cls,
@@ -319,15 +384,6 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":45.678901",
                                          &refund_fee_balance));
-
-  uint64_t
-      last_deposit_serial_id = 123,
-      last_melt_serial_id = 456,
-      last_refund_serial_id = 789,
-
-      last_deposit_serial_id2 = 0,
-      last_melt_serial_id2 = 0,
-      last_refund_serial_id2 =0;
 
   FAILIF (GNUNET_OK !=
           plugin->insert_denomination_balance (plugin->cls,
