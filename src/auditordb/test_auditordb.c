@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
+  Copyright (C) 2016 GNUnet e.V. and INRIA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -16,9 +16,7 @@
 /**
  * @file auditordb/test_auditordb.c
  * @brief test cases for DB interaction functions
- * @author Sree Harsha Totakura
- * @author Christian Grothoff
- * @author Marcello Stanisci
+ * @author Gabor Toth
  */
 #include "platform.h"
 #include "taler_auditordb_lib.h"

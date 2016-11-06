@@ -805,6 +805,87 @@ struct TALER_AUDITORDB_Plugin
                            const struct TALER_MasterPublicKeyP *master_pub,
                            struct TALER_Amount *balance);
 
+
+
+
+  /**
+   * Insert information about the auditor's progress with an exchange's
+   * data.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param last_reserve_in_serial_id serial ID of the last reserve_in transfer the auditor processed
+   * @param last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
+   * @param last_deposit_serial_id serial ID of the last deposit the auditor processed
+   * @param last_melt_serial_id serial ID of the last refresh the auditor processed
+   * @param last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   */
+  int
+  (*insert_auditor_progress)(void *cls,
+                             struct TALER_AUDITORDB_Session *session,
+                             const struct TALER_MasterPublicKeyP *master_pub,
+                             uint64_t last_reserve_in_serial_id,
+                             uint64_t last_reserve_out_serial_id,
+                             uint64_t last_deposit_serial_id,
+                             uint64_t last_melt_serial_id,
+                             uint64_t last_refund_serial_id,
+                             uint64_t last_prewire_serial_id);
+
+
+  /**
+   * Update information about the progress of the auditor.  There
+   * must be an existing record for the exchange.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param last_reserve_in_serial_id serial ID of the last reserve_in transfer the auditor processed
+   * @param last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
+   * @param last_deposit_serial_id serial ID of the last deposit the auditor processed
+   * @param last_melt_serial_id serial ID of the last refresh the auditor processed
+   * @param last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   */
+  int
+  (*update_auditor_progress)(void *cls,
+                             struct TALER_AUDITORDB_Session *session,
+                             const struct TALER_MasterPublicKeyP *master_pub,
+                             uint64_t last_reserve_in_serial_id,
+                             uint64_t last_reserve_out_serial_id,
+                             uint64_t last_deposit_serial_id,
+                             uint64_t last_melt_serial_id,
+                             uint64_t last_refund_serial_id,
+                             uint64_t last_prewire_serial_id);
+
+
+  /**
+   * Get an exchange's predicted balance.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param[out] last_reserve_in_serial_id serial ID of the last reserve_in transfer the auditor processed
+   * @param[out] last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
+   * @param[out] last_deposit_serial_id serial ID of the last deposit the auditor processed
+   * @param[out] last_melt_serial_id serial ID of the last refresh the auditor processed
+   * @param[out] last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure;
+   *         #GNUNET_NO if we have no records for the @a master_pub
+   */
+  int
+  (*get_auditor_progress)(void *cls,
+                          struct TALER_AUDITORDB_Session *session,
+                          const struct TALER_MasterPublicKeyP *master_pub,
+                          uint64_t *last_reserve_in_serial_id,
+                          uint64_t *last_reserve_out_serial_id,
+                          uint64_t *last_deposit_serial_id,
+                          uint64_t *last_melt_serial_id,
+                          uint64_t *last_refund_serial_id,
+                          uint64_t *last_prewire_serial_id);
+
+
 };
 
 
