@@ -75,7 +75,7 @@
 \maketitle
 
 \begin{abstract}
-This paper introduces {\em Taler}, a Chaum-style digital currency that
+This paper introduces {\em Taler}, a Chaum-style digital payment system that
 enables anonymous payments while ensuring that entities that receive
 payments are auditable.  In Taler, customers can
 never defraud anyone, merchants can only fail to deliver the
@@ -93,7 +93,7 @@ transactions.  The refresh protocol combines an
 efficient cut-and-choose mechanism with a {\em link} step to ensure
 that refreshing is not abused for transactional payments.
 
-We argue that Taler provides a secure digital currency for modern
+We argue that Taler provides a secure digital payment system for modern
 liberal societies as it is a flexible, libre and efficient protocol
 and adequately balances the state's need for monetary control with the
 citizen's needs for private economic activity.
@@ -724,7 +724,7 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
   where $m$ is an identifier for this transaction, $f$ is the price of the offer,
   and $a$ is data relevant
   to the contract indicating which services or goods the merchant will
-  deliver to the customer, including the {\tt /merchant-specific} URI for the payment. 
+  deliver to the customer, including the {\tt /merchant-specific} URI for the payment.
   $p$ is the merchant's payment information (e.g. his IBAN number), and
   $r$ is a random nonce.  The merchant commits $\langle \mathcal{A} \rangle$
   to disk and sends $\mathcal{A}$ to the customer.
@@ -736,7 +736,7 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
   Let $X_j$ be the exchange which signed $\widetilde{C}$ with $K$.
   The customer generates a \emph{deposit-permission}
     $\mathcal{D} := S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$
-  and sends $\langle \mathcal{D}, X_j\rangle$ to the merchant.  
+  and sends $\langle \mathcal{D}, X_j\rangle$ to the merchant.
 \item[POST {\tt/deposit}]
   The merchant gives $(\mathcal{D}, p, r)$ to the exchange, thereby
   revealing $p$ only to the exchange.
@@ -751,7 +751,7 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
 \item[200 OK / 424 FAILED DEPENDENCY]
   The merchant commits and forwards the notification from the exchange to the
   customer, confirming the success (``200 OK'') or failure (``424 FAILED DEPENDENCY'')
-  of the operation. 
+  of the operation.
 \end{description}
 
 We have simplified the exposition by assuming that one coin suffices,
