@@ -118,7 +118,7 @@ activity, and this limits the ability of the state to shape the
 society.  As bribery is virtually impossible to detect, corruption is
 widespread and not limited to social elites.
 %
-Zerocoin~\cite{miers2013zerocoin} is an example for translating an
+Zerocash~\cite{zerocash} is an example for translating an
 anarchistic economy into the digital realm.
 
 This paper describes Taler, a simple and practical payment system for
@@ -188,7 +188,7 @@ in this class is Bitcoin~\cite{nakamoto2008bitcoin}.  An initial
 concern with Bitcoin was the lack of anonymity, as all Bitcoin
 transactions are recorded for eternity, which can enable
 identification of users.  In theory, this concern has been addressed
-with the Zerocoin extension to the protocol~\cite{miers2013zerocoin}.
+in the alternatve Zerocash protocol~\cite{zerocash}.
 
 The key contribution of blockchain-based protocols is that
 they dispense with the need for a central, trusted
@@ -201,7 +201,7 @@ Yet, there are several major irredeemable problems inherent in their designs:
     So Bitcoin is an environmentally irresponsible design.
   \item Bitcoin transactions have pseduononymous recipients, making taxation
     hard to systematically enforce.
-    The Zerocoin extension makes this worse.
+    The Zerocash extension makes this worse.
   \item Bitcoin introduces a new currency, creating additional
     financial risks from currency fluctuation.
   \item Anyone can start an alternative Bitcoin transaction chain,
@@ -216,13 +216,14 @@ Yet, there are several major irredeemable problems inherent in their designs:
     % currency exchange and exacerbates the problems with currency fluctuations.
 \end{itemize}
 
-Anonymity extensions for BitCoin such as Zerocoin~\cite{miers2013zerocoin}
-and BOLT~\cite{BOLT} are also limited to transactions with coins
-of fixed discrete value, creating problems with giving change we
-outlined in the introduction.  Furthermore, these extensions have
-problems with aborted transactions, which can reduce the anonymity
-set.  Taler's refresh protocol also addresses the problem of aborted
-transactions, ensuring that aborts cannot be used to attack the
+Anonymous alternatives to BitCoin such as Monero~\cite{??},
+Zerocash~\cite{zerocash}, its predecessor Zerocoin~\cite{miers2013zerocoin},
+and the recently proposed BOLT~\cite{BOLT} each have different technical 
+limitations.  Yet, all exacerbate BitCoin's inherent issues with 
+transaction certenty and performance by require excessive
+computation, more blockchain transactions, etc.  By comparison, 
+Taler's refresh protocol handles aborted transactions with minimal
+overhead, and ensures that aborts cannot be used to attack the
 privacy assurances of the system.
 
 %GreenCoinX\footnote{\url{https://www.greencoinx.com/}} is a more
