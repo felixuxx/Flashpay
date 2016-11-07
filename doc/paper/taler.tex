@@ -277,19 +277,20 @@ Chaum's original digital cash system~\cite{chaum1983blind} was
 extended by Brands~\cite{brands1993efficient} with the ability to {\em
   divide} coins and thus spend certain fractions of a coin using
 restrictive blind signatures.  Restrictive blind signatures create
-privacy risks: if a transaction is interrupted, then any coins sent to
-the merchant become tainted, but may never arrive or be spent.  It
-becomes tricky to extract the value of the tainted coins without
+privacy risks: if a transaction is interrupted, then any coins sent 
+to the merchant become tainted, but may never arrive or be spent.  
+It becomes tricky to extract the value of the tainted coins without
 linking to the aborted transaction and risking deanonymization.
 
 Ian Goldberg's HINDE system allowed the merchant to provide change,
 but the mechanism could be abused to hide income from
 taxation.\footnote{Description based on personal communication. HINDE
-  was never published.}  $k$-show
-signatures~\cite{brands1993efficient} were proposed to achieve
-divisibility for coins.  However, with $k$-show signatures multiple
-transactions can be linked to each other.  Performing fractional
-payments using $k$-show signatures is also rather expensive.
+  was never published.}  
+In \cite{brands1993efficient}, $k$-show signatures were proposed to
+achieve divisibility for coins.  However, with $k$-show signatures
+multiple transactions can be linked to each other.  
+Performing fractional payments using $k$-show signatures is also 
+rather expensive.
 
 %
 %Some argue that the focus on technically perfect but overwhelmingly
