@@ -29,6 +29,90 @@
 
 
 /**
+ * Function called with the results of select_denomination_info()
+ *
+ * @param cls closure
+ * @param issue issuing information with value, fees and other info about the denomination.
+ *
+ * @return sets the return value of select_denomination_info(),
+ *         #GNUNET_OK to continue,
+ *         #GNUNET_NO to stop processing further rows
+ *         #GNUNET_SYSERR or other values on error.
+ */
+typedef int
+(*TALER_AUDITORDB_DenominationInfoDataCallback)(void *cls,
+                                                const struct TALER_DenominationKeyValidityPS *issue);
+
+
+/**
+ * Function called with the results of select_historic_denom_revenue()
+ *
+ * @param cls closure
+ * @param denom_pub_hash hash of the denomination key
+ * @param revenue_timestamp when did this profit get realized
+ * @param revenue_balance what was the total profit made from
+ *                        deposit fees, melting fees, refresh fees
+ *                        and coins that were never returned?
+ * @param deposit_fee_balance total profits from deposit fees
+ * @param melt_fee_balance total profits from melting fees
+ * @param refund_fee_balance total profits from refund fees
+ *
+ * @return sets the return value of select_denomination_info(),
+ *         #GNUNET_OK to continue,
+ *         #GNUNET_NO to stop processing further rows
+ *         #GNUNET_SYSERR or other values on error.
+ */
+typedef int
+(*TALER_AUDITORDB_HistoricDenominationRevenueDataCallback)(void *cls,
+                                                           const struct GNUNET_HashCode *denom_pub_hash,
+                                                           struct GNUNET_TIME_Absolute revenue_timestamp,
+                                                           const struct TALER_Amount *revenue_balance,
+                                                           const struct TALER_Amount *deposit_fee_balance,
+                                                           const struct TALER_Amount *melt_fee_balance,
+                                                           const struct TALER_Amount *refund_fee_balance);
+
+
+/**
+ * Function called with the results of select_historic_losses()
+ *
+ * @param cls closure
+ * @param denom_pub_hash hash of the denomination key
+ * @param loss_timestamp when did this profit get realized
+ * @param loss_balance what was the total loss
+ *
+ * @return sets the return value of select_denomination_info(),
+ *         #GNUNET_OK to continue,
+ *         #GNUNET_NO to stop processing further rows
+ *         #GNUNET_SYSERR or other values on error.
+ */
+typedef int
+(*TALER_AUDITORDB_HistoricLossesDataCallback)(void *cls,
+                                              const struct GNUNET_HashCode *denom_pub_hash,
+                                              struct GNUNET_TIME_Absolute loss_timestamp,
+                                              const struct TALER_Amount *loss_balance);
+
+
+/**
+ * Function called with the results of select_historic_reserve_revenue()
+ *
+ * @param cls closure
+ * @param start_time beginning of aggregated time interval
+ * @param end_time end of aggregated time interval
+ * @param reserve_profits total profits made
+ *
+ * @return sets the return value of select_denomination_info(),
+ *         #GNUNET_OK to continue,
+ *         #GNUNET_NO to stop processing further rows
+ *         #GNUNET_SYSERR or other values on error.
+ */
+typedef int
+(*TALER_AUDITORDB_HistoricReserveRevenueDataCallback)(void *cls,
+                                                      struct GNUNET_TIME_Absolute start_time,
+                                                      struct GNUNET_TIME_Absolute end_time,
+                                                      const struct TALER_Amount *reserve_profits);
+
+
+/**
  * Handle for one session with the database.
  */
 struct TALER_AUDITORDB_Session;
@@ -164,8 +248,86 @@ struct TALER_AUDITORDB_Plugin
   (*select_denomination_info)(void *cls,
                               struct TALER_AUDITORDB_Session *session,
                               const struct TALER_MasterPublicKeyP *master_pub,
-                              void *cb, /* FIXME: type! */
+                              TALER_AUDITORDB_DenominationInfoDataCallback cb,
                               void *cb_cls);
+
+
+  /**
+   * Insert information about the auditor's progress with an exchange's
+   * data.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param last_reserve_in_serial_id serial ID of the last reserve_in transfer the auditor processed
+   * @param last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
+   * @param last_deposit_serial_id serial ID of the last deposit the auditor processed
+   * @param last_melt_serial_id serial ID of the last refresh the auditor processed
+   * @param last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   */
+  int
+  (*insert_auditor_progress)(void *cls,
+                             struct TALER_AUDITORDB_Session *session,
+                             const struct TALER_MasterPublicKeyP *master_pub,
+                             uint64_t last_reserve_in_serial_id,
+                             uint64_t last_reserve_out_serial_id,
+                             uint64_t last_deposit_serial_id,
+                             uint64_t last_melt_serial_id,
+                             uint64_t last_refund_serial_id,
+                             uint64_t last_prewire_serial_id);
+
+
+  /**
+   * Update information about the progress of the auditor.  There
+   * must be an existing record for the exchange.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param last_reserve_in_serial_id serial ID of the last reserve_in transfer the auditor processed
+   * @param last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
+   * @param last_deposit_serial_id serial ID of the last deposit the auditor processed
+   * @param last_melt_serial_id serial ID of the last refresh the auditor processed
+   * @param last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   */
+  int
+  (*update_auditor_progress)(void *cls,
+                             struct TALER_AUDITORDB_Session *session,
+                             const struct TALER_MasterPublicKeyP *master_pub,
+                             uint64_t last_reserve_in_serial_id,
+                             uint64_t last_reserve_out_serial_id,
+                             uint64_t last_deposit_serial_id,
+                             uint64_t last_melt_serial_id,
+                             uint64_t last_refund_serial_id,
+                             uint64_t last_prewire_serial_id);
+
+
+  /**
+   * Get information about the progress of the auditor.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master key of the exchange
+   * @param[out] last_reserve_in_serial_id serial ID of the last reserve_in transfer the auditor processed
+   * @param[out] last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
+   * @param[out] last_deposit_serial_id serial ID of the last deposit the auditor processed
+   * @param[out] last_melt_serial_id serial ID of the last refresh the auditor processed
+   * @param[out] last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure;
+   *         #GNUNET_NO if we have no records for the @a master_pub
+   */
+  int
+  (*get_auditor_progress)(void *cls,
+                          struct TALER_AUDITORDB_Session *session,
+                          const struct TALER_MasterPublicKeyP *master_pub,
+                          uint64_t *last_reserve_in_serial_id,
+                          uint64_t *last_reserve_out_serial_id,
+                          uint64_t *last_deposit_serial_id,
+                          uint64_t *last_melt_serial_id,
+                          uint64_t *last_refund_serial_id,
+                          uint64_t *last_prewire_serial_id);
 
 
   /**
@@ -586,7 +748,7 @@ struct TALER_AUDITORDB_Plugin
   (*select_historic_denom_revenue)(void *cls,
                                    struct TALER_AUDITORDB_Session *session,
                                    const struct TALER_MasterPublicKeyP *master_pub,
-                                   void *cb, /* FIXME: fix type */
+                                   TALER_AUDITORDB_HistoricDenominationRevenueDataCallback cb,
                                    void *cb_cls);
 
 
@@ -628,7 +790,7 @@ struct TALER_AUDITORDB_Plugin
   (*select_historic_losses)(void *cls,
                             struct TALER_AUDITORDB_Session *session,
                             const struct TALER_MasterPublicKeyP *master_pub,
-                            void *cb, /* FIXME: fix type */
+                            TALER_AUDITORDB_HistoricLossesDataCallback cb,
                             void *cb_cls);
 
 
@@ -666,7 +828,7 @@ struct TALER_AUDITORDB_Plugin
   (*select_historic_reserve_revenue)(void *cls,
                                      struct TALER_AUDITORDB_Session *session,
                                      const struct TALER_MasterPublicKeyP *master_pub,
-                                     void *cb, /* FIXME: type */
+                                     TALER_AUDITORDB_HistoricReserveRevenueDataCallback cb,
                                      void *cb_cls);
 
 
@@ -720,6 +882,7 @@ struct TALER_AUDITORDB_Plugin
                            struct TALER_AUDITORDB_Session *session,
                            const struct TALER_MasterPublicKeyP *master_pub,
                            struct TALER_Amount *balance);
+
 
 };
 

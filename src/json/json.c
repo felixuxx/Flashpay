@@ -50,4 +50,33 @@ TALER_JSON_hash (const json_t *json,
 }
 
 
+
+/**
+ * Extract the Taler error code from the given @a json object.
+ * Note that #TALER_EC_NONE is returned if no "code" is present.
+ *
+ * @param json response to extract the error code from
+ * @return the "code" value from @a json
+ */
+enum TALER_ErrorCode
+TALER_JSON_get_error_code (const json_t *json)
+{
+  const json_t *jc;
+
+  if (NULL == json)
+  {
+    GNUNET_break_op (0);
+    return TALER_EC_INVALID_RESPONSE;
+  }
+  jc = json_object_get (json, "code");
+  if (NULL == jc)
+    return TALER_EC_NONE;
+  if (json_is_integer (jc))
+    return (enum TALER_ErrorCode) json_integer_value (jc);
+  GNUNET_break_op (0);
+  return TALER_EC_INVALID;
+}
+
+
+
 /* End of json/json.c */

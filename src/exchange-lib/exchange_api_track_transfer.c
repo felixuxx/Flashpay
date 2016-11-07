@@ -26,7 +26,6 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
-#include "exchange_api_common.h"
 #include "taler_json_lib.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
@@ -183,6 +182,7 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
     }
     wdh->cb (wdh->cb_cls,
              MHD_HTTP_OK,
+	     TALER_EC_NONE,
              &exchange_pub,
              json,
              &h_wire,
@@ -253,6 +253,7 @@ handle_track_transfer_finished (void *cls,
   }
   wdh->cb (wdh->cb_cls,
            response_code,
+	   TALER_JSON_get_error_code (json),
            NULL,
            json,
            NULL,

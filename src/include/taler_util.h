@@ -117,4 +117,6 @@ const struct GNUNET_OS_ProjectData *
 TALER_project_data_default (void);
 
 
+
+
 #endif

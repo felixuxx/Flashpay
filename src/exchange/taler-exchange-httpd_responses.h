@@ -29,6 +29,7 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include <pthread.h>
+#include "taler_error_codes.h"
 #include "taler-exchange-httpd.h"
 #include "taler-exchange-httpd_db.h"
 
@@ -78,11 +79,13 @@ TEH_RESPONSE_reply_json_pack (struct MHD_Connection *connection,
  * Send a response indicating an invalid signature.
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @param param_name the parameter that is invalid
  * @return a MHD result code
  */
 int
 TEH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
+				      enum TALER_ErrorCode ec,
                                       const char *param_name);
 
 
@@ -90,11 +93,13 @@ TEH_RESPONSE_reply_signature_invalid (struct MHD_Connection *connection,
  * Send a response indicating an invalid argument.
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @param param_name the parameter that is invalid
  * @return MHD result code
  */
 int
 TEH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
+				enum TALER_ErrorCode ec,
                                 const char *param_name);
 
 
@@ -104,11 +109,13 @@ TEH_RESPONSE_reply_arg_invalid (struct MHD_Connection *connection,
  * denomination key).
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @param param_name the parameter that is invalid
  * @return a MHD result code
  */
 int
 TEH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
+				enum TALER_ErrorCode ec,
                                 const char *param_name);
 
 
@@ -116,11 +123,13 @@ TEH_RESPONSE_reply_arg_unknown (struct MHD_Connection *connection,
  * Send a response indicating a missing argument.
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @param param_name the parameter that is missing
  * @return a MHD result code
  */
 int
 TEH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
+				enum TALER_ErrorCode ec,
                                 const char *param_name);
 
 
@@ -128,11 +137,13 @@ TEH_RESPONSE_reply_arg_missing (struct MHD_Connection *connection,
  * Send a response indicating permission denied.
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @param hint hint about why access was denied
  * @return a MHD result code
  */
 int
 TEH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
+				      enum TALER_ErrorCode ec,
                                       const char *hint);
 
 
@@ -140,11 +151,13 @@ TEH_RESPONSE_reply_permission_denied (struct MHD_Connection *connection,
  * Send a response indicating an internal error.
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @param hint hint about the internal error's nature
  * @return a MHD result code
  */
 int
 TEH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
+				   enum TALER_ErrorCode ec,
                                    const char *hint);
 
 
@@ -152,11 +165,13 @@ TEH_RESPONSE_reply_internal_error (struct MHD_Connection *connection,
  * Send a response indicating an external error.
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @param hint hint about the error's nature
  * @return a MHD result code
  */
 int
 TEH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
+				   enum TALER_ErrorCode ec,
                                    const char *hint);
 
 
@@ -165,21 +180,24 @@ TEH_RESPONSE_reply_external_error (struct MHD_Connection *connection,
  * transaction (concurrent interference).
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @return a MHD result code
  */
 int
-TEH_RESPONSE_reply_commit_error (struct MHD_Connection *connection);
-
+TEH_RESPONSE_reply_commit_error (struct MHD_Connection *connection,
+				      enum TALER_ErrorCode ec);
 
 /**
  * Send a response indicating a failure to talk to the Exchange's
  * database.
  *
  * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
  * @return a MHD result code
  */
 int
-TEH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection);
+TEH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection,
+				      enum TALER_ErrorCode ec);
 
 
 /**
@@ -199,7 +217,7 @@ TEH_RESPONSE_reply_request_too_large (struct MHD_Connection *connection);
  * @return a MHD result code
  */
 int
-TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connection);
+TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connectionx);
 
 
 /**
@@ -266,11 +284,13 @@ TEH_RESPONSE_reply_refund_conflict (struct MHD_Connection *connection,
  *
  * @param connection connection to the client
  * @param response_code response code to generate
+ * @param ec error code uniquely identifying the error
  * @return MHD result code
  */
 int
 TEH_RESPONSE_reply_refund_failure (struct MHD_Connection *connection,
-                                   unsigned int response_code);
+				   unsigned int response_code,
+				   enum TALER_ErrorCode ec);
 
 
 /**
@@ -291,10 +311,12 @@ TEH_RESPONSE_reply_refund_success (struct MHD_Connection *connection,
  * 404 reply.
  *
  * @param connection connection to the client
+ * @param ec Taler error code
  * @return MHD result code
  */
 int
-TEH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection);
+TEH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection,
+					enum TALER_ErrorCode ec);
 
 
 /**
@@ -307,7 +329,7 @@ TEH_RESPONSE_reply_transaction_unknown (struct MHD_Connection *connection);
  */
 int
 TEH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
-				    struct GNUNET_TIME_Absolute planned_exec_time);
+				     struct GNUNET_TIME_Absolute planned_exec_time);
 
 
 /**

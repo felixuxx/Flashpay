@@ -24,6 +24,7 @@
 
 #include <jansson.h>
 #include "taler_util.h"
+#include "taler_error_codes.h"
 #include <gnunet/gnunet_curl_lib.h>
 
 
@@ -355,6 +356,7 @@ struct TALER_EXCHANGE_WireHandle;
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful request;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param obj the received JSON reply, if successful this should be the wire
  *            format details as provided by /wire, or NULL if the
  *            reply was not in JSON format.
@@ -362,6 +364,7 @@ struct TALER_EXCHANGE_WireHandle;
 typedef void
 (*TALER_EXCHANGE_WireResultCallback) (void *cls,
                                       unsigned int http_status,
+				      enum TALER_ErrorCode ec,
                                       const json_t *obj);
 
 
@@ -423,6 +426,7 @@ struct TALER_EXCHANGE_DepositHandle;
 typedef void
 (*TALER_EXCHANGE_DepositResultCallback) (void *cls,
                                          unsigned int http_status,
+					 enum TALER_ErrorCode ec,
                                          const struct TALER_ExchangePublicKeyP *sign_key,
                                          const json_t *obj);
 
@@ -504,6 +508,7 @@ struct TALER_EXCHANGE_RefundHandle;
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful deposit;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param sign_key exchange key used to sign @a obj, or NULL
  * @param obj the received JSON reply, should be kept as proof (and, in particular,
  *            be forwarded to the customer)
@@ -511,6 +516,7 @@ struct TALER_EXCHANGE_RefundHandle;
 typedef void
 (*TALER_EXCHANGE_RefundResultCallback) (void *cls,
 					unsigned int http_status,
+					enum TALER_ErrorCode ec,
                                         const struct TALER_ExchangePublicKeyP *sign_key,
 					const json_t *obj);
 
@@ -650,6 +656,7 @@ struct TALER_EXCHANGE_ReserveHistory
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param[in] json original response in JSON format (useful only for diagnostics)
  * @param balance current balance in the reserve, NULL on error
  * @param history_length number of entries in the transaction history, 0 on error
@@ -658,6 +665,7 @@ struct TALER_EXCHANGE_ReserveHistory
 typedef void
 (*TALER_EXCHANGE_ReserveStatusResultCallback) (void *cls,
                                                unsigned int http_status,
+					       enum TALER_ErrorCode ec,
                                                const json_t *json,
                                                const struct TALER_Amount *balance,
                                                unsigned int history_length,
@@ -713,12 +721,14 @@ struct TALER_EXCHANGE_ReserveWithdrawHandle;
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param sig signature over the coin, NULL on error
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 typedef void
 (*TALER_EXCHANGE_ReserveWithdrawResultCallback) (void *cls,
                                                  unsigned int http_status,
+						 enum TALER_ErrorCode ec,
                                                  const struct TALER_DenominationSignature *sig,
                                                  const json_t *full_response);
 
@@ -835,6 +845,7 @@ struct TALER_EXCHANGE_RefreshMeltHandle;
  * @param cls closure
  * @param http_status HTTP response code, never #MHD_HTTP_OK (200) as for successful intermediate response this callback is skipped.
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param noreveal_index choice by the exchange in the cut-and-choose protocol,
  *                    UINT16_MAX on error
  * @param sign_key exchange key used to sign @a full_response, or NULL
@@ -843,7 +854,8 @@ struct TALER_EXCHANGE_RefreshMeltHandle;
 typedef void
 (*TALER_EXCHANGE_RefreshMeltCallback) (void *cls,
                                        unsigned int http_status,
-                                       uint16_t noreveal_index,
+				       enum TALER_ErrorCode ec,
+				       uint16_t noreveal_index,
                                        const struct TALER_ExchangePublicKeyP *sign_key,
                                        const json_t *full_response);
 
@@ -900,6 +912,7 @@ TALER_EXCHANGE_refresh_melt_cancel (struct TALER_EXCHANGE_RefreshMeltHandle *rmh
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
  * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
  * @param sigs array of signature over @a num_coins coins, NULL on error
@@ -908,6 +921,7 @@ TALER_EXCHANGE_refresh_melt_cancel (struct TALER_EXCHANGE_RefreshMeltHandle *rmh
 typedef void
 (*TALER_EXCHANGE_RefreshRevealCallback) (void *cls,
                                          unsigned int http_status,
+					 enum TALER_ErrorCode ec,
                                          unsigned int num_coins,
                                          const struct TALER_CoinSpendPrivateKeyP *coin_privs,
                                          const struct TALER_DenominationSignature *sigs,
@@ -979,6 +993,7 @@ struct TALER_EXCHANGE_RefreshLinkHandle;
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
  * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
  * @param sigs array of signature over @a num_coins coins, NULL on error
@@ -988,6 +1003,7 @@ struct TALER_EXCHANGE_RefreshLinkHandle;
 typedef void
 (*TALER_EXCHANGE_RefreshLinkCallback) (void *cls,
                                        unsigned int http_status,
+				       enum TALER_ErrorCode ec,
                                        unsigned int num_coins,
                                        const struct TALER_CoinSpendPrivateKeyP *coin_privs,
                                        const struct TALER_DenominationSignature *sigs,
@@ -1043,11 +1059,13 @@ struct TALER_EXCHANGE_AdminAddIncomingHandle;
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 typedef void
 (*TALER_EXCHANGE_AdminAddIncomingResultCallback) (void *cls,
                                                   unsigned int http_status,
+						  enum TALER_ErrorCode ec,
                                                   const json_t *full_response);
 
 
@@ -1108,6 +1126,7 @@ struct TALER_EXCHANGE_TrackTransferHandle;
  *
  * @param cls closure
  * @param http_status HTTP status code we got, 0 on exchange protocol violation
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param sign_key exchange key used to sign @a json, or NULL
  * @param json original json reply (may include signatures, those have then been
  *        validated already)
@@ -1121,6 +1140,7 @@ struct TALER_EXCHANGE_TrackTransferHandle;
 typedef void
 (*TALER_EXCHANGE_TrackTransferCallback)(void *cls,
                                         unsigned int http_status,
+					enum TALER_ErrorCode ec,
                                         const struct TALER_ExchangePublicKeyP *sign_key,
                                         const json_t *json,
                                         const struct GNUNET_HashCode *h_wire,
@@ -1171,6 +1191,7 @@ struct TALER_EXCHANGE_TrackTransactionHandle;
  *
  * @param cls closure
  * @param http_status HTTP status code we got, 0 on exchange protocol violation
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param sign_key exchange key used to sign @a json, or NULL
  * @param json original json reply (may include signatures, those have then been
  *        validated already)
@@ -1182,6 +1203,7 @@ struct TALER_EXCHANGE_TrackTransactionHandle;
 typedef void
 (*TALER_EXCHANGE_TrackTransactionCallback)(void *cls,
                                            unsigned int http_status,
+					   enum TALER_ErrorCode ec,
                                            const struct TALER_ExchangePublicKeyP *sign_key,
                                            const json_t *json,
                                            const struct TALER_WireTransferIdentifierRawP *wtid,
@@ -1239,5 +1261,6 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     json_t *history,
                                     struct TALER_Amount *total);
+
 
 #endif  /* _TALER_EXCHANGE_SERVICE_H */

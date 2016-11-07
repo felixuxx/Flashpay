@@ -63,7 +63,7 @@
 % - sharing = coin copying that should not be taxed
 
 
-\title{Refreshing Coins for Giving Change and Refunds \\ in Chaum-style Anonymous Payments}
+\title{Refreshing Coins for Giving Change and Refunds \\ in Chaum-style Anonymous Payment Systems}
 
 \begin{document}
 \mainmatter
@@ -77,7 +77,7 @@
 \begin{abstract}
 This paper introduces {\em Taler}, a Chaum-style digital currency that
 enables anonymous payments while ensuring that entities that receive
-payments are auditable and thus taxable.  In Taler, customers can
+payments are auditable.  In Taler, customers can
 never defraud anyone, merchants can only fail to deliver the
 merchandise to the customer, and payment service providers can be
 fully audited.  All parties receive cryptographic evidence for all
@@ -88,10 +88,10 @@ systems that do not provide for privacy.
 
 The key technical contribution underpinning Taler is a new {\em
   refresh protocol} which allows fractional payments and refunds while
-maintaining anonymity of the customer and unlinkability of
-transactions.  The refresh protocol combines an efficient
-cut-and-choose mechanism with a {\em link} step to ensure that
-refreshing is not abused for transactional payments.
+maintaining untraceability of the customer and unlinkability of
+transactions.  The refresh protocol combines an
+efficient cut-and-choose mechanism with a {\em link} step to ensure
+that refreshing is not abused for transactional payments.
 
 We argue that Taler provides a secure digital currency for modern
 liberal societies as it is a flexible, libre and efficient protocol
@@ -106,11 +106,11 @@ developed nation states have adopted highly transparent payment systems,
 such as the MasterCard and VisaCard credit card schemes and computerized
 bank transactions such as SWIFT.  These systems enable mass surveillance
 by both governments and private companies.  Aspects of this surveillance
-sometimes benifit society by providing information about tax evasion or
+sometimes benefit society by providing information about tax evasion or
 crimes like extortion.  % TODO : anti-money laundering later?
 In particular, bribery and corruption are limited to elites who can
 afford to escape the dragnet.
-
+%
 At the other extreme, weaker developing nation states have economic
 activity based largely on coins, paper money or even barter.  Here,
 the state is often unable to effectively monitor or tax economic
@@ -118,24 +118,23 @@ activity, and this limits the ability of the state to shape the
 society.  As bribery is virtually impossible to detect, corruption is
 widespread and not limited to social elites.
 %
-ZeroCoin~\cite{miers2013zerocoin} is an example for translating an
+Zerocoin~\cite{miers2013zerocoin} is an example for translating an
 anarchistic economy into the digital realm.
 
 This paper describes Taler, a simple and practical payment system for
-a modern social-liberal society, which is not being served well by
-current payment systems which enable either an authoritarian state in
-total control of the population, or create weak states with almost
-anarchistic economies.
+a social-liberal society, which is underserved by
+current payment systems.
 
 The Taler protocol is influenced by ideas from
-Chaum~\cite{chaum1983blind} and also follows Chaum's basic architecture of
-customer, merchant and exchange (Figure~\ref{fig:cmm}).
-The two designs share the key first step where the {\em customer}
-withdraws digital {\em coins} from the {\em exchange} with unlinkability
-provided via blind signatures.  The coins can then be spent at a
-{\em merchant} who {\em deposits} them at the exchange.
-Taler uses online detection of double-spending, thus assuring the merchant
-instantly that a transaction is valid.
+Chaum~\cite{chaum1983blind} and also follows Chaum's basic
+architecture of customer, merchant and exchange
+(Figure~\ref{fig:cmm}).  The two designs share the key first step
+where the {\em customer} withdraws digital {\em coins} from the {\em
+  exchange} with unlinkability provided via blind signatures.  The
+coins can then be spent at a {\em merchant} who {\em deposits} them at
+the exchange.  Taler uses online detection of double-spending and
+provides excuplability via cryptographic proofs.  Thus merchants are
+instantly assured that a transaction is valid.
 
 \begin{figure}[h]
 \centering
@@ -159,16 +158,14 @@ instantly that a transaction is valid.
 \label{fig:cmm}
 \end{figure}
 
-
 A key issue for an efficient Chaumian digital payment system is the
 need to provide change.  For example, a customer may want to pay
-\EUR{49,99}, but has withdrawn a \EUR{100,00} coin.  Withdrawng 10,000
-pieces with a denomination of \EUR{0,01} and transferring 4,999 would
-be too inefficient, even for modern systems.  The customer should not
+\EUR{49,99}, but has withdrawn a \EUR{100,00} coin.  Withdrawing 10,000
+coins with a denomination of \EUR{0,01} and transferring 4,999 coins would
+be too inefficient.  The customer should not
 withdraw exact change from her account, as doing so reduces anonymity
-due to the obvious corrolation.  A practical payment system must thus
-support giving change in the form of spendable coins, say a \EUR{0,01}
-coin and a \EUR{50,00} coin.
+due to the obvious correlation.  A practical payment system must thus
+support giving change.
 
 Taler solves the problem of giving change by introducing a new
 {\em refresh protocol}.  Using this protocol, a customer can obtain
@@ -178,9 +175,11 @@ Additionally, the refresh protocol ensures that the change is owned by
 the same entity which owned the original coin.
 
 
+\vspace{-0.3cm}
 \section{Related Work}
+\vspace{-0.3cm}
 
-\subsection{Blockchain-based currencies}
+%\subsection{Blockchain-based currencies}
 
 In recent years, a class of decentralized electronic payment systems,
 based on collectively recorded and verified append-only public
@@ -191,13 +190,14 @@ transactions are recorded for eternity, which can enable
 identification of users.  In theory, this concern has been addressed
 with the Zerocoin extension to the protocol~\cite{miers2013zerocoin}.
 
-These protocols dispense with the need for a central, trusted
-authority, while providing a useful measure of pseudonymity.
+The key contribution of blockchain-based protocols is that
+they dispense with the need for a central, trusted
+authority.
 Yet, there are several major irredeemable problems inherent in their designs:
 
 \begin{itemize}
   \item The computational puzzles solved by Bitcoin nodes with the purpose
-    of securing the block chain consume a considerable amount of energy.
+    of securing the blockchain consume a considerable amount of energy.
     So Bitcoin is an environmentally irresponsible design.
   \item Bitcoin transactions have pseduononymous recipients, making taxation
     hard to systematically enforce.
@@ -216,6 +216,15 @@ Yet, there are several major irredeemable problems inherent in their designs:
     % currency exchange and exacerbates the problems with currency fluctuations.
 \end{itemize}
 
+Anonymity extensions for BitCoin such as Zerocoin~\cite{miers2013zerocoin}
+and BOLT~\cite{BOLT} are also limited to transactions with coins
+of fixed discrete value, creating problems with giving change we
+outlined in the introduction.  Furthermore, these extensions have
+problems with aborted transactions, which can reduce the anonymity
+set.  Taler's refresh protocol also addresses the problem of aborted
+transactions, ensuring that aborts cannot be used to attack the
+privacy assurances of the system.
+
 %GreenCoinX\footnote{\url{https://www.greencoinx.com/}} is a more
 %recent AltCoin where the company promises to identify the owner of
 %each coin via e-mail addresses and phone numbers.  While it is unclear
@@ -224,7 +233,7 @@ Yet, there are several major irredeemable problems inherent in their designs:
 %would also merely impose a financial panopticon on a BitCoin-style
 %money supply and transaction model.
 
-\subsection{Chaum-style electronic cash}
+%\subsection{Chaum-style electronic cash}
 
 Chaum~\cite{chaum1983blind} proposed a digital payment system that
 would provide some customer anonymity while disclosing the identity of
@@ -312,53 +321,64 @@ description of the Opencoin protocol is available to date.
 %macropayment.  It is therefore unclear how Peppercoin would actually
 %reduce the computational burden on the exchange.
 
-
+%\vspace{-0.3cm}
 \section{Design}
+%\vspace{-0.3cm}
 
 The Taler system comprises three principal types of actors
 (Figure~\ref{fig:cmm}): The \emph{customer} is interested in receiving
 goods or services from the \emph{merchant} in exchange for payment.
-When making a transaction, both the customer and the merchant use the
-same \emph{exchange}, which serves as a payment service provider for
-the financial transaction between the two.  The exchange is
-responsible for allowing the customer to convert financial reserves to
-the anonymous digital coins, and for enabling the merchant to convert
-spent digital coins back to funds in a financial reserve.  In
-addition, we describe an \emph{auditor} who assures customers and
-merchants that the exchange operates correctly.
+To pay, the customer {\em spends} digital coins at the merchant.  When
+making a transaction, both the customer and the merchant use the same
+\emph{exchange}, which serves as a payment service provider for the
+financial transaction between the two.  The exchange is responsible
+for allowing the customer to withdraw anonymous digital coins from the
+customer's financial reserves, and for enabling the merchant to
+deposit digital coins in return for receiving credit at the merchant's
+financial reserve.  In addition, Taler includes an \emph{auditor} who
+assures customers and merchants that the exchange operates correctly.
 
+%\vspace{-0.3cm}
 \subsection{Security model}
+%\vspace{-0.3cm}
 
-Taler's security model assumes that cryptographic primitives are
-secure and that each participant is under full control of his system.
-The contact information of the exchange is known to both customer and
-merchant from the start.  We further assume that the customer can
-authenticate the merchant, e.g. using X.509
-certificates~\cite{rfc5280}.  Finally, we assume that customer has an
-anonymous bi-directional channel, such as Tor, to communicate with
-both the exchange and the merchant.
+Taler assumes that each participant has full control over their
+system.  We assume the contact information of the exchange is known to
+both customer and merchant from the start, including that the customer
+can authenticate the merchant, for example by using X.509
+certificates~\cite{rfc6818}.  A Taler merchant is trusted to deliver
+the service or goods to the customer upon receiving payment.  The
+customer can seek legal relief to achieve this, as the customer
+receives cryptographic evidence of the contract and the associated
+payment.  We assume each Taler customer has an anonymous
+bi-directional channel, such as Tor, to communicate with both the
+exchange and the merchant.
 
-The exchange is trusted to hold funds of its customers and to forward
-them when receiving the respective deposit instructions from the
-merchants.  Customer and merchant can have assurances about the
+A Taler exchange is trusted to hold funds of its customers and to
+forward them when receiving the respective deposit instructions from
+the merchants.  Customer and merchant can have assurances about the
 exchange's liquidity and operation though published audits by
-financial regulators or other trusted third parties.  If sufficently
-regular, audits of the exchange's accounts should reveal any possible
-fraud.  Online signing keys expire regularly, allowing the exchange to
-destroy the corresponding accumulated cryptographic proofs.
+financial regulators or other trusted third parties.  An exchange's
+signing keys expire regularly, allowing the exchange to eventually
+destroy the corresponding accumulated cryptographic proofs, and
+limiting the exchange's financial liability.
 
-The merchant is trusted to deliver the service or goods to the
-customer upon receiving payment.  The customer can seek legal relief
-to achieve this, as he receives cryptographic proofs of the contract
-and has proof that he paid his obligations.
+On the cryptographic side, a Taler exchange demands that coins use a
+full domain hash (FDH) to make so-called ``one-more forgery'' attacks
+provably hard, assuming the RSA known-target inversion problem is
+hard~\cite[Theorem 12]{RSA-HDF-KTIvCTI}.  For a withdrawn coin,
+violating the customers anonymity cryptographily requires recognizing
+a random blinding factor from a random element of the group of
+integers modulo the denomination key's RSA modulus, which appears
+impossible even with a quantum computers.  For a refreshed coin,
+unlinkabiltiy requires the hardness of the discrete logarithm for
+Curve25519.
 
-Neither the merchant nor the customer have any ability to {\em effectively}
-defraud the exchange or the state collecting taxes.  Here, ``effectively''
-means that the expected return for fraud is negative.
-%
-Note that customers do not need to be trusted in any way, and that in
-particular it is never necessary for anyone to try to recover funds
-from customers using legal coersion.
+The cut-and-choose protocol prevents merchants and customers from
+conspiring to conceal a merchants income.  We assume that the maximum
+tax rate is below $1/\kappa$, and that expected transaction losses of
+a factor of $\kappa$ for tax evasion are thus unacceptable.
+
 
 \subsection{Taxability and Entities}
 
@@ -396,15 +416,14 @@ could spend the associated funds.  Assuming the payment system has
 effective double-spending detection, this means that either entity has
 to constantly fear that the funds might no longer be available to it.
 It follows that sharing coins by copying a private key implies mutual
-trust between the two parties, in which case we treat them as the same
-entity for taxability.
+trust between the two parties.
 
 In Taler, making funds available by copying a private key and thus
 sharing control is {\bf not} considered a {\em transaction} and thus
 {\bf not} recorded for taxation.  Taler does, however, ensure
 taxability when a merchant entity acquires exclusive control over the
 value represented by a digital coins.  For such transactions, the state
-can obtain information from the exchange, or a bank, that identifies
+can obtain information from the exchange that identifies
 the entity that received the digital coins as well as the exact value
 of those coins.  Taler also allows the exchange, and hence the state,
 to learn the value of digital coins withdrawn by a customer---but not
@@ -439,7 +458,7 @@ is unable to link the known identity of the customer that withdrew
 anonymous digital coins to the {\em purchase} performed later at the
 merchant.
 
-While the customer thus has anonymity for purchases, the exchange will
+While the customer thus has untraceability for purchases, the exchange will
 always learn the merchant's identity in order to credit the merchant's
 account.  This is also necessary for taxation, as Taler deliberately
 exposes these events as anchors for tax audits on income.
@@ -467,31 +486,30 @@ exposes these events as anchors for tax audits on income.
 
 A \emph{coin} in Taler is a public-private key pair where the private
 key is only known to the owner of the coin.  A coin derives its
-financial value from an RSA signature over a the full domain hash
-(FDH) of the coin's public key.  An FDH is used so that ``one-more
-forgery'' is provably hard assuming the RSA known-target inversion
-problem is hard~cite[Theorem 12]{RSA-HDF-KTIvCTI}.  The exchange has
-multiple RSA {\em denomination key} pairs available for blind-signing
-coins of different value.
+financial value from an RSA signature over the FDH
+of the coin's public key. The exchange has multiple RSA {\em
+  denomination key} pairs available for blind-signing coins of
+different value.
 
 Denomination keys have an expiration date, before which any coins
 signed with it must be spent or refreshed.  This allows the exchange
 to eventually discard records of old transactions, thus limiting the
 records that the exchange must retain and search to detect
-double-spending attempts.  Furthermore, the exchange uses each
-denomination key only for a limited number of coins.  In this way, if
-a private denomination key were to be compromised, the exchange would
-detect this once more coins were redeemed than the total that was
-signed into existence using that denomination key.  In this case, the
-exchange can allow authentic customers to exchange their unspent
-coins that were signed with the compromised private key, while
-refusing further anonymous transactions involving those coins.  As a
-result, the financial damage of losing a private signing key can be
-limited to at most twice the amount originally signed with that key.
+double-spending attempts.  If a private denomination key were to be
+compromised, the exchange can detect this once more coins are redeemed
+than the total that was signed into existence using that denomination
+key.  In this case, the exchange can allow authentic customers to
+redeem their unspent coins that were signed with the compromised
+private key, while refusing further deposits involving coins signed by
+the compromised denomination key.  As a result, the financial damage
+of losing a private signing key is limited to at most the amount
+originally signed with that key, and denomination key rotation can be
+used to bound that risk.
 
-We also ensure that the exchange cannot deanonymize users by signing
+We ensure that the exchange cannot deanonymize users by signing
 each coin with a fresh denomination key.  For this, exchanges are
-required to publicly announce their denomination keys in advance.
+required to publicly announce their denomination keys in advance
+with validity periods that imply sufficiently strong anonymity sets.
 These announcements are expected to be signed with an off-line
 long-term private {\em master signing key} of the exchange and the
 auditor.  Additionally, customers should obtain these announcements
@@ -515,10 +533,12 @@ withdrawal message as proof that the reserve was debited correctly.
 
 After a coin is issued, the customer is the only entity that knows the
 private key of the coin, making him the \emph{owner} of the coin.  Due
-to the use of blind signatures, the exchange does not even learn the
+to the use of blind signatures, the exchange does not learn the
 public key during the withdrawal process.  If the private key is
 shared with others, they become co-owners of the coin.  Knowledge of
-the private key of the coin enables the owner to spent the coin.
+the private key of the coin and the signature over the coin's public
+key by an exchange's denomination key enables spending the
+coin.
 
 
 % \subsection{Coin spending}
@@ -612,9 +632,9 @@ purposes.  The exchange's bank transfers dealing in traditional currency
 are expected to be recorded for tax authorities to ensure taxability.
 % FIXME: Auditor?
 
-We use RSA for denomination keys and EdDSA over some eliptic curve
-$\mathbb{E}$ for all other keys.  Let $G$ denote the generator of
-our elliptic curve $\mathbb{E}$.
+$S_K$ denotes RSA signing with denomination key $K$ and EdDSA
+over eliptic curve $\mathbb{E}$ for other types of keys.
+$G$ denotes the generator of elliptic curve $\mathbb{E}$.
 
 \subsection{Withdrawal}
 
@@ -639,25 +659,25 @@ Now the customer carries out the following interaction with the exchange:
       \item coin key $C := (c_s,C_p)$ with private key $c_s$ and public key $C_p := c_s G$,
       \item blinding factor $b$, and commits $\langle W, C, b \rangle$ to disk.
     \end{itemize}
-  \item[SEPA Send]
+  \item[Wire transfer send]
     The customer transfers an amount of money corresponding to
     at least $K_v$ to the exchange, with $W_p$ in the subject line
     of the transaction.
-  \item[SEPA Recieve]
+  \item[Wire transfer recieve]
     The exchange receives the transaction and credits the reserve $W_p$
     with the respective amount in its database.
   \item[POST {\tt /withdraw/sign}]
     The customer sends $S_W(B)$ where $B := B_b(\FDH_K(C_p))$ to
     the exchange to request withdrawal of $C$; here, $B_b$ denotes
     Chaum-style blinding with blinding factor $b$.
-  \item[200 OK / 402 PAYMENT REQUIRED]
+  \item[200 OK / 403 FORBIDDEN]
     The exchange checks if the same withdrawal request was issued before;
     in this case, it sends a Chaum-style blind signature $S_K(B)$ with
     private key $K_s$ to the customer. \\
     If this is a fresh withdrawal request, the exchange performs the following transaction:
     \begin{enumerate}
       \item checks if the reserve $W_p$ has sufficient funds
-            for a coin of value corresponding to $K$
+            for a coin of value corresponding to $K$,
       \item stores the withdrawal request and response
             $\langle S_W(B), S_K(B) \rangle$ in its database
             for future reference,
@@ -668,9 +688,8 @@ Now the customer carries out the following interaction with the exchange:
     error back to the customer, with proof that it operated correctly.
     Assuming the signature was valid, this would involve showing the transaction
     history for the reserve.
-        % FIXME: Is it really the whole history?
   \item[Done] The customer computes and verifies the unblinded signature
-    $S_K(\FDH_K{C_p}) = U_b(S_K(B))$.
+    $S_K(\FDH_K(C_p)) = U_b(S_K(B))$.
     Finally the customer saves the coin $\langle S_K(\FDH_K(C_p)), c_s \rangle$
     to their local wallet on disk.
 \end{description}
@@ -681,9 +700,9 @@ Now the customer carries out the following interaction with the exchange:
 A customer can spend coins at a merchant, under the condition that the
 merchant trusts the exchange that issued the coin.
 % FIXME: Auditor here?
-Merchants are identified by their public key $M_p = m_s G$ which the
+Merchants are identified by their public key $M_p$ which the
 customer's wallet learns through the merchant's webpage, which itself
-must be authenticated with X.509c.
+should be authenticated with X.509c.
 % FIXME: Is this correct?
 
 We now describe the protocol between the customer, merchant, and exchange
@@ -702,35 +721,37 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
 \item[Proposal]
   The merchant creates a digitally signed contract
     $\mathcal{A} := S_M(m, f, a, H(p, r), \vec{X})$
-  where $m$ is an identifier for this transaction, $a$ is data relevant
+  where $m$ is an identifier for this transaction, $f$ is the price of the offer,
+  and $a$ is data relevant
   to the contract indicating which services or goods the merchant will
-  deliver to the customer, $f$ is the price of the offer, and
+  deliver to the customer, including the {\tt /merchant-specific} URI for the payment. 
   $p$ is the merchant's payment information (e.g. his IBAN number), and
   $r$ is a random nonce.  The merchant commits $\langle \mathcal{A} \rangle$
   to disk and sends $\mathcal{A}$ to the customer.
 \item[Customer Setup]
-  The customer should already possess a coin issued by a exchange that is
-  accepted by the merchant, meaning $K$ should be publicly signed by
+  The customer should already possess a coin $\widetilde{C}$ issued by a exchange that is
+  accepted by the merchant, meaning $K$ of $\widetilde{C}$ should be publicly signed by
   some $X_j$ from $\vec{X}$, and has a value $\geq f$.
-\item[POST {\tt /???}] \label{deposit}
+\item[POST {\tt /merchant-specific}]
+  Let $X_j$ be the exchange which signed $\widetilde{C}$ with $K$.
   The customer generates a \emph{deposit-permission}
     $\mathcal{D} := S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$
-  and sends $\langle \mathcal{D}, X_j\rangle$ to the merchant,
-  where $X_j$ is the exchange which signed $K$.
+  and sends $\langle \mathcal{D}, X_j\rangle$ to the merchant.  
 \item[POST {\tt/deposit}]
   The merchant gives $(\mathcal{D}, p, r)$ to the exchange, thereby
   revealing $p$ only to the exchange.
-\item[200 OK / 409 CONFLICT]
+\item[200 OK / 403 FORBIDDEN]
   The exchange validates $\mathcal{D}$ and checks for double spending.
   If the coin has been involved in previous transactions and the new
-  one would exceed its remaining value, it sends an error
+  one would exceed its remaining value, it sends a ``403 FORBIDDEN'' error
   with the records from the previous transactions back to the merchant. \\
   %
   If double spending is not found, the exchange commits $\langle \mathcal{D} \rangle$ to disk
-  and notifies the merchant that the deposit operation was successful.
-\item[200 OK / ???]
+  and signs a ``200 OK'' message affirming the deposit operation was successful.
+\item[200 OK / 424 FAILED DEPENDENCY]
   The merchant commits and forwards the notification from the exchange to the
-  customer, confirming the success or failure of the operation.
+  customer, confirming the success (``200 OK'') or failure (``424 FAILED DEPENDENCY'')
+  of the operation. 
 \end{description}
 
 We have simplified the exposition by assuming that one coin suffices,
@@ -738,12 +759,12 @@ but in practice a customer can use multiple coins from the same
 exchange where the total value adds up to $f$ by running the above
 steps for each of the coins.
 
-If a transaction is aborted after Step~\ref{deposit},
-subsequent transactions with the same coin could be linked to the coin,
-but not directly to the coin's owner.  The same applies to partially
-spent coins where $f$ is smaller than the actual value of the coin.
-To unlink subsequent transactions from a coin, the customer has to
-execute the coin refreshing protocol with the exchange.
+If a transaction is aborted after the first POST, subsequent
+transactions with the same coin could be linked to this operation.
+The same applies to partially spent coins where $f$ is smaller than
+the actual value of the coin.  To unlink subsequent transactions from
+a coin, the customer has to execute the following coin refreshing
+protocol with the exchange.
 
 %\begin{figure}[h]
 %\centering
@@ -785,17 +806,17 @@ denomination $K$ is melted to obtain a fresh coin $\widetilde{C}$
 with the same denomination.  In practice, Taler uses a natural
 extension where multiple fresh coins are generated a the same time to
 enable giving precise change matching any amount.
-In the protocol, $\kappa \ge 3$ is a security parameter for the
-cut-and-choose part of the protocol and $G$ is the
-generator of the elliptic curve.
 
-We note that $\kappa = 3$ is actually perfectly sufficient in most
-cases in practice, as the cut-and-choose protocol does not need to
-provide cryptographic security: If the maximum applicable tax is less
-than $\frac{2}{3}$, then detecting $\kappa = 3$ ensures that cheating
-results in a negative return on average as $\kappa - 1$ out of
-$\kappa$ attempts to cheat are detected.  This makes the use of
-cut-and-choose practical and efficient in this context.
+In the protocol, $\kappa \ge 2$ is a security parameter for the
+cut-and-choose part of the protocol.  $\kappa = 3$ is actually
+perfectly sufficient in most cases in practice, as the cut-and-choose
+protocol does not need to provide cryptographic security: If the
+maximum applicable tax is less than $\frac{2}{3}$, then $\kappa = 3$
+ensures that cheating results in a negative financial return on
+average as $\kappa - 1$ out of $\kappa$ attempts to hide from taxation
+are detected and penalized by a total loss.  This makes our use of
+cut-and-choose practical and efficient, and in particularly faster
+than the comparable use of zk-SNARKs in ZeroCash~\cite{zerocash}.
 
 % FIXME: I'm explicit about the rounds in postquantum.tex
 
@@ -805,16 +826,16 @@ cut-and-choose practical and efficient in this context.
     a transfer private key $t^{(i)}_s$ and computes
     \begin{itemize}
     \item the transfer public key $T^{(i)}_p := t^{(i)}_s G$ and
-    \item the new coin secret seed $L_i := H(c'_s T_p^{(i)})$.
+    \item the new coin secret seed $L^{(i)} := H(c'_s T_p^{(i)})$.
     \end{itemize}
     We have computed $L_i$ as a Diffie-Hellman shared secret between
     the transfer key pair $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$
     and old coin key pair $C' := \left(c_s', C_p'\right)$;
-    as a result, $L_i = H(t^{(i)}_s C'_p)$ also holds.
-    Now the customer applies key derivation functions $\KDF_?$ to $L_i$ to generate
+    as a result, $L^{(i)} = H(t^{(i)}_s C'_p)$ also holds.
+    Now the customer applies key derivation functions $\KDF_{\textrm{blinding}}$ and $\KDF_{\textrm{Ed25519}}$ to $L^{(i)}$ to generate
     \begin{itemize}
-      \item a blinding factor $b^{(i)} = \FDH_K(\KDF_{\textrm{blinding}}(L_i))$.
-      \item $c_s^{(i)} = \KDF_{\textrm{Ed25519}}(L_i)$
+      \item a blinding factor $b^{(i)} = \FDH_K(\KDF_{\textrm{blinding}}(L^{(i)}))$.
+      \item $c_s^{(i)} = \KDF_{\textrm{Ed25519}}(L^{(i)})$
     \end{itemize}
     Now the customer can compute her new coin key pair
      $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$
@@ -837,7 +858,7 @@ cut-and-choose practical and efficient in this context.
     this time to prevent the exchange from assisting tax evasion. \\
     %
     The exchange sends $S_{K'}(C'_p, \gamma)$ to the customer where
-    $K'$ is the exchange's message signing key.
+    $K'$ is the exchange's message signing key, thereby commmitting the exchange to $\gamma$.
   \item[POST {\tt /refresh/reveal}]
     The customer commits $\langle C', S_K(C'_p, \gamma) \rangle$ to disk.
     Also, the customer assembles
@@ -850,16 +871,16 @@ cut-and-choose practical and efficient in this context.
     \vspace{-2ex}
     \begin{minipage}{5cm}
     \begin{align*}
-      \overline{L}_i :&= H(t_s^{(i)} C_p') \\
-      \overline{c}_s^{(i)} :&= \KDF_{\textrm{Ed25519}}(\overline{L}_i) \\
-      \overline{C^{(i)}_p} :&= \overline{c}_s^{(i)} G
+      \overline{L^{(i)}} :&= H(t_s^{(i)} C_p') \\
+      \overline{c_s^{(i)}} :&= \KDF_{\textrm{Ed25519}}(\overline{L^{(i)}}) \\
+      \overline{C^{(i)}_p} :&= \overline{c_s^{(i)}} G
      \end{align*}
     \end{minipage}
     \begin{minipage}{5cm}
      \begin{align*}
        \overline{T_p^{(i)}} :&= t_s^{(i)} G \\
-       \overline{b}^{(i)} :&= \FDH_K(\KDF_{\textrm{blinding}}(\overline{L}_i)) \\
-       \overline{B^{(i)}} :&= B_{\overline{b_i}}(\overline{C_p^{(i)}})
+       \overline{b^{(i)}} :&= \FDH_K(\KDF_{\textrm{blinding}}(\overline{L^{(i)}})) \\
+       \overline{B^{(i)}} :&= B_{\overline{b^{(i)}}}(\overline{C_p^{(i)}})
      \end{align*}
     \end{minipage}
 
@@ -909,7 +930,7 @@ taxation model as with such trust they are assumed to be the same
 entity.
 
 The auditor can anonymously check if the exchange correctly implements the
-link request, thus preventing the exchange operator from legally disabling
+link request, thus preventing the exchange operator from secretly disabling
 this protocol component.  Without the link operation, Taler would
 devolve into a payment system where both sides can be anonymous, and
 thus no longer provide taxability.
@@ -942,13 +963,12 @@ faulty exchange.
 The third case are transient failures, such as network failures or
 temporary hardware failures at the exchange service provider.  Here, the
 client may receive an explicit protocol indication, such as an HTTP
-response code 500 ``internal server error'' or simply no response.
+response code ``500 INTERNAL SERVER ERROR'' or simply no response.
 The appropriate behavior for the client is to automatically retry
 after 1s, and twice more at randomized times within 1 minute.
 If those three attempts fail, the user should be informed about the
 delay.  The client should then retry another three times within the
-next 24h, and after that time the auditor be informed about the outage.
-
+next 24h, and after that time the auditor should be informed about the outage.
 Using this process, short term failures should be effectively obscured
 from the user, while malicious behavior is reported to the auditor who
 can then presumably rectify the situation, using methods such as
@@ -1041,7 +1061,7 @@ At network latencies above 10 ms, the delay
 for executing a transaction is dominated by the network latency, as
 local processing virtually always takes less than 10 ms.
 
-Database transactions are dominated by writes
+Database transactions are dominated by writes%
 %(Figure~\ref{fig:read} vs.  Figure~\ref{fig:write})
 , as Taler mostly needs to log
 transactions and occasionally needs to read to guard against
@@ -1092,7 +1112,7 @@ actually facilitates voluntary cooperation between the exchange and
 criminals~\cite{sander1999escrow} and where the state could
 deanonymize citizens.
 
-\subsection{Offline Payments}
+%\subsection{Offline Payments}
 
 Chaum's original proposals for anonymous digital cash avoided the need
 for online interactions with the exchange to detect double spending by
@@ -1115,7 +1135,7 @@ coin after restoring from backup.
 %subjected to financial penalties by the state in relation to the
 %amount transferred by the traditional currency transfer.
 
-\subsection{Cryptographic proof vs. evidence}
+% \subsection{Cryptographic proof vs. evidence}
 
 In this paper we have use the term ``proof'' in many places as the
 protocol provides cryptographic proofs of which parties behave
@@ -1167,11 +1187,11 @@ the participants have to disclose their core secrets.
 \bibliographystyle{alpha}
 \bibliography{taler,rfc}
 
-\vfill
-\begin{center}
- \Large  Demonstration available at \url{https://demo.taler.net/}
-\end{center}
-\vfill
+%\vfill
+%\begin{center}
+% \Large  Demonstration available at \url{https://demo.taler.net/}
+%\end{center}
+%\vfill
 
 \newpage
 \appendix
@@ -1241,13 +1261,13 @@ data being committed to disk are represented in between $\langle\rangle$.
   \item[$\vec{b}$]{Vector of $b^{(i)}$}
   \item[$B^{(i)}$]{Blinding of $C_p^{(i)}$}
   \item[$\vec{B}$]{Vector of $B^{(i)}$}
-  \item[$L_i$]{Link secret derived from ECDH operation via hashing}
-%  \item[$E_{L_i}()$]{Symmetric encryption using key $L_i$}
+  \item[$L^{(i)}$]{Link secret derived from ECDH operation via hashing}
+%  \item[$E_{L^{(i)}}()$]{Symmetric encryption using key $L^{(i)}$}
 %  \item[$E^{(i)}$]{$i$-th encryption of the private information $(c_s^{(i)}, b_i)$}
 %  \item[$\vec{E}$]{Vector of $E^{(i)}$}
   \item[$\cal{R}$]{Tuple of revealed vectors in cut-and-choose protocol,
     where the vectors exclude the selected index $\gamma$}
-  \item[$\overline{L_i}$]{Link secrets derived by the verifier from DH}
+  \item[$\overline{L^{(i)}}$]{Link secrets derived by the verifier from DH}
   \item[$\overline{B^{(i)}}$]{Blinded values derived by the verifier}
   \item[$\overline{T_p^{(i)}}$]{Public transfer keys derived by the verifier from revealed private keys}
   \item[$\overline{c_s^{(i)}}$]{Private keys obtained from decryption by the verifier}

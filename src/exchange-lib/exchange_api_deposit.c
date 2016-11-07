@@ -29,7 +29,6 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
-#include "exchange_api_common.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
 
@@ -262,6 +261,7 @@ handle_deposit_finished (void *cls,
   }
   dh->cb (dh->cb_cls,
           response_code,
+	  TALER_JSON_get_error_code (json),
           ep,
           json);
   TALER_EXCHANGE_deposit_cancel (dh);

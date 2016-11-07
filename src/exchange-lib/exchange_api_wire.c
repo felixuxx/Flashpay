@@ -28,7 +28,6 @@
 #include "taler_exchange_service.h"
 #include "taler_json_lib.h"
 #include "taler_wire_plugin.h"
-#include "exchange_api_common.h"
 #include "exchange_api_handle.h"
 
 
@@ -210,6 +209,7 @@ handle_wire_finished (void *cls,
   }
   wh->cb (wh->cb_cls,
           response_code,
+	  TALER_JSON_get_error_code (json),
           (NULL != keep) ? keep : json);
   if (NULL != keep)
     json_decref (keep);

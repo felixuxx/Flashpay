@@ -20,7 +20,6 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
-#include "exchange_api_common.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "exchange_api_handle.h"
@@ -38,8 +37,8 @@
  */
 int
 TALER_EXCHANGE_verify_coin_history (const char *currency,
-                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                     json_t *history,
+				    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+				    json_t *history,
                                     struct TALER_Amount *total)
 {
   size_t len;

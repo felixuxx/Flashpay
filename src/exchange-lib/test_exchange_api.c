@@ -761,11 +761,13 @@ next_command (struct InterpreterState *is)
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 static void
 add_incoming_cb (void *cls,
                  unsigned int http_status,
+		 enum TALER_ErrorCode ec,
                  const json_t *full_response)
 {
   struct InterpreterState *is = cls;
@@ -857,6 +859,7 @@ compare_reserve_withdraw_history (const struct TALER_EXCHANGE_ReserveHistory *h,
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param[in] json original response in JSON format (useful only for diagnostics)
  * @param balance current balance in the reserve, NULL on error
  * @param history_length number of entries in the transaction history, 0 on error
@@ -865,6 +868,7 @@ compare_reserve_withdraw_history (const struct TALER_EXCHANGE_ReserveHistory *h,
 static void
 reserve_status_cb (void *cls,
                    unsigned int http_status,
+		   enum TALER_ErrorCode ec,
                    const json_t *json,
                    const struct TALER_Amount *balance,
                    unsigned int history_length,
@@ -924,7 +928,7 @@ reserve_status_cb (void *cls,
         {
           if (GNUNET_OK !=
               compare_reserve_withdraw_history (&history[j],
-                                             rel))
+                                                rel))
           {
             GNUNET_break (0);
             fail (is);
@@ -973,12 +977,14 @@ reserve_status_cb (void *cls,
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param sig signature over the coin, NULL on error
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 static void
 reserve_withdraw_cb (void *cls,
                      unsigned int http_status,
+		     enum TALER_ErrorCode ec,
                      const struct TALER_DenominationSignature *sig,
                      const json_t *full_response)
 {
@@ -1009,7 +1015,7 @@ reserve_withdraw_cb (void *cls,
     cmd->details.reserve_withdraw.sig.rsa_signature
       = GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
     break;
-  case MHD_HTTP_PAYMENT_REQUIRED:
+  case MHD_HTTP_FORBIDDEN:
     /* nothing to check */
     break;
   default:
@@ -1027,6 +1033,7 @@ reserve_withdraw_cb (void *cls,
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful deposit;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param exchange_pub public key the exchange used for signing
  * @param obj the received JSON reply, should be kept as proof (and, in case of errors,
  *            be forwarded to the customer)
@@ -1034,6 +1041,7 @@ reserve_withdraw_cb (void *cls,
 static void
 deposit_cb (void *cls,
             unsigned int http_status,
+	    enum TALER_ErrorCode ec,
             const struct TALER_ExchangePublicKeyP *exchange_pub,
             const json_t *obj)
 {
@@ -1061,6 +1069,7 @@ deposit_cb (void *cls,
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, never #MHD_HTTP_OK (200) as for successful intermediate response this callback is skipped.
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param noreveal_index choice by the exchange in the cut-and-choose protocol,
  *                    UINT16_MAX on error
  * @param exchange_pub public key the exchange used for signing
@@ -1069,6 +1078,7 @@ deposit_cb (void *cls,
 static void
 melt_cb (void *cls,
          unsigned int http_status,
+	 enum TALER_ErrorCode ec,
          uint16_t noreveal_index,
          const struct TALER_ExchangePublicKeyP *exchange_pub,
          const json_t *full_response)
@@ -1098,6 +1108,7 @@ melt_cb (void *cls,
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
  * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
  * @param sigs array of signature over @a num_coins coins, NULL on error
@@ -1106,6 +1117,7 @@ melt_cb (void *cls,
 static void
 reveal_cb (void *cls,
            unsigned int http_status,
+	   enum TALER_ErrorCode ec,
            unsigned int num_coins,
            const struct TALER_CoinSpendPrivateKeyP *coin_privs,
            const struct TALER_DenominationSignature *sigs,
@@ -1160,6 +1172,7 @@ reveal_cb (void *cls,
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
  * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
  * @param sigs array of signature over @a num_coins coins, NULL on error
@@ -1169,6 +1182,7 @@ reveal_cb (void *cls,
 static void
 link_cb (void *cls,
          unsigned int http_status,
+	 enum TALER_ErrorCode ec,
          unsigned int num_coins,
          const struct TALER_CoinSpendPrivateKeyP *coin_privs,
          const struct TALER_DenominationSignature *sigs,
@@ -1336,12 +1350,14 @@ find_pk (const struct TALER_EXCHANGE_Keys *keys,
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful request;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param obj the received JSON reply, if successful this should be the wire
  *            format details as provided by /wire.
  */
 static void
 wire_cb (void *cls,
          unsigned int http_status,
+	 enum TALER_ErrorCode ec,
          const json_t *obj)
 {
   struct InterpreterState *is = cls;
@@ -1391,6 +1407,7 @@ wire_cb (void *cls,
  *
  * @param cls closure
  * @param http_status HTTP status code we got, 0 on exchange protocol violation
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param exchange_pub public key the exchange used for signing
  * @param json original json reply (may include signatures, those have then been
  *        validated already)
@@ -1404,6 +1421,7 @@ wire_cb (void *cls,
 static void
 wire_deposits_cb (void *cls,
                   unsigned int http_status,
+		  enum TALER_ErrorCode ec,
                   const struct TALER_ExchangePublicKeyP *exchange_pub,
                   const json_t *json,
                   const struct GNUNET_HashCode *h_wire,
@@ -1521,6 +1539,7 @@ wire_deposits_cb (void *cls,
  *
  * @param cls closure
  * @param http_status HTTP status code we got, 0 on exchange protocol violation
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param exchange_pub public key the exchange used for signing
  * @param json original json reply (may include signatures, those have then been
  *        validated already)
@@ -1534,6 +1553,7 @@ wire_deposits_cb (void *cls,
 static void
 deposit_wtid_cb (void *cls,
                  unsigned int http_status,
+		 enum TALER_ErrorCode ec,
                  const struct TALER_ExchangePublicKeyP *exchange_pub,
                  const json_t *json,
                  const struct TALER_WireTransferIdentifierRawP *wtid,
@@ -1588,6 +1608,7 @@ deposit_wtid_cb (void *cls,
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful deposit;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param exchange_pub public key the exchange used for signing @a obj
  * @param obj the received JSON reply, should be kept as proof (and, in particular,
  *            be forwarded to the customer)
@@ -1595,6 +1616,7 @@ deposit_wtid_cb (void *cls,
 static void
 refund_cb (void *cls,
            unsigned int http_status,
+	   enum TALER_ErrorCode ec,
            const struct TALER_ExchangePublicKeyP *exchange_pub,
            const json_t *obj)
 {
@@ -1782,9 +1804,9 @@ interpreter_run (void *cls)
                                         &reserve_pub.eddsa_pub);
     cmd->details.reserve_status.wsh
       = TALER_EXCHANGE_reserve_status (exchange,
-                                   &reserve_pub,
-                                   &reserve_status_cb,
-                                   is);
+                                       &reserve_pub,
+                                       &reserve_status_cb,
+                                       is);
     return;
   case OC_WITHDRAW_SIGN:
     GNUNET_assert (NULL !=
@@ -2737,7 +2759,7 @@ run (void *cls)
     /* Try to overdraw funds ... */
     { .oc = OC_WITHDRAW_SIGN,
       .label = "withdraw-coin-2",
-      .expected_response_code = MHD_HTTP_PAYMENT_REQUIRED,
+      .expected_response_code = MHD_HTTP_FORBIDDEN,
       .details.reserve_withdraw.reserve_reference = "create-reserve-1",
       .details.reserve_withdraw.amount = "EUR:5" },
 
@@ -3051,8 +3073,11 @@ main (int argc,
   unsigned long code;
 
   GNUNET_log_setup ("test-exchange-api",
-                    "WARNING",
-                    NULL);
+                    "DEBUG",
+                    "/tmp/logs");
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "test log\n");
+  return 0;
+
   /* These might get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");

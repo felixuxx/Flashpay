@@ -1,3 +1,6 @@
 [submodule "doc/api"]
 	path = doc/api
 	url = git@git.taler.net:api
+[submodule "gnunet"]
+	path = gnunet
+	url = git://taler.net/gnunet.git

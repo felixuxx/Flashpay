@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -129,6 +129,7 @@ handle_admin_add_incoming_finished (void *cls,
   }
   aai->cb (aai->cb_cls,
            response_code,
+	   TALER_JSON_get_error_code (json),
            json);
   TALER_EXCHANGE_admin_add_incoming_cancel (aai);
 }

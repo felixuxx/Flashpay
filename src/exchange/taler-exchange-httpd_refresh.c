@@ -69,7 +69,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   struct TALER_Amount total_melt;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "melt request for session %s\n",
+              "/refresh/melt request for session %s\n",
               GNUNET_h2s (session_hash));
 
   GNUNET_assert (GNUNET_OK ==
@@ -86,6 +86,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
       GNUNET_break_op (0);
       TEH_KS_release (key_state);
       return TEH_RESPONSE_reply_arg_invalid (connection,
+					     TALER_EC_REFRESH_MELT_FRESH_DENOMINATION_KEY_NOT_FOUND,
                                              "new_denoms");
     }
     dki = &dk->issue;
@@ -105,6 +106,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
       GNUNET_break_op (0);
       TEH_KS_release (key_state);
       return TEH_RESPONSE_reply_internal_error (connection,
+						TALER_EC_REFRESH_MELT_COST_CALCULATION_OVERFLOW,
                                                 "cost calculation failure");
     }
   }
@@ -115,8 +117,9 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
   if (NULL == dk)
   {
     GNUNET_break (0);
-    return TEH_RESPONSE_reply_arg_invalid (connection,
-                                           "denom_pub");
+    return TEH_RESPONSE_reply_arg_unknown (connection,
+					   TALER_EC_REFRESH_MELT_DENOMINATION_KEY_NOT_FOUND,
+					   "denom_pub");
   }
   dki = &dk->issue;
   TALER_amount_ntoh (&fee_melt,
@@ -129,6 +132,7 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
     GNUNET_break_op (0);
     TEH_KS_release (key_state);
     return TEH_RESPONSE_reply_external_error (connection,
+					      TALER_EC_REFRESH_MELT_FEES_EXCEED_CONTRIBUTION,
                                               "Melt contribution below melting fee");
   }
   TEH_KS_release (key_state);
@@ -141,8 +145,9 @@ handle_refresh_melt_binary (struct MHD_Connection *connection,
        total value of coins being generated to match! */
     return TEH_RESPONSE_reply_json_pack (connection,
                                          MHD_HTTP_BAD_REQUEST,
-                                         "{s:s}",
-                                         "error", "value mismatch");
+                                         "{s:s, s:I}",
+                                         "error", "value mismatch",
+					 "code", (json_int_t) TALER_EC_REFRESH_MELT_FEES_MISSMATCH);
   }
   return TEH_DB_execute_refresh_melt (connection,
                                       session_hash,
@@ -203,6 +208,7 @@ get_coin_public_info (struct MHD_Connection *connection,
     r_melt_detail->coin_info.denom_pub.rsa_public_key = NULL;
     return (MHD_YES ==
             TEH_RESPONSE_reply_signature_invalid (connection,
+						  TALER_EC_REFRESH_MELT_DENOMINATION_SIGNATURE_INVALID,
                                                   "denom_sig"))
       ? GNUNET_NO : GNUNET_SYSERR;
   }
@@ -237,6 +243,8 @@ verify_coin_public_info (struct MHD_Connection *connection,
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   struct TALER_Amount fee_refresh;
 
+  /* FIXME: we lookup the dki twice during /refresh/melt.
+     This should be avoided. */
   key_state = TEH_KS_acquire ();
   dki = TEH_KS_denomination_key_lookup (key_state,
                                         &melt_detail->coin_info.denom_pub,
@@ -246,6 +254,7 @@ verify_coin_public_info (struct MHD_Connection *connection,
     TEH_KS_release (key_state);
     TALER_LOG_WARNING ("Unknown denomination key in /refresh/melt request\n");
     return TEH_RESPONSE_reply_arg_unknown (connection,
+					   TALER_EC_REFRESH_MELT_DENOMINATION_KEY_NOT_FOUND,
                                            "denom_pub");
   }
   TALER_amount_ntoh (&fee_refresh,
@@ -266,6 +275,7 @@ verify_coin_public_info (struct MHD_Connection *connection,
     TEH_KS_release (key_state);
     return (MHD_YES ==
             TEH_RESPONSE_reply_external_error (connection,
+					       TALER_EC_REFRESH_MELT_AMOUNT_INSUFFICIENT,
                                                "melt amount smaller than melting fee"))
       ? GNUNET_NO : GNUNET_SYSERR;
   }
@@ -280,6 +290,7 @@ verify_coin_public_info (struct MHD_Connection *connection,
     GNUNET_break_op (0);
     if (MHD_YES !=
         TEH_RESPONSE_reply_signature_invalid (connection,
+					      TALER_EC_REFRESH_MELT_COIN_SIGNATURE_INVALID,
                                               "confirm_sig"))
       return GNUNET_SYSERR;
     return GNUNET_NO;
@@ -565,6 +576,7 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_arg_invalid (connection,
+					   TALER_EC_REFRESH_MELT_CNC_COIN_ARRAY_SIZE_INVALID,
                                            "coin_evs");
   }
   if (TALER_CNC_KAPPA != json_array_size (transfer_pubs))
@@ -572,6 +584,7 @@ TEH_REFRESH_handler_refresh_melt (struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_arg_invalid (connection,
+					   TALER_EC_REFRESH_MELT_CNC_TRANSFER_ARRAY_SIZE_INVALID,
                                            "transfer_pubs");
   }
   res = handle_refresh_melt_json (connection,
@@ -694,6 +707,7 @@ TEH_REFRESH_handler_refresh_reveal (struct TEH_RequestHandler *rh,
     GNUNET_JSON_parse_free (spec);
     GNUNET_break_op (0);
     return TEH_RESPONSE_reply_arg_invalid (connection,
+					   TALER_EC_REFRESH_REVEAL_CNC_TRANSFER_ARRAY_SIZE_INVALID,
                                            "transfer_privs");
   }
   res = handle_refresh_reveal_json (connection,

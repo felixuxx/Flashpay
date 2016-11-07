@@ -295,6 +295,7 @@ TEH_TEST_handler_test_ecdhe (struct TEH_RequestHandler *rh,
   {
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_internal_error (connection,
+					      TALER_EC_TEST_ECDH_ERROR,
 					      "Failed to perform ECDH");
   }
   GNUNET_JSON_parse_free (spec);
@@ -365,6 +366,7 @@ TEH_TEST_handler_test_eddsa (struct TEH_RequestHandler *rh,
   {
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_signature_invalid (connection,
+						 TALER_EC_TEST_EDDSA_INVALID,
 						 "eddsa_sig");
   }
   GNUNET_JSON_parse_free (spec);
@@ -377,6 +379,7 @@ TEH_TEST_handler_test_eddsa (struct TEH_RequestHandler *rh,
   {
     GNUNET_free (pk);
     return TEH_RESPONSE_reply_internal_error (connection,
+					      TALER_EC_TEST_EDDSA_ERROR,
 					      "Failed to EdDSA-sign");
   }
   GNUNET_CRYPTO_eddsa_key_get_public (pk,
@@ -419,6 +422,7 @@ TEH_TEST_handler_test_rsa_get (struct TEH_RequestHandler *rh,
   {
     GNUNET_break (0);
     return TEH_RESPONSE_reply_internal_error (connection,
+					      TALER_EC_TEST_RSA_GEN_ERROR,
 					      "Failed to create RSA key");
   }
   pub = GNUNET_CRYPTO_rsa_private_key_get_public (rsa_pk);
@@ -426,6 +430,7 @@ TEH_TEST_handler_test_rsa_get (struct TEH_RequestHandler *rh,
   {
     GNUNET_break (0);
     return TEH_RESPONSE_reply_internal_error (connection,
+					      TALER_EC_TEST_RSA_PUB_ERROR,
 					      "Failed to get public RSA key");
   }
   res = TEH_RESPONSE_reply_json_pack (connection,
@@ -489,6 +494,7 @@ TEH_TEST_handler_test_rsa_sign (struct TEH_RequestHandler *rh,
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_internal_error (connection,
+					      TALER_EC_TEST_RSA_GEN_ERROR,
 					      "Failed to create RSA key");
   }
   sig = GNUNET_CRYPTO_rsa_sign_blinded (rsa_pk,
@@ -499,6 +505,7 @@ TEH_TEST_handler_test_rsa_sign (struct TEH_RequestHandler *rh,
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
     return TEH_RESPONSE_reply_internal_error (connection,
+					      TALER_EC_TEST_RSA_SIGN_ERROR,
 					      "Failed to RSA-sign");
   }
   GNUNET_JSON_parse_free (spec);

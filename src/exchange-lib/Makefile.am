@@ -14,7 +14,7 @@ libtalerexchange_la_LDFLAGS = \
   -no-undefined
 
 libtalerexchange_la_SOURCES = \
-  exchange_api_common.c exchange_api_common.h \
+  exchange_api_common.c \
   exchange_api_handle.c exchange_api_handle.h \
   exchange_api_admin.c \
   exchange_api_deposit.c \

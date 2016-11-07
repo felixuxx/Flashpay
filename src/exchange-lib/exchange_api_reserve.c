@@ -314,7 +314,8 @@ handle_reserve_status_finished (void *cls,
       if (GNUNET_OK !=
           GNUNET_JSON_parse (json,
                              spec,
-                             NULL, NULL))
+                             NULL,
+			     NULL))
       {
         GNUNET_break_op (0);
         response_code = 0;
@@ -355,6 +356,7 @@ handle_reserve_status_finished (void *cls,
         }
         wsh->cb (wsh->cb_cls,
                  response_code,
+		 TALER_EC_NONE,
                  json,
                  &balance,
                  len,
@@ -387,6 +389,7 @@ handle_reserve_status_finished (void *cls,
   if (NULL != wsh->cb)
     wsh->cb (wsh->cb_cls,
              response_code,
+	     TALER_JSON_get_error_code (json),
              json,
              NULL,
              0, NULL);
@@ -589,6 +592,7 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
   dsig.rsa_signature = sig;
   wsh->cb (wsh->cb_cls,
            MHD_HTTP_OK,
+	   TALER_EC_NONE,
            &dsig,
            json);
   /* make sure callback isn't called again after return */
@@ -599,7 +603,7 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_ReserveWithdrawHandle *wsh,
 
 
 /**
- * We got a 402 PAYMENT REQUIRED response for the /reserve/withdraw operation.
+ * We got a 403 FORBIDDEN response for the /reserve/withdraw operation.
  * Check the signatures on the withdraw transactions in the provided
  * history and that the balances add up.  We don't do anything directly
  * with the information, as the JSON will be returned to the application.
@@ -723,7 +727,7 @@ handle_reserve_withdraw_finished (void *cls,
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
-  case MHD_HTTP_PAYMENT_REQUIRED:
+  case MHD_HTTP_FORBIDDEN:
     /* The exchange says that the reserve has insufficient funds;
        check the signatures in the history... */
     if (GNUNET_OK !=
@@ -762,6 +766,7 @@ handle_reserve_withdraw_finished (void *cls,
   if (NULL != wsh->cb)
     wsh->cb (wsh->cb_cls,
              response_code,
+	     TALER_JSON_get_error_code (json),
              NULL,
              json);
   TALER_EXCHANGE_reserve_withdraw_cancel (wsh);

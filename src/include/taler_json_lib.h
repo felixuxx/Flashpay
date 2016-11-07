@@ -25,6 +25,7 @@
 #include <jansson.h>
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_util.h"
+#include "taler_error_codes.h"
 
 /**
  * Print JSON parsing related error information
@@ -91,6 +92,17 @@ TALER_JSON_spec_denomination_signature (const char *field,
 int
 TALER_JSON_hash (const json_t *json,
                  struct GNUNET_HashCode *hc);
+
+/**
+ * Extract the Taler error code from the given @a json object.
+ * Note that #TALER_EC_NONE is returned if no "code" is present.
+ *
+ * @param json response to extract the error code from
+ * @return the "code" value from @a json
+ */
+enum TALER_ErrorCode
+TALER_JSON_get_error_code (const json_t *json);
+
 
 #endif /* TALER_JSON_LIB_H_ */
 
