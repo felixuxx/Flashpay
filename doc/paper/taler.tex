@@ -496,10 +496,10 @@ exposes these events as anchors for tax audits on income.
 
 A \emph{coin} in Taler is a public-private key pair where the private
 key is only known to the owner of the coin.  A coin derives its
-financial value from an RSA signature over the FDH
-of the coin's public key. The exchange has multiple RSA {\em
-  denomination key} pairs available for blind-signing coins of
-different value.
+financial value from an RSA signature over the full doman hash (FDH)
+of the coin's public key. The exchange has multiple RSA 
+{\em denomination key} pairs available for blind-signing coins of
+different values.
 
 Denomination keys have an expiration date, before which any coins
 signed with it must be spent or refreshed.  This allows the exchange
@@ -677,7 +677,7 @@ Now the customer carries out the following interaction with the exchange:
     The exchange receives the transaction and credits the reserve $W_p$
     with the respective amount in its database.
   \item[POST {\tt /withdraw/sign}]
-    The customer sends $S_W(B)$ where $B := B_b(\FDH_K(C_p))$ to
+    The customer computes $B := B_b(\FDH_K(C_p))$ and sends $S_W(B)$ to
     the exchange to request withdrawal of $C$; here, $B_b$ denotes
     Chaum-style blinding with blinding factor $b$.
   \item[200 OK / 403 FORBIDDEN]
@@ -698,8 +698,8 @@ Now the customer carries out the following interaction with the exchange:
     error back to the customer, with proof that it operated correctly.
     Assuming the signature was valid, this would involve showing the transaction
     history for the reserve.
-  \item[Done] The customer computes and verifies the unblinded signature
-    $S_K(\FDH_K(C_p)) = U_b(S_K(B))$.
+  \item[Done] The customer computes the unblinded signature $U_b(S_K(B))$ and
+    verifies that $S_K(\FDH_K(C_p)) = U_b(S_K(B))$.
     Finally the customer saves the coin $\langle S_K(\FDH_K(C_p)), c_s \rangle$
     to their local wallet on disk.
 \end{description}
@@ -729,7 +729,7 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
   exchanges accepted by the merchant where each $X_j$ is a exchange's
   public key.
 \item[Proposal]
-  The merchant creates a digitally signed contract
+  The merchant creates a signed contract
     $\mathcal{A} := S_M(m, f, a, H(p, r), \vec{X})$
   where $m$ is an identifier for this transaction, $f$ is the price of the offer,
   and $a$ is data relevant
