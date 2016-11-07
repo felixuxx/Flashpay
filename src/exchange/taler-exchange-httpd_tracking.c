@@ -91,11 +91,11 @@ check_and_handle_track_transaction_request (struct MHD_Connection *connection,
 						 "merchant_sig");
   }
   return TEH_DB_execute_track_transaction (connection,
-				      &tps->h_contract,
-				      &tps->h_wire,
-				      &tps->coin_pub,
-				      merchant_pub,
-				      transaction_id);
+                                           &tps->h_contract,
+                                           &tps->h_wire,
+                                           &tps->coin_pub,
+                                           merchant_pub,
+                                           transaction_id);
 }
 
 
