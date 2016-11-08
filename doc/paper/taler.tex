@@ -292,15 +292,37 @@ multiple transactions can be linked to each other.
 Performing fractional payments using $k$-show signatures is also 
 rather expensive.
 
-% For longer non-conference version :
-% -Add note on Carmenisch's compact e-cash withdrawals \cite{Camenisch05compacte-cash}
-% -Add note on Merkle tree based scheme that inspired Zerocash
+In pure blind signature based schemes like Taler, withdrawal and spend
+operations require bandwidth logarithmic in the value being withdrawn
+or spent.  In \cite{Camenisch05compacte-cash}, there is a zero-knoledge
+scheme that improves upon this, requiring only constant bandwidth for
+withdrawals and spend operations, but sadly the exchanges' storage and
+search costs become lienar in the total value of all transactions. 
+In princile, one could correct this by adding multiple denominations, 
+an open problem stated already in \cite{Camenisch05compacte-cash}.
+As described, the scheme employs offline double spending protection,
+which inherently makes it fragile and create an wholey unneccasry 
+deanonymization risk.  We believe the offline protection from double
+spending could be removed, thus switching the scheme to only protection
+against online doulbe spending, like Taler. 
+Along with fixing these two issues, an interesting applied research project
+would be to add partial spending and a form of Taler's refresh protocol.
+At present, we feel these relatively new cryptographic techniques incur
+unacceptable financial risks to the exchange, due to underdeveloped
+implementation practice.
+
+In this vein, there are pure also zero-knoledge proof based schemes
+like \cite{ST99}, and subsequently Zerocash~\cite{zerocash}, and maybe
+varations on BOLT~\cite{BOLT}, that avoid using any denomination-like
+constructs, slightly reducing metadata leakage.  At present, these all
+incur excessive bandwidth or computational costs however.
 
 %Some argue that the focus on technically perfect but overwhelmingly
 %complex protocols, as well as the the lack of usable, practical
 %solutions lead to an abandonment of these ideas by
 %practitioners~\cite{selby2004analyzing}.
 
+% FIXME: Move to top of section?
 % FIXME: ask OpenCoin dev's about this! Then make statement firmer!
 To our knowledge, the only publicly available effort to implement
 Chaum's idea is Opencoin~\cite{dent2008extensions}.  However, Opencoin
