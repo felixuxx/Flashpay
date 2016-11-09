@@ -716,25 +716,24 @@ Now the customer carries out the following interaction with the exchange:
 % It does create some confusion, like is a reserve key semi-ephemeral
 % like a linking key?
 
-\begin{description}
-  \item[Setup] The customer randomly generates:
+\begin{enumerate}
+  \item The customer randomly generates:
     \begin{itemize}
       \item reserve key $W := (w_s,W_p)$ with private key $w_s$ and public key $W_p$,
       \item coin key $C := (c_s,C_p)$ with private key $c_s$ and public key $C_p := c_s G$,
       \item blinding factor $b$, and commits $\langle W, C, b \rangle$ to disk.
     \end{itemize}
-  \item[Wire transfer send]
-    The customer transfers an amount of money corresponding to
+    The customer then transfers an amount of money corresponding to
     at least $K_v$ to the exchange, with $W_p$ in the subject line
     of the transaction.
-  \item[Wire transfer recieve]
+  \item
     The exchange receives the transaction and credits the reserve $W_p$
     with the respective amount in its database.
-  \item[POST {\tt /withdraw/sign}]
+  \item
     The customer computes $B := B_b(\FDH_K(C_p))$ and sends $S_W(B)$ to
     the exchange to request withdrawal of $C$; here, $B_b$ denotes
     Chaum-style blinding with blinding factor $b$.
-  \item[200 OK / 403 FORBIDDEN]
+  \item
     The exchange checks if the same withdrawal request was issued before;
     in this case, it sends a Chaum-style blind signature $S_K(B)$ with
     private key $K_s$ to the customer. \\
@@ -752,11 +751,11 @@ Now the customer carries out the following interaction with the exchange:
     error back to the customer, with proof that it operated correctly.
     Assuming the signature was valid, this would involve showing the transaction
     history for the reserve.
-  \item[Done] The customer computes the unblinded signature $U_b(S_K(B))$ and
+  \item The customer computes the unblinded signature $U_b(S_K(B))$ and
     verifies that $S_K(\FDH_K(C_p)) = U_b(S_K(B))$.
     Finally the customer saves the coin $\langle S_K(\FDH_K(C_p)), c_s \rangle$
     to their local wallet on disk.
-\end{description}
+\end{enumerate}
 
 
 \subsection{Exact and partial spending}
@@ -777,53 +776,53 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
 % FIXME: Again, these steps occur at different points in time, maybe
 % that's okay, but refresh is slightly different.
 
-\begin{description}
-\item[Merchant Setup] % \label{contract}
+\begin{enumerate}
+\item \label{contract}
   Let $\vec{X} := \langle X_1, \ldots, X_n \rangle$ denote the list of
   exchanges accepted by the merchant where each $X_j$ is a exchange's
   public key.
-\item[Proposal]
+\item
   The merchant creates a signed contract
     $\mathcal{A} := S_M(m, f, a, H(p, r), \vec{X})$
   where $m$ is an identifier for this transaction, $f$ is the price of the offer,
   and $a$ is data relevant
   to the contract indicating which services or goods the merchant will
-  deliver to the customer, including the {\tt /merchant-specific} URI for the payment.
+  deliver to the customer, including the merchant specific URI for the payment.
   $p$ is the merchant's payment information (e.g. his IBAN number), and
   $r$ is a random nonce.  The merchant commits $\langle \mathcal{A} \rangle$
   to disk and sends $\mathcal{A}$ to the customer.
-\item[Customer Setup]
+\item
   The customer should already possess a coin $\widetilde{C}$ issued by a exchange that is
   accepted by the merchant, meaning $K$ of $\widetilde{C}$ should be publicly signed by
   some $X_j$ from $\vec{X}$, and has a value $\geq f$.
-\item[POST {\tt /merchant-specific}]
+% \item
   Let $X_j$ be the exchange which signed $\widetilde{C}$ with $K$.
   The customer generates a \emph{deposit-permission}
-    $\mathcal{D} := S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$
-  and sends $\langle \mathcal{D}, X_j\rangle$ to the merchant.
-\item[POST {\tt/deposit}]
+    $$\mathcal{D} := S_c(\widetilde{C}, m, f, H(a), H(p,r), M_p)$$
+  and sends $\langle \mathcal{D}, X_j\rangle$ to the merchant. \label{step:first-post}
+\item
   The merchant gives $(\mathcal{D}, p, r)$ to the exchange, thereby
   revealing $p$ only to the exchange.
-\item[200 OK / 403 FORBIDDEN]
+\item
   The exchange validates $\mathcal{D}$ and checks for double spending.
   If the coin has been involved in previous transactions and the new
-  one would exceed its remaining value, it sends a ``403 FORBIDDEN'' error
+  one would exceed its remaining value, it sends an error
   with the records from the previous transactions back to the merchant. \\
   %
   If double spending is not found, the exchange commits $\langle \mathcal{D} \rangle$ to disk
-  and signs a ``200 OK'' message affirming the deposit operation was successful.
-\item[200 OK / 424 FAILED DEPENDENCY]
+  and signs a message affirming the deposit operation was successful.
+\item
   The merchant commits and forwards the notification from the exchange to the
-  customer, confirming the success (``200 OK'') or failure (``424 FAILED DEPENDENCY'')
+  customer, confirming the success or failure
   of the operation.
-\end{description}
+\end{enumerate}
 
 We have simplified the exposition by assuming that one coin suffices,
 but in practice a customer can use multiple coins from the same
 exchange where the total value adds up to $f$ by running the above
 steps for each of the coins.
 
-If a transaction is aborted after the first POST, subsequent
+If a transaction is aborted after step~\ref{step:first-post}, subsequent
 transactions with the same coin could be linked to this operation.
 The same applies to partially spent coins where $f$ is smaller than
 the actual value of the coin.  To unlink subsequent transactions from
@@ -884,23 +883,23 @@ than the comparable use of zk-SNARKs in ZeroCash~\cite{zerocash}.
 
 % FIXME: I'm explicit about the rounds in postquantum.tex
 
-\begin{description}
-  \item[POST {\tt /refresh/melt}]
+\begin{enumerate}
+\item %[POST {\tt /refresh/melt}]
     For each $i = 1,\ldots,\kappa$, the customer randomly generates
     a transfer private key $t^{(i)}_s$ and computes
-    \begin{itemize}
+    \begin{enumerate}
     \item the transfer public key $T^{(i)}_p := t^{(i)}_s G$ and
     \item the new coin secret seed $L^{(i)} := H(c'_s T_p^{(i)})$.
-    \end{itemize}
+    \end{enumerate}
     We have computed $L_i$ as a Diffie-Hellman shared secret between
     the transfer key pair $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$
     and old coin key pair $C' := \left(c_s', C_p'\right)$;
     as a result, $L^{(i)} = H(t^{(i)}_s C'_p)$ also holds.
     Now the customer applies key derivation functions $\KDF_{\textrm{blinding}}$ and $\KDF_{\textrm{Ed25519}}$ to $L^{(i)}$ to generate
-    \begin{itemize}
+    \begin{enumerate}
       \item a blinding factor $b^{(i)} = \FDH_K(\KDF_{\textrm{blinding}}(L^{(i)}))$.
       \item $c_s^{(i)} = \KDF_{\textrm{Ed25519}}(L^{(i)})$
-    \end{itemize}
+    \end{enumerate}
     Now the customer can compute her new coin key pair
      $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$
      where $C^{(i)}_p := c^{(i)}_s G$.
@@ -914,7 +913,7 @@ than the comparable use of zk-SNARKs in ZeroCash~\cite{zerocash}.
     The customer computes $B^{(i)} := B_{b^{(i)}}(\FDH_K(C^{(i)}_p))$
     for $i \in \{1,\ldots,\kappa\}$ and sends a commitment
      $S_{C'}(\vec{B}, \vec{T_p})$ to the exchange.
-  \item[200 OK / 409 CONFLICT]
+  \item % [200 OK / 409 CONFLICT]
     The exchange generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
     marks $C'_p$ as spent by committing
     $\langle C', \gamma, S_{C'}(\vec{B}, \vec{T_p}) \rangle$ to disk.
@@ -923,12 +922,12 @@ than the comparable use of zk-SNARKs in ZeroCash~\cite{zerocash}.
     %
     The exchange sends $S_{K'}(C'_p, \gamma)$ to the customer where
     $K'$ is the exchange's message signing key, thereby commmitting the exchange to $\gamma$.
-  \item[POST {\tt /refresh/reveal}]
+  \item % [POST {\tt /refresh/reveal}]
     The customer commits $\langle C', S_K(C'_p, \gamma) \rangle$ to disk.
     Also, the customer assembles
       $\mathfrak{R} := \left(t_s^{(i)}\right)_{i \ne \gamma}$
     and sends $S_{C'}(\mathfrak{R})$ to the exchange.
-  \item[200 OK / 400 BAD REQUEST]  % \label{step:refresh-ccheck}
+  \item %[200 OK / 400 BAD REQUEST]  % \label{step:refresh-ccheck}
     The exchange checks whether $\mathfrak{R}$ is consistent with
     the commitments; specifically, it computes for $i \not= \gamma$:
 
@@ -956,7 +955,7 @@ than the comparable use of zk-SNARKs in ZeroCash~\cite{zerocash}.
     blind signature $\widetilde{C} := S_{K}(B^{(\gamma)})$ to the customer.
     Otherwise, the exchange responds with an error indicating
      the location of the failure.
-\end{description}
+\end{enumerate}
 
 % FIXME: Maybe explain why we don't need n-m refreshing?
 % FIXME: What are the privacy implication of not having n-m refresh?
