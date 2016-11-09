@@ -114,40 +114,39 @@ such as the MasterCard and VisaCard credit card schemes and computerized
 bank transactions such as SWIFT.  These systems enable mass surveillance
 by both governments and private companies.  Aspects of this surveillance
 sometimes benefit society by providing information about tax evasion or
-crimes like extortion. 
-% FIXME: reads too much like political propaganda
-In particular, bribery and corruption are limited to elites who can
-afford to escape the dragnet.
+crimes like extortion.
+%
+%In particular, bribery and corruption are limited to elites who can
+%afford to escape the dragnet.
 %
 At the other extreme, weaker developing nation states have economic
 activity based largely on coins, paper money or even barter.  Here,
 the state is often unable to effectively monitor or tax economic
 activity, and this limits the ability of the state to shape the
-society.  As bribery is virtually impossible to detect, corruption is
-widespread and not limited to social elites.
+society.
+% If we remove the sentence above, this one also needs to go as it
+% is the dual...
+% As bribery is virtually impossible to detect, corruption is
+% widespread and not limited to social elites.
 %
-% SHORTER: Zerocash need not be mentioned so early? 
+%
+% SHORTER: Zerocash need not be mentioned so early?
 % Zerocash~\cite{zerocash} is an example for translating an
 % anarchistic economy into the digital realm.
 
-This paper describes Taler, a simple and practical payment system for
-a social-liberal society, which is underserved by
-current payment systems.
+This paper describes Taler, a simple and practical payment system
+which balances accountability and privacy.
 
-The Taler protocol is influenced by ideas from
-Chaum~\cite{chaum1983blind} and also follows Chaum's basic
+The Taler protocol is an improvement over Chaum's original
+design~\cite{chaum1983blind} and also follows Chaum's basic
 architecture of customer, merchant and exchange
-(Figure~\ref{fig:cmm}).
-% FIXME: Our design is an improvement on top of Chaums stuff,
-%        this reads like it's completely new, which makes it sound
-%        too much like marketing for an academic paper
-The two designs share the key first step
+(Figure~\ref{fig:cmm}).  The two designs share the key first step
 where the {\em customer} withdraws digital {\em coins} from the {\em
   exchange} with unlinkability provided via blind signatures.  The
 coins can then be spent at a {\em merchant} who {\em deposits} them at
 the exchange.  Taler uses online detection of double-spending and
-provides exculpability via cryptographic proofs.  Thus merchants are
-instantly assured that a transaction is valid.
+provides fair exchange and exculpability via cryptographic proofs.
+% Thus merchants are instantly assured that a transaction is valid.
 
 \begin{figure}[h]
 \centering
@@ -204,8 +203,7 @@ ledgers, have gained immense popularity.  The most well-known protocol
 in this class is Bitcoin~\cite{nakamoto2008bitcoin}.  An initial
 concern with Bitcoin was the lack of anonymity, as all Bitcoin
 transactions are recorded for eternity, which can enable
-identification of users.  In theory, this concern has been addressed
-in the alternative Zerocash protocol~\cite{zerocash}.
+identification of users.
 
 The key contribution of blockchain-based protocols is that
 they dispense with the need for a central, trusted
@@ -218,7 +216,6 @@ Yet, there are several major irredeemable problems inherent in their designs:
     So Bitcoin is an environmentally irresponsible design.
   \item Bitcoin transactions have pseduononymous recipients, making taxation
     hard to systematically enforce.
-    The Zerocash extension makes this worse.
   \item Bitcoin introduces a new currency, creating additional
     financial risks from currency fluctuation.
   \item Anyone can start an alternative Bitcoin transaction chain,
@@ -233,15 +230,11 @@ Yet, there are several major irredeemable problems inherent in their designs:
     % currency exchange and exacerbates the problems with currency fluctuations.
 \end{itemize}
 
-Anonymous alternatives to BitCoin such as Monero~\cite{??},
-Zerocash~\cite{zerocash}, its predecessor Zerocoin~\cite{miers2013zerocoin},
-and the recently proposed BOLT~\cite{BOLT} each have different technical 
-limitations.  Yet, all exacerbate BitCoin's inherent issues with 
-transaction certenty and performance by require excessive
-computation, more blockchain transactions, etc.  By comparison, 
-Taler's refresh protocol handles aborted transactions with minimal
-overhead, and ensures that aborts cannot be used to attack the
-privacy assurances of the system.
+Anonymous payment systems based on BitCoin such as
+CryptoNote~\cite{cryptonote} (aka Monero) and Zerocash~\cite{zerocash} (aka
+ZCash) exacerbate these issues.  These systems mainly exploit the
+blockchain's decentralized nature to escape anti-money laundering
+regulation as they provide anonymous, disintermediated transactions.
 
 %GreenCoinX\footnote{\url{https://www.greencoinx.com/}} is a more
 %recent AltCoin where the company promises to identify the owner of
@@ -290,68 +283,77 @@ include:
 %   a larger market.
 \end{itemize}
 
+To our knowledge, the only publicly available effort to implement
+Chaum's idea is Opencoin~\cite{dent2008extensions}.  However, Opencoin
+is neither actively developed nor used, and it is not clear
+to what degree the implementation is even complete.  Only a partial
+description of the Opencoin protocol is available to date.
+% FIXME: ask OpenCoin dev's about this! Then make statement firmer!
+
 Chaum's original digital cash system~\cite{chaum1983blind} was
 extended by Brands~\cite{brands1993efficient} with the ability to {\em
   divide} coins and thus spend certain fractions of a coin using
 restrictive blind signatures.  Restrictive blind signatures create
-privacy risks: if a transaction is interrupted, then any coins sent 
-to the merchant become tainted, but may never arrive or be spent.  
+privacy risks: if a transaction is interrupted, then any coins sent
+to the merchant become tainted, but may never arrive or be spent.
 It becomes tricky to extract the value of the tainted coins without
 linking to the aborted transaction and risking deanonymization.
 
 Ian Goldberg's HINDE system allowed the merchant to provide change,
 but the mechanism could be abused to hide income from
 taxation.\footnote{Description based on personal communication. HINDE
-  was never published.}  
+  was never published.}
 In \cite{brands1993efficient}, $k$-show signatures were proposed to
 achieve divisibility for coins.  However, with $k$-show signatures
-multiple transactions can be linked to each other.  
-Performing fractional payments using $k$-show signatures is also 
+multiple transactions can be linked to each other.
+Performing fractional payments using $k$-show signatures is also
 rather expensive.
 
 In pure blind signature based schemes like Taler, withdrawal and spend
 operations require bandwidth logarithmic in the value being withdrawn
-or spent.  In \cite{Camenisch05compacte-cash}, there is a zero-knoledge
+or spent.  In~\cite{Camenisch05compacte-cash}, there is a zero-knoledge
 scheme that improves upon this, requiring only constant bandwidth for
 withdrawals and spend operations, but unfortunately the exchanges' storage and
-search costs become linear in the total value of all transactions. 
-In principle, one could correct this by adding multiple denominations, 
-an open problem stated already in \cite{Camenisch05compacte-cash}.
+search costs become linear in the total value of all transactions.
+%In principle, one could correct this by adding multiple denominations,
+%an open problem stated already in~\cite{Camenisch05compacte-cash}.
+% NO: he cannot give change, so that does not really work!
 As described, the scheme employs offline double spending protection,
-which inherently makes it fragile and create an wholey unneccasry 
-deanonymization risk.  We believe the offline protection from double
-spending could be removed, thus switching the scheme to only protection
-against online doulbe spending, like Taler. 
+which inherently makes it fragile and creates an unneccessary
+deanonymization risk.
+%We believe the offline protection from double
+%spending could be removed, thus switching the scheme to only protection
+%against online doulbe spending, like Taler.
+% TOO much detail...
 % FIXME: this doesn't belong in an introduction
+% -- it's in related work, I see no problem. -CG
 % FIXME: also mention the practical divisible ecash stuff
 % FIXME: mention storage costs and computation cost for exchange (still 2^n for 2^n coins)
 %        and customer (has to do ZKPs)
-Along with fixing these two issues, an interesting applied research project
-would be to add partial spending and a form of Taler's refresh protocol.
-At present, we feel these relatively new cryptographic techniques incur
-unacceptable financial risks to the exchange, due to underdeveloped
-implementation practice.
+% -- eh, he says ``storage and search costs become linear''.
+%
+%Along with fixing these two issues, an interesting applied research project
+%would be to add partial spending and a form of Taler's refresh protocol.
+%At present, we feel these relatively new cryptographic techniques incur
+%unacceptable financial risks to the exchange, due to underdeveloped
+%implementation practice.
+%
 % SHORTER: Maybe some of the abbove could be thinned since
 % they do not know much about Taler's refresh protcol yet.
+% -- yeah, in particular the feeling/speculative parts are not needed...
 
-In this vein, there are pure also zero-knoledge proof based schemes
-like \cite{ST99}, and subsequently Zerocash~\cite{zerocash}, and maybe
-varations on BOLT~\cite{BOLT}, that avoid using any denomination-like
-constructs, slightly reducing metadata leakage.  At present, these all
-incur excessive bandwidth or computational costs however.
+%In this vein, there are pure also zero-knoledge proof based schemes
+%like~\cite{ST99}, and subsequently Zerocash~\cite{zerocash}, and maybe
+%varations on BOLT~\cite{BOLT}, that avoid using any denomination-like
+%constructs, slightly reducing metadata leakage.  At present, these all
+%incur excessive bandwidth or computational costs however.
+% -- commented out, seems excessive.
 
 %Some argue that the focus on technically perfect but overwhelmingly
 %complex protocols, as well as the the lack of usable, practical
 %solutions lead to an abandonment of these ideas by
 %practitioners~\cite{selby2004analyzing}.
 
-% FIXME: Move to top of section?
-% FIXME: ask OpenCoin dev's about this! Then make statement firmer!
-To our knowledge, the only publicly available effort to implement
-Chaum's idea is Opencoin~\cite{dent2008extensions}.  However, Opencoin
-is neither actively developed nor used, and it is not clear
-to what degree the implementation is even complete.  Only a partial
-description of the Opencoin protocol is available to date.
 
 
 % FIXME:  If we ever add peppercoin stuff, cite Matt Green paper
@@ -452,11 +454,11 @@ withdrawn, the wallet receiving the coins is owned by the individual
 who is performing the authentication to authorize the withdrawal.
 Preventing the owner of the reserve from deliberately authorizing
 someone else to withdraw electronic coins would require even more
-extreme measures. 
+extreme measures.
 % SHORTER:
 % including preventing them from communicating with anyone but
-% the exchange terminal during withdrawal. 
-% FIXME: Oddly phrased: 
+% the exchange terminal during withdrawal.
+% FIXME: Oddly phrased:
 % As such measures would be
 % totally impractical for a minor loophole, we are not concerned with
 % enabling the state to strongly identify the recipient of coins
@@ -502,7 +504,7 @@ as well as for refreshing tainted coins with the exchange and for
 retrieving the exchange's denomination key.
 Ideally, the customer's anonymity is limited only by this channel;
 however, the payment system does additionally reveal that the customer
-is one of the patrons of the exchange who withdrew enough coin of 
+is one of the patrons of the exchange who withdrew enough coin of
 given denominations.
 % FIXME: What does customer-merchant business operation mean?
 There are naturally risks that the customer-merchant business operation
@@ -553,7 +555,7 @@ exposes these events as anchors for tax audits on income.
 A \emph{coin} in Taler is a public-private key pair where the private
 key is only known to the owner of the coin.  A coin derives its
 financial value from an RSA signature over the full doman hash (FDH)
-of the coin's public key. The exchange has multiple RSA 
+of the coin's public key. The exchange has multiple RSA
 {\em denomination key} pairs available for blind-signing coins of
 different values.
 
