@@ -178,6 +178,9 @@ provider~\cite{martens2015practical}.  The customer should also not be
 expected to withdraw exact change, as doing so reduces anonymity due
 to the obvious correlation.
 
+% FIXME:  explain the logarithmic claim!  It's only
+% true for a certain denomination structure.
+% This denomination structure potentially introduces privacy risks
 Taler solves the problem of giving change by introducing a new {\em
   refresh protocol} allowing for ``divisible'' transactions with
 amortized costs logarithmic in the amount of value being transacted.
@@ -243,6 +246,7 @@ disintermediated transactions.
 
 %\subsection{Chaum-style electronic cash}
 
+% FIXME:  what limitations?  substantiate!
 Chaum~\cite{chaum1983blind} proposed a digital payment system that
 would provide some customer anonymity while disclosing the identity of
 the merchants.  DigiCash, a commercial implementation of Chaum's
@@ -287,6 +291,8 @@ to what degree the implementation is even complete.  Only a partial
 description of the Opencoin protocol is available to date.
 % FIXME: ask OpenCoin dev's about this! Then make statement firmer!
 
+% FIXME:  not only by brands.  this formulation sounds like
+% we're unaware of the huge body of work in the area that is still growing.
 Chaum's original digital cash system~\cite{chaum1983blind} was
 extended by Brands~\cite{brands1993efficient} with the ability to {\em
   divide} coins and thus spend certain fractions of a coin using
