@@ -247,13 +247,11 @@ disintermediated transactions.
 
 %\subsection{Chaum-style electronic cash}
 
-% FIXME:  what limitations?  substantiate!
 Chaum~\cite{chaum1983blind} proposed a digital payment system that
 would provide some customer anonymity while disclosing the identity of
 the merchants.  DigiCash, a commercial implementation of Chaum's
-proposal, had some limitations and ultimately failed to be widely
-adopted.  In our assessment, key reasons for DigiCash's failure
-include:
+proposal ultimately failed to be widely adopted.  In our assessment,
+key reasons for DigiCash's failure include:
 
 \begin{itemize}
  \item The use of patents to protect the technology; a payment system
@@ -322,10 +320,9 @@ search costs become linear in the total value of all transactions.
 %In principle, one could correct this by adding multiple denominations,
 %an open problem stated already in~\cite{Camenisch05compacte-cash}.
 % NO: he cannot give change, so that does not really work!
-% FIXME:  Claim below needs to be substantiated!
 As described, the scheme employs offline double spending protection,
 which inherently makes it fragile and creates an unneccessary
-deanonymization risk.
+deanonymization risk (see Section~\ref{sec:offline}).
 %We believe the offline protection from double
 %spending could be removed, thus switching the scheme to only protection
 %against online doulbe spending, like Taler.
@@ -1175,7 +1172,7 @@ actually facilitates voluntary cooperation between the exchange and
 criminals~\cite{sander1999escrow} and where the state could
 deanonymize citizens.
 
-\subsection{Offline Payments}
+\subsection{Offline Payments} \label{sec:offline}
 
 Chaum's original proposals for anonymous digital cash avoided the need
 for online interactions with the exchange to detect double spending by
