@@ -322,12 +322,6 @@ deanonymization risk.
 %spending could be removed, thus switching the scheme to only protection
 %against online doulbe spending, like Taler.
 % TOO much detail...
-% FIXME: this doesn't belong in an introduction
-% -- it's in related work, I see no problem. -CG
-% FIXME: also mention the practical divisible ecash stuff
-% FIXME: mention storage costs and computation cost for exchange (still 2^n for 2^n coins)
-%        and customer (has to do ZKPs)
-% -- eh, he says ``storage and search costs become linear''.
 %
 %Along with fixing these two issues, an interesting applied research project
 %would be to add partial spending and a form of Taler's refresh protocol.
@@ -427,9 +421,6 @@ impossible even with a quantum computers.  For a refreshed coin,
 unlinkabiltiy requires the hardness of the discrete logarithm for
 Curve25519.
 
-% FIXME:  should we cite the policy paper about cryptocurrencies
-%         from the 90s near here?
-
 The cut-and-choose protocol prevents merchants and customers from
 conspiring to conceal a merchants income.  We assume that the maximum
 tax rate is below $1/\kappa$, and that expected transaction losses of
@@ -439,9 +430,9 @@ a factor of $\kappa$ for tax evasion are thus unacceptable.
 \subsection{Taxability and Entities}
 
 Taler ensures that the state can tax {\em transactions}.  We must,
-howerver, clarify what constitutes a transaction that can be taxed.
-% FIXME: Ethical??
-For ethical and practical reasons, we assume that coins can freely be
+however, clarify what constitutes a transaction that can be taxed.
+As we believe citizens should be in control of their computing, as
+well as for practical reasons, we assume that coins can freely be
 copied between machines, and that coin deletion cannot be verified.
 Avoiding these assumptions would require extreme measures, like custom
 hardware supplied by the exchange.  Also, it would be inappropriate to
