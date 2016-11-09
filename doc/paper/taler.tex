@@ -56,6 +56,7 @@
 % - dirty coin = coin with exposed public key
 % - fresh coin = coin that was refreshed or is new
 % - denomination key = exchange's online key used to (blindly) sign coin
+% - reserve key = key used to authorize withdrawals from a reserve
 % - message signing key = exchange's online key to sign exchange messages
 % - exchange master key = exchange's key used to sign other exchange keys
 % - owner = entity that knows coin private key
@@ -441,8 +442,8 @@ a factor of $\kappa$ for tax evasion are thus unacceptable.
 
 Taler ensures that the state can tax {\em transactions}.  We must,
 however, clarify what constitutes a transaction that can be taxed.
-As we believe citizens should be in control of their computing, as
-well as for practical reasons, we assume that coins can freely be
+% As we believe citizens should be in control of their computing, as well as for practical reasons,
+We assume that coins can freely be
 copied between machines, and that coin deletion cannot be verified.
 Avoiding these assumptions would require extreme measures, like custom
 hardware supplied by the exchange.  Also, it would be inappropriate to
@@ -504,9 +505,9 @@ Ideally, the customer's anonymity is limited only by this channel;
 however, the payment system does additionally reveal that the customer
 is one of the patrons of the exchange who withdrew enough coin of
 given denominations.
-% FIXME: What does customer-merchant business operation mean?
-There are naturally risks that the customer-merchant business operation
-may leak identifying information about the customer.
+There are naturally risks that the business operation that the
+merchant runs on behalf of the customer
+may require the merchant to learn identifying information about the customer.
 We consider information leakage specific to the business logic to be
 outside of the scope of the design of Taler.
 
@@ -585,7 +586,7 @@ Before a customer can withdraw a coin from the exchange, he has to pay
 the exchange the value of the coin, as well as processing fees.  This
 is done using other means of payment, such as wire transfers or by
 having a financial {\em reserve} at the exchange.  Taler assumes that
-the customer has a {\em withdrawal authorization key} to identify
+the customer has a {\em reserve key} to identify
 himself as authorized to withdraw funds from the reserve.  By signing
 the withdrawal request using this withdrawal authorization key, the
 customer can prove to the exchange that he is authorized to withdraw
@@ -710,18 +711,15 @@ value $K_v$ corresponds to an amount the customer wishes to withdraw.
 We let $K_s$ denote the exchange's private key corresponding to $K_p$.
 Now the customer carries out the following interaction with the exchange:
 
-% FIXME: We say withdrawal key in this document, but say reserve key in
-% others, so probably withdrawal key should be renamed to reserve key.
-
 % FIXME: These steps occur at very different points in time, so probably
 % they should be restructured into more of a protocol discription.
-% It does create some confusion, like is a withdrawal key semi-ephemeral
+% It does create some confusion, like is a reserve key semi-ephemeral
 % like a linking key?
 
 \begin{description}
   \item[Setup] The customer randomly generates:
     \begin{itemize}
-      \item withdrawal key $W := (w_s,W_p)$ with private key $w_s$ and public key $W_p$,
+      \item reserve key $W := (w_s,W_p)$ with private key $w_s$ and public key $W_p$,
       \item coin key $C := (c_s,C_p)$ with private key $c_s$ and public key $C_p := c_s G$,
       \item blinding factor $b$, and commits $\langle W, C, b \rangle$ to disk.
     \end{itemize}
