@@ -84,9 +84,8 @@ This paper introduces {\em Taler}, a Chaum-style digital payment system that
 enables anonymous payments while ensuring that entities that receive
 payments are auditable.  In Taler, customers can
 never defraud anyone, merchants can only fail to deliver the
-merchandise to the customer, and payment service providers can be
-fully audited.
-% FIXME:  above, we're still using auditor
+merchandise to the customer, and payment service providers are
+audited.
 All parties receive cryptographic evidence for all
 transactions; still, each party only receives the minimum information
 required to execute transactions.  Enforcement of honest behavior is
@@ -171,27 +170,27 @@ provides fair exchange and exculpability via cryptographic proofs.
 \end{figure}
 
 A key issue for an efficient Chaumian digital payment system is the
-need to provide change.  For example, a customer may want to pay
-\EUR{49,99}, but has withdrawn a \EUR{100,00} coin.  Withdrawing 10,000
-coins with a denomination of \EUR{0,01} and transferring 4,999 coins would
-be too inefficient.  The customer should not
-withdraw exact change from her account, as doing so reduces anonymity
-due to the obvious correlation.  A practical payment system must thus
-support giving change.
+need to provide change and existing systems for ``practical
+divisible'' electronic cash have transaction costs that are linear in
+the amount of value being transacted, sometimes hidden in the double
+spending detection logic of the payment service
+provider~\cite{martens2015practical}.  The customer should also not be
+expected to withdraw exact change, as doing so reduces anonymity due
+to the obvious correlation.
 
-% FIXME:  make the connection to Camenisch's fair exchange paper here,
-%         since refresh solves the same problem in a much more elegant way
-Taler solves the problem of giving change by introducing a new
-{\em refresh protocol}.  Using this protocol, a customer can obtain
-change or refunds in the form of fresh coins that other parties cannot
-link to the original transaction, the original coin, or each other.
-Additionally, the refresh protocol ensures that the change is owned by
-the same entity which owned the original coin.
+Taler solves the problem of giving change by introducing a new {\em
+  refresh protocol} allowing for ``divisible'' transactions with
+amortized costs logarithmic in the amount of value being transacted.
+Using this protocol, a customer can obtain change or refunds in the
+form of fresh coins that other parties cannot link to the original
+transaction, the original coin, or each other.  Additionally, the
+refresh protocol ensures that the change is owned by the same entity
+which owned the original coin.
 
 
-\vspace{-0.3cm}
+%\vspace{-0.3cm}
 \section{Related Work}
-\vspace{-0.3cm}
+%\vspace{-0.3cm}
 
 %\subsection{Blockchain-based currencies}
 
@@ -200,15 +199,10 @@ the same entity which owned the original coin.
 In recent years, a class of decentralized electronic payment systems,
 based on collectively recorded and verified append-only public
 ledgers, have gained immense popularity.  The most well-known protocol
-in this class is Bitcoin~\cite{nakamoto2008bitcoin}.  An initial
-concern with Bitcoin was the lack of anonymity, as all Bitcoin
-transactions are recorded for eternity, which can enable
-identification of users.
-
-The key contribution of blockchain-based protocols is that
-they dispense with the need for a central, trusted
-authority.
-Yet, there are several major irredeemable problems inherent in their designs:
+in this class is Bitcoin~\cite{nakamoto2008bitcoin}.  The key
+contribution of blockchain-based protocols is that they dispense with
+the need for a central, trusted authority.  Yet, there are several
+major irredeemable problems inherent in their designs:
 
 \begin{itemize}
   \item The computational puzzles solved by Bitcoin nodes with the purpose
@@ -230,11 +224,14 @@ Yet, there are several major irredeemable problems inherent in their designs:
     % currency exchange and exacerbates the problems with currency fluctuations.
 \end{itemize}
 
-Anonymous payment systems based on BitCoin such as
-CryptoNote~\cite{cryptonote} (aka Monero) and Zerocash~\cite{zerocash} (aka
-ZCash) exacerbate these issues.  These systems mainly exploit the
+Bitcoin also lacks anonymity, as all Bitcoin transactions are recorded
+for eternity, which can enable identification of users.  Anonymous
+payment systems based on BitCoin such as CryptoNote~\cite{cryptonote}
+(Monero), Zerocash~\cite{zerocash} (ZCash) and BOLOT~\cite{BOLT}
+exacerbate Bitcoin's design issues.  These systems exploit the
 blockchain's decentralized nature to escape anti-money laundering
-regulation as they provide anonymous, disintermediated transactions.
+regulation~\cite{molander1998cyberpayments} as they provide anonymous,
+disintermediated transactions.
 
 %GreenCoinX\footnote{\url{https://www.greencoinx.com/}} is a more
 %recent AltCoin where the company promises to identify the owner of
@@ -303,7 +300,7 @@ Ian Goldberg's HINDE system allowed the merchant to provide change,
 but the mechanism could be abused to hide income from
 taxation.\footnote{Description based on personal communication. HINDE
   was never published.}
-In \cite{brands1993efficient}, $k$-show signatures were proposed to
+In~\cite{brands1993efficient}, $k$-show signatures were proposed to
 achieve divisibility for coins.  However, with $k$-show signatures
 multiple transactions can be linked to each other.
 Performing fractional payments using $k$-show signatures is also
