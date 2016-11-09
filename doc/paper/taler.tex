@@ -74,13 +74,20 @@
 
 \maketitle
 
+% FIXME: As a general comment, I think we're mixing the crypto stuff and the systems
+%        stuff too much.  It might be more appropriate to have to systems stuff in a separate
+%        section, and the "pure" crypto stuff for the crypto people?
+
+
 \begin{abstract}
 This paper introduces {\em Taler}, a Chaum-style digital payment system that
 enables anonymous payments while ensuring that entities that receive
 payments are auditable.  In Taler, customers can
 never defraud anyone, merchants can only fail to deliver the
 merchandise to the customer, and payment service providers can be
-fully audited.  All parties receive cryptographic evidence for all
+fully audited.
+% FIXME:  above, we're still using auditor
+All parties receive cryptographic evidence for all
 transactions; still, each party only receives the minimum information
 required to execute transactions.  Enforcement of honest behavior is
 timely, and is at least as strict as with legacy credit card payment
@@ -108,6 +115,7 @@ bank transactions such as SWIFT.  These systems enable mass surveillance
 by both governments and private companies.  Aspects of this surveillance
 sometimes benefit society by providing information about tax evasion or
 crimes like extortion. 
+% FIXME: reads too much like political propaganda
 In particular, bribery and corruption are limited to elites who can
 afford to escape the dragnet.
 %
@@ -129,7 +137,11 @@ current payment systems.
 The Taler protocol is influenced by ideas from
 Chaum~\cite{chaum1983blind} and also follows Chaum's basic
 architecture of customer, merchant and exchange
-(Figure~\ref{fig:cmm}).  The two designs share the key first step
+(Figure~\ref{fig:cmm}).
+% FIXME: Our design is an improvement on top of Chaums stuff,
+%        this reads like it's completely new, which makes it sound
+%        too much like marketing for an academic paper
+The two designs share the key first step
 where the {\em customer} withdraws digital {\em coins} from the {\em
   exchange} with unlinkability provided via blind signatures.  The
 coins can then be spent at a {\em merchant} who {\em deposits} them at
@@ -168,6 +180,8 @@ withdraw exact change from her account, as doing so reduces anonymity
 due to the obvious correlation.  A practical payment system must thus
 support giving change.
 
+% FIXME:  make the connection to Camenisch's fair exchange paper here,
+%         since refresh solves the same problem in a much more elegant way
 Taler solves the problem of giving change by introducing a new
 {\em refresh protocol}.  Using this protocol, a customer can obtain
 change or refunds in the form of fresh coins that other parties cannot
@@ -182,6 +196,8 @@ the same entity which owned the original coin.
 
 %\subsection{Blockchain-based currencies}
 
+% FIXME:  SHORTEN.  This is probably too much information for the audience, they
+%         all know this
 In recent years, a class of decentralized electronic payment systems,
 based on collectively recorded and verified append-only public
 ledgers, have gained immense popularity.  The most well-known protocol
@@ -297,15 +313,19 @@ In pure blind signature based schemes like Taler, withdrawal and spend
 operations require bandwidth logarithmic in the value being withdrawn
 or spent.  In \cite{Camenisch05compacte-cash}, there is a zero-knoledge
 scheme that improves upon this, requiring only constant bandwidth for
-withdrawals and spend operations, but sadly the exchanges' storage and
-search costs become lienar in the total value of all transactions. 
-In princile, one could correct this by adding multiple denominations, 
+withdrawals and spend operations, but unfortunately the exchanges' storage and
+search costs become linear in the total value of all transactions. 
+In principle, one could correct this by adding multiple denominations, 
 an open problem stated already in \cite{Camenisch05compacte-cash}.
 As described, the scheme employs offline double spending protection,
 which inherently makes it fragile and create an wholey unneccasry 
 deanonymization risk.  We believe the offline protection from double
 spending could be removed, thus switching the scheme to only protection
 against online doulbe spending, like Taler. 
+% FIXME: this doesn't belong in an introduction
+% FIXME: also mention the practical divisible ecash stuff
+% FIXME: mention storage costs and computation cost for exchange (still 2^n for 2^n coins)
+%        and customer (has to do ZKPs)
 Along with fixing these two issues, an interesting applied research project
 would be to add partial spending and a form of Taler's refresh protocol.
 At present, we feel these relatively new cryptographic techniques incur
@@ -333,6 +353,10 @@ is neither actively developed nor used, and it is not clear
 to what degree the implementation is even complete.  Only a partial
 description of the Opencoin protocol is available to date.
 
+
+% FIXME:  If we ever add peppercoin stuff, cite Matt Green paper
+%         and talk about economics when encoding a punishment-coin
+%         as the identity, whith limited ticket lifespan
 
 %\subsection{Peppercoin}
 
@@ -371,6 +395,7 @@ assures customers and merchants that the exchange operates correctly.
 \subsection{Security model}
 %\vspace{-0.3cm}
 
+% FIXME:  Is this too obvious for a crypto paper?
 Taler assumes that each participant has full control over their
 system.  We assume the contact information of the exchange is known to
 both customer and merchant from the start, including that the customer
@@ -403,6 +428,9 @@ impossible even with a quantum computers.  For a refreshed coin,
 unlinkabiltiy requires the hardness of the discrete logarithm for
 Curve25519.
 
+% FIXME:  should we cite the policy paper about cryptocurrencies
+%         from the 90s near here?
+
 The cut-and-choose protocol prevents merchants and customers from
 conspiring to conceal a merchants income.  We assume that the maximum
 tax rate is below $1/\kappa$, and that expected transaction losses of
@@ -413,6 +441,7 @@ a factor of $\kappa$ for tax evasion are thus unacceptable.
 
 Taler ensures that the state can tax {\em transactions}.  We must,
 howerver, clarify what constitutes a transaction that can be taxed.
+% FIXME: Ethical??
 For ethical and practical reasons, we assume that coins can freely be
 copied between machines, and that coin deletion cannot be verified.
 Avoiding these assumptions would require extreme measures, like custom
@@ -930,6 +959,10 @@ than the comparable use of zk-SNARKs in ZeroCash~\cite{zerocash}.
     Otherwise, the exchange responds with an error indicating
      the location of the failure.
 \end{description}
+
+% FIXME: Maybe explain why we don't need n-m refreshing?
+% FIXME: What are the privacy implication of not having n-m refresh?
+%        What about the resulting number of large coins, doesn't this reduce the anonymity set?
 
 %\subsection{N-to-M Refreshing}
 %
