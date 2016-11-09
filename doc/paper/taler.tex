@@ -231,11 +231,8 @@ major irredeemable problems inherent in their designs:
 Bitcoin also lacks anonymity, as all Bitcoin transactions are recorded
 for eternity, which can enable identification of users.  Anonymous
 payment systems based on BitCoin such as CryptoNote~\cite{cryptonote}
-(Monero), Zerocash~\cite{zerocash} (ZCash) and BOLOT~\cite{BOLT}
-% FIXME: exacerbate is very strong, lots of people wouldn't believe
-% this claim, it only exacerbates certain aspects (money laundering)
-% and computational/storage cost.
-exacerbate Bitcoin's design issues.  These systems exploit the
+(Monero), Zerocash~\cite{zerocash} (ZCash) and BOLT~\cite{BOLT}
+exacerbate the design issues we mention above.  These systems exploit the
 blockchain's decentralized nature to escape anti-money laundering
 regulation~\cite{molander1998cyberpayments} as they provide anonymous,
 disintermediated transactions.
@@ -1148,14 +1145,11 @@ perfectly balanced in between frontend and backend.  Nevertheless,
 these experimental results show that computing-related business costs
 will only marginally contribute to the operational costs of the Taler
 payment system.
-% FIXME: Say that storage costs dominated?  Are storage costs comparable
-% for a self hosted system?  Didn't we reduce the storage costs with the
-% key generation trick?
 
 
 \section{Discussion}
 
-% \subsection{Well-known attacks}
+\subsection{Well-known attacks}
 
 Taler's security is largely equivalent to that of Chaum's original
 design without online checks or the cut-and-choose revelation of
@@ -1181,7 +1175,7 @@ actually facilitates voluntary cooperation between the exchange and
 criminals~\cite{sander1999escrow} and where the state could
 deanonymize citizens.
 
-%\subsection{Offline Payments}
+\subsection{Offline Payments}
 
 Chaum's original proposals for anonymous digital cash avoided the need
 for online interactions with the exchange to detect double spending by
@@ -1192,19 +1186,19 @@ may be infeasible in practice.  Furthermore, a customer may
 accidentally deanonymize himself, for example by double-spending a
 coin after restoring from backup.
 
-%\subsection{Merchant Tax Audits}
-%
-%For a tax audit on the merchant, the exchange includes the business
-%transaction-specific hash in the transfer of the traditional
-%currency.  A tax auditor can then request the merchant to reveal
-%(meaningful) details about the business transaction ($\mathcal{D}$,
-%$a$, $p$, $r$), including proof that applicable taxes were paid.
-%
-%If a merchant is not able to provide theses values, he can be
-%subjected to financial penalties by the state in relation to the
-%amount transferred by the traditional currency transfer.
+\subsection{Merchant Tax Audits}
 
-% \subsection{Cryptographic proof vs. evidence}
+For a tax audit on the merchant, the exchange includes the business
+transaction-specific hash in the transfer of the traditional
+currency.  A tax auditor can then request the merchant to reveal
+(meaningful) details about the business transaction ($\mathcal{D}$,
+$a$, $p$, $r$), including proof that applicable taxes were paid.
+
+If a merchant is not able to provide theses values, they can be
+subjected to financial penalties by the state in relation to the
+amount transferred by the traditional currency transfer.
+
+\subsection{Cryptographic proof vs. evidence}
 
 In this paper we have use the term ``proof'' in many places as the
 protocol provides cryptographic proofs of which parties behave
@@ -1221,7 +1215,7 @@ the participants have to disclose their core secrets.
 %We performed some initial performance measurements for the various
 %operations on our exchange implementation.  The main conclusion was that
 %the computational and bandwidth cost for transactions described in
-%this paper is smaller than $10^{-3}$ cent/transaction, and thus
+%this paper is smaller than $10^{-2}$ cent/transaction, and thus
 %dwarfed by the other business costs for the exchange.  However, this
 %figure excludes the cost of currency transfers using traditional
 %banking, which a exchange operator would ultimately have to interact with.
@@ -1229,29 +1223,30 @@ the participants have to disclose their core secrets.
 %aggregating multiple transfers to the same merchant.
 
 
-%\section{Conclusion}
+\section{Conclusion}
 
-%We have presented an efficient electronic payment system that
-%simultaneously addresses the conflicting objectives created by the
-%citizen's need for privacy and the state's need for taxation.  The
-%coin refreshing protocol makes the design flexible and enables a
-%variety of payment methods.  The current balance and profits of the
-%exchange are also easily determined, thus audits can be used to ensure
-%that the exchange operates correctly.  The libre implementation and open
-%protocol may finally enable modern society to upgrade to proper
-%electronic wallets with efficient, secure and privacy-preserving
-%transactions.
+We have presented an efficient electronic payment system that
+simultaneously addresses the conflicting objectives created by the
+citizen's need for privacy and the state's need for taxation.  The
+coin refreshing protocol makes the design flexible and enables a
+variety of payment methods.  The current balance and profits of the
+exchange are also easily determined, thus audits can be used to ensure
+that the exchange operates correctly.  The free software
+implementation and open protocol may finally enable modern society to
+upgrade to proper electronic wallets with efficient, secure and
+privacy-preserving transactions.
 
 % commented out for anonymized submission
-%\subsection*{Acknowledgements}
+\subsection*{Acknowledgements}
 
-%This work was supported by a grant from the Renewable Freedom Foundation.
-% FIXME: ARED?
+We thank people (anonymized).
+%This work benefits from the financial support of the Brittany Region
+%(ARED 9178) and a grant from the Renewable Freedom Foundation.
 %We thank Tanja Lange, Dan Bernstein, Luis Ressel and Fabian Kirsch for feedback on an earlier
 %version of this paper, Nicolas Fournier for implementing and running
 %some performance benchmarks, and Richard Stallman, Hellekin Wolf,
 %Jacob Appelbaum for productive discussions and support.
-
+\newpage
 
 \bibliographystyle{alpha}
 \bibliography{taler,rfc}
