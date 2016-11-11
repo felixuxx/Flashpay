@@ -691,6 +691,7 @@ exchange_serve_process_config ()
 /* Developer logic for supporting the `-f' option. */
 #if HAVE_DEVELOPER
 
+
 /**
  * Option `-f' (specifies an input file to give to the HTTP server).
  */
@@ -796,7 +797,6 @@ connection_done (void *cls,
 
 /* end of HAVE_DEVELOPER */
 #endif
-
 
 /**
  * Function called for logging by MHD.

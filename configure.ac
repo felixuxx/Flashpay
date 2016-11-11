@@ -362,6 +362,8 @@ AC_MSG_RESULT($enable_developer)
 AM_CONDITIONAL([HAVE_DEVELOPER], [test "x$enable_developer" = "xyes"])
 enable_dev=1
 AS_IF([test "x$enableval" = "xno"], [enable_dev=0])
+# developer-logic requires a more recent MHD than usual.
+AC_CHECK_DECL([MHD_OPTION_NOTIFY_CONNECTION],,[enable_dev=0],[[#include <microhttpd.h>]])
 AC_DEFINE_UNQUOTED([HAVE_DEVELOPER],[$enable_dev],[1 if developer logic is enabled, 0 otherwise])
 
 
