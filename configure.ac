@@ -197,10 +197,11 @@ AS_CASE([$with_microhttpd],
          CPPFLAGS="-I$with_microhttpd/include $CPPFLAGS"])
 AC_CHECK_LIB(microhttpd,MHD_start_daemon,
   [AC_CHECK_HEADER([microhttpd.h],[microhttpd=1])])
+AC_CHECK_DECL([MHD_DAEMON_INFO_CURRENT_CONNECTIONS],,[microhttpd=0],[[#include <microhttpd.h>]])
 AS_IF([test $microhttpd = 0],
   [AC_MSG_ERROR([[
 ***
-*** You need libmicrohttpd to build this program.
+*** You need libmicrohttpd >= 0.9.39 to build this program.
 *** ]])])
 
 
