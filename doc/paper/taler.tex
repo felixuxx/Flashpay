@@ -1174,14 +1174,15 @@ deanonymize citizens.
 
 \subsection{Offline Payments} \label{sec:offline}
 
-Chaum's original proposals for anonymous digital cash avoided the need
-for online interactions with the exchange to detect double spending by
-providing a means to deanonymize customers involved in
-double-spending.  This is problematic as the exchange or the merchant
-still need out-of-band means to recover funds from the customer, which
-may be infeasible in practice.  Furthermore, a customer may
-accidentally deanonymize himself, for example by double-spending a
-coin after restoring from backup.
+Anonymous digital cash schemes since Chaum were frequently designed
+to allow the merchant to be offline during the transaction, 
+by providing a means to deanonymize customers involved in
+double-spending.  We consider this problematic as either the
+exchange or the merchant still requires an out-of-band
+means to recover funds from the customer, an expensive and
+unreliable proposition.  Worse, there are unacceptable risks that
+a customer may accidentally deanonymize herself, for example by
+double-spending a coin after restoring from backup.
 
 \subsection{Merchant Tax Audits}
 
