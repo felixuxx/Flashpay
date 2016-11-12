@@ -212,7 +212,7 @@ major irredeemable problems inherent in their designs:
   \item The computational puzzles solved by Bitcoin nodes with the purpose
     of securing the blockchain consume a considerable amount of energy.
     So Bitcoin is an environmentally irresponsible design.
-  \item Bitcoin transactions have pseduononymous recipients, making taxation
+  \item Bitcoin transactions have pseudonymous recipients, making taxation
     hard to systematically enforce.
   \item Bitcoin introduces a new currency, creating additional
     financial risks from currency fluctuation.
@@ -221,7 +221,7 @@ major irredeemable problems inherent in their designs:
     cost to initially create coins cheaply as the proof-of-work
     difficulty adjusts to the computation power of all
     miners in the network.  As participants are
-    de facto investors, AltCoins become a form of ponzi scheme.
+    de facto investors, AltCoins become a form of Ponzi scheme.
     % As a result, dozens of
     % AltCoins have been created, often without any significant changes to the
     % technology.  A large number of AltCoins creates additional overheads for
@@ -230,7 +230,7 @@ major irredeemable problems inherent in their designs:
 
 Bitcoin also lacks anonymity, as all Bitcoin transactions are recorded
 for eternity, which can enable identification of users.  Anonymous
-payment systems based on BitCoin such as CryptoNote~\cite{cryptonote}
+payment systems based on Bitcoin such as CryptoNote~\cite{cryptonote}
 (Monero), Zerocash~\cite{zerocash} (ZCash) and BOLT~\cite{BOLT}
 exacerbate the design issues we mention above.  These systems exploit the
 blockchain's decentralized nature to escape anti-money laundering
@@ -242,7 +242,7 @@ disintermediated transactions.
 %each coin via e-mail addresses and phone numbers.  While it is unclear
 %from their technical description how this identification would be
 %enforced against a determined adversary, the resulting payment system
-%would also merely impose a financial panopticon on a BitCoin-style
+%would also merely impose a financial panopticon on a Bitcoin-style
 %money supply and transaction model.
 
 %\subsection{Chaum-style electronic cash}
@@ -265,7 +265,7 @@ key reasons for DigiCash's failure include:
 %   feature relevant, but today network connectivity is feasible for most
 %   merchants, and saves both the exchange and merchants the business risks
 %   associated with deferred fraud detection.
- \item % In addition to the risk of legal disputes with fraudulent
+ \item % In addition to the risk of legal disputes wh fraudulent
    % merchants and customers,
    Chaum's published design does not clearly
    limit the financial damage a exchange might suffer from the
@@ -313,7 +313,7 @@ rather expensive.
 
 In pure blind signature based schemes like Taler, withdrawal and spend
 operations require bandwidth logarithmic in the value being withdrawn
-or spent.  In~\cite{Camenisch05compacte-cash}, there is a zero-knoledge
+or spent.  In~\cite{Camenisch05compacte-cash}, there is a zero-knowledge
 scheme that improves upon this, requiring only constant bandwidth for
 withdrawals and spend operations, but unfortunately the exchanges' storage and
 search costs become linear in the total value of all transactions.
@@ -321,11 +321,11 @@ search costs become linear in the total value of all transactions.
 %an open problem stated already in~\cite{Camenisch05compacte-cash}.
 % NO: he cannot give change, so that does not really work!
 As described, the scheme employs offline double spending protection,
-which inherently makes it fragile and creates an unneccessary
+which inherently makes it fragile and creates an unnecessary
 deanonymization risk (see Section~\ref{sec:offline}).
 %We believe the offline protection from double
 %spending could be removed, thus switching the scheme to only protection
-%against online doulbe spending, like Taler.
+%against online double spending, like Taler.
 % TOO much detail...
 %
 %Along with fixing these two issues, an interesting applied research project
@@ -334,13 +334,13 @@ deanonymization risk (see Section~\ref{sec:offline}).
 %unacceptable financial risks to the exchange, due to underdeveloped
 %implementation practice.
 %
-% SHORTER: Maybe some of the abbove could be thinned since
-% they do not know much about Taler's refresh protcol yet.
+% SHORTER: Maybe some of the above could be thinned since
+% they do not know much about Taler's refresh protocol yet.
 % -- yeah, in particular the feeling/speculative parts are not needed...
 
-%In this vein, there are pure also zero-knoledge proof based schemes
+%In this vein, there are pure also zero-knowledge proof based schemes
 %like~\cite{ST99}, and subsequently Zerocash~\cite{zerocash}, and maybe
-%varations on BOLT~\cite{BOLT}, that avoid using any denomination-like
+%variations on BOLT~\cite{BOLT}, that avoid using any denomination-like
 %constructs, slightly reducing metadata leakage.  At present, these all
 %incur excessive bandwidth or computational costs however.
 % -- commented out, seems excessive.
@@ -354,7 +354,7 @@ deanonymization risk (see Section~\ref{sec:offline}).
 
 % FIXME:  If we ever add peppercoin stuff, cite Matt Green paper
 %         and talk about economics when encoding a punishment-coin
-%         as the identity, whith limited ticket lifespan
+%         as the identity, with limited ticket lifespan
 
 %\subsection{Peppercoin}
 
@@ -423,7 +423,7 @@ violating the customers anonymity cryptographily requires recognizing
 a random blinding factor from a random element of the group of
 integers modulo the denomination key's RSA modulus, which appears
 impossible even with a quantum computers.  For a refreshed coin,
-unlinkabiltiy requires the hardness of the discrete logarithm for
+unlinkability requires the hardness of the discrete logarithm for
 Curve25519.
 
 The cut-and-choose protocol prevents merchants and customers from
@@ -547,7 +547,7 @@ exposes these events as anchors for tax audits on income.
 
 A \emph{coin} in Taler is a public-private key pair where the private
 key is only known to the owner of the coin.  A coin derives its
-financial value from an RSA signature over the full doman hash (FDH)
+financial value from an RSA signature over the full domain hash (FDH)
 of the coin's public key. The exchange has multiple RSA
 {\em denomination key} pairs available for blind-signing coins of
 different values.
@@ -672,7 +672,7 @@ protocol messages; denomination keys are used for blind-signing coins.
 The exchange's long-term offline key is assumed to be known to both
 customers and merchants and is certified by the auditors.
 
-We avoid asking either customers or merchants to make trust desissions
+We avoid asking either customers or merchants to make trust decisions
 about individual exchanges.  Instead, they need only select the auditors.
 Auditors must sign all the exchange's keys including, the individual
 denomination keys.
@@ -694,7 +694,7 @@ are expected to be recorded for tax authorities to ensure taxability.
 % FIXME: Auditor?
 
 $S_K$ denotes RSA signing with denomination key $K$ and EdDSA
-over eliptic curve $\mathbb{E}$ for other types of keys.
+over elliptic curve $\mathbb{E}$ for other types of keys.
 $G$ denotes the generator of elliptic curve $\mathbb{E}$.
 
 \subsection{Withdrawal}
@@ -706,7 +706,7 @@ We let $K_s$ denote the exchange's private key corresponding to $K_p$.
 Now the customer carries out the following interaction with the exchange:
 
 % FIXME: These steps occur at very different points in time, so probably
-% they should be restructured into more of a protocol discription.
+% they should be restructured into more of a protocol description.
 % It does create some confusion, like is a reserve key semi-ephemeral
 % like a linking key?
 
@@ -758,14 +758,14 @@ A customer can spend coins at a merchant, under the condition that the
 merchant trusts the exchange that issued the coin.
 % FIXME: Auditor here?
 Merchants are identified by their public key $M_p$ which the
-customer's wallet learns through the merchant's webpage, which itself
+customer's wallet learns through the merchant's Web page, which itself
 should be authenticated with X.509c.
 % FIXME: Is this correct?
 
 We now describe the protocol between the customer, merchant, and exchange
 for a transaction in which the customer spends a coin $C := (c_s, C_p)$
 with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
- where $K$ is the exchange's demonination key.
+ where $K$ is the exchange's denomination key.
 
 % FIXME: Again, these steps occur at different points in time, maybe
 % that's okay, but refresh is slightly different.
@@ -915,7 +915,7 @@ than the comparable use of zk-SNARKs in ZeroCash~\cite{zerocash}.
     this time to prevent the exchange from assisting tax evasion. \\
     %
     The exchange sends $S_{K'}(C'_p, \gamma)$ to the customer where
-    $K'$ is the exchange's message signing key, thereby commmitting the exchange to $\gamma$.
+    $K'$ is the exchange's message signing key, thereby committing the exchange to $\gamma$.
   \item % [POST {\tt /refresh/reveal}]
     The customer commits $\langle C', S_K(C'_p, \gamma) \rangle$ to disk.
     Also, the customer assembles
@@ -1004,7 +1004,7 @@ expected.  First, in the case of faulty clients, the responding server
 will generate an error message with detailed cryptographic proofs
 demonstrating that the client was faulty, for example by providing
 proof of double-spending or providing the previous commit and the
-location of the missmatch in the case of the reveal step in the
+location of the mismatch in the case of the reveal step in the
 refresh protocol.  It is also possible that the server may claim that
 the client has been violating the protocol.  In these cases, the
 clients should verify any proofs provided and if they are acceptable,
@@ -1175,7 +1175,7 @@ deanonymize citizens.
 \subsection{Offline Payments} \label{sec:offline}
 
 Anonymous digital cash schemes since Chaum were frequently designed
-to allow the merchant to be offline during the transaction, 
+to allow the merchant to be offline during the transaction,
 by providing a means to deanonymize customers involved in
 double-spending.  We consider this problematic as either the
 exchange or the merchant still requires an out-of-band
@@ -1648,7 +1648,7 @@ provides a payment system with the following key properties:
     delivering on the agreed contract.  Neither merchants nor customers
     are able to commit fraud against the exchange.
     Only the exchange needs be tightly audited and regulated.
-  \item[No speculation] % It's actually "Specualtion not required"
+  \item[No speculation] % It's actually "Speculation not required"
     The digital coins are denominated in existing currencies,
     such as EUR or USD.  This avoids exposing citizens to unnecessary risks
     from currency fluctuations.
