@@ -15,21 +15,7 @@ pkgcfg_DATA = \
 
 EXTRA_DIST = \
   paths.conf \
-  taler-config.in \
-  taler-arm.in
-
-templated_scripts = taler-config taler-arm
-dist_bin_SCRIPTS = $(templated_scripts)
-
-# See https://www.gnu.org/software/autoconf/manual/autoconf-2.63/html_node/Installation-Directory-Variables.html
-# for an explanation and why this ugliness is necessary.
-edit = sed -e 's|@libdir[@]|$(libdir)|g'
-$(templated_scripts): %: Makefile $(srcdir)/%.in
-	rm -f $@ $@.tmp
-	$(edit) '$(srcdir)/$@.in' >$@.tmp
-	chmod +x $@.tmp
-	chmod a-w $@.tmp
-	mv $@.tmp $@
+  taler-config.in
 
 if WALLET_ONLY
 lib_LTLIBRARIES = \
