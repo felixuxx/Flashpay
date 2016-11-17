@@ -496,6 +496,8 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
                              &dep->amount_with_fee) )
   {
     GNUNET_break_op (0); /* cannot refund more than original value */
+    TEH_plugin->rollback (TEH_plugin->cls,
+                          session);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     return TEH_RESPONSE_reply_refund_failure (connection,
@@ -513,6 +515,8 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
     /* DKI not found, but we do have a coin with this DK in our database;
        not good... */
     GNUNET_break (0);
+    TEH_plugin->rollback (TEH_plugin->cls,
+                          session);
     TEH_KS_release (mks);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
@@ -732,6 +736,8 @@ execute_reserve_withdraw_transaction (struct MHD_Connection *connection,
   {
     /* did not encounter any wire transfer operations, how can we have a reserve? */
     GNUNET_break (0);
+    TEH_plugin->rollback (TEH_plugin->cls,
+                          session);
     return TEH_RESPONSE_reply_internal_db_error (connection,
 						 TALER_EC_WITHDRAW_RESERVE_WITHOUT_WIRE_TRANSFER);
   }
