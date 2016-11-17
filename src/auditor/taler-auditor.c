@@ -234,6 +234,8 @@ verify_reserve_balance (void *cls,
     return GNUNET_OK;
   }
   /* TODO: check reserve.expiry? */
+  reserve_in_serial_id = 1;
+  reserve_out_serial_id = 1;
   /* FIXME: get previous reserve state from auditor DB */
 
   /* FIXME: simplified computation as we have no previous reserve state yet */
