@@ -640,6 +640,7 @@ postgres_prepare (PGconn *db_conn)
            ",execution_date"
            ",sender_account_details"
            ",transfer_details"
+           ",reserve_in_serial_id"
            " FROM reserves_in"
            " WHERE reserve_in_serial_id>=$1"
            " ORDER BY reserve_in_serial_id",
@@ -737,6 +738,7 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
+           ",reserve_out_serial_id"
            " FROM reserves_out"
            " WHERE reserve_out_serial_id>=$1"
            " ORDER BY reserve_out_serial_id ASC",
@@ -773,6 +775,7 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_curr"
            ",num_newcoins"
            ",noreveal_index"
+           ",melt_serial_id"
            " FROM refresh_sessions"
            " WHERE melt_serial_id>=$1"
            " ORDER BY melt_serial_id ASC",
@@ -865,6 +868,7 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
+           ",refund_serial_id"
            " FROM refunds"
            " WHERE refund_serial_id>=$1"
            " ORDER BY refund_serial_id ASC",
@@ -1006,6 +1010,7 @@ postgres_prepare (PGconn *db_conn)
            ",h_contract"
            ",wire"
            ",done"
+           ",deposit_serial_id"
            " FROM deposits"
            " WHERE ("
            "  (deposit_serial_id>=$1)"
@@ -1283,6 +1288,7 @@ postgres_prepare (PGconn *db_conn)
            " type"
            ",buf"
            ",finished"
+           ",prewire_uuid"
            " FROM prewire"
            " WHERE prewire_uuid>=$1"
            " ORDER BY prewire_uuid ASC",
@@ -4393,6 +4399,7 @@ postgres_select_deposits_above_serial_id (void *cls,
   {
     struct TALER_EXCHANGEDB_Deposit deposit;
     uint8_t done = 0;
+    uint64_t rowid;
 
     struct GNUNET_PQ_ResultSpec rs[] = {
       TALER_PQ_result_spec_amount ("amount_with_fee",
@@ -4417,6 +4424,8 @@ postgres_select_deposits_above_serial_id (void *cls,
                                  &deposit.receiver_wire_account),
       GNUNET_PQ_result_spec_auto_from_type ("done",
                                             &done),
+      GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
+                                    &rowid),
       GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
@@ -4427,7 +4436,7 @@ postgres_select_deposits_above_serial_id (void *cls,
       return GNUNET_SYSERR;
     }
     cb (cb_cls,
-        serial_id,
+        rowid,
         &deposit.merchant_pub,
         &deposit.coin.coin_pub,
         &deposit.csig,
@@ -4498,6 +4507,7 @@ postgres_select_refreshs_above_serial_id (void *cls,
     struct TALER_Amount amount_with_fee;
     uint16_t num_newcoins;
     uint16_t noreveal_index;
+    uint64_t rowid;
 
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
@@ -4510,6 +4520,8 @@ postgres_select_refreshs_above_serial_id (void *cls,
                                     &num_newcoins),
       GNUNET_PQ_result_spec_uint16 ("noreveal_index",
                                     &noreveal_index),
+      GNUNET_PQ_result_spec_uint64 ("melt_serial_id",
+                                    &rowid),
       GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
@@ -4520,7 +4532,7 @@ postgres_select_refreshs_above_serial_id (void *cls,
       return GNUNET_SYSERR;
     }
     cb (cb_cls,
-        serial_id,
+        rowid,
         &coin_pub,
         &coin_sig,
         &amount_with_fee,
@@ -4580,6 +4592,7 @@ postgres_select_refunds_above_serial_id (void *cls,
   for (i=0;i<nrows;i++)
   {
     struct TALER_EXCHANGEDB_Refund refund;
+    uint64_t rowid;
 
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
@@ -4596,6 +4609,8 @@ postgres_select_refunds_above_serial_id (void *cls,
                                            &refund.coin.coin_pub),
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &refund.refund_amount),
+      GNUNET_PQ_result_spec_uint64 ("refund_serial_id",
+                                    &rowid),
       GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
@@ -4606,7 +4621,7 @@ postgres_select_refunds_above_serial_id (void *cls,
       return GNUNET_SYSERR;
     }
     cb (cb_cls,
-        serial_id,
+        rowid,
         &refund.coin.coin_pub,
         &refund.merchant_pub,
         &refund.merchant_sig,
@@ -4673,6 +4688,7 @@ postgres_select_reserves_in_above_serial_id (void *cls,
     json_t *sender_account_details;
     json_t *transfer_details;
     struct GNUNET_TIME_Absolute execution_date;
+    uint64_t rowid;
 
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
@@ -4685,6 +4701,8 @@ postgres_select_reserves_in_above_serial_id (void *cls,
                                  &sender_account_details),
       TALER_PQ_result_spec_json ("transfer_details",
                                  &transfer_details),
+      GNUNET_PQ_result_spec_uint64 ("reserve_in_serial_id",
+                                    &rowid),
       GNUNET_PQ_result_spec_end
     };
 
@@ -4696,7 +4714,7 @@ postgres_select_reserves_in_above_serial_id (void *cls,
       return GNUNET_SYSERR;
     }
     cb (cb_cls,
-        serial_id,
+        rowid,
         &reserve_pub,
         &credit,
         sender_account_details,
@@ -4763,6 +4781,7 @@ postgres_select_reserves_out_above_serial_id (void *cls,
     struct TALER_ReserveSignatureP reserve_sig;
     struct GNUNET_TIME_Absolute execution_date;
     struct TALER_Amount amount_with_fee;
+    uint64_t rowid;
 
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("h_blind_ev",
@@ -4779,6 +4798,8 @@ postgres_select_reserves_out_above_serial_id (void *cls,
                                            &execution_date),
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &amount_with_fee),
+      GNUNET_PQ_result_spec_uint64 ("reserve_out_serial_id",
+                                    &rowid),
       GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
@@ -4789,7 +4810,7 @@ postgres_select_reserves_out_above_serial_id (void *cls,
       return GNUNET_SYSERR;
     }
     cb (cb_cls,
-        serial_id,
+        rowid,
         &h_blind_ev,
         &denom_pub,
         &denom_sig,
@@ -4857,6 +4878,7 @@ postgres_select_prepare_above_serial_id (void *cls,
     void *buf;
     size_t buf_size;
     uint8_t finished;
+    uint64_t uuid;
 
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_string ("type",
@@ -4866,11 +4888,15 @@ postgres_select_prepare_above_serial_id (void *cls,
                                            &buf_size),
       GNUNET_PQ_result_spec_auto_from_type ("finished",
                                             &finished),
+      GNUNET_PQ_result_spec_uint64 ("prewire_uuid",
+                                    &uuid),
       GNUNET_PQ_result_spec_end
     };
 
     if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  0))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -4878,7 +4904,7 @@ postgres_select_prepare_above_serial_id (void *cls,
     }
 
     cb (cb_cls,
-        serial_id,
+        uuid,
         wire_method,
         buf,
         buf_size,
