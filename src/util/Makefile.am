@@ -17,6 +17,9 @@ EXTRA_DIST = \
   paths.conf \
   taler-config.in
 
+bin_SCRIPTS = \
+  taler-config
+
 if WALLET_ONLY
 lib_LTLIBRARIES = \
   libtalerutil_wallet.la
