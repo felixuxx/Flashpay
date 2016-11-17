@@ -1971,7 +1971,7 @@ postgres_get_withdraw_info (void *cls,
  * @param collectable corresponding collectable coin (blind signature)
  *                    if a coin is found
  * @return #GNUNET_SYSERR on internal error
- *         #GNUNET_NO if the collectable was not found
+ *         #GNUNET_NO if we failed but should retry the transaction
  *         #GNUNET_YES on success
  */
 static int
@@ -2018,8 +2018,13 @@ postgres_insert_withdraw_info (void *cls,
                              &reserve.balance,
                              &collectable->amount_with_fee))
   {
-    /* Should have been checked before we got here... */
-    GNUNET_break (0);     /* FIXME: this actually happens: #4794 */
+    /* The reserve history was checked to make sure there is enough of a balance
+       left before we tried this; however, concurrent operations may have changed
+       the situation by now.  We should re-try the transaction.  */
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Withdrawal from reserve `%s' refused due to balance missmatch. Retrying.\n",
+                TALER_B2S (&collectable->reserve_pub));
+    ret = GNUNET_NO;
     goto cleanup;
   }
   expiry = GNUNET_TIME_absolute_add (now,

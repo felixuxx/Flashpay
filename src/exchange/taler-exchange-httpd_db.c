@@ -92,6 +92,27 @@ transaction_start_label: /* we will use goto for retries */   \
 
 
 /**
+ * Code to include to retry a transaction, must only be used in between
+ * #START_TRANSACTION and #COMMIT_TRANSACTION.
+ *
+ * @param session session handle
+ * @param connection connection handle
+ */
+#define RETRY_TRANSACTION(session,connection)                                    \
+  do {                                                                           \
+    TEH_plugin->rollback (TEH_plugin->cls,                                       \
+                          session);                                              \
+    if (transaction_retries++ <= MAX_TRANSACTION_COMMIT_RETRIES)                 \
+      goto transaction_start_label;                                              \
+    TALER_LOG_WARNING ("Transaction commit failed %u times in %s\n",             \
+                       transaction_retries,                                      \
+                       __FUNCTION__);                                            \
+    return TEH_RESPONSE_reply_commit_error (connection,                          \
+					    TALER_EC_DB_COMMIT_FAILED_ON_RETRY); \
+  } while (0)
+
+
+/**
  * Calculate the total value of all transactions performed.
  * Stores @a off plus the cost of all transactions in @a tl
  * in @a ret.
@@ -647,6 +668,7 @@ execute_reserve_withdraw_transaction (struct MHD_Connection *connection,
   struct TALER_Amount value;
   struct TALER_Amount fee_withdraw;
   int res;
+  int ret;
 
   /* Check if balance is sufficient */
   START_TRANSACTION (session, connection);
@@ -794,10 +816,10 @@ execute_reserve_withdraw_transaction (struct MHD_Connection *connection,
   collectable.reserve_pub = *reserve;
   collectable.h_coin_envelope = *h_blind;
   collectable.reserve_sig = *signature;
-  if (GNUNET_OK !=
-      TEH_plugin->insert_withdraw_info (TEH_plugin->cls,
-                                        session,
-                                        &collectable))
+  ret = TEH_plugin->insert_withdraw_info (TEH_plugin->cls,
+                                          session,
+                                          &collectable);
+  if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);
     TEH_plugin->rollback (TEH_plugin->cls,
@@ -805,6 +827,8 @@ execute_reserve_withdraw_transaction (struct MHD_Connection *connection,
     return TEH_RESPONSE_reply_internal_db_error (connection,
 						 TALER_EC_WITHDRAW_DB_STORE_ERROR);
   }
+  if (GNUNET_NO == ret)
+    RETRY_TRANSACTION(session, connection);
   COMMIT_TRANSACTION (session, connection);
 
   return TEH_RESPONSE_reply_reserve_withdraw_success (connection,
