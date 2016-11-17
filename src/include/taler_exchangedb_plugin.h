@@ -571,7 +571,7 @@ struct TALER_EXCHANGEDB_Session;
  */
 typedef int
 (*TALER_EXCHANGEDB_DepositIterator)(void *cls,
-                                    unsigned long long rowid,
+                                    uint64_t rowid,
                                     const struct TALER_MerchantPublicKeyP *merchant_pub,
                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     const struct TALER_Amount *amount_with_fee,
@@ -593,7 +593,7 @@ typedef int
  */
 typedef void
 (*TALER_EXCHANGEDB_WirePreparationIterator) (void *cls,
-                                             unsigned long long rowid,
+                                             uint64_t rowid,
                                              const char *wire_method,
                                              const char *buf,
                                              size_t buf_size);
@@ -621,7 +621,7 @@ typedef void
  */
 typedef int
 (*TALER_EXCHANGEDB_DepositCallback)(void *cls,
-                                    unsigned long long rowid,
+                                    uint64_t rowid,
                                     const struct TALER_MerchantPublicKeyP *merchant_pub,
                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     const struct TALER_CoinSpendSignatureP *coin_sig,
@@ -656,7 +656,7 @@ typedef int
  */
 typedef int
 (*TALER_EXCHANGEDB_RefreshSessionCallback)(void *cls,
-                                           unsigned long long rowid, /* FIXME: decide data type for serial_id! */
+                                           uint64_t rowid,
                                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                            const struct TALER_CoinSpendSignatureP *coin_sig,
                                            const struct TALER_Amount *amount_with_fee,
@@ -681,7 +681,7 @@ typedef int
  */
 typedef int
 (*TALER_EXCHANGEDB_RefundCallback)(void *cls,
-                                   unsigned long long rowid, /* FIXME: decide data type for serial_id! */
+                                   uint64_t rowid,
                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                    const struct TALER_MerchantPublicKeyP *merchant_pub,
                                    const struct TALER_MerchantSignatureP *merchant_sig,
@@ -705,7 +705,7 @@ typedef int
  */
 typedef int
 (*TALER_EXCHANGEDB_ReserveInCallback)(void *cls,
-                                      unsigned long long rowid, /* FIXME: decide data type for serial_id! */
+                                      uint64_t rowid,
                                       const struct TALER_ReservePublicKeyP *reserve_pub,
                                       const struct TALER_Amount *credit,
                                       const json_t *sender_account_details,
@@ -729,7 +729,7 @@ typedef int
  */
 typedef int
 (*TALER_EXCHANGEDB_WithdrawCallback)(void *cls,
-                                     unsigned long long rowid, /* FIXME: decide data type for serial_id! */
+                                     uint64_t rowid,
                                      const struct GNUNET_HashCode *h_blind_ev,
                                      const struct TALER_DenominationPublicKey *denom_pub,
                                      const struct TALER_DenominationSignature *denom_sig,
@@ -814,7 +814,7 @@ typedef void
  */
 typedef void
 (*TALER_EXCHANGEDB_WirePreparationCallback) (void *cls,
-                                             unsigned long long rowid,
+                                             uint64_t rowid,
                                              const char *wire_method,
                                              const char *buf,
                                              size_t buf_size,
@@ -1105,7 +1105,7 @@ struct TALER_EXCHANGEDB_Plugin
   int
   (*mark_deposit_tiny) (void *cls,
                         struct TALER_EXCHANGEDB_Session *session,
-                        unsigned long long rowid);
+                        uint64_t rowid);
 
 
   /**
@@ -1137,7 +1137,7 @@ struct TALER_EXCHANGEDB_Plugin
   int
   (*mark_deposit_done) (void *cls,
                         struct TALER_EXCHANGEDB_Session *session,
-                        unsigned long long rowid);
+                        uint64_t rowid);
 
 
   /**
@@ -1551,7 +1551,7 @@ struct TALER_EXCHANGEDB_Plugin
   int
   (*wire_prepare_data_mark_finished)(void *cls,
                                      struct TALER_EXCHANGEDB_Session *session,
-                                     unsigned long long rowid);
+                                     uint64_t rowid);
 
 
   /**

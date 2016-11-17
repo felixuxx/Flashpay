@@ -2289,11 +2289,10 @@ postgres_have_deposit (void *cls,
 static int
 postgres_mark_deposit_tiny (void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
-                            unsigned long long rowid)
+                            uint64_t rowid)
 {
-  uint64_t serial_id = rowid;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_uint64 (&rowid),
     GNUNET_PQ_query_param_end
   };
   PGresult *result;
@@ -2393,11 +2392,10 @@ postgres_test_deposit_done (void *cls,
 static int
 postgres_mark_deposit_done (void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
-                            unsigned long long rowid)
+                            uint64_t rowid)
 {
-  uint64_t serial_id = rowid;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_uint64 (&rowid),
     GNUNET_PQ_query_param_end
   };
   PGresult *result;
@@ -4171,11 +4169,10 @@ postgres_wire_prepare_data_insert (void *cls,
 static int
 postgres_wire_prepare_data_mark_finished (void *cls,
                                           struct TALER_EXCHANGEDB_Session *session,
-                                          unsigned long long rowid)
+                                          uint64_t rowid)
 {
-  uint64_t prewire_uuid = rowid;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&prewire_uuid),
+    GNUNET_PQ_query_param_uint64 (&rowid),
     GNUNET_PQ_query_param_end
   };
   PGresult *result;

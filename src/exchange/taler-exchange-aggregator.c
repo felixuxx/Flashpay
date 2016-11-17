@@ -410,7 +410,7 @@ exchange_serve_process_config ()
  */
 static int
 deposit_cb (void *cls,
-            unsigned long long row_id,
+            uint64_t row_id,
             const struct TALER_MerchantPublicKeyP *merchant_pub,
             const struct TALER_CoinSpendPublicKeyP *coin_pub,
             const struct TALER_Amount *amount_with_fee,
@@ -428,7 +428,7 @@ deposit_cb (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Fatally malformed record at row %llu\n",
-                row_id);
+                (unsigned long long) row_id);
     return GNUNET_SYSERR;
   }
   au->row_id = row_id;
@@ -485,7 +485,7 @@ deposit_cb (void *cls,
  */
 static int
 aggregate_cb (void *cls,
-              unsigned long long row_id,
+              uint64_t row_id,
               const struct TALER_MerchantPublicKeyP *merchant_pub,
               const struct TALER_CoinSpendPublicKeyP *coin_pub,
               const struct TALER_Amount *amount_with_fee,
@@ -509,7 +509,7 @@ aggregate_cb (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Fatally malformed record at %llu\n",
-                row_id);
+                (unsigned long long) row_id);
     return GNUNET_SYSERR;
   }
   /* add to total */
@@ -520,7 +520,7 @@ aggregate_cb (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Overflow or currency incompatibility during aggregation at %llu\n",
-                row_id);
+                (unsigned long long) row_id);
     /* Skip this one, but keep going! */
     return GNUNET_OK;
   }
@@ -950,7 +950,7 @@ wire_confirm_cb (void *cls,
  */
 static void
 wire_prepare_cb (void *cls,
-                 unsigned long long rowid,
+                 uint64_t rowid,
                  const char *wire_method,
                  const char *buf,
                  size_t buf_size)
@@ -958,7 +958,7 @@ wire_prepare_cb (void *cls,
   wpd->row_id = rowid;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Starting wire transfer %llu\n",
-              rowid);
+              (unsigned long long) rowid);
   wpd->wp = find_plugin (wire_method);
   wpd->eh = wpd->wp->wire_plugin->execute_wire_transfer (wpd->wp->wire_plugin->cls,
                                                          buf,

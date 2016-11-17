@@ -70,13 +70,14 @@ static struct TALER_EXCHANGEDB_Plugin *plugin;
  */
 static void
 dead_prepare_cb (void *cls,
-                 unsigned long long rowid,
+                 uint64_t rowid,
                  const char *wire_method,
                  const char *buf,
                  size_t buf_size)
 {
   GNUNET_assert (0);
 }
+
 
 /**
  * Counter used in auditor-related db functions. Used to count
@@ -91,7 +92,7 @@ unsigned int auditor_row_cnt;
  */
 static void
 mark_prepare_cb (void *cls,
-                 unsigned long long rowid,
+                 uint64_t rowid,
                  const char *wire_method,
                  const char *buf,
                  size_t buf_size)
@@ -122,7 +123,7 @@ mark_prepare_cb (void *cls,
  */
 void
 audit_wire_cb (void *cls,
-               unsigned long long rowid,
+               uint64_t rowid,
                const char *wire_method,
                const char *buf,
                size_t buf_size,
@@ -523,7 +524,7 @@ check_transfer_data (void *cls,
  */
 int
 audit_refresh_session_cb (void *cls,
-                          unsigned long long rowid, /* FIXME: decide data type for serial_id! */
+                          uint64_t rowid,
                           const struct TALER_CoinSpendPublicKeyP *coin_pub,
                           const struct TALER_CoinSpendSignatureP *coin_sig,
                           const struct TALER_Amount *amount_with_fee,
@@ -883,7 +884,7 @@ cb_wtid_check (void *cls,
 /**
  * Here #deposit_cb() will store the row ID of the deposit.
  */
-static unsigned long long deposit_rowid;
+static uint64_t deposit_rowid;
 
 
 /**
@@ -908,7 +909,7 @@ static unsigned long long deposit_rowid;
  */
 static int
 deposit_cb (void *cls,
-            unsigned long long rowid,
+            uint64_t rowid,
             const struct TALER_MerchantPublicKeyP *merchant_pub,
             const struct TALER_CoinSpendPublicKeyP *coin_pub,
             const struct TALER_Amount *amount_with_fee,
@@ -968,10 +969,10 @@ deposit_cb (void *cls,
  * @param receiver_wire_account wire details for the merchant, NULL from iterate_matching_deposits()
  * @param done flag set if the deposit was already executed (or not)
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
- */ 
+ */
 int
 audit_deposit_cb (void *cls,
-                  unsigned long long rowid,
+                  uint64_t rowid,
                   const struct TALER_MerchantPublicKeyP *merchant_pub,
                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
                   const struct TALER_CoinSpendSignatureP *coin_sig,
@@ -1005,7 +1006,7 @@ audit_deposit_cb (void *cls,
  */
 int
 audit_refund_cb (void *cls,
-                 unsigned long long rowid, /* FIXME: decide data type for serial_id! */
+                 uint64_t rowid,
                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
                  const struct TALER_MerchantPublicKeyP *merchant_pub,
                  const struct TALER_MerchantSignatureP *merchant_sig,
@@ -1033,7 +1034,7 @@ audit_refund_cb (void *cls,
  */
 int
 audit_reserve_in_cb (void *cls,
-                     unsigned long long rowid, /* FIXME: decide data type for serial_id! */
+                     uint64_t rowid,
                      const struct TALER_ReservePublicKeyP *reserve_pub,
                      const struct TALER_Amount *credit,
                      const json_t *sender_account_details,
@@ -1060,7 +1061,7 @@ audit_reserve_in_cb (void *cls,
  */
 int
 audit_reserve_out_cb (void *cls,
-                      unsigned long long rowid, /* FIXME: decide data type for serial_id! */
+                      uint64_t rowid,
                       const struct GNUNET_HashCode *h_blind_ev,
                       const struct TALER_DenominationPublicKey *denom_pub,
                       const struct TALER_DenominationSignature *denom_sig,
