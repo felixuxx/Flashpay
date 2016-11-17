@@ -174,7 +174,7 @@ handle_reserve_out (void *cls,
 
   /* TODO: check signatures, in particluar the reserve_sig! */
   GNUNET_assert (rowid == reserve_out_serial_id); /* should be monotonically increasing */
-  reserve_in_serial_id = rowid + 1;
+  reserve_out_serial_id = rowid + 1;
   GNUNET_CRYPTO_hash (reserve_pub,
                       sizeof (*reserve_pub),
                       &key);
