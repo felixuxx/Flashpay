@@ -318,7 +318,7 @@ TEH_RESPONSE_reply_internal_db_error (struct MHD_Connection *connection,
 {
   return TEH_RESPONSE_reply_internal_error (connection,
 					    ec,
-                                            "Failed to connect to database");
+                                            "Failure in database interaction");
 }
 
 

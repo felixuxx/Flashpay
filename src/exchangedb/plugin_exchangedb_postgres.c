@@ -1154,6 +1154,15 @@ postgres_prepare (PGconn *db_conn)
            "($1, $2, $3)",
            3, NULL);
 
+  /* Used in #postgres_get_refresh_out() to test if the
+     generated signature(s) already exists */
+  PREPARE ("get_refresh_out",
+           "SELECT ev_sig"
+           " FROM refresh_out"
+           " WHERE session_hash=$1"
+           " AND newcoin_index=$2",
+           2, NULL);
+
   /* Used in #postgres_get_link_data_list().  We use the session_hash
      to obtain the "noreveal_index" for that session, and then select the
      corresponding signatures (ev_sig) and the denomination keys from
@@ -3442,7 +3451,69 @@ postgres_get_refresh_transfer_public_key (void *cls,
  * @param session_hash hash to identify refresh session
  * @param newcoin_index coin index
  * @param ev_sig coin signature
+ * @return #GNUNET_OK on success, #GNUNET_NO if we have no such result
+ *         #GNUNET_SYSERR on error
+ */
+static int
+postgres_get_refresh_out (void *cls,
+                          struct TALER_EXCHANGEDB_Session *session,
+                          const struct GNUNET_HashCode *session_hash,
+                          uint16_t newcoin_index,
+                          struct TALER_DenominationSignature *ev_sig)
+{
+  PGresult *result;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (session_hash),
+    GNUNET_PQ_query_param_uint16 (&newcoin_index),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_rsa_signature ("ev_sig",
+                                         &ev_sig->rsa_signature),
+    GNUNET_PQ_result_spec_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "get_refresh_out",
+                                    params);
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  if (1 != PQntuples (result))
+  {
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  if (GNUNET_OK !=
+      GNUNET_PQ_extract_result (result,
+                                rs,
+                                0))
+  {
+    PQclear (result);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Insert signature of a new coin generated during refresh into
+ * the database indexed by the refresh session and the index
+ * of the coin.  This data is later used should an old coin
+ * be used to try to obtain the private keys during "/refresh/link".
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param session database connection
+ * @param session_hash hash to identify refresh session
+ * @param newcoin_index coin index
+ * @param ev_sig coin signature
  * @return #GNUNET_OK on success
+ *         #GNUNET_SYSERR on error
  */
 static int
 postgres_insert_refresh_out (void *cls,
@@ -5050,6 +5121,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->free_refresh_commit_coins = &postgres_free_refresh_commit_coins;
   plugin->insert_refresh_transfer_public_key = &postgres_insert_refresh_transfer_public_key;
   plugin->get_refresh_transfer_public_key = &postgres_get_refresh_transfer_public_key;
+  plugin->get_refresh_out = &postgres_get_refresh_out;
   plugin->insert_refresh_out = &postgres_insert_refresh_out;
   plugin->get_link_data_list = &postgres_get_link_data_list;
   plugin->free_link_data_list = &common_free_link_data_list;

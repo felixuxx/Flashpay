@@ -1280,16 +1280,28 @@ refresh_exchange_coin (struct MHD_Connection *connection,
     ev_sig.rsa_signature = NULL;
     return ev_sig;
   }
+  if (GNUNET_OK ==
+      TEH_plugin->get_refresh_out (TEH_plugin->cls,
+                                   session,
+                                   session_hash,
+                                   coin_off,
+                                   &ev_sig))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Returning cashed reply for /refresh/reveal signature\n");
+    return ev_sig;
+  }
+
   ev_sig.rsa_signature
-      = GNUNET_CRYPTO_rsa_sign_blinded (dki->denom_priv.rsa_private_key,
-                                        commit_coin->coin_ev,
-                                        commit_coin->coin_ev_size);
+    = GNUNET_CRYPTO_rsa_sign_blinded (dki->denom_priv.rsa_private_key,
+                                      commit_coin->coin_ev,
+                                      commit_coin->coin_ev_size);
   if (NULL == ev_sig.rsa_signature)
   {
     GNUNET_break (0);
     return ev_sig;
   }
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       TEH_plugin->insert_refresh_out (TEH_plugin->cls,
                                       session,
                                       session_hash,
@@ -1300,6 +1312,7 @@ refresh_exchange_coin (struct MHD_Connection *connection,
     GNUNET_CRYPTO_rsa_signature_free (ev_sig.rsa_signature);
     ev_sig.rsa_signature = NULL;
   }
+
   return ev_sig;
 }
 

@@ -1360,6 +1360,27 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Get signature of a new coin generated during refresh into
+   * the database indexed by the refresh session and the index
+   * of the coin.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session database connection
+   * @param session_hash hash to identify refresh session
+   * @param newcoin_index coin index
+   * @param[out] ev_sig coin signature
+   * @return #GNUNET_OK on success, #GNUNET_NO if we have no such entry,
+   *         #GNUNET_SYSERR on error
+   */
+  int
+  (*get_refresh_out) (void *cls,
+                      struct TALER_EXCHANGEDB_Session *session,
+                      const struct GNUNET_HashCode *session_hash,
+                      uint16_t newcoin_index,
+                      struct TALER_DenominationSignature *ev_sig);
+
+
+  /**
    * Insert signature of a new coin generated during refresh into
    * the database indexed by the refresh session and the index
    * of the coin.  This data is later used should an old coin
@@ -1371,6 +1392,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param newcoin_index coin index
    * @param ev_sig coin signature
    * @return #GNUNET_OK on success
+   *         #GNUNET_SYSERR on error
    */
   int
   (*insert_refresh_out) (void *cls,

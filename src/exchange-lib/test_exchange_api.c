@@ -1710,6 +1710,9 @@ interpreter_run (void *cls)
     fail (is);
     return;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Running command `%s'\n",
+              cmd->label);
   switch (cmd->oc)
   {
   case OC_END:
@@ -2836,6 +2839,12 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_OK,
       .details.refresh_reveal.melt_ref = "refresh-melt-1" },
 
+    /* do it again to check idempotency */
+    { .oc = OC_REFRESH_REVEAL,
+      .label = "refresh-reveal-1-idempotency",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.refresh_reveal.melt_ref = "refresh-melt-1" },
+
     /* Test that /refresh/link works */
     { .oc = OC_REFRESH_LINK,
       .label = "refresh-link-1",
@@ -2849,7 +2858,7 @@ run (void *cls)
       .label = "refresh-deposit-refreshed-1a",
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit.amount = "EUR:1",
-      .details.deposit.coin_ref = "refresh-reveal-1",
+      .details.deposit.coin_ref = "refresh-reveal-1-idempotency",
       .details.deposit.coin_idx = 0,
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
       .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }",
@@ -3071,12 +3080,6 @@ main (int argc,
   struct GNUNET_SIGNAL_Context *shc_chld;
   enum GNUNET_OS_ProcessStatusType type;
   unsigned long code;
-
-  GNUNET_log_setup ("test-exchange-api",
-                    "DEBUG",
-                    "/tmp/logs");
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG, "test log\n");
-  return 0;
 
   /* These might get in the way... */
   unsetenv ("XDG_DATA_HOME");
