@@ -48,9 +48,9 @@ enum TALER_ErrorCode
    */
   TALER_EC_INVALID_RESPONSE = 2,
 
-  
+
   /* ********** generic error codes ************* */
-  
+
   /**
    * The exchange failed to even just initialize its connection to the
    * database.
@@ -60,7 +60,7 @@ enum TALER_ErrorCode
   TALER_EC_DB_SETUP_FAILED = 1001,
 
   /**
-   * The exchange encountered an error event to just start 
+   * The exchange encountered an error event to just start
    * the database transaction.
    * This response is provided with HTTP status code
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
@@ -68,15 +68,15 @@ enum TALER_ErrorCode
   TALER_EC_DB_START_FAILED = 1002,
 
   /**
-   * The exchange encountered an error event to commit 
+   * The exchange encountered an error event to commit
    * the database transaction (hard, unrecoverable error).
    * This response is provided with HTTP status code
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_DB_COMMIT_FAILED_HARD = 1003,
-  
+
   /**
-   * The exchange encountered an error event to commit 
+   * The exchange encountered an error event to commit
    * the database transaction, even after repeatedly
    * retrying it there was always a conflicting transaction.
    * (This indicates a repeated serialization error; should
@@ -124,8 +124,8 @@ enum TALER_ErrorCode
    */
   TALER_EC_PARAMETER_MALFORMED = 1009,
 
-  /* ********** request-specific error codes ************* */  
-  
+  /* ********** request-specific error codes ************* */
+
   /**
    * The given reserve does not have sufficient funds to admit the
    * requested withdraw operation at this time.  The response includes
@@ -133,7 +133,7 @@ enum TALER_ErrorCode
    * "history" that lead to this balance.  This response is provided
    * with HTTP status code MHD_HTTP_FORBIDDEN.
    */
-  TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS = 1100, 
+  TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS = 1100,
 
   /**
    * The exchange has no information about the "reserve_pub" that
@@ -144,13 +144,13 @@ enum TALER_ErrorCode
 
   /**
    * The amount to withdraw together with the fee exceeds the
-   * numeric range for Taler amounts.  This is not a client 
+   * numeric range for Taler amounts.  This is not a client
    * failure, as the coin value and fees come from the exchange's
    * configuration.
    * This response is provided with HTTP status code MHD_HTTP_INTERNAL_ERROR.
    */
   TALER_EC_WITHDRAW_AMOUNT_FEE_OVERFLOW = 1102,
-  
+
   /**
    * All of the deposited amounts into this reserve total up to a
    * value that is too big for the numeric range for Taler amounts.
@@ -231,7 +231,15 @@ enum TALER_ErrorCode
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_WITHDRAW_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS = 1112,
-  
+
+  /**
+   * When computing the reserve history, we ended up with a negative
+   * overall balance, which should be impossible.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_WITHDRAW_RESERVE_HISTORY_IMPOSSIBLE = 1113,
+
   /**
    * The exchange failed to obtain the transaction history of the
    * given reserve from the database.
@@ -275,7 +283,7 @@ enum TALER_ErrorCode
    * code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_DEPOSIT_DB_DENOMINATION_KEY_UNKNOWN = 1203,
-  
+
   /**
    * The exchange database is unaware of the denomination key that
    * signed the coin (however, the exchange process is; this is not
@@ -344,7 +352,7 @@ enum TALER_ErrorCode
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_DEPOSIT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS = 1212,
-  
+
   /**
    * The respective coin did not have sufficient residual value
    * for the /refresh/melt operation.  The "history" in this
@@ -366,7 +374,7 @@ enum TALER_ErrorCode
    * transaction history of the coin that was being melted.
    * This response is provided with HTTP status code
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
-   */ 
+   */
   TALER_EC_REFRESH_MELT_COIN_HISTORY_COMPUTATION_FAILED = 1302,
 
   /**
@@ -400,7 +408,7 @@ enum TALER_ErrorCode
    * MHD_HTTP_INTERNAL_ERROR.
    */
   TALER_EC_REFRESH_MELT_DB_STORE_COMMIT_ERROR = 1306,
-  
+
   /**
    * The exchange failed to store transfer keys in the
    * database.
@@ -467,15 +475,15 @@ enum TALER_ErrorCode
   TALER_EC_REFRESH_MELT_COIN_SIGNATURE_INVALID = 1315,
 
   /**
-   * The size of the cut-and-choose dimension of the 
+   * The size of the cut-and-choose dimension of the
    * blinded coins request does not match #TALER_CNC_KAPPA.
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_REFRESH_MELT_CNC_COIN_ARRAY_SIZE_INVALID = 1316,
-  
+
   /**
-   * The size of the cut-and-choose dimension of the 
+   * The size of the cut-and-choose dimension of the
    * transfer keys request does not match #TALER_CNC_KAPPA.
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
@@ -490,7 +498,7 @@ enum TALER_ErrorCode
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_REFRESH_MELT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS = 1318,
-  
+
   /**
    * The provided transfer keys do not match up with the
    * original commitment.  Information about the original
@@ -512,14 +520,14 @@ enum TALER_ErrorCode
    * to be returned.
    * This response is provided with HTTP status code
    * MHD_HTTP_INTERNAL_ERROR.
-   */ 
+   */
   TALER_EC_REFRESH_REVEAL_SIGNING_ERROR = 1352,
-  
+
   /**
    * The exchange is unaware of the refresh sessino specified in
    * the request.
    * This response is provided with HTTP status code
-   * MHD_HTTP_BAD_REQUEST. 
+   * MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_REFRESH_REVEAL_SESSION_UNKNOWN = 1353,
 
@@ -556,14 +564,14 @@ enum TALER_ErrorCode
   TALER_EC_REFRESH_REVEAL_DB_FETCH_COMMIT_ERROR = 1357,
 
   /**
-   * The size of the cut-and-choose dimension of the 
+   * The size of the cut-and-choose dimension of the
    * private transfer keys request does not match #TALER_CNC_KAPPA - 1.
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_REFRESH_REVEAL_CNC_TRANSFER_ARRAY_SIZE_INVALID = 1358,
-  
-  
+
+
   /**
    * The coin specified in the link request is unknown to the exchange.
    * This response is provided with HTTP status code
@@ -571,7 +579,7 @@ enum TALER_ErrorCode
    */
   TALER_EC_REFRESH_LINK_COIN_UNKNOWN = 1400,
 
-  
+
   /**
    * The exchange knows literally nothing about the coin we were asked
    * to refund. But without a transaction history, we cannot issue a
@@ -588,7 +596,7 @@ enum TALER_ErrorCode
    * with HTTP status code MHD_HTTP_CONFLICT.
    */
   TALER_EC_REFUND_CONFLICT = 1501,
-  
+
   /**
    * The exchange knows about the coin we were asked to refund, but
    * not about the specific /deposit operation.  Hence, we cannot
@@ -643,7 +651,7 @@ enum TALER_ErrorCode
 
   /**
    * The refund fee specified for the request is lower than
-   * the refund fee charged by the exchange for the given 
+   * the refund fee charged by the exchange for the given
    * denomination key of the refunded coin.
    * This response is provided with HTTP status code
    * MHD_HTTP_BAD_REQUEST.
@@ -681,7 +689,7 @@ enum TALER_ErrorCode
    */
   TALER_EC_REFUND_MERCHANT_SIGNATURE_INVALID = 1513,
 
-  
+
   /**
    * The wire format specified in the "sender_account_details"
    * is not understood or not supported by this exchange.
@@ -694,7 +702,7 @@ enum TALER_ErrorCode
    * The currency specified in the "amount" parameter is not
    * supported by this exhange.  Returned with an HTTP status
    * code of MHD_HTTP_BAD_REQUEST.
-   */ 
+   */
   TALER_EC_ADMIN_ADD_INCOMING_CURRENCY_UNSUPPORTED = 1601,
 
   /**
@@ -726,7 +734,7 @@ enum TALER_ErrorCode
    */
   TALER_EC_TRACK_TRANSFER_WTID_NOT_FOUND = 1702,
 
-  
+
   /**
    * The exchange found internally inconsistent fee data when
    * resolving a transaction in the database.  This
@@ -737,7 +745,7 @@ enum TALER_ErrorCode
 
   /**
    * The exchange encountered an error (that is not about not finding
-   * the transaction) trying to lookup a transaction 
+   * the transaction) trying to lookup a transaction
    * in the database.  This response is provided with HTTP
    * status code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
@@ -749,7 +757,7 @@ enum TALER_ErrorCode
    * provided with HTTP status code MHD_HTTP_NOT_FOUND.
    */
   TALER_EC_TRACK_TRANSACTION_NOT_FOUND = 1802,
-  
+
   /**
    * The exchange failed to identify the wire transfer of the
    * transaction (or information about the plan that it was supposed
@@ -925,7 +933,7 @@ enum TALER_ErrorCode
    */
   TALER_EC_PAY_OFFER_EXPIRED = 2121,
 
-  
+
   /**
    * Integer overflow with sepcified timestamp argument detected.
    * This response is provided
@@ -947,7 +955,7 @@ enum TALER_ErrorCode
    * MHD_HTTP_SERVICE_UNAVAILABLE.
    */
   TALER_EC_TRACK_TRANSACTION_EXCHANGE_TIMEOUT = 2300,
-  
+
   /**
    * The backend could not find the merchant instance specified
    * in the request.   This response is
@@ -963,7 +971,7 @@ enum TALER_ErrorCode
   TALER_EC_TRACK_TRANSACTION_TRANSACTION_UNKNOWN = 2302,
 
   /**
-   * The backend had a database access error trying to 
+   * The backend had a database access error trying to
    * retrieve transaction data from its database.
    * The response is
    * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
@@ -971,7 +979,7 @@ enum TALER_ErrorCode
   TALER_EC_TRACK_TRANSACTION_DB_FETCH_TRANSACTION_ERROR = 2303,
 
   /**
-   * The backend had a database access error trying to 
+   * The backend had a database access error trying to
    * retrieve payment data from its database.
    * The response is
    * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
@@ -1002,9 +1010,9 @@ enum TALER_ErrorCode
    * provided with HTTP status code MHD_HTTP_FAILED_DEPENDENCY.
    */
   TALER_EC_TRACK_TRANSACTION_WIRE_TRANSFER_TRACE_ERROR = 2307,
-  
+
   /**
-   * We got conflicting reports from the exhange with 
+   * We got conflicting reports from the exhange with
    * respect to which transfers are included in which
    * aggregate.
    * The response is
@@ -1012,7 +1020,7 @@ enum TALER_ErrorCode
    */
   TALER_EC_TRACK_TRANSACTION_CONFLICTING_REPORTS = 2308,
 
-  
+
   /**
    * We failed to contact the exchange for the /track/transfer
    * request.  This response is provided with HTTP status code
@@ -1049,7 +1057,7 @@ enum TALER_ErrorCode
    * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_TRACK_TRANSFER_DB_STORE_TRANSFER_ERROR = 2404,
-  
+
   /**
    * The exchange returned an error from /track/transfer.
    * The response is
@@ -1079,9 +1087,9 @@ enum TALER_ErrorCode
    * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_TRACK_TRANSFER_CONFLICTING_REPORTS = 2408,
-  
+
   /* ********** /test API error codes ************* */
-  
+
   /**
    * The exchange failed to compute ECDH.  This response is provided
    * with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
@@ -1118,12 +1126,12 @@ enum TALER_ErrorCode
    */
   TALER_EC_TEST_RSA_SIGN_ERROR = 4005,
 
-  
+
   /**
    * End of error code range.
    */
   TALER_EC_END = 9999
-  
+
 };
 
 

@@ -748,10 +748,17 @@ execute_reserve_withdraw_transaction (struct MHD_Connection *connection,
                            &withdraw_total);
   }
   /* All reserve balances should be non-negative */
-  GNUNET_assert (GNUNET_SYSERR !=
-                 TALER_amount_subtract (&balance,
-                                        &deposit_total,
-                                        &withdraw_total));
+  if (GNUNET_SYSERR ==
+      TALER_amount_subtract (&balance,
+                             &deposit_total,
+                             &withdraw_total))
+  {
+    GNUNET_break (0); /* database inconsistent */
+    TEH_plugin->rollback (TEH_plugin->cls,
+                          session);
+    return TEH_RESPONSE_reply_internal_db_error (connection,
+                                                 TALER_EC_WITHDRAW_RESERVE_HISTORY_IMPOSSIBLE);
+  }
   if (0 < TALER_amount_cmp (&amount_required,
                             &balance))
   {
