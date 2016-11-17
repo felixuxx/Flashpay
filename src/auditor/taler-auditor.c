@@ -225,12 +225,17 @@ verify_reserve_balance (void *cls,
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct TALER_Amount balance;
 
+  reserve.pub = rs->reserve_pub;
   if (GNUNET_OK !=
       edb->reserve_get (edb->cls,
                         esession,
                         &reserve))
   {
     GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to find summary for reserve `%s'\n",
+                TALER_B2S (&rs->reserve_pub));
+
     return GNUNET_OK;
   }
   /* TODO: check reserve.expiry? */
