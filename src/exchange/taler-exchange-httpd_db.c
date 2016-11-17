@@ -1312,6 +1312,8 @@ execute_refresh_reveal_transaction (struct MHD_Connection *connection,
                                           j);
     if (NULL == ev_sigs[j].rsa_signature)
     {
+      TEH_plugin->rollback (TEH_plugin->cls,
+                            session);
       ret = TEH_RESPONSE_reply_internal_db_error (connection,
 						  TALER_EC_REFRESH_REVEAL_SIGNING_ERROR);
       goto cleanup;
