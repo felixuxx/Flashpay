@@ -256,6 +256,8 @@ verify_reserve_balance (void *cls,
     GNUNET_break (0);
     return GNUNET_OK;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Reserve balance `%s' OK\n");
 
   /* FIXME: commit new reserve state from auditor DB */
 
