@@ -112,7 +112,7 @@ handle_reserve_in (void *cls,
      matches wire transfers from the bank. Not sure if this should be
      done within the core auditor logic though... */
 
-  GNUNET_assert (rowid == reserve_in_serial_id); /* should be monotonically increasing */
+  GNUNET_assert (rowid >= reserve_in_serial_id); /* should be monotonically increasing */
   reserve_in_serial_id = rowid + 1;
   GNUNET_CRYPTO_hash (reserve_pub,
                       sizeof (*reserve_pub),
@@ -173,7 +173,7 @@ handle_reserve_out (void *cls,
   struct ReserveSummary *rs;
 
   /* TODO: check signatures, in particluar the reserve_sig! */
-  GNUNET_assert (rowid == reserve_out_serial_id); /* should be monotonically increasing */
+  GNUNET_assert (rowid >= reserve_out_serial_id); /* should be monotonically increasing */
   reserve_out_serial_id = rowid + 1;
   GNUNET_CRYPTO_hash (reserve_pub,
                       sizeof (*reserve_pub),
