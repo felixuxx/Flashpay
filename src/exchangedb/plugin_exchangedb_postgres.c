@@ -1671,8 +1671,8 @@ postgres_reserve_get (void *cls,
 
     EXITIF (GNUNET_OK !=
             GNUNET_PQ_extract_result (result,
-                                     rs,
-                                     0));
+                                      rs,
+                                      0));
   }
   PQclear (result);
   return GNUNET_OK;
@@ -1945,7 +1945,9 @@ postgres_get_withdraw_info (void *cls,
     };
 
     if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  0))
     {
       GNUNET_break (0);
       goto cleanup;
@@ -2098,7 +2100,9 @@ postgres_get_reserve_history (void *cls,
           GNUNET_PQ_result_spec_end
         };
         if (GNUNET_OK !=
-            GNUNET_PQ_extract_result (result, rs, --rows))
+            GNUNET_PQ_extract_result (result,
+                                      rs,
+                                      --rows))
         {
           GNUNET_break (0);
           GNUNET_free (bt);
@@ -2163,7 +2167,9 @@ postgres_get_reserve_history (void *cls,
           GNUNET_PQ_result_spec_end
         };
         if (GNUNET_OK !=
-            GNUNET_PQ_extract_result (result, rs, --rows))
+            GNUNET_PQ_extract_result (result,
+                                      rs,
+                                      --rows))
         {
           GNUNET_break (0);
           GNUNET_free (cbc);
@@ -2250,7 +2256,9 @@ postgres_have_deposit (void *cls,
       GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  0))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -2372,8 +2380,11 @@ postgres_test_deposit_done (void *cls,
                                             &done),
       GNUNET_PQ_result_spec_end
     };
+
     if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  0))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -2497,7 +2508,9 @@ postgres_get_ready_deposit (void *cls,
     };
 
     if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  0))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -2597,7 +2610,9 @@ postgres_iterate_matching_deposits (void *cls,
       GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, i))
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -2677,7 +2692,9 @@ get_known_coin (void *cls,
     };
 
     if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  0))
     {
       PQclear (result);
       GNUNET_break (0);
@@ -2906,7 +2923,9 @@ postgres_get_refresh_session (void *cls,
     };
 
     if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  0))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -3126,7 +3145,9 @@ postgres_get_refresh_order (void *cls,
         GNUNET_PQ_result_spec_end
       };
       if (GNUNET_OK !=
-          GNUNET_PQ_extract_result (result, rs, 0))
+          GNUNET_PQ_extract_result (result,
+                                    rs,
+                                    0))
       {
         PQclear (result);
         GNUNET_break (0);
@@ -3261,13 +3282,17 @@ postgres_get_refresh_commit_coins (void *cls,
     {
       BREAK_DB_ERR (result);
       PQclear (result);
-      postgres_free_refresh_commit_coins (cls, i, commit_coins);
+      postgres_free_refresh_commit_coins (cls,
+                                          i,
+                                          commit_coins);
       return GNUNET_SYSERR;
     }
     if (0 == PQntuples (result))
     {
       PQclear (result);
-      postgres_free_refresh_commit_coins (cls, i, commit_coins);
+      postgres_free_refresh_commit_coins (cls,
+                                          i,
+                                          commit_coins);
       return GNUNET_NO;
     }
     {
@@ -3279,10 +3304,14 @@ postgres_get_refresh_commit_coins (void *cls,
       };
 
       if (GNUNET_YES !=
-          GNUNET_PQ_extract_result (result, rs, 0))
+          GNUNET_PQ_extract_result (result,
+                                    rs,
+                                    0))
       {
         PQclear (result);
-        postgres_free_refresh_commit_coins (cls, i, commit_coins);
+        postgres_free_refresh_commit_coins (cls,
+                                            i,
+                                            commit_coins);
         return GNUNET_SYSERR;
       }
     }
@@ -3384,7 +3413,9 @@ postgres_get_refresh_transfer_public_key (void *cls,
     };
 
     if (GNUNET_YES !=
-        GNUNET_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  0))
     {
       PQclear (result);
       return GNUNET_SYSERR;
@@ -3574,7 +3605,9 @@ postgres_get_transfer (void *cls,
     };
 
     if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
     {
       PQclear (result);
       GNUNET_break (0);
@@ -3658,7 +3691,9 @@ postgres_get_coin_transactions (void *cls,
         };
 
         if (GNUNET_OK !=
-            GNUNET_PQ_extract_result (result, rs, i))
+            GNUNET_PQ_extract_result (result,
+                                      rs,
+                                      i))
         {
           GNUNET_break (0);
           GNUNET_free (deposit);
@@ -3727,7 +3762,9 @@ postgres_get_coin_transactions (void *cls,
           GNUNET_PQ_result_spec_end
         };
         if (GNUNET_OK !=
-            GNUNET_PQ_extract_result (result, rs, 0))
+            GNUNET_PQ_extract_result (result,
+                                      rs,
+                                      i))
         {
           GNUNET_break (0);
           GNUNET_free (melt);
@@ -3801,7 +3838,9 @@ postgres_get_coin_transactions (void *cls,
           GNUNET_PQ_result_spec_end
         };
         if (GNUNET_OK !=
-            GNUNET_PQ_extract_result (result, rs, 0))
+            GNUNET_PQ_extract_result (result,
+                                      rs,
+                                      i))
         {
           GNUNET_break (0);
           GNUNET_free (refund);
@@ -4030,7 +4069,9 @@ postgres_wire_lookup_deposit_wtid (void *cls,
         GNUNET_PQ_result_spec_end
       };
 
-      if (GNUNET_OK != GNUNET_PQ_extract_result (result, rs, 0))
+      if (GNUNET_OK != GNUNET_PQ_extract_result (result,
+                                                 rs,
+                                                 0))
       {
         GNUNET_break (0);
         PQclear (result);
@@ -4063,7 +4104,9 @@ postgres_wire_lookup_deposit_wtid (void *cls,
       TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
       GNUNET_PQ_result_spec_end
     };
-    if (GNUNET_OK != GNUNET_PQ_extract_result (result, rs, 0))
+    if (GNUNET_OK != GNUNET_PQ_extract_result (result,
+                                               rs,
+                                               0))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -4429,7 +4472,9 @@ postgres_select_deposits_above_serial_id (void *cls,
       GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -4525,7 +4570,9 @@ postgres_select_refreshs_above_serial_id (void *cls,
       GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -4614,7 +4661,9 @@ postgres_select_refunds_above_serial_id (void *cls,
       GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -4707,7 +4756,9 @@ postgres_select_reserves_in_above_serial_id (void *cls,
     };
 
     if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -4803,7 +4854,9 @@ postgres_select_reserves_out_above_serial_id (void *cls,
       GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result, rs, 0))
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -4896,7 +4949,7 @@ postgres_select_prepare_above_serial_id (void *cls,
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
                                   rs,
-                                  0))
+                                  i))
     {
       GNUNET_break (0);
       PQclear (result);
