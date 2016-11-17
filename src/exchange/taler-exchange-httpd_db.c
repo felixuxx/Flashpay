@@ -1583,6 +1583,9 @@ TEH_DB_execute_refresh_reveal (struct MHD_Connection *connection,
   /* Client request OK, start transaction */
   ev_sigs = GNUNET_new_array (refresh_session.num_newcoins,
                               struct TALER_DenominationSignature);
+
+  /* FIXME: might need to store revealed transfer private keys for
+     the auditor for later; should pass them as arguments here! #4792*/
   res = execute_refresh_reveal_transaction (connection,
                                             session,
                                             session_hash,
