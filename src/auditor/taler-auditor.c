@@ -234,8 +234,6 @@ verify_reserve_balance (void *cls,
     return GNUNET_OK;
   }
   /* TODO: check reserve.expiry? */
-  reserve_in_serial_id = 1;
-  reserve_out_serial_id = 1;
   /* FIXME: get previous reserve state from auditor DB */
 
   /* FIXME: simplified computation as we have no previous reserve state yet */
@@ -275,6 +273,7 @@ analyze_reserves ()
 {
   reserves = GNUNET_CONTAINER_multihashmap_create (512,
                                                    GNUNET_NO);
+
   /* FIXME: check return values... */
   edb->select_reserves_in_above_serial_id (edb->cls,
                                            esession,
@@ -339,8 +338,8 @@ run (void *cls,
   }
 
   /* FIXME: init these from auditordb */
-  reserve_in_serial_id = 0;
-  reserve_out_serial_id = 0;
+  reserve_in_serial_id = 1;
+  reserve_out_serial_id = 1;
 
   analyze_reserves ();
 
