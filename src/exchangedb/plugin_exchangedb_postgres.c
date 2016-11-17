@@ -2011,7 +2011,7 @@ postgres_insert_withdraw_info (void *cls,
                              &collectable->amount_with_fee))
   {
     /* Should have been checked before we got here... */
-    GNUNET_break (0);
+    GNUNET_break (0);     /* FIXME: this actually happens: #4794 */
     goto cleanup;
   }
   expiry = GNUNET_TIME_absolute_add (now,
@@ -4685,7 +4685,7 @@ postgres_select_reserves_in_above_serial_id (void *cls,
       GNUNET_PQ_result_spec_absolute_time("execution_date",
                                           &execution_date),
       TALER_PQ_result_spec_json ("sender_account_details",
-                                 &sender_account_details),                                          
+                                 &sender_account_details),
       TALER_PQ_result_spec_json ("transfer_details",
                                  &transfer_details),
       GNUNET_PQ_result_spec_end
