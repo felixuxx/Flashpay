@@ -56,7 +56,7 @@ main(int argc,
 					 &a1));
   /* precision too high */
   GNUNET_assert (GNUNET_SYSERR ==
-		 TALER_string_to_amount ("EUR:4.1234567",
+		 TALER_string_to_amount ("EUR:4.123456789",
 					 &a1));
   /* value too big */
   GNUNET_assert (GNUNET_SYSERR ==
@@ -168,7 +168,7 @@ main(int argc,
   GNUNET_assert (GNUNET_YES ==
 		 TALER_amount_normalize (&a3));
   c = TALER_amount_to_string (&a3);
-  GNUNET_assert (0 == strcmp ("EUR:6.000001",
+  GNUNET_assert (0 == strcmp ("EUR:6.00000001",
 			      c));
   GNUNET_free (c);
 
