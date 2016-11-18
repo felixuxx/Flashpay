@@ -1303,7 +1303,7 @@ run (void *cls)
                            sizeof (reserve_pub)));
       /* this is the amount we trasferred twice*/
       FAILIF (1 != bt->amount.value);
-      FAILIF (10 != bt->amount.fraction);
+      FAILIF (1000 != bt->amount.fraction);
       FAILIF (0 != strcmp (CURRENCY, bt->amount.currency));
       FAILIF (NULL == bt->sender_account_details);
       FAILIF (NULL == bt->transfer_details);
