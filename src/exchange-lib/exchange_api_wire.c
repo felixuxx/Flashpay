@@ -95,7 +95,8 @@ verify_wire_method_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
   const struct TALER_EXCHANGE_Keys *key_state;
   struct TALER_WIRE_Plugin *plugin;
   char *lib_name;
-  int ret;
+  char *emsg;
+  enum TALER_ErrorCode ec;
 
   key_state = TALER_EXCHANGE_get_keys (wh->exchange);
   (void) GNUNET_asprintf (&lib_name,
@@ -112,13 +113,15 @@ verify_wire_method_signature_ok (const struct TALER_EXCHANGE_WireHandle *wh,
     return GNUNET_NO;
   }
   plugin->library_name = lib_name;
-  ret = plugin->wire_validate (plugin->cls,
-                               json,
-                               &key_state->master_pub);
+  ec = plugin->wire_validate (plugin->cls,
+                              json,
+                              &key_state->master_pub,
+                              &emsg);
+  GNUNET_free_non_null (emsg);
   GNUNET_PLUGIN_unload (lib_name,
                         plugin);
   GNUNET_free (lib_name);
-  return (GNUNET_YES == ret) ? GNUNET_OK : GNUNET_SYSERR;
+  return (TALER_EC_NONE == ec) ? GNUNET_OK : GNUNET_SYSERR;
 }
 
 

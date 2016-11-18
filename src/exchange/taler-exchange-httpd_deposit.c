@@ -106,6 +106,8 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
   json_t *json;
   int res;
   json_t *wire;
+  char *emsg;
+  enum TALER_ErrorCode ec;
   struct TALER_EXCHANGEDB_Deposit deposit;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   struct TEH_KS_StateHandle *key_state;
@@ -156,14 +158,17 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
                                            "refund_deadline");
   }
 
-  if (GNUNET_YES !=
-      TEH_json_validate_wireformat (wire,
-                                    GNUNET_NO))
+  if (TALER_EC_NONE !=
+      (ec = TEH_json_validate_wireformat (wire,
+                                          GNUNET_NO,
+                                          &emsg)))
   {
     GNUNET_JSON_parse_free (spec);
-    return TEH_RESPONSE_reply_arg_unknown (connection,
-					   TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT,
-                                           "wire");
+    res = TEH_RESPONSE_reply_external_error (connection,
+                                             ec,
+                                             emsg);
+    GNUNET_free (emsg);
+    return res;
   }
   if (GNUNET_OK !=
       TALER_JSON_hash (wire,
@@ -223,7 +228,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
 					      TALER_EC_DEPOSIT_NEGATIVE_VALUE_AFTER_FEE,
                                               "deposited amount smaller than depositing fee");
   }
-  
+
   res = verify_and_execute_deposit (connection,
                                     &deposit);
   GNUNET_JSON_parse_free (spec);

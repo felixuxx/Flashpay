@@ -98,15 +98,19 @@ template_get_wire_details (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param wire the JSON wire format object
  * @param master_pub public key of the exchange to verify against
- * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
+ * @param[OUT] emsg set to an error message, unless we return #TALER_EC_NONE;
+ *             error message must be freed by the caller using GNUNET_free()
+ * @return #TALER_EC_NONE if correctly formatted
  */
-static int
+static enum TALER_ErrorCode
 template_wire_validate (void *cls,
                         const json_t *wire,
-                        const struct TALER_MasterPublicKeyP *master_pub)
+                        const struct TALER_MasterPublicKeyP *master_pub,
+                        char **emsg)
 {
-  GNUNET_break (0);
-  return GNUNET_SYSERR;
+  GNUNET_asprintf (emsg,
+                   "Not implemented");
+  return TALER_EC_NOT_IMPLEMENTED;
 }
 
 

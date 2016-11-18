@@ -112,6 +112,7 @@ run_test (const struct TestBlock *test,
   json_t *lwire;
   struct TALER_Amount in;
   struct TALER_Amount expect;
+  char *emsg;
 
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &salt,
@@ -134,12 +135,14 @@ run_test (const struct TestBlock *test,
                        "sig",
                        GNUNET_JSON_from_data (&sig,
                                               sizeof (sig)));
-  if (GNUNET_OK !=
+  if (TALER_EC_NONE !=
       plugin->wire_validate (plugin->cls,
                              wire,
-                             &pub_key))
+                             &pub_key,
+                             &emsg))
   {
     GNUNET_break (0);
+    GNUNET_free (emsg);
     return GNUNET_SYSERR;
   }
   /* load wire details from file */
@@ -151,12 +154,14 @@ run_test (const struct TestBlock *test,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
+  if (TALER_EC_NONE !=
       plugin->wire_validate (plugin->cls,
                              lwire,
-                             &pub_key))
+                             &pub_key,
+                             &emsg))
   {
     GNUNET_break (0);
+    GNUNET_free (emsg);
     json_decref (lwire);
     return GNUNET_SYSERR;
   }

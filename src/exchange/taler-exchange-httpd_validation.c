@@ -144,23 +144,27 @@ TEH_VALIDATION_done ()
  *
  * @param wire the JSON wire format object
  * @param ours #GNUNET_YES if the signature should match our master key
- * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
+ * @param[OUT] emsg set to error message if we return an error code
+ * @return #TALER_EC_NONE if correctly formatted; otherwise error code
  */
-int
+enum TALER_ErrorCode
 TEH_json_validate_wireformat (const json_t *wire,
-                              int ours)
+                              int ours,
+                              char **emsg)
 {
   const char *stype;
   json_error_t error;
   struct Plugin *p;
 
+  *emsg = NULL;
   if (0 != json_unpack_ex ((json_t *) wire,
                            &error, 0,
                            "{s:s}",
                            "type", &stype))
   {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
+    GNUNET_asprintf (emsg,
+                     "No `type' specified in the wire details\n");
+    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_TYPE_MISSING;
   }
   for (p=wire_head; NULL != p; p = p->next)
     if (0 == strcasecmp (p->type,
@@ -169,8 +173,12 @@ TEH_json_validate_wireformat (const json_t *wire,
                                        wire,
                                        (GNUNET_YES == ours)
                                        ? &TEH_master_public_key
-                                       : NULL);
-  return GNUNET_NO;
+                                       : NULL,
+                                       emsg);
+  GNUNET_asprintf (emsg,
+                   "Wire format type `%s' is not supported by this exchange\n",
+                   stype);
+  return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_TYPE_UNSUPPORTED;
 }
 
 
@@ -190,6 +198,8 @@ TEH_VALIDATION_get_wire_methods (const char *prefix)
   struct Plugin *p;
   struct TALER_WIRE_Plugin *plugin;
   char *account_name;
+  char *emsg;
+  enum TALER_ErrorCode ec;
 
   methods = json_object ();
   for (p=wire_head;NULL != p;p = p->next)
@@ -202,13 +212,17 @@ TEH_VALIDATION_get_wire_methods (const char *prefix)
     method = plugin->get_wire_details (plugin->cls,
                                        cfg,
                                        account_name);
-    if (GNUNET_YES !=
-        TEH_json_validate_wireformat (method,
-                                      GNUNET_YES))
+    if (TALER_EC_NONE !=
+        (ec = TEH_json_validate_wireformat (method,
+                                            GNUNET_YES,
+                                            &emsg)))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Account details for method `%s' ill-formed. Disabling method\n",
-                  p->type);
+                  "Disabling method `%s' as details are ill-formed: %s (%d)\n",
+                  p->type,
+                  emsg,
+                  ec);
+      GNUNET_free (emsg);
       json_decref (method);
       method = NULL;
     }

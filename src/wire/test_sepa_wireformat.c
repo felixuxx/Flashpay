@@ -67,6 +67,7 @@ main(int argc,
      const char *const argv[])
 {
   json_t *wire;
+  char *emsg;
   json_error_t error;
   int ret;
   struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -85,28 +86,35 @@ main(int argc,
   GNUNET_assert (NULL != plugin);
   (void) memset(&error, 0, sizeof(error));
   GNUNET_assert (NULL != (wire = json_loads (unsupported_wire_str, 0, NULL)));
-  GNUNET_assert (GNUNET_YES != plugin->wire_validate (NULL,
-                                                      wire,
-                                                      NULL));
+  GNUNET_assert (TALER_EC_NONE != plugin->wire_validate (NULL,
+                                                         wire,
+                                                         NULL,
+                                                         &emsg));
+  GNUNET_free (emsg);
   json_decref (wire);
   GNUNET_assert (NULL != (wire = json_loads (invalid_wire_str, 0, NULL)));
-  GNUNET_assert (GNUNET_NO == plugin->wire_validate (NULL,
-                                                     wire,
-                                                     NULL));
+  GNUNET_assert (TALER_EC_NONE != plugin->wire_validate (NULL,
+                                                         wire,
+                                                         NULL,
+                                                         &emsg));
+  GNUNET_free (emsg);
   json_decref (wire);
   GNUNET_assert (NULL != (wire = json_loads (invalid_wire_str2, 0, NULL)));
-  GNUNET_assert (GNUNET_NO == plugin->wire_validate (NULL,
-                                                     wire,
-                                                     NULL));
+  GNUNET_assert (TALER_EC_NONE != plugin->wire_validate (NULL,
+                                                         wire,
+                                                         NULL,
+                                                         &emsg));
+  GNUNET_free (emsg);
   json_decref (wire);
   GNUNET_assert (NULL != (wire = json_loads (valid_wire_str, 0, &error)));
   ret = plugin->wire_validate (NULL,
                                wire,
-                               NULL);
+                               NULL,
+                               &emsg);
   json_decref (wire);
   TALER_WIRE_plugin_unload (plugin);
   GNUNET_CONFIGURATION_destroy (cfg);
-  if (GNUNET_NO == ret)
+  if (TALER_EC_NONE != ret)
     return 1;
   return 0;
 }

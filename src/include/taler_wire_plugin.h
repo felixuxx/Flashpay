@@ -24,6 +24,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include "taler_util.h"
+#include "taler_error_codes.h"
 
 
 /**
@@ -137,12 +138,15 @@ struct TALER_WIRE_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param wire the JSON wire format object
    * @param master_pub public key of the exchange to verify against
-   * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
+   * @param[OUT] emsg set to an error message, unless we return #TALER_EC_NONE;
+   *             error message must be freed by the caller using GNUNET_free()
+   * @return #TALER_EC_NONE if correctly formatted
    */
-  int
+  enum TALER_ErrorCode
   (*wire_validate) (void *cls,
                     const json_t *wire,
-                    const struct TALER_MasterPublicKeyP *master_pub);
+                    const struct TALER_MasterPublicKeyP *master_pub,
+                    char **emsg);
 
 
   /**

@@ -213,12 +213,15 @@ compute_purpose (uint64_t account,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param wire the JSON wire format object
  * @param master_pub public key of the exchange to verify against
- * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
+ * @param[OUT] emsg set to an error message, unless we return #TALER_EC_NONE;
+ *             error message must be freed by the caller using GNUNET_free()
+ * @return #TALER_EC_NONE if correctly formatted
  */
-static int
+static enum TALER_ErrorCode
 test_wire_validate (void *cls,
                     const json_t *wire,
-                    const struct TALER_MasterPublicKeyP *master_pub)
+                    const struct TALER_MasterPublicKeyP *master_pub,
+                    char **emsg)
 {
   struct TestClosure *tc = cls;
   json_error_t error;
@@ -228,6 +231,7 @@ test_wire_validate (void *cls,
   struct TALER_MasterWireDetailsPS wsd;
   struct TALER_MasterSignatureP sig;
 
+  *emsg = NULL;
   if (0 !=
       json_unpack_ex ((json_t *) wire,
 		      &error,
@@ -236,30 +240,41 @@ test_wire_validate (void *cls,
 		      "account_number", &account_no,
                       "bank_uri", &bank_uri))
   {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
+    char *dump;
+
+    dump = json_dumps (wire, 0);
+    GNUNET_asprintf (emsg,
+                     "JSON parsing failed at %s:%u: %s (%s): %s\n",
+                     __FILE__, __LINE__,
+                     error.text,
+                     error.source,
+                     dump);
+    free (dump);
+    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_JSON;
   }
   if ( (account_no < 0) ||
        (account_no > (1LL << 53)) )
   {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
+    GNUNET_asprintf (emsg,
+                     "Account number %llu outside of permitted range\n",
+                     account_no);
+    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_ACCOUNT_NUMBER;
   }
   if ( (NULL != tc->bank_uri) &&
        (0 != strcmp (bank_uri,
                      tc->bank_uri)) )
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Wire specifies bank URI %s, but this exchange only supports %s\n",
-                bank_uri,
-                tc->bank_uri);
-    return GNUNET_NO;
+    GNUNET_asprintf (emsg,
+                     "Wire specifies bank URI `%s', but this exchange only supports `%s'\n",
+                     bank_uri,
+                     tc->bank_uri);
+    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_BANK;
   }
   if (NULL == master_pub)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Skipping signature check as master public key not given\n");
-    return GNUNET_OK;
+    return TALER_EC_NONE;
   }
   if (0 !=
       json_unpack_ex ((json_t *) wire,
@@ -268,9 +283,9 @@ test_wire_validate (void *cls,
 		      "{s:s}",
                       "sig", &sig_s))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Signature check required, but signature is missing\n");
-    return GNUNET_NO;
+    GNUNET_asprintf (emsg,
+                     "Signature check required, but signature is missing\n");
+    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_SIGNATURE;
   }
   compute_purpose (account_no,
                    bank_uri,
@@ -290,10 +305,12 @@ test_wire_validate (void *cls,
                                   &sig.eddsa_signature,
                                   &master_pub->eddsa_pub))
   {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
+    GNUNET_asprintf (emsg,
+                     "Signature using public key `%s' invalid\n",
+                     TALER_B2S (master_pub));
+    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_SIGNATURE;
   }
-  return GNUNET_YES;
+  return TALER_EC_NONE;
 }
 
 
@@ -315,6 +332,7 @@ test_get_wire_details (void *cls,
   char *test_wire_file;
   json_error_t err;
   json_t *ret;
+  char *emsg;
 
   /* Fetch reply */
   if (GNUNET_OK !=
@@ -342,13 +360,17 @@ test_get_wire_details (void *cls,
     GNUNET_free (test_wire_file);
     return NULL;
   }
-  if (GNUNET_YES != test_wire_validate (tc,
-                                        ret,
-                                        NULL))
+  if (TALER_EC_NONE !=
+      test_wire_validate (tc,
+                          ret,
+                          NULL,
+                          &emsg))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to validate TEST wire data in %s\n",
-                test_wire_file);
+                "Failed to validate TEST wire data in %s: %s\n",
+                test_wire_file,
+                emsg);
+    GNUNET_free (emsg);
     GNUNET_free (test_wire_file);
     json_decref (ret);
     return NULL;
@@ -478,13 +500,16 @@ test_prepare_wire_transfer (void *cls,
 {
   struct TestClosure *tc = cls;
   struct TALER_WIRE_PrepareHandle *pth;
+  char *emsg;
 
-  if (GNUNET_YES !=
+  if (TALER_EC_NONE !=
       test_wire_validate (tc,
                           wire,
-                          NULL))
+                          NULL,
+                          &emsg))
   {
     GNUNET_break_op (0);
+    GNUNET_free (emsg);
     return NULL;
   }
   pth = GNUNET_new (struct TALER_WIRE_PrepareHandle);
@@ -624,6 +649,7 @@ test_execute_wire_transfer (void *cls,
   struct TALER_Amount amount;
   json_int_t account_no;
   struct BufFormatP bf;
+  char *emsg;
 
   if (NULL == tc->ctx)
   {
@@ -650,10 +676,11 @@ test_execute_wire_transfer (void *cls,
     GNUNET_break (0);
     return NULL;
   }
-  GNUNET_assert (GNUNET_YES ==
+  GNUNET_assert (TALER_EC_NONE ==
                  test_wire_validate (tc,
                                      wire,
-                                     NULL));
+                                     NULL,
+                                     &emsg));
   if (0 !=
       json_unpack_ex (wire,
 		      &error,

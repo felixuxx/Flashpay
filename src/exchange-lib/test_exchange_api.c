@@ -1596,6 +1596,7 @@ deposit_wtid_cb (void *cls,
     }
     break;
   default:
+    GNUNET_break (0);
     break;
   }
   next_command (is);
@@ -2427,6 +2428,10 @@ do_shutdown (void *cls)
   struct Command *cmd;
   unsigned int i;
 
+  fprintf (stderr,
+           "Executing shutdown at `%s'\n",
+           is->commands[is->ip].label);
+
   for (i=0;OC_END != (cmd = &is->commands[i])->oc;i++)
   {
     switch (cmd->oc)
@@ -3084,6 +3089,9 @@ main (int argc,
   /* These might get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
+  GNUNET_log_setup ("test-exchange-api",
+                    "INFO",
+                    NULL);
   proc = GNUNET_OS_start_process (GNUNET_NO,
                                   GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,
@@ -3145,6 +3153,7 @@ main (int argc,
   result = GNUNET_SYSERR;
   sigpipe = GNUNET_DISK_pipe (GNUNET_NO, GNUNET_NO, GNUNET_NO, GNUNET_NO);
   GNUNET_assert (NULL != sigpipe);
+  sleep (30);
   shc_chld = GNUNET_SIGNAL_handler_install (GNUNET_SIGCHLD,
                                             &sighandler_child_death);
   GNUNET_SCHEDULER_run (&run, NULL);

@@ -451,12 +451,15 @@ verify_wire_sepa_signature_ok (const json_t *json,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param wire the JSON wire format object
  * @param master_pub public key of the exchange to verify against
- * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
+ * @param[OUT] emsg set to an error message, unless we return #TALER_EC_NONE;
+ *             error message must be freed by the caller using GNUNET_free()
+ * @return #TALER_EC_NONE if correctly formatted
  */
-static int
+static enum TALER_ErrorCode
 sepa_wire_validate (void *cls,
                     const json_t *wire,
-                    const struct TALER_MasterPublicKeyP *master_pub)
+                    const struct TALER_MasterPublicKeyP *master_pub,
+                    char **emsg)
 {
   json_error_t error;
   const char *type;
@@ -464,6 +467,7 @@ sepa_wire_validate (void *cls,
   const char *name;
   const char *bic;
 
+  *emsg = NULL;
   if (0 != json_unpack_ex
       ((json_t *) wire,
        &error, 0,
@@ -478,39 +482,44 @@ sepa_wire_validate (void *cls,
        "name", &name,
        "bic", &bic))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "JSON parsing failed at %s:%u: %s (%s)\n",
-                __FILE__, __LINE__,
-                error.text, error.source);
-    json_dumpf (wire, stderr, 0);
-    fprintf (stderr, "\n");
-    return GNUNET_SYSERR;
+    char *dump;
+
+    dump = json_dumps (wire, 0);
+    GNUNET_asprintf (emsg,
+                     "JSON parsing failed at %s:%u: %s (%s): %s\n",
+                     __FILE__, __LINE__,
+                     error.text,
+                     error.source,
+                     dump);
+    free (dump);
+    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_JSON;
   }
   if (0 != strcasecmp (type,
                        "sepa"))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-		"Transfer type `%s' invalid\n",
-		type);
-    return GNUNET_SYSERR;
+    GNUNET_asprintf (emsg,
+                     "Transfer type `%s' invalid for SEPA wire plugin\n",
+                     type);
+    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_TYPE;
   }
   if (1 != validate_iban (iban))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-		"IBAN `%s' invalid\n",
-		iban);
-    return GNUNET_NO;
+    GNUNET_asprintf (emsg,
+                     "IBAN `%s' invalid\n",
+                     iban);
+    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_ACCOUNT_NUMBER;
   }
   /* FIXME: don't parse again, integrate properly... */
   if (GNUNET_OK !=
       verify_wire_sepa_signature_ok (wire,
                                      master_pub))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Signature invalid\n");
-    return GNUNET_NO;
+    GNUNET_asprintf (emsg,
+                     "Signature using public key `%s' invalid\n",
+                     TALER_B2S (master_pub));
+    return TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_SIGNATURE;
   }
-  return GNUNET_YES;
+  return TALER_EC_NONE;
 }
 
 
@@ -531,6 +540,7 @@ sepa_get_wire_details (void *cls,
   char *sepa_wire_file;
   json_error_t err;
   json_t *ret;
+  char *emsg;
 
   /* Fetch reply */
   if (GNUNET_OK !=
@@ -558,13 +568,17 @@ sepa_get_wire_details (void *cls,
     GNUNET_free (sepa_wire_file);
     return NULL;
   }
-  if (GNUNET_YES != sepa_wire_validate (cls,
-                                        ret,
-                                        NULL))
-  {
+  if (TALER_EC_NONE !=
+      sepa_wire_validate (cls,
+                          ret,
+                          NULL,
+                          &emsg))
+    {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to validate SEPA data in %s\n",
-                sepa_wire_file);
+                "Failed to validate SEPA data in %s: %s\n",
+                sepa_wire_file,
+                emsg);
+    GNUNET_free (emsg);
     GNUNET_free (sepa_wire_file);
     json_decref (ret);
     return NULL;

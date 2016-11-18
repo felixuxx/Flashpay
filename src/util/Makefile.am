@@ -9,7 +9,6 @@ endif
 
 pkgcfgdir = $(prefix)/share/taler/config.d/
 
-
 pkgcfg_DATA = \
   paths.conf
 

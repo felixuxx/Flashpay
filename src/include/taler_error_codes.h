@@ -48,6 +48,10 @@ enum TALER_ErrorCode
    */
   TALER_EC_INVALID_RESPONSE = 2,
 
+  /**
+   * Generic implementation error: this function was not yet implemented.
+   */
+  TALER_EC_NOT_IMPLEMENTED = 3,
 
   /* ********** generic error codes ************* */
 
@@ -324,10 +328,11 @@ enum TALER_ErrorCode
 
   /**
    * The exchange does not recognize the validity of or support the
-   * given wire (bank account) address.  This response is provided
+   * given wire format type.
+   * This response is provided
    * with HTTP status code MHD_HTTP_BAD_REQUEST.
    */
-  TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT = 1209,
+  TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_TYPE = 1209,
 
   /**
    * The exchange failed to canonicalize and hash the given wire format.
@@ -352,6 +357,46 @@ enum TALER_ErrorCode
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_DEPOSIT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS = 1212,
+
+  /**
+   * The exchange detected that the given account number
+   * is invalid for the selected wire format type.
+   * This response is provided
+   * with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_ACCOUNT_NUMBER = 1213,
+
+  /**
+   * The signature over the given wire details is invalid.
+   * This response is provided
+   * with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_SIGNATURE = 1214,
+
+  /**
+   * The bank specified in the wire transfer format is not supported
+   * by this exchange.
+   * This response is provided
+   * with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_BANK = 1215,
+
+  /**
+   * No wire format type was specified in the JSON wire format
+   * details.
+   * This response is provided
+   * with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_TYPE_MISSING = 1216,
+
+  /**
+   * The given wire format type is not supported by this
+   * exchange.
+   * This response is provided
+   * with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_TYPE_UNSUPPORTED = 1217,
+
 
   /**
    * The respective coin did not have sufficient residual value

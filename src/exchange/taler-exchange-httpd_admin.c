@@ -50,6 +50,8 @@ TEH_ADMIN_handler_admin_add_incoming (struct TEH_RequestHandler *rh,
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_Amount amount;
   struct GNUNET_TIME_Absolute at;
+  enum TALER_ErrorCode ec;
+  char *emsg;
   json_t *sender_account_details;
   json_t *transfer_details;
   json_t *root;
@@ -82,15 +84,17 @@ TEH_ADMIN_handler_admin_add_incoming (struct TEH_RequestHandler *rh,
     json_decref (root);
     return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
-  if (GNUNET_YES !=
-      TEH_json_validate_wireformat (sender_account_details,
-                                    GNUNET_NO))
+  if (TALER_EC_NONE !=
+      (ec = TEH_json_validate_wireformat (sender_account_details,
+                                          GNUNET_NO,
+                                          &emsg)))
   {
-    GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
-    return TEH_RESPONSE_reply_arg_unknown (connection,
-					   TALER_EC_ADMIN_ADD_INCOMING_WIREFORMAT_UNSUPPORTED,
-                                           "sender_account_details");
+    res = TEH_RESPONSE_reply_external_error (connection,
+                                             ec,
+                                             emsg);
+    GNUNET_free (emsg);
+    return res;
   }
   if (0 != strcasecmp (amount.currency,
                        TEH_exchange_currency_string))
