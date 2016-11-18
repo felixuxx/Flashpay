@@ -6,5 +6,7 @@ if ! type gnunet-config >/dev/null; then
 fi
 
 # FIXME: not very portable ...
-export LD_PRELOAD=@libdir@/libtalerutil.so
+# FIXME: should use "libdir" instead of prefix/lib, but somehow
+# the recursive expansion does not work ;-(.
+export LD_PRELOAD=@prefix@/lib/libtalerutil.so
 exec gnunet-config "$@"
