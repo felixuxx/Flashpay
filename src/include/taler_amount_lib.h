@@ -52,14 +52,14 @@ extern "C"
  * Note that we need sub-cent precision here as transaction fees might
  * be that low, and as we want to support microdonations.
  */
-#define TALER_AMOUNT_FRAC_BASE 1000000
+#define TALER_AMOUNT_FRAC_BASE 100000000
 
 /**
  * @brief How many digits behind the comma are required to represent the
  * fractional value in human readable decimal format?  Must match
  * lg(#TALER_AMOUNT_FRAC_BASE).
  */
-#define TALER_AMOUNT_FRAC_LEN 6
+#define TALER_AMOUNT_FRAC_LEN 8
 
 
 GNUNET_NETWORK_STRUCT_BEGIN
