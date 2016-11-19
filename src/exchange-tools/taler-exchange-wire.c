@@ -40,7 +40,7 @@ static char *json_in;
 /**
  * Which wire method is this for?
  */
-static char *method;
+static const char *method;
 
 /**
  * Where to write the result.
@@ -108,13 +108,6 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  if (NULL == method)
-  {
-    fprintf (stderr,
-             "Required -t argument missing\n");
-    global_ret = 1;
-    return;
-  }
   j = json_loads (json_in,
                   JSON_REJECT_DUPLICATES,
                   &err);
@@ -127,9 +120,24 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  json_object_set_new (j,
-                       "type",
-                       json_string (method));
+  if (NULL == method)
+  {
+    json_t *test;
+    test = json_object_get(j, "type");
+    if (NULL == test || (NULL == (method = json_string_value (test))))
+    {
+      fprintf (stderr,
+               "Required -t argument missing\n");
+      global_ret = 1;
+      return;
+    }
+  }
+  else
+  {
+    json_object_set_new (j,
+                         "type",
+                         json_string (method));
+  }
   key.eddsa_priv = *eddsa_priv;
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &salt,
