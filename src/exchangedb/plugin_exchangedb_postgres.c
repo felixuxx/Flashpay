@@ -179,7 +179,8 @@ connect_to_postgres (struct PostgresClosure *pc)
   if (CONNECTION_OK !=
       PQstatus (conn))
   {
-    TALER_LOG_ERROR ("Database connection failed: %s\n",
+    TALER_LOG_ERROR ("Database connection to '%s' failed: %s\n",
+                     pc->connection_cfg_str,
                      PQerrorMessage (conn));
     return NULL;
   }
