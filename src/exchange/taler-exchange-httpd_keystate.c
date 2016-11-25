@@ -673,9 +673,14 @@ TEH_KS_acquire_ (const char *location)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Loading keys from `%s'\n",
                 TEH_exchange_directory);
-    TALER_EXCHANGEDB_denomination_keys_iterate (TEH_exchange_directory,
-                                                &reload_keys_denom_iter,
-                                                key_state);
+    if (-1 == TALER_EXCHANGEDB_denomination_keys_iterate (TEH_exchange_directory,
+                                                          &reload_keys_denom_iter,
+                                                          key_state))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Can't load denomination keys.\n");
+      GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
+      return NULL;
+    }
     TALER_EXCHANGEDB_signing_keys_iterate (TEH_exchange_directory,
                                            &reload_keys_sign_iter,
                                            key_state);
@@ -689,6 +694,14 @@ TEH_KS_acquire_ (const char *location)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Have no signing key. Bad configuration.\n");
+      GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
+      return NULL;
+    }
+
+    if (0 == GNUNET_CONTAINER_multihashmap_size (key_state->denomkey_map))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Have no denomination keys. Bad configuration.\n");
       GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
       return NULL;
     }
