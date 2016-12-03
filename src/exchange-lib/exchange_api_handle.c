@@ -840,8 +840,8 @@ parse_date_string (const char *date,
       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"  };
   struct tm now;
   time_t t;
-  char day[3];
-  char mon[3];
+  char day[4];
+  char mon[4];
   unsigned int i;
   unsigned int mday;
   unsigned int year;
