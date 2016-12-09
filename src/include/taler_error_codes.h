@@ -1136,7 +1136,7 @@ enum TALER_ErrorCode
    * The hash provided in the request of /map/in does not match
    * the contract sent alongside in the same request.
    */
-  TALER_EC_MAP_IN_UNMATCHED_HASH = 2500
+  TALER_EC_MAP_IN_UNMATCHED_HASH = 2500,
 
   /* ********** /test API error codes ************* */
 
