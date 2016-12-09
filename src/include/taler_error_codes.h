@@ -993,7 +993,6 @@ enum TALER_ErrorCode
    */
   TALER_EC_HISTORY_DB_FETCH_ERROR = 2201,
 
-
   /**
    * We failed to contact the exchange for the /track/transaction
    * request.  This response is provided with HTTP status code
@@ -1132,6 +1131,12 @@ enum TALER_ErrorCode
    * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_TRACK_TRANSFER_CONFLICTING_REPORTS = 2408,
+
+  /**
+   * The hash provided in the request of /map/in does not match
+   * the contract sent alongside in the same request.
+   */
+  TALER_EC_MAP_IN_UNMATCHED_HASH = 2500
 
   /* ********** /test API error codes ************* */
 
