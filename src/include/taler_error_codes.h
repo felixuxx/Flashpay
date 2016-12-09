@@ -1127,8 +1127,7 @@ enum TALER_ErrorCode
   /**
    * The exchange gave conflicting information about a coin which has
    * been wire transferred.
-   * The response is
-   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   * The response is provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_TRACK_TRANSFER_CONFLICTING_REPORTS = 2408,
 
@@ -1137,6 +1136,13 @@ enum TALER_ErrorCode
    * the contract sent alongside in the same request.
    */
   TALER_EC_MAP_IN_UNMATCHED_HASH = 2500,
+
+  /**
+   * The backend encountered an error while trying to store the
+   * pair <contract, h_contract> into the database. 
+   * The response is provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_MAP_IN_STORE_DB_ERROR = 2501,
 
   /* ********** /test API error codes ************* */
 
