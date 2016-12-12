@@ -1144,6 +1144,19 @@ enum TALER_ErrorCode
    */
   TALER_EC_MAP_IN_STORE_DB_ERROR = 2501,
 
+  /**
+   * The backend encountered an error while trying to retrieve the
+   * contract from database.  Likely to be an internal error.
+   */
+  TALER_EC_MAP_OUT_GET_FROM_DB_ERROR = 2502,
+
+
+  /**
+   * The backend encountered an error while trying to retrieve the
+   * contract from database.  Likely to be an internal error.
+   */
+  TALER_EC_MAP_OUT_CONTRACT_UNKNOWN = 2503,
+
   /* ********** /test API error codes ************* */
 
   /**
