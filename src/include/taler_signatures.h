@@ -1034,6 +1034,9 @@ struct TALER_WireDepositDataPS
  * Some fields are lifted from the contract and signed over in addition to the
  * contract hash.  This redundancy allows these  pieces of information can be
  * verified without knowing the whole content of the contract.
+ * The mechant backend's "/pay" handler, for example, can verify that a deposit
+ * permission relates to a valid contract this way without having to have the
+ * full contract.
  */
 struct TALER_ContractPS
 {
