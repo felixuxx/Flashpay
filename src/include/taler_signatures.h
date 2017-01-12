@@ -1030,6 +1030,10 @@ struct TALER_WireDepositDataPS
 
 /**
  * The contract sent by the merchant to the wallet.
+ *
+ * Some fields are lifted from the contract and signed over in addition to the
+ * contract hash.  This redundancy allows these  pieces of information can be
+ * verified without knowing the whole content of the contract.
  */
 struct TALER_ContractPS
 {
