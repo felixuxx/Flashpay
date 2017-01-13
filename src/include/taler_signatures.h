@@ -1030,13 +1030,6 @@ struct TALER_WireDepositDataPS
 
 /**
  * The contract sent by the merchant to the wallet.
- *
- * Some fields are lifted from the contract and signed over in addition to the
- * contract hash.  This redundancy allows these  pieces of information can be
- * verified without knowing the whole content of the contract.
- * The mechant backend's "/pay" handler, for example, can verify that a deposit
- * permission relates to a valid contract this way without having to have the
- * full contract.
  */
 struct TALER_ContractPS
 {
@@ -1047,42 +1040,10 @@ struct TALER_ContractPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Merchant-generated transaction ID to detect duplicate
-   * transactions, in big endian.  The merchant must communicate a
-   * merchant-unique ID to the customer for each transaction.  Note
-   * that different coins that are part of the same transaction can
-   * use the same transaction ID.  The transaction ID is useful for
-   * later disputes, and the merchant's contract offer (@e h_contract)
-   * with the customer should include the offer's term and transaction
-   * ID signed with a key from the merchant.  This field must match
-   * the corresponding field in the JSON contract.
-   */
-  uint64_t transaction_id GNUNET_PACKED;
-
-  /**
-   * The total amount to be paid to the merchant. Note that if deposit
-   * fees are higher than @e max_fee, the actual total must be higher
-   * to cover the additional fees.  This field must match the
-   * corresponding field in the JSON contract.
-   */
-  struct TALER_AmountNBO total_amount;
-
-  /**
-   * The maximum fee the merchant is willing to cover.  This field
-   * must match the corresponding field in the JSON contract.
-   */
-  struct TALER_AmountNBO max_fee;
-
-  /**
    * Hash of the JSON contract in UTF-8 including 0-termination,
    * using JSON_COMPACT | JSON_SORT_KEYS
    */
   struct GNUNET_HashCode h_contract;
-
-  /**
-   * Key of the merchant who is signing this contract
-   */
-  struct TALER_MerchantPublicKeyP merchant_pub;
 };
 
 /**
