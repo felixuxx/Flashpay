@@ -27,7 +27,7 @@ unset XDG_CONFIG_HOME
 # Setup keys.
 taler-exchange-keyup -c test_taler_exchange_httpd.conf
 # Run Exchange HTTPD (in background)
-taler-exchange-httpd -c test_taler_exchange_httpd.conf &
+taler-exchange-httpd -c test_taler_exchange_httpd.conf -i &
 # Give HTTP time to start
 sleep 5
 # Finally run test...

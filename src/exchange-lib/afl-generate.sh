@@ -31,4 +31,4 @@
 #
 # Must be run from this directory.
 #
-$AFL_HOME/afl-fuzz -i baseline/ -m 250 -o afl-tests/ -f /tmp/afl-input taler-exchange-httpd -f /tmp/afl-input -d test-exchange-home/ -C
+$AFL_HOME/afl-fuzz -i baseline/ -m 250 -o afl-tests/ -f /tmp/afl-input taler-exchange-httpd -i -f /tmp/afl-input -d test-exchange-home/ -C

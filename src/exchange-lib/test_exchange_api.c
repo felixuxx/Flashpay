@@ -3139,6 +3139,7 @@ main (int argc,
                                        "taler-exchange-httpd",
                                        "taler-exchange-httpd",
                                        "-c", "test_exchange_api.conf",
+                                       "-i",
                                        NULL);
   /* give child time to start and bind against the socket */
   fprintf (stderr,

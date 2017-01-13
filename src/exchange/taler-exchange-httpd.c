@@ -101,6 +101,11 @@ static struct MHD_Daemon *mhd_admin;
 static int no_admin;
 
 /**
+ * Initialize the database by creating tables and indices.
+ */
+static int init_db;
+
+/**
  * Port to run the daemon on.
  */
 static uint16_t serve_port;
@@ -656,13 +661,10 @@ exchange_serve_process_config ()
     TEH_VALIDATION_done ();
     return GNUNET_SYSERR;
   }
-  if (GNUNET_YES ==
-      GNUNET_CONFIGURATION_get_value_yesno (cfg,
-                                            "exchange",
-                                            "TESTRUN"))
+  if (0 != init_db)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Running in TEST mode! Database contents will not persist!\n");
+                "Ensuring that tables and indices are created!\n");
     TEH_plugin->create_tables (TEH_plugin->cls);
   }
 
@@ -938,6 +940,9 @@ main (int argc,
     {'D', "disable-admin", NULL,
      "do not run the /admin-HTTP server", 0,
      &GNUNET_GETOPT_set_one, &no_admin},
+    {'i', "init-db", NULL,
+     "create database tables and indicies if necessary", 0,
+     &GNUNET_GETOPT_set_one, &init_db},
     {'t', "timeout", "SECONDS",
      "after how long do connections timeout by default (in seconds)", 1,
      &GNUNET_GETOPT_set_uint, &connection_timeout},
