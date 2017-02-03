@@ -1031,7 +1031,7 @@ struct TALER_WireDepositDataPS
 /**
  * The contract sent by the merchant to the wallet.
  */
-struct TALER_ProposalDatatPS
+struct TALER_ProposalDataPS
 {
   /**
    * Purpose header for the signature over the proposal data
