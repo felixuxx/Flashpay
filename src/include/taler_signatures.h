@@ -1031,11 +1031,11 @@ struct TALER_WireDepositDataPS
 /**
  * The contract sent by the merchant to the wallet.
  */
-struct TALER_ContractPS
+struct TALER_ProposalDatatPS
 {
   /**
-   * Purpose header for the signature over the contract with
-   * purpose #TALER_SIGNATURE_MERCHANT_CONTRACT.
+   * Purpose header for the signature over the proposal data
+   * with purpose #TALER_SIGNATURE_MERCHANT_CONTRACT.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -1043,7 +1043,7 @@ struct TALER_ContractPS
    * Hash of the JSON contract in UTF-8 including 0-termination,
    * using JSON_COMPACT | JSON_SORT_KEYS
    */
-  struct GNUNET_HashCode h_contract;
+  struct GNUNET_HashCode h_proposal_data;
 };
 
 /**

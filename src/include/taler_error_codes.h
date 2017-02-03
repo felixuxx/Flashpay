@@ -1139,23 +1139,22 @@ enum TALER_ErrorCode
 
   /**
    * The backend encountered an error while trying to store the
-   * pair <contract, h_contract> into the database. 
+   * pair <proposal_data, h_transaction_id> into the database. 
    * The response is provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_MAP_IN_STORE_DB_ERROR = 2501,
+  TALER_EC_PROPOSAL_STORE_DB_ERROR = 2501,
 
   /**
    * The backend encountered an error while trying to retrieve the
-   * contract from database.  Likely to be an internal error.
+   * proposal data from database.  Likely to be an internal error.
    */
-  TALER_EC_MAP_OUT_GET_FROM_DB_ERROR = 2502,
+  TALER_EC_PROPOSAL_LOOKUP_DB_ERROR = 2502,
 
 
   /**
-   * The backend encountered an error while trying to retrieve the
-   * contract from database.  Likely to be an internal error.
+   * The proposal being looked up is not found on this merchant.
    */
-  TALER_EC_MAP_OUT_CONTRACT_UNKNOWN = 2503,
+  TALER_EC_PROPOSAL_LOOKUP_NOT_FOUND = 2503,
 
   /* ********** /test API error codes ************* */
 
