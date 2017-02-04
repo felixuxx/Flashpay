@@ -1061,9 +1061,9 @@ struct PaymentResponsePS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Hash of the contract associated with this confirmation
+   * Hash of the proposal data associated with this confirmation
    */
-  struct GNUNET_HashCode h_contract;
+  struct GNUNET_HashCode h_proposal_data;
 };
 
 
