@@ -513,7 +513,7 @@ check_transfer_data (void *cls,
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
  * @param transaction_id unique transaction ID chosen by the merchant
- * @param h_contract hash of the contract between merchant and customer
+ * @param h_proposal_data hash of the proposal data known to merchant and customer
  * @param refund_deadline by which the merchant adviced that he might want
  *        to get a refund
  * @param wire_deadline by which the merchant adviced that he would like the
@@ -786,7 +786,7 @@ cb_wt_never (void *cls,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
              const struct GNUNET_HashCode *h_wire,
              struct GNUNET_TIME_Absolute exec_time,
-             const struct GNUNET_HashCode *h_contract,
+             const struct GNUNET_HashCode *h_proposal_data,
              uint64_t transaction_id,
              const struct TALER_CoinSpendPublicKeyP *coin_pub,
              const struct TALER_Amount *coin_value,
@@ -812,7 +812,7 @@ cb_wtid_never (void *cls,
 
 static struct TALER_MerchantPublicKeyP merchant_pub_wt;
 static struct GNUNET_HashCode h_wire_wt;
-static struct GNUNET_HashCode h_contract_wt;
+static struct GNUNET_HashCode h_proposal_data_wt;
 static uint64_t transaction_id_wt;
 static struct TALER_CoinSpendPublicKeyP coin_pub_wt;
 static struct TALER_Amount coin_value_wt;
@@ -830,7 +830,7 @@ cb_wt_check (void *cls,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
              const struct GNUNET_HashCode *h_wire,
              struct GNUNET_TIME_Absolute exec_time,
-             const struct GNUNET_HashCode *h_contract,
+             const struct GNUNET_HashCode *h_proposal_data,
              uint64_t transaction_id,
              const struct TALER_CoinSpendPublicKeyP *coin_pub,
              const struct TALER_Amount *coin_value,
@@ -844,8 +844,8 @@ cb_wt_check (void *cls,
                               &h_wire_wt,
                               sizeof (struct GNUNET_HashCode)));
   GNUNET_assert (exec_time.abs_value_us == execution_time_wt.abs_value_us);
-  GNUNET_assert (0 == memcmp (h_contract,
-                              &h_contract_wt,
+  GNUNET_assert (0 == memcmp (h_proposal_data,
+                              &h_proposal_data_wt,
                               sizeof (struct GNUNET_HashCode)));
   GNUNET_assert (transaction_id == transaction_id_wt);
   GNUNET_assert (0 == memcmp (coin_pub,
@@ -900,7 +900,7 @@ static uint64_t deposit_rowid;
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
  * @param transaction_id unique transaction ID chosen by the merchant
- * @param h_contract hash of the contract between merchant and customer
+ * @param h_proposal_data hash of the proposal data known to merchant and customer
  * @param wire_deadline by which the merchant adviced that he would like the
  *        wire transfer to be executed
  * @param wire wire details for the merchant, NULL from iterate_matching_deposits()
@@ -915,7 +915,7 @@ deposit_cb (void *cls,
             const struct TALER_Amount *amount_with_fee,
             const struct TALER_Amount *deposit_fee,
             uint64_t transaction_id,
-            const struct GNUNET_HashCode *h_contract,
+            const struct GNUNET_HashCode *h_proposal_data,
             struct GNUNET_TIME_Absolute wire_deadline,
             const json_t *wire)
 {
@@ -932,8 +932,8 @@ deposit_cb (void *cls,
                                &deposit->amount_with_fee)) ||
        (0 != TALER_amount_cmp (deposit_fee,
                                &deposit->deposit_fee)) ||
-       (0 != memcmp (h_contract,
-                     &deposit->h_contract,
+       (0 != memcmp (h_proposal_data,
+                     &deposit->h_proposal_data,
                      sizeof (struct GNUNET_HashCode))) ||
        (0 != memcmp (coin_pub,
                      &deposit->coin.coin_pub,
@@ -961,7 +961,7 @@ deposit_cb (void *cls,
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
  * @param transaction_id unique transaction ID chosen by the merchant
- * @param h_contract hash of the contract between merchant and customer
+ * @param h_proposal_data hash of the proposal data known to merchant and customer
  * @param refund_deadline by which the merchant adviced that he might want
  *        to get a refund
  * @param wire_deadline by which the merchant adviced that he would like the
@@ -978,7 +978,7 @@ audit_deposit_cb (void *cls,
                   const struct TALER_CoinSpendSignatureP *coin_sig,
                   const struct TALER_Amount *amount_with_fee,
                   uint64_t transaction_id,
-                  const struct GNUNET_HashCode *h_contract,
+                  const struct GNUNET_HashCode *h_proposal_data,
                   struct GNUNET_TIME_Absolute refund_deadline,
                   struct GNUNET_TIME_Absolute wire_deadline,
                   const json_t *receiver_wire_account,
@@ -998,7 +998,8 @@ audit_deposit_cb (void *cls,
  * @param coin_pub public key of the coin
  * @param merchant_pub public key of the merchant
  * @param merchant_sig signature of the merchant
- * @param h_contract hash of the contract between merchant and customer
+ * @param h_proposal_data hash of the proposal data in
+ *                        the contract between merchant and customer
  * @param transaction_id original transaction ID chosen by the merchant
  * @param rtransaction_id refund transaction ID chosen by the merchant
  * @param amount_with_fee amount that was deposited including fee
@@ -1010,7 +1011,7 @@ audit_refund_cb (void *cls,
                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
                  const struct TALER_MerchantPublicKeyP *merchant_pub,
                  const struct TALER_MerchantSignatureP *merchant_sig,
-                 const struct GNUNET_HashCode *h_contract,
+                 const struct GNUNET_HashCode *h_proposal_data,
                  uint64_t transaction_id,
                  uint64_t rtransaction_id,
                  const struct TALER_Amount *amount_with_fee)
@@ -1342,7 +1343,7 @@ run (void *cls)
   deposit.coin.denom_sig = cbc.sig;
   RND_BLK (&deposit.csig);
   RND_BLK (&deposit.merchant_pub);
-  RND_BLK (&deposit.h_contract);
+  RND_BLK (&deposit.h_proposal_data);
   wire = json_loads (json_wire_str, 0, NULL);
   TALER_JSON_hash (wire,
                    &deposit.h_wire);
@@ -1445,7 +1446,7 @@ run (void *cls)
   refund.coin = deposit.coin;
   refund.merchant_pub = deposit.merchant_pub;
   RND_BLK (&refund.merchant_sig);
-  refund.h_contract = deposit.h_contract;
+  refund.h_proposal_data = deposit.h_proposal_data;
   refund.transaction_id = deposit.transaction_id;
   refund.rtransaction_id = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
   refund.refund_amount = deposit.amount_with_fee;
@@ -1488,8 +1489,8 @@ run (void *cls)
         FAILIF (0 != memcmp (&have->merchant_pub,
                              &deposit.merchant_pub,
                              sizeof (struct TALER_MerchantPublicKeyP)));
-        FAILIF (0 != memcmp (&have->h_contract,
-                             &deposit.h_contract,
+        FAILIF (0 != memcmp (&have->h_proposal_data,
+                             &deposit.h_proposal_data,
                              sizeof (struct GNUNET_HashCode)));
         FAILIF (0 != memcmp (&have->h_wire,
                              &deposit.h_wire,
@@ -1531,8 +1532,8 @@ run (void *cls)
         FAILIF (0 != memcmp (&have->merchant_sig,
                              &refund.merchant_sig,
                              sizeof (struct TALER_MerchantSignatureP)));
-        FAILIF (0 != memcmp (&have->h_contract,
-                             &refund.h_contract,
+        FAILIF (0 != memcmp (&have->h_proposal_data,
+                             &refund.h_proposal_data,
                              sizeof (struct GNUNET_HashCode)));
         FAILIF (have->transaction_id != refund.transaction_id);
         FAILIF (have->rtransaction_id != refund.rtransaction_id);
@@ -1559,7 +1560,7 @@ run (void *cls)
   memset (&wtid, 42, sizeof (wtid));
   merchant_pub_wt = deposit.merchant_pub;
   h_wire_wt = deposit.h_wire;
-  h_contract_wt = deposit.h_contract;
+  h_proposal_data_wt = deposit.h_proposal_data;
   coin_pub_wt = deposit.coin.coin_pub;
   transaction_id_wt = deposit.transaction_id;
   execution_time_wt = GNUNET_TIME_absolute_get ();
@@ -1578,7 +1579,7 @@ run (void *cls)
   FAILIF (GNUNET_NO !=
           plugin->wire_lookup_deposit_wtid (plugin->cls,
                                             session,
-                                            &h_contract_wt,
+                                            &h_proposal_data_wt,
                                             &h_wire_wt,
                                             &coin_pub_wt,
                                             &merchant_pub_wt,
@@ -1601,7 +1602,7 @@ run (void *cls)
   FAILIF (GNUNET_OK !=
           plugin->wire_lookup_deposit_wtid (plugin->cls,
                                             session,
-                                            &h_contract_wt,
+                                            &h_proposal_data_wt,
                                             &h_wire_wt,
                                             &coin_pub_wt,
                                             &merchant_pub_wt,

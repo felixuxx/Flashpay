@@ -222,7 +222,7 @@ TEH_DB_execute_track_transfer (struct MHD_Connection *connection,
  * associated with the given deposit.
  *
  * @param connection the MHD connection to handle
- * @param h_contract hash of the contract
+ * @param h_proposal_data hash of the contract
  * @param h_wire hash of the wire details
  * @param coin_pub public key of the coin to link
  * @param merchant_pub public key of the merchant
@@ -231,7 +231,7 @@ TEH_DB_execute_track_transfer (struct MHD_Connection *connection,
  */
 int
 TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
-                             const struct GNUNET_HashCode *h_contract,
+                             const struct GNUNET_HashCode *h_proposal_data,
 			     const struct GNUNET_HashCode *h_wire,
 			     const struct TALER_CoinSpendPublicKeyP *coin_pub,
 			     const struct TALER_MerchantPublicKeyP *merchant_pub,

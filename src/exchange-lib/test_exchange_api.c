@@ -371,9 +371,9 @@ struct Command
       const char *wire_details;
 
       /**
-       * JSON string describing the contract between the two parties.
+       * JSON string describing what a proposal is about.
        */
-      const char *contract;
+      const char *proposal_data;
 
       /**
        * Transaction ID to use.
@@ -630,7 +630,7 @@ struct Command
 
       /**
        * Reference to the corresponding deposit operation.
-       * Used to obtain contract details, merchant keys,
+       * Used to obtain proposal details, merchant keys,
        * fee structure, etc.
        */
       const char *deposit_ref;
@@ -1874,7 +1874,7 @@ interpreter_run (void *cls)
     return;
   case OC_DEPOSIT:
     {
-      struct GNUNET_HashCode h_contract;
+      struct GNUNET_HashCode h_proposal_data;
       const struct TALER_CoinSpendPrivateKeyP *coin_priv;
       const struct TALER_EXCHANGE_DenomPublicKey *coin_pk;
       const struct TALER_DenominationSignature *coin_pk_sig;
@@ -1885,7 +1885,7 @@ interpreter_run (void *cls)
       struct GNUNET_TIME_Absolute timestamp;
       struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
       struct TALER_MerchantPublicKeyP merchant_pub;
-      json_t *contract;
+      json_t *proposal_data;
       json_t *wire;
 
       GNUNET_assert (NULL !=
@@ -1928,22 +1928,22 @@ interpreter_run (void *cls)
         fail (is);
         return;
       }
-      contract = json_loads (cmd->details.deposit.contract,
+      proposal_data = json_loads (cmd->details.deposit.proposal_data,
                              JSON_REJECT_DUPLICATES,
                              NULL);
-      if (NULL == contract)
+      if (NULL == proposal_data)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Failed to parse contract details `%s' at %u/%s\n",
-                    cmd->details.deposit.contract,
+                    "Failed to parse proposal data `%s' at %u/%s\n",
+                    cmd->details.deposit.proposal_data,
                     is->ip,
                     cmd->label);
         fail (is);
         return;
       }
-      TALER_JSON_hash (contract,
-                       &h_contract);
-      json_decref (contract);
+      TALER_JSON_hash (proposal_data,
+                       &h_proposal_data);
+      json_decref (proposal_data);
       wire = json_loads (cmd->details.deposit.wire_details,
                          JSON_REJECT_DUPLICATES,
                          NULL);
@@ -1986,7 +1986,7 @@ interpreter_run (void *cls)
         memset (&dr, 0, sizeof (dr));
         dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
         dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
-        dr.h_contract = h_contract;
+        dr.h_proposal_data = h_proposal_data;
         TALER_JSON_hash (wire,
                          &dr.h_wire);
         dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
@@ -2008,7 +2008,7 @@ interpreter_run (void *cls)
                                   &amount,
                                   wire_deadline,
                                   wire,
-                                  &h_contract,
+                                  &h_proposal_data,
                                   &coin_pub,
                                   coin_pk_sig,
                                   &coin_pk->key,
@@ -2201,9 +2201,9 @@ interpreter_run (void *cls)
   case OC_DEPOSIT_WTID:
     {
       struct GNUNET_HashCode h_wire;
-      struct GNUNET_HashCode h_contract;
+      struct GNUNET_HashCode h_proposal_data;
       json_t *wire;
-      json_t *contract;
+      json_t *proposal_data;
       const struct Command *coin;
       struct TALER_CoinSpendPublicKeyP coin_pub;
 
@@ -2223,18 +2223,18 @@ interpreter_run (void *cls)
       TALER_JSON_hash (wire,
                        &h_wire);
       json_decref (wire);
-      contract = json_loads (ref->details.deposit.contract,
+      proposal_data = json_loads (ref->details.deposit.proposal_data,
                              JSON_REJECT_DUPLICATES,
                              NULL);
-      GNUNET_assert (NULL != contract);
-      TALER_JSON_hash (contract,
-                       &h_contract);
-      json_decref (contract);
+      GNUNET_assert (NULL != proposal_data);
+      TALER_JSON_hash (proposal_data,
+                       &h_proposal_data);
+      json_decref (proposal_data);
       cmd->details.deposit_wtid.dwh
         = TALER_EXCHANGE_track_transaction (exchange,
                                        &ref->details.deposit.merchant_priv,
                                        &h_wire,
-                                       &h_contract,
+                                       &h_proposal_data,
                                        &coin_pub,
                                        ref->details.deposit.transaction_id,
                                        &deposit_wtid_cb,
@@ -2309,8 +2309,8 @@ interpreter_run (void *cls)
   case OC_REFUND:
     {
       const struct Command *coin;
-      struct GNUNET_HashCode h_contract;
-      json_t *contract;
+      struct GNUNET_HashCode h_proposal_data;
+      json_t *proposal_data;
       struct TALER_CoinSpendPublicKeyP coin_pub;
       struct TALER_Amount refund_fee;
 
@@ -2339,13 +2339,13 @@ interpreter_run (void *cls)
       ref = find_command (is,
                           cmd->details.refund.deposit_ref);
       GNUNET_assert (NULL != ref);
-      contract = json_loads (ref->details.deposit.contract,
+      proposal_data = json_loads (ref->details.deposit.proposal_data,
                              JSON_REJECT_DUPLICATES,
                              NULL);
-      GNUNET_assert (NULL != contract);
-      TALER_JSON_hash (contract,
-                       &h_contract);
-      json_decref (contract);
+      GNUNET_assert (NULL != proposal_data);
+      TALER_JSON_hash (proposal_data,
+                       &h_proposal_data);
+      json_decref (proposal_data);
 
       coin = find_command (is,
                            ref->details.deposit.coin_ref);
@@ -2357,7 +2357,7 @@ interpreter_run (void *cls)
         = TALER_EXCHANGE_refund (exchange,
                                  &amount,
                                  &refund_fee,
-                                 &h_contract,
+                                 &h_proposal_data,
                                  ref->details.deposit.transaction_id,
                                  &coin_pub,
                                  cmd->details.refund.rtransaction_id,
@@ -2761,7 +2761,7 @@ run (void *cls)
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
-      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
+      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 1 },
 
     /* Try to overdraw funds ... */
@@ -2778,7 +2778,7 @@ run (void *cls)
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":43  }",
-      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
+      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 1 },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
        transaction ID) */
@@ -2788,17 +2788,17 @@ run (void *cls)
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
-      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
+      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
       .details.deposit.transaction_id = 2 },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
-       contract) */
+       proposal) */
     { .oc = OC_DEPOSIT,
       .label = "deposit-double-3",
       .expected_response_code = MHD_HTTP_FORBIDDEN,
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
-      .details.deposit.contract = "{ \"items\":[{ \"name\":\"ice cream\", \"value\":2 } ] }",
+      .details.deposit.proposal_data = "{ \"items\":[{ \"name\":\"ice cream\", \"value\":2 } ] }",
       .details.deposit.transaction_id = 1 },
 
     /* ***************** /refresh testing ******************** */
@@ -2824,7 +2824,7 @@ run (void *cls)
       .details.deposit.amount = "EUR:1",
       .details.deposit.coin_ref = "refresh-withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
-      .details.deposit.contract = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:1\" } ] }",
+      .details.deposit.proposal_data = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:1\" } ] }",
       .details.deposit.transaction_id = 42421 },
 
     /* Melt the rest of the coin's value (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
@@ -2866,7 +2866,7 @@ run (void *cls)
       .details.deposit.coin_ref = "refresh-reveal-1-idempotency",
       .details.deposit.coin_idx = 0,
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
-      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }",
+      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }",
       .details.deposit.transaction_id = 2 },
 
     /* Test successfully spending coins from the refresh operation:
@@ -2878,7 +2878,7 @@ run (void *cls)
       .details.deposit.coin_ref = "refresh-reveal-1",
       .details.deposit.coin_idx = 4,
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":43  }",
-      .details.deposit.contract = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }",
+      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }",
       .details.deposit.transaction_id = 2 },
 
     /* Test running a failing melt operation (same operation again must fail) */
@@ -2994,7 +2994,7 @@ run (void *cls)
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-r1",
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
-      .details.deposit.contract = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:5\" } ] }",
+      .details.deposit.proposal_data = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:5\" } ] }",
       .details.deposit.transaction_id = 424210,
       .details.deposit.refund_deadline = { 60LL * 1000 * 1000 } /* 60 s */,
     },
@@ -3021,7 +3021,7 @@ run (void *cls)
       .details.deposit.amount = "EUR:4.99",
       .details.deposit.coin_ref = "withdraw-coin-r1",
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
-      .details.deposit.contract = "{ \"items\" : [ { \"name\":\"more ice cream\", \"value\":\"EUR:5\" } ] }",
+      .details.deposit.proposal_data = "{ \"items\" : [ { \"name\":\"more ice cream\", \"value\":\"EUR:5\" } ] }",
       .details.deposit.transaction_id = 424211,
     },
     /* Run transfers. This will do the transfer as refund deadline was 0 */

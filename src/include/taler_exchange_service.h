@@ -451,7 +451,7 @@ typedef void
  * @param wire_deadline execution date, until which the merchant would like the exchange to settle the balance (advisory, the exchange cannot be
  *        forced to settle in the past or upon very short notice, but of course a well-behaved exchange will limit aggregation based on the advice received)
  * @param wire_details the merchant’s account details, in a format supported by the exchange
- * @param h_contract hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param h_proposal_data hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
  * @param coin_pub coin’s public key
  * @param denom_pub denomination key with which the coin is signed
  * @param denom_sig exchange’s unblinded signature of the coin
@@ -470,7 +470,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                         const struct TALER_Amount *amount,
                         struct GNUNET_TIME_Absolute wire_deadline,
                         json_t *wire_details,
-                        const struct GNUNET_HashCode *h_contract,
+                        const struct GNUNET_HashCode *h_proposal_data,
                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
                         const struct TALER_DenominationSignature *denom_sig,
                         const struct TALER_DenominationPublicKey *denom_pub,
@@ -539,8 +539,8 @@ typedef void
  *        (as that fee is still being subtracted), and smaller than the amount
  *        (with deposit fee) of the original deposit contribution of this coin
  * @param refund_fee fee applicable to this coin for the refund
- * @param h_contract hash of the contact of the merchant with the customer that is being refunded
- * @param transaction_id transaction id for the transaction being refunded, must match @a h_contract
+ * @param h_proposal_data hash of the contact of the merchant with the customer that is being refunded
+ * @param transaction_id transaction id for the transaction being refunded, must match @a h_proposal_data
  * @param coin_pub coin’s public key of the coin from the original deposit operation
  * @param rtransaction_id transaction id for the transaction between merchant and customer (of refunding operation);
  *                        this is needed as we may first do a partial refund and later a full refund.  If both
@@ -556,7 +556,7 @@ struct TALER_EXCHANGE_RefundHandle *
 TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 		       const struct TALER_Amount *amount,
 		       const struct TALER_Amount *refund_fee,
-		       const struct GNUNET_HashCode *h_contract,
+		       const struct GNUNET_HashCode *h_proposal_data,
 		       uint64_t transaction_id,
 		       const struct TALER_CoinSpendPublicKeyP *coin_pub,
 		       uint64_t rtransaction_id,
@@ -1217,7 +1217,7 @@ typedef void
  * @param exchange the exchange to query
  * @param merchant_priv the merchant's private key
  * @param h_wire hash of merchant's wire transfer details
- * @param h_contract hash of the contract
+ * @param h_proposal_data hash of the proposal data
  * @param coin_pub public key of the coin
  * @param transaction_id transaction identifier
  * @param cb function to call with the result
@@ -1228,7 +1228,7 @@ struct TALER_EXCHANGE_TrackTransactionHandle *
 TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
                                   const struct TALER_MerchantPrivateKeyP *merchant_priv,
                                   const struct GNUNET_HashCode *h_wire,
-                                  const struct GNUNET_HashCode *h_contract,
+                                  const struct GNUNET_HashCode *h_proposal_data,
                                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                   uint64_t transaction_id,
                                   TALER_EXCHANGE_TrackTransactionCallback cb,

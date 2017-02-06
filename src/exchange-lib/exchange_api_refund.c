@@ -220,8 +220,8 @@ handle_refund_finished (void *cls,
  *        (as that fee is still being subtracted), and smaller than the amount
  *        (with deposit fee) of the original deposit contribution of this coin
  * @param refund_fee fee applicable to this coin for the refund
- * @param h_contract hash of the contact of the merchant with the customer that is being refunded
- * @param transaction_id transaction id for the transaction being refunded, must match @a h_contract
+ * @param h_proposal_data hash of the contact of the merchant with the customer that is being refunded
+ * @param transaction_id transaction id for the transaction being refunded, must match @a h_proposal_data
  * @param coin_pub coin’s public key of the coin from the original deposit operation
  * @param rtransaction_id transaction id for the transaction between merchant and customer (of refunding operation);
  *                        this is needed as we may first do a partial refund and later a full refund.  If both
@@ -237,7 +237,7 @@ struct TALER_EXCHANGE_RefundHandle *
 TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 		       const struct TALER_Amount *amount,
 		       const struct TALER_Amount *refund_fee,
-		       const struct GNUNET_HashCode *h_contract,
+		       const struct GNUNET_HashCode *h_proposal_data,
 		       uint64_t transaction_id,
 		       const struct TALER_CoinSpendPublicKeyP *coin_pub,
 		       uint64_t rtransaction_id,
@@ -256,7 +256,7 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 		 MAH_handle_is_ready (exchange));
   rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
   rr.purpose.size = htonl (sizeof (struct TALER_RefundRequestPS));
-  rr.h_contract = *h_contract;
+  rr.h_proposal_data = *h_proposal_data;
   rr.transaction_id = GNUNET_htonll (transaction_id);
   rr.coin_pub = *coin_pub;
   GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv->eddsa_priv,
@@ -271,12 +271,12 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
                                            &rr.purpose,
                                            &merchant_sig.eddsa_sig));
   refund_obj = json_pack ("{s:o, s:o," /* amount/fee */
-			  " s:o, s:o," /* H_contract, coin_pub */
+			  " s:o, s:o," /* h_proposal_data, coin_pub */
 			  " s:I, s:I," /* transaction id, rtransaction id */
 			  " s:o, s:o}", /* merchant_pub, merchant_sig */
 			  "refund_amount", TALER_JSON_from_amount (amount),
 			  "refund_fee", TALER_JSON_from_amount (refund_fee),
-			  "H_contract", GNUNET_JSON_from_data_auto (h_contract),
+			  "h_proposal_data", GNUNET_JSON_from_data_auto (h_proposal_data),
 			  "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
 			  "transaction_id", (json_int_t) transaction_id,
 			  "rtransaction_id", (json_int_t) rtransaction_id,
@@ -292,7 +292,7 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
   rh->url = MAH_path_to_url (exchange, "/refund");
   rh->depconf.purpose.size = htonl (sizeof (struct TALER_RefundConfirmationPS));
   rh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND);
-  rh->depconf.h_contract = *h_contract;
+  rh->depconf.h_proposal_data = *h_proposal_data;
   rh->depconf.transaction_id = GNUNET_htonll (transaction_id);
   rh->depconf.coin_pub = *coin_pub;
   rh->depconf.merchant = rr.merchant;

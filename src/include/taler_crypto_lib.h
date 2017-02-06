@@ -361,9 +361,9 @@ struct TALER_CoinPublicInfo
 struct TALER_TrackTransferDetails
 {
   /**
-   * Hash of the contract.
+   * Hash of the proposal data.
    */
-  struct GNUNET_HashCode h_contract;
+  struct GNUNET_HashCode h_proposal_data;
 
   /**
    * Which coin was deposited?

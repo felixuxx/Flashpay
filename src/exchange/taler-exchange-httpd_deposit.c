@@ -54,7 +54,7 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
 
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
   dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
-  dr.h_contract = deposit->h_contract;
+  dr.h_proposal_data = deposit->h_proposal_data;
   dr.h_wire = deposit->h_wire;
   dr.timestamp = GNUNET_TIME_absolute_hton (deposit->timestamp);
   dr.refund_deadline = GNUNET_TIME_absolute_hton (deposit->refund_deadline);
@@ -119,7 +119,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     TALER_JSON_spec_denomination_signature ("ub_sig", &deposit.coin.denom_sig),
     GNUNET_JSON_spec_fixed_auto ("coin_pub", &deposit.coin.coin_pub),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &deposit.merchant_pub),
-    GNUNET_JSON_spec_fixed_auto ("H_contract", &deposit.h_contract),
+    GNUNET_JSON_spec_fixed_auto ("h_proposal_data", &deposit.h_proposal_data),
     GNUNET_JSON_spec_fixed_auto ("H_wire", &deposit.h_wire),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",  &deposit.csig),
     GNUNET_JSON_spec_uint64 ("transaction_id", &deposit.transaction_id),

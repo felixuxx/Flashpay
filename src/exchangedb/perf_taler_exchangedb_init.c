@@ -209,7 +209,7 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
   struct TALER_EXCHANGEDB_Deposit *deposit;
   struct TALER_CoinSpendSignatureP csig;
   struct TALER_MerchantPublicKeyP merchant_pub;
-  struct GNUNET_HashCode h_contract;
+  struct GNUNET_HashCode h_proposal_data;
   struct GNUNET_HashCode h_wire;
   const char wire[] = "{"
     "\"type\":\"SEPA\","
@@ -226,7 +226,7 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
   GNUNET_assert (NULL !=
                  (deposit = GNUNET_malloc (sizeof (struct TALER_EXCHANGEDB_Deposit) + sizeof (wire))));
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
-                                    &h_contract);
+                                    &h_proposal_data);
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
                                     &h_wire);
   { //csig
@@ -234,10 +234,10 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
     {
       struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
       struct GNUNET_HashCode h_wire;
-      struct GNUNET_HashCode h_contract;
+      struct GNUNET_HashCode h_proposal_data;
     } unsigned_data;
 
-    unsigned_data.h_contract = h_contract;
+    unsigned_data.h_proposal_data = h_proposal_data;
     unsigned_data.h_wire = h_wire;
     unsigned_data.purpose.size = htonl (sizeof (struct u32_presign));
     unsigned_data.purpose.purpose = htonl (GNUNET_SIGNATURE_PURPOSE_TEST);
@@ -274,7 +274,7 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
     GNUNET_assert (NULL != coin->public_info.denom_sig.rsa_signature);
   }
   deposit->csig = csig;
-  deposit->h_contract = h_contract;
+  deposit->h_proposal_data = h_proposal_data;
   deposit->h_wire = h_wire;
   deposit->receiver_wire_account = json_loads (wire, 0, NULL);
   deposit->transaction_id = transaction_id++;

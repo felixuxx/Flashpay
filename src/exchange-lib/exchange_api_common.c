@@ -226,7 +226,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
         return GNUNET_SYSERR;
       }
       /* NOTE/FIXME: theoretically, we could also check that the given
-         transaction_id and merchant_pub and h_contract appear in the
+         transaction_id and merchant_pub and h_proposal_data appear in the
          history under deposits.  However, there is really no benefit
          for the exchange to lie here, so not checking is probably OK
          (an auditor ought to check, though). Then again, we similarly

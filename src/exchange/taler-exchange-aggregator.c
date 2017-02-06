@@ -402,7 +402,7 @@ exchange_serve_process_config ()
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
  * @param transaction_id unique transaction ID chosen by the merchant
- * @param h_contract hash of the contract between merchant and customer
+ * @param h_proposal_data hash of the proposal data known to merchant and customer
  * @param wire_deadline by which the merchant adviced that he would like the
  *        wire transfer to be executed
  * @param wire wire details for the merchant
@@ -416,7 +416,7 @@ deposit_cb (void *cls,
             const struct TALER_Amount *amount_with_fee,
             const struct TALER_Amount *deposit_fee,
             uint64_t transaction_id,
-            const struct GNUNET_HashCode *h_contract,
+            const struct GNUNET_HashCode *h_proposal_data,
             struct GNUNET_TIME_Absolute wire_deadline,
             const json_t *wire)
 {
@@ -477,7 +477,7 @@ deposit_cb (void *cls,
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
  * @param transaction_id unique transaction ID chosen by the merchant
- * @param h_contract hash of the contract between merchant and customer
+ * @param h_proposal_data hash of the proposal data known to merchant and customer
  * @param wire_deadline by which the merchant adviced that he would like the
  *        wire transfer to be executed
  * @param wire wire details for the merchant
@@ -491,7 +491,7 @@ aggregate_cb (void *cls,
               const struct TALER_Amount *amount_with_fee,
               const struct TALER_Amount *deposit_fee,
               uint64_t transaction_id,
-              const struct GNUNET_HashCode *h_contract,
+              const struct GNUNET_HashCode *h_proposal_data,
               struct GNUNET_TIME_Absolute wire_deadline,
               const json_t *wire)
 {

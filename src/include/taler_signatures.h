@@ -266,7 +266,7 @@ struct TALER_DepositRequestPS
   /**
    * Hash over the contract for which this deposit is made.
    */
-  struct GNUNET_HashCode h_contract GNUNET_PACKED;
+  struct GNUNET_HashCode h_proposal_data GNUNET_PACKED;
 
   /**
    * Hash over the wiring information of the merchant.
@@ -301,7 +301,7 @@ struct TALER_DepositRequestPS
    * to the customer for each transaction.  Note that different coins
    * that are part of the same transaction can use the same
    * transaction ID.  The transaction ID is useful for later disputes,
-   * and the merchant's contract offer (@e h_contract) with the
+   * and the merchant's contract offer (@e h_proposal_data) with the
    * customer should include the offer's term and transaction ID
    * signed with a key from the merchant.
    */
@@ -356,7 +356,7 @@ struct TALER_DepositConfirmationPS
   /**
    * Hash over the contract for which this deposit is made.
    */
-  struct GNUNET_HashCode h_contract GNUNET_PACKED;
+  struct GNUNET_HashCode h_proposal_data GNUNET_PACKED;
 
   /**
    * Hash over the wiring information of the merchant.
@@ -417,9 +417,10 @@ struct TALER_RefundRequestPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Hash over the contract which is being refunded.
+   * Hash over the proposal data to identify the contract
+   * which is being refunded.
    */
-  struct GNUNET_HashCode h_contract GNUNET_PACKED;
+  struct GNUNET_HashCode h_proposal_data GNUNET_PACKED;
 
   /**
    * Merchant-generated transaction ID of the orginal transaction.
@@ -475,9 +476,10 @@ struct TALER_RefundConfirmationPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Hash over the contract which is being refunded.
+   * Hash over the proposal data to identify the contract
+   * which is being refunded.
    */
-  struct GNUNET_HashCode h_contract GNUNET_PACKED;
+  struct GNUNET_HashCode h_proposal_data GNUNET_PACKED;
 
   /**
    * Merchant-generated transaction ID of the orginal transaction.
@@ -917,9 +919,9 @@ struct TALER_DepositTrackPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Hash over the contract for which this deposit is made.
+   * Hash over the proposal data of the contract for which this deposit is made.
    */
-  struct GNUNET_HashCode h_contract GNUNET_PACKED;
+  struct GNUNET_HashCode h_proposal_data GNUNET_PACKED;
 
   /**
    * Hash over the wiring information of the merchant.
@@ -928,13 +930,9 @@ struct TALER_DepositTrackPS
 
   /**
    * Merchant-generated transaction ID to detect duplicate
-   * transactions.  The merchant must communicate a merchant-unique ID
-   * to the customer for each transaction.  Note that different coins
-   * that are part of the same transaction can use the same
-   * transaction ID.  The transaction ID is useful for later disputes,
-   * and the merchant's contract offer (@e h_contract) with the
-   * customer should include the offer's term and transaction ID
-   * signed with a key from the merchant.
+   * transactions.  Chosen by the merchant and used to group
+   * deposits when there are multiple payments the same proposal
+   * (typically from different customers).
    */
   uint64_t transaction_id GNUNET_PACKED;
 
@@ -963,7 +961,7 @@ struct TALER_WireDepositDetailP
   /**
    * Hash of the contract
    */
-  struct GNUNET_HashCode h_contract;
+  struct GNUNET_HashCode h_proposal_data;
 
   /**
    * Time when the wire transfer was performed by the exchange.
@@ -1087,7 +1085,7 @@ struct TALER_ConfirmWirePS
   /**
    * Hash over the contract for which this deposit is made.
    */
-  struct GNUNET_HashCode h_contract GNUNET_PACKED;
+  struct GNUNET_HashCode h_proposal_data GNUNET_PACKED;
 
   /**
    * Raw value (binary encoding) of the wire transfer subject.
@@ -1106,7 +1104,7 @@ struct TALER_ConfirmWirePS
    * merchant-unique ID to the customer for each transaction.  Note
    * that different coins that are part of the same transaction can
    * use the same transaction ID.  The transaction ID is useful for
-   * later disputes, and the merchant's contract offer (@e h_contract)
+   * later disputes, and the merchant's contract offer (@e h_proposal_data)
    * with the customer should include the offer's term and transaction
    * ID signed with a key from the merchant.
    */

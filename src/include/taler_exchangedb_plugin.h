@@ -223,8 +223,8 @@ struct TALER_EXCHANGEDB_Deposit
   /**
    * ECDSA signature affirming that the customer intends
    * this coin to be deposited at the merchant identified
-   * by @e h_wire in relation to the contract identified
-   * by @e h_contract.
+   * by @e h_wire in relation to the proposal data identified
+   * by @e h_proposal_data.
    */
   struct TALER_CoinSpendSignatureP csig;
 
@@ -235,10 +235,10 @@ struct TALER_EXCHANGEDB_Deposit
   struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
-   * Hash over the contract between merchant and customer
+   * Hash over the proposa data between merchant and customer
    * (remains unknown to the Exchange).
    */
-  struct GNUNET_HashCode h_contract;
+  struct GNUNET_HashCode h_proposal_data;
 
   /**
    * Hash of the (canonical) representation of @e wire, used
@@ -332,10 +332,10 @@ struct TALER_EXCHANGEDB_Refund
   struct TALER_MerchantSignatureP merchant_sig;
 
   /**
-   * Hash over the contract between merchant and customer
+   * Hash over the proposal data between merchant and customer
    * (remains unknown to the Exchange).
    */
-  struct GNUNET_HashCode h_contract;
+  struct GNUNET_HashCode h_proposal_data;
 
   /**
    * Merchant-generated transaction ID to detect duplicate
@@ -563,7 +563,7 @@ struct TALER_EXCHANGEDB_Session;
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
  * @param transaction_id unique transaction ID chosen by the merchant
- * @param h_contract hash of the contract between merchant and customer
+ * @param h_proposal_data hash of the proposal data known to merchant and customer
  * @param wire_deadline by which the merchant adviced that he would like the
  *        wire transfer to be executed
  * @param receiver_wire_account wire details for the merchant, NULL from iterate_matching_deposits()
@@ -577,7 +577,7 @@ typedef int
                                     const struct TALER_Amount *amount_with_fee,
                                     const struct TALER_Amount *deposit_fee,
                                     uint64_t transaction_id,
-                                    const struct GNUNET_HashCode *h_contract,
+                                    const struct GNUNET_HashCode *h_proposal_data,
                                     struct GNUNET_TIME_Absolute wire_deadline,
                                     const json_t *receiver_wire_account);
 
@@ -610,7 +610,7 @@ typedef void
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
  * @param transaction_id unique transaction ID chosen by the merchant
- * @param h_contract hash of the contract between merchant and customer
+ * @param h_proposal_data hash of the proposal data known to merchant and customer
  * @param refund_deadline by which the merchant adviced that he might want
  *        to get a refund
  * @param wire_deadline by which the merchant adviced that he would like the
@@ -627,7 +627,7 @@ typedef int
                                     const struct TALER_CoinSpendSignatureP *coin_sig,
                                     const struct TALER_Amount *amount_with_fee,
                                     uint64_t transaction_id,
-                                    const struct GNUNET_HashCode *h_contract,
+                                    const struct GNUNET_HashCode *h_proposal_data,
                                     struct GNUNET_TIME_Absolute refund_deadline,
                                     struct GNUNET_TIME_Absolute wire_deadline,
                                     const json_t *receiver_wire_account,
@@ -645,7 +645,7 @@ typedef int
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
  * @param transaction_id unique transaction ID chosen by the merchant
- * @param h_contract hash of the contract between merchant and customer
+ * @param h_proposal_data hash of the proposal data known to merchant and customer
  * @param refund_deadline by which the merchant adviced that he might want
  *        to get a refund
  * @param wire_deadline by which the merchant adviced that he would like the
@@ -673,7 +673,7 @@ typedef int
  * @param coin_pub public key of the coin
  * @param merchant_pub public key of the merchant
  * @param merchant_sig signature of the merchant
- * @param h_contract hash of the contract between merchant and customer
+ * @param h_proposal_data hash of the proposal data known to merchant and customer
  * @param transaction_id original transaction ID chosen by the merchant
  * @param rtransaction_id refund transaction ID chosen by the merchant
  * @param amount_with_fee amount that was deposited including fee
@@ -685,7 +685,7 @@ typedef int
                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                    const struct TALER_MerchantPublicKeyP *merchant_pub,
                                    const struct TALER_MerchantSignatureP *merchant_sig,
-                                   const struct GNUNET_HashCode *h_contract,
+                                   const struct GNUNET_HashCode *h_proposal_data,
                                    uint64_t transaction_id,
                                    uint64_t rtransaction_id,
                                    const struct TALER_Amount *amount_with_fee);
@@ -784,7 +784,7 @@ typedef void
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
- * @param h_contract which contract was this payment about
+ * @param h_proposal_data which proposal was this payment about
  * @param transaction_id merchant's transaction ID for the payment
  * @param coin_pub which public key was this payment about
  * @param coin_value amount contributed by this coin in total (with fee)
@@ -795,7 +795,7 @@ typedef void
                                              const struct TALER_MerchantPublicKeyP *merchant_pub,
                                              const struct GNUNET_HashCode *h_wire,
                                              struct GNUNET_TIME_Absolute exec_time,
-                                             const struct GNUNET_HashCode *h_contract,
+                                             const struct GNUNET_HashCode *h_proposal_data,
                                              uint64_t transaction_id,
                                              const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                              const struct TALER_Amount *coin_value,
@@ -1504,7 +1504,7 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls closure
    * @param session database connection
-   * @param h_contract hash of the contract
+   * @param h_proposal_data hash of the proposal data
    * @param h_wire hash of merchant wire details
    * @param coin_pub public key of deposited coin
    * @param merchant_pub merchant public key
@@ -1517,7 +1517,7 @@ struct TALER_EXCHANGEDB_Plugin
   int
   (*wire_lookup_deposit_wtid)(void *cls,
                               struct TALER_EXCHANGEDB_Session *session,
-			      const struct GNUNET_HashCode *h_contract,
+			      const struct GNUNET_HashCode *h_proposal_data,
 			      const struct GNUNET_HashCode *h_wire,
 			      const struct TALER_CoinSpendPublicKeyP *coin_pub,
 			      const struct TALER_MerchantPublicKeyP *merchant_pub,

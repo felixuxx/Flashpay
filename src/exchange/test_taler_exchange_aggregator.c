@@ -419,7 +419,7 @@ do_deposit (struct Command *cmd)
   /* contract is just picked at random;
      note: we may want to write this back to 'cmd' in the future. */
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
-                                    &deposit.h_contract);
+                                    &deposit.h_proposal_data);
   if ( (GNUNET_OK !=
         TALER_string_to_amount (cmd->details.deposit.amount_with_fee,
                                 &deposit.amount_with_fee)) ||

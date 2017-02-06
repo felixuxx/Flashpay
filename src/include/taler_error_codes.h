@@ -343,7 +343,7 @@ enum TALER_ErrorCode
 
   /**
    * The hash of the given wire address does not match the hash
-   * specified in the contract.
+   * specified in the proposal data.
    * This response is provided
    * with HTTP status code MHD_HTTP_BAD_REQUEST.
    */
