@@ -1125,12 +1125,16 @@ main (int argc,
     {
       MHD_socket sock = MHD_quiesce_daemon (mhd);
       MHD_socket admin_sock;
+      int admin_sock_opened = GNUNET_NO;
       pid_t chld;
       int flags;
 
       /* Set flags to make 'sock' inherited by child */
       if (NULL != mhd_admin)
+      {
         admin_sock = MHD_quiesce_daemon (mhd_admin);
+        admin_sock_opened = GNUNET_YES;
+      }
       flags = fcntl (sock, F_GETFD);
       GNUNET_assert (-1 != flags);
       flags &= ~FD_CLOEXEC;
@@ -1154,7 +1158,7 @@ main (int argc,
                                "dup2");
           _exit (1);
         }
-        if ( (NULL != mhd_admin) &&
+        if ( (GNUNET_YES == admin_sock_opened) &&
              (4 != dup2 (admin_sock, 4)) )
         {
           GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
@@ -1179,7 +1183,7 @@ main (int argc,
          before exiting; as the listen socket is no longer used,
          close it here */
       GNUNET_break (0 == close (sock));
-      if (NULL != mhd_admin)
+      if (GNUNET_YES == admin_sock_opened)
         GNUNET_break (0 == close (admin_sock));
       while ( (0 != MHD_get_daemon_info (mhd,
                                          MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->num_connections) ||
