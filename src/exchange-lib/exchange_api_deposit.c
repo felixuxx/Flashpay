@@ -279,7 +279,6 @@ handle_deposit_finished (void *cls,
  * @param denom_pub denomination key with which the coin is signed
  * @param denom_sig exchange’s unblinded signature of the coin
  * @param timestamp timestamp when the deposit was finalized
- * @param transaction_id transaction id for the transaction between merchant and customer
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
  * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed)
  * @param coin_sig the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT made by the customer with the coin’s private key.
@@ -294,7 +293,6 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
                    const struct TALER_DenominationSignature *denom_sig,
                    const struct TALER_DenominationPublicKey *denom_pub,
                    struct GNUNET_TIME_Absolute timestamp,
-                   uint64_t transaction_id,
                    const struct TALER_MerchantPublicKeyP *merchant_pub,
                    struct GNUNET_TIME_Absolute refund_deadline,
                    const struct TALER_CoinSpendSignatureP *coin_sig)
@@ -308,7 +306,6 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
   dr.h_wire = *h_wire;
   dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
   dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
-  dr.transaction_id = GNUNET_htonll (transaction_id);
   TALER_amount_hton (&dr.amount_with_fee,
                      amount);
   TALER_amount_hton (&dr.deposit_fee,
@@ -379,7 +376,6 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
  * @param denom_pub denomination key with which the coin is signed
  * @param denom_sig exchange’s unblinded signature of the coin
  * @param timestamp timestamp when the contract was finalized, must not be too far in the future
- * @param transaction_id transaction id for the transaction between merchant and customer
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
  * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
  * @param coin_sig the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT made by the customer with the coin’s private key.
@@ -398,7 +394,6 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                         const struct TALER_DenominationSignature *denom_sig,
                         const struct TALER_DenominationPublicKey *denom_pub,
                         struct GNUNET_TIME_Absolute timestamp,
-                        uint64_t transaction_id,
                         const struct TALER_MerchantPublicKeyP *merchant_pub,
                         struct GNUNET_TIME_Absolute refund_deadline,
                         const struct TALER_CoinSpendSignatureP *coin_sig,
@@ -440,7 +435,6 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                          denom_sig,
                          denom_pub,
                          timestamp,
-                         transaction_id,
                          merchant_pub,
                          refund_deadline,
                          coin_sig))
@@ -453,7 +447,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                            " s:o, s:o," /* H_wire, h_proposal_data */
                            " s:o, s:o," /* coin_pub, denom_pub */
                            " s:o, s:o," /* ub_sig, timestamp */
-                           " s:I, s:o," /* transaction id, merchant_pub */
+                           " s:o," /* merchant_pub */
                            " s:o, s:o," /* refund_deadline, wire_deadline */
                            " s:o}",     /* coin_sig */
                            "f", TALER_JSON_from_amount (amount),
@@ -464,7 +458,6 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                            "denom_pub", GNUNET_JSON_from_rsa_public_key (denom_pub->rsa_public_key),
                            "ub_sig", GNUNET_JSON_from_rsa_signature (denom_sig->rsa_signature),
                            "timestamp", GNUNET_JSON_from_time_abs (timestamp),
-                           "transaction_id", (json_int_t) transaction_id,
                            "merchant_pub", GNUNET_JSON_from_data_auto (merchant_pub),
                            "refund_deadline", GNUNET_JSON_from_time_abs (refund_deadline),
                            "wire_transfer_deadline", GNUNET_JSON_from_time_abs (wire_deadline),
@@ -480,7 +473,6 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   dh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
   dh->depconf.h_proposal_data = *h_proposal_data;
   dh->depconf.h_wire = h_wire;
-  dh->depconf.transaction_id = GNUNET_htonll (transaction_id);
   dh->depconf.timestamp = GNUNET_TIME_absolute_hton (timestamp);
   dh->depconf.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
   TALER_amount_hton (&dh->depconf.amount_without_fee,

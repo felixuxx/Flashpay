@@ -232,7 +232,6 @@ TEH_RESPONSE_reply_invalid_json (struct MHD_Connection *connectionx);
  * @param coin_pub public key of the coin
  * @param h_wire hash of wire details
  * @param h_proposal_data hash of proposal data
- * @param transaction_id transaction ID
  * @param timestamp client's timestamp
  * @param refund_deadline until when this deposit be refunded
  * @param merchant merchant public key
@@ -244,7 +243,6 @@ TEH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     const struct GNUNET_HashCode *h_wire,
                                     const struct GNUNET_HashCode *h_proposal_data,
-                                    uint64_t transaction_id,
                                     struct GNUNET_TIME_Absolute timestamp,
                                     struct GNUNET_TIME_Absolute refund_deadline,
                                     const struct TALER_MerchantPublicKeyP *merchant,
@@ -341,7 +339,6 @@ TEH_RESPONSE_reply_transfer_pending (struct MHD_Connection *connection,
  * @param h_wire hash of wire account details
  * @param coin_pub public key of the coin
  * @param coin_contribution contribution of this coin to the total amount transferred
- * @param transaction_id merchant transaction identifier
  * @param wtid raw wire transfer identifier
  * @param exec_time execution time of the wire transfer
  * @return MHD result code
@@ -352,7 +349,6 @@ TEH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
                                       const struct GNUNET_HashCode *h_wire,
                                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                       const struct TALER_Amount *coin_contribution,
-                                      uint64_t transaction_id,
                                       const struct TALER_WireTransferIdentifierRawP *wtid,
                                       struct GNUNET_TIME_Absolute exec_time);
 
@@ -377,11 +373,6 @@ struct TEH_TrackTransferDetail
    * Hash of the proposal data.
    */
   struct GNUNET_HashCode h_proposal_data;
-
-  /**
-   * Merchant's transaction ID.
-   */
-  uint64_t transaction_id;
 
   /**
    * Coin's public key.

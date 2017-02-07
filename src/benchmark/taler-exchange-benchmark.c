@@ -358,11 +358,6 @@ static struct Reserve *reserves;
 static struct Coin *coins;
 
 /**
- * Transaction id counter, used in /deposit's
- */
-static unsigned int transaction_id;
-
-/**
  * Transfer UUID counter, used in /admin/add/incoming
  */
 static unsigned int transfer_uuid;
@@ -893,7 +888,6 @@ spend_coin (struct Coin *coin,
 
   dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
   dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
-  dr.transaction_id = GNUNET_htonll (transaction_id);
 
   TALER_amount_hton (&dr.amount_with_fee,
 		     &amount);
@@ -919,7 +913,6 @@ spend_coin (struct Coin *coin,
 				     &coin->sig,
 				     &coin->pk->key,
 				     timestamp,
-				     transaction_id++,
 				     &merchant_pub,
 				     refund_deadline,
 				     &coin_sig,

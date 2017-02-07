@@ -58,7 +58,6 @@ verify_and_execute_deposit (struct MHD_Connection *connection,
   dr.h_wire = deposit->h_wire;
   dr.timestamp = GNUNET_TIME_absolute_hton (deposit->timestamp);
   dr.refund_deadline = GNUNET_TIME_absolute_hton (deposit->refund_deadline);
-  dr.transaction_id = GNUNET_htonll (deposit->transaction_id);
   TALER_amount_hton (&dr.amount_with_fee,
                      &deposit->amount_with_fee);
   TALER_amount_hton (&dr.deposit_fee,
@@ -122,7 +121,6 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
     GNUNET_JSON_spec_fixed_auto ("h_proposal_data", &deposit.h_proposal_data),
     GNUNET_JSON_spec_fixed_auto ("H_wire", &deposit.h_wire),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",  &deposit.csig),
-    GNUNET_JSON_spec_uint64 ("transaction_id", &deposit.transaction_id),
     GNUNET_JSON_spec_absolute_time ("timestamp", &deposit.timestamp),
     GNUNET_JSON_spec_absolute_time ("refund_deadline", &deposit.refund_deadline),
     GNUNET_JSON_spec_absolute_time ("wire_transfer_deadline", &deposit.wire_deadline),

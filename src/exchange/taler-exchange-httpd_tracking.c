@@ -70,15 +70,13 @@ TEH_TRACKING_handler_track_transfer (struct TEH_RequestHandler *rh,
  * @param tps signed request to execute
  * @param merchant_pub public key from the merchant
  * @param merchant_sig signature from the merchant (to be checked)
- * @param transaction_id transaction ID (in host byte order)
  * @return MHD result code
  */
 static int
 check_and_handle_track_transaction_request (struct MHD_Connection *connection,
                                             const struct TALER_DepositTrackPS *tps,
                                             struct TALER_MerchantPublicKeyP *merchant_pub,
-                                            struct TALER_MerchantSignatureP *merchant_sig,
-                                            uint64_t transaction_id)
+                                            struct TALER_MerchantSignatureP *merchant_sig)
 {
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION,
@@ -95,8 +93,7 @@ check_and_handle_track_transaction_request (struct MHD_Connection *connection,
                                            &tps->h_proposal_data,
                                            &tps->h_wire,
                                            &tps->coin_pub,
-                                           merchant_pub,
-                                           transaction_id);
+                                           merchant_pub);
 }
 
 
@@ -120,13 +117,11 @@ TEH_TRACKING_handler_track_transaction (struct TEH_RequestHandler *rh,
   int res;
   json_t *json;
   struct TALER_DepositTrackPS tps;
-  uint64_t transaction_id;
   struct TALER_MerchantSignatureP merchant_sig;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("H_wire", &tps.h_wire),
     GNUNET_JSON_spec_fixed_auto ("h_proposal_data", &tps.h_proposal_data),
     GNUNET_JSON_spec_fixed_auto ("coin_pub", &tps.coin_pub),
-    GNUNET_JSON_spec_uint64 ("transaction_id", &transaction_id),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &tps.merchant),
     GNUNET_JSON_spec_fixed_auto ("merchant_sig", &merchant_sig),
     GNUNET_JSON_spec_end ()
@@ -151,12 +146,10 @@ TEH_TRACKING_handler_track_transaction (struct TEH_RequestHandler *rh,
   }
   tps.purpose.size = htonl (sizeof (struct TALER_DepositTrackPS));
   tps.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION);
-  tps.transaction_id = GNUNET_htonll (transaction_id);
   res = check_and_handle_track_transaction_request (connection,
                                                     &tps,
                                                     &tps.merchant,
-                                                    &merchant_sig,
-                                                    transaction_id);
+                                                    &merchant_sig);
   GNUNET_JSON_parse_free (spec);
   json_decref (json);
   return res;

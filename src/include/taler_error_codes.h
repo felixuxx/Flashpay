@@ -1139,7 +1139,7 @@ enum TALER_ErrorCode
 
   /**
    * The backend encountered an error while trying to store the
-   * pair <proposal_data, h_transaction_id> into the database. 
+   * h_proposal_data into the database. 
    * The response is provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_PROPOSAL_STORE_DB_ERROR = 2501,

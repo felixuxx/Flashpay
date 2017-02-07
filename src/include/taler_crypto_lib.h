@@ -380,11 +380,6 @@ struct TALER_TrackTransferDetails
    */
   struct TALER_Amount coin_fee;
 
-  /**
-   * Merchant's transaction identifier.
-   */
-  uint64_t transaction_id;
-
 };
 
 

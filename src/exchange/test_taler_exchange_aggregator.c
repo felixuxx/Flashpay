@@ -135,11 +135,6 @@ struct Command
       uint64_t merchant_account;
 
       /**
-       * Merchant's transaction ID.
-       */
-      uint64_t transaction_id;
-
-      /**
        * By when does the merchant request the funds to be wired.
        */
       struct GNUNET_TIME_Relative wire_deadline;
@@ -439,7 +434,6 @@ do_deposit (struct Command *cmd)
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_hash (deposit.receiver_wire_account,
                                   &deposit.h_wire));
-  deposit.transaction_id = cmd->details.deposit.transaction_id;
   deposit.timestamp = GNUNET_TIME_absolute_get ();
   deposit.wire_deadline = GNUNET_TIME_relative_to_absolute (cmd->details.deposit.wire_deadline);
 
@@ -606,7 +600,6 @@ run_test ()
       .label = "do-deposit-1",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:1",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -645,7 +638,6 @@ run_test ()
       .label = "do-deposit-2a",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 2,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:1",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -655,7 +647,6 @@ run_test ()
       .label = "do-deposit-2b",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 3,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:1",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -683,7 +674,6 @@ run_test ()
       .label = "do-deposit-3a",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 4,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:1",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -693,7 +683,6 @@ run_test ()
       .label = "do-deposit-3b",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 5,
-      .details.deposit.transaction_id = 5,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:1",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -703,7 +692,6 @@ run_test ()
       .label = "do-deposit-3c",
       .details.deposit.merchant_name = "alice",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 1,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:1",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -744,7 +732,6 @@ run_test ()
       .label = "do-deposit-4a",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 6,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
       .details.deposit.amount_with_fee = "EUR:0.2",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -754,7 +741,6 @@ run_test ()
       .label = "do-deposit-4b",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 7,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
       .details.deposit.amount_with_fee = "EUR:0.2",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -790,7 +776,6 @@ run_test ()
       .label = "do-deposit-5a",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 8,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 10 }, /* 10s */
       .details.deposit.amount_with_fee = "EUR:0.2",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -800,7 +785,6 @@ run_test ()
       .label = "do-deposit-5b",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 9,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
       .details.deposit.amount_with_fee = "EUR:0.2",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -836,7 +820,6 @@ run_test ()
       .label = "do-deposit-6a",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 10,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:0.102",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -854,7 +837,6 @@ run_test ()
       .label = "do-deposit-6b",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 11,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:0.102",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -864,7 +846,6 @@ run_test ()
       .label = "do-deposit-6c",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 12,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:0.102",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -882,7 +863,6 @@ run_test ()
       .label = "do-deposit-6d",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 13,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:0.102",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -900,7 +880,6 @@ run_test ()
       .label = "do-deposit-6e",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 14,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:0.102",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -923,7 +902,6 @@ run_test ()
       .label = "do-deposit-7a",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 15,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:0.109",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -941,7 +919,6 @@ run_test ()
       .label = "do-deposit-7b",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 16,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:0.109",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -963,7 +940,6 @@ run_test ()
       .label = "do-deposit-7c",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 17,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:0.122",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -986,7 +962,6 @@ run_test ()
       .label = "do-deposit-8a",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 18,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
       .details.deposit.amount_with_fee = "EUR:0.109",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -1004,7 +979,6 @@ run_test ()
       .label = "do-deposit-8b",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 19,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
       .details.deposit.amount_with_fee = "EUR:0.109",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -1023,7 +997,6 @@ run_test ()
       .label = "do-deposit-8c",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 20,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:0.122",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -1047,7 +1020,6 @@ run_test ()
       .label = "do-deposit-9a",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 21,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
       .details.deposit.amount_with_fee = "EUR:0.104",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -1065,7 +1037,6 @@ run_test ()
       .label = "do-deposit-9b",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 22,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 5 }, /* 5s */
       .details.deposit.amount_with_fee = "EUR:0.105",
       .details.deposit.deposit_fee = "EUR:0.1"
@@ -1084,7 +1055,6 @@ run_test ()
       .label = "do-deposit-9c",
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
-      .details.deposit.transaction_id = 23,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
       .details.deposit.amount_with_fee = "EUR:0.112",
       .details.deposit.deposit_fee = "EUR:0.1"

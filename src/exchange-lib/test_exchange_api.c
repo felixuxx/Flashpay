@@ -376,11 +376,6 @@ struct Command
       const char *proposal_data;
 
       /**
-       * Transaction ID to use.
-       */
-      uint64_t transaction_id;
-
-      /**
        * Relative time (to add to 'now') to compute the refund deadline.
        * Zero for no refunds.
        */
@@ -1991,7 +1986,6 @@ interpreter_run (void *cls)
                          &dr.h_wire);
         dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
         dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
-        dr.transaction_id = GNUNET_htonll (cmd->details.deposit.transaction_id);
         TALER_amount_hton (&dr.amount_with_fee,
                            &amount);
         TALER_amount_hton (&dr.deposit_fee,
@@ -2013,7 +2007,6 @@ interpreter_run (void *cls)
                                   coin_pk_sig,
                                   &coin_pk->key,
                                   timestamp,
-                                  cmd->details.deposit.transaction_id,
                                   &merchant_pub,
                                   refund_deadline,
                                   &coin_sig,
@@ -2231,14 +2224,13 @@ interpreter_run (void *cls)
                        &h_proposal_data);
       json_decref (proposal_data);
       cmd->details.deposit_wtid.dwh
-        = TALER_EXCHANGE_track_transaction (exchange,
-                                       &ref->details.deposit.merchant_priv,
-                                       &h_wire,
-                                       &h_proposal_data,
-                                       &coin_pub,
-                                       ref->details.deposit.transaction_id,
-                                       &deposit_wtid_cb,
-                                       is);
+          = TALER_EXCHANGE_track_transaction (exchange,
+                                              &ref->details.deposit.merchant_priv,
+                                              &h_wire,
+                                              &h_proposal_data,
+                                              &coin_pub,
+                                              &deposit_wtid_cb,
+                                              is);
     }
     return;
   case OC_RUN_AGGREGATOR:
@@ -2358,7 +2350,6 @@ interpreter_run (void *cls)
                                  &amount,
                                  &refund_fee,
                                  &h_proposal_data,
-                                 ref->details.deposit.transaction_id,
                                  &coin_pub,
                                  cmd->details.refund.rtransaction_id,
                                  &ref->details.deposit.merchant_priv,
@@ -2761,8 +2752,7 @@ run (void *cls)
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
-      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
-      .details.deposit.transaction_id = 1 },
+      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }" },
 
     /* Try to overdraw funds ... */
     { .oc = OC_WITHDRAW_SIGN,
@@ -2778,8 +2768,7 @@ run (void *cls)
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":43  }",
-      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
-      .details.deposit.transaction_id = 1 },
+      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }" },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
        transaction ID) */
     { .oc = OC_DEPOSIT,
@@ -2788,8 +2777,7 @@ run (void *cls)
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
-      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }",
-      .details.deposit.transaction_id = 2 },
+      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":1 } ] }" },
     /* Try to double-spend the 5 EUR coin at the same merchant (but different
        proposal) */
     { .oc = OC_DEPOSIT,
@@ -2798,8 +2786,7 @@ run (void *cls)
       .details.deposit.amount = "EUR:5",
       .details.deposit.coin_ref = "withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
-      .details.deposit.proposal_data = "{ \"items\":[{ \"name\":\"ice cream\", \"value\":2 } ] }",
-      .details.deposit.transaction_id = 1 },
+      .details.deposit.proposal_data = "{ \"items\":[{ \"name\":\"ice cream\", \"value\":2 } ] }" },
 
     /* ***************** /refresh testing ******************** */
 
@@ -2824,8 +2811,7 @@ run (void *cls)
       .details.deposit.amount = "EUR:1",
       .details.deposit.coin_ref = "refresh-withdraw-coin-1",
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
-      .details.deposit.proposal_data = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:1\" } ] }",
-      .details.deposit.transaction_id = 42421 },
+      .details.deposit.proposal_data = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:1\" } ] }" },
 
     /* Melt the rest of the coin's value (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
 
@@ -2866,8 +2852,7 @@ run (void *cls)
       .details.deposit.coin_ref = "refresh-reveal-1-idempotency",
       .details.deposit.coin_idx = 0,
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
-      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }",
-      .details.deposit.transaction_id = 2 },
+      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }" },
 
     /* Test successfully spending coins from the refresh operation:
        finally EUR:0.1 */
@@ -2878,8 +2863,7 @@ run (void *cls)
       .details.deposit.coin_ref = "refresh-reveal-1",
       .details.deposit.coin_idx = 4,
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":43  }",
-      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }",
-      .details.deposit.transaction_id = 2 },
+      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"ice cream\", \"value\":3 } ] }" },
 
     /* Test running a failing melt operation (same operation again must fail) */
     { .oc = OC_REFRESH_MELT,
@@ -2995,7 +2979,6 @@ run (void *cls)
       .details.deposit.coin_ref = "withdraw-coin-r1",
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
       .details.deposit.proposal_data = "{ \"items\" : [ { \"name\":\"ice cream\", \"value\":\"EUR:5\" } ] }",
-      .details.deposit.transaction_id = 424210,
       .details.deposit.refund_deadline = { 60LL * 1000 * 1000 } /* 60 s */,
     },
     /* Run transfers. Should do nothing as refund deadline blocks it */
@@ -3011,7 +2994,6 @@ run (void *cls)
       .details.refund.amount = "EUR:5",
       .details.refund.fee = "EUR:0.01",
       .details.refund.deposit_ref = "deposit-refund-1",
-      .details.refund.rtransaction_id = 1
     },
     /* Spend 4.99 EUR of the refunded 4.99 EUR coin (1ct gone due to refund)
        (merchant would receive EUR:4.98 due to 1 ct deposit fee) */
@@ -3022,7 +3004,6 @@ run (void *cls)
       .details.deposit.coin_ref = "withdraw-coin-r1",
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
       .details.deposit.proposal_data = "{ \"items\" : [ { \"name\":\"more ice cream\", \"value\":\"EUR:5\" } ] }",
-      .details.deposit.transaction_id = 424211,
     },
     /* Run transfers. This will do the transfer as refund deadline was 0 */
     { .oc = OC_RUN_AGGREGATOR,
@@ -3041,7 +3022,6 @@ run (void *cls)
       .details.refund.amount = "EUR:4.99",
       .details.refund.fee = "EUR:0.01",
       .details.refund.deposit_ref = "deposit-refund-2",
-      .details.refund.rtransaction_id = 2
     },
 
 #endif

@@ -217,7 +217,6 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
     "\"NAME\":\"GNUNET E.\","
     "\"BIC\":\"GENODEF1SRL\""
     "}";
-  static uint64_t transaction_id = 0;
   struct GNUNET_TIME_Absolute timestamp;
   struct GNUNET_TIME_Absolute refund_deadline;
   struct TALER_Amount amount_with_fee;
@@ -277,7 +276,6 @@ PERF_TALER_EXCHANGEDB_deposit_init (const struct PERF_TALER_EXCHANGEDB_Coin *coi
   deposit->h_proposal_data = h_proposal_data;
   deposit->h_wire = h_wire;
   deposit->receiver_wire_account = json_loads (wire, 0, NULL);
-  deposit->transaction_id = transaction_id++;
   deposit->timestamp = timestamp;
   deposit->refund_deadline = refund_deadline;
   deposit->amount_with_fee = amount_with_fee;

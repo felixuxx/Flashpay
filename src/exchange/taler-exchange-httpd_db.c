@@ -237,7 +237,6 @@ TEH_DB_execute_deposit (struct MHD_Connection *connection,
                                                &deposit->coin.coin_pub,
                                                &deposit->h_wire,
                                                &deposit->h_proposal_data,
-                                               deposit->transaction_id,
                                                deposit->timestamp,
                                                deposit->refund_deadline,
                                                &deposit->merchant_pub,
@@ -313,7 +312,6 @@ TEH_DB_execute_deposit (struct MHD_Connection *connection,
                                              &deposit->coin.coin_pub,
                                              &deposit->h_wire,
                                              &deposit->h_proposal_data,
-                                             deposit->transaction_id,
                                              deposit->timestamp,
                                              deposit->refund_deadline,
                                              &deposit->merchant_pub,
@@ -383,8 +381,7 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
                            sizeof (struct TALER_MerchantPublicKeyP))) &&
              (0 == memcmp (&dep->h_proposal_data,
                            &refund->h_proposal_data,
-                           sizeof (struct GNUNET_HashCode))) &&
-             (dep->transaction_id == refund->transaction_id) )
+                           sizeof (struct GNUNET_HashCode))) )
         {
           deposit_found = GNUNET_YES;
           break;
@@ -405,7 +402,6 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
              (0 == memcmp (&ref->h_proposal_data,
                            &refund->h_proposal_data,
                            sizeof (struct GNUNET_HashCode))) &&
-             (ref->transaction_id == refund->transaction_id) &&
              (ref->rtransaction_id == refund->rtransaction_id) )
         {
           refund_found = GNUNET_YES;
@@ -418,7 +414,6 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
              (0 == memcmp (&ref->h_proposal_data,
                            &refund->h_proposal_data,
                            sizeof (struct GNUNET_HashCode))) &&
-             (ref->transaction_id == refund->transaction_id) &&
              (ref->rtransaction_id != refund->rtransaction_id) )
         {
           GNUNET_break_op (0); /* conflicting refound found */
@@ -1916,7 +1911,6 @@ struct WtidTransactionContext
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_proposal_data which proposal was this payment about
- * @param transaction_id merchant's transaction ID for the payment
  * @param coin_pub which public key was this payment about
  * @param deposit_value amount contributed by this coin in total
  * @param deposit_fee deposit fee charged by exchange for this coin
@@ -1927,7 +1921,6 @@ handle_transaction_data (void *cls,
                          const struct GNUNET_HashCode *h_wire,
                          struct GNUNET_TIME_Absolute exec_time,
                          const struct GNUNET_HashCode *h_proposal_data,
-                         uint64_t transaction_id,
                          const struct TALER_CoinSpendPublicKeyP *coin_pub,
                          const struct TALER_Amount *deposit_value,
                          const struct TALER_Amount *deposit_fee)
@@ -1990,7 +1983,6 @@ handle_transaction_data (void *cls,
   wdd->deposit_value = *deposit_value;
   wdd->deposit_fee = *deposit_fee;
   wdd->h_proposal_data = *h_proposal_data;
-  wdd->transaction_id = transaction_id;
   wdd->coin_pub = *coin_pub;
   GNUNET_CONTAINER_DLL_insert (ctx->wdd_head,
                                ctx->wdd_tail,
@@ -2095,11 +2087,6 @@ struct DepositWtidContext
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
-   * Transaction ID we are looking up.
-   */
-  uint64_t transaction_id;
-
-  /**
    * MHD result code to return.
    */
   int res;
@@ -2154,7 +2141,6 @@ handle_wtid_data (void *cls,
                                                        &ctx->h_wire,
                                                        &ctx->coin_pub,
                                                        &coin_delta,
-                                                       ctx->transaction_id,
                                                        wtid,
                                                        execution_time);
     }
@@ -2171,7 +2157,6 @@ handle_wtid_data (void *cls,
  * @param h_wire hash of the wire details
  * @param coin_pub public key of the coin to link
  * @param merchant_pub public key of the merchant
- * @param transaction_id transaction ID of the merchant
  * @return MHD result code
  */
 int
@@ -2179,8 +2164,7 @@ TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
                                   const struct GNUNET_HashCode *h_proposal_data,
                                   const struct GNUNET_HashCode *h_wire,
                                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                  const struct TALER_MerchantPublicKeyP *merchant_pub,
-                                  uint64_t transaction_id)
+                                  const struct TALER_MerchantPublicKeyP *merchant_pub)
 {
   int ret;
   struct DepositWtidContext ctx;
@@ -2196,7 +2180,6 @@ TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
   ctx.h_proposal_data = *h_proposal_data;
   ctx.h_wire = *h_wire;
   ctx.coin_pub = *coin_pub;
-  ctx.transaction_id = transaction_id;
   ctx.res = GNUNET_SYSERR;
   ret = TEH_plugin->wire_lookup_deposit_wtid (TEH_plugin->cls,
                                               session,
@@ -2204,7 +2187,6 @@ TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
 					      h_wire,
 					      coin_pub,
 					      merchant_pub,
-					      transaction_id,
 					      &handle_wtid_data,
 					      &ctx);
   if (GNUNET_SYSERR == ret)

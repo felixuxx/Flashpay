@@ -456,7 +456,6 @@ typedef void
  * @param denom_pub denomination key with which the coin is signed
  * @param denom_sig exchange’s unblinded signature of the coin
  * @param timestamp timestamp when the contract was finalized, must match approximately the current time of the exchange
- * @param transaction_id transaction id for the transaction between merchant and customer
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
  * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
  * @param coin_sig the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT made by the customer with the coin’s private key.
@@ -475,7 +474,6 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                         const struct TALER_DenominationSignature *denom_sig,
                         const struct TALER_DenominationPublicKey *denom_pub,
                         struct GNUNET_TIME_Absolute timestamp,
-                        uint64_t transaction_id,
                         const struct TALER_MerchantPublicKeyP *merchant_pub,
                         struct GNUNET_TIME_Absolute refund_deadline,
                         const struct TALER_CoinSpendSignatureP *coin_sig,
@@ -540,7 +538,6 @@ typedef void
  *        (with deposit fee) of the original deposit contribution of this coin
  * @param refund_fee fee applicable to this coin for the refund
  * @param h_proposal_data hash of the contact of the merchant with the customer that is being refunded
- * @param transaction_id transaction id for the transaction being refunded, must match @a h_proposal_data
  * @param coin_pub coin’s public key of the coin from the original deposit operation
  * @param rtransaction_id transaction id for the transaction between merchant and customer (of refunding operation);
  *                        this is needed as we may first do a partial refund and later a full refund.  If both
@@ -557,7 +554,6 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 		       const struct TALER_Amount *amount,
 		       const struct TALER_Amount *refund_fee,
 		       const struct GNUNET_HashCode *h_proposal_data,
-		       uint64_t transaction_id,
 		       const struct TALER_CoinSpendPublicKeyP *coin_pub,
 		       uint64_t rtransaction_id,
 		       const struct TALER_MerchantPrivateKeyP *merchant_priv,
@@ -1219,7 +1215,6 @@ typedef void
  * @param h_wire hash of merchant's wire transfer details
  * @param h_proposal_data hash of the proposal data
  * @param coin_pub public key of the coin
- * @param transaction_id transaction identifier
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return handle to abort request
@@ -1230,7 +1225,6 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
                                   const struct GNUNET_HashCode *h_wire,
                                   const struct GNUNET_HashCode *h_proposal_data,
                                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                  uint64_t transaction_id,
                                   TALER_EXCHANGE_TrackTransactionCallback cb,
                                   void *cb_cls);
 

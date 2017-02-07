@@ -226,7 +226,6 @@ TEH_DB_execute_track_transfer (struct MHD_Connection *connection,
  * @param h_wire hash of the wire details
  * @param coin_pub public key of the coin to link
  * @param merchant_pub public key of the merchant
- * @param transaction_id transaction ID of the merchant
  * @return MHD result code
  */
 int
@@ -234,8 +233,7 @@ TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
                              const struct GNUNET_HashCode *h_proposal_data,
 			     const struct GNUNET_HashCode *h_wire,
 			     const struct TALER_CoinSpendPublicKeyP *coin_pub,
-			     const struct TALER_MerchantPublicKeyP *merchant_pub,
-			     uint64_t transaction_id);
+			     const struct TALER_MerchantPublicKeyP *merchant_pub);
 
 
 #endif

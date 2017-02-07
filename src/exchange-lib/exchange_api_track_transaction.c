@@ -257,7 +257,6 @@ handle_deposit_wtid_finished (void *cls,
  * @param h_proposal_data hash of the proposal data from the contract
  *                        between merchant and customer
  * @param coin_pub public key of the coin
- * @param transaction_id transaction identifier
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return handle to abort request
@@ -268,7 +267,6 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
                              const struct GNUNET_HashCode *h_wire,
                              const struct GNUNET_HashCode *h_proposal_data,
                              const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                             uint64_t transaction_id,
                              TALER_EXCHANGE_TrackTransactionCallback cb,
                              void *cb_cls)
 {
@@ -289,7 +287,6 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
   dtp.purpose.size = htonl (sizeof (dtp));
   dtp.h_proposal_data = *h_proposal_data;
   dtp.h_wire = *h_wire;
-  dtp.transaction_id = GNUNET_htonll (transaction_id);
   GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv->eddsa_priv,
                                       &dtp.merchant.eddsa_pub);
 
@@ -299,12 +296,11 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
                                            &dtp.purpose,
                                            &merchant_sig.eddsa_sig));
   deposit_wtid_obj = json_pack ("{s:o, s:o," /* H_wire, h_proposal_data */
-                                " s:o, s:I," /* coin_pub, transaction_id */
+                                " s:o," /* coin_pub */
                                 " s:o, s:o}", /* merchant_pub, merchant_sig */
                                 "H_wire", GNUNET_JSON_from_data_auto (h_wire),
                                 "h_proposal_data", GNUNET_JSON_from_data_auto (h_proposal_data),
                                 "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
-                                "transaction_id", (json_int_t) transaction_id,
                                 "merchant_pub", GNUNET_JSON_from_data_auto (&dtp.merchant),
                                 "merchant_sig", GNUNET_JSON_from_data_auto (&merchant_sig));
 
@@ -318,7 +314,6 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
   dwh->depconf.h_wire = *h_wire;
   dwh->depconf.h_proposal_data = *h_proposal_data;
   dwh->depconf.coin_pub = *coin_pub;
-  dwh->depconf.transaction_id = GNUNET_htonll (transaction_id);
 
   eh = curl_easy_init ();
   GNUNET_assert (NULL != (dwh->json_enc =

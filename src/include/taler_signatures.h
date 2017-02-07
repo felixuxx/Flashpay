@@ -296,18 +296,6 @@ struct TALER_DepositRequestPS
   struct GNUNET_TIME_AbsoluteNBO refund_deadline;
 
   /**
-   * Merchant-generated transaction ID to detect duplicate
-   * transactions.  The merchant must communicate a merchant-unique ID
-   * to the customer for each transaction.  Note that different coins
-   * that are part of the same transaction can use the same
-   * transaction ID.  The transaction ID is useful for later disputes,
-   * and the merchant's contract offer (@e h_proposal_data) with the
-   * customer should include the offer's term and transaction ID
-   * signed with a key from the merchant.
-   */
-  uint64_t transaction_id GNUNET_PACKED;
-
-  /**
    * Amount to be deposited, including deposit fee charged by the
    * exchange.  This is the total amount that the coin's value at the exchange
    * will be reduced by.
@@ -364,12 +352,6 @@ struct TALER_DepositConfirmationPS
   struct GNUNET_HashCode h_wire GNUNET_PACKED;
 
   /**
-   * Merchant-generated transaction ID to detect duplicate
-   * transactions.
-   */
-  uint64_t transaction_id GNUNET_PACKED;
-
-  /**
    * Time when this confirmation was generated.
    */
   struct GNUNET_TIME_AbsoluteNBO timestamp;
@@ -421,11 +403,6 @@ struct TALER_RefundRequestPS
    * which is being refunded.
    */
   struct GNUNET_HashCode h_proposal_data GNUNET_PACKED;
-
-  /**
-   * Merchant-generated transaction ID of the orginal transaction.
-   */
-  uint64_t transaction_id GNUNET_PACKED;
 
   /**
    * The coin's public key.  This is the value that must have been
@@ -480,11 +457,6 @@ struct TALER_RefundConfirmationPS
    * which is being refunded.
    */
   struct GNUNET_HashCode h_proposal_data GNUNET_PACKED;
-
-  /**
-   * Merchant-generated transaction ID of the orginal transaction.
-   */
-  uint64_t transaction_id GNUNET_PACKED;
 
   /**
    * The coin's public key.  This is the value that must have been
@@ -929,14 +901,6 @@ struct TALER_DepositTrackPS
   struct GNUNET_HashCode h_wire GNUNET_PACKED;
 
   /**
-   * Merchant-generated transaction ID to detect duplicate
-   * transactions.  Chosen by the merchant and used to group
-   * deposits when there are multiple payments the same proposal
-   * (typically from different customers).
-   */
-  uint64_t transaction_id GNUNET_PACKED;
-
-  /**
    * The Merchant's public key.  The deposit inquiry request is to be
    * signed by the corresponding private key (using EdDSA).
    */
@@ -967,11 +931,6 @@ struct TALER_WireDepositDetailP
    * Time when the wire transfer was performed by the exchange.
    */
   struct GNUNET_TIME_AbsoluteNBO execution_time;
-
-  /**
-   * Merchant's transaction ID in NBO.
-   */
-  uint64_t transaction_id GNUNET_PACKED;
 
   /**
    * Coin's public key.
@@ -1097,18 +1056,6 @@ struct TALER_ConfirmWirePS
    * signed (blindly) by the Exchange.
    */
   struct TALER_CoinSpendPublicKeyP coin_pub;
-
-  /**
-   * Merchant-generated transaction ID to detect duplicate
-   * transactions, in big endian.  The merchant must communicate a
-   * merchant-unique ID to the customer for each transaction.  Note
-   * that different coins that are part of the same transaction can
-   * use the same transaction ID.  The transaction ID is useful for
-   * later disputes, and the merchant's contract offer (@e h_proposal_data)
-   * with the customer should include the offer's term and transaction
-   * ID signed with a key from the merchant.
-   */
-  uint64_t transaction_id GNUNET_PACKED;
 
   /**
    * When did the exchange execute this transfer? Note that the
