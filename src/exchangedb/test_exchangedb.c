@@ -1408,10 +1408,6 @@ run (void *cls)
 
   result = 10;
   deposit2 = deposit;
-  FAILIF (GNUNET_NO !=
-          plugin->have_deposit (plugin->cls,
-                                session,
-                                &deposit2));
   RND_BLK (&deposit2.merchant_pub); /* should fail if merchant is different */
   FAILIF (GNUNET_NO !=
           plugin->have_deposit (plugin->cls,
@@ -1556,15 +1552,21 @@ run (void *cls)
                                         &wtid_wt,
                                         &cb_wt_never,
                                         NULL));
-  FAILIF (GNUNET_NO !=
-          plugin->wire_lookup_deposit_wtid (plugin->cls,
-                                            session,
-                                            &h_proposal_data_wt,
-                                            &h_wire_wt,
-                                            &coin_pub_wt,
-                                            &merchant_pub_wt,
-                                            &cb_wtid_never,
-                                            NULL));
+
+  {
+    struct GNUNET_HashCode h_proposal_data_wt2 = h_proposal_data_wt;
+
+    h_proposal_data_wt2.bits[0]++;
+    FAILIF (GNUNET_NO !=
+            plugin->wire_lookup_deposit_wtid (plugin->cls,
+                                              session,
+                                              &h_proposal_data_wt2,
+                                              &h_wire_wt,
+                                              &coin_pub_wt,
+                                              &merchant_pub_wt,
+                                              &cb_wtid_never,
+                                              NULL));
+  }
   /* insert WT data */
   FAILIF (GNUNET_OK !=
           plugin->insert_aggregation_tracking (plugin->cls,
