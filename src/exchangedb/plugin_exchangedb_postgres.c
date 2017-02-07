@@ -1113,7 +1113,7 @@ postgres_prepare (PGconn *db_conn)
      about how a coin has been spend with /deposit requests. */
   PREPARE ("get_deposit_with_coin_pub",
            "SELECT"
-           ",amount_with_fee_val"
+           " amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
            ",denom.fee_deposit_val"
