@@ -966,8 +966,8 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_frac "
            ",amount_with_fee_curr "
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
-           9, NULL);
+           "($1, $2, $3, $4, $5, $6, $7, $8);",
+           8, NULL);
 
   /* Fetch an existing deposit request, used to ensure idempotency
      during /deposit processing. Used in #postgres_have_deposit(). */
