@@ -951,8 +951,8 @@ postgres_prepare (PGconn *db_conn)
            ",wire"
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-           " $11, $12, $13);",
-           13, NULL);
+           " $11, $12, $12);",
+           12, NULL);
 
   /* Used in #postgres_insert_refund() to store refund information */
   PREPARE ("insert_refund",
