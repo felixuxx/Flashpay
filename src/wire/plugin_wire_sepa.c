@@ -72,7 +72,7 @@ sepa_amount_round (void *cls,
   if (0 == delta)
     return GNUNET_NO;
   amount->fraction -= delta;
-  return GNUNET_SYSERR;
+  return GNUNET_OK;
 }
 
 

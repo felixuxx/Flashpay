@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2015, 2016 GNUnet e.V. and Inria
+  (C) 2015, 2016, 2017 GNUnet e.V. and Inria
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -52,6 +52,10 @@ struct TestBlock {
    */
   const char *round_out;
 
+  /**
+   * Currency to give to the plugin.
+   */ 
+  const char *currency;
 };
 
 
@@ -65,15 +69,17 @@ static struct TestBlock tests[] = {
     .json_proto = "{  \"type\":\"sepa\", \"iban\":\"DE67830654080004822650\", \"name\":\"GNUnet e.V.\", \"bic\":\"GENODEF1SLR\" }",
     .round_in = "EUR:0.123456",
     .round_out = "EUR:0.12",
+    .currency = "EUR"
   },
   {
     .plugin_name = "test",
     .json_proto = "{  \"type\":\"test\", \"bank_uri\":\"http://localhost/\", \"account_number\":42 }",
     .round_in = "KUDOS:0.123456",
     .round_out = "KUDOS:0.12",
+    .currency = "KUDOS"
   },
   {
-    NULL, NULL, NULL, NULL
+    NULL, NULL, NULL, NULL, NULL
   }
 };
 
@@ -192,6 +198,7 @@ run_test (const struct TestBlock *test,
     return GNUNET_SYSERR;
   }
   memset (&in, 0, sizeof (in));
+  GNUNET_log_skip (GNUNET_ERROR_TYPE_ERROR, 1);
   if (GNUNET_SYSERR !=
       plugin->amount_round (plugin->cls,
                             &in))
@@ -229,6 +236,10 @@ main (int argc,
   ret = GNUNET_OK;
   for (i=0;NULL != (test = &tests[i])->plugin_name;i++)
   {
+    GNUNET_CONFIGURATION_set_value_string (cfg,
+					   "taler",
+					   "CURRENCY",
+					   test->currency);
     plugin = TALER_WIRE_plugin_load (cfg,
                                      test->plugin_name);
     GNUNET_assert (NULL != plugin);
@@ -239,16 +250,16 @@ main (int argc,
     TALER_WIRE_plugin_unload (plugin);
     if (GNUNET_OK != ret)
     {
-      fprintf (stdout,
-               "%s FAILED\n",
-               test->plugin_name);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		  "%s FAILED\n",
+		  test->plugin_name);
       break;
     }
     else
     {
-      fprintf (stdout,
-               "%s PASS\n",
-               test->plugin_name);
+      GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+		  "%s PASS\n",
+		  test->plugin_name);
     }
   }
   GNUNET_CONFIGURATION_destroy (cfg);
