@@ -252,7 +252,7 @@ main (int argc,
     }
   }
   GNUNET_CONFIGURATION_destroy (cfg);
-  if (GNUNET_NO == ret)
+  if (GNUNET_OK != ret)
     return 1;
   return 0;
 }
