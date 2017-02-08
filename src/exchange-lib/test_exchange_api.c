@@ -1590,6 +1590,12 @@ deposit_wtid_cb (void *cls,
       }
     }
     break;
+  case MHD_HTTP_ACCEPTED:
+    /* allowed, nothing to check here */
+    break;
+  case MHD_HTTP_NOT_FOUND:
+    /* allowed, nothing to check here */
+    break;
   default:
     GNUNET_break (0);
     break;
@@ -3143,7 +3149,7 @@ main (int argc,
       if (10 == iter)
       {
 	fprintf (stderr,
-		 "Failed to launch `taler-exchange-httpd' (or `wget')\n");	
+		 "Failed to launch `taler-exchange-httpd' (or `wget')\n");
 	GNUNET_OS_process_kill (exchanged,
 				SIGTERM);
 	GNUNET_OS_process_wait (exchanged);
