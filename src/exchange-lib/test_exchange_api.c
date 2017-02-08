@@ -3079,6 +3079,12 @@ main (int argc,
                                   "taler-exchange-keyup",
                                   "-c", "test_exchange_api.conf",
                                   NULL);
+  if (NULL == proc)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
+    return 77;
+  }
   GNUNET_OS_process_wait (proc);
   GNUNET_OS_process_destroy (proc);
   proc = GNUNET_OS_start_process (GNUNET_NO,
@@ -3089,6 +3095,12 @@ main (int argc,
                                   "-c", "test_exchange_api.conf",
                                   "-r",
                                   NULL);
+  if (NULL == proc)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"Failed to run `taler-exchange-dbinit`, is your PATH correct?\n");
+    return 77;
+  }
   if (GNUNET_SYSERR ==
       GNUNET_OS_process_wait_status (proc,
                                      &type,
@@ -3134,7 +3146,6 @@ main (int argc,
   result = GNUNET_SYSERR;
   sigpipe = GNUNET_DISK_pipe (GNUNET_NO, GNUNET_NO, GNUNET_NO, GNUNET_NO);
   GNUNET_assert (NULL != sigpipe);
-  sleep (30);
   shc_chld = GNUNET_SIGNAL_handler_install (GNUNET_SIGCHLD,
                                             &sighandler_child_death);
   GNUNET_SCHEDULER_run (&run, NULL);
