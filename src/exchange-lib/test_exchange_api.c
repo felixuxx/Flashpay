@@ -3065,6 +3065,7 @@ main (int argc,
   struct GNUNET_SIGNAL_Context *shc_chld;
   enum GNUNET_OS_ProcessStatusType type;
   unsigned long code;
+  unsigned int iter;
 
   /* These might get in the way... */
   unsetenv ("XDG_DATA_HOME");
@@ -3122,7 +3123,7 @@ main (int argc,
        (0 != code) )
   {
     fprintf (stderr,
-             "Unexpected error running taler-exchange-dbinit!\n");
+             "Unexpected error running `taler-exchange-dbinit'!\n");
     return 1;
   }
   exchanged = GNUNET_OS_start_process (GNUNET_NO,
@@ -3135,11 +3136,23 @@ main (int argc,
                                        NULL);
   /* give child time to start and bind against the socket */
   fprintf (stderr,
-           "Waiting for taler-exchange-httpd to be ready");
+           "Waiting for `taler-exchange-httpd' to be ready");
+  iter = 0;
   do
     {
+      if (10 == iter)
+      {
+	fprintf (stderr,
+		 "Failed to launch `taler-exchange-httpd' (or `wget')\n");	
+	GNUNET_OS_process_kill (exchanged,
+				SIGTERM);
+	GNUNET_OS_process_wait (exchanged);
+	GNUNET_OS_process_destroy (exchanged);
+	return 77;
+      }
       fprintf (stderr, ".");
       sleep (1);
+      iter++;
     }
   while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/keys -o /dev/null -O /dev/null"));
   fprintf (stderr, "\n");
