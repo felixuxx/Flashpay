@@ -818,7 +818,7 @@ exchange_keys_update_cointype (void *cls,
       return;
     }
     if ( (NULL != auditor_output_file) &&
-         (sizeof (denomkey_issue.issue.properties) !=
+         (1 !=
           fwrite (&denomkey_issue.issue.properties,
                   sizeof (struct TALER_DenominationKeyValidityPS),
                   1,
