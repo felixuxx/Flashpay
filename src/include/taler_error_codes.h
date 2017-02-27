@@ -994,6 +994,12 @@ enum TALER_ErrorCode
   TALER_EC_HISTORY_DB_FETCH_ERROR = 2201,
 
   /**
+   * Instance used to retrieve history is unknown to the
+   * merchant.
+   */
+  TALER_EC_HISTORY_INSTANCE_UNKNOWN = 2202,
+
+  /**
    * We failed to contact the exchange for the /track/transaction
    * request.  This response is provided with HTTP status code
    * MHD_HTTP_SERVICE_UNAVAILABLE.
