@@ -57,8 +57,9 @@ typedef void
  * to the operators of the bank.
  *
  * @param ctx curl context for the event loop
- * @param bank_base_url URL of the bank
- * @param reserve_pub public key of the reserve
+ * @param bank_base_url URL of the bank (used to execute this request)
+ * @param exchange_base_url base URL of the exchange (for tracking)
+ * @param wtid wire transfer identifier for the transfer
  * @param amount amount that was deposited
  * @param execution_date when did we receive the amount
  * @param debit_account_no account number to withdraw from (53 bits at most)
@@ -72,6 +73,7 @@ typedef void
 struct TALER_BANK_AdminAddIncomingHandle *
 TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
                                const char *bank_base_url,
+                               const char *exchange_base_url,
                                const struct TALER_WireTransferIdentifierRawP *wtid,
                                const struct TALER_Amount *amount,
                                uint64_t debit_account_no,

@@ -86,6 +86,11 @@ struct TALER_WIRE_PrepareHandle
   json_t *wire;
 
   /**
+   * Base URL to use for the exchange.
+   */
+  char *exchange_base_url;
+
+  /**
    * Function to call with the serialized data.
    */
   TALER_WIRE_PrepareTransactionCallback ptc;
@@ -397,7 +402,9 @@ struct BufFormatP
    */
   struct TALER_AmountNBO amount;
 
-  /* followed by serialized 'wire' JSON data */
+  /* followed by serialized 'wire' JSON data (0-terminated) */
+
+  /* followed by 0-terminated base URL */
 
 };
 GNUNET_NETWORK_STRUCT_END
@@ -417,6 +424,7 @@ test_prepare_wire_transfer_cancel (void *cls,
   if (NULL != pth->task)
     GNUNET_SCHEDULER_cancel (pth->task);
   json_decref (pth->wire);
+  GNUNET_free (pth->exchange_base_url);
   GNUNET_free (pth);
 }
 
@@ -432,7 +440,8 @@ do_prepare (void *cls)
 {
   struct TALER_WIRE_PrepareHandle *pth = cls;
   char *wire_enc;
-  size_t len;
+  size_t len_w;
+  size_t len_b;
   struct BufFormatP bf;
 
   pth->task = NULL;
@@ -449,19 +458,23 @@ do_prepare (void *cls)
                                        pth);
     return;
   }
-  len = strlen (wire_enc) + 1;
+  len_w = strlen (wire_enc) + 1;
+  len_b = strlen (pth->exchange_base_url) + 1;
   bf.wtid = pth->wtid;
   TALER_amount_hton (&bf.amount,
                      &pth->amount);
   {
-    char buf[sizeof (struct BufFormatP) + len];
+    char buf[sizeof (struct BufFormatP) + len_w + len_b];
 
     memcpy (buf,
             &bf,
             sizeof (struct BufFormatP));
     memcpy (&buf[sizeof (struct BufFormatP)],
             wire_enc,
-            len);
+            len_w);
+    memcpy (&buf[sizeof (struct BufFormatP) + len_w],
+            pth->exchange_base_url,
+            len_b);
 
     /* finally give the state back */
     pth->ptc (pth->ptc_cls,
@@ -485,6 +498,7 @@ do_prepare (void *cls)
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param wire valid wire account information
  * @param amount amount to transfer, already rounded
+ * @param exchange_base_url base URL of this exchange
  * @param wtid wire transfer identifier to use
  * @param ptc function to call with the prepared data to persist
  * @param ptc_cls closure for @a ptc
@@ -494,6 +508,7 @@ static struct TALER_WIRE_PrepareHandle *
 test_prepare_wire_transfer (void *cls,
                             const json_t *wire,
                             const struct TALER_Amount *amount,
+                            const char *exchange_base_url,
                             const struct TALER_WireTransferIdentifierRawP *wtid,
                             TALER_WIRE_PrepareTransactionCallback ptc,
                             void *ptc_cls)
@@ -515,6 +530,7 @@ test_prepare_wire_transfer (void *cls,
   pth = GNUNET_new (struct TALER_WIRE_PrepareHandle);
   pth->tc = tc;
   pth->wire = json_incref ((json_t *) wire);
+  pth->exchange_base_url = GNUNET_strdup (exchange_base_url);
   pth->wtid = *wtid;
   pth->ptc = ptc;
   pth->ptc_cls = ptc_cls;
@@ -650,6 +666,8 @@ test_execute_wire_transfer (void *cls,
   json_int_t account_no;
   struct BufFormatP bf;
   char *emsg;
+  const char *json_s;
+  const char *exchange_base_url;
 
   if (NULL == tc->ctx)
   {
@@ -658,7 +676,14 @@ test_execute_wire_transfer (void *cls,
     return NULL; /* not initialized with configuration, cannot do transfers */
   }
   if ( (buf_size <= sizeof (struct BufFormatP)) ||
-       ('\0' != buf[buf_size -1]) )
+       ('\0' != buf[buf_size - 1]) )
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  json_s = &buf[sizeof (struct BufFormatP)];
+  exchange_base_url = &json_s[strlen (json_s) + 1];
+  if (exchange_base_url > &buf[buf_size - 1])
   {
     GNUNET_break (0);
     return NULL;
@@ -668,7 +693,7 @@ test_execute_wire_transfer (void *cls,
           sizeof (bf));
   TALER_amount_ntoh (&amount,
                      &bf.amount);
-  wire = json_loads (&buf[sizeof (struct BufFormatP)],
+  wire = json_loads (json_s,
                      JSON_REJECT_DUPLICATES,
                      NULL);
   if (NULL == wire)
@@ -697,6 +722,7 @@ test_execute_wire_transfer (void *cls,
   eh->cc_cls = cc_cls;
   eh->aaih = TALER_BANK_admin_add_incoming (tc->ctx,
                                             tc->bank_uri,
+                                            exchange_base_url,
                                             &bf.wtid,
                                             &amount,
                                             (uint64_t) tc->exchange_account_outgoing_no,

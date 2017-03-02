@@ -29,8 +29,6 @@
 #include "taler_wire_lib.h"
 
 
-
-
 /**
  * Information we keep for each loaded wire plugin.
  */
@@ -167,6 +165,11 @@ struct AggregationUnit
  * Which currency is used by this exchange?
  */
 static char *exchange_currency_string;
+
+/**
+ * What is the base URL of this exchange?
+ */
+static char *exchange_base_url;
 
 /**
  * The exchange's configuration (global)
@@ -763,6 +766,7 @@ run_aggregation (void *cls)
   au->ph = wp->wire_plugin->prepare_wire_transfer (wp->wire_plugin->cls,
                                                    au->wire,
                                                    &au->total_amount,
+                                                   exchange_base_url,
                                                    &au->wtid,
                                                    &prepare_cb,
                                                    au);
@@ -1061,6 +1065,18 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (c,
+                                             "exchange",
+                                             "BASE_URL",
+                                             &exchange_base_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "BASE_URL");
+    global_ret = 1;
+    return;
+  }
   cfg = GNUNET_CONFIGURATION_dup (c);
   if (GNUNET_OK != exchange_serve_process_config ())
   {

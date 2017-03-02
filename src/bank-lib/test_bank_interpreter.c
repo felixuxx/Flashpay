@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016 GNUnet e.V.
+  Copyright (C) 2016, 2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -222,6 +222,7 @@ interpreter_run (void *cls)
     cmd->details.admin_add_incoming.aih
       = TALER_BANK_admin_add_incoming (is->ctx,
                                        "http://localhost:8081",
+                                       cmd->details.admin_add_incoming.exchange_base_url,
                                        &cmd->details.admin_add_incoming.wtid,
                                        &amount,
                                        cmd->details.admin_add_incoming.debit_account_no,
@@ -243,10 +244,11 @@ interpreter_run (void *cls)
                                            &amount));
     if (GNUNET_OK !=
         TALER_FAKEBANK_check (is->fakebank,
-                        &amount,
-                        ref->details.admin_add_incoming.debit_account_no,
-                        ref->details.admin_add_incoming.credit_account_no,
-                        &wtid))
+                              &amount,
+                              ref->details.admin_add_incoming.debit_account_no,
+                              ref->details.admin_add_incoming.credit_account_no,
+                              ref->details.admin_add_incoming.exchange_base_url,
+                              &wtid))
     {
       GNUNET_break (0);
       fail (is);

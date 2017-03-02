@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016 GNUnet e.V.
+  Copyright (C) 2016, 2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -98,6 +98,11 @@ struct TBI_Command
        * Debited account number.
        */
       uint64_t debit_account_no;
+
+      /**
+       * Exchange base URL to use.
+       */
+      const char *exchange_base_url;
 
       /**
        * Wire transfer identifier to use.  Initialized to

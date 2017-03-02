@@ -162,8 +162,9 @@ handle_admin_add_incoming_finished (void *cls,
  * to the operators of the bank.
  *
  * @param ctx curl context for the event loop
- * @param bank_base_url URL of the bank
- * @param reserve_pub public key of the reserve
+ * @param bank_base_url URL of the bank (used to execute this request)
+ * @param exchange_base_url base URL of the exchange (for tracking)
+ * @param wtid wire transfer identifier for the transfer
  * @param amount amount that was deposited
  * @param execution_date when did we receive the amount
  * @param debit_account_no account number to withdraw from (53 bits at most)
@@ -177,6 +178,7 @@ handle_admin_add_incoming_finished (void *cls,
 struct TALER_BANK_AdminAddIncomingHandle *
 TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
                                const char *bank_base_url,
+                               const char *exchange_base_url,
                                const struct TALER_WireTransferIdentifierRawP *wtid,
                                const struct TALER_Amount *amount,
                                uint64_t debit_account_no,
@@ -188,9 +190,9 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   json_t *admin_obj;
   CURL *eh;
 
-  admin_obj = json_pack ("{s:o, s:o,"
-                         " s:I, s:I}",
-                         "wtid", GNUNET_JSON_from_data_auto (wtid), /* #4340 */
+  admin_obj = json_pack ("{s:s, s:o, s:o, s:I, s:I}",
+                         "exchange_url", exchange_base_url,
+                         "wtid", GNUNET_JSON_from_data_auto (wtid),
                          "amount", TALER_JSON_from_amount (amount),
                          "debit_account", (json_int_t) debit_account_no,
                          "credit_account", (json_int_t) credit_account_no);

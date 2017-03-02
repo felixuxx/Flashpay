@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 GNUnet e.V. and Inria
+  Copyright (C) 2014-2017 GNUnet e.V. and Inria
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -605,6 +605,11 @@ struct Command
       uint64_t account_credit;
 
       /**
+       * Which exchange base URL is expected?
+       */
+      const char *exchange_base_url;
+
+      /**
        * Set (!) to the wire transfer identifier observed.
        */
       struct TALER_WireTransferIdentifierRawP wtid;
@@ -906,9 +911,10 @@ reserve_status_cb (void *cls,
                (0 == strcmp (cmd->details.reserve_status.reserve_reference,
                              rel->details.admin_add_incoming.reserve_reference) ) ) )
         {
-          if (GNUNET_OK !=
-              compare_admin_add_incoming_history (&history[j],
-                                                  rel))
+          if ( (j >= history_length) ||
+               (GNUNET_OK !=
+                compare_admin_add_incoming_history (&history[j],
+                                                    rel)) )
           {
             GNUNET_break (0);
             fail (is);
@@ -921,9 +927,10 @@ reserve_status_cb (void *cls,
         if (0 == strcmp (cmd->details.reserve_status.reserve_reference,
                          rel->details.reserve_withdraw.reserve_reference))
         {
-          if (GNUNET_OK !=
-              compare_reserve_withdraw_history (&history[j],
-                                                rel))
+          if ( (j >= history_length) ||
+               (GNUNET_OK !=
+                compare_reserve_withdraw_history (&history[j],
+                                                  rel)) )
           {
             GNUNET_break (0);
             fail (is);
@@ -2280,10 +2287,11 @@ interpreter_run (void *cls)
       }
       if (GNUNET_OK !=
           TALER_FAKEBANK_check (fakebank,
-                          &amount,
-                          cmd->details.check_bank_transfer.account_debit,
-                          cmd->details.check_bank_transfer.account_credit,
-                          &cmd->details.check_bank_transfer.wtid))
+                                &amount,
+                                cmd->details.check_bank_transfer.account_debit,
+                                cmd->details.check_bank_transfer.account_credit,
+                                cmd->details.check_bank_transfer.exchange_base_url,
+                                &cmd->details.check_bank_transfer.wtid))
       {
         GNUNET_break (0);
         fail (is);
@@ -2914,24 +2922,28 @@ run (void *cls)
 
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-499c",
+      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
       .details.check_bank_transfer.amount = "EUR:4.99",
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 42
     },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-99c1",
+      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
       .details.check_bank_transfer.amount = "EUR:0.99",
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 42
     },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-99c2",
+      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
       .details.check_bank_transfer.amount = "EUR:0.99",
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 42
     },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-9c",
+      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
       .details.check_bank_transfer.amount = "EUR:0.09",
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 43
@@ -3017,6 +3029,7 @@ run (void *cls)
     /* Check that deposit did run */
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-pre-refund",
+      .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
       .details.check_bank_transfer.amount = "EUR:4.98",
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 42

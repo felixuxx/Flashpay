@@ -155,6 +155,7 @@ struct TALER_WIRE_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param wire valid wire account information
    * @param amount amount to transfer, already rounded
+   * @param exchange_base_url base URL of this exchange
    * @param wtid wire transfer identifier to use
    * @param ptc function to call with the prepared data to persist
    * @param ptc_cls closure for @a ptc
@@ -164,6 +165,7 @@ struct TALER_WIRE_Plugin
   (*prepare_wire_transfer) (void *cls,
                             const json_t *wire,
                             const struct TALER_Amount *amount,
+                            const char *exchange_base_url,
                             const struct TALER_WireTransferIdentifierRawP *wtid,
                             TALER_WIRE_PrepareTransactionCallback ptc,
                             void *ptc_cls);

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016 GNUnet e.V.
+  Copyright (C) 2016, 2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -45,6 +45,7 @@ run (void *cls)
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 1,
       .details.admin_add_incoming.debit_account_no = 2,
+      .details.admin_add_incoming.exchange_base_url = "https://exchange.net/",
       .details.admin_add_incoming.amount = "PUDOS:5.01" },
     /* Add EUR:3.21 to account 3 */
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
@@ -52,6 +53,7 @@ run (void *cls)
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 3,
       .details.admin_add_incoming.debit_account_no = 2,
+      .details.admin_add_incoming.exchange_base_url = "https://exchange.org/",
       .details.admin_add_incoming.amount = "PUDOS:3.21" },
     /* check transfers arrived at fakebank */
     { .oc = TBI_OC_EXPECT_TRANSFER,

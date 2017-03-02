@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016 GNUnet e.V. & Inria
+  Copyright (C) 2016, 2017 GNUnet e.V. & Inria
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -658,6 +658,7 @@ sepa_sign_wire_details (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param wire valid wire account information
  * @param amount amount to transfer, already rounded
+ * @param exchange_base_url base URL of the exchange (for tracking)
  * @param wtid wire transfer identifier to use
  * @param psc function to call with the prepared data to persist
  * @param psc_cls closure for @a psc
@@ -667,6 +668,7 @@ static struct TALER_WIRE_PrepareHandle *
 sepa_prepare_wire_transfer (void *cls,
                             const json_t *wire,
                             const struct TALER_Amount *amount,
+                            const char *exchange_base_url,
                             const struct TALER_WireTransferIdentifierRawP *wtid,
                             TALER_WIRE_PrepareTransactionCallback psc,
                             void *psc_cls)

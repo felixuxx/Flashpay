@@ -71,15 +71,18 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h);
  * @param want_amount transfer amount desired
  * @param want_debit account that should have been debited
  * @param want_debit account that should have been credited
+ * @param exchange_base_url expected base URL of the exchange,
+ *        i.e. "https://example.com/"; may include a port
  * @param[out] wtid set to the wire transfer identifier
  * @return #GNUNET_OK on success
  */
 int
 TALER_FAKEBANK_check (struct TALER_FAKEBANK_Handle *h,
-                const struct TALER_Amount *want_amount,
-                uint64_t want_debit,
-                uint64_t want_credit,
-                struct TALER_WireTransferIdentifierRawP *wtid);
+                      const struct TALER_Amount *want_amount,
+                      uint64_t want_debit,
+                      uint64_t want_credit,
+                      const char *exchange_base_url,
+                      struct TALER_WireTransferIdentifierRawP *wtid);
 
 
 /**
