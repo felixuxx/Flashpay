@@ -873,7 +873,7 @@ parse_date_string (const char *date,
   for (i=0;i<12;i++)
     if (0 == strcasecmp (mons[i], mon))
       now.tm_mon = i;
-  if ( (7 == now.tm_mday) ||
+  if ( (7 == now.tm_wday) ||
        (12 == now.tm_mon) )
     return GNUNET_SYSERR;
   t = mktime (&now);
