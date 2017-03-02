@@ -114,6 +114,13 @@ TEH_VALIDATION_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
                                  p);
   }
   GNUNET_free (wireformats);
+  if (NULL == wire_head)
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "wireformat");
+    return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 
