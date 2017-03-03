@@ -16,8 +16,6 @@ The following options are from the "[exchange]" section and used by most exchang
 
 .IP CURRENCY
     Name of the currency, i.e. "EUR" for Euro.
-.IP WIREFORMAT
-    Format used for wire transfers to the merchant, i.e. "SEPA".
 .IP DB
     Plugin to use for the database, i.e. "postgres"
 .IP PORT
@@ -28,7 +26,8 @@ The following options are from the "[exchange]" section and used by most exchang
 
 .SH WIRE transfer details
 
-The following options must be in section "[wire\-incoming\-test]" and "[wire\-outgoing\-test]":
+To enable the "test" wire transfer method, you must set "ENABLE = YES" in "[exchange\-wire\-test]".
+Then, the following options must be in section "[exchange\-wire\-incoming\-test]" and "[exchange\-wire\-outgoing\-test]":
 
 .IP BANK_URI
     URL of the Taler bank.
@@ -36,7 +35,8 @@ The following options must be in section "[wire\-incoming\-test]" and "[wire\-ou
 .IP BANK_ACCOUNT_NUMBER
     Number of the bank account of the exchange.
 
-The following options must be in section "[wire\-incoming\-sepa]" and "[wire\-outgoing\-sepa]":
+To enable the "sepa" wire transfer method, you must set "ENABLE = YES" in "[exchange\-wire\-sepa]".
+Then, the following options must be in section "[exchange\-wire\-incoming\-sepa]" and "[exchange\-wire\-outgoing\-sepa]":
 
 .IP SEPA_RESPONSE_FILE
     Filename with the JSON body for the /wire response, signed using the exchange\'s long-term offline master key.  Use taler\-exchange\-sepa to create the SEPA_RESPONSE_FILE.

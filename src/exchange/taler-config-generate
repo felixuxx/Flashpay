@@ -6,6 +6,7 @@
 # -c FILENAME, --config=FILENAME (where to write config, defaults to ~/.config/taler.conf)
 # -C CURRENCY, --currency=CURRENCY (name of the currency)
 # -e, --exchange (generate configuration for the exchange)
+# -f AMOUNT, --wirefee=AMOUNT (wire transfer fees charged to merchant, generated for next 5 years)
 # -j WIREJSON, --wire-json-merchant=WIREJSON (wire plugin details in JSON)
 # -J WIREJSON, --wire-json-exchange=WIREJSON (wire plugin details in JSON)
 # -m, --merchant (generate configuration for the merchant)
@@ -32,7 +33,7 @@ ARG_MERCHANT_BANK_ACCOUNT=
 
 ##################################
 # read the options
-TEMP=`getopt -o c:C:ehj:J:mtw: --long config:,currency:,exchange,help,wire-json-exchange:,wire-json-merchant:,merchant,trusted,wire:,bank-uri:,exchange-bank-account:,merchant-bank-account: -n 'taler-config-generate' -- "$@"`
+TEMP=`getopt -o c:C:ef:hj:J:mtw: --long config:,currency:,exchange,wirefee:,help,wire-json-exchange:,wire-json-merchant:,merchant,trusted,wire:,bank-uri:,exchange-bank-account:,merchant-bank-account: -n 'taler-config-generate' -- "$@"`
 eval set -- "$TEMP"
 
 ####################################################
@@ -48,6 +49,9 @@ while true ; do
         -e|--exchange)
             ARG_E=1
             shift ;;
+        -f|--wirefee)
+            ARG_WIRE_FEE="$2"
+            shift 2 ;;
         -h|--help)
             ARG_H=1
             shift ;;
@@ -172,33 +176,55 @@ then
 # Obtain public master key of exchange
   MASTER_PUB=`gnunet-ecc -p "$MASTER_KEY"`
 
-# Setup wire format
-  $CS -s exchange -o WIREFORMAT -V "$ARG_W" || exit 1
 # Setup master public key
   $CS -s exchange -o MASTER_PUBLIC_KEY -V "$MASTER_PUB" || exit 1
+
+# Setup wire transfer methods
+  for $WMETHOD in $ARG_W
+  do
+    $CS -s exchange-wire-$WMETHOD -o ENABLE -V YES || exit 1
+
 # If possible, initialize outgoing wire account details ('test' method only)
-  if (test "test" = "$ARG_W" -a ! -z "$ARG_BANK_URI")
-  then
-    $CS -s exchange-wire-outgoing-test -o BANK_URI -V "$ARG_BANK_URI" || exit 1
-  else
-    echo "Skipped generating outgoing wire account details for exchange"
-  fi
-  if (test "test" = "$ARG_W" -a ! -z "$ARG_EXCHANGE_BANK_ACCOUNT")
-  then
-    $CS -s exchange-wire-outgoing-test -o BANK_ACCOUNT_NUMBER -V "$ARG_EXCHANGE_BANK_ACCOUNT" || exit 1
-  else
-    echo "Skipped generating outgoing wire account details for exchange"
-  fi
+    if (test "test" = "$WMETHOD" -a ! -z "$ARG_BANK_URI")
+    then
+      $CS -s exchange-wire-outgoing-test -o BANK_URI -V "$ARG_BANK_URI" || exit 1
+    else
+      echo "Skipped generating outgoing wire account details for exchange"
+    fi
+    if (test "test" = "$ARG_W" -a ! -z "$ARG_EXCHANGE_BANK_ACCOUNT")
+    then
+      $CS -s exchange-wire-outgoing-test -o BANK_ACCOUNT_NUMBER -V "$ARG_EXCHANGE_BANK_ACCOUNT" || exit 1
+    else
+      echo "Skipped generating outgoing wire account details for exchange"
+    fi
+
 # If possible, initialize /wire response from JSON (with signature)
-  if (test ! -z $ARG_JE)
-  then
-    JSONF=`$CS -s exchange-wire-incoming-${ARG_W} -o ${ARG_W}_RESPONSE_FILE -f`
+    if (test ! -z $ARG_JE)
+    then
+      JSONF=`$CS -s exchange-wire-incoming-${ARG_W} -o ${ARG_W}_RESPONSE_FILE -f`
 #    echo "Generating /wire response at $JSONF"
-    mkdir -p `dirname $JSONF`
-    taler-exchange-wire -c "$ARG_CONFIG" -t "$ARG_W" -j "$ARG_JE" -m "$MASTER_KEY" -o "$JSONF" || exit 1
-  else
-    echo "Skipped generating /wire response for exchange"
-  fi
+      mkdir -p `dirname $JSONF`
+      taler-exchange-wire -c "$ARG_CONFIG" -t "$ARG_W" -j "$ARG_JE" -m "$MASTER_KEY" -o "$JSONF" || exit 1
+    else
+      echo "Skipped generating /wire response for exchange"
+    fi
+
+# Setup wire transfer fee structure.
+    if (test -z "$ARG_WIRE_FEE")
+    then
+      today=`date '+%Y'`
+      future=`expr $today + 5`
+      for YEAR in `seq $today $future`
+      do
+        $CS -s exchange-wire-$WMETHOD -o wire-fee-$YEAR -V $ARG_WIRE_FEE
+      done
+    else
+      echo "Skipped generating wire fee structure for exchange"
+    fi
+
+# End of for loop over all wire transfer methods
+  done
+
 else
   echo "Skipped exchange setup"
 fi

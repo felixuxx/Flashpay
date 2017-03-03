@@ -1,7 +1,7 @@
 .TH TALER\-CONFIG\-GENERATE 1 "May 5, 2016" "GNU Taler"
 
 .SH NAME
-taler\-config\-generate \- tool to simplfy Taler configuration generation
+taler\-config\-generate \- tool to simplify Taler configuration generation
 
 .SH SYNOPSIS
 .B taler\-config\-generate
@@ -21,6 +21,9 @@ Which currency should we use in the configuration.
 .B
 .IP "\-e, \-\-exchange"
 Generate configuration for a Taler exchange.
+.B
+.IP "\-f AMOUNT, \-\-wirefee=AMOUNT"
+Setup wire transfer fees for the next 5 years for the exchange (for all wire methods).
 .B
 .IP "\-m, \-\-merchant"
 Generate configuration for a Taler merchant.
