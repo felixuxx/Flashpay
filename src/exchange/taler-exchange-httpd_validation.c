@@ -66,6 +66,38 @@ static struct Plugin *wire_tail;
 
 
 /**
+ * Load plugin @a name.
+ *
+ * @param cls pointer to `int` to set to #GNUNET_SYSERR on errors
+ * @param name name of the plugin to load
+ */
+static void
+load_plugin (void *cls,
+             const char *name)
+{
+  int *ret = cls;
+  struct Plugin *p;
+
+  p = GNUNET_new (struct Plugin);
+  p->type = GNUNET_strdup (name);
+  p->plugin = TALER_WIRE_plugin_load (cfg,
+                                      name);
+  if (NULL == p->plugin)
+  {
+    GNUNET_free (p);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to load plugin %s\n",
+                name);
+    *ret = GNUNET_SYSERR;
+    return;
+  }
+  GNUNET_CONTAINER_DLL_insert (wire_head,
+                               wire_tail,
+                               p);
+}
+
+
+/**
  * Initialize validation subsystem.
  *
  * @param cfg configuration to use
@@ -74,54 +106,22 @@ static struct Plugin *wire_tail;
 int
 TEH_VALIDATION_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
-  struct Plugin *p;
-  char *wireformats;
-  const char *token;
+  int ret;
 
-  /* Find out list of supported wire formats */
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "exchange",
-                                             "wireformat",
-                                             &wireformats))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "wireformat");
-    return GNUNET_SYSERR;
-  }
-  for (token = strtok (wireformats,
-                       " ");
-       NULL != token;
-       token = strtok (NULL,
-                       " "))
-  {
-    p = GNUNET_new (struct Plugin);
-    p->type = GNUNET_strdup (token);
-    p->plugin = TALER_WIRE_plugin_load (cfg,
-                                        token);
-    if (NULL == p->plugin)
-    {
-      GNUNET_free (p);
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to load plugin %s\n",
-                  token);
-      TEH_VALIDATION_done ();
-      return GNUNET_SYSERR;
-    }
-    GNUNET_CONTAINER_DLL_insert (wire_head,
-                                 wire_tail,
-                                 p);
-  }
-  GNUNET_free (wireformats);
+  ret = GNUNET_OK;
+  TALER_WIRE_find_enabled (cfg,
+                           &load_plugin,
+                           &ret);
   if (NULL == wire_head)
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "wireformat");
-    return GNUNET_SYSERR;
+    ret = GNUNET_SYSERR;
   }
-  return GNUNET_OK;
+  if (GNUNET_OK != ret)
+    TEH_VALIDATION_done ();
+  return ret;
 }
 
 
