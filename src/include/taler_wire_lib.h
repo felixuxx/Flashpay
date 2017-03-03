@@ -45,4 +45,28 @@ void
 TALER_WIRE_plugin_unload (struct TALER_WIRE_Plugin *plugin);
 
 
+/**
+ * Signature of a function to be called on each enabled
+ * wire plugin.
+ *
+ * @param cls closure
+ * @param name name of the enabled plugin
+ */
+typedef void
+(*TALER_WIRE_EnabledCallback)(void *cls,
+                              const char *name);
+
+
+/**
+ * Check which wire plugins are enabled in @a cfg and call @a cb for each one.
+ *
+ * @param cfg configuration to use
+ * @param cb callback to invoke
+ * @param cb_cls closure for @a cb
+ */
+void
+TALER_WIRE_find_enabled (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                         TALER_WIRE_EnabledCallback cb,
+                         void *cb_cls);
+
 #endif
