@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Inria & GNUnet e.V.
+  Copyright (C) 2014-2017 Inria & GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -24,6 +24,7 @@
 #define TALER_EXCHANGEDB_LIB_H
 
 #include "taler_signatures.h"
+
 
 /**
  * Subdirectroy under the exchange's base directory which contains
@@ -296,5 +297,80 @@ TALER_EXCHANGEDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg);
 void
 TALER_EXCHANGEDB_plugin_unload (struct TALER_EXCHANGEDB_Plugin *plugin);
 
+
+/**
+ * Sorted list of fees to be paid for aggregate wire transfers.
+ */
+struct TALER_EXCHANGEDB_AggregateFees
+{
+  /**
+   * This is a linked list.
+   */
+  struct TALER_EXCHANGEDB_AggregateFees *next;
+
+  /**
+   * Fee to be paid.
+   */
+  struct TALER_Amount wire_fee;
+
+  /**
+   * Time when this fee goes into effect (inclusive)
+   */
+  struct GNUNET_TIME_Absolute start_date;
+
+  /**
+   * Time when this fee stops being in effect (exclusive).
+   */
+  struct GNUNET_TIME_Absolute end_date;
+
+  /**
+   * Signature affirming the above fee structure.
+   */
+  struct TALER_MasterSignatureP master_sig;
+};
+
+
+/**
+ * Read the current fee structure from disk.
+ *
+ * @param cfg configuration to use
+ * @param wireplugin name of the wire plugin to read fees for
+ * @return sorted list of aggregation fees, NULL on error
+ */
+struct TALER_EXCHANGEDB_AggregateFees *
+TALER_EXCHANGEDB_fees_read (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                            const char *wireplugin);
+
+
+/**
+ * Convert @a af to @a wf.
+ *
+ * @param[in,out] af aggregate fees, host format (updated to round time)
+ * @param[out] wf aggregate fees, disk / signature format
+ */
+void
+TALER_EXCHANGEDB_fees_2_wf (struct TALER_EXCHANGEDB_AggregateFees *af,
+                            struct TALER_MasterWireFeePS *wf);
+
+
+/**
+ * Write given fee structure to disk.
+ *
+ * @param filename where to write the fees
+ * @param af fee structure to write
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+TALER_EXCHANGEDB_fees_write (const char *filename,
+                             struct TALER_EXCHANGEDB_AggregateFees *af);
+
+
+/**
+ * Free @a af data structure
+ *
+ * @param af list to free
+ */
+void
+TALER_EXCHANGEDB_fees_free (struct TALER_EXCHANGEDB_AggregateFees *af);
 
 #endif

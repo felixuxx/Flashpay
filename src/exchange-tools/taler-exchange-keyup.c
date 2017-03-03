@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
+  Copyright (C) 2014-2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -23,6 +23,7 @@
  */
 #include <platform.h>
 #include "taler_exchangedb_lib.h"
+#include "taler_wire_lib.h"
 
 /**
  * When generating filenames from a cryptographic hash, we do not use
@@ -189,6 +190,11 @@ static char *exchange_directory;
 static char *pretend_time_str;
 
 /**
+ * Directory where we should write the wire transfer fee structure.
+ */
+static char *feedir;
+
+/**
  * Handle to the exchange's configuration
  */
 static const struct GNUNET_CONFIGURATION_Handle *kcfg;
@@ -213,6 +219,11 @@ static struct TALER_MasterPublicKeyP master_public_key;
  * Until what time do we provide keys?
  */
 static struct GNUNET_TIME_Absolute lookahead_sign_stamp;
+
+/**
+ * Largest duration for spending of any key.
+ */
+static struct GNUNET_TIME_Relative max_duration_spend;
 
 /**
  * Return value from main().
@@ -598,6 +609,8 @@ get_cointype_params (const char *ct,
     return GNUNET_SYSERR;
   }
   GNUNET_TIME_round_rel (&params->duration_spend);
+  max_duration_spend = GNUNET_TIME_relative_max (max_duration_spend,
+                                                 params->duration_spend);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
                                            ct,
@@ -862,6 +875,151 @@ exchange_keys_update_denomkeys ()
 
 
 /**
+ * Sign @a af with @a priv
+ *
+ * @param[in|out] af fee structure to sign
+ * @param priv private key to use for signing
+ */
+static void
+sign_af (struct TALER_EXCHANGEDB_AggregateFees *af,
+         const struct GNUNET_CRYPTO_EddsaPrivateKey *priv)
+{
+  struct TALER_MasterWireFeePS wf;
+
+  TALER_EXCHANGEDB_fees_2_wf (af,
+                              &wf);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_sign (priv,
+                                           &wf.purpose,
+                                           &af->master_sig.eddsa_signature));
+}
+
+
+/**
+ * Output the wire fee structure.  Must be run after #max_duration_spend
+ * was initialized.
+ *
+ * @param cls pointer to `int`, set to #GNUNET_SYSERR on error
+ * @param wiremethod method to write fees for
+ */
+static void
+create_wire_fee_for_method (void *cls,
+                            const char *wiremethod)
+{
+  int *ret = cls;
+  struct TALER_EXCHANGEDB_AggregateFees *af_head;
+  struct TALER_EXCHANGEDB_AggregateFees *af_tail;
+  unsigned int year;
+  struct GNUNET_TIME_Absolute last_date;
+  struct GNUNET_TIME_Absolute start_date;
+  struct GNUNET_TIME_Absolute end_date;
+  char yearstr[12];
+  char *fn;
+  char *section;
+
+  if (GNUNET_OK != *ret)
+    return;
+  last_date = GNUNET_TIME_absolute_max (last_date,
+                                        GNUNET_TIME_absolute_add (lookahead_sign_stamp,
+                                                                  max_duration_spend));
+  GNUNET_asprintf (&section,
+                   "exchange-wire-%s",
+                   wiremethod);
+  GNUNET_asprintf (&fn,
+                   "%s%s.fee",
+                   feedir,
+                   wiremethod);
+  af_head = NULL;
+  af_tail = NULL;
+  year = GNUNET_TIME_get_current_year ();
+  start_date = GNUNET_TIME_year_to_time (year);
+  while (start_date.abs_value_us < last_date.abs_value_us)
+  {
+    struct TALER_EXCHANGEDB_AggregateFees *af;
+    char *opt;
+    char *amounts;
+
+    GNUNET_snprintf (yearstr,
+                     sizeof (yearstr),
+                     "%u",
+                     year);
+    end_date = GNUNET_TIME_year_to_time (year + 1);
+    af = GNUNET_new (struct TALER_EXCHANGEDB_AggregateFees);
+    af->start_date = start_date;
+    af->end_date = end_date;
+    GNUNET_asprintf (&opt,
+                     "wire-fee-%u",
+                     year);
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (kcfg,
+                                               section,
+                                               opt,
+                                               &amounts))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 section,
+                                 opt);
+      *ret = GNUNET_SYSERR;
+      GNUNET_free (opt);
+      break;
+    }
+    if (GNUNET_OK !=
+        TALER_string_to_amount (amounts,
+                                &af->wire_fee))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid amount `%s' specified in `%s' under `%s'\n",
+                  amounts,
+                  wiremethod,
+                  opt);
+      *ret = GNUNET_SYSERR;
+      GNUNET_free (amounts);
+      GNUNET_free (opt);
+      break;
+    }
+    GNUNET_free (amounts);
+    GNUNET_free (opt);
+    sign_af (af,
+             &master_priv.eddsa_priv);
+    if (NULL == af_tail)
+      af_head = af;
+    else
+      af_tail->next = af;
+    af_tail = af;
+    start_date = end_date;
+    year++;
+  }
+  if ( (GNUNET_OK == *ret) &&
+       (GNUNET_OK !=
+        TALER_EXCHANGEDB_fees_write (fn,
+                                     af_head)) )
+    *ret = GNUNET_SYSERR;
+  GNUNET_free (section);
+  GNUNET_free (fn);
+  TALER_EXCHANGEDB_fees_free (af_head);
+}
+
+
+/**
+ * Output the wire fee structure.  Must be run after #max_duration_spend
+ * was initialized.
+ *
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+static int
+create_wire_fees ()
+{
+  int ret;
+
+  ret = GNUNET_OK;
+  TALER_WIRE_find_enabled (kcfg,
+                           &create_wire_fee_for_method,
+                           &ret);
+  return ret;
+}
+
+
+/**
  * Main function that will be run.
  *
  * @param cls closure
@@ -895,6 +1053,29 @@ run (void *cls,
   else
   {
     now = GNUNET_TIME_absolute_get ();
+  }
+  if (NULL == feedir)
+  {
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_filename (kcfg,
+                                                 "exchangedb",
+                                                 "WIREFEE_BASE_DIR",
+                                                 &feedir))
+    {
+      fprintf (stderr,
+               "Wire fee directory not given in neither configuration nor command-line\n");
+      global_ret = 1;
+      return;
+    }
+  }
+  if (GNUNET_OK !=
+      GNUNET_DISK_directory_create (feedir))
+  {
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                              "mkdir",
+                              feedir);
+    global_ret = 1;
+    return;
   }
   GNUNET_TIME_round_abs (&now);
   if ( (NULL == masterkeyfile) &&
@@ -1022,10 +1203,10 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  if (NULL != auditor_output_file)
+  if (GNUNET_OK != create_wire_fees ())
   {
-    FCLOSE (auditor_output_file);
-    auditor_output_file = NULL;
+    global_ret = 1;
+    return;
   }
 }
 
@@ -1051,6 +1232,9 @@ main (int argc,
     {'m', "master-key", "FILE",
      "master key file (private key)", 1,
      &GNUNET_GETOPT_set_filename, &masterkeyfile},
+    {'f', "feedir", "DIRNAME",
+     "directory where to write wire transfer fee structure", 1,
+     &GNUNET_GETOPT_set_filename, &feedir},
     {'o', "output", "FILE",
      "auditor denomination key signing request file to create", 1,
      &GNUNET_GETOPT_set_filename, &auditorrequestfile},
@@ -1072,6 +1256,11 @@ main (int argc,
 			  options,
 			  &run, NULL))
     return 1;
+  if (NULL != auditor_output_file)
+  {
+    FCLOSE (auditor_output_file);
+    auditor_output_file = NULL;
+  }
   return global_ret;
 }
 

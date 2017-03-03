@@ -92,7 +92,7 @@ TALER_EXCHANGEDB_fees_read (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                                &wirefee_base_dir))
     return NULL;
   GNUNET_asprintf (&fn,
-                   "%s" DIR_SEPARATOR_STR "%s.fee",
+                   "%s/%s.fee",
                    wirefee_base_dir,
                    wireplugin);
   GNUNET_free (wirefee_base_dir);

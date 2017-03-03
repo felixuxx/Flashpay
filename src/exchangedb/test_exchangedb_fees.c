@@ -24,23 +24,121 @@
 #include "taler_exchangedb_lib.h"
 
 
+/**
+ * Sign @a af with @a priv
+ *
+ * @param[in|out] af fee structure to sign
+ * @param priv private key to use for signing
+ */
+static void
+sign_af (struct TALER_EXCHANGEDB_AggregateFees *af,
+         const struct GNUNET_CRYPTO_EddsaPrivateKey *priv)
+{
+  struct TALER_MasterWireFeePS wf;
+
+  TALER_EXCHANGEDB_fees_2_wf (af,
+                              &wf);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_sign (priv,
+                                           &wf.purpose,
+                                           &af->master_sig.eddsa_signature));
+}
+
+
 int
 main (int argc,
       const char *const argv[])
 {
   struct GNUNET_CONFIGURATION_Handle *cfg;
+  struct TALER_EXCHANGEDB_AggregateFees *af;
+  struct TALER_EXCHANGEDB_AggregateFees *n;
+  struct TALER_MasterPublicKeyP master_pub;
+  struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
+  char *tmpdir;
+  char *tmpfile = NULL;
   int ret;
+  unsigned int year;
 
-  ret = 1;
   GNUNET_log_setup ("test-exchangedb-fees",
                     "WARNING",
                     NULL);
+  tmpdir = GNUNET_DISK_mkdtemp ("test_exchangedb_fees");
+  if (NULL == tmpdir)
+    return 77; /* skip test */
+  priv = GNUNET_CRYPTO_eddsa_key_create ();
+  GNUNET_CRYPTO_eddsa_key_get_public (priv,
+                                      &master_pub.eddsa_pub);
   cfg = GNUNET_CONFIGURATION_create ();
-
   GNUNET_CONFIGURATION_set_value_string (cfg,
                                          "exchangedb",
-                                         "AUDITOR_BASE_DIR",
+                                         "WIREFEE_BASE_DIR",
                                          tmpdir);
+  GNUNET_asprintf (&tmpfile,
+                   "%s/%s.fee",
+                   tmpdir,
+                   "test");
   ret = 0;
+  af = GNUNET_new (struct TALER_EXCHANGEDB_AggregateFees);
+  year = GNUNET_TIME_get_current_year ();
+  af->start_date = GNUNET_TIME_year_to_time (year);
+  af->end_date = GNUNET_TIME_year_to_time (year + 1);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("EUR:1.0",
+                                         &af->wire_fee));
+  sign_af (af,
+           priv);
+  n = GNUNET_new (struct TALER_EXCHANGEDB_AggregateFees);
+  n->start_date = GNUNET_TIME_year_to_time (year + 1);
+  n->end_date = GNUNET_TIME_year_to_time (year + 2);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("EUR:0.1",
+                                         &n->wire_fee));
+  sign_af (n,
+           priv);
+  af->next = n;
+
+  if (GNUNET_OK !=
+      TALER_EXCHANGEDB_fees_write (tmpfile,
+                                   af))
+  {
+    GNUNET_break (0);
+    ret = 1;
+  }
+  TALER_EXCHANGEDB_fees_free (af);
+  GNUNET_free (tmpfile);
+  af = TALER_EXCHANGEDB_fees_read (cfg,
+                                   "test");
+  if (NULL == af)
+  {
+    GNUNET_break (0);
+    ret = 1;
+  }
+  else
+  {
+    for (struct TALER_EXCHANGEDB_AggregateFees *p = af;
+         NULL != p;
+         p = p->next)
+    {
+      struct TALER_MasterWireFeePS wf;
+
+      TALER_EXCHANGEDB_fees_2_wf (p,
+                                  &wf);
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_FEES,
+                                      &wf.purpose,
+                                      &p->master_sig.eddsa_signature,
+                                      &master_pub.eddsa_pub))
+      {
+        GNUNET_break (0);
+        ret = 1;
+      }
+    }
+    TALER_EXCHANGEDB_fees_free (af);
+  }
+
+  (void) GNUNET_DISK_directory_remove (tmpdir);
+  GNUNET_free (tmpdir);
+  GNUNET_free (priv);
+  GNUNET_CONFIGURATION_destroy (cfg);
   return ret;
 }

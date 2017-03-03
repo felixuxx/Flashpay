@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015, 2016 GNUnet e.V. and INRIA
+  Copyright (C) 2015-2017 GNUnet e.V. and INRIA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -24,12 +24,83 @@
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_validation.h"
 #include "taler-exchange-httpd_wire.h"
+#include "taler_json_lib.h"
 #include <jansson.h>
 
 /**
  * Cached JSON for /wire response.
  */
 static json_t *wire_methods;
+
+
+/**
+ * Convert fee structure to JSON result to be returned
+ * as part of a /wire response.
+ *
+ * @param af fee structure to convert
+ * @return NULL on error, otherwise json data structure for /wire.
+ */
+static json_t *
+fees_to_json (struct TALER_EXCHANGEDB_AggregateFees *af)
+{
+  json_t *a;
+
+  a = json_array ();
+  while (NULL != af)
+  {
+    if ( (GNUNET_NO == GNUNET_TIME_round_abs (&af->start_date)) ||
+         (GNUNET_NO == GNUNET_TIME_round_abs (&af->end_date)) )
+    {
+      json_decref (a);
+      return NULL;
+    }
+    json_array_append_new (a,
+                           json_pack ("{s:o, s:o, s:o, s:o}",
+                                      "wire_fee", TALER_JSON_from_amount (&af->wire_fee),
+                                      "start_date", GNUNET_JSON_from_time_abs (af->start_date),
+                                      "end_date", GNUNET_JSON_from_time_abs (af->end_date),
+                                      "sig", GNUNET_JSON_from_data_auto (&af->master_sig)));
+    af = af->next;
+  }
+  return a;
+}
+
+
+/**
+ * Obtain fee structure for @a wire_plugin_name wire transfers.
+ *
+ * @param wire_plugin_name name of the plugin to load fees for
+ * @return JSON object (to be freed by caller) with fee structure
+ */
+json_t *
+TEH_WIRE_get_fees (const char *wire_plugin_name)
+{
+  struct TALER_EXCHANGEDB_AggregateFees *af;
+  json_t *j;
+  struct GNUNET_TIME_Absolute now;
+
+  af = TALER_EXCHANGEDB_fees_read (cfg,
+                                   wire_plugin_name);
+  now = GNUNET_TIME_absolute_get ();
+  while ( (NULL != af) &&
+          (af->end_date.abs_value_us < now.abs_value_us) )
+  {
+    struct TALER_EXCHANGEDB_AggregateFees *n = af->next;
+
+    GNUNET_free (af);
+    af = n;
+  }
+  if (NULL == af)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to find current wire transfer fees for `%s'\n",
+                wire_plugin_name);
+    return NULL;
+  }
+  j = fees_to_json (af);
+  TALER_EXCHANGEDB_fees_free (af);
+  return j;
+}
 
 
 /**

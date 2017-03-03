@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016 GNUnet e.V.
+  Copyright (C) 2016, 2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -23,6 +23,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler-exchange-httpd.h"
 #include "taler-exchange-httpd_validation.h"
+#include "taler-exchange-httpd_wire.h"
 #include "taler_wire_lib.h"
 
 
@@ -77,6 +78,7 @@ load_plugin (void *cls,
 {
   int *ret = cls;
   struct Plugin *p;
+  json_t *fees;
 
   p = GNUNET_new (struct Plugin);
   p->type = GNUNET_strdup (name);
@@ -84,13 +86,26 @@ load_plugin (void *cls,
                                       name);
   if (NULL == p->plugin)
   {
-    GNUNET_free (p);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to load plugin %s\n",
                 name);
+    GNUNET_free (p->type);
+    GNUNET_free (p);
     *ret = GNUNET_SYSERR;
     return;
   }
+  fees = TEH_WIRE_get_fees (name);
+  if (NULL == fees)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Disabling method `%s' as wire transfer fees are not given correctly\n",
+                name);
+    GNUNET_free (p->type);
+    GNUNET_free (p);
+    *ret = GNUNET_SYSERR;
+    return;
+  }
+  json_decref (fees);
   GNUNET_CONTAINER_DLL_insert (wire_head,
                                wire_tail,
                                p);
@@ -114,9 +129,8 @@ TEH_VALIDATION_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
                            &ret);
   if (NULL == wire_head)
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "wireformat");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to find properly configured wire transfer method\n");
     ret = GNUNET_SYSERR;
   }
   if (GNUNET_OK != ret)
@@ -201,17 +215,17 @@ json_t *
 TEH_VALIDATION_get_wire_methods (const char *prefix)
 {
   json_t *methods;
-  json_t *method;
-  struct Plugin *p;
-  struct TALER_WIRE_Plugin *plugin;
   char *account_name;
   char *emsg;
   enum TALER_ErrorCode ec;
 
   methods = json_object ();
-  for (p=wire_head;NULL != p;p = p->next)
+  for (struct Plugin *p=wire_head;NULL != p;p = p->next)
   {
-    plugin = p->plugin;
+    struct TALER_WIRE_Plugin *plugin = p->plugin;
+    json_t *method;
+    json_t *fees;
+
     GNUNET_asprintf (&account_name,
                      "%s-%s",
                      prefix,
@@ -233,6 +247,22 @@ TEH_VALIDATION_get_wire_methods (const char *prefix)
       json_decref (method);
       method = NULL;
     }
+    fees = TEH_WIRE_get_fees (p->type);
+    if (NULL == fees)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Disabling method `%s' as wire transfer fees are not given correctly\n",
+                  p->type);
+      json_decref (method);
+      method = NULL;
+    }
+    else
+    {
+      json_object_set_new (method,
+                           "fees",
+                           fees);
+    }
+
     if (NULL != method)
       json_object_set_new (methods,
                            p->type,

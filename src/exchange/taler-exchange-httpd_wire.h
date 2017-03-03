@@ -27,6 +27,16 @@
 
 
 /**
+ * Obtain fee structure for @a wire_plugin_name wire transfers.
+ *
+ * @param wire_plugin_name name of the plugin to load fees for
+ * @return JSON object (to be freed by caller) with fee structure
+ */
+json_t *
+TEH_WIRE_get_fees (const char *wire_plugin_name);
+
+
+/**
  * Handle a "/wire" request.
  *
  * @param rh context of the handler

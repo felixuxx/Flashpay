@@ -25,6 +25,7 @@ taler_exchange_keyup_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/pq/libtalerpq.la \
+  $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   -lgnunetutil $(XLIB)
 taler_exchange_keyup_LDFLAGS = $(POSTGRESQL_LDFLAGS)

@@ -44,6 +44,7 @@ lib_LTLIBRARIES = \
 libtalerexchangedb_la_SOURCES = \
   exchangedb_auditorkeys.c \
   exchangedb_denomkeys.c \
+  exchangedb_fees.c \
   exchangedb_signkeys.c \
   exchangedb_plugin.c
 
@@ -60,6 +61,7 @@ libtalerexchangedb_la_LDFLAGS = \
 check_PROGRAMS = \
   test-exchangedb-auditors \
   test-exchangedb-denomkeys \
+  test-exchangedb-fees \
   test-exchangedb-signkeys \
   test-exchangedb-postgres \
   test-perf-taler-exchangedb \
@@ -68,10 +70,11 @@ check_PROGRAMS = \
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 TESTS = \
   test-exchangedb-auditors \
+  test-exchangedb-denomkeys \
+  test-exchangedb-fees \
   test-exchangedb-postgres \
   test-exchangedb-signkeys \
-  test-perf-taler-exchangedb \
-  test-exchangedb-denomkeys
+  test-perf-taler-exchangedb
 
 test_exchangedb_auditors_SOURCES = \
   test_exchangedb_auditors.c
@@ -83,6 +86,13 @@ test_exchangedb_auditors_LDADD = \
 test_exchangedb_denomkeys_SOURCES = \
   test_exchangedb_denomkeys.c
 test_exchangedb_denomkeys_LDADD = \
+  libtalerexchangedb.la \
+  $(top_srcdir)/src/util/libtalerutil.la \
+  -lgnunetutil
+
+test_exchangedb_fees_SOURCES = \
+  test_exchangedb_fees.c
+test_exchangedb_fees_LDADD = \
   libtalerexchangedb.la \
   $(top_srcdir)/src/util/libtalerutil.la \
   -lgnunetutil

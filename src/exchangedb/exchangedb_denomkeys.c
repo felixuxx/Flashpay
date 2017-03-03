@@ -42,10 +42,11 @@ TALER_EXCHANGEDB_denomination_key_read (const char *filename,
   void *data;
   struct GNUNET_CRYPTO_RsaPrivateKey *priv;
 
-  if (GNUNET_OK != GNUNET_DISK_file_size (filename,
-                                          &size,
-                                          GNUNET_YES,
-                                          GNUNET_YES))
+  if (GNUNET_OK !=
+      GNUNET_DISK_file_size (filename,
+                             &size,
+                             GNUNET_YES,
+                             GNUNET_YES))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Skipping inaccessable denomination key file `%s'\n",

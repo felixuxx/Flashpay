@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
+  Copyright (C) 2014-2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -77,6 +77,11 @@
  * the /wire response.
  */
 #define TALER_SIGNATURE_MASTER_TEST_DETAILS 1027
+
+/**
+ * Fees charged per (aggregate) wire transfer to the merchant.
+ */
+#define TALER_SIGNATURE_MASTER_WIRE_FEES 1028
 
 
 /*********************************************/
@@ -875,6 +880,37 @@ struct TALER_MasterWireDetailsPS
    * code (all as 0-terminated strings).
    */
   struct GNUNET_HashCode h_sepa_details GNUNET_PACKED;
+
+};
+
+
+
+/**
+ * @brief Information signed by the exchange's master
+ * key stating the wire fee to be paid per wire transfer.
+ */
+struct TALER_MasterWireFeePS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_WIRE_FEES.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Start date when the fee goes into effect.
+   */
+  struct GNUNET_TIME_AbsoluteNBO start_date;
+
+  /**
+   * End date when the fee stops being in effect (exclusive)
+   */
+  struct GNUNET_TIME_AbsoluteNBO end_date;
+
+  /**
+   * Fee charged to the merchant per wire transfer.
+   */
+  struct TALER_AmountNBO wire_fee;
 
 };
 
