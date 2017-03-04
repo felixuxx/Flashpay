@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016, 2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -947,6 +947,7 @@ deposit_cb (void *cls,
   return GNUNET_OK;
 }
 
+
 /**
  * Callback for #select_deposits_above_serial_id ()
  *
@@ -965,7 +966,7 @@ deposit_cb (void *cls,
  * @param done flag set if the deposit was already executed (or not)
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-int
+static int
 audit_deposit_cb (void *cls,
                   uint64_t rowid,
                   const struct TALER_MerchantPublicKeyP *merchant_pub,
@@ -998,7 +999,7 @@ audit_deposit_cb (void *cls,
  * @param amount_with_fee amount that was deposited including fee
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-int
+static int
 audit_refund_cb (void *cls,
                  uint64_t rowid,
                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -1025,7 +1026,7 @@ audit_refund_cb (void *cls,
  * @param execution_date when did we receive the funds
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-int
+static int
 audit_reserve_in_cb (void *cls,
                      uint64_t rowid,
                      const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -1037,6 +1038,7 @@ audit_reserve_in_cb (void *cls,
   auditor_row_cnt++;
   return GNUNET_OK;
 }
+
 
 /**
  * Function called with details about withdraw operations.
@@ -1052,7 +1054,7 @@ audit_reserve_in_cb (void *cls,
  * @param amount_with_fee amount that was withdrawn
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-int
+static int
 audit_reserve_out_cb (void *cls,
                       uint64_t rowid,
                       const struct GNUNET_HashCode *h_blind_ev,
@@ -1066,6 +1068,7 @@ audit_reserve_out_cb (void *cls,
   auditor_row_cnt++;
   return GNUNET_OK;
 }
+
 
 /**
  * Test garbage collection.
@@ -1111,6 +1114,99 @@ test_gc (struct TALER_EXCHANGEDB_Session *session)
     return GNUNET_SYSERR;
   }
   destroy_denom_key_pair (dkp);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Test wire fee storage.
+ *
+ * @param session DB session to use
+ * @return #GNUNET_OK on success
+ */
+static int
+test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
+{
+  struct GNUNET_TIME_Absolute start_date;
+  struct GNUNET_TIME_Absolute end_date;
+  struct TALER_Amount wire_fee;
+  struct TALER_MasterSignatureP master_sig;
+  struct GNUNET_TIME_Absolute sd;
+  struct GNUNET_TIME_Absolute ed;
+  struct TALER_Amount fee;
+  struct TALER_MasterSignatureP ms;
+
+  start_date = GNUNET_TIME_absolute_get ();
+  end_date = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_MINUTES);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":1.424242",
+                                         &wire_fee));
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                              &master_sig,
+                              sizeof (master_sig));
+  if (GNUNET_OK !=
+      plugin->insert_wire_fee (plugin->cls,
+                               session,
+                               "wire-method",
+                               start_date,
+                               end_date,
+                               &wire_fee,
+                               &master_sig))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_NO !=
+      plugin->insert_wire_fee (plugin->cls,
+                               session,
+                               "wire-method",
+                               start_date,
+                               end_date,
+                               &wire_fee,
+                               &master_sig))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  /* This must fail as 'end_date' is NOT in the
+     half-open interval [start_date,end_date) */
+  if (GNUNET_OK ==
+      plugin->get_wire_fee (plugin->cls,
+                            session,
+                            "wire-method",
+                            end_date,
+                            &sd,
+                            &ed,
+                            &fee,
+                            &ms))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      plugin->get_wire_fee (plugin->cls,
+                            session,
+                            "wire-method",
+                            start_date,
+                            &sd,
+                            &ed,
+                            &fee,
+                            &ms))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if ( (sd.abs_value_us != start_date.abs_value_us) ||
+       (ed.abs_value_us != end_date.abs_value_us) ||
+       (0 != TALER_amount_cmp (&fee,
+                               &wire_fee)) ||
+       (0 != memcmp (&ms,
+                     &master_sig,
+                     sizeof (ms))) )
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 
@@ -1595,6 +1691,8 @@ run (void *cls)
                                             &cb_wtid_never));
   FAILIF (GNUNET_OK !=
           test_gc (session));
+  FAILIF (GNUNET_OK !=
+          test_wire_fees (session));
 
   result = 0;
 
