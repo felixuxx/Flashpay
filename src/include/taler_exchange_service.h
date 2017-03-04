@@ -341,6 +341,69 @@ TALER_EXCHANGE_get_denomination_key_by_hash (const struct TALER_EXCHANGE_Keys *k
 
 
 /**
+ * Sorted list of fees to be paid for aggregate wire transfers.
+ */
+struct TALER_EXCHANGE_WireAggregateFees
+{
+  /**
+   * This is a linked list.
+   */
+  struct TALER_EXCHANGE_WireAggregateFees *next;
+
+  /**
+   * Fee to be paid.
+   */
+  struct TALER_Amount wire_fee;
+
+  /**
+   * Time when this fee goes into effect (inclusive)
+   */
+  struct GNUNET_TIME_Absolute start_date;
+
+  /**
+   * Time when this fee stops being in effect (exclusive).
+   */
+  struct GNUNET_TIME_Absolute end_date;
+
+  /**
+   * Signature affirming the above fee structure.
+   */
+  struct TALER_MasterSignatureP master_sig;
+};
+
+
+/**
+ * Function called with information about the wire fees
+ * for each wire method.
+ *
+ * @param cls closure
+ * @param wire_method name of the wire method (i.e. "sepa")
+ * @param fees fee structure for this method
+ */
+typedef void
+(*TALER_EXCHANGE_WireFeeCallback)(void *cls,
+                                  const char *wire_method,
+                                  const struct TALER_EXCHANGE_WireAggregateFees *fees);
+
+
+/**
+ * Obtain information about wire fees encoded in @a obj
+ * by wire method.
+ *
+ * @param master_pub public key to use to verify signatures, NULL to not verify
+ * @param obj wire information as encoded in the #TALER_EXCHANGE_WireResultCallback
+ * @param cb callback to invoke for the fees
+ * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK in success, #GNUNET_SYSERR if @a obj is ill-formed
+ */
+int
+TALER_EXCHANGE_wire_get_fees (const struct TALER_MasterPublicKeyP *master_pub,
+                              const json_t *obj,
+                              TALER_EXCHANGE_WireFeeCallback cb,
+                              void *cb_cls);
+
+
+/**
  * @brief A Wire format inquiry handle
  */
 struct TALER_EXCHANGE_WireHandle;
