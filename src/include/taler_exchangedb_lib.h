@@ -345,11 +345,13 @@ TALER_EXCHANGEDB_fees_read (const struct GNUNET_CONFIGURATION_Handle *cfg,
 /**
  * Convert @a af to @a wf.
  *
+ * @param wireplugin name of the wire plugin the fees are for
  * @param[in,out] af aggregate fees, host format (updated to round time)
  * @param[out] wf aggregate fees, disk / signature format
  */
 void
-TALER_EXCHANGEDB_fees_2_wf (struct TALER_EXCHANGEDB_AggregateFees *af,
+TALER_EXCHANGEDB_fees_2_wf (const char *wireplugin,
+                            struct TALER_EXCHANGEDB_AggregateFees *af,
                             struct TALER_MasterWireFeePS *wf);
 
 
@@ -357,11 +359,13 @@ TALER_EXCHANGEDB_fees_2_wf (struct TALER_EXCHANGEDB_AggregateFees *af,
  * Write given fee structure to disk.
  *
  * @param filename where to write the fees
+ * @param wireplugin name of the plugin for which we write the fees
  * @param af fee structure to write
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 int
 TALER_EXCHANGEDB_fees_write (const char *filename,
+                             const char *wireplugin,
                              struct TALER_EXCHANGEDB_AggregateFees *af);
 
 

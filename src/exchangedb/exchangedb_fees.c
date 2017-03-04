@@ -142,17 +142,22 @@ TALER_EXCHANGEDB_fees_read (const struct GNUNET_CONFIGURATION_Handle *cfg,
 /**
  * Convert @a af to @a wf.
  *
+ * @param wireplugin name of the wire plugin the fees are for
  * @param[in,out] af aggregate fees, host format (updated to round time)
  * @param[out] wf aggregate fees, disk / signature format
  */
 void
-TALER_EXCHANGEDB_fees_2_wf (struct TALER_EXCHANGEDB_AggregateFees *af,
+TALER_EXCHANGEDB_fees_2_wf (const char *wireplugin,
+                            struct TALER_EXCHANGEDB_AggregateFees *af,
                             struct TALER_MasterWireFeePS *wf)
 {
   (void) GNUNET_TIME_round_abs (&af->start_date);
   (void) GNUNET_TIME_round_abs (&af->end_date);
   wf->purpose.size = htonl (sizeof (*wf));
   wf->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_FEES);
+  GNUNET_CRYPTO_hash (wireplugin,
+                      strlen (wireplugin) + 1,
+                      &wf->h_wire_method);
   wf->start_date = GNUNET_TIME_absolute_hton (af->start_date);
   wf->end_date = GNUNET_TIME_absolute_hton (af->end_date);
   TALER_amount_hton (&wf->wire_fee,
@@ -164,11 +169,13 @@ TALER_EXCHANGEDB_fees_2_wf (struct TALER_EXCHANGEDB_AggregateFees *af,
  * Write given fee structure to disk.
  *
  * @param filename where to write the fees
+ * @param wireplugin which plugin the fees are about
  * @param af fee structure to write
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 int
 TALER_EXCHANGEDB_fees_write (const char *filename,
+                             const char *wireplugin,
                              struct TALER_EXCHANGEDB_AggregateFees *af)
 {
   struct GNUNET_DISK_FileHandle *fh;
@@ -201,7 +208,8 @@ TALER_EXCHANGEDB_fees_write (const char *filename,
                      GNUNET_DISK_file_close (fh));
       return GNUNET_SYSERR;
     }
-    TALER_EXCHANGEDB_fees_2_wf (af,
+    TALER_EXCHANGEDB_fees_2_wf (wireplugin,
+                                af,
                                 &wd.wf);
     wd.master_sig = af->master_sig;
     af = af->next;

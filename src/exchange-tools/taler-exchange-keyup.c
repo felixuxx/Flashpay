@@ -878,15 +878,18 @@ exchange_keys_update_denomkeys ()
  * Sign @a af with @a priv
  *
  * @param[in|out] af fee structure to sign
+ * @param wireplugin name of the plugin for which we sign
  * @param priv private key to use for signing
  */
 static void
 sign_af (struct TALER_EXCHANGEDB_AggregateFees *af,
+         const char *wireplugin,
          const struct GNUNET_CRYPTO_EddsaPrivateKey *priv)
 {
   struct TALER_MasterWireFeePS wf;
 
-  TALER_EXCHANGEDB_fees_2_wf (af,
+  TALER_EXCHANGEDB_fees_2_wf (wireplugin,
+                              af,
                               &wf);
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign (priv,
@@ -980,6 +983,7 @@ create_wire_fee_for_method (void *cls,
     GNUNET_free (amounts);
     GNUNET_free (opt);
     sign_af (af,
+             wiremethod,
              &master_priv.eddsa_priv);
     if (NULL == af_tail)
       af_head = af;
@@ -992,6 +996,7 @@ create_wire_fee_for_method (void *cls,
   if ( (GNUNET_OK == *ret) &&
        (GNUNET_OK !=
         TALER_EXCHANGEDB_fees_write (fn,
+                                     wiremethod,
                                      af_head)) )
     *ret = GNUNET_SYSERR;
   GNUNET_free (section);

@@ -898,6 +898,13 @@ struct TALER_MasterWireFeePS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
+   * Hash over the wire method (yes, H("test") or H("sepa")), in lower
+   * case, including 0-terminator.  Used to uniquely identify which
+   * wire method these fees apply to.
+   */
+  struct GNUNET_HashCode h_wire_method;
+
+  /**
    * Start date when the fee goes into effect.
    */
   struct GNUNET_TIME_AbsoluteNBO start_date;

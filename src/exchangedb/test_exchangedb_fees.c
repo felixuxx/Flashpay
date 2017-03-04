@@ -36,7 +36,8 @@ sign_af (struct TALER_EXCHANGEDB_AggregateFees *af,
 {
   struct TALER_MasterWireFeePS wf;
 
-  TALER_EXCHANGEDB_fees_2_wf (af,
+  TALER_EXCHANGEDB_fees_2_wf ("test",
+                              af,
                               &wf);
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign (priv,
@@ -99,6 +100,7 @@ main (int argc,
 
   if (GNUNET_OK !=
       TALER_EXCHANGEDB_fees_write (tmpfile,
+                                   "test",
                                    af))
   {
     GNUNET_break (0);
@@ -121,7 +123,8 @@ main (int argc,
     {
       struct TALER_MasterWireFeePS wf;
 
-      TALER_EXCHANGEDB_fees_2_wf (p,
+      TALER_EXCHANGEDB_fees_2_wf ("test",
+                                  p,
                                   &wf);
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_FEES,
