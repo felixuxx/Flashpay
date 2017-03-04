@@ -87,6 +87,7 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
   struct GNUNET_HashCode h_wire;
   struct GNUNET_TIME_Absolute exec_time;
   struct TALER_Amount total_amount;
+  struct TALER_Amount total_expected;
   struct TALER_Amount wire_fee;
   struct TALER_MerchantPublicKeyP merchant_pub;
   unsigned int num_details;
@@ -108,6 +109,13 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
       GNUNET_JSON_parse (json,
                          spec,
                          NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_amount_get_zero (total_amount.currency,
+                             &total_expected))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -151,6 +159,20 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
                          &detail->coin_value);
       TALER_amount_hton (&dd.deposit_fee,
                          &detail->coin_fee);
+      if ( (GNUNET_OK !=
+            TALER_amount_add (&total_expected,
+                              &total_expected,
+                              &detail->coin_value)) ||
+           (GNUNET_OK !=
+            TALER_amount_subtract (&total_expected,
+                                   &total_expected,
+                                   &detail->coin_fee)) )
+      {
+        GNUNET_break_op (0);
+        GNUNET_CRYPTO_hash_context_abort (hash_context);
+        GNUNET_JSON_parse_free (spec);
+        return GNUNET_SYSERR;
+      }
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        &dd,
                                        sizeof (struct TALER_WireDepositDetailP));
@@ -177,6 +199,23 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
     if (GNUNET_OK !=
         TALER_EXCHANGE_test_signing_key (TALER_EXCHANGE_get_keys (wdh->exchange),
                                          &exchange_pub))
+    {
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_OK !=
+        TALER_amount_subtract (&total_expected,
+                               &total_expected,
+                               &wire_fee))
+    {
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
+      return GNUNET_SYSERR;
+    }
+    if (0 !=
+        TALER_amount_cmp (&total_expected,
+                          &total_amount))
     {
       GNUNET_break_op (0);
       GNUNET_JSON_parse_free (spec);
