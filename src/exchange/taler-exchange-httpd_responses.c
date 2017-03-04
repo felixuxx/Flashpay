@@ -1214,6 +1214,7 @@ TEH_RESPONSE_reply_track_transaction (struct MHD_Connection *connection,
  * @param total total amount that was transferred
  * @param merchant_pub public key of the merchant
  * @param h_wire destination account
+ * @param wire_fee wire fee that was charged
  * @param exec_time execution time of the wire transfer
  * @param wdd_head linked list with details about the combined deposits
  * @return MHD result code
@@ -1223,6 +1224,7 @@ TEH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
                                            const struct TALER_Amount *total,
                                            const struct TALER_MerchantPublicKeyP *merchant_pub,
                                            const struct GNUNET_HashCode *h_wire,
+                                           const struct TALER_Amount *wire_fee,
                                            struct GNUNET_TIME_Absolute exec_time,
                                            const struct TEH_TrackTransferDetail *wdd_head)
 {
@@ -1261,6 +1263,8 @@ TEH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
   wdp.purpose.size = htonl (sizeof (struct TALER_WireDepositDataPS));
   TALER_amount_hton (&wdp.total,
                      total);
+  TALER_amount_hton (&wdp.wire_fee,
+                     wire_fee);
   wdp.merchant_pub = *merchant_pub;
   wdp.h_wire = *h_wire;
   GNUNET_CRYPTO_hash_context_finish (hash_context,
@@ -1270,8 +1274,9 @@ TEH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
                &sig);
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
-                                       "{s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+                                       "{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                                        "total", TALER_JSON_from_amount (total),
+                                       "wire_fee", TALER_JSON_from_amount (wire_fee),
                                        "merchant_pub", GNUNET_JSON_from_data_auto (merchant_pub),
                                        "H_wire", GNUNET_JSON_from_data_auto (h_wire),
                                        "execution_time", GNUNET_JSON_from_time_abs (exec_time),

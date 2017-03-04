@@ -540,6 +540,12 @@ struct Command
        */
       const char *total_amount_expected;
 
+      /**
+       * What is the expected wire fee? Only used if
+       * @e expected_response_code was #MHD_HTTP_OK.
+       */
+      const char *wire_fee_expected;
+
 
       /* TODO: may want to add list of deposits we expected
          to see aggregated here in the future. */
@@ -1417,6 +1423,7 @@ wire_cb (void *cls,
  * @param execution_time time when the exchange claims to have performed the wire transfer
  * @param total_amount total amount of the wire transfer, or NULL if the exchange could
  *             not provide any @a wtid (set only if @a http_status is #MHD_HTTP_OK)
+ * @param wire_fee wire fee that was charged by the exchange
  * @param details_length length of the @a details array
  * @param details array with details about the combined transactions
  */
@@ -1429,6 +1436,7 @@ wire_deposits_cb (void *cls,
                   const struct GNUNET_HashCode *h_wire,
                   struct GNUNET_TIME_Absolute execution_time,
                   const struct TALER_Amount *total_amount,
+                  const struct TALER_Amount *wire_fee,
                   unsigned int details_length,
                   const struct TALER_TrackTransferDetails *details)
 {
@@ -1464,6 +1472,24 @@ wire_deposits_cb (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Total amount missmatch to command %s\n",
+                  cmd->label);
+      json_dumpf (json, stderr, 0);
+      fail (is);
+      return;
+    }
+    if (GNUNET_OK !=
+        TALER_string_to_amount (cmd->details.wire_deposits.wire_fee_expected,
+                                &expected_amount))
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
+    if (0 != TALER_amount_cmp (wire_fee,
+                               &expected_amount))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Wire fee missmatch to command %s\n",
                   cmd->label);
       json_dumpf (json, stderr, 0);
       fail (is);
@@ -2923,28 +2949,28 @@ run (void *cls)
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-499c",
       .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
-      .details.check_bank_transfer.amount = "EUR:4.99",
+      .details.check_bank_transfer.amount = "EUR:4.98",
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 42
     },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-99c1",
       .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
-      .details.check_bank_transfer.amount = "EUR:0.99",
+      .details.check_bank_transfer.amount = "EUR:0.98",
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 42
     },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-99c2",
       .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
-      .details.check_bank_transfer.amount = "EUR:0.99",
+      .details.check_bank_transfer.amount = "EUR:0.98",
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 42
     },
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-9c",
       .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
-      .details.check_bank_transfer.amount = "EUR:0.09",
+      .details.check_bank_transfer.amount = "EUR:0.08",
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 43
     },
@@ -2959,16 +2985,18 @@ run (void *cls)
       .details.deposit_wtid.bank_transfer_ref = "check_bank_transfer-499c" },
 
     { .oc = OC_WIRE_DEPOSITS,
-      .label = "wire-deposits-sucess-bank",
+      .label = "wire-deposits-success-bank",
       .expected_response_code = MHD_HTTP_OK,
       .details.wire_deposits.wtid_ref = "check_bank_transfer-99c1",
-      .details.wire_deposits.total_amount_expected = "EUR:0.99" },
+      .details.wire_deposits.total_amount_expected = "EUR:0.98",
+      .details.wire_deposits.wire_fee_expected = "EUR:0.01"  },
 
     { .oc = OC_WIRE_DEPOSITS,
-      .label = "wire-deposits-sucess-wtid",
+      .label = "wire-deposits-success-wtid",
       .expected_response_code = MHD_HTTP_OK,
       .details.wire_deposits.wtid_ref = "deposit-wtid-ok",
-      .details.wire_deposits.total_amount_expected = "EUR:4.99" },
+      .details.wire_deposits.total_amount_expected = "EUR:4.98",
+      .details.wire_deposits.wire_fee_expected = "EUR:0.01"  },
 
     /* ************** End of tracking API testing************* */
 
@@ -3030,7 +3058,7 @@ run (void *cls)
     { .oc = OC_CHECK_BANK_TRANSFER,
       .label = "check_bank_transfer-pre-refund",
       .details.check_bank_transfer.exchange_base_url = "https://exchange.com/",
-      .details.check_bank_transfer.amount = "EUR:4.98",
+      .details.check_bank_transfer.amount = "EUR:4.97",
       .details.check_bank_transfer.account_debit = 2,
       .details.check_bank_transfer.account_credit = 42
     },

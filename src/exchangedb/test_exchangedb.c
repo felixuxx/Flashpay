@@ -783,6 +783,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
 static void
 cb_wt_never (void *cls,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
+             const char *wire_method,
              const struct GNUNET_HashCode *h_wire,
              struct GNUNET_TIME_Absolute exec_time,
              const struct GNUNET_HashCode *h_proposal_data,
@@ -825,6 +826,7 @@ static struct TALER_WireTransferIdentifierRawP wtid_wt;
 static void
 cb_wt_check (void *cls,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
+             const char *wire_method,
              const struct GNUNET_HashCode *h_wire,
              struct GNUNET_TIME_Absolute exec_time,
              const struct GNUNET_HashCode *h_proposal_data,
@@ -836,6 +838,8 @@ cb_wt_check (void *cls,
   GNUNET_assert (0 == memcmp (merchant_pub,
                               &merchant_pub_wt,
                               sizeof (struct TALER_MerchantPublicKeyP)));
+  GNUNET_assert (0 == strcmp (wire_method,
+                              "SEPA"));
   GNUNET_assert (0 == memcmp (h_wire,
                               &h_wire_wt,
                               sizeof (struct GNUNET_HashCode)));

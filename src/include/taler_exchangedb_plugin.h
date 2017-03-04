@@ -762,6 +762,7 @@ typedef void
  *
  * @param cls closure
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
+ * @param wire_method which wire plugin was used for the transfer?
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_proposal_data which proposal was this payment about
@@ -772,6 +773,7 @@ typedef void
 typedef void
 (*TALER_EXCHANGEDB_WireTransferDataCallback)(void *cls,
                                              const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                             const char *wire_method,
                                              const struct GNUNET_HashCode *h_wire,
                                              struct GNUNET_TIME_Absolute exec_time,
                                              const struct GNUNET_HashCode *h_proposal_data,
@@ -1518,6 +1520,54 @@ struct TALER_EXCHANGEDB_Plugin
                                  const struct TALER_WireTransferIdentifierRawP *wtid,
                                  unsigned long long deposit_serial_id,
                                  struct GNUNET_TIME_Absolute execution_time);
+
+
+  /**
+   * Insert wire transfer fee into database.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param wire_method which wire method is the fee about?
+   * @param start_date when does the fee go into effect
+   * @param end_date when does the fee end being valid
+   * @param wire_fee how high is the wire transfer fee
+   * @param master_sig signature over the above by the exchange master key
+   * @return #GNUNET_OK on success, #GNUNET_NO if the record exists,
+   *         #GNUNET_SYSERR on failure
+   */
+  int
+  (*insert_wire_fee)(void *cls,
+                     struct TALER_EXCHANGEDB_Session *session,
+                     const char *wire_method,
+                     struct GNUNET_TIME_Absolute start_date,
+                     struct GNUNET_TIME_Absolute end_date,
+                     const struct TALER_Amount *wire_fee,
+                     const struct TALER_MasterSignatureP *master_sig);
+
+
+  /**
+   * Obtain wire fee from database.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param type type of wire transfer the fee applies for
+   * @param date for which date do we want the fee?
+   * @param[out] start_date when does the fee go into effect
+   * @param[out] end_date when does the fee end being valid
+   * @param[out] wire_fee how high is the wire transfer fee
+   * @param[out] master_sig signature over the above by the exchange master key
+   * @return #GNUNET_OK on success, #GNUNET_NO if no fee is known
+   *         #GNUNET_SYSERR on failure
+   */
+  int
+  (*get_wire_fee) (void *cls,
+                   struct TALER_EXCHANGEDB_Session *session,
+                   const char *type,
+                   struct GNUNET_TIME_Absolute date,
+                   struct GNUNET_TIME_Absolute *start_date,
+                   struct GNUNET_TIME_Absolute *end_date,
+                   struct TALER_Amount *wire_fee,
+                   struct TALER_MasterSignatureP *master_sig);
 
 
   /**

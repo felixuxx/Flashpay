@@ -779,6 +779,19 @@ enum TALER_ErrorCode
    */
   TALER_EC_TRACK_TRANSFER_WTID_NOT_FOUND = 1702,
 
+  /**
+   * The exchange did not find information about the wire transfer
+   * fees it charged. This response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TRACK_TRANSFER_WIRE_FEE_NOT_FOUND = 1703,
+
+  /**
+   * The exchange found a wire fee that was above the total transfer
+   * value (and thus could not have been charged). This response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TRACK_TRANSFER_WIRE_FEE_INCONSISTENT = 1704,
 
   /**
    * The exchange found internally inconsistent fee data when
@@ -1145,7 +1158,7 @@ enum TALER_ErrorCode
 
   /**
    * The backend encountered an error while trying to store the
-   * h_proposal_data into the database. 
+   * h_proposal_data into the database.
    * The response is provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_PROPOSAL_STORE_DB_ERROR = 2501,

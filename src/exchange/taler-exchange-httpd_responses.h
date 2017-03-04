@@ -399,6 +399,7 @@ struct TEH_TrackTransferDetail
  * @param total total amount that was transferred
  * @param merchant_pub public key of the merchant
  * @param h_wire destination account
+ * @param wire_fee wire fee that was charged
  * @param exec_time execution time of the wire transfer
  * @param wdd_head linked list with details about the combined deposits
  * @return MHD result code
@@ -408,6 +409,7 @@ TEH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
                                            const struct TALER_Amount *total,
                                            const struct TALER_MerchantPublicKeyP *merchant_pub,
                                            const struct GNUNET_HashCode *h_wire,
+                                           const struct TALER_Amount *wire_fee,
                                            struct GNUNET_TIME_Absolute exec_time,
                                            const struct TEH_TrackTransferDetail *wdd_head);
 

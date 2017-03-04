@@ -1004,6 +1004,11 @@ struct TALER_WireDepositDataPS
   struct TALER_AmountNBO total;
 
   /**
+   * Wire fee that was charged.
+   */
+  struct TALER_AmountNBO wire_fee;
+
+  /**
    * Public key of the merchant (for all aggregated transactions).
    */
   struct TALER_MerchantPublicKeyP merchant_pub;

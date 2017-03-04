@@ -1130,6 +1130,7 @@ struct TALER_EXCHANGE_TrackTransferHandle;
  * @param execution_time time when the exchange claims to have performed the wire transfer
  * @param total_amount total amount of the wire transfer, or NULL if the exchange could
  *             not provide any @a wtid (set only if @a http_status is #MHD_HTTP_OK)
+ * @param wire_fee wire fee that was charged by the exchange
  * @param details_length length of the @a details array
  * @param details array with details about the combined transactions
  */
@@ -1142,6 +1143,7 @@ typedef void
                                         const struct GNUNET_HashCode *h_wire,
                                         struct GNUNET_TIME_Absolute execution_time,
                                         const struct TALER_Amount *total_amount,
+                                        const struct TALER_Amount *wire_fee,
                                         unsigned int details_length,
                                         const struct TALER_TrackTransferDetails *details);
 

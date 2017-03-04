@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016 Inria and GNUnet e.V.
+  (C) 2016, 2017 Inria and GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -621,7 +621,7 @@ run_test ()
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
       .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
-      .details.expect_transaction.amount = "EUR:0.9"
+      .details.expect_transaction.amount = "EUR:0.89"
     },
 
     {
@@ -668,7 +668,7 @@ run_test ()
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
       .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
-      .details.expect_transaction.amount = "EUR:1.8"
+      .details.expect_transaction.amount = "EUR:1.79"
     },
 
     {
@@ -714,7 +714,7 @@ run_test ()
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
       .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
-      .details.expect_transaction.amount = "EUR:0.9"
+      .details.expect_transaction.amount = "EUR:0.89"
     },
     {
       .opcode = OPCODE_EXPECT_TRANSACTION,
@@ -722,7 +722,7 @@ run_test ()
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
       .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
-      .details.expect_transaction.amount = "EUR:0.9"
+      .details.expect_transaction.amount = "EUR:0.89"
     },
     {
       .opcode = OPCODE_EXPECT_TRANSACTION,
@@ -730,7 +730,7 @@ run_test ()
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 5,
       .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
-      .details.expect_transaction.amount = "EUR:0.9"
+      .details.expect_transaction.amount = "EUR:0.89"
     },
     {
       .opcode = OPCODE_EXPECT_TRANSACTIONS_EMPTY,
@@ -779,7 +779,7 @@ run_test ()
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
       .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
-      .details.expect_transaction.amount = "EUR:0.2"
+      .details.expect_transaction.amount = "EUR:0.19"
     },
 
     /* test picking all deposits at earliest deadline */
@@ -824,7 +824,7 @@ run_test ()
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
       .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
-      .details.expect_transaction.amount = "EUR:0.2"
+      .details.expect_transaction.amount = "EUR:0.19"
     },
 
     /* Test NEVER running 'tiny' unless they make up minimum unit */
@@ -894,7 +894,7 @@ run_test ()
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
-      .details.deposit.amount_with_fee = "EUR:0.102",
+      .details.deposit.amount_with_fee = "EUR:0.112",
       .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
@@ -934,7 +934,7 @@ run_test ()
       .details.deposit.merchant_name = "bob",
       .details.deposit.merchant_account = 4,
       .details.deposit.wire_deadline = { 1000LL * 1000 * 0 }, /* 0s */
-      .details.deposit.amount_with_fee = "EUR:0.109",
+      .details.deposit.amount_with_fee = "EUR:0.119",
       .details.deposit.deposit_fee = "EUR:0.1"
     },
     {
@@ -969,7 +969,7 @@ run_test ()
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
       .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
-      .details.expect_transaction.amount = "EUR:0.02"
+      .details.expect_transaction.amount = "EUR:0.01"
     },
 
     /* Test that aggregation would happen fully if wire deadline is long */
@@ -1027,7 +1027,7 @@ run_test ()
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
       .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
-      .details.expect_transaction.amount = "EUR:0.04"
+      .details.expect_transaction.amount = "EUR:0.03"
     },
 
 
@@ -1087,7 +1087,7 @@ run_test ()
       .details.expect_transaction.debit_account = 3,
       .details.expect_transaction.credit_account = 4,
       .details.expect_transaction.exchange_base_url = "https://exchange.taler.net/",
-      .details.expect_transaction.amount = "EUR:0.02"
+      .details.expect_transaction.amount = "EUR:0.01"
     },
 
     /* Everything tested, terminate with success */
@@ -1203,6 +1203,7 @@ main (int argc,
 {
   const char *plugin_name;
   char *testname;
+  struct GNUNET_OS_Process *proc;
   struct GNUNET_CONFIGURATION_Handle *cfg;
   struct GNUNET_SIGNAL_Context *shc_chld;
 
@@ -1225,6 +1226,21 @@ main (int argc,
   GNUNET_log_setup ("test_taler_exchange_aggregator",
                     "WARNING",
                     NULL);
+  proc = GNUNET_OS_start_process (GNUNET_NO,
+                                  GNUNET_OS_INHERIT_STD_ALL,
+                                  NULL, NULL, NULL,
+                                  "taler-exchange-keyup",
+                                  "taler-exchange-keyup",
+                                  "-c", config_filename,
+                                  NULL);
+  if (NULL == proc)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
+    return 77;
+  }
+  GNUNET_OS_process_wait (proc);
+  GNUNET_OS_process_destroy (proc);
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_parse (cfg,

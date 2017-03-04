@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016 GNUnet e.V.
+  Copyright (C) 2016, 2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -53,6 +53,12 @@ struct WirePlugin
    * Name of the plugin.
    */
   char *type;
+
+  /**
+   * Wire transfer fee structure.
+   */
+  struct TALER_EXCHANGEDB_AggregateFees *af;
+
 };
 
 
@@ -101,6 +107,11 @@ struct AggregationUnit
    * Total amount to be transferred.
    */
   struct TALER_Amount total_amount;
+
+  /**
+   * Wire fee we charge for @e wp at @e execution_time.
+   */
+  struct TALER_Amount wire_fee;
 
   /**
    * Hash of @e wire.
@@ -260,6 +271,83 @@ extract_type (const json_t *wire)
 
 
 /**
+ * Advance the "af" pointer in @a wp to point to the
+ * currently valid record.
+ *
+ * @param wp wire transfer fee data structure to update
+ * @param now timestamp to update fees to
+ */
+static void
+advance_fees (struct WirePlugin *wp,
+              struct GNUNET_TIME_Absolute now)
+{
+  struct TALER_EXCHANGEDB_AggregateFees *af;
+
+  /* First, try to see if we have current fee information in memory */
+  af = wp->af;
+  while ( (NULL != af) &&
+          (af->end_date.abs_value_us < now.abs_value_us) )
+  {
+    struct TALER_EXCHANGEDB_AggregateFees *n = af->next;
+
+    GNUNET_free (af);
+    af = n;
+  }
+  wp->af = af;
+}
+
+
+/**
+ * Update wire transfer fee data structure in @a wp.
+ *
+ * @param wp wire transfer fee data structure to update
+ * @param now timestamp to update fees to
+ * @param session DB session to use
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if we
+ *         lack current fee information (and need to exit)
+ */
+static int
+update_fees (struct WirePlugin *wp,
+             struct GNUNET_TIME_Absolute now,
+             struct TALER_EXCHANGEDB_Session *session)
+{
+  advance_fees (wp,
+                now);
+  if (NULL != wp->af)
+    return GNUNET_OK;
+  /* Let's try to load it from disk... */
+  wp->af = TALER_EXCHANGEDB_fees_read (cfg,
+                                       wp->type);
+  advance_fees (wp,
+                now);
+  for (struct TALER_EXCHANGEDB_AggregateFees *p = wp->af;
+       NULL != p;
+       p = p->next)
+  {
+    if (GNUNET_SYSERR ==
+        db_plugin->insert_wire_fee (db_plugin->cls,
+                                    session,
+                                    wp->type,
+                                    p->start_date,
+                                    p->end_date,
+                                    &p->wire_fee,
+                                    &p->master_sig))
+    {
+      TALER_EXCHANGEDB_fees_free (wp->af);
+      wp->af = NULL;
+      return GNUNET_SYSERR;
+    }
+  }
+  if (NULL != wp->af)
+    return GNUNET_OK;
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Failed to find current wire transfer fees for `%s'\n",
+              wp->type);
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Find the wire plugin for the given wire address.
  *
  * @param type wire plugin type we need a plugin for
@@ -345,6 +433,7 @@ shutdown_task (void *cls)
                                  wp_tail,
                                  wp);
     TALER_WIRE_plugin_unload (wp->wire_plugin);
+    TALER_EXCHANGEDB_fees_free (wp->af);
     GNUNET_free (wp->type);
     GNUNET_free (wp);
   }
@@ -433,9 +522,8 @@ deposit_cb (void *cls,
     return GNUNET_SYSERR;
   }
   au->row_id = row_id;
+  GNUNET_assert (NULL == au->wire);
   au->wire = json_incref ((json_t *) wire);
-  au->execution_time = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&au->execution_time);
   TALER_JSON_hash (au->wire,
                    &au->h_wire);
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
@@ -444,6 +532,21 @@ deposit_cb (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Starting aggregation under H(WTID)=%s\n",
               TALER_B2S (&au->wtid));
+
+  au->wp = find_plugin (extract_type (au->wire));
+  if (NULL == au->wp)
+    return GNUNET_SYSERR;
+
+  /* make sure we have current fees */
+  au->execution_time = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&au->execution_time);
+  if (GNUNET_OK !=
+      update_fees (au->wp,
+                   au->execution_time,
+                   au->session))
+    return GNUNET_SYSERR;
+  au->wire_fee = au->wp->af->wire_fee;
+
   if (GNUNET_OK !=
       db_plugin->insert_aggregation_tracking (db_plugin->cls,
                                               au->session,
@@ -585,7 +688,7 @@ run_aggregation (void *cls)
   unsigned int i;
   int ret;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
-  struct WirePlugin *wp;
+  struct TALER_Amount final_amount;
 
   task = NULL;
   tc = GNUNET_SCHEDULER_get_task_context ();
@@ -650,18 +753,6 @@ run_aggregation (void *cls)
     return;
   }
 
-  wp = find_plugin (extract_type (au->wire));
-  if (NULL == wp)
-  {
-    json_decref (au->wire);
-    GNUNET_free (au);
-    au = NULL;
-    db_plugin->rollback (db_plugin->cls,
-                         session);
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-
   /* Now try to find other deposits to aggregate */
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Found ready deposit for %s, aggregating\n",
@@ -689,13 +780,18 @@ run_aggregation (void *cls)
     return;
   }
 
-  /* Round to the unit supported by the wire transfer method */
-  GNUNET_assert (GNUNET_SYSERR !=
-                 wp->wire_plugin->amount_round (wp->wire_plugin->cls,
-                                                &au->total_amount));
-  /* Check if after rounding down, we still have an amount to transfer */
-  if ( (0 == au->total_amount.value) &&
-       (0 == au->total_amount.fraction) )
+  /* Subtract wire transfer fee and round to the unit supported by the
+     wire transfer method; Check if after rounding down, we still have
+     an amount to transfer, and if not mark as 'tiny'. */
+  if ( (GNUNET_OK !=
+        TALER_amount_subtract (&final_amount,
+                               &au->total_amount,
+                               &au->wire_fee)) ||
+       (GNUNET_SYSERR ==
+        au->wp->wire_plugin->amount_round (au->wp->wire_plugin->cls,
+                                           &final_amount)) ||
+       ( (0 == final_amount.value) &&
+         (0 == final_amount.fraction) ) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Aggregate value too low for transfer\n");
@@ -755,21 +851,20 @@ run_aggregation (void *cls)
   {
     char *amount_s;
 
-    amount_s = TALER_amount_to_string (&au->total_amount);
+    amount_s = TALER_amount_to_string (&final_amount);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Preparing wire transfer of %s to %s\n",
                 amount_s,
                 TALER_B2S (&au->merchant_pub));
     GNUNET_free (amount_s);
   }
-  au->wp = wp;
-  au->ph = wp->wire_plugin->prepare_wire_transfer (wp->wire_plugin->cls,
-                                                   au->wire,
-                                                   &au->total_amount,
-                                                   exchange_base_url,
-                                                   &au->wtid,
-                                                   &prepare_cb,
-                                                   au);
+  au->ph = au->wp->wire_plugin->prepare_wire_transfer (au->wp->wire_plugin->cls,
+                                                       au->wire,
+                                                       &final_amount,
+                                                       exchange_base_url,
+                                                       &au->wtid,
+                                                       &prepare_cb,
+                                                       au);
   if (NULL == au->ph)
   {
     GNUNET_break (0); /* why? how to best recover? */

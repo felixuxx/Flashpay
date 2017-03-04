@@ -216,6 +216,8 @@ postgres_drop_tables (void *cls)
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS aggregation_tracking;");
   SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS wire_fee;");
+  SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS deposits;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS refresh_out;");
@@ -471,6 +473,23 @@ postgres_create_tables (void *cls)
   /* Index for lookup_transactions statement on wtid */
   SQLEXEC_INDEX("CREATE INDEX aggregation_tracking_wtid_index "
                 "ON aggregation_tracking(wtid_raw)");
+
+
+  /* Table for the wire fees. */
+  SQLEXEC("CREATE TABLE IF NOT EXISTS wire_fee "
+          "(wire_method VARCHAR NOT NULL"
+          ",start_date INT8 NOT NULL"
+          ",end_date INT8 NOT NULL"
+          ",wire_fee_val INT8 NOT NULL"
+          ",wire_fee_frac INT4 NOT NULL"
+          ",wire_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
+          ",PRIMARY KEY (wire_method, start_date)" /* this combo must be unique */
+          ")");
+  /* Index for lookup_transactions statement on wtid */
+  SQLEXEC_INDEX("CREATE INDEX aggregation_tracking_wtid_index "
+                "ON aggregation_tracking(wtid_raw)");
+
 
   /* This table contains the pre-commit data for
      wire transfers the exchange is about to execute. */
@@ -1193,6 +1212,7 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("lookup_transactions",
            "SELECT"
            " deposits.h_proposal_data"
+           ",deposits.wire"
            ",deposits.h_wire"
            ",deposits.coin_pub"
            ",deposits.merchant_pub"
@@ -1240,6 +1260,35 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3)",
            3, NULL);
+
+  /* Used in #postgres_get_wire_fee() */
+  PREPARE ("get_wire_fee",
+           "SELECT "
+           " start_date"
+           ",end_date"
+           ",wire_fee_val"
+           ",wire_fee_frac"
+           ",wire_fee_curr"
+           ",master_sig"
+           " FROM wire_fee"
+           " WHERE wire_method=$1"
+           " AND start_date <= $2"
+           " AND end_date > $2",
+           2, NULL);
+
+  /* Used in #postgres_insert_wire_fee */
+  PREPARE ("insert_wire_fee",
+           "INSERT INTO wire_fee "
+           "(wire_method"
+           ",start_date"
+           ",end_date"
+           ",wire_fee_val"
+           ",wire_fee_frac"
+           ",wire_fee_curr"
+           ",master_sig"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7)",
+           7, NULL);
 
 
   /* Used in #postgres_wire_prepare_data_insert() to store
@@ -3980,15 +4029,19 @@ postgres_lookup_wire_transfer (void *cls,
     struct GNUNET_TIME_Absolute exec_time;
     struct TALER_Amount amount_with_fee;
     struct TALER_Amount deposit_fee;
+    json_t *wire;
+    json_t *t;
+    const char *wire_method;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("h_proposal_data", &h_proposal_data),
+      TALER_PQ_result_spec_json ("wire", &wire),
       GNUNET_PQ_result_spec_auto_from_type ("h_wire", &h_wire),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub", &coin_pub),
       GNUNET_PQ_result_spec_auto_from_type ("merchant_pub", &merchant_pub),
       GNUNET_PQ_result_spec_absolute_time ("execution_time", &exec_time),
       TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
       TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
-       GNUNET_PQ_result_spec_end
+      GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
@@ -3999,8 +4052,23 @@ postgres_lookup_wire_transfer (void *cls,
       PQclear (result);
       return GNUNET_SYSERR;
     }
+    t = json_object_get (wire, "type");
+    if (NULL == t)
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    wire_method = json_string_value (t);
+    if (NULL == wire_method)
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
     cb (cb_cls,
         &merchant_pub,
+        wire_method,
         &h_wire,
         exec_time,
         &h_proposal_data,
@@ -4192,6 +4260,170 @@ postgres_insert_aggregation_tracking (void *cls,
 
   result = GNUNET_PQ_exec_prepared (session->conn,
                                    "insert_aggregation_tracking",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  if (0 != strcmp ("1", PQcmdTuples (result)))
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Obtain wire fee from database.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param type type of wire transfer the fee applies for
+ * @param date for which date do we want the fee?
+ * @param[out] start_date when does the fee go into effect
+ * @param[out] end_date when does the fee end being valid
+ * @param[out] wire_fee how high is the wire transfer fee
+ * @param[out] master_sig signature over the above by the exchange master key
+ * @return #GNUNET_OK on success, #GNUNET_NO if no fee is known
+ *         #GNUNET_SYSERR on failure
+ */
+static int
+postgres_get_wire_fee (void *cls,
+                       struct TALER_EXCHANGEDB_Session *session,
+                       const char *type,
+                       struct GNUNET_TIME_Absolute date,
+                       struct GNUNET_TIME_Absolute *start_date,
+                       struct GNUNET_TIME_Absolute *end_date,
+                       struct TALER_Amount *wire_fee,
+                       struct TALER_MasterSignatureP *master_sig)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_string (type),
+    GNUNET_PQ_query_param_absolute_time (&date),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_absolute_time ("start_date", start_date),
+    GNUNET_PQ_result_spec_absolute_time ("end_date", end_date),
+    TALER_PQ_result_spec_amount ("wire_fee", wire_fee),
+    GNUNET_PQ_result_spec_auto_from_type ("master_sig", master_sig),
+    GNUNET_PQ_result_spec_end
+  };
+  PGresult *result;
+  int nrows;
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "get_wire_fee",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    /* no matches found */
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  if (1 != nrows)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_PQ_extract_result (result,
+                                rs,
+                                0))
+  {
+    PQclear (result);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Insert wire transfer fee into database.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param type type of wire transfer this fee applies for
+ * @param start_date when does the fee go into effect
+ * @param end_date when does the fee end being valid
+ * @param wire_fee how high is the wire transfer fee
+ * @param master_sig signature over the above by the exchange master key
+ * @return #GNUNET_OK on success, #GNUNET_NO if the record exists,
+ *         #GNUNET_SYSERR on failure
+ */
+static int
+postgres_insert_wire_fee (void *cls,
+                          struct TALER_EXCHANGEDB_Session *session,
+                          const char *type,
+                          struct GNUNET_TIME_Absolute start_date,
+                          struct GNUNET_TIME_Absolute end_date,
+                          const struct TALER_Amount *wire_fee,
+                          const struct TALER_MasterSignatureP *master_sig)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_string (type),
+    GNUNET_PQ_query_param_absolute_time (&start_date),
+    GNUNET_PQ_query_param_absolute_time (&end_date),
+    TALER_PQ_query_param_amount (wire_fee),
+    GNUNET_PQ_query_param_auto_from_type (master_sig),
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  struct TALER_Amount wf;
+  struct TALER_MasterSignatureP sig;
+  struct GNUNET_TIME_Absolute sd;
+  struct GNUNET_TIME_Absolute ed;
+
+  if (GNUNET_OK ==
+      postgres_get_wire_fee (cls,
+                             session,
+                             type,
+                             start_date,
+                             &sd,
+                             &ed,
+                             &wf,
+                             &sig))
+  {
+    if (0 != memcmp (&sig,
+                     master_sig,
+                     sizeof (sig)))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    if (0 != TALER_amount_cmp (wire_fee,
+                               &wf))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    if ( (sd.abs_value_us != start_date.abs_value_us) ||
+         (ed.abs_value_us != end_date.abs_value_us) )
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    /* equal record already exists */
+    return GNUNET_NO;
+  }
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "insert_wire_fee",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
@@ -5090,6 +5322,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->lookup_wire_transfer = &postgres_lookup_wire_transfer;
   plugin->wire_lookup_deposit_wtid = &postgres_wire_lookup_deposit_wtid;
   plugin->insert_aggregation_tracking = &postgres_insert_aggregation_tracking;
+  plugin->insert_wire_fee = &postgres_insert_wire_fee;
+  plugin->get_wire_fee = &postgres_get_wire_fee;
   plugin->wire_prepare_data_insert = &postgres_wire_prepare_data_insert;
   plugin->wire_prepare_data_mark_finished = &postgres_wire_prepare_data_mark_finished;
   plugin->wire_prepare_data_get = &postgres_wire_prepare_data_get;

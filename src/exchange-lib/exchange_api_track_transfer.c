@@ -87,12 +87,14 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
   struct GNUNET_HashCode h_wire;
   struct GNUNET_TIME_Absolute exec_time;
   struct TALER_Amount total_amount;
+  struct TALER_Amount wire_fee;
   struct TALER_MerchantPublicKeyP merchant_pub;
   unsigned int num_details;
   struct TALER_ExchangePublicKeyP exchange_pub;
   struct TALER_ExchangeSignatureP exchange_sig;
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount ("total", &total_amount),
+    TALER_JSON_spec_amount ("wire_fee", &wire_fee),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &merchant_pub),
     GNUNET_JSON_spec_fixed_auto ("H_wire", &h_wire),
     GNUNET_JSON_spec_absolute_time ("execution_time", &exec_time),
@@ -158,6 +160,8 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
     wdp.purpose.size = htonl (sizeof (struct TALER_WireDepositDataPS));
     TALER_amount_hton (&wdp.total,
                        &total_amount);
+    TALER_amount_hton (&wdp.wire_fee,
+                       &wire_fee);
     wdp.merchant_pub = merchant_pub;
     wdp.h_wire = h_wire;
     GNUNET_CRYPTO_hash_context_finish (hash_context,
@@ -186,6 +190,7 @@ check_track_transfer_response_ok (struct TALER_EXCHANGE_TrackTransferHandle *wdh
              &h_wire,
              exec_time,
              &total_amount,
+             &wire_fee,
              num_details,
              details);
   }
@@ -256,6 +261,7 @@ handle_track_transfer_finished (void *cls,
            json,
            NULL,
            GNUNET_TIME_UNIT_ZERO_ABS,
+           NULL,
            NULL,
            0, NULL);
   TALER_EXCHANGE_track_transfer_cancel (wdh);

@@ -1865,6 +1865,11 @@ struct WtidTransactionContext
   struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
+   * Which method was used to wire the funds?
+   */
+  char *wire_method;
+
+  /**
    * Hash of the wire details of the merchant (identical for all
    * deposits), only valid if @e is_valid is #GNUNET_YES.
    */
@@ -1918,6 +1923,7 @@ struct WtidTransactionContext
 static void
 handle_transaction_data (void *cls,
                          const struct TALER_MerchantPublicKeyP *merchant_pub,
+                         const char *wire_method,
                          const struct GNUNET_HashCode *h_wire,
                          struct GNUNET_TIME_Absolute exec_time,
                          const struct GNUNET_HashCode *h_proposal_data,
@@ -1936,6 +1942,7 @@ handle_transaction_data (void *cls,
     ctx->merchant_pub = *merchant_pub;
     ctx->h_wire = *h_wire;
     ctx->exec_time = exec_time;
+    ctx->wire_method = GNUNET_strdup (wire_method);
     ctx->is_valid = GNUNET_YES;
     if (GNUNET_OK !=
         TALER_amount_subtract (&ctx->total,
@@ -1952,6 +1959,8 @@ handle_transaction_data (void *cls,
     if ( (0 != memcmp (&ctx->merchant_pub,
                        merchant_pub,
                        sizeof (struct TALER_MerchantPublicKeyP))) ||
+         (0 != strcmp (wire_method,
+                       ctx->wire_method)) ||
          (0 != memcmp (&ctx->h_wire,
                        h_wire,
                        sizeof (struct GNUNET_HashCode))) )
@@ -2006,6 +2015,10 @@ TEH_DB_execute_track_transfer (struct MHD_Connection *connection,
   struct WtidTransactionContext ctx;
   struct TALER_EXCHANGEDB_Session *session;
   struct TEH_TrackTransferDetail *wdd;
+  struct GNUNET_TIME_Absolute wire_fee_start_date;
+  struct GNUNET_TIME_Absolute wire_fee_end_date;
+  struct TALER_Amount wire_fee;
+  struct TALER_MasterSignatureP wire_fee_master_sig;
 
   if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
   {
@@ -2016,6 +2029,7 @@ TEH_DB_execute_track_transfer (struct MHD_Connection *connection,
   ctx.is_valid = GNUNET_NO;
   ctx.wdd_head = NULL;
   ctx.wdd_tail = NULL;
+  ctx.wire_method = NULL;
   ret = TEH_plugin->lookup_wire_transfer (TEH_plugin->cls,
                                           session,
                                           wtid,
@@ -2042,10 +2056,36 @@ TEH_DB_execute_track_transfer (struct MHD_Connection *connection,
                                           "wtid");
     goto cleanup;
   }
+  if (GNUNET_OK !=
+      TEH_plugin->get_wire_fee (TEH_plugin->cls,
+                                session,
+                                ctx.wire_method,
+                                ctx.exec_time,
+                                &wire_fee_start_date,
+                                &wire_fee_end_date,
+                                &wire_fee,
+                                &wire_fee_master_sig))
+  {
+    GNUNET_break (0);
+    ret = TEH_RESPONSE_reply_internal_db_error (connection,
+						TALER_EC_TRACK_TRANSFER_WIRE_FEE_NOT_FOUND);
+    goto cleanup;
+  }
+  if (GNUNET_OK !=
+      TALER_amount_subtract (&ctx.total,
+                             &ctx.total,
+                             &wire_fee))
+  {
+    GNUNET_break (0);
+    ret = TEH_RESPONSE_reply_internal_db_error (connection,
+						TALER_EC_TRACK_TRANSFER_WIRE_FEE_INCONSISTENT);
+    goto cleanup;
+  }
   ret = TEH_RESPONSE_reply_track_transfer_details (connection,
                                                    &ctx.total,
                                                    &ctx.merchant_pub,
                                                    &ctx.h_wire,
+                                                   &wire_fee,
                                                    ctx.exec_time,
                                                    ctx.wdd_head);
  cleanup:
@@ -2056,6 +2096,7 @@ TEH_DB_execute_track_transfer (struct MHD_Connection *connection,
                                  wdd);
     GNUNET_free (wdd);
   }
+  GNUNET_free_non_null (ctx.wire_method);
   return ret;
 }
 
