@@ -922,9 +922,8 @@ create_wire_fee_for_method (void *cls,
 
   if (GNUNET_OK != *ret)
     return;
-  last_date = GNUNET_TIME_absolute_max (last_date,
-                                        GNUNET_TIME_absolute_add (lookahead_sign_stamp,
-                                                                  max_duration_spend));
+  last_date = GNUNET_TIME_absolute_add (lookahead_sign_stamp,
+                                        max_duration_spend);
   GNUNET_asprintf (&section,
                    "exchange-wire-%s",
                    wiremethod);
