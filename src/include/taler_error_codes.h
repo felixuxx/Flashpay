@@ -991,6 +991,20 @@ enum TALER_ErrorCode
    */
   TALER_EC_PAY_OFFER_EXPIRED = 2121,
 
+  /**
+   * The "merchant" field is missing in the proposal data.
+   * This response is
+   * provided with HTTP status code MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_PAY_MERCHANT_FIELD_MISSING = 2122,
+
+  /**
+   * Failed computing a hash code (likely server out-of-memory).
+   * This response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PAY_FAILED_COMPUTE_PROPOSAL_HASH = 2123,
+
 
   /**
    * Integer overflow with sepcified timestamp argument detected.
