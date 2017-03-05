@@ -4075,6 +4075,7 @@ postgres_lookup_wire_transfer (void *cls,
         &coin_pub,
         &amount_with_fee,
         &deposit_fee);
+    GNUNET_PQ_cleanup_result (rs);
   }
   PQclear (result);
   return GNUNET_OK;
@@ -4178,9 +4179,10 @@ postgres_wire_lookup_deposit_wtid (void *cls,
         GNUNET_PQ_result_spec_end
       };
 
-      if (GNUNET_OK != GNUNET_PQ_extract_result (result,
-                                                 rs,
-                                                 0))
+      if (GNUNET_OK !=
+          GNUNET_PQ_extract_result (result,
+                                    rs,
+                                    0))
       {
         GNUNET_break (0);
         PQclear (result);
@@ -4213,9 +4215,10 @@ postgres_wire_lookup_deposit_wtid (void *cls,
       TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
       GNUNET_PQ_result_spec_end
     };
-    if (GNUNET_OK != GNUNET_PQ_extract_result (result,
-                                               rs,
-                                               0))
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  0))
     {
       GNUNET_break (0);
       PQclear (result);
@@ -4716,7 +4719,6 @@ postgres_select_deposits_above_serial_id (void *cls,
     struct TALER_EXCHANGEDB_Deposit deposit;
     uint8_t done = 0;
     uint64_t rowid;
-
     struct GNUNET_PQ_ResultSpec rs[] = {
       TALER_PQ_result_spec_amount ("amount_with_fee",
                                    &deposit.amount_with_fee),
@@ -4762,6 +4764,7 @@ postgres_select_deposits_above_serial_id (void *cls,
         deposit.wire_deadline,
         deposit.receiver_wire_account,
         done);
+    GNUNET_PQ_cleanup_result (rs);
   }
   PQclear (result);
   return GNUNET_OK;
@@ -4855,6 +4858,7 @@ postgres_select_refreshs_above_serial_id (void *cls,
         &amount_with_fee,
         num_newcoins,
         noreveal_index);
+    GNUNET_PQ_cleanup_result (rs);
   }
   PQclear (result);
   return GNUNET_OK;
@@ -4945,6 +4949,7 @@ postgres_select_refunds_above_serial_id (void *cls,
         &refund.h_proposal_data,
         refund.rtransaction_id,
         &refund.refund_amount);
+    GNUNET_PQ_cleanup_result (rs);
   }
   PQclear (result);
   return GNUNET_OK;
@@ -5038,6 +5043,7 @@ postgres_select_reserves_in_above_serial_id (void *cls,
         sender_account_details,
         transfer_details,
         execution_date);
+    GNUNET_PQ_cleanup_result (rs);
   }
 
   PQclear (result);
@@ -5138,6 +5144,7 @@ postgres_select_reserves_out_above_serial_id (void *cls,
         &reserve_sig,
         execution_date,
         &amount_with_fee);
+    GNUNET_PQ_cleanup_result (rs);
   }
 
   PQclear (result);
@@ -5229,6 +5236,7 @@ postgres_select_prepare_above_serial_id (void *cls,
         buf,
         buf_size,
         finished);
+    GNUNET_PQ_cleanup_result (rs);
   }
 
   PQclear (result);
