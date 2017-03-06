@@ -506,6 +506,11 @@ struct Command
        */
       const char *format;
 
+      /**
+       * Expected wire fee.
+       */
+      const char *expected_fee;
+
     } wire;
 
     /**
@@ -755,6 +760,8 @@ interpreter_run (void *cls);
 static void
 next_command (struct InterpreterState *is)
 {
+  if (GNUNET_SYSERR == result)
+    return; /* ignore, we already failed! */
   is->ip++;
   is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
                                        is);
@@ -1366,10 +1373,33 @@ check_fee_cb (void *cls,
 {
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
+  struct TALER_Amount expected_amount;
 
-  GNUNET_break (0 == strcasecmp (cmd->details.wire.format,
-                                 wire_method));
-  /* FIXME: actually check @a fees as well... */
+  GNUNET_break ( (0 == strcasecmp ("test",
+                                   wire_method)) ||
+                 (0 == strcasecmp ("sepa",
+                                   wire_method)) );
+  if (GNUNET_OK !=
+      TALER_string_to_amount (cmd->details.wire.expected_fee,
+                              &expected_amount))
+  {
+    GNUNET_break (0);
+    fail (is);
+    return;
+  }
+  while (NULL != fees)
+  {
+    if (0 != TALER_amount_cmp (&fees->wire_fee,
+                               &expected_amount))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Wire fee missmatch to command %s\n",
+                  cmd->label);
+      fail (is);
+      return;
+    }
+    fees = fees->next;
+  }
 }
 
 
@@ -2785,14 +2815,16 @@ run (void *cls)
       .label = "wire-test",
       /* expecting 'test' method in response */
       .expected_response_code = MHD_HTTP_OK,
-      .details.wire.format = "test" },
+      .details.wire.format = "test",
+      .details.wire.expected_fee = "EUR:0.01" },
 #endif
 #if WIRE_SEPA
     { .oc = OC_WIRE,
       .label = "wire-sepa",
       /* expecting 'sepa' method in response */
       .expected_response_code = MHD_HTTP_OK,
-      .details.wire.format = "sepa" },
+      .details.wire.format = "sepa",
+      .details.wire.expected_fee = "EUR:0.01" },
 #endif
     /* *************** end of /wire testing ************** */
 
@@ -3238,7 +3270,7 @@ main (int argc,
     }
   while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/keys -o /dev/null -O /dev/null"));
   fprintf (stderr, "\n");
-  result = GNUNET_SYSERR;
+  result = GNUNET_NO;
   sigpipe = GNUNET_DISK_pipe (GNUNET_NO, GNUNET_NO, GNUNET_NO, GNUNET_NO);
   GNUNET_assert (NULL != sigpipe);
   shc_chld = GNUNET_SIGNAL_handler_install (GNUNET_SIGCHLD,

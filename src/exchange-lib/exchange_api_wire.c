@@ -444,7 +444,7 @@ TALER_EXCHANGE_wire_get_fees (const struct TALER_MasterPublicKeyP *master_pub,
           return GNUNET_SYSERR;
         }
       }
-      af[num_fees].next = NULL;
+      af[num_fees - 1].next = NULL;
       if (NULL != cb)
         cb (cb_cls,
             wire_method,
