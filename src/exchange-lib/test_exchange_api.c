@@ -1352,6 +1352,28 @@ find_pk (const struct TALER_EXCHANGE_Keys *keys,
 
 
 /**
+ * Function called with information about the wire fees
+ * for each wire method.
+ *
+ * @param cls closure
+ * @param wire_method name of the wire method (i.e. "sepa")
+ * @param fees fee structure for this method
+ */
+static void
+check_fee_cb (void *cls,
+              const char *wire_method,
+              const struct TALER_EXCHANGE_WireAggregateFees *fees)
+{
+  struct InterpreterState *is = cls;
+  struct Command *cmd = &is->commands[is->ip];
+
+  GNUNET_break (0 == strcasecmp (cmd->details.wire.format,
+                                 wire_method));
+  /* FIXME: actually check @a fees as well... */
+}
+
+
+/**
  * Callbacks called with the result(s) of a
  * wire format inquiry request to the exchange.
  *
@@ -1395,6 +1417,19 @@ wire_cb (void *cls,
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Expected method `%s' not included in response to command %s\n",
                     cmd->details.wire.format,
+                    cmd->label);
+        json_dumpf (obj, stderr, 0);
+        fail (is);
+        return;
+      }
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_wire_get_fees (&TALER_EXCHANGE_get_keys (exchange)->master_pub,
+                                        obj,
+                                        &check_fee_cb,
+                                        is))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Wire fee extraction in command %s failed\n",
                     cmd->label);
         json_dumpf (obj, stderr, 0);
         fail (is);
