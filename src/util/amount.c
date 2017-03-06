@@ -565,4 +565,32 @@ TALER_amount_to_string (const struct TALER_Amount *amount)
 }
 
 
+/**
+ * Divide an amount by a float.  Note that this function
+ * may introduce a rounding error!
+ *
+ * @param result where to store @a dividend / @a divisor
+ * @param dividend amount to divide
+ * @param divisor by what to divide, must be positive
+ */
+void
+TALER_amount_divide (struct TALER_Amount *result,
+                     const struct TALER_Amount *dividend,
+                     uint32_t divisor)
+{
+  uint64_t modr;
+
+  GNUNET_assert (0 != divisor);
+  *result = *dividend;
+  if (1 == divisor)
+    return;
+  modr = result->value % divisor;
+  result->value /= divisor;
+  /* modr is a 32-bit value, so we can safely multiply by (<32-bit) base and add fraction! */
+  modr = (modr * TALER_AMOUNT_FRAC_BASE) + result->fraction;
+  GNUNET_assert (modr < TALER_AMOUNT_FRAC_BASE * divisor);
+  result->fraction = (uint32_t) (modr / divisor);
+}
+
+
 /* end of amount.c */

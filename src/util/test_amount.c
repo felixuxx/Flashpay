@@ -197,6 +197,43 @@ main(int argc,
 		 TALER_amount_subtract (&a3, &a1, &a2));
   GNUNET_assert (UINT64_MAX - 1 == a3.value);
   GNUNET_assert (TALER_AMOUNT_FRAC_BASE - 1 == a3.fraction);
+
+  /* test division */
+  GNUNET_assert (GNUNET_OK ==
+		 TALER_string_to_amount ("EUR:3.33",
+					 &a1));
+  TALER_amount_divide (&a2,
+                       &a1,
+                       1);
+  GNUNET_assert (0 == strcasecmp ("EUR",
+				  a2.currency));
+  GNUNET_assert (3 == a2.value);
+  GNUNET_assert (TALER_AMOUNT_FRAC_BASE / 100 * 33 == a2.fraction);
+
+  TALER_amount_divide (&a2,
+                       &a1,
+                       3);
+  GNUNET_assert (0 == strcasecmp ("EUR",
+				  a2.currency));
+  GNUNET_assert (1 == a2.value);
+  GNUNET_assert (TALER_AMOUNT_FRAC_BASE / 100 * 11 == a2.fraction);
+
+  TALER_amount_divide (&a2,
+                       &a1,
+                       2);
+  GNUNET_assert (0 == strcasecmp ("EUR",
+				  a2.currency));
+  GNUNET_assert (1 == a2.value);
+  GNUNET_assert (TALER_AMOUNT_FRAC_BASE / 1000 * 665 == a2.fraction);
+  TALER_amount_divide (&a2,
+                       &a1,
+                       TALER_AMOUNT_FRAC_BASE * 2);
+  GNUNET_assert (0 == strcasecmp ("EUR",
+				  a2.currency));
+  GNUNET_assert (0 == a2.value);
+  GNUNET_assert (1 == a2.fraction);
+
+
   return 0;
 }
 

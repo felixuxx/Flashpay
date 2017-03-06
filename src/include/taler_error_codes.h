@@ -1005,6 +1005,21 @@ enum TALER_ErrorCode
    */
   TALER_EC_PAY_FAILED_COMPUTE_PROPOSAL_HASH = 2123,
 
+  /**
+   * Failed to locate merchant's account information matching the
+   * wire hash given in the proposal.
+   * This response is
+   * provided with HTTP status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PAY_WIRE_HASH_UNKNOWN = 2124,
+
+  /**
+   * We got different currencies for the wire fee and the maximum wire
+   * fee.  This response is provided with HTTP status code
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PAY_WIRE_FEE_CURRENCY_MISSMATCH = 2125,
+
 
   /**
    * Integer overflow with sepcified timestamp argument detected.

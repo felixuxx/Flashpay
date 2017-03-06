@@ -252,6 +252,20 @@ TALER_amount_add (struct TALER_Amount *sum,
 
 
 /**
+ * Divide an amount by a float.  Note that this function
+ * may introduce a rounding error!
+ *
+ * @param result where to store @a dividend / @a divisor
+ * @param dividend amount to divide
+ * @param divisor by what to divide, must be positive
+ */
+void
+TALER_amount_divide (struct TALER_Amount *result,
+                     const struct TALER_Amount *dividend,
+                     uint32_t divisor);
+
+
+/**
  * Normalize the given amount.
  *
  * @param amount amount to normalize
