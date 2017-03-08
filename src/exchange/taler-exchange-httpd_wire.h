@@ -27,6 +27,16 @@
 
 
 /**
+ * Initialize wire subsystem.
+ *
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if we found no valid
+ *         wire methods
+ */
+int
+TEH_WIRE_init (void);
+
+
+/**
  * Obtain fee structure for @a wire_plugin_name wire transfers.
  *
  * @param wire_plugin_name name of the plugin to load fees for

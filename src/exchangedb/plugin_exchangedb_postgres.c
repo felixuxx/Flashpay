@@ -2186,8 +2186,8 @@ postgres_get_reserve_history (void *cls,
     GNUNET_assert (NULL != rh_tail);
     GNUNET_assert (NULL == rh_tail->next);
     result = GNUNET_PQ_exec_prepared (session->conn,
-                                     "get_reserves_out",
-                                     params);
+                                      "get_reserves_out",
+                                      params);
     if (PGRES_TUPLES_OK != PQresultStatus (result))
     {
       QUERY_ERR (result);

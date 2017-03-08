@@ -615,7 +615,7 @@ TEH_DB_execute_reserve_status (struct MHD_Connection *connection,
                                          "error", "Reserve not found",
                                          "parameter", "withdraw_pub");
   res = TEH_RESPONSE_reply_reserve_status_success (connection,
-                                                    rh);
+                                                   rh);
   TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                     rh);
   return res;

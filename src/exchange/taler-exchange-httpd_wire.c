@@ -120,12 +120,31 @@ TEH_WIRE_handler_wire (struct TEH_RequestHandler *rh,
                        const char *upload_data,
                        size_t *upload_data_size)
 {
-  if (NULL == wire_methods)
-    wire_methods = TEH_VALIDATION_get_wire_methods ("exchange-wire-incoming");
-
+  GNUNET_assert (NULL != wire_methods);
   return TEH_RESPONSE_reply_json (connection,
                                   wire_methods,
                                   MHD_HTTP_OK);
+}
+
+
+/**
+ * Initialize wire subsystem.
+ *
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if we found no valid
+ *         wire methods
+ */
+int
+TEH_WIRE_init ()
+{
+  wire_methods = TEH_VALIDATION_get_wire_methods ("exchange-wire-incoming");
+  if ( (NULL == wire_methods) ||
+       (0 == json_object_size (wire_methods)) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to find properly configured wire transfer method\n");
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
 }
 
 

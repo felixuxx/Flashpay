@@ -625,10 +625,6 @@ exchange_serve_process_config ()
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TEH_VALIDATION_init (cfg))
-    return GNUNET_SYSERR;
-
-  if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
                                              "master_public_key",
@@ -637,7 +633,6 @@ exchange_serve_process_config ()
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "master_public_key");
-    TEH_VALIDATION_done ();
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -648,10 +643,16 @@ exchange_serve_process_config ()
     fprintf (stderr,
              "Invalid master public key given in exchange configuration.");
     GNUNET_free (TEH_master_public_key_str);
-    TEH_VALIDATION_done ();
     return GNUNET_SYSERR;
   }
   GNUNET_free (TEH_master_public_key_str);
+
+  if ( (GNUNET_OK !=
+        TEH_VALIDATION_init (cfg)) ||
+       (GNUNET_OK !=
+        TEH_WIRE_init ()) )
+    return GNUNET_SYSERR;
+
 
   if (NULL ==
       (TEH_plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
