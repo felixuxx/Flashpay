@@ -1180,6 +1180,11 @@ enum TALER_ErrorCode
   TALER_EC_TRACK_TRANSFER_CONFLICTING_REPORTS = 2408,
 
   /**
+   * The merchant backend had problems in creating the JSON response.
+   */
+  TALER_EC_TRACK_TRANSFER_JSON_RESPONSE_ERROR = 2409,
+
+  /**
    * The hash provided in the request of /map/in does not match
    * the contract sent alongside in the same request.
    */
