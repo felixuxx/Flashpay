@@ -22,7 +22,22 @@
  * - This auditor does not verify that 'reserves_in' actually matches
  *   the wire transfers from the bank. This needs to be checked separately!
  * - Similarly, we do not check that the outgoing wire transfers match those
- *   given in the XXX table. This needs to be checked separately!
+ *   given in the aggregation_tracking table. This needs to be checked separately!
+ *
+ * TODO:
+ * - initialize master_pub via command-line argument (URGENT!)
+ * - modify auditordb to allow multiple last serial IDs per table in progress tracking
+ * - modify auditordb to return row ID where we need it for diagnostics
+ * - implement coin/denomination audit
+ * - implement merchant deposit audit
+ *   - see if we need more tables there
+ * - write reporting logic to output nice report beyond GNUNET_log()
+ *
+ * EXTERNAL:
+ * - add tool to pay-back expired reserves (#4956), and support here
+ * - add tool to verify 'reserves_in' from wire transfer inspection
+ * - add tool to trigger computation of historic revenues
+ *   (move balances from 'current' revenue/profits to 'historic' tables)
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -116,6 +131,28 @@ report_row_inconsistency (const char *table,
 
 
 /**
+ * Report a minor inconsistency in the exchange's database (i.e. something
+ * relating to timestamps that should have no financial implications).
+ *
+ * @param table affected table
+ * @param rowid affected row, UINT64_MAX if row is missing
+ * @param diagnostic message explaining the problem
+ */
+static void
+report_row_minor_inconsistency (const char *table,
+                                uint64_t rowid,
+                                const char *diagnostic)
+{
+  // TODO: implement proper reporting logic writing to file.
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Minor inconsistency detected in table %s at row %llu: %s\n",
+              table,
+              (unsigned long long) rowid,
+              diagnostic);
+}
+
+
+/**
  * Report a global inconsistency with respect to a reserve.
  *
  * @param reserve_pub the affected reserve
@@ -134,6 +171,43 @@ report_reserve_inconsistency (const struct TALER_ReservePublicKeyP *reserve_pub,
               "Reserve inconsistency detected affecting reserve %s: %s\n",
               TALER_B2S (reserve_pub),
               diagnostic);
+}
+
+
+/**
+ * Report the final result on the reserve balances of the exchange.
+ * The reserve must have @a total_balance in its escrow account just
+ * to cover outstanding reserve funds (outstanding coins are on top).
+ * The reserve has made @a total_fee_balance in profit from withdrawal
+ * operations alone.
+ *
+ * Note that this is for the "ongoing" reporting period.  Historic
+ * revenue (as stored via the "insert_historic_reserve_revenue")
+ * is not included in the @a total_fee_balance.
+ *
+ * @param total_balance how much money (in total) is left in all of the
+ *        reserves (that has not been withdrawn)
+ * @param total_fee_balance how much money (in total) did the reserve
+ *        make from withdrawal fees
+ */
+static void
+report_reserve_balance (const struct TALER_Amount *total_balance,
+                        const struct TALER_Amount *total_fee_balance)
+{
+  char *balance;
+  char *fees;
+
+  balance = TALER_amount_to_string (total_balance);
+  fees = TALER_amount_to_string (total_fee_balance);
+  // TODO: implement proper reporting logic writing to file.
+  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+              "Total escrow balance to be held for reserves: %s\n",
+              balance);
+  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+              "Total profits made from reserves: %s\n",
+              fees);
+  GNUNET_free (fees);
+  GNUNET_free (balance);
 }
 
 
@@ -236,6 +310,7 @@ clear_transaction_state_cache ()
 
 
 /* ***************************** Analyze reserves ************************ */
+/* This logic checks the reserves_in, reserves_out and reserves-tables */
 
 /**
  * Summary data we keep per reserve.
@@ -244,46 +319,62 @@ struct ReserveSummary
 {
   /**
    * Public key of the reserve.
+   * Always set when the struct is first initialized.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
-   * Sum of all incoming transfers.
+   * Sum of all incoming transfers during this transaction.
+   * Updated only in #handle_reserve_in().
    */
   struct TALER_Amount total_in;
 
   /**
-   * Sum of all outgoing transfers.
+   * Sum of all outgoing transfers during this transaction (includes fees).
+   * Updated only in #handle_reserve_out().
    */
   struct TALER_Amount total_out;
 
   /**
+   * Sum of withdraw fees encountered during this transaction.
+   */
+  struct TALER_Amount total_fee;
+
+  /**
    * Previous balance of the reserve as remembered by the auditor.
+   * (updated based on @e total_in and @e total_out at the end).
    */
   struct TALER_Amount a_balance;
 
   /**
    * Previous withdraw fee balance of the reserve, as remembered by the auditor.
+   * (updated based on @e total_fee at the end).
    */
   struct TALER_Amount a_withdraw_fee_balance;
 
   /**
    * Previous reserve expiration data, as remembered by the auditor.
+   * (updated on-the-fly in #handle_reserve_in()).
    */
   struct GNUNET_TIME_Absolute a_expiration_date;
 
   /**
    * Previous last processed reserve_in serial ID, as remembered by the auditor.
+   * (updated on-the-fly in #handle_reserve_in()).
    */
   uint64_t a_last_reserve_in_serial_id;
 
   /**
    * Previous last processed reserve_out serial ID, as remembered by the auditor.
+   * (updated on-the-fly in #handle_reserve_out()).
    */
   uint64_t a_last_reserve_out_serial_id;
 
   /**
-   * Did we have a previous reserve info?
+   * Did we have a previous reserve info?  Used to decide between
+   * UPDATE and INSERT later.  Initialized in
+   * #load_auditor_reserve_summary() together with the a-* values
+   * (if available).
    */
   int had_ri;
 
@@ -292,6 +383,8 @@ struct ReserveSummary
 
 /**
  * Load the auditor's remembered state about the reserve into @a rs.
+ * The "total_in" and "total_out" amounts of @a rs must already be
+ * initialized (so we can determine the currency).
  *
  * @param[in|out] rs reserve summary to (fully) initialize
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
@@ -318,19 +411,60 @@ load_auditor_reserve_summary (struct ReserveSummary *rs)
   if (GNUNET_NO == ret)
   {
     rs->had_ri = GNUNET_NO;
-    // FIXME: set rs->a-values to sane defaults!
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (rs->total_in.currency,
+                                          &rs->a_balance));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (rs->total_in.currency,
+                                          &rs->a_withdraw_fee_balance));
     return GNUNET_OK;
   }
   rs->had_ri = GNUNET_YES;
-  /* TODO: check values we got are sane? */
+  if ( (GNUNET_YES !=
+        TALER_amount_cmp_currency (&rs->a_balance,
+                                   &rs->a_withdraw_fee_balance)) ||
+       (GNUNET_YES !=
+        TALER_amount_cmp_currency (&rs->total_in,
+                                   &rs->a_balance)) )
+  {
+    report_row_inconsistency ("auditor-reserve-info",
+                              UINT64_MAX, /* FIXME: modify API to get rowid! */
+                              "currencies for reserve differ");
+    /* TODO: find a sane way to continue... */
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 
 
 /**
+ * Closure to the various callbacks we make while checking a reserve.
+ */
+struct ReserveContext
+{
+  /**
+   * Map from hash of reserve's public key to a `struct ReserveSummary`.
+   */
+  struct GNUNET_CONTAINER_MultiHashMap *reserves;
+
+  /**
+   * Total balance in all reserves (updated).
+   */
+  struct TALER_Amount total_balance;
+
+  /**
+   * Total withdraw fees gotten in all reserves (updated).
+   */
+  struct TALER_Amount total_fee_balance;
+
+};
+
+
+/**
  * Function called with details about incoming wire transfers.
  *
- * @param cls our `struct GNUNET_CONTAINER_MultiHashMap` with the reserves
+ * @param cls our `struct ReserveContext`
  * @param rowid unique serial ID for the refresh session in our DB
  * @param reserve_pub public key of the reserve (also the WTID)
  * @param credit amount that was received
@@ -348,16 +482,17 @@ handle_reserve_in (void *cls,
                    const json_t *transfer_details,
                    struct GNUNET_TIME_Absolute execution_date)
 {
-  struct GNUNET_CONTAINER_MultiHashMap *reserves = cls;
+  struct ReserveContext *rc = cls;
   struct GNUNET_HashCode key;
   struct ReserveSummary *rs;
+  struct GNUNET_TIME_Absolute expiry;
 
   GNUNET_assert (rowid >= reserve_in_serial_id); /* should be monotonically increasing */
   reserve_in_serial_id = rowid + 1;
   GNUNET_CRYPTO_hash (reserve_pub,
                       sizeof (*reserve_pub),
                       &key);
-  rs = GNUNET_CONTAINER_multihashmap_get (reserves,
+  rs = GNUNET_CONTAINER_multihashmap_get (rc->reserves,
                                           &key);
   if (NULL == rs)
   {
@@ -367,6 +502,9 @@ handle_reserve_in (void *cls,
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_get_zero (credit->currency,
                                           &rs->total_out));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (credit->currency,
+                                          &rs->total_fee));
     if (GNUNET_OK !=
         load_auditor_reserve_summary (rs))
     {
@@ -375,7 +513,7 @@ handle_reserve_in (void *cls,
       return GNUNET_SYSERR;
     }
     GNUNET_assert (GNUNET_OK ==
-                   GNUNET_CONTAINER_multihashmap_put (reserves,
+                   GNUNET_CONTAINER_multihashmap_put (rc->reserves,
                                                       &key,
                                                       rs,
                                                       GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
@@ -387,6 +525,12 @@ handle_reserve_in (void *cls,
                                      &rs->total_in,
                                      credit));
   }
+  GNUNET_assert (rowid >= rs->a_last_reserve_in_serial_id);
+  rs->a_last_reserve_in_serial_id = rowid + 1;
+  expiry = GNUNET_TIME_absolute_add (execution_date,
+                                     TALER_IDLE_RESERVE_EXPIRATION_TIME);
+  rs->a_expiration_date = GNUNET_TIME_absolute_max (rs->a_expiration_date,
+                                                    expiry);
   return GNUNET_OK;
 }
 
@@ -394,7 +538,7 @@ handle_reserve_in (void *cls,
 /**
  * Function called with details about withdraw operations.
  *
- * @param cls our `struct GNUNET_CONTAINER_MultiHashMap` with the reserves
+ * @param cls our `struct ReserveContext`
  * @param rowid unique serial ID for the refresh session in our DB
  * @param h_blind_ev blinded hash of the coin's public key
  * @param denom_pub public denomination key of the deposited coin
@@ -416,11 +560,14 @@ handle_reserve_out (void *cls,
                     struct GNUNET_TIME_Absolute execution_date,
                     const struct TALER_Amount *amount_with_fee)
 {
-  struct GNUNET_CONTAINER_MultiHashMap *reserves = cls;
+  struct ReserveContext *rc = cls;
   struct TALER_WithdrawRequestPS wsrd;
   struct GNUNET_HashCode key;
   struct ReserveSummary *rs;
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
+  struct TALER_Amount withdraw_fee;
+  struct GNUNET_TIME_Absolute valid_start;
+  struct GNUNET_TIME_Absolute expire_withdraw;
   int ret;
 
   /* should be monotonically increasing */
@@ -444,7 +591,16 @@ handle_reserve_out (void *cls,
     return GNUNET_OK;
   }
 
-  /* check that execution date is within withdraw range for denom_pub (?) */
+  /* check that execution date is within withdraw range for denom_pub  */
+  valid_start = GNUNET_TIME_absolute_ntoh (dki->properties.start);
+  expire_withdraw = GNUNET_TIME_absolute_ntoh (dki->properties.expire_withdraw);
+  if ( (valid_start.abs_value_us > execution_date.abs_value_us) ||
+       (expire_withdraw.abs_value_us < execution_date.abs_value_us) )
+  {
+    report_row_minor_inconsistency ("reserve_out",
+                                    rowid,
+                                    "denomination key not valid at time of withdrawal");
+  }
 
   /* check reserve_sig */
   wsrd.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
@@ -468,7 +624,7 @@ handle_reserve_out (void *cls,
   GNUNET_CRYPTO_hash (reserve_pub,
                       sizeof (*reserve_pub),
                       &key);
-  rs = GNUNET_CONTAINER_multihashmap_get (reserves,
+  rs = GNUNET_CONTAINER_multihashmap_get (rc->reserves,
                                           &key);
   if (NULL == rs)
   {
@@ -478,6 +634,9 @@ handle_reserve_out (void *cls,
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_get_zero (amount_with_fee->currency,
                                           &rs->total_in));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (amount_with_fee->currency,
+                                          &rs->total_fee));
     if (GNUNET_OK !=
         load_auditor_reserve_summary (rs))
     {
@@ -486,7 +645,7 @@ handle_reserve_out (void *cls,
       return GNUNET_SYSERR;
     }
     GNUNET_assert (GNUNET_OK ==
-                   GNUNET_CONTAINER_multihashmap_put (reserves,
+                   GNUNET_CONTAINER_multihashmap_put (rc->reserves,
                                                       &key,
                                                       rs,
                                                       GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
@@ -498,6 +657,16 @@ handle_reserve_out (void *cls,
                                      &rs->total_out,
                                      amount_with_fee));
   }
+  GNUNET_assert (rowid >= rs->a_last_reserve_out_serial_id);
+  rs->a_last_reserve_out_serial_id = rowid + 1;
+
+  TALER_amount_ntoh (&withdraw_fee,
+                     &dki->properties.fee_withdraw);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&rs->total_fee,
+                                   &rs->total_fee,
+                                   &withdraw_fee));
+
   return GNUNET_OK;
 }
 
@@ -508,7 +677,7 @@ handle_reserve_out (void *cls,
  *
  * Remove all reserves that we are happy with from the DB.
  *
- * @param cls our `struct GNUNET_CONTAINER_MultiHashMap` with the reserves
+ * @param cls our `struct ReserveContext`
  * @param key hash of the reserve public key
  * @param value a `struct ReserveSummary`
  * @return #GNUNET_OK to process more entries
@@ -518,7 +687,7 @@ verify_reserve_balance (void *cls,
                         const struct GNUNET_HashCode *key,
                         void *value)
 {
-  struct GNUNET_CONTAINER_MultiHashMap *reserves = cls;
+  struct ReserveContext *rc = cls;
   struct ReserveSummary *rs = value;
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct TALER_Amount balance;
@@ -542,13 +711,22 @@ verify_reserve_balance (void *cls,
     GNUNET_free (diag);
     return GNUNET_OK;
   }
-  /* TODO: check reserve.expiry */
 
-  /* FIXME: simplified computation as we have no previous reserve state yet */
-  /* FIXME: actually update withdraw fee balance, expiration data and serial IDs! */
+  if (GNUNET_OK !=
+      TALER_amount_add (&balance,
+                        &rs->total_in,
+                        &rs->a_balance))
+  {
+    report_reserve_inconsistency (&rs->reserve_pub,
+                                  &rs->total_in,
+                                  &rs->a_balance,
+                                  "could not add old balance to new balance");
+    goto cleanup;
+  }
+
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&balance,
-                             &rs->total_in,
+                             &balance,
                              &rs->total_out))
   {
     report_reserve_inconsistency (&rs->reserve_pub,
@@ -567,12 +745,55 @@ verify_reserve_balance (void *cls,
     goto cleanup;
   }
 
-  /* FIXME: if balance is zero, create reserve summary and drop reserve details! */
+  if (0 == GNUNET_TIME_absolute_get_remaining (rs->a_expiration_date).rel_value_us)
+  {
+    /* TODO: handle case where reserve is expired! (#4956) */
+    /* NOTE: we may or may not have seen the wire-back transfer at this time,
+       as the expiration may have just now happened.
+       (That is, after we add the table structures and the logic to track
+       such transfers...) */
+  }
+
+  if ( (0ULL == balance.value) &&
+       (0U == balance.fraction) )
+  {
+    /* TODO: balance is zero, drop reserve details (and then do not update/insert) */
+    if (rs->had_ri)
+    {
+      ret = adb->del_reserve_info (adb->cls,
+                                   asession,
+                                   &rs->reserve_pub,
+                                   &master_pub);
+      if (GNUNET_SYSERR == ret)
+      {
+        GNUNET_break (0);
+        goto cleanup;
+      }
+      if (GNUNET_NO == ret)
+      {
+        GNUNET_break (0);
+        ret = GNUNET_SYSERR;
+        goto cleanup;
+      }
+    }
+    ret = GNUNET_OK;
+    goto cleanup;
+  }
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Reserve balance `%s' OK\n",
               TALER_B2S (&rs->reserve_pub));
 
+  /* Add withdraw fees we encountered to totals */
+  if (GNUNET_YES !=
+      TALER_amount_add (&rs->a_withdraw_fee_balance,
+                        &rs->a_withdraw_fee_balance,
+                        &rs->total_fee))
+  {
+    GNUNET_break (0);
+    ret = GNUNET_SYSERR;
+    goto cleanup;
+  }
   if (rs->had_ri)
     ret = adb->update_reserve_info (adb->cls,
                                     asession,
@@ -594,10 +815,28 @@ verify_reserve_balance (void *cls,
                                     rs->a_last_reserve_in_serial_id,
                                     rs->a_last_reserve_out_serial_id);
 
+  if ( (GNUNET_YES !=
+        TALER_amount_add (&rc->total_balance,
+                          &rc->total_balance,
+                          &rs->total_in)) ||
+       (GNUNET_SYSERR ==
+        TALER_amount_subtract (&rc->total_balance,
+                               &rc->total_balance,
+                               &rs->total_out)) ||
+       (GNUNET_YES !=
+        TALER_amount_add (&rc->total_fee_balance,
+                          &rc->total_fee_balance,
+                          &rs->total_fee)) )
+  {
+    GNUNET_break (0);
+    ret = GNUNET_SYSERR;
+    goto cleanup;
+  }
+
 
  cleanup:
   GNUNET_assert (GNUNET_YES ==
-                 GNUNET_CONTAINER_multihashmap_remove (reserves,
+                 GNUNET_CONTAINER_multihashmap_remove (rc->reserves,
                                                        key,
                                                        rs));
   GNUNET_free (rs);
@@ -614,18 +853,29 @@ verify_reserve_balance (void *cls,
 static int
 analyze_reserves (void *cls)
 {
-  /* Map from hash of reserve's public key to a `struct ReserveSummary`. */
-  struct GNUNET_CONTAINER_MultiHashMap *reserves;
+  struct ReserveContext rc;
+  int ret;
 
-  reserves = GNUNET_CONTAINER_multihashmap_create (512,
-                                                   GNUNET_NO);
+  ret = adb->get_reserve_summary (adb->cls,
+                                  asession,
+                                  &master_pub,
+                                  &rc.total_balance,
+                                  &rc.total_fee_balance);
+  if (GNUNET_SYSERR == ret)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  rc.reserves = GNUNET_CONTAINER_multihashmap_create (512,
+                                                      GNUNET_NO);
 
   if (GNUNET_OK !=
       edb->select_reserves_in_above_serial_id (edb->cls,
                                                esession,
                                                reserve_in_serial_id,
                                                &handle_reserve_in,
-                                               reserves))
+                                               &rc))
     {
       GNUNET_break (0);
       return GNUNET_SYSERR;
@@ -635,18 +885,234 @@ analyze_reserves (void *cls)
                                                 esession,
                                                 reserve_out_serial_id,
                                                 &handle_reserve_out,
-                                                reserves))
+                                                &rc))
     {
       GNUNET_break (0);
       return GNUNET_SYSERR;
     }
-  GNUNET_CONTAINER_multihashmap_iterate (reserves,
-                                         &verify_reserve_balance,
-                                         reserves);
-  GNUNET_break (0 ==
-                GNUNET_CONTAINER_multihashmap_size (reserves));
-  GNUNET_CONTAINER_multihashmap_destroy (reserves);
+  /* TODO: iterate over table for reserve expiration refunds! (#4956) */
 
+  GNUNET_CONTAINER_multihashmap_iterate (rc.reserves,
+                                         &verify_reserve_balance,
+                                         &rc);
+  GNUNET_break (0 ==
+                GNUNET_CONTAINER_multihashmap_size (rc.reserves));
+  GNUNET_CONTAINER_multihashmap_destroy (rc.reserves);
+
+
+  if (GNUNET_NO == ret)
+  {
+    ret = adb->insert_reserve_summary (adb->cls,
+                                       asession,
+                                       &master_pub,
+                                       &rc.total_balance,
+                                       &rc.total_fee_balance);
+  }
+  else
+  {
+    ret = adb->update_reserve_summary (adb->cls,
+                                       asession,
+                                       &master_pub,
+                                       &rc.total_balance,
+                                       &rc.total_fee_balance);
+  }
+  report_reserve_balance (&rc.total_balance,
+                          &rc.total_fee_balance);
+  return GNUNET_OK;
+}
+
+
+/* ************************* Analyze coins ******************** */
+/* This logic checks that the exchange did the right thing for each
+   coin, checking deposits, refunds, refresh* and known_coins
+   tables */
+
+/* TODO! */
+/**
+ * Summary data we keep per coin.
+ */
+struct CoinSummary
+{
+  /**
+   * Denomination of the coin with fee structure.
+   */
+  struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
+
+  /**
+   * Public key of the coin.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Total value lost of the coin (deposits, refreshs and fees minus refunds).
+   * Must be smaller than the coin's total (origional) value.
+   */
+  struct TALER_Amount spent;
+
+};
+
+
+/**
+ * Summary data we keep per denomination.
+ */
+struct DenominationSummary
+{
+  /**
+   * Total value of coins issued with this denomination key.
+   */
+  struct TALER_Amount denom_balance;
+
+  /**
+   * Total amount of deposit fees made.
+   */
+  struct TALER_Amount deposit_fee_balance;
+
+  /**
+   * Total amount of melt fees made.
+   */
+  struct TALER_Amount melt_fee_balance;
+
+  /**
+   * Total amount of refund fees made.
+   */
+  struct TALER_Amount refund_fee_balance;
+
+  /**
+   * Up to which point have we processed reserves_out?
+   */
+  uint64_t last_reserve_out_serial_id;
+
+  /**
+   * Up to which point have we processed deposits?
+   */
+  uint64_t last_deposit_serial_id;
+
+  /**
+   * Up to which point have we processed melts?
+   */
+  uint64_t last_melt_serial_id;
+
+  /**
+   * Up to which point have we processed refunds?
+   */
+  uint64_t last_refund_serial_id;
+};
+
+
+/**
+ * Closure for callbacks during #analyze_coins().
+ */
+struct CoinContext
+{
+
+  /**
+   * Map for tracking information about coins.
+   */
+  struct GNUNET_CONTAINER_MultiHashMap *coins;
+
+  /**
+   * Map for tracking information about denominations.
+   */
+  struct GNUNET_CONTAINER_MultiHashMap *denominations;
+
+};
+
+
+/**
+ * Analyze the exchange's processing of coins.
+ *
+ * @param cls closure
+ * @param int #GNUNET_OK on success, #GNUNET_SYSERR on hard errors
+ */
+static int
+analyze_coins (void *cls)
+{
+  struct CoinContext cc;
+
+  cc.coins = GNUNET_CONTAINER_multihashmap_create (1024,
+                                                   GNUNET_YES);
+  cc.denominations = GNUNET_CONTAINER_multihashmap_create (256,
+                                                           GNUNET_YES);
+
+
+  GNUNET_CONTAINER_multihashmap_destroy (cc.denominations);
+  GNUNET_CONTAINER_multihashmap_destroy (cc.coins);
+
+  return GNUNET_OK;
+}
+
+
+/* ************************* Analyze merchants ******************** */
+/* This logic checks that the aggregator did the right thing
+   paying each merchant what they were due (and on time). */
+
+
+/**
+ * Summary data we keep per merchant.
+ */
+struct MerchantSummary
+{
+
+  /**
+   * Which account were we supposed to pay?
+   */
+  struct GNUNET_HashCode h_wire;
+
+  /**
+   * Total due to be paid to @e h_wire.
+   */
+  struct TALER_Amount total_due;
+
+  /**
+   * Total paid to @e h_wire.
+   */
+  struct TALER_Amount total_paid;
+
+  /**
+   * Total wire fees charged.
+   */
+  struct TALER_Amount total_fees;
+
+  /**
+   * Last (expired) refund deadline of all the transactions totaled
+   * up in @e due.
+   */
+  struct GNUNET_TIME_Absolute last_refund_deadline;
+
+};
+
+
+/**
+ * Closure for callbacks during #analyze_merchants().
+ */
+struct MerchantContext
+{
+
+  /**
+   * Map for tracking information about merchants.
+   */
+  struct GNUNET_CONTAINER_MultiHashMap *merchants;
+
+};
+
+
+/**
+ * Analyze the exchange aggregator's payment processing.
+ *
+ * @param cls closure
+ * @param int #GNUNET_OK on success, #GNUNET_SYSERR on hard errors
+ */
+static int
+analyze_merchants (void *cls)
+{
+  struct MerchantContext mc;
+
+  mc.merchants = GNUNET_CONTAINER_multihashmap_create (1024,
+                                                       GNUNET_YES);
+
+  // TODO
+
+  GNUNET_CONTAINER_multihashmap_destroy (mc.merchants);
   return GNUNET_OK;
 }
 
@@ -835,7 +1301,10 @@ setup_sessions_and_run ()
 
   transact (&analyze_reserves,
             NULL);
-  // NOTE: add other 'transact (&analyze_*)'-calls here as they are implemented.
+  transact (&analyze_coins,
+            NULL);
+  transact (&analyze_merchants,
+            NULL);
 }
 
 

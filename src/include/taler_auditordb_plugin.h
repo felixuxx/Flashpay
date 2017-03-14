@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2016 GNUnet e.V.
+  Copyright (C) 2014-2017 Inria and GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -252,6 +252,10 @@ struct TALER_AUDITORDB_Plugin
                               void *cb_cls);
 
 
+  // FIXME: this does not quite work, as independent transactions
+  // touch certain tables (i.e. reserves_out), so we need some of
+  // these counters more than once!
+  // ALSO: put all of these counters into a struct, this is very ugly...
   /**
    * Insert information about the auditor's progress with an exchange's
    * data.
@@ -420,6 +424,22 @@ struct TALER_AUDITORDB_Plugin
                       uint64_t *last_reserve_out_serial_id);
 
 
+  /**
+   * Delete information about a reserve.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param reserve_pub public key of the reserve
+   * @param master_pub master public key of the exchange
+   * @return #GNUNET_OK on success; #GNUNET_NO if there is no known
+   *         record about this reserve; #GNUNET_SYSERR on failure
+   */
+  int
+  (*del_reserve_info)(void *cls,
+                      struct TALER_AUDITORDB_Session *session,
+                      const struct TALER_ReservePublicKeyP *reserve_pub,
+                      const struct TALER_MasterPublicKeyP *master_pub);
+
 
   /**
    * Insert information about all reserves.  There must not be an
@@ -488,7 +508,7 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
-   * @param denom_balance value of coins outstanding with this denomination key
+   * @param denom_balance value of coins outstanding (or issued?) with this denomination key
    * @param deposit_fee_balance total deposit fees collected for this DK
    * @param melt_fee_balance total melt fees collected for this DK
    * @param refund_fee_balance total refund fees collected for this DK
@@ -523,7 +543,7 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
-   * @param denom_balance value of coins outstanding with this denomination key
+   * @param denom_balance value of coins outstanding (or issued?) with this denomination key
    * @param deposit_fee_balance total deposit fees collected for this DK
    * @param melt_fee_balance total melt fees collected for this DK
    * @param refund_fee_balance total refund fees collected for this DK
@@ -557,7 +577,7 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
-   * @param[out] denom_balance value of coins outstanding with this denomination key
+   * @param[out] denom_balance value of coins outstanding (or issued?) with this denomination key
    * @param[out] deposit_fee_balance total deposit fees collected for this DK
    * @param[out] melt_fee_balance total melt fees collected for this DK
    * @param[out] refund_fee_balance total refund fees collected for this DK

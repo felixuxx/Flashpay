@@ -649,6 +649,13 @@ postgres_prepare (PGconn *db_conn)
            " WHERE reserve_pub=$1 AND master_pub=$2;",
            2, NULL);
 
+  /* Used in #postgres_del_reserve_info() */
+  PREPARE ("auditor_reserves_delete",
+           "DELETE"
+           " FROM auditor_reserves"
+           " WHERE reserve_pub=$1 AND master_pub=$2;",
+           2, NULL);
+
   /* Used in #postgres_insert_reserve_summary() */
   PREPARE ("auditor_reserve_balance_insert",
            "INSERT INTO auditor_reserve_balance"
@@ -1647,6 +1654,47 @@ postgres_update_reserve_info (void *cls,
   }
   PQclear (result);
   return ret;
+}
+
+
+/**
+ * Delete information about a reserve.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param reserve_pub public key of the reserve
+ * @param master_pub master public key of the exchange
+ * @return #GNUNET_OK on success; #GNUNET_NO if there is no known
+ *         record about this reserve; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_del_reserve_info (void *cls,
+                           struct TALER_AUDITORDB_Session *session,
+                           const struct TALER_ReservePublicKeyP *reserve_pub,
+                           const struct TALER_MasterPublicKeyP *master_pub)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  int ret;
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "auditor_reserves_delete",
+                                    params);
+  ret = PQresultStatus (result);
+  if (PGRES_COMMAND_OK != ret)
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  if (0 == strcmp ("0",
+                   PQcmdTuples (result)))
+    return GNUNET_NO;
+  return GNUNET_OK;
 }
 
 
@@ -3110,6 +3158,7 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->update_auditor_progress = &postgres_update_auditor_progress;
   plugin->insert_auditor_progress = &postgres_insert_auditor_progress;
 
+  plugin->del_reserve_info = &postgres_del_reserve_info;
   plugin->get_reserve_info = &postgres_get_reserve_info;
   plugin->update_reserve_info = &postgres_update_reserve_info;
   plugin->insert_reserve_info = &postgres_insert_reserve_info;
