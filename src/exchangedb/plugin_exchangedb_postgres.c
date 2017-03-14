@@ -1426,14 +1426,16 @@ postgres_start (void *cls,
                 struct TALER_EXCHANGEDB_Session *session)
 {
   PGresult *result;
+  ExecStatusType ex;
 
   result = PQexec (session->conn,
                    "START TRANSACTION ISOLATION LEVEL SERIALIZABLE");
   if (PGRES_COMMAND_OK !=
-      PQresultStatus (result))
+      (ex = PQresultStatus (result)))
   {
-    TALER_LOG_ERROR ("Failed to start transaction: %s\n",
-               PQresultErrorMessage (result));
+    TALER_LOG_ERROR ("Failed to start transaction (%s): %s\n",
+                     PQresStatus (ex),
+                     PQerrorMessage (session->conn));
     GNUNET_break (0);
     PQclear (result);
     return GNUNET_SYSERR;
@@ -1918,7 +1920,11 @@ postgres_reserves_in_insert (void *cls,
   }
   if (GNUNET_OK != postgres_commit (cls,
                                     session))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to commit transaction adding amount to reserve\n");
     return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 
  rollback:
@@ -2173,7 +2179,7 @@ postgres_get_reserve_history (void *cls,
       }
       rh_tail->type = TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE;
       rh_tail->details.bank = bt;
-    }
+    } /* end of 'while (0 < rows)' */
     PQclear (result);
   }
   {
@@ -2232,7 +2238,7 @@ postgres_get_reserve_history (void *cls,
       rh_tail = rh_tail->next;
       rh_tail->type = TALER_EXCHANGEDB_RO_WITHDRAW_COIN;
       rh_tail->details.withdraw = cbc;
-    }
+    } /* end of 'while (0 < rows)' */
     ret = GNUNET_OK;
     PQclear (result);
   }
