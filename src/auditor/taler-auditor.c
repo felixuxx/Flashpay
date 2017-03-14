@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016 Inria
+  Copyright (C) 2016, 2017 Inria
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -45,6 +45,16 @@ static struct TALER_EXCHANGEDB_Session *esession;
 static struct TALER_AUDITORDB_Plugin *adb;
 
 /**
+ * Our session with the #adb.
+ */
+static struct TALER_AUDITORDB_Session *asession;
+
+/**
+ * Master public key of the exchange to audit.
+ */
+static struct TALER_MasterPublicKeyP master_pub;
+
+/**
  * Last reserve_in serial ID seen.
  */
 static uint64_t reserve_in_serial_id;
@@ -53,6 +63,26 @@ static uint64_t reserve_in_serial_id;
  * Last reserve_out serial ID seen.
  */
 static uint64_t reserve_out_serial_id;
+
+/**
+ * Last deposit serial ID seen.
+ */
+static uint64_t last_deposit_serial_id;
+
+/**
+ * Last melt serial ID seen.
+ */
+static uint64_t melt_serial_id;
+
+/**
+ * Last deposit refund ID seen.
+ */
+static uint64_t last_refund_serial_id;
+
+/**
+ * Last prewire serial ID seen.
+ */
+static uint64_t last_prewire_serial_id;
 
 
 /**
@@ -274,10 +304,11 @@ verify_reserve_balance (void *cls,
 /**
  * Analyze reserves for being well-formed.
  *
+ * @param cls NULL
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on invariant violation
  */
 static int
-analyze_reserves ()
+analyze_reserves (void *cls)
 {
   reserves = GNUNET_CONTAINER_multihashmap_create (512,
                                                    GNUNET_NO);
@@ -300,6 +331,121 @@ analyze_reserves ()
   GNUNET_CONTAINER_multihashmap_destroy (reserves);
 
   return GNUNET_OK;
+}
+
+
+/**
+ * Type of an analysis function.
+ *
+ * @param cls closure
+ * @param int #GNUNET_OK on success
+ */
+typedef int
+(*Analysis)(void *cls);
+
+
+/**
+ * Perform the given @a analysis within a transaction scope.
+ * Commit on success.
+ *
+ * @param analysis analysis to run
+ * @param analysis_cls closure for @a analysis
+ * @return #GNUNET_OK if @a analysis succeessfully committed
+ */
+static int
+transact (Analysis analysis,
+          void *analysis_cls)
+{
+  ret = adb->get_auditor_progress (adb->cls,
+                                   asession,
+                                   &master_pub,
+                                   &reserve_in_serial_id,
+                                   &reserve_out_serial_id,
+                                   &deposit_serial_id,
+                                   &melt_serial_id,
+                                   &refund_serial_id,
+                                   &prewire_serial_id);
+  if (GNUNET_SYSERR == ret)
+    {
+      GNUNET_break (0);
+      return;
+    }
+  if (GNUNET_NO == ret)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                  _("First analysis using this auditor, starting audit from scratch\n"));
+    }
+  else
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                  _("Resuming audit at %llu/%llu/%llu/%llu/%llu/%llu\n\n"),
+                  (unsigned long long) reserve_in_serial_id,
+                  (unsigned long long) reserve_out_serial_id,
+                  (unsigned long long) deposit_serial_id,
+                  (unsigned long long) melt_serial_id,
+                  (unsigned long long) refund_serial_id,
+                  (unsigned long long) prewire_serial_id);
+    }
+
+  ret = analysis (analysis_cls);
+  // FIXME: add other 'analyze' calls here...
+
+  ret = adb->update_auditor_progress (adb->cls,
+                                      asession,
+                                      &master_pub,
+                                      reserve_in_serial_id,
+                                      reserve_out_serial_id,
+                                      deposit_serial_id,
+                                      melt_serial_id,
+                                      refund_serial_id,
+                                      prewire_serial_id);
+  if (GNUNET_OK != ret)
+    {
+      GNUNET_break (0);
+      global_ret = 1;
+      return;
+    }
+
+  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+              _("Resuming audit at %llu/%llu/%llu/%llu/%llu/%llu\n\n"),
+              (unsigned long long) reserve_in_serial_id,
+              (unsigned long long) reserve_out_serial_id,
+              (unsigned long long) deposit_serial_id,
+              (unsigned long long) melt_serial_id,
+              (unsigned long long) refund_serial_id,
+              (unsigned long long) prewire_serial_id);
+
+}
+
+
+/**
+ * Initialize DB sessions and run the analysis.
+ */
+static void
+setup_sessions_and_run ()
+{
+  int ret;
+
+  esession = edb->get_session (edb->cls);
+  if (NULL == esession)
+  {
+    fprintf (stderr,
+             "Failed to initialize exchange session.\n");
+    global_ret = 1;
+    return;
+  }
+  asession = adb->get_session (adb->cls);
+  if (NULL == asession)
+  {
+    fprintf (stderr,
+             "Failed to initialize auditor session.\n");
+    global_ret = 1;
+    return;
+  }
+
+  transact (&analyze_reserves,
+            NULL);
+  // FIXME: add other 'analyze' calls here...
 }
 
 
@@ -334,23 +480,7 @@ run (void *cls,
     TALER_EXCHANGEDB_plugin_unload (edb);
     return;
   }
-  esession = edb->get_session (edb->cls);
-  if (NULL == esession)
-  {
-    fprintf (stderr,
-             "Failed to initialize exchange session.\n");
-    global_ret = 1;
-    TALER_AUDITORDB_plugin_unload (adb);
-    TALER_EXCHANGEDB_plugin_unload (edb);
-    return;
-  }
-
-  /* FIXME: init these from auditordb */
-  reserve_in_serial_id = 1;
-  reserve_out_serial_id = 1;
-
-  analyze_reserves ();
-
+  setup_sessions_and_run ();
   TALER_AUDITORDB_plugin_unload (adb);
   TALER_EXCHANGEDB_plugin_unload (edb);
 }

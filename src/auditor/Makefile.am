@@ -1,5 +1,5 @@
 # This Makefile.am is in the public domain
-AM_CPPFLAGS = -I$(top_srcdir)/src/include 
+AM_CPPFLAGS = -I$(top_srcdir)/src/include
 
 if USE_COVERAGE
   AM_CFLAGS = --coverage -O0
@@ -12,7 +12,6 @@ pkgcfg_DATA = \
   auditor.conf
 
 bin_PROGRAMS = \
-  taler-auditor \
   taler-auditor-sign
 
 taler_auditor_SOURCES = \
