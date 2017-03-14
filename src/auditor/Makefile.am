@@ -12,6 +12,7 @@ pkgcfg_DATA = \
   auditor.conf
 
 bin_PROGRAMS = \
+  taler-auditor \
   taler-auditor-sign
 
 taler_auditor_SOURCES = \
