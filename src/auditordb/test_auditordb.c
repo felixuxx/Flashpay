@@ -201,52 +201,43 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_auditor_progress\n");
 
-  uint64_t
-      last_reserve_in_serial_id = 1234,
-      last_reserve_out_serial_id = 5678,
-      last_deposit_serial_id = 123,
-      last_melt_serial_id = 456,
-      last_refund_serial_id = 789,
-      last_prewire_serial_id = 555,
-
-      last_reserve_in_serial_id2 = 0,
-      last_reserve_out_serial_id2 = 0,
-      last_deposit_serial_id2 = 0,
-      last_melt_serial_id2 = 0,
-      last_refund_serial_id2 = 0,
-      last_prewire_serial_id2 = 0;
+  struct TALER_AUDITORDB_ProgressPoint pp = {
+    .last_reserve_in_serial_id = 1234,
+    .last_reserve_out_serial_id = 5678,
+    .last_deposit_serial_id = 123,
+    .last_melt_serial_id = 456,
+    .last_refund_serial_id = 789,
+    .last_prewire_serial_id = 555
+  };
+  struct TALER_AUDITORDB_ProgressPoint pp2 = {
+    .last_reserve_in_serial_id = 0,
+    .last_reserve_out_serial_id = 0,
+    .last_deposit_serial_id = 0,
+    .last_melt_serial_id = 0,
+    .last_refund_serial_id = 0,
+    .last_prewire_serial_id = 0
+  };
 
   FAILIF (GNUNET_OK !=
           plugin->insert_auditor_progress (plugin->cls,
                                            session,
                                            &master_pub,
-                                           last_reserve_in_serial_id,
-                                           last_reserve_out_serial_id,
-                                           last_deposit_serial_id,
-                                           last_melt_serial_id,
-                                           last_refund_serial_id,
-                                           last_prewire_serial_id));
-
+                                           &pp));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_auditor_progress\n");
 
-  last_reserve_in_serial_id++;
-  last_reserve_out_serial_id++;
-  last_deposit_serial_id2++;
-  last_melt_serial_id2++;
-  last_refund_serial_id2++;
-  last_prewire_serial_id2++;
+  pp.last_reserve_in_serial_id++;
+  pp.last_reserve_out_serial_id++;
+  pp.last_deposit_serial_id++;
+  pp.last_melt_serial_id++;
+  pp.last_refund_serial_id++;
+  pp.last_prewire_serial_id++;
 
   FAILIF (GNUNET_OK !=
           plugin->update_auditor_progress (plugin->cls,
                                            session,
                                            &master_pub,
-                                           last_reserve_in_serial_id,
-                                           last_reserve_out_serial_id,
-                                           last_deposit_serial_id,
-                                           last_melt_serial_id,
-                                           last_refund_serial_id,
-                                           last_prewire_serial_id));
+                                           &pp));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_auditor_progress\n");
@@ -255,19 +246,13 @@ run (void *cls)
           plugin->get_auditor_progress (plugin->cls,
                                         session,
                                         &master_pub,
-                                        &last_reserve_in_serial_id2,
-                                        &last_reserve_out_serial_id2,
-                                        &last_deposit_serial_id2,
-                                        &last_melt_serial_id2,
-                                        &last_refund_serial_id2,
-                                        &last_prewire_serial_id2));
-
-  FAILIF (last_reserve_in_serial_id2 != last_reserve_in_serial_id
-          || last_reserve_out_serial_id2 != last_reserve_out_serial_id
-          || last_deposit_serial_id2 != last_deposit_serial_id
-          || last_melt_serial_id2 != last_melt_serial_id
-          || last_refund_serial_id2 != last_refund_serial_id
-          || last_prewire_serial_id2 != last_prewire_serial_id);
+                                        &pp2));
+  FAILIF ( (pp.last_reserve_in_serial_id != pp2.last_reserve_in_serial_id) ||
+           (pp.last_reserve_out_serial_id != pp2.last_reserve_out_serial_id) ||
+           (pp.last_deposit_serial_id != pp2.last_deposit_serial_id) ||
+           (pp.last_melt_serial_id != pp2.last_melt_serial_id) ||
+           (pp.last_refund_serial_id != pp2.last_refund_serial_id) ||
+           (pp.last_prewire_serial_id != pp2.last_prewire_serial_id) );
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_reserve_info\n");
@@ -290,14 +275,14 @@ run (void *cls)
                                        &reserve_balance,
                                        &withdraw_fee_balance,
                                        past,
-                                       last_reserve_in_serial_id,
-                                       last_reserve_out_serial_id));
+                                       pp.last_reserve_in_serial_id,
+                                       pp.last_reserve_out_serial_id));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_reserve_info\n");
 
-  last_reserve_in_serial_id++;
-  last_reserve_out_serial_id++;
+  pp.last_reserve_in_serial_id++;
+  pp.last_reserve_out_serial_id++;
 
   FAILIF (GNUNET_OK !=
           plugin->update_reserve_info (plugin->cls,
@@ -307,8 +292,8 @@ run (void *cls)
                                        &reserve_balance,
                                        &withdraw_fee_balance,
                                        future,
-                                       last_reserve_in_serial_id,
-                                       last_reserve_out_serial_id));
+                                       pp.last_reserve_in_serial_id,
+                                       pp.last_reserve_out_serial_id));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_reserve_info\n");
@@ -321,14 +306,14 @@ run (void *cls)
                                     &reserve_balance2,
                                     &withdraw_fee_balance2,
                                     &date,
-                                    &last_reserve_in_serial_id2,
-                                    &last_reserve_out_serial_id2));
+                                    &pp2.last_reserve_in_serial_id,
+                                    &pp2.last_reserve_out_serial_id));
 
   FAILIF (0 != memcmp (&date, &future, sizeof (future))
           || 0 != memcmp (&reserve_balance2, &reserve_balance, sizeof (reserve_balance))
           || 0 != memcmp (&withdraw_fee_balance2, &withdraw_fee_balance, sizeof (withdraw_fee_balance))
-          || last_reserve_in_serial_id2 != last_reserve_in_serial_id
-          || last_reserve_out_serial_id2 != last_reserve_out_serial_id);
+          || pp2.last_reserve_in_serial_id != pp.last_reserve_in_serial_id
+          || pp2.last_reserve_out_serial_id != pp.last_reserve_out_serial_id);
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_reserve_summary\n");
@@ -393,18 +378,18 @@ run (void *cls)
                                                &melt_fee_balance,
                                                &deposit_fee_balance,
                                                &denom_balance,
-                                               last_reserve_out_serial_id,
-                                               last_deposit_serial_id,
-                                               last_melt_serial_id,
-                                               last_refund_serial_id));
+                                               pp.last_reserve_out_serial_id,
+                                               pp.last_deposit_serial_id,
+                                               pp.last_melt_serial_id,
+                                               pp.last_refund_serial_id));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_denomination_balance\n");
 
-  last_reserve_out_serial_id++;
-  last_deposit_serial_id++;
-  last_melt_serial_id++;
-  last_refund_serial_id++;
+  pp.last_reserve_out_serial_id++;
+  pp.last_deposit_serial_id++;
+  pp.last_melt_serial_id++;
+  pp.last_refund_serial_id++;
 
   FAILIF (GNUNET_OK !=
           plugin->update_denomination_balance (plugin->cls,
@@ -414,10 +399,10 @@ run (void *cls)
                                                &deposit_fee_balance,
                                                &melt_fee_balance,
                                                &refund_fee_balance,
-                                               last_reserve_out_serial_id,
-                                               last_deposit_serial_id,
-                                               last_melt_serial_id,
-                                               last_refund_serial_id));
+                                               pp.last_reserve_out_serial_id,
+                                               pp.last_deposit_serial_id,
+                                               pp.last_melt_serial_id,
+                                               pp.last_refund_serial_id));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_denomination_balance\n");
@@ -430,19 +415,19 @@ run (void *cls)
                                             &deposit_fee_balance2,
                                             &melt_fee_balance2,
                                             &refund_fee_balance2,
-                                            &last_reserve_out_serial_id2,
-                                            &last_deposit_serial_id2,
-                                            &last_melt_serial_id2,
-                                            &last_refund_serial_id2));
+                                            &pp2.last_reserve_out_serial_id,
+                                            &pp2.last_deposit_serial_id,
+                                            &pp2.last_melt_serial_id,
+                                            &pp2.last_refund_serial_id));
 
   FAILIF (0 != memcmp (&denom_balance2, &denom_balance, sizeof (denom_balance))
           || 0 != memcmp (&deposit_fee_balance2, &deposit_fee_balance, sizeof (deposit_fee_balance))
           || 0 != memcmp (&melt_fee_balance2, &melt_fee_balance, sizeof (melt_fee_balance))
           || 0 != memcmp (&refund_fee_balance2, &refund_fee_balance, sizeof (refund_fee_balance))
-          || last_reserve_out_serial_id2 != last_reserve_out_serial_id
-          || last_deposit_serial_id2 != last_deposit_serial_id
-          || last_melt_serial_id2 != last_melt_serial_id
-          || last_refund_serial_id2 != last_refund_serial_id);
+          || pp2.last_reserve_out_serial_id != pp.last_reserve_out_serial_id
+          || pp2.last_deposit_serial_id != pp.last_deposit_serial_id
+          || pp2.last_melt_serial_id != pp.last_melt_serial_id
+          || pp2.last_refund_serial_id != pp.last_refund_serial_id);
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_denomination_summary\n");

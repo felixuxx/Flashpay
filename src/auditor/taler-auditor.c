@@ -78,32 +78,7 @@ static struct TALER_MasterPublicKeyP master_pub;
 /**
  * Last reserve_in serial ID seen.
  */
-static uint64_t reserve_in_serial_id;
-
-/**
- * Last reserve_out serial ID seen.
- */
-static uint64_t reserve_out_serial_id;
-
-/**
- * Last deposit serial ID seen.
- */
-static uint64_t deposit_serial_id;
-
-/**
- * Last melt serial ID seen.
- */
-static uint64_t melt_serial_id;
-
-/**
- * Last deposit refund ID seen.
- */
-static uint64_t refund_serial_id;
-
-/**
- * Last prewire serial ID seen.
- */
-static uint64_t prewire_serial_id;
+static struct TALER_AUDITORDB_ProgressPoint pp;
 
 
 /* ***************************** Report logic **************************** */
@@ -486,8 +461,8 @@ handle_reserve_in (void *cls,
   struct ReserveSummary *rs;
   struct GNUNET_TIME_Absolute expiry;
 
-  GNUNET_assert (rowid >= reserve_in_serial_id); /* should be monotonically increasing */
-  reserve_in_serial_id = rowid + 1;
+  GNUNET_assert (rowid >= pp.last_reserve_in_serial_id); /* should be monotonically increasing */
+  pp.last_reserve_in_serial_id = rowid + 1;
   GNUNET_CRYPTO_hash (reserve_pub,
                       sizeof (*reserve_pub),
                       &key);
@@ -570,8 +545,8 @@ handle_reserve_out (void *cls,
   int ret;
 
   /* should be monotonically increasing */
-  GNUNET_assert (rowid >= reserve_out_serial_id);
-  reserve_out_serial_id = rowid + 1;
+  GNUNET_assert (rowid >= pp.last_reserve_out_serial_id);
+  pp.last_reserve_out_serial_id = rowid + 1;
 
   /* lookup denomination pub data (make sure denom_pub is valid, establish fees) */
   ret = get_denomination_info (denom_pub,
@@ -872,7 +847,7 @@ analyze_reserves (void *cls)
   if (GNUNET_OK !=
       edb->select_reserves_in_above_serial_id (edb->cls,
                                                esession,
-                                               reserve_in_serial_id,
+                                               pp.last_reserve_in_serial_id,
                                                &handle_reserve_in,
                                                &rc))
     {
@@ -882,7 +857,7 @@ analyze_reserves (void *cls)
   if (GNUNET_OK !=
       edb->select_reserves_out_above_serial_id (edb->cls,
                                                 esession,
-                                                reserve_out_serial_id,
+                                                pp.last_reserve_out_serial_id,
                                                 &handle_reserve_out,
                                                 &rc))
     {
@@ -1147,12 +1122,7 @@ incremental_processing (Analysis analysis,
   ret = adb->get_auditor_progress (adb->cls,
                                    asession,
                                    &master_pub,
-                                   &reserve_in_serial_id,
-                                   &reserve_out_serial_id,
-                                   &deposit_serial_id,
-                                   &melt_serial_id,
-                                   &refund_serial_id,
-                                   &prewire_serial_id);
+                                   &pp);
   if (GNUNET_SYSERR == ret)
     {
       GNUNET_break (0);
@@ -1167,12 +1137,12 @@ incremental_processing (Analysis analysis,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
                   _("Resuming audit at %llu/%llu/%llu/%llu/%llu/%llu\n\n"),
-                  (unsigned long long) reserve_in_serial_id,
-                  (unsigned long long) reserve_out_serial_id,
-                  (unsigned long long) deposit_serial_id,
-                  (unsigned long long) melt_serial_id,
-                  (unsigned long long) refund_serial_id,
-                  (unsigned long long) prewire_serial_id);
+                  (unsigned long long) pp.last_reserve_in_serial_id,
+                  (unsigned long long) pp.last_reserve_out_serial_id,
+                  (unsigned long long) pp.last_deposit_serial_id,
+                  (unsigned long long) pp.last_melt_serial_id,
+                  (unsigned long long) pp.last_refund_serial_id,
+                  (unsigned long long) pp.last_prewire_serial_id);
     }
   ret = analysis (analysis_cls);
   if (GNUNET_OK != ret)
@@ -1184,12 +1154,7 @@ incremental_processing (Analysis analysis,
   ret = adb->update_auditor_progress (adb->cls,
                                       asession,
                                       &master_pub,
-                                      reserve_in_serial_id,
-                                      reserve_out_serial_id,
-                                      deposit_serial_id,
-                                      melt_serial_id,
-                                      refund_serial_id,
-                                      prewire_serial_id);
+                                      &pp);
   if (GNUNET_OK != ret)
     {
       GNUNET_break (0);
@@ -1197,12 +1162,12 @@ incremental_processing (Analysis analysis,
     }
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
               _("Resuming audit at %llu/%llu/%llu/%llu/%llu/%llu\n\n"),
-              (unsigned long long) reserve_in_serial_id,
-              (unsigned long long) reserve_out_serial_id,
-              (unsigned long long) deposit_serial_id,
-              (unsigned long long) melt_serial_id,
-              (unsigned long long) refund_serial_id,
-              (unsigned long long) prewire_serial_id);
+              (unsigned long long) pp.last_reserve_in_serial_id,
+              (unsigned long long) pp.last_reserve_out_serial_id,
+              (unsigned long long) pp.last_deposit_serial_id,
+              (unsigned long long) pp.last_melt_serial_id,
+              (unsigned long long) pp.last_refund_serial_id,
+              (unsigned long long) pp.last_prewire_serial_id);
   return GNUNET_OK;
 }
 

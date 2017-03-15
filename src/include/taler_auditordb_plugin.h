@@ -113,6 +113,49 @@ typedef int
 
 
 /**
+ * Structure for remembering the auditor's progress over the
+ * various tables and (auditor) transactions.
+ */
+struct TALER_AUDITORDB_ProgressPoint
+{
+  /**
+   * last_reserve_in_serial_id serial ID of the last reserve_in transfer the auditor processed
+   */
+  uint64_t last_reserve_in_serial_id;
+
+  /**
+   * last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
+   */
+  uint64_t last_reserve_out_serial_id;
+
+  /**
+   * last_deposit_serial_id serial ID of the last deposit the auditor processed
+   */
+  uint64_t last_deposit_serial_id;
+
+  /**
+   * last_melt_serial_id serial ID of the last refresh the auditor processed
+   */
+  uint64_t last_melt_serial_id;
+
+  /**
+   * last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+   */
+  uint64_t last_refund_serial_id;
+
+  /**
+   * last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+   */
+  uint64_t last_prewire_serial_id;
+
+  // FIXME: the above does not quite work, as independent transactions
+  // touch certain tables (i.e. reserves_out), so we need some of
+  // these counters more than once!
+
+};
+
+
+/**
  * Handle for one session with the database.
  */
 struct TALER_AUDITORDB_Session;
@@ -252,10 +295,6 @@ struct TALER_AUDITORDB_Plugin
                               void *cb_cls);
 
 
-  // FIXME: this does not quite work, as independent transactions
-  // touch certain tables (i.e. reserves_out), so we need some of
-  // these counters more than once!
-  // ALSO: put all of these counters into a struct, this is very ugly...
   /**
    * Insert information about the auditor's progress with an exchange's
    * data.
@@ -263,23 +302,14 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param master_pub master key of the exchange
-   * @param last_reserve_in_serial_id serial ID of the last reserve_in transfer the auditor processed
-   * @param last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
-   * @param last_deposit_serial_id serial ID of the last deposit the auditor processed
-   * @param last_melt_serial_id serial ID of the last refresh the auditor processed
-   * @param last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+   * @param pp where is the auditor in processing
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
   (*insert_auditor_progress)(void *cls,
                              struct TALER_AUDITORDB_Session *session,
                              const struct TALER_MasterPublicKeyP *master_pub,
-                             uint64_t last_reserve_in_serial_id,
-                             uint64_t last_reserve_out_serial_id,
-                             uint64_t last_deposit_serial_id,
-                             uint64_t last_melt_serial_id,
-                             uint64_t last_refund_serial_id,
-                             uint64_t last_prewire_serial_id);
+                             const struct TALER_AUDITORDB_ProgressPoint *pp);
 
 
   /**
@@ -289,23 +319,14 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param master_pub master key of the exchange
-   * @param last_reserve_in_serial_id serial ID of the last reserve_in transfer the auditor processed
-   * @param last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
-   * @param last_deposit_serial_id serial ID of the last deposit the auditor processed
-   * @param last_melt_serial_id serial ID of the last refresh the auditor processed
-   * @param last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+   * @param pp where is the auditor in processing
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
   (*update_auditor_progress)(void *cls,
                              struct TALER_AUDITORDB_Session *session,
                              const struct TALER_MasterPublicKeyP *master_pub,
-                             uint64_t last_reserve_in_serial_id,
-                             uint64_t last_reserve_out_serial_id,
-                             uint64_t last_deposit_serial_id,
-                             uint64_t last_melt_serial_id,
-                             uint64_t last_refund_serial_id,
-                             uint64_t last_prewire_serial_id);
+                             const struct TALER_AUDITORDB_ProgressPoint *pp);
 
 
   /**
@@ -314,11 +335,7 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param master_pub master key of the exchange
-   * @param[out] last_reserve_in_serial_id serial ID of the last reserve_in transfer the auditor processed
-   * @param[out] last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
-   * @param[out] last_deposit_serial_id serial ID of the last deposit the auditor processed
-   * @param[out] last_melt_serial_id serial ID of the last refresh the auditor processed
-   * @param[out] last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
+   * @param[out] pp set to where the auditor is in processing
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure;
    *         #GNUNET_NO if we have no records for the @a master_pub
    */
@@ -326,12 +343,7 @@ struct TALER_AUDITORDB_Plugin
   (*get_auditor_progress)(void *cls,
                           struct TALER_AUDITORDB_Session *session,
                           const struct TALER_MasterPublicKeyP *master_pub,
-                          uint64_t *last_reserve_in_serial_id,
-                          uint64_t *last_reserve_out_serial_id,
-                          uint64_t *last_deposit_serial_id,
-                          uint64_t *last_melt_serial_id,
-                          uint64_t *last_refund_serial_id,
-                          uint64_t *last_prewire_serial_id);
+                          struct TALER_AUDITORDB_ProgressPoint *pp);
 
 
   /**
