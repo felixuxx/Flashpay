@@ -185,11 +185,6 @@ static FILE *auditor_output_file;
 static char *exchange_directory;
 
 /**
- * Time to pretend when the key update is executed.
- */
-static char *pretend_time_str;
-
-/**
  * Directory where we should write the wire transfer fee structure.
  */
 static char *feedir;
@@ -1041,23 +1036,6 @@ run (void *cls,
   struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
 
   kcfg = cfg;
-  if (NULL != pretend_time_str)
-  {
-    if (GNUNET_OK !=
-        GNUNET_STRINGS_fancy_time_to_absolute (pretend_time_str,
-                                               &now))
-    {
-      fprintf (stderr,
-               "timestamp `%s' invalid\n",
-               pretend_time_str);
-      global_ret = 1;
-      return;
-    }
-  }
-  else
-  {
-    now = GNUNET_TIME_absolute_get ();
-  }
   if (NULL == feedir)
   {
     if (GNUNET_OK !=
@@ -1232,27 +1210,35 @@ int
 main (int argc,
       char *const *argv)
 {
-  const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    {'m', "master-key", "FILE",
-     "master key file (private key)", 1,
-     &GNUNET_GETOPT_set_filename, &masterkeyfile},
-    {'f', "feedir", "DIRNAME",
-     "directory where to write wire transfer fee structure", 1,
-     &GNUNET_GETOPT_set_filename, &feedir},
-    {'o', "output", "FILE",
-     "auditor denomination key signing request file to create", 1,
-     &GNUNET_GETOPT_set_filename, &auditorrequestfile},
-    {'t', "time", "TIMESTAMP",
-     "pretend it is a different time for the update", 0,
-     &GNUNET_GETOPT_set_string, &pretend_time_str},
-     GNUNET_GETOPT_OPTION_END
+  struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_OPTION_FILENAME ('m',
+                                   "master-key",
+                                   "FILENAME",
+                                   "master key file (private key)",
+                                   &masterkeyfile),
+    GNUNET_GETOPT_OPTION_FILENAME ('f',
+                                   "feedir",
+                                   "DIRNAME",
+                                   "directory where to write wire transfer fee structure",
+                                   &feedir),
+    GNUNET_GETOPT_OPTION_FILENAME ('o',
+                                   "output",
+                                   "FILENAME",
+                                   "auditor denomination key signing request file to create",
+                                   &auditorrequestfile),
+    GNUNET_GETOPT_OPTION_SET_ABSOLUTE_TIME ('t',
+                                            "time",
+                                            "TIMESTAMP",
+                                            "pretend it is a different time for the update",
+                                            &now),
+    GNUNET_GETOPT_OPTION_END
   };
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-exchange-keyup",
                                    "WARNING",
                                    NULL));
-
+  now = GNUNET_TIME_absolute_get ();
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
 			 "taler-exchange-keyup",

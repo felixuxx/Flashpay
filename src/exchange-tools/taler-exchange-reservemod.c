@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014-2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -21,6 +21,7 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_json_lib.h>
 #include <libpq-fe.h>
 #include <jansson.h>
 #include "taler_exchangedb_plugin.h"
@@ -36,24 +37,24 @@ static char *exchange_directory;
 static struct TALER_EXCHANGEDB_Plugin *plugin;
 
 /**
- * Public key of the reserve as a string.
+ * Public key of the reserve.
  */
-static char *reserve_pub_str;
+static struct TALER_ReservePublicKeyP reserve_pub;
 
 /**
- * Amount to add as a string.
+ * Amount to add.  Invalid if not initialized.
  */
-static char *add_str;
+static struct TALER_Amount add_value;
 
 /**
  * Details about the sender account in JSON format.
  */
-static char *sender_details;
+static json_t *sender_details;
 
 /**
  * Details about the wire transfer in JSON format.
  */
-static char *transfer_details;
+static json_t *transfer_details;
 
 /**
  * Return value from main().
@@ -123,12 +124,6 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
-  struct TALER_Amount add_value;
-  json_t *jdetails;
-  json_t *tdetails;
-  json_error_t error;
-  struct TALER_ReservePublicKeyP reserve_pub;
-
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
                                                "exchange",
@@ -141,72 +136,6 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  if ((NULL == reserve_pub_str) ||
-      (GNUNET_OK !=
-       GNUNET_STRINGS_string_to_data (reserve_pub_str,
-                                      strlen (reserve_pub_str),
-                                      &reserve_pub,
-                                      sizeof (struct TALER_ReservePublicKeyP))))
-  {
-    fprintf (stderr,
-             "Parsing reserve key invalid\n");
-    global_ret = 1;
-    return;
-  }
-  if ( (NULL == add_str) ||
-       (GNUNET_OK !=
-        TALER_string_to_amount (add_str,
-                                &add_value)) )
-  {
-    fprintf (stderr,
-             "Failed to parse currency amount `%s'\n",
-             add_str);
-    global_ret = 1;
-    return;
-  }
-  if (NULL == sender_details)
-  {
-    fprintf (stderr,
-             "No sender details given (sender required)\n");
-    global_ret = 1;
-    return;
-  }
-  jdetails = json_loads (sender_details,
-                         JSON_REJECT_DUPLICATES,
-                         &error);
-  if (NULL == jdetails)
-  {
-    fprintf (stderr,
-             "Failed to parse JSON transaction details `%s': %s (%s)\n",
-             sender_details,
-             error.text,
-             error.source);
-    global_ret = 1;
-    return;
-  }
-  if (NULL == transfer_details)
-  {
-    fprintf (stderr,
-             "No transfer details given (justification required)\n");
-    global_ret = 1;
-    json_decref (jdetails);
-    return;
-  }
-  tdetails = json_loads (transfer_details,
-                         JSON_REJECT_DUPLICATES,
-                         &error);
-  if (NULL == tdetails)
-  {
-    fprintf (stderr,
-             "Failed to parse JSON transaction details `%s': %s (%s)\n",
-             transfer_details,
-             error.text,
-             error.source);
-    global_ret = 1;
-    json_decref (jdetails);
-    return;
-  }
-
   if (NULL ==
       (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
   {
@@ -218,12 +147,12 @@ run (void *cls,
   if (GNUNET_SYSERR ==
       run_transaction (&reserve_pub,
                        &add_value,
-                       jdetails,
-                       tdetails))
+                       sender_details,
+                       transfer_details))
     global_ret = 1;
   TALER_EXCHANGEDB_plugin_unload (plugin);
-  json_decref (jdetails);
-  json_decref (tdetails);
+  json_decref (transfer_details);
+  json_decref (sender_details);
 }
 
 
@@ -238,19 +167,31 @@ int
 main (int argc, char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    {'a', "add", "DENOM",
-     "value to add", 1,
-     &GNUNET_GETOPT_set_string, &add_str},
-    {'s', "sender", "JSON",
-     "details about the sender's bank account", 1,
-     &GNUNET_GETOPT_set_string, &sender_details},
-    {'t', "transfer", "JSON",
-     "details that uniquely identify the bank transfer", 1,
-     &GNUNET_GETOPT_set_string, &transfer_details},
+    GNUNET_GETOPT_OPTION_MANDATORY
+    (TALER_getopt_get_amount ('a',
+                              "add",
+                              "DENOM",
+                              "value to add",
+                              &add_value)),
+    GNUNET_GETOPT_OPTION_MANDATORY
+    (GNUNET_JSON_getopt ('s',
+                         "sender",
+                         "JSON",
+                         "details about the sender's bank account",
+                         &sender_details)),
+    GNUNET_GETOPT_OPTION_MANDATORY
+    (GNUNET_JSON_getopt ('t',
+                         "transfer",
+                         "JSON",
+                         "details that uniquely identify the bank transfer",
+                         &transfer_details)),
     GNUNET_GETOPT_OPTION_HELP ("Deposit funds into a Taler reserve"),
-    {'R', "reserve", "KEY",
-     "reserve (public key) to modify", 1,
-     &GNUNET_GETOPT_set_string, &reserve_pub_str},
+    GNUNET_GETOPT_OPTION_MANDATORY
+    (GNUNET_GETOPT_OPTION_SET_BASE32_AUTO ('R',
+                                          "reserve",
+                                          "KEY",
+                                          "reserve (public key) to modify",
+                                           &reserve_pub)),
     GNUNET_GETOPT_OPTION_END
   };
 

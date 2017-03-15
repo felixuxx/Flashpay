@@ -152,6 +152,16 @@ TALER_amount_get_zero (const char *cur,
 
 
 /**
+ * Test if the given amount is valid.
+ *
+ * @param amount amount to check
+ * @return #GNUNET_OK if @a amount is valid
+ */
+int
+TALER_amount_is_valid (const struct TALER_Amount *amount);
+
+
+/**
  * Convert amount from host to network representation.
  *
  * @param res where to store amount in network representation

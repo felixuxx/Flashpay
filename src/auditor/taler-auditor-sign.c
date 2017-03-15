@@ -26,17 +26,12 @@
 /**
  * Are we running in verbose mode?
  */
-static int verbose;
+static unsigned int verbose;
 
 /**
  * Filename of the auditor's private key.
  */
 static char *auditor_key_file;
-
-/**
- * Exchange's public key (in Crockford base32 encoding).
- */
-static char *exchange_public_key;
 
 /**
  * File with the Exchange's denomination keys to sign, itself
@@ -144,23 +139,35 @@ main (int argc,
 {
   char *cfgfile = NULL;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    {'a', "auditor-key", "FILENAME",
-     "file containing the private key of the auditor", 1,
-     &GNUNET_GETOPT_set_filename, &auditor_key_file},
+    GNUNET_GETOPT_OPTION_FILENAME ('a',
+                                   "auditor-key",
+                                   "FILENAME",
+                                   "file containing the private key of the auditor",
+                                   &auditor_key_file),
     GNUNET_GETOPT_OPTION_CFG_FILE (&cfgfile),
     GNUNET_GETOPT_OPTION_HELP ("Private key of the auditor to use for signing"),
-    {'m', "exchange-key", "KEY",
-     "public key of the exchange (Crockford base32 encoded)", 1,
-     &GNUNET_GETOPT_set_string, &exchange_public_key},
-    {'u', "auditor-url", "URL",
-     "URL of the auditor (informative link for the user)", 1,
-     &GNUNET_GETOPT_set_string, &auditor_url},
-    {'r', "exchange-request", "FILENAME",
-     "set of keys the exchange requested the auditor to sign", 1,
-     &GNUNET_GETOPT_set_string, &exchange_request_file},
-    {'o', "output", "FILENAME",
-     "where to write our signature", 1,
-     &GNUNET_GETOPT_set_string, &output_file},
+    GNUNET_GETOPT_OPTION_MANDATORY
+    (GNUNET_GETOPT_OPTION_SET_BASE32_AUTO ('m',
+                                           "exchange-key",
+                                           "KEY",
+                                           "public key of the exchange (Crockford base32 encoded)",
+                                           &master_public_key)),
+    GNUNET_GETOPT_OPTION_STRING ('u',
+                                 "auditor-url",
+                                 "URL",
+                                 "URL of the auditor (informative link for the user)",
+                                 &auditor_url),
+    GNUNET_GETOPT_OPTION_MANDATORY
+    (GNUNET_GETOPT_OPTION_FILENAME ('r',
+                                    "exchange-request",
+                                    "FILENAME",
+                                    "set of keys the exchange requested the auditor to sign",
+                                    &exchange_request_file)),
+    GNUNET_GETOPT_OPTION_FILENAME ('o',
+                                   "output",
+                                   "FILENAME",
+                                   "where to write our signature",
+                                   &output_file),
     GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_VERBOSE (&verbose),
     GNUNET_GETOPT_OPTION_END
@@ -213,7 +220,7 @@ main (int argc,
                                                &auditor_url)) )
   {
     fprintf (stderr,
-             "Auditor URL not given\n");
+             "Auditor URL not given in neither configuration nor command-line\n");
     return 1;
   }
   if (GNUNET_YES != GNUNET_DISK_file_test (auditor_key_file))
@@ -230,32 +237,6 @@ main (int argc,
   }
   GNUNET_CRYPTO_eddsa_key_get_public (eddsa_priv,
                                       &apub.eddsa_pub);
-  if (NULL == exchange_public_key)
-  {
-    fprintf (stderr,
-             "Exchange public key not given\n");
-    GNUNET_free (eddsa_priv);
-    return 1;
-  }
-  if (GNUNET_OK !=
-      GNUNET_STRINGS_string_to_data (exchange_public_key,
-                                     strlen (exchange_public_key),
-                                     &master_public_key,
-                                     sizeof (master_public_key)))
-  {
-    fprintf (stderr,
-             "Public key `%s' malformed\n",
-             exchange_public_key);
-    GNUNET_free (eddsa_priv);
-    return 1;
-  }
-  if (NULL == exchange_request_file)
-  {
-    fprintf (stderr,
-             "Exchange signing request not given\n");
-    GNUNET_free (eddsa_priv);
-    return 1;
-  }
   fh = GNUNET_DISK_file_open (exchange_request_file,
                               GNUNET_DISK_OPEN_READ,
                               GNUNET_DISK_PERM_NONE);

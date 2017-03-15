@@ -1198,10 +1198,11 @@ int
 main (int argc,
       char *const *argv)
 {
-  static const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    {'t', "test", NULL,
-     "run in test mode and exit when idle", 0,
-     &GNUNET_GETOPT_set_one, &test_mode},
+  struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_OPTION_SET_ONE ('t',
+                                  "test",
+                                  "run in test mode and exit when idle",
+                                  &test_mode),
     GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015, 2016 Inria
+  Copyright (C) 2015, 2016, 2017 Inria
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -35,12 +35,12 @@ static char *masterkeyfile;
 /**
  * Account holder information in JSON format.
  */
-static char *json_in;
+static json_t *account_holder;
 
 /**
  * Which wire method is this for?
  */
-static const char *method;
+static char *method;
 
 /**
  * Where to write the result.
@@ -70,8 +70,6 @@ run (void *cls,
   struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
   struct TALER_MasterPrivateKeyP key;
   struct TALER_MasterSignatureP sig;
-  json_t *j;
-  json_error_t err;
   char *json_out;
   struct GNUNET_HashCode salt;
   struct TALER_WIRE_Plugin *plugin;
@@ -101,40 +99,26 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  if (NULL == json_in)
-  {
-    fprintf (stderr,
-             "Required -j argument missing\n");
-    global_ret = 1;
-    return;
-  }
-  j = json_loads (json_in,
-                  JSON_REJECT_DUPLICATES,
-                  &err);
-  if (NULL == j)
-  {
-    fprintf (stderr,
-             "Failed to parse JSON: %s (at offset %u)\n",
-             err.text,
-             (unsigned int) err.position);
-    global_ret = 1;
-    return;
-  }
   if (NULL == method)
   {
     json_t *test;
-    test = json_object_get(j, "type");
-    if (NULL == test || (NULL == (method = json_string_value (test))))
+    const char *m;
+
+    test = json_object_get(account_holder,
+                           "type");
+    if ( (NULL == test) ||
+         (NULL == (m = json_string_value (test))))
     {
       fprintf (stderr,
                "Required -t argument missing\n");
       global_ret = 1;
       return;
     }
+    method = GNUNET_strdup (m);
   }
   else
   {
-    json_object_set_new (j,
+    json_object_set_new (account_holder,
                          "type",
                          json_string (method));
   }
@@ -149,18 +133,20 @@ run (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Wire transfer method `%s' not supported\n",
                 method);
+    GNUNET_free (method);
     global_ret = 1;
     return;
   }
+  GNUNET_free (method);
   if (GNUNET_OK !=
       plugin->sign_wire_details (plugin->cls,
-                                 j,
+                                 account_holder,
                                  &key,
                                  &salt,
                                  &sig))
   {
     /* sign function should have logged applicable errors */
-    json_decref (j);
+    json_decref (account_holder);
     TALER_WIRE_plugin_unload (plugin);
     global_ret = 1;
     return;
@@ -169,18 +155,19 @@ run (void *cls,
   GNUNET_free (eddsa_priv);
 
   /* add signature and salt to JSON message */
-  json_object_set_new (j,
+  json_object_set_new (account_holder,
                        "salt",
                        GNUNET_JSON_from_data (&salt,
                                               sizeof (salt)));
-  json_object_set_new (j,
+  json_object_set_new (account_holder,
                        "sig",
                        GNUNET_JSON_from_data (&sig,
                                               sizeof (sig)));
 
   /* dump result to stdout */
-  json_out = json_dumps (j, JSON_INDENT(2));
-  json_decref (j);
+  json_out = json_dumps (account_holder,
+                         JSON_INDENT(2));
+  json_decref (account_holder);
   GNUNET_assert (NULL != json_out);
 
   if (NULL != output_filename)
@@ -219,18 +206,27 @@ main (int argc,
       char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    {'j', "json", "JSON",
-     "account information in JSON format", 1,
-     &GNUNET_GETOPT_set_string, &json_in},
-    {'m', "master-key", "FILE",
-     "master key file (private key)", 1,
-     &GNUNET_GETOPT_set_filename, &masterkeyfile},
-    {'t', "type", "METHOD",
-     "which wire transfer method (i.e. 'test' or 'sepa') is this for?", 1,
-     &GNUNET_GETOPT_set_string, &method},
-    {'o', "output", "FILE",
-     "where to write the result", 1,
-     &GNUNET_GETOPT_set_filename, &output_filename},
+    GNUNET_GETOPT_OPTION_MANDATORY
+    (GNUNET_JSON_getopt ('j',
+                         "json",
+                         "JSON",
+                         "account information in JSON format",
+                         &account_holder)),
+    GNUNET_GETOPT_OPTION_FILENAME ('m',
+                                   "master-key",
+                                   "FILENAME",
+                                   "master key file (private key)",
+                                   &masterkeyfile),
+    GNUNET_GETOPT_OPTION_STRING ('t',
+                                 "type",
+                                 "METHOD",
+                                 "which wire transfer method (i.e. 'test' or 'sepa') is this for?",
+                                 &method),
+    GNUNET_GETOPT_OPTION_FILENAME ('o',
+                                   "output",
+                                   "FILENAME",
+                                   "where to write the result",
+                                   &output_filename),
     GNUNET_GETOPT_OPTION_END
   };
 

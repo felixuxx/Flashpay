@@ -268,7 +268,7 @@ static int run_exchange;
  * every 50 iterations. Also includes how long the iteration took,
  * so we can see if it is stable.
  */
-static int be_verbose;
+static unsigned int be_verbose;
 
 /**
  * How many coins the benchmark should operate on
@@ -1442,17 +1442,12 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "gotten pool_size of %d\n",
               pool_size);
-  if (NULL == config_file)
-  {
-    fail ("-c option is mandatory");
-    return;
-  }
-
   cfg = GNUNET_CONFIGURATION_create ();
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
 				 NULL);
-  if (GNUNET_SYSERR == GNUNET_CONFIGURATION_parse (cfg,
-						   config_file))
+  if (GNUNET_SYSERR ==
+      GNUNET_CONFIGURATION_parse (cfg,
+                                  config_file))
   {
     fail ("Failed to parse configuration file");
     return;
@@ -1567,23 +1562,33 @@ main (int argc,
   struct GNUNET_OS_Process *proc;
   unsigned int cnt;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    {'a', "automate", NULL,
-     "Initialize and start the bank and exchange", GNUNET_NO,
-     &GNUNET_GETOPT_set_one, &run_exchange},
-    GNUNET_GETOPT_OPTION_CFG_FILE (&config_file),
-    {'e', "exchange-uri", "URI",
-     "URI of the exchange", GNUNET_YES,
-     &GNUNET_GETOPT_set_string, &exchange_uri},
-    {'E', "exchange-admin-uri", "URI",
-     "URI of the administrative interface of the exchange", GNUNET_YES,
-     &GNUNET_GETOPT_set_string, &exchange_admin_uri},
+    GNUNET_GETOPT_OPTION_SET_ONE ('a',
+                                  "automate",
+                                  "Initialize and start the bank and exchange",
+                                  &run_exchange),
+    GNUNET_GETOPT_OPTION_MANDATORY
+    (GNUNET_GETOPT_OPTION_CFG_FILE (&config_file)),
+    GNUNET_GETOPT_OPTION_STRING ('e',
+                                 "exchange-uri",
+                                 "URI",
+                                 "URI of the exchange",
+                                 &exchange_uri),
+    GNUNET_GETOPT_OPTION_STRING ('E',
+                                 "exchange-admin-uri",
+                                 "URI",
+                                 "URI of the administrative interface of the exchange",
+                                 &exchange_admin_uri),
     GNUNET_GETOPT_OPTION_HELP ("tool to benchmark the Taler exchange"),
-    {'s', "pool-size", "SIZE",
-     "How many coins this benchmark should instantiate", GNUNET_YES,
-     &GNUNET_GETOPT_set_uint, &pool_size},
-    {'l', "limit", "LIMIT",
-     "Terminate the benchmark after LIMIT operations", GNUNET_YES,
-     &GNUNET_GETOPT_set_uint, &num_iterations},
+    GNUNET_GETOPT_OPTION_SET_UINT ('s',
+                                   "pool-size",
+                                   "SIZE",
+                                   "How many coins this benchmark should instantiate",
+                                   &pool_size),
+    GNUNET_GETOPT_OPTION_SET_UINT ('l',
+                                   "limit",
+                                   "LIMIT",
+                                   "Terminate the benchmark after LIMIT operations",
+                                   &num_iterations),
     GNUNET_GETOPT_OPTION_VERBOSE (&be_verbose),
     GNUNET_GETOPT_OPTION_END
   };
@@ -1687,7 +1692,8 @@ main (int argc,
     GNUNET_free (wget);
     fprintf (stderr, "\n");
   }
-  GNUNET_SCHEDULER_run (&run, NULL);
+  GNUNET_SCHEDULER_run (&run,
+                        NULL);
   if (run_exchange)
   {
     GNUNET_OS_process_kill (exchanged,

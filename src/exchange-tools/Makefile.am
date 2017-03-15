@@ -58,7 +58,9 @@ taler_exchange_reservemod_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
-  -lgnunetutil -ljansson $(XLIB)
+  -lgnunetjson \
+  -lgnunetutil \
+  -ljansson $(XLIB)
 taler_exchange_reservemod_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS)
 taler_exchange_reservemod_CPPFLAGS = \

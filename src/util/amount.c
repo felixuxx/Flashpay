@@ -252,16 +252,15 @@ invalidate (struct TALER_Amount *a)
 
 
 /**
- * Test if @a a is valid
+ * Test if the given amount is valid.
  *
- * @param a amount to test
- * @return #GNUNET_YES if valid,
- *         #GNUNET_NO if invalid
+ * @param amount amount to check
+ * @return #GNUNET_OK if @a amount is valid
  */
-static int
-test_valid (const struct TALER_Amount *a)
+int
+TALER_amount_is_valid (const struct TALER_Amount *amount)
 {
-  return ('\0' != a->currency[0]);
+  return ('\0' != amount->currency[0]);
 }
 
 
@@ -292,8 +291,8 @@ int
 TALER_amount_cmp_currency (const struct TALER_Amount *a1,
                            const struct TALER_Amount *a2)
 {
-  if ( (GNUNET_NO == test_valid (a1)) ||
-       (GNUNET_NO == test_valid (a2)) )
+  if ( (GNUNET_NO == TALER_amount_is_valid (a1)) ||
+       (GNUNET_NO == TALER_amount_is_valid (a2)) )
     return GNUNET_SYSERR;
   if (0 == strcasecmp (a1->currency,
 		       a2->currency))
@@ -499,7 +498,7 @@ TALER_amount_normalize (struct TALER_Amount *amount)
 {
   int ret;
 
-  if (GNUNET_YES != test_valid (amount))
+  if (GNUNET_YES != TALER_amount_is_valid (amount))
     return GNUNET_SYSERR;
   ret = GNUNET_NO;
   while ( (amount->value != UINT64_MAX) &&
@@ -535,7 +534,7 @@ TALER_amount_to_string (const struct TALER_Amount *amount)
   unsigned int i;
   struct TALER_Amount norm;
 
-  if (GNUNET_YES != test_valid (amount))
+  if (GNUNET_YES != TALER_amount_is_valid (amount))
     return NULL;
   norm = *amount;
   GNUNET_break (GNUNET_SYSERR !=

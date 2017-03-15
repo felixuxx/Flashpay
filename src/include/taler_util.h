@@ -111,6 +111,23 @@ TALER_config_get_denom (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
 
 /**
+ * Allow user to specify an amount on the command line.
+ *
+ * @param shortName short name of the option
+ * @param name long name of the option
+ * @param argumentHelp help text for the option argument
+ * @param description long help text for the option
+ * @param[out] amount set to the amount specified at the command line
+ */
+struct GNUNET_GETOPT_CommandLineOption
+TALER_getopt_get_amount (char shortName,
+                         const char *name,
+                         const char *argumentHelp,
+                         const char *description,
+                         struct TALER_Amount *amount);
+
+
+/**
  * Return default project data used by Taler.
  */
 const struct GNUNET_OS_ProjectData *

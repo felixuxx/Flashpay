@@ -93,4 +93,70 @@ TALER_config_get_denom (const struct GNUNET_CONFIGURATION_Handle *cfg,
 }
 
 
+
+
+/**
+ * Set an option with an amount from the command line.  A pointer to
+ * this function should be passed as part of the 'struct
+ * GNUNET_GETOPT_CommandLineOption' array to initialize options of
+ * this type.
+ *
+ * @param ctx command line processing context
+ * @param scls additional closure (will point to the `struct TALER_Amount`)
+ * @param option name of the option
+ * @param value actual value of the option as a string.
+ * @return #GNUNET_OK if parsing the value worked
+ */
+static int
+set_amount (struct GNUNET_GETOPT_CommandLineProcessorContext *ctx,
+            void *scls,
+            const char *option,
+            const char *value)
+{
+  struct TALER_Amount *amount = scls;
+
+  if (GNUNET_OK !=
+      TALER_string_to_amount (value,
+                              amount))
+  {
+    FPRINTF (stderr,
+             _("Failed to parse amount in option `%s'\n"),
+             option);
+    return GNUNET_SYSERR;
+  }
+
+  return GNUNET_OK;
+}
+
+
+/**
+ * Allow user to specify an amount on the command line.
+ *
+ * @param shortName short name of the option
+ * @param name long name of the option
+ * @param argumentHelp help text for the option argument
+ * @param description long help text for the option
+ * @param[out] amount set to the amount specified at the command line
+ */
+struct GNUNET_GETOPT_CommandLineOption
+TALER_getopt_get_amount (char shortName,
+                         const char *name,
+                         const char *argumentHelp,
+                         const char *description,
+                         struct TALER_Amount *amount)
+{
+  struct GNUNET_GETOPT_CommandLineOption clo = {
+    .shortName =  shortName,
+    .name = name,
+    .argumentHelp = argumentHelp,
+    .description = description,
+    .require_argument = 1,
+    .processor = &set_amount,
+    .scls = (void *) amount
+  };
+
+  return clo;
+}
+
+
 /* end of util.c */
