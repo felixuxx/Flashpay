@@ -25,6 +25,7 @@
  *   given in the aggregation_tracking table. This needs to be checked separately!
  *
  * TODO:
+ * - initialize 'currency' (URGENT!)
  * - modify auditordb to allow multiple last serial IDs per table in progress tracking
  * - implement coin/denomination audit
  * - implement merchant deposit audit
@@ -53,6 +54,11 @@ static int global_ret;
  * Handle to access the exchange's database.
  */
 static struct TALER_EXCHANGEDB_Plugin *edb;
+
+/**
+ * Which currency are we doing the audit for?
+ */
+static char *currency;
 
 /**
  * Our session with the #edb.
@@ -891,6 +897,7 @@ analyze_reserves (void *cls)
                                        &rc.total_balance,
                                        &rc.total_fee_balance);
   }
+  // FIXME: handle error in 'ret'!
   report_reserve_balance (&rc.total_balance,
                           &rc.total_fee_balance);
   return GNUNET_OK;
@@ -902,7 +909,6 @@ analyze_reserves (void *cls)
    coin, checking deposits, refunds, refresh* and known_coins
    tables */
 
-/* TODO! */
 /**
  * Summary data we keep per coin.
  */
@@ -971,6 +977,13 @@ struct DenominationSummary
    * Up to which point have we processed refunds?
    */
   uint64_t last_refund_serial_id;
+
+  /**
+   * #GNUNET_YES if this record already existed in the DB.
+   * Used to decide between insert/update in
+   * #sync_denomination().
+   */
+  int in_db;
 };
 
 
@@ -990,7 +1003,226 @@ struct CoinContext
    */
   struct GNUNET_CONTAINER_MultiHashMap *denominations;
 
+  /**
+   * Total outstanding balances across all denomination keys.
+   */
+  struct TALER_Amount denom_balance;
+
+  /**
+   * Total deposit fees earned so far.
+   */
+  struct TALER_Amount deposit_fee_balance;
+
+  /**
+   * Total melt fees earned so far.
+   */
+  struct TALER_Amount melt_fee_balance;
+
+  /**
+   * Total refund fees earned so far.
+   */
+  struct TALER_Amount refund_fee_balance;
+
+  /**
+   * Current financial risk of the exchange operator with respect
+   * to key compromise.
+   */
+  struct TALER_Amount risk;
+
 };
+
+
+/**
+ * Initialize information about denomination from the database.
+ *
+ * @param denom_hash hash of the public key of the denomination
+ * @param[out] ds summary to initialize
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+static int
+init_denomination (const struct GNUNET_HashCode *denom_hash,
+                   struct DenominationSummary *ds)
+{
+  int ret;
+
+  ret = adb->get_denomination_balance (adb->cls,
+                                       asession,
+                                       denom_hash,
+                                       &ds->denom_balance,
+                                       &ds->deposit_fee_balance,
+                                       &ds->melt_fee_balance,
+                                       &ds->refund_fee_balance,
+                                       &ds->last_reserve_out_serial_id,
+                                       &ds->last_deposit_serial_id,
+                                       &ds->last_melt_serial_id,
+                                       &ds->last_refund_serial_id);
+  if (GNUNET_OK == ret)
+  {
+    ds->in_db = GNUNET_YES;
+    return GNUNET_OK;
+  }
+  if (GNUNET_SYSERR == ret)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &ds->denom_balance));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &ds->deposit_fee_balance));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &ds->melt_fee_balance));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &ds->refund_fee_balance));
+  return GNUNET_OK;
+}
+
+
+/**
+ * Obtain the denomination summary for the given @a dh
+ *
+ * @param cc our execution context
+ * @param dh the denomination hash to use for the lookup
+ * @return NULL on error
+ */
+static struct DenominationSummary *
+get_denomination_summary (struct CoinContext *cc,
+                          const struct GNUNET_HashCode *dh)
+{
+  struct DenominationSummary *ds;
+
+  ds = GNUNET_CONTAINER_multihashmap_get (cc->denominations,
+                                          dh);
+  if (NULL != ds)
+    return ds;
+  ds = GNUNET_new (struct DenominationSummary);
+  if (GNUNET_OK !=
+      init_denomination (dh,
+                         ds))
+  {
+    GNUNET_break (0);
+    GNUNET_free (ds);
+    return NULL;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CONTAINER_multihashmap_put (cc->denominations,
+                                                    dh,
+                                                    ds,
+                                                    GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+  return ds;
+}
+
+
+/**
+ * Write information about the current knowledge about a denomination key
+ * back to the database and update our global reporting data about the
+ * denomination.  Also remove and free the memory of @a value.
+ *
+ * @param cls the `struct CoinContext`
+ * @param key the hash of the denomination key
+ * @param value a `struct DenominationSummary`
+ * @return #GNUNET_OK (continue to iterate)
+ */
+static int
+sync_denomination (void *cls,
+                   const struct GNUNET_HashCode *denom_hash,
+                   void *value)
+{
+  struct CoinContext *cc = cls;
+  struct DenominationSummary *ds = value;
+  int ret;
+
+  // FIXME: if expired, insert into historic denomination revenue
+  // and DELETE denomination balance.
+
+  // FIXME: update "global" info about denominations (here?)
+
+  if (ds->in_db)
+    ret = adb->update_denomination_balance (adb->cls,
+                                            asession,
+                                            denom_hash,
+                                            &ds->denom_balance,
+                                            &ds->deposit_fee_balance,
+                                            &ds->melt_fee_balance,
+                                            &ds->refund_fee_balance,
+                                            ds->last_reserve_out_serial_id,
+                                            ds->last_deposit_serial_id,
+                                            ds->last_melt_serial_id,
+                                            ds->last_refund_serial_id);
+  else
+    ret = adb->insert_denomination_balance (adb->cls,
+                                            asession,
+                                            denom_hash,
+                                            &ds->denom_balance,
+                                            &ds->deposit_fee_balance,
+                                            &ds->melt_fee_balance,
+                                            &ds->refund_fee_balance,
+                                            ds->last_reserve_out_serial_id,
+                                            ds->last_deposit_serial_id,
+                                            ds->last_melt_serial_id,
+                                            ds->last_refund_serial_id);
+
+  // FIXME handle errors in 'ret'
+
+  GNUNET_assert (GNUNET_YES ==
+                 GNUNET_CONTAINER_multihashmap_remove (cc->denominations,
+                                                       denom_hash,
+                                                       ds));
+  GNUNET_free (ds);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Function called with details about all withdraw operations.
+ *
+ * @param cls our `struct CoinContext`
+ * @param rowid unique serial ID for the refresh session in our DB
+ * @param h_blind_ev blinded hash of the coin's public key
+ * @param denom_pub public denomination key of the deposited coin
+ * @param denom_sig signature over the deposited coin
+ * @param reserve_pub public key of the reserve
+ * @param reserve_sig signature over the withdraw operation
+ * @param execution_date when did the wallet withdraw the coin
+ * @param amount_with_fee amount that was withdrawn
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static int
+withdraw_cb (void *cls,
+             uint64_t rowid,
+             const struct GNUNET_HashCode *h_blind_ev,
+             const struct TALER_DenominationPublicKey *denom_pub,
+             const struct TALER_DenominationSignature *denom_sig,
+             const struct TALER_ReservePublicKeyP *reserve_pub,
+             const struct TALER_ReserveSignatureP *reserve_sig,
+             struct GNUNET_TIME_Absolute execution_date,
+             const struct TALER_Amount *amount_with_fee)
+{
+  struct CoinContext *cc = cls;
+  struct DenominationSummary *ds;
+  struct GNUNET_HashCode dh;
+  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
+
+  if (GNUNET_OK !=
+      get_denomination_info (denom_pub,
+                             &dki,
+                             &dh))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  ds = get_denomination_summary (cc,
+                                 &dh);
+  // FIXME: use ds, dki, etc.
+  return GNUNET_OK;
+}
+
+
+
 
 
 /**
@@ -1003,16 +1235,139 @@ static int
 analyze_coins (void *cls)
 {
   struct CoinContext cc;
+  int dret;
+  int rret;
+
+  /* setup 'cc' */
+  dret = adb->get_denomination_summary (adb->cls,
+                                        asession,
+                                        &master_pub,
+                                        &cc.denom_balance,
+                                        &cc.deposit_fee_balance,
+                                        &cc.melt_fee_balance,
+                                        &cc.refund_fee_balance);
+  if (GNUNET_SYSERR == dret)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_NO == dret)
+  {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (currency,
+                                          &cc.denom_balance));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (currency,
+                                          &cc.deposit_fee_balance));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (currency,
+                                          &cc.melt_fee_balance));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (currency,
+                                          &cc.refund_fee_balance));
+  }
+  rret = adb->get_risk_summary (adb->cls,
+                                asession,
+                                &master_pub,
+                                &cc.risk);
+  if (GNUNET_SYSERR == dret)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_NO == dret)
+  {
+    /* FIXME: initialize cc->risk by other means... */
+  }
 
   cc.coins = GNUNET_CONTAINER_multihashmap_create (1024,
-                                                   GNUNET_YES);
+                                                   GNUNET_NO);
   cc.denominations = GNUNET_CONTAINER_multihashmap_create (256,
-                                                           GNUNET_YES);
+                                                           GNUNET_NO);
 
+  /* process withdrawals */
+  if (GNUNET_OK !=
+      edb->select_reserves_out_above_serial_id (edb->cls,
+                                                esession,
+                                                42LL, // FIXME
+                                                &withdraw_cb,
+                                                &cc))
+  {
+    // FIXME...
+  }
 
+  /* process refreshs */
+  if (GNUNET_OK !=
+      edb->select_refreshs_above_serial_id (edb->cls,
+                                            esession,
+                                            42LL, // FIXME
+                                            NULL, // FIXME
+                                            &cc))
+  {
+    // FIXME...
+  }
+
+  /* process deposits */
+  if (GNUNET_OK !=
+      edb->select_deposits_above_serial_id (edb->cls,
+                                            esession,
+                                            42LL, // FIXME
+                                            NULL, // FIXME
+                                            &cc))
+  {
+    // FIXME...
+  }
+
+  /* process refunds */
+  if (GNUNET_OK !=
+      edb->select_refunds_above_serial_id (edb->cls,
+                                           esession,
+                                           42LL, // FIXME
+                                           NULL, // FIXME
+                                           &cc))
+  {
+    // FIXME...
+  }
+
+  // FIXME...
+
+  /* FIXME: check invariants */
+
+  /* sync 'cc' back to disk */
+  GNUNET_CONTAINER_multihashmap_iterate (cc.denominations,
+                                         &sync_denomination,
+                                         &cc);
   GNUNET_CONTAINER_multihashmap_destroy (cc.denominations);
   GNUNET_CONTAINER_multihashmap_destroy (cc.coins);
 
+  if (GNUNET_YES == rret)
+    rret = adb->update_risk_summary (adb->cls,
+                                     asession,
+                                     &master_pub,
+                                     &cc.risk);
+  else
+    rret = adb->insert_risk_summary (adb->cls,
+                                     asession,
+                                     &master_pub,
+                                     &cc.risk);
+  // FIXME: handle error in 'rret'!
+  if (GNUNET_YES == dret)
+      dret = adb->update_denomination_summary (adb->cls,
+                                               asession,
+                                               &master_pub,
+                                               &cc.denom_balance,
+                                               &cc.deposit_fee_balance,
+                                               &cc.melt_fee_balance,
+                                               &cc.refund_fee_balance);
+  else
+    dret = adb->insert_denomination_summary (adb->cls,
+                                             asession,
+                                             &master_pub,
+                                             &cc.denom_balance,
+                                             &cc.deposit_fee_balance,
+                                             &cc.melt_fee_balance,
+                                             &cc.refund_fee_balance);
+  // FIXME: handle error in 'dret'!
   return GNUNET_OK;
 }
 

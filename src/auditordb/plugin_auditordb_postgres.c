@@ -2049,7 +2049,7 @@ postgres_update_denomination_balance (void *cls,
  *                 melts for the above information
  * @param[out] last_refund_serial_id up to which point did we consider
  *                 refunds for the above information
- * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ * @return #GNUNET_OK on success; #GNUNET_NO if no record found, #GNUNET_SYSERR on failure
  */
 static int
 postgres_get_denomination_balance (void *cls,
