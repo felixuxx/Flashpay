@@ -25,7 +25,6 @@
  *   given in the aggregation_tracking table. This needs to be checked separately!
  *
  * TODO:
- * - initialize master_pub via command-line argument (URGENT!)
  * - modify auditordb to allow multiple last serial IDs per table in progress tracking
  * - modify auditordb to return row ID where we need it for diagnostics
  * - implement coin/denomination audit
@@ -1358,6 +1357,12 @@ main (int argc,
       char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_OPTION_MANDATORY
+    (GNUNET_GETOPT_OPTION_SET_BASE32_AUTO ('m',
+                                           "exchange-key",
+                                           "KEY",
+                                           "public key of the exchange (Crockford base32 encoded)",
+                                           &master_pub)),
     GNUNET_GETOPT_OPTION_END
   };
 
