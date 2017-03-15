@@ -73,6 +73,7 @@ run (void *cls)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct TALER_AUDITORDB_Session *session;
+  uint64_t rowid;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "loading database plugin\n");
@@ -303,6 +304,7 @@ run (void *cls)
                                     session,
                                     &reserve_pub,
                                     &master_pub,
+                                    &rowid,
                                     &reserve_balance2,
                                     &withdraw_fee_balance2,
                                     &date,

@@ -26,7 +26,6 @@
  *
  * TODO:
  * - modify auditordb to allow multiple last serial IDs per table in progress tracking
- * - modify auditordb to return row ID where we need it for diagnostics
  * - implement coin/denomination audit
  * - implement merchant deposit audit
  *   - see if we need more tables there
@@ -367,11 +366,13 @@ static int
 load_auditor_reserve_summary (struct ReserveSummary *rs)
 {
   int ret;
+  uint64_t rowid;
 
   ret = adb->get_reserve_info (adb->cls,
                                asession,
                                &rs->reserve_pub,
                                &master_pub,
+                               &rowid,
                                &rs->a_balance,
                                &rs->a_withdraw_fee_balance,
                                &rs->a_expiration_date,
@@ -402,7 +403,7 @@ load_auditor_reserve_summary (struct ReserveSummary *rs)
                                    &rs->a_balance)) )
   {
     report_row_inconsistency ("auditor-reserve-info",
-                              UINT64_MAX, /* FIXME: modify API to get rowid! */
+                              rowid,
                               "currencies for reserve differ");
     /* TODO: find a sane way to continue... */
     GNUNET_break (0);

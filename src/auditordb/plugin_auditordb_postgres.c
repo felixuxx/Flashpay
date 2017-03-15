@@ -300,6 +300,7 @@ postgres_create_tables (void *cls)
            ",expiration_date INT8 NOT NULL"
 	   ",last_reserve_in_serial_id INT8 NOT NULL"
            ",last_reserve_out_serial_id INT8 NOT NULL"
+           ",auditor_reserves_rowid BIGSERIAL"
 	   ")");
 
   SQLEXEC_INDEX("CREATE INDEX auditor_reserves_by_reserve_pub "
@@ -645,6 +646,7 @@ postgres_prepare (PGconn *db_conn)
            ",expiration_date"
 	   ",last_reserve_in_serial_id"
            ",last_reserve_out_serial_id"
+           ",auditor_reserves_rowid"
            " FROM auditor_reserves"
            " WHERE reserve_pub=$1 AND master_pub=$2;",
            2, NULL);
@@ -1656,6 +1658,7 @@ postgres_del_reserve_info (void *cls,
  * @param session connection to use
  * @param reserve_pub public key of the reserve
  * @param master_pub master public key of the exchange
+ * @param[out] rowid which row did we get the information from
  * @param[out] reserve_balance amount stored in the reserve
  * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
  *                             due to withdrawals from this reserve
@@ -1672,6 +1675,7 @@ postgres_get_reserve_info (void *cls,
                            struct TALER_AUDITORDB_Session *session,
                            const struct TALER_ReservePublicKeyP *reserve_pub,
                            const struct TALER_MasterPublicKeyP *master_pub,
+                           uint64_t *rowid,
                            struct TALER_Amount *reserve_balance,
                            struct TALER_Amount *withdraw_fee_balance,
                            struct GNUNET_TIME_Absolute *expiration_date,
@@ -1708,12 +1712,10 @@ postgres_get_reserve_info (void *cls,
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_amount ("reserve_balance", reserve_balance),
     TALER_PQ_result_spec_amount ("withdraw_fee_balance", withdraw_fee_balance),
-
     GNUNET_PQ_result_spec_auto_from_type ("expiration_date", expiration_date),
-
     GNUNET_PQ_result_spec_uint64 ("last_reserve_in_serial_id", last_reserve_in_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_reserve_out_serial_id", last_reserve_out_serial_id),
-
+    GNUNET_PQ_result_spec_uint64 ("auditor_reserves_rowid", rowid),
     GNUNET_PQ_result_spec_end
   };
   if (GNUNET_OK !=

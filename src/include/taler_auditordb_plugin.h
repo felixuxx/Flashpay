@@ -413,6 +413,7 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param reserve_pub public key of the reserve
    * @param master_pub master public key of the exchange
+   * @param[out] rowid which row did we get the information from
    * @param[out] reserve_balance amount stored in the reserve
    * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
    *                             due to withdrawals from this reserve
@@ -429,6 +430,7 @@ struct TALER_AUDITORDB_Plugin
                       struct TALER_AUDITORDB_Session *session,
                       const struct TALER_ReservePublicKeyP *reserve_pub,
                       const struct TALER_MasterPublicKeyP *master_pub,
+                      uint64_t *rowid,
                       struct TALER_Amount *reserve_balance,
                       struct TALER_Amount *withdraw_fee_balance,
                       struct GNUNET_TIME_Absolute *expiration_date,
