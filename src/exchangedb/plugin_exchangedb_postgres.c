@@ -794,6 +794,7 @@ postgres_prepare (PGconn *db_conn)
            ",num_newcoins"
            ",noreveal_index"
            ",melt_serial_id"
+           ",session_hash"
            " FROM refresh_sessions"
            " WHERE melt_serial_id>=$1"
            " ORDER BY melt_serial_id ASC",
@@ -4832,6 +4833,7 @@ postgres_select_refreshs_above_serial_id (void *cls,
     uint16_t num_newcoins;
     uint16_t noreveal_index;
     uint64_t rowid;
+    struct GNUNET_HashCode session_hash;
 
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
@@ -4846,6 +4848,8 @@ postgres_select_refreshs_above_serial_id (void *cls,
                                     &noreveal_index),
       GNUNET_PQ_result_spec_uint64 ("melt_serial_id",
                                     &rowid),
+      GNUNET_PQ_result_spec_auto_from_type ("session_hash",
+                                            &session_hash),
       GNUNET_PQ_result_spec_end
     };
     if (GNUNET_OK !=
@@ -4863,7 +4867,8 @@ postgres_select_refreshs_above_serial_id (void *cls,
         &coin_sig,
         &amount_with_fee,
         num_newcoins,
-        noreveal_index);
+        noreveal_index,
+        &session_hash);
     GNUNET_PQ_cleanup_result (rs);
   }
   PQclear (result);
