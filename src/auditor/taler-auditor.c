@@ -25,7 +25,6 @@
  *   given in the aggregation_tracking table. This needs to be checked separately!
  *
  * TODO:
- * - initialize 'currency' (URGENT!)
  * - modify auditordb to allow multiple last serial IDs per table in progress tracking
  * - implement coin/denomination audit
  * - implement merchant deposit audit
@@ -1936,6 +1935,18 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "taler",
+                                             "CURRENCY",
+                                             &currency))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "taler",
+                               "CURRENCY");
+    global_ret = 1;
+    return;
+  }
   if (NULL ==
       (edb = TALER_EXCHANGEDB_plugin_load (cfg)))
   {
