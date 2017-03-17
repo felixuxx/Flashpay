@@ -375,10 +375,10 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
     case TALER_EXCHANGEDB_TT_DEPOSIT:
       if (GNUNET_NO == deposit_found)
       {
-        if ( (0 == memcmp (&tlp->details.deposit.merchant_pub,
+        if ( (0 == memcmp (&tlp->details.deposit->merchant_pub,
                            &refund->merchant_pub,
                            sizeof (struct TALER_MerchantPublicKeyP))) &&
-             (0 == memcmp (&tlp->details.deposit.h_proposal_data,
+             (0 == memcmp (&tlp->details.deposit->h_proposal_data,
                            &refund->h_proposal_data,
                            sizeof (struct GNUNET_HashCode))) )
         {
@@ -408,13 +408,13 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
           break;
         }
         /* Second, check if existing refund request conflicts */
-        if ( (0 == memcmp (&tlp->details.merchant_pub,
+        if ( (0 == memcmp (&tlp->details.refund->merchant_pub,
                            &refund->merchant_pub,
                            sizeof (struct TALER_MerchantPublicKeyP))) &&
-             (0 == memcmp (&tlp->details.h_proposal_data,
+             (0 == memcmp (&tlp->details.refund->h_proposal_data,
                            &refund->h_proposal_data,
                            sizeof (struct GNUNET_HashCode))) &&
-             (tlp->details.rtransaction_id != refund->rtransaction_id) )
+             (tlp->details.refund->rtransaction_id != refund->rtransaction_id) )
         {
           GNUNET_break_op (0); /* conflicting refund found */
           refund_found = GNUNET_SYSERR;
