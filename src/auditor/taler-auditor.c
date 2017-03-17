@@ -1055,6 +1055,8 @@ struct CoinContext
   /**
    * Current financial risk of the exchange operator with respect
    * to key compromise.
+   *
+   * TODO: not yet properly used!
    */
   struct TALER_Amount risk;
 
@@ -1943,6 +1945,7 @@ analyze_coins (void *cls)
 
   /* setup 'cc' */
   // FIXME: FIX misnomer "denomination_summary", as this is no longer exactly about denominations!
+  // FIXME: combine request with the one for the 'risk' summary?
   dret = adb->get_denomination_summary (adb->cls,
                                         asession,
                                         &master_pub,
@@ -1981,7 +1984,9 @@ analyze_coins (void *cls)
   }
   if (GNUNET_NO == dret)
   {
-    /* FIXME: initialize cc->risk by other means... */
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (currency,
+                                          &cc.risk));
   }
 
   cc.coins = GNUNET_CONTAINER_multihashmap_create (1024,
