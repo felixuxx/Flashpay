@@ -502,33 +502,31 @@ check_transfer_data (void *cls,
   *ok = GNUNET_SYSERR;
 }
 
+
 /**
  * Function called with details about coins that were melted,
  * with the goal of auditing the refresh's execution.
  *
+ *
  * @param cls closure
  * @param rowid unique serial ID for the refresh session in our DB
- * @param merchant_pub public key of the merchant
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
- * @param h_proposal_data hash of the proposal data known to merchant and customer
- * @param refund_deadline by which the merchant adviced that he might want
- *        to get a refund
- * @param wire_deadline by which the merchant adviced that he would like the
- *        wire transfer to be executed
- * @param receiver_wire_account wire details for the merchant, NULL from iterate_matching_deposits()
- * @param done flag set if the deposit was already executed (or not)
+ * @param num_newcoins how many coins were issued
+ * @param noreveal_index which index was picked by the exchange in cut-and-choose
+ * @param session_hash what is the session hash
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-int
+static int
 audit_refresh_session_cb (void *cls,
                           uint64_t rowid,
                           const struct TALER_CoinSpendPublicKeyP *coin_pub,
                           const struct TALER_CoinSpendSignatureP *coin_sig,
                           const struct TALER_Amount *amount_with_fee,
                           uint16_t num_newcoins,
-                          uint16_t noreveal_index)
+                          uint16_t noreveal_index,
+                          const struct GNUNET_HashCode *session_hash)
 {
   auditor_row_cnt++;
   return GNUNET_OK;
@@ -953,6 +951,7 @@ deposit_cb (void *cls,
  *
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
+ * @param timestamp when did the deposit happen
  * @param merchant_pub public key of the merchant
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
@@ -969,6 +968,7 @@ deposit_cb (void *cls,
 static int
 audit_deposit_cb (void *cls,
                   uint64_t rowid,
+                  struct GNUNET_TIME_Absolute timestamp,
                   const struct TALER_MerchantPublicKeyP *merchant_pub,
                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
                   const struct TALER_CoinSpendSignatureP *coin_sig,

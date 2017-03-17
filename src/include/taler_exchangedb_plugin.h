@@ -590,6 +590,7 @@ typedef void
  *
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
+ * @param timestamp when did the deposit happen
  * @param merchant_pub public key of the merchant
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
@@ -606,6 +607,7 @@ typedef void
 typedef int
 (*TALER_EXCHANGEDB_DepositCallback)(void *cls,
                                     uint64_t rowid,
+                                    struct GNUNET_TIME_Absolute timestamp,
                                     const struct TALER_MerchantPublicKeyP *merchant_pub,
                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     const struct TALER_CoinSpendSignatureP *coin_sig,

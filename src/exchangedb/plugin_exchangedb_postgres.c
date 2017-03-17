@@ -4762,6 +4762,7 @@ postgres_select_deposits_above_serial_id (void *cls,
     }
     cb (cb_cls,
         rowid,
+        deposit.timestamp,
         &deposit.merchant_pub,
         &deposit.coin.coin_pub,
         &deposit.csig,

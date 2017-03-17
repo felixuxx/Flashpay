@@ -1425,6 +1425,7 @@ refresh_session_cb (void *cls,
  *
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
+ * @param timestamp when did the deposit happen
  * @param merchant_pub public key of the merchant
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
@@ -1441,6 +1442,7 @@ refresh_session_cb (void *cls,
 static int
 deposit_cb (void *cls,
             uint64_t rowid,
+            struct GNUNET_TIME_Absolute timestamp,
             const struct TALER_MerchantPublicKeyP *merchant_pub,
             const struct TALER_CoinSpendPublicKeyP *coin_pub,
             const struct TALER_CoinSpendSignatureP *coin_sig,
@@ -1454,6 +1456,7 @@ deposit_cb (void *cls,
   struct CoinContext *cc = cls;
   struct CoinSummary *cs;
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
+  struct TALER_DepositRequestPS dr;
 
   cs = get_coin_summary (cc,
                          coin_pub);
@@ -1464,7 +1467,34 @@ deposit_cb (void *cls,
   }
   dki = cs->dki;
 
-  // TODO: verify signature
+  dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
+  dr.purpose.size = htonl (sizeof (dr));
+  dr.h_proposal_data = *h_proposal_data;
+  if (GNUNET_OK !=
+      TALER_JSON_hash (receiver_wire_account,
+                       &dr.h_wire))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
+  dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
+  TALER_amount_hton (&dr.amount_with_fee,
+                     amount_with_fee);
+  dr.deposit_fee = dki->properties.fee_deposit;
+  dr.merchant = *merchant_pub;
+  dr.coin_pub = *coin_pub;
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
+                                  &dr.purpose,
+                                  &coin_sig->eddsa_signature,
+                                  &coin_pub->eddsa_pub))
+  {
+    report_row_inconsistency ("deposit",
+                              rowid,
+                              "invalid signature for coin deposit");
+    return GNUNET_OK;
+  }
 
   // TODO: update expected amounts in 'cc'
   return GNUNET_OK;
