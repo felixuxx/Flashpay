@@ -330,15 +330,6 @@ postgres_create_tables (void *cls)
            ",denom_balance_val INT8 NOT NULL"
            ",denom_balance_frac INT4 NOT NULL"
            ",denom_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-           ",deposit_fee_balance_val INT8 NOT NULL"
-           ",deposit_fee_balance_frac INT4 NOT NULL"
-           ",deposit_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-           ",melt_fee_balance_val INT8 NOT NULL"
-           ",melt_fee_balance_frac INT4 NOT NULL"
-           ",melt_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-           ",refund_fee_balance_val INT8 NOT NULL"
-           ",refund_fee_balance_frac INT4 NOT NULL"
-           ",refund_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
            ",last_reserve_out_serial_id INT8 NOT NULL"
            ",last_deposit_serial_id INT8 NOT NULL"
 	   ",last_melt_serial_id INT8 NOT NULL"
@@ -703,21 +694,12 @@ postgres_prepare (PGconn *db_conn)
            ",denom_balance_val"
            ",denom_balance_frac"
            ",denom_balance_curr"
-           ",deposit_fee_balance_val"
-           ",deposit_fee_balance_frac"
-           ",deposit_fee_balance_curr"
-           ",melt_fee_balance_val"
-           ",melt_fee_balance_frac"
-           ",melt_fee_balance_curr"
-           ",refund_fee_balance_val"
-           ",refund_fee_balance_frac"
-           ",refund_fee_balance_curr"
            ",last_reserve_out_serial_id"
            ",last_deposit_serial_id"
 	   ",last_melt_serial_id"
 	   ",last_refund_serial_id"
-           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);",
-           17, NULL);
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8);",
+           11, NULL);
 
   /* Used in #postgres_update_denomination_balance() */
   PREPARE ("denomination_pending_update",
@@ -725,21 +707,12 @@ postgres_prepare (PGconn *db_conn)
            " denom_balance_val=$1"
            ",denom_balance_frac=$2"
            ",denom_balance_curr=$3"
-           ",deposit_fee_balance_val=$4"
-           ",deposit_fee_balance_frac=$5"
-           ",deposit_fee_balance_curr=$6"
-           ",melt_fee_balance_val=$7"
-           ",melt_fee_balance_frac=$8"
-           ",melt_fee_balance_curr=$9"
-           ",refund_fee_balance_val=$10"
-           ",refund_fee_balance_frac=$11"
-           ",refund_fee_balance_curr=$12"
-           ",last_reserve_out_serial_id=$13"
-           ",last_deposit_serial_id=$14"
-	   ",last_melt_serial_id=$15"
-	   ",last_refund_serial_id=$16"
-           " WHERE denom_pub_hash=$17",
-           18, NULL);
+           ",last_reserve_out_serial_id=$4"
+           ",last_deposit_serial_id=$5"
+	   ",last_melt_serial_id=$6"
+	   ",last_refund_serial_id=$7"
+           " WHERE denom_pub_hash=$8",
+           8, NULL);
 
   /* Used in #postgres_get_denomination_balance() */
   PREPARE ("denomination_pending_select",
@@ -747,15 +720,6 @@ postgres_prepare (PGconn *db_conn)
            " denom_balance_val"
            ",denom_balance_frac"
            ",denom_balance_curr"
-           ",deposit_fee_balance_val"
-           ",deposit_fee_balance_frac"
-           ",deposit_fee_balance_curr"
-           ",melt_fee_balance_val"
-           ",melt_fee_balance_frac"
-           ",melt_fee_balance_curr"
-           ",refund_fee_balance_val"
-           ",refund_fee_balance_frac"
-           ",refund_fee_balance_curr"
            ",last_reserve_out_serial_id"
            ",last_deposit_serial_id"
 	   ",last_melt_serial_id"
@@ -1895,9 +1859,6 @@ postgres_get_reserve_summary (void *cls,
  * @param session connection to use
  * @param denom_pub_hash hash of the denomination public key
  * @param denom_balance value of coins outstanding with this denomination key
- * @param deposit_fee_balance total deposit fees collected for this DK
- * @param melt_fee_balance total melt fees collected for this DK
- * @param refund_fee_balance total refund fees collected for this DK
  * @param last_reserve_out_serial_id up to which point did we consider
  *                 withdrawals for the above information
  * @param last_deposit_serial_id up to which point did we consider
@@ -1913,9 +1874,6 @@ postgres_insert_denomination_balance (void *cls,
                                       struct TALER_AUDITORDB_Session *session,
                                       const struct GNUNET_HashCode *denom_pub_hash,
                                       const struct TALER_Amount *denom_balance,
-                                      const struct TALER_Amount *deposit_fee_balance,
-                                      const struct TALER_Amount *melt_fee_balance,
-                                      const struct TALER_Amount *refund_fee_balance,
                                       uint64_t last_reserve_out_serial_id,
                                       uint64_t last_deposit_serial_id,
                                       uint64_t last_melt_serial_id,
@@ -1926,27 +1884,12 @@ postgres_insert_denomination_balance (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     TALER_PQ_query_param_amount (denom_balance),
-    TALER_PQ_query_param_amount (deposit_fee_balance),
-    TALER_PQ_query_param_amount (melt_fee_balance),
-    TALER_PQ_query_param_amount (refund_fee_balance),
     GNUNET_PQ_query_param_uint64 (&last_reserve_out_serial_id),
     GNUNET_PQ_query_param_uint64 (&last_deposit_serial_id),
     GNUNET_PQ_query_param_uint64 (&last_melt_serial_id),
     GNUNET_PQ_query_param_uint64 (&last_refund_serial_id),
     GNUNET_PQ_query_param_end
   };
-
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (denom_balance,
-                                            deposit_fee_balance));
-
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (denom_balance,
-                                            melt_fee_balance));
-
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (denom_balance,
-                                            refund_fee_balance));
 
   result = GNUNET_PQ_exec_prepared (session->conn,
                                    "denomination_pending_insert",
@@ -1973,9 +1916,6 @@ postgres_insert_denomination_balance (void *cls,
  * @param session connection to use
  * @param denom_pub_hash hash of the denomination public key
  * @param denom_balance value of coins outstanding with this denomination key
- * @param deposit_fee_balance total deposit fees collected for this DK
- * @param melt_fee_balance total melt fees collected for this DK
- * @param refund_fee_balance total refund fees collected for this DK
  * @param last_reserve_out_serial_id up to which point did we consider
  *                 withdrawals for the above information
  * @param last_deposit_serial_id up to which point did we consider
@@ -1991,9 +1931,6 @@ postgres_update_denomination_balance (void *cls,
                                       struct TALER_AUDITORDB_Session *session,
                                       const struct GNUNET_HashCode *denom_pub_hash,
                                       const struct TALER_Amount *denom_balance,
-                                      const struct TALER_Amount *deposit_fee_balance,
-                                      const struct TALER_Amount *melt_fee_balance,
-                                      const struct TALER_Amount *refund_fee_balance,
                                       uint64_t last_reserve_out_serial_id,
                                       uint64_t last_deposit_serial_id,
                                       uint64_t last_melt_serial_id,
@@ -2003,9 +1940,6 @@ postgres_update_denomination_balance (void *cls,
   int ret;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (denom_balance),
-    TALER_PQ_query_param_amount (deposit_fee_balance),
-    TALER_PQ_query_param_amount (melt_fee_balance),
-    TALER_PQ_query_param_amount (refund_fee_balance),
     GNUNET_PQ_query_param_uint64 (&last_reserve_out_serial_id),
     GNUNET_PQ_query_param_uint64 (&last_deposit_serial_id),
     GNUNET_PQ_query_param_uint64 (&last_melt_serial_id),
@@ -2038,9 +1972,6 @@ postgres_update_denomination_balance (void *cls,
  * @param session connection to use
  * @param denom_pub_hash hash of the denomination public key
  * @param[out] denom_balance value of coins outstanding with this denomination key
- * @param[out] deposit_fee_balance total deposit fees collected for this DK
- * @param[out] melt_fee_balance total melt fees collected for this DK
- * @param[out] refund_fee_balance total refund fees collected for this DK
  * @param[out] last_reserve_out_serial_id up to which point did we consider
  *                 withdrawals for the above information
  * @param[out] last_deposit_serial_id up to which point did we consider
@@ -2056,9 +1987,6 @@ postgres_get_denomination_balance (void *cls,
                                    struct TALER_AUDITORDB_Session *session,
                                    const struct GNUNET_HashCode *denom_pub_hash,
                                    struct TALER_Amount *denom_balance,
-                                   struct TALER_Amount *deposit_fee_balance,
-                                   struct TALER_Amount *melt_fee_balance,
-                                   struct TALER_Amount *refund_fee_balance,
                                    uint64_t *last_reserve_out_serial_id,
                                    uint64_t *last_deposit_serial_id,
                                    uint64_t *last_melt_serial_id,
@@ -2093,10 +2021,6 @@ postgres_get_denomination_balance (void *cls,
 
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_amount ("denom_balance", denom_balance),
-    TALER_PQ_result_spec_amount ("deposit_fee_balance", deposit_fee_balance),
-    TALER_PQ_result_spec_amount ("melt_fee_balance", melt_fee_balance),
-    TALER_PQ_result_spec_amount ("refund_fee_balance", refund_fee_balance),
-
     GNUNET_PQ_result_spec_uint64 ("last_reserve_out_serial_id", last_reserve_out_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_deposit_serial_id", last_deposit_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_melt_serial_id", last_melt_serial_id),

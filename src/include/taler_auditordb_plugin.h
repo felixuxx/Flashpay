@@ -523,9 +523,6 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
    * @param denom_balance value of coins outstanding (or issued?) with this denomination key
-   * @param deposit_fee_balance total deposit fees collected for this DK
-   * @param melt_fee_balance total melt fees collected for this DK
-   * @param refund_fee_balance total refund fees collected for this DK
    * @param last_reserve_out_serial_id up to which point did we consider
    *                 withdrawals for the above information
    * @param last_deposit_serial_id up to which point did we consider
@@ -541,9 +538,6 @@ struct TALER_AUDITORDB_Plugin
                                  struct TALER_AUDITORDB_Session *session,
                                  const struct GNUNET_HashCode *denom_pub_hash,
                                  const struct TALER_Amount *denom_balance,
-                                 const struct TALER_Amount *deposit_fee_balance,
-                                 const struct TALER_Amount *melt_fee_balance,
-                                 const struct TALER_Amount *refund_fee_balance,
                                  uint64_t last_reserve_out_serial_id,
                                  uint64_t last_deposit_serial_id,
                                  uint64_t last_melt_serial_id,
@@ -558,9 +552,6 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
    * @param denom_balance value of coins outstanding (or issued?) with this denomination key
-   * @param deposit_fee_balance total deposit fees collected for this DK
-   * @param melt_fee_balance total melt fees collected for this DK
-   * @param refund_fee_balance total refund fees collected for this DK
    * @param last_reserve_out_serial_id up to which point did we consider
    *                 withdrawals for the above information
    * @param last_deposit_serial_id up to which point did we consider
@@ -576,9 +567,6 @@ struct TALER_AUDITORDB_Plugin
                                  struct TALER_AUDITORDB_Session *session,
                                  const struct GNUNET_HashCode *denom_pub_hash,
                                  const struct TALER_Amount *denom_balance,
-                                 const struct TALER_Amount *deposit_fee_balance,
-                                 const struct TALER_Amount *melt_fee_balance,
-                                 const struct TALER_Amount *refund_fee_balance,
                                  uint64_t last_reserve_out_serial_id,
                                  uint64_t last_deposit_serial_id,
                                  uint64_t last_melt_serial_id,
@@ -592,9 +580,6 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
    * @param[out] denom_balance value of coins outstanding (or issued?) with this denomination key
-   * @param[out] deposit_fee_balance total deposit fees collected for this DK
-   * @param[out] melt_fee_balance total melt fees collected for this DK
-   * @param[out] refund_fee_balance total refund fees collected for this DK
    * @param[out] last_reserve_out_serial_id up to which point did we consider
    *                 withdrawals for the above information
    * @param[out] last_deposit_serial_id up to which point did we consider
@@ -610,9 +595,6 @@ struct TALER_AUDITORDB_Plugin
                               struct TALER_AUDITORDB_Session *session,
                               const struct GNUNET_HashCode *denom_pub_hash,
                               struct TALER_Amount *denom_balance,
-                              struct TALER_Amount *deposit_fee_balance,
-                              struct TALER_Amount *melt_fee_balance,
-                              struct TALER_Amount *refund_fee_balance,
                               uint64_t *last_reserve_out_serial_id,
                               uint64_t *last_deposit_serial_id,
                               uint64_t *last_melt_serial_id,
