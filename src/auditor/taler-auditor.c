@@ -22,18 +22,25 @@
  * - This auditor does not verify that 'reserves_in' actually matches
  *   the wire transfers from the bank. This needs to be checked separately!
  * - Similarly, we do not check that the outgoing wire transfers match those
- *   given in the aggregation_tracking table. This needs to be checked separately!
+ *   given in the 'wire_out' (TBD!) table. This needs to be checked separately!
  *
  * TODO:
- * - modify auditordb to allow multiple last serial IDs per table in progress tracking
- * - implement coin/denomination audit
  * - implement merchant deposit audit
- *   - see if we need more tables there
+ *   => we need a 'wire_out' table here (amount, h-wire, date, wtid)
+ * - modify auditordb to allow multiple last serial IDs per table in progress tracking
+ * - modify auditordb to track risk with balances and fees
+ * - modify auditordb to return DK when we inquire about deposit/refresh/refund,
+ *   so we can avoid the costly #get_coin_summary with the transaction history building
+ *   (at least during #analyze_coins); the logic may be partially useful in
+ *   #analyze_merchants (but we won't need the cache!)
+ * - deal with risk / expired denomination keys in #sync_denomination
  * - write reporting logic to output nice report beyond GNUNET_log()
+ * - write logic to deal with emergency (#3887) -- and emergency-related tables!
  *
  * EXTERNAL:
  * - add tool to pay-back expired reserves (#4956), and support here
  * - add tool to verify 'reserves_in' from wire transfer inspection
+ * - add tool to verify 'wire_out (TBD)' from wire transfer inspection
  * - add tool to trigger computation of historic revenues
  *   (move balances from 'current' revenue/profits to 'historic' tables)
  */
@@ -1065,6 +1072,11 @@ struct CoinContext
    */
   unsigned int summaries_off;
 
+  /**
+   * #GNUNET_OK as long as we are fine to commit the result to the #adb.
+   */
+  int ret;
+
 };
 
 
@@ -1160,10 +1172,8 @@ sync_denomination (void *cls,
   struct DenominationSummary *ds = value;
   int ret;
 
-  // FIXME: if expired, insert into historic denomination revenue
-  // and DELETE denomination balance.
-
-  // FIXME: update "global" info about denominations (here?)
+  // FIXME: if expired, insert remaining balance historic denomination revenue,
+  // DELETE denomination balance, and REDUCE cc->risk exposure!
 
   if (ds->in_db)
     ret = adb->update_denomination_balance (adb->cls,
@@ -1183,9 +1193,11 @@ sync_denomination (void *cls,
                                             ds->last_deposit_serial_id,
                                             ds->last_melt_serial_id,
                                             ds->last_refund_serial_id);
-
-  // FIXME handle errors in 'ret'
-
+  if (GNUNET_OK != ret)
+  {
+    GNUNET_break (0);
+    cc.ret = GNUNET_SYSERR;
+  }
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CONTAINER_multihashmap_remove (cc->denominations,
                                                        denom_hash,
@@ -1944,6 +1956,7 @@ analyze_coins (void *cls)
   int rret;
 
   /* setup 'cc' */
+  cc.ret = GNUNET_OK;
   // FIXME: FIX misnomer "denomination_summary", as this is no longer exactly about denominations!
   // FIXME: combine request with the one for the 'risk' summary?
   dret = adb->get_denomination_summary (adb->cls,
@@ -2002,7 +2015,8 @@ analyze_coins (void *cls)
                                                 &withdraw_cb,
                                                 &cc))
   {
-    // FIXME...
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
 
   /* process refreshs */
@@ -2013,7 +2027,8 @@ analyze_coins (void *cls)
                                             &refresh_session_cb,
                                             &cc))
   {
-    // FIXME...
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
 
   /* process deposits */
@@ -2024,7 +2039,8 @@ analyze_coins (void *cls)
                                             &deposit_cb,
                                             &cc))
   {
-    // FIXME...
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
 
   /* process refunds */
@@ -2035,12 +2051,9 @@ analyze_coins (void *cls)
                                            &refund_cb,
                                            &cc))
   {
-    // FIXME...
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
-
-  // FIXME...
-
-  /* FIXME: check invariants */
 
   /* sync 'cc' back to disk */
   GNUNET_CONTAINER_multihashmap_iterate (cc.denominations,
@@ -2062,9 +2075,14 @@ analyze_coins (void *cls)
                                      asession,
                                      &master_pub,
                                      &cc.risk);
-  // FIXME: handle error in 'rret'!
+  if (GNUNET_OK != rret)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
 
   // FIXME: FIX misnomer "denomination_summary", as this is no longer about denominations!
+  // FIXME: maybe combine with 'risk' above...
   if (GNUNET_YES == dret)
       dret = adb->update_denomination_summary (adb->cls,
                                                asession,
@@ -2081,8 +2099,13 @@ analyze_coins (void *cls)
                                              &cc.deposit_fee_balance,
                                              &cc.melt_fee_balance,
                                              &cc.refund_fee_balance);
-  // FIXME: handle error in 'dret'!
-  return GNUNET_OK;
+  if (GNUNET_OK != dret)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  return cc.ret;
 }
 
 
@@ -2261,50 +2284,50 @@ transact (Analysis analysis,
   ret = adb->start (adb->cls,
                     asession);
   if (GNUNET_OK != ret)
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   ret = edb->start (edb->cls,
                     esession);
   if (GNUNET_OK != ret)
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   ret = incremental_processing (analysis,
                                 analysis_cls);
   if (GNUNET_OK == ret)
-    {
-      ret = edb->commit (edb->cls,
-                         esession);
-      if (GNUNET_OK != ret)
-        {
-          GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                      "Exchange DB commit failed, rolling back transaction\n");
-          adb->rollback (adb->cls,
-                         asession);
-        }
-      else
-        {
-          ret = adb->commit (adb->cls,
-                             asession);
-          if (GNUNET_OK != ret)
-            {
-              GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                          "Auditor DB commit failed!\n");
-            }
-        }
-    }
-  else
+  {
+    ret = edb->commit (edb->cls,
+                       esession);
+    if (GNUNET_OK != ret)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "Processing failed, rolling back transaction\n");
+                  "Exchange DB commit failed, rolling back transaction\n");
       adb->rollback (adb->cls,
                      asession);
-      edb->rollback (edb->cls,
-                     esession);
     }
+    else
+    {
+      ret = adb->commit (adb->cls,
+                         asession);
+      if (GNUNET_OK != ret)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                    "Auditor DB commit failed!\n");
+      }
+    }
+  }
+  else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Processing failed, rolling back transaction\n");
+    adb->rollback (adb->cls,
+                   asession);
+    edb->rollback (edb->cls,
+                   esession);
+  }
   clear_transaction_state_cache ();
   return ret;
 }
