@@ -36,13 +36,6 @@
  * - deal with risk / expired denomination keys in #sync_denomination
  * - write reporting logic to output nice report beyond GNUNET_log()
  * - write logic to deal with emergency (#3887) -- and emergency-related tables!
- *
- * EXTERNAL:
- * - add tool to pay-back expired reserves (#4956), and support here
- * - add tool to verify 'reserves_in' from wire transfer inspection
- * - add tool to verify 'wire_out (TBD)' from wire transfer inspection
- * - add tool to trigger computation of historic revenues
- *   (move balances from 'current' revenue/profits to 'historic' tables)
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>

@@ -376,9 +376,6 @@ run (void *cls)
           plugin->insert_denomination_balance (plugin->cls,
                                                session,
                                                &denom_pub_hash,
-                                               &refund_fee_balance,
-                                               &melt_fee_balance,
-                                               &deposit_fee_balance,
                                                &denom_balance,
                                                pp.last_reserve_out_serial_id,
                                                pp.last_deposit_serial_id,
@@ -398,9 +395,6 @@ run (void *cls)
                                                session,
                                                &denom_pub_hash,
                                                &denom_balance,
-                                               &deposit_fee_balance,
-                                               &melt_fee_balance,
-                                               &refund_fee_balance,
                                                pp.last_reserve_out_serial_id,
                                                pp.last_deposit_serial_id,
                                                pp.last_melt_serial_id,
@@ -414,18 +408,12 @@ run (void *cls)
                                             session,
                                             &denom_pub_hash,
                                             &denom_balance2,
-                                            &deposit_fee_balance2,
-                                            &melt_fee_balance2,
-                                            &refund_fee_balance2,
                                             &pp2.last_reserve_out_serial_id,
                                             &pp2.last_deposit_serial_id,
                                             &pp2.last_melt_serial_id,
                                             &pp2.last_refund_serial_id));
 
   FAILIF (0 != memcmp (&denom_balance2, &denom_balance, sizeof (denom_balance))
-          || 0 != memcmp (&deposit_fee_balance2, &deposit_fee_balance, sizeof (deposit_fee_balance))
-          || 0 != memcmp (&melt_fee_balance2, &melt_fee_balance, sizeof (melt_fee_balance))
-          || 0 != memcmp (&refund_fee_balance2, &refund_fee_balance, sizeof (refund_fee_balance))
           || pp2.last_reserve_out_serial_id != pp.last_reserve_out_serial_id
           || pp2.last_deposit_serial_id != pp.last_deposit_serial_id
           || pp2.last_melt_serial_id != pp.last_melt_serial_id
