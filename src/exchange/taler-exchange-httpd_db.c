@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
+  Copyright (C) 2014-2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -375,14 +375,14 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
     case TALER_EXCHANGEDB_TT_DEPOSIT:
       if (GNUNET_NO == deposit_found)
       {
-        dep = tlp->details.deposit;
-        if ( (0 == memcmp (&dep->merchant_pub,
+        if ( (0 == memcmp (&tlp->details.deposit.merchant_pub,
                            &refund->merchant_pub,
                            sizeof (struct TALER_MerchantPublicKeyP))) &&
-             (0 == memcmp (&dep->h_proposal_data,
+             (0 == memcmp (&tlp->details.deposit.h_proposal_data,
                            &refund->h_proposal_data,
                            sizeof (struct GNUNET_HashCode))) )
         {
+          dep = tlp->details.deposit;
           deposit_found = GNUNET_YES;
           break;
         }
@@ -394,29 +394,29 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
     case TALER_EXCHANGEDB_TT_REFUND:
       if (GNUNET_NO == refund_found)
       {
-        ref = tlp->details.refund;
         /* First, check if existing refund request is identical */
-        if ( (0 == memcmp (&ref->merchant_pub,
+        if ( (0 == memcmp (&tlp->details.refund->merchant_pub,
                            &refund->merchant_pub,
                            sizeof (struct TALER_MerchantPublicKeyP))) &&
-             (0 == memcmp (&ref->h_proposal_data,
+             (0 == memcmp (&tlp->details.refund->h_proposal_data,
                            &refund->h_proposal_data,
                            sizeof (struct GNUNET_HashCode))) &&
              (ref->rtransaction_id == refund->rtransaction_id) )
         {
+          ref = tlp->details.refund;
           refund_found = GNUNET_YES;
           break;
         }
         /* Second, check if existing refund request conflicts */
-        if ( (0 == memcmp (&ref->merchant_pub,
+        if ( (0 == memcmp (&tlp->details.merchant_pub,
                            &refund->merchant_pub,
                            sizeof (struct TALER_MerchantPublicKeyP))) &&
-             (0 == memcmp (&ref->h_proposal_data,
+             (0 == memcmp (&tlp->details.h_proposal_data,
                            &refund->h_proposal_data,
                            sizeof (struct GNUNET_HashCode))) &&
-             (ref->rtransaction_id != refund->rtransaction_id) )
+             (tlp->details.rtransaction_id != refund->rtransaction_id) )
         {
-          GNUNET_break_op (0); /* conflicting refound found */
+          GNUNET_break_op (0); /* conflicting refund found */
           refund_found = GNUNET_SYSERR;
           /* NOTE: Alternatively we could total up all existing
              refunds and check if the sum still permits the
