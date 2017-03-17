@@ -1833,7 +1833,10 @@ refund_cb (void *cls,
   struct CoinContext *cc = cls;
   struct CoinSummary *cs;
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
+  struct DenominationSummary *ds;
   struct TALER_RefundRequestPS rr;
+  struct TALER_Amount amount_without_fee;
+  struct TALER_Amount refund_fee;
 
   cs = get_coin_summary (cc,
                          coin_pub);
@@ -1860,15 +1863,47 @@ refund_cb (void *cls,
                                   &merchant_sig->eddsa_sig,
                                   &merchant_pub->eddsa_pub))
   {
-    report_row_inconsistency ("deposit",
+    report_row_inconsistency ("refund",
                               rowid,
-                              "invalid signature for coin deposit");
+                              "invalid signature for refund");
     return GNUNET_OK;
   }
 
-  // TODO: update denomination key balance!
+  TALER_amount_ntoh (&refund_fee,
+                     &dki->properties.fee_refund);
+  if (GNUNET_OK !=
+      TALER_amount_subtract (&amount_without_fee,
+                             amount_with_fee,
+                             &refund_fee))
+  {
+    report_row_inconsistency ("refund",
+                              rowid,
+                              "refunded amount smaller than refund fee");
+    return GNUNET_OK;
+  }
 
-  // TODO: update expected amounts in 'cc'
+  /* update coin's denomination balance */
+  ds = get_denomination_summary (cc,
+                                 &dki->properties.denom_hash);
+  if (GNUNET_OK !=
+      TALER_amount_add (&ds->denom_balance,
+                        &ds->denom_balance,
+                        &amount_without_fee))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  /* update total refund fee balance */
+  if (GNUNET_OK !=
+      TALER_amount_add (&cc->refund_fee_balance,
+                        &cc->refund_fee_balance,
+                        &refund_fee))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
   return GNUNET_OK;
 }
 

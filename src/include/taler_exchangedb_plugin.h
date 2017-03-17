@@ -1738,6 +1738,9 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * FIXME: this is NOT the API we want here, as we cannot exactly determine the
+   * important WTID from the callback!
+   *
    * Function called to select all wire transfers the exchange
    * executed or plans to execute.
    *
