@@ -98,6 +98,28 @@ static struct TALER_AUDITORDB_ProgressPoint pp;
 
 /* ***************************** Report logic **************************** */
 
+
+/**
+ * Called in case we detect an emergency situation where the exchange
+ * is paying out a larger amount on a denomination than we issued in
+ * that denomination.  This means that the exchange's private keys
+ * might have gotten compromised, and that we need to trigger an
+ * emergency request to all wallets to deposit pending coins for the
+ * denomination (and as an exchange suffer a huge financial loss).
+ *
+ * @param dki denomination key where the loss was detected
+ */
+static void
+report_emergency (const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki)
+{
+  /* TODO: properly implement #3887, including how to continue the
+     audit after the emergency. */
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Emergency detected for denomination %s\n",
+              GNUNET_h2s (&dki->properties.denom_hash));
+}
+
+
 /**
  * Report a (serious) inconsistency in the exchange's database.
  *
@@ -1660,8 +1682,7 @@ refresh_session_cb (void *cls,
                              &dso->denom_balance,
                              amount_with_fee))
   {
-    // FIXME: trigger EMERGENCY PROTOCOL HERE! Exchange has been compromised!
-    GNUNET_break (0);
+    report_emergency (dki);
     return GNUNET_SYSERR;
   }
 
@@ -1776,8 +1797,7 @@ deposit_cb (void *cls,
                              &ds->denom_balance,
                              amount_with_fee))
   {
-    // FIXME: trigger EMERGENCY PROTOCOL HERE! Exchange has been compromised!
-    GNUNET_break (0);
+    report_emergency (dki);
     return GNUNET_SYSERR;
   }
 
