@@ -1196,7 +1196,7 @@ sync_denomination (void *cls,
   if (GNUNET_OK != ret)
   {
     GNUNET_break (0);
-    cc.ret = GNUNET_SYSERR;
+    cc->ret = GNUNET_SYSERR;
   }
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CONTAINER_multihashmap_remove (cc->denominations,
