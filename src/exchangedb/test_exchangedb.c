@@ -80,13 +80,6 @@ dead_prepare_cb (void *cls,
 
 
 /**
- * Counter used in auditor-related db functions. Used to count
- * expected rows.
- */
-unsigned int auditor_row_cnt;
-
-
-/**
  * Callback that is called with wire prepare data
  * and then marks it as finished.
  */
@@ -111,27 +104,6 @@ mark_prepare_cb (void *cls,
                                                          rowid));
 }
 
-/**
- * Callback with data about a prepared wire transfer.
- *
- * @param cls closure
- * @param rowid row identifier used to mark prepared transaction as done
- * @param wire_method which wire method is this preparation data for
- * @param buf transaction data that was persisted, NULL on error
- * @param buf_size number of bytes in @a buf, 0 on error
- * @param finished did we complete the transfer yet?
- */
-void
-audit_wire_cb (void *cls,
-               uint64_t rowid,
-               const char *wire_method,
-               const char *buf,
-               size_t buf_size,
-               int finished)
-{
-  auditor_row_cnt++;
-  return;
-}
 
 /**
  * Test API relating to persisting the wire plugins preparation data.
@@ -163,14 +135,6 @@ test_wire_prepare (struct TALER_EXCHANGEDB_Session *session)
                                          session,
                                          &dead_prepare_cb,
                                          NULL));
-  auditor_row_cnt = 0;
-  FAILIF (GNUNET_OK !=
-          plugin->select_prepare_above_serial_id (plugin->cls,
-	                                          session,
-						  0,
-						  &audit_wire_cb,
-						  NULL));
-  FAILIF (1 != auditor_row_cnt);
   return GNUNET_OK;
  drop:
   return GNUNET_SYSERR;
@@ -504,6 +468,13 @@ check_transfer_data (void *cls,
 
 
 /**
+ * Counter used in auditor-related db functions. Used to count
+ * expected rows.
+ */
+static unsigned int auditor_row_cnt;
+
+
+/**
  * Function called with details about coins that were melted,
  * with the goal of auditing the refresh's execution.
  *
@@ -531,6 +502,7 @@ audit_refresh_session_cb (void *cls,
   auditor_row_cnt++;
   return GNUNET_OK;
 }
+
 
 /**
  * Function to test melting of coins as part of a refresh session
@@ -1211,6 +1183,142 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
 }
 
 
+static struct GNUNET_TIME_Absolute wire_out_date;
+
+static struct TALER_WireTransferIdentifierRawP wire_out_wtid;
+
+static json_t *wire_out_account;
+
+static  struct TALER_Amount wire_out_amount;
+
+
+/**
+ * Callback with data about an executed wire transfer.
+ *
+ * @param cls closure
+ * @param rowid identifier of the respective row in the database
+ * @param date timestamp of the wire transfer (roughly)
+ * @param wtid wire transfer subject
+ * @param wire wire transfer details of the receiver
+ * @param amount amount that was wired
+ */
+static void
+audit_wire_cb (void *cls,
+               uint64_t rowid,
+               struct GNUNET_TIME_Absolute date,
+               const struct TALER_WireTransferIdentifierRawP *wtid,
+               const json_t *wire,
+               const struct TALER_Amount *amount)
+{
+  auditor_row_cnt++;
+  GNUNET_assert (0 ==
+                 TALER_amount_cmp (amount,
+                                   &wire_out_amount));
+  GNUNET_assert (0 ==
+                 memcmp (wtid,
+                         &wire_out_wtid,
+                         sizeof (*wtid)));
+  GNUNET_assert (date.abs_value_us == wire_out_date.abs_value_us);
+}
+
+
+/**
+ * Test API relating to wire_out handling.
+ *
+ * @param session database session to use for the test
+ * @return #GNUNET_OK on success
+ */
+static int
+test_wire_out (struct TALER_EXCHANGEDB_Session *session,
+               const struct TALER_EXCHANGEDB_Deposit *deposit)
+{
+  auditor_row_cnt = 0;
+  memset (&wire_out_wtid, 42, sizeof (wire_out_wtid));
+  wire_out_date = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&wire_out_date);
+  wire_out_account = json_loads ("{ \"account\":\"1\" }", 0, NULL);
+  GNUNET_assert (NULL != wire_out_account);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":1",
+                                         &wire_out_amount));
+  FAILIF (GNUNET_OK !=
+          plugin->store_wire_transfer_out (plugin->cls,
+                                           session,
+                                           wire_out_date,
+                                           &wire_out_wtid,
+                                           wire_out_account,
+                                           &wire_out_amount));
+  FAILIF (GNUNET_OK !=
+          plugin->select_wire_out_above_serial_id (plugin->cls,
+                                                   session,
+                                                   0,
+                                                   &audit_wire_cb,
+                                                   NULL));
+  FAILIF (1 != auditor_row_cnt);
+
+  /* setup values for wire transfer aggregation data */
+  merchant_pub_wt = deposit->merchant_pub;
+  h_wire_wt = deposit->h_wire;
+  h_proposal_data_wt = deposit->h_proposal_data;
+  coin_pub_wt = deposit->coin.coin_pub;
+  execution_time_wt = GNUNET_TIME_absolute_get ();
+  coin_value_wt = deposit->amount_with_fee;
+  coin_fee_wt = fee_deposit;
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_subtract (&transfer_value_wt,
+                                        &coin_value_wt,
+                                        &coin_fee_wt));
+  FAILIF (GNUNET_NO !=
+          plugin->lookup_wire_transfer (plugin->cls,
+                                        session,
+                                        &wtid_wt,
+                                        &cb_wt_never,
+                                        NULL));
+
+  {
+    struct GNUNET_HashCode h_proposal_data_wt2 = h_proposal_data_wt;
+
+    h_proposal_data_wt2.bits[0]++;
+    FAILIF (GNUNET_NO !=
+            plugin->wire_lookup_deposit_wtid (plugin->cls,
+                                              session,
+                                              &h_proposal_data_wt2,
+                                              &h_wire_wt,
+                                              &coin_pub_wt,
+                                              &merchant_pub_wt,
+                                              &cb_wtid_never,
+                                              NULL));
+  }
+  /* insert WT data */
+  FAILIF (GNUNET_OK !=
+          plugin->insert_aggregation_tracking (plugin->cls,
+                                               session,
+                                               &wtid_wt,
+                                               deposit_rowid,
+                                               execution_time_wt));
+  FAILIF (GNUNET_OK !=
+          plugin->lookup_wire_transfer (plugin->cls,
+                                        session,
+                                        &wtid_wt,
+                                        &cb_wt_check,
+                                        &cb_wt_never));
+  FAILIF (GNUNET_OK !=
+          plugin->wire_lookup_deposit_wtid (plugin->cls,
+                                            session,
+                                            &h_proposal_data_wt,
+                                            &h_wire_wt,
+                                            &coin_pub_wt,
+                                            &merchant_pub_wt,
+                                            &cb_wtid_check,
+                                            &cb_wtid_never));
+
+
+  return GNUNET_OK;
+ drop:
+  return GNUNET_SYSERR;
+}
+
+
 /**
  * Main function that will be run by the scheduler.
  *
@@ -1234,7 +1342,6 @@ run (void *cls)
   struct TALER_EXCHANGEDB_Refund refund;
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_EXCHANGEDB_TransactionList *tlp;
-  struct TALER_WireTransferIdentifierRawP wtid;
   json_t *wire;
   json_t *just;
   json_t *sndr;
@@ -1296,7 +1403,9 @@ run (void *cls)
 
   result = 4;
   sndr = json_loads ("{ \"account\":\"1\" }", 0, NULL);
+  GNUNET_assert (NULL != sndr);
   just = json_loads ("{ \"justification\":\"1\" }", 0, NULL);
+  GNUNET_assert (NULL != just);
   FAILIF (GNUNET_OK !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
@@ -1631,64 +1740,11 @@ run (void *cls)
   plugin->free_coin_transaction_list (plugin->cls,
                                       tl);
 
-  FAILIF (GNUNET_OK != test_wire_prepare (session));
-
-  /* setup values for wire transfer aggregation data */
-  memset (&wtid, 42, sizeof (wtid));
-  merchant_pub_wt = deposit.merchant_pub;
-  h_wire_wt = deposit.h_wire;
-  h_proposal_data_wt = deposit.h_proposal_data;
-  coin_pub_wt = deposit.coin.coin_pub;
-  execution_time_wt = GNUNET_TIME_absolute_get ();
-  coin_value_wt = deposit.amount_with_fee;
-  coin_fee_wt = fee_deposit;
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_subtract (&transfer_value_wt,
-                                        &coin_value_wt,
-                                        &coin_fee_wt));
-  FAILIF (GNUNET_NO !=
-          plugin->lookup_wire_transfer (plugin->cls,
-                                        session,
-                                        &wtid_wt,
-                                        &cb_wt_never,
-                                        NULL));
-
-  {
-    struct GNUNET_HashCode h_proposal_data_wt2 = h_proposal_data_wt;
-
-    h_proposal_data_wt2.bits[0]++;
-    FAILIF (GNUNET_NO !=
-            plugin->wire_lookup_deposit_wtid (plugin->cls,
-                                              session,
-                                              &h_proposal_data_wt2,
-                                              &h_wire_wt,
-                                              &coin_pub_wt,
-                                              &merchant_pub_wt,
-                                              &cb_wtid_never,
-                                              NULL));
-  }
-  /* insert WT data */
   FAILIF (GNUNET_OK !=
-          plugin->insert_aggregation_tracking (plugin->cls,
-                                               session,
-                                               &wtid_wt,
-                                               deposit_rowid,
-                                               execution_time_wt));
+          test_wire_prepare (session));
   FAILIF (GNUNET_OK !=
-          plugin->lookup_wire_transfer (plugin->cls,
-                                        session,
-                                        &wtid_wt,
-                                        &cb_wt_check,
-                                        &cb_wt_never));
-  FAILIF (GNUNET_OK !=
-          plugin->wire_lookup_deposit_wtid (plugin->cls,
-                                            session,
-                                            &h_proposal_data_wt,
-                                            &h_wire_wt,
-                                            &coin_pub_wt,
-                                            &merchant_pub_wt,
-                                            &cb_wtid_check,
-                                            &cb_wtid_never));
+          test_wire_out (session,
+                         &deposit));
   FAILIF (GNUNET_OK !=
           test_gc (session));
   FAILIF (GNUNET_OK !=

@@ -781,6 +781,26 @@ typedef void
 
 
 /**
+ * Function called with the results of the lookup of the
+ * wire transfer data of the exchange.
+ *
+ * @param cls closure
+ * @param rowid identifier of the respective row in the database
+ * @param date timestamp of the wire transfer (roughly)
+ * @param wtid wire transfer subject
+ * @param wire wire transfer details of the receiver
+ * @param amount amount that was wired
+ */
+typedef void
+(*TALER_EXCHANGEDB_WireTransferOutCallback)(void *cls,
+                                            uint64_t rowid,
+                                            struct GNUNET_TIME_Absolute date,
+                                            const struct TALER_WireTransferIdentifierRawP *wtid,
+                                            const json_t *wire,
+                                            const struct TALER_Amount *amount);
+
+
+/**
  * Callback with data about a prepared wire transfer.
  *
  * @param cls closure
@@ -1620,6 +1640,27 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Store information about an outgoing wire transfer that was executed.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param date time of the wire transfer
+   * @param wtid subject of the wire transfer
+   * @param wire details about the receiver account of the wire transfer
+   * @param amount amount that was transmitted
+   * @return #GNUNET_OK on success
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*store_wire_transfer_out)(void *cls,
+                             struct TALER_EXCHANGEDB_Session *session,
+                             struct GNUNET_TIME_Absolute date,
+                             const struct TALER_WireTransferIdentifierRawP *wtid,
+                             const json_t *wire,
+                             const struct TALER_Amount *amount);
+
+
+  /**
    * Function called to perform "garbage collection" on the
    * database, expiring records we no longer require.
    *
@@ -1738,15 +1779,12 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * FIXME: this is NOT the API we want here, as we cannot exactly determine the
-   * important WTID from the callback!
-   *
-   * Function called to select all wire transfers the exchange
-   * executed or plans to execute.
+   * Function called to select outgoing wire transfers the exchange
+   * executed, ordered by serial ID (monotonically increasing).
    *
    * @param cls closure
    * @param session database connection
-   * @param serial_id highest serial ID to exclude (select strictly larger)
+   * @param serial_id lowest serial ID to include (select larger or equal)
    * @param cb function to call for ONE unfinished item
    * @param cb_cls closure for @a cb
    * @return #GNUNET_OK on success,
@@ -1754,11 +1792,11 @@ struct TALER_EXCHANGEDB_Plugin
    *         #GNUNET_SYSERR on DB errors
    */
   int
-  (*select_prepare_above_serial_id)(void *cls,
-                                    struct TALER_EXCHANGEDB_Session *session,
-                                    uint64_t serial_id,
-                                    TALER_EXCHANGEDB_WirePreparationCallback cb,
-                                    void *cb_cls);
+  (*select_wire_out_above_serial_id)(void *cls,
+                                     struct TALER_EXCHANGEDB_Session *session,
+                                     uint64_t serial_id,
+                                     TALER_EXCHANGEDB_WireTransferOutCallback cb,
+                                     void *cb_cls);
 
 };
 

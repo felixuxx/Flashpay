@@ -216,6 +216,8 @@ postgres_drop_tables (void *cls)
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS aggregation_tracking;");
   SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS wire_out;");
+  SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS wire_fee;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS deposits;");
@@ -503,6 +505,17 @@ postgres_create_tables (void *cls)
   SQLEXEC_INDEX("CREATE INDEX prepare_iteration_index "
                 "ON prewire(type,finished)");
 
+  /* This table contains the data for
+     wire transfers the exchange has executed. */
+  SQLEXEC("CREATE TABLE IF NOT EXISTS wire_out "
+          "(wireout_uuid BIGSERIAL PRIMARY KEY"
+          ",execution_date INT8 NOT NULL"
+          ",wtid_raw BYTEA NOT NULL CHECK (LENGTH(wtid_raw)=" TALER_WIRE_TRANSFER_IDENTIFIER_LEN_STR ")"
+          ",wire_target TEXT NOT NULL"
+          ",amount_val INT8 NOT NULL"
+          ",amount_frac INT4 NOT NULL"
+          ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ")");
 
 #undef SQLEXEC
 #undef SQLEXEC_INDEX
@@ -1291,6 +1304,18 @@ postgres_prepare (PGconn *db_conn)
            "($1, $2, $3, $4, $5, $6, $7)",
            7, NULL);
 
+  /* Used in #postgres_store_wire_transfer_out */
+  PREPARE ("insert_wire_out",
+           "INSERT INTO wire_out "
+           "(execution_date"
+           ",wtid_raw"
+           ",wire_target"
+           ",amount_val"
+           ",amount_frac"
+           ",amount_curr"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6)",
+           6, NULL);
 
   /* Used in #postgres_wire_prepare_data_insert() to store
      wire transfer information before actually committing it with the bank */
@@ -1328,16 +1353,19 @@ postgres_prepare (PGconn *db_conn)
            " WHERE finished=true",
            0, NULL);
 
-  /* Used in #postgres_select_prepare_above_serial_id() */
+  /* Used in #postgres_select_wire__out_above_serial_id() */
   PREPARE ("audit_get_wire_incr",
            "SELECT"
-           " type"
-           ",buf"
-           ",finished"
-           ",prewire_uuid"
-           " FROM prewire"
-           " WHERE prewire_uuid>=$1"
-           " ORDER BY prewire_uuid ASC",
+           " wireout_uuid"
+           ",execution_date"
+           ",wtid_raw"
+           ",wire_target"
+           ",amount_val"
+           ",amount_frac"
+           ",amount_curr"
+           " FROM wire_out"
+           " WHERE wireout_uuid>=$1"
+           " ORDER BY wireout_uuid ASC",
            1, NULL);
 
   PREPARE ("gc_denominations",
@@ -4606,6 +4634,49 @@ postgres_wire_prepare_data_get (void *cls,
 
 
 /**
+ * Store information about an outgoing wire transfer that was executed.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param date time of the wire transfer
+ * @param wtid subject of the wire transfer
+ * @param wire details about the receiver account of the wire transfer
+ * @param amount amount that was transmitted
+ * @return #GNUNET_OK on success
+ *         #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_store_wire_transfer_out (void *cls,
+                                  struct TALER_EXCHANGEDB_Session *session,
+                                  struct GNUNET_TIME_Absolute date,
+                                  const struct TALER_WireTransferIdentifierRawP *wtid,
+                                  const json_t *wire,
+                                  const struct TALER_Amount *amount)
+{
+  PGresult *result;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_absolute_time (&date),
+    GNUNET_PQ_query_param_auto_from_type (wtid),
+    TALER_PQ_query_param_json (wire),
+    TALER_PQ_query_param_amount (amount),
+    GNUNET_PQ_query_param_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "insert_wire_out",
+                                    params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
  * Function called to perform "garbage collection" on the
  * database, expiring records we no longer require.
  *
@@ -5166,7 +5237,7 @@ postgres_select_reserves_out_above_serial_id (void *cls,
 
 /**
  * Function called to select all wire transfers the exchange
- * executed or plans to execute.
+ * executed.
  *
  * @param cls closure
  * @param session database connection
@@ -5178,13 +5249,12 @@ postgres_select_reserves_out_above_serial_id (void *cls,
  *         #GNUNET_SYSERR on DB errors
  */
 static int
-postgres_select_prepare_above_serial_id (void *cls,
-                                         struct TALER_EXCHANGEDB_Session *session,
-                                         uint64_t serial_id,
-                                         TALER_EXCHANGEDB_WirePreparationCallback cb,
-                                         void *cb_cls)
+postgres_select_wire_out_above_serial_id (void *cls,
+                                          struct TALER_EXCHANGEDB_Session *session,
+                                          uint64_t serial_id,
+                                          TALER_EXCHANGEDB_WireTransferOutCallback cb,
+                                          void *cb_cls)
 {
-
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&serial_id),
     GNUNET_PQ_query_param_end
@@ -5201,7 +5271,6 @@ postgres_select_prepare_above_serial_id (void *cls,
     return GNUNET_SYSERR;
   }
   int nrows;
-  int i;
 
   nrows = PQntuples (result);
   if (0 == nrows)
@@ -5211,24 +5280,25 @@ postgres_select_prepare_above_serial_id (void *cls,
     PQclear (result);
     return GNUNET_NO;
   }
-  for (i=0;i<nrows;i++)
+  for (int i=0;i<nrows;i++)
   {
-    char *wire_method;
-    void *buf;
-    size_t buf_size;
-    uint8_t finished;
-    uint64_t uuid;
+    uint64_t rowid;
+    struct GNUNET_TIME_Absolute date;
+    struct TALER_WireTransferIdentifierRawP wtid;
+    json_t *wire;
+    struct TALER_Amount amount;
 
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_string ("type",
-                                    &wire_method),
-      GNUNET_PQ_result_spec_variable_size ("buf",
-                                           &buf,
-                                           &buf_size),
-      GNUNET_PQ_result_spec_auto_from_type ("finished",
-                                            &finished),
-      GNUNET_PQ_result_spec_uint64 ("prewire_uuid",
-                                    &uuid),
+      GNUNET_PQ_result_spec_uint64 ("wireout_uuid",
+                                    &rowid),
+      GNUNET_PQ_result_spec_absolute_time ("execution_date",
+                                           &date),
+      GNUNET_PQ_result_spec_auto_from_type ("wtid_raw",
+                                            &wtid),
+      TALER_PQ_result_spec_json ("wire_target",
+                                 &wire),
+      TALER_PQ_result_spec_amount ("amount",
+                                   &amount),
       GNUNET_PQ_result_spec_end
     };
 
@@ -5243,11 +5313,11 @@ postgres_select_prepare_above_serial_id (void *cls,
     }
 
     cb (cb_cls,
-        uuid,
-        wire_method,
-        buf,
-        buf_size,
-        finished);
+        rowid,
+        date,
+        &wtid,
+        wire,
+        &amount);
     GNUNET_PQ_cleanup_result (rs);
   }
 
@@ -5347,13 +5417,14 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->wire_prepare_data_insert = &postgres_wire_prepare_data_insert;
   plugin->wire_prepare_data_mark_finished = &postgres_wire_prepare_data_mark_finished;
   plugin->wire_prepare_data_get = &postgres_wire_prepare_data_get;
+  plugin->store_wire_transfer_out = &postgres_store_wire_transfer_out;
   plugin->gc = &postgres_gc;
   plugin->select_deposits_above_serial_id = &postgres_select_deposits_above_serial_id;
   plugin->select_refreshs_above_serial_id = &postgres_select_refreshs_above_serial_id;
   plugin->select_refunds_above_serial_id = &postgres_select_refunds_above_serial_id;
   plugin->select_reserves_in_above_serial_id = &postgres_select_reserves_in_above_serial_id;
   plugin->select_reserves_out_above_serial_id = &postgres_select_reserves_out_above_serial_id;
-  plugin->select_prepare_above_serial_id = &postgres_select_prepare_above_serial_id;
+  plugin->select_wire_out_above_serial_id = &postgres_select_wire_out_above_serial_id;
   return plugin;
 }
 

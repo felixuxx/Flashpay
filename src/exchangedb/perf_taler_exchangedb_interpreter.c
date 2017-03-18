@@ -1692,7 +1692,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
  */
 int
 PERF_TALER_EXCHANGEDB_interpret (struct TALER_EXCHANGEDB_Plugin *db_plugin,
-                             struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
+                                 struct PERF_TALER_EXCHANGEDB_Cmd cmd[])
 {
   int ret;
   struct PERF_TALER_EXCHANGEDB_interpreter_state state =
@@ -1702,6 +1702,8 @@ PERF_TALER_EXCHANGEDB_interpret (struct TALER_EXCHANGEDB_Plugin *db_plugin,
   if (GNUNET_SYSERR == ret)
     return ret;
   state.session = db_plugin->get_session (db_plugin->cls);
+  if (NULL == state.session)
+    return GNUNET_SYSERR;
   GNUNET_assert (NULL != state.session);
   ret = interpret (&state);
   cmd_clean (cmd);
