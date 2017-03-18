@@ -25,15 +25,18 @@
  *   given in the 'wire_out' table. This needs to be checked separately!
  *
  * TODO:
- * - COMPLETE: implement misc. FIXMEs
- * - COMPLETE: deal with risk / expired denomination keys in #sync_denomination
- * - SANITY: rename operations to better describe what they do!
+ * - FIXME: do proper transaction history check in #check_transaction_history()
+ * - COMPLETE: deal with risk / expired denomination keys in #sync_denomination()
+ * - SANITY: rename functions/operations to better describe what they do!
  * - OPTIMIZE/SIMPLIFY: modify auditordb to return DK when we inquire about deposit/refresh/refund,
  *   so we can avoid the costly #get_coin_summary with the transaction history building
  *   (at least during #analyze_coins); the logic may be partially useful in
  *   #analyze_merchants (but we won't need the cache!)
+ * - MAJOR: check that aggregation records exist for deposits past payment deadline
+ *          (or that there was a full refund and thus there is no aggregation)
+ *          Conceptual issue: how do we deal with deposits that we already checked
+ *          in the past? => Need a very separate check / pass for this!
  * - BEAUTIFY: write reporting logic to output nice report beyond GNUNET_log()
- * - write logic to deal with emergency (#3887) -- and emergency-related tables!
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -417,18 +420,6 @@ struct ReserveSummary
   struct GNUNET_TIME_Absolute a_expiration_date;
 
   /**
-   * Previous last processed reserve_in serial ID, as remembered by the auditor.
-   * (updated on-the-fly in #handle_reserve_in()).
-   */
-  uint64_t a_last_reserve_in_serial_id;
-
-  /**
-   * Previous last processed reserve_out serial ID, as remembered by the auditor.
-   * (updated on-the-fly in #handle_reserve_out()).
-   */
-  uint64_t a_last_reserve_out_serial_id;
-
-  /**
    * Did we have a previous reserve info?  Used to decide between
    * UPDATE and INSERT later.  Initialized in
    * #load_auditor_reserve_summary() together with the a-* values
@@ -460,9 +451,7 @@ load_auditor_reserve_summary (struct ReserveSummary *rs)
                                &rowid,
                                &rs->a_balance,
                                &rs->a_withdraw_fee_balance,
-                               &rs->a_expiration_date,
-                               &rs->a_last_reserve_in_serial_id,
-                               &rs->a_last_reserve_out_serial_id);
+                               &rs->a_expiration_date);
   if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);
@@ -585,8 +574,6 @@ handle_reserve_in (void *cls,
                                      &rs->total_in,
                                      credit));
   }
-  GNUNET_assert (rowid >= rs->a_last_reserve_in_serial_id);
-  rs->a_last_reserve_in_serial_id = rowid + 1;
   expiry = GNUNET_TIME_absolute_add (execution_date,
                                      TALER_IDLE_RESERVE_EXPIRATION_TIME);
   rs->a_expiration_date = GNUNET_TIME_absolute_max (rs->a_expiration_date,
@@ -718,8 +705,6 @@ handle_reserve_out (void *cls,
                                      &rs->total_out,
                                      amount_with_fee));
   }
-  GNUNET_assert (rowid >= rs->a_last_reserve_out_serial_id);
-  rs->a_last_reserve_out_serial_id = rowid + 1;
 
   TALER_amount_ntoh (&withdraw_fee,
                      &dki->properties.fee_withdraw);
@@ -862,9 +847,7 @@ verify_reserve_balance (void *cls,
                                     &master_pub,
                                     &balance,
                                     &rs->a_withdraw_fee_balance,
-                                    rs->a_expiration_date,
-                                    rs->a_last_reserve_in_serial_id,
-                                    rs->a_last_reserve_out_serial_id);
+                                    rs->a_expiration_date);
   else
     ret = adb->insert_reserve_info (adb->cls,
                                     asession,
@@ -872,9 +855,7 @@ verify_reserve_balance (void *cls,
                                     &master_pub,
                                     &balance,
                                     &rs->a_withdraw_fee_balance,
-                                    rs->a_expiration_date,
-                                    rs->a_last_reserve_in_serial_id,
-                                    rs->a_last_reserve_out_serial_id);
+                                    rs->a_expiration_date);
 
   if ( (GNUNET_YES !=
         TALER_amount_add (&rc->total_balance,
@@ -1203,9 +1184,9 @@ sync_denomination (void *cls,
   int ret;
 
 
-  // FIXME: if expired, insert remaining balance historic denomination revenue,
+  // COMPLETE: if expired, insert remaining balance historic denomination revenue,
   // DELETE denomination balance, and REDUCE cc->risk exposure!
-  if (0)
+  if (0 /* COMPLETE: add expiration check! */)
   {
     if (ds->in_db)
       ret = adb->del_denomination_balance (adb->cls,
@@ -1306,7 +1287,7 @@ free_coin (void *cls,
  * @param coin_pub public key of the coin to get information about
  * @return NULL on error
  */
-// FIXME: replace by something that just gets the denomination hash!
+// OPTIMIZE/SIMPLIFY: replace by something that just gets the denomination hash!
 // (makes this part WAY more efficient!)
 static struct CoinSummary *
 get_coin_summary (struct CoinContext *cc,
@@ -1774,10 +1755,6 @@ deposit_cb (void *cls,
     }
   }
 
-  /* TODO: *if* past pay_deadline, check that aggregation record
-     exists for the deposit, and if NOT, check that full _refund_
-     exists. */
-
   return GNUNET_OK;
 }
 
@@ -1903,7 +1880,7 @@ analyze_coins (void *cls)
 
   /* setup 'cc' */
   cc.ret = GNUNET_OK;
-  // FIXME: FIX misnomer "denomination_summary", as this is no longer exactly about denominations!
+  // SANITY: FIX misnomer "denomination_summary", as this is no longer exactly about denominations!
   dret = adb->get_denomination_summary (adb->cls,
                                         asession,
                                         &master_pub,
@@ -1945,7 +1922,7 @@ analyze_coins (void *cls)
   if (GNUNET_OK !=
       edb->select_reserves_out_above_serial_id (edb->cls,
                                                 esession,
-                                                42LL, // FIXME
+                                                pp.last_reserve_out_serial_id,
                                                 &withdraw_cb,
                                                 &cc))
   {
@@ -1957,7 +1934,7 @@ analyze_coins (void *cls)
   if (GNUNET_OK !=
       edb->select_refreshs_above_serial_id (edb->cls,
                                             esession,
-                                            42LL, // FIXME
+                                            pp.last_melt_serial_id,
                                             &refresh_session_cb,
                                             &cc))
   {
@@ -1969,7 +1946,7 @@ analyze_coins (void *cls)
   if (GNUNET_OK !=
       edb->select_deposits_above_serial_id (edb->cls,
                                             esession,
-                                            42LL, // FIXME
+                                            pp.last_deposit_serial_id,
                                             &deposit_cb,
                                             &cc))
   {
@@ -1981,7 +1958,7 @@ analyze_coins (void *cls)
   if (GNUNET_OK !=
       edb->select_refunds_above_serial_id (edb->cls,
                                            esession,
-                                           42LL, // FIXME
+                                           pp.last_refund_serial_id,
                                            &refund_cb,
                                            &cc))
   {
@@ -1999,7 +1976,7 @@ analyze_coins (void *cls)
                                          &cc);
   GNUNET_CONTAINER_multihashmap_destroy (cc.coins);
 
-  // FIXME: FIX misnomer "denomination_summary", as this is no longer about denominations!
+  // SANITY: FIX misnomer "denomination_summary", as this is no longer about denominations!
   if (GNUNET_YES == dret)
       dret = adb->update_denomination_summary (adb->cls,
                                                asession,
@@ -2547,7 +2524,7 @@ analyze_merchants (void *cls)
   if (GNUNET_SYSERR ==
       edb->select_wire_out_above_serial_id (edb->cls,
                                             esession,
-                                            42 /* FIXME */,
+                                            pp.last_wire_out_serial_id,
                                             &check_wire_out_cb,
                                             &mc))
   {
@@ -2618,7 +2595,7 @@ incremental_processing (Analysis analysis,
                   (unsigned long long) pp.last_deposit_serial_id,
                   (unsigned long long) pp.last_melt_serial_id,
                   (unsigned long long) pp.last_refund_serial_id,
-                  (unsigned long long) pp.last_prewire_serial_id);
+                  (unsigned long long) pp.last_wire_out_serial_id);
     }
   ret = analysis (analysis_cls);
   if (GNUNET_OK != ret)
@@ -2643,7 +2620,7 @@ incremental_processing (Analysis analysis,
               (unsigned long long) pp.last_deposit_serial_id,
               (unsigned long long) pp.last_melt_serial_id,
               (unsigned long long) pp.last_refund_serial_id,
-              (unsigned long long) pp.last_prewire_serial_id);
+              (unsigned long long) pp.last_wire_out_serial_id);
   return GNUNET_OK;
 }
 

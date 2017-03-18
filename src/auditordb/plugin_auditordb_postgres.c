@@ -279,7 +279,7 @@ postgres_create_tables (void *cls)
 	   ",last_deposit_serial_id INT8 NOT NULL"
            ",last_melt_serial_id INT8 NOT NULL"
 	   ",last_refund_serial_id INT8 NOT NULL"
-	   ",last_prewire_serial_id INT8 NOT NULL"
+	   ",last_wire_out_serial_id INT8 NOT NULL"
 	   ")");
 
   /* Table with all of the customer reserves and their respective
@@ -298,8 +298,6 @@ postgres_create_tables (void *cls)
            ",withdraw_fee_balance_frac INT4 NOT NULL"
            ",withdraw_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
            ",expiration_date INT8 NOT NULL"
-	   ",last_reserve_in_serial_id INT8 NOT NULL"
-           ",last_reserve_out_serial_id INT8 NOT NULL"
            ",auditor_reserves_rowid BIGSERIAL"
 	   ")");
 
@@ -552,7 +550,7 @@ postgres_prepare (PGconn *db_conn)
 	   ",last_deposit_serial_id"
            ",last_melt_serial_id"
 	   ",last_refund_serial_id"
-	   ",last_prewire_serial_id"
+	   ",last_wire_out_serial_id"
            ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
            7, NULL);
 
@@ -564,7 +562,7 @@ postgres_prepare (PGconn *db_conn)
 	   ",last_deposit_serial_id=$3"
            ",last_melt_serial_id=$4"
 	   ",last_refund_serial_id=$5"
-	   ",last_prewire_serial_id=$6"
+	   ",last_wire_out_serial_id=$6"
            " WHERE master_pub=$7",
            7, NULL);
 
@@ -576,7 +574,7 @@ postgres_prepare (PGconn *db_conn)
 	   ",last_deposit_serial_id"
            ",last_melt_serial_id"
 	   ",last_refund_serial_id"
-	   ",last_prewire_serial_id"
+	   ",last_wire_out_serial_id"
            " FROM auditor_progress"
            " WHERE master_pub=$1;",
            1, NULL);
@@ -593,10 +591,8 @@ postgres_prepare (PGconn *db_conn)
            ",withdraw_fee_balance_frac"
            ",withdraw_fee_balance_curr"
            ",expiration_date"
-	   ",last_reserve_in_serial_id"
-           ",last_reserve_out_serial_id"
-           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);",
-           11, NULL);
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
+           9, NULL);
 
   /* Used in #postgres_update_reserve_info() */
   PREPARE ("auditor_reserves_update",
@@ -608,10 +604,8 @@ postgres_prepare (PGconn *db_conn)
            ",withdraw_fee_balance_frac=$5"
            ",withdraw_fee_balance_curr=$6"
            ",expiration_date=$7"
-	   ",last_reserve_in_serial_id=$8"
-           ",last_reserve_out_serial_id=$9"
-           " WHERE reserve_pub=$10 AND master_pub=$11;",
-           11, NULL);
+           " WHERE reserve_pub=$8 AND master_pub=$9;",
+           9, NULL);
 
   /* Used in #postgres_get_reserve_info() */
   PREPARE ("auditor_reserves_select",
@@ -623,8 +617,6 @@ postgres_prepare (PGconn *db_conn)
            ",withdraw_fee_balance_frac"
            ",withdraw_fee_balance_curr"
            ",expiration_date"
-	   ",last_reserve_in_serial_id"
-           ",last_reserve_out_serial_id"
            ",auditor_reserves_rowid"
            " FROM auditor_reserves"
            " WHERE reserve_pub=$1 AND master_pub=$2;",
@@ -1278,7 +1270,7 @@ postgres_insert_auditor_progress (void *cls,
     GNUNET_PQ_query_param_uint64 (&pp->last_deposit_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_melt_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_refund_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_prewire_serial_id),
+    GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
     GNUNET_PQ_query_param_end
   };
   int ret;
@@ -1323,7 +1315,7 @@ postgres_update_auditor_progress (void *cls,
     GNUNET_PQ_query_param_uint64 (&pp->last_deposit_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_melt_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_refund_serial_id),
-    GNUNET_PQ_query_param_uint64 (&pp->last_prewire_serial_id),
+    GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -1373,7 +1365,7 @@ postgres_get_auditor_progress (void *cls,
     GNUNET_PQ_result_spec_uint64 ("last_deposit_serial_id", &pp->last_deposit_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_melt_serial_id", &pp->last_melt_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_refund_serial_id", &pp->last_refund_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_prewire_serial_id", &pp->last_prewire_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_wire_out_serial_id", &pp->last_wire_out_serial_id),
     GNUNET_PQ_result_spec_end
   };
 
@@ -1424,10 +1416,6 @@ postgres_get_auditor_progress (void *cls,
  * @param withdraw_fee_balance amount the exchange gained in withdraw fees
  *                             due to withdrawals from this reserve
  * @param expiration_date expiration date of the reserve
- * @param last_reserve_in_serial_id up to which point did we consider
- *                 incoming transfers for the above information
- * @param last_reserve_out_serial_id up to which point did we consider
- *                 withdrawals for the above information
  * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
  */
 static int
@@ -1437,9 +1425,7 @@ postgres_insert_reserve_info (void *cls,
                               const struct TALER_MasterPublicKeyP *master_pub,
                               const struct TALER_Amount *reserve_balance,
                               const struct TALER_Amount *withdraw_fee_balance,
-                              struct GNUNET_TIME_Absolute expiration_date,
-                              uint64_t last_reserve_in_serial_id,
-                              uint64_t last_reserve_out_serial_id)
+                              struct GNUNET_TIME_Absolute expiration_date)
 {
   PGresult *result;
   int ret;
@@ -1449,8 +1435,6 @@ postgres_insert_reserve_info (void *cls,
     TALER_PQ_query_param_amount (reserve_balance),
     TALER_PQ_query_param_amount (withdraw_fee_balance),
     GNUNET_PQ_query_param_auto_from_type (&expiration_date),
-    GNUNET_PQ_query_param_uint64 (&last_reserve_in_serial_id),
-    GNUNET_PQ_query_param_uint64 (&last_reserve_out_serial_id),
     GNUNET_PQ_query_param_end
   };
 
@@ -1487,10 +1471,6 @@ postgres_insert_reserve_info (void *cls,
  * @param withdraw_fee_balance amount the exchange gained in withdraw fees
  *                             due to withdrawals from this reserve
  * @param expiration_date expiration date of the reserve
- * @param last_reserve_in_serial_id up to which point did we consider
- *                 incoming transfers for the above information
- * @param last_reserve_out_serial_id up to which point did we consider
- *                 withdrawals for the above information
  * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
  */
 static int
@@ -1500,9 +1480,7 @@ postgres_update_reserve_info (void *cls,
                               const struct TALER_MasterPublicKeyP *master_pub,
                               const struct TALER_Amount *reserve_balance,
                               const struct TALER_Amount *withdraw_fee_balance,
-                              struct GNUNET_TIME_Absolute expiration_date,
-                              uint64_t last_reserve_in_serial_id,
-                              uint64_t last_reserve_out_serial_id)
+                              struct GNUNET_TIME_Absolute expiration_date)
 {
   PGresult *result;
   int ret;
@@ -1510,8 +1488,6 @@ postgres_update_reserve_info (void *cls,
     TALER_PQ_query_param_amount (reserve_balance),
     TALER_PQ_query_param_amount (withdraw_fee_balance),
     GNUNET_PQ_query_param_auto_from_type (&expiration_date),
-    GNUNET_PQ_query_param_uint64 (&last_reserve_in_serial_id),
-    GNUNET_PQ_query_param_uint64 (&last_reserve_out_serial_id),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
@@ -1591,10 +1567,6 @@ postgres_del_reserve_info (void *cls,
  * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
  *                             due to withdrawals from this reserve
  * @param[out] expiration_date expiration date of the reserve
- * @param[out] last_reserve_in_serial_id up to which point did we consider
- *                 incoming transfers for the above information
- * @param[out] last_reserve_out_serial_id up to which point did we consider
- *                 withdrawals for the above information
  * @return #GNUNET_OK on success; #GNUNET_NO if there is no known
  *         record about this reserve; #GNUNET_SYSERR on failure
  */
@@ -1606,9 +1578,7 @@ postgres_get_reserve_info (void *cls,
                            uint64_t *rowid,
                            struct TALER_Amount *reserve_balance,
                            struct TALER_Amount *withdraw_fee_balance,
-                           struct GNUNET_TIME_Absolute *expiration_date,
-                           uint64_t *last_reserve_in_serial_id,
-                           uint64_t *last_reserve_out_serial_id)
+                           struct GNUNET_TIME_Absolute *expiration_date)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
@@ -1641,8 +1611,6 @@ postgres_get_reserve_info (void *cls,
     TALER_PQ_result_spec_amount ("reserve_balance", reserve_balance),
     TALER_PQ_result_spec_amount ("withdraw_fee_balance", withdraw_fee_balance),
     GNUNET_PQ_result_spec_auto_from_type ("expiration_date", expiration_date),
-    GNUNET_PQ_result_spec_uint64 ("last_reserve_in_serial_id", last_reserve_in_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_reserve_out_serial_id", last_reserve_out_serial_id),
     GNUNET_PQ_result_spec_uint64 ("auditor_reserves_rowid", rowid),
     GNUNET_PQ_result_spec_end
   };

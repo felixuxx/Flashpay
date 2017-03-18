@@ -208,7 +208,7 @@ run (void *cls)
     .last_deposit_serial_id = 123,
     .last_melt_serial_id = 456,
     .last_refund_serial_id = 789,
-    .last_prewire_serial_id = 555
+    .last_wire_out_serial_id = 555
   };
   struct TALER_AUDITORDB_ProgressPoint pp2 = {
     .last_reserve_in_serial_id = 0,
@@ -216,7 +216,7 @@ run (void *cls)
     .last_deposit_serial_id = 0,
     .last_melt_serial_id = 0,
     .last_refund_serial_id = 0,
-    .last_prewire_serial_id = 0
+    .last_wire_out_serial_id = 0
   };
 
   FAILIF (GNUNET_OK !=
@@ -232,7 +232,7 @@ run (void *cls)
   pp.last_deposit_serial_id++;
   pp.last_melt_serial_id++;
   pp.last_refund_serial_id++;
-  pp.last_prewire_serial_id++;
+  pp.last_wire_out_serial_id++;
 
   FAILIF (GNUNET_OK !=
           plugin->update_auditor_progress (plugin->cls,
@@ -253,7 +253,7 @@ run (void *cls)
            (pp.last_deposit_serial_id != pp2.last_deposit_serial_id) ||
            (pp.last_melt_serial_id != pp2.last_melt_serial_id) ||
            (pp.last_refund_serial_id != pp2.last_refund_serial_id) ||
-           (pp.last_prewire_serial_id != pp2.last_prewire_serial_id) );
+           (pp.last_wire_out_serial_id != pp2.last_wire_out_serial_id) );
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_reserve_info\n");
@@ -275,15 +275,10 @@ run (void *cls)
                                        &master_pub,
                                        &reserve_balance,
                                        &withdraw_fee_balance,
-                                       past,
-                                       pp.last_reserve_in_serial_id,
-                                       pp.last_reserve_out_serial_id));
+                                       past));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_reserve_info\n");
-
-  pp.last_reserve_in_serial_id++;
-  pp.last_reserve_out_serial_id++;
 
   FAILIF (GNUNET_OK !=
           plugin->update_reserve_info (plugin->cls,
@@ -292,9 +287,7 @@ run (void *cls)
                                        &master_pub,
                                        &reserve_balance,
                                        &withdraw_fee_balance,
-                                       future,
-                                       pp.last_reserve_in_serial_id,
-                                       pp.last_reserve_out_serial_id));
+                                       future));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_reserve_info\n");
@@ -307,15 +300,11 @@ run (void *cls)
                                     &rowid,
                                     &reserve_balance2,
                                     &withdraw_fee_balance2,
-                                    &date,
-                                    &pp2.last_reserve_in_serial_id,
-                                    &pp2.last_reserve_out_serial_id));
+                                    &date));
 
   FAILIF (0 != memcmp (&date, &future, sizeof (future))
           || 0 != memcmp (&reserve_balance2, &reserve_balance, sizeof (reserve_balance))
-          || 0 != memcmp (&withdraw_fee_balance2, &withdraw_fee_balance, sizeof (withdraw_fee_balance))
-          || pp2.last_reserve_in_serial_id != pp.last_reserve_in_serial_id
-          || pp2.last_reserve_out_serial_id != pp.last_reserve_out_serial_id);
+          || 0 != memcmp (&withdraw_fee_balance2, &withdraw_fee_balance, sizeof (withdraw_fee_balance)));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_reserve_summary\n");

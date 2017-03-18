@@ -146,11 +146,7 @@ struct TALER_AUDITORDB_ProgressPoint
   /**
    * last_prewire_serial_id serial ID of the last prewire transfer the auditor processed
    */
-  uint64_t last_prewire_serial_id;
-
-  // FIXME: the above does not quite work, as independent transactions
-  // touch certain tables (i.e. reserves_out), so we need some of
-  // these counters more than once!
+  uint64_t last_wire_out_serial_id;
 
 };
 
@@ -358,10 +354,6 @@ struct TALER_AUDITORDB_Plugin
    * @param withdraw_fee_balance amount the exchange gained in withdraw fees
    *                             due to withdrawals from this reserve
    * @param expiration_date expiration date of the reserve
-   * @param last_reserve_in_serial_id up to which point did we consider
-   *                 incoming transfers for the above information
-   * @param last_reserve_out_serial_id up to which point did we consider
-   *                 withdrawals for the above information
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
@@ -371,9 +363,7 @@ struct TALER_AUDITORDB_Plugin
                          const struct TALER_MasterPublicKeyP *master_pub,
                          const struct TALER_Amount *reserve_balance,
                          const struct TALER_Amount *withdraw_fee_balance,
-                         struct GNUNET_TIME_Absolute expiration_date,
-                         uint64_t last_reserve_in_serial_id,
-                         uint64_t last_reserve_out_serial_id);
+                         struct GNUNET_TIME_Absolute expiration_date);
 
 
   /**
@@ -388,10 +378,6 @@ struct TALER_AUDITORDB_Plugin
    * @param withdraw_fee_balance amount the exchange gained in withdraw fees
    *                             due to withdrawals from this reserve
    * @param expiration_date expiration date of the reserve
-   * @param last_reserve_in_serial_id up to which point did we consider
-   *                 incoming transfers for the above information
-   * @param last_reserve_out_serial_id up to which point did we consider
-   *                 withdrawals for the above information
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
@@ -401,9 +387,7 @@ struct TALER_AUDITORDB_Plugin
                          const struct TALER_MasterPublicKeyP *master_pub,
                          const struct TALER_Amount *reserve_balance,
                          const struct TALER_Amount *withdraw_fee_balance,
-                         struct GNUNET_TIME_Absolute expiration_date,
-                         uint64_t last_reserve_in_serial_id,
-                         uint64_t last_reserve_out_serial_id);
+                         struct GNUNET_TIME_Absolute expiration_date);
 
 
   /**
@@ -418,10 +402,6 @@ struct TALER_AUDITORDB_Plugin
    * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
    *                             due to withdrawals from this reserve
    * @param[out] expiration_date expiration date of the reserve
-   * @param[out] last_reserve_in_serial_id up to which point did we consider
-   *                 incoming transfers for the above information
-   * @param[out] last_reserve_out_serial_id up to which point did we consider
-   *                 withdrawals for the above information
    * @return #GNUNET_OK on success; #GNUNET_NO if there is no known
    *         record about this reserve; #GNUNET_SYSERR on failure
    */
@@ -433,9 +413,7 @@ struct TALER_AUDITORDB_Plugin
                       uint64_t *rowid,
                       struct TALER_Amount *reserve_balance,
                       struct TALER_Amount *withdraw_fee_balance,
-                      struct GNUNET_TIME_Absolute *expiration_date,
-                      uint64_t *last_reserve_in_serial_id,
-                      uint64_t *last_reserve_out_serial_id);
+                      struct GNUNET_TIME_Absolute *expiration_date);
 
 
   /**
