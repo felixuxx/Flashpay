@@ -22,13 +22,13 @@
  * - This auditor does not verify that 'reserves_in' actually matches
  *   the wire transfers from the bank. This needs to be checked separately!
  * - Similarly, we do not check that the outgoing wire transfers match those
- *   given in the 'wire_out' (TBD!) table. This needs to be checked separately!
+ *   given in the 'wire_out' table. This needs to be checked separately!
  *
  * TODO:
- * - implement merchant deposit audit
- *   => we need a 'wire_out' table here (amount, h-wire, date, wtid)
- * - modify auditordb to allow multiple last serial IDs per table in progress tracking
- * - modify auditordb to track risk with balances and fees
+ * - implement merchant deposit audit starting with 'wire_out'
+ * - modify auditordb to allow multiple last serial IDs per table in progress tracking (needed?)
+ * - modify auditordb to track risk with balances and fees (and rename callback
+ *   to clarify what it is)
  * - modify auditordb to return DK when we inquire about deposit/refresh/refund,
  *   so we can avoid the costly #get_coin_summary with the transaction history building
  *   (at least during #analyze_coins); the logic may be partially useful in
@@ -42,6 +42,7 @@
 #include "taler_auditordb_plugin.h"
 #include "taler_exchangedb_plugin.h"
 #include "taler_json_lib.h"
+#include "taler_wire_lib.h"
 #include "taler_signatures.h"
 
 
@@ -69,6 +70,11 @@ static struct TALER_EXCHANGEDB_Plugin *edb;
  * Which currency are we doing the audit for?
  */
 static char *currency;
+
+/**
+ * Our configuration.
+ */
+static const struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
  * Our session with the #edb.
@@ -1231,115 +1237,6 @@ free_coin (void *cls,
 
 
 /**
- * Check coin's transaction history for plausibility.  Does NOT check
- * the signatures (those are checked independently), but does check
- * that the amounts add up to a plausible overall picture.
- *
- * FIXME: is it wise to do this here? Maybe better to do this during
- * processing of payments to the merchants...
- *
- * @param coin_pub public key of the coin (for reporting)
- * @param dki denomination information about the coin
- * @param tl_head head of transaction history to verify
- */
-static void
-check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                           const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
-                           const struct TALER_EXCHANGEDB_TransactionList *tl_head)
-{
-  struct TALER_Amount expenditures;
-  struct TALER_Amount refunds;
-  struct TALER_Amount fees;
-  struct TALER_Amount final_expenditures;
-
-  GNUNET_assert (NULL != tl_head);
-  TALER_amount_get_zero (currency,
-                         &expenditures);
-  TALER_amount_get_zero (currency,
-                         &refunds);
-  TALER_amount_get_zero (currency,
-                         &fees);
-  for (const struct TALER_EXCHANGEDB_TransactionList *tl = tl_head;NULL != tl;tl = tl->next)
-  {
-    const struct TALER_Amount *amount_with_fee;
-    const struct TALER_Amount *fee;
-    const struct TALER_AmountNBO *fee_dki;
-    struct TALER_Amount *add_to;
-    struct TALER_Amount tmp;
-
-    add_to = NULL;
-    switch (tl->type) {
-    case TALER_EXCHANGEDB_TT_DEPOSIT:
-      amount_with_fee = &tl->details.deposit->amount_with_fee;
-      fee = &tl->details.deposit->deposit_fee;
-      fee_dki = &dki->properties.fee_deposit;
-      add_to = &expenditures;
-      break;
-    case TALER_EXCHANGEDB_TT_REFRESH_MELT:
-      amount_with_fee = &tl->details.melt->amount_with_fee;
-      fee = &tl->details.melt->melt_fee;
-      fee_dki = &dki->properties.fee_refresh;
-      add_to = &expenditures;
-      break;
-    case TALER_EXCHANGEDB_TT_REFUND:
-      amount_with_fee = &tl->details.refund->refund_amount;
-      fee = &tl->details.refund->refund_fee;
-      fee_dki = &dki->properties.fee_refund;
-      add_to = &refunds;
-      // FIXME: where do we check that the refund(s)
-      // of the coin match the deposit(s) of the coin (by merchant, timestamp, etc.)?
-      break;
-    }
-    GNUNET_assert (NULL != add_to); /* check switch was exhaustive */
-    if (GNUNET_OK !=
-        TALER_amount_add (add_to,
-                          add_to,
-                          amount_with_fee))
-    {
-      /* overflow in history already!? inconceivable! Bad DB! */
-      GNUNET_break (0);
-      // FIXME: report!
-      return;
-    }
-    TALER_amount_ntoh (&tmp,
-                       fee_dki);
-    if (0 !=
-        TALER_amount_cmp (&tmp,
-                          fee))
-    {
-      /* Disagreement in fee structure within DB! */
-      GNUNET_break (0);
-      // FIXME: report!
-      return;
-    }
-    if (GNUNET_OK !=
-        TALER_amount_add (&fees,
-                          &fees,
-                          fee))
-    {
-      /* overflow in fee total? inconceivable! Bad DB! */
-      GNUNET_break (0);
-      // FIXME: report!
-      return;
-    }
-  } /* for 'tl' */
-
-  /* Finally, calculate total balance change, i.e. expenditures minus refunds */
-  if (GNUNET_OK !=
-      TALER_amount_subtract (&final_expenditures,
-                             &expenditures,
-                             &refunds))
-  {
-    /* refunds above expenditures? inconceivable! Bad DB! */
-    GNUNET_break (0);
-    // FIXME: report!
-    return;
-  }
-
-}
-
-
-/**
  * Obtain information about the coin from the cache or the database.
  *
  * If we obtain this information for the first time, also check that
@@ -1349,10 +1246,8 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
  * @param coin_pub public key of the coin to get information about
  * @return NULL on error
  */
-// FIXME: move this to _outgoing_ transaction checking,
-// replace HERE by something that just gets the denomination hash!
-// (avoids confusion on checking coin's transaction history AND
-//  makes this part WAY more efficient!)
+// FIXME: replace by something that just gets the denomination hash!
+// (makes this part WAY more efficient!)
 static struct CoinSummary *
 get_coin_summary (struct CoinContext *cc,
                   const struct TALER_CoinSpendPublicKeyP *coin_pub)
@@ -1407,11 +1302,6 @@ get_coin_summary (struct CoinContext *cc,
                                      tl);
     return NULL;
   }
-
-  /* verify that the transaction history we are given is reasonable */
-  check_transaction_history (coin_pub,
-                             dki,
-                             tl);
 
   /* allocate coin slot in ring buffer */
   if (MAX_COIN_SUMMARIES >= cc->summaries_off)
@@ -1824,6 +1714,10 @@ deposit_cb (void *cls,
     }
   }
 
+  /* TODO: *if* past pay_deadline, check that
+     aggregation record exists for the deposit;
+     if NOT, check that full _refund_ exists. */
+
   return GNUNET_OK;
 }
 
@@ -2108,36 +2002,30 @@ analyze_coins (void *cls)
 
 
 /**
- * Summary data we keep per merchant.
+ * Information we keep per loaded wire plugin.
  */
-struct MerchantSummary
+struct WirePlugin
 {
 
   /**
-   * Which account were we supposed to pay?
+   * Kept in a DLL.
    */
-  struct GNUNET_HashCode h_wire;
+  struct WirePlugin *next;
 
   /**
-   * Total due to be paid to @e h_wire.
+   * Kept in a DLL.
    */
-  struct TALER_Amount total_due;
+  struct WirePlugin *prev;
 
   /**
-   * Total paid to @e h_wire.
+   * Name of the wire method.
    */
-  struct TALER_Amount total_paid;
+  char *type;
 
   /**
-   * Total wire fees charged.
+   * Handle to the wire plugin.
    */
-  struct TALER_Amount total_fees;
-
-  /**
-   * Last (expired) refund deadline of all the transactions totaled
-   * up in @e due.
-   */
-  struct GNUNET_TIME_Absolute last_refund_deadline;
+  struct TALER_WIRE_Plugin *plugin;
 
 };
 
@@ -2149,11 +2037,423 @@ struct MerchantContext
 {
 
   /**
-   * Map for tracking information about merchants.
+   * DLL of wire plugins encountered.
    */
-  struct GNUNET_CONTAINER_MultiHashMap *merchants;
+  struct WirePlugin *wire_head;
+
+  /**
+   * DLL of wire plugins encountered.
+   */
+  struct WirePlugin *wire_tail;
 
 };
+
+
+/**
+ * Find the relevant wire plugin.
+ *
+ * @param mc context to search
+ * @param type type of the wire plugin to load
+ * @return NULL on error
+ */
+static struct TALER_WIRE_Plugin *
+get_wire_plugin (struct MerchantContext *mc,
+                 const char *type)
+{
+  struct WirePlugin *wp;
+  struct TALER_WIRE_Plugin *plugin;
+
+  for (wp = mc->wire_head; NULL != wp; wp = wp->next)
+    if (0 == strcmp (type,
+                     wp->type))
+      return wp->plugin;
+  plugin = TALER_WIRE_plugin_load (cfg,
+                                   type);
+  if (NULL == plugin)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to locate wire plugin for `%s'\n",
+                type);
+    return NULL;
+  }
+  wp = GNUNET_new (struct WirePlugin);
+  wp->type = GNUNET_strdup (type);
+  wp->plugin = plugin;
+  GNUNET_CONTAINER_DLL_insert (mc->wire_head,
+                               mc->wire_tail,
+                               wp);
+  return plugin;
+}
+
+
+/**
+ * Closure for #wire_transfer_information_cb.
+ */
+struct WireCheckContext
+{
+
+  /**
+   * Corresponding merchant context.
+   */
+  struct MerchantContext *mc;
+
+  /**
+   * Total deposits claimed by all transactions that were aggregated
+   * under the given @e wtid.
+   */
+  struct TALER_Amount total_deposits;
+
+  /**
+   * Hash of the wire transfer details of the receiver.
+   */
+  struct GNUNET_HashCode h_wire;
+
+  /**
+   * Execution time of the wire transfer.
+   */
+  struct GNUNET_TIME_Absolute date;
+
+  /**
+   * Set to error message of @e ok is #GNUNET_SYSERR.
+   */
+  const char *emsg;
+
+  /**
+   * Wire method used for the transfer.
+   */
+  const char *method;
+
+  /**
+   * Set to #GNUNET_SYSERR if there are inconsistencies.
+   */
+  int ok;
+
+};
+
+
+/**
+ * Check coin's transaction history for plausibility.  Does NOT check
+ * the signatures (those are checked independently), but does check
+ * that the amounts add up to the picture claimed by the aggregation table.
+ *
+ * @param coin_pub public key of the coin (for reporting)
+ * @param h_proposal_data hash of the proposal for which we calculate the amount
+ * @param merchant_pub public key of the merchant (who is allowed to issue refunds)
+ * @param dki denomination information about the coin
+ * @param tl_head head of transaction history to verify
+ * @param[out] final amount the coin contributes to the transaction
+ * @param[out] final fees the exchange charged for the transaction
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+static int
+check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                           const struct GNUNET_HashCode *h_proposal_data,
+                           const struct TALER_MerchantPublicKeyP *merchant_pub,
+                           const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
+                           const struct TALER_EXCHANGEDB_TransactionList *tl_head,
+                           struct TALER_Amount *final_expenditures,
+                           struct TALER_Amount *final_fees)
+{
+  struct TALER_Amount expenditures;
+  struct TALER_Amount refunds;
+  struct TALER_Amount fees;
+
+  GNUNET_assert (NULL != tl_head);
+  TALER_amount_get_zero (currency,
+                         &expenditures);
+  TALER_amount_get_zero (currency,
+                         &refunds);
+  TALER_amount_get_zero (currency,
+                         &fees);
+  for (const struct TALER_EXCHANGEDB_TransactionList *tl = tl_head;NULL != tl;tl = tl->next)
+  {
+    const struct TALER_Amount *amount_with_fee;
+    const struct TALER_Amount *fee;
+    const struct TALER_AmountNBO *fee_dki;
+    struct TALER_Amount *add_to;
+    struct TALER_Amount tmp;
+
+    add_to = NULL;
+    // FIXME:
+    // - for refunds/deposits that apply to this merchant and this contract
+    //   we need to update the total expenditures/refunds/fees
+    // - for all other operations, we need to update the per-coin totals
+    //   and at the end check that they do not exceed the value of the coin!
+    switch (tl->type) {
+    case TALER_EXCHANGEDB_TT_DEPOSIT:
+      amount_with_fee = &tl->details.deposit->amount_with_fee;
+      fee = &tl->details.deposit->deposit_fee;
+      fee_dki = &dki->properties.fee_deposit;
+      add_to = &expenditures;
+      break;
+    case TALER_EXCHANGEDB_TT_REFRESH_MELT:
+      amount_with_fee = &tl->details.melt->amount_with_fee;
+      fee = &tl->details.melt->melt_fee;
+      fee_dki = &dki->properties.fee_refresh;
+      add_to = &expenditures;
+      break;
+    case TALER_EXCHANGEDB_TT_REFUND:
+      amount_with_fee = &tl->details.refund->refund_amount;
+      fee = &tl->details.refund->refund_fee;
+      fee_dki = &dki->properties.fee_refund;
+      add_to = &refunds;
+      // FIXME: where do we check that the refund(s)
+      // of the coin match the deposit(s) of the coin (by merchant, timestamp, etc.)?
+      break;
+    }
+    GNUNET_assert (NULL != add_to); /* check switch was exhaustive */
+    if (GNUNET_OK !=
+        TALER_amount_add (add_to,
+                          add_to,
+                          amount_with_fee))
+    {
+      /* overflow in history already!? inconceivable! Bad DB! */
+      GNUNET_break (0);
+      // FIXME: report!
+      return GNUNET_SYSERR;
+    }
+    TALER_amount_ntoh (&tmp,
+                       fee_dki);
+    if (0 !=
+        TALER_amount_cmp (&tmp,
+                          fee))
+    {
+      /* Disagreement in fee structure within DB! */
+      GNUNET_break (0);
+      // FIXME: report!
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_OK !=
+        TALER_amount_add (&fees,
+                          &fees,
+                          fee))
+    {
+      /* overflow in fee total? inconceivable! Bad DB! */
+      GNUNET_break (0);
+      // FIXME: report!
+      return GNUNET_SYSERR;
+    }
+  } /* for 'tl' */
+
+  /* Finally, calculate total balance change, i.e. expenditures minus refunds */
+  if (GNUNET_OK !=
+      TALER_amount_subtract (final_expenditures,
+                             &expenditures,
+                             &refunds))
+  {
+    /* refunds above expenditures? inconceivable! Bad DB! */
+    GNUNET_break (0);
+    // FIXME: report!
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Function called with the results of the lookup of the
+ * transaction data associated with a wire transfer identifier.
+ *
+ * @param cls a `struct WireCheckContext`
+ * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
+ * @param wire_method which wire plugin was used for the transfer?
+ * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
+ * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
+ * @param h_proposal_data which proposal was this payment about
+ * @param coin_pub which public key was this payment about
+ * @param coin_value amount contributed by this coin in total (with fee)
+ * @param coin_fee applicable fee for this coin
+ */
+// TODO: modify to have rowid to log errors in a more fine-grained way?
+static void
+wire_transfer_information_cb (void *cls,
+                              const struct TALER_MerchantPublicKeyP *merchant_pub,
+                              const char *wire_method,
+                              const struct GNUNET_HashCode *h_wire,
+                              struct GNUNET_TIME_Absolute exec_time,
+                              const struct GNUNET_HashCode *h_proposal_data,
+                              const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                              const struct TALER_Amount *coin_value,
+                              const struct TALER_Amount *coin_fee)
+{
+  struct WireCheckContext *wcc = cls;
+  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
+  struct TALER_Amount contribution;
+  struct TALER_Amount computed_value;
+  struct TALER_Amount computed_fees;
+  struct TALER_EXCHANGEDB_TransactionList *tl;
+  const struct TALER_CoinPublicInfo *coin;
+
+  /* Obtain coin's transaction history */
+  tl = edb->get_coin_transactions (edb->cls,
+                                   esession,
+                                   coin_pub);
+  if (NULL == tl)
+  {
+    wcc->ok = GNUNET_SYSERR;
+    wcc->emsg = "no transaction history for coin claimed in aggregation";
+    return;
+  }
+
+  /* Obtain general denomination information about the coin */
+  coin = NULL;
+  switch (tl->type)
+  {
+  case TALER_EXCHANGEDB_TT_DEPOSIT:
+    coin = &tl->details.deposit->coin;
+    break;
+  case TALER_EXCHANGEDB_TT_REFRESH_MELT:
+    coin = &tl->details.melt->coin;
+    break;
+  case TALER_EXCHANGEDB_TT_REFUND:
+    coin = &tl->details.refund->coin;
+    break;
+  }
+  GNUNET_assert (NULL != coin); /* hard check that switch worked */
+  if (GNUNET_OK !=
+      get_denomination_info (&coin->denom_pub,
+                             &dki,
+                             NULL))
+  {
+    GNUNET_break (0);
+    edb->free_coin_transaction_list (edb->cls,
+                                     tl);
+    wcc->ok = GNUNET_SYSERR;
+    wcc->emsg = "could not find denomination key for coin claimed in aggregation";
+    return;
+  }
+
+  /* Check transaction history to see if it supports aggregate valuation */
+  check_transaction_history (coin_pub,
+                             h_proposal_data,
+                             merchant_pub,
+                             dki,
+                             tl,
+                             &computed_value,
+                             &computed_fees);
+  if (0 !=
+      TALER_amount_cmp (&computed_value,
+                        coin_value))
+  {
+    wcc->ok = GNUNET_SYSERR;
+    wcc->emsg = "coin transaction history and aggregation disagree about coin's contribution";
+  }
+  if (0 !=
+      TALER_amount_cmp (&computed_fees,
+                        coin_fee))
+  {
+    wcc->ok = GNUNET_SYSERR;
+    wcc->emsg = "coin transaction history and aggregation disagree about applicable fees";
+  }
+  edb->free_coin_transaction_list (edb->cls,
+                                   tl);
+
+  /* Check other details of wire transfer match */
+  if (0 != strcmp (wire_method,
+                   wcc->method))
+  {
+    wcc->ok = GNUNET_SYSERR;
+    wcc->emsg = "wire method of aggregate do not match wire transfer";
+    return;
+  }
+  if (0 != memcmp (h_wire,
+                   &wcc->h_wire,
+                   sizeof (struct GNUNET_HashCode)))
+  {
+    wcc->ok = GNUNET_SYSERR;
+    wcc->emsg = "account details of aggregate do not match account details of wire transfer";
+    return;
+  }
+  if (exec_time.abs_value_us != wcc->date.abs_value_us)
+  {
+    wcc->ok = GNUNET_SYSERR;
+    wcc->emsg = "date given in aggregate does not match wire transfer date";
+    return;
+  }
+  if (GNUNET_SYSERR ==
+      TALER_amount_subtract (&contribution,
+                             coin_value,
+                             coin_fee))
+  {
+    wcc->ok = GNUNET_SYSERR;
+    wcc->emsg = "could not calculate contribution of coin";
+    return;
+  }
+
+  /* Add coin's contribution to total aggregate value */
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&wcc->total_deposits,
+                                   &wcc->total_deposits,
+                                   &contribution));
+}
+
+
+/**
+ * Check that a wire transfer made by the exchange is valid
+ * (has matching deposits).
+ *
+ * @param cls a `struct MerchantContext`
+ * @param rowid identifier of the respective row in the database
+ * @param date timestamp of the wire transfer (roughly)
+ * @param wtid wire transfer subject
+ * @param wire wire transfer details of the receiver
+ * @param amount amount that was wired
+ */
+static void
+check_wire_out_cb (void *cls,
+                   uint64_t rowid,
+                   struct GNUNET_TIME_Absolute date,
+                   const struct TALER_WireTransferIdentifierRawP *wtid,
+                   const json_t *wire,
+                   const struct TALER_Amount *amount)
+{
+  struct MerchantContext *mc = cls;
+  struct WireCheckContext wcc;
+  json_t *method;
+  struct TALER_WIRE_Plugin *plugin;
+
+  wcc.mc = mc;
+  method = json_object_get (wire,
+                            "type");
+  if ( (NULL == method) ||
+       (! json_is_string (method)) )
+  {
+    // TODO: bitch
+  }
+  wcc.method = json_string_value (method);
+  wcc.ok = GNUNET_OK;
+  wcc.date = date;
+  TALER_amount_get_zero (amount->currency,
+                         &wcc.total_deposits);
+  TALER_JSON_hash (wire,
+                   &wcc.h_wire);
+  edb->lookup_wire_transfer (edb->cls,
+                             esession,
+                             wtid,
+                             &wire_transfer_information_cb,
+                             &wcc);
+  if (GNUNET_OK != wcc.ok)
+  {
+    // TODO: bitch
+  }
+  plugin = get_wire_plugin (mc,
+                            wcc.method);
+  if (NULL == plugin)
+  {
+    // TODO: bitch
+  }
+  if (GNUNET_OK !=
+      plugin->amount_round (plugin->cls,
+                            &wcc.total_deposits))
+  {
+    // TODO: bitch
+  }
+  if (0 != TALER_amount_cmp (amount,
+                             &wcc.total_deposits))
+  {
+    // TODO: bitch!
+  }
+}
 
 
 /**
@@ -2166,14 +2466,32 @@ static int
 analyze_merchants (void *cls)
 {
   struct MerchantContext mc;
+  struct WirePlugin *wc;
+  int ret;
 
-  mc.merchants = GNUNET_CONTAINER_multihashmap_create (1024,
-                                                       GNUNET_YES);
-
-  // TODO
-
-  GNUNET_CONTAINER_multihashmap_destroy (mc.merchants);
-  return GNUNET_OK;
+  ret = GNUNET_OK;
+  mc.wire_head = NULL;
+  mc.wire_tail = NULL;
+  if (GNUNET_SYSERR ==
+      edb->select_wire_out_above_serial_id (edb->cls,
+                                            esession,
+                                            42 /* FIXME */,
+                                            &check_wire_out_cb,
+                                            &mc))
+  {
+    GNUNET_break (0);
+    ret = GNUNET_SYSERR;
+  }
+  while (NULL != (wc = mc.wire_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (mc.wire_head,
+                                 mc.wire_tail,
+                                 wc);
+    TALER_WIRE_plugin_unload (wc->plugin);
+    GNUNET_free (wc->type);
+    GNUNET_free (wc);
+  }
+  return ret;
 }
 
 
@@ -2364,14 +2682,15 @@ setup_sessions_and_run ()
  * @param cls closure
  * @param args remaining command-line arguments
  * @param cfgfile name of the configuration file used (for saving, can be NULL!)
- * @param cfg configuration
+ * @param c configuration
  */
 static void
 run (void *cls,
      char *const *args,
      const char *cfgfile,
-     const struct GNUNET_CONFIGURATION_Handle *cfg)
+     const struct GNUNET_CONFIGURATION_Handle *c)
 {
+  cfg = c;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "taler",

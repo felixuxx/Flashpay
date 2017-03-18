@@ -24,6 +24,7 @@ taler_auditor_LDADD = \
   $(top_builddir)/src/wire/libtalerwire.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
+  -ljansson \
   -lgnunetutil
 
 taler_auditor_sign_SOURCES = \
