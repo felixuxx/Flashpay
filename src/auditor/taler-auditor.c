@@ -26,7 +26,6 @@
  *
  * TODO:
  * - FIXME: do proper transaction history check in #check_transaction_history()
- * - COMPLETE: deal with risk / expired denomination keys in #sync_denomination()
  * - SANITY: rename functions/operations to better describe what they do!
  * - OPTIMIZE/SIMPLIFY: modify auditordb to return DK when we inquire about deposit/refresh/refund,
  *   so we can avoid the costly #get_coin_summary with the transaction history building
@@ -56,6 +55,11 @@
  * in the millions.
  */
 #define MAX_COIN_SUMMARIES 4
+
+/**
+ * Use a 1 day grace period to deal with clocks not being perfectly synchronized.
+ */
+#define DEPOSIT_GRACE_PERIOD GNUNET_TIME_UNIT_DAYS
 
 /**
  * Return value from main().
@@ -305,11 +309,11 @@ get_denomination_info (const struct TALER_DenominationPublicKey *denom_pub,
   dkip = GNUNET_CONTAINER_multihashmap_get (denominations,
                                             dh);
   if (NULL != dkip)
-    {
-      /* cache hit */
-      *dki = dkip;
-      return GNUNET_OK;
-    }
+  {
+    /* cache hit */
+    *dki = dkip;
+    return GNUNET_OK;
+  }
   dkip = GNUNET_new (struct TALER_EXCHANGEDB_DenominationKeyInformationP);
   ret = edb->get_denomination_info (edb->cls,
                                     esession,
@@ -1019,6 +1023,11 @@ struct DenominationSummary
   struct TALER_Amount denom_risk;
 
   /**
+   * Denomination key information for this denomination.
+   */
+  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
+
+  /**
    * #GNUNET_YES if this record already existed in the DB.
    * Used to decide between insert/update in
    * #sync_denomination().
@@ -1133,11 +1142,13 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
  * Obtain the denomination summary for the given @a dh
  *
  * @param cc our execution context
+ * @param dki denomination key information for @a dh
  * @param dh the denomination hash to use for the lookup
  * @return NULL on error
  */
 static struct DenominationSummary *
 get_denomination_summary (struct CoinContext *cc,
+                          const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
                           const struct GNUNET_HashCode *dh)
 {
   struct DenominationSummary *ds;
@@ -1147,6 +1158,7 @@ get_denomination_summary (struct CoinContext *cc,
   if (NULL != ds)
     return ds;
   ds = GNUNET_new (struct DenominationSummary);
+  ds->dki = dki;
   if (GNUNET_OK !=
       init_denomination (dh,
                          ds))
@@ -1181,13 +1193,21 @@ sync_denomination (void *cls,
 {
   struct CoinContext *cc = cls;
   struct DenominationSummary *ds = value;
+  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki = ds->dki;
+  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Absolute expire_deposit;
+  struct GNUNET_TIME_Absolute expire_deposit_grace;
   int ret;
 
-
-  // COMPLETE: if expired, insert remaining balance historic denomination revenue,
-  // DELETE denomination balance, and REDUCE cc->risk exposure!
-  if (0 /* COMPLETE: add expiration check! */)
+  now = GNUNET_TIME_absolute_get ();
+  expire_deposit = GNUNET_TIME_absolute_ntoh (dki->properties.expire_deposit);
+  /* add day grace period to deal with clocks not being perfectly synchronized */
+  expire_deposit_grace = GNUNET_TIME_absolute_add (expire_deposit,
+                                                   DEPOSIT_GRACE_PERIOD);
+  if (now.abs_value_us > expire_deposit_grace.abs_value_us)
   {
+    /* Denominationkey has expired, book remaining balance of
+       outstanding coins as revenue; and reduce cc->risk exposure. */
     if (ds->in_db)
       ret = adb->del_denomination_balance (adb->cls,
                                            asession,
@@ -1195,9 +1215,7 @@ sync_denomination (void *cls,
     else
       ret = GNUNET_OK;
     if ( (GNUNET_OK == ret) &&
-         ( (0 != ds->denom_balance.value) ||
-           (0 != ds->denom_balance.fraction) ||
-           (0 != ds->denom_risk.value) ||
+         ( (0 != ds->denom_risk.value) ||
            (0 != ds->denom_risk.fraction) ) )
     {
       /* The denomination expired and carried a balance; we can now
@@ -1214,8 +1232,25 @@ sync_denomination (void *cls,
         cc->ret = GNUNET_SYSERR;
         return GNUNET_OK;
       }
-
-      // TODO: book denom_balance expiration profits!
+    }
+    if ( (GNUNET_OK == ret) &&
+         ( (0 != ds->denom_balance.value) ||
+           (0 != ds->denom_balance.fraction) ) )
+    {
+      /* book denom_balance coin expiration profits! */
+      if (GNUNET_OK !=
+          adb->insert_historic_denom_revenue (adb->cls,
+                                              asession,
+                                              &master_pub,
+                                              denom_hash,
+                                              expire_deposit,
+                                              &ds->denom_balance))
+      {
+        /* Failed to store profits? Bad database */
+        GNUNET_break (0);
+        cc->ret = GNUNET_SYSERR;
+        return GNUNET_OK;
+      }
     }
   }
   else
@@ -1412,6 +1447,7 @@ withdraw_cb (void *cls,
     return GNUNET_SYSERR;
   }
   ds = get_denomination_summary (cc,
+                                 dki,
                                  &dh);
   TALER_amount_ntoh (&value,
                      &dki->properties.value);
@@ -1590,6 +1626,7 @@ refresh_session_cb (void *cls,
       struct TALER_Amount value;
 
       dsi = get_denomination_summary (cc,
+                                      new_dki[i],
                                       &new_dki[i]->properties.denom_hash);
       TALER_amount_ntoh (&value,
                          &new_dki[i]->properties.value);
@@ -1614,6 +1651,7 @@ refresh_session_cb (void *cls,
 
   /* update old coin's denomination balance */
   dso = get_denomination_summary (cc,
+                                  dki,
                                   &dki->properties.denom_hash);
   if (GNUNET_OK !=
       TALER_amount_subtract (&dso->denom_balance,
@@ -1729,6 +1767,7 @@ deposit_cb (void *cls,
 
   /* update old coin's denomination balance */
   ds = get_denomination_summary (cc,
+                                 dki,
                                  &dki->properties.denom_hash);
   if (GNUNET_OK !=
       TALER_amount_subtract (&ds->denom_balance,
@@ -1842,6 +1881,7 @@ refund_cb (void *cls,
 
   /* update coin's denomination balance */
   ds = get_denomination_summary (cc,
+                                 dki,
                                  &dki->properties.denom_hash);
   if (GNUNET_OK !=
       TALER_amount_add (&ds->denom_balance,

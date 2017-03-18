@@ -461,10 +461,7 @@ run (void *cls)
                                                  &master_pub,
                                                  &denom_pub_hash,
                                                  past,
-                                                 &rbalance,
-                                                 &deposit_fee_balance,
-                                                 &melt_fee_balance,
-                                                 &refund_fee_balance));
+                                                 &rbalance));
 
   FAILIF (GNUNET_OK !=
           plugin->insert_historic_denom_revenue (plugin->cls,
@@ -472,10 +469,7 @@ run (void *cls)
                                                  &master_pub,
                                                  &rnd_hash,
                                                  now,
-                                                 &rbalance,
-                                                 &deposit_fee_balance,
-                                                 &melt_fee_balance,
-                                                 &refund_fee_balance));
+                                                 &rbalance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: select_historic_denom_revenue\n");
@@ -484,10 +478,7 @@ run (void *cls)
   select_historic_denom_revenue_result (void *cls,
                                         const struct GNUNET_HashCode *denom_pub_hash2,
                                         struct GNUNET_TIME_Absolute revenue_timestamp2,
-                                        const struct TALER_Amount *revenue_balance2,
-                                        const struct TALER_Amount *deposit_fee_balance2,
-                                        const struct TALER_Amount *melt_fee_balance2,
-                                        const struct TALER_Amount *refund_fee_balance2)
+                                        const struct TALER_Amount *revenue_balance2)
   {
     static int n = 0;
 
@@ -500,10 +491,7 @@ run (void *cls)
             && 0 != memcmp (&revenue_timestamp2, &now, sizeof (now)))
         || (0 != memcmp (denom_pub_hash2, &denom_pub_hash, sizeof (denom_pub_hash))
             && 0 != memcmp (denom_pub_hash2, &rnd_hash, sizeof (rnd_hash)))
-        || 0 != memcmp (revenue_balance2, &rbalance, sizeof (rbalance))
-        || 0 != memcmp (deposit_fee_balance2, &deposit_fee_balance, sizeof (deposit_fee_balance))
-        || 0 != memcmp (melt_fee_balance2, &melt_fee_balance, sizeof (melt_fee_balance))
-        || 0 != memcmp (refund_fee_balance2, &refund_fee_balance, sizeof (refund_fee_balance)))
+        || 0 != memcmp (revenue_balance2, &rbalance, sizeof (rbalance)))
     {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "select_historic_denom_revenue_result: result does not match\n");

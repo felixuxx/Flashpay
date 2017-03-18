@@ -53,10 +53,6 @@ typedef int
  * @param revenue_balance what was the total profit made from
  *                        deposit fees, melting fees, refresh fees
  *                        and coins that were never returned?
- * @param deposit_fee_balance total profits from deposit fees
- * @param melt_fee_balance total profits from melting fees
- * @param refund_fee_balance total profits from refund fees
- *
  * @return sets the return value of select_denomination_info(),
  *         #GNUNET_OK to continue,
  *         #GNUNET_NO to stop processing further rows
@@ -66,10 +62,7 @@ typedef int
 (*TALER_AUDITORDB_HistoricDenominationRevenueDataCallback)(void *cls,
                                                            const struct GNUNET_HashCode *denom_pub_hash,
                                                            struct GNUNET_TIME_Absolute revenue_timestamp,
-                                                           const struct TALER_Amount *revenue_balance,
-                                                           const struct TALER_Amount *deposit_fee_balance,
-                                                           const struct TALER_Amount *melt_fee_balance,
-                                                           const struct TALER_Amount *refund_fee_balance);
+                                                           const struct TALER_Amount *revenue_balance);
 
 
 /**
@@ -650,10 +643,7 @@ struct TALER_AUDITORDB_Plugin
    * @param revenue_balance what was the total profit made from
    *                        deposit fees, melting fees, refresh fees
    *                        and coins that were never returned?
-   * @param deposit_fee_balance total profits from deposit fees
-   * @param melt_fee_balance total profits from melting fees
-   * @param refund_fee_balance total profits from refund fees
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+     * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
   (*insert_historic_denom_revenue)(void *cls,
@@ -661,10 +651,8 @@ struct TALER_AUDITORDB_Plugin
                                    const struct TALER_MasterPublicKeyP *master_pub,
                                    const struct GNUNET_HashCode *denom_pub_hash,
                                    struct GNUNET_TIME_Absolute revenue_timestamp,
-                                   const struct TALER_Amount *revenue_balance,
-                                   const struct TALER_Amount *deposit_fee_balance,
-                                   const struct TALER_Amount *melt_fee_balance,
-                                   const struct TALER_Amount *refund_fee_balance);
+                                   const struct TALER_Amount *revenue_balance);
+
 
   /**
    * Obtain all of the historic denomination key revenue

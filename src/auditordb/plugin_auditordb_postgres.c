@@ -375,15 +375,7 @@ postgres_create_tables (void *cls)
 	   ",revenue_balance_val INT8 NOT NULL"
            ",revenue_balance_frac INT4 NOT NULL"
            ",revenue_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-           ",deposit_fee_balance_val INT8 NOT NULL"
-           ",deposit_fee_balance_frac INT4 NOT NULL"
-           ",deposit_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-           ",melt_fee_balance_val INT8 NOT NULL"
-           ",melt_fee_balance_frac INT4 NOT NULL"
-           ",melt_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-           ",refund_fee_balance_val INT8 NOT NULL"
-           ",refund_fee_balance_frac INT4 NOT NULL"
-           ",refund_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"	   ")");
+           ")");
 
 
   /* Table with historic losses; basically, when we need to
@@ -779,17 +771,8 @@ postgres_prepare (PGconn *db_conn)
 	   ",revenue_balance_val"
            ",revenue_balance_frac"
            ",revenue_balance_curr"
-           ",deposit_fee_balance_val"
-           ",deposit_fee_balance_frac"
-           ",deposit_fee_balance_curr"
-           ",melt_fee_balance_val"
-           ",melt_fee_balance_frac"
-           ",melt_fee_balance_curr"
-           ",refund_fee_balance_val"
-           ",refund_fee_balance_frac"
-           ",refund_fee_balance_curr"
-           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15);",
-           15, NULL);
+           ") VALUES ($1,$2,$3,$4,$5,$6);",
+           6, NULL);
 
   /* Used in #postgres_select_historic_denom_revenue() */
   PREPARE ("historic_denomination_revenue_select",
@@ -799,15 +782,6 @@ postgres_prepare (PGconn *db_conn)
 	   ",revenue_balance_val"
            ",revenue_balance_frac"
            ",revenue_balance_curr"
-           ",deposit_fee_balance_val"
-           ",deposit_fee_balance_frac"
-           ",deposit_fee_balance_curr"
-           ",melt_fee_balance_val"
-           ",melt_fee_balance_frac"
-           ",melt_fee_balance_curr"
-           ",refund_fee_balance_val"
-           ",refund_fee_balance_frac"
-           ",refund_fee_balance_curr"
            " FROM historic_denomination_revenue"
            " WHERE master_pub=$1;",
            1, NULL);
@@ -2133,9 +2107,6 @@ postgres_get_denomination_summary (void *cls,
  * @param revenue_balance what was the total profit made from
  *                        deposit fees, melting fees, refresh fees
  *                        and coins that were never returned?
- * @param deposit_fee_balance total profits from deposit fees
- * @param melt_fee_balance total profits from melting fees
- * @param refund_fee_balance total profits from refund fees
  * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
  */
 static int
@@ -2144,10 +2115,7 @@ postgres_insert_historic_denom_revenue (void *cls,
                                         const struct TALER_MasterPublicKeyP *master_pub,
                                         const struct GNUNET_HashCode *denom_pub_hash,
                                         struct GNUNET_TIME_Absolute revenue_timestamp,
-                                        const struct TALER_Amount *revenue_balance,
-                                        const struct TALER_Amount *deposit_fee_balance,
-                                        const struct TALER_Amount *melt_fee_balance,
-                                        const struct TALER_Amount *refund_fee_balance)
+                                        const struct TALER_Amount *revenue_balance)
 {
   PGresult *result;
   int ret;
@@ -2156,23 +2124,8 @@ postgres_insert_historic_denom_revenue (void *cls,
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_auto_from_type (&revenue_timestamp),
     TALER_PQ_query_param_amount (revenue_balance),
-    TALER_PQ_query_param_amount (deposit_fee_balance),
-    TALER_PQ_query_param_amount (melt_fee_balance),
-    TALER_PQ_query_param_amount (refund_fee_balance),
     GNUNET_PQ_query_param_end
   };
-
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (revenue_balance,
-                                            deposit_fee_balance));
-
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (revenue_balance,
-                                            melt_fee_balance));
-
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (revenue_balance,
-                                            refund_fee_balance));
 
   result = GNUNET_PQ_exec_prepared (session->conn,
                                    "historic_denomination_revenue_insert",
@@ -2240,16 +2193,10 @@ postgres_select_historic_denom_revenue (void *cls,
     struct GNUNET_HashCode denom_pub_hash;
     struct GNUNET_TIME_Absolute revenue_timestamp;
     struct TALER_Amount revenue_balance;
-    struct TALER_Amount deposit_fee_balance;
-    struct TALER_Amount melt_fee_balance;
-    struct TALER_Amount refund_fee_balance;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash", &denom_pub_hash),
       GNUNET_PQ_result_spec_auto_from_type ("revenue_timestamp", &revenue_timestamp),
       TALER_PQ_result_spec_amount ("revenue_balance", &revenue_balance),
-      TALER_PQ_result_spec_amount ("deposit_fee_balance", &deposit_fee_balance),
-      TALER_PQ_result_spec_amount ("melt_fee_balance", &melt_fee_balance),
-      TALER_PQ_result_spec_amount ("refund_fee_balance", &refund_fee_balance),
       GNUNET_PQ_result_spec_end
     };
 
@@ -2264,10 +2211,7 @@ postgres_select_historic_denom_revenue (void *cls,
     ret = cb (cb_cls,
               &denom_pub_hash,
               revenue_timestamp,
-              &revenue_balance,
-              &deposit_fee_balance,
-              &melt_fee_balance,
-              &refund_fee_balance);
+              &revenue_balance);
     switch (ret)
     {
     case GNUNET_OK:
