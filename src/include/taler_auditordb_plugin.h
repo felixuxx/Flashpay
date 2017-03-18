@@ -523,25 +523,14 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
    * @param denom_balance value of coins outstanding (or issued?) with this denomination key
-   * @param last_reserve_out_serial_id up to which point did we consider
-   *                 withdrawals for the above information
-   * @param last_deposit_serial_id up to which point did we consider
-   *                 deposits for the above information
-   * @param last_melt_serial_id up to which point did we consider
-   *                 melts for the above information
-   * @param last_refund_serial_id up to which point did we consider
-   *                 refunds for the above information
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
   (*insert_denomination_balance)(void *cls,
                                  struct TALER_AUDITORDB_Session *session,
                                  const struct GNUNET_HashCode *denom_pub_hash,
-                                 const struct TALER_Amount *denom_balance,
-                                 uint64_t last_reserve_out_serial_id,
-                                 uint64_t last_deposit_serial_id,
-                                 uint64_t last_melt_serial_id,
-                                 uint64_t last_refund_serial_id);
+                                 const struct TALER_Amount *denom_balance);
+
 
 
   /**
@@ -552,25 +541,13 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
    * @param denom_balance value of coins outstanding (or issued?) with this denomination key
-   * @param last_reserve_out_serial_id up to which point did we consider
-   *                 withdrawals for the above information
-   * @param last_deposit_serial_id up to which point did we consider
-   *                 deposits for the above information
-   * @param last_melt_serial_id up to which point did we consider
-   *                 melts for the above information
-   * @param last_refund_serial_id up to which point did we consider
-   *                 refunds for the above information
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
   (*update_denomination_balance)(void *cls,
                                  struct TALER_AUDITORDB_Session *session,
                                  const struct GNUNET_HashCode *denom_pub_hash,
-                                 const struct TALER_Amount *denom_balance,
-                                 uint64_t last_reserve_out_serial_id,
-                                 uint64_t last_deposit_serial_id,
-                                 uint64_t last_melt_serial_id,
-                                 uint64_t last_refund_serial_id);
+                                 const struct TALER_Amount *denom_balance);
 
 
   /**
@@ -580,25 +557,27 @@ struct TALER_AUDITORDB_Plugin
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
    * @param[out] denom_balance value of coins outstanding (or issued?) with this denomination key
-   * @param[out] last_reserve_out_serial_id up to which point did we consider
-   *                 withdrawals for the above information
-   * @param[out] last_deposit_serial_id up to which point did we consider
-   *                 deposits for the above information
-   * @param[out] last_melt_serial_id up to which point did we consider
-   *                 melts for the above information
-   * @param[out] last_refund_serial_id up to which point did we consider
-   *                 refunds for the above information
    * @return #GNUNET_OK on success; #GNUNET_NO if no record found, #GNUNET_SYSERR on failure
    */
   int
   (*get_denomination_balance)(void *cls,
                               struct TALER_AUDITORDB_Session *session,
                               const struct GNUNET_HashCode *denom_pub_hash,
-                              struct TALER_Amount *denom_balance,
-                              uint64_t *last_reserve_out_serial_id,
-                              uint64_t *last_deposit_serial_id,
-                              uint64_t *last_melt_serial_id,
-                              uint64_t *last_refund_serial_id);
+                              struct TALER_Amount *denom_balance);
+
+
+  /**
+   * Delete information about a denomination key's balances.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param denom_pub_hash hash of the denomination public key
+   * @return #GNUNET_OK on success; #GNUNET_NO if no record found, #GNUNET_SYSERR on failure
+   */
+  int
+  (*del_denomination_balance)(void *cls,
+                              struct TALER_AUDITORDB_Session *session,
+                              const struct GNUNET_HashCode *denom_pub_hash);
 
 
   /**
@@ -612,6 +591,7 @@ struct TALER_AUDITORDB_Plugin
    * @param deposit_fee_balance total deposit fees collected for this DK
    * @param melt_fee_balance total melt fees collected for this DK
    * @param refund_fee_balance total refund fees collected for this DK
+   * @param risk maximum risk exposure of the exchange
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
@@ -621,7 +601,8 @@ struct TALER_AUDITORDB_Plugin
                                  const struct TALER_Amount *denom_balance,
                                  const struct TALER_Amount *deposit_fee_balance,
                                  const struct TALER_Amount *melt_fee_balance,
-                                 const struct TALER_Amount *refund_fee_balance);
+                                 const struct TALER_Amount *refund_fee_balance,
+                                 const struct TALER_Amount *risk);
 
 
   /**
@@ -635,6 +616,7 @@ struct TALER_AUDITORDB_Plugin
    * @param deposit_fee_balance total deposit fees collected for this DK
    * @param melt_fee_balance total melt fees collected for this DK
    * @param refund_fee_balance total refund fees collected for this DK
+   * @param risk maximum risk exposure of the exchange
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
@@ -644,7 +626,8 @@ struct TALER_AUDITORDB_Plugin
                                  const struct TALER_Amount *denom_balance,
                                  const struct TALER_Amount *deposit_fee_balance,
                                  const struct TALER_Amount *melt_fee_balance,
-                                 const struct TALER_Amount *refund_fee_balance);
+                                 const struct TALER_Amount *refund_fee_balance,
+                                 const struct TALER_Amount *risk);
 
 
   /**
@@ -657,6 +640,7 @@ struct TALER_AUDITORDB_Plugin
    * @param[out] deposit_fee_balance total deposit fees collected for this DK
    * @param[out] melt_fee_balance total melt fees collected for this DK
    * @param[out] refund_fee_balance total refund fees collected for this DK
+   * @param[out] risk maximum risk exposure of the exchange
    * @return #GNUNET_OK on success; #GNUNET_NO if there is no entry
    *           for this @a master_pub; #GNUNET_SYSERR on failure
    */
@@ -667,58 +651,8 @@ struct TALER_AUDITORDB_Plugin
                               struct TALER_Amount *denom_balance,
                               struct TALER_Amount *deposit_fee_balance,
                               struct TALER_Amount *melt_fee_balance,
-                              struct TALER_Amount *refund_fee_balance);
-
-
-  /**
-   * Insert information about an exchange's risk exposure.  There
-   * must not be an existing record for the exchange.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to use
-   * @param master_pub master key of the exchange
-   * @param risk maximum risk exposure of the exchange
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
-   */
-  int
-  (*insert_risk_summary)(void *cls,
-                         struct TALER_AUDITORDB_Session *session,
-                         const struct TALER_MasterPublicKeyP *master_pub,
-                         const struct TALER_Amount *risk);
-
-
-  /**
-   * Update information about an exchange's risk exposure.  There
-   * must be an existing record for the exchange.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to use
-   * @param master_pub master key of the exchange
-   * @param risk maximum risk exposure of the exchange
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
-   */
-  int
-  (*update_risk_summary)(void *cls,
-                         struct TALER_AUDITORDB_Session *session,
-                         const struct TALER_MasterPublicKeyP *master_pub,
-                         const struct TALER_Amount *risk);
-
-
-  /**
-   * Get information about an exchange's risk exposure.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to use
-   * @param master_pub master key of the exchange
-   * @param[out] risk maximum risk exposure of the exchange
-   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure;
-   *         #GNUNET_NO if we have no records for the @a master_pub
-   */
-  int
-  (*get_risk_summary)(void *cls,
-                      struct TALER_AUDITORDB_Session *session,
-                      const struct TALER_MasterPublicKeyP *master_pub,
-                      struct TALER_Amount *risk);
+                              struct TALER_Amount *refund_fee_balance,
+                              struct TALER_Amount *risk);
 
 
   /**

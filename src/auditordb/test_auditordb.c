@@ -358,6 +358,7 @@ run (void *cls)
 
   struct TALER_Amount denom_balance, deposit_fee_balance, melt_fee_balance, refund_fee_balance;
   struct TALER_Amount denom_balance2, deposit_fee_balance2, melt_fee_balance2, refund_fee_balance2;
+  struct TALER_Amount rbalance, rbalance2;
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":12.345678",
@@ -371,16 +372,15 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":45.678901",
                                          &refund_fee_balance));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":13.57986",
+                                         &rbalance));
 
   FAILIF (GNUNET_OK !=
           plugin->insert_denomination_balance (plugin->cls,
                                                session,
                                                &denom_pub_hash,
-                                               &denom_balance,
-                                               pp.last_reserve_out_serial_id,
-                                               pp.last_deposit_serial_id,
-                                               pp.last_melt_serial_id,
-                                               pp.last_refund_serial_id));
+                                               &denom_balance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_denomination_balance\n");
@@ -394,12 +394,7 @@ run (void *cls)
           plugin->update_denomination_balance (plugin->cls,
                                                session,
                                                &denom_pub_hash,
-                                               &denom_balance,
-                                               pp.last_reserve_out_serial_id,
-                                               pp.last_deposit_serial_id,
-                                               pp.last_melt_serial_id,
-                                               pp.last_refund_serial_id));
-
+                                               &denom_balance));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_denomination_balance\n");
 
@@ -407,17 +402,10 @@ run (void *cls)
           plugin->get_denomination_balance (plugin->cls,
                                             session,
                                             &denom_pub_hash,
-                                            &denom_balance2,
-                                            &pp2.last_reserve_out_serial_id,
-                                            &pp2.last_deposit_serial_id,
-                                            &pp2.last_melt_serial_id,
-                                            &pp2.last_refund_serial_id));
+                                            &denom_balance2));
 
-  FAILIF (0 != memcmp (&denom_balance2, &denom_balance, sizeof (denom_balance))
-          || pp2.last_reserve_out_serial_id != pp.last_reserve_out_serial_id
-          || pp2.last_deposit_serial_id != pp.last_deposit_serial_id
-          || pp2.last_melt_serial_id != pp.last_melt_serial_id
-          || pp2.last_refund_serial_id != pp.last_refund_serial_id);
+  FAILIF (0 != memcmp (&denom_balance2, &denom_balance, sizeof (denom_balance)));
+
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_denomination_summary\n");
@@ -429,7 +417,8 @@ run (void *cls)
                                                &refund_fee_balance,
                                                &melt_fee_balance,
                                                &deposit_fee_balance,
-                                               &denom_balance));
+                                               &denom_balance,
+                                               &rbalance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_denomination_summary\n");
@@ -441,7 +430,8 @@ run (void *cls)
                                                &denom_balance,
                                                &deposit_fee_balance,
                                                &melt_fee_balance,
-                                               &refund_fee_balance));
+                                               &refund_fee_balance,
+                                               &rbalance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_denomination_summary\n");
@@ -450,6 +440,7 @@ run (void *cls)
   ZR_BLK (&deposit_fee_balance2);
   ZR_BLK (&melt_fee_balance2);
   ZR_BLK (&refund_fee_balance2);
+  ZR_BLK (&rbalance2);
 
   FAILIF (GNUNET_OK !=
           plugin->get_denomination_summary (plugin->cls,
@@ -458,51 +449,15 @@ run (void *cls)
                                             &denom_balance2,
                                             &deposit_fee_balance2,
                                             &melt_fee_balance2,
-                                            &refund_fee_balance2));
+                                            &refund_fee_balance2,
+                                            &rbalance2));
 
   FAILIF (0 != memcmp (&denom_balance2, &denom_balance, sizeof (denom_balance))
           || 0 != memcmp (&deposit_fee_balance2, &deposit_fee_balance, sizeof (deposit_fee_balance))
           || 0 != memcmp (&melt_fee_balance2, &melt_fee_balance, sizeof (melt_fee_balance))
           || 0 != memcmp (&refund_fee_balance2, &refund_fee_balance, sizeof (refund_fee_balance)));
+  FAILIF (0 != memcmp (&rbalance2, &rbalance, sizeof (rbalance)));
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Test: insert_risk_summary\n");
-
-  struct TALER_Amount balance, balance2;
-
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY ":13.57986",
-                                         &balance));
-
-  FAILIF (GNUNET_OK !=
-          plugin->insert_risk_summary (plugin->cls,
-                                       session,
-                                       &master_pub,
-                                       &balance));
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Test: update_risk_summary\n");
-
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY ":57.310986",
-                                         &balance));
-
-  FAILIF (GNUNET_OK !=
-          plugin->update_risk_summary (plugin->cls,
-                                       session,
-                                       &master_pub,
-                                       &balance));
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Test: get_risk_summary\n");
-
-  FAILIF (GNUNET_OK !=
-          plugin->get_risk_summary (plugin->cls,
-                                    session,
-                                    &master_pub,
-                                    &balance2));
-
-  FAILIF (0 != memcmp (&balance2, &balance, sizeof (balance)));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_historic_denom_revenue\n");
@@ -513,7 +468,7 @@ run (void *cls)
                                                  &master_pub,
                                                  &denom_pub_hash,
                                                  past,
-                                                 &balance,
+                                                 &rbalance,
                                                  &deposit_fee_balance,
                                                  &melt_fee_balance,
                                                  &refund_fee_balance));
@@ -524,7 +479,7 @@ run (void *cls)
                                                  &master_pub,
                                                  &rnd_hash,
                                                  now,
-                                                 &balance,
+                                                 &rbalance,
                                                  &deposit_fee_balance,
                                                  &melt_fee_balance,
                                                  &refund_fee_balance));
@@ -552,7 +507,7 @@ run (void *cls)
             && 0 != memcmp (&revenue_timestamp2, &now, sizeof (now)))
         || (0 != memcmp (denom_pub_hash2, &denom_pub_hash, sizeof (denom_pub_hash))
             && 0 != memcmp (denom_pub_hash2, &rnd_hash, sizeof (rnd_hash)))
-        || 0 != memcmp (revenue_balance2, &balance, sizeof (balance))
+        || 0 != memcmp (revenue_balance2, &rbalance, sizeof (rbalance))
         || 0 != memcmp (deposit_fee_balance2, &deposit_fee_balance, sizeof (deposit_fee_balance))
         || 0 != memcmp (melt_fee_balance2, &melt_fee_balance, sizeof (melt_fee_balance))
         || 0 != memcmp (refund_fee_balance2, &refund_fee_balance, sizeof (refund_fee_balance)))
@@ -581,7 +536,7 @@ run (void *cls)
                                           &master_pub,
                                           &denom_pub_hash,
                                           past,
-                                          &balance));
+                                          &rbalance));
 
   FAILIF (GNUNET_OK !=
           plugin->insert_historic_losses (plugin->cls,
@@ -589,7 +544,7 @@ run (void *cls)
                                           &master_pub,
                                           &rnd_hash,
                                           past,
-                                          &balance));
+                                          &rbalance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: select_historic_losses\n");
@@ -611,7 +566,7 @@ run (void *cls)
             && 0 != memcmp (&loss_timestamp2, &now, sizeof (now)))
         || (0 != memcmp (denom_pub_hash2, &denom_pub_hash, sizeof (denom_pub_hash))
             && 0 != memcmp (denom_pub_hash2, &rnd_hash, sizeof (rnd_hash)))
-        || 0 != memcmp (loss_balance2, &balance, sizeof (balance)))
+        || 0 != memcmp (loss_balance2, &rbalance, sizeof (rbalance)))
     {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "select_historic_denom_revenue_result: result does not match\n");
@@ -695,20 +650,20 @@ run (void *cls)
           plugin->insert_predicted_result (plugin->cls,
                                            session,
                                            &master_pub,
-                                           &balance));
+                                           &rbalance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_predicted_result\n");
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":78.901234",
-                                         &balance));
+                                         &rbalance));
 
   FAILIF (GNUNET_OK !=
           plugin->update_predicted_result (plugin->cls,
                                            session,
                                            &master_pub,
-                                           &balance));
+                                           &rbalance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_predicted_balance\n");
@@ -717,9 +672,9 @@ run (void *cls)
           plugin->get_predicted_balance (plugin->cls,
                                          session,
                                          &master_pub,
-                                         &balance2));
+                                         &rbalance2));
 
-  FAILIF (0 != memcmp (&balance2, &balance, sizeof (balance)));
+  FAILIF (0 != memcmp (&rbalance2, &rbalance, sizeof (rbalance)));
 
   result = 0;
 

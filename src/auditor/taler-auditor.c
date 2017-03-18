@@ -27,8 +27,6 @@
  * TODO:
  * - COMPLETE: implement misc. FIXMEs
  * - COMPLETE: deal with risk / expired denomination keys in #sync_denomination
- * - SANITY: modify auditordb to track risk with balances and fees (and rename callback
- *   to clarify what it is)
  * - SANITY: rename operations to better describe what they do!
  * - OPTIMIZE/SIMPLIFY: modify auditordb to return DK when we inquire about deposit/refresh/refund,
  *   so we can avoid the costly #get_coin_summary with the transaction history building
@@ -939,20 +937,20 @@ analyze_reserves (void *cls)
                                                pp.last_reserve_in_serial_id,
                                                &handle_reserve_in,
                                                &rc))
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   if (GNUNET_OK !=
       edb->select_reserves_out_above_serial_id (edb->cls,
                                                 esession,
                                                 pp.last_reserve_out_serial_id,
                                                 &handle_reserve_out,
                                                 &rc))
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   /* TODO: iterate over table for reserve expiration refunds! (#4956) */
 
   GNUNET_CONTAINER_multihashmap_iterate (rc.reserves,
@@ -979,7 +977,11 @@ analyze_reserves (void *cls)
                                        &rc.total_balance,
                                        &rc.total_fee_balance);
   }
-  // FIXME: handle error in 'ret'!
+  if (GNUNET_OK != ret)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   report_reserve_balance (&rc.total_balance,
                           &rc.total_fee_balance);
   return GNUNET_OK;
@@ -1028,26 +1030,6 @@ struct DenominationSummary
    * Total value of coins issued with this denomination key.
    */
   struct TALER_Amount denom_balance;
-
-  /**
-   * Up to which point have we processed reserves_out?
-   */
-  uint64_t last_reserve_out_serial_id;
-
-  /**
-   * Up to which point have we processed deposits?
-   */
-  uint64_t last_deposit_serial_id;
-
-  /**
-   * Up to which point have we processed melts?
-   */
-  uint64_t last_melt_serial_id;
-
-  /**
-   * Up to which point have we processed refunds?
-   */
-  uint64_t last_refund_serial_id;
 
   /**
    * #GNUNET_YES if this record already existed in the DB.
@@ -1138,11 +1120,7 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
   ret = adb->get_denomination_balance (adb->cls,
                                        asession,
                                        denom_hash,
-                                       &ds->denom_balance,
-                                       &ds->last_reserve_out_serial_id,
-                                       &ds->last_deposit_serial_id,
-                                       &ds->last_melt_serial_id,
-                                       &ds->last_refund_serial_id);
+                                       &ds->denom_balance);
   if (GNUNET_OK == ret)
   {
     ds->in_db = GNUNET_YES;
@@ -1214,27 +1192,33 @@ sync_denomination (void *cls,
   struct DenominationSummary *ds = value;
   int ret;
 
+
   // FIXME: if expired, insert remaining balance historic denomination revenue,
   // DELETE denomination balance, and REDUCE cc->risk exposure!
-
-  if (ds->in_db)
-    ret = adb->update_denomination_balance (adb->cls,
-                                            asession,
-                                            denom_hash,
-                                            &ds->denom_balance,
-                                            ds->last_reserve_out_serial_id,
-                                            ds->last_deposit_serial_id,
-                                            ds->last_melt_serial_id,
-                                            ds->last_refund_serial_id);
+  if (0)
+  {
+    ret = adb->del_denomination_balance (adb->cls,
+                                         asession,
+                                         denom_hash);
+    if (GNUNET_OK == ret)
+    {
+      // FIXME: reduce RISK
+      // FIXME: book denomination expiration profits!
+    }
+  }
   else
-    ret = adb->insert_denomination_balance (adb->cls,
-                                            asession,
-                                            denom_hash,
-                                            &ds->denom_balance,
-                                            ds->last_reserve_out_serial_id,
-                                            ds->last_deposit_serial_id,
-                                            ds->last_melt_serial_id,
-                                            ds->last_refund_serial_id);
+  {
+    if (ds->in_db)
+      ret = adb->update_denomination_balance (adb->cls,
+                                              asession,
+                                              denom_hash,
+                                              &ds->denom_balance);
+    else
+      ret = adb->insert_denomination_balance (adb->cls,
+                                              asession,
+                                              denom_hash,
+                                              &ds->denom_balance);
+  }
   if (GNUNET_OK != ret)
   {
     GNUNET_break (0);
@@ -1883,7 +1867,6 @@ analyze_coins (void *cls)
 {
   struct CoinContext cc;
   int dret;
-  int rret;
 
   /* setup 'cc' */
   cc.ret = GNUNET_OK;
@@ -1895,7 +1878,8 @@ analyze_coins (void *cls)
                                         &cc.denom_balance,
                                         &cc.deposit_fee_balance,
                                         &cc.melt_fee_balance,
-                                        &cc.refund_fee_balance);
+                                        &cc.refund_fee_balance,
+                                        &cc.risk);
   if (GNUNET_SYSERR == dret)
   {
     GNUNET_break (0);
@@ -1915,18 +1899,6 @@ analyze_coins (void *cls)
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_get_zero (currency,
                                           &cc.refund_fee_balance));
-  }
-  rret = adb->get_risk_summary (adb->cls,
-                                asession,
-                                &master_pub,
-                                &cc.risk);
-  if (GNUNET_SYSERR == dret)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_NO == dret)
-  {
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_get_zero (currency,
                                           &cc.risk));
@@ -1995,24 +1967,7 @@ analyze_coins (void *cls)
                                          &cc);
   GNUNET_CONTAINER_multihashmap_destroy (cc.coins);
 
-  if (GNUNET_YES == rret)
-    rret = adb->update_risk_summary (adb->cls,
-                                     asession,
-                                     &master_pub,
-                                     &cc.risk);
-  else
-    rret = adb->insert_risk_summary (adb->cls,
-                                     asession,
-                                     &master_pub,
-                                     &cc.risk);
-  if (GNUNET_OK != rret)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-
   // FIXME: FIX misnomer "denomination_summary", as this is no longer about denominations!
-  // FIXME: maybe combine with 'risk' above...
   if (GNUNET_YES == dret)
       dret = adb->update_denomination_summary (adb->cls,
                                                asession,
@@ -2020,7 +1975,8 @@ analyze_coins (void *cls)
                                                &cc.denom_balance,
                                                &cc.deposit_fee_balance,
                                                &cc.melt_fee_balance,
-                                               &cc.refund_fee_balance);
+                                               &cc.refund_fee_balance,
+                                               &cc.risk);
   else
     dret = adb->insert_denomination_summary (adb->cls,
                                              asession,
@@ -2028,7 +1984,8 @@ analyze_coins (void *cls)
                                              &cc.denom_balance,
                                              &cc.deposit_fee_balance,
                                              &cc.melt_fee_balance,
-                                             &cc.refund_fee_balance);
+                                             &cc.refund_fee_balance,
+                                             &cc.risk);
   if (GNUNET_OK != dret)
   {
     GNUNET_break (0);

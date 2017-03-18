@@ -330,10 +330,6 @@ postgres_create_tables (void *cls)
            ",denom_balance_val INT8 NOT NULL"
            ",denom_balance_frac INT4 NOT NULL"
            ",denom_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-           ",last_reserve_out_serial_id INT8 NOT NULL"
-           ",last_deposit_serial_id INT8 NOT NULL"
-	   ",last_melt_serial_id INT8 NOT NULL"
-	   ",last_refund_serial_id INT8 NOT NULL"
 	   ")");
 
   /* Table with the sum of the outstanding coins from
@@ -356,17 +352,6 @@ postgres_create_tables (void *cls)
            ",refund_fee_balance_val INT8 NOT NULL"
            ",refund_fee_balance_frac INT4 NOT NULL"
            ",refund_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-	   ")");
-
-  /* Table with the sum of the generated coins all denomination keys.
-     This represents the maximum additional total financial risk of
-     the exchange in case that all denomination keys are compromised
-     (and all of the deposits so far were done by the successful
-     attacker).  So this is strictly an upper bound on the risk
-     exposure of the exchange.  (Note that this risk is in addition to
-     the known total_liabilities.) */
-  SQLEXEC ("CREATE TABLE IF NOT EXISTS total_risk"
-	   "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
 	   ",risk_val INT8 NOT NULL"
            ",risk_frac INT4 NOT NULL"
            ",risk_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -694,12 +679,8 @@ postgres_prepare (PGconn *db_conn)
            ",denom_balance_val"
            ",denom_balance_frac"
            ",denom_balance_curr"
-           ",last_reserve_out_serial_id"
-           ",last_deposit_serial_id"
-	   ",last_melt_serial_id"
-	   ",last_refund_serial_id"
-           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8);",
-           11, NULL);
+           ") VALUES ($1,$2,$3,$4);",
+           4, NULL);
 
   /* Used in #postgres_update_denomination_balance() */
   PREPARE ("denomination_pending_update",
@@ -707,12 +688,8 @@ postgres_prepare (PGconn *db_conn)
            " denom_balance_val=$1"
            ",denom_balance_frac=$2"
            ",denom_balance_curr=$3"
-           ",last_reserve_out_serial_id=$4"
-           ",last_deposit_serial_id=$5"
-	   ",last_melt_serial_id=$6"
-	   ",last_refund_serial_id=$7"
-           " WHERE denom_pub_hash=$8",
-           8, NULL);
+           " WHERE denom_pub_hash=$4",
+           4, NULL);
 
   /* Used in #postgres_get_denomination_balance() */
   PREPARE ("denomination_pending_select",
@@ -720,10 +697,6 @@ postgres_prepare (PGconn *db_conn)
            " denom_balance_val"
            ",denom_balance_frac"
            ",denom_balance_curr"
-           ",last_reserve_out_serial_id"
-           ",last_deposit_serial_id"
-	   ",last_melt_serial_id"
-	   ",last_refund_serial_id"
            " FROM denomination_pending"
            " WHERE denom_pub_hash=$1",
            1, NULL);
@@ -744,8 +717,11 @@ postgres_prepare (PGconn *db_conn)
            ",refund_fee_balance_val"
            ",refund_fee_balance_frac"
            ",refund_fee_balance_curr"
-           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);",
-           13, NULL);
+	   ",risk_val"
+           ",risk_frac"
+           ",risk_curr"
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16);",
+           16, NULL);
 
   /* Used in #postgres_update_denomination_summary() */
   PREPARE ("total_liabilities_update",
@@ -762,8 +738,11 @@ postgres_prepare (PGconn *db_conn)
            ",refund_fee_balance_val=$10"
            ",refund_fee_balance_frac=$11"
            ",refund_fee_balance_curr=$12"
-           " WHERE master_pub=$13;",
-           13, NULL);
+	   ",risk_val=$13"
+           ",risk_frac=$14"
+           ",risk_curr=$15"
+           " WHERE master_pub=$16;",
+           16, NULL);
 
   /* Used in #postgres_get_denomination_summary() */
   PREPARE ("total_liabilities_select",
@@ -780,39 +759,12 @@ postgres_prepare (PGconn *db_conn)
            ",refund_fee_balance_val"
            ",refund_fee_balance_frac"
            ",refund_fee_balance_curr"
-           " FROM total_liabilities"
-           " WHERE master_pub=$1;",
-           1, NULL);
-
-  /* Used in #postgres_insert_risk_summary() */
-  PREPARE ("total_risk_insert",
-           "INSERT INTO total_risk"
-	   "(master_pub"
 	   ",risk_val"
            ",risk_frac"
            ",risk_curr"
-           ") VALUES ($1,$2,$3,$4);",
-           4, NULL);
-
-  /* Used in #postgres_update_risk_summary() */
-  PREPARE ("total_risk_update",
-           "UPDATE total_risk SET "
-	   " risk_val=$1"
-           ",risk_frac=$2"
-           ",risk_curr=$3"
-           " WHERE master_pub=$4;",
-           4, NULL);
-
-  /* Used in #postgres_get_risk_summary() */
-  PREPARE ("total_risk_select",
-           "SELECT"
-	   " risk_val"
-           ",risk_frac"
-           ",risk_curr"
-           " FROM  total_risk"
+           " FROM total_liabilities"
            " WHERE master_pub=$1;",
            1, NULL);
-
 
   /* Used in #postgres_insert_historic_denom_revenue() */
   PREPARE ("historic_denomination_revenue_insert",
@@ -1859,35 +1811,19 @@ postgres_get_reserve_summary (void *cls,
  * @param session connection to use
  * @param denom_pub_hash hash of the denomination public key
  * @param denom_balance value of coins outstanding with this denomination key
- * @param last_reserve_out_serial_id up to which point did we consider
- *                 withdrawals for the above information
- * @param last_deposit_serial_id up to which point did we consider
- *                 deposits for the above information
- * @param last_melt_serial_id up to which point did we consider
- *                 melts for the above information
- * @param last_refund_serial_id up to which point did we consider
- *                 refunds for the above information
  * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
  */
 static int
 postgres_insert_denomination_balance (void *cls,
                                       struct TALER_AUDITORDB_Session *session,
                                       const struct GNUNET_HashCode *denom_pub_hash,
-                                      const struct TALER_Amount *denom_balance,
-                                      uint64_t last_reserve_out_serial_id,
-                                      uint64_t last_deposit_serial_id,
-                                      uint64_t last_melt_serial_id,
-                                      uint64_t last_refund_serial_id)
+                                      const struct TALER_Amount *denom_balance)
 {
   PGresult *result;
   int ret;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     TALER_PQ_query_param_amount (denom_balance),
-    GNUNET_PQ_query_param_uint64 (&last_reserve_out_serial_id),
-    GNUNET_PQ_query_param_uint64 (&last_deposit_serial_id),
-    GNUNET_PQ_query_param_uint64 (&last_melt_serial_id),
-    GNUNET_PQ_query_param_uint64 (&last_refund_serial_id),
     GNUNET_PQ_query_param_end
   };
 
@@ -1916,34 +1852,18 @@ postgres_insert_denomination_balance (void *cls,
  * @param session connection to use
  * @param denom_pub_hash hash of the denomination public key
  * @param denom_balance value of coins outstanding with this denomination key
- * @param last_reserve_out_serial_id up to which point did we consider
- *                 withdrawals for the above information
- * @param last_deposit_serial_id up to which point did we consider
- *                 deposits for the above information
- * @param last_melt_serial_id up to which point did we consider
- *                 melts for the above information
- * @param last_refund_serial_id up to which point did we consider
- *                 refunds for the above information
  * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
  */
 static int
 postgres_update_denomination_balance (void *cls,
                                       struct TALER_AUDITORDB_Session *session,
                                       const struct GNUNET_HashCode *denom_pub_hash,
-                                      const struct TALER_Amount *denom_balance,
-                                      uint64_t last_reserve_out_serial_id,
-                                      uint64_t last_deposit_serial_id,
-                                      uint64_t last_melt_serial_id,
-                                      uint64_t last_refund_serial_id)
+                                      const struct TALER_Amount *denom_balance)
 {
   PGresult *result;
   int ret;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (denom_balance),
-    GNUNET_PQ_query_param_uint64 (&last_reserve_out_serial_id),
-    GNUNET_PQ_query_param_uint64 (&last_deposit_serial_id),
-    GNUNET_PQ_query_param_uint64 (&last_melt_serial_id),
-    GNUNET_PQ_query_param_uint64 (&last_refund_serial_id),
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_end
   };
@@ -1972,25 +1892,13 @@ postgres_update_denomination_balance (void *cls,
  * @param session connection to use
  * @param denom_pub_hash hash of the denomination public key
  * @param[out] denom_balance value of coins outstanding with this denomination key
- * @param[out] last_reserve_out_serial_id up to which point did we consider
- *                 withdrawals for the above information
- * @param[out] last_deposit_serial_id up to which point did we consider
- *                 deposits for the above information
- * @param[out] last_melt_serial_id up to which point did we consider
- *                 melts for the above information
- * @param[out] last_refund_serial_id up to which point did we consider
- *                 refunds for the above information
  * @return #GNUNET_OK on success; #GNUNET_NO if no record found, #GNUNET_SYSERR on failure
  */
 static int
 postgres_get_denomination_balance (void *cls,
                                    struct TALER_AUDITORDB_Session *session,
                                    const struct GNUNET_HashCode *denom_pub_hash,
-                                   struct TALER_Amount *denom_balance,
-                                   uint64_t *last_reserve_out_serial_id,
-                                   uint64_t *last_deposit_serial_id,
-                                   uint64_t *last_melt_serial_id,
-                                   uint64_t *last_refund_serial_id)
+                                   struct TALER_Amount *denom_balance)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
@@ -2021,11 +1929,6 @@ postgres_get_denomination_balance (void *cls,
 
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_amount ("denom_balance", denom_balance),
-    GNUNET_PQ_result_spec_uint64 ("last_reserve_out_serial_id", last_reserve_out_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_deposit_serial_id", last_deposit_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_melt_serial_id", last_melt_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_refund_serial_id", last_refund_serial_id),
-
     GNUNET_PQ_result_spec_end
   };
   if (GNUNET_OK !=
@@ -2051,6 +1954,7 @@ postgres_get_denomination_balance (void *cls,
  * @param deposit_fee_balance total deposit fees collected for this DK
  * @param melt_fee_balance total melt fees collected for this DK
  * @param refund_fee_balance total refund fees collected for this DK
+ * @param risk maximum risk exposure of the exchange
  * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
  */
 static int
@@ -2060,7 +1964,8 @@ postgres_insert_denomination_summary (void *cls,
                                       const struct TALER_Amount *denom_balance,
                                       const struct TALER_Amount *deposit_fee_balance,
                                       const struct TALER_Amount *melt_fee_balance,
-                                      const struct TALER_Amount *refund_fee_balance)
+                                      const struct TALER_Amount *refund_fee_balance,
+                                      const struct TALER_Amount *risk)
 {
   PGresult *result;
   int ret;
@@ -2070,6 +1975,7 @@ postgres_insert_denomination_summary (void *cls,
     TALER_PQ_query_param_amount (deposit_fee_balance),
     TALER_PQ_query_param_amount (melt_fee_balance),
     TALER_PQ_query_param_amount (refund_fee_balance),
+    TALER_PQ_query_param_amount (risk),
     GNUNET_PQ_query_param_end
   };
 
@@ -2113,6 +2019,7 @@ postgres_insert_denomination_summary (void *cls,
  * @param deposit_fee_balance total deposit fees collected for this DK
  * @param melt_fee_balance total melt fees collected for this DK
  * @param refund_fee_balance total refund fees collected for this DK
+ * @param risk maximum risk exposure of the exchange
  * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
  */
 static int
@@ -2122,7 +2029,8 @@ postgres_update_denomination_summary (void *cls,
                                       const struct TALER_Amount *denom_balance,
                                       const struct TALER_Amount *deposit_fee_balance,
                                       const struct TALER_Amount *melt_fee_balance,
-                                      const struct TALER_Amount *refund_fee_balance)
+                                      const struct TALER_Amount *refund_fee_balance,
+                                      const struct TALER_Amount *risk)
 {
   PGresult *result;
   int ret;
@@ -2131,6 +2039,7 @@ postgres_update_denomination_summary (void *cls,
     TALER_PQ_query_param_amount (deposit_fee_balance),
     TALER_PQ_query_param_amount (melt_fee_balance),
     TALER_PQ_query_param_amount (refund_fee_balance),
+    TALER_PQ_query_param_amount (risk),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -2162,6 +2071,7 @@ postgres_update_denomination_summary (void *cls,
  * @param[out] deposit_fee_balance total deposit fees collected for this DK
  * @param[out] melt_fee_balance total melt fees collected for this DK
  * @param[out] refund_fee_balance total refund fees collected for this DK
+ * @param[out] risk maximum risk exposure of the exchange
  * @return #GNUNET_OK on success; #GNUNET_NO if there is no entry
  *           for this @a master_pub; #GNUNET_SYSERR on failure
  */
@@ -2172,7 +2082,8 @@ postgres_get_denomination_summary (void *cls,
                                    struct TALER_Amount *denom_balance,
                                    struct TALER_Amount *deposit_fee_balance,
                                    struct TALER_Amount *melt_fee_balance,
-                                   struct TALER_Amount *refund_fee_balance)
+                                   struct TALER_Amount *refund_fee_balance,
+                                   struct TALER_Amount *risk)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -2206,149 +2117,7 @@ postgres_get_denomination_summary (void *cls,
     TALER_PQ_result_spec_amount ("deposit_fee_balance", deposit_fee_balance),
     TALER_PQ_result_spec_amount ("melt_fee_balance", melt_fee_balance),
     TALER_PQ_result_spec_amount ("refund_fee_balance", refund_fee_balance),
-
-    GNUNET_PQ_result_spec_end
-  };
-  if (GNUNET_OK !=
-      GNUNET_PQ_extract_result (result, rs, 0))
-  {
-    GNUNET_break (0);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-  PQclear (result);
-  return GNUNET_OK;
-}
-
-
-/**
- * Insert information about an exchange's risk exposure.  There
- * must not be an existing record for the exchange.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
- * @param master_pub master key of the exchange
- * @param risk maximum risk exposure of the exchange
- * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
- */
-static int
-postgres_insert_risk_summary (void *cls,
-                              struct TALER_AUDITORDB_Session *session,
-                              const struct TALER_MasterPublicKeyP *master_pub,
-                              const struct TALER_Amount *risk)
-{
-  PGresult *result;
-  int ret;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
-    TALER_PQ_query_param_amount (risk),
-    GNUNET_PQ_query_param_end
-  };
-
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "total_risk_insert",
-                                   params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    ret = GNUNET_SYSERR;
-    BREAK_DB_ERR (result);
-  }
-  else
-  {
-    ret = GNUNET_OK;
-  }
-  PQclear (result);
-  return ret;
-}
-
-
-/**
- * Update information about an exchange's risk exposure.  There
- * must be an existing record for the exchange.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
- * @param master_pub master key of the exchange
- * @param risk maximum risk exposure of the exchange
- * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
- */
-static int
-postgres_update_risk_summary (void *cls,
-                              struct TALER_AUDITORDB_Session *session,
-                              const struct TALER_MasterPublicKeyP *master_pub,
-                              const struct TALER_Amount *risk)
-{
-  PGresult *result;
-  int ret;
-  struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount (risk),
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
-    GNUNET_PQ_query_param_end
-  };
-
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "total_risk_update",
-                                   params);
-  if (PGRES_COMMAND_OK != PQresultStatus (result))
-  {
-    ret = GNUNET_SYSERR;
-    BREAK_DB_ERR (result);
-  }
-  else
-  {
-    ret = GNUNET_OK;
-  }
-  PQclear (result);
-  return ret;
-}
-
-
-/**
- * Get information about an exchange's risk exposure.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
- * @param master_pub master key of the exchange
- * @param[out] risk maximum risk exposure of the exchange
- * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure;
- *         #GNUNET_NO if we have no records for the @a master_pub
- */
-static int
-postgres_get_risk_summary (void *cls,
-                           struct TALER_AUDITORDB_Session *session,
-                           const struct TALER_MasterPublicKeyP *master_pub,
-                           struct TALER_Amount *risk)
-{
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
-    GNUNET_PQ_query_param_end
-  };
-  PGresult *result;
-
-  result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "total_risk_select",
-                                    params);
-  if (PGRES_TUPLES_OK !=
-      PQresultStatus (result))
-  {
-    BREAK_DB_ERR (result);
-    PQclear (result);
-    return GNUNET_SYSERR;
-  }
-
-  int nrows = PQntuples (result);
-  if (0 == nrows)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "postgres_get_risk_summary() returned 0 matching rows\n");
-    PQclear (result);
-    return GNUNET_NO;
-  }
-  GNUNET_assert (1 == nrows);
-
-  struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_amount ("risk", risk),
-
     GNUNET_PQ_result_spec_end
   };
   if (GNUNET_OK !=
@@ -3002,10 +2771,6 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->get_denomination_summary = &postgres_get_denomination_summary;
   plugin->update_denomination_summary = &postgres_update_denomination_summary;
   plugin->insert_denomination_summary = &postgres_insert_denomination_summary;
-
-  plugin->get_risk_summary = &postgres_get_risk_summary;
-  plugin->update_risk_summary = &postgres_update_risk_summary;
-  plugin->insert_risk_summary = &postgres_insert_risk_summary;
 
   plugin->select_historic_denom_revenue = &postgres_select_historic_denom_revenue;
   plugin->insert_historic_denom_revenue = &postgres_insert_historic_denom_revenue;
