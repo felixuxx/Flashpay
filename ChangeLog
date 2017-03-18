@@ -1,3 +1,7 @@
+Sat Mar 18 03:44:38 CET 2017
+	Add 'wire_out' table to exchange DB to track outgoing
+	wire transfers. -CG
+
 Fri Nov 18 18:53:30 CET 2016
 	Improved error reporting for bogus wire specifications.
 	Releasing taler-exchange 0.2.0. -CG

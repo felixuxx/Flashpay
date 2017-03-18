@@ -1241,20 +1241,13 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1",
                                          &wire_out_amount));
+
+  /* we will transiently violate the wtid constraint on
+     the aggregation table, so we need to start the special
+     transaction where this is allowed... */
   FAILIF (GNUNET_OK !=
-          plugin->store_wire_transfer_out (plugin->cls,
-                                           session,
-                                           wire_out_date,
-                                           &wire_out_wtid,
-                                           wire_out_account,
-                                           &wire_out_amount));
-  FAILIF (GNUNET_OK !=
-          plugin->select_wire_out_above_serial_id (plugin->cls,
-                                                   session,
-                                                   0,
-                                                   &audit_wire_cb,
-                                                   NULL));
-  FAILIF (1 != auditor_row_cnt);
+          plugin->start_deferred_wire_out (plugin->cls,
+                                           session));
 
   /* setup values for wire transfer aggregation data */
   merchant_pub_wt = deposit->merchant_pub;
@@ -1289,6 +1282,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                                               &cb_wtid_never,
                                               NULL));
   }
+  wtid_wt = wire_out_wtid; /* to statisfy foreign constraint */
   /* insert WT data */
   FAILIF (GNUNET_OK !=
           plugin->insert_aggregation_tracking (plugin->cls,
@@ -1312,6 +1306,27 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                                             &cb_wtid_check,
                                             &cb_wtid_never));
 
+  /* Now let's fix the transient constraint violation by
+     putting in the WTID into the wire_out table */
+  FAILIF (GNUNET_OK !=
+          plugin->store_wire_transfer_out (plugin->cls,
+                                           session,
+                                           wire_out_date,
+                                           &wire_out_wtid,
+                                           wire_out_account,
+                                           &wire_out_amount));
+  FAILIF (GNUNET_OK !=
+          plugin->select_wire_out_above_serial_id (plugin->cls,
+                                                   session,
+                                                   0,
+                                                   &audit_wire_cb,
+                                                   NULL));
+  FAILIF (1 != auditor_row_cnt);
+
+  /* And now the commit should still succeed! */
+  FAILIF (GNUNET_OK !=
+          plugin->commit (plugin->cls,
+                          session));
 
   return GNUNET_OK;
  drop:

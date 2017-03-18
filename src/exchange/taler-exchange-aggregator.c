@@ -705,8 +705,8 @@ run_aggregation (void *cls)
     return;
   }
   if (GNUNET_OK !=
-      db_plugin->start (db_plugin->cls,
-                        session))
+      db_plugin->start_deferred_wire_out (db_plugin->cls,
+                                          session))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start database transaction!\n");
@@ -908,11 +908,6 @@ prepare_cb (void *cls,
 {
   struct TALER_EXCHANGEDB_Session *session = au->session;
 
-  if (NULL != au->wire)
-  {
-    json_decref (au->wire);
-    au->wire = NULL;
-  }
   GNUNET_free_non_null (au->additional_rows);
   if (NULL == buf)
   {
@@ -922,6 +917,11 @@ prepare_cb (void *cls,
     /* start again */
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                      NULL);
+    if (NULL != au->wire)
+    {
+      json_decref (au->wire);
+      au->wire = NULL;
+    }
     GNUNET_free (au);
     au = NULL;
     return;
@@ -941,9 +941,45 @@ prepare_cb (void *cls,
     /* start again */
     task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                      NULL);
+    if (NULL != au->wire)
+    {
+      json_decref (au->wire);
+      au->wire = NULL;
+    }
     GNUNET_free (au);
     au = NULL;
     return;
+  }
+
+  /* Commit the WTID data to 'wire_out' to finally satisfy aggregation
+     table constraints */
+  if (GNUNET_OK !=
+      db_plugin->store_wire_transfer_out (db_plugin->cls,
+                                          session,
+                                          au->execution_time,
+                                          &au->wtid,
+                                          au->wire,
+                                          &au->total_amount))
+  {
+    GNUNET_break (0); /* why? how to best recover? */
+    db_plugin->rollback (db_plugin->cls,
+                         session);
+    /* start again */
+    task = GNUNET_SCHEDULER_add_now (&run_aggregation,
+                                     NULL);
+    if (NULL != au->wire)
+    {
+      json_decref (au->wire);
+      au->wire = NULL;
+    }
+    GNUNET_free (au);
+    au = NULL;
+    return;
+  }
+  if (NULL != au->wire)
+  {
+    json_decref (au->wire);
+    au->wire = NULL;
   }
   GNUNET_free (au);
   au = NULL;

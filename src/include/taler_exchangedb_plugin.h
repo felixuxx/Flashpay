@@ -1640,6 +1640,21 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Start a transaction where we transiently violate the foreign
+   * constraints on the "wire_out" table as we insert aggregations
+   * and only add the wire transfer out at the end.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @return #GNUNET_OK on success
+   */
+  int
+  (*start_deferred_wire_out) (void *cls,
+                              struct TALER_EXCHANGEDB_Session *session);
+
+
+
+  /**
    * Store information about an outgoing wire transfer that was executed.
    *
    * @param cls closure
