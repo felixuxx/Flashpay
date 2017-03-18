@@ -759,6 +759,7 @@ typedef void
  * transaction data associated with a wire transfer identifier.
  *
  * @param cls closure
+ * @param rowid which row in the table is the information from (for diagnostics)
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
  * @param wire_method which wire plugin was used for the transfer?
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
@@ -770,6 +771,7 @@ typedef void
  */
 typedef void
 (*TALER_EXCHANGEDB_WireTransferDataCallback)(void *cls,
+                                             uint64_t rowid,
                                              const struct TALER_MerchantPublicKeyP *merchant_pub,
                                              const char *wire_method,
                                              const struct GNUNET_HashCode *h_wire,

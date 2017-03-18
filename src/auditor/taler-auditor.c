@@ -25,16 +25,16 @@
  *   given in the 'wire_out' table. This needs to be checked separately!
  *
  * TODO:
- * - implement merchant deposit audit starting with 'wire_out'
- * - modify auditordb to allow multiple last serial IDs per table in progress tracking (needed?)
- * - modify auditordb to track risk with balances and fees (and rename callback
+ * - COMPLETE: implement misc. FIXMEs
+ * - COMPLETE: deal with risk / expired denomination keys in #sync_denomination
+ * - SANITY: modify auditordb to track risk with balances and fees (and rename callback
  *   to clarify what it is)
- * - modify auditordb to return DK when we inquire about deposit/refresh/refund,
+ * - SANITY: rename operations to better describe what they do!
+ * - OPTIMIZE/SIMPLIFY: modify auditordb to return DK when we inquire about deposit/refresh/refund,
  *   so we can avoid the costly #get_coin_summary with the transaction history building
  *   (at least during #analyze_coins); the logic may be partially useful in
  *   #analyze_merchants (but we won't need the cache!)
- * - deal with risk / expired denomination keys in #sync_denomination
- * - write reporting logic to output nice report beyond GNUNET_log()
+ * - BEAUTIFY: write reporting logic to output nice report beyond GNUNET_log()
  * - write logic to deal with emergency (#3887) -- and emergency-related tables!
  */
 #include "platform.h"
@@ -187,6 +187,49 @@ report_reserve_inconsistency (const struct TALER_ReservePublicKeyP *reserve_pub,
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Reserve inconsistency detected affecting reserve %s: %s\n",
               TALER_B2S (reserve_pub),
+              diagnostic);
+}
+
+
+/**
+ * Report a global inconsistency with respect to a wire transfer.
+ *
+ * @param reserve_pub the affected reserve
+ * @param expected expected amount
+ * @param observed observed amount
+ * @param diagnostic message explaining what @a expected and @a observed refer to
+ */
+static void
+report_wire_out_inconsistency (const json_t *destination,
+                               uint64_t rowid,
+                               const struct TALER_Amount *expected,
+                               const struct TALER_Amount *observed,
+                               const char *diagnostic)
+{
+  // TODO: implement proper reporting logic writing to file, include amounts.
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Wire out inconsistency detected: %s\n",
+              diagnostic);
+}
+
+
+/**
+ * Report a global inconsistency with respect to a coin's history.
+ *
+ * @param coin_pub the affected coin
+ * @param expected expected amount
+ * @param observed observed amount
+ * @param diagnostic message explaining what @a expected and @a observed refer to
+ */
+static void
+report_coin_inconsistency (const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                           const struct TALER_Amount *expected,
+                           const struct TALER_Amount *observed,
+                           const char *diagnostic)
+{
+  // TODO: implement proper reporting logic writing to file, include amounts.
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Coin inconsistency detected: %s\n",
               diagnostic);
 }
 
@@ -1714,9 +1757,9 @@ deposit_cb (void *cls,
     }
   }
 
-  /* TODO: *if* past pay_deadline, check that
-     aggregation record exists for the deposit;
-     if NOT, check that full _refund_ exists. */
+  /* TODO: *if* past pay_deadline, check that aggregation record
+     exists for the deposit, and if NOT, check that full _refund_
+     exists. */
 
   return GNUNET_OK;
 }
@@ -2114,11 +2157,6 @@ struct WireCheckContext
   struct GNUNET_TIME_Absolute date;
 
   /**
-   * Set to error message of @e ok is #GNUNET_SYSERR.
-   */
-  const char *emsg;
-
-  /**
    * Wire method used for the transfer.
    */
   const char *method;
@@ -2209,7 +2247,10 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
     {
       /* overflow in history already!? inconceivable! Bad DB! */
       GNUNET_break (0);
-      // FIXME: report!
+      report_coin_inconsistency (coin_pub,
+                                 add_to,
+                                 amount_with_fee,
+                                 "could not add coin's contribution to total");
       return GNUNET_SYSERR;
     }
     TALER_amount_ntoh (&tmp,
@@ -2220,7 +2261,10 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
     {
       /* Disagreement in fee structure within DB! */
       GNUNET_break (0);
-      // FIXME: report!
+      report_coin_inconsistency (coin_pub,
+                                 &tmp,
+                                 fee,
+                                 "coin's fee in transaction and in denomination data differ");
       return GNUNET_SYSERR;
     }
     if (GNUNET_OK !=
@@ -2230,20 +2274,26 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
     {
       /* overflow in fee total? inconceivable! Bad DB! */
       GNUNET_break (0);
-      // FIXME: report!
+      report_coin_inconsistency (coin_pub,
+                                 fee,
+                                 &fees,
+                                 "could not add coin's fee to total fees");
       return GNUNET_SYSERR;
     }
   } /* for 'tl' */
 
   /* Finally, calculate total balance change, i.e. expenditures minus refunds */
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       TALER_amount_subtract (final_expenditures,
                              &expenditures,
                              &refunds))
   {
     /* refunds above expenditures? inconceivable! Bad DB! */
     GNUNET_break (0);
-    // FIXME: report!
+    report_coin_inconsistency (coin_pub,
+                               &expenditures,
+                               &refunds,
+                               "could not subtract refunded amount from expenditures");
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -2255,6 +2305,7 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
  * transaction data associated with a wire transfer identifier.
  *
  * @param cls a `struct WireCheckContext`
+ * @param rowid which row in the table is the information from (for diagnostics)
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
  * @param wire_method which wire plugin was used for the transfer?
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
@@ -2264,9 +2315,9 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
  * @param coin_value amount contributed by this coin in total (with fee)
  * @param coin_fee applicable fee for this coin
  */
-// TODO: modify to have rowid to log errors in a more fine-grained way?
 static void
 wire_transfer_information_cb (void *cls,
+                              uint64_t rowid,
                               const struct TALER_MerchantPublicKeyP *merchant_pub,
                               const char *wire_method,
                               const struct GNUNET_HashCode *h_wire,
@@ -2291,7 +2342,9 @@ wire_transfer_information_cb (void *cls,
   if (NULL == tl)
   {
     wcc->ok = GNUNET_SYSERR;
-    wcc->emsg = "no transaction history for coin claimed in aggregation";
+    report_row_inconsistency ("aggregation",
+                              rowid,
+                              "no transaction history for coin claimed in aggregation");
     return;
   }
 
@@ -2315,11 +2368,14 @@ wire_transfer_information_cb (void *cls,
                              &dki,
                              NULL))
   {
+    /* This should be impossible from database constraints */
     GNUNET_break (0);
     edb->free_coin_transaction_list (edb->cls,
                                      tl);
     wcc->ok = GNUNET_SYSERR;
-    wcc->emsg = "could not find denomination key for coin claimed in aggregation";
+    report_row_inconsistency ("aggregation",
+                              rowid,
+                              "could not find denomination key for coin claimed in aggregation");
     return;
   }
 
@@ -2336,14 +2392,18 @@ wire_transfer_information_cb (void *cls,
                         coin_value))
   {
     wcc->ok = GNUNET_SYSERR;
-    wcc->emsg = "coin transaction history and aggregation disagree about coin's contribution";
+    report_row_inconsistency ("aggregation",
+                              rowid,
+                              "coin transaction history and aggregation disagree about coin's contribution");
   }
   if (0 !=
       TALER_amount_cmp (&computed_fees,
                         coin_fee))
   {
     wcc->ok = GNUNET_SYSERR;
-    wcc->emsg = "coin transaction history and aggregation disagree about applicable fees";
+    report_row_inconsistency ("aggregation",
+                              rowid,
+                              "coin transaction history and aggregation disagree about applicable fees");
   }
   edb->free_coin_transaction_list (edb->cls,
                                    tl);
@@ -2353,21 +2413,28 @@ wire_transfer_information_cb (void *cls,
                    wcc->method))
   {
     wcc->ok = GNUNET_SYSERR;
-    wcc->emsg = "wire method of aggregate do not match wire transfer";
-    return;
+    report_row_inconsistency ("aggregation",
+                              rowid,
+                              "wire method of aggregate do not match wire transfer");
   }
   if (0 != memcmp (h_wire,
                    &wcc->h_wire,
                    sizeof (struct GNUNET_HashCode)))
   {
     wcc->ok = GNUNET_SYSERR;
-    wcc->emsg = "account details of aggregate do not match account details of wire transfer";
+    report_row_inconsistency ("aggregation",
+                              rowid,
+                              "account details of aggregate do not match account details of wire transfer");
     return;
   }
   if (exec_time.abs_value_us != wcc->date.abs_value_us)
   {
+    /* This should be impossible from database constraints */
+    GNUNET_break (0);
     wcc->ok = GNUNET_SYSERR;
-    wcc->emsg = "date given in aggregate does not match wire transfer date";
+    report_row_inconsistency ("aggregation",
+                              rowid,
+                              "date given in aggregate does not match wire transfer date");
     return;
   }
   if (GNUNET_SYSERR ==
@@ -2376,7 +2443,9 @@ wire_transfer_information_cb (void *cls,
                              coin_fee))
   {
     wcc->ok = GNUNET_SYSERR;
-    wcc->emsg = "could not calculate contribution of coin";
+    report_row_inconsistency ("aggregation",
+                              rowid,
+                              "could not calculate contribution of coin");
     return;
   }
 
@@ -2418,7 +2487,10 @@ check_wire_out_cb (void *cls,
   if ( (NULL == method) ||
        (! json_is_string (method)) )
   {
-    // TODO: bitch
+    report_row_inconsistency ("wire_out",
+                              rowid,
+                              "specified wire address lacks type");
+    return;
   }
   wcc.method = json_string_value (method);
   wcc.ok = GNUNET_OK;
@@ -2434,24 +2506,35 @@ check_wire_out_cb (void *cls,
                              &wcc);
   if (GNUNET_OK != wcc.ok)
   {
-    // TODO: bitch
+    report_row_inconsistency ("wire_out",
+                              rowid,
+                              "audit of associated transactions failed");
   }
   plugin = get_wire_plugin (mc,
                             wcc.method);
   if (NULL == plugin)
   {
-    // TODO: bitch
+    report_row_inconsistency ("wire_out",
+                              rowid,
+                              "could not load required wire plugin to validate");
+    return;
   }
   if (GNUNET_OK !=
       plugin->amount_round (plugin->cls,
                             &wcc.total_deposits))
   {
-    // TODO: bitch
+    report_row_minor_inconsistency ("wire_out",
+                                    rowid,
+                                    "wire plugin failed to round given amount");
   }
   if (0 != TALER_amount_cmp (amount,
                              &wcc.total_deposits))
   {
-    // TODO: bitch!
+    report_wire_out_inconsistency (wire,
+                                   rowid,
+                                   &wcc.total_deposits,
+                                   amount,
+                                   "computed amount inconsistent with wire amount");
   }
 }
 

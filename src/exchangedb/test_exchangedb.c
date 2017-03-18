@@ -752,6 +752,7 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
  */
 static void
 cb_wt_never (void *cls,
+             uint64_t serial_id,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
              const char *wire_method,
              const struct GNUNET_HashCode *h_wire,
@@ -795,6 +796,7 @@ static struct TALER_WireTransferIdentifierRawP wtid_wt;
  */
 static void
 cb_wt_check (void *cls,
+             uint64_t rowid,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
              const char *wire_method,
              const struct GNUNET_HashCode *h_wire,

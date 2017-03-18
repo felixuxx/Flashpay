@@ -1912,6 +1912,7 @@ struct WtidTransactionContext
  * transaction data for the given wire transfer identifier.
  *
  * @param cls our context for transmission
+ * @param rowid which row in the DB is the information from (for diagnostics)
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
@@ -1922,6 +1923,7 @@ struct WtidTransactionContext
  */
 static void
 handle_transaction_data (void *cls,
+                         uint64_t rowid,
                          const struct TALER_MerchantPublicKeyP *merchant_pub,
                          const char *wire_method,
                          const struct GNUNET_HashCode *h_wire,

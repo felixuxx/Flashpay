@@ -490,7 +490,8 @@ postgres_create_tables (void *cls)
   /* Table for the tracking API, mapping from wire transfer identifiers
      to transactions and back */
   SQLEXEC("CREATE TABLE IF NOT EXISTS aggregation_tracking "
-          "(deposit_serial_id INT8 PRIMARY KEY REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE"
+          "(aggregation_serial_id BIGSERIAL"
+          ",deposit_serial_id INT8 PRIMARY KEY REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE"
           ",wtid_raw BYTEA  CONSTRAINT wire_out_ref REFERENCES wire_out(wtid_raw) ON DELETE CASCADE DEFERRABLE"
           ",execution_time INT8 NOT NULL"
           ")");
@@ -1235,7 +1236,8 @@ postgres_prepare (PGconn *db_conn)
   /* Used in #postgres_lookup_wire_transfer */
   PREPARE ("lookup_transactions",
            "SELECT"
-           " deposits.h_proposal_data"
+           " aggregation_serial_id"
+           ",deposits.h_proposal_data"
            ",deposits.wire"
            ",deposits.h_wire"
            ",deposits.coin_pub"
@@ -4067,6 +4069,7 @@ postgres_lookup_wire_transfer (void *cls,
   }
   for (i=0;i<nrows;i++)
   {
+    uint64_t rowid;
     struct GNUNET_HashCode h_proposal_data;
     struct GNUNET_HashCode h_wire;
     struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -4078,6 +4081,7 @@ postgres_lookup_wire_transfer (void *cls,
     json_t *t;
     const char *wire_method;
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("aggregation_serial_id", &rowid),
       GNUNET_PQ_result_spec_auto_from_type ("h_proposal_data", &h_proposal_data),
       TALER_PQ_result_spec_json ("wire", &wire),
       GNUNET_PQ_result_spec_auto_from_type ("h_wire", &h_wire),
@@ -4088,6 +4092,7 @@ postgres_lookup_wire_transfer (void *cls,
       TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
       GNUNET_PQ_result_spec_end
     };
+
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
                                   rs,
@@ -4112,6 +4117,7 @@ postgres_lookup_wire_transfer (void *cls,
       return GNUNET_SYSERR;
     }
     cb (cb_cls,
+        rowid,
         &merchant_pub,
         wire_method,
         &h_wire,
