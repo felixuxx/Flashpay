@@ -1027,9 +1027,15 @@ struct CoinSummary
 struct DenominationSummary
 {
   /**
-   * Total value of coins issued with this denomination key.
+   * Total value of outstanding (not deposited) coins issued with this
+   * denomination key.
    */
   struct TALER_Amount denom_balance;
+
+  /**
+   * Total value of coins issued with this denomination key.
+   */
+  struct TALER_Amount denom_risk;
 
   /**
    * #GNUNET_YES if this record already existed in the DB.
@@ -1120,7 +1126,8 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
   ret = adb->get_denomination_balance (adb->cls,
                                        asession,
                                        denom_hash,
-                                       &ds->denom_balance);
+                                       &ds->denom_balance,
+                                       &ds->denom_risk);
   if (GNUNET_OK == ret)
   {
     ds->in_db = GNUNET_YES;
@@ -1134,6 +1141,9 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
                                         &ds->denom_balance));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &ds->denom_risk));
   return GNUNET_OK;
 }
 
@@ -1197,13 +1207,34 @@ sync_denomination (void *cls,
   // DELETE denomination balance, and REDUCE cc->risk exposure!
   if (0)
   {
-    ret = adb->del_denomination_balance (adb->cls,
-                                         asession,
-                                         denom_hash);
-    if (GNUNET_OK == ret)
+    if (ds->in_db)
+      ret = adb->del_denomination_balance (adb->cls,
+                                           asession,
+                                           denom_hash);
+    else
+      ret = GNUNET_OK;
+    if ( (GNUNET_OK == ret) &&
+         ( (0 != ds->denom_balance.value) ||
+           (0 != ds->denom_balance.fraction) ||
+           (0 != ds->denom_risk.value) ||
+           (0 != ds->denom_risk.fraction) ) )
     {
-      // FIXME: reduce RISK
-      // FIXME: book denomination expiration profits!
+      /* The denomination expired and carried a balance; we can now
+         book the remaining balance as profit, and reduce our risk
+         exposure by the accumulated risk of the denomination. */
+      if (GNUNET_SYSERR ==
+          TALER_amount_subtract (&cc->risk,
+                                 &cc->risk,
+                                 &ds->denom_risk))
+      {
+        /* Holy smokes, our risk assessment was inconsistent!
+           This is really, really bad. */
+        GNUNET_break (0);
+        cc->ret = GNUNET_SYSERR;
+        return GNUNET_OK;
+      }
+
+      // TODO: book denom_balance expiration profits!
     }
   }
   else
@@ -1212,12 +1243,14 @@ sync_denomination (void *cls,
       ret = adb->update_denomination_balance (adb->cls,
                                               asession,
                                               denom_hash,
-                                              &ds->denom_balance);
+                                              &ds->denom_balance,
+                                              &ds->denom_risk);
     else
       ret = adb->insert_denomination_balance (adb->cls,
                                               asession,
                                               denom_hash,
-                                              &ds->denom_balance);
+                                              &ds->denom_balance,
+                                              &ds->denom_risk);
   }
   if (GNUNET_OK != ret)
   {
@@ -1871,7 +1904,6 @@ analyze_coins (void *cls)
   /* setup 'cc' */
   cc.ret = GNUNET_OK;
   // FIXME: FIX misnomer "denomination_summary", as this is no longer exactly about denominations!
-  // FIXME: combine request with the one for the 'risk' summary?
   dret = adb->get_denomination_summary (adb->cls,
                                         asession,
                                         &master_pub,

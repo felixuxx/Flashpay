@@ -330,6 +330,9 @@ postgres_create_tables (void *cls)
            ",denom_balance_val INT8 NOT NULL"
            ",denom_balance_frac INT4 NOT NULL"
            ",denom_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+           ",denom_risk_val INT8 NOT NULL"
+           ",denom_risk_frac INT4 NOT NULL"
+           ",denom_risk_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 	   ")");
 
   /* Table with the sum of the outstanding coins from
@@ -679,8 +682,11 @@ postgres_prepare (PGconn *db_conn)
            ",denom_balance_val"
            ",denom_balance_frac"
            ",denom_balance_curr"
-           ") VALUES ($1,$2,$3,$4);",
-           4, NULL);
+           ",denom_risk_val"
+           ",denom_risk_frac"
+           ",denom_risk_curr"
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
+           7, NULL);
 
   /* Used in #postgres_update_denomination_balance() */
   PREPARE ("denomination_pending_update",
@@ -688,8 +694,11 @@ postgres_prepare (PGconn *db_conn)
            " denom_balance_val=$1"
            ",denom_balance_frac=$2"
            ",denom_balance_curr=$3"
-           " WHERE denom_pub_hash=$4",
-           4, NULL);
+           ",denom_risk_val=$4"
+           ",denom_risk_frac=$5"
+           ",denom_risk_curr=$6"
+           " WHERE denom_pub_hash=$7",
+           7, NULL);
 
   /* Used in #postgres_get_denomination_balance() */
   PREPARE ("denomination_pending_select",
@@ -697,6 +706,9 @@ postgres_prepare (PGconn *db_conn)
            " denom_balance_val"
            ",denom_balance_frac"
            ",denom_balance_curr"
+           ",denom_risk_val"
+           ",denom_risk_frac"
+           ",denom_risk_curr"
            " FROM denomination_pending"
            " WHERE denom_pub_hash=$1",
            1, NULL);
@@ -1811,19 +1823,22 @@ postgres_get_reserve_summary (void *cls,
  * @param session connection to use
  * @param denom_pub_hash hash of the denomination public key
  * @param denom_balance value of coins outstanding with this denomination key
+ * @param denom_risk value of coins issued with this denomination key
  * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
  */
 static int
 postgres_insert_denomination_balance (void *cls,
                                       struct TALER_AUDITORDB_Session *session,
                                       const struct GNUNET_HashCode *denom_pub_hash,
-                                      const struct TALER_Amount *denom_balance)
+                                      const struct TALER_Amount *denom_balance,
+                                      const struct TALER_Amount *denom_risk)
 {
   PGresult *result;
   int ret;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     TALER_PQ_query_param_amount (denom_balance),
+    TALER_PQ_query_param_amount (denom_risk),
     GNUNET_PQ_query_param_end
   };
 
@@ -1852,18 +1867,21 @@ postgres_insert_denomination_balance (void *cls,
  * @param session connection to use
  * @param denom_pub_hash hash of the denomination public key
  * @param denom_balance value of coins outstanding with this denomination key
+ * @param denom_risk value of coins issued with this denomination key
  * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
  */
 static int
 postgres_update_denomination_balance (void *cls,
                                       struct TALER_AUDITORDB_Session *session,
                                       const struct GNUNET_HashCode *denom_pub_hash,
-                                      const struct TALER_Amount *denom_balance)
+                                      const struct TALER_Amount *denom_balance,
+                                      const struct TALER_Amount *denom_risk)
 {
   PGresult *result;
   int ret;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (denom_balance),
+    TALER_PQ_query_param_amount (denom_risk),
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_end
   };
@@ -1892,13 +1910,15 @@ postgres_update_denomination_balance (void *cls,
  * @param session connection to use
  * @param denom_pub_hash hash of the denomination public key
  * @param[out] denom_balance value of coins outstanding with this denomination key
+ * @param[out] denom_risk value of coins issued with this denomination key
  * @return #GNUNET_OK on success; #GNUNET_NO if no record found, #GNUNET_SYSERR on failure
  */
 static int
 postgres_get_denomination_balance (void *cls,
                                    struct TALER_AUDITORDB_Session *session,
                                    const struct GNUNET_HashCode *denom_pub_hash,
-                                   struct TALER_Amount *denom_balance)
+                                   struct TALER_Amount *denom_balance,
+                                   struct TALER_Amount *denom_risk)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
@@ -1929,6 +1949,7 @@ postgres_get_denomination_balance (void *cls,
 
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_result_spec_amount ("denom_balance", denom_balance),
+    TALER_PQ_result_spec_amount ("denom_risk", denom_risk),
     GNUNET_PQ_result_spec_end
   };
   if (GNUNET_OK !=

@@ -380,7 +380,8 @@ run (void *cls)
           plugin->insert_denomination_balance (plugin->cls,
                                                session,
                                                &denom_pub_hash,
-                                               &denom_balance));
+                                               &denom_balance,
+                                               &rbalance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_denomination_balance\n");
@@ -394,7 +395,8 @@ run (void *cls)
           plugin->update_denomination_balance (plugin->cls,
                                                session,
                                                &denom_pub_hash,
-                                               &denom_balance));
+                                               &denom_balance,
+                                               &rbalance));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_denomination_balance\n");
 
@@ -402,9 +404,11 @@ run (void *cls)
           plugin->get_denomination_balance (plugin->cls,
                                             session,
                                             &denom_pub_hash,
-                                            &denom_balance2));
+                                            &denom_balance2,
+                                            &rbalance2));
 
   FAILIF (0 != memcmp (&denom_balance2, &denom_balance, sizeof (denom_balance)));
+  FAILIF (0 != memcmp (&rbalance2, &rbalance, sizeof (rbalance)));
 
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,

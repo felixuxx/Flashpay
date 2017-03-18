@@ -522,15 +522,16 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
-   * @param denom_balance value of coins outstanding (or issued?) with this denomination key
+   * @param denom_balance value of coins outstanding with this denomination key
+   * @param denom_risk value of coins issued with this denomination key
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
   (*insert_denomination_balance)(void *cls,
                                  struct TALER_AUDITORDB_Session *session,
                                  const struct GNUNET_HashCode *denom_pub_hash,
-                                 const struct TALER_Amount *denom_balance);
-
+                                 const struct TALER_Amount *denom_balance,
+                                 const struct TALER_Amount *denom_risk);
 
 
   /**
@@ -540,14 +541,16 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
-   * @param denom_balance value of coins outstanding (or issued?) with this denomination key
+   * @param denom_balance value of coins outstanding with this denomination key
+   * @param denom_risk value of coins issued with this denomination key
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
   (*update_denomination_balance)(void *cls,
                                  struct TALER_AUDITORDB_Session *session,
                                  const struct GNUNET_HashCode *denom_pub_hash,
-                                 const struct TALER_Amount *denom_balance);
+                                 const struct TALER_Amount *denom_balance,
+                                 const struct TALER_Amount *denom_risk);
 
 
   /**
@@ -556,14 +559,16 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to use
    * @param denom_pub_hash hash of the denomination public key
-   * @param[out] denom_balance value of coins outstanding (or issued?) with this denomination key
+   * @param[out] denom_balance value of coins outstanding with this denomination key
+   * @param[out] denom_risk value of coins issued with this denomination key
    * @return #GNUNET_OK on success; #GNUNET_NO if no record found, #GNUNET_SYSERR on failure
    */
   int
   (*get_denomination_balance)(void *cls,
                               struct TALER_AUDITORDB_Session *session,
                               const struct GNUNET_HashCode *denom_pub_hash,
-                              struct TALER_Amount *denom_balance);
+                              struct TALER_Amount *denom_balance,
+                              struct TALER_Amount *denom_risk);
 
 
   /**
