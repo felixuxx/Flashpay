@@ -819,12 +819,53 @@ typedef void
  * @param finished did we complete the transfer yet?
  */
 typedef void
-(*TALER_EXCHANGEDB_WirePreparationCallback) (void *cls,
-                                             uint64_t rowid,
-                                             const char *wire_method,
-                                             const char *buf,
-                                             size_t buf_size,
-                                             int finished);
+(*TALER_EXCHANGEDB_WirePreparationCallback)(void *cls,
+                                            uint64_t rowid,
+                                            const char *wire_method,
+                                            const char *buf,
+                                            size_t buf_size,
+                                            int finished);
+
+
+/**
+ * Function called about paybacks the exchange has to perform.
+ *
+ * @param cls closure
+ * @param rowid row identifier used to uniquely identify the payback operation
+ * @param deadline by when did we promise the payment
+ * @param receiver_account_details to whom do we need to send the funds
+ * @param amount how much should be transferred
+ * @param wire_subject what should be the wire subject
+ */
+typedef void
+(*TALER_EXCHANGEDB_PaybackCallback)(void *cls,
+                                    uint64_t rowid,
+                                    struct GNUNET_TIME_Absolute deadline,
+                                    const json_t *receiver_account_details,
+                                    const struct TALER_Amount *amount,
+                                    const struct TALER_WireTransferIdentifierRawP *wtid);
+
+
+/**
+ * Function called with information justifying an aggregate payback.
+ * (usually implemented by the auditor when verifying losses from paybacks).
+ *
+ * @param cls closure
+ * @param rowid row identifier used to uniquely identify the payback operation
+ * @param coin information about the coin
+ * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+ * @param coin_blind blinding key of the coin
+ * @param h_blind_ev blinded envelope, as calculated by the exchange
+ * @param amount total amount to be paid back
+ */
+typedef void
+(*TALER_EXCHANGEDB_PaybackJustificationCallback)(void *cls,
+                                                 uint64_t rowid,
+                                                 const struct TALER_CoinPublicInfo *coin,
+                                                 const struct TALER_CoinSpendSignatureP *coin_sig,
+                                                 const struct TALER_DenominationBlindingKeyP *coin_blind,
+                                                 const struct GNUNET_HashCode *h_blinded_ev,
+                                                 const struct TALER_Amount *amount);
 
 
 /**
@@ -1818,6 +1859,93 @@ struct TALER_EXCHANGEDB_Plugin
                                      uint64_t serial_id,
                                      TALER_EXCHANGEDB_WireTransferOutCallback cb,
                                      void *cb_cls);
+
+
+  /**
+   * Function called to add a request for an emergency payback for a coin.
+   * Note that this function must check if there is an aggregation for the
+   * respective reserve, if not create one, and return the identifiers for
+   * the aggregate in @a wire_subject and @a deadline.  The
+   * @a acceptable_delay will be constant for an exchange, so if an
+   * aggregate exists it must either be past the deadline or be usable,
+   * in which case this function should update the aggregate's total amount.
+   *
+   * If no aggregate exists, a fresh @a wire_subject is picked at random.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param coin information about the coin
+   * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+   * @param coin_blind blinding key of the coin
+   * @param h_blind_ev blinded envelope, as calculated by the exchange
+   * @param amount total amount to be paid back
+   * @param acceptable_delay how long could a wire transfer be delayed
+   * @param[out] wire_subject wire subject the database selected for the transfer
+   * @param[out] deadline set to absolute time by when the exchange plans to pay it back
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*insert_payback_request)(void *cls,
+                            struct TALER_EXCHANGEDB_Session *session,
+                            const struct TALER_CoinPublicInfo *coin,
+                            const struct TALER_CoinSpendSignatureP *coin_sig,
+                            const struct TALER_DenominationBlindingKeyP *coin_blind,
+                            const struct GNUNET_HashCode *h_blinded_ev,
+                            const struct TALER_Amount *amount,
+                            struct GNUNET_TIME_Relative acceptable_delay,
+                            struct TALER_WireTransferIdentifierRawP *wire_subject,
+                            struct GNUNET_TIME_Absolute *deadline);
+
+
+  /**
+   * Return all (already aggregated!) payback payments due between @e
+   * start_time and @e end_time.  To be used by the special
+   * 'emergency' aggregator to make the paybacks (which presumably
+   * only runs if there are paybacks to be made, and which is
+   * restricted to only accept paybacks for approved denomination
+   * keys).
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param start_time beginning of selection range, inclusive
+   * @param end_time end of selection range, exclusive
+   * @param cb function to call on each required payback operation
+   * @param cb_cls closure for @a cb
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_NO if there are no entries,
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*select_payback_requests)(void *cls,
+                             struct TALER_EXCHANGEDB_Session *session,
+                             struct GNUNET_TIME_Absolute start_time,
+                             struct GNUNET_TIME_Absolute end_time,
+                             TALER_EXCHANGEDB_PaybackCallback cb,
+                             void *cb_cls);
+
+
+  /**
+   * Obtain the individual payback requests that justified the aggregate
+   * wire transfer.  Usually used by the auditor to verify losses from
+   * paybacks.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param wire_subject wire subject of the payback wire transfer
+   * @param cb callback to call with the justification
+   * @param cb_cls closure for @a cb
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_NO if there are no entries,
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*get_payback_justification)(void *cls,
+                               struct TALER_EXCHANGEDB_Session *session,
+                               const struct TALER_WireTransferIdentifierRawP *wire_subject,
+                               // ? add constraints like h_wire of receiver?
+                               TALER_EXCHANGEDB_PaybackJustificationCallback cb,
+                               void *cb_cls);
 
 };
 
