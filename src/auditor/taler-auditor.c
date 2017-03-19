@@ -26,16 +26,10 @@
  *
  * TODO:
  * - FIXME: do proper transaction history check in #check_transaction_history()
- * - SANITY: rename functions/operations to better describe what they do!
  * - OPTIMIZE/SIMPLIFY: modify auditordb to return DK when we inquire about deposit/refresh/refund,
  *   so we can avoid the costly #get_coin_summary with the transaction history building
  *   (at least during #analyze_coins); the logic may be partially useful in
  *   #analyze_merchants (but we won't need the cache!)
- * - MAJOR: check that aggregation records exist for deposits past payment deadline
- *          (or that there was a full refund and thus there is no aggregation)
- *          Conceptual issue: how do we deal with deposits that we already checked
- *          in the past? => Need a very separate check / pass for this!
- * - BEAUTIFY: write reporting logic to output nice report beyond GNUNET_log()
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -1147,7 +1141,7 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
  * @return NULL on error
  */
 static struct DenominationSummary *
-get_denomination_summary (struct CoinContext *cc,
+get_balance_summary (struct CoinContext *cc,
                           const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
                           const struct GNUNET_HashCode *dh)
 {
@@ -1446,7 +1440,7 @@ withdraw_cb (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  ds = get_denomination_summary (cc,
+  ds = get_balance_summary (cc,
                                  dki,
                                  &dh);
   TALER_amount_ntoh (&value,
@@ -1625,7 +1619,7 @@ refresh_session_cb (void *cls,
       struct DenominationSummary *dsi;
       struct TALER_Amount value;
 
-      dsi = get_denomination_summary (cc,
+      dsi = get_balance_summary (cc,
                                       new_dki[i],
                                       &new_dki[i]->properties.denom_hash);
       TALER_amount_ntoh (&value,
@@ -1650,7 +1644,7 @@ refresh_session_cb (void *cls,
   }
 
   /* update old coin's denomination balance */
-  dso = get_denomination_summary (cc,
+  dso = get_balance_summary (cc,
                                   dki,
                                   &dki->properties.denom_hash);
   if (GNUNET_OK !=
@@ -1766,7 +1760,7 @@ deposit_cb (void *cls,
   }
 
   /* update old coin's denomination balance */
-  ds = get_denomination_summary (cc,
+  ds = get_balance_summary (cc,
                                  dki,
                                  &dki->properties.denom_hash);
   if (GNUNET_OK !=
@@ -1880,7 +1874,7 @@ refund_cb (void *cls,
   }
 
   /* update coin's denomination balance */
-  ds = get_denomination_summary (cc,
+  ds = get_balance_summary (cc,
                                  dki,
                                  &dki->properties.denom_hash);
   if (GNUNET_OK !=
@@ -1920,15 +1914,14 @@ analyze_coins (void *cls)
 
   /* setup 'cc' */
   cc.ret = GNUNET_OK;
-  // SANITY: FIX misnomer "denomination_summary", as this is no longer exactly about denominations!
-  dret = adb->get_denomination_summary (adb->cls,
-                                        asession,
-                                        &master_pub,
-                                        &cc.denom_balance,
-                                        &cc.deposit_fee_balance,
-                                        &cc.melt_fee_balance,
-                                        &cc.refund_fee_balance,
-                                        &cc.risk);
+  dret = adb->get_balance_summary (adb->cls,
+                                   asession,
+                                   &master_pub,
+                                   &cc.denom_balance,
+                                   &cc.deposit_fee_balance,
+                                   &cc.melt_fee_balance,
+                                   &cc.refund_fee_balance,
+                                   &cc.risk);
   if (GNUNET_SYSERR == dret)
   {
     GNUNET_break (0);
@@ -2016,25 +2009,24 @@ analyze_coins (void *cls)
                                          &cc);
   GNUNET_CONTAINER_multihashmap_destroy (cc.coins);
 
-  // SANITY: FIX misnomer "denomination_summary", as this is no longer about denominations!
   if (GNUNET_YES == dret)
-      dret = adb->update_denomination_summary (adb->cls,
-                                               asession,
-                                               &master_pub,
-                                               &cc.denom_balance,
-                                               &cc.deposit_fee_balance,
-                                               &cc.melt_fee_balance,
-                                               &cc.refund_fee_balance,
-                                               &cc.risk);
+      dret = adb->update_balance_summary (adb->cls,
+                                          asession,
+                                          &master_pub,
+                                          &cc.denom_balance,
+                                          &cc.deposit_fee_balance,
+                                          &cc.melt_fee_balance,
+                                          &cc.refund_fee_balance,
+                                          &cc.risk);
   else
-    dret = adb->insert_denomination_summary (adb->cls,
-                                             asession,
-                                             &master_pub,
-                                             &cc.denom_balance,
-                                             &cc.deposit_fee_balance,
-                                             &cc.melt_fee_balance,
-                                             &cc.refund_fee_balance,
-                                             &cc.risk);
+    dret = adb->insert_balance_summary (adb->cls,
+                                        asession,
+                                        &master_pub,
+                                        &cc.denom_balance,
+                                        &cc.deposit_fee_balance,
+                                        &cc.melt_fee_balance,
+                                        &cc.refund_fee_balance,
+                                        &cc.risk);
   if (GNUNET_OK != dret)
   {
     GNUNET_break (0);
@@ -2082,7 +2074,7 @@ struct WirePlugin
 /**
  * Closure for callbacks during #analyze_merchants().
  */
-struct MerchantContext
+struct AggregationContext
 {
 
   /**
@@ -2101,18 +2093,18 @@ struct MerchantContext
 /**
  * Find the relevant wire plugin.
  *
- * @param mc context to search
+ * @param ac context to search
  * @param type type of the wire plugin to load
  * @return NULL on error
  */
 static struct TALER_WIRE_Plugin *
-get_wire_plugin (struct MerchantContext *mc,
+get_wire_plugin (struct AggregationContext *ac,
                  const char *type)
 {
   struct WirePlugin *wp;
   struct TALER_WIRE_Plugin *plugin;
 
-  for (wp = mc->wire_head; NULL != wp; wp = wp->next)
+  for (wp = ac->wire_head; NULL != wp; wp = wp->next)
     if (0 == strcmp (type,
                      wp->type))
       return wp->plugin;
@@ -2128,8 +2120,8 @@ get_wire_plugin (struct MerchantContext *mc,
   wp = GNUNET_new (struct WirePlugin);
   wp->type = GNUNET_strdup (type);
   wp->plugin = plugin;
-  GNUNET_CONTAINER_DLL_insert (mc->wire_head,
-                               mc->wire_tail,
+  GNUNET_CONTAINER_DLL_insert (ac->wire_head,
+                               ac->wire_tail,
                                wp);
   return plugin;
 }
@@ -2144,7 +2136,7 @@ struct WireCheckContext
   /**
    * Corresponding merchant context.
    */
-  struct MerchantContext *mc;
+  struct AggregationContext *ac;
 
   /**
    * Total deposits claimed by all transactions that were aggregated
@@ -2467,7 +2459,7 @@ wire_transfer_information_cb (void *cls,
  * Check that a wire transfer made by the exchange is valid
  * (has matching deposits).
  *
- * @param cls a `struct MerchantContext`
+ * @param cls a `struct AggregationContext`
  * @param rowid identifier of the respective row in the database
  * @param date timestamp of the wire transfer (roughly)
  * @param wtid wire transfer subject
@@ -2482,12 +2474,12 @@ check_wire_out_cb (void *cls,
                    const json_t *wire,
                    const struct TALER_Amount *amount)
 {
-  struct MerchantContext *mc = cls;
+  struct AggregationContext *ac = cls;
   struct WireCheckContext wcc;
   json_t *method;
   struct TALER_WIRE_Plugin *plugin;
 
-  wcc.mc = mc;
+  wcc.ac = ac;
   method = json_object_get (wire,
                             "type");
   if ( (NULL == method) ||
@@ -2516,7 +2508,7 @@ check_wire_out_cb (void *cls,
                               rowid,
                               "audit of associated transactions failed");
   }
-  plugin = get_wire_plugin (mc,
+  plugin = get_wire_plugin (ac,
                             wcc.method);
   if (NULL == plugin)
   {
@@ -2552,29 +2544,29 @@ check_wire_out_cb (void *cls,
  * @param int #GNUNET_OK on success, #GNUNET_SYSERR on hard errors
  */
 static int
-analyze_merchants (void *cls)
+analyze_aggregations (void *cls)
 {
-  struct MerchantContext mc;
+  struct AggregationContext ac;
   struct WirePlugin *wc;
   int ret;
 
   ret = GNUNET_OK;
-  mc.wire_head = NULL;
-  mc.wire_tail = NULL;
+  ac.wire_head = NULL;
+  ac.wire_tail = NULL;
   if (GNUNET_SYSERR ==
       edb->select_wire_out_above_serial_id (edb->cls,
                                             esession,
                                             pp.last_wire_out_serial_id,
                                             &check_wire_out_cb,
-                                            &mc))
+                                            &ac))
   {
     GNUNET_break (0);
     ret = GNUNET_SYSERR;
   }
-  while (NULL != (wc = mc.wire_head))
+  while (NULL != (wc = ac.wire_head))
   {
-    GNUNET_CONTAINER_DLL_remove (mc.wire_head,
-                                 mc.wire_tail,
+    GNUNET_CONTAINER_DLL_remove (ac.wire_head,
+                                 ac.wire_tail,
                                  wc);
     TALER_WIRE_plugin_unload (wc->plugin);
     GNUNET_free (wc->type);
@@ -2760,7 +2752,7 @@ setup_sessions_and_run ()
             NULL);
   transact (&analyze_coins,
             NULL);
-  transact (&analyze_merchants,
+  transact (&analyze_aggregations,
             NULL);
 }
 

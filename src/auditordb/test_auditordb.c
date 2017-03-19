@@ -401,10 +401,10 @@ run (void *cls)
 
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Test: insert_denomination_summary\n");
+              "Test: insert_balance_summary\n");
 
   FAILIF (GNUNET_OK !=
-          plugin->insert_denomination_summary (plugin->cls,
+          plugin->insert_balance_summary (plugin->cls,
                                                session,
                                                &master_pub,
                                                &refund_fee_balance,
@@ -414,10 +414,10 @@ run (void *cls)
                                                &rbalance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Test: update_denomination_summary\n");
+              "Test: update_balance_summary\n");
 
   FAILIF (GNUNET_OK !=
-          plugin->update_denomination_summary (plugin->cls,
+          plugin->update_balance_summary (plugin->cls,
                                                session,
                                                &master_pub,
                                                &denom_balance,
@@ -427,7 +427,7 @@ run (void *cls)
                                                &rbalance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Test: get_denomination_summary\n");
+              "Test: get_balance_summary\n");
 
   ZR_BLK (&denom_balance2);
   ZR_BLK (&deposit_fee_balance2);
@@ -436,7 +436,7 @@ run (void *cls)
   ZR_BLK (&rbalance2);
 
   FAILIF (GNUNET_OK !=
-          plugin->get_denomination_summary (plugin->cls,
+          plugin->get_balance_summary (plugin->cls,
                                             session,
                                             &master_pub,
                                             &denom_balance2,

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2016 GNUnet e.V.
+  Copyright (C) 2014-2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -336,10 +336,10 @@ postgres_create_tables (void *cls)
   /* Table with the sum of the outstanding coins from
      "denomination_pending" (denom_pubs must belong to the
      respective's exchange's master public key); it represents the
-     total_liabilities of the exchange at this point (modulo
+     balance_summary of the exchange at this point (modulo
      unexpected historic_loss-style events where denomination keys are
      compromised) */
-  SQLEXEC ("CREATE TABLE IF NOT EXISTS total_liabilities"
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS balance_summary"
 	   "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
 	   ",denom_balance_val INT8 NOT NULL"
            ",denom_balance_frac INT4 NOT NULL"
@@ -697,9 +697,9 @@ postgres_prepare (PGconn *db_conn)
            " WHERE denom_pub_hash=$1",
            1, NULL);
 
-  /* Used in #postgres_insert_denomination_summary() */
-  PREPARE ("total_liabilities_insert",
-           "INSERT INTO total_liabilities "
+  /* Used in #postgres_insert_balance_summary() */
+  PREPARE ("balance_summary_insert",
+           "INSERT INTO balance_summary "
 	   "(master_pub"
 	   ",denom_balance_val"
            ",denom_balance_frac"
@@ -719,9 +719,9 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16);",
            16, NULL);
 
-  /* Used in #postgres_update_denomination_summary() */
-  PREPARE ("total_liabilities_update",
-           "UPDATE total_liabilities SET"
+  /* Used in #postgres_update_balance_summary() */
+  PREPARE ("balance_summary_update",
+           "UPDATE balance_summary SET"
 	   " denom_balance_val=$1"
            ",denom_balance_frac=$2"
            ",denom_balance_curr=$3"
@@ -740,8 +740,8 @@ postgres_prepare (PGconn *db_conn)
            " WHERE master_pub=$16;",
            16, NULL);
 
-  /* Used in #postgres_get_denomination_summary() */
-  PREPARE ("total_liabilities_select",
+  /* Used in #postgres_get_balance_summary() */
+  PREPARE ("balance_summary_select",
            "SELECT"
 	   " denom_balance_val"
            ",denom_balance_frac"
@@ -758,7 +758,7 @@ postgres_prepare (PGconn *db_conn)
 	   ",risk_val"
            ",risk_frac"
            ",risk_curr"
-           " FROM total_liabilities"
+           " FROM balance_summary"
            " WHERE master_pub=$1;",
            1, NULL);
 
@@ -1921,14 +1921,14 @@ postgres_get_denomination_balance (void *cls,
  * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
  */
 static int
-postgres_insert_denomination_summary (void *cls,
-                                      struct TALER_AUDITORDB_Session *session,
-                                      const struct TALER_MasterPublicKeyP *master_pub,
-                                      const struct TALER_Amount *denom_balance,
-                                      const struct TALER_Amount *deposit_fee_balance,
-                                      const struct TALER_Amount *melt_fee_balance,
-                                      const struct TALER_Amount *refund_fee_balance,
-                                      const struct TALER_Amount *risk)
+postgres_insert_balance_summary (void *cls,
+                                 struct TALER_AUDITORDB_Session *session,
+                                 const struct TALER_MasterPublicKeyP *master_pub,
+                                 const struct TALER_Amount *denom_balance,
+                                 const struct TALER_Amount *deposit_fee_balance,
+                                 const struct TALER_Amount *melt_fee_balance,
+                                 const struct TALER_Amount *refund_fee_balance,
+                                 const struct TALER_Amount *risk)
 {
   PGresult *result;
   int ret;
@@ -1955,7 +1955,7 @@ postgres_insert_denomination_summary (void *cls,
                                             refund_fee_balance));
 
   result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "total_liabilities_insert",
+                                   "balance_summary_insert",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
@@ -1986,14 +1986,14 @@ postgres_insert_denomination_summary (void *cls,
  * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
  */
 static int
-postgres_update_denomination_summary (void *cls,
-                                      struct TALER_AUDITORDB_Session *session,
-                                      const struct TALER_MasterPublicKeyP *master_pub,
-                                      const struct TALER_Amount *denom_balance,
-                                      const struct TALER_Amount *deposit_fee_balance,
-                                      const struct TALER_Amount *melt_fee_balance,
-                                      const struct TALER_Amount *refund_fee_balance,
-                                      const struct TALER_Amount *risk)
+postgres_update_balance_summary (void *cls,
+                                 struct TALER_AUDITORDB_Session *session,
+                                 const struct TALER_MasterPublicKeyP *master_pub,
+                                 const struct TALER_Amount *denom_balance,
+                                 const struct TALER_Amount *deposit_fee_balance,
+                                 const struct TALER_Amount *melt_fee_balance,
+                                 const struct TALER_Amount *refund_fee_balance,
+                                 const struct TALER_Amount *risk)
 {
   PGresult *result;
   int ret;
@@ -2008,7 +2008,7 @@ postgres_update_denomination_summary (void *cls,
   };
 
   result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "total_liabilities_update",
+                                   "balance_summary_update",
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
@@ -2039,14 +2039,14 @@ postgres_update_denomination_summary (void *cls,
  *           for this @a master_pub; #GNUNET_SYSERR on failure
  */
 static int
-postgres_get_denomination_summary (void *cls,
-                                   struct TALER_AUDITORDB_Session *session,
-                                   const struct TALER_MasterPublicKeyP *master_pub,
-                                   struct TALER_Amount *denom_balance,
-                                   struct TALER_Amount *deposit_fee_balance,
-                                   struct TALER_Amount *melt_fee_balance,
-                                   struct TALER_Amount *refund_fee_balance,
-                                   struct TALER_Amount *risk)
+postgres_get_balance_summary (void *cls,
+                              struct TALER_AUDITORDB_Session *session,
+                              const struct TALER_MasterPublicKeyP *master_pub,
+                              struct TALER_Amount *denom_balance,
+                              struct TALER_Amount *deposit_fee_balance,
+                              struct TALER_Amount *melt_fee_balance,
+                              struct TALER_Amount *refund_fee_balance,
+                              struct TALER_Amount *risk)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -2055,7 +2055,7 @@ postgres_get_denomination_summary (void *cls,
   PGresult *result;
 
   result = GNUNET_PQ_exec_prepared (session->conn,
-                                    "total_liabilities_select",
+                                    "balance_summary_select",
                                     params);
   if (PGRES_TUPLES_OK !=
       PQresultStatus (result))
@@ -2069,7 +2069,7 @@ postgres_get_denomination_summary (void *cls,
   if (0 == nrows)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "postgres_get_denomination_summary() returned 0 matching rows\n");
+                "postgres_get_balance_summary() returned 0 matching rows\n");
     PQclear (result);
     return GNUNET_NO;
   }
@@ -2701,9 +2701,9 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->update_denomination_balance = &postgres_update_denomination_balance;
   plugin->insert_denomination_balance = &postgres_insert_denomination_balance;
 
-  plugin->get_denomination_summary = &postgres_get_denomination_summary;
-  plugin->update_denomination_summary = &postgres_update_denomination_summary;
-  plugin->insert_denomination_summary = &postgres_insert_denomination_summary;
+  plugin->get_balance_summary = &postgres_get_balance_summary;
+  plugin->update_balance_summary = &postgres_update_balance_summary;
+  plugin->insert_balance_summary = &postgres_insert_balance_summary;
 
   plugin->select_historic_denom_revenue = &postgres_select_historic_denom_revenue;
   plugin->insert_historic_denom_revenue = &postgres_insert_historic_denom_revenue;

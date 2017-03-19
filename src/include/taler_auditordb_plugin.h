@@ -571,7 +571,7 @@ struct TALER_AUDITORDB_Plugin
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
-  (*insert_denomination_summary)(void *cls,
+  (*insert_balance_summary)(void *cls,
                                  struct TALER_AUDITORDB_Session *session,
                                  const struct TALER_MasterPublicKeyP *master_pub,
                                  const struct TALER_Amount *denom_balance,
@@ -596,7 +596,7 @@ struct TALER_AUDITORDB_Plugin
    * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
    */
   int
-  (*update_denomination_summary)(void *cls,
+  (*update_balance_summary)(void *cls,
                                  struct TALER_AUDITORDB_Session *session,
                                  const struct TALER_MasterPublicKeyP *master_pub,
                                  const struct TALER_Amount *denom_balance,
@@ -621,7 +621,7 @@ struct TALER_AUDITORDB_Plugin
    *           for this @a master_pub; #GNUNET_SYSERR on failure
    */
   int
-  (*get_denomination_summary)(void *cls,
+  (*get_balance_summary)(void *cls,
                               struct TALER_AUDITORDB_Session *session,
                               const struct TALER_MasterPublicKeyP *master_pub,
                               struct TALER_Amount *denom_balance,
