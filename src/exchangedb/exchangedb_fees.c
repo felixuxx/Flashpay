@@ -212,6 +212,7 @@ TALER_EXCHANGEDB_fees_write (const char *filename,
                                 af,
                                 &wd.wf);
     wd.master_sig = af->master_sig;
+    last = af;
     af = af->next;
     if (sizeof (wd) !=
         GNUNET_DISK_file_write (fh,
