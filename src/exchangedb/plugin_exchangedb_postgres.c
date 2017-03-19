@@ -46,17 +46,14 @@
  * @param conn SQL connection that was used
  */
 #define BREAK_DB_ERR(result,conn) do {                                      \
-    char *err = PQresultVerboseErrorMessage (result, PQERRORS_VERBOSE, PQSHOW_CONTEXT_ALWAYS); \
     GNUNET_break (0); \
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR, \
-                "Database failure: %s/%s/%s/%s/%s/%s", \
+                "Database failure: %s/%s/%s/%s/%s", \
                 PQresultErrorField (result, PG_DIAG_MESSAGE_PRIMARY), \
                 PQresultErrorField (result, PG_DIAG_MESSAGE_DETAIL), \
                 PQresultErrorMessage (result), \
                 PQresStatus (PQresultStatus (result)), \
-                PQerrorMessage(conn), \
-                err);                 \
-    PQfreemem (err); \
+                PQerrorMessage(conn)); \
   } while (0)
 
 
