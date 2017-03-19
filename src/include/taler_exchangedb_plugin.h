@@ -592,6 +592,7 @@ typedef void
  * @param rowid unique serial ID for the deposit in our DB
  * @param timestamp when did the deposit happen
  * @param merchant_pub public key of the merchant
+ * @param denom_pub denomination public key of @a coin_pub
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
@@ -609,6 +610,7 @@ typedef int
                                     uint64_t rowid,
                                     struct GNUNET_TIME_Absolute timestamp,
                                     const struct TALER_MerchantPublicKeyP *merchant_pub,
+                                    const struct TALER_DenominationPublicKey *denom_pub,
                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     const struct TALER_CoinSpendSignatureP *coin_sig,
                                     const struct TALER_Amount *amount_with_fee,
@@ -625,6 +627,7 @@ typedef int
  *
  * @param cls closure
  * @param rowid unique serial ID for the refresh session in our DB
+ * @param denom_pub denomination public key of @a coin_pub
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
@@ -636,6 +639,7 @@ typedef int
 typedef int
 (*TALER_EXCHANGEDB_RefreshSessionCallback)(void *cls,
                                            uint64_t rowid,
+                                           const struct TALER_DenominationPublicKey *denom_pub,
                                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                            const struct TALER_CoinSpendSignatureP *coin_sig,
                                            const struct TALER_Amount *amount_with_fee,
@@ -650,6 +654,7 @@ typedef int
  *
  * @param cls closure
  * @param rowid unique serial ID for the refund in our DB
+ * @param denom_pub denomination public key of @a coin_pub
  * @param coin_pub public key of the coin
  * @param merchant_pub public key of the merchant
  * @param merchant_sig signature of the merchant
@@ -661,6 +666,7 @@ typedef int
 typedef int
 (*TALER_EXCHANGEDB_RefundCallback)(void *cls,
                                    uint64_t rowid,
+                                   const struct TALER_DenominationPublicKey *denom_pub,
                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                    const struct TALER_MerchantPublicKeyP *merchant_pub,
                                    const struct TALER_MerchantSignatureP *merchant_sig,

@@ -26,10 +26,6 @@
  *
  * TODO:
  * - FIXME: do proper transaction history check in #check_transaction_history()
- * - OPTIMIZE/SIMPLIFY: modify auditordb to return DK when we inquire about deposit/refresh/refund,
- *   so we can avoid the costly #get_coin_summary with the transaction history building
- *   (at least during #analyze_coins); the logic may be partially useful in
- *   #analyze_merchants (but we won't need the cache!)
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -972,33 +968,6 @@ analyze_reserves (void *cls)
    coin, checking deposits, refunds, refresh* and known_coins
    tables */
 
-/**
- * Summary data we keep per coin.
- */
-struct CoinSummary
-{
-  /**
-   * Denomination of the coin with fee structure.
-   */
-  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
-
-  /**
-   * Hash of @e coin_pub.
-   */
-  struct GNUNET_HashCode coin_hash;
-
-  /**
-   * Public key of the coin.
-   */
-  struct TALER_CoinSpendPublicKeyP coin_pub;
-
-  /**
-   * List of transactions this coin was involved in.
-   */
-  struct TALER_EXCHANGEDB_TransactionList *tl;
-
-};
-
 
 /**
  * Summary data we keep per denomination.
@@ -1035,18 +1004,6 @@ struct DenominationSummary
  */
 struct CoinContext
 {
-
-  /**
-   * Map for tracking information about coins.
-   */
-  struct GNUNET_CONTAINER_MultiHashMap *coins;
-
-  /**
-   * Array of the coins in @e coins.  Used to expire coins
-   * in a circular ring-buffer like fashion (to keep the
-   * working set in @e coins bounded).
-   */
-  struct CoinSummary summaries[MAX_COIN_SUMMARIES];
 
   /**
    * Map for tracking information about denominations.
@@ -1142,8 +1099,8 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
  */
 static struct DenominationSummary *
 get_balance_summary (struct CoinContext *cc,
-                          const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
-                          const struct GNUNET_HashCode *dh)
+                     const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
+                     const struct GNUNET_HashCode *dh)
 {
   struct DenominationSummary *ds;
 
@@ -1277,126 +1234,6 @@ sync_denomination (void *cls,
 
 
 /**
- * Release memory occupied by a coin summary.  Note that
- * the actual @a value is NOT allocated (comes from the
- * ring buffer), only the members of the struct need to be
- * freed.
- *
- * @param cls the `struct CoinContext`
- * @param key the hash of the coin's public key
- * @param value a `struct DenominationSummary`
- * @return #GNUNET_OK (continue to iterate)
- */
-static int
-free_coin (void *cls,
-           const struct GNUNET_HashCode *denom_hash,
-           void *value)
-{
-  struct CoinContext *cc = cls;
-  struct CoinSummary *cs = value;
-
-  GNUNET_assert (GNUNET_YES ==
-                 GNUNET_CONTAINER_multihashmap_remove (cc->coins,
-                                                       &cs->coin_hash,
-                                                       cs));
-  edb->free_coin_transaction_list (edb->cls,
-                                   cs->tl);
-  cs->tl = NULL;
-  return GNUNET_OK;
-}
-
-
-/**
- * Obtain information about the coin from the cache or the database.
- *
- * If we obtain this information for the first time, also check that
- * the coin's transaction history is internally consistent.
- *
- * @param cc caching information
- * @param coin_pub public key of the coin to get information about
- * @return NULL on error
- */
-// OPTIMIZE/SIMPLIFY: replace by something that just gets the denomination hash!
-// (makes this part WAY more efficient!)
-static struct CoinSummary *
-get_coin_summary (struct CoinContext *cc,
-                  const struct TALER_CoinSpendPublicKeyP *coin_pub)
-{
-  struct CoinSummary *cs;
-  struct GNUNET_HashCode chash;
-  struct TALER_EXCHANGEDB_TransactionList *tl;
-  const struct TALER_CoinPublicInfo *coin;
-  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
-
-  /* Check cache */
-  GNUNET_CRYPTO_hash (coin_pub,
-                      sizeof (*coin_pub),
-                      &chash);
-  cs = GNUNET_CONTAINER_multihashmap_get (cc->coins,
-                                          &chash);
-  if (NULL != cs)
-    return cs; /* cache hit */
-
-  /* Get transaction history of @a coin_pub from DB */
-  tl = edb->get_coin_transactions (edb->cls,
-                                   esession,
-                                   coin_pub);
-  if (NULL == tl)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-
-  /* Obtain general denomination information about the coin */
-  coin = NULL;
-  switch (tl->type)
-  {
-  case TALER_EXCHANGEDB_TT_DEPOSIT:
-    coin = &tl->details.deposit->coin;
-    break;
-  case TALER_EXCHANGEDB_TT_REFRESH_MELT:
-    coin = &tl->details.melt->coin;
-    break;
-  case TALER_EXCHANGEDB_TT_REFUND:
-    coin = &tl->details.refund->coin;
-    break;
-  }
-  GNUNET_assert (NULL != coin); /* hard check that switch worked */
-  if (GNUNET_OK !=
-      get_denomination_info (&coin->denom_pub,
-                             &dki,
-                             NULL))
-  {
-    GNUNET_break (0);
-    edb->free_coin_transaction_list (edb->cls,
-                                     tl);
-    return NULL;
-  }
-
-  /* allocate coin slot in ring buffer */
-  if (MAX_COIN_SUMMARIES >= cc->summaries_off)
-    cc->summaries_off = 0;
-  cs = &cc->summaries[cc->summaries_off++];
-  GNUNET_assert (GNUNET_OK ==
-                 free_coin (cc,
-                            &cs->coin_hash,
-                            cs));
-
-  /* initialize 'cs' and add to cache */
-  cs->coin_pub = *coin_pub;
-  cs->coin_hash = chash;
-  cs->tl = tl;
-  cs->dki = dki;
-  GNUNET_assert (GNUNET_YES ==
-                 GNUNET_CONTAINER_multihashmap_put (cc->coins,
-                                                    &cs->coin_hash,
-                                                    cs,
-                                                    GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
-  return cs;
-}
-
-
-/**
  * Function called with details about all withdraw operations.
  * Updates the denomination balance and the overall balance as
  * we now have additional coins that have been issued.
@@ -1470,11 +1307,11 @@ withdraw_cb (void *cls,
  * goal of auditing the refresh's execution.  Verifies the signature
  * and updates our information about coins outstanding (the old coin's
  * denomination has less, the fresh coins increased outstanding
- * balances).  As a side-effect, #get_coin_summary will report
- * inconsistencies in the melted coin's balance.
+ * balances).
  *
  * @param cls closure
  * @param rowid unique serial ID for the refresh session in our DB
+ * @param denom_pub denomination public key of @a coin_pub
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
@@ -1486,6 +1323,7 @@ withdraw_cb (void *cls,
 static int
 refresh_session_cb (void *cls,
                     uint64_t rowid,
+                    const struct TALER_DenominationPublicKey *denom_pub,
                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                     const struct TALER_CoinSpendSignatureP *coin_sig,
                     const struct TALER_Amount *amount_with_fee,
@@ -1495,19 +1333,18 @@ refresh_session_cb (void *cls,
 {
   struct CoinContext *cc = cls;
   struct TALER_RefreshMeltCoinAffirmationPS rmc;
-  struct CoinSummary *cs;
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
   struct DenominationSummary *dso;
   struct TALER_Amount amount_without_fee;
 
-  cs = get_coin_summary (cc,
-                         coin_pub);
-  if (NULL == cs)
+  if (GNUNET_OK !=
+      get_denomination_info (denom_pub,
+                             &dki,
+                             NULL))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  dki = cs->dki;
 
   /* verify melt signature */
   rmc.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
@@ -1688,6 +1525,7 @@ refresh_session_cb (void *cls,
  * @param rowid unique serial ID for the deposit in our DB
  * @param timestamp when did the deposit happen
  * @param merchant_pub public key of the merchant
+ * @param denom_pub denomination public key of @a coin_pub
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
@@ -1705,6 +1543,7 @@ deposit_cb (void *cls,
             uint64_t rowid,
             struct GNUNET_TIME_Absolute timestamp,
             const struct TALER_MerchantPublicKeyP *merchant_pub,
+            const struct TALER_DenominationPublicKey *denom_pub,
             const struct TALER_CoinSpendPublicKeyP *coin_pub,
             const struct TALER_CoinSpendSignatureP *coin_sig,
             const struct TALER_Amount *amount_with_fee,
@@ -1715,19 +1554,18 @@ deposit_cb (void *cls,
             int done)
 {
   struct CoinContext *cc = cls;
-  struct CoinSummary *cs;
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
   struct DenominationSummary *ds;
   struct TALER_DepositRequestPS dr;
 
-  cs = get_coin_summary (cc,
-                         coin_pub);
-  if (NULL == cs)
+  if (GNUNET_OK !=
+      get_denomination_info (denom_pub,
+                             &dki,
+                             NULL))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  dki = cs->dki;
 
   /* Verify deposit signature */
   dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
@@ -1803,6 +1641,7 @@ deposit_cb (void *cls,
  *
  * @param cls closure
  * @param rowid unique serial ID for the refund in our DB
+ * @param denom_pub denomination public key of @a coin_pub
  * @param coin_pub public key of the coin
  * @param merchant_pub public key of the merchant
  * @param merchant_sig signature of the merchant
@@ -1814,6 +1653,7 @@ deposit_cb (void *cls,
 static int
 refund_cb (void *cls,
            uint64_t rowid,
+           const struct TALER_DenominationPublicKey *denom_pub,
            const struct TALER_CoinSpendPublicKeyP *coin_pub,
            const struct TALER_MerchantPublicKeyP *merchant_pub,
            const struct TALER_MerchantSignatureP *merchant_sig,
@@ -1822,21 +1662,20 @@ refund_cb (void *cls,
            const struct TALER_Amount *amount_with_fee)
 {
   struct CoinContext *cc = cls;
-  struct CoinSummary *cs;
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
   struct DenominationSummary *ds;
   struct TALER_RefundRequestPS rr;
   struct TALER_Amount amount_without_fee;
   struct TALER_Amount refund_fee;
 
-  cs = get_coin_summary (cc,
-                         coin_pub);
-  if (NULL == cs)
+  if (GNUNET_OK !=
+      get_denomination_info (denom_pub,
+                             &dki,
+                             NULL))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  dki = cs->dki;
 
   /* verify refund signature */
   rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
@@ -1946,8 +1785,6 @@ analyze_coins (void *cls)
                                           &cc.risk));
   }
 
-  cc.coins = GNUNET_CONTAINER_multihashmap_create (1024,
-                                                   GNUNET_NO);
   cc.denominations = GNUNET_CONTAINER_multihashmap_create (256,
                                                            GNUNET_NO);
 
@@ -2004,10 +1841,6 @@ analyze_coins (void *cls)
                                          &sync_denomination,
                                          &cc);
   GNUNET_CONTAINER_multihashmap_destroy (cc.denominations);
-  GNUNET_CONTAINER_multihashmap_iterate (cc.coins,
-                                         &free_coin,
-                                         &cc);
-  GNUNET_CONTAINER_multihashmap_destroy (cc.coins);
 
   if (GNUNET_YES == dret)
       dret = adb->update_balance_summary (adb->cls,

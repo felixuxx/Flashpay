@@ -799,7 +799,7 @@ postgres_prepare (PGconn *db_conn)
            ",denom.fee_refresh_curr "
            ",num_newcoins"
            ",noreveal_index"
-           " FROM refresh_sessions "
+           " FROM refresh_sessions"
            "    JOIN known_coins ON (refresh_sessions.old_coin_pub = known_coins.coin_pub)"
            "    JOIN denominations denom USING (denom_pub)"
            " WHERE session_hash=$1 ",
@@ -809,7 +809,8 @@ postgres_prepare (PGconn *db_conn)
      refresh session with id '\geq' the given parameter */
   PREPARE ("audit_get_refresh_sessions_incr",
            "SELECT"
-           " old_coin_pub"
+           " known_coins.denom_pub"
+           ",old_coin_pub"
            ",old_coin_sig"
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
@@ -819,6 +820,7 @@ postgres_prepare (PGconn *db_conn)
            ",melt_serial_id"
            ",session_hash"
            " FROM refresh_sessions"
+           "   JOIN known_coins ON (refresh_sessions.old_coin_pub = known_coins.coin_pub)"
            " WHERE melt_serial_id>=$1"
            " ORDER BY melt_serial_id ASC",
            1, NULL);
@@ -905,12 +907,14 @@ postgres_prepare (PGconn *db_conn)
            ",merchant_sig"
            ",h_proposal_data"
            ",rtransaction_id"
+           ",known_coins.denom_pub"
            ",coin_pub"
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
            ",refund_serial_id"
            " FROM refunds"
+           "   JOIN known_coins ON (coin_pub)"
            " WHERE refund_serial_id>=$1"
            " ORDER BY refund_serial_id ASC",
            1, NULL);
@@ -1040,6 +1044,7 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_curr"
            ",timestamp"
 	   ",merchant_pub"
+           ",known_coins.denom_pub"
 	   ",coin_pub"
 	   ",coin_sig"
            ",refund_deadline"
@@ -1049,6 +1054,7 @@ postgres_prepare (PGconn *db_conn)
            ",done"
            ",deposit_serial_id"
            " FROM deposits"
+           "   JOIN known_coins ON (coin_pub)"
            " WHERE ("
            "  (deposit_serial_id>=$1)"
            " )"
@@ -4853,6 +4859,7 @@ postgres_select_deposits_above_serial_id (void *cls,
   for (i=0;i<nrows;i++)
   {
     struct TALER_EXCHANGEDB_Deposit deposit;
+    struct TALER_DenominationPublicKey denom_pub;
     uint8_t done = 0;
     uint64_t rowid;
     struct GNUNET_PQ_ResultSpec rs[] = {
@@ -4862,6 +4869,8 @@ postgres_select_deposits_above_serial_id (void *cls,
                                           &deposit.timestamp),
       GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
                                             &deposit.merchant_pub),
+      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+                                            &denom_pub.rsa_public_key),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                            &deposit.coin.coin_pub),
       GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
@@ -4893,6 +4902,7 @@ postgres_select_deposits_above_serial_id (void *cls,
         rowid,
         deposit.timestamp,
         &deposit.merchant_pub,
+        &denom_pub,
         &deposit.coin.coin_pub,
         &deposit.csig,
         &deposit.amount_with_fee,
@@ -4957,6 +4967,7 @@ postgres_select_refreshs_above_serial_id (void *cls,
 
   for (i=0;i<nrows;i++)
   {
+    struct TALER_DenominationPublicKey denom_pub;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct TALER_CoinSpendSignatureP coin_sig;
     struct TALER_Amount amount_with_fee;
@@ -4966,6 +4977,8 @@ postgres_select_refreshs_above_serial_id (void *cls,
     struct GNUNET_HashCode session_hash;
 
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+                                            &denom_pub.rsa_public_key),
       GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
                                             &coin_pub),
       GNUNET_PQ_result_spec_auto_from_type ("old_coin_sig",
@@ -4993,6 +5006,7 @@ postgres_select_refreshs_above_serial_id (void *cls,
     }
     cb (cb_cls,
         rowid,
+        &denom_pub,
         &coin_pub,
         &coin_sig,
         &amount_with_fee,
@@ -5054,6 +5068,7 @@ postgres_select_refunds_above_serial_id (void *cls,
   for (i=0;i<nrows;i++)
   {
     struct TALER_EXCHANGEDB_Refund refund;
+    struct TALER_DenominationPublicKey denom_pub;
     uint64_t rowid;
 
     struct GNUNET_PQ_ResultSpec rs[] = {
@@ -5065,6 +5080,8 @@ postgres_select_refunds_above_serial_id (void *cls,
                                            &refund.h_proposal_data),
       GNUNET_PQ_result_spec_uint64 ("rtransaction_id",
                                     &refund.rtransaction_id),
+      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+                                            &denom_pub.rsa_public_key),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                            &refund.coin.coin_pub),
       TALER_PQ_result_spec_amount ("amount_with_fee",
@@ -5084,6 +5101,7 @@ postgres_select_refunds_above_serial_id (void *cls,
     }
     cb (cb_cls,
         rowid,
+        &denom_pub,
         &refund.coin.coin_pub,
         &refund.merchant_pub,
         &refund.merchant_sig,

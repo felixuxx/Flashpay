@@ -481,6 +481,7 @@ static unsigned int auditor_row_cnt;
  *
  * @param cls closure
  * @param rowid unique serial ID for the refresh session in our DB
+ * @param denom_pub denomination of the @a coin_pub
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
@@ -492,6 +493,7 @@ static unsigned int auditor_row_cnt;
 static int
 audit_refresh_session_cb (void *cls,
                           uint64_t rowid,
+                          const struct TALER_DenominationPublicKey *denom_pub,
                           const struct TALER_CoinSpendPublicKeyP *coin_pub,
                           const struct TALER_CoinSpendSignatureP *coin_sig,
                           const struct TALER_Amount *amount_with_fee,
@@ -927,6 +929,7 @@ deposit_cb (void *cls,
  * @param rowid unique serial ID for the deposit in our DB
  * @param timestamp when did the deposit happen
  * @param merchant_pub public key of the merchant
+ * @param denom_pub denomination of the @a coin_pub
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
@@ -944,6 +947,7 @@ audit_deposit_cb (void *cls,
                   uint64_t rowid,
                   struct GNUNET_TIME_Absolute timestamp,
                   const struct TALER_MerchantPublicKeyP *merchant_pub,
+                  const struct TALER_DenominationPublicKey *denom_pub,
                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
                   const struct TALER_CoinSpendSignatureP *coin_sig,
                   const struct TALER_Amount *amount_with_fee,
@@ -964,6 +968,7 @@ audit_deposit_cb (void *cls,
  *
  * @param cls closure
  * @param rowid unique serial ID for the refund in our DB
+ * @param denom_pub denomination of the @a coin_pub
  * @param coin_pub public key of the coin
  * @param merchant_pub public key of the merchant
  * @param merchant_sig signature of the merchant
@@ -976,6 +981,7 @@ audit_deposit_cb (void *cls,
 static int
 audit_refund_cb (void *cls,
                  uint64_t rowid,
+                 const struct TALER_DenominationPublicKey *denom_pub,
                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
                  const struct TALER_MerchantPublicKeyP *merchant_pub,
                  const struct TALER_MerchantSignatureP *merchant_sig,
