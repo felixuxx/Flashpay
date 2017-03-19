@@ -1830,6 +1830,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cb function to call on each result
    * @param cb_cls closure for @a cb
    * @return #GNUNET_OK on success,
+   *         #GNUNET_NO if no records were found
    *         #GNUNET_SYSERR on DB errors
    */
   int

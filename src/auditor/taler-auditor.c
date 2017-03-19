@@ -54,6 +54,11 @@
 static int global_ret;
 
 /**
+ * Command-line option "-r": restart audit from scratch
+ */
+static int restart;
+
+/**
  * Handle to access the exchange's database.
  */
 static struct TALER_EXCHANGEDB_Plugin *edb;
@@ -293,6 +298,9 @@ get_denomination_info (const struct TALER_DenominationPublicKey *denom_pub,
     dh = &hc;
   GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
                                      dh);
+  if (NULL == denominations)
+    denominations = GNUNET_CONTAINER_multihashmap_create (256,
+                                                          GNUNET_NO);
   dkip = GNUNET_CONTAINER_multihashmap_get (denominations,
                                             dh);
   if (NULL != dkip)
@@ -644,6 +652,7 @@ handle_reserve_out (void *cls,
   /* check reserve_sig */
   wsrd.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
   wsrd.purpose.size = htonl (sizeof (wsrd));
+  wsrd.reserve_pub = *reserve_pub;
   TALER_amount_hton (&wsrd.amount_with_fee,
                      amount_with_fee);
   wsrd.withdraw_fee = dki->properties.fee_withdraw;
@@ -899,6 +908,15 @@ analyze_reserves (void *cls)
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+  if (GNUNET_NO == ret)
+  {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (currency,
+                                          &rc.total_balance));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (currency,
+                                          &rc.total_fee_balance));
+  }
 
   rc.reserves = GNUNET_CONTAINER_multihashmap_create (512,
                                                       GNUNET_NO);
@@ -1005,7 +1023,7 @@ struct CoinContext
   /**
    * Map for tracking information about denominations.
    */
-  struct GNUNET_CONTAINER_MultiHashMap *denominations;
+  struct GNUNET_CONTAINER_MultiHashMap *denom_summaries;
 
   /**
    * Total outstanding balances across all denomination keys.
@@ -1101,7 +1119,7 @@ get_balance_summary (struct CoinContext *cc,
 {
   struct DenominationSummary *ds;
 
-  ds = GNUNET_CONTAINER_multihashmap_get (cc->denominations,
+  ds = GNUNET_CONTAINER_multihashmap_get (cc->denom_summaries,
                                           dh);
   if (NULL != ds)
     return ds;
@@ -1116,7 +1134,7 @@ get_balance_summary (struct CoinContext *cc,
     return NULL;
   }
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CONTAINER_multihashmap_put (cc->denominations,
+                 GNUNET_CONTAINER_multihashmap_put (cc->denom_summaries,
                                                     dh,
                                                     ds,
                                                     GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
@@ -1222,7 +1240,7 @@ sync_denomination (void *cls,
     cc->ret = GNUNET_SYSERR;
   }
   GNUNET_assert (GNUNET_YES ==
-                 GNUNET_CONTAINER_multihashmap_remove (cc->denominations,
+                 GNUNET_CONTAINER_multihashmap_remove (cc->denom_summaries,
                                                        denom_hash,
                                                        ds));
   GNUNET_free (ds);
@@ -1367,35 +1385,44 @@ refresh_session_cb (void *cls,
     struct TALER_DenominationPublicKey new_dp[num_newcoins];
     const struct TALER_EXCHANGEDB_DenominationKeyInformationP *new_dki[num_newcoins];
     struct TALER_Amount refresh_cost;
+    int err;
 
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_get_zero (amount_with_fee->currency,
                                           &refresh_cost));
 
+    if (GNUNET_OK !=
+        edb->get_refresh_order (edb->cls,
+                                esession,
+                                session_hash,
+                                num_newcoins,
+                                new_dp))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
     /* Update outstanding amounts for all new coin's denominations, and check
        that the resulting amounts are consistent with the value being refreshed. */
+    err = GNUNET_NO;
     for (unsigned int i=0;i<num_newcoins;i++)
     {
       /* lookup new coin denomination key */
-      if (GNUNET_OK !=
-          edb->get_refresh_order (edb->cls,
-                                  esession,
-                                  session_hash,
-                                  i,
-                                  &new_dp[i]))
-      {
-        GNUNET_break (0);
-        return GNUNET_SYSERR;
-      }
       if (GNUNET_OK !=
           get_denomination_info (&new_dp[i],
                                  &new_dki[i],
                                  NULL))
       {
         GNUNET_break (0);
-        return GNUNET_SYSERR;
+        err = GNUNET_YES;
       }
+      GNUNET_CRYPTO_rsa_public_key_free (new_dp[i].rsa_public_key);
+      new_dp[i].rsa_public_key = NULL;
+    }
+    if (err)
+      return GNUNET_SYSERR;
 
+    for (unsigned int i=0;i<num_newcoins;i++)
+    {
       /* update cost of refresh */
       {
         struct TALER_Amount fee;
@@ -1750,6 +1777,8 @@ analyze_coins (void *cls)
 
   /* setup 'cc' */
   cc.ret = GNUNET_OK;
+  cc.denom_summaries = GNUNET_CONTAINER_multihashmap_create (256,
+                                                           GNUNET_NO);
   dret = adb->get_balance_summary (adb->cls,
                                    asession,
                                    &master_pub,
@@ -1782,11 +1811,8 @@ analyze_coins (void *cls)
                                           &cc.risk));
   }
 
-  cc.denominations = GNUNET_CONTAINER_multihashmap_create (256,
-                                                           GNUNET_NO);
-
   /* process withdrawals */
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       edb->select_reserves_out_above_serial_id (edb->cls,
                                                 esession,
                                                 pp.last_reserve_out_serial_id,
@@ -1798,7 +1824,7 @@ analyze_coins (void *cls)
   }
 
   /* process refreshs */
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       edb->select_refreshs_above_serial_id (edb->cls,
                                             esession,
                                             pp.last_melt_serial_id,
@@ -1810,7 +1836,7 @@ analyze_coins (void *cls)
   }
 
   /* process deposits */
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       edb->select_deposits_above_serial_id (edb->cls,
                                             esession,
                                             pp.last_deposit_serial_id,
@@ -1822,7 +1848,7 @@ analyze_coins (void *cls)
   }
 
   /* process refunds */
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       edb->select_refunds_above_serial_id (edb->cls,
                                            esession,
                                            pp.last_refund_serial_id,
@@ -1834,10 +1860,10 @@ analyze_coins (void *cls)
   }
 
   /* sync 'cc' back to disk */
-  GNUNET_CONTAINER_multihashmap_iterate (cc.denominations,
+  GNUNET_CONTAINER_multihashmap_iterate (cc.denom_summaries,
                                          &sync_denomination,
                                          &cc);
-  GNUNET_CONTAINER_multihashmap_destroy (cc.denominations);
+  GNUNET_CONTAINER_multihashmap_destroy (cc.denom_summaries);
 
   if (GNUNET_YES == dret)
       dret = adb->update_balance_summary (adb->cls,
@@ -2530,47 +2556,58 @@ incremental_processing (Analysis analysis,
 {
   int ret;
 
-  ret = adb->get_auditor_progress (adb->cls,
-                                   asession,
-                                   &master_pub,
-                                   &pp);
-  if (GNUNET_SYSERR == ret)
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-  if (GNUNET_NO == ret)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                  _("First analysis using this auditor, starting audit from scratch\n"));
-    }
+  if (! restart)
+  {
+    ret = adb->get_auditor_progress (adb->cls,
+                                     asession,
+                                     &master_pub,
+                                     &pp);
+  }
   else
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                  _("Resuming audit at %llu/%llu/%llu/%llu/%llu/%llu\n\n"),
-                  (unsigned long long) pp.last_reserve_in_serial_id,
-                  (unsigned long long) pp.last_reserve_out_serial_id,
-                  (unsigned long long) pp.last_deposit_serial_id,
-                  (unsigned long long) pp.last_melt_serial_id,
-                  (unsigned long long) pp.last_refund_serial_id,
-                  (unsigned long long) pp.last_wire_out_serial_id);
-    }
+  {
+    ret = GNUNET_NO;
+    GNUNET_break (GNUNET_OK ==
+                  adb->drop_tables (adb->cls));
+    GNUNET_break (GNUNET_OK ==
+                  adb->create_tables (adb->cls));
+  }
+  if (GNUNET_SYSERR == ret)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_NO == ret)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                _("First analysis using this auditor, starting audit from scratch\n"));
+  }
+  else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                _("Resuming audit at %llu/%llu/%llu/%llu/%llu/%llu\n\n"),
+                (unsigned long long) pp.last_reserve_in_serial_id,
+                (unsigned long long) pp.last_reserve_out_serial_id,
+                (unsigned long long) pp.last_deposit_serial_id,
+                (unsigned long long) pp.last_melt_serial_id,
+                (unsigned long long) pp.last_refund_serial_id,
+                (unsigned long long) pp.last_wire_out_serial_id);
+  }
   ret = analysis (analysis_cls);
   if (GNUNET_OK != ret)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "Analysis phase failed, not recording progress\n");
-      return GNUNET_SYSERR;
-    }
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Analysis phase failed, not recording progress\n");
+    return GNUNET_SYSERR;
+  }
   ret = adb->update_auditor_progress (adb->cls,
                                       asession,
                                       &master_pub,
                                       &pp);
   if (GNUNET_OK != ret)
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
               _("Resuming audit at %llu/%llu/%llu/%llu/%llu/%llu\n\n"),
               (unsigned long long) pp.last_reserve_in_serial_id,
@@ -2752,6 +2789,10 @@ main (int argc,
                                            "KEY",
                                            "public key of the exchange (Crockford base32 encoded)",
                                            &master_pub)),
+    GNUNET_GETOPT_OPTION_SET_ONE ('r',
+                                  "restart",
+                                  "restart audit from the beginning",
+                                  &restart),
     GNUNET_GETOPT_OPTION_END
   };
 

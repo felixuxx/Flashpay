@@ -5217,6 +5217,7 @@ postgres_select_reserves_in_above_serial_id (void *cls,
  * @param cb function to call on each result
  * @param cb_cls closure for @a cb
  * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if no records were found
  *         #GNUNET_SYSERR on DB errors
  */
 static int
