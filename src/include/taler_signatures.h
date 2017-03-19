@@ -126,6 +126,11 @@
  */
 #define TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND 1038
 
+/**
+ * Signature where the Exchange confirms a payback.
+ */
+#define TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK 1039
+
 
 /*********************/
 /* Wallet signatures */
@@ -183,6 +188,11 @@
  * Signature using a coin key confirming the melting of a coin.
  */
 #define TALER_SIGNATURE_WALLET_COIN_MELT 1202
+
+/**
+ * Signature using a coin key requesting payback.
+ */
+#define TALER_SIGNATURE_WALLET_COIN_PAYBACK 1203
 
 
 /*******************/
@@ -1119,6 +1129,75 @@ struct TALER_ConfirmWirePS
   struct TALER_AmountNBO coin_contribution;
 
 };
+
+
+/**
+ * Signed data to request that a coin should be refunded as part of
+ * the "emergency" /payback protocol.  The refund will go back to the bank
+ * account that created the reserve.
+ */
+struct TALER_PaybackRequestPS
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Public key of the coin to be refunded.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Hash of the denomination public key of the coin.
+   */
+  struct GNUNET_HashCode h_denom_pub;
+
+  /**
+   * Blinding factor that was used to withdraw the coin.
+   */
+  struct TALER_DenominationBlindingKeyP coin_blind;
+};
+
+
+/**
+ * Response by which the exchange affirms that it will
+ * refund a coin as part of the emergency /payback
+ * protocol.  The refund will go back to the bank
+ * account that created the reserve.
+ */
+struct TALER_PaybackConfirmationPS
+{
+
+  /**
+   * Purpose is  #TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * By what deadline does the exchange promise to initiate
+   * the wire transfer?
+   */
+  struct GNUNET_TIME_AbsoluteNBO payback_deadline;
+
+  /**
+   * How much of the coin's value will the exchange transfer?
+   * (Needed in case the coin was partially spent.)
+   */
+  struct TALER_AmountNBO payback_amount;
+
+  /**
+   * Public key of the coin.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Hash (!) of the wire transfer subject that the exchange
+   * will use.  Hash excludes the 0-terminator.
+   */
+  struct GNUNET_HashCode h_wire_subject;
+};
+
 
 GNUNET_NETWORK_STRUCT_END
 
