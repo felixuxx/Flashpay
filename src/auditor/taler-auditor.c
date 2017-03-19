@@ -1028,7 +1028,7 @@ struct CoinContext
   /**
    * Total outstanding balances across all denomination keys.
    */
-  struct TALER_Amount denom_balance;
+  struct TALER_Amount total_denom_balance;
 
   /**
    * Total deposit fees earned so far.
@@ -1113,9 +1113,9 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
  * @return NULL on error
  */
 static struct DenominationSummary *
-get_balance_summary (struct CoinContext *cc,
-                     const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
-                     const struct GNUNET_HashCode *dh)
+get_denomination_summary (struct CoinContext *cc,
+                          const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
+                          const struct GNUNET_HashCode *dh)
 {
   struct DenominationSummary *ds;
 
@@ -1292,7 +1292,7 @@ withdraw_cb (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  ds = get_balance_summary (cc,
+  ds = get_denomination_summary (cc,
                                  dki,
                                  &dh);
   TALER_amount_ntoh (&value,
@@ -1306,8 +1306,8 @@ withdraw_cb (void *cls,
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_amount_add (&cc->denom_balance,
-                        &cc->denom_balance,
+      TALER_amount_add (&cc->total_denom_balance,
+                        &cc->total_denom_balance,
                         &value))
   {
     GNUNET_break (0);
@@ -1351,6 +1351,7 @@ refresh_session_cb (void *cls,
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
   struct DenominationSummary *dso;
   struct TALER_Amount amount_without_fee;
+  struct TALER_Amount tmp;
 
   if (GNUNET_OK !=
       get_denomination_info (denom_pub,
@@ -1480,7 +1481,7 @@ refresh_session_cb (void *cls,
       struct DenominationSummary *dsi;
       struct TALER_Amount value;
 
-      dsi = get_balance_summary (cc,
+      dsi = get_denomination_summary (cc,
                                       new_dki[i],
                                       &new_dki[i]->properties.denom_hash);
       TALER_amount_ntoh (&value,
@@ -1494,8 +1495,8 @@ refresh_session_cb (void *cls,
         return GNUNET_SYSERR;
       }
       if (GNUNET_OK !=
-          TALER_amount_add (&cc->denom_balance,
-                            &cc->denom_balance,
+          TALER_amount_add (&cc->total_denom_balance,
+                            &cc->total_denom_balance,
                             &value))
       {
         GNUNET_break (0);
@@ -1505,17 +1506,18 @@ refresh_session_cb (void *cls,
   }
 
   /* update old coin's denomination balance */
-  dso = get_balance_summary (cc,
+  dso = get_denomination_summary (cc,
                                   dki,
                                   &dki->properties.denom_hash);
   if (GNUNET_OK !=
-      TALER_amount_subtract (&dso->denom_balance,
+      TALER_amount_subtract (&tmp,
                              &dso->denom_balance,
                              amount_with_fee))
   {
     report_emergency (dki);
     return GNUNET_SYSERR;
   }
+  dso->denom_balance = tmp;
 
   /* update global up melt fees */
   {
@@ -1581,6 +1583,7 @@ deposit_cb (void *cls,
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
   struct DenominationSummary *ds;
   struct TALER_DepositRequestPS dr;
+  struct TALER_Amount tmp;
 
   if (GNUNET_OK !=
       get_denomination_info (denom_pub,
@@ -1622,17 +1625,18 @@ deposit_cb (void *cls,
   }
 
   /* update old coin's denomination balance */
-  ds = get_balance_summary (cc,
+  ds = get_denomination_summary (cc,
                                  dki,
                                  &dki->properties.denom_hash);
   if (GNUNET_OK !=
-      TALER_amount_subtract (&ds->denom_balance,
+      TALER_amount_subtract (&tmp,
                              &ds->denom_balance,
                              amount_with_fee))
   {
     report_emergency (dki);
     return GNUNET_SYSERR;
   }
+  ds->denom_balance = tmp;
 
   /* update global up melt fees */
   {
@@ -1737,7 +1741,7 @@ refund_cb (void *cls,
   }
 
   /* update coin's denomination balance */
-  ds = get_balance_summary (cc,
+  ds = get_denomination_summary (cc,
                                  dki,
                                  &dki->properties.denom_hash);
   if (GNUNET_OK !=
@@ -1782,7 +1786,7 @@ analyze_coins (void *cls)
   dret = adb->get_balance_summary (adb->cls,
                                    asession,
                                    &master_pub,
-                                   &cc.denom_balance,
+                                   &cc.total_denom_balance,
                                    &cc.deposit_fee_balance,
                                    &cc.melt_fee_balance,
                                    &cc.refund_fee_balance,
@@ -1796,7 +1800,7 @@ analyze_coins (void *cls)
   {
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_get_zero (currency,
-                                          &cc.denom_balance));
+                                          &cc.total_denom_balance));
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_get_zero (currency,
                                           &cc.deposit_fee_balance));
@@ -1869,7 +1873,7 @@ analyze_coins (void *cls)
       dret = adb->update_balance_summary (adb->cls,
                                           asession,
                                           &master_pub,
-                                          &cc.denom_balance,
+                                          &cc.total_denom_balance,
                                           &cc.deposit_fee_balance,
                                           &cc.melt_fee_balance,
                                           &cc.refund_fee_balance,
@@ -1878,7 +1882,7 @@ analyze_coins (void *cls)
     dret = adb->insert_balance_summary (adb->cls,
                                         asession,
                                         &master_pub,
-                                        &cc.denom_balance,
+                                        &cc.total_denom_balance,
                                         &cc.deposit_fee_balance,
                                         &cc.melt_fee_balance,
                                         &cc.refund_fee_balance,
@@ -2469,7 +2473,7 @@ check_wire_out_cb (void *cls,
                               "could not load required wire plugin to validate");
     return;
   }
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       plugin->amount_round (plugin->cls,
                             &wcc.total_deposits))
   {
