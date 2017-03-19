@@ -401,7 +401,7 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
              (0 == memcmp (&tlp->details.refund->h_proposal_data,
                            &refund->h_proposal_data,
                            sizeof (struct GNUNET_HashCode))) &&
-             (ref->rtransaction_id == refund->rtransaction_id) )
+             (tlp->details.refund->rtransaction_id == refund->rtransaction_id) )
         {
           ref = tlp->details.refund;
           refund_found = GNUNET_YES;
