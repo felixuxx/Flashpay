@@ -23,9 +23,6 @@
  *   the wire transfers from the bank. This needs to be checked separately!
  * - Similarly, we do not check that the outgoing wire transfers match those
  *   given in the 'wire_out' table. This needs to be checked separately!
- *
- * TODO:
- * - FIXME: do proper transaction history check in #check_transaction_history()
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -2002,16 +1999,17 @@ struct WireCheckContext
 
 /**
  * Check coin's transaction history for plausibility.  Does NOT check
- * the signatures (those are checked independently), but does check
- * that the amounts add up to the picture claimed by the aggregation table.
+ * the signatures (those are checked independently), but does calculate
+ * the amounts for the aggregation table and checks that the total
+ * claimed coin value is within the value of the coin's denomination.
  *
  * @param coin_pub public key of the coin (for reporting)
  * @param h_proposal_data hash of the proposal for which we calculate the amount
  * @param merchant_pub public key of the merchant (who is allowed to issue refunds)
  * @param dki denomination information about the coin
  * @param tl_head head of transaction history to verify
- * @param[out] final amount the coin contributes to the transaction
- * @param[out] final fees the exchange charged for the transaction
+ * @param[out] merchant_gain amount the coin contributes to the wire transfer to the merchant
+ * @param[out] merchant_fees fees the exchange charged the merchant for the transaction(s)
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
@@ -2020,12 +2018,14 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                            const struct TALER_MerchantPublicKeyP *merchant_pub,
                            const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki,
                            const struct TALER_EXCHANGEDB_TransactionList *tl_head,
-                           struct TALER_Amount *final_expenditures,
-                           struct TALER_Amount *final_fees)
+                           struct TALER_Amount *merchant_gain,
+                           struct TALER_Amount *merchant_fees)
 {
   struct TALER_Amount expenditures;
   struct TALER_Amount refunds;
-  struct TALER_Amount fees;
+  struct TALER_Amount spent;
+  struct TALER_Amount value;
+  struct TALER_Amount merchant_loss;
 
   GNUNET_assert (NULL != tl_head);
   TALER_amount_get_zero (currency,
@@ -2033,16 +2033,22 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
   TALER_amount_get_zero (currency,
                          &refunds);
   TALER_amount_get_zero (currency,
-                         &fees);
+                         merchant_gain);
+  TALER_amount_get_zero (currency,
+                         merchant_fees);
+  TALER_amount_get_zero (currency,
+                         &merchant_loss);
+  /* Go over transaction history to compute totals; note that we do not
+     know the order, so instead of subtracting we compute positive
+     (deposit, melt) and negative (refund) values separately here,
+     and then subtract the negative from the positive after the loop. */
   for (const struct TALER_EXCHANGEDB_TransactionList *tl = tl_head;NULL != tl;tl = tl->next)
   {
     const struct TALER_Amount *amount_with_fee;
     const struct TALER_Amount *fee;
     const struct TALER_AmountNBO *fee_dki;
-    struct TALER_Amount *add_to;
     struct TALER_Amount tmp;
 
-    add_to = NULL;
     // FIXME:
     // - for refunds/deposits that apply to this merchant and this contract
     //   we need to update the total expenditures/refunds/fees
@@ -2053,78 +2059,165 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
       amount_with_fee = &tl->details.deposit->amount_with_fee;
       fee = &tl->details.deposit->deposit_fee;
       fee_dki = &dki->properties.fee_deposit;
-      add_to = &expenditures;
+      if (GNUNET_OK !=
+          TALER_amount_add (&expenditures,
+                            &expenditures,
+                            amount_with_fee))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      /* Check if this deposit is within the remit of the aggregation
+         we are investigating, if so, include it in the totals. */
+      if ( (0 == memcmp (merchant_pub,
+                         &tl->details.deposit->merchant_pub,
+                         sizeof (struct TALER_MerchantPublicKeyP))) &&
+           (0 == memcmp (h_proposal_data,
+                         &tl->details.deposit->h_proposal_data,
+                         sizeof (struct GNUNET_HashCode))) )
+      {
+        struct TALER_Amount amount_without_fee;
+
+        if (GNUNET_OK !=
+            TALER_amount_subtract (&amount_without_fee,
+                                   amount_with_fee,
+                                   fee))
+        {
+          GNUNET_break (0);
+          return GNUNET_SYSERR;
+        }
+        if (GNUNET_OK !=
+            TALER_amount_add (merchant_gain,
+                              merchant_gain,
+                              &amount_without_fee))
+        {
+          GNUNET_break (0);
+          return GNUNET_SYSERR;
+        }
+        if (GNUNET_OK !=
+            TALER_amount_add (merchant_fees,
+                              merchant_fees,
+                              fee))
+        {
+          GNUNET_break (0);
+          return GNUNET_SYSERR;
+        }
+      }
       break;
     case TALER_EXCHANGEDB_TT_REFRESH_MELT:
       amount_with_fee = &tl->details.melt->amount_with_fee;
       fee = &tl->details.melt->melt_fee;
       fee_dki = &dki->properties.fee_refresh;
-      add_to = &expenditures;
+      if (GNUNET_OK !=
+          TALER_amount_add (&expenditures,
+                            &expenditures,
+                            amount_with_fee))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
       break;
     case TALER_EXCHANGEDB_TT_REFUND:
       amount_with_fee = &tl->details.refund->refund_amount;
       fee = &tl->details.refund->refund_fee;
       fee_dki = &dki->properties.fee_refund;
-      add_to = &refunds;
-      // FIXME: where do we check that the refund(s)
-      // of the coin match the deposit(s) of the coin (by merchant, timestamp, etc.)?
+      if (GNUNET_OK !=
+          TALER_amount_add (&refunds,
+                            &refunds,
+                            amount_with_fee))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      if (GNUNET_OK !=
+          TALER_amount_add (&expenditures,
+                            &expenditures,
+                            fee))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      /* Check if this refund is within the remit of the aggregation
+         we are investigating, if so, include it in the totals. */
+      if ( (0 == memcmp (merchant_pub,
+                         &tl->details.refund->merchant_pub,
+                         sizeof (struct TALER_MerchantPublicKeyP))) &&
+           (0 == memcmp (h_proposal_data,
+                         &tl->details.refund->h_proposal_data,
+                         sizeof (struct GNUNET_HashCode))) )
+      {
+        if (GNUNET_OK !=
+            TALER_amount_add (&merchant_loss,
+                              &merchant_loss,
+                              amount_with_fee))
+        {
+          GNUNET_break (0);
+          return GNUNET_SYSERR;
+        }
+        if (GNUNET_OK !=
+            TALER_amount_add (merchant_fees,
+                              merchant_fees,
+                              fee))
+        {
+          GNUNET_break (0);
+          return GNUNET_SYSERR;
+        }
+      }
       break;
     }
-    GNUNET_assert (NULL != add_to); /* check switch was exhaustive */
-    if (GNUNET_OK !=
-        TALER_amount_add (add_to,
-                          add_to,
-                          amount_with_fee))
-    {
-      /* overflow in history already!? inconceivable! Bad DB! */
-      GNUNET_break (0);
-      report_coin_inconsistency (coin_pub,
-                                 add_to,
-                                 amount_with_fee,
-                                 "could not add coin's contribution to total");
-      return GNUNET_SYSERR;
-    }
+
+    /* Check that the fees given in the transaction list and in dki match */
     TALER_amount_ntoh (&tmp,
                        fee_dki);
     if (0 !=
         TALER_amount_cmp (&tmp,
                           fee))
     {
-      /* Disagreement in fee structure within DB! */
+      /* Disagreement in fee structure within DB, should be impossible! */
       GNUNET_break (0);
-      report_coin_inconsistency (coin_pub,
-                                 &tmp,
-                                 fee,
-                                 "coin's fee in transaction and in denomination data differ");
-      return GNUNET_SYSERR;
-    }
-    if (GNUNET_OK !=
-        TALER_amount_add (&fees,
-                          &fees,
-                          fee))
-    {
-      /* overflow in fee total? inconceivable! Bad DB! */
-      GNUNET_break (0);
-      report_coin_inconsistency (coin_pub,
-                                 fee,
-                                 &fees,
-                                 "could not add coin's fee to total fees");
       return GNUNET_SYSERR;
     }
   } /* for 'tl' */
 
-  /* Finally, calculate total balance change, i.e. expenditures minus refunds */
+  /* Calculate total balance change, i.e. expenditures minus refunds */
   if (GNUNET_SYSERR ==
-      TALER_amount_subtract (final_expenditures,
+      TALER_amount_subtract (&spent,
                              &expenditures,
                              &refunds))
   {
-    /* refunds above expenditures? inconceivable! Bad DB! */
-    GNUNET_break (0);
+    /* refunds above expenditures? Bad! */
     report_coin_inconsistency (coin_pub,
                                &expenditures,
                                &refunds,
                                "could not subtract refunded amount from expenditures");
+    return GNUNET_SYSERR;
+  }
+
+  /* Now check that 'spent' is less or equal than total coin value */
+  TALER_amount_ntoh (&value,
+                     &dki->properties.value);
+  if (1 == TALER_amount_cmp (&spent,
+                             &value))
+  {
+    /* spent > value */
+    report_coin_inconsistency (coin_pub,
+                               &spent,
+                               &value,
+                               "accepted deposits (minus refunds) exceeds denomination value");
+    return GNUNET_SYSERR;
+  }
+
+  /* Finally, update @a merchant_gain by subtracting what he "lost" from refunds */
+  if (GNUNET_SYSERR ==
+      TALER_amount_subtract (merchant_gain,
+                             merchant_gain,
+                             &merchant_loss))
+  {
+    /* refunds above deposits? Bad! */
+    report_coin_inconsistency (coin_pub,
+                               merchant_gain,
+                               &merchant_loss,
+                               "merchant was granted more refunds than he deposited");
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
