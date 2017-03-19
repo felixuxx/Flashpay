@@ -226,11 +226,11 @@ postgres_drop_tables (void *cls)
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS aggregation_tracking;");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS wire_out;");
+            "DROP TABLE IF EXISTS wire_out CASCADE;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS wire_fee;");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS deposits;");
+            "DROP TABLE IF EXISTS deposits CASCADE;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS refresh_out;");
   SQLEXEC_ (conn,
@@ -250,7 +250,7 @@ postgres_drop_tables (void *cls)
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS reserves_in;");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS reserves;");
+            "DROP TABLE IF EXISTS reserves CASCADE;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS denominations CASCADE;");
   PQfinish (conn);
@@ -493,7 +493,6 @@ postgres_create_tables (void *cls)
           "(aggregation_serial_id BIGSERIAL"
           ",deposit_serial_id INT8 PRIMARY KEY REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE"
           ",wtid_raw BYTEA  CONSTRAINT wire_out_ref REFERENCES wire_out(wtid_raw) ON DELETE CASCADE DEFERRABLE"
-          ",execution_time INT8 NOT NULL"
           ")");
   /* Index for lookup_transactions statement on wtid */
   SQLEXEC_INDEX("CREATE INDEX aggregation_tracking_wtid_index "
@@ -1242,7 +1241,7 @@ postgres_prepare (PGconn *db_conn)
            ",deposits.h_wire"
            ",deposits.coin_pub"
            ",deposits.merchant_pub"
-           ",execution_time"
+           ",wire_out.execution_date"
            ",deposits.amount_with_fee_val"
            ",deposits.amount_with_fee_frac"
            ",deposits.amount_with_fee_curr"
@@ -1253,6 +1252,7 @@ postgres_prepare (PGconn *db_conn)
            "    JOIN deposits USING (deposit_serial_id)"
            "    JOIN known_coins USING (coin_pub)"
            "    JOIN denominations denom USING (denom_pub)"
+           "    JOIN wire_out USING (wtid_raw)"
            " WHERE wtid_raw=$1",
            1, NULL);
 
@@ -1260,7 +1260,7 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("lookup_deposit_wtid",
            "SELECT"
            " aggregation_tracking.wtid_raw"
-           ",aggregation_tracking.execution_time"
+           ",wire_out.execution_date"
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
@@ -1271,6 +1271,7 @@ postgres_prepare (PGconn *db_conn)
            "    JOIN aggregation_tracking USING (deposit_serial_id)"
            "    JOIN known_coins USING (coin_pub)"
            "    JOIN denominations denom USING (denom_pub)"
+           "    JOIN wire_out USING (wtid_raw)"
            " WHERE coin_pub=$1"
            "  AND h_proposal_data=$2"
            "  AND h_wire=$3"
@@ -1282,10 +1283,9 @@ postgres_prepare (PGconn *db_conn)
            "INSERT INTO aggregation_tracking "
            "(deposit_serial_id"
            ",wtid_raw"
-           ",execution_time" /* TODO: this field should be eliminated and obtained from wire_out */
            ") VALUES "
-           "($1, $2, $3)",
-           3, NULL);
+           "($1, $2)",
+           2, NULL);
 
   /* Used in #postgres_get_wire_fee() */
   PREPARE ("get_wire_fee",
@@ -4087,7 +4087,7 @@ postgres_lookup_wire_transfer (void *cls,
       GNUNET_PQ_result_spec_auto_from_type ("h_wire", &h_wire),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub", &coin_pub),
       GNUNET_PQ_result_spec_auto_from_type ("merchant_pub", &merchant_pub),
-      GNUNET_PQ_result_spec_absolute_time ("execution_time", &exec_time),
+      GNUNET_PQ_result_spec_absolute_time ("execution_date", &exec_time),
       TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
       TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
       GNUNET_PQ_result_spec_end
@@ -4261,7 +4261,7 @@ postgres_wire_lookup_deposit_wtid (void *cls,
     struct TALER_Amount deposit_fee;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("wtid_raw", &wtid),
-      GNUNET_PQ_result_spec_absolute_time ("execution_time", &exec_time),
+      GNUNET_PQ_result_spec_absolute_time ("execution_date", &exec_time),
       TALER_PQ_result_spec_amount ("amount_with_fee", &amount_with_fee),
       TALER_PQ_result_spec_amount ("fee_deposit", &deposit_fee),
       GNUNET_PQ_result_spec_end
@@ -4293,21 +4293,18 @@ postgres_wire_lookup_deposit_wtid (void *cls,
  * @param session database connection
  * @param wtid the raw wire transfer identifier we used
  * @param deposit_serial_id row in the deposits table for which this is aggregation data
- * @param execution_time when did we execute the transaction
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
  */
 static int
 postgres_insert_aggregation_tracking (void *cls,
                                       struct TALER_EXCHANGEDB_Session *session,
                                       const struct TALER_WireTransferIdentifierRawP *wtid,
-                                      unsigned long long deposit_serial_id,
-                                      struct GNUNET_TIME_Absolute execution_time)
+                                      unsigned long long deposit_serial_id)
 {
   uint64_t rid = deposit_serial_id;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&rid),
     GNUNET_PQ_query_param_auto_from_type (wtid),
-    GNUNET_PQ_query_param_absolute_time (&execution_time),
     GNUNET_PQ_query_param_end
   };
   PGresult *result;

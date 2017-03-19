@@ -1531,15 +1531,13 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database connection
    * @param wtid the raw wire transfer identifier we used
    * @param deposit_serial_id row in the deposits table for which this is aggregation data
-   * @param execution_time when did we execute the transaction
    * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
    */
   int
   (*insert_aggregation_tracking)(void *cls,
                                  struct TALER_EXCHANGEDB_Session *session,
                                  const struct TALER_WireTransferIdentifierRawP *wtid,
-                                 unsigned long long deposit_serial_id,
-                                 struct GNUNET_TIME_Absolute execution_time);
+                                 unsigned long long deposit_serial_id);
 
 
   /**

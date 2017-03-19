@@ -551,8 +551,7 @@ deposit_cb (void *cls,
       db_plugin->insert_aggregation_tracking (db_plugin->cls,
                                               au->session,
                                               &au->wtid,
-                                              row_id,
-                                              au->execution_time))
+                                              row_id))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -643,8 +642,7 @@ aggregate_cb (void *cls,
       db_plugin->insert_aggregation_tracking (db_plugin->cls,
                                               au->session,
                                               &au->wtid,
-                                              row_id,
-                                              au->execution_time))
+                                              row_id))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;

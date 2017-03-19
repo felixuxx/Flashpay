@@ -787,8 +787,8 @@ static struct TALER_CoinSpendPublicKeyP coin_pub_wt;
 static struct TALER_Amount coin_value_wt;
 static struct TALER_Amount coin_fee_wt;
 static struct TALER_Amount transfer_value_wt;
-static struct GNUNET_TIME_Absolute execution_time_wt;
-static struct TALER_WireTransferIdentifierRawP wtid_wt;
+static struct GNUNET_TIME_Absolute wire_out_date;
+static struct TALER_WireTransferIdentifierRawP wire_out_wtid;
 
 
 /**
@@ -815,7 +815,7 @@ cb_wt_check (void *cls,
   GNUNET_assert (0 == memcmp (h_wire,
                               &h_wire_wt,
                               sizeof (struct GNUNET_HashCode)));
-  GNUNET_assert (exec_time.abs_value_us == execution_time_wt.abs_value_us);
+  GNUNET_assert (exec_time.abs_value_us == wire_out_date.abs_value_us);
   GNUNET_assert (0 == memcmp (h_proposal_data,
                               &h_proposal_data_wt,
                               sizeof (struct GNUNET_HashCode)));
@@ -841,10 +841,10 @@ cb_wtid_check (void *cls,
 {
   GNUNET_assert (cls == &cb_wtid_never);
   GNUNET_assert (0 == memcmp (wtid,
-                              &wtid_wt,
+                              &wire_out_wtid,
                               sizeof (struct TALER_WireTransferIdentifierRawP)));
   GNUNET_assert (execution_time.abs_value_us ==
-                 execution_time_wt.abs_value_us);
+                 wire_out_date.abs_value_us);
   GNUNET_assert (0 == TALER_amount_cmp (coin_contribution,
                                         &coin_value_wt));
   GNUNET_assert (0 == TALER_amount_cmp (coin_fee,
@@ -1185,10 +1185,6 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
 }
 
 
-static struct GNUNET_TIME_Absolute wire_out_date;
-
-static struct TALER_WireTransferIdentifierRawP wire_out_wtid;
-
 static json_t *wire_out_account;
 
 static  struct TALER_Amount wire_out_amount;
@@ -1256,7 +1252,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
   h_wire_wt = deposit->h_wire;
   h_proposal_data_wt = deposit->h_proposal_data;
   coin_pub_wt = deposit->coin.coin_pub;
-  execution_time_wt = GNUNET_TIME_absolute_get ();
+
   coin_value_wt = deposit->amount_with_fee;
   coin_fee_wt = fee_deposit;
   GNUNET_assert (GNUNET_OK ==
@@ -1266,7 +1262,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
   FAILIF (GNUNET_NO !=
           plugin->lookup_wire_transfer (plugin->cls,
                                         session,
-                                        &wtid_wt,
+                                        &wire_out_wtid,
                                         &cb_wt_never,
                                         NULL));
 
@@ -1284,18 +1280,31 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                                               &cb_wtid_never,
                                               NULL));
   }
-  wtid_wt = wire_out_wtid; /* to statisfy foreign constraint */
   /* insert WT data */
   FAILIF (GNUNET_OK !=
           plugin->insert_aggregation_tracking (plugin->cls,
                                                session,
-                                               &wtid_wt,
-                                               deposit_rowid,
-                                               execution_time_wt));
+                                               &wire_out_wtid,
+                                               deposit_rowid));
+
+  /* Now let's fix the transient constraint violation by
+     putting in the WTID into the wire_out table */
+  FAILIF (GNUNET_OK !=
+          plugin->store_wire_transfer_out (plugin->cls,
+                                           session,
+                                           wire_out_date,
+                                           &wire_out_wtid,
+                                           wire_out_account,
+                                           &wire_out_amount));
+  /* And now the commit should still succeed! */
+  FAILIF (GNUNET_OK !=
+          plugin->commit (plugin->cls,
+                          session));
+
   FAILIF (GNUNET_OK !=
           plugin->lookup_wire_transfer (plugin->cls,
                                         session,
-                                        &wtid_wt,
+                                        &wire_out_wtid,
                                         &cb_wt_check,
                                         &cb_wt_never));
   FAILIF (GNUNET_OK !=
@@ -1307,16 +1316,6 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                                             &merchant_pub_wt,
                                             &cb_wtid_check,
                                             &cb_wtid_never));
-
-  /* Now let's fix the transient constraint violation by
-     putting in the WTID into the wire_out table */
-  FAILIF (GNUNET_OK !=
-          plugin->store_wire_transfer_out (plugin->cls,
-                                           session,
-                                           wire_out_date,
-                                           &wire_out_wtid,
-                                           wire_out_account,
-                                           &wire_out_amount));
   FAILIF (GNUNET_OK !=
           plugin->select_wire_out_above_serial_id (plugin->cls,
                                                    session,
@@ -1324,11 +1323,6 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                                                    &audit_wire_cb,
                                                    NULL));
   FAILIF (1 != auditor_row_cnt);
-
-  /* And now the commit should still succeed! */
-  FAILIF (GNUNET_OK !=
-          plugin->commit (plugin->cls,
-                          session));
 
   return GNUNET_OK;
  drop:
