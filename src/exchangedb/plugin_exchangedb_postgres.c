@@ -911,7 +911,7 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_curr"
            ",refund_serial_id"
            " FROM refunds"
-           "   JOIN known_coins ON (coin_pub)"
+           "   JOIN known_coins USING (coin_pub)"
            " WHERE refund_serial_id>=$1"
            " ORDER BY refund_serial_id ASC",
            1, NULL);
@@ -1051,7 +1051,7 @@ postgres_prepare (PGconn *db_conn)
            ",done"
            ",deposit_serial_id"
            " FROM deposits"
-           "   JOIN known_coins ON (coin_pub)"
+           "   JOIN known_coins USING (coin_pub)"
            " WHERE ("
            "  (deposit_serial_id>=$1)"
            " )"
