@@ -25,7 +25,6 @@
  *   given in the 'wire_out' table. This needs to be checked separately!
  *
  * KNOWN BUGS:
- * - resolve HACK! -- need extra serial_id in 'pp' as we go over reserve_out twice!
  * - risk is not calculated correctly
  * - calculate, store and report aggregation fee balance!
  * - error handling if denomination keys are used that are not known to the
@@ -1000,7 +999,7 @@ analyze_reserves (void *cls)
   rc.reserves = GNUNET_CONTAINER_multihashmap_create (512,
                                                       GNUNET_NO);
 
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       edb->select_reserves_in_above_serial_id (edb->cls,
                                                esession,
                                                pp.last_reserve_in_serial_id,
@@ -1010,7 +1009,7 @@ analyze_reserves (void *cls)
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       edb->select_reserves_out_above_serial_id (edb->cls,
                                                 esession,
                                                 pp.last_reserve_out_serial_id,
@@ -2051,6 +2050,9 @@ withdraw_cb (void *cls,
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki;
   struct TALER_Amount value;
 
+  GNUNET_assert (rowid >= pp.last_withdraw_serial_id); /* should be monotonically increasing */
+  pp.last_withdraw_serial_id = rowid + 1;
+
   if (GNUNET_OK !=
       get_denomination_info (denom_pub,
                              &dki,
@@ -2127,6 +2129,9 @@ refresh_session_cb (void *cls,
   struct DenominationSummary *dso;
   struct TALER_Amount amount_without_fee;
   struct TALER_Amount tmp;
+
+  GNUNET_assert (rowid >= pp.last_melt_serial_id); /* should be monotonically increasing */
+  pp.last_melt_serial_id = rowid + 1;
 
   if (GNUNET_OK !=
       get_denomination_info (denom_pub,
@@ -2376,6 +2381,9 @@ deposit_cb (void *cls,
   struct TALER_DepositRequestPS dr;
   struct TALER_Amount tmp;
 
+  GNUNET_assert (rowid >= pp.last_deposit_serial_id); /* should be monotonically increasing */
+  pp.last_deposit_serial_id = rowid + 1;
+
   if (GNUNET_OK !=
       get_denomination_info (denom_pub,
                              &dki,
@@ -2496,6 +2504,9 @@ refund_cb (void *cls,
   struct TALER_Amount amount_without_fee;
   struct TALER_Amount refund_fee;
 
+  GNUNET_assert (rowid >= pp.last_refund_serial_id); /* should be monotonically increasing */
+  pp.last_refund_serial_id = rowid + 1;
+
   if (GNUNET_OK !=
       get_denomination_info (denom_pub,
                              &dki,
@@ -2589,7 +2600,6 @@ analyze_coins (void *cls)
   struct CoinContext cc;
   int dret;
 
-  pp.last_reserve_out_serial_id = 0; // HACK! FIXME!
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing coins\n");
   /* setup 'cc' */
@@ -2632,7 +2642,7 @@ analyze_coins (void *cls)
   if (GNUNET_SYSERR ==
       edb->select_reserves_out_above_serial_id (edb->cls,
                                                 esession,
-                                                pp.last_reserve_out_serial_id,
+                                                pp.last_withdraw_serial_id,
                                                 &withdraw_cb,
                                                 &cc))
   {
@@ -2761,9 +2771,10 @@ incremental_processing (Analysis analysis,
   else
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                _("Resuming audit at %llu/%llu/%llu/%llu/%llu/%llu\n"),
+                _("Resuming audit at %llu/%llu/%llu/%llu/%llu/%llu/%llu\n"),
                 (unsigned long long) pp.last_reserve_in_serial_id,
                 (unsigned long long) pp.last_reserve_out_serial_id,
+                (unsigned long long) pp.last_withdraw_serial_id,
                 (unsigned long long) pp.last_deposit_serial_id,
                 (unsigned long long) pp.last_melt_serial_id,
                 (unsigned long long) pp.last_refund_serial_id,
@@ -2792,9 +2803,10 @@ incremental_processing (Analysis analysis,
     return GNUNET_SYSERR;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              _("Concluded audit step at %llu/%llu/%llu/%llu/%llu/%llu\n\n"),
+              _("Concluded audit step at %llu/%llu/%llu/%llu/%llu/%llu/%llu\n\n"),
               (unsigned long long) pp.last_reserve_in_serial_id,
               (unsigned long long) pp.last_reserve_out_serial_id,
+              (unsigned long long) pp.last_withdraw_serial_id,
               (unsigned long long) pp.last_deposit_serial_id,
               (unsigned long long) pp.last_melt_serial_id,
               (unsigned long long) pp.last_refund_serial_id,

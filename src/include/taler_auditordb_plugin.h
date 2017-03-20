@@ -117,9 +117,14 @@ struct TALER_AUDITORDB_ProgressPoint
   uint64_t last_reserve_in_serial_id;
 
   /**
-   * last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
+   * last_reserve_out_serial_id serial ID of the last reserve_out the auditor processed
    */
   uint64_t last_reserve_out_serial_id;
+
+  /**
+   * last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
+   */
+  uint64_t last_withdraw_serial_id;
 
   /**
    * last_deposit_serial_id serial ID of the last deposit the auditor processed
