@@ -3371,7 +3371,7 @@ main (int argc,
   (void) TALER_project_data_default ();
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-auditor",
-                                   "INFO",
+                                   "MESSAGE",
                                    NULL));
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc,

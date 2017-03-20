@@ -359,7 +359,8 @@ postgres_create_tables (void *cls)
      of; "refund_serial_id" tells us the last entry in "refunds"
      for this denom_pub that the auditor is aware of. */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS denomination_pending"
-	   "(denom_pub_hash BYTEA PRIMARY KEY REFERENCES auditor_denominations (denom_pub_hash) ON DELETE CASCADE"
+	   "(denom_pub_hash BYTEA PRIMARY KEY"
+           /* " REFERENCES auditor_denominations (denom_pub_hash) ON DELETE CASCADE" // Do we want this? */
            ",denom_balance_val INT8 NOT NULL"
            ",denom_balance_frac INT4 NOT NULL"
            ",denom_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
