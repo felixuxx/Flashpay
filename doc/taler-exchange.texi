@@ -74,6 +74,159 @@ Indices
 @node Introduction
 @chapter Introduction
 
+This manual is an early draft that still needs significant editing
+work to become readable.
+
+
+@section About GNU Taler
+
+GNU Taler is an open protocol for an electronic payment system with a
+free software reference implementation.  GNU Taler offers secure, fast
+and easy payment processing using well understood cryptographic
+techniques.  GNU Taler allows customers to remain anonymous, while
+ensuring that merchants can be held accountable by governments.
+Hence, GNU Taler is compatible with anti-money-laundering (AML) and
+know-your-customer (KYC) regulation, as well as data protection
+regulation (such as GDPR).
+
+GNU Taler is not yet production-ready, after following this manual
+you will have a backend that can process payments in ``KUDOS'', but
+not regular currencies.  This is not so much because of limitations
+in the backend, but because we are not aware of a Taler exchange
+operator offering regular currencies today.
+
+@section About this manual
+
+This tutorial targets system administrators who want to install and
+operate a GNU Taler exchange.
+
+@section Organizational prerequisites
+
+Operating a GNU Taler exchange means that you are operating a payment
+service provider, which means that you will most likely need a bank
+license and/or follow applicable financial regulation.
+
+\cindex{availability}
+\cindex{backup}
+\cindex{replication}
+GNU Taler payment service providers generally need to ensure high
+availability and have @emph{really} good backups (synchronous
+replication, asynchronous remote replication, off-site backup, 24/7
+monitoring, etc.).@footnote{Naturally, you could operate a Taler
+exchange for a toy currency without any real value on low-cost setups
+like a Raspberry Pi, but we urge you to limit the use of such setups
+to research and education as with GNU Taler data loss instantly
+results in financial losses.}  This manual will not cover these
+aspects of operating a payment service provider.
+
+\cindex{HSM}
+\cindex{offline}
+\cindex{database}
+\cindex{operational security}
+We will assume that you can operate a (high-availability,
+high-assurance) Postgres database.  Furthermore, we expect some
+moderate familiarity with the compilation and installation of free
+software packages.  You need to understand the cryptographic concepts
+of private and public keys and must be able to protect private keys
+stored in files on disk.  An exchange uses an @emph{offline} master
+key as well as @emph{online} keys.  You are advised to secure your
+private master key and any copies on encrypted, always-offline
+computers.  Again, we assume that you are familiar with good best
+practices in operational security, including securing key
+material.@footnote{The current implementation does not make provisions
+for secret splitting.  Still, the use of a hardware security module
+(HSM) for protecting private keys is adviseable, so please contact the
+developers for HSM integration support.}
+
+
+@section Architecture overview
+
+@cindex crypto-currency
+@cindex bank
+@cindex escrow
+@cindex coin
+Taler is a pure payment system, not a new crypto-currency. As such, it
+operates in a traditional banking context.  In particular, this means
+that in order to receive funds via Taler, the merchant must have a
+regular bank account, and payments can be executed in ordinary
+currencies such as USD or EUR.  Similarly, the Taler exchange must
+interact with a bank.  The bank of the exchange holds the exchange's
+funds in an escrow account.
+
+@cindex reserve
+@cindex fee
+@cindex aggregator
+@cindex deposit
+When customers wire money to the escrow account, the bank notifies
+the exchange about the incoming wire transfers.  The exchange then
+creates a @emph{reserve} based on the subject of the wire transfer.
+The wallet which knows the secret key matching the wire transfer
+subject can then withdraw coins from the reserve, thereby draining
+it.  The liability of the exchange against the reserve is thereby
+converted into a liability against digital coins issued by the
+exchange.  When the customer later spends the coins at a merchant,
+and the merchant @emph{deposits} the coins at the exchange, the
+exchange first @emph{aggregates} the amount from multiple deposits
+from the same merchant and then instructs its bank to make a
+wire transfer to the merchant, thereby fulfilling its obligation
+and eliminating the liability.  The exchange charges @emph{fees}
+for some or all of its operations to cover costs and possibly make
+a profit.
+
+@cindex auditor
+@cindex accounting
+@emph{Auditors} are third parties, for example financial regulators,
+that verify that the exchange operates correctly.  The same software
+is also used to calculate the exchange's profits, risk and liabilities
+by the accountants of the exchange.
+
+The Taler software stack for an exchange consists of the
+following components:
+
+@itemize
+@cindex HTTP frontend
+@item The HTTP frontend interacts with Taler wallets and
+  merchant backends.  It is used to withdraw coins, deposit
+  coins, refresh coins, issue refunds, map wire transfers to
+  Taler transactions, inquire about the exchange's bank account
+  details, signing keys and fee structure.
+  The binary is the @code{taler-exchange-httpd}.
+@cindex Aggregator
+@item The aggregator combines multiple deposits made by
+  the same merchant and (eventually) triggers wire transfers for the
+  aggregate amount.  The merchant can control how quickly wire
+  transfers are made. The exchange may be charge a fee per wire transfer
+  to discourage excessively frequent transfers.  The binary
+  is the @code{taler-exchange-aggregator}.
+@cindex Auditor
+@item The auditor verifies that the transactions performed by
+  the exchange were done properly. It checks the various signatures,
+  totals up the amounts and alerts the operator to any inconsistencies.
+  It also computes the expected bank balance, revenue and risk exposure
+  of the exchange operator.  The main binary is the
+  @code{taler-auditor}.
+@cindex Wire plugin
+@item A wire plugin enables the HTTP frontend to talk to the
+  bank. Its role is to allow the exchange to validate bank
+  addresses (i.e. IBAN numbers), for the aggregator to execute
+  wire transfers and for the auditor to query bank transaction
+  histories.  Wire plugins are @emph{plugins} as there can be
+  many different implementations to deal with different
+  banking standards.  Wire plugins are automatically located
+  and used by the exchange, aggregator and auditor.
+@cindex DBMS
+@cindex Postgres
+@item The exchange requires a DBMS to stores the transaction history for
+  the Taler exchange and aggregator, and a (typically separate) DBMS for
+  the Taler auditor.
+  For now, the GNU Taler reference implemenation only supports Postgres,
+  but the code could be easily extended to support another DBMS.
+@end itemize
+
+@c The following image illustrates the various interactions of these
+@c key components:
+
+@c @center @image{arch, 3in, 4in}
 
 
 @node Installation
@@ -105,7 +258,7 @@ GNU libunistring >= 0.9.3
 libcurl >= 7.26 (or libgnurl >= 7.26)
 
 @item
-GNU libmicrohttpd >= 0.9.39
+GNU libmicrohttpd >= 0.9.52
 
 @item
 GNU libgcrypt >= 1.6
@@ -114,7 +267,7 @@ GNU libgcrypt >= 1.6
 libjansson >= 2.7
 
 @item
-Postgres >= 9.4, including libpq
+Postgres >= 9.6, including libpq
 
 @item
 libgnunetutil (from Git)
@@ -176,7 +329,11 @@ if you installed GNUnet to @code{/usr/local} in the previous step.
 @node Configuration
 @chapter Configuration
 
-In this document, we assume that @code{$HOME/.config/taler.conf} is being customized.
+@c In this document, we assume that @code{$HOME/.config/taler.conf} is being customized.
+
+This chapter provides an overview of the exchange configuration.  Or
+at least eventually will do so, for now it is a somewhat wild
+description of some of the options.
 
 @menu
 * Keying::
@@ -218,7 +375,8 @@ The exchange works with three types of keys:
 @cite{master_public_key}: Must specify the exchange's master public key.
 @end itemize
 
-@cite{sign keys}: the following two options under @cite{[exchange_keys]} section control @cite{sign keys}:
+@cite{sign keys}: the following two options under
+@cite{[exchange_keys]} section control @cite{sign keys}:
 
 
 @itemize
@@ -227,7 +385,11 @@ The exchange works with three types of keys:
 @cite{signkey_duration}: How long should one signing key be used?
 
 @item
-@cite{lookahead_sign}: How much time we want to cover with our @cite{signkeys}? Note that if @cite{signkey_duration} is bigger than @cite{lookahead_sign}, @cite{taler-exchange-keyup} will generate a quantity of @cite{signkeys} which is sufficient to cover all the gap. See keys-duration.
+@cite{lookahead_sign}: How much time we want to cover with our
+@cite{signkeys}? Note that if @cite{signkey_duration} is bigger than
+@cite{lookahead_sign}, @cite{taler-exchange-keyup} will generate a
+quantity of @cite{signkeys} which is sufficient to cover all the
+gap. See keys-duration.
 @end itemize
 
 
@@ -235,26 +397,32 @@ The exchange works with three types of keys:
 @section Serving
 
 
-The exchange can serve HTTP over both TCP and UNIX domain socket. It needs this
-configuration @emph{twice}, because it opens one connection for ordinary REST calls, and one
-for "/admin" and "/test" REST calls, because the operator may want to restrict the access to "/admin".
+The exchange can serve HTTP over both TCP and UNIX domain socket. It
+needs this configuration @emph{twice}, because it opens one connection
+for ordinary REST calls, and one for "/admin" and "/test" REST calls,
+because the operator may want to restrict the access to "/admin".
 
-The following values are to be configured under the section @cite{[exchange]} and @cite{[exchange-admin]}:
+The following values are to be configured under the section
+@cite{[exchange]} and @cite{[exchange-admin]}:
 
 
 @itemize
 
 @item
-@cite{serve}: must be set to @cite{tcp} to serve HTTP over TCP, or @cite{unix} to serve HTTP over a UNIX domain socket
+@cite{serve}: must be set to @cite{tcp} to serve HTTP over TCP, or
+@cite{unix} to serve HTTP over a UNIX domain socket
 
 @item
-@cite{port}: Set to the TCP port to listen on if @cite{serve} Is @cite{tcp}.
+@cite{port}: Set to the TCP port to listen on if @cite{serve} Is
+@cite{tcp}.
 
 @item
-@cite{unixpath}: set to the UNIX domain socket path to listen on if @cite{serve} Is @cite{unix}
+@cite{unixpath}: set to the UNIX domain socket path to listen on if
+@cite{serve} Is @cite{unix}
 
 @item
-@cite{unixpath_mode}: number giving the mode with the access permissiON MASK for the @cite{unixpath} (i.e. 660 = rw-rw----).
+@cite{unixpath_mode}: number giving the mode with the access
+permissiON MASK for the @cite{unixpath} (i.e. 660 = rw-rw----).
 @end itemize
 
 The exchange can be started with the @cite{-D} option to disable the administrative
@@ -283,9 +451,11 @@ option @cite{currency} in section @cite{[taler]}.
 @subsection Wireformat
 
 
-The wireformat is the protocol to be used between the exchange and the banks.
-The option is @cite{wireformat}, under section @cite{[exchange]}. The exchange currently supports
-the @cite{test} wireformat. This wireformat is used for testing the system against a fictional bank.
+The wireformat is the protocol to be used between the exchange and the
+banks.  The option is @cite{wireformat}, under section
+@cite{[exchange]}. The exchange currently supports the @cite{test}
+wireformat. This wireformat is used for testing the system against a
+fictional bank.
 
 @cartouche
 @quotation Note
@@ -297,17 +467,20 @@ The SEPA wireformat is work in progress.
 @subsection Incoming
 
 
-The bank account where the exchange gets money from customers is configured under
-the section @cite{[exchange-wire-incoming-X]}, where @cite{X} matches the value given to the
-option @cite{wireformat}. This section contains only one option: @cite{X_response_file}, which
-takes the path to a text file containing the exchange's bank account details in JSON
-format.
+The bank account where the exchange gets money from customers is
+configured under the section @cite{[exchange-wire-incoming-X]}, where
+@cite{X} matches the value given to the option @cite{wireformat}. This
+section contains only one option: @cite{X_response_file}, which takes
+the path to a text file containing the exchange's bank account details
+in JSON format.
 
 The command line tool @cite{taler-exchange-wire} is used to create such a file.
 For example, the utility may be invoked as follows:
 
 @example
-$ taler-exchange-wire -j '@{"name": "The Exchange", "account_number": 10, "bank_uri": "https://bank.demo.taler.net", "type": "test"@}' -t test -o exchange.json
+$ taler-exchange-wire -j '@{"name": "The Exchange", "account_number":
+10, "bank_uri": "https://bank.demo.taler.net", "type": "test"@}' -t
+test -o exchange.json
 @end example
 
 Note that the value given to option @cite{-t} must match the value in the JSON's field @code{"type"}.
@@ -319,11 +492,12 @@ requests.
 @node Outgoing
 @subsection Outgoing
 
-
-This exchange's bank account is used to give money to merchants, after successful
+This exchange's bank account is used to give money to merchants, after
+successful
 deposits@footnote{https://api.taler.net/api-exchange.html#deposit-par}
-operations. If @cite{test} is the chosen wireformat, the outcoming bank account is configured by the following
-options under @cite{[exchange-wire-outcoming-test]}:
+operations. If @cite{test} is the chosen wireformat, the outcoming
+bank account is configured by the following options under
+@cite{[exchange-wire-outcoming-test]}:
 
 @quotation
 
@@ -348,7 +522,7 @@ measure, may want to instruct the bank that the incoming bank account is only su
 
 
 
-@node Database,Coins denomination keys,Bank account,Configuration
+@node Database
 @section Database
 
 
@@ -377,59 +551,84 @@ db = postgres
 db_conn_str = postgres:///talerdemo
 @end example
 
-@node Coins denomination keys,Keys duration,Database,Configuration
+@node Coins denomination keys
 @section Coins (denomination keys)
 
 
-Sections specifying denomination (coin) information start with "coin_".  By convention, the name continues with "$CURRENCY_[$SUBUNIT]_$VALUE", i.e. @cite{[coin_eur_ct_10]} for a 10 cent piece.  However, only the "coin_" prefix is mandatory.  Each "coin_"-section must then have the following options:
+Sections specifying denomination (coin) information start with
+"coin_".  By convention, the name continues with
+"$CURRENCY_[$SUBUNIT]_$VALUE", i.e. @cite{[coin_eur_ct_10]} for a 10
+cent piece.  However, only the "coin_" prefix is mandatory.  Each
+"coin_"-section must then have the following options:
 
 
 @itemize
 
 @item
-@cite{value}: How much is the coin worth, the format is CURRENCY:VALUE.FRACTION.  For example, a 10 cent piece is "EUR:0.10".
+@cite{value}: How much is the coin worth, the format is
+CURRENCY:VALUE.FRACTION.  For example, a 10 cent piece is "EUR:0.10".
 
 @item
-@cite{duration_withdraw}: How long can a coin of this type be withdrawn?  This limits the losses incurred by the exchange when a denomination key is compromised.
+@cite{duration_withdraw}: How long can a coin of this type be
+withdrawn?  This limits the losses incurred by the exchange when a
+denomination key is compromised.
 
 @item
-@cite{duration_overlap}: What is the overlap of the withdrawal timespan for this coin type?
+@cite{duration_overlap}: What is the overlap of the withdrawal
+timespan for this coin type?
 
 @item
-@cite{duration_spend}: How long is a coin of the given type valid?  Smaller values result in lower storage costs for the exchange.
+@cite{duration_spend}: How long is a coin of the given type valid?
+Smaller values result in lower storage costs for the exchange.
 
 @item
-@cite{fee_withdraw}: What does it cost to withdraw this coin? Specified using the same format as @cite{value}.
+@cite{fee_withdraw}: What does it cost to withdraw this coin?
+Specified using the same format as @cite{value}.
 
 @item
-@cite{fee_deposit}: What does it cost to deposit this coin? Specified using the same format as @cite{value}.
+@cite{fee_deposit}: What does it cost to deposit this coin? Specified
+using the same format as @cite{value}.
 
 @item
-@cite{fee_refresh}: What does it cost to refresh this coin? Specified using the same format as @cite{value}.
+@cite{fee_refresh}: What does it cost to refresh this coin? Specified
+using the same format as @cite{value}.
 
 @item
-@cite{rsa_keysize}: How many bits should the RSA modulus (product of the two primes) have for this type of coin.
+@cite{rsa_keysize}: How many bits should the RSA modulus (product of
+the two primes) have for this type of coin.
 @end itemize
 
-@node Keys duration,,Coins denomination keys,Configuration
+
+@node Keys duration
 @section Keys duration
 
 
-Both @cite{signkeys} and @cite{denom keys} have a starting date. The option @cite{lookahead_provide}, under section @cite{[exchange_keys]}, is such that only keys
-whose starting date is younger than @cite{lookahead_provide} will be issued by the exchange.
+Both @cite{signkeys} and @cite{denom keys} have a starting date. The
+option @cite{lookahead_provide}, under section @cite{[exchange_keys]},
+is such that only keys whose starting date is younger than
+@cite{lookahead_provide} will be issued by the exchange.
 
-@cite{signkeys}. The option @cite{lookahead_sign} is such that, being @cite{t} the time when @cite{taler-exchange-keyup}
-is run, @cite{taler-exchange-keyup} will generate @cite{n} @cite{signkeys}, where @cite{t + (n * signkey_duration) = t + lookahead_sign}. In other words, we generate a number of keys which is sufficient to cover a period of
-@cite{lookahead_sign}. As for the starting date, the first generated key will get a starting time of @cite{t},
-and the @cite{j}-th key will get a starting time of @cite{x + signkey_duration}, where @cite{x} is the starting time
-of the @cite{(j-1)}-th key.
+@cite{signkeys}. The option @cite{lookahead_sign} is such that, being
+@cite{t} the time when @cite{taler-exchange-keyup} is run,
+@cite{taler-exchange-keyup} will generate @cite{n} @cite{signkeys},
+where @cite{t + (n * signkey_duration) = t + lookahead_sign}. In other
+words, we generate a number of keys which is sufficient to cover a
+period of @cite{lookahead_sign}. As for the starting date, the first
+generated key will get a starting time of @cite{t}, and the
+@cite{j}-th key will get a starting time of @cite{x +
+signkey_duration}, where @cite{x} is the starting time of the
+@cite{(j-1)}-th key.
 
-@cite{denom keys}. The option @cite{lookahead_sign} is such that, being @cite{t} the time when @cite{taler-exchange-keyup}
-is run, @cite{taler-exchange-keyup} will generate @cite{n} @cite{denom keys} for each denomination, where
-@cite{t + (n * duration_withdraw) = t + lookahead_sign}. In other words, for each denomination, we generate a
-number of keys which is sufficient to cover a period of @cite{lookahead_sign}. As for the starting date, the
-first generated key will get a starting time of @cite{t}, and the @cite{j}-th key will get a starting time of
-@cite{x + duration_withdraw}, where @cite{x} is the starting time of the @cite{(j-1)}-th key.
+@cite{denom keys}. The option @cite{lookahead_sign} is such that,
+being @cite{t} the time when @cite{taler-exchange-keyup} is run,
+@cite{taler-exchange-keyup} will generate @cite{n} @cite{denom keys}
+for each denomination, where @cite{t + (n * duration_withdraw) = t +
+lookahead_sign}. In other words, for each denomination, we generate a
+number of keys which is sufficient to cover a period of
+@cite{lookahead_sign}. As for the starting date, the first generated
+key will get a starting time of @cite{t}, and the @cite{j}-th key will
+get a starting time of @cite{x + duration_withdraw}, where @cite{x} is
+the starting time of the @cite{(j-1)}-th key.
 
 
 
@@ -438,86 +637,10 @@ first generated key will get a starting time of @cite{t}, and the @cite{j}-th ke
 
 
 @menu
-* Deploying to stable::
-* Database upgrades::
 * Standalone deployment::
+* Database upgrades::
+* Deployment on demo.taler.net::
 @end menu
-
-
-@node Deploying to stable
-@section Deploying to stable
-
-
-First, make sure that the deployment @emph{AND} the deployment scripts work on the @cite{test.taler.net} deployment.
-
-For all repositories that have a separate stable branch (currently exchange.git,
-merchant.git, merchant-frontends.git, bank.git, landing.git) do:
-
-@example
-$ cd $REPO
-$ git pull origin master stable
-$ git checkout stable
-
-# option a: resolve conflicts resulting from hotfixes
-$ git merge master
-$ ...
-
-# option b: force stable to master
-$ git update-ref refs/heads/stable master
-
-$ git push # possibly with --force
-
-# continue development
-$ git checkout master
-@end example
-
-Log into taler.net with the account that is @emph{not} active by looking
-at the @cite{sockets} symlink of the @cite{demo} account.
-
-The following instructions wipe out the old deployment completely.
-
-@example
-$ ls -l ~demo/sockets
-
-[...] sockets -> /home/demo-green/sockets/
-@end example
-
-In this case, @cite{demo-green} is the active deployment, and @cite{demo-blue} should be updated.
-After the update is over, the @cite{/home/demo/sockets} symlink will be pointed to @cite{demo-blue}.
-
-@example
-# Remove all existing files
-$ find $HOME -exec rm -fr @{@} \;
-
-$ git clone /var/git/deployment.git
-$ ./deployment/bootstrap-bluegreen demo
-
-# set environment appropriately
-$ . activate
-$ taler-deployment-build
-
-# upgrade the database!  this
-# process depends on the specific version
-
-$ taler-deployment-start
-
-# look at the logs, verify that everything is okay
-@end example
-
-Now the symlink can be updated.
-
-
-@node Database upgrades
-@section Database upgrades
-
-
-The exchange db can be re-initialized with
-
-@example
-$ taler-exchange-dbinit -r
-@end example
-
-CAUTION: YOU WILL LOSE ALL DATA WITH THIS!
 
 
 @node Standalone deployment
@@ -649,8 +772,103 @@ at @code{<DEPLOYMENT-REPO>/etc/nginx}.
 @end cartouche
 
 
+@node Database upgrades
+@section Database upgrades
+
+Currently, there is no way to upgrade the database between Taler versions.
+
+The exchange database can be re-initialized using:
+
+@example
+$ taler-exchange-dbinit -r
+@end example
+
+However, running this command will result in all data in the database
+being lost, which may result in significant financial liabilities as
+the exchange can then not detect double-spending.  Hence this
+operation must not be performed in a production system.
+
+
+
+@node Deployment on demo.taler.net
+@section Deployment on demo.taler.net
+
+This section describes how to upgrade the exchange deployment on the
+@url{taler.net} Web site.  Here, the deployment scripts include a
+``stable'' setup at @url{demo.taler.net} and an ``experimental'' setup
+at @url{test.taler.net}.  This section documents the steps for moving
+the ``experimental'' logic to the ``stable'' site.  It is mostly
+useful for administrators of @url{taler.net}, but given that all of
+the configuration files are public, it may also make a good starting
+point for others.
+
+
+First, make sure that the deployment @emph{AND} the deployment scripts work on the @cite{test.taler.net} deployment.
+
+For all repositories that have a separate stable branch (currently exchange.git,
+merchant.git, merchant-frontends.git, bank.git, landing.git) do:
+
+@example
+$ cd $REPO
+$ git pull origin master stable
+$ git checkout stable
+
+# option a: resolve conflicts resulting from hotfixes
+$ git merge master
+$ ...
+
+# option b: force stable to master
+$ git update-ref refs/heads/stable master
+
+$ git push # possibly with --force
+
+# continue development
+$ git checkout master
+@end example
+
+Log into taler.net with the account that is @emph{not} active by looking
+at the @cite{sockets} symlink of the @cite{demo} account.
+
+The following instructions wipe out the old deployment completely.
+
+@example
+$ ls -l ~demo/sockets
+
+[...] sockets -> /home/demo-green/sockets/
+@end example
+
+In this case, @cite{demo-green} is the active deployment, and @cite{demo-blue} should be updated.
+After the update is over, the @cite{/home/demo/sockets} symlink will be pointed to @cite{demo-blue}.
+
+@example
+# Remove all existing files
+$ find $HOME -exec rm -fr @{@} \;
+
+$ git clone /var/git/deployment.git
+$ ./deployment/bootstrap-bluegreen demo
+
+# set environment appropriately
+$ . activate
+$ taler-deployment-build
+
+# upgrade the database!  this
+# process depends on the specific version
+
+$ taler-deployment-start
+
+# look at the logs, verify that everything is okay
+@end example
+
+Now the symlink can be updated.
+
+
+
 @node Diagnostics
 @chapter Diagnostics
+
+This chapter includes various (very unpolished) sections on specific topics
+that might be helpful to understand how the exchange operates, which files
+should be backed up.  The information may also be helpful for diagnostics.
 
 @menu
 * Configuration format::
@@ -737,8 +955,10 @@ URL, or a database name.
 @section Reserve management
 
 
-Incoming transactions to the exchange's provider result in the creation or update of reserves, identified by their reserve key.
-The command line tool @cite{taler-exchange-reservemod} allows create and add money to reserves in the exchange's database.
+Incoming transactions to the exchange's provider result in the
+creation or update of reserves, identified by their reserve key.  The
+command line tool @cite{taler-exchange-reservemod} allows create and
+add money to reserves in the exchange's database.
 
 
 
