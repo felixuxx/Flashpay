@@ -259,10 +259,10 @@ report_reserve_balance (const struct TALER_Amount *total_balance,
 {
   // TODO: implement proper reporting logic writing to file.
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              _("Total escrow balance to be held for reserves is %s\n"),
+              "Escrow balance to be held for reserves is %s\n",
               TALER_amount2s (total_balance));
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              _("Total withdraw fees are at %s\n"),
+              "Withdraw fees income is %s\n",
               TALER_amount2s (total_fee_balance));
 }
 
@@ -282,7 +282,7 @@ report_aggregation_fee_balance (const struct TALER_Amount *total_fee_balance)
 {
   // TODO: implement proper reporting logic writing to file.
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              _("Total aggregation fees are at %s\n"),
+              "Aggregation fees income is %s\n",
               TALER_amount2s (total_fee_balance));
 }
 
@@ -305,19 +305,19 @@ report_denomination_balance (const struct TALER_Amount *total_balance,
 {
   // TODO: implement proper reporting logic writing to file.
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              "Final balance for all denominations is %s\n",
+              "Escrow balance for issued coins is %s\n",
               TALER_amount2s (total_balance));
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
               "Risk from active operations is %s\n",
               TALER_amount2s (total_risk));
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              "Deposit fee profits are %s\n",
+              "Deposit fee income is %s\n",
               TALER_amount2s (deposit_fees));
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              "Melt fee profits are %s\n",
+              "Melt fee income is %s\n",
               TALER_amount2s (melt_fees));
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              "Refund fee profits are %s\n",
+              "Refund fee income is %s\n",
               TALER_amount2s (refund_fees));
 }
 
