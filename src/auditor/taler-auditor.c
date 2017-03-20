@@ -268,6 +268,26 @@ report_reserve_balance (const struct TALER_Amount *total_balance,
 
 
 /**
+ * Report on the aggregation fees the exchange made.
+ *
+ * Note that this is for the "ongoing" reporting period.  Historic
+ * revenue (as stored via the "insert_historic_reserve_revenue")
+ * is not included in the @a total_fee_balance.
+ *
+ * @param total_fee_balance how much money (in total) did the reserve
+ *        make from aggregation fees
+ */
+static void
+report_aggregation_fee_balance (const struct TALER_Amount *total_fee_balance)
+{
+  // TODO: implement proper reporting logic writing to file.
+  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+              _("Total aggregation fees are at %s\n"),
+              TALER_amount2s (total_fee_balance));
+}
+
+
+/**
  * Report state of denomination processing.
  *
  * @param total_balance total value of outstanding coins
@@ -1093,6 +1113,40 @@ struct WirePlugin
 
 
 /**
+ * Information about wire fees charged by the exchange.
+ */
+struct WireFeeInfo
+{
+
+  /**
+   * Kept in a DLL.
+   */
+  struct WireFeeInfo *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct WireFeeInfo *prev;
+
+  /**
+   * When does the fee go into effect (inclusive).
+   */
+  struct GNUNET_TIME_Absolute start_date;
+
+  /**
+   * When does the fee stop being in effect (exclusive).
+   */
+  struct GNUNET_TIME_Absolute end_date;
+
+  /**
+   * How high is the fee.
+   */
+  struct TALER_Amount wire_fee;
+
+};
+
+
+/**
  * Closure for callbacks during #analyze_merchants().
  */
 struct AggregationContext
@@ -1107,6 +1161,16 @@ struct AggregationContext
    * DLL of wire plugins encountered.
    */
   struct WirePlugin *wire_tail;
+
+  /**
+   * DLL of wire fees charged by the exchange.
+   */
+  struct WireFeeInfo *fee_head;
+
+  /**
+   * DLL of wire fees charged by the exchange.
+   */
+  struct WireFeeInfo *fee_tail;
 
   /**
    * How much did we make in aggregation fees.
@@ -1607,15 +1671,96 @@ wire_transfer_information_cb (void *cls,
  * Lookup the wire fee that the exchange charges at @a timestamp.
  *
  * @param ac context for caching the result
+ * @param type type of the wire plugin
  * @param timestamp time for which we need the fee
  * @return NULL on error (fee unknown)
  */
 static const struct TALER_Amount *
 get_wire_fee (struct AggregationContext *ac,
+              const char *type,
               struct GNUNET_TIME_Absolute timestamp)
 {
-  GNUNET_break (0); /* not implemented! */
-  return NULL;
+  struct WireFeeInfo *wfi;
+  struct WireFeeInfo *pos;
+  struct TALER_MasterSignatureP master_sig;
+
+  /* Check if fee is already loaded in cache */
+  for (pos = ac->fee_head; NULL != pos; pos = pos->next)
+  {
+    if ( (pos->start_date.abs_value_us <= timestamp.abs_value_us) &&
+         (pos->end_date.abs_value_us > timestamp.abs_value_us) )
+      return &pos->wire_fee;
+    if (pos->start_date.abs_value_us > timestamp.abs_value_us)
+      break;
+  }
+
+  /* Lookup fee in exchange database */
+  wfi = GNUNET_new (struct WireFeeInfo);
+  if (GNUNET_OK !=
+      edb->get_wire_fee (edb->cls,
+                         esession,
+                         type,
+                         timestamp,
+                         &wfi->start_date,
+                         &wfi->end_date,
+                         &wfi->wire_fee,
+                         &master_sig))
+  {
+    GNUNET_break (0);
+    GNUNET_free (wfi);
+    return NULL;
+  }
+
+  /* Check signature (not terribly meaningful as the exchange can
+     easily make this one up, but it means that we have proof that
+     the master key was used for inconsistent wire fees if a
+     merchant complains. */
+  {
+    struct TALER_MasterWireFeePS wp;
+
+    wp.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_FEES);
+    wp.purpose.size = htonl (sizeof (wp));
+    GNUNET_CRYPTO_hash (type,
+                        strlen (type) + 1,
+                        &wp.h_wire_method);
+    wp.start_date = GNUNET_TIME_absolute_hton (wfi->start_date);
+    wp.end_date = GNUNET_TIME_absolute_hton (wfi->end_date);
+    TALER_amount_hton (&wp.wire_fee,
+                       &wfi->wire_fee);
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_FEES,
+                                    &wp.purpose,
+                                    &master_sig.eddsa_signature,
+                                    &master_pub.eddsa_pub))
+    {
+      GNUNET_break (0);
+      GNUNET_free (wfi);
+      return NULL;
+    }
+  }
+
+  /* Established fee, keep in sorted list */
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Wire fee is %s starting at %s\n",
+              TALER_amount2s (&wfi->wire_fee),
+              GNUNET_STRINGS_absolute_time_to_string (wfi->start_date));
+  if ( (NULL == pos) ||
+       (NULL == pos->prev) )
+    GNUNET_CONTAINER_DLL_insert (ac->fee_head,
+                                 ac->fee_tail,
+                                 wfi);
+  else
+    GNUNET_CONTAINER_DLL_insert_after (ac->fee_head,
+                                       ac->fee_tail,
+                                       pos->prev,
+                                       wfi);
+  /* Check non-overlaping fee invariant */
+  /* TODO: maybe report problems more nicely? */
+  if (NULL != wfi->prev)
+    GNUNET_break (wfi->prev->end_date.abs_value_us <= wfi->start_date.abs_value_us);
+  if (NULL != wfi->next)
+    GNUNET_break (wfi->next->start_date.abs_value_us >= wfi->end_date.abs_value_us);
+  return &wfi->wire_fee;
 }
 
 
@@ -1688,6 +1833,7 @@ check_wire_out_cb (void *cls,
 
   /* Subtract aggregation fee from total */
   wire_fee = get_wire_fee (ac,
+                           wcc.method,
                            date);
   if (NULL == wire_fee)
   {
@@ -1750,7 +1896,7 @@ check_wire_out_cb (void *cls,
 
   /* Check that calculated amount matches actual amount */
   if (0 != TALER_amount_cmp (amount,
-                             &wcc.total_deposits))
+                             &final_amount))
   {
     report_wire_out_inconsistency (wire,
                                    rowid,
@@ -1776,12 +1922,15 @@ analyze_aggregations (void *cls)
 {
   struct AggregationContext ac;
   struct WirePlugin *wc;
+  struct WireFeeInfo *wfi;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing aggregations\n");
   ac.ret = GNUNET_OK;
   ac.wire_head = NULL;
   ac.wire_tail = NULL;
+  ac.fee_head = NULL;
+  ac.fee_tail = NULL;
   /* FIXME: load existing value from DB! */
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
@@ -1805,13 +1954,20 @@ analyze_aggregations (void *cls)
     GNUNET_free (wc->type);
     GNUNET_free (wc);
   }
+  while (NULL != (wfi = ac.fee_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (ac.fee_head,
+                                 ac.fee_tail,
+                                 wfi);
+    GNUNET_free (wfi);
+  }
   if (GNUNET_OK != ac.ret)
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
   /* FIXME: store aggregation fee total to DB! */
-  /* FIXME: report aggregation fee total */
+  report_aggregation_fee_balance (&ac.total_aggregation_fees);
   return ac.ret;
 }
 
