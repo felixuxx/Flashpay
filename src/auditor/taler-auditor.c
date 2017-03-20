@@ -25,7 +25,6 @@
  *   given in the 'wire_out' table. This needs to be checked separately!
  *
  * KNOWN BUGS:
- * - risk is not calculated correctly
  * - calculate, store and report aggregation fee balance!
  * - error handling if denomination keys are used that are not known to the
  *   auditor is, eh, awful / non-existent. We just throw the DB's constraint
@@ -260,10 +259,10 @@ report_reserve_balance (const struct TALER_Amount *total_balance,
 {
   // TODO: implement proper reporting logic writing to file.
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              "Total escrow balance to be held for reserves: %s\n",
+              _("Total escrow balance to be held for reserves is %s\n"),
               TALER_amount2s (total_balance));
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              "Total profits made from reserves: %s\n",
+              _("Total withdraw fees are at %s\n"),
               TALER_amount2s (total_fee_balance));
 }
 
@@ -864,6 +863,38 @@ verify_reserve_balance (void *cls,
        such transfers...) */
   }
 
+  /* Add withdraw fees we encountered to totals */
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Reserve reserve `%s' made %s in withdraw fees\n",
+              TALER_B2S (&rs->reserve_pub),
+              TALER_amount2s (&rs->total_fee));
+  if (GNUNET_YES !=
+      TALER_amount_add (&rs->a_withdraw_fee_balance,
+                        &rs->a_withdraw_fee_balance,
+                        &rs->total_fee))
+  {
+    GNUNET_break (0);
+    ret = GNUNET_SYSERR;
+    goto cleanup;
+  }
+  if ( (GNUNET_YES !=
+        TALER_amount_add (&rc->total_balance,
+                          &rc->total_balance,
+                          &rs->total_in)) ||
+       (GNUNET_SYSERR ==
+        TALER_amount_subtract (&rc->total_balance,
+                               &rc->total_balance,
+                               &rs->total_out)) ||
+       (GNUNET_YES !=
+        TALER_amount_add (&rc->total_fee_balance,
+                          &rc->total_fee_balance,
+                          &rs->total_fee)) )
+  {
+    GNUNET_break (0);
+    ret = GNUNET_SYSERR;
+    goto cleanup;
+  }
+
   if ( (0ULL == balance.value) &&
        (0U == balance.fraction) )
   {
@@ -906,16 +937,6 @@ verify_reserve_balance (void *cls,
               TALER_B2S (&rs->reserve_pub),
               TALER_amount2s (&balance));
 
-  /* Add withdraw fees we encountered to totals */
-  if (GNUNET_YES !=
-      TALER_amount_add (&rs->a_withdraw_fee_balance,
-                        &rs->a_withdraw_fee_balance,
-                        &rs->total_fee))
-  {
-    GNUNET_break (0);
-    ret = GNUNET_SYSERR;
-    goto cleanup;
-  }
   if (rs->had_ri)
     ret = adb->update_reserve_info (adb->cls,
                                     asession,
@@ -932,25 +953,6 @@ verify_reserve_balance (void *cls,
                                     &balance,
                                     &rs->a_withdraw_fee_balance,
                                     rs->a_expiration_date);
-
-  if ( (GNUNET_YES !=
-        TALER_amount_add (&rc->total_balance,
-                          &rc->total_balance,
-                          &rs->total_in)) ||
-       (GNUNET_SYSERR ==
-        TALER_amount_subtract (&rc->total_balance,
-                               &rc->total_balance,
-                               &rs->total_out)) ||
-       (GNUNET_YES !=
-        TALER_amount_add (&rc->total_fee_balance,
-                          &rc->total_fee_balance,
-                          &rs->total_fee)) )
-  {
-    GNUNET_break (0);
-    ret = GNUNET_SYSERR;
-    goto cleanup;
-  }
-
 
  cleanup:
   GNUNET_assert (GNUNET_YES ==
@@ -1954,7 +1956,6 @@ sync_denomination (void *cls,
            This is really, really bad. */
         GNUNET_break (0);
         cc->ret = GNUNET_SYSERR;
-        return GNUNET_OK;
       }
     }
     if ( (GNUNET_OK == ret) &&
@@ -1977,7 +1978,6 @@ sync_denomination (void *cls,
         /* Failed to store profits? Bad database */
         GNUNET_break (0);
         cc->ret = GNUNET_SYSERR;
-        return GNUNET_OK;
       }
     }
   }
@@ -2010,7 +2010,7 @@ sync_denomination (void *cls,
                                                        denom_hash,
                                                        ds));
   GNUNET_free (ds);
-  return GNUNET_OK;
+  return cc->ret;
 }
 
 
@@ -2085,6 +2085,22 @@ withdraw_cb (void *cls,
   if (GNUNET_OK !=
       TALER_amount_add (&cc->total_denom_balance,
                         &cc->total_denom_balance,
+                        &value))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_amount_add (&cc->risk,
+                        &cc->risk,
+                        &value))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_amount_add (&ds->denom_risk,
+                        &ds->denom_risk,
                         &value))
   {
     GNUNET_break (0);
@@ -2282,6 +2298,14 @@ refresh_session_cb (void *cls,
         GNUNET_break (0);
         return GNUNET_SYSERR;
       }
+      if (GNUNET_OK !=
+          TALER_amount_add (&dsi->denom_risk,
+                            &dsi->denom_risk,
+                            &value))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                   "New balance of denomination `%s' is %s\n",
                   GNUNET_h2s (&new_dki[i]->properties.denom_hash),
@@ -2289,6 +2313,14 @@ refresh_session_cb (void *cls,
       if (GNUNET_OK !=
           TALER_amount_add (&cc->total_denom_balance,
                             &cc->total_denom_balance,
+                            &value))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      if (GNUNET_OK !=
+          TALER_amount_add (&cc->risk,
+                            &cc->risk,
                             &value))
       {
         GNUNET_break (0);
@@ -2310,6 +2342,17 @@ refresh_session_cb (void *cls,
     return GNUNET_SYSERR;
   }
   dso->denom_balance = tmp;
+  if (GNUNET_SYSERR ==
+      TALER_amount_subtract (&cc->total_denom_balance,
+                             &cc->total_denom_balance,
+                             amount_with_fee))
+  {
+    /* This should not be possible, unless the AUDITOR
+       has a bug in tracking total balance. */
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "New balance of denomination `%s' after melt is %s\n",
               GNUNET_h2s (&dki->properties.denom_hash),
@@ -2441,6 +2484,17 @@ deposit_cb (void *cls,
     return GNUNET_SYSERR;
   }
   ds->denom_balance = tmp;
+  if (GNUNET_SYSERR ==
+      TALER_amount_subtract (&cc->total_denom_balance,
+                             &cc->total_denom_balance,
+                             amount_with_fee))
+  {
+    /* This should not be possible, unless the AUDITOR
+       has a bug in tracking total balance. */
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "New balance of denomination `%s' after deposit is %s\n",
               GNUNET_h2s (&dki->properties.denom_hash),
@@ -2569,6 +2623,31 @@ refund_cb (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+  if (GNUNET_OK !=
+      TALER_amount_add (&ds->denom_risk,
+                        &ds->denom_risk,
+                        &amount_without_fee))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_amount_add (&cc->total_denom_balance,
+                        &cc->total_denom_balance,
+                        &amount_without_fee))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_amount_add (&cc->risk,
+                        &cc->risk,
+                        &amount_without_fee))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "New balance of denomination `%s' after refund is %s\n",
               GNUNET_h2s (&dki->properties.denom_hash),
@@ -2691,7 +2770,11 @@ analyze_coins (void *cls)
                                          &sync_denomination,
                                          &cc);
   GNUNET_CONTAINER_multihashmap_destroy (cc.denom_summaries);
-
+  if (GNUNET_OK != cc.ret)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   if (GNUNET_YES == dret)
       dret = adb->update_balance_summary (adb->cls,
                                           asession,
@@ -2710,18 +2793,17 @@ analyze_coins (void *cls)
                                         &cc.melt_fee_balance,
                                         &cc.refund_fee_balance,
                                         &cc.risk);
-  report_denomination_balance (&cc.total_denom_balance,
-                               &cc.risk,
-                               &cc.deposit_fee_balance,
-                               &cc.melt_fee_balance,
-                               &cc.refund_fee_balance);
   if (GNUNET_OK != dret)
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-
-  return cc.ret;
+  report_denomination_balance (&cc.total_denom_balance,
+                               &cc.risk,
+                               &cc.deposit_fee_balance,
+                               &cc.melt_fee_balance,
+                               &cc.refund_fee_balance);
+  return GNUNET_OK;
 }
 
 
@@ -2770,7 +2852,7 @@ incremental_processing (Analysis analysis,
   }
   else
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 _("Resuming audit at %llu/%llu/%llu/%llu/%llu/%llu/%llu\n"),
                 (unsigned long long) pp.last_reserve_in_serial_id,
                 (unsigned long long) pp.last_reserve_out_serial_id,
@@ -2783,7 +2865,7 @@ incremental_processing (Analysis analysis,
   ret = analysis (analysis_cls);
   if (GNUNET_OK != ret)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Analysis phase failed, not recording progress\n");
     return GNUNET_SYSERR;
   }
@@ -2802,7 +2884,7 @@ incremental_processing (Analysis analysis,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               _("Concluded audit step at %llu/%llu/%llu/%llu/%llu/%llu/%llu\n\n"),
               (unsigned long long) pp.last_reserve_in_serial_id,
               (unsigned long long) pp.last_reserve_out_serial_id,
