@@ -3360,7 +3360,7 @@ main (int argc,
                                            &master_pub)),
     GNUNET_GETOPT_OPTION_SET_ONE ('r',
                                   "restart",
-                                  "restart audit from the beginning",
+                                  "restart audit from the beginning (required on first run)",
                                   &restart),
     GNUNET_GETOPT_OPTION_END
   };

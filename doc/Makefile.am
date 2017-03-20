@@ -3,6 +3,7 @@
 SUBDIRS = . doxygen
 
 man_MANS = \
+  taler-auditor.1 \
   taler-auditor-sign.1 \
   taler-config-generate.1 \
   taler-exchange-aggregator.1 \
