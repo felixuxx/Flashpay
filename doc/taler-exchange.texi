@@ -1,0 +1,869 @@
+\input texinfo   @c -*-texinfo-*-
+@setfilename taler-exchange.info
+@documentencoding UTF-8
+@include version.texi
+@settitle The GNU Taler Exchange Operator Manual
+@paragraphindent 0
+@exampleindent 4
+
+@copying
+This manual is for the GNU Taler Exchange
+(version @value{VERSION}, @value{UPDATED}),
+a payment service provider for GNU Taler.
+
+Copyright @copyright{} 2014-2017 GNUnet e.V. and INRIA
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3
+or any later version published by the Free Software Foundation;
+with no Invariant Sections, no Front-Cover Texts, and no Back-Cover
+Texts.  A copy of the license is included in the section entitled "GNU
+Free Documentation License".
+@end quotation
+@end copying
+
+@dircategory Network applications
+@direntry
+* GNU Taler Exchange: (taler-exchange).       Electronic payment system.
+@end direntry
+
+
+@titlepage
+@title The GNU Taler Exchange Operator Manual
+@subtitle Version @value{VERSION}
+@subtitle @value{UPDATED}
+@author Christian Grothoff (@email{grothoff@@taler.net})
+@author Marcello Stanisci (@email{stanisci@@taler.net})
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@summarycontents
+@contents
+
+@ifnottex
+@node Top
+@top The GNU Taler Exchange Operator Manual
+@insertcopying
+@end ifnottex
+
+
+@menu
+* Introduction::
+* Installation::
+* Configuration::
+* Deployment::
+* Diagnostics::
+
+
+
+Appendices
+
+* GNU-AGPL::                    The GNU Affero General Public License says how you
+                                can copy and share the code of the `GNU Taler Exchange'.
+* GNU-FDL::                     The GNU Free Documentation License says how you
+                                can copy and share the documentation of `GNU Taler'.
+
+Indices
+
+* Concept Index::               Index of concepts and programs.
+@end menu
+
+@node Introduction
+@chapter Introduction
+
+
+
+@node Installation
+@chapter Installation
+
+Please install the following packages before proceeding with the exchange compilation.
+
+@itemize
+
+@item
+GNU autoconf >= 2.69
+
+@item
+GNU automake >= 1.14
+
+@item
+GNU libtool >= 2.4
+
+@item
+GNU autopoint >= 0.19
+
+@item
+GNU libltdl >= 2.4
+
+@item
+GNU libunistring >= 0.9.3
+
+@item
+libcurl >= 7.26 (or libgnurl >= 7.26)
+
+@item
+GNU libmicrohttpd >= 0.9.39
+
+@item
+GNU libgcrypt >= 1.6
+
+@item
+libjansson >= 2.7
+
+@item
+Postgres >= 9.4, including libpq
+
+@item
+libgnunetutil (from Git)
+
+@item
+GNU Taler exchange (from Git)
+@end itemize
+
+Except for the last two, these are available in most GNU/Linux
+distributions and should just be installed using the respective
+package manager.
+
+The following instructions will show how to install libgnunetutil and
+the GNU Taler exchange.
+
+Before you install libgnunetutil, you must download and install the
+dependencies mentioned above, otherwise the build may succeed but fail
+to export some of the tooling required by Taler.
+
+To download and install libgnunetutil, proceed as follows:
+
+@example
+$ git clone https://gnunet.org/git/gnunet/
+$ cd gnunet/
+$ ./bootstrap
+$ ./configure [--prefix=GNUNETPFX]
+$ # Each dependency can be fetched from non standard locations via
+$ # the '--with-<LIBNAME>' option. See './configure --help'.
+$ make
+# make install
+@end example
+
+If you did not specify a prefix, GNUnet will install to
+@code{/usr/local}, which requires you to run the last step as
+@code{root}.
+
+To download and install the GNU Taler exchange, proceeds as follows:
+
+@example
+$ git clone git://taler.net/exchange
+$ cd exchange
+$ ./bootstrap
+$ ./configure [--prefix=EXCHANGEPFX] \
+              [--with-gnunet=GNUNETPFX]
+$ # Each dependency can be fetched from non standard locations via
+$ # the '--with-<LIBNAME>' option. See './configure --help'.
+$ make
+# make install
+@end example
+
+If you did not specify a prefix, the exchange will install to
+@code{/usr/local}, which requires you to run the last step as
+@code{root}.  Note that you have to specify @code{--with-gnunet=/usr/local}
+if you installed GNUnet to @code{/usr/local} in the previous step.
+
+
+
+
+@node Configuration
+@chapter Configuration
+
+In this document, we assume that @code{$HOME/.config/taler.conf} is being customized.
+
+@menu
+* Keying::
+* Serving::
+* Currency::
+* Bank account::
+* Database::
+* Coins (denomination keys): Coins denomination keys.
+* Keys duration::
+
+@end menu
+
+@node Keying
+@section Keying
+
+The exchange works with three types of keys:
+
+@itemize
+
+@item
+@cite{master key}
+
+@item
+@cite{sign keys}
+
+@item
+@cite{denomination keys} (see section @cite{Coins})
+@end itemize
+
+@cite{master key}: in section @cite{[exchange]}, edit the two following values:
+
+
+@itemize
+
+@item
+@cite{master_priv_file}: Path to the exchange's master private file.
+
+@item
+@cite{master_public_key}: Must specify the exchange's master public key.
+@end itemize
+
+@cite{sign keys}: the following two options under @cite{[exchange_keys]} section control @cite{sign keys}:
+
+
+@itemize
+
+@item
+@cite{signkey_duration}: How long should one signing key be used?
+
+@item
+@cite{lookahead_sign}: How much time we want to cover with our @cite{signkeys}? Note that if @cite{signkey_duration} is bigger than @cite{lookahead_sign}, @cite{taler-exchange-keyup} will generate a quantity of @cite{signkeys} which is sufficient to cover all the gap. See keys-duration.
+@end itemize
+
+
+@node Serving
+@section Serving
+
+
+The exchange can serve HTTP over both TCP and UNIX domain socket. It needs this
+configuration @emph{twice}, because it opens one connection for ordinary REST calls, and one
+for "/admin" and "/test" REST calls, because the operator may want to restrict the access to "/admin".
+
+The following values are to be configured under the section @cite{[exchange]} and @cite{[exchange-admin]}:
+
+
+@itemize
+
+@item
+@cite{serve}: must be set to @cite{tcp} to serve HTTP over TCP, or @cite{unix} to serve HTTP over a UNIX domain socket
+
+@item
+@cite{port}: Set to the TCP port to listen on if @cite{serve} Is @cite{tcp}.
+
+@item
+@cite{unixpath}: set to the UNIX domain socket path to listen on if @cite{serve} Is @cite{unix}
+
+@item
+@cite{unixpath_mode}: number giving the mode with the access permissiON MASK for the @cite{unixpath} (i.e. 660 = rw-rw----).
+@end itemize
+
+The exchange can be started with the @cite{-D} option to disable the administrative
+functions entirely.  It is recommended that the administrative API is only
+accessible via a properly protected UNIX domain socket.
+
+
+@node Currency
+@section Currency
+
+
+The exchange supports only one currency. This data is set under the respective
+option @cite{currency} in section @cite{[taler]}.
+
+@node Bank account
+@section Bank account
+
+@menu
+* Wireformat::
+* Incoming::
+* Outgoing::
+
+@end menu
+
+@node Wireformat
+@subsection Wireformat
+
+
+The wireformat is the protocol to be used between the exchange and the banks.
+The option is @cite{wireformat}, under section @cite{[exchange]}. The exchange currently supports
+the @cite{test} wireformat. This wireformat is used for testing the system against a fictional bank.
+
+@cartouche
+@quotation Note
+The SEPA wireformat is work in progress.
+@end quotation
+@end cartouche
+
+@node Incoming
+@subsection Incoming
+
+
+The bank account where the exchange gets money from customers is configured under
+the section @cite{[exchange-wire-incoming-X]}, where @cite{X} matches the value given to the
+option @cite{wireformat}. This section contains only one option: @cite{X_response_file}, which
+takes the path to a text file containing the exchange's bank account details in JSON
+format.
+
+The command line tool @cite{taler-exchange-wire} is used to create such a file.
+For example, the utility may be invoked as follows:
+
+@example
+$ taler-exchange-wire -j '@{"name": "The Exchange", "account_number": 10, "bank_uri": "https://bank.demo.taler.net", "type": "test"@}' -t test -o exchange.json
+@end example
+
+Note that the value given to option @cite{-t} must match the value in the JSON's field @code{"type"}.
+
+The generated file will be echoed by the exchange when serving
+/wire@footnote{https://api.taler.net/api-exchange.html#wire-req}
+requests.
+
+@node Outgoing
+@subsection Outgoing
+
+
+This exchange's bank account is used to give money to merchants, after successful
+deposits@footnote{https://api.taler.net/api-exchange.html#deposit-par}
+operations. If @cite{test} is the chosen wireformat, the outcoming bank account is configured by the following
+options under @cite{[exchange-wire-outcoming-test]}:
+
+@quotation
+
+
+@itemize
+
+@item
+@cite{exchange_account_numer}: which bank account number has the exchange
+
+@item
+@cite{bank_uri}: base URL of the bank hosting the exchange bank account
+@end itemize
+@end quotation
+
+@cartouche
+@quotation Note
+The rationale behind having two bank accounts is that the exchange operator, as a security
+measure, may want to instruct the bank that the incoming bank account is only supposed to
+@emph{receive} money.
+@end quotation
+@end cartouche
+
+
+
+@node Database,Coins denomination keys,Bank account,Configuration
+@section Database
+
+
+The option @cite{db} under section @cite{[exchange]} gets the DB backend's name the exchange
+is going to use. So far, only @cite{db = postgres} is supported. After choosing the backend,
+it is mandatory to supply the connection string (namely, the database name). This is
+possible in two ways:
+
+
+@itemize
+
+@item
+via an environment variable: @cite{TALER_EXCHANGEDB_POSTGRES_CONFIG}.
+
+@item
+via configuration option @cite{db_conn_str}, under section @cite{[exchangedb-BACKEND]}. For example, the demo exchange is configured as follows:
+@end itemize
+
+@example
+[exchange]
+...
+db = postgres
+...
+
+[exchangedb-postgres]
+db_conn_str = postgres:///talerdemo
+@end example
+
+@node Coins denomination keys,Keys duration,Database,Configuration
+@section Coins (denomination keys)
+
+
+Sections specifying denomination (coin) information start with "coin_".  By convention, the name continues with "$CURRENCY_[$SUBUNIT]_$VALUE", i.e. @cite{[coin_eur_ct_10]} for a 10 cent piece.  However, only the "coin_" prefix is mandatory.  Each "coin_"-section must then have the following options:
+
+
+@itemize
+
+@item
+@cite{value}: How much is the coin worth, the format is CURRENCY:VALUE.FRACTION.  For example, a 10 cent piece is "EUR:0.10".
+
+@item
+@cite{duration_withdraw}: How long can a coin of this type be withdrawn?  This limits the losses incurred by the exchange when a denomination key is compromised.
+
+@item
+@cite{duration_overlap}: What is the overlap of the withdrawal timespan for this coin type?
+
+@item
+@cite{duration_spend}: How long is a coin of the given type valid?  Smaller values result in lower storage costs for the exchange.
+
+@item
+@cite{fee_withdraw}: What does it cost to withdraw this coin? Specified using the same format as @cite{value}.
+
+@item
+@cite{fee_deposit}: What does it cost to deposit this coin? Specified using the same format as @cite{value}.
+
+@item
+@cite{fee_refresh}: What does it cost to refresh this coin? Specified using the same format as @cite{value}.
+
+@item
+@cite{rsa_keysize}: How many bits should the RSA modulus (product of the two primes) have for this type of coin.
+@end itemize
+
+@node Keys duration,,Coins denomination keys,Configuration
+@section Keys duration
+
+
+Both @cite{signkeys} and @cite{denom keys} have a starting date. The option @cite{lookahead_provide}, under section @cite{[exchange_keys]}, is such that only keys
+whose starting date is younger than @cite{lookahead_provide} will be issued by the exchange.
+
+@cite{signkeys}. The option @cite{lookahead_sign} is such that, being @cite{t} the time when @cite{taler-exchange-keyup}
+is run, @cite{taler-exchange-keyup} will generate @cite{n} @cite{signkeys}, where @cite{t + (n * signkey_duration) = t + lookahead_sign}. In other words, we generate a number of keys which is sufficient to cover a period of
+@cite{lookahead_sign}. As for the starting date, the first generated key will get a starting time of @cite{t},
+and the @cite{j}-th key will get a starting time of @cite{x + signkey_duration}, where @cite{x} is the starting time
+of the @cite{(j-1)}-th key.
+
+@cite{denom keys}. The option @cite{lookahead_sign} is such that, being @cite{t} the time when @cite{taler-exchange-keyup}
+is run, @cite{taler-exchange-keyup} will generate @cite{n} @cite{denom keys} for each denomination, where
+@cite{t + (n * duration_withdraw) = t + lookahead_sign}. In other words, for each denomination, we generate a
+number of keys which is sufficient to cover a period of @cite{lookahead_sign}. As for the starting date, the
+first generated key will get a starting time of @cite{t}, and the @cite{j}-th key will get a starting time of
+@cite{x + duration_withdraw}, where @cite{x} is the starting time of the @cite{(j-1)}-th key.
+
+
+
+@node Deployment
+@chapter Deployment
+
+
+@menu
+* Deploying to stable::
+* Database upgrades::
+* Standalone deployment::
+@end menu
+
+
+@node Deploying to stable
+@section Deploying to stable
+
+
+First, make sure that the deployment @emph{AND} the deployment scripts work on the @cite{test.taler.net} deployment.
+
+For all repositories that have a separate stable branch (currently exchange.git,
+merchant.git, merchant-frontends.git, bank.git, landing.git) do:
+
+@example
+$ cd $REPO
+$ git pull origin master stable
+$ git checkout stable
+
+# option a: resolve conflicts resulting from hotfixes
+$ git merge master
+$ ...
+
+# option b: force stable to master
+$ git update-ref refs/heads/stable master
+
+$ git push # possibly with --force
+
+# continue development
+$ git checkout master
+@end example
+
+Log into taler.net with the account that is @emph{not} active by looking
+at the @cite{sockets} symlink of the @cite{demo} account.
+
+The following instructions wipe out the old deployment completely.
+
+@example
+$ ls -l ~demo/sockets
+
+[...] sockets -> /home/demo-green/sockets/
+@end example
+
+In this case, @cite{demo-green} is the active deployment, and @cite{demo-blue} should be updated.
+After the update is over, the @cite{/home/demo/sockets} symlink will be pointed to @cite{demo-blue}.
+
+@example
+# Remove all existing files
+$ find $HOME -exec rm -fr @{@} \;
+
+$ git clone /var/git/deployment.git
+$ ./deployment/bootstrap-bluegreen demo
+
+# set environment appropriately
+$ . activate
+$ taler-deployment-build
+
+# upgrade the database!  this
+# process depends on the specific version
+
+$ taler-deployment-start
+
+# look at the logs, verify that everything is okay
+@end example
+
+Now the symlink can be updated.
+
+
+@node Database upgrades
+@section Database upgrades
+
+
+The exchange db can be re-initialized with
+
+@example
+$ taler-exchange-dbinit -r
+@end example
+
+CAUTION: YOU WILL LOSE ALL DATA WITH THIS!
+
+
+@node Standalone deployment
+@section Standalone deployment
+
+
+This tecnique aims to set a thorough Taler installation up on a
+machine whose nginx configuration is configured by config files
+from @indicateurl{https://git.taler.net/deployment.git/tree/etc/nginx}.
+
+This installation assumes that all the steps are run with @code{$HOME}
+as @code{$CWD}.
+
+The first step is to fetch the @cite{deployment} repository, which hosts all
+the needed scripts.
+
+@example
+# Adapt the repository's URI to your needs.
+$ git clone /var/git/deployment.git/
+@end example
+
+The next step is to fetch all the codebases from all the components.
+
+@example
+$ ./deployment/bootstrap-standalone
+@end example
+
+If the previous step succeeded, a file named @code{activate} should be now
+in the @code{$CWD}.  It contains environmental definitions for @code{$PATH} and
+database names.
+
+@cartouche
+@quotation Note
+Please @emph{ignore} the output from the previous script when it succeeds,
+which is
+
+@quotation
+
+@example
+WARNING: enabling "trust" authentication for local connections
+You can change this by editing pg_hba.conf or using the option -A, or
+--auth-local and --auth-host, the next time you run initdb.
+
+Success. You can now start the database server using:
+
+/usr/lib/postgresql/9.5/bin/pg_ctl -D talerdb -l logfile start
+@end example
+
+The reason is that this message is generated by Postgresql's utilities and
+you never need to start your database manually; it will be started by the
+init script that launches all the Taler processes.
+@end quotation
+@end quotation
+@end cartouche
+
+Now we need to compile and install all the downloaded codebases.
+
+@example
+# We first update `@w{`}$PATH`@w{`}, in order to make all the compilation
+# and configuration utilities available.
+$ source activate
+
+# Double check if the previous step worked: $PATH should
+# contain $HOME/local/bin.
+$ echo $PATH
+
+# The actual compilation:
+$ taler-deployment-build
+@end example
+
+The following step will generate config files for all the components.
+Please @strong{note} that although a default currency will be picked up by the
+script, it is possible to have a custom currency by setting the environment
+variable @code{TALER_CONFIG_CURRENCY} to the wanted currency, and then running
+the config generator.
+
+@example
+$ taler-deployment-config-generate
+@end example
+
+whereas the following one will place signatures inside wireformat JSON
+files.
+
+@example
+$ taler-deployment-config-sign
+@end example
+
+The next step is to generate @cite{signkeys} and @cite{denomkeys}.
+
+@example
+$ taler-deployment-keyup
+@end example
+
+@c An error of "invalid currency name" might be related to the current
+@c policy of 12-chars limit for currency names; which is likely going to
+@c be changed.
+
+It may be necessary to define database tables for the exchange.  The
+following command does that.
+
+@example
+# Erase all the data!
+$ taler-exchange-dbinit -r
+@end example
+
+As of the merchant backend, it creates tables at launch time, so it is
+not required to define tables before launching it.  @cite{However}, if some
+table's definition changed over the time, and there is a need to force
+a redefinition of tables, then the following command accomplishes that
+for the merchant:
+
+@example
+# Erase all the data!
+$ taler-merchant-dbinit -r
+@end example
+
+If all previous steps succeeded, it is now possible to launch all the
+processes.  That is accomplished by the following command:
+
+@example
+$ taler-deployment-start
+@end example
+
+@cartouche
+@quotation Note
+Please make sure your nginx works correctly with its configuration
+at @code{<DEPLOYMENT-REPO>/etc/nginx}.
+@end quotation
+@end cartouche
+
+
+@node Diagnostics
+@chapter Diagnostics
+
+@menu
+* Configuration format::
+* Reserve management::
+* Database Scheme::
+* Signing key storage::
+* Denomination key storage::
+* Auditor signature storage::
+@end menu
+
+@node Configuration format
+@section Configuration format
+
+
+In Taler realm, any component obeys to the same pattern to get configuration
+values.  According to this pattern, once the component has been installed, the
+installation deploys default values in @cite{$@{prefix@}/share/taler/config.d/}, in
+@cite{.conf} files.  In order to override these defaults, the user can write a custom
+@cite{.conf} file and either pass it to the component at execution time, or name it
+@cite{taler.conf} and place it under @cite{$HOME/.config/}.
+
+
+A config file is a text file containing @cite{sections}, and each section contains
+its @cite{values}. The right format follows:
+
+@example
+[section1]
+value1 = string
+value2 = 23
+
+[section2]
+value21 = string
+value22 = /path22
+@end example
+
+Throughout any configuration file, it is possible to use @code{$}-prefixed variables,
+like @code{$VAR}, especially when they represent filesystem paths.
+It is also possible to provide defaults values for those variables that are unset,
+by using the following syntax: @code{$@{VAR:-default@}}.
+However, there are two ways a user can set @code{$}-prefixable variables:
+
+by defining them under a @code{[paths]} section, see example below,
+
+@example
+[paths]
+TALER_DEPLOYMENT_SHARED = $@{HOME@}/shared-data
+..
+[section-x]
+path-x = $@{TALER_DEPLOYMENT_SHARED@}/x
+@end example
+
+or by setting them in the environment:
+
+@example
+$ export VAR=/x
+@end example
+
+The configuration loader will give precedence to variables set under @code{[path]},
+though.
+
+The utility @code{taler-config}, which gets installed along with the exchange, serves
+to get and set configuration values without directly editing the @cite{.conf}.
+The option @code{-f} is particularly useful to resolve pathnames, when they use
+several levels of @code{$}-expanded variables. See @code{taler-config --help}.
+
+Note that, in this stage of development, the file @code{$HOME/.config/taler.conf}
+can contain sections for @emph{all} the component. For example, both an exchange and
+a bank can read values from it.
+
+The repository @code{git://taler.net/deployment} contains examples of configuration
+file used in our demos. See under @code{deployment/config}.
+
+@cartouche
+@quotation Note
+Expectably, some components will not work just by using default values, as their
+work is often interdependent. For example, a merchant needs to know an exchange
+URL, or a database name.
+@end quotation
+@end cartouche
+
+
+
+@node Reserve management
+@section Reserve management
+
+
+Incoming transactions to the exchange's provider result in the creation or update of reserves, identified by their reserve key.
+The command line tool @cite{taler-exchange-reservemod} allows create and add money to reserves in the exchange's database.
+
+
+
+
+@node Database Scheme
+@section Database Scheme
+
+
+The exchange database must be initialized using @cite{taler-exchange-dbinit}.  This
+tool creates the tables required by the Taler exchange to operate.  The
+tool also allows you to reset the Taler exchange database, which is useful
+for test cases but should never be used in production.  Finally,
+@cite{taler-exchange-dbinit} has a function to garbage collect a database,
+allowing administrators to purge records that are no longer required.
+
+The database scheme used by the exchange look as follows:
+
+@image{exchange-db,5in,,,png}
+
+
+@node Signing key storage
+@section Signing key storage
+
+
+The private online signing keys of the exchange are stored in a
+subdirectory "signkeys/" of the "KEYDIR" which is an option in the
+"[exchange]" section of the configuration file.  The filename is the
+starting time at which the signing key can be used in microseconds
+since the Epoch.  The file format is defined by the @cite{struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP}:
+
+@example
+struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP @{
+   struct TALER_ExchangePrivateKeyP signkey_priv;
+   struct TALER_ExchangeSigningKeyValidityPS issue;
+@};
+@end example
+
+
+@node Denomination key storage
+@section Denomination key storage
+
+
+The private denomination keys of the exchange are store in a
+subdirectory "denomkeys/" of the "KEYDIR" which is an option in the
+"[exchange]" section of the configuration file.  "denomkeys/" contains
+further subdirectories, one per denomination.  The specific name of
+the subdirectory under "denomkeys/" is ignored by the exchange.
+However, the name is important for the "taler-exchange-keyup" tool
+that generates the keys.  The tool combines a human-readable encoding
+of the denomination (i.e.  for EUR:1.50 the prefix would be
+"EUR_1_5-", or for EUR:0.01 the name would be "EUR_0_01-") with a
+postfix that is a truncated Crockford32 encoded hash of the various
+attributes of the denomination key (relative validity periods, fee
+structure and key size).  Thus, if any attributes of a coin change,
+the name of the subdirectory will also change, even if the
+denomination remains the same.
+
+Within this subdirectory, each file represents a particular
+denomination key.  The filename is the starting time at which the
+signing key can be used in microseconds since the Epoch.  The
+format on disk begins with a
+@cite{struct TALER_EXCHANGEDB_DenominationKeyInformationP} giving
+the attributes of the denomination key and the associated
+signature with the exchange's long-term offline key:
+
+@example
+struct TALER_EXCHANGEDB_DenominationKeyInformationP @{
+  struct TALER_MasterSignatureP signature;
+  struct TALER_DenominationKeyValidityPS properties;
+@};
+@end example
+
+This is then followed by the variable-size RSA private key in
+libgcrypt's S-expression format, which can be decoded using
+@cite{GNUNET_CRYPTO_rsa_private_key_decode()}.
+
+
+@node Auditor signature storage
+@section Auditor signature storage
+
+
+Signatures from auditors are stored in the directory specified
+in the exchange configuration section "exchangedb" under the
+option "AUDITOR_BASE_DIR".  The exchange does not care about
+the specific names of the files in this directory.
+
+Each file must contain a header with the public key information
+of the auditor, the master public key of the exchange, and
+the number of signed denomination keys:
+
+@example
+struct AuditorFileHeaderP @{
+  struct TALER_AuditorPublicKeyP apub;
+  struct TALER_MasterPublicKeyP mpub;
+  uint32_t dki_len;
+@};
+@end example
+
+This is then followed by @cite{dki_len} signatures of the auditor of type
+@cite{struct TALER_AuditorSignatureP}, which are then followed by another
+@cite{dki_len} blocks of type @cite{struct TALER_DenominationKeyValidityPS}.
+The auditor's signatures must be signatures over the information of
+the corresponding denomination key validity structures embedded in a
+@cite{struct TALER_ExchangeKeyValidityPS} structure using the
+@cite{TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS} purpose.
+
+
+
+@c **********************************************************
+@c *******************  Appendices  *************************
+@c **********************************************************
+
+@node GNU-AGPL
+@chapter GNU Affero GPL
+@cindex license
+@include agpl.texi
+
+@node GNU-FDL
+@chapter GNU Free Documentation License
+@cindex license
+@include fdl-1.3.texi
+
+@node Concept Index
+@chapter Concept Index
+
+@printindex cp
+
+@bye

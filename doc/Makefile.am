@@ -15,6 +15,16 @@ man_MANS = \
   taler-exchange-wire.1 \
   taler.conf.5
 
+DISTCLEANFILES = \
+  taler-exchange.cps \
+  taler-exchange.dvi
+
+info_TEXINFOS = \
+  taler-exchange.texi
+extra_TEXINFOS = \
+  fdl-1.3.texi \
+  agpl.texi
 EXTRA_DIST = \
   coding-style.txt \
-  ${man_MANS}
+  $(man_MANS) \
+  $(extra_TEXINFOS)
