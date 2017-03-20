@@ -229,6 +229,8 @@ postgres_drop_tables (void *cls)
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS auditor_reserve_balance;");
   SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS auditor_wire_fee_balance;");
+  SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS auditor_reserves;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS auditor_progress;");
@@ -338,6 +340,15 @@ postgres_create_tables (void *cls)
            ",withdraw_fee_balance_val INT8 NOT NULL"
            ",withdraw_fee_balance_frac INT4 NOT NULL"
            ",withdraw_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+	   ")");
+
+  /* Table with the sum of the balances of all wire fees
+     (by exchange's master public key) */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS auditor_wire_fee_balance"
+	   "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
+	   ",wire_fee_balance_val INT8 NOT NULL"
+           ",wire_fee_balance_frac INT4 NOT NULL"
+           ",wire_fee_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
 	   ")");
 
   /* Table with all of the outstanding denomination coins that the
@@ -685,6 +696,36 @@ postgres_prepare (PGconn *db_conn)
            " FROM auditor_reserve_balance"
            " WHERE master_pub=$1;",
            1, NULL);
+
+  /* Used in #postgres_insert_wire_fee_summary() */
+  PREPARE ("auditor_wire_fee_balance_insert",
+           "INSERT INTO auditor_wire_fee_balance"
+	   "(master_pub"
+	   ",wire_fee_balance_val"
+           ",wire_fee_balance_frac"
+           ",wire_fee_balance_curr"
+           ") VALUES ($1,$2,$3,$4)",
+           4, NULL);
+
+  /* Used in #postgres_update_wire_fee_summary() */
+  PREPARE ("auditor_wire_fee_balance_update",
+           "UPDATE auditor_wire_fee_balance SET"
+	   " wire_fee_balance_val=$1"
+           ",wire_fee_balance_frac=$2"
+           ",wire_fee_balance_curr=$3"
+           " WHERE master_pub=$4;",
+           4, NULL);
+
+  /* Used in #postgres_get_wire_fee_summary() */
+  PREPARE ("auditor_wire_fee_balance_select",
+           "SELECT"
+	   " wire_fee_balance_val"
+           ",wire_fee_balance_frac"
+           ",wire_fee_balance_curr"
+           " FROM auditor_wire_fee_balance"
+           " WHERE master_pub=$1;",
+           1, NULL);
+
 
   /* Used in #postgres_insert_denomination_balance() */
   PREPARE ("denomination_pending_insert",
@@ -1787,6 +1828,150 @@ postgres_get_reserve_summary (void *cls,
 }
 
 
+
+
+
+/**
+ * Insert information about exchange's wire fee balance. There must not be an
+ * existing record for the same @a master_pub.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master public key of the exchange
+ * @param wire_fee_balance amount the exchange gained in wire fees
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_insert_wire_fee_summary (void *cls,
+                                  struct TALER_AUDITORDB_Session *session,
+                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  const struct TALER_Amount *wire_fee_balance)
+{
+  PGresult *result;
+  int ret;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+     TALER_PQ_query_param_amount (wire_fee_balance),
+    GNUNET_PQ_query_param_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "auditor_wire_fee_balance_insert",
+                                    params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
+}
+
+
+/**
+ * Insert information about exchange's wire fee balance.  Destructively updates an
+ * existing record, which must already exist.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master public key of the exchange
+ * @param wire_fee_balance amount the exchange gained in wire fees
+ * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_update_wire_fee_summary (void *cls,
+                                  struct TALER_AUDITORDB_Session *session,
+                                  const struct TALER_MasterPublicKeyP *master_pub,
+                                  const struct TALER_Amount *wire_fee_balance)
+{
+  PGresult *result;
+  int ret;
+  struct GNUNET_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_amount (wire_fee_balance),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "auditor_wire_fee_balance_update",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
+}
+
+
+/**
+ * Get summary information about an exchanges wire fee balance.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
+ * @param master_pub master public key of the exchange
+ * @param[out] wire_fee_balance set amount the exchange gained in wire fees
+ * @return #GNUNET_OK on success; #GNUNET_NO if there is no known
+ *         record about this exchange; #GNUNET_SYSERR on failure
+ */
+static int
+postgres_get_wire_fee_summary (void *cls,
+                               struct TALER_AUDITORDB_Session *session,
+                               const struct TALER_MasterPublicKeyP *master_pub,
+                               struct TALER_Amount *wire_fee_balance)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "auditor_wire_fee_balance_select",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+
+  int nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+         "postgres_get_wire_fee_summary() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  GNUNET_assert (1 == nrows);
+
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    TALER_PQ_result_spec_amount ("wire_fee_balance", wire_fee_balance),
+
+    GNUNET_PQ_result_spec_end
+  };
+  if (GNUNET_OK !=
+      GNUNET_PQ_extract_result (result, rs, 0))
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
 /**
  * Insert information about a denomination key's balances.  There
  * must not be an existing record for the denomination key.
@@ -2726,6 +2911,10 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->get_reserve_summary = &postgres_get_reserve_summary;
   plugin->update_reserve_summary = &postgres_update_reserve_summary;
   plugin->insert_reserve_summary = &postgres_insert_reserve_summary;
+
+  plugin->get_wire_fee_summary = &postgres_get_wire_fee_summary;
+  plugin->update_wire_fee_summary = &postgres_update_wire_fee_summary;
+  plugin->insert_wire_fee_summary = &postgres_insert_wire_fee_summary;
 
   plugin->get_denomination_balance = &postgres_get_denomination_balance;
   plugin->update_denomination_balance = &postgres_update_denomination_balance;

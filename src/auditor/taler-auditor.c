@@ -1923,6 +1923,7 @@ analyze_aggregations (void *cls)
   struct AggregationContext ac;
   struct WirePlugin *wc;
   struct WireFeeInfo *wfi;
+  int have_balance;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing aggregations\n");
@@ -1931,10 +1932,19 @@ analyze_aggregations (void *cls)
   ac.wire_tail = NULL;
   ac.fee_head = NULL;
   ac.fee_tail = NULL;
-  /* FIXME: load existing value from DB! */
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
-                                        &ac.total_aggregation_fees));
+  have_balance = adb->get_wire_fee_summary (adb->cls,
+                                            asession,
+                                            &master_pub,
+                                            &ac.total_aggregation_fees);
+  if (GNUNET_SYSERR == have_balance)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_NO == have_balance)
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (currency,
+                                          &ac.total_aggregation_fees));
   if (GNUNET_SYSERR ==
       edb->select_wire_out_above_serial_id (edb->cls,
                                             esession,
@@ -1966,9 +1976,23 @@ analyze_aggregations (void *cls)
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  /* FIXME: store aggregation fee total to DB! */
+  if (GNUNET_NO == have_balance)
+    ac.ret = adb->insert_wire_fee_summary (adb->cls,
+                                           asession,
+                                           &master_pub,
+                                           &ac.total_aggregation_fees);
+  else
+    ac.ret = adb->update_wire_fee_summary (adb->cls,
+                                           asession,
+                                           &master_pub,
+                                           &ac.total_aggregation_fees);
+  if (GNUNET_OK != ac.ret)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   report_aggregation_fee_balance (&ac.total_aggregation_fees);
-  return ac.ret;
+  return GNUNET_OK;
 }
 
 

@@ -492,6 +492,57 @@ struct TALER_AUDITORDB_Plugin
 
 
   /**
+   * Insert information about exchange's wire fee balance. There must not be an
+   * existing record for the same @a master_pub.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master public key of the exchange
+   * @param wire_fee_balance amount the exchange gained in wire fees
+   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   */
+  int
+  (*insert_wire_fee_summary)(void *cls,
+                             struct TALER_AUDITORDB_Session *session,
+                             const struct TALER_MasterPublicKeyP *master_pub,
+                             const struct TALER_Amount *wire_fee_balance);
+
+
+  /**
+   * Insert information about exchange's wire fee balance.  Destructively updates an
+   * existing record, which must already exist.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master public key of the exchange
+   * @param wire_fee_balance amount the exchange gained in wire fees
+   * @return #GNUNET_OK on success; #GNUNET_SYSERR on failure
+   */
+  int
+  (*update_wire_fee_summary)(void *cls,
+                             struct TALER_AUDITORDB_Session *session,
+                             const struct TALER_MasterPublicKeyP *master_pub,
+                             const struct TALER_Amount *wire_fee_balance);
+
+
+  /**
+   * Get summary information about an exchanges wire fee balance.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session connection to use
+   * @param master_pub master public key of the exchange
+   * @param[out] wire_fee_balance set amount the exchange gained in wire fees
+   * @return #GNUNET_OK on success; #GNUNET_NO if there is no known
+   *         record about this exchange; #GNUNET_SYSERR on failure
+   */
+  int
+  (*get_wire_fee_summary)(void *cls,
+                          struct TALER_AUDITORDB_Session *session,
+                          const struct TALER_MasterPublicKeyP *master_pub,
+                          struct TALER_Amount *wire_fee_balance);
+
+
+  /**
    * Insert information about a denomination key's balances.  There
    * must not be an existing record for the denomination key.
    *
@@ -577,13 +628,13 @@ struct TALER_AUDITORDB_Plugin
    */
   int
   (*insert_balance_summary)(void *cls,
-                                 struct TALER_AUDITORDB_Session *session,
-                                 const struct TALER_MasterPublicKeyP *master_pub,
-                                 const struct TALER_Amount *denom_balance,
-                                 const struct TALER_Amount *deposit_fee_balance,
-                                 const struct TALER_Amount *melt_fee_balance,
-                                 const struct TALER_Amount *refund_fee_balance,
-                                 const struct TALER_Amount *risk);
+                            struct TALER_AUDITORDB_Session *session,
+                            const struct TALER_MasterPublicKeyP *master_pub,
+                            const struct TALER_Amount *denom_balance,
+                            const struct TALER_Amount *deposit_fee_balance,
+                            const struct TALER_Amount *melt_fee_balance,
+                            const struct TALER_Amount *refund_fee_balance,
+                            const struct TALER_Amount *risk);
 
 
   /**
@@ -602,13 +653,13 @@ struct TALER_AUDITORDB_Plugin
    */
   int
   (*update_balance_summary)(void *cls,
-                                 struct TALER_AUDITORDB_Session *session,
-                                 const struct TALER_MasterPublicKeyP *master_pub,
-                                 const struct TALER_Amount *denom_balance,
-                                 const struct TALER_Amount *deposit_fee_balance,
-                                 const struct TALER_Amount *melt_fee_balance,
-                                 const struct TALER_Amount *refund_fee_balance,
-                                 const struct TALER_Amount *risk);
+                            struct TALER_AUDITORDB_Session *session,
+                            const struct TALER_MasterPublicKeyP *master_pub,
+                            const struct TALER_Amount *denom_balance,
+                            const struct TALER_Amount *deposit_fee_balance,
+                            const struct TALER_Amount *melt_fee_balance,
+                            const struct TALER_Amount *refund_fee_balance,
+                            const struct TALER_Amount *risk);
 
 
   /**
@@ -627,13 +678,13 @@ struct TALER_AUDITORDB_Plugin
    */
   int
   (*get_balance_summary)(void *cls,
-                              struct TALER_AUDITORDB_Session *session,
-                              const struct TALER_MasterPublicKeyP *master_pub,
-                              struct TALER_Amount *denom_balance,
-                              struct TALER_Amount *deposit_fee_balance,
-                              struct TALER_Amount *melt_fee_balance,
-                              struct TALER_Amount *refund_fee_balance,
-                              struct TALER_Amount *risk);
+                         struct TALER_AUDITORDB_Session *session,
+                         const struct TALER_MasterPublicKeyP *master_pub,
+                         struct TALER_Amount *denom_balance,
+                         struct TALER_Amount *deposit_fee_balance,
+                         struct TALER_Amount *melt_fee_balance,
+                         struct TALER_Amount *refund_fee_balance,
+                         struct TALER_Amount *risk);
 
 
   /**
