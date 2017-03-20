@@ -529,9 +529,9 @@ char *
 TALER_amount_to_string (const struct TALER_Amount *amount)
 {
   char *result;
+  unsigned int i;
   uint32_t n;
   char tail[TALER_AMOUNT_FRAC_LEN + 1];
-  unsigned int i;
   struct TALER_Amount norm;
 
   if (GNUNET_YES != TALER_amount_is_valid (amount))
@@ -556,6 +556,54 @@ TALER_amount_to_string (const struct TALER_Amount *amount)
   else
   {
     GNUNET_asprintf (&result,
+                     "%s:%llu",
+                     norm.currency,
+                     (unsigned long long) norm.value);
+  }
+  return result;
+}
+
+
+/**
+ * Convert amount to string.
+ *
+ * @param amount amount to convert to string
+ * @return statically allocated buffer with string representation,
+ *         NULL if the @a amount was invalid
+ */
+const char *
+TALER_amount2s (const struct TALER_Amount *amount)
+{
+  static char result[TALER_AMOUNT_FRAC_LEN + TALER_CURRENCY_LEN + 3 + 12];
+  unsigned int i;
+  uint32_t n;
+  char tail[TALER_AMOUNT_FRAC_LEN + 1];
+  struct TALER_Amount norm;
+
+  if (GNUNET_YES != TALER_amount_is_valid (amount))
+    return NULL;
+  norm = *amount;
+  GNUNET_break (GNUNET_SYSERR !=
+                TALER_amount_normalize (&norm));
+  if (0 != (n = norm.fraction))
+  {
+    for (i = 0; (i < TALER_AMOUNT_FRAC_LEN) && (0 != n); i++)
+    {
+      tail[i] = '0' + (n / (TALER_AMOUNT_FRAC_BASE / 10));
+      n = (n * 10) % (TALER_AMOUNT_FRAC_BASE);
+    }
+    tail[i] = '\0';
+    GNUNET_snprintf (result,
+                     sizeof (result),
+                     "%s:%llu.%s",
+                     norm.currency,
+                     (unsigned long long) norm.value,
+                     tail);
+  }
+  else
+  {
+    GNUNET_snprintf (result,
+                     sizeof (result),
                      "%s:%llu",
                      norm.currency,
                      (unsigned long long) norm.value);

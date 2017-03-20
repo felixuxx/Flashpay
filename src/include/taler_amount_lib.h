@@ -297,6 +297,18 @@ TALER_amount_normalize (struct TALER_Amount *amount);
 char *
 TALER_amount_to_string (const struct TALER_Amount *amount);
 
+
+/**
+ * Convert amount to string.
+ *
+ * @param amount amount to convert to string
+ * @return statically allocated buffer with string representation,
+ *         NULL if the @a amount was invalid
+ */
+const char *
+TALER_amount2s (const struct TALER_Amount *amount);
+
+
 #if 0                           /* keep Emacsens' auto-indent happy */
 {
 #endif

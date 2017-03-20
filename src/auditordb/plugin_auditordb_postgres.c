@@ -26,13 +26,17 @@
 #include <pthread.h>
 #include <libpq-fe.h>
 
+
+#define LOG(kind,...) GNUNET_log_from (kind, "taler-auditordb-postgres", __VA_ARGS__)
+
+
 /**
  * Log a query error.
  *
  * @param result PQ result object of the query that failed
  */
 #define QUERY_ERR(result)                          \
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Query failed at %s:%u: %s (%s)\n", __FILE__, __LINE__, PQresultErrorMessage (result), PQresStatus (PQresultStatus (result)))
+  LOG (GNUNET_ERROR_TYPE_ERROR, "Query failed at %s:%u: %s (%s)\n", __FILE__, __LINE__, PQresultErrorMessage (result), PQresStatus (PQresultStatus (result)))
 
 
 /**
@@ -42,7 +46,7 @@
  */
 #define BREAK_DB_ERR(result) do { \
     GNUNET_break (0); \
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Database failure: %s (%s)\n", PQresultErrorMessage (result), PQresStatus (PQresultStatus (result))); \
+    LOG (GNUNET_ERROR_TYPE_ERROR, "Database failure: %s (%s)\n", PQresultErrorMessage (result), PQresStatus (PQresultStatus (result))); \
   } while (0)
 
 
@@ -152,10 +156,9 @@ static void
 pq_notice_processor_cb (void *arg,
                         const char *message)
 {
-  GNUNET_log_from (GNUNET_ERROR_TYPE_INFO,
-                   "pq",
-                   "%s",
-                   message);
+  LOG (GNUNET_ERROR_TYPE_INFO,
+       "%s",
+       message);
 }
 
 
@@ -205,10 +208,30 @@ postgres_drop_tables (void *cls)
   conn = connect_to_postgres (pc);
   if (NULL == conn)
     return GNUNET_SYSERR;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Dropping ALL tables\n");
+  LOG (GNUNET_ERROR_TYPE_INFO,
+       "Dropping ALL tables\n");
+  /* TODO: we probably need a bit more fine-grained control
+     over drops for the '-r' option of taler-auditor; also,
+     for the testcase, we currently fail to drop the
+     auditor_denominations table... */
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS test;");
+            "DROP TABLE IF EXISTS predicted_result;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS historic_ledger;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS historic_losses;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS historic_denomination_revenue;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS balance_summary;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS denomination_pending;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS auditor_reserve_balance;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS auditor_reserves;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS auditor_progress;");
   PQfinish (conn);
   return GNUNET_OK;
  SQLEXEC_fail:
@@ -944,7 +967,7 @@ postgres_start (void *cls,
       PQresultStatus (result))
   {
     TALER_LOG_ERROR ("Failed to start transaction: %s\n",
-               PQresultErrorMessage (result));
+                     PQresultErrorMessage (result));
     GNUNET_break (0);
     PQclear (result);
     return GNUNET_SYSERR;
@@ -1016,9 +1039,9 @@ postgres_commit (void *cls,
       PQclear (result);
       return GNUNET_NO;
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Database commit failure: %s\n",
-                sqlstate);
+    LOG (GNUNET_ERROR_TYPE_ERROR,
+         "Database commit failure: %s\n",
+         sqlstate);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -1175,8 +1198,8 @@ postgres_select_denomination_info (void *cls,
   int nrows = PQntuples (result);
   if (0 == nrows)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "postgres_select_denomination_info() returned 0 matching rows\n");
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+         "postgres_select_denomination_info() returned 0 matching rows\n");
     PQclear (result);
     return GNUNET_NO;
   }
@@ -1357,8 +1380,8 @@ postgres_get_auditor_progress (void *cls,
   int nrows = PQntuples (result);
   if (0 == nrows)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "postgres_get_auditor_progress() returned 0 matching rows\n");
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+         "postgres_get_auditor_progress() returned 0 matching rows\n");
     PQclear (result);
     return GNUNET_NO;
   }
@@ -1574,8 +1597,8 @@ postgres_get_reserve_info (void *cls,
   int nrows = PQntuples (result);
   if (0 == nrows)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "postgres_get_reserve_info() returned 0 matching rows\n");
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+         "postgres_get_reserve_info() returned 0 matching rows\n");
     PQclear (result);
     return GNUNET_NO;
   }
@@ -1732,8 +1755,8 @@ postgres_get_reserve_summary (void *cls,
   int nrows = PQntuples (result);
   if (0 == nrows)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "postgres_get_reserve_summary() returned 0 matching rows\n");
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+         "postgres_get_reserve_summary() returned 0 matching rows\n");
     PQclear (result);
     return GNUNET_NO;
   }
@@ -1882,8 +1905,8 @@ postgres_get_denomination_balance (void *cls,
   int nrows = PQntuples (result);
   if (0 == nrows)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "postgres_get_denomination_balance() returned 0 matching rows\n");
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+         "postgres_get_denomination_balance() returned 0 matching rows\n");
     PQclear (result);
     return GNUNET_NO;
   }
@@ -2068,8 +2091,8 @@ postgres_get_balance_summary (void *cls,
   int nrows = PQntuples (result);
   if (0 == nrows)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "postgres_get_balance_summary() returned 0 matching rows\n");
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+         "postgres_get_balance_summary() returned 0 matching rows\n");
     PQclear (result);
     return GNUNET_NO;
   }
@@ -2183,8 +2206,8 @@ postgres_select_historic_denom_revenue (void *cls,
   int nrows = PQntuples (result);
   if (0 == nrows)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "postgres_select_historic_denom_revenue() returned 0 matching rows\n");
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+         "postgres_select_historic_denom_revenue() returned 0 matching rows\n");
     PQclear (result);
     return GNUNET_NO;
   }
@@ -2315,8 +2338,8 @@ postgres_select_historic_losses (void *cls,
   int nrows = PQntuples (result);
   if (0 == nrows)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "postgres_select_historic_losses() returned 0 matching rows\n");
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+         "postgres_select_historic_losses() returned 0 matching rows\n");
     PQclear (result);
     return GNUNET_NO;
   }
@@ -2444,8 +2467,8 @@ postgres_select_historic_reserve_revenue (void *cls,
   int nrows = PQntuples (result);
   if (0 == nrows)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "postgres_select_historic_reserve_revenue() returned 0 matching rows\n");
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+         "postgres_select_historic_reserve_revenue() returned 0 matching rows\n");
     PQclear (result);
     return GNUNET_NO;
   }
@@ -2605,8 +2628,8 @@ postgres_get_predicted_balance (void *cls,
   int nrows = PQntuples (result);
   if (0 == nrows)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "postgres_get_predicted_balance() returned 0 matching rows\n");
+    LOG (GNUNET_ERROR_TYPE_DEBUG,
+         "postgres_get_predicted_balance() returned 0 matching rows\n");
     PQclear (result);
     return GNUNET_NO;
   }
