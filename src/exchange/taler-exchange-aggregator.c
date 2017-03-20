@@ -104,9 +104,14 @@ struct AggregationUnit
   struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
-   * Total amount to be transferred.
+   * Total amount to be transferred, before subtraction of @e wire_fee and rounding down.
    */
   struct TALER_Amount total_amount;
+
+  /**
+   * Final amount to be transferred (after fee and rounding down).
+   */
+  struct TALER_Amount final_amount;
 
   /**
    * Wire fee we charge for @e wp at @e execution_time.
@@ -686,7 +691,6 @@ run_aggregation (void *cls)
   unsigned int i;
   int ret;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
-  struct TALER_Amount final_amount;
 
   task = NULL;
   tc = GNUNET_SCHEDULER_get_task_context ();
@@ -782,14 +786,14 @@ run_aggregation (void *cls)
      wire transfer method; Check if after rounding down, we still have
      an amount to transfer, and if not mark as 'tiny'. */
   if ( (GNUNET_OK !=
-        TALER_amount_subtract (&final_amount,
+        TALER_amount_subtract (&au->final_amount,
                                &au->total_amount,
                                &au->wire_fee)) ||
        (GNUNET_SYSERR ==
         au->wp->wire_plugin->amount_round (au->wp->wire_plugin->cls,
-                                           &final_amount)) ||
-       ( (0 == final_amount.value) &&
-         (0 == final_amount.fraction) ) )
+                                           &au->final_amount)) ||
+       ( (0 == au->final_amount.value) &&
+         (0 == au->final_amount.fraction) ) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Aggregate value too low for transfer\n");
@@ -849,7 +853,7 @@ run_aggregation (void *cls)
   {
     char *amount_s;
 
-    amount_s = TALER_amount_to_string (&final_amount);
+    amount_s = TALER_amount_to_string (&au->final_amount);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Preparing wire transfer of %s to %s\n",
                 amount_s,
@@ -858,7 +862,7 @@ run_aggregation (void *cls)
   }
   au->ph = au->wp->wire_plugin->prepare_wire_transfer (au->wp->wire_plugin->cls,
                                                        au->wire,
-                                                       &final_amount,
+                                                       &au->final_amount,
                                                        exchange_base_url,
                                                        &au->wtid,
                                                        &prepare_cb,
@@ -957,7 +961,7 @@ prepare_cb (void *cls,
                                           au->execution_time,
                                           &au->wtid,
                                           au->wire,
-                                          &au->total_amount))
+                                          &au->final_amount))
   {
     GNUNET_break (0); /* why? how to best recover? */
     db_plugin->rollback (db_plugin->cls,

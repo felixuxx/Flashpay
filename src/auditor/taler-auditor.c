@@ -1108,6 +1108,15 @@ struct AggregationContext
    */
   struct WirePlugin *wire_tail;
 
+  /**
+   * How much did we make in aggregation fees.
+   */
+  struct TALER_Amount total_aggregation_fees;
+
+  /**
+   * Final result status.
+   */
+  int ret;
 };
 
 
@@ -1595,6 +1604,22 @@ wire_transfer_information_cb (void *cls,
 
 
 /**
+ * Lookup the wire fee that the exchange charges at @a timestamp.
+ *
+ * @param ac context for caching the result
+ * @param timestamp time for which we need the fee
+ * @return NULL on error (fee unknown)
+ */
+static const struct TALER_Amount *
+get_wire_fee (struct AggregationContext *ac,
+              struct GNUNET_TIME_Absolute timestamp)
+{
+  GNUNET_break (0); /* not implemented! */
+  return NULL;
+}
+
+
+/**
  * Check that a wire transfer made by the exchange is valid
  * (has matching deposits).
  *
@@ -1617,6 +1642,9 @@ check_wire_out_cb (void *cls,
   struct WireCheckContext wcc;
   json_t *method;
   struct TALER_WIRE_Plugin *plugin;
+  const struct TALER_Amount *wire_fee;
+  struct TALER_Amount final_amount;
+  struct TALER_Amount exchange_gain;
 
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= pp.last_wire_out_serial_id);
@@ -1655,7 +1683,30 @@ check_wire_out_cb (void *cls,
     report_row_inconsistency ("wire_out",
                               rowid,
                               "audit of associated transactions failed");
+    return;
   }
+
+  /* Subtract aggregation fee from total */
+  wire_fee = get_wire_fee (ac,
+                           date);
+  if (NULL == wire_fee)
+  {
+    GNUNET_break (0);
+    ac->ret = GNUNET_SYSERR;
+    return;
+  }
+  if (GNUNET_SYSERR ==
+      TALER_amount_subtract (&final_amount,
+                             &wcc.total_deposits,
+                             wire_fee))
+  {
+    report_row_inconsistency ("wire_out",
+                              rowid,
+                              "could not subtract wire fee from total amount");
+    return;
+  }
+
+  /* Round down to amount supported by wire method */
   plugin = get_wire_plugin (ac,
                             wcc.method);
   if (NULL == plugin)
@@ -1665,20 +1716,45 @@ check_wire_out_cb (void *cls,
                               "could not load required wire plugin to validate");
     return;
   }
+
   if (GNUNET_SYSERR ==
       plugin->amount_round (plugin->cls,
-                            &wcc.total_deposits))
+                            &final_amount))
   {
     report_row_minor_inconsistency ("wire_out",
                                     rowid,
                                     "wire plugin failed to round given amount");
   }
+
+  /* Calculate the exchange's gain as the fees plus rounding differences! */
+  if (GNUNET_OK !=
+      TALER_amount_subtract (&exchange_gain,
+                             &wcc.total_deposits,
+                             &final_amount))
+  {
+    GNUNET_break (0);
+    ac->ret = GNUNET_SYSERR;
+    return;
+  }
+
+  /* Sum up aggregation fees (we simply include the rounding gains) */
+  if (GNUNET_OK !=
+      TALER_amount_add (&ac->total_aggregation_fees,
+                        &ac->total_aggregation_fees,
+                        &exchange_gain))
+  {
+    GNUNET_break (0);
+    ac->ret = GNUNET_SYSERR;
+    return;
+  }
+
+  /* Check that calculated amount matches actual amount */
   if (0 != TALER_amount_cmp (amount,
                              &wcc.total_deposits))
   {
     report_wire_out_inconsistency (wire,
                                    rowid,
-                                   &wcc.total_deposits,
+                                   &final_amount,
                                    amount,
                                    "computed amount inconsistent with wire amount");
     return;
@@ -1700,13 +1776,16 @@ analyze_aggregations (void *cls)
 {
   struct AggregationContext ac;
   struct WirePlugin *wc;
-  int ret;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing aggregations\n");
-  ret = GNUNET_OK;
+  ac.ret = GNUNET_OK;
   ac.wire_head = NULL;
   ac.wire_tail = NULL;
+  /* FIXME: load existing value from DB! */
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_get_zero (currency,
+                                        &ac.total_aggregation_fees));
   if (GNUNET_SYSERR ==
       edb->select_wire_out_above_serial_id (edb->cls,
                                             esession,
@@ -1715,7 +1794,7 @@ analyze_aggregations (void *cls)
                                             &ac))
   {
     GNUNET_break (0);
-    ret = GNUNET_SYSERR;
+    ac.ret = GNUNET_SYSERR;
   }
   while (NULL != (wc = ac.wire_head))
   {
@@ -1726,7 +1805,14 @@ analyze_aggregations (void *cls)
     GNUNET_free (wc->type);
     GNUNET_free (wc);
   }
-  return ret;
+  if (GNUNET_OK != ac.ret)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  /* FIXME: store aggregation fee total to DB! */
+  /* FIXME: report aggregation fee total */
+  return ac.ret;
 }
 
 
