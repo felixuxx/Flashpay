@@ -106,9 +106,9 @@ Operating a GNU Taler exchange means that you are operating a payment
 service provider, which means that you will most likely need a bank
 license and/or follow applicable financial regulation.
 
-\cindex{availability}
-\cindex{backup}
-\cindex{replication}
+@cindex availability
+@cindex backup
+@cindex replication
 GNU Taler payment service providers generally need to ensure high
 availability and have @emph{really} good backups (synchronous
 replication, asynchronous remote replication, off-site backup, 24/7
@@ -119,10 +119,10 @@ to research and education as with GNU Taler data loss instantly
 results in financial losses.}  This manual will not cover these
 aspects of operating a payment service provider.
 
-\cindex{HSM}
-\cindex{offline}
-\cindex{database}
-\cindex{operational security}
+@cindex HSM
+@cindex offline
+@cindex database
+@cindex operational security
 We will assume that you can operate a (high-availability,
 high-assurance) Postgres database.  Furthermore, we expect some
 moderate familiarity with the compilation and installation of free
