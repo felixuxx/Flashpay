@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016 GNUnet e.V.
+  Copyright (C) 2016, 2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -71,6 +71,15 @@ main (int argc,
   unsigned int cnt;
   int result;
 
+  if (GNUNET_OK !=
+      GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
+				     8081))
+  {
+    fprintf (stderr,
+             "Required port %u not available, skipping.\n",
+	     8081);
+    return 77;
+  }
   GNUNET_log_setup ("test-bank-api",
                     "WARNING",
                     NULL);
@@ -83,6 +92,12 @@ main (int argc,
                                          "serve-http",
 				         "--port", "8081",
                                          NULL);
+  if (NULL == bankd_admin) 
+  {
+    fprintf (stderr,
+             "Failed to launch `taler-bank-manage' for admin, skipping test\n");
+    return 77; /* report 'skip' */
+  }
   bankd = GNUNET_OS_start_process (GNUNET_NO,
                                    GNUNET_OS_INHERIT_STD_ALL,
                                    NULL, NULL, NULL,
@@ -92,12 +107,14 @@ main (int argc,
                                    "--port", "8080",
                                    NULL);
 
-
-  if ((NULL == bankd_admin) || (NULL == bankd))
+  if (NULL == bankd)
   {
-    /*FIXME: More accurate error message?*/
     fprintf (stderr,
-             "taler-bank-manage not found, skipping test\n");
+             "Failed to launch taler-bank-manage, skipping test\n");
+    GNUNET_OS_process_kill (bankd_admin,
+			    SIGTERM);
+    GNUNET_OS_process_wait (bankd_admin);
+    GNUNET_OS_process_destroy (bankd_admin);
     return 77; /* report 'skip' */
   }
   /* give child time to start and bind against the socket */
@@ -134,6 +151,8 @@ main (int argc,
                           SIGTERM);
   GNUNET_OS_process_wait (bankd);
   GNUNET_OS_process_destroy (bankd);
+  GNUNET_OS_process_wait (bankd_admin);
+  GNUNET_OS_process_destroy (bankd_admin);
   if (cnt > 30)
   {
     fprintf (stderr,

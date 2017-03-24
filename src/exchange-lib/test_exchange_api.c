@@ -3187,6 +3187,24 @@ main (int argc,
   GNUNET_log_setup ("test-exchange-api",
                     "INFO",
                     NULL);
+  if (GNUNET_OK !=
+      GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
+				     8081))
+  {
+    fprintf (stderr,
+             "Required port %u not available, skipping.\n",
+	     8081);
+    return 77;
+  }
+  if (GNUNET_OK !=
+      GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
+				     8082))
+  {
+    fprintf (stderr,
+             "Required port %u not available, skipping.\n",
+	     8082);
+    return 77;
+  }
   proc = GNUNET_OS_start_process (GNUNET_NO,
                                   GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,

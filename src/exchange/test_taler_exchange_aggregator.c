@@ -1241,6 +1241,15 @@ main (int argc,
   }
   GNUNET_OS_process_wait (proc);
   GNUNET_OS_process_destroy (proc);
+  if (GNUNET_OK !=
+      GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
+				     8082))
+  {
+    fprintf (stderr,
+             "Required port %u not available, skipping.\n",
+	     8082);
+    return 77;
+  }
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_parse (cfg,
