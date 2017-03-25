@@ -139,37 +139,37 @@ main (int argc,
 {
   char *cfgfile = NULL;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_FILENAME ('a',
+    GNUNET_GETOPT_option_filename ('a',
                                    "auditor-key",
                                    "FILENAME",
                                    "file containing the private key of the auditor",
                                    &auditor_key_file),
-    GNUNET_GETOPT_OPTION_CFG_FILE (&cfgfile),
-    GNUNET_GETOPT_OPTION_HELP ("Private key of the auditor to use for signing"),
-    GNUNET_GETOPT_OPTION_MANDATORY
-    (GNUNET_GETOPT_OPTION_SET_BASE32_AUTO ('m',
+    GNUNET_GETOPT_option_cfgfile (&cfgfile),
+    GNUNET_GETOPT_option_help ("Private key of the auditor to use for signing"),
+    GNUNET_GETOPT_option_mandatory
+    (GNUNET_GETOPT_option_base32_auto ('m',
                                            "exchange-key",
                                            "KEY",
                                            "public key of the exchange (Crockford base32 encoded)",
                                            &master_public_key)),
-    GNUNET_GETOPT_OPTION_STRING ('u',
+    GNUNET_GETOPT_option_string ('u',
                                  "auditor-url",
                                  "URL",
                                  "URL of the auditor (informative link for the user)",
                                  &auditor_url),
-    GNUNET_GETOPT_OPTION_MANDATORY
-    (GNUNET_GETOPT_OPTION_FILENAME ('r',
+    GNUNET_GETOPT_option_mandatory
+    (GNUNET_GETOPT_option_filename ('r',
                                     "exchange-request",
                                     "FILENAME",
                                     "set of keys the exchange requested the auditor to sign",
                                     &exchange_request_file)),
-    GNUNET_GETOPT_OPTION_FILENAME ('o',
+    GNUNET_GETOPT_option_filename ('o',
                                    "output",
                                    "FILENAME",
                                    "where to write our signature",
                                    &output_file),
-    GNUNET_GETOPT_OPTION_VERSION (VERSION "-" VCS_VERSION),
-    GNUNET_GETOPT_OPTION_VERBOSE (&verbose),
+    GNUNET_GETOPT_option_version (VERSION "-" VCS_VERSION),
+    GNUNET_GETOPT_option_verbose (&verbose),
     GNUNET_GETOPT_OPTION_END
   };
   struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;

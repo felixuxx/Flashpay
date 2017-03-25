@@ -167,27 +167,27 @@ int
 main (int argc, char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_MANDATORY
+    GNUNET_GETOPT_option_mandatory
     (TALER_getopt_get_amount ('a',
                               "add",
                               "DENOM",
                               "value to add",
                               &add_value)),
-    GNUNET_GETOPT_OPTION_MANDATORY
+    GNUNET_GETOPT_option_mandatory
     (GNUNET_JSON_getopt ('s',
                          "sender",
                          "JSON",
                          "details about the sender's bank account",
                          &sender_details)),
-    GNUNET_GETOPT_OPTION_MANDATORY
+    GNUNET_GETOPT_option_mandatory
     (GNUNET_JSON_getopt ('t',
                          "transfer",
                          "JSON",
                          "details that uniquely identify the bank transfer",
                          &transfer_details)),
-    GNUNET_GETOPT_OPTION_HELP ("Deposit funds into a Taler reserve"),
-    GNUNET_GETOPT_OPTION_MANDATORY
-    (GNUNET_GETOPT_OPTION_SET_BASE32_AUTO ('R',
+    GNUNET_GETOPT_option_help ("Deposit funds into a Taler reserve"),
+    GNUNET_GETOPT_option_mandatory
+    (GNUNET_GETOPT_option_base32_auto ('R',
                                           "reserve",
                                           "KEY",
                                           "reserve (public key) to modify",

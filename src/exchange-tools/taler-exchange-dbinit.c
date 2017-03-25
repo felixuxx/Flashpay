@@ -96,11 +96,11 @@ main (int argc,
       char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_SET_ONE ('r',
+    GNUNET_GETOPT_option_flag ('r',
                                   "reset",
                                   "reset database (DANGEROUS: all existing data is lost!)",
                                   &reset_db),
-    GNUNET_GETOPT_OPTION_SET_ONE ('g',
+    GNUNET_GETOPT_option_flag ('g',
                                   "gc",
                                   "garbage collect database",
                                   &gc_db),

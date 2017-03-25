@@ -1562,34 +1562,34 @@ main (int argc,
   struct GNUNET_OS_Process *proc;
   unsigned int cnt;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_SET_ONE ('a',
+    GNUNET_GETOPT_option_flag ('a',
                                   "automate",
                                   "Initialize and start the bank and exchange",
                                   &run_exchange),
-    GNUNET_GETOPT_OPTION_MANDATORY
-    (GNUNET_GETOPT_OPTION_CFG_FILE (&config_file)),
-    GNUNET_GETOPT_OPTION_STRING ('e',
+    GNUNET_GETOPT_option_mandatory
+    (GNUNET_GETOPT_option_cfgfile (&config_file)),
+    GNUNET_GETOPT_option_string ('e',
                                  "exchange-uri",
                                  "URI",
                                  "URI of the exchange",
                                  &exchange_uri),
-    GNUNET_GETOPT_OPTION_STRING ('E',
+    GNUNET_GETOPT_option_string ('E',
                                  "exchange-admin-uri",
                                  "URI",
                                  "URI of the administrative interface of the exchange",
                                  &exchange_admin_uri),
-    GNUNET_GETOPT_OPTION_HELP ("tool to benchmark the Taler exchange"),
-    GNUNET_GETOPT_OPTION_SET_UINT ('s',
+    GNUNET_GETOPT_option_help ("tool to benchmark the Taler exchange"),
+    GNUNET_GETOPT_option_uint ('s',
                                    "pool-size",
                                    "SIZE",
                                    "How many coins this benchmark should instantiate",
                                    &pool_size),
-    GNUNET_GETOPT_OPTION_SET_UINT ('l',
+    GNUNET_GETOPT_option_uint ('l',
                                    "limit",
                                    "LIMIT",
                                    "Terminate the benchmark after LIMIT operations",
                                    &num_iterations),
-    GNUNET_GETOPT_OPTION_VERBOSE (&be_verbose),
+    GNUNET_GETOPT_option_verbose (&be_verbose),
     GNUNET_GETOPT_OPTION_END
   };
   int ret;

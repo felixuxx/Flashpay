@@ -206,23 +206,23 @@ main (int argc,
       char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_MANDATORY
+    GNUNET_GETOPT_option_mandatory
     (GNUNET_JSON_getopt ('j',
                          "json",
                          "JSON",
                          "account information in JSON format",
                          &account_holder)),
-    GNUNET_GETOPT_OPTION_FILENAME ('m',
+    GNUNET_GETOPT_option_filename ('m',
                                    "master-key",
                                    "FILENAME",
                                    "master key file (private key)",
                                    &masterkeyfile),
-    GNUNET_GETOPT_OPTION_STRING ('t',
+    GNUNET_GETOPT_option_string ('t',
                                  "type",
                                  "METHOD",
                                  "which wire transfer method (i.e. 'test' or 'sepa') is this for?",
                                  &method),
-    GNUNET_GETOPT_OPTION_FILENAME ('o',
+    GNUNET_GETOPT_option_filename ('o',
                                    "output",
                                    "FILENAME",
                                    "where to write the result",

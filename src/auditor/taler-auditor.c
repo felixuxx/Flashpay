@@ -3352,13 +3352,13 @@ main (int argc,
       char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_OPTION_MANDATORY
-    (GNUNET_GETOPT_OPTION_SET_BASE32_AUTO ('m',
+    GNUNET_GETOPT_option_mandatory
+    (GNUNET_GETOPT_option_base32_auto ('m',
                                            "exchange-key",
                                            "KEY",
                                            "public key of the exchange (Crockford base32 encoded)",
                                            &master_pub)),
-    GNUNET_GETOPT_OPTION_SET_ONE ('r',
+    GNUNET_GETOPT_option_flag ('r',
                                   "restart",
                                   "restart audit from the beginning (required on first run)",
                                   &restart),
