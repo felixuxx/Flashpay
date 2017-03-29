@@ -250,17 +250,20 @@ TEH_RESPONSE_reply_deposit_success (struct MHD_Connection *connection,
 
 
 /**
- * Send proof that a /deposit request is invalid to client.  This
- * function will create a message with all of the operations affecting
- * the coin that demonstrate that the coin has insufficient value.
+ * Send proof that a request is invalid to client because of
+ * insufficient funds.  This function will create a message with all
+ * of the operations affecting the coin that demonstrate that the coin
+ * has insufficient value.
  *
  * @param connection connection to the client
+ * @param ec error code to return
  * @param tl transaction list to use to build reply
  * @return MHD result code
  */
 int
-TEH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection,
-                                               const struct TALER_EXCHANGEDB_TransactionList *tl);
+TEH_RESPONSE_reply_coin_insufficient_funds (struct MHD_Connection *connection,
+                                            enum TALER_ErrorCode ec,
+                                            const struct TALER_EXCHANGEDB_TransactionList *tl);
 
 
 /**
@@ -554,6 +557,36 @@ int
 TEH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
                                          unsigned int num_sessions,
                                          const struct TEH_RESPONSE_LinkSessionInfo *sessions);
+
+
+/**
+ * A wallet asked for /payback, but we do not know anything
+ * about the original withdraw operation given. Generates a
+ * 404 reply.
+ *
+ * @param connection connection to the client
+ * @param ec Taler error code
+ * @return MHD result code
+ */
+int
+TEH_RESPONSE_reply_payback_unknown (struct MHD_Connection *connection,
+                                    enum TALER_ErrorCode ec);
+
+
+/**
+ * A wallet asked for /payback, return the successful response.
+ *
+ * @param connection connection to the client
+ * @param wire_subject the wire subject we will use for the pay back operation
+ * @param amount the amount we will wire back
+ * @param payback_deadline deadline by which the exchange promises to pay
+ * @return MHD result code
+ */
+int
+TEH_RESPONSE_reply_payback_success (struct MHD_Connection *connection,
+                                    const char *wire_subject,
+                                    const struct TALER_Amount *amount,
+                                    struct GNUNET_TIME_Absolute payback_deadline);
 
 
 #endif

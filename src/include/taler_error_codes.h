@@ -128,6 +128,17 @@ enum TALER_ErrorCode
    */
   TALER_EC_PARAMETER_MALFORMED = 1009,
 
+  /**
+   * The exchange failed to obtain the transaction history of the
+   * given coin from the database while generating an insufficient
+   * funds errors.  This can happen during /deposit or /payback requests.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_COIN_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS = 1010,
+
+
+
   /* ********** request-specific error codes ************* */
 
   /**
@@ -230,7 +241,7 @@ enum TALER_ErrorCode
   /**
    * The exchange failed to obtain the transaction history of the
    * given reserve from the database while generating an insufficient
-   * funds errors.
+   * funds error.
    * This response is provided with HTTP status code
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
@@ -348,15 +359,6 @@ enum TALER_ErrorCode
    * with HTTP status code MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_CONTRACT_HASH_CONFLICT = 1211,
-
-  /**
-   * The exchange failed to obtain the transaction history of the
-   * given coin from the database while generating an insufficient
-   * funds errors.
-   * This response is provided with HTTP status code
-   * MHD_HTTP_INTERNAL_SERVER_ERROR.
-   */
-  TALER_EC_DEPOSIT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS = 1212,
 
   /**
    * The exchange detected that the given account number
@@ -851,6 +853,49 @@ enum TALER_ErrorCode
    * MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_PAYBACK_DENOMINATION_SIGNATURE_INVALID = 1852,
+
+  /**
+   * The exchange failed to access its own database about reserves.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PAYBACK_DB_FETCH_FAILED = 1853,
+
+  /**
+   * The exchange could not find the corresponding withdraw operation.
+   * The request is denied.  This response is provided with an HTTP
+   * status code of MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_PAYBACK_WITHDRAW_NOT_FOUND = 1854,
+
+  /**
+   * The exchange obtained an internally inconsistent transaction
+   * history for the given coin. This response is provided with HTTP
+   * status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PAYBACK_HISTORY_DB_ERROR = 1855,
+
+  /**
+   * The exchange failed to store information about the payback to be
+   * performed in the database. This response is provided with HTTP
+   * status code MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PAYBACK_DB_PUT_FAILED = 1856,
+
+  /**
+   * The coin's remaining balance is zero.  The request is denied.
+   * This response is provided with an HTTP status code of
+   * MHD_HTTP_FORBIDDEN.
+   */
+  TALER_EC_PAYBACK_COIN_BALANCE_ZERO = 1857,
+
+  /**
+   * The exchange failed to reproduce the coin's blinding.
+   * This response is provided with an HTTP status code of
+   * MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PAYBACK_BLINDING_FAILED = 1858,
+
 
 
   /* *********** Merchant backend error codes ********* */

@@ -56,7 +56,11 @@ verify_and_execute_payback (struct MHD_Connection *connection,
   struct TEH_KS_StateHandle *key_state;
   const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   struct TALER_PaybackRequestPS pr;
-
+  struct TALER_Amount value;
+  struct GNUNET_HashCode h_blind;
+  struct GNUNET_HashCode c_hash;
+  char *coin_ev;
+  size_t coin_ev_size;
 
   /* check denomination exists and is in payback mode */
   key_state = TEH_KS_acquire ();
@@ -71,6 +75,8 @@ verify_and_execute_payback (struct MHD_Connection *connection,
 					   TALER_EC_PAYBACK_DENOMINATION_KEY_UNKNOWN,
                                            "denom_pub");
   }
+  TALER_amount_ntoh (&value,
+                     &dki->issue.properties.value);
 
   /* check denomination signature */
   if (GNUNET_YES !=
@@ -104,9 +110,30 @@ verify_and_execute_payback (struct MHD_Connection *connection,
                                                  "coin_sig");
   }
 
+  GNUNET_CRYPTO_hash (&coin->coin_pub.eddsa_pub,
+                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
+                      &c_hash);
+  if (GNUNET_YES !=
+      GNUNET_CRYPTO_rsa_blind (&c_hash,
+                               &coin_bks->bks,
+                               coin->denom_pub.rsa_public_key,
+                               &coin_ev,
+                               &coin_ev_size))
+  {
+    GNUNET_break (0);
+    return TEH_RESPONSE_reply_internal_error (connection,
+                                              TALER_EC_PAYBACK_BLINDING_FAILED,
+                                              "coin_bks");
+  }
+  GNUNET_CRYPTO_hash (coin_ev,
+                      coin_ev_size,
+                      &h_blind);
+  GNUNET_free (coin_ev);
+
   return TEH_DB_execute_payback (connection,
                                  coin,
-                                 coin_bks,
+                                 &value,
+                                 &h_blind,
                                  coin_sig);
 }
 

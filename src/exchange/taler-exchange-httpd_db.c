@@ -242,6 +242,8 @@ TEH_DB_execute_deposit (struct MHD_Connection *connection,
                                                &deposit->merchant_pub,
                                                &amount_without_fee);
   }
+
+  /* FIXME: move the 'mks'-logic outside of _db.c? */
   mks = TEH_KS_acquire ();
   dki = TEH_KS_denomination_key_lookup (mks,
                                         &deposit->coin.denom_pub,
@@ -250,7 +252,7 @@ TEH_DB_execute_deposit (struct MHD_Connection *connection,
   {
     TEH_KS_release (mks);
     return TEH_RESPONSE_reply_internal_db_error (connection,
-					   TALER_EC_DEPOSIT_DB_DENOMINATION_KEY_UNKNOWN);
+                                                 TALER_EC_DEPOSIT_DB_DENOMINATION_KEY_UNKNOWN);
   }
   TALER_amount_ntoh (&value,
                      &dki->issue.properties.value);
@@ -283,8 +285,9 @@ TEH_DB_execute_deposit (struct MHD_Connection *connection,
   {
     TEH_plugin->rollback (TEH_plugin->cls,
                           session);
-    ret = TEH_RESPONSE_reply_deposit_insufficient_funds (connection,
-                                                         tl);
+    ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
+                                                      TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS,
+                                                      tl);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     return ret;
@@ -2264,18 +2267,114 @@ TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection to handle
  * @param coin information about the coin
- * @param coin_bks blinding data of the coin (to be checked)
- * @param coin_sig signature of the coin
+ * @param value how much are coins of the @a coin's denomination worth?
+ * @param h_blind blinded coin to use for the lookup
+ * @param coin_sig signature of the coin (to be stored)
  * @return MHD result code
  */
 int
 TEH_DB_execute_payback (struct MHD_Connection *connection,
                         const struct TALER_CoinPublicInfo *coin,
-                        const struct TALER_DenominationBlindingKeyP *coin_bks,
+                        const struct TALER_Amount *value,
+                        const struct GNUNET_HashCode *h_blind,
                         const struct TALER_CoinSpendSignatureP *coin_sig)
 {
-  GNUNET_break (0); /* not implemented (#3887) */
-  return MHD_NO;
+  int ret;
+  struct TALER_EXCHANGEDB_Session *session;
+  struct TALER_EXCHANGEDB_TransactionList *tl;
+  struct TALER_EXCHANGEDB_CollectableBlindcoin collectable;
+  char wire_subject[42]; // FIXME: size? (#3887)
+  struct TALER_Amount amount;
+  struct TALER_Amount spent;
+  struct GNUNET_TIME_Absolute payback_deadline;
+
+  if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
+  {
+    GNUNET_break (0);
+    return TEH_RESPONSE_reply_internal_db_error (connection,
+						 TALER_EC_DB_SETUP_FAILED);
+  }
+
+  START_TRANSACTION (session, connection);
+
+  /* FIXME (#3887): not _exactly_ the right call, we need to get the
+     reserve's incoming wire transfer data, not 'collectable' */
+  ret = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
+                                       session,
+                                       h_blind,
+                                       &collectable);
+  if (GNUNET_SYSERR == ret)
+  {
+    GNUNET_break (0);
+    TEH_plugin->rollback (TEH_plugin->cls,
+                          session);
+    return TEH_RESPONSE_reply_internal_db_error (connection,
+						 TALER_EC_PAYBACK_DB_FETCH_FAILED);
+  }
+  if (GNUNET_NO == ret)
+  {
+    GNUNET_break_op (0);
+    TEH_plugin->rollback (TEH_plugin->cls,
+                          session);
+    return TEH_RESPONSE_reply_payback_unknown (connection,
+                                               TALER_EC_PAYBACK_WITHDRAW_NOT_FOUND);
+  }
+
+  /* Calculate remaining balance. */
+  tl = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
+                                          session,
+                                          &coin->coin_pub);
+  TALER_amount_get_zero (value->currency,
+                         &spent);
+  if (GNUNET_OK !=
+      calculate_transaction_list_totals (tl,
+                                         &spent,
+                                         &spent))
+  {
+    GNUNET_break (0);
+    TEH_plugin->rollback (TEH_plugin->cls,
+                          session);
+    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
+                                            tl);
+    return TEH_RESPONSE_reply_internal_db_error (connection,
+						 TALER_EC_PAYBACK_HISTORY_DB_ERROR);
+  }
+  TALER_amount_subtract (&amount,
+                         value,
+                         &spent);
+  if ( (0 == amount.fraction) &&
+       (0 == amount.value) )
+  {
+    GNUNET_break_op (0);
+    TEH_plugin->rollback (TEH_plugin->cls,
+                          session);
+    ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
+                                                      TALER_EC_PAYBACK_COIN_BALANCE_ZERO,
+                                                      tl);
+    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
+                                            tl);
+    return ret;
+  }
+  TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
+                                          tl);
+
+  /* FIXME: add coin to list of wire transfers for payback */
+  // ret = TEH_plugin->(); // #3887
+  if (GNUNET_SYSERR == ret)
+  {
+    TALER_LOG_WARNING ("Failed to store /payback information in database\n");
+    TEH_plugin->rollback (TEH_plugin->cls,
+                          session);
+    return TEH_RESPONSE_reply_internal_db_error (connection,
+						 TALER_EC_PAYBACK_DB_PUT_FAILED);
+  }
+
+  COMMIT_TRANSACTION(session, connection);
+
+  return TEH_RESPONSE_reply_payback_success (connection,
+                                             wire_subject,
+                                             &amount,
+                                             payback_deadline);
 }
 
 

@@ -436,6 +436,11 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
   const struct TALER_EXCHANGEDB_TransactionList *pos;
 
   history = json_array ();
+  if (NULL == history)
+  {
+    GNUNET_break (0); /* out of memory!? */
+    return NULL;
+  }
   for (pos = tl; NULL != pos; pos = pos->next)
   {
     switch (pos->type)
@@ -562,29 +567,33 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
 
 
 /**
- * Send proof that a /deposit request is invalid to client.  This
- * function will create a message with all of the operations affecting
- * the coin that demonstrate that the coin has insufficient value.
+ * Send proof that a request is invalid to client because of
+ * insufficient funds.  This function will create a message with all
+ * of the operations affecting the coin that demonstrate that the coin
+ * has insufficient value.
  *
  * @param connection connection to the client
+ * @param ec error code to return
  * @param tl transaction list to use to build reply
  * @return MHD result code
  */
 int
-TEH_RESPONSE_reply_deposit_insufficient_funds (struct MHD_Connection *connection,
-                                               const struct TALER_EXCHANGEDB_TransactionList *tl)
+TEH_RESPONSE_reply_coin_insufficient_funds (struct MHD_Connection *connection,
+                                            enum TALER_ErrorCode ec,
+                                            const struct TALER_EXCHANGEDB_TransactionList *tl)
 {
   json_t *history;
 
   history = compile_transaction_history (tl);
   if (NULL == history)
-    return TEH_RESPONSE_reply_internal_db_error (connection,
-						 TALER_EC_DEPOSIT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS);
+    return TEH_RESPONSE_reply_internal_error (connection,
+                                              TALER_EC_COIN_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
+                                              "failed to convert transaction history to JSON");
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        "{s:s, s:I, s:o}",
                                        "error", "insufficient funds",
-				       "code", (json_int_t) TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS,
+				       "code", (json_int_t) ec,
                                        "history", history);
 }
 
@@ -1284,6 +1293,46 @@ TEH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
                                        "exchange_sig", GNUNET_JSON_from_data_auto (&sig),
                                        "exchange_pub", GNUNET_JSON_from_data_auto (&pub));
 }
+
+
+
+/**
+ * A wallet asked for /payback, but we do not know anything
+ * about the original withdraw operation given. Generates a
+ * 404 reply.
+ *
+ * @param connection connection to the client
+ * @param ec Taler error code
+ * @return MHD result code
+ */
+int
+TEH_RESPONSE_reply_payback_unknown (struct MHD_Connection *connection,
+                                    enum TALER_ErrorCode ec)
+{
+  GNUNET_break (0); /* #3887 */
+  return MHD_NO;
+}
+
+
+/**
+ * A wallet asked for /payback, return the successful response.
+ *
+ * @param connection connection to the client
+ * @param wire_subject the wire subject we will use for the pay back operation
+ * @param amount the amount we will wire back
+ * @param payback_deadline deadline by which the exchange promises to pay
+ * @return MHD result code
+ */
+int
+TEH_RESPONSE_reply_payback_success (struct MHD_Connection *connection,
+                                    const char *wire_subject,
+                                    const struct TALER_Amount *amount,
+                                    struct GNUNET_TIME_Absolute payback_deadline)
+{
+  GNUNET_break (0); /* #3887 */
+  return MHD_NO;
+}
+
 
 
 /* end of taler-exchange-httpd_responses.c */
