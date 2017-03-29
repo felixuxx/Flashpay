@@ -560,9 +560,8 @@ TEH_RESPONSE_reply_refresh_link_success (struct MHD_Connection *connection,
 
 
 /**
- * A wallet asked for /payback, but we do not know anything
- * about the original withdraw operation given. Generates a
- * 404 reply.
+ * A wallet asked for /payback, but we do not know anything about the
+ * original withdraw operation specified. Generates a 404 reply.
  *
  * @param connection connection to the client
  * @param ec Taler error code
@@ -577,6 +576,7 @@ TEH_RESPONSE_reply_payback_unknown (struct MHD_Connection *connection,
  * A wallet asked for /payback, return the successful response.
  *
  * @param connection connection to the client
+ * @param coin_pub coin for which we are processing the payback request
  * @param wire_subject the wire subject we will use for the pay back operation
  * @param amount the amount we will wire back
  * @param payback_deadline deadline by which the exchange promises to pay
@@ -584,6 +584,7 @@ TEH_RESPONSE_reply_payback_unknown (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_payback_success (struct MHD_Connection *connection,
+                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     const char *wire_subject,
                                     const struct TALER_Amount *amount,
                                     struct GNUNET_TIME_Absolute payback_deadline);

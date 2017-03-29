@@ -98,8 +98,8 @@ verify_payback_signature_ok (const struct TALER_EXCHANGE_PaybackHandle *ph,
   const char *wire_subject;
   const struct TALER_EXCHANGE_Keys *key_state;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("eddsa_sig", &exchange_sig),
-    GNUNET_JSON_spec_fixed_auto ("eddsa_pub", &exchange_pub),
+    GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
     TALER_JSON_spec_amount ("amount", &amount),
     GNUNET_JSON_spec_absolute_time ("payback_deadline", &deadline),
     GNUNET_JSON_spec_string ("wire_subject", &wire_subject),

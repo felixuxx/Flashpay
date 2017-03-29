@@ -2372,6 +2372,7 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
   COMMIT_TRANSACTION(session, connection);
 
   return TEH_RESPONSE_reply_payback_success (connection,
+                                             &coin->coin_pub,
                                              wire_subject,
                                              &amount,
                                              payback_deadline);

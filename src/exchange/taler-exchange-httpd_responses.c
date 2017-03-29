@@ -1297,9 +1297,8 @@ TEH_RESPONSE_reply_track_transfer_details (struct MHD_Connection *connection,
 
 
 /**
- * A wallet asked for /payback, but we do not know anything
- * about the original withdraw operation given. Generates a
- * 404 reply.
+ * A wallet asked for /payback, but we do not know anything about the
+ * original withdraw operation specified. Generates a 404 reply.
  *
  * @param connection connection to the client
  * @param ec Taler error code
@@ -1309,8 +1308,11 @@ int
 TEH_RESPONSE_reply_payback_unknown (struct MHD_Connection *connection,
                                     enum TALER_ErrorCode ec)
 {
-  GNUNET_break (0); /* #3887 */
-  return MHD_NO;
+  return TEH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       "{s:s, s:I}",
+                                       "error", "blinded coin unknown",
+				       "code", (json_int_t) ec);
 }
 
 
@@ -1325,12 +1327,35 @@ TEH_RESPONSE_reply_payback_unknown (struct MHD_Connection *connection,
  */
 int
 TEH_RESPONSE_reply_payback_success (struct MHD_Connection *connection,
+                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                     const char *wire_subject,
                                     const struct TALER_Amount *amount,
                                     struct GNUNET_TIME_Absolute payback_deadline)
 {
-  GNUNET_break (0); /* #3887 */
-  return MHD_NO;
+  struct TALER_PaybackConfirmationPS pc;
+  struct TALER_ExchangePublicKeyP pub;
+  struct TALER_ExchangeSignatureP sig;
+
+  pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK);
+  pc.purpose.size = htonl (sizeof (struct TALER_PaybackConfirmationPS));
+  pc.payback_deadline = GNUNET_TIME_absolute_hton (payback_deadline);
+  TALER_amount_hton (&pc.payback_amount,
+                     amount);
+  pc.coin_pub = *coin_pub;
+  GNUNET_CRYPTO_hash (wire_subject,
+                      strlen (wire_subject),
+                      &pc.h_wire_subject);
+  TEH_KS_sign (&pc.purpose,
+               &pub,
+               &sig);
+  return TEH_RESPONSE_reply_json_pack (connection,
+                                       MHD_HTTP_OK,
+                                       "{s:s, s:o, s:o, s:o, s:o}",
+                                       "wire_subject", wire_subject,
+                                       "payback_deadline", GNUNET_JSON_from_time_abs (payback_deadline),
+                                       "amount", TALER_JSON_from_amount (amount),
+                                       "exchange_sig", GNUNET_JSON_from_data_auto (&sig),
+                                       "exchange_pub", GNUNET_JSON_from_data_auto (&pub));
 }
 
 
