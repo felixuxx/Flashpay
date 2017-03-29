@@ -1322,4 +1322,77 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
                                     struct TALER_Amount *total);
 
 
+/* ********************* /payback *********************** */
+
+
+/**
+ * @brief A /payback Handle
+ */
+struct TALER_EXCHANGE_PaybackHandle;
+
+
+/**
+ * Callbacks of this type are used to return the final result of
+ * submitting a refresh request to a exchange.  If the operation was
+ * successful, this function returns the signatures over the coins
+ * that were remelted.  The @a coin_privs and @a sigs arrays give the
+ * coins in the same order (and should have the same length) in which
+ * the original request specified the respective denomination keys.
+ *
+ * @param cls closure
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
+ * @param amount amount the exchange will wire back for this coin
+ * @param deadline by when will the exchange wire the funds?
+ * @param wire_subject which wire subject will the exchange use?
+ * @param full_response full response from the exchange (for logging, in case of errors)
+ */
+typedef void
+(*TALER_EXCHANGE_PaybackResultCallback) (void *cls,
+                                         unsigned int http_status,
+                                         enum TALER_ErrorCode ec,
+                                         const struct TALER_Amount *amount,
+                                         struct GNUNET_TIME_Absolute deadline,
+                                         const char *wire_subject,
+                                         const json_t *full_response);
+
+
+/**
+ * Ask the exchange to pay back a coin due to the exchange triggering
+ * the emergency payback protocol for a given denomination.  The value
+ * of the coin will be refunded to the original customer (without fees).
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param pk kind of coin to pay back
+ * @param denom_sig signature over the coin by the exchange using @a pk
+ * @param coin_priv the coin's private key,
+ * @param blinding_key where to fetch the coin's blinding key
+ * @param payback_cb the callback to call when the final result for this request is available
+ * @param payback_cb_cls closure for @a payback_cb
+ * @return NULL
+ *         if the inputs are invalid (i.e. denomination key not with this exchange).
+ *         In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_PaybackHandle *
+TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
+                        const struct TALER_EXCHANGE_DenomPublicKey *pk,
+                        const struct TALER_DenominationSignature *denom_sig,
+                        const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                        const struct TALER_DenominationBlindingKeyP *blinding_key,
+                        TALER_EXCHANGE_PaybackResultCallback payback_cb,
+                        void *payback_cb_cls);
+
+
+/**
+ * Cancel a payback request.  This function cannot be used on a
+ * request handle if the callback was already invoked.
+ *
+ * @param ph the payback handle
+ */
+void
+TALER_EXCHANGE_payback_cancel (struct TALER_EXCHANGE_PaybackHandle *ph);
+
+
+
 #endif  /* _TALER_EXCHANGE_SERVICE_H */

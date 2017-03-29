@@ -18,6 +18,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_handle.c exchange_api_handle.h \
   exchange_api_admin.c \
   exchange_api_deposit.c \
+  exchange_api_payback.c \
   exchange_api_refresh.c \
   exchange_api_refresh_link.c \
   exchange_api_refund.c \
