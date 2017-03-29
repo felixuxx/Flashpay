@@ -103,14 +103,14 @@ TEH_RESERVE_handler_reserve_withdraw (struct TEH_RequestHandler *rh,
 
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_varsize ("coin_ev",
-                               (void **) &blinded_msg,
-                               &blinded_msg_len),
+                              (void **) &blinded_msg,
+                              &blinded_msg_len),
     GNUNET_JSON_spec_fixed_auto ("reserve_pub",
-                            &wsrd.reserve_pub),
+                                 &wsrd.reserve_pub),
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
-                            &signature),
+                                 &signature),
     TALER_JSON_spec_denomination_public_key ("denom_pub",
-                                              &denomination_pub),
+                                             &denomination_pub),
     GNUNET_JSON_spec_end ()
   };
 

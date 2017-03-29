@@ -806,6 +806,9 @@ TEH_KS_denomination_key_lookup (const struct TEH_KS_StateHandle *key_state,
       return NULL;
     }
     break;
+  case TEH_KS_DKU_PAYBACK:
+    GNUNET_break (0); /* not implemented (#3887) */
+    return NULL;
   }
   return dki;
 }

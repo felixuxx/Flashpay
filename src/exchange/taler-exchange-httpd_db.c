@@ -2256,4 +2256,27 @@ TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
 }
 
 
+/**
+ * Execute a "/payback".  The validity of the coin and signature have
+ * already been checked.  The database must now check that the coin is
+ * not (double) spent, and execute the transaction (record details,
+ * generate success or failure response).
+ *
+ * @param connection the MHD connection to handle
+ * @param coin information about the coin
+ * @param coin_bks blinding data of the coin (to be checked)
+ * @param coin_sig signature of the coin
+ * @return MHD result code
+ */
+int
+TEH_DB_execute_payback (struct MHD_Connection *connection,
+                        const struct TALER_CoinPublicInfo *coin,
+                        const struct TALER_DenominationBlindingKeyP *coin_bks,
+                        const struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  GNUNET_break (0); /* not implemented (#3887) */
+  return MHD_NO;
+}
+
+
 /* end of taler-exchange-httpd_db.c */

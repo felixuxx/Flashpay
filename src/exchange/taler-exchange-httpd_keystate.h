@@ -92,9 +92,14 @@ enum TEH_KS_DenominationKeyUse {
   TEH_KS_DKU_WITHDRAW,
 
   /**
-   * The key is to be usd for a /deposit or /refresh (melt) operation.
+   * The key is to be used for a /deposit or /refresh (melt) operation.
    */
-  TEH_KS_DKU_DEPOSIT
+  TEH_KS_DKU_DEPOSIT,
+
+  /**
+   * The key is to be used for a /payback operation.
+   */
+  TEH_KS_DKU_PAYBACK
 
 };
 

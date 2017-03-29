@@ -214,7 +214,7 @@ TEH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
  */
 int
 TEH_DB_execute_track_transfer (struct MHD_Connection *connection,
-                              const struct TALER_WireTransferIdentifierRawP *wtid);
+                               const struct TALER_WireTransferIdentifierRawP *wtid);
 
 
 /**
@@ -230,10 +230,29 @@ TEH_DB_execute_track_transfer (struct MHD_Connection *connection,
  */
 int
 TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
-                             const struct GNUNET_HashCode *h_proposal_data,
-			     const struct GNUNET_HashCode *h_wire,
-			     const struct TALER_CoinSpendPublicKeyP *coin_pub,
-			     const struct TALER_MerchantPublicKeyP *merchant_pub);
+                                  const struct GNUNET_HashCode *h_proposal_data,
+                                  const struct GNUNET_HashCode *h_wire,
+                                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                  const struct TALER_MerchantPublicKeyP *merchant_pub);
+
+
+/**
+ * Execute a "/payback".  The validity of the coin and signature have
+ * already been checked.  The database must now check that the coin is
+ * not (double) spent, and execute the transaction (record details,
+ * generate success or failure response).
+ *
+ * @param connection the MHD connection to handle
+ * @param coin information about the coin
+ * @param coin_bks blinding data of the coin (to be checked)
+ * @param coin_sig signature of the coin
+ * @return MHD result code
+ */
+int
+TEH_DB_execute_payback (struct MHD_Connection *connection,
+                        const struct TALER_CoinPublicInfo *coin,
+                        const struct TALER_DenominationBlindingKeyP *coin_bks,
+                        const struct TALER_CoinSpendSignatureP *coin_sig);
 
 
 #endif

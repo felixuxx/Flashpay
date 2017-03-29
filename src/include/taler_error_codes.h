@@ -831,6 +831,27 @@ enum TALER_ErrorCode
    */
   TALER_EC_TRACK_TRANSACTION_MERCHANT_SIGNATURE_INVALID = 1804,
 
+  /**
+   * The given denomination key is not in the "payback" set of the
+   * exchange right now.  This response is provided with an
+   * HTTP status code of MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_PAYBACK_DENOMINATION_KEY_UNKNOWN = 1850,
+
+  /**
+   * The given coin signature is invalid for the request.
+   * This response is provided with an
+   * HTTP status code of MHD_HTTP_UNAUTHORIZED.
+   */
+  TALER_EC_PAYBACK_SIGNATURE_INVALID = 1851,
+
+  /**
+   * The signature of the denomination key over the coin is not valid.
+   * This response is provided with HTTP status code
+   * MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_PAYBACK_DENOMINATION_SIGNATURE_INVALID = 1852,
+
 
   /* *********** Merchant backend error codes ********* */
 
