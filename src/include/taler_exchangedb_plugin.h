@@ -1955,7 +1955,6 @@ struct TALER_EXCHANGEDB_Plugin
                             const struct TALER_CoinPublicInfo *coin,
                             const struct TALER_CoinSpendSignatureP *coin_sig,
                             const struct TALER_DenominationBlindingKeyP *coin_blind,
-                            const struct GNUNET_HashCode *h_blinded_ev,
                             const struct TALER_Amount *amount,
                             struct GNUNET_TIME_Absolute *deadline);
 

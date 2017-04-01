@@ -511,6 +511,21 @@ postgres_create_tables (void *cls)
   SQLEXEC_INDEX("CREATE INDEX aggregation_tracking_wtid_index "
                 "ON aggregation_tracking(wtid_raw)");
 
+  /* Table for /payback information */
+  SQLEXEC("CREATE TABLE IF NOT EXISTS payback "
+          "(reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
+          ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
+          ",coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)"
+          ",coin_blind BYTEA NOT NULL CHECK(LENGTH(coin_blind)=32)"
+          ",amount_val INT8 NOT NULL"
+          ",amount_frac INT4 NOT NULL"
+          ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",timestamp INT8 NOT NULL"
+          ")");
+  SQLEXEC_INDEX("CREATE INDEX payback_by_coin_index "
+                "ON payback(coin_pub)");
+  SQLEXEC_INDEX("CREATE INDEX payback_by_reserve_index "
+                "ON payback(reserve_pub)");
 
   /* This table contains the pre-commit data for
      wire transfers the exchange is about to execute. */
@@ -1383,6 +1398,22 @@ postgres_prepare (PGconn *db_conn)
            " ORDER BY wireout_uuid ASC",
            1, NULL);
 
+  /* Used in #postgres_insert_payback_request() to store payback
+     information */
+  PREPARE ("payback_insert",
+           "INSERT INTO payback "
+           "(reserve_pub"
+           ",coin_pub"
+           ",coin_sig"
+           ",coin_blind"
+           ",amount_val"
+           ",amount_frac"
+           ",amount_curr"
+           ",timestamp"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8)",
+           8, NULL);
+
   /* Used in #postgres_get_reserve_by_h_blind() */
   PREPARE ("reserve_by_h_blind",
            "SELECT"
@@ -1589,7 +1620,6 @@ postgres_insert_denomination_info (void *cls,
 {
   PGresult *result;
   int ret;
-
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
     GNUNET_PQ_query_param_auto_from_type (&issue->properties.master),
@@ -1605,6 +1635,7 @@ postgres_insert_denomination_info (void *cls,
     TALER_PQ_query_param_amount_nbo (&issue->properties.fee_refund),
     GNUNET_PQ_query_param_end
   };
+
   /* check fees match coin currency */
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency_nbo (&issue->properties.value,
@@ -2085,7 +2116,6 @@ postgres_insert_withdraw_info (void *cls,
 {
   PGresult *result;
   struct TALER_EXCHANGEDB_Reserve reserve;
-  int ret = GNUNET_SYSERR;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute expiry;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2106,8 +2136,12 @@ postgres_insert_withdraw_info (void *cls,
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
     QUERY_ERR (result);
-    goto cleanup;
+    PQclear (result);
+    return GNUNET_SYSERR;
   }
+  PQclear (result);
+
+  /* update reserve balance */
   reserve.pub = collectable->reserve_pub;
   if (GNUNET_OK != postgres_reserve_get (cls,
                                          session,
@@ -2115,7 +2149,7 @@ postgres_insert_withdraw_info (void *cls,
   {
     /* Should have been checked before we got here... */
     GNUNET_break (0);
-    goto cleanup;
+    return GNUNET_SYSERR;
   }
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&reserve.balance,
@@ -2128,8 +2162,7 @@ postgres_insert_withdraw_info (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Withdrawal from reserve `%s' refused due to balance missmatch. Retrying.\n",
                 TALER_B2S (&collectable->reserve_pub));
-    ret = GNUNET_NO;
-    goto cleanup;
+    return GNUNET_NO;
   }
   expiry = GNUNET_TIME_absolute_add (now,
                                      TALER_IDLE_RESERVE_EXPIRATION_TIME);
@@ -2140,12 +2173,9 @@ postgres_insert_withdraw_info (void *cls,
                                     &reserve))
   {
     GNUNET_break (0);
-    goto cleanup;
+    return GNUNET_SYSERR;
   }
-  ret = GNUNET_OK;
- cleanup:
-  PQclear (result);
-  return ret;
+  return GNUNET_OK;
 }
 
 
@@ -5421,7 +5451,6 @@ postgres_select_wire_out_above_serial_id (void *cls,
  * @param coin information about the coin
  * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
  * @param coin_blind blinding key of the coin
- * @param h_blind_ev blinded envelope, as calculated by the exchange
  * @param amount total amount to be paid back
  * @param receiver_account_details who should receive the funds
  * @param[out] deadline set to absolute time by when the exchange plans to pay it back
@@ -5435,12 +5464,66 @@ postgres_insert_payback_request (void *cls,
                                  const struct TALER_CoinPublicInfo *coin,
                                  const struct TALER_CoinSpendSignatureP *coin_sig,
                                  const struct TALER_DenominationBlindingKeyP *coin_blind,
-                                 const struct GNUNET_HashCode *h_blinded_ev,
                                  const struct TALER_Amount *amount,
                                  struct GNUNET_TIME_Absolute *deadline)
 {
-  GNUNET_break (0);
-  return GNUNET_SYSERR;
+  PGresult *result;
+  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Absolute expiry;
+  struct TALER_EXCHANGEDB_Reserve reserve;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_auto_from_type (&coin->coin_pub),
+    GNUNET_PQ_query_param_auto_from_type (coin_sig),
+    GNUNET_PQ_query_param_auto_from_type (coin_blind),
+    TALER_PQ_query_param_amount (amount),
+    GNUNET_PQ_query_param_absolute_time (&now),
+    GNUNET_PQ_query_param_end
+  };
+
+  now = GNUNET_TIME_absolute_get ();
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "payback_insert",
+                                    params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result, session->conn);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+
+  /* Update reserve balance */
+  reserve.pub = *reserve_pub;
+  if (GNUNET_OK != postgres_reserve_get (cls,
+                                         session,
+                                         &reserve))
+  {
+    /* Should have been checked before we got here... */
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_SYSERR ==
+      TALER_amount_add (&reserve.balance,
+                        &reserve.balance,
+                        amount))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  expiry = GNUNET_TIME_absolute_add (now,
+                                     TALER_IDLE_RESERVE_EXPIRATION_TIME);
+  reserve.expiry = GNUNET_TIME_absolute_max (expiry,
+                                             reserve.expiry);
+  if (GNUNET_OK != reserves_update (cls,
+                                    session,
+                                    &reserve))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  *deadline = reserve.expiry;
+  return GNUNET_OK;
 }
 
 
