@@ -39,6 +39,7 @@ common_free_reserve_history (void *cls,
     switch(rh->type)
     {
     case TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE:
+    case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
       bt = rh->details.bank;
       if (NULL != bt->sender_account_details)
         json_decref (bt->sender_account_details);
@@ -51,6 +52,9 @@ common_free_reserve_history (void *cls,
       GNUNET_CRYPTO_rsa_signature_free (cbc->sig.rsa_signature);
       GNUNET_CRYPTO_rsa_public_key_free (cbc->denom_pub.rsa_public_key);
       GNUNET_free (cbc);
+      break;
+    case TALER_EXCHANGEDB_RO_PAYBACK_COIN:
+      GNUNET_free (rh->details.payback);
       break;
     }
     backref = rh;
@@ -124,6 +128,9 @@ common_free_coin_transaction_list (void *cls,
       if (NULL != list->details.refund->coin.denom_sig.rsa_signature)
         GNUNET_CRYPTO_rsa_signature_free (list->details.refund->coin.denom_sig.rsa_signature);
       GNUNET_free (list->details.refund);
+      break;
+    case TALER_EXCHANGEDB_TT_PAYBACK:
+      GNUNET_free (list->details.payback);
       break;
     }
     GNUNET_free (list);

@@ -1383,6 +1383,15 @@ postgres_prepare (PGconn *db_conn)
            " ORDER BY wireout_uuid ASC",
            1, NULL);
 
+  /* Used in #postgres_get_reserve_by_h_blind() */
+  PREPARE ("reserve_by_h_blind",
+           "SELECT"
+           " reserve_pub"
+           " FROM reserves_out"
+           " WHERE h_blind_ev=$1"
+           " LIMIT 1;",
+           1, NULL);
+
   PREPARE ("gc_denominations",
            "DELETE"
            " FROM denominations"
@@ -5401,6 +5410,107 @@ postgres_select_wire_out_above_serial_id (void *cls,
 
 
 /**
+ * Function called to add a request for an emergency payback for a
+ * coin.  The funds are to be added back to the reserve.  The function
+ * should return the @a deadline by which the exchange will trigger a
+ * wire transfer back to the customer's account for the reserve.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param reserve_pub public key of the reserve that is being refunded
+ * @param coin information about the coin
+ * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+ * @param coin_blind blinding key of the coin
+ * @param h_blind_ev blinded envelope, as calculated by the exchange
+ * @param amount total amount to be paid back
+ * @param receiver_account_details who should receive the funds
+ * @param[out] deadline set to absolute time by when the exchange plans to pay it back
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_insert_payback_request (void *cls,
+                                 struct TALER_EXCHANGEDB_Session *session,
+                                 const struct TALER_ReservePublicKeyP *reserve_pub,
+                                 const struct TALER_CoinPublicInfo *coin,
+                                 const struct TALER_CoinSpendSignatureP *coin_sig,
+                                 const struct TALER_DenominationBlindingKeyP *coin_blind,
+                                 const struct GNUNET_HashCode *h_blinded_ev,
+                                 const struct TALER_Amount *amount,
+                                 struct GNUNET_TIME_Absolute *deadline)
+{
+  GNUNET_break (0);
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Obtain information about which reserve a coin was generated
+ * from given the hash of the blinded coin.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param h_blind_ev hash of the blinded coin
+ * @param[out] reserve_pub set to information about the reserve (on success only)
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if there are no entries,
+ *         #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_get_reserve_by_h_blind (void *cls,
+                                 struct TALER_EXCHANGEDB_Session *session,
+                                 const struct GNUNET_HashCode *h_blind_ev,
+                                 struct TALER_ReservePublicKeyP *reserve_pub)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_blind_ev),
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "reserve_by_h_blind",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result, session->conn);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  int nrows;
+
+  nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "reserve_by_h_blind() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                            reserve_pub),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  0))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -5500,6 +5610,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->select_reserves_in_above_serial_id = &postgres_select_reserves_in_above_serial_id;
   plugin->select_reserves_out_above_serial_id = &postgres_select_reserves_out_above_serial_id;
   plugin->select_wire_out_above_serial_id = &postgres_select_wire_out_above_serial_id;
+  plugin->insert_payback_request = &postgres_insert_payback_request;
+  plugin->get_reserve_by_h_blind = &postgres_get_reserve_by_h_blind;
   return plugin;
 }
 

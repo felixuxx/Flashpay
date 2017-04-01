@@ -1345,7 +1345,7 @@ struct TALER_EXCHANGE_PaybackHandle;
  * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param amount amount the exchange will wire back for this coin
  * @param deadline by when will the exchange wire the funds?
- * @param wire_subject which wire subject will the exchange use?
+ * @param reserve_pub public key of the reserve receiving the payback
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
 typedef void
@@ -1354,7 +1354,7 @@ typedef void
                                          enum TALER_ErrorCode ec,
                                          const struct TALER_Amount *amount,
                                          struct GNUNET_TIME_Absolute deadline,
-                                         const char *wire_subject,
+                                         const struct TALER_ReservePublicKeyP *reserve_pub,
                                          const json_t *full_response);
 
 

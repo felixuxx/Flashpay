@@ -1192,10 +1192,9 @@ struct TALER_PaybackConfirmationPS
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
-   * Hash (!) of the wire transfer subject that the exchange
-   * will use.  Hash excludes the 0-terminator.
+   * Public key of the reserve that will receive the payback.
    */
-  struct GNUNET_HashCode h_wire_subject;
+  struct TALER_ReservePublicKeyP reserve_pub;
 };
 
 

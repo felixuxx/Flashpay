@@ -2269,6 +2269,7 @@ TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
  * @param coin information about the coin
  * @param value how much are coins of the @a coin's denomination worth?
  * @param h_blind blinded coin to use for the lookup
+ * @param coin_blind blinding factor used (for later verification by the auditor)
  * @param coin_sig signature of the coin (to be stored)
  * @return MHD result code
  */
@@ -2277,13 +2278,13 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
                         const struct TALER_CoinPublicInfo *coin,
                         const struct TALER_Amount *value,
                         const struct GNUNET_HashCode *h_blind,
+                        const struct TALER_DenominationBlindingKeyP *coin_blind,
                         const struct TALER_CoinSpendSignatureP *coin_sig)
 {
   int ret;
   struct TALER_EXCHANGEDB_Session *session;
   struct TALER_EXCHANGEDB_TransactionList *tl;
-  struct TALER_EXCHANGEDB_CollectableBlindcoin collectable;
-  char wire_subject[42]; // FIXME: size? (#3887)
+  struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_Amount amount;
   struct TALER_Amount spent;
   struct GNUNET_TIME_Absolute payback_deadline;
@@ -2297,12 +2298,12 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
 
   START_TRANSACTION (session, connection);
 
-  /* FIXME (#3887): not _exactly_ the right call, we need to get the
-     reserve's incoming wire transfer data, not 'collectable' */
-  ret = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
-                                       session,
-                                       h_blind,
-                                       &collectable);
+  /* Check whether a payback is allowed, and if so, to which
+     reserve / account the money should go */
+  ret = TEH_plugin->get_reserve_by_h_blind (TEH_plugin->cls,
+                                            session,
+                                            h_blind,
+                                            &reserve_pub);
   if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);
@@ -2358,8 +2359,16 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
   TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                           tl);
 
-  /* FIXME: add coin to list of wire transfers for payback */
-  // ret = TEH_plugin->(); // #3887
+  /* add coin to list of wire transfers for payback */
+  ret = TEH_plugin->insert_payback_request (TEH_plugin->cls,
+                                            session,
+                                            &reserve_pub,
+                                            coin,
+                                            coin_sig,
+                                            coin_blind,
+                                            h_blind,
+                                            &amount,
+                                            &payback_deadline);
   if (GNUNET_SYSERR == ret)
   {
     TALER_LOG_WARNING ("Failed to store /payback information in database\n");
@@ -2373,7 +2382,7 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
 
   return TEH_RESPONSE_reply_payback_success (connection,
                                              &coin->coin_pub,
-                                             wire_subject,
+                                             &reserve_pub,
                                              &amount,
                                              payback_deadline);
 }

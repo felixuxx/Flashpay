@@ -28,13 +28,14 @@
 
 
 /**
- * @brief Information we keep on bank transfer(s) that established a reserve.
+ * @brief Information we keep on bank transfer(s) that established or
+ * closed a reserve.
  */
 struct TALER_EXCHANGEDB_BankTransfer
 {
 
   /**
-   * Public key of the reserve that was filled.
+   * Public key of the reserve that was filled or depleted.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
 
@@ -51,7 +52,7 @@ struct TALER_EXCHANGEDB_BankTransfer
   struct GNUNET_TIME_Absolute execution_date;
 
   /**
-   * Detailed wire information about the sending account.
+   * Detailed wire information about the sending (or receiving) account.
    */
   json_t *sender_account_details;
 
@@ -145,21 +146,69 @@ struct TALER_EXCHANGEDB_CollectableBlindcoin
 };
 
 
+/**
+ * Information the exchange records about a /payback request.
+ */
+struct TALER_EXCHANGEDB_Payback
+{
+
+  /**
+   * Which coin was paid back?
+   */
+  struct TALER_CoinPublicInfo coin;
+
+  /**
+   * How much was the coin still worth at this time?
+   */
+  struct TALER_Amount value;
+
+  /**
+   * Blinding factor supplied to prove to the exchange that
+   * the coin came from this reserve.
+   */
+  struct TALER_DenominationBlindingKeyP coin_blind;
+
+  /**
+   * Signature of the coin of type
+   * #TALER_SIGNATURE_WALLET_COIN_PAYBACK.
+   */
+  struct TALER_CoinSpendSignatureP coin_sig;
+
+  /**
+   * Public key of the reserve the coin was paid back into.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+};
+
 
 /**
- * @brief Types of operations on a reserved.
+ * @brief Types of operations on a reserve.
  */
 enum TALER_EXCHANGEDB_ReserveOperation
 {
   /**
    * Money was deposited into the reserve via a bank transfer.
+   * This is how customers establish a reserve at the exchange.
    */
   TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE = 0,
 
   /**
    * A Coin was withdrawn from the reserve using /withdraw.
    */
-  TALER_EXCHANGEDB_RO_WITHDRAW_COIN = 1
+  TALER_EXCHANGEDB_RO_WITHDRAW_COIN = 1,
+
+  /**
+   * A coin was returned to the reserve using /payback.
+   */
+  TALER_EXCHANGEDB_RO_PAYBACK_COIN = 2,
+
+  /**
+   * The exchange send inactive funds back from the reserve to the
+   * customer's bank account.  This happens when the exchange
+   * closes a reserve with a non-zero amount left in it.
+   */
+  TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK = 3
 };
 
 
@@ -189,7 +238,9 @@ struct TALER_EXCHANGEDB_ReserveHistory
   {
 
     /**
-     * Details about a bank transfer to the exchange.
+     * Details about a bank transfer to the exchange (reserve
+     * was established) or from the exchange (reserve was
+     * closed).
      */
     struct TALER_EXCHANGEDB_BankTransfer *bank;
 
@@ -197,6 +248,11 @@ struct TALER_EXCHANGEDB_ReserveHistory
      * Details about a /withdraw operation.
      */
     struct TALER_EXCHANGEDB_CollectableBlindcoin *withdraw;
+
+    /**
+     * Details about a /payback operation.
+     */
+    struct TALER_EXCHANGEDB_Payback *payback;
 
   } details;
 
@@ -485,7 +541,12 @@ enum TALER_EXCHANGEDB_TransactionType
   /**
    * /refund operation.
    */
-  TALER_EXCHANGEDB_TT_REFUND = 2
+  TALER_EXCHANGEDB_TT_REFUND = 2,
+
+  /**
+   * /payback operation.
+   */
+  TALER_EXCHANGEDB_TT_PAYBACK = 3
 
 };
 
@@ -526,6 +587,11 @@ struct TALER_EXCHANGEDB_TransactionList
      * Details if transaction was a /refund operation.
      */
     struct TALER_EXCHANGEDB_Refund *refund;
+
+    /**
+     * Details if transaction was a /payback operation.
+     */
+    struct TALER_EXCHANGEDB_Payback *payback;
 
   } details;
 
@@ -1863,25 +1929,21 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Function called to add a request for an emergency payback for a coin.
-   * Note that this function must check if there is an aggregation for the
-   * respective reserve, if not create one, and return the identifiers for
-   * the aggregate in @a wire_subject and @a deadline.  The
-   * @a acceptable_delay will be constant for an exchange, so if an
-   * aggregate exists it must either be past the deadline or be usable,
-   * in which case this function should update the aggregate's total amount.
-   *
-   * If no aggregate exists, a fresh @a wire_subject is picked at random.
+   * Function called to add a request for an emergency payback for a
+   * coin.  The funds are to be added back to the reserve.  The
+   * function should return the @a deadline by which the exchange will
+   * trigger a wire transfer back to the customer's account for the
+   * reserve.
    *
    * @param cls closure
    * @param session database connection
+   * @param reserve_pub public key of the reserve that is being refunded
    * @param coin information about the coin
    * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
    * @param coin_blind blinding key of the coin
    * @param h_blind_ev blinded envelope, as calculated by the exchange
    * @param amount total amount to be paid back
-   * @param acceptable_delay how long could a wire transfer be delayed
-   * @param[out] wire_subject wire subject the database selected for the transfer
+   * @param receiver_account_details who should receive the funds
    * @param[out] deadline set to absolute time by when the exchange plans to pay it back
    * @return #GNUNET_OK on success,
    *         #GNUNET_SYSERR on DB errors
@@ -1889,64 +1951,32 @@ struct TALER_EXCHANGEDB_Plugin
   int
   (*insert_payback_request)(void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
+                            const struct TALER_ReservePublicKeyP *reserve_pub,
                             const struct TALER_CoinPublicInfo *coin,
                             const struct TALER_CoinSpendSignatureP *coin_sig,
                             const struct TALER_DenominationBlindingKeyP *coin_blind,
                             const struct GNUNET_HashCode *h_blinded_ev,
                             const struct TALER_Amount *amount,
-                            struct GNUNET_TIME_Relative acceptable_delay,
-                            struct TALER_WireTransferIdentifierRawP *wire_subject,
                             struct GNUNET_TIME_Absolute *deadline);
 
 
   /**
-   * Return all (already aggregated!) payback payments due between @e
-   * start_time and @e end_time.  To be used by the special
-   * 'emergency' aggregator to make the paybacks (which presumably
-   * only runs if there are paybacks to be made, and which is
-   * restricted to only accept paybacks for approved denomination
-   * keys).
-   *
-   * @param cls closure
-   * @param session database connection
-   * @param start_time beginning of selection range, inclusive
-   * @param end_time end of selection range, exclusive
-   * @param cb function to call on each required payback operation
-   * @param cb_cls closure for @a cb
-   * @return #GNUNET_OK on success,
-   *         #GNUNET_NO if there are no entries,
-   *         #GNUNET_SYSERR on DB errors
-   */
-  int
-  (*select_payback_requests)(void *cls,
-                             struct TALER_EXCHANGEDB_Session *session,
-                             struct GNUNET_TIME_Absolute start_time,
-                             struct GNUNET_TIME_Absolute end_time,
-                             TALER_EXCHANGEDB_PaybackCallback cb,
-                             void *cb_cls);
-
-
-  /**
-   * Obtain the individual payback requests that justified the aggregate
-   * wire transfer.  Usually used by the auditor to verify losses from
-   * paybacks.
+   * Obtain information about which reserve a coin was generated
+   * from given the hash of the blinded coin.
    *
    * @param cls closure
    * @param session a session
-   * @param wire_subject wire subject of the payback wire transfer
-   * @param cb callback to call with the justification
-   * @param cb_cls closure for @a cb
+   * @param h_blind_ev hash of the blinded coin
+   * @param[out] reserve_pub set to information about the reserve (on success only)
    * @return #GNUNET_OK on success,
    *         #GNUNET_NO if there are no entries,
    *         #GNUNET_SYSERR on DB errors
    */
   int
-  (*get_payback_justification)(void *cls,
-                               struct TALER_EXCHANGEDB_Session *session,
-                               const struct TALER_WireTransferIdentifierRawP *wire_subject,
-                               // ? add constraints like h_wire of receiver?
-                               TALER_EXCHANGEDB_PaybackJustificationCallback cb,
-                               void *cb_cls);
+  (*get_reserve_by_h_blind)(void *cls,
+                            struct TALER_EXCHANGEDB_Session *session,
+                            const struct GNUNET_HashCode *h_blind_ev,
+                            struct TALER_ReservePublicKeyP *reserve_pub);
 
 };
 

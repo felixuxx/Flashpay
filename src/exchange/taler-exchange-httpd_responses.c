@@ -1320,7 +1320,8 @@ TEH_RESPONSE_reply_payback_unknown (struct MHD_Connection *connection,
  * A wallet asked for /payback, return the successful response.
  *
  * @param connection connection to the client
- * @param wire_subject the wire subject we will use for the pay back operation
+ * @param coin_pub coin for which we are processing the payback request
+ * @param reserve_pub public key of the reserve that will receive the payback
  * @param amount the amount we will wire back
  * @param payback_deadline deadline by which the exchange promises to pay
  * @return MHD result code
@@ -1328,7 +1329,7 @@ TEH_RESPONSE_reply_payback_unknown (struct MHD_Connection *connection,
 int
 TEH_RESPONSE_reply_payback_success (struct MHD_Connection *connection,
                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                    const char *wire_subject,
+                                    const struct TALER_ReservePublicKeyP *reserve_pub,
                                     const struct TALER_Amount *amount,
                                     struct GNUNET_TIME_Absolute payback_deadline)
 {
@@ -1342,16 +1343,14 @@ TEH_RESPONSE_reply_payback_success (struct MHD_Connection *connection,
   TALER_amount_hton (&pc.payback_amount,
                      amount);
   pc.coin_pub = *coin_pub;
-  GNUNET_CRYPTO_hash (wire_subject,
-                      strlen (wire_subject),
-                      &pc.h_wire_subject);
+  pc.reserve_pub = *reserve_pub;
   TEH_KS_sign (&pc.purpose,
                &pub,
                &sig);
   return TEH_RESPONSE_reply_json_pack (connection,
                                        MHD_HTTP_OK,
-                                       "{s:s, s:o, s:o, s:o, s:o}",
-                                       "wire_subject", wire_subject,
+                                       "{s:o, s:o, s:o, s:o, s:o}",
+                                       "reserve_pub", GNUNET_JSON_from_data_auto (reserve_pub),
                                        "payback_deadline", GNUNET_JSON_from_time_abs (payback_deadline),
                                        "amount", TALER_JSON_from_amount (amount),
                                        "exchange_sig", GNUNET_JSON_from_data_auto (&sig),

@@ -577,7 +577,7 @@ TEH_RESPONSE_reply_payback_unknown (struct MHD_Connection *connection,
  *
  * @param connection connection to the client
  * @param coin_pub coin for which we are processing the payback request
- * @param wire_subject the wire subject we will use for the pay back operation
+ * @param reserve_pub public key of the reserve that will receive the payback
  * @param amount the amount we will wire back
  * @param payback_deadline deadline by which the exchange promises to pay
  * @return MHD result code
@@ -585,7 +585,7 @@ TEH_RESPONSE_reply_payback_unknown (struct MHD_Connection *connection,
 int
 TEH_RESPONSE_reply_payback_success (struct MHD_Connection *connection,
                                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                                    const char *wire_subject,
+                                    const struct TALER_ReservePublicKeyP *reserve_pub,
                                     const struct TALER_Amount *amount,
                                     struct GNUNET_TIME_Absolute payback_deadline);
 

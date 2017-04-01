@@ -134,6 +134,7 @@ verify_and_execute_payback (struct MHD_Connection *connection,
                                  coin,
                                  &value,
                                  &h_blind,
+                                 coin_bks,
                                  coin_sig);
 }
 

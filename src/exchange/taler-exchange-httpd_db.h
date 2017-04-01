@@ -246,6 +246,7 @@ TEH_DB_execute_track_transaction (struct MHD_Connection *connection,
  * @param coin information about the coin
  * @param value how much are coins of the @a coin's denomination worth?
  * @param h_blind blinded coin to use for the lookup
+ * @param coin_blind blinding factor used (for later verification by the auditor)
  * @param coin_sig signature of the coin
  * @return MHD result code
  */
@@ -254,6 +255,7 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
                         const struct TALER_CoinPublicInfo *coin,
                         const struct TALER_Amount *value,
                         const struct GNUNET_HashCode *h_blind,
+                        const struct TALER_DenominationBlindingKeyP *coin_blind,
                         const struct TALER_CoinSpendSignatureP *coin_sig);
 
 
