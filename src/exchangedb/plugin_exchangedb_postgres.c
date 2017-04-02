@@ -1432,8 +1432,26 @@ postgres_prepare (PGconn *db_conn)
            ",denom.denom_pub"
            ",denom.denom_sig"
            " FROM payback"
-           "    JOIN reserves_out denom USING (h_blind_ev)"
+           "    JOIN reserves_out denom USING (reserve_pub,h_blind_ev)"
            " WHERE payback.reserve_pub=$1",
+           1, NULL);
+
+  /* Used in #postgres_get_coin_transactions() to obtain payback transactions
+     for a coin */
+  PREPARE ("payback_by_coin",
+           "SELECT"
+           " payback.reserve_pub"
+           ",coin_sig"
+           ",coin_blind"
+           ",amount_val"
+           ",amount_frac"
+           ",amount_curr"
+           ",timestamp"
+           ",denom.denom_pub"
+           ",denom.denom_sig"
+           " FROM payback"
+           "    JOIN reserves_out denom USING (reserve_pub,h_blind_ev)"
+           " WHERE payback.coin_pub=$1",
            1, NULL);
 
 
@@ -3923,10 +3941,10 @@ postgres_get_coin_transactions (void *cls,
   struct TALER_EXCHANGEDB_TransactionList *head;
 
   head = NULL;
-  /* check deposits */
+  /** #TALER_EXCHANGEDB_TT_DEPOSIT */
   {
     struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (&coin_pub->eddsa_pub),
+      GNUNET_PQ_query_param_auto_from_type (coin_pub),
       GNUNET_PQ_query_param_end
     };
     int nrows;
@@ -4003,7 +4021,7 @@ postgres_get_coin_transactions (void *cls,
     }
     PQclear (result);
   }
-  /* Handle refreshing */
+  /** #TALER_EXCHANGEDB_TT_REFRESH_MELT */
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (&coin_pub->eddsa_pub),
@@ -4074,10 +4092,10 @@ postgres_get_coin_transactions (void *cls,
     }
     PQclear (result);
   }
-  /* handle refunds */
+  /** #TALER_EXCHANGEDB_TT_REFUND */
   {
     struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (&coin_pub->eddsa_pub),
+      GNUNET_PQ_query_param_auto_from_type (coin_pub),
       GNUNET_PQ_query_param_end
     };
     int nrows;
@@ -4149,6 +4167,71 @@ postgres_get_coin_transactions (void *cls,
     }
     PQclear (result);
   }
+  /** #TALER_EXCHANGEDB_TT_PAYBACK */
+  {
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (coin_pub),
+      GNUNET_PQ_query_param_end
+    };
+    int nrows;
+    int i;
+    PGresult *result;
+    struct TALER_EXCHANGEDB_TransactionList *tl;
+
+    /* check if a refund records exist and get them */
+    result = GNUNET_PQ_exec_prepared (session->conn,
+                                      "payback_by_coin",
+                                      params);
+    if (PGRES_TUPLES_OK != PQresultStatus (result))
+    {
+      BREAK_DB_ERR (result, session->conn);
+      PQclear (result);
+      goto cleanup;
+    }
+    nrows = PQntuples (result);
+    for (i=0;i<nrows;i++)
+    {
+      struct TALER_EXCHANGEDB_Payback *payback;
+
+      payback = GNUNET_new (struct TALER_EXCHANGEDB_Payback);
+      {
+        struct GNUNET_PQ_ResultSpec rs[] = {
+          TALER_PQ_result_spec_amount ("amount",
+                                       &payback->value),
+          GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                                &payback->reserve_pub),
+          GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
+                                                &payback->coin_blind),
+          GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
+                                                &payback->coin_sig),
+          GNUNET_PQ_result_spec_absolute_time ("timestamp",
+                                               &payback->timestamp),
+          GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+                                               &payback->denom_pub.rsa_public_key),
+          GNUNET_PQ_result_spec_end
+        };
+        if (GNUNET_OK !=
+            GNUNET_PQ_extract_result (result,
+                                      rs,
+                                      i))
+        {
+          GNUNET_break (0);
+          GNUNET_free (payback);
+          PQclear (result);
+          goto cleanup;
+        }
+	payback->coin_pub = *coin_pub;
+      }
+      tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
+      tl->next = head;
+      tl->type = TALER_EXCHANGEDB_TT_PAYBACK;
+      tl->details.payback = payback;
+      head = tl;
+      continue;
+    }
+    PQclear (result);
+  }
+
   return head;
  cleanup:
   if (NULL != head)
