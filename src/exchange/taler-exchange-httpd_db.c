@@ -2367,6 +2367,7 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
                                             coin_sig,
                                             coin_blind,
                                             &amount,
+                                            h_blind,
                                             &payback_deadline);
   if (GNUNET_SYSERR == ret)
   {

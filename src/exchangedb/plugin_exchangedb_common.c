@@ -32,6 +32,7 @@ common_free_reserve_history (void *cls,
 {
   struct TALER_EXCHANGEDB_BankTransfer *bt;
   struct TALER_EXCHANGEDB_CollectableBlindcoin *cbc;
+  struct TALER_EXCHANGEDB_Payback *payback;
   struct TALER_EXCHANGEDB_ReserveHistory *backref;
 
   while (NULL != rh)
@@ -54,7 +55,9 @@ common_free_reserve_history (void *cls,
       GNUNET_free (cbc);
       break;
     case TALER_EXCHANGEDB_RO_PAYBACK_COIN:
-      GNUNET_free (rh->details.payback);
+      payback = rh->details.payback;
+      GNUNET_CRYPTO_rsa_public_key_free (payback->denom_pub.rsa_public_key);
+      GNUNET_free (payback);
       break;
     }
     backref = rh;

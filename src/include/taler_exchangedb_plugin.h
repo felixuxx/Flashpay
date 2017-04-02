@@ -153,14 +153,9 @@ struct TALER_EXCHANGEDB_Payback
 {
 
   /**
-   * Which coin was paid back?
+   * Public key of the coin that was paid back.
    */
-  struct TALER_CoinPublicInfo coin;
-
-  /**
-   * How much was the coin still worth at this time?
-   */
-  struct TALER_Amount value;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
    * Blinding factor supplied to prove to the exchange that
@@ -178,6 +173,22 @@ struct TALER_EXCHANGEDB_Payback
    * Public key of the reserve the coin was paid back into.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * How much was the coin still worth at this time?
+   */
+  struct TALER_Amount value;
+
+  /**
+   * When did the /payback operation happen?
+   */
+  struct GNUNET_TIME_Absolute timestamp;
+
+  /**
+   * Public key representing the denomination of
+   * @e coin_pub.
+   */
+  struct TALER_DenominationPublicKey denom_pub;
 
 };
 
@@ -1944,6 +1955,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param h_blind_ev blinded envelope, as calculated by the exchange
    * @param amount total amount to be paid back
    * @param receiver_account_details who should receive the funds
+   * @parma h_blind_ev hash of the blinded coin's envelope (must match reserves_out entry)
    * @param[out] deadline set to absolute time by when the exchange plans to pay it back
    * @return #GNUNET_OK on success,
    *         #GNUNET_SYSERR on DB errors
@@ -1956,6 +1968,7 @@ struct TALER_EXCHANGEDB_Plugin
                             const struct TALER_CoinSpendSignatureP *coin_sig,
                             const struct TALER_DenominationBlindingKeyP *coin_blind,
                             const struct TALER_Amount *amount,
+                            const struct GNUNET_HashCode *h_blind_ev,
                             struct GNUNET_TIME_Absolute *deadline);
 
 

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016, 2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -221,6 +221,8 @@ postgres_drop_tables (void *cls)
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS prewire;");
   SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS payback;");
+  SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS aggregation_tracking;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS wire_out CASCADE;");
@@ -243,7 +245,7 @@ postgres_drop_tables (void *cls)
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS known_coins CASCADE;");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS reserves_out;");
+            "DROP TABLE IF EXISTS reserves_out CASCADE;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS reserves_in;");
   SQLEXEC_ (conn,
@@ -521,6 +523,7 @@ postgres_create_tables (void *cls)
           ",amount_frac INT4 NOT NULL"
           ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",timestamp INT8 NOT NULL"
+          ",h_blind_ev BYTEA NOT NULL REFERENCES reserves_out (h_blind_ev) ON DELETE CASCADE"
           ")");
   SQLEXEC_INDEX("CREATE INDEX payback_by_coin_index "
                 "ON payback(coin_pub)");
@@ -1410,9 +1413,30 @@ postgres_prepare (PGconn *db_conn)
            ",amount_frac"
            ",amount_curr"
            ",timestamp"
+           ",h_blind_ev"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8)",
-           8, NULL);
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+           9, NULL);
+
+  /* Used in #postgres_get_reserve_history() to obtain payback transactions
+     for a reserve */
+  PREPARE ("payback_by_reserve",
+           "SELECT"
+           " coin_pub"
+           ",coin_sig"
+           ",coin_blind"
+           ",amount_val"
+           ",amount_frac"
+           ",amount_curr"
+           ",timestamp"
+           ",denom.denom_pub"
+           ",denom.denom_sig"
+           " FROM payback"
+           "    JOIN reserves_out denom USING (h_blind_ev)"
+           " WHERE payback.reserve_pub=$1",
+           1, NULL);
+
+
 
   /* Used in #postgres_get_reserve_by_h_blind() */
   PREPARE ("reserve_by_h_blind",
@@ -2202,6 +2226,7 @@ postgres_get_reserve_history (void *cls,
   rh = NULL;
   rh_tail = NULL;
   ret = GNUNET_SYSERR;
+  /** #TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE */
   {
     struct TALER_EXCHANGEDB_BankTransfer *bt;
     struct GNUNET_PQ_QueryParam params[] = {
@@ -2265,6 +2290,7 @@ postgres_get_reserve_history (void *cls,
     } /* end of 'while (0 < rows)' */
     PQclear (result);
   }
+  /** #TALER_EXCHANGEDB_RO_WITHDRAW_COIN */
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (reserve_pub),
@@ -2325,6 +2351,74 @@ postgres_get_reserve_history (void *cls,
     ret = GNUNET_OK;
     PQclear (result);
   }
+  /** #TALER_EXCHANGEDB_RO_PAYBACK_COIN */
+  {
+    struct TALER_EXCHANGEDB_Payback *payback;
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+      GNUNET_PQ_query_param_end
+    };
+
+    result = GNUNET_PQ_exec_prepared (session->conn,
+                                      "payback_by_reserve",
+                                      params);
+    if (PGRES_TUPLES_OK != PQresultStatus (result))
+    {
+      QUERY_ERR (result);
+      goto cleanup;
+    }
+    rows = PQntuples (result);
+    while (0 < rows)
+    {
+      payback = GNUNET_new (struct TALER_EXCHANGEDB_Payback);
+      {
+        struct GNUNET_PQ_ResultSpec rs[] = {
+          TALER_PQ_result_spec_amount ("amount",
+                                       &payback->value),
+          GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
+                                                &payback->coin_pub),
+          GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
+                                                &payback->coin_blind),
+          GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
+                                                &payback->coin_sig),
+          GNUNET_PQ_result_spec_absolute_time ("timestamp",
+                                               &payback->timestamp),
+          GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+                                               &payback->denom_pub.rsa_public_key),
+          GNUNET_PQ_result_spec_end
+        };
+        if (GNUNET_OK !=
+            GNUNET_PQ_extract_result (result,
+                                      rs,
+                                      --rows))
+        {
+          GNUNET_break (0);
+          GNUNET_free (payback);
+          PQclear (result);
+          goto cleanup;
+        }
+      }
+      payback->reserve_pub = *reserve_pub;
+      if (NULL != rh_tail)
+      {
+        rh_tail->next = GNUNET_new (struct TALER_EXCHANGEDB_ReserveHistory);
+        rh_tail = rh_tail->next;
+      }
+      else
+      {
+        rh_tail = GNUNET_new (struct TALER_EXCHANGEDB_ReserveHistory);
+        rh = rh_tail;
+      }
+      rh_tail->type = TALER_EXCHANGEDB_RO_PAYBACK_COIN;
+      rh_tail->details.payback = payback;
+    } /* end of 'while (0 < rows)' */
+    PQclear (result);
+  }
+
+
+  /** #TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK */
+  /* TODO: #4956 */
+
  cleanup:
   if (GNUNET_SYSERR == ret)
   {
@@ -5453,6 +5547,7 @@ postgres_select_wire_out_above_serial_id (void *cls,
  * @param coin_blind blinding key of the coin
  * @param amount total amount to be paid back
  * @param receiver_account_details who should receive the funds
+ * @parma h_blind_ev hash of the blinded coin's envelope (must match reserves_out entry)
  * @param[out] deadline set to absolute time by when the exchange plans to pay it back
  * @return #GNUNET_OK on success,
  *         #GNUNET_SYSERR on DB errors
@@ -5465,6 +5560,7 @@ postgres_insert_payback_request (void *cls,
                                  const struct TALER_CoinSpendSignatureP *coin_sig,
                                  const struct TALER_DenominationBlindingKeyP *coin_blind,
                                  const struct TALER_Amount *amount,
+                                 const struct GNUNET_HashCode *h_blind_ev,
                                  struct GNUNET_TIME_Absolute *deadline)
 {
   PGresult *result;
@@ -5478,6 +5574,7 @@ postgres_insert_payback_request (void *cls,
     GNUNET_PQ_query_param_auto_from_type (coin_blind),
     TALER_PQ_query_param_amount (amount),
     GNUNET_PQ_query_param_absolute_time (&now),
+    GNUNET_PQ_query_param_auto_from_type (h_blind_ev),
     GNUNET_PQ_query_param_end
   };
 
