@@ -1336,6 +1336,9 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
 }
 
 
+
+
+
 /**
  * Main function that will be run by the scheduler.
  *
@@ -1346,6 +1349,9 @@ run (void *cls)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct TALER_EXCHANGEDB_Session *session;
+  struct TALER_CoinSpendSignatureP coin_sig;
+  struct GNUNET_TIME_Absolute deadline;
+  struct TALER_DenominationBlindingKeyP coin_blind;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct DenomKeyPair *dkp;
   struct TALER_EXCHANGEDB_CollectableBlindcoin cbc;
@@ -1501,6 +1507,21 @@ run (void *cls)
           GNUNET_CRYPTO_rsa_verify (&cbc.h_coin_envelope,
                                     cbc2.sig.rsa_signature,
                                     dkp->pub.rsa_public_key));
+
+
+  RND_BLK (&coin_sig);
+  RND_BLK (&coin_blind);
+  FAILIF (GNUNET_OK !=
+          plugin->insert_payback_request (plugin->cls,
+                                          session,
+                                          &reserve_pub,
+                                          &deposit.coin.coin_pub,
+                                          &coin_sig,
+                                          &coin_blind,
+                                          &value,
+                                          &cbc.h_coin_envelope,
+                                          &deadline));
+
   result = 7;
   rh = plugin->get_reserve_history (plugin->cls,
                                     session,
@@ -1532,9 +1553,32 @@ run (void *cls)
                            &cbc.h_coin_envelope,
                            sizeof (cbc.h_coin_envelope)));
       break;
+    case TALER_EXCHANGEDB_RO_PAYBACK_COIN:
+      {
+        struct TALER_EXCHANGEDB_Payback *payback = rh_head->details.payback;
+
+        FAILIF (0 != memcmp (&payback->coin_sig,
+                             &coin_sig,
+                             sizeof (coin_sig)));
+        FAILIF (0 != memcmp (&payback->coin_blind,
+                             &coin_blind,
+                             sizeof (coin_blind)));
+        FAILIF (0 != memcmp (&payback->reserve_pub,
+                             &reserve_pub,
+                             sizeof (reserve_pub)));
+        FAILIF (0 != memcmp (&payback->coin_pub,
+                             &deposit.coin.coin_pub,
+                             sizeof (deposit.coin.coin_pub)));
+        FAILIF (0 != TALER_amount_cmp (&payback->value,
+                                       &value));
+      }
+      break;
+    case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
+      GNUNET_break (0); /* FIXME: #4956 */
+      break;
     }
   }
-  FAILIF (3 != cnt);
+  FAILIF (4 != cnt);
 
   auditor_row_cnt = 0;
   FAILIF (GNUNET_OK !=
@@ -1550,6 +1594,7 @@ run (void *cls)
 						       &audit_reserve_out_cb,
 						       NULL));
   FAILIF (3 != auditor_row_cnt);
+
   /* Tests for deposits */
   memset (&deposit, 0, sizeof (deposit));
   RND_BLK (&deposit.coin.coin_pub);
@@ -1567,7 +1612,8 @@ run (void *cls)
   result = 8;
   FAILIF (GNUNET_OK !=
           plugin->insert_deposit (plugin->cls,
-                                  session, &deposit));
+                                  session,
+                                  &deposit));
   FAILIF (GNUNET_YES !=
           plugin->have_deposit (plugin->cls,
                                 session,
@@ -1660,6 +1706,21 @@ run (void *cls)
           plugin->insert_refund (plugin->cls,
                                  session,
                                  &refund));
+
+
+  RND_BLK (&coin_sig);
+  RND_BLK (&coin_blind);
+  FAILIF (GNUNET_OK !=
+          plugin->insert_payback_request (plugin->cls,
+                                          session,
+                                          &reserve_pub,
+                                          &deposit.coin.coin_pub,
+                                          &coin_sig,
+                                          &coin_blind,
+                                          &value,
+                                          &cbc.h_coin_envelope,
+                                          &deadline));
+
   auditor_row_cnt = 0;
   FAILIF (GNUNET_OK !=
           plugin->select_refunds_above_serial_id (plugin->cls,
@@ -1747,12 +1808,33 @@ run (void *cls)
         matched |= 4;
         break;
       }
+    case TALER_EXCHANGEDB_TT_PAYBACK:
+      {
+        struct TALER_EXCHANGEDB_Payback *payback = tlp->details.payback;
+
+        FAILIF (0 != memcmp (&payback->coin_sig,
+                             &coin_sig,
+                             sizeof (coin_sig)));
+        FAILIF (0 != memcmp (&payback->coin_blind,
+                             &coin_blind,
+                             sizeof (coin_blind)));
+        FAILIF (0 != memcmp (&payback->reserve_pub,
+                             &reserve_pub,
+                             sizeof (reserve_pub)));
+        FAILIF (0 != memcmp (&payback->coin_pub,
+                             &deposit.coin.coin_pub,
+                             sizeof (deposit.coin.coin_pub)));
+        FAILIF (0 != TALER_amount_cmp (&payback->value,
+                                       &value));
+        matched |= 8;
+        break;
+      }
     default:
       FAILIF (1);
       break;
     }
   }
-  FAILIF (5 != matched);
+  FAILIF (13 != matched);
 
   plugin->free_coin_transaction_list (plugin->cls,
                                       tl);

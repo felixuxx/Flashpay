@@ -516,7 +516,7 @@ postgres_create_tables (void *cls)
   /* Table for /payback information */
   SQLEXEC("CREATE TABLE IF NOT EXISTS payback "
           "(reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
-          ",coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE"
+          ",coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)"
           ",coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)"
           ",coin_blind BYTEA NOT NULL CHECK(LENGTH(coin_blind)=32)"
           ",amount_val INT8 NOT NULL"
@@ -1453,8 +1453,6 @@ postgres_prepare (PGconn *db_conn)
            "    JOIN reserves_out denom USING (reserve_pub,h_blind_ev)"
            " WHERE payback.coin_pub=$1",
            1, NULL);
-
-
 
   /* Used in #postgres_get_reserve_by_h_blind() */
   PREPARE ("reserve_by_h_blind",
@@ -5625,7 +5623,7 @@ postgres_select_wire_out_above_serial_id (void *cls,
  * @param cls closure
  * @param session database connection
  * @param reserve_pub public key of the reserve that is being refunded
- * @param coin information about the coin
+ * @param coin_pub public key of the coin
  * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
  * @param coin_blind blinding key of the coin
  * @param amount total amount to be paid back
@@ -5639,7 +5637,7 @@ static int
 postgres_insert_payback_request (void *cls,
                                  struct TALER_EXCHANGEDB_Session *session,
                                  const struct TALER_ReservePublicKeyP *reserve_pub,
-                                 const struct TALER_CoinPublicInfo *coin,
+                                 const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                  const struct TALER_CoinSpendSignatureP *coin_sig,
                                  const struct TALER_DenominationBlindingKeyP *coin_blind,
                                  const struct TALER_Amount *amount,
@@ -5652,7 +5650,7 @@ postgres_insert_payback_request (void *cls,
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    GNUNET_PQ_query_param_auto_from_type (&coin->coin_pub),
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_auto_from_type (coin_sig),
     GNUNET_PQ_query_param_auto_from_type (coin_blind),
     TALER_PQ_query_param_amount (amount),

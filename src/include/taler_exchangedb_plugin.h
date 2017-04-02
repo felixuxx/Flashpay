@@ -1949,7 +1949,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls closure
    * @param session database connection
    * @param reserve_pub public key of the reserve that is being refunded
-   * @param coin information about the coin
+   * @param coin_pub public key of the coin
    * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
    * @param coin_blind blinding key of the coin
    * @param h_blind_ev blinded envelope, as calculated by the exchange
@@ -1964,7 +1964,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*insert_payback_request)(void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
                             const struct TALER_ReservePublicKeyP *reserve_pub,
-                            const struct TALER_CoinPublicInfo *coin,
+                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
                             const struct TALER_CoinSpendSignatureP *coin_sig,
                             const struct TALER_DenominationBlindingKeyP *coin_blind,
                             const struct TALER_Amount *amount,
