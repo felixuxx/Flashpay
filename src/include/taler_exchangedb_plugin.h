@@ -537,8 +537,8 @@ struct TALER_EXCHANGEDB_LinkDataList
  * @brief Enumeration to classify the different types of transactions
  * that can be done with a coin.
  */
-enum TALER_EXCHANGEDB_TransactionType
-{
+enum TALER_EXCHANGEDB_TransactionType {
+
   /**
    * /deposit operation.
    */

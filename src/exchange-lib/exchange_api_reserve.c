@@ -77,7 +77,8 @@ struct TALER_EXCHANGE_ReserveStatusHandle
  * Parse history given in JSON format and return it in binary
  * format.
  *
- * @param[in] history JSON array with the history
+ * @param exchange connection to the exchange we can use
+ * @param history JSON array with the history
  * @param reserve_pub public key of the reserve to inspect
  * @param currency currency we expect the balance to be in
  * @param[out] balance final balance
@@ -89,7 +90,8 @@ struct TALER_EXCHANGE_ReserveStatusHandle
  *         #GNUNET_SYSERR if there was a protocol violation in @a history
  */
 static int
-parse_reserve_history (const json_t *history,
+parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
+                       const json_t *history,
                        const struct TALER_ReservePublicKeyP *reserve_pub,
                        const char *currency,
                        struct TALER_Amount *balance,
@@ -214,6 +216,7 @@ parse_reserve_history (const json_t *history,
       }
       TALER_amount_ntoh (&amount_from_purpose,
                          &withdraw_purpose.amount_with_fee);
+      /* TODO #4980 */
       if (0 != TALER_amount_cmp (&amount,
                                  &amount_from_purpose))
       {
@@ -259,13 +262,75 @@ parse_reserve_history (const json_t *history,
     else if (0 == strcasecmp (type,
                               "PAYBACK"))
     {
-      GNUNET_break (0); /* #3887 */
+      struct TALER_PaybackConfirmationPS pc;
+      struct TALER_Amount amount_from_purpose;
+      struct GNUNET_TIME_Absolute timestamp_from_purpose;
+      struct GNUNET_TIME_Absolute timestamp;
+      const struct TALER_EXCHANGE_Keys *key_state;
+      struct GNUNET_JSON_Specification payback_spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("details",
+                                     &pc),
+        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                     &rhistory[off].details.payback_details.exchange_sig),
+        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                     &rhistory[off].details.payback_details.exchange_pub),
+        GNUNET_JSON_spec_absolute_time ("timetamp",
+                                        &timestamp),
+        TALER_JSON_spec_amount ("amount",
+                                &rhistory[off].amount),
+        GNUNET_JSON_spec_end()
+      };
+
+      rhistory[off].type = TALER_EXCHANGE_RTT_PAYBACK;
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (transaction,
+                             payback_spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      rhistory[off].details.payback_details.coin_pub = pc.coin_pub;
+      TALER_amount_ntoh (&amount_from_purpose,
+                         &pc.payback_amount);
+      rhistory[off].details.payback_details.timestamp = timestamp;
+      timestamp_from_purpose = GNUNET_TIME_absolute_ntoh (pc.timestamp);
+      /* TODO #4980 */
+      if ( (0 != memcmp (&pc.reserve_pub,
+                         reserve_pub,
+                         sizeof (*reserve_pub))) ||
+           (timestamp_from_purpose.abs_value_us !=
+            timestamp.abs_value_us) ||
+           (0 != TALER_amount_cmp (&amount_from_purpose,
+                                   &rhistory[off].amount)) )
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+
+      key_state = TALER_EXCHANGE_get_keys (exchange);
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_test_signing_key (key_state,
+                                           &rhistory[off].details.payback_details.exchange_pub))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK,
+                                      &pc.purpose,
+                                      &rhistory[off].details.payback_details.exchange_sig.eddsa_signature,
+                                      &rhistory[off].details.payback_details.exchange_pub.eddsa_pub))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
       /* end type==PAYBACK */
     }
     else if (0 == strcasecmp (type,
                               "CLOSING"))
     {
-      GNUNET_break (0); /* #3887 / #4956 */
+      GNUNET_break (0); /* FIXME: implement with #4956 */
       /* end type==CLOSING */
     }
     else
@@ -304,9 +369,9 @@ handle_reserve_status_finished (void *cls,
                                 long response_code,
                                 const json_t *json)
 {
-  struct TALER_EXCHANGE_ReserveStatusHandle *wsh = cls;
+  struct TALER_EXCHANGE_ReserveStatusHandle *rsh = cls;
 
-  wsh->job = NULL;
+  rsh->job = NULL;
   switch (response_code)
   {
   case 0:
@@ -346,8 +411,9 @@ handle_reserve_status_finished (void *cls,
         struct TALER_EXCHANGE_ReserveHistory rhistory[len];
 
         if (GNUNET_OK !=
-            parse_reserve_history (history,
-                                   &wsh->reserve_pub,
+            parse_reserve_history (rsh->exchange,
+                                   history,
+                                   &rsh->reserve_pub,
                                    balance.currency,
                                    &balance_from_history,
                                    len,
@@ -366,14 +432,14 @@ handle_reserve_status_finished (void *cls,
           response_code = 0;
           break;
         }
-        wsh->cb (wsh->cb_cls,
+        rsh->cb (rsh->cb_cls,
                  response_code,
 		 TALER_EC_NONE,
                  json,
                  &balance,
                  len,
                  rhistory);
-        wsh->cb = NULL;
+        rsh->cb = NULL;
       }
     }
     break;
@@ -398,14 +464,14 @@ handle_reserve_status_finished (void *cls,
     response_code = 0;
     break;
   }
-  if (NULL != wsh->cb)
-    wsh->cb (wsh->cb_cls,
+  if (NULL != rsh->cb)
+    rsh->cb (rsh->cb_cls,
              response_code,
 	     TALER_JSON_get_error_code (json),
              json,
              NULL,
              0, NULL);
-  TALER_EXCHANGE_reserve_status_cancel (wsh);
+  TALER_EXCHANGE_reserve_status_cancel (rsh);
 }
 
 
@@ -431,7 +497,7 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
                                TALER_EXCHANGE_ReserveStatusResultCallback cb,
                                void *cb_cls)
 {
-  struct TALER_EXCHANGE_ReserveStatusHandle *wsh;
+  struct TALER_EXCHANGE_ReserveStatusHandle *rsh;
   struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   char *pub_str;
@@ -449,12 +515,12 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
                    "/reserve/status?reserve_pub=%s",
                    pub_str);
   GNUNET_free (pub_str);
-  wsh = GNUNET_new (struct TALER_EXCHANGE_ReserveStatusHandle);
-  wsh->exchange = exchange;
-  wsh->cb = cb;
-  wsh->cb_cls = cb_cls;
-  wsh->reserve_pub = *reserve_pub;
-  wsh->url = MAH_path_to_url (exchange,
+  rsh = GNUNET_new (struct TALER_EXCHANGE_ReserveStatusHandle);
+  rsh->exchange = exchange;
+  rsh->cb = cb;
+  rsh->cb_cls = cb_cls;
+  rsh->reserve_pub = *reserve_pub;
+  rsh->url = MAH_path_to_url (exchange,
                               arg_str);
   GNUNET_free (arg_str);
 
@@ -462,14 +528,14 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
-                                   wsh->url));
+                                   rsh->url));
   ctx = MAH_handle_to_context (exchange);
-  wsh->job = GNUNET_CURL_job_add (ctx,
+  rsh->job = GNUNET_CURL_job_add (ctx,
                           eh,
                           GNUNET_NO,
                           &handle_reserve_status_finished,
-                          wsh);
-  return wsh;
+                          rsh);
+  return rsh;
 }
 
 
@@ -477,18 +543,18 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
  * Cancel a withdraw status request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
- * @param wsh the withdraw status request handle
+ * @param rsh the withdraw status request handle
  */
 void
-TALER_EXCHANGE_reserve_status_cancel (struct TALER_EXCHANGE_ReserveStatusHandle *wsh)
+TALER_EXCHANGE_reserve_status_cancel (struct TALER_EXCHANGE_ReserveStatusHandle *rsh)
 {
-  if (NULL != wsh->job)
+  if (NULL != rsh->job)
   {
-    GNUNET_CURL_job_cancel (wsh->job);
-    wsh->job = NULL;
+    GNUNET_CURL_job_cancel (rsh->job);
+    rsh->job = NULL;
   }
-  GNUNET_free (wsh->url);
-  GNUNET_free (wsh);
+  GNUNET_free (rsh->url);
+  GNUNET_free (rsh);
 }
 
 
@@ -663,7 +729,8 @@ reserve_withdraw_payment_required (struct TALER_EXCHANGE_ReserveWithdrawHandle *
     struct TALER_EXCHANGE_ReserveHistory rhistory[len];
 
     if (GNUNET_OK !=
-        parse_reserve_history (history,
+        parse_reserve_history (wsh->exchange,
+                               history,
                                &wsh->reserve_pub,
                                balance.currency,
                                &balance_from_history,

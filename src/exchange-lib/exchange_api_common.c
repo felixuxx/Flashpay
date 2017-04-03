@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015, 2016 Inria & GNUnet e.V.
+  Copyright (C) 2015-2017 Inria & GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -65,20 +65,12 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
   {
     json_t *transaction;
     struct TALER_Amount amount;
-    struct TALER_CoinSpendSignatureP sig;
-    void *details;
-    size_t details_size;
     const char *type;
-    struct GNUNET_JSON_Specification spec[] = {
+    struct GNUNET_JSON_Specification spec_glob[] = {
       TALER_JSON_spec_amount ("amount",
-                       &amount),
+                              &amount),
       GNUNET_JSON_spec_string ("type",
-                       &type),
-      GNUNET_JSON_spec_fixed_auto ("signature",
-                           &sig),
-      GNUNET_JSON_spec_varsize ("details",
-                        &details,
-                        &details_size),
+                               &type),
       GNUNET_JSON_spec_end()
     };
 
@@ -86,7 +78,7 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
                                   off);
     if (GNUNET_OK !=
         GNUNET_JSON_parse (transaction,
-                           spec,
+                           spec_glob,
                            NULL, NULL))
     {
       GNUNET_break_op (0);
@@ -96,40 +88,47 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
     if (0 == strcasecmp (type,
                          "DEPOSIT"))
     {
-      const struct TALER_DepositRequestPS *dr;
+      struct TALER_DepositRequestPS dr;
       struct TALER_Amount dr_amount;
+      struct TALER_CoinSpendSignatureP sig;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("signature",
+                                     &sig),
+        GNUNET_JSON_spec_fixed_auto ("details",
+                                     &dr),
+        GNUNET_JSON_spec_end()
+      };
 
-      if (details_size != sizeof (struct TALER_DepositRequestPS))
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (transaction,
+                             spec,
+                             NULL, NULL))
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
-      dr = (const struct TALER_DepositRequestPS *) details;
-      if (details_size != ntohl (dr->purpose.size))
+      /* TODO #4980 */
+      if (sizeof (dr) != ntohl (dr.purpose.size))
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
-                                      &dr->purpose,
+                                      &dr.purpose,
                                       &sig.eddsa_signature,
                                       &coin_pub->eddsa_pub))
-        {
+      {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
-
       TALER_amount_ntoh (&dr_amount,
-                         &dr->amount_with_fee);
+                         &dr.amount_with_fee);
+      /* TODO #4980 */
       if (0 != TALER_amount_cmp (&dr_amount,
                                  &amount))
       {
         GNUNET_break (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       add = GNUNET_YES;
@@ -137,39 +136,47 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
     else if (0 == strcasecmp (type,
                               "MELT"))
     {
-      const struct TALER_RefreshMeltCoinAffirmationPS *rm;
+      struct TALER_RefreshMeltCoinAffirmationPS rm;
       struct TALER_Amount rm_amount;
+      struct TALER_CoinSpendSignatureP sig;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("signature",
+                                     &sig),
+        GNUNET_JSON_spec_fixed_auto ("details",
+                                     &rm),
+        GNUNET_JSON_spec_end()
+      };
 
-      if (details_size != sizeof (struct TALER_RefreshMeltCoinAffirmationPS))
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (transaction,
+                             spec,
+                             NULL, NULL))
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
-      rm = (const struct TALER_RefreshMeltCoinAffirmationPS *) details;
-      if (details_size != ntohl (rm->purpose.size))
+      /* TODO #4980 */
+      if (sizeof (rm) != ntohl (rm.purpose.size))
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
-                                      &rm->purpose,
+                                      &rm.purpose,
                                       &sig.eddsa_signature,
                                       &coin_pub->eddsa_pub))
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       TALER_amount_ntoh (&rm_amount,
-                         &rm->amount_with_fee);
+                         &rm.amount_with_fee);
+      /* TODO #4980 */
       if (0 != TALER_amount_cmp (&rm_amount,
                                  &amount))
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       add = GNUNET_YES;
@@ -177,55 +184,60 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
     else if (0 == strcasecmp (type,
                               "REFUND"))
     {
-      const struct TALER_RefundRequestPS *rr;
+      struct TALER_RefundRequestPS rr;
       struct TALER_Amount rr_amount;
       struct TALER_Amount rr_fee;
       struct TALER_Amount rr_delta;
+      struct TALER_CoinSpendSignatureP sig;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("signature",
+                                     &sig),
+        GNUNET_JSON_spec_fixed_auto ("details",
+                                     &rr),
+        GNUNET_JSON_spec_end()
+      };
 
-      if (details_size != sizeof (struct TALER_RefundRequestPS))
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (transaction,
+                             spec,
+                             NULL, NULL))
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
-      rr = (const struct TALER_RefundRequestPS *) details;
-      if (details_size != ntohl (rr->purpose.size))
+      /* TODO #4980 */
+      if (sizeof (rr) != ntohl (rr.purpose.size))
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
-                                      &rr->purpose,
+                                      &rr.purpose,
                                       &sig.eddsa_signature,
-                                      &rr->merchant.eddsa_pub))
+                                      &rr.merchant.eddsa_pub))
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       TALER_amount_ntoh (&rr_amount,
-                         &rr->refund_amount);
-      TALER_amount_ntoh (&rr_fee,
-                         &rr->refund_fee);
+                         &rr.refund_amount);
       if (GNUNET_OK !=
           TALER_amount_subtract (&rr_delta,
                                  &rr_amount,
                                  &rr_fee))
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
+      /* TODO #4980 */
       if (0 != TALER_amount_cmp (&rr_delta,
                                  &amount))
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
-      /* NOTE/FIXME: theoretically, we could also check that the given
+      /* NOTE: theoretically, we could also check that the given
          merchant_pub and h_proposal_data appear in the
          history under deposits.  However, there is really no benefit
          for the exchange to lie here, so not checking is probably OK
@@ -237,14 +249,59 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
     else if (0 == strcasecmp (type,
                               "PAYBACK"))
     {
-      GNUNET_break (0); /* #3887 */
+      struct TALER_PaybackConfirmationPS pc;
+      struct TALER_Amount pc_amount;
+      struct TALER_ExchangePublicKeyP exchange_pub;
+      struct TALER_ExchangeSignatureP exchange_sig;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                     &exchange_sig),
+        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                     &exchange_pub),
+        GNUNET_JSON_spec_fixed_auto ("details",
+                                     &pc),
+        GNUNET_JSON_spec_end()
+      };
 
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (transaction,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+
+      /* TODO #4980 */
+      if (sizeof (pc) != ntohl (pc.purpose.size))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK,
+                                      &pc.purpose,
+                                      &exchange_sig.eddsa_signature,
+                                      &exchange_pub.eddsa_pub))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      TALER_amount_ntoh (&pc_amount,
+                         &pc.payback_amount);
+      /* TODO #4980 */
+      if (0 != TALER_amount_cmp (&pc_amount,
+                                 &amount))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      add = GNUNET_YES;
     }
     else
     {
       /* signature not supported, new version on server? */
       GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
     if (GNUNET_YES == add)
@@ -257,7 +314,6 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
       {
         /* overflow in history already!? inconceivable! Bad exchange! */
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
     }
@@ -277,11 +333,9 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
       {
         /* overflow in refund history? inconceivable! Bad exchange! */
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
     }
-    GNUNET_JSON_parse_free (spec);
   }
 
   /* Finally, subtract 'rtotal' from total to handle the subtractions */

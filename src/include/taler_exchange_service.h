@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 GNUnet e.V.
+  Copyright (C) 2014-2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -658,7 +658,17 @@ enum TALER_EXCHANGE_ReserveTransactionType {
   /**
    * Withdrawal from the reserve.
    */
-  TALER_EXCHANGE_RTT_WITHDRAWAL
+  TALER_EXCHANGE_RTT_WITHDRAWAL,
+
+  /**
+   * /payback operation.
+   */
+  TALER_EXCHANGE_RTT_PAYBACK,
+
+  /**
+   * Reserve closed operation.
+   */
+  TALER_EXCHANGE_RTT_CLOSE
 
 };
 
@@ -684,6 +694,10 @@ struct TALER_EXCHANGE_ReserveHistory
    */
   union {
 
+    /**
+     * Information about a deposit that filled this reserve.
+     * @e type is #TALER_EXCHANGE_RTT_DEPOSIT.
+     */
     struct {
       /**
        * Sender account information for the incoming transfer.
@@ -695,13 +709,59 @@ struct TALER_EXCHANGE_ReserveHistory
        */
       json_t *transfer_details;
 
-
     } in_details;
 
     /**
      * Signature authorizing the withdrawal for outgoing transaction.
+     * @e type is #TALER_EXCHANGE_RTT_WITHDRAWAL.
      */
     json_t *out_authorization_sig;
+
+    /**
+     * Information provided if the reserve was filled via /payback.
+     * @e type is #TALER_EXCHANGE_RTT_PAYBACK.
+     */
+    struct {
+
+      /**
+       * Public key of the coin that was paid back.
+       */
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+
+      /**
+       * Signature of the coin of type
+       * #TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK.
+       */
+      struct TALER_ExchangeSignatureP exchange_sig;
+
+      /**
+       * Public key of the exchange that was used for @e exchange_sig.
+       */
+      struct TALER_ExchangePublicKeyP exchange_pub;
+
+      /**
+       * When did the /payback operation happen?
+       */
+      struct GNUNET_TIME_Absolute timestamp;
+
+    } payback_details;
+
+    /**
+     * Information about a close operation of the reserve.
+     * @e type is #TALER_EXCHANGE_RTT_CLOSE.
+     */
+    struct {
+      /**
+       * Receiver account information for the outgoing wire transfer.
+       */
+      json_t *receiver_account_details;
+
+      /**
+       * Wire transfer details for the outgoing wire transfer.
+       */
+      json_t *transfer_details;
+
+    } close_details;
 
   } details;
 
