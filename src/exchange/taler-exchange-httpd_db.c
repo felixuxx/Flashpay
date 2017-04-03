@@ -764,6 +764,23 @@ execute_reserve_withdraw_transaction (struct MHD_Connection *connection,
         }
       res |= 2;
       break;
+
+    case TALER_EXCHANGEDB_RO_PAYBACK_COIN:
+      if (0 == (res & 1))
+        deposit_total = pos->details.payback->value;
+      else
+        if (GNUNET_OK !=
+            TALER_amount_add (&deposit_total,
+                              &deposit_total,
+                              &pos->details.payback->value))
+        {
+          TEH_plugin->rollback (TEH_plugin->cls,
+                                session);
+          return TEH_RESPONSE_reply_internal_db_error (connection,
+						       TALER_EC_WITHDRAW_AMOUNT_DEPOSITS_OVERFLOW);
+        }
+      res |= 1;
+      break;
     }
   }
   if (0 == (res & 1))
