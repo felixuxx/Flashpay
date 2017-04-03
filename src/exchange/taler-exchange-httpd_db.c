@@ -2335,7 +2335,7 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_Amount amount;
   struct TALER_Amount spent;
-  struct GNUNET_TIME_Absolute payback_deadline;
+  struct GNUNET_TIME_Absolute now;
 
   if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
   {
@@ -2406,6 +2406,8 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
   }
   TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                           tl);
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
 
   /* add coin to list of wire transfers for payback */
   ret = TEH_plugin->insert_payback_request (TEH_plugin->cls,
@@ -2416,7 +2418,7 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
                                             coin_blind,
                                             &amount,
                                             h_blind,
-                                            &payback_deadline);
+                                            now);
   if (GNUNET_SYSERR == ret)
   {
     TALER_LOG_WARNING ("Failed to store /payback information in database\n");
@@ -2432,7 +2434,7 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
                                              &coin->coin_pub,
                                              &reserve_pub,
                                              &amount,
-                                             payback_deadline);
+                                             now);
 }
 
 

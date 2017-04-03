@@ -1956,7 +1956,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param amount total amount to be paid back
    * @param receiver_account_details who should receive the funds
    * @parma h_blind_ev hash of the blinded coin's envelope (must match reserves_out entry)
-   * @param[out] deadline set to absolute time by when the exchange plans to pay it back
+   * @param now timestamp to store
    * @return #GNUNET_OK on success,
    *         #GNUNET_SYSERR on DB errors
    */
@@ -1969,7 +1969,7 @@ struct TALER_EXCHANGEDB_Plugin
                             const struct TALER_DenominationBlindingKeyP *coin_blind,
                             const struct TALER_Amount *amount,
                             const struct GNUNET_HashCode *h_blind_ev,
-                            struct GNUNET_TIME_Absolute *deadline);
+                            struct GNUNET_TIME_Absolute timestamp);
 
 
   /**

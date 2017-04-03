@@ -5629,7 +5629,7 @@ postgres_select_wire_out_above_serial_id (void *cls,
  * @param amount total amount to be paid back
  * @param receiver_account_details who should receive the funds
  * @parma h_blind_ev hash of the blinded coin's envelope (must match reserves_out entry)
- * @param[out] deadline set to absolute time by when the exchange plans to pay it back
+ * @param timestamp current time (rounded)
  * @return #GNUNET_OK on success,
  *         #GNUNET_SYSERR on DB errors
  */
@@ -5642,10 +5642,9 @@ postgres_insert_payback_request (void *cls,
                                  const struct TALER_DenominationBlindingKeyP *coin_blind,
                                  const struct TALER_Amount *amount,
                                  const struct GNUNET_HashCode *h_blind_ev,
-                                 struct GNUNET_TIME_Absolute *deadline)
+                                 struct GNUNET_TIME_Absolute timestamp)
 {
   PGresult *result;
-  struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute expiry;
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -5654,12 +5653,11 @@ postgres_insert_payback_request (void *cls,
     GNUNET_PQ_query_param_auto_from_type (coin_sig),
     GNUNET_PQ_query_param_auto_from_type (coin_blind),
     TALER_PQ_query_param_amount (amount),
-    GNUNET_PQ_query_param_absolute_time (&now),
+    GNUNET_PQ_query_param_absolute_time (&timestamp),
     GNUNET_PQ_query_param_auto_from_type (h_blind_ev),
     GNUNET_PQ_query_param_end
   };
 
-  now = GNUNET_TIME_absolute_get ();
   result = GNUNET_PQ_exec_prepared (session->conn,
                                     "payback_insert",
                                     params);
@@ -5689,7 +5687,7 @@ postgres_insert_payback_request (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  expiry = GNUNET_TIME_absolute_add (now,
+  expiry = GNUNET_TIME_absolute_add (timestamp,
                                      TALER_IDLE_RESERVE_EXPIRATION_TIME);
   reserve.expiry = GNUNET_TIME_absolute_max (expiry,
                                              reserve.expiry);
@@ -5700,7 +5698,6 @@ postgres_insert_payback_request (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  *deadline = reserve.expiry;
   return GNUNET_OK;
 }
 

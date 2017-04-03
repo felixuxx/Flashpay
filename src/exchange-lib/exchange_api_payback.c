@@ -94,13 +94,13 @@ verify_payback_signature_ok (const struct TALER_EXCHANGE_PaybackHandle *ph,
   struct TALER_ExchangePublicKeyP exchange_pub;
   struct TALER_ExchangeSignatureP exchange_sig;
   struct TALER_Amount amount;
-  struct GNUNET_TIME_Absolute deadline;
+  struct GNUNET_TIME_Absolute timestamp;
   const struct TALER_EXCHANGE_Keys *key_state;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
     TALER_JSON_spec_amount ("amount", &amount),
-    GNUNET_JSON_spec_absolute_time ("payback_deadline", &deadline),
+    GNUNET_JSON_spec_absolute_time ("timestamp", &timestamp),
     GNUNET_JSON_spec_fixed_auto ("reserve_pub", &pc.reserve_pub),
     GNUNET_JSON_spec_end()
   };
@@ -123,7 +123,7 @@ verify_payback_signature_ok (const struct TALER_EXCHANGE_PaybackHandle *ph,
   }
   pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK);
   pc.purpose.size = htonl (sizeof (pc));
-  pc.payback_deadline = GNUNET_TIME_absolute_hton (deadline);
+  pc.timestamp = GNUNET_TIME_absolute_hton (timestamp);
   TALER_amount_hton (&pc.payback_amount,
                      &amount);
   pc.coin_pub = ph->coin_pub;
@@ -140,7 +140,7 @@ verify_payback_signature_ok (const struct TALER_EXCHANGE_PaybackHandle *ph,
           MHD_HTTP_OK,
 	  TALER_EC_NONE,
           &amount,
-          deadline,
+          timestamp,
           &pc.reserve_pub,
           json);
   return GNUNET_OK;

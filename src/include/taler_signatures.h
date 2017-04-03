@@ -131,6 +131,11 @@
  */
 #define TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK 1039
 
+/**
+ * Signature where the Exchange confirms it closed a reserve.
+ */
+#define TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED 1040
+
 
 /*********************/
 /* Wallet signatures */
@@ -1170,15 +1175,16 @@ struct TALER_PaybackConfirmationPS
 {
 
   /**
-   * Purpose is  #TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK
+   * Purpose is #TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * By what deadline does the exchange promise to initiate
-   * the wire transfer?
+   * When did the exchange receive the payback request?
+   * Indirectly determines when the wire transfer is (likely)
+   * to happen.
    */
-  struct GNUNET_TIME_AbsoluteNBO payback_deadline;
+  struct GNUNET_TIME_AbsoluteNBO timestamp;
 
   /**
    * How much of the coin's value will the exchange transfer?
@@ -1195,6 +1201,40 @@ struct TALER_PaybackConfirmationPS
    * Public key of the reserve that will receive the payback.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
+};
+
+
+/**
+ * Response by which the exchange affirms that it has
+ * closed a reserve and send back the funds.
+ */
+struct TALER_ReserveCloseConfirmationPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * When did the exchange initiate the wire transfer.
+   */
+  struct GNUNET_TIME_AbsoluteNBO timestamp;
+
+  /**
+   * How much did the exchange send?
+   */
+  struct TALER_AmountNBO closing_amount;
+
+  /**
+   * Public key of the reserve that received the payback.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * Hash of the receiver's bank account.
+   */
+  struct GNUNET_HashCode h_wire;
 };
 
 

@@ -1344,7 +1344,7 @@ struct TALER_EXCHANGE_PaybackHandle;
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
  * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param amount amount the exchange will wire back for this coin
- * @param deadline by when will the exchange wire the funds?
+ * @param timestamp what time did the exchange receive the /payback request
  * @param reserve_pub public key of the reserve receiving the payback
  * @param full_response full response from the exchange (for logging, in case of errors)
  */
@@ -1353,7 +1353,7 @@ typedef void
                                          unsigned int http_status,
                                          enum TALER_ErrorCode ec,
                                          const struct TALER_Amount *amount,
-                                         struct GNUNET_TIME_Absolute deadline,
+                                         struct GNUNET_TIME_Absolute timestamp,
                                          const struct TALER_ReservePublicKeyP *reserve_pub,
                                          const json_t *full_response);
 

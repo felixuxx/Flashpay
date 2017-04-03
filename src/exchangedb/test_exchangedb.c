@@ -1511,6 +1511,7 @@ run (void *cls)
 
   RND_BLK (&coin_sig);
   RND_BLK (&coin_blind);
+  deadline = GNUNET_TIME_absolute_get ();
   FAILIF (GNUNET_OK !=
           plugin->insert_payback_request (plugin->cls,
                                           session,
@@ -1520,7 +1521,7 @@ run (void *cls)
                                           &coin_blind,
                                           &value,
                                           &cbc.h_coin_envelope,
-                                          &deadline));
+                                          deadline));
 
   result = 7;
   rh = plugin->get_reserve_history (plugin->cls,
@@ -1719,7 +1720,7 @@ run (void *cls)
                                           &coin_blind,
                                           &value,
                                           &cbc.h_coin_envelope,
-                                          &deadline));
+                                          deadline));
 
   auditor_row_cnt = 0;
   FAILIF (GNUNET_OK !=
