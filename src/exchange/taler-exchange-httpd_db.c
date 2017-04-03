@@ -178,6 +178,17 @@ calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionList *tl,
         return GNUNET_SYSERR;
       }
       break;
+    case TALER_EXCHANGEDB_TT_PAYBACK:
+      /* spent += pos->value */
+      if (GNUNET_OK !=
+          TALER_amount_add (&spent,
+                            &spent,
+                            &pos->details.payback->value))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      break;
     }
   }
   /* spent = spent - refunded */
@@ -428,6 +439,9 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
           break;
         }
       }
+      break;
+    case TALER_EXCHANGEDB_TT_PAYBACK:
+      /* Paybacks cannot be refunded, ignore here */
       break;
     }
   }
