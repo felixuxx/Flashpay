@@ -256,6 +256,18 @@ parse_reserve_history (const json_t *history,
       }
       /* end type==WITHDRAW */
     }
+    else if (0 == strcasecmp (type,
+                              "PAYBACK"))
+    {
+      GNUNET_break (0); /* #3887 */
+      /* end type==PAYBACK */
+    }
+    else if (0 == strcasecmp (type,
+                              "CLOSING"))
+    {
+      GNUNET_break (0); /* #3887 / #4956 */
+      /* end type==CLOSING */
+    }
     else
     {
       /* unexpected 'type', protocol incompatibility, complain! */

@@ -234,6 +234,12 @@ TALER_EXCHANGE_verify_coin_history (const char *currency,
          well-formendess check). */
       add = GNUNET_NO;
     }
+    else if (0 == strcasecmp (type,
+                              "PAYBACK"))
+    {
+      GNUNET_break (0); /* #3887 */
+
+    }
     else
     {
       /* signature not supported, new version on server? */
