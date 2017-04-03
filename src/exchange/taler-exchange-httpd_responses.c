@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Inria & GNUnet e.V.
+  Copyright (C) 2014, 2015, 2016, 2017 Inria & GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -549,6 +549,35 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
 	  return NULL;
 	}
         details = GNUNET_JSON_from_data_auto (&rr);
+      }
+      break;
+    case TALER_EXCHANGEDB_TT_PAYBACK:
+      {
+        const struct TALER_EXCHANGEDB_Payback *payback = pos->details.payback;
+        struct TALER_PaybackRequestPS pr;
+
+        type = "PAYBACK";
+        value = payback->value;
+        pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_PAYBACK);
+        pr.purpose.size = htonl (sizeof (pr));
+        pr.coin_pub = payback->coin_pub;
+        GNUNET_CRYPTO_rsa_public_key_hash (payback->denom_pub.rsa_public_key,
+                                           &pr.h_denom_pub);
+        pr.coin_blind = payback->coin_blind;
+
+	/* internal sanity check before we hand out a bogus sig... */
+        sig = &payback->coin_sig.eddsa_signature;
+        if (GNUNET_OK !=
+            GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_PAYBACK,
+                                        &pr.purpose,
+                                        sig,
+                                        &payback->coin_pub.eddsa_pub))
+	{
+	  GNUNET_break (0);
+	  json_decref (history);
+	  return NULL;
+	}
+        details = GNUNET_JSON_from_data_auto (&pr);
       }
       break;
     default:
