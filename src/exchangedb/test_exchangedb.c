@@ -1205,8 +1205,9 @@ static  struct TALER_Amount wire_out_amount;
  * @param wtid wire transfer subject
  * @param wire wire transfer details of the receiver
  * @param amount amount that was wired
+ * @return #GNUNET_OK to continue, #GNUNET_SYSERR to stop iteration
  */
-static void
+static int
 audit_wire_cb (void *cls,
                uint64_t rowid,
                struct GNUNET_TIME_Absolute date,
@@ -1223,6 +1224,7 @@ audit_wire_cb (void *cls,
                          &wire_out_wtid,
                          sizeof (*wtid)));
   GNUNET_assert (date.abs_value_us == wire_out_date.abs_value_us);
+  return GNUNET_OK;
 }
 
 

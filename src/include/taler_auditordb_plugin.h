@@ -122,6 +122,18 @@ struct TALER_AUDITORDB_ProgressPoint
   uint64_t last_reserve_out_serial_id;
 
   /**
+   * last_payback_serial_id serial ID of the last payback entry the auditor processed when
+   * considering reserves.
+   */
+  uint64_t last_reserve_payback_serial_id;
+
+  /**
+   * last_reserve_close_serial_id serial ID of the last reserve_close
+   * entry the auditor processed.
+   */
+  uint64_t last_reserve_close_serial_id;
+
+  /**
    * last_reserve_out_serial_id serial ID of the last withdraw the auditor processed
    */
   uint64_t last_withdraw_serial_id;

@@ -515,7 +515,8 @@ postgres_create_tables (void *cls)
 
   /* Table for /payback information */
   SQLEXEC("CREATE TABLE IF NOT EXISTS payback "
-          "(reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
+          "(payback_uuid BIGSERIAL"
+          ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
           ",coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32)"
           ",coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)"
           ",coin_blind BYTEA NOT NULL CHECK(LENGTH(coin_blind)=32)"
@@ -1417,6 +1418,26 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9)",
            9, NULL);
+
+  /* Used in #postgres_select_payback_above_serial_id() to obtain payback transactions */
+  PREPARE ("payback_get_incr",
+           "SELECT"
+           " payback_uuid"
+           ",timestamp"
+           ",reserve_pub"
+           ",coin_pub"
+           ",coin_sig"
+           ",coin_blind"
+           ",h_blind_ev"
+           ",denom.denom_pub"
+           ",amount_val"
+           ",amount_frac"
+           ",amount_curr"
+           " FROM payback"
+           "    JOIN reserves_out denom USING (reserve_pub,h_blind_ev)"
+           " WHERE payback_uuid>=$1"
+           " ORDER BY payback_uuid ASC",
+           1, NULL);
 
   /* Used in #postgres_get_reserve_history() to obtain payback transactions
      for a reserve */
@@ -5057,7 +5078,7 @@ postgres_select_deposits_above_serial_id (void *cls,
     return GNUNET_SYSERR;
   }
   int nrows;
-  int i;
+  int ret;
 
   nrows = PQntuples (result);
   if (0 == nrows)
@@ -5067,7 +5088,7 @@ postgres_select_deposits_above_serial_id (void *cls,
     PQclear (result);
     return GNUNET_NO;
   }
-  for (i=0;i<nrows;i++)
+  for (int i=0;i<nrows;i++)
   {
     struct TALER_EXCHANGEDB_Deposit deposit;
     struct TALER_DenominationPublicKey denom_pub;
@@ -5109,20 +5130,22 @@ postgres_select_deposits_above_serial_id (void *cls,
       PQclear (result);
       return GNUNET_SYSERR;
     }
-    cb (cb_cls,
-        rowid,
-        deposit.timestamp,
-        &deposit.merchant_pub,
-        &denom_pub,
-        &deposit.coin.coin_pub,
-        &deposit.csig,
-        &deposit.amount_with_fee,
-        &deposit.h_proposal_data,
-        deposit.refund_deadline,
-        deposit.wire_deadline,
-        deposit.receiver_wire_account,
-        done);
+    ret = cb (cb_cls,
+              rowid,
+              deposit.timestamp,
+              &deposit.merchant_pub,
+              &denom_pub,
+              &deposit.coin.coin_pub,
+              &deposit.csig,
+              &deposit.amount_with_fee,
+              &deposit.h_proposal_data,
+              deposit.refund_deadline,
+              deposit.wire_deadline,
+              deposit.receiver_wire_account,
+              done);
     GNUNET_PQ_cleanup_result (rs);
+    if (GNUNET_OK != ret)
+      break;
   }
   PQclear (result);
   return GNUNET_OK;
@@ -5153,6 +5176,10 @@ postgres_select_refreshs_above_serial_id (void *cls,
     GNUNET_PQ_query_param_end
   };
   PGresult *result;
+  int nrows;
+  int i;
+  int ret;
+
   result = GNUNET_PQ_exec_prepared (session->conn,
                                     "audit_get_refresh_sessions_incr",
                                     params);
@@ -5164,8 +5191,6 @@ postgres_select_refreshs_above_serial_id (void *cls,
     PQclear (result);
     return GNUNET_SYSERR;
   }
-  int nrows;
-  int i;
 
   nrows = PQntuples (result);
   if (0 == nrows)
@@ -5215,16 +5240,18 @@ postgres_select_refreshs_above_serial_id (void *cls,
       PQclear (result);
       return GNUNET_SYSERR;
     }
-    cb (cb_cls,
-        rowid,
-        &denom_pub,
-        &coin_pub,
-        &coin_sig,
-        &amount_with_fee,
-        num_newcoins,
-        noreveal_index,
-        &session_hash);
+    ret = cb (cb_cls,
+              rowid,
+              &denom_pub,
+              &coin_pub,
+              &coin_sig,
+              &amount_with_fee,
+              num_newcoins,
+              noreveal_index,
+              &session_hash);
     GNUNET_PQ_cleanup_result (rs);
+    if (GNUNET_OK != ret)
+      break;
   }
   PQclear (result);
   return GNUNET_OK;
@@ -5255,6 +5282,9 @@ postgres_select_refunds_above_serial_id (void *cls,
     GNUNET_PQ_query_param_end
   };
   PGresult *result;
+  int nrows;
+  int ret;
+
   result = GNUNET_PQ_exec_prepared (session->conn,
                                     "audit_get_refunds_incr",
                                     params);
@@ -5265,8 +5295,6 @@ postgres_select_refunds_above_serial_id (void *cls,
     PQclear (result);
     return GNUNET_SYSERR;
   }
-  int nrows;
-  int i;
 
   nrows = PQntuples (result);
   if (0 == nrows)
@@ -5276,7 +5304,7 @@ postgres_select_refunds_above_serial_id (void *cls,
     PQclear (result);
     return GNUNET_NO;
   }
-  for (i=0;i<nrows;i++)
+  for (int i=0;i<nrows;i++)
   {
     struct TALER_EXCHANGEDB_Refund refund;
     struct TALER_DenominationPublicKey denom_pub;
@@ -5310,16 +5338,18 @@ postgres_select_refunds_above_serial_id (void *cls,
       PQclear (result);
       return GNUNET_SYSERR;
     }
-    cb (cb_cls,
-        rowid,
-        &denom_pub,
-        &refund.coin.coin_pub,
-        &refund.merchant_pub,
-        &refund.merchant_sig,
-        &refund.h_proposal_data,
-        refund.rtransaction_id,
-        &refund.refund_amount);
+    ret = cb (cb_cls,
+              rowid,
+              &denom_pub,
+              &refund.coin.coin_pub,
+              &refund.merchant_pub,
+              &refund.merchant_sig,
+              &refund.h_proposal_data,
+              refund.rtransaction_id,
+              &refund.refund_amount);
     GNUNET_PQ_cleanup_result (rs);
+    if (GNUNET_OK != ret)
+      break;
   }
   PQclear (result);
   return GNUNET_OK;
@@ -5361,7 +5391,7 @@ postgres_select_reserves_in_above_serial_id (void *cls,
     return GNUNET_SYSERR;
   }
   int nrows;
-  int i;
+  int ret;
 
   nrows = PQntuples (result);
   if (0 == nrows)
@@ -5372,7 +5402,7 @@ postgres_select_reserves_in_above_serial_id (void *cls,
     return GNUNET_NO;
   }
 
-  for (i=0;i<nrows;i++)
+  for (int i=0;i<nrows;i++)
   {
     struct TALER_ReservePublicKeyP reserve_pub;
     struct TALER_Amount credit;
@@ -5406,14 +5436,16 @@ postgres_select_reserves_in_above_serial_id (void *cls,
       PQclear (result);
       return GNUNET_SYSERR;
     }
-    cb (cb_cls,
-        rowid,
-        &reserve_pub,
-        &credit,
-        sender_account_details,
-        transfer_details,
-        execution_date);
+    ret = cb (cb_cls,
+              rowid,
+              &reserve_pub,
+              &credit,
+              sender_account_details,
+              transfer_details,
+              execution_date);
     GNUNET_PQ_cleanup_result (rs);
+    if (GNUNET_OK != ret)
+      break;
   }
 
   PQclear (result);
@@ -5457,7 +5489,7 @@ postgres_select_reserves_out_above_serial_id (void *cls,
     return GNUNET_SYSERR;
   }
   int nrows;
-  int i;
+  int ret;
 
   nrows = PQntuples (result);
   if (0 == nrows)
@@ -5467,7 +5499,7 @@ postgres_select_reserves_out_above_serial_id (void *cls,
     PQclear (result);
     return GNUNET_NO;
   }
-  for (i=0;i<nrows;i++)
+  for (int i=0;i<nrows;i++)
   {
     struct GNUNET_HashCode h_blind_ev;
     struct TALER_DenominationPublicKey denom_pub;
@@ -5506,16 +5538,18 @@ postgres_select_reserves_out_above_serial_id (void *cls,
       PQclear (result);
       return GNUNET_SYSERR;
     }
-    cb (cb_cls,
-        rowid,
-        &h_blind_ev,
-        &denom_pub,
-        &denom_sig,
-        &reserve_pub,
-        &reserve_sig,
-        execution_date,
-        &amount_with_fee);
+    ret = cb (cb_cls,
+              rowid,
+              &h_blind_ev,
+              &denom_pub,
+              &denom_sig,
+              &reserve_pub,
+              &reserve_sig,
+              execution_date,
+              &amount_with_fee);
     GNUNET_PQ_cleanup_result (rs);
+    if (GNUNET_OK != ret)
+      break;
   }
 
   PQclear (result);
@@ -5548,6 +5582,9 @@ postgres_select_wire_out_above_serial_id (void *cls,
     GNUNET_PQ_query_param_end
   };
   PGresult *result;
+  int nrows;
+  int ret;
+
   result = GNUNET_PQ_exec_prepared (session->conn,
                                     "audit_get_wire_incr",
                                     params);
@@ -5558,7 +5595,6 @@ postgres_select_wire_out_above_serial_id (void *cls,
     PQclear (result);
     return GNUNET_SYSERR;
   }
-  int nrows;
 
   nrows = PQntuples (result);
   if (0 == nrows)
@@ -5600,13 +5636,126 @@ postgres_select_wire_out_above_serial_id (void *cls,
       return GNUNET_SYSERR;
     }
 
-    cb (cb_cls,
-        rowid,
-        date,
-        &wtid,
-        wire,
-        &amount);
+    ret = cb (cb_cls,
+              rowid,
+              date,
+              &wtid,
+              wire,
+              &amount);
     GNUNET_PQ_cleanup_result (rs);
+    if (GNUNET_OK != ret)
+      break;
+  }
+
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Function called to select payback requests the exchange
+ * received, ordered by serial ID (monotonically increasing).
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param serial_id lowest serial ID to include (select larger or equal)
+ * @param cb function to call for ONE unfinished item
+ * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if there are no entries,
+ *         #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_select_payback_above_serial_id (void *cls,
+                                         struct TALER_EXCHANGEDB_Session *session,
+                                         uint64_t serial_id,
+                                         TALER_EXCHANGEDB_PaybackCallback cb,
+                                         void *cb_cls)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "payback_get_incr",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result, session->conn);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  int nrows;
+  int ret;
+
+  nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "select_prepare_above_serial_id() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  for (int i=0;i<nrows;i++)
+  {
+    uint64_t rowid;
+    struct TALER_ReservePublicKeyP reserve_pub;
+    struct TALER_CoinSpendPublicKeyP coin_pub;
+    struct TALER_CoinSpendSignatureP coin_sig;
+    struct TALER_DenominationBlindingKeyP coin_blind;
+    struct TALER_Amount amount;
+    struct GNUNET_HashCode h_blind_ev;
+    struct GNUNET_TIME_Absolute timestamp;
+    struct TALER_DenominationPublicKey denom_pub;
+    struct GNUNET_HashCode h_denom_pub;
+
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("payback_uuid",
+                                    &rowid),
+      GNUNET_PQ_result_spec_absolute_time ("timestamp",
+                                           &timestamp),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                            &reserve_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
+                                            &coin_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
+                                            &coin_sig),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
+                                            &coin_blind),
+      GNUNET_PQ_result_spec_auto_from_type ("h_blind_ev",
+                                            &h_blind_ev),
+      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+                                            &denom_pub.rsa_public_key),
+      TALER_PQ_result_spec_amount ("amount",
+                                   &amount),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
+                                       &h_denom_pub);
+    ret = cb (cb_cls,
+              rowid,
+              timestamp,
+              &amount,
+              &reserve_pub,
+              &coin_pub,
+              &coin_sig,
+              &h_denom_pub,
+              &coin_blind);
+    GNUNET_PQ_cleanup_result (rs);
+    if (GNUNET_OK != ret)
+      break;
   }
 
   PQclear (result);
@@ -5868,6 +6017,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->select_reserves_in_above_serial_id = &postgres_select_reserves_in_above_serial_id;
   plugin->select_reserves_out_above_serial_id = &postgres_select_reserves_out_above_serial_id;
   plugin->select_wire_out_above_serial_id = &postgres_select_wire_out_above_serial_id;
+  plugin->select_payback_above_serial_id = &postgres_select_payback_above_serial_id;
   plugin->insert_payback_request = &postgres_insert_payback_request;
   plugin->get_reserve_by_h_blind = &postgres_get_reserve_by_h_blind;
   return plugin;

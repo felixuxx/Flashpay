@@ -875,8 +875,9 @@ typedef void
  * @param wtid wire transfer subject
  * @param wire wire transfer details of the receiver
  * @param amount amount that was wired
+ * @return #GNUNET_OK to continue, #GNUNET_SYSERR to stop iteration
  */
-typedef void
+typedef int
 (*TALER_EXCHANGEDB_WireTransferOutCallback)(void *cls,
                                             uint64_t rowid,
                                             struct GNUNET_TIME_Absolute date,
@@ -894,8 +895,9 @@ typedef void
  * @param buf transaction data that was persisted, NULL on error
  * @param buf_size number of bytes in @a buf, 0 on error
  * @param finished did we complete the transfer yet?
+ * @return #GNUNET_OK to continue, #GNUNET_SYSERR to stop iteration
  */
-typedef void
+typedef int
 (*TALER_EXCHANGEDB_WirePreparationCallback)(void *cls,
                                             uint64_t rowid,
                                             const char *wire_method,
@@ -909,18 +911,25 @@ typedef void
  *
  * @param cls closure
  * @param rowid row identifier used to uniquely identify the payback operation
- * @param deadline by when did we promise the payment
- * @param receiver_account_details to whom do we need to send the funds
- * @param amount how much should be transferred
- * @param wire_subject what should be the wire subject
+ * @param timestamp when did we receive the payback request
+ * @param amount how much should be added back to the reserve
+ * @param reserve_pub public key of the reserve
+ * @param coin_pub public key of the coin
+ * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+ * @param h_denom_pub hash of the denomination key of the coin
+ * @param coin_blind blinding factor used to blind the coin
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-typedef void
+typedef int
 (*TALER_EXCHANGEDB_PaybackCallback)(void *cls,
                                     uint64_t rowid,
-                                    struct GNUNET_TIME_Absolute deadline,
-                                    const json_t *receiver_account_details,
+                                    struct GNUNET_TIME_Absolute timestamp,
                                     const struct TALER_Amount *amount,
-                                    const struct TALER_WireTransferIdentifierRawP *wtid);
+                                    const struct TALER_ReservePublicKeyP *reserve_pub,
+                                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                                    const struct TALER_CoinSpendSignatureP *coin_sig,
+                                    const struct GNUNET_HashCode *h_denom_pub,
+                                    const struct TALER_DenominationBlindingKeyP *coin_blind);
 
 
 /**
@@ -1937,6 +1946,27 @@ struct TALER_EXCHANGEDB_Plugin
                                      uint64_t serial_id,
                                      TALER_EXCHANGEDB_WireTransferOutCallback cb,
                                      void *cb_cls);
+
+
+  /**
+   * Function called to select payback requests the exchange
+   * received, ordered by serial ID (monotonically increasing).
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param serial_id lowest serial ID to include (select larger or equal)
+   * @param cb function to call for ONE unfinished item
+   * @param cb_cls closure for @a cb
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_NO if there are no entries,
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*select_payback_above_serial_id)(void *cls,
+                                    struct TALER_EXCHANGEDB_Session *session,
+                                    uint64_t serial_id,
+                                    TALER_EXCHANGEDB_PaybackCallback cb,
+                                    void *cb_cls);
 
 
   /**

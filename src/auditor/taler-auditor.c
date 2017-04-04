@@ -800,6 +800,89 @@ handle_reserve_out (void *cls,
 
 
 /**
+ * Function called with details about withdraw operations.  Verifies
+ * the signature and updates the reserve's balance.
+ *
+ * @param cls our `struct ReserveContext`
+ * @param rowid unique serial ID for the refresh session in our DB
+ * @param timestamp when did we receive the payback request
+ * @param amount how much should be added back to the reserve
+ * @param reserve_pub public key of the reserve
+ * @param coin_pub public key of the coin
+ * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
+ * @param h_denom_pub hash of the denomination key of the coin
+ * @param coin_blind blinding factor used to blind the coin
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static int
+handle_payback_by_reserve (void *cls,
+                           uint64_t rowid,
+                           struct GNUNET_TIME_Absolute timestamp,
+                           const struct TALER_Amount *amount,
+                           const struct TALER_ReservePublicKeyP *reserve_pub,
+                           const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                           const struct TALER_CoinSpendSignatureP *coin_sig,
+                           const struct GNUNET_HashCode *h_denom_pub,
+                           const struct TALER_DenominationBlindingKeyP *coin_blind)
+{
+  struct ReserveContext *rc = cls;
+  struct GNUNET_HashCode key;
+  struct ReserveSummary *rs;
+  struct GNUNET_TIME_Absolute expiry;
+
+  /* should be monotonically increasing */
+  GNUNET_assert (rowid >= pp.last_reserve_payback_serial_id);
+  pp.last_reserve_payback_serial_id = rowid + 1;
+
+  GNUNET_CRYPTO_hash (reserve_pub,
+                      sizeof (*reserve_pub),
+                      &key);
+  rs = GNUNET_CONTAINER_multihashmap_get (rc->reserves,
+                                          &key);
+  if (NULL == rs)
+  {
+    rs = GNUNET_new (struct ReserveSummary);
+    rs->reserve_pub = *reserve_pub;
+    rs->total_in = *amount;
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (amount->currency,
+                                          &rs->total_out));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (amount->currency,
+                                          &rs->total_fee));
+    if (GNUNET_OK !=
+        load_auditor_reserve_summary (rs))
+    {
+      GNUNET_break (0);
+      GNUNET_free (rs);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_assert (GNUNET_OK ==
+                   GNUNET_CONTAINER_multihashmap_put (rc->reserves,
+                                                      &key,
+                                                      rs,
+                                                      GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+  }
+  else
+  {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&rs->total_in,
+                                     &rs->total_in,
+                                     amount));
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Additional /payback value to for reserve `%s' of %s\n",
+              TALER_B2S (reserve_pub),
+              TALER_amount2s (amount));
+  expiry = GNUNET_TIME_absolute_add (timestamp,
+                                     TALER_IDLE_RESERVE_EXPIRATION_TIME);
+  rs->a_expiration_date = GNUNET_TIME_absolute_max (rs->a_expiration_date,
+                                                    expiry);
+  return GNUNET_OK;
+}
+
+
+/**
  * Check that the reserve summary matches what the exchange database
  * thinks about the reserve, and update our own state of the reserve.
  *
@@ -1041,7 +1124,20 @@ analyze_reserves (void *cls)
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  /* TODO: iterate over table for reserve expiration refunds! (#4956) */
+  if (GNUNET_SYSERR ==
+      edb->select_payback_above_serial_id (edb->cls,
+                                           esession,
+                                           pp.last_reserve_payback_serial_id,
+                                           &handle_payback_by_reserve,
+                                           &rc))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+
+  /* TODO: iterate over table for reserve expiration refunds! (#4956);
+     should use pp.last_reserve_close_serial_id */
 
   GNUNET_CONTAINER_multihashmap_iterate (rc.reserves,
                                          &verify_reserve_balance,
@@ -1774,8 +1870,9 @@ get_wire_fee (struct AggregationContext *ac,
  * @param wtid wire transfer subject
  * @param wire wire transfer details of the receiver
  * @param amount amount that was wired
+ * @return #GNUNET_OK to continue, #GNUNET_SYSERR to stop iteration
  */
-static void
+static int
 check_wire_out_cb (void *cls,
                    uint64_t rowid,
                    struct GNUNET_TIME_Absolute date,
@@ -1809,7 +1906,7 @@ check_wire_out_cb (void *cls,
     report_row_inconsistency ("wire_out",
                               rowid,
                               "specified wire address lacks type");
-    return;
+    return GNUNET_OK;
   }
   wcc.method = json_string_value (method);
   wcc.ok = GNUNET_OK;
@@ -1828,7 +1925,7 @@ check_wire_out_cb (void *cls,
     report_row_inconsistency ("wire_out",
                               rowid,
                               "audit of associated transactions failed");
-    return;
+    return GNUNET_OK;
   }
 
   /* Subtract aggregation fee from total */
@@ -1839,7 +1936,7 @@ check_wire_out_cb (void *cls,
   {
     GNUNET_break (0);
     ac->ret = GNUNET_SYSERR;
-    return;
+    return GNUNET_SYSERR;
   }
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&final_amount,
@@ -1849,7 +1946,7 @@ check_wire_out_cb (void *cls,
     report_row_inconsistency ("wire_out",
                               rowid,
                               "could not subtract wire fee from total amount");
-    return;
+    return GNUNET_OK;
   }
 
   /* Round down to amount supported by wire method */
@@ -1860,7 +1957,7 @@ check_wire_out_cb (void *cls,
     report_row_inconsistency ("wire_out",
                               rowid,
                               "could not load required wire plugin to validate");
-    return;
+    return GNUNET_OK;
   }
 
   if (GNUNET_SYSERR ==
@@ -1880,7 +1977,7 @@ check_wire_out_cb (void *cls,
   {
     GNUNET_break (0);
     ac->ret = GNUNET_SYSERR;
-    return;
+    return GNUNET_SYSERR;
   }
 
   /* Sum up aggregation fees (we simply include the rounding gains) */
@@ -1891,7 +1988,7 @@ check_wire_out_cb (void *cls,
   {
     GNUNET_break (0);
     ac->ret = GNUNET_SYSERR;
-    return;
+    return GNUNET_SYSERR;
   }
 
   /* Check that calculated amount matches actual amount */
@@ -1903,11 +2000,12 @@ check_wire_out_cb (void *cls,
                                    &final_amount,
                                    amount,
                                    "computed amount inconsistent with wire amount");
-    return;
+    return GNUNET_OK;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Wire transfer %s is OK\n",
               TALER_B2S (wtid));
+  return GNUNET_OK;
 }
 
 

@@ -301,6 +301,8 @@ postgres_create_tables (void *cls)
 	   "(master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)"
 	   ",last_reserve_in_serial_id INT8 NOT NULL"
            ",last_reserve_out_serial_id INT8 NOT NULL"
+           ",last_reserve_payback_serial_id INT8 NOT NULL"
+           ",last_reserve_close_serial_id INT8 NOT NULL"
            ",last_withdraw_serial_id INT8 NOT NULL"
 	   ",last_deposit_serial_id INT8 NOT NULL"
            ",last_melt_serial_id INT8 NOT NULL"
@@ -575,32 +577,38 @@ postgres_prepare (PGconn *db_conn)
 	   "(master_pub"
 	   ",last_reserve_in_serial_id"
            ",last_reserve_out_serial_id"
+           ",last_reserve_payback_serial_id"
+           ",last_reserve_close_serial_id"
 	   ",last_withdraw_serial_id"
 	   ",last_deposit_serial_id"
            ",last_melt_serial_id"
 	   ",last_refund_serial_id"
 	   ",last_wire_out_serial_id"
-           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8);",
-           8, NULL);
+           ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);",
+           10, NULL);
 
   /* Used in #postgres_update_auditor_progress() */
   PREPARE ("auditor_progress_update",
            "UPDATE auditor_progress SET "
 	   " last_reserve_in_serial_id=$1"
            ",last_reserve_out_serial_id=$2"
-	   ",last_withdraw_serial_id=$3"
-	   ",last_deposit_serial_id=$4"
-           ",last_melt_serial_id=$5"
-	   ",last_refund_serial_id=$6"
-	   ",last_wire_out_serial_id=$7"
-           " WHERE master_pub=$8",
-           8, NULL);
+           ",last_reserve_payback_serial_id=$3"
+           ",last_reserve_close_serial_id=$4"
+	   ",last_withdraw_serial_id=$5"
+	   ",last_deposit_serial_id=$6"
+           ",last_melt_serial_id=$7"
+	   ",last_refund_serial_id=$8"
+	   ",last_wire_out_serial_id=$9"
+           " WHERE master_pub=$10",
+           10, NULL);
 
   /* Used in #postgres_get_auditor_progress() */
   PREPARE ("auditor_progress_select",
            "SELECT"
 	   " last_reserve_in_serial_id"
            ",last_reserve_out_serial_id"
+           ",last_reserve_payback_serial_id"
+           ",last_reserve_close_serial_id"
 	   ",last_withdraw_serial_id"
 	   ",last_deposit_serial_id"
            ",last_melt_serial_id"
@@ -1310,6 +1318,8 @@ postgres_insert_auditor_progress (void *cls,
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_out_serial_id),
+    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_payback_serial_id),
+    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_close_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_withdraw_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_deposit_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_melt_serial_id),
@@ -1356,6 +1366,8 @@ postgres_update_auditor_progress (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_out_serial_id),
+    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_payback_serial_id),
+    GNUNET_PQ_query_param_uint64 (&pp->last_reserve_close_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_withdraw_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_deposit_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_melt_serial_id),
@@ -1405,13 +1417,24 @@ postgres_get_auditor_progress (void *cls,
   };
   PGresult *result;
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("last_reserve_in_serial_id", &pp->last_reserve_in_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_reserve_out_serial_id", &pp->last_reserve_out_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_withdraw_serial_id", &pp->last_withdraw_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_deposit_serial_id", &pp->last_deposit_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_melt_serial_id", &pp->last_melt_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_refund_serial_id", &pp->last_refund_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_wire_out_serial_id", &pp->last_wire_out_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_reserve_in_serial_id",
+                                  &pp->last_reserve_in_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_reserve_out_serial_id",
+                                  &pp->last_reserve_out_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_reserve_payback_serial_id",
+                                  &pp->last_reserve_payback_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_reserve_close_serial_id",
+                                  &pp->last_reserve_out_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_withdraw_serial_id",
+                                  &pp->last_withdraw_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_deposit_serial_id",
+                                  &pp->last_deposit_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_melt_serial_id",
+                                  &pp->last_melt_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_refund_serial_id",
+                                  &pp->last_refund_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_wire_out_serial_id",
+                                  &pp->last_wire_out_serial_id),
     GNUNET_PQ_result_spec_end
   };
 
