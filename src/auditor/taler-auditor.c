@@ -827,13 +827,36 @@ handle_payback_by_reserve (void *cls,
   struct GNUNET_HashCode key;
   struct ReserveSummary *rs;
   struct GNUNET_TIME_Absolute expiry;
+  struct TALER_PaybackRequestPS pr;
 
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= pp.last_reserve_payback_serial_id);
   pp.last_reserve_payback_serial_id = rowid + 1;
 
-  /* TODO: check that coin signature on payback request is valid
-     and/or that the coin was eligible for payback! #3887!*/
+  if (GNUNET_OK !=
+      TALER_test_coin_valid (coin))
+  {
+    report_row_inconsistency ("payback",
+                              rowid,
+                              "coin denomination signature invalid");
+  }
+  pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_PAYBACK);
+  pr.purpose.size = htonl (sizeof (pr));
+  pr.coin_pub = coin->coin_pub;
+  GNUNET_CRYPTO_rsa_public_key_hash (coin->denom_pub.rsa_public_key,
+                                     &pr.h_denom_pub);
+  pr.coin_blind = *coin_blind;
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_PAYBACK,
+                                  &pr.purpose,
+                                  &coin_sig->eddsa_signature,
+                                  &coin->coin_pub.eddsa_pub))
+  {
+    report_row_inconsistency ("payback",
+                              rowid,
+                              "coin payback signature invalid");
+  }
+  /* TODO: check that the coin was eligible for payback! #3887!*/
 
   GNUNET_CRYPTO_hash (reserve_pub,
                       sizeof (*reserve_pub),
