@@ -808,9 +808,8 @@ handle_reserve_out (void *cls,
  * @param timestamp when did we receive the payback request
  * @param amount how much should be added back to the reserve
  * @param reserve_pub public key of the reserve
- * @param coin_pub public key of the coin
+ * @param coin public information about the coin
  * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
- * @param h_denom_pub hash of the denomination key of the coin
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -820,9 +819,8 @@ handle_payback_by_reserve (void *cls,
                            struct GNUNET_TIME_Absolute timestamp,
                            const struct TALER_Amount *amount,
                            const struct TALER_ReservePublicKeyP *reserve_pub,
-                           const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                           const struct TALER_CoinPublicInfo *coin,
                            const struct TALER_CoinSpendSignatureP *coin_sig,
-                           const struct GNUNET_HashCode *h_denom_pub,
                            const struct TALER_DenominationBlindingKeyP *coin_blind)
 {
   struct ReserveContext *rc = cls;
@@ -833,6 +831,9 @@ handle_payback_by_reserve (void *cls,
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= pp.last_reserve_payback_serial_id);
   pp.last_reserve_payback_serial_id = rowid + 1;
+
+  /* TODO: check that coin signature on payback request is valid
+     and/or that the coin was eligible for payback! #3887!*/
 
   GNUNET_CRYPTO_hash (reserve_pub,
                       sizeof (*reserve_pub),
@@ -1529,6 +1530,17 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
         }
       }
       break;
+    case TALER_EXCHANGEDB_TT_PAYBACK:
+      amount_with_fee = &tl->details.payback->value;
+      if (GNUNET_OK !=
+          TALER_amount_add (&expenditures,
+                            &expenditures,
+                            amount_with_fee))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      break;
     }
 
     /* Check that the fees given in the transaction list and in dki match */
@@ -1655,6 +1667,9 @@ wire_transfer_information_cb (void *cls,
     break;
   case TALER_EXCHANGEDB_TT_REFUND:
     coin = &tl->details.refund->coin;
+    break;
+  case TALER_EXCHANGEDB_TT_PAYBACK:
+    coin = &tl->details.payback->coin;
     break;
   }
   GNUNET_assert (NULL != coin); /* hard check that switch worked */

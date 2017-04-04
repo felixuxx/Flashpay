@@ -565,7 +565,7 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
         pc.timestamp = GNUNET_TIME_absolute_hton (payback->timestamp);
         TALER_amount_hton (&pc.payback_amount,
                            &payback->value);
-        pc.coin_pub = payback->coin_pub;
+        pc.coin_pub = payback->coin.coin_pub;
         pc.reserve_pub = payback->reserve_pub;
         TEH_KS_sign (&pc.purpose,
                      &epub,
@@ -737,7 +737,7 @@ compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
       pc.timestamp = GNUNET_TIME_absolute_hton (payback->timestamp);
       TALER_amount_hton (&pc.payback_amount,
                          &payback->value);
-      pc.coin_pub = payback->coin_pub;
+      pc.coin_pub = payback->coin.coin_pub;
       pc.reserve_pub = payback->reserve_pub;
       TEH_KS_sign (&pc.purpose,
                    &pub,

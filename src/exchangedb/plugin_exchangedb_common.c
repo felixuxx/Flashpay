@@ -56,7 +56,8 @@ common_free_reserve_history (void *cls,
       break;
     case TALER_EXCHANGEDB_RO_PAYBACK_COIN:
       payback = rh->details.payback;
-      GNUNET_CRYPTO_rsa_public_key_free (payback->denom_pub.rsa_public_key);
+      GNUNET_CRYPTO_rsa_signature_free (payback->coin.denom_sig.rsa_signature);
+      GNUNET_CRYPTO_rsa_public_key_free (payback->coin.denom_pub.rsa_public_key);
       GNUNET_free (payback);
       break;
     }
@@ -133,6 +134,10 @@ common_free_coin_transaction_list (void *cls,
       GNUNET_free (list->details.refund);
       break;
     case TALER_EXCHANGEDB_TT_PAYBACK:
+      if (NULL != list->details.payback->coin.denom_pub.rsa_public_key)
+        GNUNET_CRYPTO_rsa_public_key_free (list->details.payback->coin.denom_pub.rsa_public_key);
+      if (NULL != list->details.payback->coin.denom_sig.rsa_signature)
+        GNUNET_CRYPTO_rsa_signature_free (list->details.payback->coin.denom_sig.rsa_signature);
       GNUNET_free (list->details.payback);
       break;
     }

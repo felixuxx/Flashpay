@@ -1385,6 +1385,7 @@ run (void *cls)
   rh = NULL;
   wire = NULL;
   session = NULL;
+  deposit.coin.denom_sig.rsa_signature = NULL;
   ZR_BLK (&cbc);
   ZR_BLK (&cbc2);
   if (NULL ==
@@ -1513,12 +1514,15 @@ run (void *cls)
 
   RND_BLK (&coin_sig);
   RND_BLK (&coin_blind);
+  RND_BLK (&deposit.coin.coin_pub);
+  deposit.coin.denom_pub = dkp->pub;
+  deposit.coin.denom_sig = cbc.sig;
   deadline = GNUNET_TIME_absolute_get ();
   FAILIF (GNUNET_OK !=
           plugin->insert_payback_request (plugin->cls,
                                           session,
                                           &reserve_pub,
-                                          &deposit.coin.coin_pub,
+                                          &deposit.coin,
                                           &coin_sig,
                                           &coin_blind,
                                           &value,
@@ -1569,7 +1573,7 @@ run (void *cls)
         FAILIF (0 != memcmp (&payback->reserve_pub,
                              &reserve_pub,
                              sizeof (reserve_pub)));
-        FAILIF (0 != memcmp (&payback->coin_pub,
+        FAILIF (0 != memcmp (&payback->coin.coin_pub,
                              &deposit.coin.coin_pub,
                              sizeof (deposit.coin.coin_pub)));
         FAILIF (0 != TALER_amount_cmp (&payback->value,
@@ -1717,7 +1721,7 @@ run (void *cls)
           plugin->insert_payback_request (plugin->cls,
                                           session,
                                           &reserve_pub,
-                                          &deposit.coin.coin_pub,
+                                          &deposit.coin,
                                           &coin_sig,
                                           &coin_blind,
                                           &value,
@@ -1824,7 +1828,7 @@ run (void *cls)
         FAILIF (0 != memcmp (&payback->reserve_pub,
                              &reserve_pub,
                              sizeof (reserve_pub)));
-        FAILIF (0 != memcmp (&payback->coin_pub,
+        FAILIF (0 != memcmp (&payback->coin.coin_pub,
                              &deposit.coin.coin_pub,
                              sizeof (deposit.coin.coin_pub)));
         FAILIF (0 != TALER_amount_cmp (&payback->value,
