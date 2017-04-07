@@ -393,7 +393,29 @@ assures customers and merchants that the exchange operates correctly.
 \subsection{Security model}
 %\vspace{-0.3cm}
 
-% FIXME:  Is this too obvious for a crypto paper?
+As a payment system, Taler naturally needs to make sure that coins are
+unforgeable and prevent double-spending.  More precisely, as the same
+coin is allowed to be involved in multiple operations, Taler needs to
+ensure that the amounts spent per coin remain below the denomination
+value and amounts credited to the coin from refunds.  Furthermore,
+transactions should be unlinkable; in particular, if a coin has been
+partially spent or if a transaction was aborted, Taler must provide a
+mechanism for customers to spend the remaining value in another
+transaction that remains unlinkable to the first transaction.  Finally,
+this mechanism must not introduce a new loophole that might be used to
+hide transactions in a way that would enable tax-evasion.
+
+As a practical system, Taler needs to be concerned with transient
+network failures or loss of power.  Thus, it must be possible to
+resume protocols and recover from such failures at any point in time,
+without any party suffering financial losses.  We require that parties
+are able to securely persist information and assume that after
+errors they can resume from the previous state that was persisted.
+We will explicitly state in the protocol when what state has
+to be persisted.  Participants that fail to recover data they were
+expected to persist may suffer financial losses in proportion to the
+value of the transactions involved.
+
 Taler assumes that each participant has full control over their
 system.  We assume the contact information of the exchange is known to
 both customer and merchant from the start, including that the customer
@@ -419,7 +441,7 @@ On the cryptographic side, a Taler exchange demands that coins use a
 full domain hash (FDH) to make so-called ``one-more forgery'' attacks
 provably hard, assuming the RSA known-target inversion problem is
 hard~\cite[Theorem 12]{RSA-HDF-KTIvCTI}.  For a withdrawn coin,
-violating the customers anonymity cryptographily requires recognizing
+violating the customers anonymity cryptographically requires recognizing
 a random blinding factor from a random element of the group of
 integers modulo the denomination key's RSA modulus, which appears
 impossible even with a quantum computers.  For a refreshed coin,
@@ -678,12 +700,12 @@ Auditors must sign all the exchange's keys including, the individual
 denomination keys.
 
 As we are dealing with financial transactions, we explicitly describe
-whenever entities need to safely commit data to persistent storage.
-As long as those commitments persist, the protocol can be safely
-resumed at any step.  Commitments to disk are cumulative, that is an
-additional commitment does not erase the previously committed
+whenever entities need to safely write data to persistent storage.
+As long as the data persists, the protocol can be safely
+resumed at any step.  Persisting data is cumulative, that is an
+additional persist operation does not erase the previously stored
 information.  Keys and thus coins always have a well-known expiration
-date; information committed to disk can be discarded after the
+date; information persisted can be discarded after the
 expiration date of the respective public key.
 Customers may discard information once the respective coins have been
 fully spent, so long as refunds are not required.
@@ -703,7 +725,9 @@ To withdraw anonymous digital coins, the customer first selects an
 exchange and one of its public denomination public keys $K_p$ whose
 value $K_v$ corresponds to an amount the customer wishes to withdraw.
 We let $K_s$ denote the exchange's private key corresponding to $K_p$.
-Now the customer carries out the following interaction with the exchange:
+We use $FDH_K$ to denote a full-domain hash where the domain is the
+public key $K_p$.  Now the customer carries out the following
+interaction with the exchange:
 
 % FIXME: These steps occur at very different points in time, so probably
 % they should be restructured into more of a protocol description.
@@ -713,9 +737,9 @@ Now the customer carries out the following interaction with the exchange:
 \begin{enumerate}
   \item The customer randomly generates:
     \begin{itemize}
-      \item reserve key $W := (w_s,W_p)$ with private key $w_s$ and public key $W_p$,
+      \item reserve key $W := (w_s,W_p)$ with private key $w_s$ and public key $W_p := w_sG$,
       \item coin key $C := (c_s,C_p)$ with private key $c_s$ and public key $C_p := c_s G$,
-      \item blinding factor $b$, and commits $\langle W, C, b \rangle$ to disk.
+      \item blinding factor $b$, and persists $\langle W, C, b \rangle$.
     \end{itemize}
     The customer then transfers an amount of money corresponding to
     at least $K_v$ to the exchange, with $W_p$ in the subject line
@@ -747,8 +771,8 @@ Now the customer carries out the following interaction with the exchange:
     history for the reserve.
   \item The customer computes the unblinded signature $U_b(S_K(B))$ and
     verifies that $S_K(\FDH_K(C_p)) = U_b(S_K(B))$.
-    Finally the customer saves the coin $\langle S_K(\FDH_K(C_p)), c_s \rangle$
-    to their local wallet on disk.
+    Finally the customer persists the coin $\langle S_K(\FDH_K(C_p)), c_s \rangle$
+    in their local wallet.
 \end{enumerate}
 
 
@@ -783,8 +807,8 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
   to the contract indicating which services or goods the merchant will
   deliver to the customer, including the merchant specific URI for the payment.
   $p$ is the merchant's payment information (e.g. his IBAN number), and
-  $r$ is a random nonce.  The merchant commits $\langle \mathcal{A} \rangle$
-  to disk and sends $\mathcal{A}$ to the customer.
+  $r$ is a random nonce.  The merchant persists $\langle \mathcal{A} \rangle$
+  and sends $\mathcal{A}$ to the customer.
 \item
   The customer should already possess a coin $\widetilde{C}$ issued by a exchange that is
   accepted by the merchant, meaning $K$ of $\widetilde{C}$ should be publicly signed by
@@ -803,10 +827,10 @@ with signature $\widetilde{C} := S_K(\FDH_K(C_p))$
   one would exceed its remaining value, it sends an error
   with the records from the previous transactions back to the merchant. \\
   %
-  If double spending is not found, the exchange commits $\langle \mathcal{D} \rangle$ to disk
+  If double spending is not found, the exchange persists $\langle \mathcal{D} \rangle$
   and signs a message affirming the deposit operation was successful.
 \item
-  The merchant commits and forwards the notification from the exchange to the
+  The merchant persists the response and forwards the notification from the exchange to the
   customer, confirming the success or failure
   of the operation.
 \end{enumerate}
@@ -859,10 +883,18 @@ protocol with the exchange.
 \subsection{Refreshing} \label{sec:refreshing}
 
 We now describe the refresh protocol whereby a dirty coin $C'$ of
-denomination $K$ is melted to obtain a fresh coin $\widetilde{C}$
-with the same denomination.  In practice, Taler uses a natural
-extension where multiple fresh coins are generated a the same time to
-enable giving precise change matching any amount.
+denomination $K$ is melted to obtain a fresh coin $\widetilde{C}$.  To
+simplify the description, this section describes the case where one
+{\em unspent} dirty coin (for example, from an aborted transaction) is
+exchanged for a fresh coin of the same denomination.  In practice,
+Taler uses a natural extension where multiple fresh coins of possibly
+many different denominations are generated at the same time. For this,
+the wallet simply specifies an array of coins wherever the protocol
+below specifies only a single coin. The different denominations of the
+fresh coins must be chosen by the wallet such that their value adds up
+to the remaining balance of the dirty coin.  This way, refreshing
+enables giving precise change matching any amount, assuming the
+exchange offers an adequate value range in its denominations.
 
 In the protocol, $\kappa \ge 2$ is a security parameter for the
 cut-and-choose part of the protocol.  $\kappa = 3$ is actually
@@ -885,7 +917,7 @@ than the comparable use of zk-SNARKs in ZeroCash~\cite{zerocash}.
     \item the transfer public key $T^{(i)}_p := t^{(i)}_s G$ and
     \item the new coin secret seed $L^{(i)} := H(c'_s T_p^{(i)})$.
     \end{enumerate}
-    We have computed $L_i$ as a Diffie-Hellman shared secret between
+    We have computed $L^{(i)}$ as a Diffie-Hellman shared secret between
     the transfer key pair $T^{(i)} := \left(t^{(i)}_s,T^{(i)}_p\right)$
     and old coin key pair $C' := \left(c_s', C_p'\right)$;
     as a result, $L^{(i)} = H(t^{(i)}_s C'_p)$ also holds.
@@ -898,26 +930,26 @@ than the comparable use of zk-SNARKs in ZeroCash~\cite{zerocash}.
      $C^{(i)} := \left(c_s^{(i)}, C_p^{(i)}\right)$
      where $C^{(i)}_p := c^{(i)}_s G$.
 
-    The customer saves to disk $\langle C', \vec{t}\rangle$ where
+    The customer persists $\langle C', \vec{t}\rangle$ where
     $\vec{t} = \langle t^{(1)}_s, \ldots, t^{(\kappa)}_s \rangle$.
     We observe that $t^{(i)}_s$ suffices to regenerate $C^{(i)}$ and $b^{(i)}$
     using the same key derivation functions.
 
   % \item
     The customer computes $B^{(i)} := B_{b^{(i)}}(\FDH_K(C^{(i)}_p))$
-    for $i \in \{1,\ldots,\kappa\}$ and sends a commitment
+    for $i \in \{1,\ldots,\kappa\}$ and sends a signed commitment
      $S_{C'}(\vec{B}, \vec{T_p})$ to the exchange.
   \item % [200 OK / 409 CONFLICT]
     The exchange generates a random $\gamma$ with $1 \le \gamma \le \kappa$ and
-    marks $C'_p$ as spent by committing
-    $\langle C', \gamma, S_{C'}(\vec{B}, \vec{T_p}) \rangle$ to disk.
+    marks $C'_p$ as spent by persisting
+    $\langle C', \gamma, S_{C'}(\vec{B}, \vec{T_p}) \rangle$.
     Auditing processes should assure that $\gamma$ is unpredictable until
     this time to prevent the exchange from assisting tax evasion. \\
     %
     The exchange sends $S_{K'}(C'_p, \gamma)$ to the customer where
     $K'$ is the exchange's message signing key, thereby committing the exchange to $\gamma$.
   \item % [POST {\tt /refresh/reveal}]
-    The customer commits $\langle C', S_K(C'_p, \gamma) \rangle$ to disk.
+    The customer persists $\langle C', S_K(C'_p, \gamma) \rangle$.
     Also, the customer assembles
       $\mathfrak{R} := \left(t_s^{(i)}\right)_{i \ne \gamma}$
     and sends $S_{C'}(\mathfrak{R})$ to the exchange.
@@ -937,7 +969,7 @@ than the comparable use of zk-SNARKs in ZeroCash~\cite{zerocash}.
      \begin{align*}
        \overline{T_p^{(i)}} :&= t_s^{(i)} G \\
        \overline{b^{(i)}} :&= \FDH_K(\KDF_{\textrm{blinding}}(\overline{L^{(i)}})) \\
-       \overline{B^{(i)}} :&= B_{\overline{b^{(i)}}}(\overline{C_p^{(i)}})
+       \overline{B^{(i)}} :&= B_{\overline{b^{(i)}}}(\FDH_K\overline{C_p^{(i)}})
      \end{align*}
     \end{minipage}
 
@@ -1048,7 +1080,7 @@ amount of coins in circulation as part of the certification process.
 \subsection{Refunds}
 
 The refresh protocol offers an easy way to enable refunds to
-customers, even if they are anonymous.  Refunds can be supported
+customers, even if they are anonymous.  Refunds are supported
 by including a public signing key of the merchant in the transaction
 details, and having the customer keep the private key of the spent
 coins on file.
@@ -1105,7 +1137,11 @@ transaction.
 
 We ran the Taler exchange v0.0.2 on an Amazon EC2 t2.micro instance
 (10\% of a Xeon E5-2676 at 2.4 GHz) based on Ubuntu 14.04.4 LTS, using
-a db.t2.micro instance with Postgres 9.5 for the database.  Using 16
+a db.t2.micro instance with Postgres 9.5 for the database.  We used
+1024-bit RSA keys for blind signatures, Curve25519 for DH, EdDSA
+for non-blind signatures and SHA-512 for hashing.  For the KDF and
+FDH operations we used~\cite{rfc5869} with SHA-512 as XTR and SHA-256
+for PRF as suggested in~\cite{rfc5869}.  Using 16
 concurrent clients performing withdraw, deposit and refresh operations
 we then pushed the t2.micro instance to the resource limit
 %(Figure~\ref{fig:cpu})
@@ -1269,7 +1305,7 @@ during the cut-and-choose protocol.  Bold-face is used to indicate a
 vector over these elements.  A line above indicates a value computed
 by the verifier during the cut-and-choose operation.  We use $f()$ to
 indicate the application of a function $f$ to one or more arguments. Records of
-data being committed to disk are represented in between $\langle\rangle$.
+data being persisted are represented in between $\langle\rangle$.
 
 \begin{description}
   \item[$K_s$]{Denomination private (RSA) key of the exchange used for coin signing}
@@ -1403,7 +1439,7 @@ coin first.
   $\langle S_M(m, f), \vec{X} \rangle$ containing the price of the offer $f$,
   a transaction ID $m$ and the list of exchanges
    $\vec{X} = \langle X_1, \ldots, X_n \rangle$ accepted by the merchant,
-   where each $X_j$ is a exchange's public key.
+   where each $X_j$ is an exchange's public key.
 \item\label{lock2} The customer must possess or acquire a coin $\widetilde{C}$
   signed by a exchange that is accepted by the merchant,
    i.e.\ $K$ should be signed by some $X_j$ and has a value $\geq f$.
@@ -1423,27 +1459,27 @@ coin first.
   spending to the customer.
 
   If double spending is not found,
-  the exchange commits $\langle \mathcal{L} \rangle$ to disk
+  the exchange persists $\langle \mathcal{L} \rangle$
   and notifies the merchant that locking was successful.
 \item\label{contract2} The merchant creates a digitally signed contract
   $\mathcal{A} := S_M(m, f, a, H(p, r))$ where $a$ is data relevant to the contract
   indicating which services or goods the merchant will deliver to the customer, and $p$ is the
   merchant's payment information (e.g. his IBAN number) and $r$ is an random nonce.
-  The merchant commits $\langle \mathcal{A} \rangle$ to disk and sends it to the customer.
+  The merchant persists $\langle \mathcal{A} \rangle$ and sends it to the customer.
 \item The customer creates a
-  \emph{deposit-permission} $\mathcal{D} := S_c(\widetilde{C}, \widetilde{L}, f, m, M_p, H(a), H(p, r))$, commits
-  $\langle \mathcal{A}, \mathcal{D} \rangle$ to disk and sends $\mathcal{D}$ to the merchant.
-\item\label{invoice_paid2} The merchant commits the received $\langle \mathcal{D} \rangle$ to disk.
+  \emph{deposit-permission} $\mathcal{D} := S_c(\widetilde{C}, \widetilde{L}, f, m, M_p, H(a), H(p, r))$, persists
+  $\langle \mathcal{A}, \mathcal{D} \rangle$ and sends $\mathcal{D}$ to the merchant.
+\item\label{invoice_paid2} The merchant persists the received $\langle \mathcal{D} \rangle$.
 \item The merchant gives $(\mathcal{D}, p, r)$ to the exchange, revealing his
   payment information.
 \item The exchange verifies $(\mathcal{D}, p, r)$ for its validity and
   checks against double spending, while of
   course permitting the merchant to withdraw funds from the amount that
   had been locked for this merchant.
- \item If $\widetilde{C}$ is valid and no equivalent \emph{deposit-permission} for $\widetilde{C}$ and $\widetilde{L}$ exists on disk, the
+ \item If $\widetilde{C}$ is valid and no equivalent \emph{deposit-permission} for $\widetilde{C}$ and $\widetilde{L}$ exists, the
   exchange performs the following transaction:
   \begin{enumerate}
-    \item $\langle \mathcal{D}, p, r \rangle$ is committed to disk.
+    \item $\langle \mathcal{D}, p, r \rangle$ is persisted.
     \item\label{transfer2} transfers an amount of $f$ to the merchant's bank account
       given in $p$.  The subject line of the transaction to $p$ must contain
       $H(\mathcal{D})$.
@@ -1470,11 +1506,11 @@ incremental amount up to $f_{max}$:
   the merchant has received a deposit-permission for $f$ from the previous
   contract \textit{i.e.}~$f <f' \leq f_{max}$.  Similarly $a'$ is the new
   contract data appended to older contract data $a$.
-  The merchant commits $\langle \mathcal{A}' \rangle$ to disk and sends it to the customer.
-\item Customer commits $\langle \mathcal{A}' \rangle$ to disk, creates
-  $\mathcal{D}' := S_c(\widetilde{C}, \mathcal{L}, f', m, M_p, H(a'), H(p, r))$, commits
+  The merchant persists $\langle \mathcal{A}' \rangle$ and sends it to the customer.
+\item Customer persists $\langle \mathcal{A}' \rangle$, creates
+  $\mathcal{D}' := S_c(\widetilde{C}, \mathcal{L}, f', m, M_p, H(a'), H(p, r))$, persists
   $\langle \mathcal{D'} \rangle$ and sends it to the merchant.
-\item The merchant commits the received $\langle \mathcal{D'} \rangle$ and
+\item The merchant persists the received $\langle \mathcal{D'} \rangle$ and
   deletes the older $\mathcal{D}$.
 \end{enumerate}
 
