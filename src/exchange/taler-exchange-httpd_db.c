@@ -593,7 +593,7 @@ TEH_DB_execute_refund (struct MHD_Connection *connection,
     return TEH_RESPONSE_reply_internal_db_error (connection,
 						 TALER_EC_REFUND_STORE_DB_ERROR);
   }
-  COMMIT_TRANSACTION(session, connection);
+  COMMIT_TRANSACTION (session, connection);
 
   return TEH_RESPONSE_reply_refund_success (connection,
                                             refund);
@@ -622,9 +622,11 @@ TEH_DB_execute_reserve_status (struct MHD_Connection *connection,
     return TEH_RESPONSE_reply_internal_db_error (connection,
 						 TALER_EC_DB_SETUP_FAILED);
   }
+  START_TRANSACTION (session, connection);
   rh = TEH_plugin->get_reserve_history (TEH_plugin->cls,
                                         session,
                                         reserve_pub);
+  COMMIT_TRANSACTION (session, connection);
   if (NULL == rh)
     return TEH_RESPONSE_reply_json_pack (connection,
                                          MHD_HTTP_NOT_FOUND,

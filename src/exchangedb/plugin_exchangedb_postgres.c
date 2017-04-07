@@ -34,9 +34,17 @@
  * Log a query error.
  *
  * @param result PQ result object of the query that failed
+ * @param conn SQL connection that was used
  */
-#define QUERY_ERR(result)                          \
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "Query failed at %s:%u: %s (%s)\n", __FILE__, __LINE__, PQresultErrorMessage (result), PQresStatus (PQresultStatus (result)))
+#define QUERY_ERR(result,conn)                         \
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,             \
+              "Query failed at %s:%u: %s/%s/%s/%s/%s\n", \
+              __FILE__, __LINE__, \
+              PQresultErrorField (result, PG_DIAG_MESSAGE_PRIMARY), \
+              PQresultErrorField (result, PG_DIAG_MESSAGE_DETAIL), \
+              PQresultErrorMessage (result), \
+              PQresStatus (PQresultStatus (result)), \
+              PQerrorMessage(conn));
 
 
 /**
@@ -1755,7 +1763,7 @@ postgres_get_denomination_info (void *cls,
                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
-    QUERY_ERR (result);
+    QUERY_ERR (result, session->conn);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -1846,7 +1854,7 @@ postgres_reserve_get (void *cls,
                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
-    QUERY_ERR (result);
+    QUERY_ERR (result, session->conn);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -1906,7 +1914,7 @@ reserves_update (void *cls,
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus(result))
   {
-    QUERY_ERR (result);
+    QUERY_ERR (result, session->conn);
     ret = GNUNET_SYSERR;
   }
   else
@@ -1987,7 +1995,7 @@ postgres_reserves_in_insert (void *cls,
                                       params);
     if (PGRES_COMMAND_OK != PQresultStatus(result))
     {
-      QUERY_ERR (result);
+      QUERY_ERR (result, session->conn);
       PQclear (result);
       goto rollback;
     }
@@ -2031,7 +2039,7 @@ postgres_reserves_in_insert (void *cls,
 			 session);
       return GNUNET_NO;
     }
-    QUERY_ERR (result);
+    QUERY_ERR (result, session->conn);
     PQclear (result);
     goto rollback;
   }
@@ -2116,7 +2124,7 @@ postgres_get_withdraw_info (void *cls,
 
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
-    QUERY_ERR (result);
+    QUERY_ERR (result, session->conn);
     goto cleanup;
   }
   if (0 == PQntuples (result))
@@ -2197,7 +2205,7 @@ postgres_insert_withdraw_info (void *cls,
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
-    QUERY_ERR (result);
+    QUERY_ERR (result, session->conn);
     PQclear (result);
     return GNUNET_SYSERR;
   }
@@ -2277,7 +2285,7 @@ postgres_get_reserve_history (void *cls,
                                       params);
     if (PGRES_TUPLES_OK != PQresultStatus (result))
     {
-      QUERY_ERR (result);
+      QUERY_ERR (result, session->conn);
       goto cleanup;
     }
     if (0 == (rows = PQntuples (result)))
@@ -2343,7 +2351,7 @@ postgres_get_reserve_history (void *cls,
                                       params);
     if (PGRES_TUPLES_OK != PQresultStatus (result))
     {
-      QUERY_ERR (result);
+      QUERY_ERR (result, session->conn);
       PQclear (result);
       goto cleanup;
     }
@@ -2402,7 +2410,7 @@ postgres_get_reserve_history (void *cls,
                                       params);
     if (PGRES_TUPLES_OK != PQresultStatus (result))
     {
-      QUERY_ERR (result);
+      QUERY_ERR (result, session->conn);
       goto cleanup;
     }
     rows = PQntuples (result);
@@ -3979,7 +3987,7 @@ postgres_get_coin_transactions (void *cls,
                                       params);
     if (PGRES_TUPLES_OK != PQresultStatus (result))
     {
-      QUERY_ERR (result);
+      QUERY_ERR (result, session->conn);
       PQclear (result);
       goto cleanup;
     }
@@ -4836,7 +4844,7 @@ postgres_wire_prepare_data_get (void *cls,
                                    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
-    QUERY_ERR (result);
+    QUERY_ERR (result, session->conn);
     PQclear (result);
     return GNUNET_SYSERR;
   }
