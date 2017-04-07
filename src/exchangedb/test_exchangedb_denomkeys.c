@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014 GNUnet e. V. (and other contributing authors)
+  Copyright (C) 2014-2017 GNUnet e. V. (and other contributing authors)
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -31,12 +31,14 @@
     if (cond) { GNUNET_break (0); goto EXITIF_exit; }             \
   } while (0)
 
+
 /**
  * @brief Iterator called on denomination key.
  *
  * @param cls closure with expected DKI
  * @param dki the denomination key
  * @param alias coin alias
+ * @param was_revoked #GNUNET_YES if revoked
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -44,7 +46,8 @@
 static int
 dki_iter (void *cls,
           const char *alias,
-          const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+          const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
+          int was_revoked)
 {
   const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *exp = cls;
 
@@ -81,6 +84,7 @@ main (int argc,
   char *enc;
   size_t enc_size;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation dki_read;
+  struct TALER_MasterPublicKeyP master_pub;
   char *enc_read;
   size_t enc_read_size;
   char *tmpfile;
@@ -96,6 +100,7 @@ main (int argc,
   tmpfile = NULL;
   dki.denom_priv.rsa_private_key = NULL;
   dki_read.denom_priv.rsa_private_key = NULL;
+  memset (&master_pub, 42, sizeof (master_pub)); /* for now does not matter */
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &dki.issue,
                               sizeof (struct TALER_EXCHANGEDB_DenominationKeyInformationP));
@@ -120,6 +125,7 @@ main (int argc,
                                                   &dki_read));
   EXITIF (1 !=
           TALER_EXCHANGEDB_denomination_keys_iterate (tmpdir,
+                                                      &master_pub,
                                                       &dki_iter,
                                                       &dki));
 
