@@ -1,4 +1,4 @@
-.TH TALER\-EXCHANGE\-KEYUP 1 "Apr 22, 2015" "GNU Taler"
+.TH TALER\-EXCHANGE\-KEYUP 1 "Apr 7, 2017" "GNU Taler"
 
 .SH NAME
 taler\-exchange\-keyup \- Setup Taler exchange denomination and signing keys.
@@ -24,6 +24,9 @@ Location of the private EdDSA offline master key of the exchange.
 .B
 .IP "\-o FILE,  \-\-ouptut=FILE"
 Where to write a denomination key signing request file to be given to the auditor.
+.B
+.IP "\-r DKH,  \-\-revoke=DKH"
+Revoke the denomination key where the denomination public key's hash is DKH.
 .B
 .IP "\-t TIMESTAMP,  \-\-time=TIMESTAMP"
 Operate as if the current time was TIMESTAMP.

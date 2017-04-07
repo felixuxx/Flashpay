@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Inria & GNUnet e.V.
+  Copyright (C) 2014-2017 Inria & GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -23,6 +23,68 @@
  */
 #include "platform.h"
 #include "taler_exchangedb_lib.h"
+
+
+/**
+ * Mark the given denomination key as revoked and request the wallets
+ * to initiate /payback.
+ *
+ * @param exchange_base_dir base directory for the exchange,
+ *                      the signing keys must be in the #TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS
+ *                      subdirectory
+ * @param alias coin alias
+ * @param dki the denomination key to revoke
+ * @param mpriv master private key to sign
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
+ */
+int
+TALER_EXCHANGEDB_denomination_key_revoke (const char *exchange_base_dir,
+                                          const char *alias,
+                                          const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
+                                          const struct TALER_MasterPrivateKeyP *mpriv)
+{
+  struct GNUNET_TIME_Absolute start;
+  struct TALER_MasterDenominationKeyRevocation rm;
+  struct TALER_MasterSignatureP msig;
+  char *fn;
+  struct GNUNET_DISK_FileHandle *fh;
+  ssize_t wrote;
+  int ret;
+
+  ret = GNUNET_SYSERR;
+  start = GNUNET_TIME_absolute_ntoh (dki->issue.properties.start);
+  GNUNET_asprintf (&fn,
+                   "%s" DIR_SEPARATOR_STR "%s" DIR_SEPARATOR_STR "%llu.rev",
+                   exchange_base_dir,
+                   alias,
+                   (unsigned long long) start.abs_value_us);
+
+  rm.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED);
+  rm.purpose.size = htonl (sizeof (rm));
+  rm.h_denom_pub = dki->issue.properties.denom_hash;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_sign (&mpriv->eddsa_priv,
+                                           &rm.purpose,
+                                           &msig.eddsa_signature));
+  if (NULL == (fh = GNUNET_DISK_file_open
+               (fn,
+                GNUNET_DISK_OPEN_WRITE | GNUNET_DISK_OPEN_CREATE | GNUNET_DISK_OPEN_TRUNCATE,
+                GNUNET_DISK_PERM_USER_READ | GNUNET_DISK_PERM_USER_WRITE)))
+    goto cleanup;
+  if (GNUNET_SYSERR ==
+      (wrote = GNUNET_DISK_file_write (fh,
+                                       &msig,
+                                       sizeof (msig))))
+    goto cleanup;
+  if (wrote != sizeof (msig))
+    goto cleanup;
+  ret = GNUNET_OK;
+cleanup:
+  if (NULL != fh)
+    (void) GNUNET_DISK_file_close (fh);
+  GNUNET_free (fn);
+  return ret;
+}
 
 
 /**
@@ -158,6 +220,11 @@ struct DenomkeysIterateContext
   const char *alias;
 
   /**
+   * Master public key to use to validate revocations.
+   */
+  const struct TALER_MasterPublicKeyP *master_pub;
+
+  /**
    * Function to call on each denomination key.
    */
   TALER_EXCHANGEDB_DenominationKeyIterator it;
@@ -187,6 +254,15 @@ denomkeys_iterate_keydir_iter (void *cls,
   struct DenomkeysIterateContext *dic = cls;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation issue;
   int ret;
+  char *rev;
+  struct TALER_MasterSignatureP msig;
+  struct TALER_MasterDenominationKeyRevocation rm;
+  int revoked;
+
+  if ( (strlen(filename) > strlen (".rev")) &&
+       (0 == strcmp (&filename[strlen(filename) - strlen (".rev")],
+                     ".rev")) )
+    return GNUNET_OK; /* ignore revocation files _here_; we'll try for them just below */
 
   memset (&issue, 0, sizeof (issue));
   if (GNUNET_OK !=
@@ -198,9 +274,53 @@ denomkeys_iterate_keydir_iter (void *cls,
                 filename);
     return GNUNET_OK;
   }
+  /* check for revocation file */
+  GNUNET_asprintf (&rev,
+                   "%s.rev",
+                   filename);
+  revoked = GNUNET_NO;
+  if (GNUNET_YES == GNUNET_DISK_file_test (rev))
+  {
+    /* Check if revocation is valid... */
+    if (sizeof (msig) !=
+        GNUNET_DISK_fn_read (rev,
+                             &msig,
+                             sizeof (msig)))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  _("Invalid revocation file `%s' found and ignored (bad size)\n"),
+                  rev);
+    }
+    else
+    {
+      rm.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED);
+      rm.purpose.size = htonl (sizeof (rm));
+      rm.h_denom_pub = issue.issue.properties.denom_hash;
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
+                                      &rm.purpose,
+                                      &msig.eddsa_signature,
+                                      &dic->master_pub->eddsa_pub))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    _("Invalid revocation file `%s' found and ignored (bad signature)\n"),
+                    rev);
+      }
+      else
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                    "Denomination key `%s' was revoked!\n",
+                   filename);
+        revoked = GNUNET_YES;
+      }
+    }
+
+  }
+  GNUNET_free (rev);
   ret = dic->it (dic->it_cls,
                  dic->alias,
-                 &issue);
+                 &issue,
+                 revoked);
   GNUNET_CRYPTO_rsa_private_key_free (issue.denom_priv.rsa_private_key);
   GNUNET_CRYPTO_rsa_public_key_free (issue.denom_pub.rsa_public_key);
   return ret;
@@ -238,6 +358,7 @@ denomkeys_iterate_topdir_iter (void *cls,
  * @param exchange_base_dir base directory for the exchange,
  *                      the signing keys must be in the #TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS
  *                      subdirectory
+ * @param master_pub master public key (used to check revocations)
  * @param it function to call on each denomination key found
  * @param it_cls closure for @a it
  * @return -1 on error, 0 if no files were found, otherwise
@@ -247,6 +368,7 @@ denomkeys_iterate_topdir_iter (void *cls,
  */
 int
 TALER_EXCHANGEDB_denomination_keys_iterate (const char *exchange_base_dir,
+                                            const struct TALER_MasterPublicKeyP *master_pub,
                                             TALER_EXCHANGEDB_DenominationKeyIterator it,
                                             void *it_cls)
 {
@@ -257,6 +379,7 @@ TALER_EXCHANGEDB_denomination_keys_iterate (const char *exchange_base_dir,
   GNUNET_asprintf (&dir,
                    "%s" DIR_SEPARATOR_STR TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS,
                    exchange_base_dir);
+  dic.master_pub = master_pub;
   dic.it = it;
   dic.it_cls = it_cls;
   ret = GNUNET_DISK_directory_scan (dir,

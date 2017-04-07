@@ -122,6 +122,7 @@ exchange_signkeys_check ()
  * @param cls closure (NULL)
  * @param dki the denomination key
  * @param alias coin alias
+ * @param was_revoked #GNUNET_YES if the @a dki was revoked and wallets should trigger /payback
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -129,7 +130,8 @@ exchange_signkeys_check ()
 static int
 denomkeys_iter (void *cls,
                 const char *alias,
-                const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+                const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
+                int was_revoked)
 {
   struct GNUNET_HashCode hc;
 
@@ -190,7 +192,23 @@ denomkeys_iter (void *cls,
 static int
 exchange_denomkeys_check ()
 {
+  struct TALER_MasterPublicKeyP master_public_key_from_cfg;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_data (kcfg,
+                                     "exchange",
+                                     "master_public_key",
+                                     &master_public_key_from_cfg,
+                                     sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "master_public_key");
+    global_ret = 1;
+    return GNUNET_NO;
+  }
   if (0 > TALER_EXCHANGEDB_denomination_keys_iterate (exchange_directory,
+                                                      &master_public_key_from_cfg,
                                                       &denomkeys_iter,
                                                       NULL))
     return GNUNET_NO;

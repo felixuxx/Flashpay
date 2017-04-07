@@ -210,6 +210,7 @@ TALER_EXCHANGE_conf_duration_provide ()
  * @param cls closure
  * @param dki the denomination key issue
  * @param alias coin alias
+ * @param was_revoked #GNUNET_YES if @a dki has been revoked
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -217,7 +218,8 @@ TALER_EXCHANGE_conf_duration_provide ()
 static int
 reload_keys_denom_iter (void *cls,
                         const char *alias,
-                        const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+                        const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
+                        int was_revoked)
 {
   struct TEH_KS_StateHandle *ctx = cls;
   struct GNUNET_TIME_Absolute now;
@@ -674,6 +676,7 @@ TEH_KS_acquire_ (const char *location)
                 "Loading keys from `%s'\n",
                 TEH_exchange_directory);
     if (-1 == TALER_EXCHANGEDB_denomination_keys_iterate (TEH_exchange_directory,
+                                                          &TEH_master_public_key,
                                                           &reload_keys_denom_iter,
                                                           key_state))
     {

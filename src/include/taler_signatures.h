@@ -83,6 +83,10 @@
  */
 #define TALER_SIGNATURE_MASTER_WIRE_FEES 1028
 
+/**
+ * The given revocation key was revoked and must no longer be used.
+ */
+#define TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED 1029
 
 /*********************************************/
 /* Exchange online signatures (with signing key) */
@@ -933,6 +937,24 @@ struct TALER_MasterWireFeePS
    * Fee charged to the merchant per wire transfer.
    */
   struct TALER_AmountNBO wire_fee;
+
+};
+
+
+/**
+ * @brief Message confirming that a denomination key was revoked.
+ */
+struct TALER_MasterDenominationKeyRevocation
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash of the denomination key.
+   */
+  struct GNUNET_HashCode h_denom_pub;
 
 };
 

@@ -221,6 +221,11 @@ static struct GNUNET_TIME_Absolute lookahead_sign_stamp;
 static struct GNUNET_TIME_Relative max_duration_spend;
 
 /**
+ * Revoke denomination key identified by this hash (if non-zero).
+ */
+static struct GNUNET_HashCode revoke_dkh;
+
+/**
  * Return value from main().
  */
 static int global_ret;
@@ -1019,6 +1024,106 @@ create_wire_fees ()
 
 
 /**
+ * Closure for functions processing a request to revoke a denomination
+ * public key and request the wallets to initiate /payback.
+ */
+struct RevokeClosure
+{
+  /**
+   * Hash of the denomination public key to revoke.
+   */
+  const struct GNUNET_HashCode *hc;
+
+  /**
+   * Base directory for keys.
+   */
+  char *basedir;
+
+  /**
+   * Set to #GNUNET_OK if we found a matching key,
+   * Set to #GNUNET_SYSERR on error.
+   */
+  int ok;
+};
+
+
+
+/**
+ * Revoke denomination keys matching the given hash.
+ *
+ * @param cls a `struct RevokeClosure` with information about what to revoke
+ * @param dki the denomination key
+ * @param alias coin alias
+ * @param was_revoked #GNUNET_YES if the @a dki was revoked and wallets should trigger /payback
+ * @return #GNUNET_OK to continue to iterate,
+ *  #GNUNET_NO to stop iteration with no error,
+ *  #GNUNET_SYSERR to abort iteration with error!
+ */
+static int
+exchange_keys_revoke_by_dki (void *cls,
+                             const char *alias,
+                             const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
+                             int was_revoked)
+{
+  struct RevokeClosure *rc = cls;
+
+  if (GNUNET_YES == was_revoked)
+    return GNUNET_OK; /* refuse to do it twice */
+  if (0 != memcmp (rc->hc,
+                   &dki->issue.properties.denom_hash,
+                   sizeof (struct GNUNET_HashCode)))
+    return GNUNET_OK;
+  rc->ok = GNUNET_OK;
+  if (GNUNET_OK !=
+      TALER_EXCHANGEDB_denomination_key_revoke (rc->basedir,
+                                                alias,
+                                                dki,
+                                                &master_priv))
+  {
+    rc->ok = GNUNET_SYSERR;
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_NO;
+}
+
+
+/**
+ * Revoke the denomination key matching @a hc and request /payback to be
+ * initiated.
+ *
+ * @param hc denomination key hash to revoke
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if @a hc was not found
+ *         #GNUNET_SYSERR on error
+ */
+static int
+revoke_denomination (const struct GNUNET_HashCode *hc)
+{
+  struct RevokeClosure rc;
+
+  rc.hc = hc;
+  rc.ok = GNUNET_NO;
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (kcfg,
+                                               "exchange",
+                                               "KEYDIR",
+                                               &rc.basedir))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "KEYDIR");
+    return GNUNET_SYSERR;
+  }
+  TALER_EXCHANGEDB_denomination_keys_iterate (rc.basedir,
+                                              &master_public_key,
+                                              &exchange_keys_revoke_by_dki,
+                                              &rc);
+  GNUNET_free (rc.basedir);
+  return rc.ok;
+}
+
+
+/**
  * Main function that will be run.
  *
  * @param cls closure
@@ -1032,6 +1137,7 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
+  static struct GNUNET_HashCode zero;
   struct GNUNET_TIME_Relative lookahead_sign;
   struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
 
@@ -1119,7 +1225,7 @@ run (void *cls,
 
   /* check if key from file matches the one from the configuration */
   {
-    struct GNUNET_CRYPTO_EddsaPublicKey master_public_key_from_cfg;
+    struct TALER_MasterPublicKeyP master_public_key_from_cfg;
 
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_data (kcfg,
@@ -1137,7 +1243,7 @@ run (void *cls,
     if (0 !=
         memcmp (&master_public_key,
                 &master_public_key_from_cfg,
-                sizeof (struct GNUNET_CRYPTO_EddsaPublicKey)))
+                sizeof (struct TALER_MasterPublicKeyP)))
     {
       GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                  "exchange",
@@ -1190,6 +1296,15 @@ run (void *cls,
     global_ret = 1;
     return;
   }
+  if ( (0 != memcmp (&zero,
+                     &revoke_dkh,
+                     sizeof (zero))) &&
+       (GNUNET_OK !=
+        revoke_denomination (&revoke_dkh)) )
+  {
+    global_ret = 1;
+    return;
+  }
 }
 
 
@@ -1226,11 +1341,16 @@ main (int argc,
                                    "FILENAME",
                                    "auditor denomination key signing request file to create",
                                    &auditorrequestfile),
+    GNUNET_GETOPT_option_base32_auto ('r',
+                                      "revoke",
+                                      "DKH",
+                                      "revoke denomination key hash (DKH) and request wallets to initiate /payback",
+                                      &revoke_dkh),
     GNUNET_GETOPT_option_absolute_time ('t',
-                                            "time",
-                                            "TIMESTAMP",
-                                            "pretend it is a different time for the update",
-                                            &now),
+                                        "time",
+                                        "TIMESTAMP",
+                                        "pretend it is a different time for the update",
+                                        &now),
     GNUNET_GETOPT_OPTION_END
   };
 

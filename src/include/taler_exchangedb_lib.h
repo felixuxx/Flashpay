@@ -160,8 +160,9 @@ TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
  * @brief Iterator over denomination keys.
  *
  * @param cls closure
- * @param dki the denomination key
  * @param alias coin alias
+ * @param dki the denomination key
+ * @param was_revoked #GNUNET_YES if the @a dki was revoked and wallets should trigger /payback
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -169,7 +170,8 @@ TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
 typedef int
 (*TALER_EXCHANGEDB_DenominationKeyIterator)(void *cls,
                                             const char *alias,
-                                            const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki);
+                                            const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
+                                            int was_revoked);
 
 
 /**
@@ -178,6 +180,7 @@ typedef int
  * @param exchange_base_dir base directory for the exchange,
  *                      the signing keys must be in the #TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS
  *                      subdirectory
+ * @param master_pub master public key (used to check revocations)
  * @param it function to call on each denomination key found
  * @param it_cls closure for @a it
  * @return -1 on error, 0 if no files were found, otherwise
@@ -187,8 +190,28 @@ typedef int
  */
 int
 TALER_EXCHANGEDB_denomination_keys_iterate (const char *exchange_base_dir,
+                                            const struct TALER_MasterPublicKeyP *master_pub,
                                             TALER_EXCHANGEDB_DenominationKeyIterator it,
                                             void *it_cls);
+
+
+/**
+ * Mark the given denomination key as revoked and request the wallets
+ * to initiate /payback.
+ *
+ * @param exchange_base_dir base directory for the exchange,
+ *                      the signing keys must be in the #TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS
+ *                      subdirectory
+ * @param alias coin alias
+ * @param dki the denomination key to revoke
+ * @param mpriv master private key to sign
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure.
+ */
+int
+TALER_EXCHANGEDB_denomination_key_revoke (const char *exchange_base_dir,
+                                          const char *alias,
+                                          const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
+                                          const struct TALER_MasterPrivateKeyP *mpriv);
 
 
 /**

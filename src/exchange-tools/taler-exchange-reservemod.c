@@ -188,10 +188,10 @@ main (int argc, char *const *argv)
     GNUNET_GETOPT_option_help ("Deposit funds into a Taler reserve"),
     GNUNET_GETOPT_option_mandatory
     (GNUNET_GETOPT_option_base32_auto ('R',
-                                          "reserve",
-                                          "KEY",
-                                          "reserve (public key) to modify",
-                                           &reserve_pub)),
+                                       "reserve",
+                                       "KEY",
+                                       "reserve (public key) to modify",
+                                       &reserve_pub)),
     GNUNET_GETOPT_OPTION_END
   };
 
