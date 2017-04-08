@@ -789,7 +789,7 @@ TEH_KS_acquire_ (const char *location)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "No valid signing key found!\n");
 
-    keys = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+    keys = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                       "master_public_key",
                       GNUNET_JSON_from_data_auto (&TEH_master_public_key),
                       "signkeys", key_state->sign_keys_array,
