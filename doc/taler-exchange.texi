@@ -1000,7 +1000,6 @@ struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP @{
 @node Denomination key storage
 @section Denomination key storage
 
-
 The private denomination keys of the exchange are store in a
 subdirectory "denomkeys/" of the "KEYDIR" which is an option in the
 "[exchange]" section of the configuration file.  "denomkeys/" contains
@@ -1034,6 +1033,43 @@ struct TALER_EXCHANGEDB_DenominationKeyInformationP @{
 This is then followed by the variable-size RSA private key in
 libgcrypt's S-expression format, which can be decoded using
 @cite{GNUNET_CRYPTO_rsa_private_key_decode()}.
+
+@menu
+* Revocations::
+@end menu
+
+@node Revocations
+@subsection Revocations
+
+@cindex payback
+@cindex revocation
+When an exchange goes out of business or detects that the private
+key of a denomination key pair has been compromised, it may revoke
+some or all of its denomination keys.  At this point, the hashes
+of the revoked keys must be returned as part of the @code{/keys} response
+under ``payback''.  Wallets detect this, and then return unspent
+coins of the respective denomination key using the @code{/payback}
+API.
+
+When a denomination key is revoked, a revocation file is placed
+into the respective subdirectory of ``denomkeys/''.  The file has the
+same prefix as the file that stores the
+@cite{struct TALER_EXCHANGEDB_DenominationKeyInformationP} information,
+but is followed by the ``.rev'' suffix.  It contains a 64-byte
+EdDSA signature made with the master key of the exchange with purpose
+@code{TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED}.  If such a file
+is present, the exchange must check the signature and if it is valid
+treat the respective denomination key as revoked.
+
+Revocation files can be generated using the
+@code{taler-exchange-keyup} command-line tool using the @code{-r}
+option.  The Taler auditor will instruct operators to generate
+revocations if it detects a key compromise (which is possible more
+coins of a particular denomination were deposited than issued).
+
+It should be noted that denomination key revocations should only happen
+under highly unusual (``emergency'') conditions and not under normal
+conditions.
 
 
 @node Auditor signature storage
