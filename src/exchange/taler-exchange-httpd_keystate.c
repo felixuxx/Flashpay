@@ -261,7 +261,7 @@ store_in_map (struct GNUNET_CONTAINER_MultiHashMap *map,
  * @param cls closure
  * @param dki the denomination key issue
  * @param alias coin alias
- * @param was_revoked #GNUNET_YES if @a dki has been revoked
+ * @param revocation_master_sig non-NULL if @a dki was revoked
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -270,7 +270,7 @@ static int
 reload_keys_denom_iter (void *cls,
                         const char *alias,
                         const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
-                        int was_revoked)
+                        const struct TALER_MasterSignatureP *revocation_master_sig)
 {
   struct TEH_KS_StateHandle *ctx = cls;
   struct GNUNET_TIME_Absolute now;
@@ -292,12 +292,61 @@ reload_keys_denom_iter (void *cls,
                 alias);
     return GNUNET_OK;
   }
-  if (GNUNET_YES == was_revoked)
+  if (0 != memcmp (&dki->issue.properties.master,
+                   &TEH_master_public_key,
+                   sizeof (struct TALER_MasterPublicKeyP)))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Master key in denomination key file `%s' does not match! Skipping it.\n",
+                alias);
+    return GNUNET_OK;
+  }
+
+  session = TEH_plugin->get_session (TEH_plugin->cls);
+  if (NULL == session)
+    return GNUNET_SYSERR;
+
+  if (NULL != revocation_master_sig)
   {
     res = store_in_map (ctx->revoked_map,
                         dki);
     if (GNUNET_NO == res)
       return GNUNET_OK;
+    /* Try to insert DKI into DB until we succeed; note that if the DB
+       failure is persistent, this code may loop forever (as there is no
+       sane alternative, we cannot continue without the DKI being in the
+       DB). */
+    res = GNUNET_SYSERR;
+    while (GNUNET_OK != res)
+    {
+      res = TEH_plugin->start (TEH_plugin->cls,
+                               session);
+      if (GNUNET_OK != res)
+      {
+        /* Transaction start failed!? Very bad error, log and retry */
+        GNUNET_break (0);
+        continue;
+      }
+      res = TEH_plugin->insert_denomination_revocation (TEH_plugin->cls,
+                                                        session,
+                                                        &dki->issue.properties.denom_hash,
+                                                        revocation_master_sig);
+      if (GNUNET_SYSERR == res)
+      {
+        GNUNET_break (0);
+        TEH_plugin->rollback (TEH_plugin->cls,
+                              session);
+        continue;
+      }
+      if (GNUNET_NO == res)
+      {
+        TEH_plugin->rollback (TEH_plugin->cls,
+                              session);
+        break; /* already in is also OK! */
+      }
+      res = TEH_plugin->commit (TEH_plugin->cls,
+                                session);
+    }
     GNUNET_assert (0 ==
                    json_array_append_new (ctx->payback_array,
                                           GNUNET_JSON_from_data_auto (&dki->issue.properties.denom_hash)));
@@ -319,15 +368,6 @@ reload_keys_denom_iter (void *cls,
                                    &denom_key_hash,
                                    sizeof (struct GNUNET_HashCode));
 
-  if (0 != memcmp (&dki->issue.properties.master,
-                   &TEH_master_public_key,
-                   sizeof (struct TALER_MasterPublicKeyP)))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Master key in denomination key file `%s' does not match! Skipping it.\n",
-                alias);
-    return GNUNET_OK;
-  }
 
 
   session = TEH_plugin->get_session (TEH_plugin->cls);

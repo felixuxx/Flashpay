@@ -831,6 +831,8 @@ handle_payback_by_reserve (void *cls,
   struct ReserveSummary *rs;
   struct GNUNET_TIME_Absolute expiry;
   struct TALER_PaybackRequestPS pr;
+  struct TALER_MasterSignatureP msig;
+  int ret;
 
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= pp.last_reserve_payback_serial_id);
@@ -859,7 +861,44 @@ handle_payback_by_reserve (void *cls,
                               rowid,
                               "coin payback signature invalid");
   }
-  /* TODO: check that the coin was eligible for payback! #3887!*/
+
+  /* check that the coin was eligible for payback!*/
+  ret = edb->get_denomination_revocation (edb->cls,
+                                          esession,
+                                          &pr.h_denom_pub,
+                                          &msig);
+  if (GNUNET_SYSERR == ret)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_NO == ret)
+  {
+    report_row_inconsistency ("payback",
+                              rowid,
+                              "denomination key not in revocation set");
+  }
+  else
+  {
+    /* verify msig */
+    struct TALER_MasterDenominationKeyRevocation kr;
+
+    kr.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED);
+    kr.purpose.size = htonl (sizeof (kr));
+    kr.h_denom_pub = pr.h_denom_pub;
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
+                                    &kr.purpose,
+                                    &msig.eddsa_signature,
+                                    &master_pub.eddsa_pub))
+    {
+      report_row_inconsistency ("denomination_revocations",
+                                0, /* FIXME: modify DB API to return rowid! (#4984) */
+                                "master signature invalid");
+    }
+    /* TODO: cache result so we don't do this every time! (#4983) */
+  }
+
 
   GNUNET_CRYPTO_hash (reserve_pub,
                       sizeof (*reserve_pub),

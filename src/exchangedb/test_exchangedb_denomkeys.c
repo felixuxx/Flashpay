@@ -38,7 +38,7 @@
  * @param cls closure with expected DKI
  * @param dki the denomination key
  * @param alias coin alias
- * @param was_revoked #GNUNET_YES if revoked
+ * @param revocation_master_sig non-NULL if @a dki was revoked
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -47,7 +47,7 @@ static int
 dki_iter (void *cls,
           const char *alias,
           const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
-          int was_revoked)
+          const struct TALER_MasterSignatureP *revocation_master_sig)
 {
   const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *exp = cls;
 

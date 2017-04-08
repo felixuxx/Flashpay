@@ -1054,7 +1054,7 @@ struct RevokeClosure
  * @param cls a `struct RevokeClosure` with information about what to revoke
  * @param dki the denomination key
  * @param alias coin alias
- * @param was_revoked #GNUNET_YES if the @a dki was revoked and wallets should trigger /payback
+ * @param revocation_master_sig non-NULL if @a dki was revoked
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -1063,11 +1063,11 @@ static int
 exchange_keys_revoke_by_dki (void *cls,
                              const char *alias,
                              const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
-                             int was_revoked)
+                             const struct TALER_MasterSignatureP *revocation_master_sig)
 {
   struct RevokeClosure *rc = cls;
 
-  if (GNUNET_YES == was_revoked)
+  if (NULL != revocation_master_sig)
     return GNUNET_OK; /* refuse to do it twice */
   if (0 != memcmp (rc->hc,
                    &dki->issue.properties.denom_hash,

@@ -2030,6 +2030,8 @@ struct TALER_EXCHANGEDB_Plugin
                                     struct TALER_EXCHANGEDB_Session *session,
                                     const struct GNUNET_HashCode *denom_pub_hash,
                                     const struct TALER_MasterSignatureP *master_sig);
+
+
   /**
    * Obtain information about a denomination key's revocation from
    * the database.

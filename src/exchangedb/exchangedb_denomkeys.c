@@ -257,7 +257,7 @@ denomkeys_iterate_keydir_iter (void *cls,
   char *rev;
   struct TALER_MasterSignatureP msig;
   struct TALER_MasterDenominationKeyRevocation rm;
-  int revoked;
+  const struct TALER_MasterSignatureP *revoked;
 
   if ( (strlen(filename) > strlen (".rev")) &&
        (0 == strcmp (&filename[strlen(filename) - strlen (".rev")],
@@ -278,7 +278,7 @@ denomkeys_iterate_keydir_iter (void *cls,
   GNUNET_asprintf (&rev,
                    "%s.rev",
                    filename);
-  revoked = GNUNET_NO;
+  revoked = NULL;
   if (GNUNET_YES == GNUNET_DISK_file_test (rev))
   {
     /* Check if revocation is valid... */
@@ -311,10 +311,9 @@ denomkeys_iterate_keydir_iter (void *cls,
         GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                     "Denomination key `%s' was revoked!\n",
                    filename);
-        revoked = GNUNET_YES;
+        revoked = &msig;
       }
     }
-
   }
   GNUNET_free (rev);
   ret = dic->it (dic->it_cls,

@@ -162,7 +162,7 @@ TALER_EXCHANGEDB_signing_key_write (const char *exchange_base_dir,
  * @param cls closure
  * @param alias coin alias
  * @param dki the denomination key
- * @param was_revoked #GNUNET_YES if the @a dki was revoked and wallets should trigger /payback
+ * @param revocation_master_sig non-NULL if @a dki was revoked
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -171,7 +171,7 @@ typedef int
 (*TALER_EXCHANGEDB_DenominationKeyIterator)(void *cls,
                                             const char *alias,
                                             const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
-                                            int was_revoked);
+                                            const struct TALER_MasterSignatureP *revocation_master_sig);
 
 
 /**
