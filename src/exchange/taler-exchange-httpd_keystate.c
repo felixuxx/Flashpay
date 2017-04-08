@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 GNUnet e.V.
+  Copyright (C) 2014-2017 GNUnet e.V.
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -59,6 +59,12 @@ struct TEH_KS_StateHandle
   json_t *auditors_array;
 
   /**
+   * JSON array with revoked denomination keys. (Currently not really used
+   * after initialization).
+   */
+  json_t *payback_array;
+
+  /**
    * Cached JSON text that the exchange will send for a "/keys" request.
    * Includes our @e TEH_master_public_key public key, the signing and
    * denomination keys as well as the @e reload_time.
@@ -70,6 +76,12 @@ struct TEH_KS_StateHandle
    * Used to lookup the key by hash.
    */
   struct GNUNET_CONTAINER_MultiHashMap *denomkey_map;
+
+  /**
+   * Mapping from revoked denomination keys to denomination key issue struct.
+   * Used to lookup the key by hash.
+   */
+  struct GNUNET_CONTAINER_MultiHashMap *revoked_map;
 
   /**
    * Hash context we used to combine the hashes of all denomination
@@ -205,6 +217,45 @@ TALER_EXCHANGE_conf_duration_provide ()
 
 
 /**
+ * Store a copy of @a dki in @a map.
+ *
+ * @param map hash map to store @a dki in
+ * @param dki information to store in @a map
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if such an entry already exists
+ */
+static int
+store_in_map (struct GNUNET_CONTAINER_MultiHashMap *map,
+              const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki)
+{
+  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *d2;
+  int res;
+
+  d2 = GNUNET_new (struct TALER_EXCHANGEDB_DenominationKeyIssueInformation);
+  d2->issue = dki->issue;
+  d2->denom_priv.rsa_private_key
+    = GNUNET_CRYPTO_rsa_private_key_dup (dki->denom_priv.rsa_private_key);
+  d2->denom_pub.rsa_public_key
+    = GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key);
+  res = GNUNET_CONTAINER_multihashmap_put (map,
+                                           &d2->issue.properties.denom_hash,
+                                           d2,
+                                           GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY);
+  if (GNUNET_OK != res)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Duplicate denomination key `%s'\n",
+                GNUNET_h2s (&d2->issue.properties.denom_hash));
+    GNUNET_CRYPTO_rsa_private_key_free (d2->denom_priv.rsa_private_key);
+    GNUNET_CRYPTO_rsa_public_key_free (d2->denom_pub.rsa_public_key);
+    GNUNET_free (d2);
+    return GNUNET_NO;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Iterator for (re)loading/initializing denomination keys.
  *
  * @param cls closure
@@ -226,28 +277,38 @@ reload_keys_denom_iter (void *cls,
   struct GNUNET_TIME_Absolute horizon;
   struct GNUNET_TIME_Absolute expire_deposit;
   struct GNUNET_HashCode denom_key_hash;
-  struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *d2;
   struct TALER_EXCHANGEDB_Session *session;
   int res;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Loading denomination key `%s'\n",
               alias);
-  horizon = GNUNET_TIME_relative_to_absolute (TALER_EXCHANGE_conf_duration_provide ());
-  if (GNUNET_TIME_absolute_ntoh (dki->issue.properties.start).abs_value_us >
-      horizon.abs_value_us)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Skipping future denomination key `%s'\n",
-                alias);
-    return GNUNET_OK;
-  }
   now = GNUNET_TIME_absolute_get ();
   expire_deposit = GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_deposit);
   if (expire_deposit.abs_value_us < now.abs_value_us)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Skipping expired denomination key `%s'\n",
+                alias);
+    return GNUNET_OK;
+  }
+  if (GNUNET_YES == was_revoked)
+  {
+    res = store_in_map (ctx->revoked_map,
+                        dki);
+    if (GNUNET_NO == res)
+      return GNUNET_OK;
+    GNUNET_assert (0 ==
+                   json_array_append_new (ctx->payback_array,
+                                          GNUNET_JSON_from_data_auto (&dki->issue.properties.denom_hash)));
+    return GNUNET_OK;
+  }
+  horizon = GNUNET_TIME_relative_to_absolute (TALER_EXCHANGE_conf_duration_provide ());
+  if (GNUNET_TIME_absolute_ntoh (dki->issue.properties.start).abs_value_us >
+      horizon.abs_value_us)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Skipping future denomination key `%s'\n",
                 alias);
     return GNUNET_OK;
   }
@@ -327,26 +388,10 @@ reload_keys_denom_iter (void *cls,
        as it is possible we just retry until we succeed. */
   }
 
-  d2 = GNUNET_new (struct TALER_EXCHANGEDB_DenominationKeyIssueInformation);
-  d2->issue = dki->issue;
-  d2->denom_priv.rsa_private_key
-    = GNUNET_CRYPTO_rsa_private_key_dup (dki->denom_priv.rsa_private_key);
-  d2->denom_pub.rsa_public_key
-    = GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key);
-  res = GNUNET_CONTAINER_multihashmap_put (ctx->denomkey_map,
-                                           &denom_key_hash,
-                                           d2,
-                                           GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY);
-  if (GNUNET_OK != res)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Duplicate denomination key `%s'\n",
-                alias);
-    GNUNET_CRYPTO_rsa_private_key_free (d2->denom_priv.rsa_private_key);
-    GNUNET_CRYPTO_rsa_public_key_free (d2->denom_pub.rsa_public_key);
-    GNUNET_free (d2);
+  res = store_in_map (ctx->denomkey_map,
+                      dki);
+  if (GNUNET_NO == res)
     return GNUNET_OK;
-  }
   ctx->min_dk_expire = GNUNET_TIME_absolute_min (ctx->min_dk_expire,
                                                  expire_deposit);
   GNUNET_assert (0 ==
@@ -594,6 +639,11 @@ ks_release_ (struct TEH_KS_StateHandle *key_state)
       json_decref (key_state->denom_keys_array);
       key_state->denom_keys_array = NULL;
     }
+    if (NULL != key_state->payback_array)
+    {
+      json_decref (key_state->payback_array);
+      key_state->payback_array = NULL;
+    }
     if (NULL != key_state->sign_keys_array)
     {
       json_decref (key_state->sign_keys_array);
@@ -606,6 +656,14 @@ ks_release_ (struct TEH_KS_StateHandle *key_state)
                                              key_state);
       GNUNET_CONTAINER_multihashmap_destroy (key_state->denomkey_map);
       key_state->denomkey_map = NULL;
+    }
+    if (NULL != key_state->revoked_map)
+    {
+      GNUNET_CONTAINER_multihashmap_iterate (key_state->revoked_map,
+                                             &free_denom_key,
+                                             key_state);
+      GNUNET_CONTAINER_multihashmap_destroy (key_state->revoked_map);
+      key_state->revoked_map = NULL;
     }
     GNUNET_free_non_null (key_state->keys_json);
     GNUNET_free (key_state);
@@ -662,6 +720,9 @@ TEH_KS_acquire_ (const char *location)
     key_state->denom_keys_array = json_array ();
     GNUNET_assert (NULL != key_state->denom_keys_array);
 
+    key_state->payback_array = json_array ();
+    GNUNET_assert (NULL != key_state->payback_array);
+
     key_state->sign_keys_array = json_array ();
     GNUNET_assert (NULL != key_state->sign_keys_array);
 
@@ -670,6 +731,8 @@ TEH_KS_acquire_ (const char *location)
 
     key_state->denomkey_map = GNUNET_CONTAINER_multihashmap_create (32,
                                                                     GNUNET_NO);
+    key_state->revoked_map = GNUNET_CONTAINER_multihashmap_create (4,
+                                                                   GNUNET_NO);
     key_state->reload_time = GNUNET_TIME_absolute_get ();
     GNUNET_TIME_round_abs (&key_state->reload_time);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -731,6 +794,7 @@ TEH_KS_acquire_ (const char *location)
                       GNUNET_JSON_from_data_auto (&TEH_master_public_key),
                       "signkeys", key_state->sign_keys_array,
                       "denoms", key_state->denom_keys_array,
+                      "payback", key_state->payback_array,
                       "auditors", key_state->auditors_array,
                       "list_issue_date", GNUNET_JSON_from_time_abs (key_state->reload_time),
                       "eddsa_pub", GNUNET_JSON_from_data_auto (&key_state->current_sign_key_issue.issue.signkey_pub),
@@ -739,6 +803,7 @@ TEH_KS_acquire_ (const char *location)
     key_state->auditors_array = NULL;
     key_state->sign_keys_array = NULL;
     key_state->denom_keys_array = NULL;
+    key_state->payback_array = NULL;
     key_state->keys_json = json_dumps (keys,
                                        JSON_INDENT (2));
     GNUNET_assert (NULL != key_state->keys_json);
@@ -770,10 +835,12 @@ TEH_KS_denomination_key_lookup (const struct TEH_KS_StateHandle *key_state,
   struct GNUNET_HashCode hc;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki;
   struct GNUNET_TIME_Absolute now;
+  const struct GNUNET_CONTAINER_MultiHashMap *map;
 
   GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
                                      &hc);
-  dki = GNUNET_CONTAINER_multihashmap_get (key_state->denomkey_map,
+  map = (TEH_KS_DKU_PAYBACK == use) ? key_state->revoked_map : key_state->denomkey_map;
+  dki = GNUNET_CONTAINER_multihashmap_get (map,
 					   &hc);
   if (NULL == dki)
     return NULL;
@@ -810,8 +877,15 @@ TEH_KS_denomination_key_lookup (const struct TEH_KS_StateHandle *key_state,
     }
     break;
   case TEH_KS_DKU_PAYBACK:
-    GNUNET_break (0); /* not implemented (#3887) */
-    return NULL;
+    if (now.abs_value_us >
+	GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_deposit).abs_value_us)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+		  "Not returning DKI for %s, as time to payback coin has passed\n",
+		  GNUNET_h2s (&hc));
+      return NULL;
+    }
+    break;
   }
   return dki;
 }
