@@ -121,11 +121,14 @@ static struct TALER_AUDITORDB_ProgressPoint pp;
 static void
 report_emergency (const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki)
 {
-  /* TODO: properly implement #3887, including how to continue the
-     audit after the emergency. */
+  char *dhks;
+
+  dhks = GNUNET_STRINGS_data_to_string_alloc (&dki->properties.denom_hash,
+                                              sizeof (struct GNUNET_HashCode));
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Emergency detected for denomination %s\n",
-              GNUNET_h2s (&dki->properties.denom_hash));
+              "Emergency detected. Exchange must revoke key using `taler-auditor -r %s`\n",
+              dhks);
+  GNUNET_free (dhks);
 }
 
 
