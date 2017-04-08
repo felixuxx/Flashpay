@@ -2012,6 +2012,43 @@ struct TALER_EXCHANGEDB_Plugin
                             const struct GNUNET_HashCode *h_blind_ev,
                             struct TALER_ReservePublicKeyP *reserve_pub);
 
+
+  /**
+   * Store information that a denomination key was revoked
+   * in the database.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param denom_pub_hash hash of the revoked denomination key
+   * @param master_sig signature affirming the revocation
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_NO if the entry already exists
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*insert_denomination_revocation)(void *cls,
+                                    struct TALER_EXCHANGEDB_Session *session,
+                                    const struct GNUNET_HashCode *denom_pub_hash,
+                                    const struct TALER_MasterSignatureP *master_sig);
+  /**
+   * Obtain information about a denomination key's revocation from
+   * the database.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param denom_pub_hash hash of the revoked denomination key
+   * @param[out] master_sig signature affirming the revocation
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_NO no such entry exists
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*get_denomination_revocation)(void *cls,
+                                 struct TALER_EXCHANGEDB_Session *session,
+                                 const struct GNUNET_HashCode *denom_pub_hash,
+                                 struct TALER_MasterSignatureP *master_sig);
+
+
 };
 
 

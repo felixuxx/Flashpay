@@ -312,6 +312,15 @@ postgres_create_tables (void *cls)
            ",fee_refund_frac INT4 NOT NULL"
            ",fee_refund_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
            ")");
+  /* denomination_revocations table is for remembering which denomination keys have been revoked */
+  /* TODO (#4981): change denom_pub_hash to REFERENCE 'denominations', and
+     add denom_pub_hash column to denominations, changing other REFERENCEs
+     also to the hash!? */
+  SQLEXEC ("CREATE TABLE IF NOT EXISTS denomination_revocations"
+           "(denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
+           ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
+           ")");
+
   /* reserves table is for summarization of a reserve.  It is updated when new
      funds are added and existing funds are withdrawn.  The 'expiration_date'
      can be used to eventually get rid of reserves that have not been used
@@ -644,6 +653,24 @@ postgres_prepare (PGconn *db_conn)
            " FROM denominations"
            " WHERE denom_pub=$1;",
            1, NULL);
+
+  /* Used in #postgres_insert_denomination_revocation() */
+  PREPARE ("denomination_revocation_insert",
+           "INSERT INTO denomination_revocations "
+           "(denom_pub_hash"
+           ",master_sig"
+           ") VALUES "
+           "($1, $2);",
+           2, NULL);
+
+  /* Used in #postgres_get_denomination_revocation() */
+  PREPARE ("denomination_revocation_get",
+           "SELECT"
+           " master_sig"
+           " FROM denomination_revocations"
+           " WHERE denom_pub_hash=$1;",
+           1, NULL);
+
 
   /* Used in #postgres_reserve_get() */
   PREPARE ("reserve_get",
@@ -5953,6 +5980,114 @@ postgres_get_reserve_by_h_blind (void *cls,
 
 
 /**
+ * Store information that a denomination key was revoked
+ * in the database.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param denom_pub_hash hash of the revoked denomination key
+ * @param master_sig signature affirming the revocation
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if the entry already exists
+ *         #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_insert_denomination_revocation (void *cls,
+                                         struct TALER_EXCHANGEDB_Session *session,
+                                         const struct GNUNET_HashCode *denom_pub_hash,
+                                         const struct TALER_MasterSignatureP *master_sig)
+{
+  PGresult *result;
+  int ret;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
+    GNUNET_PQ_query_param_auto_from_type (master_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                   "denomination_revocation_insert",
+                                   params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    ret = GNUNET_SYSERR;
+    BREAK_DB_ERR (result, session->conn);
+  }
+  else
+  {
+    ret = GNUNET_OK;
+  }
+  PQclear (result);
+  return ret;
+}
+
+
+/**
+ * Obtain information about a denomination key's revocation from
+ * the database.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param denom_pub_hash hash of the revoked denomination key
+ * @param[out] master_sig signature affirming the revocation
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO no such entry exists
+ *         #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_get_denomination_revocation (void *cls,
+                                      struct TALER_EXCHANGEDB_Session *session,
+                                      const struct GNUNET_HashCode *denom_pub_hash,
+                                      struct TALER_MasterSignatureP *master_sig)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("master_sig", master_sig),
+    GNUNET_PQ_result_spec_end
+  };
+  PGresult *result;
+  int nrows;
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "denomination_revocation_get",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result, session->conn);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    /* no matches found */
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  if (1 != nrows)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_PQ_extract_result (result,
+                                rs,
+                                0))
+  {
+    PQclear (result);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -6055,6 +6190,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->select_payback_above_serial_id = &postgres_select_payback_above_serial_id;
   plugin->insert_payback_request = &postgres_insert_payback_request;
   plugin->get_reserve_by_h_blind = &postgres_get_reserve_by_h_blind;
+  plugin->insert_denomination_revocation = &postgres_insert_denomination_revocation;
+  plugin->get_denomination_revocation = &postgres_get_denomination_revocation;
   return plugin;
 }
 
