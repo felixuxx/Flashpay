@@ -55,6 +55,11 @@ static struct TALER_EXCHANGE_Handle *exchange;
 static struct GNUNET_CURL_RescheduleContext *rc;
 
 /**
+ * Handle to the exchange process.
+ */
+static struct GNUNET_OS_Process *exchanged;
+
+/**
  * Task run on timeout.
  */
 static struct GNUNET_SCHEDULER_Task *timeout_task;
@@ -149,7 +154,17 @@ enum OpCode
   /**
    * Refund some deposit.
    */
-  OC_REFUND
+  OC_REFUND,
+
+  /**
+   * Revoke some denomination key.
+   */
+  OC_REVOKE,
+
+  /**
+   * Payback some coin.
+   */
+  OC_PAYBACK
 
 };
 
@@ -657,6 +672,46 @@ struct Command
       struct TALER_EXCHANGE_RefundHandle *rh;
 
     } refund;
+
+    struct {
+
+      /**
+       * Reference to a _coin's_ withdraw operation where the coin's denomination key
+       * is the denomination key to be revoked.
+       */
+      const char *ref;
+
+      /**
+       * Process for the aggregator.
+       */
+      struct GNUNET_OS_Process *revoke_proc;
+
+      /**
+       * ID of task called whenever we get a SIGCHILD.
+       */
+      struct GNUNET_SCHEDULER_Task *child_death_task;
+
+    } revoke;
+
+    struct {
+
+      /**
+       * Reference to the _coin's_ withdraw operation.
+       */
+      const char *ref;
+
+      /**
+       * Amount that should be paid back.
+       */
+      const char *amount;
+
+      /**
+       * Handle to the ongoing /payback operation.
+       */
+      struct TALER_EXCHANGE_PaybackHandle *ph;
+
+    } payback;
+
 
   } details;
 
@@ -1294,12 +1349,32 @@ maint_child_death (void *cls)
   const struct GNUNET_DISK_FileHandle *pr;
   char c[16];
 
-  cmd->details.run_aggregator.child_death_task = NULL;
-  pr = GNUNET_DISK_pipe_handle (sigpipe, GNUNET_DISK_PIPE_END_READ);
-  GNUNET_break (0 < GNUNET_DISK_file_read (pr, &c, sizeof (c)));
-  GNUNET_OS_process_wait (cmd->details.run_aggregator.aggregator_proc);
-  GNUNET_OS_process_destroy (cmd->details.run_aggregator.aggregator_proc);
-  cmd->details.run_aggregator.aggregator_proc = NULL;
+  switch (cmd->oc) {
+  case OC_RUN_AGGREGATOR:
+    cmd->details.run_aggregator.child_death_task = NULL;
+    pr = GNUNET_DISK_pipe_handle (sigpipe, GNUNET_DISK_PIPE_END_READ);
+    GNUNET_break (0 < GNUNET_DISK_file_read (pr, &c, sizeof (c)));
+    GNUNET_OS_process_wait (cmd->details.run_aggregator.aggregator_proc);
+    GNUNET_OS_process_destroy (cmd->details.run_aggregator.aggregator_proc);
+    cmd->details.run_aggregator.aggregator_proc = NULL;
+    break;
+  case OC_REVOKE:
+    cmd->details.revoke.child_death_task = NULL;
+    pr = GNUNET_DISK_pipe_handle (sigpipe, GNUNET_DISK_PIPE_END_READ);
+    GNUNET_break (0 < GNUNET_DISK_file_read (pr, &c, sizeof (c)));
+    GNUNET_OS_process_wait (cmd->details.revoke.revoke_proc);
+    GNUNET_OS_process_destroy (cmd->details.revoke.revoke_proc);
+    cmd->details.revoke.revoke_proc = NULL;
+    /* trigger reload of denomination key information */
+    GNUNET_break (0 ==
+                  GNUNET_OS_process_kill (exchanged,
+                                          SIGUSR1));
+    break;
+  default:
+    GNUNET_break (0);
+    fail (is);
+    return;
+  }
   next_command (is);
 }
 
@@ -1744,6 +1819,88 @@ refund_cb (void *cls,
   next_command (is);
 }
 
+
+
+/**
+ * Check the result of the payback request.
+ *
+ * @param cls closure
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the exchange's reply is bogus (fails to follow the protocol)
+ * @param ec taler-specific error code, #TALER_EC_NONE on success
+ * @param amount amount the exchange will wire back for this coin
+ * @param timestamp what time did the exchange receive the /payback request
+ * @param reserve_pub public key of the reserve receiving the payback
+ * @param full_response full response from the exchange (for logging, in case of errors)
+ */
+static void
+payback_cb (void *cls,
+            unsigned int http_status,
+            enum TALER_ErrorCode ec,
+            const struct TALER_Amount *amount,
+            struct GNUNET_TIME_Absolute timestamp,
+            const struct TALER_ReservePublicKeyP *reserve_pub,
+            const json_t *full_response)
+{
+  struct InterpreterState *is = cls;
+  struct Command *cmd = &is->commands[is->ip];
+  const struct Command *withdraw;
+  const struct Command *reserve;
+  struct TALER_Amount expected_amount;
+  struct TALER_ReservePublicKeyP rp;
+
+  cmd->details.payback.ph = NULL;
+  if (cmd->expected_response_code != http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u to command %s\n",
+                http_status,
+                cmd->label);
+    json_dumpf (full_response, stderr, 0);
+    fail (is);
+    return;
+  }
+  withdraw = find_command (is,
+                           cmd->details.payback.ref);
+  reserve = find_command (is,
+                          withdraw->details.reserve_withdraw.reserve_reference);
+  GNUNET_CRYPTO_eddsa_key_get_public (&reserve->details.admin_add_incoming.reserve_priv.eddsa_priv,
+                                      &rp.eddsa_pub);
+  switch (http_status)
+  {
+  case MHD_HTTP_OK:
+    if (GNUNET_OK !=
+        TALER_string_to_amount (cmd->details.payback.amount,
+                                &expected_amount))
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
+    if (0 != TALER_amount_cmp (amount,
+                               &expected_amount))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Total amount missmatch to command %s\n",
+                  cmd->label);
+      json_dumpf (full_response, stderr, 0);
+      fail (is);
+      return;
+    }
+    if (0 != memcmp (reserve_pub,
+                     &rp,
+                     sizeof (rp)))
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
+    break;
+  default:
+    break;
+  }
+  next_command (is);
+}
 
 
 /**
@@ -2468,6 +2625,59 @@ interpreter_run (void *cls)
       }
       return;
     }
+  case OC_REVOKE:
+    {
+      const struct GNUNET_DISK_FileHandle *pr;
+      char *dhks;
+      const struct Command *ref;
+
+      ref = find_command (is,
+                          cmd->details.revoke.ref);
+      GNUNET_assert (NULL != ref);
+      dhks = GNUNET_STRINGS_data_to_string_alloc (&ref->details.reserve_withdraw.pk->h_key,
+                                                  sizeof (struct GNUNET_HashCode));
+      cmd->details.revoke.revoke_proc
+        = GNUNET_OS_start_process (GNUNET_NO,
+                                   GNUNET_OS_INHERIT_STD_ALL,
+                                   NULL, NULL, NULL,
+                                   "taler-exchange-keyup",
+                                   "taler-exchange-keyup",
+                                   "-c", "test_exchange_api.conf",
+                                   "-r", dhks,
+                                   NULL);
+      GNUNET_free (dhks);
+      if (NULL == cmd->details.revoke.revoke_proc)
+      {
+        GNUNET_break (0);
+        fail (is);
+        return;
+      }
+      pr = GNUNET_DISK_pipe_handle (sigpipe, GNUNET_DISK_PIPE_END_READ);
+      cmd->details.revoke.child_death_task
+        = GNUNET_SCHEDULER_add_read_file (GNUNET_TIME_UNIT_FOREVER_REL,
+                                          pr,
+                                          &maint_child_death,
+                                          is);
+      return;
+    }
+  case OC_PAYBACK:
+    {
+      const struct Command *ref;
+
+      ref = find_command (is,
+                          cmd->details.revoke.ref);
+      GNUNET_assert (NULL != ref);
+      cmd->details.payback.ph
+        = TALER_EXCHANGE_payback (exchange,
+                                  ref->details.reserve_withdraw.pk,
+                                  &ref->details.reserve_withdraw.sig,
+                                  &ref->details.reserve_withdraw.coin_priv,
+                                  &ref->details.reserve_withdraw.blinding_key,
+                                  &payback_cb,
+                                  is);
+      return;
+    }
+
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unknown instruction %d at %u (%s)\n",
@@ -2695,6 +2905,29 @@ do_shutdown (void *cls)
                     cmd->label);
         TALER_EXCHANGE_refund_cancel (cmd->details.refund.rh);
         cmd->details.refund.rh = NULL;
+      }
+      break;
+    case OC_REVOKE:
+      if (NULL != cmd->details.revoke.revoke_proc)
+      {
+        GNUNET_break (0 ==
+                      GNUNET_OS_process_kill (cmd->details.revoke.revoke_proc,
+                                              SIGKILL));
+        GNUNET_OS_process_wait (cmd->details.revoke.revoke_proc);
+        GNUNET_OS_process_destroy (cmd->details.revoke.revoke_proc);
+        cmd->details.revoke.revoke_proc = NULL;
+      }
+      if (NULL != cmd->details.revoke.child_death_task)
+      {
+        GNUNET_SCHEDULER_cancel (cmd->details.revoke.child_death_task);
+        cmd->details.revoke.child_death_task = NULL;
+      }
+      break;
+    case OC_PAYBACK:
+      if (NULL != cmd->details.payback.ph)
+      {
+        TALER_EXCHANGE_payback_cancel (cmd->details.payback.ph);
+        cmd->details.payback.ph = NULL;
       }
       break;
     default:
@@ -3138,6 +3371,12 @@ run (void *cls)
       .details.refund.deposit_ref = "deposit-refund-2",
     },
 
+    /* ************** End of refund API testing************* */
+
+    /* ************** Test /payback API  ************* */
+
+
+    /* ************** End of payback API testing************* */
 #endif
 
     { .oc = OC_END }
@@ -3175,7 +3414,6 @@ main (int argc,
       char * const *argv)
 {
   struct GNUNET_OS_Process *proc;
-  struct GNUNET_OS_Process *exchanged;
   struct GNUNET_SIGNAL_Context *shc_chld;
   enum GNUNET_OS_ProcessStatusType type;
   unsigned long code;
