@@ -3373,9 +3373,7 @@ static void
 free_dpk_result (struct TALER_DenominationPublicKey *denom_pubs,
                  unsigned int denom_pubs_len)
 {
-  unsigned int i;
-
-  for (i=0;i<denom_pubs_len;i++)
+  for (unsigned int i=0;i<denom_pubs_len;i++)
   {
     GNUNET_CRYPTO_rsa_public_key_free (denom_pubs[i].rsa_public_key);
     denom_pubs[i].rsa_public_key = NULL;
@@ -3724,10 +3722,9 @@ postgres_get_refresh_transfer_public_key (void *cls,
 
 
 /**
- * Insert signature of a new coin generated during refresh into
+ * Get signature of a new coin generated during refresh into
  * the database indexed by the refresh session and the index
- * of the coin.  This data is later used should an old coin
- * be used to try to obtain the private keys during "/refresh/link".
+ * of the coin.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
@@ -5988,7 +5985,7 @@ postgres_get_reserve_by_h_blind (void *cls,
  * @param denom_pub_hash hash of the revoked denomination key
  * @param master_sig signature affirming the revocation
  * @return #GNUNET_OK on success,
- *         #GNUNET_NO if the entry already exists
+ *         #GNUNET_NO if the entry already exists (transaction must be rolled back!)
  *         #GNUNET_SYSERR on DB errors
  */
 static int
@@ -6010,6 +6007,21 @@ postgres_insert_denomination_revocation (void *cls,
                                    params);
   if (PGRES_COMMAND_OK != PQresultStatus (result))
   {
+    const char *efield;
+
+    efield = PQresultErrorField (result,
+				 PG_DIAG_SQLSTATE);
+    if ( (PGRES_FATAL_ERROR == PQresultStatus(result)) &&
+	 (NULL != strstr ("23505", /* unique violation */
+			  efield)) )
+    {
+      /* This means we had the same reserve/justification/details
+	 before */
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Uniqueness violation, revocation details already known\n");
+      PQclear (result);
+      return GNUNET_NO;
+    }
     ret = GNUNET_SYSERR;
     BREAK_DB_ERR (result, session->conn);
   }

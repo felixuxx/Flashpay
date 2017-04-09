@@ -2022,7 +2022,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param denom_pub_hash hash of the revoked denomination key
    * @param master_sig signature affirming the revocation
    * @return #GNUNET_OK on success,
-   *         #GNUNET_NO if the entry already exists
+   *         #GNUNET_NO if the entry already exists (transaction must be rolled back!)
    *         #GNUNET_SYSERR on DB errors
    */
   int
