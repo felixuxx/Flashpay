@@ -51,6 +51,11 @@ dki_iter (void *cls,
 {
   const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *exp = cls;
 
+  if (NULL != revocation_master_sig)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   if (0 != memcmp (&exp->issue,
                    &dki->issue,
                    sizeof (struct TALER_EXCHANGEDB_DenominationKeyInformationP)))
@@ -76,6 +81,56 @@ dki_iter (void *cls,
 }
 
 
+/**
+ * @brief Iterator called on revoked denomination key.
+ *
+ * @param cls closure with expected DKI
+ * @param dki the denomination key
+ * @param alias coin alias
+ * @param revocation_master_sig non-NULL if @a dki was revoked
+ * @return #GNUNET_OK to continue to iterate,
+ *  #GNUNET_NO to stop iteration with no error,
+ *  #GNUNET_SYSERR to abort iteration with error!
+ */
+static int
+dki_iter_revoked (void *cls,
+                  const char *alias,
+                  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *dki,
+                  const struct TALER_MasterSignatureP *revocation_master_sig)
+{
+  const struct TALER_EXCHANGEDB_DenominationKeyIssueInformation *exp = cls;
+
+  if (NULL == revocation_master_sig)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 != memcmp (&exp->issue,
+                   &dki->issue,
+                   sizeof (struct TALER_EXCHANGEDB_DenominationKeyInformationP)))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 !=
+      GNUNET_CRYPTO_rsa_private_key_cmp (exp->denom_priv.rsa_private_key,
+                                         dki->denom_priv.rsa_private_key))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 !=
+      GNUNET_CRYPTO_rsa_public_key_cmp (exp->denom_pub.rsa_public_key,
+                                        dki->denom_pub.rsa_public_key))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  return GNUNET_OK;
+}
+
+
 int
 main (int argc,
       const char *const argv[])
@@ -84,12 +139,16 @@ main (int argc,
   char *enc;
   size_t enc_size;
   struct TALER_EXCHANGEDB_DenominationKeyIssueInformation dki_read;
+  struct GNUNET_CRYPTO_EddsaPrivateKey *pk;
+  struct TALER_MasterPrivateKeyP master_priv;
   struct TALER_MasterPublicKeyP master_pub;
   char *enc_read;
   size_t enc_read_size;
   char *tmpfile;
+  char *tmpdir2;
   char *tmpdir;
   int ret;
+  struct GNUNET_TIME_Absolute start;
 
   ret = 1;
   GNUNET_log_setup ("test-exchangedb-denomkeys",
@@ -100,7 +159,11 @@ main (int argc,
   tmpfile = NULL;
   dki.denom_priv.rsa_private_key = NULL;
   dki_read.denom_priv.rsa_private_key = NULL;
-  memset (&master_pub, 42, sizeof (master_pub)); /* for now does not matter */
+  pk = GNUNET_CRYPTO_eddsa_key_create ();
+  master_priv.eddsa_priv = *pk;
+  GNUNET_CRYPTO_eddsa_key_get_public (pk,
+                                      &master_pub.eddsa_pub);
+  GNUNET_free (pk);
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &dki.issue,
                               sizeof (struct TALER_EXCHANGEDB_DenominationKeyInformationP));
@@ -111,12 +174,13 @@ main (int argc,
   enc_size = GNUNET_CRYPTO_rsa_private_key_encode (dki.denom_priv.rsa_private_key,
                                                    &enc);
   EXITIF (NULL == (tmpdir = GNUNET_DISK_mkdtemp ("test_exchangedb_dki")));
+  start = GNUNET_TIME_absolute_ntoh (dki.issue.properties.start);
   GNUNET_asprintf (&tmpfile,
-                   "%s/%s/%s/%s",
+                   "%s/%s/%s/%llu",
                    tmpdir,
                    TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS,
                    "cur-unit-uuid",
-                   "testkey.key");
+                   (unsigned long long) start.abs_value_us);
   EXITIF (GNUNET_OK !=
           TALER_EXCHANGEDB_denomination_key_write (tmpfile,
                                                    &dki));
@@ -127,6 +191,23 @@ main (int argc,
           TALER_EXCHANGEDB_denomination_keys_iterate (tmpdir,
                                                       &master_pub,
                                                       &dki_iter,
+                                                      &dki));
+
+  GNUNET_asprintf (&tmpdir2,
+                   "%s/%s/",
+                   tmpdir,
+                   TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS);
+  EXITIF (GNUNET_OK !=
+          TALER_EXCHANGEDB_denomination_key_revoke (tmpdir2,
+                                                    "cur-unit-uuid",
+                                                    &dki,
+                                                    &master_priv));
+  GNUNET_free (tmpdir2);
+
+  EXITIF (1 !=
+          TALER_EXCHANGEDB_denomination_keys_iterate (tmpdir,
+                                                      &master_pub,
+                                                      &dki_iter_revoked,
                                                       &dki));
 
 
