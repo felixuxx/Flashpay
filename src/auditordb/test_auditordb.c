@@ -63,6 +63,23 @@ static int result = -1;
 static struct TALER_AUDITORDB_Plugin *plugin;
 
 
+static int
+select_denomination_info_result (void *cls,
+                                 const struct TALER_DenominationKeyValidityPS *issue2)
+{
+  const struct TALER_DenominationKeyValidityPS *issue1 = cls;
+
+  if (0 != memcmp (issue1, issue2, sizeof (*issue2)))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "select_denomination_info_result: issue does not match\n");
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
 /**
  * Main function that will be run by the scheduler.
  *
@@ -99,10 +116,18 @@ run (void *cls)
     goto drop;
   }
 
+  FAILIF (GNUNET_OK !=
+          plugin->start (plugin->cls,
+                         session));
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "initializing\n");
 
-  struct TALER_Amount value, fee_withdraw, fee_deposit, fee_refresh, fee_refund;
+  struct TALER_Amount value;
+  struct TALER_Amount fee_withdraw;
+  struct TALER_Amount fee_deposit;
+  struct TALER_Amount fee_refresh;
+  struct TALER_Amount fee_refund;
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.000010",
@@ -175,22 +200,6 @@ run (void *cls)
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: select_denomination_info\n");
-
-  int
-  select_denomination_info_result (void *cls,
-                                   const struct TALER_DenominationKeyValidityPS *issue2)
-  {
-    const struct TALER_DenominationKeyValidityPS *issue1 = cls;
-
-    if (0 != memcmp (issue1, issue2, sizeof (*issue2)))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "select_denomination_info_result: issue does not match\n");
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-    return GNUNET_OK;
-  }
 
   FAILIF (GNUNET_OK !=
           plugin->select_denomination_info (plugin->cls,
@@ -527,6 +536,7 @@ run (void *cls)
                                           past,
                                           &rbalance));
 
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: select_historic_losses\n");
 
@@ -646,6 +656,37 @@ run (void *cls)
                                            &master_pub,
                                            &rbalance));
 
+  FAILIF (GNUNET_OK !=
+          plugin->insert_wire_fee_summary (plugin->cls,
+                                           session,
+                                           &master_pub,
+                                           &rbalance));
+  FAILIF (GNUNET_OK !=
+          plugin->update_wire_fee_summary (plugin->cls,
+                                           session,
+                                           &master_pub,
+                                           &reserve_profits));
+  {
+    struct TALER_Amount rprof;
+
+    FAILIF (GNUNET_OK !=
+            plugin->get_wire_fee_summary (plugin->cls,
+                                          session,
+                                          &master_pub,
+                                          &rprof));
+    FAILIF (0 !=
+            TALER_amount_cmp (&rprof,
+                              &reserve_profits));
+  }
+  FAILIF (GNUNET_OK !=
+          plugin->commit (plugin->cls,
+                          session));
+
+
+  FAILIF (GNUNET_OK !=
+          plugin->start (plugin->cls,
+                         session));
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_predicted_balance\n");
 
@@ -655,12 +696,29 @@ run (void *cls)
                                          &master_pub,
                                          &rbalance2));
 
-  FAILIF (0 != memcmp (&rbalance2, &rbalance, sizeof (rbalance)));
+  FAILIF (GNUNET_OK !=
+          plugin->del_reserve_info (plugin->cls,
+                                    session,
+                                    &reserve_pub,
+                                    &master_pub));
+
+
+  FAILIF (0 != TALER_amount_cmp (&rbalance2,
+                                 &rbalance));
+
+  plugin->rollback (plugin->cls,
+                    session);
+
+#if GC_IMPLEMENTED
+  FAILIF (GNUNET_OK !=
+          plugin->gc (plugin->cls));
+#endif
 
   result = 0;
 
 drop:
-
+  plugin->rollback (plugin->cls,
+                    session);
   GNUNET_break (GNUNET_OK ==
                 plugin->drop_tables (plugin->cls));
   TALER_AUDITORDB_plugin_unload (plugin);
