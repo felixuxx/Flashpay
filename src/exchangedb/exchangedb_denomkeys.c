@@ -54,7 +54,10 @@ TALER_EXCHANGEDB_denomination_key_revoke (const char *exchange_base_dir,
   ret = GNUNET_SYSERR;
   start = GNUNET_TIME_absolute_ntoh (dki->issue.properties.start);
   GNUNET_asprintf (&fn,
-                   "%s" DIR_SEPARATOR_STR "%s" DIR_SEPARATOR_STR "%llu.rev",
+                   "%s" DIR_SEPARATOR_STR
+                   TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS DIR_SEPARATOR_STR
+                   "%s" DIR_SEPARATOR_STR
+                   "%llu.rev",
                    exchange_base_dir,
                    alias,
                    (unsigned long long) start.abs_value_us);

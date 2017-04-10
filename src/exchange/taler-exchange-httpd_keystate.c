@@ -308,6 +308,9 @@ reload_keys_denom_iter (void *cls,
 
   if (NULL != revocation_master_sig)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Adding denomination key `%s' to revokation set\n",
+                alias);
     res = store_in_map (ctx->revoked_map,
                         dki);
     if (GNUNET_NO == res)

@@ -1369,6 +1369,7 @@ maint_child_death (void *cls)
     GNUNET_break (0 ==
                   GNUNET_OS_process_kill (exchanged,
                                           SIGUSR1));
+    sleep (5); /* make sure signal was received and processed */
     break;
   default:
     GNUNET_break (0);
@@ -3375,6 +3376,78 @@ run (void *cls)
 
     /* ************** Test /payback API  ************* */
 
+    /* Fill reserve with EUR:5.01, as withdraw fee is 1 ct per config,
+       then withdraw a coin and then have it be paid back. */
+    { .oc = OC_ADMIN_ADD_INCOMING,
+      .label = "payback-create-reserve-1",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.admin_add_incoming.sender_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42}",
+      .details.admin_add_incoming.transfer_details = "{ \"uuid\":4  }",
+      .details.admin_add_incoming.amount = "EUR:5.01" },
+    /* Withdraw a 5 EUR coin, at fee of 1 ct */
+    { .oc = OC_WITHDRAW_SIGN,
+      .label = "payback-withdraw-coin-1",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.reserve_withdraw.reserve_reference = "payback-create-reserve-1",
+      .details.reserve_withdraw.amount = "EUR:5" },
+    { .oc = OC_REVOKE,
+      .label = "revoke-1",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.revoke.ref = "payback-withdraw-coin-1" },
+    { .oc = OC_PAYBACK,
+      .label = "payback-1",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.payback.ref = "payback-withdraw-coin-1",
+      .details.payback.amount = "EUR:5" },
+
+
+    /* Fill reserve with EUR:1.01, as withdraw fee is 1 ct per config,
+       then withdraw a coin, partially spend it, and then have the rest paid back.
+       (Do not use EUR:5 here as the EUR:5 coin was revoked and we did not
+       bother to create a new one...) */
+    { .oc = OC_ADMIN_ADD_INCOMING,
+      .label = "payback-create-reserve-2",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.admin_add_incoming.sender_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42}",
+      .details.admin_add_incoming.transfer_details = "{ \"uuid\":5  }",
+      .details.admin_add_incoming.amount = "EUR:1.01" },
+    /* Withdraw a 1 EUR coin, at fee of 1 ct */
+    { .oc = OC_WITHDRAW_SIGN,
+      .label = "payback-withdraw-coin-2",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.reserve_withdraw.reserve_reference = "payback-create-reserve-2",
+      .details.reserve_withdraw.amount = "EUR:1" },
+
+    { .oc = OC_DEPOSIT,
+      .label = "payback-deposit-partial",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.deposit.amount = "EUR:0.5",
+      .details.deposit.coin_ref = "payback-withdraw-coin-2",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"more ice cream\", \"value\":1 } ] }" },
+    { .oc = OC_REVOKE,
+      .label = "revoke-2",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.revoke.ref = "payback-withdraw-coin-2" },
+    { .oc = OC_PAYBACK,
+      .label = "payback-2",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.payback.ref = "payback-withdraw-coin-2",
+      .details.payback.amount = "EUR:0.5" },
+
+    /* Test that revoked coins cannot be withdrawn */
+    { .oc = OC_ADMIN_ADD_INCOMING,
+      .label = "payback-create-reserve-3",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.admin_add_incoming.sender_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42}",
+      .details.admin_add_incoming.transfer_details = "{ \"uuid\":6  }",
+      .details.admin_add_incoming.amount = "EUR:1.01" },
+    { .oc = OC_WITHDRAW_SIGN,
+      .label = "payback-withdraw-coin-3-revoked",
+      .expected_response_code = MHD_HTTP_NOT_FOUND,
+      .details.reserve_withdraw.reserve_reference = "payback-create-reserve-3",
+      .details.reserve_withdraw.amount = "EUR:1" },
+
 
     /* ************** End of payback API testing************* */
 #endif
@@ -3401,6 +3474,40 @@ run (void *cls)
                                     &do_timeout, NULL);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown, is);
 }
+
+
+/**
+ * Remove files from previous runs
+ */
+static void
+cleanup_files ()
+{
+  struct GNUNET_CONFIGURATION_Handle *cfg;
+  char *dir;
+
+  cfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_load (cfg,
+                                 "test_exchange_api.conf"))
+  {
+    GNUNET_break (0);
+    GNUNET_CONFIGURATION_destroy (cfg);
+    exit (77);
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                                          "exchange",
+                                                          "keydir",
+                                                          &dir));
+  if (GNUNET_YES ==
+      GNUNET_DISK_directory_test (dir,
+                                  GNUNET_NO))
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_DISK_directory_remove (dir));
+  GNUNET_free (dir);
+  GNUNET_CONFIGURATION_destroy (cfg);
+}
+
 
 
 /**
@@ -3443,6 +3550,8 @@ main (int argc,
 	     8082);
     return 77;
   }
+  cleanup_files ();
+
   proc = GNUNET_OS_start_process (GNUNET_NO,
                                   GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,

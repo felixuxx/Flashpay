@@ -192,7 +192,7 @@ calculate_transaction_list_totals (struct TALER_EXCHANGEDB_TransactionList *tl,
     }
   }
   /* spent = spent - refunded */
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       TALER_amount_subtract (&spent,
                              &spent,
                              &refunded))

@@ -168,7 +168,7 @@ TEH_PAYBACK_handler_payback (struct TEH_RequestHandler *rh,
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_denomination_public_key ("denom_pub",
                                              &coin.denom_pub),
-    TALER_JSON_spec_denomination_signature ("ub_sig",
+    TALER_JSON_spec_denomination_signature ("denom_sig",
                                             &coin.denom_sig),
     GNUNET_JSON_spec_fixed_auto ("coin_pub",
                                  &coin.coin_pub),
