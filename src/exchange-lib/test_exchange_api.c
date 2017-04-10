@@ -3535,7 +3535,6 @@ cleanup_files ()
 }
 
 
-
 /**
  * Main function for the testcase for the exchange API.
  *

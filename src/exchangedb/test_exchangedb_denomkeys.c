@@ -145,7 +145,6 @@ main (int argc,
   char *enc_read;
   size_t enc_read_size;
   char *tmpfile;
-  char *tmpdir2;
   char *tmpdir;
   int ret;
   struct GNUNET_TIME_Absolute start;
@@ -193,17 +192,11 @@ main (int argc,
                                                       &dki_iter,
                                                       &dki));
 
-  GNUNET_asprintf (&tmpdir2,
-                   "%s/%s/",
-                   tmpdir,
-                   TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS);
   EXITIF (GNUNET_OK !=
-          TALER_EXCHANGEDB_denomination_key_revoke (tmpdir2,
+          TALER_EXCHANGEDB_denomination_key_revoke (tmpdir,
                                                     "cur-unit-uuid",
                                                     &dki,
                                                     &master_priv));
-  GNUNET_free (tmpdir2);
-
   EXITIF (1 !=
           TALER_EXCHANGEDB_denomination_keys_iterate (tmpdir,
                                                       &master_pub,
@@ -219,12 +212,13 @@ main (int argc,
                        enc_size));
   ret = 0;
 
-  EXITIF_exit:
+ EXITIF_exit:
   GNUNET_free_non_null (enc);
-  if (NULL != tmpfile)
+  GNUNET_free_non_null (tmpfile);
+  if (NULL != tmpdir)
   {
-    (void) GNUNET_DISK_directory_remove (tmpfile);
-    GNUNET_free (tmpfile);
+    (void) GNUNET_DISK_directory_remove (tmpdir);
+    GNUNET_free (tmpdir);
   }
   GNUNET_free_non_null (enc_read);
   if (NULL != dki.denom_priv.rsa_private_key)
