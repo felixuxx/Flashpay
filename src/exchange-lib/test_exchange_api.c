@@ -922,6 +922,38 @@ compare_reserve_withdraw_history (const struct TALER_EXCHANGE_ReserveHistory *h,
 
 
 /**
+ * Check if the given historic event @a h corresponds to the given
+ * command @a cmd.
+ *
+ * @param h event in history
+ * @param cmd an #OC_WITHDRAW_SIGN command
+ * @return #GNUNET_OK if they match, #GNUNET_SYSERR if not
+ */
+static int
+compare_reserve_payback_history (const struct TALER_EXCHANGE_ReserveHistory *h,
+                                 const struct Command *cmd)
+{
+  struct TALER_Amount amount;
+
+  if (TALER_EXCHANGE_RTT_PAYBACK != h->type)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (cmd->details.payback.amount,
+                                         &amount));
+  if (0 != TALER_amount_cmp (&amount,
+                             &h->amount))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Function called with the result of a /reserve/status request.
  *
  * @param cls closure with the interpreter state
@@ -945,6 +977,7 @@ reserve_status_cb (void *cls,
   struct InterpreterState *is = cls;
   struct Command *cmd = &is->commands[is->ip];
   struct Command *rel;
+  const struct Command *xrel;
   unsigned int i;
   unsigned int j;
   struct TALER_Amount amount;
@@ -999,6 +1032,24 @@ reserve_status_cb (void *cls,
                (GNUNET_OK !=
                 compare_reserve_withdraw_history (&history[j],
                                                   rel)) )
+          {
+            GNUNET_break (0);
+            fail (is);
+            return;
+          }
+          j++;
+        }
+        break;
+      case OC_PAYBACK:
+        xrel = find_command (is,
+                             rel->details.payback.ref);
+        if (0 == strcmp (cmd->details.reserve_status.reserve_reference,
+                         xrel->details.reserve_withdraw.reserve_reference))
+        {
+          if ( (j >= history_length) ||
+               (GNUNET_OK !=
+                compare_reserve_payback_history (&history[j],
+                                                 rel)) )
           {
             GNUNET_break (0);
             fail (is);
@@ -1086,6 +1137,9 @@ reserve_withdraw_cb (void *cls,
       = GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
     break;
   case MHD_HTTP_FORBIDDEN:
+    /* nothing to check */
+    break;
+  case MHD_HTTP_NOT_FOUND:
     /* nothing to check */
     break;
   default:
@@ -2666,7 +2720,7 @@ interpreter_run (void *cls)
       const struct Command *ref;
 
       ref = find_command (is,
-                          cmd->details.revoke.ref);
+                          cmd->details.payback.ref);
       GNUNET_assert (NULL != ref);
       cmd->details.payback.ph
         = TALER_EXCHANGE_payback (exchange,
@@ -3399,6 +3453,12 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_OK,
       .details.payback.ref = "payback-withdraw-coin-1",
       .details.payback.amount = "EUR:5" },
+    /* Check the money is back with the reserve */
+    { .oc = OC_WITHDRAW_STATUS,
+      .label = "payback-reserve-status-1",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.reserve_status.reserve_reference = "payback-create-reserve-1",
+      .details.reserve_status.expected_balance = "EUR:5.00" },
 
 
     /* Fill reserve with EUR:2.02, as withdraw fee is 1 ct per config,

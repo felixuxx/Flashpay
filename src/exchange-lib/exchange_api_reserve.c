@@ -274,7 +274,7 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
                                      &rhistory[off].details.payback_details.exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                      &rhistory[off].details.payback_details.exchange_pub),
-        GNUNET_JSON_spec_absolute_time ("timetamp",
+        GNUNET_JSON_spec_absolute_time ("timestamp",
                                         &timestamp),
         TALER_JSON_spec_amount ("amount",
                                 &rhistory[off].amount),
@@ -322,6 +322,15 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
                                       &rhistory[off].details.payback_details.exchange_sig.eddsa_signature,
                                       &rhistory[off].details.payback_details.exchange_pub.eddsa_pub))
       {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if (GNUNET_OK !=
+          TALER_amount_add (&total_in,
+                            &total_in,
+                            &rhistory[off].amount))
+      {
+        /* overflow in history already!? inconceivable! Bad exchange! */
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }

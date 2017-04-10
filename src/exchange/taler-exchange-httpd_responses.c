@@ -745,12 +745,13 @@ compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
 
       GNUNET_assert (0 ==
                      json_array_append_new (json_history,
-                                            json_pack ("{s:s, s:o, s:o, s:o, s:o}",
+                                            json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
                                                        "type", "PAYBACK",
                                                        "exchange_pub", GNUNET_JSON_from_data_auto (&pub),
                                                        "exchange_sig", GNUNET_JSON_from_data_auto (&sig),
                                                        "timestamp", GNUNET_JSON_from_time_abs (payback->timestamp),
-                                                       "amount", TALER_JSON_from_amount (&payback->value))));
+                                                       "amount", TALER_JSON_from_amount (&payback->value),
+                                                       "details", GNUNET_JSON_from_data_auto (&pc))));
       break;
     case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
       value = pos->details.bank->amount;
