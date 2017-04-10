@@ -3401,8 +3401,9 @@ run (void *cls)
       .details.payback.amount = "EUR:5" },
 
 
-    /* Fill reserve with EUR:1.01, as withdraw fee is 1 ct per config,
-       then withdraw a coin, partially spend it, and then have the rest paid back.
+    /* Fill reserve with EUR:2.02, as withdraw fee is 1 ct per config,
+       then withdraw two coin, partially spend one, and then have the rest paid back.
+       Check deposit of other coin fails.
        (Do not use EUR:5 here as the EUR:5 coin was revoked and we did not
        bother to create a new one...) */
     { .oc = OC_ADMIN_ADD_INCOMING,
@@ -3410,10 +3411,16 @@ run (void *cls)
       .expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.sender_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42}",
       .details.admin_add_incoming.transfer_details = "{ \"uuid\":5  }",
-      .details.admin_add_incoming.amount = "EUR:1.01" },
+      .details.admin_add_incoming.amount = "EUR:2.02" },
     /* Withdraw a 1 EUR coin, at fee of 1 ct */
     { .oc = OC_WITHDRAW_SIGN,
-      .label = "payback-withdraw-coin-2",
+      .label = "payback-withdraw-coin-2a",
+      .expected_response_code = MHD_HTTP_OK,
+      .details.reserve_withdraw.reserve_reference = "payback-create-reserve-2",
+      .details.reserve_withdraw.amount = "EUR:1" },
+    /* Withdraw a 1 EUR coin, at fee of 1 ct */
+    { .oc = OC_WITHDRAW_SIGN,
+      .label = "payback-withdraw-coin-2b",
       .expected_response_code = MHD_HTTP_OK,
       .details.reserve_withdraw.reserve_reference = "payback-create-reserve-2",
       .details.reserve_withdraw.amount = "EUR:1" },
@@ -3422,18 +3429,37 @@ run (void *cls)
       .label = "payback-deposit-partial",
       .expected_response_code = MHD_HTTP_OK,
       .details.deposit.amount = "EUR:0.5",
-      .details.deposit.coin_ref = "payback-withdraw-coin-2",
+      .details.deposit.coin_ref = "payback-withdraw-coin-2a",
       .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
       .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"more ice cream\", \"value\":1 } ] }" },
     { .oc = OC_REVOKE,
       .label = "revoke-2",
       .expected_response_code = MHD_HTTP_OK,
-      .details.revoke.ref = "payback-withdraw-coin-2" },
+      .details.revoke.ref = "payback-withdraw-coin-2a" },
     { .oc = OC_PAYBACK,
       .label = "payback-2",
       .expected_response_code = MHD_HTTP_OK,
-      .details.payback.ref = "payback-withdraw-coin-2",
+      .details.payback.ref = "payback-withdraw-coin-2a",
       .details.payback.amount = "EUR:0.5" },
+    { .oc = OC_DEPOSIT,
+      .label = "payback-deposit-revoked",
+      .expected_response_code = MHD_HTTP_NOT_FOUND,
+      .details.deposit.amount = "EUR:1",
+      .details.deposit.coin_ref = "payback-withdraw-coin-2b",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"more ice cream\", \"value\":1 } ] }" },
+
+    /* Test deposit fails after payback, with proof in payback */
+    /* FIXME: #3887: right now, the exchange will never return the
+       coin's transaction history with payback data, as we get a 404 on the DK! */
+    { .oc = OC_DEPOSIT,
+      .label = "payback-deposit-partial-after-payback",
+      .expected_response_code = MHD_HTTP_NOT_FOUND,
+      .details.deposit.amount = "EUR:0.5",
+      .details.deposit.coin_ref = "payback-withdraw-coin-2a",
+      .details.deposit.wire_details = "{ \"type\":\"test\", \"bank_uri\":\"http://localhost:8082/\", \"account_number\":42  }",
+      .details.deposit.proposal_data = "{ \"items\": [ { \"name\":\"extra ice cream\", \"value\":1 } ] }" },
+
 
     /* Test that revoked coins cannot be withdrawn */
     { .oc = OC_ADMIN_ADD_INCOMING,

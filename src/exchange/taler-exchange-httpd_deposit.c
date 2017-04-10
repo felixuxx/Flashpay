@@ -196,6 +196,7 @@ TEH_DEPOSIT_handler_deposit (struct TEH_RequestHandler *rh,
 					TEH_KS_DKU_DEPOSIT);
   if (NULL == dki)
   {
+    /* FIXME: #3887: if DK was revoked, we might want to give a 403 and not a 404! */
     TEH_KS_release (key_state);
     TALER_LOG_WARNING ("Unknown denomination key in /deposit request\n");
     return TEH_RESPONSE_reply_arg_unknown (connection,
