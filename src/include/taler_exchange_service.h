@@ -1403,7 +1403,8 @@ struct TALER_EXCHANGE_PaybackHandle;
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the exchange's reply is bogus (fails to follow the protocol)
  * @param ec taler-specific error code, #TALER_EC_NONE on success
- * @param amount amount the exchange will wire back for this coin
+ * @param amount amount the exchange will wire back for this coin,
+ *        on error the total balance remaining, or NULL
  * @param timestamp what time did the exchange receive the /payback request
  * @param reserve_pub public key of the reserve receiving the payback
  * @param full_response full response from the exchange (for logging, in case of errors)

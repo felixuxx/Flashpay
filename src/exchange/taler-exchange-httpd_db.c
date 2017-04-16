@@ -2396,7 +2396,6 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
   if ( (0 == amount.fraction) &&
        (0 == amount.value) )
   {
-    GNUNET_break_op (0);
     TEH_plugin->rollback (TEH_plugin->cls,
                           session);
     ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,

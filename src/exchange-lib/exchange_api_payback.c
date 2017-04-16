@@ -54,6 +54,11 @@ struct TALER_EXCHANGE_PaybackHandle
   char *json_enc;
 
   /**
+   * Denomination key of the coin.
+   */
+  const struct TALER_EXCHANGE_DenomPublicKey *pk;
+  
+  /**
    * Handle for the request.
    */
   struct GNUNET_CURL_Job *job;
@@ -181,6 +186,35 @@ handle_payback_finished (void *cls,
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
+  case MHD_HTTP_FORBIDDEN:
+    {
+      /* Insufficient funds, proof attached */
+      json_t *history;
+      struct TALER_Amount total;
+      const struct TALER_EXCHANGE_DenomPublicKey *dki;
+
+      dki = ph->pk;
+      history = json_object_get (json,
+				 "history");
+      if (GNUNET_OK !=
+	  TALER_EXCHANGE_verify_coin_history (dki->fee_deposit.currency,
+					      &ph->coin_pub,
+					      history,
+					      &total))
+      {
+	GNUNET_break_op (0);
+	response_code = 0;
+      }
+      ph->cb (ph->cb_cls,
+	      response_code,
+	      TALER_JSON_get_error_code (json),
+	      &total,
+	      GNUNET_TIME_UNIT_FOREVER_ABS,
+	      NULL,
+	      json);
+      TALER_EXCHANGE_payback_cancel (ph);
+      return;
+    }
   case MHD_HTTP_UNAUTHORIZED:
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
@@ -277,6 +311,7 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   ph = GNUNET_new (struct TALER_EXCHANGE_PaybackHandle);
   ph->coin_pub = pr.coin_pub;
   ph->exchange = exchange;
+  ph->pk = pk;
   ph->cb = payback_cb;
   ph->cb_cls = payback_cb_cls;
   ph->url = MAH_path_to_url (exchange, "/payback");
