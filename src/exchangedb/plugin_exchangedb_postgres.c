@@ -260,6 +260,8 @@ postgres_drop_tables (void *cls)
             "DROP TABLE IF EXISTS reserves CASCADE;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS denominations CASCADE;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS denomination_revocations CASCADE;");
   PQfinish (conn);
   return GNUNET_OK;
  SQLEXEC_fail:
