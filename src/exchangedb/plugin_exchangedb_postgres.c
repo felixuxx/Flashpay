@@ -227,27 +227,27 @@ postgres_drop_tables (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Dropping ALL tables\n");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS prewire;");
+            "DROP TABLE IF EXISTS prewire CASCADE;");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS payback;");
+            "DROP TABLE IF EXISTS payback CASCADE;");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS aggregation_tracking;");
+            "DROP TABLE IF EXISTS aggregation_tracking CASCADE;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS wire_out CASCADE;");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS wire_fee;");
+            "DROP TABLE IF EXISTS wire_fee CASCADE;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS deposits CASCADE;");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS refresh_out;");
+            "DROP TABLE IF EXISTS refresh_out CASCADE;");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS refresh_commit_coin;");
+            "DROP TABLE IF EXISTS refresh_commit_coin CASCADE;");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS refresh_transfer_public_key;");
+            "DROP TABLE IF EXISTS refresh_transfer_public_key CASCADE;");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS refunds;");
+            "DROP TABLE IF EXISTS refunds CASCADE;");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS refresh_order;");
+            "DROP TABLE IF EXISTS refresh_order CASCADE;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS refresh_sessions CASCADE;");
   SQLEXEC_ (conn,
@@ -255,13 +255,13 @@ postgres_drop_tables (void *cls)
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS reserves_out CASCADE;");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS reserves_in;");
+            "DROP TABLE IF EXISTS reserves_in CASCADE;");
   SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS reserves CASCADE;");
   SQLEXEC_ (conn,
-            "DROP TABLE IF EXISTS denominations CASCADE;");
-  SQLEXEC_ (conn,
             "DROP TABLE IF EXISTS denomination_revocations CASCADE;");
+  SQLEXEC_ (conn,
+            "DROP TABLE IF EXISTS denominations CASCADE;");
   PQfinish (conn);
   return GNUNET_OK;
  SQLEXEC_fail:
@@ -291,7 +291,8 @@ postgres_create_tables (void *cls)
      denominations keys.  The denominations are to be referred to using
      foreign keys. */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS denominations"
-           "(denom_pub BYTEA PRIMARY KEY"
+           "(denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
+	   ",denom_pub BYTEA NOT NULL"
            ",master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)"
            ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
            ",valid_from INT8 NOT NULL"
@@ -320,7 +321,7 @@ postgres_create_tables (void *cls)
      also to the hash!? */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS denomination_revocations"
            "(denom_revocations_serial_id BIGSERIAL"
-	   ",denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
+	   ",denom_pub_hash BYTEA PRIMARY KEY REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE"
            ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
            ")");
 
@@ -366,7 +367,7 @@ postgres_create_tables (void *cls)
   SQLEXEC ("CREATE TABLE IF NOT EXISTS reserves_out"
            "(reserve_out_serial_id BIGSERIAL"
 	   ",h_blind_ev BYTEA PRIMARY KEY"
-           ",denom_pub BYTEA NOT NULL REFERENCES denominations (denom_pub) ON DELETE CASCADE"
+           ",denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE"
            ",denom_sig BYTEA NOT NULL"
            ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
            ",reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)"
@@ -384,7 +385,7 @@ postgres_create_tables (void *cls)
      coin information only once. */
   SQLEXEC("CREATE TABLE IF NOT EXISTS known_coins "
           "(coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)"
-          ",denom_pub BYTEA NOT NULL REFERENCES denominations (denom_pub) ON DELETE CASCADE"
+          ",denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE"
           ",denom_sig BYTEA NOT NULL"
           ")");
   /**
@@ -413,7 +414,7 @@ postgres_create_tables (void *cls)
   SQLEXEC("CREATE TABLE IF NOT EXISTS refresh_order "
           "(session_hash BYTEA NOT NULL REFERENCES refresh_sessions (session_hash) ON DELETE CASCADE"
           ",newcoin_index INT2 NOT NULL "
-          ",denom_pub BYTEA NOT NULL REFERENCES denominations (denom_pub) ON DELETE CASCADE"
+          ",denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE"
           ",PRIMARY KEY (session_hash, newcoin_index)"
           ")");
 
@@ -601,7 +602,8 @@ postgres_prepare (PGconn *db_conn)
   /* Used in #postgres_insert_denomination_info() */
   PREPARE ("denomination_insert",
            "INSERT INTO denominations "
-           "(denom_pub"
+           "(denom_pub_hash"
+	   ",denom_pub"
            ",master_pub"
            ",master_sig"
            ",valid_from"
@@ -626,8 +628,8 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
            " $11, $12, $13, $14, $15, $16, $17, $18,"
-	   " $19, $20, $21, $22);",
-           22, NULL);
+	   " $19, $20, $21, $22, $23);",
+           23, NULL);
 
   /* Used in #postgres_get_denomination_info() */
   PREPARE ("denomination_get",
@@ -766,7 +768,7 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("insert_withdraw_info",
            "INSERT INTO reserves_out "
            "(h_blind_ev"
-           ",denom_pub"
+           ",denom_pub_hash"
            ",denom_sig"
            ",reserve_pub"
            ",reserve_sig"
@@ -784,7 +786,7 @@ postgres_prepare (PGconn *db_conn)
      make sure /reserve/withdraw requests are idempotent. */
   PREPARE ("get_withdraw_info",
            "SELECT"
-           " denom_pub"
+           " denom.denom_pub"
            ",denom_sig"
            ",reserve_sig"
            ",reserve_pub"
@@ -796,7 +798,7 @@ postgres_prepare (PGconn *db_conn)
            ",denom.fee_withdraw_frac"
            ",denom.fee_withdraw_curr"
            " FROM reserves_out"
-           "    JOIN denominations denom USING (denom_pub)"
+           "    JOIN denominations denom USING (denom_pub_hash)"
            " WHERE h_blind_ev=$1",
            1, NULL);
 
@@ -807,7 +809,7 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("get_reserves_out",
            "SELECT"
            " h_blind_ev"
-           ",denom_pub"
+           ",denom.denom_pub"
            ",denom_sig"
            ",reserve_sig"
            ",execution_date"
@@ -818,7 +820,7 @@ postgres_prepare (PGconn *db_conn)
            ",denom.fee_withdraw_frac"
            ",denom.fee_withdraw_curr"
            " FROM reserves_out"
-           "    JOIN denominations denom USING (denom_pub)"
+           "    JOIN denominations denom USING (denom_pub_hash)"
            " WHERE reserve_pub=$1;",
            1, NULL);
 
@@ -826,7 +828,7 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("audit_get_reserves_out_incr",
            "SELECT"
            " h_blind_ev"
-           ",denom_pub"
+           ",denom.denom_pub"
            ",denom_sig"
            ",reserve_sig"
            ",reserve_pub"
@@ -836,6 +838,7 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_curr"
            ",reserve_out_serial_id"
            " FROM reserves_out"
+           "    JOIN denominations denom USING (denom_pub_hash)"
            " WHERE reserve_out_serial_id>=$1"
            " ORDER BY reserve_out_serial_id ASC",
            1, NULL);
@@ -856,7 +859,7 @@ postgres_prepare (PGconn *db_conn)
            ",noreveal_index"
            " FROM refresh_sessions"
            "    JOIN known_coins ON (refresh_sessions.old_coin_pub = known_coins.coin_pub)"
-           "    JOIN denominations denom USING (denom_pub)"
+           "    JOIN denominations denom USING (denom_pub_hash)"
            " WHERE session_hash=$1 ",
            1, NULL);
 
@@ -864,7 +867,7 @@ postgres_prepare (PGconn *db_conn)
      refresh session with id '\geq' the given parameter */
   PREPARE ("audit_get_refresh_sessions_incr",
            "SELECT"
-           " known_coins.denom_pub"
+           " denom.denom_pub"
            ",old_coin_pub"
            ",old_coin_sig"
            ",amount_with_fee_val"
@@ -875,7 +878,8 @@ postgres_prepare (PGconn *db_conn)
            ",melt_serial_id"
            ",session_hash"
            " FROM refresh_sessions"
-           "   JOIN known_coins ON (refresh_sessions.old_coin_pub = known_coins.coin_pub)"
+           "   JOIN known_coins kc ON (refresh_sessions.old_coin_pub = kc.coin_pub)"
+           "   JOIN denominations denom ON (kc.denom_pub_hash = denom.denom_pub_hash)"
            " WHERE melt_serial_id>=$1"
            " ORDER BY melt_serial_id ASC",
            1, NULL);
@@ -901,9 +905,10 @@ postgres_prepare (PGconn *db_conn)
      a coin known to the exchange. */
   PREPARE ("get_known_coin",
            "SELECT"
-           " denom_pub"
+           " denom.denom_pub"
            ",denom_sig"
            " FROM known_coins"
+           "    JOIN denominations denom USING (denom_pub_hash)"
            " WHERE coin_pub=$1",
            1, NULL);
 
@@ -913,7 +918,7 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("insert_known_coin",
            "INSERT INTO known_coins "
            "(coin_pub"
-           ",denom_pub"
+           ",denom_pub_hash"
            ",denom_sig"
            ") VALUES "
            "($1,$2,$3);",
@@ -925,7 +930,7 @@ postgres_prepare (PGconn *db_conn)
            "INSERT INTO refresh_order "
            "(newcoin_index "
            ",session_hash "
-           ",denom_pub "
+           ",denom_pub_hash "
            ") VALUES "
            "($1, $2, $3);",
            3, NULL);
@@ -935,6 +940,7 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("get_refresh_order",
            "SELECT denom_pub"
            " FROM refresh_order"
+           "    JOIN denominations denom USING (denom_pub_hash)"
            " WHERE session_hash=$1 AND newcoin_index=$2",
            2, NULL);
 
@@ -951,7 +957,7 @@ postgres_prepare (PGconn *db_conn)
            ",denom.fee_refresh_curr "
            " FROM refresh_sessions"
            "    JOIN known_coins ON (refresh_sessions.old_coin_pub = known_coins.coin_pub)"
-           "    JOIN denominations denom USING (denom_pub)"
+           "    JOIN denominations denom USING (denom_pub_hash)"
            " WHERE old_coin_pub=$1",
            1, NULL);
 
@@ -962,14 +968,15 @@ postgres_prepare (PGconn *db_conn)
            ",merchant_sig"
            ",h_proposal_data"
            ",rtransaction_id"
-           ",known_coins.denom_pub"
+           ",denom.denom_pub"
            ",coin_pub"
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",amount_with_fee_curr"
            ",refund_serial_id"
            " FROM refunds"
-           "   JOIN known_coins USING (coin_pub)"
+           "   JOIN known_coins kc USING (coin_pub)"
+           "   JOIN denominations denom ON (kc.denom_pub_hash = denom.denom_pub_hash)"
            " WHERE refund_serial_id>=$1"
            " ORDER BY refund_serial_id ASC",
            1, NULL);
@@ -989,11 +996,9 @@ postgres_prepare (PGconn *db_conn)
            ",denom.fee_refund_curr "
            " FROM refunds"
            "    JOIN known_coins USING (coin_pub)"
-           "    JOIN denominations denom USING (denom_pub)"
+           "    JOIN denominations denom USING (denom_pub_hash)"
            " WHERE coin_pub=$1",
            1, NULL);
-
-
 
   /* Used in #postgres_insert_transfer_public_key() to
      store commitments */
@@ -1099,7 +1104,7 @@ postgres_prepare (PGconn *db_conn)
            ",amount_with_fee_curr"
            ",timestamp"
 	   ",merchant_pub"
-           ",known_coins.denom_pub"
+           ",denom.denom_pub"
 	   ",coin_pub"
 	   ",coin_sig"
            ",refund_deadline"
@@ -1110,6 +1115,7 @@ postgres_prepare (PGconn *db_conn)
            ",deposit_serial_id"
            " FROM deposits"
            "   JOIN known_coins USING (coin_pub)"
+           "    JOIN denominations denom USING (denom_pub_hash)"
            " WHERE ("
            "  (deposit_serial_id>=$1)"
            " )"
@@ -1129,7 +1135,7 @@ postgres_prepare (PGconn *db_conn)
            ",wire_deadline"
            " FROM deposits"
            "    JOIN known_coins USING (coin_pub)"
-           "    JOIN denominations denom USING (denom_pub)"
+           "    JOIN denominations denom USING (denom_pub_hash)"
            " WHERE ("
            "  (coin_pub=$1) AND"
            "  (merchant_pub=$2) AND"
@@ -1155,7 +1161,7 @@ postgres_prepare (PGconn *db_conn)
            ",coin_pub"
            " FROM deposits"
            "    JOIN known_coins USING (coin_pub)"
-           "    JOIN denominations denom USING (denom_pub)"
+           "    JOIN denominations denom USING (denom_pub_hash)"
            " WHERE"
            " tiny=false AND"
            " done=false AND"
@@ -1180,7 +1186,7 @@ postgres_prepare (PGconn *db_conn)
            ",coin_pub"
            " FROM deposits"
            "    JOIN known_coins USING (coin_pub)"
-           "    JOIN denominations denom USING (denom_pub)"
+           "    JOIN denominations denom USING (denom_pub_hash)"
            " WHERE"
            " merchant_pub=$1 AND"
            " h_wire=$2 AND"
@@ -1232,7 +1238,7 @@ postgres_prepare (PGconn *db_conn)
            ",coin_sig"
            " FROM deposits"
            "    JOIN known_coins USING (coin_pub)"
-           "    JOIN denominations denom USING (denom_pub)"
+           "    JOIN denominations denom USING (denom_pub_hash)"
            " WHERE coin_pub=$1",
            1, NULL);
 
@@ -1269,11 +1275,14 @@ postgres_prepare (PGconn *db_conn)
      being exchangeed in the refresh ops.  NOTE: There may be more
      efficient ways to express the same query.  */
   PREPARE ("get_link",
-           "SELECT ev_sig,ro.denom_pub"
-           " FROM refresh_sessions rs "
+           "SELECT "
+	   " ev_sig"
+	   ",denoms.denom_pub"
+           " FROM refresh_sessions"
            "     JOIN refresh_order ro USING (session_hash)"
            "     JOIN refresh_commit_coin rcc USING (session_hash)"
            "     JOIN refresh_out rc USING (session_hash)"
+           "     JOIN denominations denoms ON (ro.denom_pub_hash = denoms.denom_pub_hash)"
            " WHERE ro.session_hash=$1"
            "  AND ro.newcoin_index=rcc.newcoin_index"
            "  AND ro.newcoin_index=rc.newcoin_index",
@@ -1312,7 +1321,7 @@ postgres_prepare (PGconn *db_conn)
            " FROM aggregation_tracking"
            "    JOIN deposits USING (deposit_serial_id)"
            "    JOIN known_coins USING (coin_pub)"
-           "    JOIN denominations denom USING (denom_pub)"
+           "    JOIN denominations denom USING (denom_pub_hash)"
            "    JOIN wire_out USING (wtid_raw)"
            " WHERE wtid_raw=$1",
            1, NULL);
@@ -1331,7 +1340,7 @@ postgres_prepare (PGconn *db_conn)
            " FROM deposits"
            "    JOIN aggregation_tracking USING (deposit_serial_id)"
            "    JOIN known_coins USING (coin_pub)"
-           "    JOIN denominations denom USING (denom_pub)"
+           "    JOIN denominations denom USING (denom_pub_hash)"
            "    JOIN wire_out USING (wtid_raw)"
            " WHERE coin_pub=$1"
            "  AND h_proposal_data=$2"
@@ -1468,13 +1477,14 @@ postgres_prepare (PGconn *db_conn)
            ",coin_sig"
            ",coin_blind"
            ",h_blind_ev"
-           ",coins.denom_pub"
+           ",denoms.denom_pub"
            ",coins.denom_sig"
            ",amount_val"
            ",amount_frac"
            ",amount_curr"
            " FROM payback"
            "    JOIN known_coins coins USING (coin_pub)"
+           "    JOIN denominations denoms USING (denom_pub_hash)"
            " WHERE payback_uuid>=$1"
            " ORDER BY payback_uuid ASC",
            1, NULL);
@@ -1490,10 +1500,11 @@ postgres_prepare (PGconn *db_conn)
            ",amount_frac"
            ",amount_curr"
            ",timestamp"
-           ",coins.denom_pub"
+           ",denoms.denom_pub"
            ",coins.denom_sig"
            " FROM payback"
            "    JOIN known_coins coins USING (coin_pub)"
+           "    JOIN denominations denoms USING (denom_pub_hash)"
            " WHERE payback.reserve_pub=$1",
            1, NULL);
 
@@ -1508,10 +1519,11 @@ postgres_prepare (PGconn *db_conn)
            ",amount_frac"
            ",amount_curr"
            ",timestamp"
-           ",coins.denom_pub"
+           ",denoms.denom_pub"
            ",coins.denom_sig"
            " FROM payback"
            "    JOIN known_coins coins USING (coin_pub)"
+           "    JOIN denominations denoms USING (denom_pub_hash)"
            " WHERE payback.coin_pub=$1",
            1, NULL);
 
@@ -1722,6 +1734,7 @@ postgres_insert_denomination_info (void *cls,
   PGresult *result;
   int ret;
   struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&issue->properties.denom_hash),
     GNUNET_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
     GNUNET_PQ_query_param_auto_from_type (&issue->properties.master),
     GNUNET_PQ_query_param_auto_from_type (&issue->signature),
@@ -2217,11 +2230,12 @@ postgres_insert_withdraw_info (void *cls,
 {
   PGresult *result;
   struct TALER_EXCHANGEDB_Reserve reserve;
+  struct GNUNET_HashCode denom_pub_hash;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute expiry;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&collectable->h_coin_envelope),
-    GNUNET_PQ_query_param_rsa_public_key (collectable->denom_pub.rsa_public_key),
+    GNUNET_PQ_query_param_auto_from_type (&denom_pub_hash),
     GNUNET_PQ_query_param_rsa_signature (collectable->sig.rsa_signature),
     GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_sig),
@@ -2231,6 +2245,8 @@ postgres_insert_withdraw_info (void *cls,
   };
 
   now = GNUNET_TIME_absolute_get ();
+  GNUNET_CRYPTO_rsa_public_key_hash (collectable->denom_pub.rsa_public_key,
+				     &denom_pub_hash);
   result = GNUNET_PQ_exec_prepared (session->conn,
                                    "insert_withdraw_info",
                                    params);
@@ -2461,7 +2477,7 @@ postgres_get_reserve_history (void *cls,
           GNUNET_PQ_result_spec_absolute_time ("timestamp",
                                                &payback->timestamp),
           GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                               &payback->coin.denom_pub.rsa_public_key),
+						&payback->coin.denom_pub.rsa_public_key),
           GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
                                                &payback->coin.denom_sig.rsa_signature),
           GNUNET_PQ_result_spec_end
@@ -2965,8 +2981,8 @@ get_known_coin (void *cls,
   int nrows;
 
   result = GNUNET_PQ_exec_prepared (session->conn,
-                                   "get_known_coin",
-                                   params);
+				    "get_known_coin",
+				    params);
   if (PGRES_TUPLES_OK != PQresultStatus (result))
   {
     BREAK_DB_ERR (result, session->conn);
@@ -3011,8 +3027,9 @@ get_known_coin (void *cls,
 
 
 /**
- * Insert a coin we know of into the DB.  The coin can then be referenced by
- * tables for deposits, refresh and refund functionality.
+ * Insert a coin we know of into the DB.  The coin can then be
+ * referenced by tables for deposits, refresh and refund
+ * functionality.
  *
  * @param cls plugin closure
  * @param session the shared database session
@@ -3025,12 +3042,16 @@ insert_known_coin (void *cls,
                    const struct TALER_CoinPublicInfo *coin_info)
 {
   PGresult *result;
+  struct GNUNET_HashCode denom_pub_hash;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&coin_info->coin_pub),
-    GNUNET_PQ_query_param_rsa_public_key (coin_info->denom_pub.rsa_public_key),
+    GNUNET_PQ_query_param_auto_from_type (&denom_pub_hash),
     GNUNET_PQ_query_param_rsa_signature (coin_info->denom_sig.rsa_signature),
     GNUNET_PQ_query_param_end
   };
+
+  GNUNET_CRYPTO_rsa_public_key_hash (coin_info->denom_pub.rsa_public_key,
+				     &denom_pub_hash);
   result = GNUNET_PQ_exec_prepared (session->conn,
                                    "insert_known_coin",
                                    params);
@@ -3339,12 +3360,16 @@ postgres_insert_refresh_order (void *cls,
     PGresult *result;
 
     {
+      struct GNUNET_HashCode denom_pub_hash;
       struct GNUNET_PQ_QueryParam params[] = {
         GNUNET_PQ_query_param_uint16 (&newcoin_off),
         GNUNET_PQ_query_param_auto_from_type (session_hash),
-        GNUNET_PQ_query_param_rsa_public_key (denom_pubs[i].rsa_public_key),
+        GNUNET_PQ_query_param_auto_from_type (&denom_pub_hash),
         GNUNET_PQ_query_param_end
       };
+
+      GNUNET_CRYPTO_rsa_public_key_hash (denom_pubs[i].rsa_public_key,
+					 &denom_pub_hash);
       result = GNUNET_PQ_exec_prepared (session->conn,
                                        "insert_refresh_order",
                                        params);
@@ -3419,8 +3444,8 @@ postgres_get_refresh_order (void *cls,
       };
 
       result = GNUNET_PQ_exec_prepared (session->conn,
-                                       "get_refresh_order",
-                                       params);
+					"get_refresh_order",
+					params);
     }
     if (PGRES_TUPLES_OK != PQresultStatus (result))
     {
@@ -3440,7 +3465,7 @@ postgres_get_refresh_order (void *cls,
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
         GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                             &denom_pubs[i].rsa_public_key),
+					      &denom_pubs[i].rsa_public_key),
         GNUNET_PQ_result_spec_end
       };
       if (GNUNET_OK !=
@@ -5750,7 +5775,6 @@ postgres_select_payback_above_serial_id (void *cls,
     struct TALER_Amount amount;
     struct GNUNET_HashCode h_blind_ev;
     struct GNUNET_TIME_Absolute timestamp;
-
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("payback_uuid",
                                     &rowid),
