@@ -1138,6 +1138,8 @@ run (void *cls)
   GNUNET_assert (NULL != session);
   fake_issue (&issue);
   dpk.rsa_public_key = coin_pub;
+  GNUNET_CRYPTO_rsa_public_key_hash (dpk.rsa_public_key,
+				     &issue.properties.denom_hash);
   if ( (GNUNET_OK !=
         plugin->start (plugin->cls,
                        session)) ||
