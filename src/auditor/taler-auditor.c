@@ -832,6 +832,7 @@ handle_payback_by_reserve (void *cls,
   struct GNUNET_TIME_Absolute expiry;
   struct TALER_PaybackRequestPS pr;
   struct TALER_MasterSignatureP msig;
+  uint64_t rev_rowid;
   int ret;
 
   /* should be monotonically increasing */
@@ -866,7 +867,8 @@ handle_payback_by_reserve (void *cls,
   ret = edb->get_denomination_revocation (edb->cls,
                                           esession,
                                           &pr.h_denom_pub,
-                                          &msig);
+                                          &msig,
+					  &rev_rowid);
   if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);
@@ -893,7 +895,7 @@ handle_payback_by_reserve (void *cls,
                                     &master_pub.eddsa_pub))
     {
       report_row_inconsistency ("denomination_revocations",
-                                0, /* FIXME: modify DB API to return rowid! (#4984) */
+                                rev_rowid,
                                 "master signature invalid");
     }
     /* TODO: cache result so we don't do this every time! (#4983) */

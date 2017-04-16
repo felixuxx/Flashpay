@@ -317,7 +317,8 @@ postgres_create_tables (void *cls)
      add denom_pub_hash column to denominations, changing other REFERENCEs
      also to the hash!? */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS denomination_revocations"
-           "(denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
+           "(denom_revocations_serial_id BIGSERIAL"
+	   ",denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)"
            ",master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)"
            ")");
 
@@ -667,6 +668,7 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("denomination_revocation_get",
            "SELECT"
            " master_sig"
+	   ",denom_revocations_serial_id"
            " FROM denomination_revocations"
            " WHERE denom_pub_hash=$1;",
            1, NULL);
@@ -6042,6 +6044,7 @@ postgres_insert_denomination_revocation (void *cls,
  * @param session a session
  * @param denom_pub_hash hash of the revoked denomination key
  * @param[out] master_sig signature affirming the revocation
+ * @param[out] rowid row where the information is stored
  * @return #GNUNET_OK on success,
  *         #GNUNET_NO no such entry exists
  *         #GNUNET_SYSERR on DB errors
@@ -6050,7 +6053,8 @@ static int
 postgres_get_denomination_revocation (void *cls,
                                       struct TALER_EXCHANGEDB_Session *session,
                                       const struct GNUNET_HashCode *denom_pub_hash,
-                                      struct TALER_MasterSignatureP *master_sig)
+                                      struct TALER_MasterSignatureP *master_sig,
+				      uint64_t *rowid)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
@@ -6058,6 +6062,7 @@ postgres_get_denomination_revocation (void *cls,
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("master_sig", master_sig),
+    GNUNET_PQ_result_spec_uint64 ("denom_revocations_serial_id", rowid),
     GNUNET_PQ_result_spec_end
   };
   PGresult *result;

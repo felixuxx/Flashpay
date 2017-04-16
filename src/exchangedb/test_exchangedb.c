@@ -1823,12 +1823,14 @@ run (void *cls)
                          session));
   {
     struct TALER_MasterSignatureP msig;
+    uint64_t rev_rowid;
 
     FAILIF (GNUNET_OK !=
             plugin->get_denomination_revocation (plugin->cls,
                                                  session,
                                                  &dkp_pub_hash,
-                                                 &msig));
+                                                 &msig,
+						 &rev_rowid));
     FAILIF (0 != memcmp (&msig,
                          &master_sig,
                          sizeof (msig)));

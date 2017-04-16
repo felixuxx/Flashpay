@@ -2040,6 +2040,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session a session
    * @param denom_pub_hash hash of the revoked denomination key
    * @param[out] master_sig signature affirming the revocation
+   * @param[out] rowid row where the information is stored
    * @return #GNUNET_OK on success,
    *         #GNUNET_NO no such entry exists
    *         #GNUNET_SYSERR on DB errors
@@ -2048,7 +2049,8 @@ struct TALER_EXCHANGEDB_Plugin
   (*get_denomination_revocation)(void *cls,
                                  struct TALER_EXCHANGEDB_Session *session,
                                  const struct GNUNET_HashCode *denom_pub_hash,
-                                 struct TALER_MasterSignatureP *master_sig);
+                                 struct TALER_MasterSignatureP *master_sig,
+				 uint64_t *rowid);
 
 
 };
