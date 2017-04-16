@@ -23,6 +23,7 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
+#include <zlib.h>
 #include "taler-exchange-httpd_responses.h"
 #include "taler_util.h"
 #include "taler_json_lib.h"
@@ -47,6 +48,74 @@ TEH_RESPONSE_add_global_headers (struct MHD_Response *response)
 }
 
 
+/** 
+ * Is HTTP body deflate compression supported by the client?
+ *
+ * @param connection connection to check
+ * @return #MHD_YES if 'deflate' compression is allowed
+ */
+int
+TEH_RESPONSE_can_compress (struct MHD_Connection *connection)
+{
+  const char *ae;
+  const char *de;
+
+  ae = MHD_lookup_connection_value (connection,
+				    MHD_HEADER_KIND,
+				    MHD_HTTP_HEADER_ACCEPT_ENCODING);
+  if (NULL == ae)
+    return MHD_NO;
+  de = strstr (ae,
+	       "deflate");
+  if (NULL == de)
+    return MHD_NO;
+  if ( ( (de == ae) ||
+	 ( de[-1] == ',') ||
+	 (de[-1] == ' ') ) &&
+       ( (de[strlen ("deflate")] == '\0') ||
+	 (de[strlen ("deflate")] == ',') ) )
+    return MHD_YES;
+  return MHD_NO;  
+}
+
+
+/**
+ * Try to compress a response body.  Updates @a buf and @buf_size.
+ *
+ * @param[in,out] buf pointer to body to compress
+ * @param[in,out] buf_size pointer to initial size of @a buf
+ * @return #MHD_TES if @a buf was compressed
+ */
+int
+TEH_RESPONSE_body_compress (void **buf,
+			    size_t *buf_size)
+{
+  Bytef *cbuf;
+  uLongf cbuf_size;
+  int ret;
+
+  cbuf_size = compressBound (*buf_size);
+  cbuf = malloc (cbuf_size);
+  if (NULL == cbuf)
+    return MHD_NO;
+  ret = compress (cbuf,
+		  &cbuf_size,
+		  (const Bytef *) *buf,
+		  *buf_size);
+  if ( (Z_OK != ret) ||
+       (cbuf_size >= *buf_size) )
+  {
+    /* compression failed */
+    free (cbuf);
+    return MHD_NO;
+  }
+  free (*buf);
+  *buf = (void *) cbuf;
+  *buf_size = (size_t) cbuf_size;
+  return MHD_YES;
+}
+
+
 /**
  * Send JSON object as response.
  *
@@ -61,12 +130,26 @@ TEH_RESPONSE_reply_json (struct MHD_Connection *connection,
                          unsigned int response_code)
 {
   struct MHD_Response *resp;
-  char *json_str;
+  void *json_str;
+  size_t json_len;
   int ret;
+  int comp;
 
-  json_str = json_dumps (json, JSON_INDENT(2));
-  GNUNET_assert (NULL != json_str);
-  resp = MHD_create_response_from_buffer (strlen (json_str),
+  json_str = json_dumps (json,
+			 JSON_INDENT(2));
+  if (NULL == json_str)
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+  json_len = strlen (json_str);
+  /* try to compress the body */
+  comp = MHD_NO;
+  if (MHD_YES ==
+      TEH_RESPONSE_can_compress (connection))
+    comp = TEH_RESPONSE_body_compress (&json_str,
+				       &json_len);
+  resp = MHD_create_response_from_buffer (json_len,
                                           json_str,
                                           MHD_RESPMEM_MUST_FREE);
   if (NULL == resp)
@@ -79,6 +162,19 @@ TEH_RESPONSE_reply_json (struct MHD_Connection *connection,
   (void) MHD_add_response_header (resp,
                                   MHD_HTTP_HEADER_CONTENT_TYPE,
                                   "application/json");
+  if (MHD_YES == comp)
+  {
+    /* Need to indicate to client that body is compressed */
+    if (MHD_NO ==
+	MHD_add_response_header (resp,
+				 MHD_HTTP_HEADER_CONTENT_ENCODING,
+				 "deflate"))
+    {
+      GNUNET_break (0);
+      MHD_destroy_response (resp);
+      return MHD_NO;
+    }
+  }
   ret = MHD_queue_response (connection,
                             response_code,
                             resp);

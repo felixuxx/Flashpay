@@ -55,6 +55,7 @@ taler_exchange_httpd_LDADD = \
   -lgnunetutil \
   -lgnunetjson \
   -ljansson \
+  -lz \
   -lpthread
 
 if HAVE_DEVELOPER

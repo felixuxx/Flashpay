@@ -1,3 +1,6 @@
+Mon Apr 17 01:29:07 CEST 2017
+	Add support for HTTP body compression (#4982). -CG
+
 Mon Mar 20 04:37:46 CET 2017
 	Implemented first working version of taler-auditor. -CG
 

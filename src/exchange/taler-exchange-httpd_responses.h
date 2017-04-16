@@ -33,6 +33,7 @@
 #include "taler-exchange-httpd.h"
 #include "taler-exchange-httpd_db.h"
 
+
 /**
  * Add headers we want to return in every response.
  * Useful for testing, like if we want to always close
@@ -42,6 +43,28 @@
  */
 void
 TEH_RESPONSE_add_global_headers (struct MHD_Response *response);
+
+
+/**
+ * Try to compress a response body.  Updates @a buf and @buf_size.
+ *
+ * @param[in,out] buf pointer to body to compress
+ * @param[in,out] buf_size pointer to initial size of @a buf
+ * @return #MHD_TES if @a buf was compressed
+ */
+int
+TEH_RESPONSE_body_compress (void **buf,
+			    size_t *buf_size);
+
+
+/** 
+ * Is HTTP body deflate compression supported by the client?
+ *
+ * @param connection connection to check
+ * @return #MHD_YES if 'deflate' compression is allowed
+ */
+int
+TEH_RESPONSE_can_compress (struct MHD_Connection *connection);
 
 
 /**

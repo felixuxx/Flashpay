@@ -72,6 +72,16 @@ struct TEH_KS_StateHandle
   char *keys_json;
 
   /**
+   * deflate-compressed version of @e keys_json, or NULL if not available.
+   */
+  void *keys_jsonz;
+
+  /**
+   * Number of bytes in @e keys_jsonz.
+   */
+  size_t keys_jsonz_size;
+
+  /**
    * Mapping from denomination keys to denomination key issue struct.
    * Used to lookup the key by hash.
    */
@@ -709,6 +719,7 @@ ks_release_ (struct TEH_KS_StateHandle *key_state)
       key_state->revoked_map = NULL;
     }
     GNUNET_free_non_null (key_state->keys_json);
+    GNUNET_free_non_null (key_state->keys_jsonz);
     GNUNET_free (key_state);
   }
 }
@@ -851,6 +862,17 @@ TEH_KS_acquire_ (const char *location)
                                        JSON_INDENT (2));
     GNUNET_assert (NULL != key_state->keys_json);
     json_decref (keys);
+    /* also compute compressed version of /keys */
+    key_state->keys_jsonz = GNUNET_strdup (key_state->keys_json);
+    key_state->keys_jsonz_size = strlen (key_state->keys_json);
+    if (MHD_YES !=
+	TEH_RESPONSE_body_compress (&key_state->keys_jsonz,
+				    &key_state->keys_jsonz_size))
+    {
+      GNUNET_free (key_state->keys_jsonz);
+      key_state->keys_jsonz = NULL;
+      key_state->keys_jsonz_size = 0;
+    }
     internal_key_state = key_state;
   }
   key_state = internal_key_state;
@@ -1225,10 +1247,26 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
   struct MHD_Response *response;
   int ret;
   char dat[128];
+  char *json;
+  size_t json_len;
+  int comp;
 
   key_state = TEH_KS_acquire ();
-  response = MHD_create_response_from_buffer (strlen (key_state->keys_json),
-                                              key_state->keys_json,
+  comp = MHD_NO;
+  if (NULL != key_state->keys_jsonz)
+    comp = TEH_RESPONSE_can_compress (connection);
+  if (MHD_YES == comp)
+  {
+    json = key_state->keys_jsonz;
+    json_len = key_state->keys_jsonz_size;
+  }
+  else
+  {
+    json = key_state->keys_json;
+    json_len = strlen (key_state->keys_json);
+  }
+  response = MHD_create_response_from_buffer (json_len,
+                                              json,
                                               MHD_RESPMEM_MUST_COPY);
   TEH_KS_release (key_state);
   if (NULL == response)
@@ -1241,6 +1279,15 @@ TEH_KS_handler_keys (struct TEH_RequestHandler *rh,
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_CONTENT_TYPE,
                                          rh->mime_type));
+  if (MHD_YES !=
+      MHD_add_response_header (response,
+			       MHD_HTTP_HEADER_CONTENT_ENCODING,
+			       "deflate"))
+  {
+    GNUNET_break (0);
+    MHD_destroy_response (response);
+    return MHD_NO;
+  }
   get_date_string (key_state->reload_time,
                    dat);
   GNUNET_break (MHD_YES ==
