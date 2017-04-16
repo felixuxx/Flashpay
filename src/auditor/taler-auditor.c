@@ -1531,6 +1531,17 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
           return GNUNET_SYSERR;
         }
       }
+      /* Check that the fees given in the transaction list and in dki match */
+      TALER_amount_ntoh (&tmp,
+			 fee_dki);
+      if (0 !=
+	  TALER_amount_cmp (&tmp,
+			    fee))
+      {
+	/* Disagreement in fee structure within DB, should be impossible! */
+	GNUNET_break (0);
+	return GNUNET_SYSERR;
+      }
       break;
     case TALER_EXCHANGEDB_TT_REFRESH_MELT:
       amount_with_fee = &tl->details.melt->amount_with_fee;
@@ -1543,6 +1554,17 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
       {
         GNUNET_break (0);
         return GNUNET_SYSERR;
+      }
+      /* Check that the fees given in the transaction list and in dki match */
+      TALER_amount_ntoh (&tmp,
+			 fee_dki);
+      if (0 !=
+	  TALER_amount_cmp (&tmp,
+			    fee))
+      {
+	/* Disagreement in fee structure within DB, should be impossible! */
+	GNUNET_break (0);
+	return GNUNET_SYSERR;
       }
       break;
     case TALER_EXCHANGEDB_TT_REFUND:
@@ -1594,6 +1616,17 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
           return GNUNET_SYSERR;
         }
       }
+      /* Check that the fees given in the transaction list and in dki match */
+      TALER_amount_ntoh (&tmp,
+			 fee_dki);
+      if (0 !=
+	  TALER_amount_cmp (&tmp,
+			    fee))
+      {
+	/* Disagreement in fee structure within DB, should be impossible! */
+	GNUNET_break (0);
+	return GNUNET_SYSERR;
+      }
       break;
     case TALER_EXCHANGEDB_TT_PAYBACK:
       amount_with_fee = &tl->details.payback->value;
@@ -1608,17 +1641,6 @@ check_transaction_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
       break;
     }
 
-    /* Check that the fees given in the transaction list and in dki match */
-    TALER_amount_ntoh (&tmp,
-                       fee_dki);
-    if (0 !=
-        TALER_amount_cmp (&tmp,
-                          fee))
-    {
-      /* Disagreement in fee structure within DB, should be impossible! */
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
   } /* for 'tl' */
 
   /* Calculate total balance change, i.e. expenditures minus refunds */
