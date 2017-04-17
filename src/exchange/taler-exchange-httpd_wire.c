@@ -56,8 +56,9 @@ fees_to_json (struct TALER_EXCHANGEDB_AggregateFees *af)
     }
     if (0 !=
         json_array_append_new (a,
-                               json_pack ("{s:o, s:o, s:o, s:o}",
+                               json_pack ("{s:o, s:o, s:o, s:o, s:o}",
                                           "wire_fee", TALER_JSON_from_amount (&af->wire_fee),
+					  "closing_fee", TALER_JSON_from_amount (&af->closing_fee),
                                           "start_date", GNUNET_JSON_from_time_abs (af->start_date),
                                           "end_date", GNUNET_JSON_from_time_abs (af->end_date),
                                           "sig", GNUNET_JSON_from_data_auto (&af->master_sig))))

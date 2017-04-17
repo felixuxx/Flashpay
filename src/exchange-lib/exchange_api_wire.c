@@ -332,6 +332,8 @@ parse_json_fees (struct TALER_EXCHANGE_WireAggregateFees *af,
                                  &af->master_sig),
     TALER_JSON_spec_amount ("wire_fee",
                             &af->wire_fee),
+    TALER_JSON_spec_amount ("closing_fee",
+                            &af->closing_fee),
     GNUNET_JSON_spec_absolute_time ("start_date",
                                     &af->start_date),
     GNUNET_JSON_spec_absolute_time ("end_date",
@@ -376,6 +378,8 @@ check_sig (const struct TALER_EXCHANGE_WireAggregateFees *af,
   wp.end_date = GNUNET_TIME_absolute_hton (af->end_date);
   TALER_amount_hton (&wp.wire_fee,
                      &af->wire_fee);
+  TALER_amount_hton (&wp.closing_fee,
+                     &af->closing_fee);
   return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_FEES,
                                      &wp.purpose,
                                      &af->master_sig.eddsa_signature,

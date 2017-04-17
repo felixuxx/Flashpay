@@ -62,6 +62,8 @@ wd2af (const struct TALER_WireFeeDiskP *wd)
   af->end_date = GNUNET_TIME_absolute_ntoh (wd->wf.end_date);
   TALER_amount_ntoh (&af->wire_fee,
                      &wd->wf.wire_fee);
+  TALER_amount_ntoh (&af->closing_fee,
+                     &wd->wf.closing_fee);
   af->master_sig = wd->master_sig;
   return af;
 }
@@ -162,6 +164,8 @@ TALER_EXCHANGEDB_fees_2_wf (const char *wireplugin,
   wf->end_date = GNUNET_TIME_absolute_hton (af->end_date);
   TALER_amount_hton (&wf->wire_fee,
                      &af->wire_fee);
+  TALER_amount_hton (&wf->closing_fee,
+                     &af->closing_fee);
 }
 
 

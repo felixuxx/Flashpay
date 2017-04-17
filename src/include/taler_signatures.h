@@ -938,6 +938,11 @@ struct TALER_MasterWireFeePS
    */
   struct TALER_AmountNBO wire_fee;
 
+  /**
+   * Closing fee charged when we wire back funds of a reserve.
+   */
+  struct TALER_AmountNBO closing_fee;
+
 };
 
 

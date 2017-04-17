@@ -351,9 +351,15 @@ struct TALER_EXCHANGE_WireAggregateFees
   struct TALER_EXCHANGE_WireAggregateFees *next;
 
   /**
-   * Fee to be paid.
+   * Fee to be paid whenever the exchange wires funds to the merchant.
    */
   struct TALER_Amount wire_fee;
+
+  /**
+   * Fee to be paid when the exchange closes a reserve and wires funds
+   * back to a customer.
+   */
+  struct TALER_Amount closing_fee;
 
   /**
    * Time when this fee goes into effect (inclusive)

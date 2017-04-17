@@ -332,9 +332,14 @@ struct TALER_EXCHANGEDB_AggregateFees
   struct TALER_EXCHANGEDB_AggregateFees *next;
 
   /**
-   * Fee to be paid.
+   * Fee to be paid for wire transfers to a merchant.
    */
   struct TALER_Amount wire_fee;
+
+  /**
+   * Fee to be paid when we close a reserve and send funds back.
+   */
+  struct TALER_Amount closing_fee;
 
   /**
    * Time when this fee goes into effect (inclusive)

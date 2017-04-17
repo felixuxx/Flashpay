@@ -949,6 +949,8 @@ create_wire_fee_for_method (void *cls,
     af = GNUNET_new (struct TALER_EXCHANGEDB_AggregateFees);
     af->start_date = start_date;
     af->end_date = end_date;
+
+    /* handle wire fee */
     GNUNET_asprintf (&opt,
                      "wire-fee-%u",
                      year);
@@ -980,6 +982,40 @@ create_wire_fee_for_method (void *cls,
       break;
     }
     GNUNET_free (amounts);
+
+    /* handle closing fee */
+    GNUNET_asprintf (&opt,
+                     "closing-fee-%u",
+                     year);
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (kcfg,
+                                               section,
+                                               opt,
+                                               &amounts))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 section,
+                                 opt);
+      *ret = GNUNET_SYSERR;
+      GNUNET_free (opt);
+      break;
+    }
+    if (GNUNET_OK !=
+        TALER_string_to_amount (amounts,
+                                &af->closing_fee))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid amount `%s' specified in `%s' under `%s'\n",
+                  amounts,
+                  wiremethod,
+                  opt);
+      *ret = GNUNET_SYSERR;
+      GNUNET_free (amounts);
+      GNUNET_free (opt);
+      break;
+    }
+    GNUNET_free (amounts);
+    
     GNUNET_free (opt);
     sign_af (af,
              wiremethod,
