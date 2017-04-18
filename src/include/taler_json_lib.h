@@ -59,6 +59,18 @@ TALER_JSON_spec_amount (const char *name,
 
 
 /**
+ * Provide specification to parse given JSON object to an amount
+ * in network byte order.
+ *
+ * @param name name of the amount field in the JSON
+ * @param[out] r_amount where the amount has to be written
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_amount_nbo (const char *name,
+			    struct TALER_AmountNBO *r_amount);
+
+
+/**
  * Generate line in parser specification for denomination public key.
  *
  * @param field name of the field

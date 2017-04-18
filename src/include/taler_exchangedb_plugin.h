@@ -28,14 +28,13 @@
 
 
 /**
- * @brief Information we keep on bank transfer(s) that established or
- * closed a reserve.
+ * @brief Information we keep on bank transfer(s) that established a reserve.
  */
 struct TALER_EXCHANGEDB_BankTransfer
 {
 
   /**
-   * Public key of the reserve that was filled or depleted.
+   * Public key of the reserve that was filled.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
 
@@ -52,9 +51,50 @@ struct TALER_EXCHANGEDB_BankTransfer
   struct GNUNET_TIME_Absolute execution_date;
 
   /**
-   * Detailed wire information about the sending (or receiving) account.
+   * Detailed wire information about the sending account.
    */
   json_t *sender_account_details;
+
+  /**
+   * Detailed wire transfer information that uniquely identifies the
+   * wire transfer.
+   */
+  json_t *transfer_details;
+
+};
+
+
+/**
+ * @brief Information we keep on bank transfer(s) that 
+ * closed a reserve.
+ */
+struct TALER_EXCHANGEDB_ClosingTransfer
+{
+
+  /**
+   * Public key of the reserve that was depleted.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * Amount that was transferred to the exchange.
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * Amount that was charged by the exchange.
+   */
+  struct TALER_Amount closing_fee;
+
+  /**
+   * When did the exchange execute the transaction?
+   */
+  struct GNUNET_TIME_Absolute execution_date;
+
+  /**
+   * Detailed wire information about the receiving account.
+   */
+  json_t *receiver_account_details;
 
   /**
    * Detailed wire transfer information that uniquely identifies the
@@ -244,8 +284,7 @@ struct TALER_EXCHANGEDB_ReserveHistory
 
     /**
      * Details about a bank transfer to the exchange (reserve
-     * was established) or from the exchange (reserve was
-     * closed).
+     * was established).
      */
     struct TALER_EXCHANGEDB_BankTransfer *bank;
 
@@ -258,6 +297,12 @@ struct TALER_EXCHANGEDB_ReserveHistory
      * Details about a /payback operation.
      */
     struct TALER_EXCHANGEDB_Payback *payback;
+
+    /**
+     * Details about a bank transfer from the exchange (reserve
+     * was closed).
+     */
+    struct TALER_EXCHANGEDB_ClosingTransfer *closing;
 
   } details;
 

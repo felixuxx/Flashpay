@@ -184,12 +184,15 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
     {
       struct TALER_ReserveSignatureP sig;
       struct TALER_WithdrawRequestPS withdraw_purpose;
-      struct TALER_Amount amount_from_purpose;
       struct GNUNET_JSON_Specification withdraw_spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("signature",
+        GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                      &sig),
-        GNUNET_JSON_spec_fixed_auto ("details",
-                                     &withdraw_purpose),
+	TALER_JSON_spec_amount_nbo ("withdraw_fee",
+				    &withdraw_purpose.withdraw_fee),
+        GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                     &withdraw_purpose.h_denomination_pub),
+        GNUNET_JSON_spec_fixed_auto ("h_coin_envelope",
+                                     &withdraw_purpose.h_coin_envelope),
         GNUNET_JSON_spec_end()
       };
       unsigned int i;
@@ -203,6 +206,13 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
+      withdraw_purpose.purpose.size
+	= htonl (sizeof (withdraw_purpose));
+      withdraw_purpose.purpose.purpose
+	= htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
+      withdraw_purpose.reserve_pub = *reserve_pub;
+      TALER_amount_hton (&withdraw_purpose.amount_with_fee,
+			 &amount);
       /* Check that the signature is a valid withdraw request */
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW,
@@ -214,18 +224,10 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
         GNUNET_JSON_parse_free (withdraw_spec);
         return GNUNET_SYSERR;
       }
-      TALER_amount_ntoh (&amount_from_purpose,
-                         &withdraw_purpose.amount_with_fee);
-      /* TODO #4980 */
-      if (0 != TALER_amount_cmp (&amount,
-                                 &amount_from_purpose))
-      {
-        GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (withdraw_spec);
-        return GNUNET_SYSERR;
-      }
-      rhistory[off].details.out_authorization_sig = json_object_get (transaction,
-                                                                     "signature");
+      /* TODO: check that withdraw fee matches expectations! */
+      rhistory[off].details.out_authorization_sig
+	= json_object_get (transaction,
+			   "signature");
       /* Check check that the same withdraw transaction
          isn't listed twice by the exchange. We use the
          "uuid" array to remember the hashes of all
@@ -263,25 +265,22 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
                               "PAYBACK"))
     {
       struct TALER_PaybackConfirmationPS pc;
-      struct TALER_Amount amount_from_purpose;
-      struct GNUNET_TIME_Absolute timestamp_from_purpose;
       struct GNUNET_TIME_Absolute timestamp;
       const struct TALER_EXCHANGE_Keys *key_state;
       struct GNUNET_JSON_Specification payback_spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("details",
-                                     &pc),
+        GNUNET_JSON_spec_fixed_auto ("coin_pub",
+                                     &pc.coin_pub),
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
                                      &rhistory[off].details.payback_details.exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                      &rhistory[off].details.payback_details.exchange_pub),
-        GNUNET_JSON_spec_absolute_time ("timestamp",
-                                        &timestamp),
-        TALER_JSON_spec_amount ("amount",
-                                &rhistory[off].amount),
+        GNUNET_JSON_spec_absolute_time_nbo ("timestamp",
+					    &pc.timestamp),
         GNUNET_JSON_spec_end()
       };
 
       rhistory[off].type = TALER_EXCHANGE_RTT_PAYBACK;
+      rhistory[off].amount = amount;
       if (GNUNET_OK !=
           GNUNET_JSON_parse (transaction,
                              payback_spec,
@@ -291,22 +290,13 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
         return GNUNET_SYSERR;
       }
       rhistory[off].details.payback_details.coin_pub = pc.coin_pub;
-      TALER_amount_ntoh (&amount_from_purpose,
-                         &pc.payback_amount);
+      TALER_amount_hton (&pc.payback_amount,
+			 &amount);
+      pc.purpose.size = htonl (sizeof (pc));
+      pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PAYBACK);
+      pc.reserve_pub = *reserve_pub;
+      timestamp = GNUNET_TIME_absolute_ntoh (pc.timestamp);
       rhistory[off].details.payback_details.timestamp = timestamp;
-      timestamp_from_purpose = GNUNET_TIME_absolute_ntoh (pc.timestamp);
-      /* TODO #4980 */
-      if ( (0 != memcmp (&pc.reserve_pub,
-                         reserve_pub,
-                         sizeof (*reserve_pub))) ||
-           (timestamp_from_purpose.abs_value_us !=
-            timestamp.abs_value_us) ||
-           (0 != TALER_amount_cmp (&amount_from_purpose,
-                                   &rhistory[off].amount)) )
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
 
       key_state = TALER_EXCHANGE_get_keys (exchange);
       if (GNUNET_OK !=

@@ -1254,6 +1254,11 @@ struct TALER_ReserveCloseConfirmationPS
   struct TALER_AmountNBO closing_amount;
 
   /**
+   * How much did the exchange charge for closing the reserve?
+   */
+  struct TALER_AmountNBO closing_fee;
+
+  /**
    * Public key of the reserve that received the payback.
    */
   struct TALER_ReservePublicKeyP reserve_pub;

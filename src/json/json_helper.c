@@ -119,7 +119,6 @@ parse_amount (void *cls,
 }
 
 
-
 /**
  * Provide specification to parse given JSON object to an amount.
  *
@@ -132,6 +131,94 @@ TALER_JSON_spec_amount (const char *name,
 {
   struct GNUNET_JSON_Specification ret = {
     .parser = &parse_amount,
+    .cleaner = NULL,
+    .cls = NULL,
+    .field = name,
+    .ptr = r_amount,
+    .ptr_size = 0,
+    .size_ptr = NULL
+  };
+  return ret;
+}
+
+
+/**
+ * Parse given JSON object to Amount in NBO.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static int
+parse_amount_nbo (void *cls,
+              json_t *root,
+              struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_AmountNBO *r_amount = spec->ptr;
+  struct TALER_Amount amount;
+  json_int_t value;
+  json_int_t fraction;
+  const char *currency;
+
+  memset (&amount,
+          0,
+          sizeof (struct TALER_Amount));
+  if (0 != json_unpack (root,
+                        "{s:I, s:I, s:s}",
+                        "value", &value,
+                        "fraction", &fraction,
+                        "currency", &currency))
+  {
+    char *json_enc;
+
+    if (NULL == (json_enc = json_dumps (root,
+                                        JSON_COMPACT | JSON_ENCODE_ANY)))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Malformed JSON amount: %s\n",
+                json_enc);
+    free (json_enc);
+    return GNUNET_SYSERR;
+  }
+  if ( (value < 0) ||
+       (fraction < 0) ||
+       (value > UINT64_MAX) ||
+       (fraction > UINT32_MAX) )
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (strlen (currency) >= TALER_CURRENCY_LEN)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  amount.value = (uint64_t) value;
+  amount.fraction = (uint32_t) fraction;
+  strcpy (amount.currency, currency);
+  (void) TALER_amount_normalize (&amount);
+  TALER_amount_hton (r_amount,
+		     &amount);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Provide specification to parse given JSON object to an amount.
+ *
+ * @param name name of the amount field in the JSON
+ * @param[out] r_amount where the amount has to be written
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_amount_nbo (const char *name,
+			    struct TALER_AmountNBO *r_amount)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_amount_nbo,
     .cleaner = NULL,
     .cls = NULL,
     .field = name,
