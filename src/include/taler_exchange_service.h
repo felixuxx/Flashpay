@@ -767,6 +767,22 @@ struct TALER_EXCHANGE_ReserveHistory
        */
       json_t *transfer_details;
 
+      /**
+       * Signature of the coin of type
+       * #TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED.
+       */
+      struct TALER_ExchangeSignatureP exchange_sig;
+
+      /**
+       * Public key of the exchange that was used for @e exchange_sig.
+       */
+      struct TALER_ExchangePublicKeyP exchange_pub;
+
+      /**
+       * When did the wire transfer happen?
+       */
+      struct GNUNET_TIME_Absolute timestamp;
+
     } close_details;
 
   } details;

@@ -329,7 +329,73 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
     else if (0 == strcasecmp (type,
                               "CLOSING"))
     {
-      GNUNET_break (0); /* FIXME: implement with #4956 */
+      const struct TALER_EXCHANGE_Keys *key_state;
+      struct TALER_ReserveCloseConfirmationPS rcc;
+      struct GNUNET_TIME_Absolute timestamp;
+      struct GNUNET_JSON_Specification closing_spec[] = {
+        GNUNET_JSON_spec_json ("receiver_account_details",
+			       &rhistory[off].details.close_details.receiver_account_details),
+        GNUNET_JSON_spec_json ("wire_transfer",
+			       &rhistory[off].details.close_details.transfer_details),
+        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                     &rhistory[off].details.close_details.exchange_sig),
+        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                     &rhistory[off].details.close_details.exchange_pub),
+	TALER_JSON_spec_amount_nbo ("closing_fee",
+				    &rcc.closing_fee),
+        GNUNET_JSON_spec_absolute_time_nbo ("timestamp",
+					    &rcc.timestamp),
+        GNUNET_JSON_spec_end()
+      };
+
+      rhistory[off].type = TALER_EXCHANGE_RTT_CLOSE;
+      rhistory[off].amount = amount;
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (transaction,
+                             closing_spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      TALER_amount_hton (&rcc.closing_amount,
+			 &amount);
+      TALER_JSON_hash (rhistory[off].details.close_details.receiver_account_details,
+		       &rcc.h_wire);
+      TALER_JSON_hash (rhistory[off].details.close_details.receiver_account_details,
+		       &rcc.h_transfer);
+      rcc.purpose.size = htonl (sizeof (rcc));
+      rcc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED);
+      rcc.reserve_pub = *reserve_pub;
+      timestamp = GNUNET_TIME_absolute_ntoh (rcc.timestamp);
+      rhistory[off].details.close_details.timestamp = timestamp;
+
+      key_state = TALER_EXCHANGE_get_keys (exchange);
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_test_signing_key (key_state,
+                                           &rhistory[off].details.payback_details.exchange_pub))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED,
+                                      &rcc.purpose,
+                                      &rhistory[off].details.payback_details.exchange_sig.eddsa_signature,
+                                      &rhistory[off].details.payback_details.exchange_pub.eddsa_pub))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if (GNUNET_OK !=
+          TALER_amount_add (&total_out,
+                            &total_out,
+                            &rhistory[off].amount))
+      {
+        /* overflow in history already!? inconceivable! Bad exchange! */
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
       /* end type==CLOSING */
     }
     else

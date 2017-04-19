@@ -1267,6 +1267,11 @@ struct TALER_ReserveCloseConfirmationPS
    * Hash of the receiver's bank account.
    */
   struct GNUNET_HashCode h_wire;
+
+  /**
+   * Hash of the transfer details.
+   */
+  struct GNUNET_HashCode h_transfer;
 };
 
 
