@@ -970,6 +970,31 @@ typedef int
 
 
 /**
+ * Function called about reserve closing operations
+ * the aggregator triggered.
+ *
+ * @param cls closure
+ * @param rowid row identifier used to uniquely identify the reserve closing operation
+ * @param execution_date when did we execute the close operation
+ * @param amount_with_fee how much did we debit the reserve
+ * @param closing_fee how much did we charge for closing the reserve
+ * @param reserve_pub public key of the reserve
+ * @param receiver_account where did we send the funds
+ * @param transfer_details details about the wire transfer
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef int
+(*TALER_EXCHANGEDB_ReserveClosedCallback)(void *cls,
+					  uint64_t rowid,
+					  struct GNUNET_TIME_Absolute execution_date,
+					  const struct TALER_Amount *amount_with_fee,
+					  const struct TALER_Amount *closing_fee,
+					  const struct TALER_ReservePublicKeyP *reserve_pub,
+					  const json_t *receiver_account,
+					  const json_t *transfer_details);
+
+
+/**
  * Function called with information justifying an aggregate payback.
  * (usually implemented by the auditor when verifying losses from paybacks).
  *
@@ -2029,6 +2054,27 @@ struct TALER_EXCHANGEDB_Plugin
                                     uint64_t serial_id,
                                     TALER_EXCHANGEDB_PaybackCallback cb,
                                     void *cb_cls);
+
+
+  /**
+   * Function called to select reserve close operations the aggregator
+   * triggered, ordered by serial ID (monotonically increasing).
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param serial_id lowest serial ID to include (select larger or equal)
+   * @param cb function to call 
+   * @param cb_cls closure for @a cb
+   * @return #GNUNET_OK on success,
+   *         #GNUNET_NO if there are no entries,
+   *         #GNUNET_SYSERR on DB errors
+   */
+  int
+  (*select_reserve_closed_above_serial_id)(void *cls,
+					   struct TALER_EXCHANGEDB_Session *session,
+					   uint64_t serial_id,
+					   TALER_EXCHANGEDB_ReserveClosedCallback cb,
+					   void *cb_cls);
 
 
   /**

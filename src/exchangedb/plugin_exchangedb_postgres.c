@@ -1473,7 +1473,7 @@ postgres_prepare (PGconn *db_conn)
            " WHERE finished=true",
            0, NULL);
 
-  /* Used in #postgres_select_wire__out_above_serial_id() */
+  /* Used in #postgres_select_wire_out_above_serial_id() */
   PREPARE ("audit_get_wire_incr",
            "SELECT"
            " wireout_uuid"
@@ -1525,6 +1525,26 @@ postgres_prepare (PGconn *db_conn)
            "    JOIN denominations denoms USING (denom_pub_hash)"
            " WHERE payback_uuid>=$1"
            " ORDER BY payback_uuid ASC",
+           1, NULL);
+
+    /* Used in #postgres_select_reserve_closed_above_serial_id() to 
+       obtain information about closed reserves */
+  PREPARE ("reserves_close_get_incr",
+           "SELECT"
+           " close_uuid"
+           ",reserve_pub"
+           ",execution_date"
+           ",transfer_details"
+           ",receiver_account"
+           ",amount_val"
+           ",amount_frac"
+           ",amount_curr"
+           ",closing_fee_val"
+           ",closing_fee_frac"
+           ",closing_fee_curr"
+           " FROM reserves_close"
+           " WHERE close_uuid>=$1"
+           " ORDER BY close_uuid ASC",
            1, NULL);
 
   /* Used in #postgres_get_reserve_history() to obtain payback transactions
@@ -5999,6 +6019,106 @@ postgres_select_payback_above_serial_id (void *cls,
 
 
 /**
+ * Function called to select reserve close operations the aggregator
+ * triggered, ordered by serial ID (monotonically increasing).
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param serial_id lowest serial ID to include (select larger or equal)
+ * @param cb function to call for ONE unfinished item
+ * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if there are no entries,
+ *         #GNUNET_SYSERR on DB errors
+ */
+static int
+postgres_select_reserve_closed_above_serial_id (void *cls,
+						struct TALER_EXCHANGEDB_Session *session,
+						uint64_t serial_id,
+						TALER_EXCHANGEDB_ReserveClosedCallback cb,
+						void *cb_cls)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "reserves_close_get_incr",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result, session->conn);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  int nrows;
+  int ret;
+
+  nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "select_reserve_closed_above_serial_id() returned 0 matching rows\n");
+    PQclear (result);
+    return GNUNET_NO;
+  }
+  for (int i=0;i<nrows;i++)
+  {
+    uint64_t rowid;
+    struct TALER_ReservePublicKeyP reserve_pub;
+    json_t *receiver_account;
+    json_t *transfer_details;
+    struct TALER_Amount amount_with_fee;
+    struct TALER_Amount closing_fee;
+    struct GNUNET_TIME_Absolute execution_date;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("close_uuid",
+                                    &rowid),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                            &reserve_pub),
+      GNUNET_PQ_result_spec_absolute_time ("execution_date",
+                                           &execution_date),
+      TALER_PQ_result_spec_json ("transfer_details",
+				 &transfer_details),
+      TALER_PQ_result_spec_json ("receiver_account",
+				 &receiver_account),
+      TALER_PQ_result_spec_amount ("amount",
+                                   &amount_with_fee),
+      TALER_PQ_result_spec_amount ("closing_fee",
+                                   &closing_fee),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      PQclear (result);
+      return GNUNET_SYSERR;
+    }
+    ret = cb (cb_cls,
+              rowid,
+              execution_date,
+              &amount_with_fee,
+	      &closing_fee,
+              &reserve_pub,
+	      receiver_account,
+              transfer_details);
+    GNUNET_PQ_cleanup_result (rs);
+    if (GNUNET_OK != ret)
+      break;
+  }
+
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
  * Function called to add a request for an emergency payback for a
  * coin.  The funds are to be added back to the reserve.  The function
  * should return the @a deadline by which the exchange will trigger a
@@ -6404,6 +6524,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->select_reserves_out_above_serial_id = &postgres_select_reserves_out_above_serial_id;
   plugin->select_wire_out_above_serial_id = &postgres_select_wire_out_above_serial_id;
   plugin->select_payback_above_serial_id = &postgres_select_payback_above_serial_id;
+    plugin->select_reserve_closed_above_serial_id = &postgres_select_reserve_closed_above_serial_id;
   plugin->insert_payback_request = &postgres_insert_payback_request;
   plugin->get_reserve_by_h_blind = &postgres_get_reserve_by_h_blind;
   plugin->insert_denomination_revocation = &postgres_insert_denomination_revocation;
