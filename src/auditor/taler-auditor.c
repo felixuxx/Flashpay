@@ -55,6 +55,11 @@
 #define DEPOSIT_GRACE_PERIOD GNUNET_TIME_UNIT_DAYS
 
 /**
+ * Use a 1 day grace period to deal with clocks not being perfectly synchronized.
+ */
+#define CLOSING_GRACE_PERIOD GNUNET_TIME_UNIT_DAYS
+
+/**
  * Return value from main().
  */
 static int global_ret;
@@ -621,8 +626,10 @@ handle_reserve_in (void *cls,
   struct ReserveSummary *rs;
   struct GNUNET_TIME_Absolute expiry;
 
-  GNUNET_assert (rowid >= pp.last_reserve_in_serial_id); /* should be monotonically increasing */
+  /* should be monotonically increasing */
+  GNUNET_assert (rowid >= pp.last_reserve_in_serial_id); 
   pp.last_reserve_in_serial_id = rowid + 1;
+
   GNUNET_CRYPTO_hash (reserve_pub,
                       sizeof (*reserve_pub),
                       &key);
@@ -973,6 +980,84 @@ handle_payback_by_reserve (void *cls,
 
 
 /**
+ * Function called about reserve closing operations
+ * the aggregator triggered.
+ *
+ * @param cls closure
+ * @param rowid row identifier used to uniquely identify the reserve closing operation
+ * @param execution_date when did we execute the close operation
+ * @param amount_with_fee how much did we debit the reserve
+ * @param closing_fee how much did we charge for closing the reserve
+ * @param reserve_pub public key of the reserve
+ * @param receiver_account where did we send the funds
+ * @param transfer_details details about the wire transfer
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static int
+handle_reserve_closed (void *cls,
+		       uint64_t rowid,
+		       struct GNUNET_TIME_Absolute execution_date,
+		       const struct TALER_Amount *amount_with_fee,
+		       const struct TALER_Amount *closing_fee,
+		       const struct TALER_ReservePublicKeyP *reserve_pub,
+		       const json_t *receiver_account,
+		       const json_t *transfer_details)
+{
+  struct ReserveContext *rc = cls;
+  struct GNUNET_HashCode key;
+  struct ReserveSummary *rs;
+  
+  /* should be monotonically increasing */
+  GNUNET_assert (rowid >= pp.last_reserve_close_serial_id);
+  pp.last_reserve_close_serial_id = rowid + 1;
+
+  GNUNET_CRYPTO_hash (reserve_pub,
+                      sizeof (*reserve_pub),
+                      &key);
+  rs = GNUNET_CONTAINER_multihashmap_get (rc->reserves,
+                                          &key);
+  if (NULL == rs)
+  {
+    rs = GNUNET_new (struct ReserveSummary);
+    rs->reserve_pub = *reserve_pub;
+    rs->total_out = *amount_with_fee;
+    rs->total_fee = *closing_fee;
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (amount_with_fee->currency,
+                                          &rs->total_in));
+    if (GNUNET_OK !=
+        load_auditor_reserve_summary (rs))
+    {
+      GNUNET_break (0);
+      GNUNET_free (rs);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_assert (GNUNET_OK ==
+                   GNUNET_CONTAINER_multihashmap_put (rc->reserves,
+                                                      &key,
+                                                      rs,
+                                                      GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+  }
+  else
+  {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&rs->total_out,
+                                     &rs->total_out,
+                                     amount_with_fee));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&rs->total_fee,
+                                     &rs->total_fee,
+                                     closing_fee));
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Additional closing operation for reserve `%s' of %s\n",
+              TALER_B2S (reserve_pub),
+              TALER_amount2s (amount_with_fee));
+  return GNUNET_OK;
+}
+
+
+/**
  * Check that the reserve summary matches what the exchange database
  * thinks about the reserve, and update our own state of the reserve.
  *
@@ -1046,14 +1131,22 @@ verify_reserve_balance (void *cls,
     goto cleanup;
   }
 
-  if (0 == GNUNET_TIME_absolute_get_remaining (rs->a_expiration_date).rel_value_us)
+  /* Check that reserve is being closed if it is past its expiration date */
+  if ( (CLOSING_GRACE_PERIOD.rel_value_us >
+	GNUNET_TIME_absolute_get_duration (rs->a_expiration_date).rel_value_us) &&
+       ( (0 != balance.value) ||
+	 (0 != balance.fraction) ) )
   {
-    /* TODO: handle case where reserve is expired! (#4956) */
-    GNUNET_break (0); /* not implemented */
-    /* NOTE: we may or may not have seen the wire-back transfer at this time,
-       as the expiration may have just now happened.
-       (That is, after we add the table structures and the logic to track
-       such transfers...) */
+    struct TALER_Amount zero;
+
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (balance.currency,
+                                          &zero));
+
+    report_reserve_inconsistency (&rs->reserve_pub,
+                                  &balance,
+                                  &zero,
+                                  "expired reserve needs to be closed");
   }
 
   /* Add withdraw fees we encountered to totals */
@@ -1226,10 +1319,16 @@ analyze_reserves (void *cls)
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-
-
-  /* TODO: iterate over table for reserve expiration refunds! (#4956);
-     should use pp.last_reserve_close_serial_id */
+  if (GNUNET_SYSERR ==
+      edb->select_reserve_closed_above_serial_id (edb->cls,
+						  esession,
+						  pp.last_reserve_close_serial_id,
+						  &handle_reserve_closed,
+						  &rc))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
 
   GNUNET_CONTAINER_multihashmap_iterate (rc.reserves,
                                          &verify_reserve_balance,
