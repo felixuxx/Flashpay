@@ -575,6 +575,14 @@ struct ReserveContext
   struct GNUNET_CONTAINER_MultiHashMap *reserves;
 
   /**
+   * Map from hash of denomination's public key to a
+   * static string "revoked" for keys that have been revoked,
+   * or "master signature invalid" in case the revocation is
+   * there but bogus.
+   */
+  struct GNUNET_CONTAINER_MultiHashMap *revoked;
+
+  /**
    * Total balance in all reserves (updated).
    */
   struct TALER_Amount total_balance;
@@ -834,6 +842,7 @@ handle_payback_by_reserve (void *cls,
   struct TALER_MasterSignatureP msig;
   uint64_t rev_rowid;
   int ret;
+  const char *rev;
 
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= pp.last_reserve_payback_serial_id);
@@ -864,43 +873,56 @@ handle_payback_by_reserve (void *cls,
   }
 
   /* check that the coin was eligible for payback!*/
-  ret = edb->get_denomination_revocation (edb->cls,
-                                          esession,
-                                          &pr.h_denom_pub,
-                                          &msig,
-					  &rev_rowid);
-  if (GNUNET_SYSERR == ret)
+  rev = GNUNET_CONTAINER_multihashmap_get (rc->revoked,
+					   &pr.h_denom_pub);
+  if (NULL == rev)
   {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_NO == ret)
-  {
-    report_row_inconsistency ("payback",
-                              rowid,
-                              "denomination key not in revocation set");
-  }
-  else
-  {
-    /* verify msig */
-    struct TALER_MasterDenominationKeyRevocation kr;
-
-    kr.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED);
-    kr.purpose.size = htonl (sizeof (kr));
-    kr.h_denom_pub = pr.h_denom_pub;
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
-                                    &kr.purpose,
-                                    &msig.eddsa_signature,
-                                    &master_pub.eddsa_pub))
+    ret = edb->get_denomination_revocation (edb->cls,
+					    esession,
+					    &pr.h_denom_pub,
+					    &msig,
+					    &rev_rowid);
+    if (GNUNET_SYSERR == ret)
     {
-      report_row_inconsistency ("denomination_revocations",
-                                rev_rowid,
-                                "master signature invalid");
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
     }
-    /* TODO: cache result so we don't do this every time! (#4983) */
+    if (GNUNET_NO == ret)
+    {
+      report_row_inconsistency ("payback",
+				rowid,
+				"denomination key not in revocation set");      
+    }
+    else
+    {
+      /* verify msig */
+      struct TALER_MasterDenominationKeyRevocation kr;
+      
+      kr.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED);
+      kr.purpose.size = htonl (sizeof (kr));
+      kr.h_denom_pub = pr.h_denom_pub;
+      if (GNUNET_OK !=
+	  GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
+				      &kr.purpose,
+				      &msig.eddsa_signature,
+				      &master_pub.eddsa_pub))
+      {
+	report_row_inconsistency ("denomination_revocations",
+				  rev_rowid,
+				  "master signature invalid");
+	rev = "master signature invalid";
+      }
+      else
+      {
+	rev = "revoked";
+      }
+      GNUNET_assert (GNUNET_OK ==
+		     GNUNET_CONTAINER_multihashmap_put (rc->revoked,
+							&pr.h_denom_pub,
+							(void *) rev,
+							GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+    }
   }
-
 
   GNUNET_CRYPTO_hash (reserve_pub,
                       sizeof (*reserve_pub),
@@ -1171,6 +1193,8 @@ analyze_reserves (void *cls)
 
   rc.reserves = GNUNET_CONTAINER_multihashmap_create (512,
                                                       GNUNET_NO);
+  rc.revoked = GNUNET_CONTAINER_multihashmap_create (4,
+						     GNUNET_NO);
 
   if (GNUNET_SYSERR ==
       edb->select_reserves_in_above_serial_id (edb->cls,
@@ -1213,6 +1237,7 @@ analyze_reserves (void *cls)
   GNUNET_break (0 ==
                 GNUNET_CONTAINER_multihashmap_size (rc.reserves));
   GNUNET_CONTAINER_multihashmap_destroy (rc.reserves);
+  GNUNET_CONTAINER_multihashmap_destroy (rc.revoked);
 
 
   if (GNUNET_NO == ret)
