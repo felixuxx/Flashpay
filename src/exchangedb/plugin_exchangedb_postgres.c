@@ -564,6 +564,26 @@ postgres_create_tables (void *cls)
   SQLEXEC_INDEX("CREATE INDEX prepare_iteration_index "
                 "ON prewire(type,finished)");
 
+  /* This table contains the data for
+     wire transfers the exchange has executed
+     to close a reserve. */
+  SQLEXEC("CREATE TABLE IF NOT EXISTS reserve_close "
+          "(close_uuid BIGSERIAL PRIMARY KEY"
+          ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
+	  ",execution_date INT8 NOT NULL"
+          ",transfer_details TEXT NOT NULL"
+          ",receiver_account TEXT NOT NULL"
+          ",amount_val INT8 NOT NULL"
+          ",amount_frac INT4 NOT NULL"
+          ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",closing_fee_val INT8 NOT NULL"
+          ",closing_fee_frac INT4 NOT NULL"
+          ",closing_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ")");
+
+  SQLEXEC_INDEX("CREATE INDEX reserve_close_by_reserve "
+                "ON reserve_close(reserve_pub)");
+  
 #undef SQLEXEC
 #undef SQLEXEC_INDEX
 
@@ -1508,6 +1528,22 @@ postgres_prepare (PGconn *db_conn)
            " WHERE payback.reserve_pub=$1",
            1, NULL);
 
+  /* Used in #postgres_get_reserve_history() */
+  PREPARE ("close_by_reserve",
+           "SELECT"
+           " amount_val"
+           ",amount_frac"
+           ",amount_curr"
+           ",closing_fee_val"
+           ",closing_fee_frac"
+           ",closing_fee_curr"
+	   ",execution_date"
+	   ",receiver_account"
+	   ",transfer_details"
+           " FROM reserve_close"
+           " WHERE reserve_pub=$1;",
+           1, NULL);
+  
   /* Used in #postgres_get_coin_transactions() to obtain payback transactions
      for a coin */
   PREPARE ("payback_by_coin",
@@ -2444,9 +2480,9 @@ postgres_get_reserve_history (void *cls,
     ret = GNUNET_OK;
     PQclear (result);
   }
+
   /** #TALER_EXCHANGEDB_RO_PAYBACK_COIN */
   {
-    struct TALER_EXCHANGEDB_Payback *payback;
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (reserve_pub),
       GNUNET_PQ_query_param_end
@@ -2463,6 +2499,8 @@ postgres_get_reserve_history (void *cls,
     rows = PQntuples (result);
     while (0 < rows)
     {
+      struct TALER_EXCHANGEDB_Payback *payback;
+
       payback = GNUNET_new (struct TALER_EXCHANGEDB_Payback);
       {
         struct GNUNET_PQ_ResultSpec rs[] = {
@@ -2512,8 +2550,69 @@ postgres_get_reserve_history (void *cls,
 
 
   /** #TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK */
-  /* TODO: #4956 */
+  {
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+      GNUNET_PQ_query_param_end
+    };
 
+    result = GNUNET_PQ_exec_prepared (session->conn,
+                                      "close_by_reserve",
+                                      params);
+    if (PGRES_TUPLES_OK != PQresultStatus (result))
+    {
+      QUERY_ERR (result, session->conn);
+      goto cleanup;
+    }
+    rows = PQntuples (result);
+    while (0 < rows)
+    {
+      struct TALER_EXCHANGEDB_ClosingTransfer *closing;
+
+      closing = GNUNET_new (struct TALER_EXCHANGEDB_ClosingTransfer);
+      {
+        struct GNUNET_PQ_ResultSpec rs[] = {
+          TALER_PQ_result_spec_amount ("amount",
+                                       &closing->amount),
+          TALER_PQ_result_spec_amount ("closing_fee",
+                                       &closing->closing_fee),
+          GNUNET_PQ_result_spec_absolute_time ("execution_date",
+                                               &closing->execution_date),
+          TALER_PQ_result_spec_json ("receiver_account",
+				     &closing->receiver_account_details),
+          TALER_PQ_result_spec_json ("transfer_details",
+				     &closing->transfer_details),
+          GNUNET_PQ_result_spec_end
+        };
+        if (GNUNET_OK !=
+            GNUNET_PQ_extract_result (result,
+                                      rs,
+                                      --rows))
+        {
+          GNUNET_break (0);
+          GNUNET_free (closing);
+          PQclear (result);
+          goto cleanup;
+        }
+      }
+      closing->reserve_pub = *reserve_pub;
+      if (NULL != rh_tail)
+      {
+        rh_tail->next = GNUNET_new (struct TALER_EXCHANGEDB_ReserveHistory);
+        rh_tail = rh_tail->next;
+      }
+      else
+      {
+        rh_tail = GNUNET_new (struct TALER_EXCHANGEDB_ReserveHistory);
+        rh = rh_tail;
+      }
+      rh_tail->type = TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK;
+      rh_tail->details.closing = closing;
+    } /* end of 'while (0 < rows)' */
+    PQclear (result);
+  }
+
+  
  cleanup:
   if (GNUNET_SYSERR == ret)
   {

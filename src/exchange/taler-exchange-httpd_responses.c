@@ -886,17 +886,20 @@ compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
 	rcc.reserve_pub = pos->details.closing->reserve_pub;
 	TALER_JSON_hash (pos->details.closing->receiver_account_details,
 			 &rcc.h_wire);
+	TALER_JSON_hash (pos->details.closing->transfer_details,
+			 &rcc.h_transfer);
 	TEH_KS_sign (&rcc.purpose,
 		     &pub,
 		     &sig);
 	GNUNET_assert (0 ==
 		       json_array_append_new (json_history,
-					      json_pack ("{s:s, s:o, s:o, s:o, s:o}",
+					      json_pack ("{s:s, s:O, s:O, s:o, s:o, s:o, s:o, s:o}",
 							 "type", "CLOSING",
+							 "receiver_account_details", pos->details.closing->receiver_account_details,
+							 "transfer_details", pos->details.closing->transfer_details,
 							 "exchange_pub", GNUNET_JSON_from_data_auto (&pub),
 							 "exchange_sig", GNUNET_JSON_from_data_auto (&sig),
 							 "timestamp", GNUNET_JSON_from_time_abs (pos->details.closing->execution_date),
-							 "h_wire", GNUNET_JSON_from_data_auto (&rcc.h_wire),
 							 "amount", TALER_JSON_from_amount (&value),
 							 "closing_fee", TALER_JSON_from_amount (&pos->details.closing->closing_fee))));
       }
