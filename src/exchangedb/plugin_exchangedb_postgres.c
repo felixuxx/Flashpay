@@ -342,6 +342,7 @@ postgres_create_tables (void *cls)
                  "reserves (reserve_pub)");
   SQLEXEC_INDEX ("CREATE INDEX reserves_expiration_index"
 		 " ON reserves (expiration_date);");
+
   /* reserves_in table collects the transactions which transfer funds
      into the reserve.  The rows of this table correspond to each
      incoming transaction. */
@@ -359,6 +360,25 @@ postgres_create_tables (void *cls)
   /* Create indices on reserves_in */
   SQLEXEC_INDEX ("CREATE INDEX reserves_in_execution_index"
 		 " ON reserves_in (execution_date);");
+
+  /* This table contains the data for wire transfers the exchange has
+     executed to close a reserve. */
+  SQLEXEC("CREATE TABLE IF NOT EXISTS reserves_close "
+          "(close_uuid BIGSERIAL PRIMARY KEY"
+          ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
+	  ",execution_date INT8 NOT NULL"
+          ",transfer_details TEXT NOT NULL"
+          ",receiver_account TEXT NOT NULL"
+          ",amount_val INT8 NOT NULL"
+          ",amount_frac INT4 NOT NULL"
+          ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ",closing_fee_val INT8 NOT NULL"
+          ",closing_fee_frac INT4 NOT NULL"
+          ",closing_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
+          ")");
+  SQLEXEC_INDEX("CREATE INDEX reserves_close_by_reserve "
+                "ON reserves_close(reserve_pub)");
+  
   /* Table with the withdraw operations that have been performed on a reserve.
      The 'h_blind_ev' is the hash of the blinded coin. It serves as a primary
      key, as (broken) clients that use a non-random coin and blinding factor
@@ -564,25 +584,6 @@ postgres_create_tables (void *cls)
   SQLEXEC_INDEX("CREATE INDEX prepare_iteration_index "
                 "ON prewire(type,finished)");
 
-  /* This table contains the data for
-     wire transfers the exchange has executed
-     to close a reserve. */
-  SQLEXEC("CREATE TABLE IF NOT EXISTS reserve_close "
-          "(close_uuid BIGSERIAL PRIMARY KEY"
-          ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
-	  ",execution_date INT8 NOT NULL"
-          ",transfer_details TEXT NOT NULL"
-          ",receiver_account TEXT NOT NULL"
-          ",amount_val INT8 NOT NULL"
-          ",amount_frac INT4 NOT NULL"
-          ",amount_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ",closing_fee_val INT8 NOT NULL"
-          ",closing_fee_frac INT4 NOT NULL"
-          ",closing_fee_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ")");
-
-  SQLEXEC_INDEX("CREATE INDEX reserve_close_by_reserve "
-                "ON reserve_close(reserve_pub)");
   
 #undef SQLEXEC
 #undef SQLEXEC_INDEX
@@ -721,6 +722,23 @@ postgres_prepare (PGconn *db_conn)
            ") VALUES "
            "($1, $2, $3, $4, $5);",
            5, NULL);
+
+  /* Used in #postgres_insert_reserve_closed() */
+  PREPARE ("reserves_close_insert",
+	   "INSERT INTO reserves_close "
+	   "(reserve_pub"
+	   ",execution_date"
+	   ",transfer_details"
+	   ",receiver_account"
+	   ",amount_val"
+	   ",amount_frac"
+	   ",amount_curr"
+	   ",closing_fee_val"
+	   ",closing_fee_frac"
+	   ",closing_fee_curr"
+	   ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);",
+           10, NULL);
 
   /* Used in #postgres_reserves_update() when the reserve is updated */
   PREPARE ("reserve_update",
@@ -1540,7 +1558,7 @@ postgres_prepare (PGconn *db_conn)
 	   ",execution_date"
 	   ",receiver_account"
 	   ",transfer_details"
-           " FROM reserve_close"
+           " FROM reserves_close"
            " WHERE reserve_pub=$1;",
            1, NULL);
   
@@ -4897,6 +4915,61 @@ postgres_insert_wire_fee (void *cls,
 
 
 /**
+ * Insert reserve close operation into database.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param reserve_pub which reserve is this about?
+ * @param execution_date when did we perform the transfer?
+ * @param receiver_account to which account do we transfer?
+ * @param transfer_details wire transfer details
+ * @param amount_with_fee amount we charged to the reserve
+ * @param closing_fee how high is the closing fee
+ * @return #GNUNET_OK on success, #GNUNET_NO if the record exists,
+ *         #GNUNET_SYSERR on failure
+ */
+static int
+postgres_insert_reserve_closed (void *cls,
+				struct TALER_EXCHANGEDB_Session *session,
+				struct TALER_ReservePublicKeyP *reserve_pub,
+				struct GNUNET_TIME_Absolute execution_date,
+				const json_t *receiver_account,
+				const json_t *transfer_details,
+				const struct TALER_Amount *amount_with_fee,
+				const struct TALER_Amount *closing_fee)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_absolute_time (&execution_date),
+    TALER_PQ_query_param_json (transfer_details),
+    TALER_PQ_query_param_json (receiver_account),
+    TALER_PQ_query_param_amount (amount_with_fee),
+    TALER_PQ_query_param_amount (closing_fee),
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+				    "reserves_close_insert",
+				    params);
+  if (PGRES_COMMAND_OK != PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result, session->conn);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  if (0 != strcmp ("1", PQcmdTuples (result)))
+  {
+    GNUNET_break (0);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
  * Function called to insert wire transfer commit data into the DB.
  *
  * @param cls closure
@@ -6317,6 +6390,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->insert_aggregation_tracking = &postgres_insert_aggregation_tracking;
   plugin->insert_wire_fee = &postgres_insert_wire_fee;
   plugin->get_wire_fee = &postgres_get_wire_fee;
+  plugin->insert_reserve_closed = &postgres_insert_reserve_closed;
   plugin->wire_prepare_data_insert = &postgres_wire_prepare_data_insert;
   plugin->wire_prepare_data_mark_finished = &postgres_wire_prepare_data_mark_finished;
   plugin->wire_prepare_data_get = &postgres_wire_prepare_data_get;

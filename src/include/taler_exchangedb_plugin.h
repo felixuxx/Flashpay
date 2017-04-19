@@ -1759,6 +1759,31 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Insert reserve close operation into database.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param reserve_pub which reserve is this about?
+   * @param execution_date when did we perform the transfer?
+   * @param receiver_account to which account do we transfer?
+   * @param transfer_details wire transfer details
+   * @param amount_with_fee amount we charged to the reserve
+   * @param closing_fee how high is the closing fee
+   * @return #GNUNET_OK on success, #GNUNET_NO if the record exists,
+   *         #GNUNET_SYSERR on failure
+   */
+  int
+  (*insert_reserve_closed)(void *cls,
+			   struct TALER_EXCHANGEDB_Session *session,
+			   struct TALER_ReservePublicKeyP *reserve_pub,
+			   struct GNUNET_TIME_Absolute execution_date,
+			   const json_t *receiver_account,
+			   const json_t *transfer_details,
+			   const struct TALER_Amount *amount_with_fee,
+			   const struct TALER_Amount *closing_fee);
+
+
+  /**
    * Function called to insert wire transfer commit data into the DB.
    *
    * @param cls closure
