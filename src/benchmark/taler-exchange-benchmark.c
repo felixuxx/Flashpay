@@ -390,13 +390,13 @@ static char *currency;
 static struct GNUNET_TIME_Absolute start_time;
 
 /**
- * Number of times #bennchmark_run has executed. Used
+ * Number of times #benchmark_run has executed. Used
  * to indicate when we consider us warm.
  */
 static unsigned long long warm;
 
 /**
- * Number of times #bennchmark_run should execute
+ * Number of times #benchmark_run should execute
  * before we shut down.
  */
 static unsigned int num_iterations;
@@ -425,7 +425,7 @@ static unsigned long long num_admin;
 /**
  * Throw a weighted coin with @a probability.
  *
- * @reurn #GNUNET_OK with @a probability, #GNUNET_NO with 1 - @a probability
+ * @return #GNUNET_OK with @a probability, #GNUNET_NO with 1 - @a probability
  */
 static unsigned int
 eval_probability (float probability)

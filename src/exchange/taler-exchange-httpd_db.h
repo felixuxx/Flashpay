@@ -133,7 +133,7 @@ struct TEH_DB_MeltDetails
  * @param session_hash hash code of the session the coins are melted into
  * @param num_new_denoms number of entries in @a denom_pubs, size of y-dimension of @a commit_coin array
  * @param denom_pubs array of public denomination keys for the refresh (?)
- * @param coin_melt_details signatures and (residual) value of and information about the respective coin to be melted
+ * @param coin_melt_detail signatures and (residual) value of and information about the respective coin to be melted
  * @param commit_coin 2d array of coin commitments (what the exchange is to sign
  *                    once the "/refres/reveal" of cut and choose is done)
  * @param transfer_pubs array of transfer public keys (what the exchange is
@@ -146,7 +146,7 @@ TEH_DB_execute_refresh_melt (struct MHD_Connection *connection,
                              const struct GNUNET_HashCode *session_hash,
                              unsigned int num_new_denoms,
                              const struct TALER_DenominationPublicKey *denom_pubs,
-                             const struct TEH_DB_MeltDetails *coin_melt_details,
+                             const struct TEH_DB_MeltDetails *coin_melt_detail,
                              struct TALER_EXCHANGEDB_RefreshCommitCoin *const* commit_coin,
                              const struct TALER_TransferPublicKeyP *transfer_pubs);
 

@@ -605,10 +605,10 @@ TALER_EXCHANGE_reserve_status (struct TALER_EXCHANGE_Handle *exchange,
 
 
 /**
- * Cancel a withdraw status request.  This function cannot be used
+ * Cancel a reserve status request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
- * @param rsh the withdraw status request handle
+ * @param rsh the reserve status request handle
  */
 void
 TALER_EXCHANGE_reserve_status_cancel (struct TALER_EXCHANGE_ReserveStatusHandle *rsh)

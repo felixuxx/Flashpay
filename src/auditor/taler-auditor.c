@@ -205,7 +205,8 @@ report_reserve_inconsistency (const struct TALER_ReservePublicKeyP *reserve_pub,
 /**
  * Report a global inconsistency with respect to a wire transfer.
  *
- * @param reserve_pub the affected reserve
+ * @param destination wire transfer target account
+ * @param rowid which row is the inconsitency in
  * @param expected expected amount
  * @param observed observed amount
  * @param diagnostic message explaining what @a expected and @a observed refer to
@@ -509,7 +510,7 @@ struct ReserveSummary
  * The "total_in" and "total_out" amounts of @a rs must already be
  * initialized (so we can determine the currency).
  *
- * @param[in|out] rs reserve summary to (fully) initialize
+ * @param[in,out] rs reserve summary to (fully) initialize
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on DB errors
  */
 static int
@@ -2241,7 +2242,7 @@ check_wire_out_cb (void *cls,
  * Analyze the exchange aggregator's payment processing.
  *
  * @param cls closure
- * @param int #GNUNET_OK on success, #GNUNET_SYSERR on hard errors
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on hard errors
  */
 static int
 analyze_aggregations (void *cls)
@@ -2500,7 +2501,7 @@ get_denomination_summary (struct CoinContext *cc,
  * denomination.  Also remove and free the memory of @a value.
  *
  * @param cls the `struct CoinContext`
- * @param key the hash of the denomination key
+ * @param denom_hash the hash of the denomination key
  * @param value a `struct DenominationSummary`
  * @return #GNUNET_OK (continue to iterate)
  */
@@ -2975,9 +2976,6 @@ refresh_session_cb (void *cls,
  * Function called with details about deposits that have been made,
  * with the goal of auditing the deposit's execution.
  *
- * As a side-effect, #get_coin_summary will report
- * inconsistencies in the deposited coin's balance.
- *
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
  * @param timestamp when did the deposit happen
@@ -3117,9 +3115,6 @@ deposit_cb (void *cls,
  * with the goal of auditing the refund's execution.  Adds the
  * refunded amount back to the outstanding balance of the respective
  * denomination.
- *
- * As a side-effect, #get_coin_summary will report
- * inconsistencies in the refunded coin's balance.
  *
  * @param cls closure
  * @param rowid unique serial ID for the refund in our DB
@@ -3263,7 +3258,7 @@ refund_cb (void *cls,
  * Analyze the exchange's processing of coins.
  *
  * @param cls closure
- * @param int #GNUNET_OK on success, #GNUNET_SYSERR on hard errors
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on hard errors
  */
 static int
 analyze_coins (void *cls)

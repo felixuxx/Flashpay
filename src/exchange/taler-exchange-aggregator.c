@@ -1117,7 +1117,6 @@ wire_prepare_cb (void *cls,
  * do.
  *
  * @param cls NULL
- * @param tc scheduler context
  */
 static void
 run_transfers (void *cls)

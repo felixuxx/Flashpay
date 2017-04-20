@@ -48,7 +48,7 @@ TEH_VALIDATION_done (void);
  *
  * @param wire the JSON wire format object
  * @param ours #GNUNET_YES if the signature should match our master key
- * @param[OUT] emsg set to error message if we return an error code
+ * @param[out] emsg set to error message if we return an error code
  * @return #TALER_EC_NONE if correctly formatted; otherwise error code
  */
 enum TALER_ErrorCode

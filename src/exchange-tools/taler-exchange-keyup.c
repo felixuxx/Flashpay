@@ -877,7 +877,7 @@ exchange_keys_update_denomkeys ()
 /**
  * Sign @a af with @a priv
  *
- * @param[in|out] af fee structure to sign
+ * @param[in,out] af fee structure to sign
  * @param wireplugin name of the plugin for which we sign
  * @param priv private key to use for signing
  */

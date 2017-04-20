@@ -477,8 +477,8 @@ handle_mhd_admin_request (void *cls,
  * Parse the configuration to determine on which port
  * or UNIX domain path we should run an HTTP service.
  *
- * @param type section of the configuration to parse ("exchange" or "exchange-admin")
- * @param[out] port set to the port number, or 0 for none
+ * @param section section of the configuration to parse ("exchange" or "exchange-admin")
+ * @param[out] rport set to the port number, or 0 for none
  * @param[out] unix_path set to the UNIX path, or NULL for none
  * @param[out] unix_mode set to the mode to be used for @a unix_path
  * @return #GNUNET_OK on success
@@ -594,7 +594,6 @@ parse_port_config (const char *section,
  * Load configuration parameters for the exchange
  * server into the corresponding global variables.
  *
- * @param exchange_directory the exchange's directory
  * @return #GNUNET_OK on success
  */
 static int

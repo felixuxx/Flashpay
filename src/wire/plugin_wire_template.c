@@ -98,7 +98,7 @@ template_get_wire_details (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param wire the JSON wire format object
  * @param master_pub public key of the exchange to verify against
- * @param[OUT] emsg set to an error message, unless we return #TALER_EC_NONE;
+ * @param[out] emsg set to an error message, unless we return #TALER_EC_NONE;
  *             error message must be freed by the caller using GNUNET_free()
  * @return #TALER_EC_NONE if correctly formatted
  */

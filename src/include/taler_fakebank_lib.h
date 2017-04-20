@@ -15,7 +15,7 @@
 */
 
 /**
- * @file bank-lib/fakebank.h
+ * @file include/taler_fakebank_lib.h
  * @brief API for a library that fakes being a Taler bank
  * @author Christian Grothoff <christian@grothoff.org>
  */

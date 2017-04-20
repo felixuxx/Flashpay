@@ -132,7 +132,7 @@ extract_amount_nbo_helper (PGresult *result,
  *
  * @param cls closure
  * @param result where to extract data from
- * @param int row to extract data from
+ * @param row row to extract data from
  * @param fname name (or prefix) of the fields to extract from
  * @param[in,out] dst_size where to store size of result, may be NULL
  * @param[out] dst where to store the result
@@ -200,7 +200,7 @@ TALER_PQ_result_spec_amount_nbo (const char *name,
  *
  * @param cls closure
  * @param result where to extract data from
- * @param int row to extract data from
+ * @param row row to extract data from
  * @param fname name (or prefix) of the fields to extract from
  * @param[in,out] dst_size where to store size of result, may be NULL
  * @param[out] dst where to store the result
@@ -272,7 +272,7 @@ TALER_PQ_result_spec_amount (const char *name,
  *
  * @param cls closure
  * @param result where to extract data from
- * @param int row to extract data from
+ * @param row row to extract data from
  * @param fname name (or prefix) of the fields to extract from
  * @param[in,out] dst_size where to store size of result, may be NULL
  * @param[out] dst where to store the result

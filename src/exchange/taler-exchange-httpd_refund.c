@@ -97,7 +97,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
 
 /**
  * Handle a "/refund" request.  Parses the JSON, and, if successful,
- * passes the JSON data to #parse_and_handle_refund_request() to
+ * passes the JSON data to #verify_and_execute_refund() to
  * further check the details of the operation specified.  If
  * everything checks out, this will ultimately lead to the "/refund"
  * being executed, or rejected.

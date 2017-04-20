@@ -55,6 +55,7 @@ char *
 MAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
                  const char *path);
 
+
 /**
  * Obtain the URL to use for an API request.
  *

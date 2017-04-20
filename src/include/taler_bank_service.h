@@ -61,7 +61,6 @@ typedef void
  * @param exchange_base_url base URL of the exchange (for tracking)
  * @param wtid wire transfer identifier for the transfer
  * @param amount amount that was deposited
- * @param execution_date when did we receive the amount
  * @param debit_account_no account number to withdraw from (53 bits at most)
  * @param credit_account_no account number to deposit into (53 bits at most)
  * @param res_cb the callback to call when the final result for this request is available

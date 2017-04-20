@@ -117,6 +117,7 @@ TALER_EXCHANGEDB_signing_keys_iterate (const char *exchange_base_dir,
  * Obtain the name of the directory we use to store signing
  * keys created at time @a start.
  *
+ * @param exchange_directory base director where we store key material
  * @param start time at which we create the signing key
  * @return name of the directory we should use, basically "$EXCHANGEDIR/$TIME/";
  *         (valid until next call to this function)

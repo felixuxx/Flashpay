@@ -357,7 +357,7 @@ validate_iban (const char *iban)
  * @param sepa_name name of the account holder
  * @param iban bank account number in IBAN format
  * @param bic bank identifier
- * @param[out] mp purpose to be signed
+ * @param[out] wsd purpose to be signed
  */
 static void
 compute_purpose (const char *sepa_name,
@@ -451,7 +451,7 @@ verify_wire_sepa_signature_ok (const json_t *json,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param wire the JSON wire format object
  * @param master_pub public key of the exchange to verify against
- * @param[OUT] emsg set to an error message, unless we return #TALER_EC_NONE;
+ * @param[out] emsg set to an error message, unless we return #TALER_EC_NONE;
  *             error message must be freed by the caller using GNUNET_free()
  * @return #TALER_EC_NONE if correctly formatted
  */

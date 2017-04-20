@@ -654,7 +654,7 @@ TEH_DB_execute_reserve_status (struct MHD_Connection *connection,
  * @param blinded_msg_len number of bytes in @a blinded_msg
  * @param h_blind hash of @a blinded_msg
  * @param signature signature over the withdraw request, to be stored in DB
- * @param denom_sig[out] where to write the resulting signature
+ * @param[out] denom_sig where to write the resulting signature
  *        (used to release memory in case of transaction failure
  * @return MHD result code
  */
@@ -1967,6 +1967,7 @@ struct WtidTransactionContext
  * @param cls our context for transmission
  * @param rowid which row in the DB is the information from (for diagnostics)
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
+ * @param wire_method which wire plugin was used
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_proposal_data which proposal was this payment about

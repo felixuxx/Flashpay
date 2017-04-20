@@ -2093,7 +2093,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param h_blind_ev blinded envelope, as calculated by the exchange
    * @param amount total amount to be paid back
    * @param receiver_account_details who should receive the funds
-   * @parma h_blind_ev hash of the blinded coin's envelope (must match reserves_out entry)
+   * @param h_blind_ev hash of the blinded coin's envelope (must match reserves_out entry)
    * @param now timestamp to store
    * @return #GNUNET_OK on success,
    *         #GNUNET_SYSERR on DB errors

@@ -136,7 +136,7 @@ TALER_link_derive_transfer_secret (const struct TALER_CoinSpendPrivateKeyP *coin
  *
  * @param trans_priv transfer private key
  * @param coin_pub coin public key
- * @param[out] secret set to the shared secret
+ * @param[out] transfer_secret set to the shared secret
  */
 void
 TALER_link_reveal_transfer_secret (const struct TALER_TransferPrivateKeyP *trans_priv,
@@ -156,7 +156,7 @@ TALER_link_reveal_transfer_secret (const struct TALER_TransferPrivateKeyP *trans
  *
  * @param trans_pub transfer private key
  * @param coin_priv coin public key
- * @param[out] secret set to the shared secret
+ * @param[out] transfer_secret set to the shared secret
  */
 void
 TALER_link_recover_transfer_secret (const struct TALER_TransferPublicKeyP *trans_pub,

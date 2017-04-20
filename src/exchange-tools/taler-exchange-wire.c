@@ -59,7 +59,7 @@ static int global_ret;
  * @param cls closure
  * @param args remaining command-line arguments
  * @param cfgfile name of the configuration file used (for saving, can be NULL!)
- * @param c configuration
+ * @param cfg configuration
  */
 static void
 run (void *cls,

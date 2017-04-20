@@ -82,6 +82,7 @@ TALER_gcrypt_init (void);
 /**
  * Obtain denomination amount from configuration file.
  *
+ * @param cfg configuration to parse
  * @param section section of the configuration to access
  * @param option option of the configuration to access
  * @param[out] denom set to the amount found in configuration

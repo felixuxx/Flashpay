@@ -2762,7 +2762,7 @@ postgres_have_deposit (void *cls,
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to the database
- * @param deposit_serial_id identifies the deposit row to modify
+ * @param rowid identifies the deposit row to modify
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
@@ -2867,7 +2867,7 @@ postgres_test_deposit_done (void *cls,
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param session connection to the database
- * @param deposit_serial_id identifies the deposit row to modify
+ * @param rowid identifies the deposit row to modify
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
@@ -6131,8 +6131,7 @@ postgres_select_reserve_closed_above_serial_id (void *cls,
  * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_PAYBACK
  * @param coin_blind blinding key of the coin
  * @param amount total amount to be paid back
- * @param receiver_account_details who should receive the funds
- * @parma h_blind_ev hash of the blinded coin's envelope (must match reserves_out entry)
+ * @param h_blind_ev hash of the blinded coin's envelope (must match reserves_out entry)
  * @param timestamp current time (rounded)
  * @return #GNUNET_OK on success,
  *         #GNUNET_SYSERR on DB errors

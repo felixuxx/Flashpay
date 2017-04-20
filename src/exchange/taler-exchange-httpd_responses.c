@@ -80,7 +80,7 @@ TEH_RESPONSE_can_compress (struct MHD_Connection *connection)
 
 
 /**
- * Try to compress a response body.  Updates @a buf and @buf_size.
+ * Try to compress a response body.  Updates @a buf and @a buf_size.
  *
  * @param[in,out] buf pointer to body to compress
  * @param[in,out] buf_size pointer to initial size of @a buf
