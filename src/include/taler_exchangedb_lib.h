@@ -23,6 +23,7 @@
 #ifndef TALER_EXCHANGEDB_LIB_H
 #define TALER_EXCHANGEDB_LIB_H
 
+
 #include "taler_signatures.h"
 
 

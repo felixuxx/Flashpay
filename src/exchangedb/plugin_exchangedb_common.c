@@ -64,8 +64,6 @@ common_free_reserve_history (void *cls,
       closing = rh->details.closing;
       if (NULL != closing->receiver_account_details)
         json_decref (closing->receiver_account_details);
-      if (NULL != closing->transfer_details)
-        json_decref (closing->transfer_details);
       GNUNET_free (closing);
       break;
     }

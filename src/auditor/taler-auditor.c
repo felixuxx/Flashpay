@@ -100,6 +100,11 @@ static struct TALER_AUDITORDB_Plugin *adb;
 static struct TALER_AUDITORDB_Session *asession;
 
 /**
+ * After how long should idle reserves be closed?
+ */
+static struct GNUNET_TIME_Relative idle_reserve_expiration_time;
+
+/**
  * Master public key of the exchange to audit.
  */
 static struct TALER_MasterPublicKeyP master_pub;
@@ -672,7 +677,7 @@ handle_reserve_in (void *cls,
               TALER_B2S (reserve_pub),
               TALER_amount2s (credit));
   expiry = GNUNET_TIME_absolute_add (execution_date,
-                                     TALER_IDLE_RESERVE_EXPIRATION_TIME);
+                                     idle_reserve_expiration_time);
   rs->a_expiration_date = GNUNET_TIME_absolute_max (rs->a_expiration_date,
                                                     expiry);
   return GNUNET_OK;
@@ -973,7 +978,7 @@ handle_payback_by_reserve (void *cls,
               TALER_B2S (reserve_pub),
               TALER_amount2s (amount));
   expiry = GNUNET_TIME_absolute_add (timestamp,
-                                     TALER_IDLE_RESERVE_EXPIRATION_TIME);
+                                     idle_reserve_expiration_time);
   rs->a_expiration_date = GNUNET_TIME_absolute_max (rs->a_expiration_date,
                                                     expiry);
   return GNUNET_OK;
@@ -1002,7 +1007,7 @@ handle_reserve_closed (void *cls,
 		       const struct TALER_Amount *closing_fee,
 		       const struct TALER_ReservePublicKeyP *reserve_pub,
 		       const json_t *receiver_account,
-		       const json_t *transfer_details)
+		       const struct TALER_WireTransferIdentifierRawP *transfer_details)
 {
   struct ReserveContext *rc = cls;
   struct GNUNET_HashCode key;
@@ -3610,6 +3615,18 @@ run (void *cls,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "taler",
                                "CURRENCY");
+    global_ret = 1;
+    return;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (cfg,
+					   "exchangedb",
+					   "IDLE_RESERVE_EXPIRATION_TIME",
+					   &idle_reserve_expiration_time))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchangedb",
+                               "IDLE_RESERVE_EXPIRATION_TIME");
     global_ret = 1;
     return;
   }

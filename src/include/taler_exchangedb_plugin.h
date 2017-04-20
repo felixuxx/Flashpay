@@ -100,8 +100,8 @@ struct TALER_EXCHANGEDB_ClosingTransfer
    * Detailed wire transfer information that uniquely identifies the
    * wire transfer.
    */
-  json_t *transfer_details;
-
+  struct TALER_WireTransferIdentifierRawP transfer_details;
+  
 };
 
 
@@ -991,7 +991,25 @@ typedef int
 					  const struct TALER_Amount *closing_fee,
 					  const struct TALER_ReservePublicKeyP *reserve_pub,
 					  const json_t *receiver_account,
-					  const json_t *transfer_details);
+					  const struct TALER_WireTransferIdentifierRawP *transfer_details);
+
+
+/**
+ * Function called with details about expired reserves.
+ *
+ * @param cls closure
+ * @param reserve_pub public key of the reserve
+ * @param left amount left in the reserve
+ * @param account_details information about the reserve's bank account
+ * @param expiration_date when did the reserve expire
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef int
+(*TALER_EXCHANGEDB_ReserveExpiredCallback)(void *cls,
+					   const struct TALER_ReservePublicKeyP *reserve_pub,
+					   const struct TALER_Amount *left,
+					   const json_t *account_details,
+					   struct GNUNET_TIME_Absolute expiration_date);
 
 
 /**
@@ -1784,6 +1802,27 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Obtain information about expired reserves and their
+   * remaining balances.
+   *
+   * @param cls closure of the plugin
+   * @param session database connection
+   * @param now timestamp based on which we decide expiration
+   * @param rec function to call on expired reserves
+   * @param rec_cls closure for @a rec
+   * @return #GNUNET_SYSERR on database error
+   *         #GNUNET_NO if there are no expired non-empty reserves
+   *         #GNUNET_OK on success
+   */
+  int
+  (*get_expired_reserves)(void *cls,
+			  struct TALER_EXCHANGEDB_Session *session,
+			  struct GNUNET_TIME_Absolute now,
+			  TALER_EXCHANGEDB_ReserveExpiredCallback rec,
+			  void *rec_cls);
+
+  
+  /**
    * Insert reserve close operation into database.
    *
    * @param cls closure
@@ -1800,10 +1839,10 @@ struct TALER_EXCHANGEDB_Plugin
   int
   (*insert_reserve_closed)(void *cls,
 			   struct TALER_EXCHANGEDB_Session *session,
-			   struct TALER_ReservePublicKeyP *reserve_pub,
+			   const struct TALER_ReservePublicKeyP *reserve_pub,
 			   struct GNUNET_TIME_Absolute execution_date,
 			   const json_t *receiver_account,
-			   const json_t *transfer_details,
+			   const struct TALER_WireTransferIdentifierRawP *transfer_details,
 			   const struct TALER_Amount *amount_with_fee,
 			   const struct TALER_Amount *closing_fee);
 

@@ -765,7 +765,7 @@ struct TALER_EXCHANGE_ReserveHistory
       /**
        * Wire transfer details for the outgoing wire transfer.
        */
-      json_t *transfer_details;
+      struct TALER_WireTransferIdentifierRawP wtid;
 
       /**
        * Signature of the coin of type

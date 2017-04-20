@@ -335,8 +335,8 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
       struct GNUNET_JSON_Specification closing_spec[] = {
         GNUNET_JSON_spec_json ("receiver_account_details",
 			       &rhistory[off].details.close_details.receiver_account_details),
-        GNUNET_JSON_spec_json ("wire_transfer",
-			       &rhistory[off].details.close_details.transfer_details),
+        GNUNET_JSON_spec_fixed_auto ("wire_transfer",
+				     &rhistory[off].details.close_details.wtid),
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
                                      &rhistory[off].details.close_details.exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
@@ -362,8 +362,7 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
 			 &amount);
       TALER_JSON_hash (rhistory[off].details.close_details.receiver_account_details,
 		       &rcc.h_wire);
-      TALER_JSON_hash (rhistory[off].details.close_details.receiver_account_details,
-		       &rcc.h_transfer);
+      rcc.wtid = rhistory[off].details.close_details.wtid;
       rcc.purpose.size = htonl (sizeof (rcc));
       rcc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED);
       rcc.reserve_pub = *reserve_pub;

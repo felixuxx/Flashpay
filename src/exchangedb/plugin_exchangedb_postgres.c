@@ -141,6 +141,11 @@ struct PostgresClosure
    * the configuration.
    */
   char *connection_cfg_str;
+
+  /**
+   * After how long should idle reserves be closed?
+   */
+  struct GNUNET_TIME_Relative idle_reserve_expiration_time;
 };
 
 
@@ -316,9 +321,6 @@ postgres_create_tables (void *cls)
            ",fee_refund_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
            ")");
   /* denomination_revocations table is for remembering which denomination keys have been revoked */
-  /* TODO (#4981): change denom_pub_hash to REFERENCE 'denominations', and
-     add denom_pub_hash column to denominations, changing other REFERENCEs
-     also to the hash!? */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS denomination_revocations"
            "(denom_revocations_serial_id BIGSERIAL"
 	   ",denom_pub_hash BYTEA PRIMARY KEY REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE"
@@ -332,6 +334,7 @@ postgres_create_tables (void *cls)
      grabbing the money, depending on the Exchange's terms of service) */
   SQLEXEC ("CREATE TABLE IF NOT EXISTS reserves"
            "(reserve_pub BYTEA PRIMARY KEY CHECK(LENGTH(reserve_pub)=32)"
+	   ",account_details TEXT NOT NULL "
            ",current_balance_val INT8 NOT NULL"
            ",current_balance_frac INT4 NOT NULL"
            ",current_balance_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
@@ -367,7 +370,7 @@ postgres_create_tables (void *cls)
           "(close_uuid BIGSERIAL PRIMARY KEY"
           ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
 	  ",execution_date INT8 NOT NULL"
-          ",transfer_details TEXT NOT NULL"
+	  ",transfer_details BYTEA NOT NULL CHECK (LENGTH(transfer_details)=32)"
           ",receiver_account TEXT NOT NULL"
           ",amount_val INT8 NOT NULL"
           ",amount_frac INT4 NOT NULL"
@@ -715,13 +718,14 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("reserve_create",
            "INSERT INTO reserves "
            "(reserve_pub"
+	   ",account_details"
            ",current_balance_val"
            ",current_balance_frac"
            ",current_balance_curr"
            ",expiration_date"
            ") VALUES "
-           "($1, $2, $3, $4, $5);",
-           5, NULL);
+           "($1, $2, $3, $4, $5, $6);",
+           6, NULL);
 
   /* Used in #postgres_insert_reserve_closed() */
   PREPARE ("reserves_close_insert",
@@ -1581,7 +1585,22 @@ postgres_prepare (PGconn *db_conn)
            " FROM reserves_close"
            " WHERE reserve_pub=$1;",
            1, NULL);
-  
+
+  /* Used in #postgres_get_expired_reserves() */
+  PREPARE ("get_expired_reserves",
+           "SELECT"
+	   " expiration_date"
+	   ",account_details"
+	   ",reserve_pub"
+           ",current_balance_val"
+           ",current_balance_frac"
+           ",current_balance_curr"
+           " FROM reserves"
+           " WHERE expiration_date<=$1"
+	   " AND (current_balance_val != 0 "
+	   "      OR current_balance_frac != 0);",
+           1, NULL);
+
   /* Used in #postgres_get_coin_transactions() to obtain payback transactions
      for a coin */
   PREPARE ("payback_by_coin",
@@ -2069,6 +2088,7 @@ postgres_reserves_in_insert (void *cls,
                              const json_t *sender_account_details,
                              const json_t *transfer_details)
 {
+  struct PostgresClosure *pg = cls;
   PGresult *result;
   int reserve_exists;
   struct TALER_EXCHANGEDB_Reserve reserve;
@@ -2090,8 +2110,26 @@ postgres_reserves_in_insert (void *cls,
     GNUNET_break (0);
     goto rollback;
   }
+  if ( (0 == reserve.balance.value) &&
+       (0 == reserve.balance.fraction) )
+  {
+    /* TODO: reserve balance is empty, we might want to update
+       sender_account_details here.  (So that IF a customer uses the
+       same reserve public key from a different account, we USUALLY
+       switch to the new account (but only if the old reserve was
+       drained).)  This helps make sure that on reserve expiration the
+       funds go back to a valid account in cases where the customer
+       has closed the old bank account and some (buggy?) wallet keeps
+       using the same reserve key with the customer's new account.
+
+       Note that for a non-drained reserve we should not switch,
+       as that opens an attack vector for an adversary who can see
+       the wire transfer subjects (i.e. when using Bitcoin).
+    */
+  }
+  
   expiry = GNUNET_TIME_absolute_add (execution_time,
-                                     TALER_IDLE_RESERVE_EXPIRATION_TIME);
+                                     pg->idle_reserve_expiration_time);
   if (GNUNET_NO == reserve_exists)
   {
     /* New reserve, create balance for the first time; we do this
@@ -2101,6 +2139,7 @@ postgres_reserves_in_insert (void *cls,
        as a foreign key. */
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+      TALER_PQ_query_param_json (sender_account_details),
       TALER_PQ_query_param_amount (balance),
       GNUNET_PQ_query_param_absolute_time (&expiry),
       GNUNET_PQ_query_param_end
@@ -2302,6 +2341,7 @@ postgres_insert_withdraw_info (void *cls,
                                struct TALER_EXCHANGEDB_Session *session,
                                const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
 {
+  struct PostgresClosure *pg = cls;
   PGresult *result;
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct GNUNET_HashCode denom_pub_hash;
@@ -2356,7 +2396,7 @@ postgres_insert_withdraw_info (void *cls,
     return GNUNET_NO;
   }
   expiry = GNUNET_TIME_absolute_add (now,
-                                     TALER_IDLE_RESERVE_EXPIRATION_TIME);
+                                     pg->idle_reserve_expiration_time);
   reserve.expiry = GNUNET_TIME_absolute_max (expiry,
                                              reserve.expiry);
   if (GNUNET_OK != reserves_update (cls,
@@ -2618,8 +2658,8 @@ postgres_get_reserve_history (void *cls,
                                                &closing->execution_date),
           TALER_PQ_result_spec_json ("receiver_account",
 				     &closing->receiver_account_details),
-          TALER_PQ_result_spec_json ("transfer_details",
-				     &closing->transfer_details),
+          GNUNET_PQ_result_spec_auto_from_type ("transfer_details",
+						&closing->transfer_details),
           GNUNET_PQ_result_spec_end
         };
         if (GNUNET_OK !=
@@ -4935,6 +4975,93 @@ postgres_insert_wire_fee (void *cls,
 
 
 /**
+ * Obtain information about expired reserves and their
+ * remaining balances.
+ *
+ * @param cls closure of the plugin
+ * @param session database connection
+ * @param now timestamp based on which we decide expiration
+ * @param rec function to call on expired reserves
+ * @param rec_cls closure for @a rec
+ * @return #GNUNET_SYSERR on database error
+ *         #GNUNET_NO if there are no expired non-empty reserves
+ *         #GNUNET_OK on success
+ */
+static int
+postgres_get_expired_reserves (void *cls,
+			       struct TALER_EXCHANGEDB_Session *session,
+			       struct GNUNET_TIME_Absolute now,
+			       TALER_EXCHANGEDB_ReserveExpiredCallback rec,
+			       void *rec_cls)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_absolute_time (&now),
+    GNUNET_PQ_query_param_end
+  };
+  PGresult *result;
+  int nrows;
+
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "get_expired_reserves",
+                                    params);
+  if (PGRES_TUPLES_OK !=
+      PQresultStatus (result))
+  {
+    BREAK_DB_ERR (result, session->conn);
+    PQclear (result);
+    return GNUNET_SYSERR;
+  }
+  nrows = PQntuples (result);
+  if (0 == nrows)
+  {
+    /* no matches found */
+    PQclear (result);
+    return GNUNET_NO;
+  }
+
+  for (int i=0;i<nrows;i++)
+  {
+    struct GNUNET_TIME_Absolute exp_date;
+    json_t *account_details;
+    struct TALER_ReservePublicKeyP reserve_pub;
+    struct TALER_Amount remaining_balance;
+    int ret;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_absolute_time ("expiration_date",
+					   &exp_date),
+      TALER_PQ_result_spec_json ("account_details",
+				 &account_details),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+					    &reserve_pub),
+      TALER_PQ_result_spec_amount ("current_balance",
+				   &remaining_balance),
+      GNUNET_PQ_result_spec_end
+    };
+  
+    if (GNUNET_OK !=
+	GNUNET_PQ_extract_result (result,
+				  rs,
+				  i))
+    {
+      PQclear (result);
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    ret = rec (rec_cls,
+	       &reserve_pub,
+	       &remaining_balance,
+	       account_details,
+	       exp_date);
+    GNUNET_PQ_cleanup_result (rs);
+    if (GNUNET_OK != ret)
+      break;
+  }
+  PQclear (result);
+  return GNUNET_OK;
+}
+
+
+/**
  * Insert reserve close operation into database.
  *
  * @param cls closure
@@ -4951,24 +5078,26 @@ postgres_insert_wire_fee (void *cls,
 static int
 postgres_insert_reserve_closed (void *cls,
 				struct TALER_EXCHANGEDB_Session *session,
-				struct TALER_ReservePublicKeyP *reserve_pub,
+				const struct TALER_ReservePublicKeyP *reserve_pub,
 				struct GNUNET_TIME_Absolute execution_date,
 				const json_t *receiver_account,
-				const json_t *transfer_details,
+				const struct TALER_WireTransferIdentifierRawP *transfer_details,
 				const struct TALER_Amount *amount_with_fee,
 				const struct TALER_Amount *closing_fee)
 {
+  struct TALER_EXCHANGEDB_Reserve reserve;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_absolute_time (&execution_date),
-    TALER_PQ_query_param_json (transfer_details),
+    GNUNET_PQ_query_param_auto_from_type (transfer_details),
     TALER_PQ_query_param_json (receiver_account),
     TALER_PQ_query_param_amount (amount_with_fee),
     TALER_PQ_query_param_amount (closing_fee),
     GNUNET_PQ_query_param_end
   };
   PGresult *result;
-
+  int ret;
+  
   result = GNUNET_PQ_exec_prepared (session->conn,
 				    "reserves_close_insert",
 				    params);
@@ -4985,6 +5114,38 @@ postgres_insert_reserve_closed (void *cls,
     return GNUNET_SYSERR;
   }
   PQclear (result);
+
+  /* update reserve balance */
+  reserve.pub = *reserve_pub;
+  if (GNUNET_OK != postgres_reserve_get (cls,
+                                         session,
+                                         &reserve))
+  {
+    /* Should have been checked before we got here... */
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  ret = TALER_amount_subtract (&reserve.balance,
+			       &reserve.balance,
+			       amount_with_fee);
+  if (GNUNET_SYSERR == ret)
+  {
+    /* The reserve history was checked to make sure there is enough of a balance
+       left before we tried this; however, concurrent operations may have changed
+       the situation by now.  We should re-try the transaction.  */
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Closing of reserve `%s' refused due to balance missmatch. Retrying.\n",
+                TALER_B2S (reserve_pub));
+    return GNUNET_NO;
+  }
+  GNUNET_break (GNUNET_NO == ret);
+  if (GNUNET_OK != reserves_update (cls,
+                                    session,
+                                    &reserve))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 
@@ -6069,7 +6230,7 @@ postgres_select_reserve_closed_above_serial_id (void *cls,
     uint64_t rowid;
     struct TALER_ReservePublicKeyP reserve_pub;
     json_t *receiver_account;
-    json_t *transfer_details;
+    struct TALER_WireTransferIdentifierRawP wtid;
     struct TALER_Amount amount_with_fee;
     struct TALER_Amount closing_fee;
     struct GNUNET_TIME_Absolute execution_date;
@@ -6080,8 +6241,8 @@ postgres_select_reserve_closed_above_serial_id (void *cls,
                                             &reserve_pub),
       GNUNET_PQ_result_spec_absolute_time ("execution_date",
                                            &execution_date),
-      TALER_PQ_result_spec_json ("transfer_details",
-				 &transfer_details),
+      GNUNET_PQ_result_spec_auto_from_type ("transfer_details",
+					    &wtid),
       TALER_PQ_result_spec_json ("receiver_account",
 				 &receiver_account),
       TALER_PQ_result_spec_amount ("amount",
@@ -6107,7 +6268,7 @@ postgres_select_reserve_closed_above_serial_id (void *cls,
 	      &closing_fee,
               &reserve_pub,
 	      receiver_account,
-              transfer_details);
+              &wtid);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != ret)
       break;
@@ -6147,6 +6308,7 @@ postgres_insert_payback_request (void *cls,
                                  const struct GNUNET_HashCode *h_blind_ev,
                                  struct GNUNET_TIME_Absolute timestamp)
 {
+  struct PostgresClosure *pg = cls;
   PGresult *result;
   struct GNUNET_TIME_Absolute expiry;
   struct TALER_EXCHANGEDB_Reserve reserve;
@@ -6215,7 +6377,7 @@ postgres_insert_payback_request (void *cls,
     return GNUNET_SYSERR;
   }
   expiry = GNUNET_TIME_absolute_add (timestamp,
-                                     TALER_IDLE_RESERVE_EXPIRATION_TIME);
+                                     pg->idle_reserve_expiration_time);
   reserve.expiry = GNUNET_TIME_absolute_max (expiry,
                                              reserve.expiry);
   if (GNUNET_OK != reserves_update (cls,
@@ -6464,6 +6626,18 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
       return NULL;
     }
   }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (cfg,
+					   "exchangedb",
+					   "IDLE_RESERVE_EXPIRATION_TIME",
+					   &pg->idle_reserve_expiration_time))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchangedb",
+                               "IDLE_RESERVE_EXPIRATION_TIME");
+    GNUNET_free (pg);
+    return NULL;
+  }
   plugin = GNUNET_new (struct TALER_EXCHANGEDB_Plugin);
   plugin->cls = pg;
   plugin->get_session = &postgres_get_session;
@@ -6509,6 +6683,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->insert_aggregation_tracking = &postgres_insert_aggregation_tracking;
   plugin->insert_wire_fee = &postgres_insert_wire_fee;
   plugin->get_wire_fee = &postgres_get_wire_fee;
+  plugin->get_expired_reserves = &postgres_get_expired_reserves;
   plugin->insert_reserve_closed = &postgres_insert_reserve_closed;
   plugin->wire_prepare_data_insert = &postgres_wire_prepare_data_insert;
   plugin->wire_prepare_data_mark_finished = &postgres_wire_prepare_data_mark_finished;

@@ -46,11 +46,6 @@
  */
 #define TALER_CNC_KAPPA 3
 
-/**
- * After what time do idle reserves "expire"?  We might want to make
- * this a configuration option (eventually).
- */
-#define TALER_IDLE_RESERVE_EXPIRATION_TIME GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_YEARS, 5)
 
 /*********************************************/
 /* Exchange offline signatures (with master key) */
@@ -1269,9 +1264,9 @@ struct TALER_ReserveCloseConfirmationPS
   struct GNUNET_HashCode h_wire;
 
   /**
-   * Hash of the transfer details.
+   * Wire transfer subject.
    */
-  struct GNUNET_HashCode h_transfer;
+  struct TALER_WireTransferIdentifierRawP wtid;
 };
 
 

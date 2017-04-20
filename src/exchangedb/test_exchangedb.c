@@ -1612,24 +1612,37 @@ run (void *cls)
                                           &value,
                                           &cbc.h_coin_envelope,
                                           deadline));
+  FAILIF (GNUNET_OK !=
+          plugin->select_payback_above_serial_id (plugin->cls,
+                                                  session,
+                                                  0,
+                                                  &payback_cb,
+                                                  &coin_blind));
+
+  GNUNET_assert (GNUNET_OK ==
+		 TALER_amount_add (&amount_with_fee,
+				   &value,
+				   &value));
   sndr = json_loads ("{ \"account\":\"1\" }", 0, NULL);
-  just = json_loads ("{ \"trans-details\":\"2\" }", 0, NULL);
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":0.000010",
                                          &fee_closing));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY ":1.000010",
-                                         &amount_with_fee));
   FAILIF (GNUNET_OK !=
 	  plugin->insert_reserve_closed (plugin->cls,
 					 session,
 					 &reserve_pub,
 					 GNUNET_TIME_absolute_get (),
-					 sndr /* receiver_account */,
-					 just /* transfer_details */,
+					 sndr,
+					 &wire_out_wtid,
 					 &amount_with_fee,
 					 &fee_closing));
-  json_decref (just);
+  FAILIF (GNUNET_OK !=
+          check_reserve (session,
+                         &reserve_pub,
+			 0,
+			 0,
+                         value.currency));
+  
   json_decref (sndr);  
   result = 7;
   rh = plugin->get_reserve_history (plugin->cls,
@@ -1879,13 +1892,6 @@ run (void *cls)
                                           &value,
                                           &cbc.h_coin_envelope,
                                           deadline));
-
-  FAILIF (GNUNET_OK !=
-          plugin->select_payback_above_serial_id (plugin->cls,
-                                                  session,
-                                                  0,
-                                                  &payback_cb,
-                                                  &coin_blind));
 
   auditor_row_cnt = 0;
   FAILIF (GNUNET_OK !=
