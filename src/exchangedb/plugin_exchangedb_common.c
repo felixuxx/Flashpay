@@ -34,13 +34,13 @@ common_free_reserve_history (void *cls,
   struct TALER_EXCHANGEDB_CollectableBlindcoin *cbc;
   struct TALER_EXCHANGEDB_Payback *payback;
   struct TALER_EXCHANGEDB_ReserveHistory *backref;
-
+  struct TALER_EXCHANGEDB_ClosingTransfer *closing;
+    
   while (NULL != rh)
   {
     switch(rh->type)
     {
     case TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE:
-    case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
       bt = rh->details.bank;
       if (NULL != bt->sender_account_details)
         json_decref (bt->sender_account_details);
@@ -59,6 +59,14 @@ common_free_reserve_history (void *cls,
       GNUNET_CRYPTO_rsa_signature_free (payback->coin.denom_sig.rsa_signature);
       GNUNET_CRYPTO_rsa_public_key_free (payback->coin.denom_pub.rsa_public_key);
       GNUNET_free (payback);
+      break;
+    case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
+      closing = rh->details.closing;
+      if (NULL != closing->receiver_account_details)
+        json_decref (closing->receiver_account_details);
+      if (NULL != closing->transfer_details)
+        json_decref (closing->transfer_details);
+      GNUNET_free (closing);
       break;
     }
     backref = rh;

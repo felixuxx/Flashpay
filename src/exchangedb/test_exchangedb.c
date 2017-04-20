@@ -295,6 +295,7 @@ static struct TALER_Amount fee_withdraw;
 static struct TALER_Amount fee_deposit;
 static struct TALER_Amount fee_refresh;
 static struct TALER_Amount fee_refund;
+static struct TALER_Amount fee_closing;
 static struct TALER_Amount amount_with_fee;
 
 
@@ -1611,7 +1612,25 @@ run (void *cls)
                                           &value,
                                           &cbc.h_coin_envelope,
                                           deadline));
-
+  sndr = json_loads ("{ \"account\":\"1\" }", 0, NULL);
+  just = json_loads ("{ \"trans-details\":\"2\" }", 0, NULL);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":0.000010",
+                                         &fee_closing));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":1.000010",
+                                         &amount_with_fee));
+  FAILIF (GNUNET_OK !=
+	  plugin->insert_reserve_closed (plugin->cls,
+					 session,
+					 &reserve_pub,
+					 GNUNET_TIME_absolute_get (),
+					 sndr /* receiver_account */,
+					 just /* transfer_details */,
+					 &amount_with_fee,
+					 &fee_closing));
+  json_decref (just);
+  json_decref (sndr);  
   result = 7;
   rh = plugin->get_reserve_history (plugin->cls,
                                     session,
@@ -1664,11 +1683,22 @@ run (void *cls)
       }
       break;
     case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
-      GNUNET_break (0); /* FIXME: #4956 */
+      {
+        struct TALER_EXCHANGEDB_ClosingTransfer *closing
+	  = rh_head->details.closing;
+
+        FAILIF (0 != memcmp (&closing->reserve_pub,
+                             &reserve_pub,
+                             sizeof (reserve_pub)));
+        FAILIF (0 != TALER_amount_cmp (&closing->amount,
+                                       &amount_with_fee));
+        FAILIF (0 != TALER_amount_cmp (&closing->closing_fee,
+                                       &fee_closing));
+      }
       break;
     }
   }
-  FAILIF (4 != cnt);
+  FAILIF (5 != cnt);
 
   auditor_row_cnt = 0;
   FAILIF (GNUNET_OK !=
