@@ -93,9 +93,9 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
                                       &td.execution_date),
       GNUNET_JSON_spec_uint64 ("row_id",
                                &serial_id),
-      GNUNET_JSON_spec_string ("wire_subject",
+      GNUNET_JSON_spec_string ("wt_subject",
                                &td.wire_transfer_subject),
-      GNUNET_JSON_spec_uint64 ("other_account",
+      GNUNET_JSON_spec_uint64 ("counterpart",
                                &other_account),
       GNUNET_JSON_spec_end()
     };
