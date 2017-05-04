@@ -20,13 +20,8 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
-#include <jansson.h>
+#include "bank_api_common.h"
 #include <microhttpd.h> /* just for HTTP status codes */
-#include <gnunet/gnunet_util_lib.h>
-#include <gnunet/gnunet_json_lib.h>
-#include <gnunet/gnunet_curl_lib.h>
-#include "taler_bank_service.h"
-#include "taler_json_lib.h"
 #include "taler_signatures.h"
 
 
@@ -52,9 +47,9 @@ struct TALER_BANK_AdminAddIncomingHandle
   struct GNUNET_CURL_Job *job;
 
   /**
-   * HTTP headers for the request.
+   * HTTP authentication-related headers for the request.
    */
-  struct curl_slist *headers;
+  struct curl_slist *authh;
 
   /**
    * Function to call with the result.
@@ -162,8 +157,8 @@ handle_admin_add_incoming_finished (void *cls,
  * to the operators of the bank.
  *
  * @param ctx curl context for the event loop
- * @param auth authentication data to send to the bank
  * @param bank_base_url URL of the bank (used to execute this request)
+ * @param auth authentication data to send to the bank
  * @param exchange_base_url base URL of the exchange (for tracking)
  * @param wtid wire transfer identifier for the transfer
  * @param amount amount that was deposited
@@ -177,8 +172,8 @@ handle_admin_add_incoming_finished (void *cls,
  */
 struct TALER_BANK_AdminAddIncomingHandle *
 TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
-                               const json_t *auth,
                                const char *bank_base_url,
+                               const struct TALER_BANK_AuthenticationData *auth,
                                const char *exchange_base_url,
                                const struct TALER_WireTransferIdentifierRawP *wtid,
                                const struct TALER_Amount *amount,
@@ -191,9 +186,8 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   json_t *admin_obj;
   CURL *eh;
 
-  admin_obj = json_pack ("{s:s, s:O, s:o, s:o, s:I, s:I}",
+  admin_obj = json_pack ("{s:s, s:o, s:o, s:I, s:I}",
                          "exchange_url", exchange_base_url,
-                         "auth", auth,
                          "wtid", GNUNET_JSON_from_data_auto (wtid),
                          "amount", TALER_JSON_from_amount (amount),
                          "debit_account", (json_int_t) debit_account_no,
@@ -203,12 +197,16 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   aai->cb_cls = res_cb_cls;
   aai->request_url = path_to_url (bank_base_url,
                                   "/admin/add/incoming");
-
+  aai->authh = TALER_BANK_make_auth_header_ (auth);
   eh = curl_easy_init ();
   GNUNET_assert (NULL != (aai->json_enc =
                           json_dumps (admin_obj,
                                       JSON_COMPACT)));
   json_decref (admin_obj);
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_HTTPHEADER,
+                                   aai->authh));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,
@@ -244,7 +242,7 @@ TALER_BANK_admin_add_incoming_cancel (struct TALER_BANK_AdminAddIncomingHandle *
     GNUNET_CURL_job_cancel (aai->job);
     aai->job = NULL;
   }
-  curl_slist_free_all (aai->headers);
+  curl_slist_free_all (aai->authh);
   GNUNET_free (aai->request_url);
   GNUNET_free (aai->json_enc);
   GNUNET_free (aai);

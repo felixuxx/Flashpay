@@ -48,7 +48,7 @@ struct TestClosure
   /**
    * Authentication information.
    */
-  json_t *auth;
+  struct TALER_BANK_AuthenticationData auth;
 
   /**
    * Handle to the context for sending funds to the bank.
@@ -726,8 +726,8 @@ test_execute_wire_transfer (void *cls,
   eh->cc = cc;
   eh->cc_cls = cc_cls;
   eh->aaih = TALER_BANK_admin_add_incoming (tc->ctx,
-                                            tc->auth,
                                             tc->bank_uri,
+                                            &tc->auth,
                                             exchange_base_url,
                                             &bf.wtid,
                                             &amount,
@@ -850,13 +850,9 @@ libtaler_plugin_wire_test_init (void *cls)
       GNUNET_free (user);
       return NULL;
     }
-    tc->auth = json_pack ("{s:s, s:{s:s, s:s}}",
-                          "type", "basic",
-                          "data",
-                          "username", user,
-                          "password", pass);
-    GNUNET_free (user);
-    GNUNET_free (pass);
+    tc->auth.method = TALER_BANK_AUTH_BASIC;
+    tc->auth.details.basic.username = user;
+    tc->auth.details.basic.password = pass;
     tc->ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
                                 &tc->rc);
     tc->rc = GNUNET_CURL_gnunet_rc_create (tc->ctx);
@@ -865,7 +861,8 @@ libtaler_plugin_wire_test_init (void *cls)
       GNUNET_break (0);
       GNUNET_free (tc->currency);
       GNUNET_free (tc->bank_uri);
-      json_decref (tc->auth);
+      GNUNET_free (tc->auth.details.basic.username);
+      GNUNET_free (tc->auth.details.basic.password);
       GNUNET_free (tc);
       return NULL;
     }
@@ -906,10 +903,22 @@ libtaler_plugin_wire_test_done (void *cls)
     GNUNET_CURL_gnunet_rc_destroy (tc->rc);
     tc->rc = NULL;
   }
-  if (NULL != tc->auth)
+  switch (tc->auth.method)
   {
-    json_decref (tc->auth);
-    tc->auth = NULL;
+  case TALER_BANK_AUTH_NONE:
+    break;
+  case TALER_BANK_AUTH_BASIC:
+    if (NULL != tc->auth.details.basic.username)
+    {
+      GNUNET_free (tc->auth.details.basic.username);
+      tc->auth.details.basic.username = NULL;
+    }
+    if (NULL != tc->auth.details.basic.password)
+    {
+      GNUNET_free (tc->auth.details.basic.password);
+      tc->auth.details.basic.password = NULL;
+    }
+    break;
   }
   GNUNET_free_non_null (tc->currency);
   GNUNET_free_non_null (tc->bank_uri);

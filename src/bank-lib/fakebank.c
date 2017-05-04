@@ -318,13 +318,11 @@ handle_mhd_request (void *cls,
   t = GNUNET_new (struct Transaction);
   {
     const char *base_url;
-    json_t *auth;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_fixed_auto ("wtid", &t->wtid),
       GNUNET_JSON_spec_uint64 ("debit_account", &t->debit_account),
       GNUNET_JSON_spec_uint64 ("credit_account", &t->credit_account),
       TALER_JSON_spec_amount ("amount", &t->amount),
-      GNUNET_JSON_spec_json ("auth", &auth),
       GNUNET_JSON_spec_string ("exchange_url", &base_url),
       GNUNET_JSON_spec_end ()
     };
@@ -337,10 +335,6 @@ handle_mhd_request (void *cls,
       json_decref (json);
       return MHD_NO;
     }
-    /* For now, we ignore authentication, this is the fakebank.
-       We may choose to support "proper" authentication once
-       it is non-trivial and actually needs to be tested. */
-    json_decref (auth);
     t->exchange_base_url = GNUNET_strdup (base_url);
     GNUNET_CONTAINER_DLL_insert (h->transactions_head,
                                  h->transactions_tail,

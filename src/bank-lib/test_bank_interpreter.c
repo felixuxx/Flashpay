@@ -188,7 +188,7 @@ interpreter_run (void *cls)
   struct TALER_WireTransferIdentifierRawP wtid;
   struct TALER_Amount amount;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
-  json_t *auth;
+  struct TALER_BANK_AuthenticationData auth;
 
   is->task = NULL;
   tc = GNUNET_SCHEDULER_get_task_context ();
@@ -220,15 +220,13 @@ interpreter_run (void *cls)
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                                 &cmd->details.admin_add_incoming.wtid,
                                 sizeof (cmd->details.admin_add_incoming.wtid));
-    auth = json_pack ("{s:s, s:{s:s, s:s}}",
-                      "type", "basic",
-                      "data",
-                      "username", "user",
-                      "password", "pass");
+    auth.method = TALER_BANK_AUTH_BASIC; /* or "NONE"? */
+    auth.details.basic.username = "user";
+    auth.details.basic.password = "pass";
     cmd->details.admin_add_incoming.aih
       = TALER_BANK_admin_add_incoming (is->ctx,
-                                       auth,
                                        "http://localhost:8081",
+                                       &auth,
                                        cmd->details.admin_add_incoming.exchange_base_url,
                                        &cmd->details.admin_add_incoming.wtid,
                                        &amount,
@@ -236,7 +234,6 @@ interpreter_run (void *cls)
                                        cmd->details.admin_add_incoming.credit_account_no,
                                        &add_incoming_cb,
                                        is);
-    json_decref (auth);
     if (NULL == cmd->details.admin_add_incoming.aih)
     {
       GNUNET_break (0);
