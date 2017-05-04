@@ -324,7 +324,7 @@ handle_mhd_request (void *cls,
       GNUNET_JSON_spec_uint64 ("debit_account", &t->debit_account),
       GNUNET_JSON_spec_uint64 ("credit_account", &t->credit_account),
       TALER_JSON_spec_amount ("amount", &t->amount),
-      TALER_JSON_spec_json ("auth", &auth),
+      GNUNET_JSON_spec_json ("auth", &auth),
       GNUNET_JSON_spec_string ("exchange_url", &base_url),
       GNUNET_JSON_spec_end ()
     };
