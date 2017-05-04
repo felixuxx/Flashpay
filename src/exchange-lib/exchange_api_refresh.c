@@ -1753,10 +1753,10 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
                                    strlen (rrh->json_enc)));
   ctx = MAH_handle_to_context (rrh->exchange);
   rrh->job = GNUNET_CURL_job_add (ctx,
-                          eh,
-                          GNUNET_YES,
-                          &handle_refresh_reveal_finished,
-                          rrh);
+                                  eh,
+                                  GNUNET_YES,
+                                  &handle_refresh_reveal_finished,
+                                  rrh);
   return rrh;
 }
 

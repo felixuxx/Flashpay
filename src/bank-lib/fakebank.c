@@ -22,6 +22,7 @@
 
 #include "platform.h"
 #include "taler_fakebank_lib.h"
+#include "taler_bank_service.h"
 
 /**
  * Maximum POST request size (for /admin/add/incoming)
@@ -70,6 +71,16 @@ struct Transaction
    * Base URL of the exchange.
    */
   char *exchange_base_url;
+
+  /**
+   * When did the transaction happen?
+   */
+  struct GNUNET_TIME_Absolute date;
+
+  /**
+   * Number of this transaction.
+   */
+  unsigned long long serial_id;
 };
 
 
@@ -97,6 +108,11 @@ struct TALER_FAKEBANK_Handle
    * Task running HTTP server for the "test" bank.
    */
   struct GNUNET_SCHEDULER_Task *mhd_task;
+
+  /**
+   * Number of transactions.
+   */
+  unsigned long long serial_counter;
 };
 
 
@@ -257,43 +273,28 @@ handle_mhd_completion_callback (void *cls,
 
 
 /**
- * Handle incoming HTTP request.
+ * Handle incoming HTTP request for /admin/add/incoming.
  *
- * @param cls closure for MHD daemon (unused)
+ * @param h the fakebank handle
  * @param connection the connection
- * @param url the requested url
- * @param method the method (POST, GET, ...)
- * @param version HTTP version (ignored)
  * @param upload_data request data
  * @param upload_data_size size of @a upload_data in bytes
  * @param con_cls closure for request (a `struct Buffer *`)
  * @return MHD result code
  */
 static int
-handle_mhd_request (void *cls,
-                    struct MHD_Connection *connection,
-                    const char *url,
-                    const char *method,
-                    const char *version,
-                    const char *upload_data,
-                    size_t *upload_data_size,
-                    void **con_cls)
+handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
+                           struct MHD_Connection *connection,
+                           const char *upload_data,
+                           size_t *upload_data_size,
+                           void **con_cls)
 {
-  struct TALER_FAKEBANK_Handle *h = cls;
   enum GNUNET_JSON_PostResult pr;
   json_t *json;
   struct Transaction *t;
   struct MHD_Response *resp;
   int ret;
 
-  if (0 != strcasecmp (url,
-                       "/admin/add/incoming"))
-  {
-    /* Unexpected URI path, just close the connection. */
-    /* we're rather impolite here, but it's a testcase. */
-    GNUNET_break_op (0);
-    return MHD_NO;
-  }
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
                                 con_cls,
                                 upload_data,
@@ -336,6 +337,9 @@ handle_mhd_request (void *cls,
       return MHD_NO;
     }
     t->exchange_base_url = GNUNET_strdup (base_url);
+    t->serial_id = h->serial_counter++;
+    t->date = GNUNET_TIME_absolute_get ();
+    GNUNET_TIME_round_abs (&t->date);
     GNUNET_CONTAINER_DLL_insert (h->transactions_head,
                                  h->transactions_tail,
                                  t);
@@ -352,6 +356,246 @@ handle_mhd_request (void *cls,
                             resp);
   MHD_destroy_response (resp);
   return ret;
+}
+
+
+/**
+ * Handle incoming HTTP request for /history
+ *
+ * @param h the fakebank handle
+ * @param connection the connection
+ * @return MHD result code
+ */
+static int
+handle_history (struct TALER_FAKEBANK_Handle *h,
+                struct MHD_Connection *connection,
+                void **con_cls)
+{
+  const char *auth;
+  const char *delta;
+  const char *start;
+  const char *dir;
+  const char *acc;
+  unsigned long long account_number;
+  unsigned long long start_number;
+  long long count;
+  enum TALER_BANK_Direction direction;
+  struct Transaction *pos;
+  json_t *history;
+  int ret;
+
+  auth = MHD_lookup_connection_value (connection,
+                                      MHD_GET_ARGUMENT_KIND,
+                                      "auth");
+  delta = MHD_lookup_connection_value (connection,
+                                       MHD_GET_ARGUMENT_KIND,
+                                       "delta");
+  dir = MHD_lookup_connection_value (connection,
+                                     MHD_GET_ARGUMENT_KIND,
+                                     "direction");
+  start = MHD_lookup_connection_value (connection,
+                                       MHD_GET_ARGUMENT_KIND,
+                                       "start");
+  acc = MHD_lookup_connection_value (connection,
+                                     MHD_GET_ARGUMENT_KIND,
+                                     "account_number");
+  if ( (NULL == auth) ||
+       (NULL == acc) ||
+       (NULL == delta) )
+  {
+    /* Invalid request, given that this is fakebank we impolitely just
+       kill the connection instead of returning a nice error. */
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+  if ( (1 != sscanf (delta,
+                     "%lld",
+                     &count)) ||
+       (1 != sscanf (acc,
+                     "%llu",
+                     &account_number)) ||
+       ( (NULL != start) &&
+         (1 != sscanf (start,
+                       "%llu",
+                       &start_number)) ) ||
+       ( (NULL != dir) &&
+         (0 != strcasecmp (dir,
+                           "CREDIT")) &&
+         (0 != strcasecmp (dir,
+                           "DEBIT")) ) )
+  {
+    /* Invalid request, given that this is fakebank we impolitely just
+       kill the connection instead of returning a nice error. */
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+  if (NULL == dir)
+    direction = TALER_BANK_DIRECTION_BOTH;
+  else if (0 == strcasecmp (dir, "CREDIT"))
+    direction = TALER_BANK_DIRECTION_CREDIT;
+  else
+    direction = TALER_BANK_DIRECTION_DEBIT;
+  if (NULL == start)
+    start_number = (count > 0) ? 0 : UINT64_MAX;
+  if (UINT64_MAX == start_number)
+  {
+    pos = h->transactions_tail;
+  }
+  else
+  {
+    unsigned long long off = 0;
+
+    for (pos = h->transactions_head;
+         off < start_number;
+         off++)
+    {
+      if (NULL == pos)
+      {
+        GNUNET_break (0);
+        return MHD_NO;
+      }
+      pos = pos->next;
+    }
+    GNUNET_assert (pos->serial_id == start_number);
+  }
+  history = json_array ();
+  while ( (NULL != pos) &&
+          (0 != count) )
+  {
+    json_t *trans;
+    char *subject;
+
+    if (! ( ( (account_number == pos->debit_account) &&
+              (0 != (direction & TALER_BANK_DIRECTION_DEBIT)) ) ||
+            ( (account_number == pos->credit_account) &&
+              (0 != (direction & TALER_BANK_DIRECTION_CREDIT) ) ) ) )
+    {
+      if (count > 0)
+        pos = pos->next;
+      if (count < 0)
+        pos = pos->prev;
+      continue;
+    }
+
+    subject = GNUNET_STRINGS_data_to_string_alloc (&pos->wtid,
+                                                   sizeof (pos->wtid));
+    trans = json_pack ("{s:I, s:o, s:o, s:s, s:I, s:s}",
+                       "row_id", (json_int_t) pos->serial_id,
+                       "date", GNUNET_JSON_from_time_abs (pos->date),
+                       "amount", TALER_JSON_from_amount (&pos->amount),
+                       "sign", (account_number == pos->debit_account) ? "-" : "+",
+                       "counterpart", (json_int_t) ( (account_number == pos->debit_account)
+                                                     ? pos->credit_account
+                                                     : pos->debit_account),
+                       "wt_subject", subject);
+    GNUNET_free (subject);
+    json_array_append (history,
+                       trans);
+    if (count > 0)
+    {
+      pos = pos->next;
+      count--;
+    }
+    if (count < 0)
+    {
+      pos = pos->prev;
+      count++;
+    }
+  }
+
+  if (0 == json_array_size (history))
+  {
+    struct MHD_Response *resp;
+
+    json_decref (history);
+    resp = MHD_create_response_from_buffer (0,
+                                            "",
+                                            MHD_RESPMEM_PERSISTENT);
+    ret = MHD_queue_response (connection,
+                              MHD_HTTP_NO_CONTENT,
+                              resp);
+    MHD_destroy_response (resp);
+    return ret;
+  }
+
+  /* Finally build response object */
+  {
+    struct MHD_Response *resp;
+    void *json_str;
+    size_t json_len;
+
+    json_str = json_dumps (history,
+                           JSON_INDENT(2));
+    if (NULL == json_str)
+    {
+      GNUNET_break (0);
+      return MHD_NO;
+    }
+    json_len = strlen (json_str);
+    resp = MHD_create_response_from_buffer (json_len,
+                                            json_str,
+                                            MHD_RESPMEM_MUST_FREE);
+    if (NULL == resp)
+    {
+      GNUNET_break (0);
+      free (json_str);
+      return MHD_NO;
+    }
+    ret = MHD_queue_response (connection,
+                              MHD_HTTP_OK,
+                              resp);
+    MHD_destroy_response (resp);
+  }
+  return ret;
+}
+
+
+/**
+ * Handle incoming HTTP request.
+ *
+ * @param cls a `struct TALER_FAKEBANK_Handle`
+ * @param connection the connection
+ * @param url the requested url
+ * @param method the method (POST, GET, ...)
+ * @param version HTTP version (ignored)
+ * @param upload_data request data
+ * @param upload_data_size size of @a upload_data in bytes
+ * @param con_cls closure for request (a `struct Buffer *`)
+ * @return MHD result code
+ */
+static int
+handle_mhd_request (void *cls,
+                    struct MHD_Connection *connection,
+                    const char *url,
+                    const char *method,
+                    const char *version,
+                    const char *upload_data,
+                    size_t *upload_data_size,
+                    void **con_cls)
+{
+  struct TALER_FAKEBANK_Handle *h = cls;
+
+  if ( (0 == strcasecmp (url,
+                         "/admin/add/incoming")) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_POST)) )
+    return handle_admin_add_incoming (h,
+                                      connection,
+                                      upload_data,
+                                      upload_data_size,
+                                      con_cls);
+  if ( (0 == strcasecmp (url,
+                         "/history")) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_GET)) )
+    return handle_history (h,
+                           connection,
+                           con_cls);
+
+  /* Unexpected URI path, just close the connection. */
+  /* we're rather impolite here, but it's a testcase. */
+  GNUNET_break_op (0);
+  return MHD_NO;
 }
 
 
@@ -466,3 +710,6 @@ TALER_FAKEBANK_start (uint16_t port)
   schedule_httpd (h);
   return h;
 }
+
+
+/* end of fakebank.c */
