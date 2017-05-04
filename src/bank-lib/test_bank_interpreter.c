@@ -208,7 +208,7 @@ history_cb (void *cls,
                                        is);
     return;
   }
-  /* FIXME: check history data is OK! */
+  /* FIXME: check history data is OK! (#4959) */
 }
 
 
