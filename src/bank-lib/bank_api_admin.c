@@ -64,34 +64,6 @@ struct TALER_BANK_AdminAddIncomingHandle
 };
 
 
-
-/**
- * Obtain the URL to use for an API request.
- *
- * @param u base URL of the bank
- * @param path Taler API path (i.e. "/reserve/withdraw")
- * @return the full URI to use with cURL
- */
-static char *
-path_to_url (const char *u,
-             const char *path)
-{
-  char *url;
-
-  if ( ('/' == path[0]) &&
-       (0 < strlen (u)) &&
-       ('/' == u[strlen (u) - 1]) )
-    path++; /* avoid generating URL with "//" from concat */
-  GNUNET_asprintf (&url,
-                   "%s%s",
-                   u,
-                   path);
-  return url;
-}
-
-
-
-
 /**
  * Function called when we're done processing the
  * HTTP /admin/add/incoming request.
@@ -195,8 +167,8 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   aai = GNUNET_new (struct TALER_BANK_AdminAddIncomingHandle);
   aai->cb = res_cb;
   aai->cb_cls = res_cb_cls;
-  aai->request_url = path_to_url (bank_base_url,
-                                  "/admin/add/incoming");
+  aai->request_url = TALER_BANK_path_to_url_ (bank_base_url,
+                                              "/admin/add/incoming");
   aai->authh = TALER_BANK_make_auth_header_ (auth);
   eh = curl_easy_init ();
   GNUNET_assert (NULL != (aai->json_enc =

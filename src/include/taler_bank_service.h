@@ -150,9 +150,14 @@ TALER_BANK_admin_add_incoming_cancel (struct TALER_BANK_AdminAddIncomingHandle *
 
 
 /**
- * Which types of transactions should be returned?
+ * Which types of transactions should be (or is being) returned?
  */
 enum TALER_BANK_Direction {
+
+  /**
+   * Base case, used to indicate errors or end of list.
+   */
+  TALER_BANK_DIRECTION_NONE = 0,
 
   /**
    * Transactions where the bank account receives money.
@@ -193,14 +198,9 @@ struct TALER_BANK_TransferDetails
   struct GNUNET_TIME_Absolute execution_date;
 
   /**
-   * monotonically increasing counter corresponding to the transaction
-   */
-  uint64_t serial_id;
-
-  /**
    * wire transfer subject
    */
-  char *wire_transfer_subject;
+  const char *wire_transfer_subject;
 
   /**
    * what was the other account that was involved
@@ -220,6 +220,7 @@ struct TALER_BANK_TransferDetails
  *                    last callback is always of this status (even if `abs(num_results)` were
  *                    already returned).
  * @param dir direction of the transfer
+ * @param serial_id monotonically increasing counter corresponding to the transaction
  * @param details details about the wire transfer
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
@@ -227,22 +228,20 @@ typedef void
 (*TALER_BANK_HistoryResultCallback) (void *cls,
                                      unsigned int http_status,
                                      enum TALER_BANK_Direction dir,
+                                     uint64_t serial_id,
                                      const struct TALER_BANK_TransferDetails *details,
                                      const json_t *json);
 
 
 /**
- * Notify the bank that we have received an incoming transaction
- * which fills a reserve.  Note that this API is an administrative
- * API and thus not accessible to typical bank clients, but only
- * to the operators of the bank.
+ * Request the wire transfer history of a bank account.
  *
  * @param ctx curl context for the event loop
  * @param bank_base_url URL of the bank (used to execute this request)
  * @param auth authentication data to use
  * @param account_number which account number should we query
  * @param direction what kinds of wire transfers should be returned
- * @param start_row from which row on do we want to get results, use UINT64_MAX for the latest
+ * @param start_row from which row on do we want to get results, use UINT64_MAX for the latest; exclusive
  * @param num_results how many results do we want; negative numbers to go into the past,
  *                    positive numbers to go into the future starting at @a start_row;
  *                    must not be zero.

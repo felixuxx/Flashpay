@@ -39,4 +39,16 @@ struct curl_slist *
 TALER_BANK_make_auth_header_ (const struct TALER_BANK_AuthenticationData *auth);
 
 
+/**
+ * Obtain the URL to use for an API request.
+ *
+ * @param u base URL of the bank
+ * @param path Taler API path (i.e. "/history")
+ * @return the full URI to use with cURL
+ */
+char *
+TALER_BANK_path_to_url_ (const char *u,
+                         const char *path);
+
+
 #endif

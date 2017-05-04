@@ -207,12 +207,10 @@ TEH_json_validate_wireformat (const json_t *wire,
  * Obtain JSON of the supported wire methods for a given
  * account name prefix.
  *
- * @param prefix prefix for the account, the suffix will
- *        be determined by the name of the plugin
  * @return JSON array with the supported validation methods
  */
 json_t *
-TEH_VALIDATION_get_wire_methods (const char *prefix)
+TEH_VALIDATION_get_wire_methods ()
 {
   json_t *methods;
   char *account_name;
@@ -227,8 +225,7 @@ TEH_VALIDATION_get_wire_methods (const char *prefix)
     json_t *fees;
 
     GNUNET_asprintf (&account_name,
-                     "%s-%s",
-                     prefix,
+                     "exchange-wire-%s",
                      p->type);
     method = plugin->get_wire_details (plugin->cls,
                                        cfg,

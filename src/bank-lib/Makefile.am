@@ -16,7 +16,8 @@ libtalerbank_la_LDFLAGS = \
 
 libtalerbank_la_SOURCES = \
   bank_api_admin.c \
-  bank_api_common.c bank_api_common.h
+  bank_api_common.c bank_api_common.h \
+  bank_api_history.c
 
 libtalerbank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \

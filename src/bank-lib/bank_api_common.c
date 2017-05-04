@@ -85,4 +85,32 @@ TALER_BANK_make_auth_header_ (const struct TALER_BANK_AuthenticationData *auth)
   return authh;
 }
 
+
+
+/**
+ * Obtain the URL to use for an API request.
+ *
+ * @param u base URL of the bank
+ * @param path Taler API path (i.e. "/history")
+ * @return the full URI to use with cURL
+ */
+char *
+TALER_BANK_path_to_url_ (const char *u,
+                         const char *path)
+{
+  char *url;
+
+  if ( ('/' == path[0]) &&
+       (0 < strlen (u)) &&
+       ('/' == u[strlen (u) - 1]) )
+    path++; /* avoid generating URL with "//" from concat */
+  GNUNET_asprintf (&url,
+                   "%s%s",
+                   u,
+                   path);
+  return url;
+}
+
+
+
 /* end of bank_api_common.c */

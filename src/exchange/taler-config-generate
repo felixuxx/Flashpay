@@ -187,21 +187,21 @@ then
 # If possible, initialize outgoing wire account details ('test' method only)
     if (test "test" = "$WMETHOD" -a ! -z "$ARG_BANK_URI")
     then
-      $CS -s exchange-wire-outgoing-test -o BANK_URI -V "$ARG_BANK_URI" || exit 1
+      $CS -s exchange-wire-test -o BANK_URI -V "$ARG_BANK_URI" || exit 1
     else
-      echo "Skipped generating outgoing wire account details for exchange"
+      echo "Skipped generating wire account details for exchange"
     fi
     if (test "test" = "$ARG_W" -a ! -z "$ARG_EXCHANGE_BANK_ACCOUNT")
     then
-      $CS -s exchange-wire-outgoing-test -o BANK_ACCOUNT_NUMBER -V "$ARG_EXCHANGE_BANK_ACCOUNT" || exit 1
+      $CS -s exchange-wire-test -o BANK_ACCOUNT_NUMBER -V "$ARG_EXCHANGE_BANK_ACCOUNT" || exit 1
     else
-      echo "Skipped generating outgoing wire account details for exchange"
+      echo "Skipped generating wire account details for exchange"
     fi
 
 # If possible, initialize /wire response from JSON (with signature)
     if (test ! -z $ARG_JE)
     then
-      JSONF=`$CS -s exchange-wire-incoming-${ARG_W} -o ${ARG_W}_RESPONSE_FILE -f`
+      JSONF=`$CS -s exchange-wire-${ARG_W} -o ${ARG_W}_RESPONSE_FILE -f`
 #    echo "Generating /wire response at $JSONF"
       mkdir -p `dirname $JSONF`
       taler-exchange-wire -c "$ARG_CONFIG" -t "$ARG_W" -j "$ARG_JE" -m "$MASTER_KEY" -o "$JSONF" || exit 1

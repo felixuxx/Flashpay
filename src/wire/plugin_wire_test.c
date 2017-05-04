@@ -62,9 +62,9 @@ struct TestClosure
 
   /**
    * Number of the account that the exchange has at the bank for
-   * outgoing transfers.
+   * transfers.
    */
-  unsigned long long exchange_account_outgoing_no;
+  unsigned long long exchange_account_no;
 
 };
 
@@ -731,7 +731,7 @@ test_execute_wire_transfer (void *cls,
                                             exchange_base_url,
                                             &bf.wtid,
                                             &amount,
-                                            (uint64_t) tc->exchange_account_outgoing_no,
+                                            (uint64_t) tc->exchange_account_no,
 					    (uint64_t) account_no,
                                             &execute_cb,
                                             eh);
@@ -768,6 +768,166 @@ test_execute_wire_transfer_cancel (void *cls,
 
 
 /**
+ * Handle for a #test_get_history() request.
+ */
+struct TALER_WIRE_HistoryHandle
+{
+
+  /**
+   * Function to call with results.
+   */
+  TALER_WIRE_HistoryResultCallback hres_cb;
+
+  /**
+   * Closure for @e hres_cb.
+   */
+  void *hres_cb_cls;
+
+  /**
+   * Request to the bank.
+   */
+  struct TALER_BANK_HistoryHandle *hh;
+
+};
+
+
+/**
+ * Function called with results from the bank about the transaction history.
+ *
+ * @param cls the `struct TALER_WIRE_HistoryHandle`
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the bank's reply is bogus (fails to follow the protocol),
+ *                    #MHD_HTTP_NO_CONTENT if there are no more results; on success the
+ *                    last callback is always of this status (even if `abs(num_results)` were
+ *                    already returned).
+ * @param dir direction of the transfer
+ * @param serial_id monotonically increasing counter corresponding to the transaction
+ * @param details details about the wire transfer
+ * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
+ */
+static void
+bhist_cb (void *cls,
+          unsigned int http_status,
+          enum TALER_BANK_Direction dir,
+          uint64_t serial_id,
+          const struct TALER_BANK_TransferDetails *details,
+          const json_t *json)
+{
+  struct TALER_WIRE_HistoryHandle *whh = cls;
+  uint64_t bserial_id = GNUNET_htonll (serial_id);
+
+  whh->hres_cb (whh->hres_cb_cls,
+                http_status,
+                dir,
+                &bserial_id,
+                sizeof (bserial_id),
+                details,
+                json);
+  if (MHD_HTTP_OK != http_status)
+  {
+    whh->hh = NULL;
+    GNUNET_free (whh);
+    return;
+  }
+}
+
+
+/**
+ * Query transfer history of an account.  We use the variable-size
+ * @a start_off to indicate which transfers we are interested in as
+ * different banking systems may have different ways to identify
+ * transfers.  The @a start_off value must thus match the value of
+ * a `row_off` argument previously given to the @a hres_cb.  Use
+ * NULL to query transfers from the beginning of time (with
+ * positive @a num_results) or from the latest committed transfers
+ * (with negative @a num_results).
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param direction what kinds of wire transfers should be returned
+ * @param start_off from which row on do we want to get results, use NULL for the latest; exclusive
+ * @param start_off_len number of bytes in @a start_off; must be `sizeof(uint64_t)`.
+ * @param num_results how many results do we want; negative numbers to go into the past,
+ *                    positive numbers to go into the future starting at @a start_row;
+ *                    must not be zero.
+ * @param hres_cb the callback to call with the transaction history
+ * @param hres_cb_cls closure for the above callback
+ */
+static struct TALER_WIRE_HistoryHandle *
+test_get_history (void *cls,
+                  enum TALER_BANK_Direction direction,
+                  const void *start_off,
+                  size_t start_off_len,
+                  int64_t num_results,
+                  TALER_WIRE_HistoryResultCallback hres_cb,
+                  void *hres_cb_cls)
+{
+  struct TestClosure *tc = cls;
+  struct TALER_WIRE_HistoryHandle *whh;
+  const uint64_t *start_off_b64;
+  uint64_t start_row;
+
+  if (0 == num_results)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  if (TALER_BANK_DIRECTION_NONE == direction)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  if ( (NULL != start_off) &&
+       (sizeof (uint64_t) != start_off_len) )
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  if (NULL == start_off)
+  {
+    start_row = (num_results > 0) ? 0 : UINT64_MAX;
+  }
+  else
+  {
+    start_off_b64 = start_off;
+    start_row = GNUNET_ntohll (*start_off_b64);
+  }
+
+  whh = GNUNET_new (struct TALER_WIRE_HistoryHandle);
+  whh->hres_cb = hres_cb;
+  whh->hres_cb_cls = hres_cb_cls;
+  whh->hh = TALER_BANK_history (tc->ctx,
+                                tc->bank_uri,
+                                &tc->auth,
+                                (uint64_t) tc->exchange_account_no,
+                                direction,
+                                start_row,
+                                num_results,
+                                &bhist_cb,
+                                whh);
+  if (NULL == whh->hh)
+  {
+    GNUNET_break (0);
+    GNUNET_free (whh);
+    return NULL;
+  }
+  return whh;
+}
+
+
+/**
+ * Cancel going over the account's history.
+ *
+ * @param whh operation to cancel
+ */
+static void
+test_get_history_cancel (struct TALER_WIRE_HistoryHandle *whh)
+{
+  TALER_BANK_history_cancel (whh->hh);
+  GNUNET_free (whh);
+}
+
+
+/**
  * Initialize test-wire subsystem.
  *
  * @param cls a configuration instance
@@ -787,24 +947,24 @@ libtaler_plugin_wire_test_init (void *cls)
   {
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_string (cfg,
-                                               "exchange-wire-outgoing-test",
+                                               "exchange-wire-test",
                                                "BANK_URI",
                                                &tc->bank_uri))
     {
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchange-wire-outgoing-test",
+                                 "exchange-wire-test",
                                  "BANK_URI");
       GNUNET_free (tc);
       return NULL;
     }
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_number (cfg,
-                                               "exchange-wire-outgoing-test",
+                                               "exchange-wire-test",
                                                "EXCHANGE_ACCOUNT_NUMBER",
-                                               &tc->exchange_account_outgoing_no))
+                                               &tc->exchange_account_no))
     {
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchange-wire-outgoing-test",
+                                 "exchange-wire-test",
                                  "EXCHANGE_ACCOUNT_NUMBER");
       GNUNET_free (tc->bank_uri);
       GNUNET_free (tc);
@@ -825,12 +985,12 @@ libtaler_plugin_wire_test_init (void *cls)
     }
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_string (cfg,
-                                               "exchange-wire-outgoing-test",
+                                               "exchange-wire-test",
                                                "USERNAME",
                                                &user))
     {
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchange-wire-outgoing-test",
+                                 "exchange-wire-test",
                                  "USERNAME");
       GNUNET_free (tc->bank_uri);
       GNUNET_free (tc);
@@ -838,12 +998,12 @@ libtaler_plugin_wire_test_init (void *cls)
     }
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_string (cfg,
-                                               "exchange-wire-outgoing-test",
+                                               "exchange-wire-test",
                                                "PASSWORD",
                                                &pass))
     {
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchange-wire-outgoing-test",
+                                 "exchange-wire-test",
                                  "PASSWORD");
       GNUNET_free (tc->bank_uri);
       GNUNET_free (tc);
@@ -877,6 +1037,8 @@ libtaler_plugin_wire_test_init (void *cls)
   plugin->prepare_wire_transfer_cancel = &test_prepare_wire_transfer_cancel;
   plugin->execute_wire_transfer = &test_execute_wire_transfer;
   plugin->execute_wire_transfer_cancel = &test_execute_wire_transfer_cancel;
+  plugin->get_history = &test_get_history;
+  plugin->get_history_cancel = &test_get_history_cancel;
   return plugin;
 }
 

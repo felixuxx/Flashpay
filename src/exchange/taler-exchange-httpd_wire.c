@@ -143,7 +143,7 @@ TEH_WIRE_handler_wire (struct TEH_RequestHandler *rh,
 int
 TEH_WIRE_init ()
 {
-  wire_methods = TEH_VALIDATION_get_wire_methods ("exchange-wire-incoming");
+  wire_methods = TEH_VALIDATION_get_wire_methods ();
   if ( (NULL == wire_methods) ||
        (0 == json_object_size (wire_methods)) )
   {

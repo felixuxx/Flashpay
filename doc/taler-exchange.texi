@@ -441,36 +441,24 @@ option @cite{currency} in section @cite{[taler]}.
 @section Bank account
 
 @menu
-* Wireformat::
-* Incoming::
-* Outgoing::
-
+* Wiremethod-test::
+* Wiremethod-sepa::
 @end menu
 
-@node Wireformat
-@subsection Wireformat
+@node Wiremethod-test
+@subsection Wiremethod-test
 
-
-The wireformat is the protocol to be used between the exchange and the
-banks.  The option is @cite{wireformat}, under section
-@cite{[exchange]}. The exchange currently supports the @cite{test}
-wireformat. This wireformat is used for testing the system against a
-fictional bank.
-
-@cartouche
-@quotation Note
-The SEPA wireformat is work in progress.
-@end quotation
-@end cartouche
-
-@node Incoming
-@subsection Incoming
-
+To enable the wire transfer method ``test'', you need to set
+``ENABLE=YES'' in section @cite{[exchange-wire-test]}.
 
 The bank account where the exchange gets money from customers is
-configured under the section @cite{[exchange-wire-incoming-X]}, where
-@cite{X} matches the value given to the option @cite{wireformat}. This
-section contains only one option: @cite{X_response_file}, which takes
+configured under the section @cite{[exchange-wire-test]}.  It must
+contain the options ``EXCHANGE_ACCOUNT_NO'' and ``BANK_URI''.
+For basic authentication, it must additionally contain the
+``USERNAME'' and ``PASSWORD'' of the exchange's account at the bank.
+
+For incoming transfers, the section must additional contain the
+option: @cite{test_response_file}, which takes
 the path to a text file containing the exchange's bank account details
 in JSON format.
 
@@ -483,21 +471,47 @@ $ taler-exchange-wire -j '@{"name": "The Exchange", "account_number":
 test -o exchange.json
 @end example
 
+Note that the value given to option @cite{-t} must match the value in
+the JSON's field @code{"type"}.
+
+The generated file will be echoed by the exchange when serving
+/wire@footnote{https://api.taler.net/api-exchange.html#wire-req}
+requests.
+
+
+@node Wiremethod-sepa
+@subsection Wiremethod-sepa
+
+To enable the wire transfer method ``sepa'', you need to set
+``ENABLE=YES'' in section @cite{[exchange-wire-sepa]}.
+
+
+The bank account where the exchange gets money from customers is
+configured under the section @cite{[exchange-wire-incoming-sepa]}.  This
+section contains only one option: @cite{sepa_response_file}, which takes
+the path to a text file containing the exchange's bank account details
+in JSON format.
+
+The command line tool @cite{taler-exchange-wire} is used to create such a file.
+For example, the utility may be invoked as follows:
+
+@example
+$ taler-exchange-wire -j '@{"name": "The Exchange", "account_number":
+10, "bank_uri": "https://bank.demo.taler.net", "type": "sepa"@}' -t
+sepa -o exchange.json
+@end example
+
 Note that the value given to option @cite{-t} must match the value in the JSON's field @code{"type"}.
 
 The generated file will be echoed by the exchange when serving
 /wire@footnote{https://api.taler.net/api-exchange.html#wire-req}
 requests.
 
-@node Outgoing
-@subsection Outgoing
-
-This exchange's bank account is used to give money to merchants, after
+This exchange's outgoing bank account is used to give money to merchants, after
 successful
 deposits@footnote{https://api.taler.net/api-exchange.html#deposit-par}
-operations. If @cite{test} is the chosen wireformat, the outcoming
-bank account is configured by the following options under
-@cite{[exchange-wire-outcoming-test]}:
+operations. The outgoing bank account is configured by the following
+options under @cite{[exchange-wire-outgoing-sepa]}: (NOT YET SUPPORTED).
 
 @quotation
 

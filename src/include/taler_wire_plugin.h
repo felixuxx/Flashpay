@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016 GNUnet e.V.
+  Copyright (C) 2016, 2017 GNUnet e.V. & Inria
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -25,6 +25,7 @@
 #include <jansson.h>
 #include "taler_util.h"
 #include "taler_error_codes.h"
+#include "taler_bank_service.h" /* for `enum TALER_BANK_Direction` and `struct TALER_BANK_TransferDetails` */
 
 
 /**
@@ -41,15 +42,45 @@ typedef void
 
 
 /**
+ * Callbacks of this type are used to serve the result of asking
+ * the bank for the transaction history.
+ *
+ * @param cls closure
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the bank's reply is bogus (fails to follow the protocol),
+ *                    #MHD_HTTP_NO_CONTENT if there are no more results; on success the
+ *                    last callback is always of this status (even if `abs(num_results)` were
+ *                    already returned).
+ * @param dir direction of the transfer
+ * @param row_off identification of the position at which we are querying
+ * @param row_off_size number of bytes in @a row_off
+ * @param details details about the wire transfer
+ * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
+ */
+typedef void
+(*TALER_WIRE_HistoryResultCallback) (void *cls,
+                                     unsigned int http_status,
+                                     enum TALER_BANK_Direction dir,
+                                     const void *row_off,
+                                     size_t row_off_size,
+                                     const struct TALER_BANK_TransferDetails *details,
+                                     const json_t *json);
+
+
+/**
  * Handle returned for cancelling a preparation step.
  */
 struct TALER_WIRE_PrepareHandle;
-
 
 /**
  * Handle returned for cancelling an execution step.
  */
 struct TALER_WIRE_ExecuteHandle;
+
+/**
+ * Handle returned for querying the transaction history.
+ */
+struct TALER_WIRE_HistoryHandle;
 
 
 /**
@@ -216,6 +247,43 @@ struct TALER_WIRE_Plugin
   (*execute_wire_transfer_cancel) (void *cls,
                                    struct TALER_WIRE_ExecuteHandle *eh);
 
+
+  /**
+   * Query transfer history of an account.  We use the variable-size
+   * @a start_off to indicate which transfers we are interested in as
+   * different banking systems may have different ways to identify
+   * transfers.  The @a start_off value must thus match the value of
+   * a `row_off` argument previously given to the @a hres_cb.  Use
+   * NULL to query transfers from the beginning of time (with
+   * positive @a num_results) or from the latest committed transfers
+   * (with negative @a num_results).
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param direction what kinds of wire transfers should be returned
+   * @param start_off from which row on do we want to get results, use NULL for the latest; exclusive
+   * @param start_off_len number of bytes in @a start_off
+   * @param num_results how many results do we want; negative numbers to go into the past,
+   *                    positive numbers to go into the future starting at @a start_row;
+   *                    must not be zero.
+   * @param hres_cb the callback to call with the transaction history
+   * @param hres_cb_cls closure for the above callback
+   */
+  struct TALER_WIRE_HistoryHandle *
+  (*get_history) (void *cls,
+                  enum TALER_BANK_Direction direction,
+                  const void *start_off,
+                  size_t start_off_len,
+                  int64_t num_results,
+                  TALER_WIRE_HistoryResultCallback hres_cb,
+                  void *hres_cb_cls);
+
+  /**
+   * Cancel going over the account's history.
+   *
+   * @param whh operation to cancel
+   */
+  void
+  (*get_history_cancel) (struct TALER_WIRE_HistoryHandle *whh);
 
 };
 
