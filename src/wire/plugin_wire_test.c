@@ -46,6 +46,11 @@ struct TestClosure
   char *bank_uri;
 
   /**
+   * Authentication information.
+   */
+  json_t *auth;
+
+  /**
    * Handle to the context for sending funds to the bank.
    */
   struct GNUNET_CURL_Context *ctx;
@@ -721,6 +726,7 @@ test_execute_wire_transfer (void *cls,
   eh->cc = cc;
   eh->cc_cls = cc_cls;
   eh->aaih = TALER_BANK_admin_add_incoming (tc->ctx,
+                                            tc->auth,
                                             tc->bank_uri,
                                             exchange_base_url,
                                             &bf.wtid,
@@ -773,6 +779,8 @@ libtaler_plugin_wire_test_init (void *cls)
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct TestClosure *tc;
   struct TALER_WIRE_Plugin *plugin;
+  char *user;
+  char *pass;
 
   tc = GNUNET_new (struct TestClosure);
   if (NULL != cfg)
@@ -815,6 +823,40 @@ libtaler_plugin_wire_test_init (void *cls)
       GNUNET_free (tc);
       return NULL;
     }
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "exchange-wire-outgoing-test",
+                                               "USERNAME",
+                                               &user))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange-wire-outgoing-test",
+                                 "USERNAME");
+      GNUNET_free (tc->bank_uri);
+      GNUNET_free (tc);
+      return NULL;
+    }
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "exchange-wire-outgoing-test",
+                                               "PASSWORD",
+                                               &pass))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange-wire-outgoing-test",
+                                 "PASSWORD");
+      GNUNET_free (tc->bank_uri);
+      GNUNET_free (tc);
+      GNUNET_free (user);
+      return NULL;
+    }
+    tc->auth = json_pack ("{s:s, s:{s:s, s:s}}",
+                          "type", "basic",
+                          "data",
+                          "username", user,
+                          "password", pass);
+    GNUNET_free (user);
+    GNUNET_free (pass);
     tc->ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
                                 &tc->rc);
     tc->rc = GNUNET_CURL_gnunet_rc_create (tc->ctx);
@@ -823,6 +865,7 @@ libtaler_plugin_wire_test_init (void *cls)
       GNUNET_break (0);
       GNUNET_free (tc->currency);
       GNUNET_free (tc->bank_uri);
+      json_decref (tc->auth);
       GNUNET_free (tc);
       return NULL;
     }
@@ -862,6 +905,11 @@ libtaler_plugin_wire_test_done (void *cls)
   {
     GNUNET_CURL_gnunet_rc_destroy (tc->rc);
     tc->rc = NULL;
+  }
+  if (NULL != tc->auth)
+  {
+    json_decref (tc->auth);
+    tc->auth = NULL;
   }
   GNUNET_free_non_null (tc->currency);
   GNUNET_free_non_null (tc->bank_uri);

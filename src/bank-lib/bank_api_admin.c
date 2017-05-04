@@ -162,6 +162,7 @@ handle_admin_add_incoming_finished (void *cls,
  * to the operators of the bank.
  *
  * @param ctx curl context for the event loop
+ * @param auth authentication data to send to the bank
  * @param bank_base_url URL of the bank (used to execute this request)
  * @param exchange_base_url base URL of the exchange (for tracking)
  * @param wtid wire transfer identifier for the transfer
@@ -176,6 +177,7 @@ handle_admin_add_incoming_finished (void *cls,
  */
 struct TALER_BANK_AdminAddIncomingHandle *
 TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
+                               const json_t *auth,
                                const char *bank_base_url,
                                const char *exchange_base_url,
                                const struct TALER_WireTransferIdentifierRawP *wtid,
@@ -189,8 +191,9 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   json_t *admin_obj;
   CURL *eh;
 
-  admin_obj = json_pack ("{s:s, s:o, s:o, s:I, s:I}",
+  admin_obj = json_pack ("{s:s, s:O, s:o, s:o, s:I, s:I}",
                          "exchange_url", exchange_base_url,
+                         "auth", auth,
                          "wtid", GNUNET_JSON_from_data_auto (wtid),
                          "amount", TALER_JSON_from_amount (amount),
                          "debit_account", (json_int_t) debit_account_no,

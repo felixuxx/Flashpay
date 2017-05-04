@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015, 2016 GNUnet e.V.
+  Copyright (C) 2015, 2016, 2017 GNUnet e.V. & Inria
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -57,6 +57,7 @@ typedef void
  * to the operators of the bank.
  *
  * @param ctx curl context for the event loop
+ * @param auth authentication data to send to the bank
  * @param bank_base_url URL of the bank (used to execute this request)
  * @param exchange_base_url base URL of the exchange (for tracking)
  * @param wtid wire transfer identifier for the transfer
@@ -71,6 +72,7 @@ typedef void
  */
 struct TALER_BANK_AdminAddIncomingHandle *
 TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
+                               const json_t *auth,
                                const char *bank_base_url,
                                const char *exchange_base_url,
                                const struct TALER_WireTransferIdentifierRawP *wtid,
