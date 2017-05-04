@@ -40,13 +40,48 @@ run (void *cls)
   static struct TBI_Command commands[] =
   {
     /* Add EUR:5.01 to account 42 */
+    { .oc = TBI_OC_HISTORY,
+      .label = "history-0",
+      .details.history.account_number = 1,
+      .details.history.direction = TALER_BANK_DIRECTION_BOTH,
+      .details.history.start_row = 0,
+      .details.history.num_results = 5 },
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
       .label = "deposit-1",
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 1,
       .details.admin_add_incoming.debit_account_no = 2,
       .details.admin_add_incoming.amount = "PUDOS:5.01" },
-
+    { .oc = TBI_OC_ADMIN_ADD_INCOMING,
+      .label = "deposit-2",
+      .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
+      .details.admin_add_incoming.credit_account_no = 1,
+      .details.admin_add_incoming.debit_account_no = 2,
+      .details.admin_add_incoming.amount = "PUDOS:5.01" },
+    { .oc = TBI_OC_HISTORY,
+      .label = "history-1c",
+      .details.history.account_number = 1,
+      .details.history.direction = TALER_BANK_DIRECTION_CREDIT,
+      .details.history.start_row = 0,
+      .details.history.num_results = 5 },
+    { .oc = TBI_OC_HISTORY,
+      .label = "history-2d",
+      .details.history.account_number = 2,
+      .details.history.direction = TALER_BANK_DIRECTION_DEBIT,
+      .details.history.start_row = 0,
+      .details.history.num_results = 5 },
+    { .oc = TBI_OC_HISTORY,
+      .label = "history-2dr",
+      .details.history.account_number = 2,
+      .details.history.direction = TALER_BANK_DIRECTION_DEBIT,
+      .details.history.start_row = UINT64_MAX,
+      .details.history.num_results = -5 },
+    { .oc = TBI_OC_HISTORY,
+      .label = "history-2fwd",
+      .details.history.account_number = 2,
+      .details.history.direction = TALER_BANK_DIRECTION_DEBIT,
+      .details.history.start_row = 1,
+      .details.history.num_results = 5 },
     { .oc = TBI_OC_END }
   };
 
@@ -92,7 +127,7 @@ main (int argc,
                                          "serve-http",
 				         "--port", "8081",
                                          NULL);
-  if (NULL == bankd_admin) 
+  if (NULL == bankd_admin)
   {
     fprintf (stderr,
              "Failed to launch `taler-bank-manage' for admin, skipping test\n");

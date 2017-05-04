@@ -175,6 +175,44 @@ add_incoming_cb (void *cls,
 
 
 /**
+ * Callbacks of this type are used to serve the result of asking
+ * the bank for the transaction history.
+ *
+ * @param cls closure
+ * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
+ *                    0 if the bank's reply is bogus (fails to follow the protocol),
+ *                    #MHD_HTTP_NO_CONTENT if there are no more results; on success the
+ *                    last callback is always of this status (even if `abs(num_results)` were
+ *                    already returned).
+ * @param dir direction of the transfer
+ * @param serial_id monotonically increasing counter corresponding to the transaction
+ * @param details details about the wire transfer
+ * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
+ */
+static void
+history_cb (void *cls,
+            unsigned int http_status,
+            enum TALER_BANK_Direction dir,
+            uint64_t serial_id,
+            const struct TALER_BANK_TransferDetails *details,
+            const json_t *json)
+{
+  struct InterpreterState *is = cls;
+  struct TBI_Command *cmd = &is->commands[is->ip];
+
+  if (MHD_HTTP_OK != http_status)
+  {
+    cmd->details.history.hh = NULL;
+    is->ip++;
+    is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
+    return;
+  }
+  /* FIXME: check history data is OK! */
+}
+
+
+/**
  * Run the main interpreter loop that performs bank operations.
  *
  * @param cls contains the `struct InterpreterState`
@@ -199,6 +237,9 @@ interpreter_run (void *cls)
     fail (is);
     return;
   }
+  auth.method = TALER_BANK_AUTH_BASIC; /* or "NONE"? */
+  auth.details.basic.username = "user";
+  auth.details.basic.password = "pass";
   switch (cmd->oc)
   {
   case TBI_OC_END:
@@ -220,9 +261,6 @@ interpreter_run (void *cls)
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                                 &cmd->details.admin_add_incoming.wtid,
                                 sizeof (cmd->details.admin_add_incoming.wtid));
-    auth.method = TALER_BANK_AUTH_BASIC; /* or "NONE"? */
-    auth.details.basic.username = "user";
-    auth.details.basic.password = "pass";
     cmd->details.admin_add_incoming.aih
       = TALER_BANK_admin_add_incoming (is->ctx,
                                        "http://localhost:8081",
@@ -235,6 +273,24 @@ interpreter_run (void *cls)
                                        &add_incoming_cb,
                                        is);
     if (NULL == cmd->details.admin_add_incoming.aih)
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
+    return;
+  case TBI_OC_HISTORY:
+    cmd->details.history.hh
+      = TALER_BANK_history (is->ctx,
+                            "http://localhost:8081",
+                            &auth,
+                            cmd->details.history.account_number,
+                            cmd->details.history.direction,
+                            cmd->details.history.start_row,
+                            cmd->details.history.num_results,
+                            &history_cb,
+                            is);
+    if (NULL == cmd->details.history.hh)
     {
       GNUNET_break (0);
       fail (is);
@@ -345,6 +401,21 @@ do_shutdown (void *cls)
         TALER_BANK_admin_add_incoming_cancel (cmd->details.admin_add_incoming.aih);
         cmd->details.admin_add_incoming.aih = NULL;
       }
+      break;
+    case TBI_OC_HISTORY:
+      if (NULL != cmd->details.history.hh)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Command %u (%s) did not complete\n",
+                    i,
+                    cmd->label);
+        TALER_BANK_history_cancel (cmd->details.history.hh);
+        cmd->details.history.hh = NULL;
+      }
+      break;
+    case TBI_OC_EXPECT_TRANSFER:
+      break;
+    case TBI_OC_EXPECT_TRANSFERS_EMPTY:
       break;
     default:
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

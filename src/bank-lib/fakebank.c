@@ -400,6 +400,8 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
                                      MHD_GET_ARGUMENT_KIND,
                                      "account_number");
   if ( (NULL == auth) ||
+       (0 != strcasecmp (auth,
+                         "basic")) ||
        (NULL == acc) ||
        (NULL == delta) )
   {
@@ -456,7 +458,6 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
       }
       pos = pos->next;
     }
-    GNUNET_assert (pos->serial_id == start_number);
   }
   history = json_array ();
   while ( (NULL != pos) &&

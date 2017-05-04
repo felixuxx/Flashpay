@@ -250,12 +250,12 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
   {
     if (TALER_BANK_DIRECTION_BOTH == direction)
       GNUNET_asprintf (&url,
-                       "/history?account_number=%llu&num_results=%lld",
+                       "/history?auth=basic&account_number=%llu&delta=%lld",
                        (unsigned long long) account_number,
                        (long long) num_results);
     else
       GNUNET_asprintf (&url,
-                       "/history?account_number=%llu&num_results=%lld&direction=%s",
+                       "/history?auth=basic&account_number=%llu&delta=%lld&direction=%s",
                        (unsigned long long) account_number,
                        (long long) num_results,
                        (TALER_BANK_DIRECTION_CREDIT == direction) ? "credit" : "debit");
@@ -265,13 +265,13 @@ TALER_BANK_history (struct GNUNET_CURL_Context *ctx,
   {
     if (TALER_BANK_DIRECTION_BOTH == direction)
       GNUNET_asprintf (&url,
-                       "/history?account_number=%llu&num_results=%lld&start_row=%llu",
+                       "/history?auth=basic&account_number=%llu&delta=%lld&start_row=%llu",
                        (unsigned long long) account_number,
                        (long long) num_results,
                        (unsigned long long) start_row);
     else
       GNUNET_asprintf (&url,
-                       "/history?account_number=%llu&num_results=%lld&start_row=%llu&direction=%s",
+                       "/history?auth=basic&account_number=%llu&delta=%lld&start_row=%llu&direction=%s",
                        (unsigned long long) account_number,
                        (long long) num_results,
                        (unsigned long long) start_row,

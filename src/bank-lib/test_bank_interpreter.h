@@ -45,6 +45,11 @@ enum TBI_OpCode
   TBI_OC_ADMIN_ADD_INCOMING,
 
   /**
+   * Request wire transfer history.
+   */
+  TBI_OC_HISTORY,
+
+  /**
    * Expect that we have received the specified transfer at fakebank.
    */
   TBI_OC_EXPECT_TRANSFER,
@@ -121,6 +126,36 @@ struct TBI_Command
       struct TALER_BANK_AdminAddIncomingHandle *aih;
 
     } admin_add_incoming;
+
+    struct {
+
+      /**
+       * For which account do we query the history.
+       */
+      uint64_t account_number;
+
+      /**
+       * Which types of transactions should be listed?
+       */
+      enum TALER_BANK_Direction direction;
+
+      /**
+       * At which offset do we start?
+       * Use UINT64_MAX or 0 for the extremes.
+       */
+      uint64_t start_row;
+
+      /**
+       * How many results should be returned (if available)?
+       */
+      int64_t num_results;
+
+      /**
+       * Set to the API's handle during the operation.
+       */
+      struct TALER_BANK_HistoryHandle *hh;
+
+    } history;
 
     /**
      * If @e opcode is #TBI_OC_EXPECT_TRANSFER, this
