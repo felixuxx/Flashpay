@@ -1394,6 +1394,8 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
                                                    &reserve->reserve.balance,
                                                    GNUNET_TIME_absolute_get (),
                                                    sndr,
+                                                   "PERF",
+                                                   4,
                                                    just);
           GNUNET_assert (GNUNET_SYSERR != ret);
           json_decref (sndr);

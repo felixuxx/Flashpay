@@ -352,13 +352,14 @@ postgres_create_tables (void *cls)
   SQLEXEC("CREATE TABLE IF NOT EXISTS reserves_in"
           "(reserve_in_serial_id BIGSERIAL"
 	  ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
+          ",wire_reference BYTEA NOT NULL"
           ",credit_val INT8 NOT NULL"
           ",credit_frac INT4 NOT NULL"
           ",credit_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
-          ",sender_account_details TEXT NOT NULL "
-          ",transfer_details TEXT NOT NULL "
+          ",sender_account_details TEXT NOT NULL"
+          ",transfer_details TEXT NOT NULL"
           ",execution_date INT8 NOT NULL"
-          ",PRIMARY KEY (reserve_pub, transfer_details)"
+          ",PRIMARY KEY (reserve_pub, wire_reference)"
           ");");
   /* Create indices on reserves_in */
   SQLEXEC_INDEX ("CREATE INDEX reserves_in_execution_index"
@@ -381,7 +382,7 @@ postgres_create_tables (void *cls)
           ")");
   SQLEXEC_INDEX("CREATE INDEX reserves_close_by_reserve "
                 "ON reserves_close(reserve_pub)");
-  
+
   /* Table with the withdraw operations that have been performed on a reserve.
      The 'h_blind_ev' is the hash of the blinded coin. It serves as a primary
      key, as (broken) clients that use a non-random coin and blinding factor
@@ -587,7 +588,7 @@ postgres_create_tables (void *cls)
   SQLEXEC_INDEX("CREATE INDEX prepare_iteration_index "
                 "ON prewire(type,finished)");
 
-  
+
 #undef SQLEXEC
 #undef SQLEXEC_INDEX
 
@@ -758,6 +759,7 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("reserves_in_add_transaction",
            "INSERT INTO reserves_in "
            "(reserve_pub"
+           ",wire_reference"
            ",credit_val"
            ",credit_frac"
            ",credit_curr"
@@ -765,8 +767,8 @@ postgres_prepare (PGconn *db_conn)
            ",transfer_details"
            ",execution_date"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7);",
-           7, NULL);
+           "($1, $2, $3, $4, $5, $6, $7, $8);",
+           8, NULL);
 
 
   /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
@@ -774,6 +776,7 @@ postgres_prepare (PGconn *db_conn)
   PREPARE ("audit_reserves_in_get_transactions_incr",
            "SELECT"
            " reserve_pub"
+           ",wire_reference"
            ",credit_val"
            ",credit_frac"
            ",credit_curr"
@@ -790,7 +793,8 @@ postgres_prepare (PGconn *db_conn)
      for a reserve */
   PREPARE ("reserves_in_get_transactions",
            "SELECT"
-           " credit_val"
+           " wire_reference"
+           ",credit_val"
            ",credit_frac"
            ",credit_curr"
            ",execution_date"
@@ -1531,7 +1535,7 @@ postgres_prepare (PGconn *db_conn)
            " ORDER BY payback_uuid ASC",
            1, NULL);
 
-    /* Used in #postgres_select_reserve_closed_above_serial_id() to 
+    /* Used in #postgres_select_reserve_closed_above_serial_id() to
        obtain information about closed reserves */
   PREPARE ("reserves_close_get_incr",
            "SELECT"
@@ -2074,6 +2078,8 @@ reserves_update (void *cls,
  * @param balance the amount that has to be added to the reserve
  * @param execution_time when was the amount added
  * @param sender_account_details account information for the sender
+ * @param wire_reference unique reference identifying the wire transfer (binary blob)
+ * @param wire_reference_size number of bytes in @a wire_reference
  * @param transfer_details information that uniquely identifies the transfer
  * @return #GNUNET_OK upon success; #GNUNET_NO if the given
  *         @a details are already known for this @a reserve_pub,
@@ -2086,6 +2092,8 @@ postgres_reserves_in_insert (void *cls,
                              const struct TALER_Amount *balance,
                              struct GNUNET_TIME_Absolute execution_time,
                              const json_t *sender_account_details,
+                             const void *wire_reference,
+                             size_t wire_reference_size,
                              const json_t *transfer_details)
 {
   struct PostgresClosure *pg = cls;
@@ -2127,7 +2135,7 @@ postgres_reserves_in_insert (void *cls,
        the wire transfer subjects (i.e. when using Bitcoin).
     */
   }
-  
+
   expiry = GNUNET_TIME_absolute_add (execution_time,
                                      pg->idle_reserve_expiration_time);
   if (GNUNET_NO == reserve_exists)
@@ -2166,6 +2174,8 @@ postgres_reserves_in_insert (void *cls,
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (&reserve.pub),
+      GNUNET_PQ_query_param_fixed_size (wire_reference,
+                                        wire_reference_size),
       TALER_PQ_query_param_amount (balance),
       TALER_PQ_query_param_json (sender_account_details),
       TALER_PQ_query_param_json (transfer_details),
@@ -2460,6 +2470,9 @@ postgres_get_reserve_history (void *cls,
       bt = GNUNET_new (struct TALER_EXCHANGEDB_BankTransfer);
       {
         struct GNUNET_PQ_ResultSpec rs[] = {
+          GNUNET_PQ_result_spec_variable_size ("wire_reference",
+                                               &bt->wire_reference,
+                                               &bt->wire_reference_size),
           TALER_PQ_result_spec_amount ("credit",
                                        &bt->amount),
           GNUNET_PQ_result_spec_absolute_time ("execution_date",
@@ -2690,7 +2703,7 @@ postgres_get_reserve_history (void *cls,
     PQclear (result);
   }
 
-  
+
  cleanup:
   if (GNUNET_SYSERR == ret)
   {
@@ -5037,7 +5050,7 @@ postgres_get_expired_reserves (void *cls,
 				   &remaining_balance),
       GNUNET_PQ_result_spec_end
     };
-  
+
     if (GNUNET_OK !=
 	GNUNET_PQ_extract_result (result,
 				  rs,
@@ -5097,7 +5110,7 @@ postgres_insert_reserve_closed (void *cls,
   };
   PGresult *result;
   int ret;
-  
+
   result = GNUNET_PQ_exec_prepared (session->conn,
 				    "reserves_close_insert",
 				    params);
@@ -5830,10 +5843,15 @@ postgres_select_reserves_in_above_serial_id (void *cls,
     json_t *transfer_details;
     struct GNUNET_TIME_Absolute execution_date;
     uint64_t rowid;
+    void *wire_reference;
+    size_t wire_reference_size;
 
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                             &reserve_pub),
+      GNUNET_PQ_result_spec_variable_size ("wire_reference",
+                                           &wire_reference,
+                                           &wire_reference_size),
       TALER_PQ_result_spec_amount ("credit",
                                    &credit),
       GNUNET_PQ_result_spec_absolute_time("execution_date",
@@ -5862,6 +5880,8 @@ postgres_select_reserves_in_above_serial_id (void *cls,
               &credit,
               sender_account_details,
               transfer_details,
+              wire_reference,
+              wire_reference_size,
               execution_date);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != ret)

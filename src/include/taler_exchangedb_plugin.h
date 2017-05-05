@@ -61,11 +61,21 @@ struct TALER_EXCHANGEDB_BankTransfer
    */
   json_t *transfer_details;
 
+  /**
+   * Data uniquely identifying the wire transfer (wire transfer-type specific)
+   */
+  void *wire_reference;
+
+  /**
+   * Number of bytes in @e wire_reference.
+   */
+  size_t wire_reference_size;
+
 };
 
 
 /**
- * @brief Information we keep on bank transfer(s) that 
+ * @brief Information we keep on bank transfer(s) that
  * closed a reserve.
  */
 struct TALER_EXCHANGEDB_ClosingTransfer
@@ -101,7 +111,7 @@ struct TALER_EXCHANGEDB_ClosingTransfer
    * wire transfer.
    */
   struct TALER_WireTransferIdentifierRawP transfer_details;
-  
+
 };
 
 
@@ -800,6 +810,8 @@ typedef int
  * @param credit amount that was received
  * @param sender_account_details information about the sender's bank account
  * @param transfer_details information that uniquely identifies the wire transfer
+ * @param wire_reference unique identifier for the wire transfer (plugin-specific format)
+ * @param wire_reference_size number of bytes in @a wire_reference
  * @param execution_date when did we receive the funds
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -810,6 +822,8 @@ typedef int
                                       const struct TALER_Amount *credit,
                                       const json_t *sender_account_details,
                                       const json_t *transfer_details,
+                                      const void *wire_reference,
+                                      size_t wire_reference_size,
                                       struct GNUNET_TIME_Absolute execution_date);
 
 
@@ -1181,6 +1195,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param balance the amount that has to be added to the reserve
    * @param execution_time when was the amount added
    * @param sender_account_details information about the sender's bank account
+   * @param wire_reference unique reference identifying the wire transfer (binary blob)
+   * @param wire_reference_size number of bytes in @a wire_reference
    * @param transfer_details information that uniquely identifies the wire transfer
    * @return #GNUNET_OK upon success; #GNUNET_NO if the given
    *         @a details are already known for this @a reserve_pub,
@@ -1193,6 +1209,8 @@ struct TALER_EXCHANGEDB_Plugin
                          const struct TALER_Amount *balance,
                          struct GNUNET_TIME_Absolute execution_time,
                          const json_t *sender_account_details,
+                         const void *wire_reference,
+                         size_t wire_reference_size,
                          const json_t *transfer_details);
 
 
@@ -1821,7 +1839,7 @@ struct TALER_EXCHANGEDB_Plugin
 			  TALER_EXCHANGEDB_ReserveExpiredCallback rec,
 			  void *rec_cls);
 
-  
+
   /**
    * Insert reserve close operation into database.
    *
@@ -2102,7 +2120,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls closure
    * @param session database connection
    * @param serial_id lowest serial ID to include (select larger or equal)
-   * @param cb function to call 
+   * @param cb function to call
    * @param cb_cls closure for @a cb
    * @return #GNUNET_OK on success,
    *         #GNUNET_NO if there are no entries,

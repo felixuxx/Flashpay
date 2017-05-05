@@ -1033,6 +1033,8 @@ audit_refund_cb (void *cls,
  * @param credit amount that was received
  * @param sender_account_details information about the sender's bank account
  * @param transfer_details information that uniquely identifies the wire transfer
+ * @param wire_reference unique reference identifying the wire transfer (binary blob)
+ * @param wire_reference_size number of bytes in @a wire_reference
  * @param execution_date when did we receive the funds
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -1043,6 +1045,8 @@ audit_reserve_in_cb (void *cls,
                      const struct TALER_Amount *credit,
                      const json_t *sender_account_details,
                      const json_t *transfer_details,
+                     const void *wire_reference,
+                     size_t wire_reference_size,
                      struct GNUNET_TIME_Absolute execution_date)
 {
   auditor_row_cnt++;
@@ -1511,6 +1515,8 @@ run (void *cls)
                                       &value,
                                       GNUNET_TIME_absolute_get (),
                                       sndr,
+                                      "TEST",
+                                      4,
 				      just));
   json_decref (just);
   FAILIF (GNUNET_OK !=
@@ -1527,6 +1533,8 @@ run (void *cls)
                                       &value,
                                       GNUNET_TIME_absolute_get (),
 				      sndr,
+                                      "TEST2",
+                                      5,
                                       just));
   json_decref (just);
   json_decref (sndr);
@@ -1642,8 +1650,8 @@ run (void *cls)
 			 0,
 			 0,
                          value.currency));
-  
-  json_decref (sndr);  
+
+  json_decref (sndr);
   result = 7;
   rh = plugin->get_reserve_history (plugin->cls,
                                     session,

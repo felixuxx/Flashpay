@@ -615,6 +615,8 @@ struct ReserveContext
  * @param credit amount that was received
  * @param sender_account_details information about the sender's bank account
  * @param transfer_details information that uniquely identifies the wire transfer
+ * @param wire_reference unique reference identifying the wire transfer (binary blob)
+ * @param wire_reference_size number of bytes in @a wire_reference
  * @param execution_date when did we receive the funds
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -625,6 +627,8 @@ handle_reserve_in (void *cls,
                    const struct TALER_Amount *credit,
                    const json_t *sender_account_details,
                    const json_t *transfer_details,
+                   const void *wire_reference,
+                   size_t wire_reference_size,
                    struct GNUNET_TIME_Absolute execution_date)
 {
   struct ReserveContext *rc = cls;
@@ -633,7 +637,7 @@ handle_reserve_in (void *cls,
   struct GNUNET_TIME_Absolute expiry;
 
   /* should be monotonically increasing */
-  GNUNET_assert (rowid >= pp.last_reserve_in_serial_id); 
+  GNUNET_assert (rowid >= pp.last_reserve_in_serial_id);
   pp.last_reserve_in_serial_id = rowid + 1;
 
   GNUNET_CRYPTO_hash (reserve_pub,
@@ -904,13 +908,13 @@ handle_payback_by_reserve (void *cls,
     {
       report_row_inconsistency ("payback",
 				rowid,
-				"denomination key not in revocation set");      
+				"denomination key not in revocation set");
     }
     else
     {
       /* verify msig */
       struct TALER_MasterDenominationKeyRevocation kr;
-      
+
       kr.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED);
       kr.purpose.size = htonl (sizeof (kr));
       kr.h_denom_pub = pr.h_denom_pub;
@@ -1012,7 +1016,7 @@ handle_reserve_closed (void *cls,
   struct ReserveContext *rc = cls;
   struct GNUNET_HashCode key;
   struct ReserveSummary *rs;
-  
+
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= pp.last_reserve_close_serial_id);
   pp.last_reserve_close_serial_id = rowid + 1;

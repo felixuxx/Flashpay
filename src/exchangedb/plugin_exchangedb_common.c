@@ -35,7 +35,7 @@ common_free_reserve_history (void *cls,
   struct TALER_EXCHANGEDB_Payback *payback;
   struct TALER_EXCHANGEDB_ReserveHistory *backref;
   struct TALER_EXCHANGEDB_ClosingTransfer *closing;
-    
+
   while (NULL != rh)
   {
     switch(rh->type)
@@ -46,6 +46,7 @@ common_free_reserve_history (void *cls,
         json_decref (bt->sender_account_details);
       if (NULL != bt->transfer_details)
         json_decref (bt->transfer_details);
+      GNUNET_free_non_null (bt->wire_reference);
       GNUNET_free (bt);
       break;
     case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:

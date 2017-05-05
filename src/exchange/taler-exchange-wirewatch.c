@@ -40,7 +40,7 @@
  * Handle to the plugin.
  */
 static struct TALER_WIRE_Plugin *wire_plugin;
-  
+
 /**
  * Which currency is used by this exchange?
  */
@@ -63,7 +63,7 @@ static struct TALER_EXCHANGEDB_Plugin *db_plugin;
 static int global_ret;
 
 /**
- * Encoded offset in the wire transfer list that we 
+ * Encoded offset in the wire transfer list that we
  * processed last.
  */
 static void *last_row_off;
@@ -180,7 +180,7 @@ exchange_serve_process_config ()
     TALER_EXCHANGEDB_plugin_unload (db_plugin);
     return GNUNET_SYSERR;
   }
-  
+
   return GNUNET_OK;
 }
 
@@ -248,16 +248,18 @@ history_cb (void *cls,
   {
     /* FIXME: need way to wire money back immediately... */
     GNUNET_break (0); // not implemented
-    
+
     return GNUNET_OK;
   }
-  // FIXME: store row_off+row_off_size instead of json_t?
+  // FIXME: create json!
   ret = db_plugin->reserves_in_insert (db_plugin->cls,
 				       session,
 				       &reserve_pub,
 				       &details->amount,
 				       details->execution_date,
 				       details->account_details,
+                                       row_off,
+                                       row_off_size,
 				       NULL /* FIXME */);
   if (GNUNET_OK != ret)
   {
@@ -269,7 +271,7 @@ history_cb (void *cls,
 				     NULL);
     return GNUNET_SYSERR;
   }
-  
+
   if (last_row_off_size != row_off_size)
   {
     GNUNET_free_non_null (last_row_off);
@@ -291,7 +293,7 @@ static void
 find_transfers (void *cls)
 {
   struct TALER_EXCHANGEDB_Session *session;
-  
+
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking for incoming wire transfers\n");
 
@@ -357,7 +359,7 @@ run (void *cls,
     global_ret = 1;
     return;
   }
-  
+
   task = GNUNET_SCHEDULER_add_now (&find_transfers,
                                    NULL);
   GNUNET_SCHEDULER_add_shutdown (&shutdown_task,
