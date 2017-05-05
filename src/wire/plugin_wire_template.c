@@ -256,10 +256,12 @@ template_get_history (void *cls,
 /**
  * Cancel going over the account's history.
  *
+ * @param cls the @e cls of this struct with the plugin-specific state
  * @param whh operation to cancel
  */
 static void
-template_get_history_cancel (struct TALER_WIRE_HistoryHandle *whh)
+template_get_history_cancel (void *cls,
+			     struct TALER_WIRE_HistoryHandle *whh)
 {
   GNUNET_break (0);
 }

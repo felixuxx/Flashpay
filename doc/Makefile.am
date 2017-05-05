@@ -13,6 +13,7 @@ man_MANS = \
   taler-exchange-keycheck.1 \
   taler-exchange-reservemod.1 \
   taler-exchange-wire.1 \
+  taler-exchange-wirewatch.1 \
   taler.conf.5
 
 DISTCLEANFILES = \

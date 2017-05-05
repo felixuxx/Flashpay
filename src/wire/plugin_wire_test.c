@@ -816,13 +816,18 @@ bhist_cb (void *cls,
   struct TALER_WIRE_HistoryHandle *whh = cls;
   uint64_t bserial_id = GNUNET_htonll (serial_id);
 
-  whh->hres_cb (whh->hres_cb_cls,
-                http_status,
-                dir,
-                &bserial_id,
-                sizeof (bserial_id),
-                details,
-                json);
+  if (MHD_HTTP_OK == http_status)      
+    whh->hres_cb (whh->hres_cb_cls,
+		  dir,
+		  &bserial_id,
+		  sizeof (bserial_id),
+		  details);
+  else
+    whh->hres_cb (whh->hres_cb_cls,
+		  TALER_BANK_DIRECTION_NONE,
+		  NULL,
+		  0,
+		  NULL);
   if (MHD_HTTP_OK != http_status)
   {
     whh->hh = NULL;
@@ -917,10 +922,12 @@ test_get_history (void *cls,
 /**
  * Cancel going over the account's history.
  *
+ * @param cls the @e cls of this struct with the plugin-specific state
  * @param whh operation to cancel
  */
 static void
-test_get_history_cancel (struct TALER_WIRE_HistoryHandle *whh)
+test_get_history_cancel (void *cls,
+			 struct TALER_WIRE_HistoryHandle *whh)
 {
   TALER_BANK_history_cancel (whh->hh);
   GNUNET_free (whh);

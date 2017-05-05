@@ -1,0 +1,29 @@
+.TH TALER\-EXCHANGE\-WIREWATCH 1 "May 5, 2017" "GNU Taler"
+
+.SH NAME
+taler\-exchange\-wirewatch \- Watch for incoming wire transfers
+
+.SH SYNOPSIS
+.B taler\-exchange\-wirewatch
+.RI [ options ]
+.br
+
+.SH DESCRIPTION
+\fBtaler\-exchange\-wirewatch\fP is a command line tool to import wire transactions into the Taler exchange database.
+
+.SH OPTIONS
+.B
+.IP "\-t PLUGINNAME,  \-\-type=PLUGINNAME"
+Use the specified wire plugin and its configuration to talk to the bank.
+.B
+.IP "\-h, \-\-help"
+Print short help on options.
+.B
+.IP "\-v, \-\-version"
+Print version information.
+.B
+.SH BUGS
+Report bugs by using Mantis <https://gnunet.org/bugs/> or by sending electronic mail to <taler@gnu.org>
+
+.SH "SEE ALSO"
+\fBtaler\-exchange\-aggregator\fP(1), \fBtaler\-exchange\-httpd\fP(1), \fBtaler.conf\fP(5)

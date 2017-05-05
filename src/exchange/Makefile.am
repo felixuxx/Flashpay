@@ -13,7 +13,8 @@ pkgcfg_DATA = \
 
 bin_PROGRAMS = \
   taler-exchange-aggregator \
-  taler-exchange-httpd
+  taler-exchange-httpd \
+  taler-exchange-wirewatch
 
 dist_bin_SCRIPTS = \
   taler-config-generate
@@ -21,6 +22,17 @@ dist_bin_SCRIPTS = \
 taler_exchange_aggregator_SOURCES = \
   taler-exchange-aggregator.c
 taler_exchange_aggregator_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/wire/libtalerwire.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  -ljansson \
+  -lgnunetutil
+
+taler_exchange_wirewatch_SOURCES = \
+  taler-exchange-wirewatch.c
+taler_exchange_wirewatch_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \

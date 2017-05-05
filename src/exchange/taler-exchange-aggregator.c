@@ -1583,7 +1583,7 @@ run (void *cls,
 
 
 /**
- * The main function of the taler-exchange-httpd server ("the exchange").
+ * The main function of the taler-exchange-aggregator.
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments
@@ -1595,9 +1595,9 @@ main (int argc,
 {
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_flag ('t',
-                                  "test",
-                                  "run in test mode and exit when idle",
-                                  &test_mode),
+			       "test",
+			       "run in test mode and exit when idle",
+			       &test_mode),
     GNUNET_GETOPT_option_version (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };

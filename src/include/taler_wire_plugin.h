@@ -46,25 +46,17 @@ typedef void
  * the bank for the transaction history.
  *
  * @param cls closure
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
- *                    0 if the bank's reply is bogus (fails to follow the protocol),
- *                    #MHD_HTTP_NO_CONTENT if there are no more results; on success the
- *                    last callback is always of this status (even if `abs(num_results)` were
- *                    already returned).
  * @param dir direction of the transfer
  * @param row_off identification of the position at which we are querying
  * @param row_off_size number of bytes in @a row_off
  * @param details details about the wire transfer
- * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
 typedef void
 (*TALER_WIRE_HistoryResultCallback) (void *cls,
-                                     unsigned int http_status,
                                      enum TALER_BANK_Direction dir,
                                      const void *row_off,
                                      size_t row_off_size,
-                                     const struct TALER_BANK_TransferDetails *details,
-                                     const json_t *json);
+                                     const struct TALER_BANK_TransferDetails *details);
 
 
 /**
@@ -283,7 +275,8 @@ struct TALER_WIRE_Plugin
    * @param whh operation to cancel
    */
   void
-  (*get_history_cancel) (struct TALER_WIRE_HistoryHandle *whh);
+  (*get_history_cancel) (void *cls,
+			 struct TALER_WIRE_HistoryHandle *whh);
 
 };
 
