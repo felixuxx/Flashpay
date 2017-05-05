@@ -3,4 +3,5 @@ taler-exchange-keycheck
 taler-exchange-keyup
 taler-exchange-pursemod
 taler-exchange-reservemod
-taler-exchange-httpdtaler-exchange-wirewatch
+taler-exchange-httpd
+taler-exchange-wirewatch

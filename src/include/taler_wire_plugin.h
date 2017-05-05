@@ -50,8 +50,9 @@ typedef void
  * @param row_off identification of the position at which we are querying
  * @param row_off_size number of bytes in @a row_off
  * @param details details about the wire transfer
+ * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
-typedef void
+typedef int
 (*TALER_WIRE_HistoryResultCallback) (void *cls,
                                      enum TALER_BANK_Direction dir,
                                      const void *row_off,

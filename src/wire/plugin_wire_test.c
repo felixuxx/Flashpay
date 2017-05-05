@@ -816,23 +816,26 @@ bhist_cb (void *cls,
   struct TALER_WIRE_HistoryHandle *whh = cls;
   uint64_t bserial_id = GNUNET_htonll (serial_id);
 
-  if (MHD_HTTP_OK == http_status)      
-    whh->hres_cb (whh->hres_cb_cls,
-		  dir,
-		  &bserial_id,
-		  sizeof (bserial_id),
-		  details);
-  else
-    whh->hres_cb (whh->hres_cb_cls,
-		  TALER_BANK_DIRECTION_NONE,
-		  NULL,
-		  0,
-		  NULL);
-  if (MHD_HTTP_OK != http_status)
+  if (MHD_HTTP_OK == http_status)
   {
+    if ( (NULL != whh->hres_cb) &&
+	 (GNUNET_OK !=
+	  whh->hres_cb (whh->hres_cb_cls,
+			dir,
+			&bserial_id,
+			sizeof (bserial_id),
+			details)) )
+      whh->hres_cb = NULL;    
+  }
+  else
+  {
+    (void) whh->hres_cb (whh->hres_cb_cls,
+			 TALER_BANK_DIRECTION_NONE,
+			 NULL,
+			 0,
+			 NULL);
     whh->hh = NULL;
     GNUNET_free (whh);
-    return;
   }
 }
 

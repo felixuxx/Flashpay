@@ -203,8 +203,9 @@ find_transfers (void *cls);
  * @param row_off identification of the position at which we are querying
  * @param row_off_size number of bytes in @a row_off
  * @param details details about the wire transfer
+ * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
-static void
+static int
 history_cb (void *cls,
 	    enum TALER_BANK_Direction dir,
 	    const void *row_off,
@@ -212,13 +213,15 @@ history_cb (void *cls,
 	    const struct TALER_BANK_TransferDetails *details)
 {
   struct TALER_EXCHANGEDB_Session *session = cls;
+  int ret;
+  struct TALER_ReservePublicKeyP reserve_pub;
 
-  // TODO: store to DB...
   if (TALER_BANK_DIRECTION_NONE == dir)
   {
-    int ret;
-
     hh = NULL;
+
+    /* FIXME: commit last_off to DB! */
+
     ret = db_plugin->commit (db_plugin->cls,
 			     session);
     if (GNUNET_OK == ret)
@@ -234,7 +237,37 @@ history_cb (void *cls,
     else
       task = GNUNET_SCHEDULER_add_now (&find_transfers,
 				       NULL);
-    return;
+    return GNUNET_OK; /* will be ignored anyway */
+  }
+  /* TODO: We should expect a checksum! */
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (details->wire_transfer_subject,
+				     strlen (details->wire_transfer_subject),
+				     &reserve_pub,
+				     sizeof (reserve_pub)))
+  {
+    /* FIXME: need way to wire money back immediately... */
+    GNUNET_break (0); // not implemented
+    
+    return GNUNET_OK;
+  }
+  // FIXME: store row_off+row_off_size instead of json_t?
+  ret = db_plugin->reserves_in_insert (db_plugin->cls,
+				       session,
+				       &reserve_pub,
+				       &details->amount,
+				       details->execution_date,
+				       details->account_details,
+				       NULL /* FIXME */);
+  if (GNUNET_OK != ret)
+  {
+    GNUNET_break (0);
+    db_plugin->rollback (db_plugin->cls,
+                         session);
+    /* try again */
+    task = GNUNET_SCHEDULER_add_now (&find_transfers,
+				     NULL);
+    return GNUNET_SYSERR;
   }
   
   if (last_row_off_size != row_off_size)
@@ -245,6 +278,7 @@ history_cb (void *cls,
   memcpy (last_row_off,
 	  row_off,
 	  row_off_size);
+  return GNUNET_OK;
 }
 
 
@@ -279,6 +313,8 @@ find_transfers (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  /* FIXME: fetch start_off from DB! */
+
   delay = GNUNET_YES;
   hh = wire_plugin->get_history (wire_plugin->cls,
 				 TALER_BANK_DIRECTION_CREDIT,
@@ -297,7 +333,6 @@ find_transfers (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  /* FIXME: write last_off! */
 }
 
 
