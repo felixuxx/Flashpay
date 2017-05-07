@@ -48,12 +48,14 @@ run (void *cls)
       .details.history.num_results = 5 },
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
       .label = "deposit-1",
+      .details.admin_add_incoming.exchange_base_url = "https://exchange.net/", /* bogus */
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 1,
       .details.admin_add_incoming.debit_account_no = 2,
       .details.admin_add_incoming.amount = "PUDOS:5.01" },
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
       .label = "deposit-2",
+      .details.admin_add_incoming.exchange_base_url = "https://exchange.net/", /* bogus */
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 1,
       .details.admin_add_incoming.debit_account_no = 2,
@@ -168,18 +170,27 @@ main (int argc,
 
   do
     {
-      fprintf (stderr, ".");
+      fprintf (stderr, ",");
       sleep (1);
       cnt++;
       if (cnt > 30)
         break;
+      result = system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/admin/add/incoming -o /dev/null -O /dev/null");
     }
-  while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/admin/add/incoming -o /dev/null -O /dev/null"));
+  while (! ( (WIFEXITED (result)) &&
+             (8 == WEXITSTATUS (result)) ) );
+  /* Note: we are using "GET", so /admin/add/incoming will yield a 405, which causes wget to return
+     a status code of 8. */
+
 
   fprintf (stderr, "\n");
   result = GNUNET_SYSERR;
   if (cnt <= 30)
+  {
+    fprintf (stderr,
+             "Ready, running test...\n");
     GNUNET_SCHEDULER_run (&run, &result);
+  }
   GNUNET_OS_process_kill (bankd,
                           SIGTERM);
   GNUNET_OS_process_kill (bankd_admin,

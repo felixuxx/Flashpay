@@ -158,12 +158,22 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   json_t *admin_obj;
   CURL *eh;
 
+  if (NULL == exchange_base_url)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   admin_obj = json_pack ("{s:s, s:o, s:o, s:I, s:I}",
                          "exchange_url", exchange_base_url,
                          "wtid", GNUNET_JSON_from_data_auto (wtid),
                          "amount", TALER_JSON_from_amount (amount),
                          "debit_account", (json_int_t) debit_account_no,
                          "credit_account", (json_int_t) credit_account_no);
+  if (NULL == admin_obj)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   aai = GNUNET_new (struct TALER_BANK_AdminAddIncomingHandle);
   aai->cb = res_cb;
   aai->cb_cls = res_cb_cls;

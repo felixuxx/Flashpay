@@ -48,7 +48,7 @@ TEH_RESPONSE_add_global_headers (struct MHD_Response *response)
 }
 
 
-/** 
+/**
  * Is HTTP body deflate compression supported by the client?
  *
  * @param connection connection to check
@@ -75,7 +75,7 @@ TEH_RESPONSE_can_compress (struct MHD_Connection *connection)
        ( (de[strlen ("deflate")] == '\0') ||
 	 (de[strlen ("deflate")] == ',') ) )
     return MHD_YES;
-  return MHD_NO;  
+  return MHD_NO;
 }
 
 
@@ -525,7 +525,7 @@ static json_t *
 compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
 {
   json_t *history;
-  
+
   history = json_array ();
   if (NULL == history)
   {
@@ -650,7 +650,7 @@ compile_transaction_history (const struct TALER_EXCHANGEDB_TransactionList *tl)
 	  json_decref (history);
 	  return NULL;
 	}
-	
+
 	GNUNET_assert (0 ==
 		       json_array_append_new (history,
 					      json_pack ("{s:s, s:o, s:o, s:o, s:o, s:I, s:o}",
@@ -779,7 +779,7 @@ compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
       {
 	struct GNUNET_HashCode h_denom_pub;
 	struct TALER_Amount value;
-	
+
 	value = pos->details.withdraw->amount_with_fee;
 	if (0 == (2 & ret))
 	{
