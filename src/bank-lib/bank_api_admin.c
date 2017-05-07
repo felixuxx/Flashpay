@@ -78,6 +78,7 @@ handle_admin_add_incoming_finished (void *cls,
                                     const json_t *json)
 {
   struct TALER_BANK_AdminAddIncomingHandle *aai = cls;
+  uint64_t serial_id = UINT64_MAX;
 
   aai->job = NULL;
   switch (response_code)
@@ -85,6 +86,23 @@ handle_admin_add_incoming_finished (void *cls,
   case 0:
     break;
   case MHD_HTTP_OK:
+    {
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_uint64 ("serial_id",
+                                 &serial_id),
+        GNUNET_JSON_spec_end()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (json,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        response_code = 0;
+        break;
+      }
+    }
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the bank is buggy
@@ -117,6 +135,7 @@ handle_admin_add_incoming_finished (void *cls,
   }
   aai->cb (aai->cb_cls,
            response_code,
+           serial_id,
            json);
   TALER_BANK_admin_add_incoming_cancel (aai);
 }

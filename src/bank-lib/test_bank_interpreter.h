@@ -125,6 +125,11 @@ struct TBI_Command
        */
       struct TALER_BANK_AdminAddIncomingHandle *aih;
 
+      /**
+       * The serial ID for this record, as returned by the bank.
+       */
+      uint64_t serial_id;
+
     } admin_add_incoming;
 
     struct {
@@ -140,10 +145,10 @@ struct TBI_Command
       enum TALER_BANK_Direction direction;
 
       /**
-       * At which offset do we start?
-       * Use UINT64_MAX or 0 for the extremes.
+       * At which serial ID do we start? References the respective @e
+       * admin_add_incoming command.  Use NULL for the extremes.
        */
-      uint64_t start_row;
+      const char *start_row_ref;
 
       /**
        * How many results should be returned (if available)?
@@ -154,6 +159,16 @@ struct TBI_Command
        * Set to the API's handle during the operation.
        */
       struct TALER_BANK_HistoryHandle *hh;
+
+      /**
+       * How many results did we actually get?
+       */
+      uint64_t results_obtained;
+
+      /**
+       * Set to #GNUNET_YES if we encountered a problem.
+       */
+      int failed;
 
     } history;
 

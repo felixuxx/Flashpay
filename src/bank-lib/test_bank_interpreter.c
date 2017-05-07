@@ -92,6 +92,9 @@ static void
 fail (struct InterpreterState *is)
 {
   *is->resultp = GNUNET_SYSERR;
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Interpreter failed at command `%s'\n",
+              is->commands[is->ip].label);
   GNUNET_SCHEDULER_shutdown ();
 }
 
@@ -129,6 +132,307 @@ find_command (const struct InterpreterState *is,
 
 
 /**
+ * Item in the transaction history, as reconstructed from the
+ * command history.
+ */
+struct History
+{
+
+  /**
+   * Wire details.
+   */
+  struct TALER_BANK_TransferDetails details;
+
+  /**
+   * Serial ID of the wire transfer.
+   */
+  uint64_t serial_id;
+
+  /**
+   * Direction of the transfer.
+   */
+  enum TALER_BANK_Direction direction;
+
+};
+
+
+/**
+ * Build history of transactions matching the current
+ * command in @a is.
+ *
+ * @param is interpreter state
+ * @param[out] rh history array to initialize
+ * @return number of entries in @a rh
+ */
+static uint64_t
+build_history (struct InterpreterState *is,
+               struct History **rh)
+{
+  const struct TBI_Command *cmd = &is->commands[is->ip];
+  uint64_t total;
+  struct History *h;
+  const struct TBI_Command *ref;
+  int inc;
+  unsigned int start;
+  unsigned int end;
+  int ok;
+
+  GNUNET_assert (TBI_OC_HISTORY == cmd->oc);
+  if (NULL != cmd->details.history.start_row_ref)
+  {
+    ref = find_command (is,
+                        cmd->details.history.start_row_ref);
+    GNUNET_assert (NULL != ref);
+  }
+  else
+  {
+    ref = NULL;
+  }
+  GNUNET_assert (0 != cmd->details.history.num_results);
+  if (0 == is->ip)
+  {
+    *rh = NULL;
+    return 0;
+  }
+  if (cmd->details.history.num_results > 0)
+  {
+    inc = 1;
+    start = 0;
+    end = is->ip - 1;
+  }
+  else
+  {
+    inc = -1;
+    start = is->ip - 1;
+    end = 0;
+  }
+
+  total = 0;
+  ok = GNUNET_NO;
+  if (NULL == ref)
+    ok = GNUNET_YES;
+  for (unsigned int off = start;off != end + inc; off += inc)
+  {
+    const struct TBI_Command *pos = &is->commands[off];
+
+    if (TBI_OC_ADMIN_ADD_INCOMING != pos->oc)
+      continue;
+    if ( (NULL != ref) &&
+         (ref->details.admin_add_incoming.serial_id ==
+          pos->details.admin_add_incoming.serial_id) )
+    {
+      total = 0;
+      ok = GNUNET_YES;
+      continue;
+    }
+    if (GNUNET_NO == ok)
+      continue; /* skip until we find the marker */
+    if (total >= cmd->details.history.num_results * inc)
+      break; /* hit limit specified by command */
+    if ( ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_CREDIT)) &&
+           (cmd->details.history.account_number ==
+            pos->details.admin_add_incoming.credit_account_no)) ||
+         ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_DEBIT)) &&
+           (cmd->details.history.account_number ==
+            pos->details.admin_add_incoming.debit_account_no)) )
+      total++; /* found matching record */
+  }
+  GNUNET_assert (GNUNET_YES == ok);
+  if (0 == total)
+  {
+    *rh = NULL;
+    return 0;
+  }
+  GNUNET_assert (total < UINT_MAX);
+  h = GNUNET_new_array ((unsigned int) total,
+                        struct History);
+  total = 0;
+  ok = GNUNET_NO;
+  if (NULL == ref)
+    ok = GNUNET_YES;
+  for (unsigned int off = start;off != end + inc; off += inc)
+  {
+    const struct TBI_Command *pos = &is->commands[off];
+
+    if (TBI_OC_ADMIN_ADD_INCOMING != pos->oc)
+      continue;
+    if ( (NULL != ref) &&
+         (ref->details.admin_add_incoming.serial_id ==
+          pos->details.admin_add_incoming.serial_id) )
+    {
+      total = 0;
+      ok = GNUNET_YES;
+      continue;
+    }
+    if (GNUNET_NO == ok)
+      continue; /* skip until we find the marker */
+    if (total >= cmd->details.history.num_results * inc)
+      break; /* hit limit specified by command */
+
+    if ( ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_CREDIT)) &&
+           (cmd->details.history.account_number ==
+            pos->details.admin_add_incoming.credit_account_no)) &&
+         ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_DEBIT)) &&
+           (cmd->details.history.account_number ==
+            pos->details.admin_add_incoming.debit_account_no)) )
+    {
+      GNUNET_break (0);
+      continue;
+    }
+
+    if ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_CREDIT)) &&
+         (cmd->details.history.account_number ==
+          pos->details.admin_add_incoming.credit_account_no))
+    {
+      h[total].direction = TALER_BANK_DIRECTION_CREDIT;
+      h[total].details.account_details
+        = json_pack ("{s:s, s:s, s:I}",
+                     "type",
+                     "test",
+                     "bank_uri",
+                     "http://localhost:8081",
+                     "account_number",
+                     (json_int_t) pos->details.admin_add_incoming.debit_account_no);
+      GNUNET_assert (NULL != h[total].details.account_details);
+    }
+    if ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_DEBIT)) &&
+           (cmd->details.history.account_number ==
+            pos->details.admin_add_incoming.debit_account_no))
+    {
+      h[total].direction = TALER_BANK_DIRECTION_DEBIT;
+      h[total].details.account_details
+        = json_pack ("{s:s, s:s, s:I}",
+                     "type",
+                     "test",
+                     "bank_uri",
+                     "http://localhost:8081",
+                     "account_number",
+                     (json_int_t) pos->details.admin_add_incoming.credit_account_no);
+      GNUNET_assert (NULL != h[total].details.account_details);
+    }
+    if ( ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_CREDIT)) &&
+           (cmd->details.history.account_number ==
+            pos->details.admin_add_incoming.credit_account_no)) ||
+         ( (0 != (cmd->details.history.direction & TALER_BANK_DIRECTION_DEBIT)) &&
+           (cmd->details.history.account_number ==
+            pos->details.admin_add_incoming.debit_account_no)) )
+    {
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_string_to_amount (pos->details.admin_add_incoming.amount,
+                                             &h[total].details.amount));
+      /* h[total].execution_date; // unknown here */
+      h[total].serial_id
+        = pos->details.admin_add_incoming.serial_id;
+      h[total].details.wire_transfer_subject
+        = GNUNET_STRINGS_data_to_string_alloc (&pos->details.admin_add_incoming.wtid,
+                                               sizeof (struct TALER_WireTransferIdentifierRawP));
+      total++;
+    }
+  }
+  *rh = h;
+  return total;
+}
+
+
+/**
+ * Free history @a h of length @a h_len.
+ *
+ * @param h history array to free
+ * @param h_len number of entries in @a h
+ */
+static void
+free_history (struct History *h,
+              uint64_t h_len)
+{
+  for (uint64_t off = 0;off<h_len;off++)
+  {
+    GNUNET_free (h[off].details.wire_transfer_subject);
+    json_decref (h[off].details.account_details);
+  }
+  GNUNET_free_non_null (h);
+}
+
+
+/**
+ * Compute how many results we expect to be returned for
+ * the history command at @a is.
+ *
+ * @param is the interpreter state to inspect
+ * @return number of results expected
+ */
+static uint64_t
+compute_result_count (struct InterpreterState *is)
+{
+  uint64_t total;
+  struct History *h;
+
+  total = build_history (is,
+                         &h);
+  free_history (h,
+                total);
+  return total;
+}
+
+
+/**
+ * Check that @a dir and @a details are the transaction
+ * results we expect at offset @a off in the history of
+ * the current command executed by @a is
+ *
+ * @param is the interpreter state we are in
+ * @param off the offset of the result
+ * @param dir the direction of the transaction
+ * @param details the transaction details to check
+ * @return #GNUNET_OK if the transaction is what we expect
+ */
+static int
+check_result (struct InterpreterState *is,
+              unsigned int off,
+              enum TALER_BANK_Direction dir,
+              const struct TALER_BANK_TransferDetails *details)
+{
+  uint64_t total;
+  struct History *h;
+
+  total = build_history (is,
+                         &h);
+  if (off >= total)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Test says history has at most %u results, but got result #%u to check\n",
+                (unsigned int) total,
+                off);
+    free_history (h,
+                  total);
+    return GNUNET_SYSERR;
+  }
+  if (h[off].direction != dir)
+  {
+    GNUNET_break (0);
+    free_history (h,
+                  total);
+    return GNUNET_SYSERR;
+  }
+
+  if ( (0 != strcmp (h[off].details.wire_transfer_subject,
+                     details->wire_transfer_subject)) ||
+       (0 != TALER_amount_cmp (&h[off].details.amount,
+                               &details->amount)) ||
+       (1 != json_equal (h[off].details.account_details,
+                         details->account_details)) )
+  {
+    GNUNET_break (0);
+    free_history (h,
+                  total);
+    return GNUNET_SYSERR;
+  }
+  free_history (h,
+                total);
+  return GNUNET_OK;
+}
+
+
+/**
  * Run the main interpreter loop that performs bank operations.
  *
  * @param cls contains the `struct InterpreterState`
@@ -143,17 +447,20 @@ interpreter_run (void *cls);
  * @param cls closure with the interpreter state
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
+ * @param serial_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
 static void
 add_incoming_cb (void *cls,
                  unsigned int http_status,
+                 uint64_t serial_id,
                  const json_t *json)
 {
   struct InterpreterState *is = cls;
   struct TBI_Command *cmd = &is->commands[is->ip];
 
   cmd->details.admin_add_incoming.aih = NULL;
+  cmd->details.admin_add_incoming.serial_id = serial_id;
   if (cmd->details.admin_add_incoming.expected_response_code != http_status)
   {
     GNUNET_break (0);
@@ -203,12 +510,31 @@ history_cb (void *cls,
   if (MHD_HTTP_OK != http_status)
   {
     cmd->details.history.hh = NULL;
+    if ( (cmd->details.history.results_obtained !=
+          compute_result_count (is)) ||
+         (GNUNET_YES ==
+          cmd->details.history.failed) )
+    {
+      GNUNET_break (0);
+      fail (is);
+      return;
+    }
     is->ip++;
     is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
                                        is);
     return;
   }
-  /* FIXME: check history data is OK! (#4959) */
+  if (GNUNET_OK !=
+      check_result (is,
+                    cmd->details.history.results_obtained,
+                    dir,
+                    details))
+  {
+    GNUNET_break (0);
+    cmd->details.history.failed = GNUNET_YES;
+    return;
+  }
+  cmd->details.history.results_obtained++;
 }
 
 
@@ -227,6 +553,7 @@ interpreter_run (void *cls)
   struct TALER_Amount amount;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
   struct TALER_BANK_AuthenticationData auth;
+  uint64_t rowid;
 
   is->task = NULL;
   tc = GNUNET_SCHEDULER_get_task_context ();
@@ -280,13 +607,27 @@ interpreter_run (void *cls)
     }
     return;
   case TBI_OC_HISTORY:
+    if (NULL != cmd->details.history.start_row_ref)
+    {
+      ref = find_command (is,
+                          cmd->details.history.start_row_ref);
+      GNUNET_assert (NULL != ref);
+    }
+    else
+    {
+      ref = NULL;
+    }
+    if (NULL != ref)
+      rowid = ref->details.admin_add_incoming.serial_id;
+    else
+      rowid = UINT64_MAX;
     cmd->details.history.hh
       = TALER_BANK_history (is->ctx,
                             "http://localhost:8081",
                             &auth,
                             cmd->details.history.account_number,
                             cmd->details.history.direction,
-                            cmd->details.history.start_row,
+                            rowid,
                             cmd->details.history.num_results,
                             &history_cb,
                             is);
@@ -300,6 +641,7 @@ interpreter_run (void *cls)
   case TBI_OC_EXPECT_TRANSFER:
     ref = find_command (is,
                         cmd->details.expect_transfer.cmd_ref);
+    GNUNET_assert (NULL != ref);
     GNUNET_assert (GNUNET_OK ==
                    TALER_string_to_amount (ref->details.admin_add_incoming.amount,
                                            &amount));

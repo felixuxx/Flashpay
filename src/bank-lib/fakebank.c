@@ -80,7 +80,7 @@ struct Transaction
   /**
    * Number of this transaction.
    */
-  unsigned long long serial_id;
+  uint64_t serial_id;
 };
 
 
@@ -112,7 +112,7 @@ struct TALER_FAKEBANK_Handle
   /**
    * Number of transactions.
    */
-  unsigned long long serial_counter;
+  uint64_t serial_counter;
 };
 
 
@@ -337,12 +337,12 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
       return MHD_NO;
     }
     t->exchange_base_url = GNUNET_strdup (base_url);
-    t->serial_id = h->serial_counter++;
+    t->serial_id = ++h->serial_counter;
     t->date = GNUNET_TIME_absolute_get ();
     GNUNET_TIME_round_abs (&t->date);
-    GNUNET_CONTAINER_DLL_insert (h->transactions_head,
-                                 h->transactions_tail,
-                                 t);
+    GNUNET_CONTAINER_DLL_insert_tail (h->transactions_head,
+                                      h->transactions_tail,
+                                      t);
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Receiving incoming wire transfer: %llu->%llu from %s\n",
@@ -350,7 +350,36 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
               (unsigned long long) t->credit_account,
               t->exchange_base_url);
   json_decref (json);
-  resp = MHD_create_response_from_buffer (0, "", MHD_RESPMEM_PERSISTENT);
+
+  /* Finally build response object */
+  {
+    void *json_str;
+    size_t json_len;
+
+    json = json_pack ("{s:I}",
+                      "serial_id",
+                      (json_int_t) t->serial_id);
+    json_str = json_dumps (json,
+                           JSON_INDENT(2));
+    if (NULL == json_str)
+    {
+      GNUNET_break (0);
+      return MHD_NO;
+    }
+    json_len = strlen (json_str);
+    resp = MHD_create_response_from_buffer (json_len,
+                                            json_str,
+                                            MHD_RESPMEM_MUST_FREE);
+    if (NULL == resp)
+    {
+      GNUNET_break (0);
+      free (json_str);
+      return MHD_NO;
+    }
+    (void) MHD_add_response_header (resp,
+                                    MHD_HTTP_HEADER_CONTENT_TYPE,
+                                    "application/json");
+  }
   ret = MHD_queue_response (connection,
                             MHD_HTTP_OK,
                             resp);
@@ -395,7 +424,7 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
                                      "direction");
   start = MHD_lookup_connection_value (connection,
                                        MHD_GET_ARGUMENT_KIND,
-                                       "start");
+                                       "start_row");
   acc = MHD_lookup_connection_value (connection,
                                      MHD_GET_ARGUMENT_KIND,
                                      "account_number");
@@ -433,31 +462,40 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
   }
   if (NULL == dir)
     direction = TALER_BANK_DIRECTION_BOTH;
-  else if (0 == strcasecmp (dir, "CREDIT"))
+  else if (0 == strcasecmp (dir,
+                            "CREDIT"))
     direction = TALER_BANK_DIRECTION_CREDIT;
   else
     direction = TALER_BANK_DIRECTION_DEBIT;
   if (NULL == start)
-    start_number = (count > 0) ? 0 : UINT64_MAX;
-  if (UINT64_MAX == start_number)
   {
-    pos = h->transactions_tail;
+    if (count > 0)
+      pos = h->transactions_head;
+    else
+      pos = h->transactions_tail;
   }
   else
   {
-    unsigned long long off = 0;
-
+    if (NULL == h->transactions_head)
+    {
+      GNUNET_break (0);
+      return MHD_NO;
+    }
     for (pos = h->transactions_head;
-         off < start_number;
-         off++)
+         pos->serial_id != start_number;
+         pos = pos->next)
     {
       if (NULL == pos)
       {
         GNUNET_break (0);
         return MHD_NO;
       }
-      pos = pos->next;
     }
+    /* range is exclusive, skip the matching entry */
+    if (count > 0)
+      pos = pos->next;
+    if (count < 0)
+      pos = pos->prev;
   }
   history = json_array ();
   while ( (NULL != pos) &&
@@ -542,6 +580,9 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
       free (json_str);
       return MHD_NO;
     }
+    (void) MHD_add_response_header (resp,
+                                    MHD_HTTP_HEADER_CONTENT_TYPE,
+                                    "application/json");
     ret = MHD_queue_response (connection,
                               MHD_HTTP_OK,
                               resp);

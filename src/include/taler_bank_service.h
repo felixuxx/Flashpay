@@ -98,11 +98,13 @@ struct TALER_BANK_AdminAddIncomingHandle;
  * @param cls closure
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
+ * @param serial_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
 typedef void
 (*TALER_BANK_AdminAddIncomingResultCallback) (void *cls,
                                               unsigned int http_status,
+                                              uint64_t serial_id,
                                               const json_t *json);
 
 
@@ -188,22 +190,22 @@ struct TALER_BANK_HistoryHandle;
 struct TALER_BANK_TransferDetails
 {
   /**
-   * amount that was transferred
+   * Amount that was transferred
    */
   struct TALER_Amount amount;
 
   /**
-   * when did the transfer happen
+   * Time of the the transfer
    */
   struct GNUNET_TIME_Absolute execution_date;
 
   /**
-   * wire transfer subject
+   * Wire transfer subject
    */
-  const char *wire_transfer_subject;
+  char *wire_transfer_subject;
 
   /**
-   * what was the other account that was involved
+   * The other account that was involved
    */
   json_t *account_details;
 };
