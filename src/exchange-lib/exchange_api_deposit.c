@@ -463,6 +463,11 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                            "wire_transfer_deadline", GNUNET_JSON_from_time_abs (wire_deadline),
                            "coin_sig", GNUNET_JSON_from_data_auto (coin_sig)
                            );
+  if (NULL == deposit_obj)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
 
   dh = GNUNET_new (struct TALER_EXCHANGE_DepositHandle);
   dh->exchange = exchange;

@@ -187,6 +187,11 @@ TALER_EXCHANGE_admin_add_incoming (struct TALER_EXCHANGE_Handle *exchange,
                          "execution_date", GNUNET_JSON_from_time_abs (execution_date),
                          "sender_account_details", sender_account_details,
                          "transfer_details", transfer_details);
+  if (NULL == admin_obj)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   aai = GNUNET_new (struct TALER_EXCHANGE_AdminAddIncomingHandle);
   aai->exchange = exchange;
   aai->cb = res_cb;

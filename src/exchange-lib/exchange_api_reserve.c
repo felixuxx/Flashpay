@@ -1015,6 +1015,12 @@ TALER_EXCHANGE_reserve_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                             "reserve_pub", GNUNET_JSON_from_data_auto (&wsh->reserve_pub),
                             "reserve_sig", GNUNET_JSON_from_data_auto (&reserve_sig));
   GNUNET_free (coin_ev);
+  if (NULL == withdraw_obj)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+
 
   wsh->blinding_key = *blinding_key;
   wsh->url = MAH_path_to_url (exchange, "/reserve/withdraw");

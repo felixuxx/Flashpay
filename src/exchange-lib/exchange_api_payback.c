@@ -57,7 +57,7 @@ struct TALER_EXCHANGE_PaybackHandle
    * Denomination key of the coin.
    */
   const struct TALER_EXCHANGE_DenomPublicKey *pk;
-  
+
   /**
    * Handle for the request.
    */
@@ -306,7 +306,11 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
                            "coin_sig", GNUNET_JSON_from_data_auto (&coin_sig),
                            "coin_blind_key_secret", GNUNET_JSON_from_data_auto (blinding_key)
 			  );
-  GNUNET_assert (NULL != payback_obj);
+  if (NULL == payback_obj)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
 
   ph = GNUNET_new (struct TALER_EXCHANGE_PaybackHandle);
   ph->coin_pub = pr.coin_pub;

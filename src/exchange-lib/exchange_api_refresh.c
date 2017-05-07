@@ -1337,6 +1337,11 @@ TALER_EXCHANGE_refresh_melt (struct TALER_EXCHANGE_Handle *exchange,
                         "melt_coin", melt_coin,
                         "coin_evs", coin_evs,
                         "transfer_pubs", transfer_pubs);
+  if (NULL == melt_obj)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
 
   /* and now we can at last begin the actual request handling */
   rmh = GNUNET_new (struct TALER_EXCHANGE_RefreshMeltHandle);
@@ -1723,6 +1728,11 @@ TALER_EXCHANGE_refresh_reveal (struct TALER_EXCHANGE_Handle *exchange,
                           GNUNET_JSON_from_data_auto (&md->melt_session_hash),
                           "transfer_privs",
                           transfer_privs);
+  if (NULL == reveal_obj)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
 
   /* finally, we can actually issue the request */
   rrh = GNUNET_new (struct TALER_EXCHANGE_RefreshRevealHandle);

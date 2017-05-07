@@ -303,6 +303,11 @@ TALER_EXCHANGE_track_transaction (struct TALER_EXCHANGE_Handle *exchange,
                                 "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
                                 "merchant_pub", GNUNET_JSON_from_data_auto (&dtp.merchant),
                                 "merchant_sig", GNUNET_JSON_from_data_auto (&merchant_sig));
+  if (NULL == deposit_wtid_obj)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
 
   dwh = GNUNET_new (struct TALER_EXCHANGE_TrackTransactionHandle);
   dwh->exchange = exchange;
