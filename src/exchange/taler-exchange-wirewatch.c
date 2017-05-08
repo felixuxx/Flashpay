@@ -219,8 +219,6 @@ history_cb (void *cls,
   {
     hh = NULL;
 
-    /* FIXME: commit last_off to DB!?
-       (or just select via 'reserves_in' by SERIAL ID!?) */
     ret = db_plugin->commit (db_plugin->cls,
 			     session);
     if (GNUNET_OK == ret)
@@ -278,6 +276,7 @@ static void
 find_transfers (void *cls)
 {
   struct TALER_EXCHANGEDB_Session *session;
+  int ret;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking for incoming wire transfers\n");
@@ -300,8 +299,18 @@ find_transfers (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  /* FIXME: fetch start_off from DB! */
-
+  ret = db_plugin->get_latest_reserve_in_reference (db_plugin->cls,
+                                                    session,
+                                                    &start_off,
+                                                    &start_off_size);
+  if (GNUNET_SYSERR == ret)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to obtain starting point for montoring from database!\n");
+    global_ret = GNUNET_SYSERR;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
   delay = GNUNET_YES;
   hh = wire_plugin->get_history (wire_plugin->cls,
 				 TALER_BANK_DIRECTION_CREDIT,
