@@ -210,18 +210,17 @@ history_cb (void *cls,
 	    enum TALER_BANK_Direction dir,
 	    const void *row_off,
 	    size_t row_off_size,
-	    const struct TALER_BANK_TransferDetails *details)
+	    const struct TALER_WIRE_TransferDetails *details)
 {
   struct TALER_EXCHANGEDB_Session *session = cls;
   int ret;
-  struct TALER_ReservePublicKeyP reserve_pub;
 
   if (TALER_BANK_DIRECTION_NONE == dir)
   {
     hh = NULL;
 
-    /* FIXME: commit last_off to DB! */
-
+    /* FIXME: commit last_off to DB!?
+       (or just select via 'reserves_in' by SERIAL ID!?) */
     ret = db_plugin->commit (db_plugin->cls,
 			     session);
     if (GNUNET_OK == ret)
@@ -239,22 +238,10 @@ history_cb (void *cls,
 				       NULL);
     return GNUNET_OK; /* will be ignored anyway */
   }
-  /* TODO: We should expect a checksum! */
-  if (GNUNET_OK !=
-      GNUNET_STRINGS_string_to_data (details->wire_transfer_subject,
-				     strlen (details->wire_transfer_subject),
-				     &reserve_pub,
-				     sizeof (reserve_pub)))
-  {
-    /* FIXME: need way to wire money back immediately... */
-    GNUNET_break (0); // not implemented
-
-    return GNUNET_OK;
-  }
   // FIXME: create json!
   ret = db_plugin->reserves_in_insert (db_plugin->cls,
 				       session,
-				       &reserve_pub,
+				       &details->reserve_pub,
 				       &details->amount,
 				       details->execution_date,
 				       details->account_details,

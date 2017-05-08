@@ -818,16 +818,36 @@ bhist_cb (void *cls,
 {
   struct TALER_WIRE_HistoryHandle *whh = cls;
   uint64_t bserial_id = GNUNET_htonll (serial_id);
+  struct TALER_WIRE_TransferDetails wd;
 
   if (MHD_HTTP_OK == http_status)
   {
+    wd.amount = details->amount;
+    wd.execution_date = details->execution_date;
+    /* NOTE: For a real bank, the subject should include a checksum! */
+    if (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (details->wire_transfer_subject,
+                                       strlen (details->wire_transfer_subject),
+                                       &wd.reserve_pub,
+                                       sizeof (wd.reserve_pub)))
+    {
+      GNUNET_break (0);
+      /* NOTE: for a "real" bank, we would want to trigger logic to undo the
+         wire transfer. However, for the "demo" bank, it should currently
+         be "impossible" to do wire transfers with invalid subjects, and
+         equally we thus don't need to undo them (and there is no API to do
+         that nicely either right now). So we don't handle this case for now. */
+      return;
+    }
+    wd.account_details = details->account_details;
+
     if ( (NULL != whh->hres_cb) &&
 	 (GNUNET_OK !=
 	  whh->hres_cb (whh->hres_cb_cls,
 			dir,
 			&bserial_id,
 			sizeof (bserial_id),
-			details)) )
+			&wd)) )
       whh->hres_cb = NULL;
   }
   else

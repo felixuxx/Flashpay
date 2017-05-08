@@ -42,6 +42,35 @@ typedef void
 
 
 /**
+ * Details about a valid wire transfer to the exchange.
+ * It is the plugin's responsibility to filter and undo
+ * invalid transfers.
+ */
+struct TALER_WIRE_TransferDetails
+{
+  /**
+   * Amount that was transferred
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * Time of the the transfer
+   */
+  struct GNUNET_TIME_Absolute execution_date;
+
+  /**
+   * Reserve public key that was encoded in the wire transfer subject
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * The other account that was involved
+   */
+  json_t *account_details;
+};
+
+
+/**
  * Callbacks of this type are used to serve the result of asking
  * the bank for the transaction history.
  *
@@ -57,7 +86,7 @@ typedef int
                                      enum TALER_BANK_Direction dir,
                                      const void *row_off,
                                      size_t row_off_size,
-                                     const struct TALER_BANK_TransferDetails *details);
+                                     const struct TALER_WIRE_TransferDetails *details);
 
 
 /**
