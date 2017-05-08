@@ -80,6 +80,7 @@ run_transaction (const struct TALER_ReservePublicKeyP *reserve_pub,
 {
   int ret;
   struct TALER_EXCHANGEDB_Session *session;
+  void *json_str;
 
   session = plugin->get_session (plugin->cls);
   if (NULL == session)
@@ -89,15 +90,22 @@ run_transaction (const struct TALER_ReservePublicKeyP *reserve_pub,
     return GNUNET_SYSERR;
   }
   /* FIXME: maybe allow passing timestamp via command-line? */
+  json_str = json_dumps (tdetails,
+                         JSON_INDENT(2));
+  if (NULL == json_str)
+  {
+    GNUNET_break (0); /* out of memory? */
+    return GNUNET_SYSERR;
+  }
   ret = plugin->reserves_in_insert (plugin->cls,
                                     session,
                                     reserve_pub,
                                     add_value,
                                     GNUNET_TIME_absolute_get (),
                                     jdetails,
-                                    "FIXME",
-                                    5,
-                                    tdetails);
+                                    json_str,
+                                    strlen (json_str));
+  free (json_str);
   if (GNUNET_SYSERR == ret)
   {
     fprintf (stderr,

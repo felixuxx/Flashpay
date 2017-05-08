@@ -1867,6 +1867,7 @@ TEH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
 {
   struct TALER_EXCHANGEDB_Session *session;
   int ret;
+  void *json_str;
 
   if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
   {
@@ -1874,15 +1875,23 @@ TEH_DB_execute_admin_add_incoming (struct MHD_Connection *connection,
     return TEH_RESPONSE_reply_internal_db_error (connection,
 						 TALER_EC_DB_SETUP_FAILED);
   }
+  json_str = json_dumps (transfer_details,
+                         JSON_INDENT(2));
+  if (NULL == json_str)
+  {
+    GNUNET_break (0);
+    return TEH_RESPONSE_reply_internal_db_error (connection,
+						 TALER_EC_PARSER_OUT_OF_MEMORY);
+  }
   ret = TEH_plugin->reserves_in_insert (TEH_plugin->cls,
                                         session,
                                         reserve_pub,
                                         amount,
                                         execution_time,
                                         sender_account_details,
-                                        "FIXME",
-                                        5,
-                                        transfer_details);
+                                        json_str,
+                                        strlen (json_str));
+  free (json_str);
   if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);

@@ -1374,7 +1374,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           int ret;
           struct PERF_TALER_EXCHANGEDB_Reserve *reserve;
           json_t *sndr;
-          json_t *just;
+          uint32_t uid;
 
           reserve_index = state->cmd[state->i].details.insert_reserve.index_reserve;
           reserve = state->cmd[reserve_index].exposed.data.reserve;
@@ -1382,11 +1382,8 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
                             "account",
                             (int) GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
                                                             UINT32_MAX));
-          just = json_pack ("{s:i}",
-                            "justification",
-                            (int) GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                                            UINT32_MAX));
-          GNUNET_assert (NULL != just);
+          uid = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                          UINT32_MAX);
           GNUNET_assert (NULL != sndr);
           ret = state->plugin->reserves_in_insert (state->plugin->cls,
                                                    state->session,
@@ -1394,12 +1391,10 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
                                                    &reserve->reserve.balance,
                                                    GNUNET_TIME_absolute_get (),
                                                    sndr,
-                                                   "PERF",
-                                                   4,
-                                                   just);
+                                                   &uid,
+                                                   sizeof (uid));
           GNUNET_assert (GNUNET_SYSERR != ret);
           json_decref (sndr);
-          json_decref (just);
         }
         break;
 
@@ -1486,7 +1481,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
           dki_index     = state->cmd[state->i].details.create_withdraw.index_dki;
           reserve_index = state->cmd[state->i].details.create_withdraw.index_reserve;
           coin = PERF_TALER_EXCHANGEDB_coin_init (state->cmd[dki_index].exposed.data.dki,
-                                              state->cmd[reserve_index].exposed.data.reserve);
+                                                  state->cmd[reserve_index].exposed.data.reserve);
           GNUNET_assert (NULL != coin);
           state->cmd[state->i].exposed.data.coin = coin;
         }

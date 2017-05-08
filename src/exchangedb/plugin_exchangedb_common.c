@@ -44,8 +44,6 @@ common_free_reserve_history (void *cls,
       bt = rh->details.bank;
       if (NULL != bt->sender_account_details)
         json_decref (bt->sender_account_details);
-      if (NULL != bt->transfer_details)
-        json_decref (bt->transfer_details);
       GNUNET_free_non_null (bt->wire_reference);
       GNUNET_free (bt);
       break;

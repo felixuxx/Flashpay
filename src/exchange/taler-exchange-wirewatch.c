@@ -238,7 +238,6 @@ history_cb (void *cls,
 				       NULL);
     return GNUNET_OK; /* will be ignored anyway */
   }
-  // FIXME: create json!
   ret = db_plugin->reserves_in_insert (db_plugin->cls,
 				       session,
 				       &details->reserve_pub,
@@ -246,8 +245,7 @@ history_cb (void *cls,
 				       details->execution_date,
 				       details->account_details,
                                        row_off,
-                                       row_off_size,
-				       NULL /* FIXME */);
+                                       row_off_size);
   if (GNUNET_OK != ret)
   {
     GNUNET_break (0);

@@ -772,7 +772,8 @@ compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
                                             json_pack ("{s:s, s:O, s:O, s:o}",
                                                        "type", "DEPOSIT",
                                                        "sender_account_details", pos->details.bank->sender_account_details,
-                                                       "transfer_details", pos->details.bank->transfer_details,
+                                                       "wire_reference", GNUNET_JSON_from_data (pos->details.bank->wire_reference,
+                                                                                                pos->details.bank->wire_reference_size),
                                                        "amount", TALER_JSON_from_amount (&pos->details.bank->amount))));
       break;
     case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:

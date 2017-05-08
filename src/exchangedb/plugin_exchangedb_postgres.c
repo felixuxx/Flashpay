@@ -357,7 +357,6 @@ postgres_create_tables (void *cls)
           ",credit_frac INT4 NOT NULL"
           ",credit_curr VARCHAR("TALER_CURRENCY_LEN_STR") NOT NULL"
           ",sender_account_details TEXT NOT NULL"
-          ",transfer_details TEXT NOT NULL"
           ",execution_date INT8 NOT NULL"
           ",PRIMARY KEY (reserve_pub, wire_reference)"
           ");");
@@ -764,11 +763,10 @@ postgres_prepare (PGconn *db_conn)
            ",credit_frac"
            ",credit_curr"
            ",sender_account_details"
-           ",transfer_details"
            ",execution_date"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8);",
-           8, NULL);
+           "($1, $2, $3, $4, $5, $6, $7);",
+           7, NULL);
 
 
   /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
@@ -782,7 +780,6 @@ postgres_prepare (PGconn *db_conn)
            ",credit_curr"
            ",execution_date"
            ",sender_account_details"
-           ",transfer_details"
            ",reserve_in_serial_id"
            " FROM reserves_in"
            " WHERE reserve_in_serial_id>=$1"
@@ -799,7 +796,6 @@ postgres_prepare (PGconn *db_conn)
            ",credit_curr"
            ",execution_date"
            ",sender_account_details"
-           ",transfer_details"
            " FROM reserves_in"
            " WHERE reserve_pub=$1",
            1, NULL);
@@ -2080,7 +2076,6 @@ reserves_update (void *cls,
  * @param sender_account_details account information for the sender
  * @param wire_reference unique reference identifying the wire transfer (binary blob)
  * @param wire_reference_size number of bytes in @a wire_reference
- * @param transfer_details information that uniquely identifies the transfer
  * @return #GNUNET_OK upon success; #GNUNET_NO if the given
  *         @a details are already known for this @a reserve_pub,
  *         #GNUNET_SYSERR upon failures (DB error, incompatible currency)
@@ -2093,8 +2088,7 @@ postgres_reserves_in_insert (void *cls,
                              struct GNUNET_TIME_Absolute execution_time,
                              const json_t *sender_account_details,
                              const void *wire_reference,
-                             size_t wire_reference_size,
-                             const json_t *transfer_details)
+                             size_t wire_reference_size)
 {
   struct PostgresClosure *pg = cls;
   PGresult *result;
@@ -2178,7 +2172,6 @@ postgres_reserves_in_insert (void *cls,
                                         wire_reference_size),
       TALER_PQ_query_param_amount (balance),
       TALER_PQ_query_param_json (sender_account_details),
-      TALER_PQ_query_param_json (transfer_details),
       GNUNET_PQ_query_param_absolute_time (&execution_time),
       GNUNET_PQ_query_param_end
     };
@@ -2479,8 +2472,6 @@ postgres_get_reserve_history (void *cls,
                                               &bt->execution_date),
           TALER_PQ_result_spec_json ("sender_account_details",
                                      &bt->sender_account_details),
-          TALER_PQ_result_spec_json ("transfer_details",
-                                     &bt->transfer_details),
           GNUNET_PQ_result_spec_end
         };
         if (GNUNET_OK !=
@@ -5369,7 +5360,7 @@ postgres_start_deferred_wire_out (void *cls,
  * @param session database connection
  * @param date time of the wire transfer
  * @param wtid subject of the wire transfer
- * @param wire details about the receiver account of the wire transfer
+ * @param wire_account details about the receiver account of the wire transfer
  * @param amount amount that was transmitted
  * @return #GNUNET_OK on success
  *         #GNUNET_SYSERR on DB errors
@@ -5379,14 +5370,14 @@ postgres_store_wire_transfer_out (void *cls,
                                   struct TALER_EXCHANGEDB_Session *session,
                                   struct GNUNET_TIME_Absolute date,
                                   const struct TALER_WireTransferIdentifierRawP *wtid,
-                                  const json_t *wire,
+                                  const json_t *wire_account,
                                   const struct TALER_Amount *amount)
 {
   PGresult *result;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_absolute_time (&date),
     GNUNET_PQ_query_param_auto_from_type (wtid),
-    TALER_PQ_query_param_json (wire),
+    TALER_PQ_query_param_json (wire_account),
     TALER_PQ_query_param_amount (amount),
     GNUNET_PQ_query_param_end
   };
@@ -5840,7 +5831,6 @@ postgres_select_reserves_in_above_serial_id (void *cls,
     struct TALER_ReservePublicKeyP reserve_pub;
     struct TALER_Amount credit;
     json_t *sender_account_details;
-    json_t *transfer_details;
     struct GNUNET_TIME_Absolute execution_date;
     uint64_t rowid;
     void *wire_reference;
@@ -5858,8 +5848,6 @@ postgres_select_reserves_in_above_serial_id (void *cls,
                                           &execution_date),
       TALER_PQ_result_spec_json ("sender_account_details",
                                  &sender_account_details),
-      TALER_PQ_result_spec_json ("transfer_details",
-                                 &transfer_details),
       GNUNET_PQ_result_spec_uint64 ("reserve_in_serial_id",
                                     &rowid),
       GNUNET_PQ_result_spec_end
@@ -5879,7 +5867,6 @@ postgres_select_reserves_in_above_serial_id (void *cls,
               &reserve_pub,
               &credit,
               sender_account_details,
-              transfer_details,
               wire_reference,
               wire_reference_size,
               execution_date);

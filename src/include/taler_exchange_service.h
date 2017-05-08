@@ -711,9 +711,14 @@ struct TALER_EXCHANGE_ReserveHistory
       json_t *sender_account_details;
 
       /**
-       * Wire transfer details for the incoming transfer.
+       * Information that uniquely identifies the wire transfer.
        */
-      json_t *transfer_details;
+      void *wire_reference;
+
+      /**
+       * Number of bytes stored in @e wire_reference.
+       */
+      size_t wire_reference_size;
 
     } in_details;
 

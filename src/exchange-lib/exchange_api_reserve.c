@@ -138,7 +138,17 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
                          "DEPOSIT"))
     {
       json_t *wire_account;
-      json_t *transfer;
+      void *wire_reference;
+      size_t wire_reference_size;
+
+      struct GNUNET_JSON_Specification withdraw_spec[] = {
+        GNUNET_JSON_spec_varsize ("wire_reference",
+                                  &wire_reference,
+                                  &wire_reference_size),
+        GNUNET_JSON_spec_json ("sender_account_details",
+                               &wire_account),
+        GNUNET_JSON_spec_end()
+      };
 
       rhistory[off].type = TALER_EXCHANGE_RTT_DEPOSIT;
       if (GNUNET_OK !=
@@ -150,33 +160,17 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      wire_account = json_object_get (transaction,
-                                      "sender_account_details");
-      /* check 'wire_account' is a JSON object (no need to check wireformat,
-         but we do at least expect "some" JSON object here) */
-      if ( (NULL == wire_account) ||
-           (! json_is_object (wire_account)) )
-      {
-        /* not even a JSON 'wire' specification, not acceptable */
-        GNUNET_break_op (0);
-        if (NULL != wire_account)
-          json_decref (wire_account);
-        return GNUNET_SYSERR;
-      }
-      transfer = json_object_get (transaction,
-                                  "transfer_details");
-      /* check 'transfer' is a JSON object */
-      if ( (NULL == transfer) ||
-           (! json_is_object (transfer)) )
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (transaction,
+                             withdraw_spec,
+                             NULL, NULL))
       {
         GNUNET_break_op (0);
-        json_decref (wire_account);
-        if (NULL != transfer)
-          json_decref (transfer);
         return GNUNET_SYSERR;
       }
       rhistory[off].details.in_details.sender_account_details = wire_account;
-      rhistory[off].details.in_details.transfer_details = transfer;
+      rhistory[off].details.in_details.wire_reference = wire_reference;
+      rhistory[off].details.in_details.wire_reference_size = wire_reference_size;
       /* end type==DEPOSIT */
     }
     else if (0 == strcasecmp (type,

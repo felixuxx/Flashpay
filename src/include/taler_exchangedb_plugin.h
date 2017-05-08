@@ -56,12 +56,6 @@ struct TALER_EXCHANGEDB_BankTransfer
   json_t *sender_account_details;
 
   /**
-   * Detailed wire transfer information that uniquely identifies the
-   * wire transfer.
-   */
-  json_t *transfer_details;
-
-  /**
    * Data uniquely identifying the wire transfer (wire transfer-type specific)
    */
   void *wire_reference;
@@ -809,7 +803,6 @@ typedef int
  * @param reserve_pub public key of the reserve (also the WTID)
  * @param credit amount that was received
  * @param sender_account_details information about the sender's bank account
- * @param transfer_details information that uniquely identifies the wire transfer
  * @param wire_reference unique identifier for the wire transfer (plugin-specific format)
  * @param wire_reference_size number of bytes in @a wire_reference
  * @param execution_date when did we receive the funds
@@ -821,7 +814,6 @@ typedef int
                                       const struct TALER_ReservePublicKeyP *reserve_pub,
                                       const struct TALER_Amount *credit,
                                       const json_t *sender_account_details,
-                                      const json_t *transfer_details,
                                       const void *wire_reference,
                                       size_t wire_reference_size,
                                       struct GNUNET_TIME_Absolute execution_date);
@@ -1197,7 +1189,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param sender_account_details information about the sender's bank account
    * @param wire_reference unique reference identifying the wire transfer (binary blob)
    * @param wire_reference_size number of bytes in @a wire_reference
-   * @param transfer_details information that uniquely identifies the wire transfer
    * @return #GNUNET_OK upon success; #GNUNET_NO if the given
    *         @a details are already known for this @a reserve_pub,
    *         #GNUNET_SYSERR upon failures (DB error, incompatible currency)
@@ -1210,8 +1201,7 @@ struct TALER_EXCHANGEDB_Plugin
                          struct GNUNET_TIME_Absolute execution_time,
                          const json_t *sender_account_details,
                          const void *wire_reference,
-                         size_t wire_reference_size,
-                         const json_t *transfer_details);
+                         size_t wire_reference_size);
 
 
   /**
@@ -1938,7 +1928,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database connection
    * @param date time of the wire transfer
    * @param wtid subject of the wire transfer
-   * @param wire details about the receiver account of the wire transfer
+   * @param wire_account details about the receiver account of the wire transfer
    * @param amount amount that was transmitted
    * @return #GNUNET_OK on success
    *         #GNUNET_SYSERR on DB errors
@@ -1948,7 +1938,7 @@ struct TALER_EXCHANGEDB_Plugin
                              struct TALER_EXCHANGEDB_Session *session,
                              struct GNUNET_TIME_Absolute date,
                              const struct TALER_WireTransferIdentifierRawP *wtid,
-                             const json_t *wire,
+                             const json_t *wire_account,
                              const struct TALER_Amount *amount);
 
 

@@ -1032,7 +1032,6 @@ audit_refund_cb (void *cls,
  * @param reserve_pub public key of the reserve (also the WTID)
  * @param credit amount that was received
  * @param sender_account_details information about the sender's bank account
- * @param transfer_details information that uniquely identifies the wire transfer
  * @param wire_reference unique reference identifying the wire transfer (binary blob)
  * @param wire_reference_size number of bytes in @a wire_reference
  * @param execution_date when did we receive the funds
@@ -1044,7 +1043,6 @@ audit_reserve_in_cb (void *cls,
                      const struct TALER_ReservePublicKeyP *reserve_pub,
                      const struct TALER_Amount *credit,
                      const json_t *sender_account_details,
-                     const json_t *transfer_details,
                      const void *wire_reference,
                      size_t wire_reference_size,
                      struct GNUNET_TIME_Absolute execution_date)
@@ -1436,7 +1434,6 @@ run (void *cls)
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_EXCHANGEDB_TransactionList *tlp;
   json_t *wire;
-  json_t *just;
   json_t *sndr;
   unsigned int matched;
   const char * const json_wire_str =
@@ -1506,8 +1503,6 @@ run (void *cls)
   result = 4;
   sndr = json_loads ("{ \"account\":\"1\" }", 0, NULL);
   GNUNET_assert (NULL != sndr);
-  just = json_loads ("{ \"justification\":\"1\" }", 0, NULL);
-  GNUNET_assert (NULL != just);
   FAILIF (GNUNET_OK !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
@@ -1516,16 +1511,13 @@ run (void *cls)
                                       GNUNET_TIME_absolute_get (),
                                       sndr,
                                       "TEST",
-                                      4,
-				      just));
-  json_decref (just);
+                                      4));
   FAILIF (GNUNET_OK !=
           check_reserve (session,
                          &reserve_pub,
                          value.value,
                          value.fraction,
                          value.currency));
-  just = json_loads ("{ \"justification\":\"2\" }", 0, NULL);
   FAILIF (GNUNET_OK !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
@@ -1534,9 +1526,7 @@ run (void *cls)
                                       GNUNET_TIME_absolute_get (),
 				      sndr,
                                       "TEST2",
-                                      5,
-                                      just));
-  json_decref (just);
+                                      5));
   json_decref (sndr);
   FAILIF (GNUNET_OK !=
           check_reserve (session,
@@ -1672,7 +1662,6 @@ run (void *cls)
       FAILIF (1000 != bt->amount.fraction);
       FAILIF (0 != strcmp (CURRENCY, bt->amount.currency));
       FAILIF (NULL == bt->sender_account_details);
-      FAILIF (NULL == bt->transfer_details);
       break;
     case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:
       withdraw = rh_head->details.withdraw;
