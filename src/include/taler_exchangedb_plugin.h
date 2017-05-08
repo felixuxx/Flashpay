@@ -1205,6 +1205,23 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Obtain the most recent @a wire_reference that was inserted via @e reserves_in_insert.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param db the database connection handle
+   * @param[out] wire_reference set to unique reference identifying the wire transfer (binary blob)
+   * @param[out] wire_reference_size set to number of bytes in @a wire_reference
+   * @return #GNUNET_OK upon success; #GNUNET_NO if we never got any incoming transfers
+   *         #GNUNET_SYSERR upon failures (DB error)
+   */
+  int
+  (*get_latest_reserve_in_reference)(void *cls,
+                                     struct TALER_EXCHANGEDB_Session *db,
+                                     void **wire_reference,
+                                     size_t *wire_reference_size);
+
+
+  /**
    * Locate the response for a /withdraw request under the
    * key of the hash of the blinded message.
    *

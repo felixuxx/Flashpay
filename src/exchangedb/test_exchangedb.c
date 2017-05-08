@@ -1445,6 +1445,8 @@ run (void *cls)
 \"r\":123456789,                                     \
 \"address\": \"foobar\"}";
   unsigned int cnt;
+  void *rr;
+  size_t rr_size;
 
   dkp = NULL;
   rh = NULL;
@@ -1503,6 +1505,11 @@ run (void *cls)
   result = 4;
   sndr = json_loads ("{ \"account\":\"1\" }", 0, NULL);
   GNUNET_assert (NULL != sndr);
+  FAILIF (GNUNET_NO !=
+          plugin->get_latest_reserve_in_reference (plugin->cls,
+                                                   session,
+                                                   &rr,
+                                                   &rr_size));
   FAILIF (GNUNET_OK !=
           plugin->reserves_in_insert (plugin->cls,
                                       session,
@@ -1512,6 +1519,14 @@ run (void *cls)
                                       sndr,
                                       "TEST",
                                       4));
+  FAILIF (GNUNET_OK !=
+          plugin->get_latest_reserve_in_reference (plugin->cls,
+                                                   session,
+                                                   &rr,
+                                                   &rr_size));
+  FAILIF (4 != rr_size);
+  FAILIF (0 != memcmp ("TEST", rr, 4));
+  GNUNET_free (rr);
   FAILIF (GNUNET_OK !=
           check_reserve (session,
                          &reserve_pub,
@@ -1527,6 +1542,19 @@ run (void *cls)
 				      sndr,
                                       "TEST2",
                                       5));
+  FAILIF (GNUNET_OK !=
+          plugin->get_latest_reserve_in_reference (plugin->cls,
+                                                   session,
+                                                   &rr,
+                                                   &rr_size));
+  FAILIF (GNUNET_OK !=
+          plugin->get_latest_reserve_in_reference (plugin->cls,
+                                                   session,
+                                                   &rr,
+                                                   &rr_size));
+  FAILIF (5 != rr_size);
+  FAILIF (0 != memcmp ("TEST2", rr, 5));
+  GNUNET_free (rr);
   json_decref (sndr);
   FAILIF (GNUNET_OK !=
           check_reserve (session,

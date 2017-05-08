@@ -771,6 +771,15 @@ postgres_prepare (PGconn *db_conn)
 
   /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
      transactions for reserves with serial id '\geq' the given parameter */
+  PREPARE ("reserves_in_get_latest_wire_reference",
+           "SELECT"
+           " wire_reference"
+           " FROM reserves_in"
+           " ORDER BY reserve_in_serial_id DESC LIMIT 1",
+           0, NULL);
+
+  /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
+     transactions for reserves with serial id '\geq' the given parameter */
   PREPARE ("audit_reserves_in_get_transactions_incr",
            "SELECT"
            " reserve_pub"
@@ -2247,6 +2256,66 @@ postgres_reserves_in_insert (void *cls,
   postgres_rollback (cls,
                      session);
   return GNUNET_SYSERR;
+}
+
+
+/**
+ * Obtain the most recent @a wire_reference that was inserted via @e reserves_in_insert.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session the database session handle
+ * @param[out] wire_reference set to unique reference identifying the wire transfer (binary blob)
+ * @param[out] wire_reference_size set to number of bytes in @a wire_reference
+ * @return #GNUNET_OK upon success; #GNUNET_NO if we never got any incoming transfers
+ *         #GNUNET_SYSERR upon failures (DB error)
+ */
+static int
+postgres_get_latest_reserve_in_reference (void *cls,
+                                          struct TALER_EXCHANGEDB_Session *session,
+                                          void **wire_reference,
+                                          size_t *wire_reference_size)
+{
+  PGresult *result;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_end
+  };
+  int ret;
+
+  ret = GNUNET_SYSERR;
+  result = GNUNET_PQ_exec_prepared (session->conn,
+                                    "reserves_in_get_latest_wire_reference",
+                                    params);
+  if (PGRES_TUPLES_OK != PQresultStatus (result))
+  {
+    QUERY_ERR (result, session->conn);
+    goto cleanup;
+  }
+  if (0 == PQntuples (result))
+  {
+    ret = GNUNET_NO;
+    goto cleanup;
+  }
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_variable_size ("wire_reference",
+                                           wire_reference,
+                                           wire_reference_size),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  0))
+    {
+      GNUNET_break (0);
+      goto cleanup;
+    }
+  }
+  ret = GNUNET_OK;
+ cleanup:
+  PQclear (result);
+  return ret;
 }
 
 
@@ -6657,6 +6726,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->get_denomination_info = &postgres_get_denomination_info;
   plugin->reserve_get = &postgres_reserve_get;
   plugin->reserves_in_insert = &postgres_reserves_in_insert;
+  plugin->get_latest_reserve_in_reference = &postgres_get_latest_reserve_in_reference;
   plugin->get_withdraw_info = &postgres_get_withdraw_info;
   plugin->insert_withdraw_info = &postgres_insert_withdraw_info;
   plugin->get_reserve_history = &postgres_get_reserve_history;

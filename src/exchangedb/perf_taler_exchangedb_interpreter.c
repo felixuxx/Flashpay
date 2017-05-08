@@ -1476,7 +1476,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
         {
           unsigned int dki_index;
           unsigned int reserve_index;
-          struct PERF_TALER_EXCHANGEDB_Coin *coin ;
+          struct PERF_TALER_EXCHANGEDB_Coin *coin;
 
           dki_index     = state->cmd[state->i].details.create_withdraw.index_dki;
           reserve_index = state->cmd[state->i].details.create_withdraw.index_reserve;
@@ -1491,7 +1491,7 @@ interpret (struct PERF_TALER_EXCHANGEDB_interpreter_state *state)
         {
           unsigned int coin_index;
           int ret;
-          struct PERF_TALER_EXCHANGEDB_Coin *coin ;
+          struct PERF_TALER_EXCHANGEDB_Coin *coin;
 
           coin_index = state->cmd[state->i].details.insert_withdraw.index_coin;
           coin = state->cmd[coin_index].exposed.data.coin;
