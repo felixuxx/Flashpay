@@ -371,7 +371,7 @@ postgres_create_tables (void *cls)
           "(close_uuid BIGSERIAL PRIMARY KEY"
           ",reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE"
 	  ",execution_date INT8 NOT NULL"
-	  ",transfer_details BYTEA NOT NULL CHECK (LENGTH(transfer_details)=32)"
+	  ",wtid BYTEA NOT NULL CHECK (LENGTH(wtid)=32)"
           ",receiver_account TEXT NOT NULL"
           ",amount_val INT8 NOT NULL"
           ",amount_frac INT4 NOT NULL"
@@ -733,7 +733,7 @@ postgres_prepare (PGconn *db_conn)
 	   "INSERT INTO reserves_close "
 	   "(reserve_pub"
 	   ",execution_date"
-	   ",transfer_details"
+	   ",wtid"
 	   ",receiver_account"
 	   ",amount_val"
 	   ",amount_frac"
@@ -1542,7 +1542,7 @@ postgres_prepare (PGconn *db_conn)
            " close_uuid"
            ",reserve_pub"
            ",execution_date"
-           ",transfer_details"
+           ",wtid"
            ",receiver_account"
            ",amount_val"
            ",amount_frac"
@@ -1585,7 +1585,7 @@ postgres_prepare (PGconn *db_conn)
            ",closing_fee_curr"
 	   ",execution_date"
 	   ",receiver_account"
-	   ",transfer_details"
+	   ",wtid"
            " FROM reserves_close"
            " WHERE reserve_pub=$1;",
            1, NULL);
@@ -2671,8 +2671,8 @@ postgres_get_reserve_history (void *cls,
                                                &closing->execution_date),
           TALER_PQ_result_spec_json ("receiver_account",
 				     &closing->receiver_account_details),
-          GNUNET_PQ_result_spec_auto_from_type ("transfer_details",
-						&closing->transfer_details),
+          GNUNET_PQ_result_spec_auto_from_type ("wtid",
+						&closing->wtid),
           GNUNET_PQ_result_spec_end
         };
         if (GNUNET_OK !=
@@ -5082,7 +5082,7 @@ postgres_get_expired_reserves (void *cls,
  * @param reserve_pub which reserve is this about?
  * @param execution_date when did we perform the transfer?
  * @param receiver_account to which account do we transfer?
- * @param transfer_details wire transfer details
+ * @param wtid wire transfer details
  * @param amount_with_fee amount we charged to the reserve
  * @param closing_fee how high is the closing fee
  * @return #GNUNET_OK on success, #GNUNET_NO if the record exists,
@@ -5094,7 +5094,7 @@ postgres_insert_reserve_closed (void *cls,
 				const struct TALER_ReservePublicKeyP *reserve_pub,
 				struct GNUNET_TIME_Absolute execution_date,
 				const json_t *receiver_account,
-				const struct TALER_WireTransferIdentifierRawP *transfer_details,
+				const struct TALER_WireTransferIdentifierRawP *wtid,
 				const struct TALER_Amount *amount_with_fee,
 				const struct TALER_Amount *closing_fee)
 {
@@ -5102,7 +5102,7 @@ postgres_insert_reserve_closed (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_absolute_time (&execution_date),
-    GNUNET_PQ_query_param_auto_from_type (transfer_details),
+    GNUNET_PQ_query_param_auto_from_type (wtid),
     TALER_PQ_query_param_json (receiver_account),
     TALER_PQ_query_param_amount (amount_with_fee),
     TALER_PQ_query_param_amount (closing_fee),
@@ -6261,7 +6261,7 @@ postgres_select_reserve_closed_above_serial_id (void *cls,
                                             &reserve_pub),
       GNUNET_PQ_result_spec_absolute_time ("execution_date",
                                            &execution_date),
-      GNUNET_PQ_result_spec_auto_from_type ("transfer_details",
+      GNUNET_PQ_result_spec_auto_from_type ("wtid",
 					    &wtid),
       TALER_PQ_result_spec_json ("receiver_account",
 				 &receiver_account),

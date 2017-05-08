@@ -335,7 +335,7 @@ parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
       struct GNUNET_JSON_Specification closing_spec[] = {
         GNUNET_JSON_spec_json ("receiver_account_details",
 			       &rhistory[off].details.close_details.receiver_account_details),
-        GNUNET_JSON_spec_fixed_auto ("wire_transfer",
+        GNUNET_JSON_spec_fixed_auto ("wtid",
 				     &rhistory[off].details.close_details.wtid),
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
                                      &rhistory[off].details.close_details.exchange_sig),

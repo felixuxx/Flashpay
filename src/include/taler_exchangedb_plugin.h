@@ -110,7 +110,7 @@ struct TALER_EXCHANGEDB_ClosingTransfer
    * Detailed wire transfer information that uniquely identifies the
    * wire transfer.
    */
-  struct TALER_WireTransferIdentifierRawP transfer_details;
+  struct TALER_WireTransferIdentifierRawP wtid;
 
 };
 
@@ -994,7 +994,7 @@ typedef int
  * @param closing_fee how much did we charge for closing the reserve
  * @param reserve_pub public key of the reserve
  * @param receiver_account where did we send the funds
- * @param transfer_details details about the wire transfer
+ * @param wtid identifier used for the wire transfer
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef int
@@ -1005,7 +1005,7 @@ typedef int
 					  const struct TALER_Amount *closing_fee,
 					  const struct TALER_ReservePublicKeyP *reserve_pub,
 					  const json_t *receiver_account,
-					  const struct TALER_WireTransferIdentifierRawP *transfer_details);
+					  const struct TALER_WireTransferIdentifierRawP *wtid);
 
 
 /**
@@ -1848,7 +1848,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param reserve_pub which reserve is this about?
    * @param execution_date when did we perform the transfer?
    * @param receiver_account to which account do we transfer?
-   * @param transfer_details wire transfer details
+   * @param wtid identifier for the wire transfer
    * @param amount_with_fee amount we charged to the reserve
    * @param closing_fee how high is the closing fee
    * @return #GNUNET_OK on success, #GNUNET_NO if the record exists,
@@ -1860,7 +1860,7 @@ struct TALER_EXCHANGEDB_Plugin
 			   const struct TALER_ReservePublicKeyP *reserve_pub,
 			   struct GNUNET_TIME_Absolute execution_date,
 			   const json_t *receiver_account,
-			   const struct TALER_WireTransferIdentifierRawP *transfer_details,
+			   const struct TALER_WireTransferIdentifierRawP *wtid,
 			   const struct TALER_Amount *amount_with_fee,
 			   const struct TALER_Amount *closing_fee);
 

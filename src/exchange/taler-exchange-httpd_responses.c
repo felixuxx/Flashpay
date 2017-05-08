@@ -886,7 +886,7 @@ compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
 	rcc.reserve_pub = pos->details.closing->reserve_pub;
 	TALER_JSON_hash (pos->details.closing->receiver_account_details,
 			 &rcc.h_wire);
-	rcc.wtid = pos->details.closing->transfer_details;
+	rcc.wtid = pos->details.closing->wtid;
 	TEH_KS_sign (&rcc.purpose,
 		     &pub,
 		     &sig);
@@ -895,7 +895,7 @@ compile_reserve_history (const struct TALER_EXCHANGEDB_ReserveHistory *rh,
 					      json_pack ("{s:s, s:O, s:o, s:o, s:o, s:o, s:o, s:o}",
 							 "type", "CLOSING",
 							 "receiver_account_details", pos->details.closing->receiver_account_details,
-							 "transfer_details", GNUNET_JSON_from_data_auto (&pos->details.closing->transfer_details),
+							 "wtid", GNUNET_JSON_from_data_auto (&pos->details.closing->wtid),
 							 "exchange_pub", GNUNET_JSON_from_data_auto (&pub),
 							 "exchange_sig", GNUNET_JSON_from_data_auto (&sig),
 							 "timestamp", GNUNET_JSON_from_time_abs (pos->details.closing->execution_date),

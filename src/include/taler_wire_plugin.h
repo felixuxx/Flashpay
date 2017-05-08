@@ -81,11 +81,13 @@ struct TALER_WIRE_HistoryHandle;
  *
  * @param cls closure
  * @param success #GNUNET_OK on success, #GNUNET_SYSERR on failure
+ * @param serial_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
  * @param emsg NULL on success, otherwise an error message
  */
 typedef void
 (*TALER_WIRE_ConfirmationCallback)(void *cls,
                                    int success,
+                                   uint64_t serial_id,
                                    const char *emsg);
 
 

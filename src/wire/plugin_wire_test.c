@@ -553,11 +553,13 @@ test_prepare_wire_transfer (void *cls,
  * @param cls closure with the `struct TALER_WIRE_ExecuteHandle`
  * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
  *                    0 if the bank's reply is bogus (fails to follow the protocol)
+ * @param serial_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
  * @param json detailed response from the HTTPD, or NULL if reply was not JSON
  */
 static void
 execute_cb (void *cls,
             unsigned int http_status,
+            uint64_t serial_id,
             const json_t *json)
 {
   struct TALER_WIRE_ExecuteHandle *eh = cls;
@@ -585,6 +587,7 @@ execute_cb (void *cls,
                      http_status);
   eh->cc (eh->cc_cls,
           (MHD_HTTP_OK == http_status) ? GNUNET_OK : GNUNET_SYSERR,
+          serial_id,
           (MHD_HTTP_OK == http_status) ? NULL : s);
   GNUNET_free (s);
   GNUNET_free (eh);
@@ -825,7 +828,7 @@ bhist_cb (void *cls,
 			&bserial_id,
 			sizeof (bserial_id),
 			details)) )
-      whh->hres_cb = NULL;    
+      whh->hres_cb = NULL;
   }
   else
   {

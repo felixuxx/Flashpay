@@ -48,7 +48,7 @@ struct WirePlugin
    * Handle to the plugin.
    */
   struct TALER_WIRE_Plugin *wire_plugin;
-  
+
   /**
    * Name of the plugin.
    */
@@ -745,7 +745,7 @@ prepare_close_cb (void *cls,
 		  const char *buf,
 		  size_t buf_size)
 {
-  GNUNET_assert (cls == ctc);  
+  GNUNET_assert (cls == ctc);
   ctc->ph = NULL;
   if (NULL == buf)
   {
@@ -801,7 +801,7 @@ prepare_close_cb (void *cls,
  * Function called with details about expired reserves.
  * We trigger the reserve closure by inserting the respective
  * closing record and prewire instructions into the respective
- * tables. 
+ * tables.
  *
  * @param cls a `struct TALER_EXCHANGEDB_Session *`
  * @param reserve_pub public key of the reserve
@@ -851,7 +851,7 @@ expired_reserve_cb (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_SYSERR;
   }
-  
+
   /* lookup `closing_fee` */
   if (GNUNET_OK !=
       update_fees (wp,
@@ -973,7 +973,7 @@ run_reserve_closures (void *cls)
   struct TALER_EXCHANGEDB_Session *session;
   int ret;
   const struct GNUNET_SCHEDULER_TaskContext *tc;
-  
+
   task = NULL;
   reserves_idle = GNUNET_NO;
   tc = GNUNET_SCHEDULER_get_task_context ();
@@ -1370,11 +1370,13 @@ prepare_cb (void *cls,
  *
  * @param cls NULL
  * @param success #GNUNET_OK on success, #GNUNET_SYSERR on failure
+ * @param serial_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
  * @param emsg NULL on success, otherwise an error message
  */
 static void
 wire_confirm_cb (void *cls,
                  int success,
+                 uint64_t serial_id,
                  const char *emsg)
 {
   struct TALER_EXCHANGEDB_Session *session = wpd->session;
