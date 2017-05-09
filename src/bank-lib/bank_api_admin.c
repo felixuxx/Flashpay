@@ -199,6 +199,18 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
   aai->request_url = TALER_BANK_path_to_url_ (bank_base_url,
                                               "/admin/add/incoming");
   aai->authh = TALER_BANK_make_auth_header_ (auth);
+  /* Append content type header here, can't do it in GNUNET_CURL_job_add
+     as that would override the CURLOPT_HTTPHEADER instead of appending. */
+  {
+    struct curl_slist *ext;
+
+    ext = curl_slist_append (aai->authh,
+                             "Content-Type: application/json");
+    if (NULL == ext)
+      GNUNET_break (0);
+    else
+      aai->authh = ext;
+  }
   eh = curl_easy_init ();
   GNUNET_assert (NULL != (aai->json_enc =
                           json_dumps (admin_obj,
@@ -222,7 +234,7 @@ TALER_BANK_admin_add_incoming (struct GNUNET_CURL_Context *ctx,
                                    strlen (aai->json_enc)));
   aai->job = GNUNET_CURL_job_add (ctx,
                                   eh,
-                                  GNUNET_YES,
+                                  GNUNET_NO,
                                   &handle_admin_add_incoming_finished,
                                   aai);
   return aai;
