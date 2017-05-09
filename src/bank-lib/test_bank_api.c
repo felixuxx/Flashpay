@@ -39,39 +39,45 @@ run (void *cls)
   int *resultp = cls;
   static struct TBI_Command commands[] =
   {
-    /* Add EUR:5.01 to account 42 */
+    /* Ask complete history of 'Exchange' user (number 2) */
     { .oc = TBI_OC_HISTORY,
       .label = "history-0",
-      .details.history.account_number = 1,
+      .details.history.account_number = 2,
       .details.history.direction = TALER_BANK_DIRECTION_BOTH,
       .details.history.start_row_ref = NULL,
       .details.history.num_results = 5 },
+    # if 0
+    /* Move money from Exchange to Bank */
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
       .label = "deposit-1",
       .details.admin_add_incoming.exchange_base_url = "https://exchange.net/", /* bogus */
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 1,
-      .details.admin_add_incoming.debit_account_no = 2,
+      .details.admin_add_incoming.debit_account_no = 2, /* Ignored */
       .details.admin_add_incoming.amount = "PUDOS:5.01" },
+    /* Move money from Exchange to Bank */
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
       .label = "deposit-2",
       .details.admin_add_incoming.exchange_base_url = "https://exchange.net/", /* bogus */
       .details.admin_add_incoming.expected_response_code = MHD_HTTP_OK,
       .details.admin_add_incoming.credit_account_no = 1,
-      .details.admin_add_incoming.debit_account_no = 2,
+      .details.admin_add_incoming.debit_account_no = 2, /* Ignored */
       .details.admin_add_incoming.amount = "PUDOS:5.01" },
+    /* Ask Exchange's incoming history */
     { .oc = TBI_OC_HISTORY,
       .label = "history-1c",
-      .details.history.account_number = 1,
+      .details.history.account_number = 2,
       .details.history.direction = TALER_BANK_DIRECTION_CREDIT,
       .details.history.start_row_ref = NULL,
       .details.history.num_results = 5 },
+    /* Ask Exchange's outgoing history, 5 records into the future?? */
     { .oc = TBI_OC_HISTORY,
       .label = "history-2d",
       .details.history.account_number = 2,
       .details.history.direction = TALER_BANK_DIRECTION_DEBIT,
       .details.history.start_row_ref = NULL,
       .details.history.num_results = 5 },
+    /* Ask Exchange's outgoing history, last 5 records */
     { .oc = TBI_OC_HISTORY,
       .label = "history-2dr",
       .details.history.account_number = 2,
@@ -84,6 +90,7 @@ run (void *cls)
       .details.history.direction = TALER_BANK_DIRECTION_DEBIT,
       .details.history.start_row_ref = "deposit-1",
       .details.history.num_results = 5 },
+  #endif
     { .oc = TBI_OC_END }
   };
 

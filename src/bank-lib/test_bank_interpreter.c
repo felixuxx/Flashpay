@@ -565,8 +565,8 @@ interpreter_run (void *cls)
     return;
   }
   auth.method = TALER_BANK_AUTH_BASIC; /* or "NONE"? */
-  auth.details.basic.username = "user";
-  auth.details.basic.password = "pass";
+  auth.details.basic.username = "Exchange";
+  auth.details.basic.password = "x";
   switch (cmd->oc)
   {
   case TBI_OC_END:
@@ -609,6 +609,8 @@ interpreter_run (void *cls)
   case TBI_OC_HISTORY:
     if (NULL != cmd->details.history.start_row_ref)
     {
+      /*In case history is to be found from some other commad's
+      output, like from /admin/add/incoming*/
       ref = find_command (is,
                           cmd->details.history.start_row_ref);
       GNUNET_assert (NULL != ref);
@@ -623,7 +625,7 @@ interpreter_run (void *cls)
       rowid = UINT64_MAX;
     cmd->details.history.hh
       = TALER_BANK_history (is->ctx,
-                            "http://localhost:8081",
+                            "http://localhost:8080",
                             &auth,
                             cmd->details.history.account_number,
                             cmd->details.history.direction,
