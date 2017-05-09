@@ -1015,7 +1015,7 @@ create_wire_fee_for_method (void *cls,
       break;
     }
     GNUNET_free (amounts);
-    
+
     GNUNET_free (opt);
     sign_af (af,
              wiremethod,
@@ -1150,10 +1150,15 @@ revoke_denomination (const struct GNUNET_HashCode *hc)
                                "KEYDIR");
     return GNUNET_SYSERR;
   }
-  TALER_EXCHANGEDB_denomination_keys_iterate (rc.basedir,
-                                              &master_public_key,
-                                              &exchange_keys_revoke_by_dki,
-                                              &rc);
+  if (-1 ==
+      TALER_EXCHANGEDB_denomination_keys_iterate (rc.basedir,
+                                                  &master_public_key,
+                                                  &exchange_keys_revoke_by_dki,
+                                                  &rc))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   GNUNET_free (rc.basedir);
   return rc.ok;
 }
