@@ -186,8 +186,7 @@ parse_amount_nbo (void *cls,
   }
   if ( (value < 0) ||
        (fraction < 0) ||
-       (value > UINT64_MAX) ||
-       (fraction > UINT32_MAX) )
+       (fraction > (json_int_t) UINT32_MAX) )
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
