@@ -321,10 +321,16 @@ TALER_EXCHANGE_payback (struct TALER_EXCHANGE_Handle *exchange,
   ph->url = MAH_path_to_url (exchange, "/payback");
 
   eh = curl_easy_init ();
-  GNUNET_assert (NULL != (ph->json_enc =
-                          json_dumps (payback_obj,
-                                      JSON_COMPACT)));
+  ph->json_enc = json_dumps (payback_obj,
+                             JSON_COMPACT);
   json_decref (payback_obj);
+  if (NULL == ph->json_enc)
+  {
+    GNUNET_break (0);
+    GNUNET_free (ph->url);
+    GNUNET_free (ph);
+    return NULL;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for payback: `%s'\n",
               ph->url);
