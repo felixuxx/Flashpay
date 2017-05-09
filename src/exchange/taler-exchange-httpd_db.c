@@ -2402,9 +2402,19 @@ TEH_DB_execute_payback (struct MHD_Connection *connection,
     return TEH_RESPONSE_reply_internal_db_error (connection,
 						 TALER_EC_PAYBACK_HISTORY_DB_ERROR);
   }
-  TALER_amount_subtract (&amount,
-                         value,
-                         &spent);
+  if (GNUNET_SYSERR ==
+      TALER_amount_subtract (&amount,
+                             value,
+                             &spent))
+  {
+    GNUNET_break (0);
+    TEH_plugin->rollback (TEH_plugin->cls,
+                          session);
+    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
+                                            tl);
+    return TEH_RESPONSE_reply_internal_db_error (connection,
+						 TALER_EC_PAYBACK_COIN_BALANCE_NEGATIVE);
+  }
   if ( (0 == amount.fraction) &&
        (0 == amount.value) )
   {

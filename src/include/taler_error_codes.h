@@ -896,6 +896,13 @@ enum TALER_ErrorCode
    */
   TALER_EC_PAYBACK_BLINDING_FAILED = 1858,
 
+  /**
+   * The coin's remaining balance is zero.  The request is denied.
+   * This response is provided with an HTTP status code of
+   * MHD_HTTP_INTERNAL_SERVER_ERROR
+   */
+  TALER_EC_PAYBACK_COIN_BALANCE_NEGATIVE = 1857,
+
 
 
   /* *********** Merchant backend error codes ********* */
