@@ -476,20 +476,15 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
   }
   else
   {
-    if (NULL == h->transactions_head)
+    for (pos = h->transactions_head;
+         NULL != pos;
+         pos = pos->next)
+      if (pos->serial_id == start_number)
+        break;
+    if (NULL == pos)
     {
       GNUNET_break (0);
       return MHD_NO;
-    }
-    for (pos = h->transactions_head;
-         pos->serial_id != start_number;
-         pos = pos->next)
-    {
-      if (NULL == pos)
-      {
-        GNUNET_break (0);
-        return MHD_NO;
-      }
     }
     /* range is exclusive, skip the matching entry */
     if (count > 0)
