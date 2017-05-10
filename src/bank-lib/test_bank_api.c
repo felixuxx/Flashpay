@@ -54,7 +54,6 @@ run (void *cls)
       .details.admin_add_incoming.credit_account_no = 1,
       .details.admin_add_incoming.debit_account_no = 2, /* Ignored */
       .details.admin_add_incoming.amount = "PUDOS:5.01" },
-    # if 0
     /* Move money from Exchange to Bank */
     { .oc = TBI_OC_ADMIN_ADD_INCOMING,
       .label = "deposit-2",
@@ -77,6 +76,7 @@ run (void *cls)
       .details.history.direction = TALER_BANK_DIRECTION_DEBIT,
       .details.history.start_row_ref = NULL,
       .details.history.num_results = 5 },
+    # if 0
     /* Ask Exchange's outgoing history, last 5 records */
     { .oc = TBI_OC_HISTORY,
       .label = "history-2dr",
