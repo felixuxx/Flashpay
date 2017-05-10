@@ -335,6 +335,43 @@ build_history (struct InterpreterState *is,
 
 
 /**
+ * Log which history we expected.
+ *
+ * @param h what we expected
+ * @param h_len number of entries in @a h
+ * @param off position of the missmatch
+ */
+static void
+print_expected (struct History *h,
+                uint64_t h_len,
+                unsigned int off)
+{
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Transaction history missmatch at position %u/%llu\n",
+              off,
+              (unsigned long long) h_len);
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Expected history\n");
+  for (uint64_t i=0;i<h_len;i++)
+  {
+    char *acc;
+
+    acc = json_dumps (h[i].details.account_details,
+                      JSON_COMPACT);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "H(%llu): %s%s (serial: %llu, subject: %s, to: %s)\n",
+                (unsigned long long) i,
+                (TALER_BANK_DIRECTION_CREDIT == h[i].direction) ? "+" : "-",
+                TALER_amount2s (&h[i].details.amount),
+                (unsigned long long) h[i].serial_id,
+                h[i].details.wire_transfer_subject,
+                acc);
+    GNUNET_free_non_null (acc);
+  }
+}
+
+
+/**
  * Free history @a h of length @a h_len.
  *
  * @param h history array to free
@@ -402,13 +439,13 @@ check_result (struct InterpreterState *is,
                 "Test says history has at most %u results, but got result #%u to check\n",
                 (unsigned int) total,
                 off);
-    free_history (h,
-                  total);
+    print_expected (h, total, off);
     return GNUNET_SYSERR;
   }
   if (h[off].direction != dir)
   {
     GNUNET_break (0);
+    print_expected (h, total, off);
     free_history (h,
                   total);
     return GNUNET_SYSERR;
@@ -422,6 +459,7 @@ check_result (struct InterpreterState *is,
                          details->account_details)) )
   {
     GNUNET_break (0);
+    print_expected (h, total, off);
     free_history (h,
                   total);
     return GNUNET_SYSERR;
