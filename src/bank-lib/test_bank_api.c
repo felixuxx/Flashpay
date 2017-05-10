@@ -111,7 +111,6 @@ main (int argc,
       char * const *argv)
 {
   struct GNUNET_OS_Process *bankd;
-  struct GNUNET_OS_Process *bankd_admin;
   unsigned int cnt;
   int result;
 
@@ -127,21 +126,6 @@ main (int argc,
   GNUNET_log_setup ("test-bank-api",
                     "WARNING",
                     NULL);
-  bankd_admin = GNUNET_OS_start_process (GNUNET_NO,
-                                         GNUNET_OS_INHERIT_STD_ALL,
-                                         NULL, NULL, NULL,
-                                         "taler-bank-manage",
-                                         "taler-bank-manage",
-                                         "--admin",
-                                         "serve-http",
-				         "--port", "8081",
-                                         NULL);
-  if (NULL == bankd_admin)
-  {
-    fprintf (stderr,
-             "Failed to launch `taler-bank-manage' for admin, skipping test\n");
-    return 77; /* report 'skip' */
-  }
   bankd = GNUNET_OS_start_process (GNUNET_NO,
                                    GNUNET_OS_INHERIT_STD_ALL,
                                    NULL, NULL, NULL,
@@ -155,10 +139,6 @@ main (int argc,
   {
     fprintf (stderr,
              "Failed to launch taler-bank-manage, skipping test\n");
-    GNUNET_OS_process_kill (bankd_admin,
-			    SIGTERM);
-    GNUNET_OS_process_wait (bankd_admin);
-    GNUNET_OS_process_destroy (bankd_admin);
     return 77; /* report 'skip' */
   }
   /* give child time to start and bind against the socket */
@@ -175,20 +155,6 @@ main (int argc,
     }
   while (0 != system ("wget -q -t 1 -T 1 http://127.0.0.1:8080/ -o /dev/null -O /dev/null"));
 
-  do
-    {
-      fprintf (stderr, ",");
-      sleep (1);
-      cnt++;
-      if (cnt > 30)
-        break;
-      result = system ("wget -q -t 1 -T 1 http://127.0.0.1:8081/admin/add/incoming -o /dev/null -O /dev/null");
-    }
-  while (! ( (WIFEXITED (result)) &&
-             (8 == WEXITSTATUS (result)) ) );
-  /* Note: we are using "GET", so /admin/add/incoming will yield a 405, which causes wget to return
-     a status code of 8. */
-
 
   fprintf (stderr, "\n");
   result = GNUNET_SYSERR;
@@ -200,12 +166,8 @@ main (int argc,
   }
   GNUNET_OS_process_kill (bankd,
                           SIGTERM);
-  GNUNET_OS_process_kill (bankd_admin,
-                          SIGTERM);
   GNUNET_OS_process_wait (bankd);
   GNUNET_OS_process_destroy (bankd);
-  GNUNET_OS_process_wait (bankd_admin);
-  GNUNET_OS_process_destroy (bankd_admin);
   if (cnt > 30)
   {
     fprintf (stderr,

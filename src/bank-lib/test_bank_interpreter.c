@@ -590,7 +590,7 @@ interpreter_run (void *cls)
                                 sizeof (cmd->details.admin_add_incoming.wtid));
     cmd->details.admin_add_incoming.aih
       = TALER_BANK_admin_add_incoming (is->ctx,
-                                       "http://localhost:8081",
+                                       "http://localhost:8080",
                                        &auth,
                                        cmd->details.admin_add_incoming.exchange_base_url,
                                        &cmd->details.admin_add_incoming.wtid,
