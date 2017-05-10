@@ -357,7 +357,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
     size_t json_len;
 
     json = json_pack ("{s:I}",
-                      "row_id",
+                      "serial_id",
                       (json_int_t) t->serial_id);
     json_str = json_dumps (json,
                            JSON_INDENT(2));
