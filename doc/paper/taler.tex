@@ -991,7 +991,7 @@ than the comparable use of zk-SNARKs in ZeroCash~\cite{zerocash}.
 %
 %TODO: Explain, especially subtleties regarding session key / the spoofing attack that requires signature.
 
-\subsection{Linking}
+\subsection{Linking}\label{subsec:linking}
 
 % FIXME: What is \mathtt{link} ?
 
@@ -1372,6 +1372,90 @@ data being persisted are represented in between $\langle\rangle$.
   \item[$\overline{b_s^{(i)}}$]{Blinding factors obtained from decryption by the verifier}
   \item[$\overline{C^{(i)}_p}$]{Public coin keys computed from $\overline{c_s^{(i)}}$ by the verifier}
 \end{description}
+
+
+\section{Taxability arguments}
+
+\begin{proposition}
+An auditor can detect an exchange operating either the refresh or
+linking protocol dishonestly.
+\end{proposition}
+
+\begin{proof}
+.. Not sure about this one ..
+\end{proof}
+
+\begin{proposition}
+If the exchange operates the refresh protocol honestly, then
+a dishonest wallet looses $1 - {1 \over \kappa}$ of the value
+of the coins it refreshes dishonestly.
+\end{proposition}
+
+\begin{proof}
+.. Can we reference something about cut and choose protocols?  Or must we work this all out? ..
+\end{proof}
+
+We say a coin is {\em controlled} by a user if the user's wallet knows
+its secret scalar $c_s$, the signature $S$ of the appropriate denomination
+key on its public key $C_s$, and the residual value of the coin. 
+
+We assume the wallet cannot loose knowledge of a particular coin's
+key material, and the wallet can query the exchange to learn the
+residual value of the coin, so a wallet cannot loose control of
+a coin.  A wallet may loose the monetary value associated with a coin
+if another wallet spends it however.
+
+We say a user Alice {\em owns} a coin $C$ if only Alice's wallets can
+gain control of $C$ using standard interactions with the exchange. 
+In other words, ownership means exclusive control not just in the
+present, but in the future even if another user interacts with the
+exchange.
+
+\begin{theorem}
+Let $C$ denote a coin controlled by users Alice and Bob. 
+Suppose Bob creates a coin $C'$ from $C$ using the refresh protocol.
+Assuming the exchange and Bob operated the refresh protocol correctly,
+and that they continue to operate the linking protocol
+ \S\ref{subsec:linking} correctly,
+then Alice can gain control of $C'$ using the linking protocol.
+\end{theorem}
+
+\begin{proof}
+Alice may run the linking protocol to obtain all transfer keys $T^i$,
+blindings $B^i$ associated to $C$, and those coins denominations,
+including the $T'$ for $C'$. 
+
+We assumed both the exchange and Bob operated the refresh protocol
+correctly, so now $c_s T'$ is the seed from which $C'$ was generated.
+Alice rederives both $c_s$ and the blinding factor to unblind the
+denomination key signature on $C'$.  Alice finally asks the exchange
+for the residual value on $C'$ and runs the linking protocol to
+determine if it was refreshed too.
+\end{proof}
+
+
+\section{Privacy arguments}
+
+We consider two coins $C_1$ and $C_2$ created by the same withdrawal
+or refresh operation.  We say they are {\em linkable} if
+some probabilistic polynomial time adversary has a non-negligible
+advantage in guessing which two of $\{ C_0, C_1, C_2 \}$ were
+created together, where $C_0$ is an unrelated third coin.
+
+% TODO: Compare this definition with some from the literature
+
+.. reference literate about withdrawal ..
+
+\begin{proposition}
+If two coins created by refresh are linkable, then some 
+probabilistic polynomial time adversary has a non-negligible
+advantage in determining that their seeds ...
+...
+\end{proposition}
+
+\begin{proof}
+... random oracle ..
+\end{proof}
 
 
 
