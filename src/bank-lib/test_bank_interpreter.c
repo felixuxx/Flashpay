@@ -351,7 +351,7 @@ print_expected (struct History *h,
               off,
               (unsigned long long) h_len);
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Expected history\n");
+              "Expected history:\n");
   for (uint64_t i=0;i<h_len;i++)
   {
     char *acc;
@@ -553,7 +553,19 @@ history_cb (void *cls,
          (GNUNET_YES ==
           cmd->details.history.failed) )
     {
+      uint64_t total;
+      struct History *h;
       GNUNET_break (0);
+
+      total = build_history (is,
+                             &h);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Expected history of length %llu, got %llu\n",
+                  (unsigned long long) total,
+                  (unsigned long long) cmd->details.history.results_obtained);
+      print_expected (h, total, UINT_MAX);
+      free_history (h,
+                    total);
       fail (is);
       return;
     }
