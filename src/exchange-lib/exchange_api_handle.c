@@ -416,9 +416,9 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     unsigned int j;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_fixed_auto ("denom_pub_h",
-                           &denom_h),
+                                   &denom_h),
       GNUNET_JSON_spec_fixed_auto ("auditor_sig",
-                           &auditor_sig),
+                                   &auditor_sig),
       GNUNET_JSON_spec_end()
     };
 
@@ -468,7 +468,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
                                     &auditor->auditor_pub.eddsa_pub))
     {
       GNUNET_break_op (0);
-      continue;
+      return GNUNET_SYSERR;
     }
     auditor->denom_keys[off] = dk;
     off++;
