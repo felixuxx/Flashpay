@@ -57,10 +57,7 @@ check_PROGRAMS = \
   test_bank_api_with_fakebank
 
 TESTS = \
-  test_bank_api
-#  test_bank_api_with_fakebank
-# For now, test_bank_api is known NOT to work (#5005, #4964, etc.)
-# $(check_PROGRAMS)
+  $(check_PROGRAMS)
 
 test_bank_api_SOURCES = \
   test_bank_interpreter.c test_bank_interpreter.h \

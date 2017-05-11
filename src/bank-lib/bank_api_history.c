@@ -77,7 +77,14 @@ static int
 parse_account_history (struct TALER_BANK_HistoryHandle *hh,
                        const json_t *history)
 {
-  for (unsigned int i=0;i<json_array_size (history);i++)
+  json_t *history_array;
+
+  if (NULL == (history_array = json_object_get (history, "data")))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  for (unsigned int i=0;i<json_array_size (history_array);i++)
   {
     struct TALER_BANK_TransferDetails td;
     const char *sign;
@@ -99,7 +106,7 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
                                &other_account),
       GNUNET_JSON_spec_end()
     };
-    json_t *transaction = json_array_get (history,
+    json_t *transaction = json_array_get (history_array,
                                           i);
 
     if (GNUNET_OK !=
@@ -110,6 +117,7 @@ parse_account_history (struct TALER_BANK_HistoryHandle *hh,
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
+
     td.account_details = json_pack ("{s:s, s:s, s:I}",
                                     "type", "test",
                                     "bank_uri", hh->bank_base_url,
