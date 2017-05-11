@@ -594,6 +594,7 @@ decode_keys_json (const json_t *resp_obj,
                                     auditor_info,
                                     key_data));
       }
+      key_data->num_auditors = len;
     }
   }
 
