@@ -3648,6 +3648,7 @@ main (int argc,
                                   "taler-exchange-keyup",
                                   "taler-exchange-keyup",
                                   "-c", "test_exchange_api.conf",
+                                  "-o", "auditor.in",
                                   NULL);
   if (NULL == proc)
   {
@@ -3657,6 +3658,27 @@ main (int argc,
   }
   GNUNET_OS_process_wait (proc);
   GNUNET_OS_process_destroy (proc);
+
+  proc = GNUNET_OS_start_process (GNUNET_NO,
+                                  GNUNET_OS_INHERIT_STD_ALL,
+                                  NULL, NULL, NULL,
+                                  "taler-auditor-sign",
+                                  "taler-auditor-sign",
+                                  "-c", "test_exchange_api.conf",
+                                  "-u", "http://auditor/",
+                                  "-m", "98NJW3CQHZQGQXTY3K85K531XKPAPAVV4Q5V8PYYRR00NJGZWNVG",
+                                  "-r", "auditor.in",
+                                  "-o", "test_exchange_api_home/.local/share/taler/auditors/auditor.out",
+                                  NULL);
+  if (NULL == proc)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+		"Failed to run `taler-exchange-keyup`, is your PATH correct?\n");
+    return 77;
+  }
+  GNUNET_OS_process_wait (proc);
+  GNUNET_OS_process_destroy (proc);
+
   proc = GNUNET_OS_start_process (GNUNET_NO,
                                   GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,

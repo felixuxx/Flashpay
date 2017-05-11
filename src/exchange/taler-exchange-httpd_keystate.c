@@ -266,6 +266,34 @@ store_in_map (struct GNUNET_CONTAINER_MultiHashMap *map,
 
 
 /**
+ * Handle a signal, writing relevant signal numbers to the pipe.
+ *
+ * @param signal_number the signal number
+ */
+static void
+handle_signal (int signal_number)
+{
+  ssize_t res;
+  char c = signal_number;
+
+  res = write (reload_pipe[1],
+               &c,
+               1);
+  if ( (res < 0) &&
+       (EINTR != errno) )
+  {
+    GNUNET_break (0);
+    return;
+  }
+  if (0 == res)
+  {
+    GNUNET_break (0);
+    return;
+  }
+}
+
+
+/**
  * Iterator for (re)loading/initializing denomination keys.
  *
  * @param cls closure
@@ -284,6 +312,7 @@ reload_keys_denom_iter (void *cls,
 {
   struct TEH_KS_StateHandle *ctx = cls;
   struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Absolute start;
   struct GNUNET_TIME_Absolute horizon;
   struct GNUNET_TIME_Absolute expire_deposit;
   struct GNUNET_HashCode denom_key_hash;
@@ -318,6 +347,8 @@ reload_keys_denom_iter (void *cls,
 
   if (NULL != revocation_master_sig)
   {
+    unsigned int thresh = 0;
+
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Adding denomination key `%s' to revokation set\n",
                 alias);
@@ -326,12 +357,19 @@ reload_keys_denom_iter (void *cls,
     if (GNUNET_NO == res)
       return GNUNET_OK;
     /* Try to insert DKI into DB until we succeed; note that if the DB
-       failure is persistent, this code may loop forever (as there is no
-       sane alternative, we cannot continue without the DKI being in the
-       DB). */
+       failure is persistent, we need to die, as we cannot continue
+       without the DKI being in the DB). */
     res = GNUNET_SYSERR;
     while (GNUNET_OK != res)
     {
+      thresh++;
+      if (thresh > 16)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Giving up, this is fatal. Committing suicide via SIGTERM.\n");
+        handle_signal (SIGTERM);
+        return GNUNET_SYSERR;
+      }
       res = TEH_plugin->start (TEH_plugin->cls,
                                session);
       if (GNUNET_OK != res)
@@ -366,12 +404,13 @@ reload_keys_denom_iter (void *cls,
     return GNUNET_OK;
   }
   horizon = GNUNET_TIME_relative_to_absolute (TALER_EXCHANGE_conf_duration_provide ());
-  if (GNUNET_TIME_absolute_ntoh (dki->issue.properties.start).abs_value_us >
-      horizon.abs_value_us)
+  start = GNUNET_TIME_absolute_ntoh (dki->issue.properties.start);
+  if (start.abs_value_us > horizon.abs_value_us)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Skipping future denomination key `%s'\n",
-                alias);
+                "Skipping future denomination key `%s' (starts at %s)\n",
+                alias,
+                GNUNET_STRINGS_absolute_time_to_string (start));
     return GNUNET_OK;
   }
 
@@ -953,34 +992,6 @@ TEH_KS_denomination_key_lookup (const struct TEH_KS_StateHandle *key_state,
     break;
   }
   return dki;
-}
-
-
-/**
- * Handle a signal, writing relevant signal numbers to the pipe.
- *
- * @param signal_number the signal number
- */
-static void
-handle_signal (int signal_number)
-{
-  ssize_t res;
-  char c = signal_number;
-
-  res = write (reload_pipe[1],
-               &c,
-               1);
-  if ( (res < 0) &&
-       (EINTR != errno) )
-  {
-    GNUNET_break (0);
-    return;
-  }
-  if (0 == res)
-  {
-    GNUNET_break (0);
-    return;
-  }
 }
 
 
