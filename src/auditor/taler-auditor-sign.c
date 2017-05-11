@@ -311,6 +311,7 @@ main (int argc,
     kv.fee_withdraw = dk->fee_withdraw;
     kv.fee_deposit = dk->fee_deposit;
     kv.fee_refresh = dk->fee_refresh;
+    kv.fee_refund = dk->fee_refund;
     kv.denom_hash = dk->denom_hash;
 
     /* Finally sign ... */
