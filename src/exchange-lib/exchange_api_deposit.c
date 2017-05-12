@@ -318,8 +318,8 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
                                   &coin_sig->eddsa_signature,
                                   &coin_pub->eddsa_pub))
   {
-    GNUNET_break (0);
-    TALER_LOG_WARNING ("Invalid coin signature on /deposit request\n");
+    GNUNET_break_op (0);
+    TALER_LOG_WARNING ("Invalid coin signature on /deposit request!\n");
     {
       TALER_LOG_DEBUG ("... amount_with_fee was %s\n",
                        TALER_amount2s (amount));
@@ -337,14 +337,14 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
   if (GNUNET_YES !=
       TALER_test_coin_valid (&coin_info))
   {
-    GNUNET_break (0);
+    GNUNET_break_op (0);
     TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
     return GNUNET_SYSERR;
   }
   if (0 < TALER_amount_cmp (&dki->fee_deposit,
                             amount))
   {
-    GNUNET_break (0);
+    GNUNET_break_op (0);
     TALER_LOG_WARNING ("Deposit amount smaller than fee\n");
     return GNUNET_SYSERR;
   }
