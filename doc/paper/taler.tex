@@ -1376,23 +1376,29 @@ data being persisted are represented in between $\langle\rangle$.
 
 \section{Taxability arguments}
 
+We assume the exchange operates honestly when discussing taxability.
+We feel this assumption is warratned mostly because a Taler exchange
+requires liscenses to operate as a financial institution, which it
+risks loosing if it knowingly facilitates tax evasion.  
+We also expect an auditor monitors the exchange similarly to how
+government regulators monitor financial institutions.
+In fact, our auditor software component gives the auditor read access
+to the exchange's database, and carries out test operations anonymously,
+which expands its power over conventional auditors.
+
 \begin{proposition}
-An auditor can detect an exchange operating either the refresh or
-linking protocol dishonestly.
+Assuming the exchange operates the refresh protocol honestly,
+a customer operating the refresh protocol dishonestly expects to
+loose $1 - {1 \over \kappa}$ of the value of thei coins.
 \end{proposition}
 
 \begin{proof}
-.. Not sure about this one ..
-\end{proof}
-
-\begin{proposition}
-If the exchange operates the refresh protocol honestly, then
-a dishonest wallet looses $1 - {1 \over \kappa}$ of the value
-of the coins it refreshes dishonestly.
-\end{proposition}
-
-\begin{proof}
-.. Can we reference something about cut and choose protocols?  Or must we work this all out? ..
+An honest esxchange keeps any funds being refreshed if the reveal
+phase is never carried out, does not match the commitment, or shows
+an incorrect commitment.  As a result, a customer dishonestly
+refreshing a coin looses their money if they have more than one
+dishonet commitment.  They have a $1 \over \kappa$ chance of their
+dishonest commitment being selected for the refresh.
 \end{proof}
 
 We say a coin is {\em controlled} by a user if the user's wallet knows
@@ -1432,6 +1438,8 @@ denomination key signature on $C'$.  Alice finally asks the exchange
 for the residual value on $C'$ and runs the linking protocol to
 determine if it was refreshed too.
 \end{proof}
+
+At a result, there is no way for a user to loose control over a coin,
 
 
 \section{Privacy arguments}
