@@ -124,11 +124,20 @@ main (int argc,
   GNUNET_log_setup ("test-bank-api",
                     "WARNING",
                     NULL);
+
+  if (0 != system ("taler-bank-manage --with-db=postgres:///talercheck django flush --no-input"))
+  {
+      fprintf (stderr,
+               "Could not purge database 'talercheck'\n");
+      return 77;
+  }
+
   bankd = GNUNET_OS_start_process (GNUNET_NO,
                                    GNUNET_OS_INHERIT_STD_ALL,
                                    NULL, NULL, NULL,
                                    "taler-bank-manage",
                                    "taler-bank-manage",
+                                   "--with-db", "postgres:///talercheck",
                                    "serve-http",
                                    "--port", "8080",
                                    NULL);
