@@ -822,16 +822,29 @@ bhist_cb (void *cls,
 
   if (MHD_HTTP_OK == http_status)
   {
+    char *subject;
+    char *space;
+
     wd.amount = details->amount;
     wd.execution_date = details->execution_date;
+    subject = GNUNET_strdup (details->wire_transfer_subject);
+    space = strchr (subject, (int) ' ');
+    if (NULL != space)
+    {
+      /* Space separates the actual wire transfer subject from the
+         exchange base URL (if present, expected only for outgoing
+         transactions).  So we cut the string off at the space. */
+      *space = '\0';
+    }
     /* NOTE: For a real bank, the subject should include a checksum! */
     if (GNUNET_OK !=
-        GNUNET_STRINGS_string_to_data (details->wire_transfer_subject,
-                                       strlen (details->wire_transfer_subject),
+        GNUNET_STRINGS_string_to_data (subject,
+                                       strlen (subject),
                                        &wd.reserve_pub,
                                        sizeof (wd.reserve_pub)))
     {
       GNUNET_break (0);
+      GNUNET_free (subject);
       /* NOTE: for a "real" bank, we would want to trigger logic to undo the
          wire transfer. However, for the "demo" bank, it should currently
          be "impossible" to do wire transfers with invalid subjects, and
@@ -839,6 +852,7 @@ bhist_cb (void *cls,
          that nicely either right now). So we don't handle this case for now. */
       return;
     }
+    GNUNET_free (subject);
     wd.account_details = details->account_details;
 
     if ( (NULL != whh->hres_cb) &&

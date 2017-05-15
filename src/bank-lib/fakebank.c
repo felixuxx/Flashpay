@@ -512,8 +512,17 @@ handle_history (struct TALER_FAKEBANK_Handle *h,
       continue;
     }
 
-    subject = GNUNET_STRINGS_data_to_string_alloc (&pos->wtid,
-                                                   sizeof (pos->wtid));
+    {
+      char *ws;
+
+      ws = GNUNET_STRINGS_data_to_string_alloc (&pos->wtid,
+                                                sizeof (pos->wtid));
+      GNUNET_asprintf (&subject,
+                       "%s %s",
+                       ws,
+                       pos->exchange_base_url);
+      GNUNET_free (ws);
+    }
     trans = json_pack ("{s:I, s:o, s:o, s:s, s:I, s:s}",
                        "row_id", (json_int_t) pos->serial_id,
                        "date", GNUNET_JSON_from_time_abs (pos->date),

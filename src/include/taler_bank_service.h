@@ -200,7 +200,8 @@ struct TALER_BANK_TransferDetails
   struct GNUNET_TIME_Absolute execution_date;
 
   /**
-   * Wire transfer subject
+   * Wire transfer subject.  Usually a reserve public key
+   * followed by the BASE URI of the exchange.
    */
   char *wire_transfer_subject;
 

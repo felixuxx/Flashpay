@@ -323,9 +323,17 @@ build_history (struct InterpreterState *is,
       /* h[total].execution_date; // unknown here */
       h[total].serial_id
         = pos->details.admin_add_incoming.serial_id;
-      h[total].details.wire_transfer_subject
-        = GNUNET_STRINGS_data_to_string_alloc (&pos->details.admin_add_incoming.wtid,
-                                               sizeof (struct TALER_WireTransferIdentifierRawP));
+      {
+        char *ws;
+
+        ws = GNUNET_STRINGS_data_to_string_alloc (&pos->details.admin_add_incoming.wtid,
+                                                  sizeof (struct TALER_WireTransferIdentifierRawP));
+        GNUNET_asprintf (&h[total].details.wire_transfer_subject,
+                         "%s %s",
+                         ws,
+                         pos->details.admin_add_incoming.exchange_base_url);
+        GNUNET_free (ws);
+      }
       total++;
     }
   }
