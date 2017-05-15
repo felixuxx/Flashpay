@@ -1444,27 +1444,67 @@ At a result, there is no way for a user to loose control over a coin,
 
 \section{Privacy arguments}
 
-We consider two coins $C_1$ and $C_2$ created by the same withdrawal
-or refresh operation.  We say they are {\em linkable} if
-some probabilistic polynomial time adversary has a non-negligible
-advantage in guessing which two of $\{ C_0, C_1, C_2 \}$ were
-created together, where $C_0$ is an unrelated third coin.
+The {\em linking problem} for blind signature is,
+if given coin creation transcrips and possibly fewer
+coin deposit transcripts for coins from the creation transcripts,
+then produce a corresponding creation and deposit transcript.
 
-% TODO: Compare this definition with some from the literature
+We say a probabilistic polynomial time (PPT) adversary $A$
+{\em links} coins if it has a non-negligable advantage in
+solving the linking problem, when given the private keys
+of the exchange.
 
-.. reference literate about withdrawal ..
+In Taler, there are two forms of coin creation transcrips,
+withdrawal and refresh.
 
-\begin{proposition}
-If two coins created by refresh are linkable, then some 
-probabilistic polynomial time adversary has a non-negligible
-advantage in determining that their seeds ...
-...
-\end{proposition}
+\begin{lemma}
+If there are no refresh operations, any adversary with an
+advantage in linking coins is polynomially equivelent to an
+advantage with the same advantage in recognizing blinding factors.
+\end{lemma}
 
 \begin{proof}
-... random oracle ..
+Let $n$ denote the RSA modulous of the denomination key.
+Also let $d$ and $e$ denote the private and public exponents, respectively.
+In effect, coin withdrawal transcripts consist of numbers
+$b m^d \mod n$ where $m$ is the FDH of the coin's public key
+and $b$ is the blinding factor, while coin deposits transcripts
+consist of only $m^d \mon n$. 
+
+Of course, if the adversary can link coins then they can compute
+the blinding factors as $b m^d / m^d \mod n$.  Conversely, if the
+adversary can recognize blinding factors then they link coins after
+first computing $b_{i,j} = b_i m_i^d / m_j^d \mod n$ for all $i,j$.
 \end{proof}
 
+We now know the following because Taler used SHA512 adopted to be
+ a FDH to breat the blinding factor.
+
+\begin{corollary}
+Assuming no refresh opeeration, 
+any PPT adversary with an advantage for linking Taler coins gives
+rise to an adversary with an advantage for recognizing SHA512 output.
+\end{corollary}
+
+There was an earlier encryption-based version of the Taler protocol
+in which refresh operated consisted of $\kappa$ normal coin withdrawals
+encrypted using the secret $t^{(i)} C$ where $C = c G$ is the coin being
+refreshed and $T^{(i)} = t^{(i)} G$ is the transfer key.
+
+\begin{proposition}
+Assuming the encryption used is ??? secure, and that
+ the independence of $c$, $t$, and the new coins key materials, then
+any PPT adversary with an advantage for linking Taler coins gives
+rise to an adversary with an advantage for recognizing SHA512 output.
+\end{proposition}
+
+We now apply \cite[??]{??} to deduce : 
+
+\begin{theorem}
+In the random oracle model, any PPT adversary with an advantage
+in linking Taler coins has an advantage in breaking elliptic curve
+Diffie-Hellman key exchange on curve25519.
+\end{theorem}
 
 
 \end{document}
